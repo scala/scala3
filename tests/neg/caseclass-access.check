@@ -1,0 +1,24 @@
+[1059..1062..1066] in caseclass-access.scala
+method copy cannot be accessed as a member of qualified_protected.F from module class QProtTest$.
+ Access to protected method copy not permitted because enclosing object QProtTest
+ is not a subclass of class F in object qualified_protected where target is defined
+[848..851..855] in caseclass-access.scala
+method copy cannot be accessed as a member of E from module class ETest$.
+ Access to protected method copy not permitted because enclosing object ETest
+ is not a subclass of class E where target is defined
+[728..731..735] in caseclass-access.scala
+method copy cannot be accessed as a member of qualified_private.D from module class QPrivTest$.
+<682..683> in caseclass-access.scala
+constructor D cannot be accessed as a member of qualified_private.D from module class QPrivTest$.
+[630..633..637] in caseclass-access.scala
+method copy cannot be accessed as a member of qualified_private.C from module class QPrivTest$.
+<584..585> in caseclass-access.scala
+constructor C cannot be accessed as a member of qualified_private.C from module class QPrivTest$.
+[299..302..306] in caseclass-access.scala
+method copy cannot be accessed as a member of B from module class BTest$.
+<253..254> in caseclass-access.scala
+constructor B cannot be accessed as a member of B from module class BTest$.
+[114..117..121] in caseclass-access.scala
+method copy cannot be accessed as a member of A from module class ATest$.
+<68..69> in caseclass-access.scala
+constructor A cannot be accessed as a member of A from module class ATest$.

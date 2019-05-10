@@ -1,0 +1,41 @@
+[3786..3787] in i1050.scala
+U.this.X(U.this.p) is not a legal path
+since its underlying type U.this.X(U.this.p) has a member value q which is not a legal path
+since q: U.this.Y has a member value r which is not a legal path
+since r: U.this.Y & Indirect3.A & Indirect3.B has a member L with possibly conflicting bounds Any <: ... <: Nothing
+[3365..3366] in i1050.scala
+U.this.X(U.this.p) is not a legal path
+since its underlying type U.this.X(U.this.p) has a member value q which is not a legal path
+since q: U.this.Y has a member value r which is not a legal path
+since r: Rec2.A & Rec2.B & U.this.Y has a member L with possibly conflicting bounds Any <: ... <: Nothing
+[2669..2670] in i1050.scala
+U.this.X(U.this.p) is not a legal path
+since its underlying type U.this.X(U.this.p) has a member value q which is not a legal path
+since q: U.this.Y has a member value r which is not a legal path
+since r: Indirect2.A & Indirect2.B has a member L with possibly conflicting bounds Any <: ... <: Nothing
+[2252..2253] in i1050.scala
+U.this.X(U.this.p) is not a legal path
+since its underlying type U.this.X(U.this.p) has a member value q which is not a legal path
+since q: Indirect.A & Indirect.B has a member L with possibly conflicting bounds Any <: ... <: Nothing
+[1928..1930..1931] in i1050.scala
+(Tiark6.A & Tiark6.B)(U.this.p.q) is not a legal path
+since its underlying type U.this.X(U.this.p) has a member value q which is not a legal path
+since q: Tiark6.A & Tiark6.B has a member L with possibly conflicting bounds Any <: ... <: Nothing
+[1549..1550] in i1050.scala
+U.this.X(U.this.p) is not a legal path
+since its underlying type U.this.X(U.this.p) is not a concrete type
+[1198..1199] in i1050.scala
+U.this.X(U.this.p) is not a legal path
+since it refers to nonfinal lazy value p
+[900..901] in i1050.scala
+Tiark1.B(U.this.p) is not a legal path
+since it refers to nonfinal lazy value p
+[697..698] in i1050.scala
+Test2.X is not a legal path
+since it has a member A with possibly conflicting bounds Any <: ... <: Nothing
+[345..346] in i1050.scala
+(Test50.A & Test50.B)(Test50.o) is not a legal path
+since its underlying type (Test50.A & Test50.B)(Test50.o) has a member X with possibly conflicting bounds String | Int <: ... <: String & Int
+[141..142] in i1050.scala
+(A & B)(Test.x) is not a legal path
+since its underlying type (A & B)(Test.x) has a member L with possibly conflicting bounds Any <: ... <: Nothing

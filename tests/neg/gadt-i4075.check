@@ -1,0 +1,5 @@
+[128..132..135] in gadt-i4075.scala
+Found:    a(foo.fst)
+Required: Nothing
+
+where:    a is a type in method bad which is an alias of T

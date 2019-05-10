@@ -1,0 +1,9 @@
+[419..420] in union.scala
+Found:    Object(O.z)
+Required: O.A | O.B
+[281..282..300] in union.scala
+Found:    Object
+Required: O.A | O.B
+[152..153] in union.scala
+Found:    Test.A(Test.x)
+Required: Test.B | Test.C

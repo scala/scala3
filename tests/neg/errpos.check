@@ -1,0 +1,14 @@
+<262..262> in errpos.scala
+Values of types Null and Int cannot be compared with == or !=
+<266..266> in errpos.scala
+pattern expected
+<198..202> in errpos.scala
+expression expected
+<156..157> in errpos.scala
+';' expected, but identifier found
+<105..105> in errpos.scala
+expression expected
+<64..65> in errpos.scala
+';' expected, but identifier found
+<23..23> in errpos.scala
+expression expected

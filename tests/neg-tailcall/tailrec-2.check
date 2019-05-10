@@ -1,0 +1,4 @@
+<382..382> in tailrec-2.scala
+TailRec optimisation not applicable, method f1 contains no recursive calls
+[289..307..312] in tailrec-2.scala
+Cannot rewrite recursive call: it targets a supertype

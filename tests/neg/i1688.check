@@ -1,0 +1,6 @@
+[66..72..78] in i1688.scala
+illegal redefinition of standard class AnyVal
+[43..50..54] in i1688.scala
+illegal redefinition of standard object Null
+[14..27..31] in i1688.scala
+illegal redefinition of standard class Null

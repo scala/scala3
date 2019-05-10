@@ -1,0 +1,9 @@
+<464..464> in byname-implicits-21.scala
+no implicit argument of type Test.Foo[Test.A[Unit]] was found for parameter ev of method implicitly in object DottyPredef.
+I found:
+
+    Test.Foo.fooGen[Test.A[Unit], Option[Test.A[Test.A[Unit]]]](Test.A.genA[Unit], 
+      Test.Foo.fooGen[T, R](/* missing */implicitly[Test.Generic[Option[Test.A[Test.A[Unit]]]]{Repr}], ???)
+    )
+
+But no implicit values were found that match type Test.Generic[Option[Test.A[Test.A[Unit]]]]{Repr}.

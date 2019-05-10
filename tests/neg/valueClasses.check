@@ -1,0 +1,4 @@
+<142..142> in valueClasses.scala
+Value classes may not be a local class
+<19..19> in valueClasses.scala
+Value classes may not be a member of another class

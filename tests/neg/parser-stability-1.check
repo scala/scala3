@@ -1,0 +1,6 @@
+[12..14] in parser-stability-1.scala
+Not found: x1
+<57..57> in parser-stability-1.scala
+Auxiliary constructor needs non-implicit parameter list
+<31..34> in parser-stability-1.scala
+'{' expected, but 'def' found

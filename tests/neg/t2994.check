@@ -1,0 +1,13 @@
+[663..664] in t2994.scala
+m is not a legal path
+since it is not a concrete type
+<668..668> in t2994.scala
+Type argument s does not conform to upper bound [_$7] => Any 
+<665..665> in t2994.scala
+Type argument m#a does not conform to upper bound [_$4 <: [_$5] => Any, _$6] => Any 
+[653..654] in t2994.scala
+n is not a legal path
+since it is not a concrete type
+[281..282] in t2994.scala
+n is not a legal path
+since it is not a concrete type

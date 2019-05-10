@@ -1,0 +1,20 @@
+<265..265> in overloadsOnAbstractTypes.scala
+Double definition:
+def bar(x: Test2.this.A): Nothing in class Test2 at line 20 and
+def bar(x: Test2.this.B): Nothing in class Test2 at line 21
+have the same type after erasure.
+<211..211> in overloadsOnAbstractTypes.scala
+Double definition:
+def foo(x: Test2.this.A): Nothing in class Test2 at line 17 and
+def foo(x: Test2.this.A): Nothing in class Test2 at line 18
+have the same type after erasure.
+<118..118> in overloadsOnAbstractTypes.scala
+Double definition:
+def bar(): Test1.this.A in class Test1 at line 9 and
+def bar(): Test1.this.B in class Test1 at line 10
+have the same type after erasure.
+<66..66> in overloadsOnAbstractTypes.scala
+Double definition:
+def foo(): Test1.this.A in class Test1 at line 6 and
+def foo(): Test1.this.A in class Test1 at line 7
+have the same type after erasure.

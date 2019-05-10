@@ -1,0 +1,8 @@
+[300..306..308] in iarrays.scala
+value += is not a member of Int - did you mean Int.+?
+<246..248> in iarrays.scala
+value update is not a member of IArray.IArray[Int]
+[66..68] in iarrays.scala
+too many arguments for constructor Object: (): Object
+[51..65] in iarrays.scala
+IArray.IArray[String] is not a class type

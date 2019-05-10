@@ -1,0 +1,2 @@
+<40..40> in t3275.scala
+TailRec optimisation not applicable, method foo contains no recursive calls

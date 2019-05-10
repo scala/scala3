@@ -1,0 +1,8 @@
+[366..369..371] in amp.scala
+method foo in object Test does not take more parameters
+[238..241..276] in amp.scala
+method bar in object Test does not take more parameters
+[174..176..177] in amp.scala
+Only function types can be followed by _ but the current expression has type Int
+[94..96..97] in amp.scala
+Only function types can be followed by _ but the current expression has type Int

@@ -1,0 +1,9 @@
+[179..183] in i0281-null-primitive-conforms.scala
+Found:    Null
+Required: AnyVal
+[115..119] in i0281-null-primitive-conforms.scala
+Found:    Null
+Required: Float
+[39..43] in i0281-null-primitive-conforms.scala
+Found:    Null
+Required: Boolean

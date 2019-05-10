@@ -1,0 +1,4 @@
+[138..141] in privates.scala
+method bar in trait T cannot be accessed as a member of (T & C)(C.this) from class C.
+[87..90] in privates.scala
+method foo in trait T cannot be accessed as a member of (T & C)(C.this) from class C.

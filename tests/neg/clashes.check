@@ -1,0 +1,4 @@
+[26..31..32] in clashes.scala
+C is already defined as class C
+<47..47> in clashes.scala
+object Test has already been compiled once during this run

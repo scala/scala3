@@ -1,0 +1,3 @@
+[175..177] in dynamicUpdateDynamicTest2.scala
+Found:    Int(42)
+Required: String

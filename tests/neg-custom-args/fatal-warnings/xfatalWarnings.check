@@ -1,0 +1,4 @@
+[67..70] in xfatalWarnings.scala
+match may not be exhaustive.
+
+It would fail on pattern case: Some(_)

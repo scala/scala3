@@ -1,0 +1,3 @@
+<186..188> in anykind4.scala
+Found:    Test.Foo[Nothing]
+Required: Test.Foo[List]

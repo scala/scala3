@@ -1,0 +1,65 @@
+[1299..1304..1429] in i6047a.scala
+contravariant type X occurs in invariant position in type  = 
+  [Y] => 
+    Y match {
+      case [_] => scala.internal.MatchCase[List[_], X]
+      case [_] => scala.internal.MatchCase[_, String]
+    } of type T7
+[1159..1164..1296] in i6047a.scala
+contravariant type X occurs in invariant position in type  = 
+  [Y] => 
+    Y match {
+      case [_ <: X] => scala.internal.MatchCase[List[_], Int]
+      case [_] => scala.internal.MatchCase[_, String]
+    } of type T6
+[1019..1024..1156] in i6047a.scala
+contravariant type X occurs in invariant position in type  = 
+  [Y] => 
+    Y match {
+      case [_ >: X] => scala.internal.MatchCase[List[_], Int]
+      case [_] => scala.internal.MatchCase[_, String]
+    } of type T5
+[883..888..1016] in i6047a.scala
+contravariant type X occurs in invariant position in type  = 
+  [Y] => 
+    Y match {
+      case List[X] => Int
+      case [_] => scala.internal.MatchCase[_, String]
+    } of type T4
+[749..754..880] in i6047a.scala
+contravariant type X occurs in invariant position in type  = 
+  X match {
+    case Int => Int
+    case String => String
+  } of type Id2
+[646..651..667] in i6047a.scala
+covariant type X occurs in contravariant position in type  <: [Y <: X] => Y of type Foo
+[561..567] in i6047a.scala
+covariant type X occurs in contravariant position in type  <: X of type Y
+[416..421..549] in i6047a.scala
+covariant type X occurs in invariant position in type  = 
+  [Y] => 
+    Y match {
+      case [_ <: X] => scala.internal.MatchCase[List[_], Int]
+      case [_] => scala.internal.MatchCase[_, String]
+    } of type T3
+[280..285..413] in i6047a.scala
+covariant type X occurs in invariant position in type  = 
+  [Y] => 
+    Y match {
+      case [_ >: X] => scala.internal.MatchCase[List[_], Int]
+      case [_] => scala.internal.MatchCase[_, String]
+    } of type T2
+[148..153..277] in i6047a.scala
+covariant type X occurs in invariant position in type  = 
+  [Y] => 
+    Y match {
+      case List[X] => Int
+      case [_] => scala.internal.MatchCase[_, String]
+    } of type T1
+[16..21..144] in i6047a.scala
+covariant type X occurs in invariant position in type  = 
+  X match {
+    case Int => Int
+    case String => String
+  } of type Id

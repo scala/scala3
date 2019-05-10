@@ -1,0 +1,3 @@
+<137..142> in i2672.scala
+Found:    Foo[Test.p.Out]
+Required: Foo[Any]

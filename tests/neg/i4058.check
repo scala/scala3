@@ -1,0 +1,18 @@
+<159..159> in i4058.scala
+abstract modifier can be used only for classes; it should be omitted for abstract members
+<91..91> in i4058.scala
+parameter may not be `lazy`
+<347..352> in i4058.scala
+Modifier(s) sealed not allowed for combination
+<301..309> in i4058.scala
+an identifier expected, but 'abstract' found
+<263..271> in i4058.scala
+an identifier expected, but 'override' found
+<229..233> in i4058.scala
+an identifier expected, but 'lazy' found
+<193..199> in i4058.scala
+an identifier expected, but 'sealed' found
+<52..55> in i4058.scala
+Modifier(s) sealed not allowed for combination
+<15..18> in i4058.scala
+Modifier(s) sealed not allowed for combination

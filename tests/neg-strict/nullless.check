@@ -1,0 +1,16 @@
+[811..815..816] in nullless.scala
+(Caster.this.S2 & bar.Sub)(Caster.this.box.v) is not a legal path
+since its underlying type bar.Box[Caster.this.S2 & bar.Sub](Caster.this.box) has a member value v which is not a legal path
+since v: Caster.this.S2 & bar.Sub has a member L with possibly conflicting bounds LL <: ... <: LL & (Caster.this.S2 & bar.Sub)#M
+[800..804..805] in nullless.scala
+(Caster.this.S2 & bar.Sub)(Caster.this.box.v) is not a legal path
+since its underlying type bar.Box[Caster.this.S2 & bar.Sub](Caster.this.box) has a member value v which is not a legal path
+since v: Caster.this.S2 & bar.Sub has a member L with possibly conflicting bounds LL <: ... <: LL & (Caster.this.S2 & bar.Sub)#M
+[278..282..283] in nullless.scala
+(nullless.UpperBound[String] & nullless.LowerBound[Int])(nullless.box.v) is not a legal path
+since its underlying type nullless.Box[nullless.UpperBound[String] & nullless.LowerBound[Int]](nullless.box) has a member value v which is not a legal path
+since v: nullless.UpperBound[String] & nullless.LowerBound[Int] has a member M with possibly conflicting bounds Int <: ... <: String
+[267..271..272] in nullless.scala
+(nullless.UpperBound[String] & nullless.LowerBound[Int])(nullless.box.v) is not a legal path
+since its underlying type nullless.Box[nullless.UpperBound[String] & nullless.LowerBound[Int]](nullless.box) has a member value v which is not a legal path
+since v: nullless.UpperBound[String] & nullless.LowerBound[Int] has a member M with possibly conflicting bounds Int <: ... <: String

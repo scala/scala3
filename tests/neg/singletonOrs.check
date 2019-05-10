@@ -1,0 +1,15 @@
+[567..585..594] in singletonOrs.scala
+Found:    Get2As1.Or11Nothing#V
+Required: Int(1)
+[489..490] in singletonOrs.scala
+Found:    Int(2)
+Required: Int(1) | X
+[280..283] in singletonOrs.scala
+Found:    Char('G')
+Required: Test2.A2F
+[97..98] in singletonOrs.scala
+Found:    Int(1) | Int(2)
+Required: Int(1)
+[52..53] in singletonOrs.scala
+Found:    Int(1) | Int(2)
+Required: Int(3) | Int(4)

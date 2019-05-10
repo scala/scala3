@@ -1,0 +1,10 @@
+[98..100] in parser-stability-15.scala
+package x0 is not a value
+[31..33] in parser-stability-15.scala
+Not found: x2
+<129..129> in parser-stability-15.scala
+'}' expected, but eof found
+<93..93> in parser-stability-15.scala
+an identifier expected, but ']' found
+<58..58> in parser-stability-15.scala
+'{' expected, but ']' found

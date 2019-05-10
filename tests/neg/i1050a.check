@@ -1,0 +1,6 @@
+<540..540> in i1050a.scala
+error overriding value p in trait U of type V.this.X;
+  lazy value p of type V.this.X may not override a non-lazy value
+<223..223> in i1050a.scala
+error overriding value p in trait U of type Tiark1.B;
+  lazy value p of type Tiark1.A & Tiark1.B may not override a non-lazy value

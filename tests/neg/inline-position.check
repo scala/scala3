@@ -1,0 +1,2 @@
+[57..58] in B_2.scala
+getter y is declared as erased, but is in fact used

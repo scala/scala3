@@ -1,0 +1,5 @@
+<78..126> in i4376.scala
+Found:    Array[?1.CAP]
+Required: Array[_ >: App.Id[_ <: Int]]
+
+where:    ?1 is an unknown value of type scala.internal.TypeBox[App.Id[Nothing], Any]

@@ -1,0 +1,83 @@
+<2484..2493> in equality.scala
+Values of types Set[Nothing] and object scala.collection.immutable.Nil cannot be compared with == or !=
+<2461..2470> in equality.scala
+Values of types object scala.collection.immutable.Nil and Set[Nothing] cannot be compared with == or !=
+<2438..2447> in equality.scala
+Values of types Set[Int] and object scala.collection.immutable.Nil cannot be compared with == or !=
+<2415..2424> in equality.scala
+Values of types object scala.collection.immutable.Nil and Set[Int] cannot be compared with == or !=
+<2341..2354> in equality.scala
+Values of types String and equality.PString cannot be compared with == or !=
+<2316..2327> in equality.scala
+Values of types BigInt and String cannot be compared with == or !=
+<2291..2302> in equality.scala
+Values of types String and BigInt cannot be compared with == or !=
+<2267..2277> in equality.scala
+Values of types Int and String cannot be compared with == or !=
+<2243..2253> in equality.scala
+Values of types String and Int cannot be compared with == or !=
+<2223..2229> in equality.scala
+Values of types equality.Num and equality.Option[equality.Str] cannot be compared with == or !=
+<2184..2209> in equality.scala
+Values of types equality.Some[equality.Other] and equality.Some[equality.Num] cannot be compared with == or !=.
+I found:
+
+    equality.eqOption[equality.Other, equality.Num](/* missing */implicitly[Eql[equality.Other, equality.Num]])
+
+But no implicit values were found that match type Eql[equality.Other, equality.Num].
+<2145..2170> in equality.scala
+Values of types equality.Some[equality.Num] and equality.Some[equality.Other] cannot be compared with == or !=.
+I found:
+
+    equality.eqOption[equality.Num, equality.Other](/* missing */implicitly[Eql[equality.Num, equality.Other]])
+
+But no implicit values were found that match type Eql[equality.Num, equality.Other].
+<2119..2131> in equality.scala
+Values of types equality.Some[equality.Num] and equality.Option[equality.Str] cannot be compared with == or !=.
+I found:
+
+    equality.eqOption[equality.Num, equality.Str](/* missing */implicitly[Eql[equality.Num, equality.Str]])
+
+But no implicit values were found that match type Eql[equality.Num, equality.Str].
+<2099..2105> in equality.scala
+Values of types equality.Option[equality.Str] and equality.Num cannot be compared with == or !=
+<2073..2085> in equality.scala
+Values of types equality.Option[equality.Str] and equality.Some[equality.Num] cannot be compared with == or !=.
+I found:
+
+    equality.eqOption[equality.Str, equality.Num](/* missing */implicitly[Eql[equality.Str, equality.Num]])
+
+But no implicit values were found that match type Eql[equality.Str, equality.Num].
+<2052..2058> in equality.scala
+Values of types equality.Num and equality.Str cannot be compared with == or !=
+<2031..2037> in equality.scala
+Values of types equality.Str and equality.Num cannot be compared with == or !=
+<1983..2017> in equality.scala
+Values of types equality.Some[Apple] and equality.Some[equality.Str] cannot be compared with == or !=.
+I found:
+
+    equality.eqOption[Apple, equality.Str](/* missing */implicitly[Eql[Apple, equality.Str]])
+
+But no implicit values were found that match type Eql[Apple, equality.Str].
+<1959..1968> in equality.scala
+Values of types equality.Num and object equality.None cannot be compared with == or !=
+<1932..1945> in equality.scala
+Values of types equality.Option[equality.Str] and equality.Other cannot be compared with == or !=
+<1905..1918> in equality.scala
+Values of types equality.Other and equality.Option[equality.Str] cannot be compared with == or !=
+<1878..1891> in equality.scala
+Values of types equality.Other and equality.Str cannot be compared with == or !=
+<1850..1863> in equality.scala
+Values of types equality.Str and equality.Other cannot be compared with == or !=
+<1820..1824> in equality.scala
+Values of types object equality.None and equality.Num cannot be compared with == or !=
+<1401..1410> in equality.scala
+Values of types Int and Null cannot be compared with == or !=
+<1375..1384> in equality.scala
+Values of types Null and Int cannot be compared with == or !=
+<1349..1361> in equality.scala
+Values of types Boolean and Null cannot be compared with == or !=
+<1323..1335> in equality.scala
+Values of types Null and Boolean cannot be compared with == or !=
+<1298..1307> in equality.scala
+Values of types Int and Boolean cannot be compared with == or !=

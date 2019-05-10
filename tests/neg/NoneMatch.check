@@ -1,0 +1,2 @@
+<39..39> in NoneMatch.scala
+this case is unreachable since object None is not a subclass of class Some

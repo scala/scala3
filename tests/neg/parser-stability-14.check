@@ -1,0 +1,6 @@
+<35..35> in parser-stability-14.scala
+x1 is already defined as value x1
+<64..64> in parser-stability-14.scala
+'}' expected, but eof found
+<23..23> in parser-stability-14.scala
+pattern expected

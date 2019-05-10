@@ -1,0 +1,4 @@
+<182..182> in constructor-only.scala
+transient parameter value ctx is retained as field in class class Test2
+<89..89> in constructor-only.scala
+transient parameter value ctx is retained as field in class class Test1

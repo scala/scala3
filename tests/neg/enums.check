@@ -1,0 +1,28 @@
+<1120..1138> in enums.scala
+Values of types enums.Option[Int] and enums.Test.Unrelated cannot be compared with == or !=
+[914..915] in enums.scala
+illegal reference to type parameter T from enum case
+[809..810] in enums.scala
+illegal reference to type parameter T from enum case
+[684..685] in enums.scala
+illegal reference to type parameter T from enum case
+[590..602..615] in enums.scala
+object O4 in package enums extends enum E4, but extending enums is prohibited.
+[534..545..560] in enums.scala
+class C4 in package enums extends enum E4, but extending enums is prohibited.
+[450..452] in enums.scala
+Found:    enums.E4.C4.type
+Required: Int => enums.E4
+[326..331..332] in enums.scala
+cannot determine type argument for enum parent class E3,
+type parameter type T has bounds that depend on a type parameter in the same parameter list
+[245..250..251] in enums.scala
+cannot determine type argument for enum parent class E2,
+type parameter type U has bounds that depend on a type parameter in the same parameter list
+[169..174..175] in enums.scala
+cannot determine type argument for enum parent class E1,
+type parameter type T is non variant
+<93..93> in enums.scala
+explicit extends clause needed because both enum case and enum class have type parameters
+<33..33> in enums.scala
+explicit extends clause needed because both enum case and enum class have type parameters

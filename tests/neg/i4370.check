@@ -1,0 +1,2 @@
+<32..32> in i4370.scala
+illegal cyclic reference: alias App.A of type R refers back to the type itself

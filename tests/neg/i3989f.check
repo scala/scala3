@@ -1,0 +1,5 @@
+<98..98> in i3989f.scala
+illegal inheritance: class C inherits conflicting instances of parameterized base trait A.
+
+  Direct basetype: Test.A[Int & String]
+  Basetype via superclass B: Test.A[Int]

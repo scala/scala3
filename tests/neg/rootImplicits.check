@@ -1,0 +1,4 @@
+[194..207] in rootImplicits.scala
+Not found: any2stringadd
+[118..133..134] in rootImplicits.scala
+value + is not a member of Object - did you mean Object.eq?

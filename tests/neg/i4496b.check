@@ -1,0 +1,14 @@
+[343..344] in i4496b.scala
+Found:    Foo2(v)
+Required: TestStructuralVar.TestStructuralVar'.T
+
+where:    TestStructuralVar  is a object
+          TestStructuralVar' is a object in object TestStructuralVar
+[302..303] in i4496b.scala
+Found:    Foo1(v)
+Required: TestStructuralVar.TestStructuralVar'.T
+
+where:    TestStructuralVar  is a object
+          TestStructuralVar' is a object in object TestStructuralVar
+[173..177..183] in i4496b.scala
+illegal refinement

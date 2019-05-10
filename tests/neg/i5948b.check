@@ -1,0 +1,10 @@
+[592..596] in i5948b.scala
+Found:    List[Foo[_]](list)
+Required: List[Foo[T]]
+
+where:    T is a type variable
+[387..391] in i5948b.scala
+Found:    (Foo[_], Foo[_])(pair)
+Required: (Foo[T], Foo[T])
+
+where:    T is a type variable

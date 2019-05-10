@@ -1,0 +1,3 @@
+<187..187> in dynamicSelectDynamicTest6.scala
+Found:    String("bazSelect")
+Required: Int

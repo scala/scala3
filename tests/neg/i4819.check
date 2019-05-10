@@ -1,0 +1,5 @@
+[166..172] in i4819.scala
+Ambiguous overload. The overloaded alternatives of method concat in trait Two with types
+ [Dummy](suffix: Int): Foo
+ (suffix: Int): Foo
+both match arguments (Int(0))

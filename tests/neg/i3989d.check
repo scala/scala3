@@ -1,0 +1,2 @@
+[17..38..44] in i3989d.scala
+covariant type _X occurs in invariant position in type  = _X of type X

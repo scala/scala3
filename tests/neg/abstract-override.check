@@ -1,0 +1,4 @@
+[173..179..182] in abstract-override.scala
+method foo in trait T is accessed from super. It may not be abstract unless it is overridden by a member declared `abstract' and `override'
+[65..71..74] in abstract-override.scala
+method foo in trait T is accessed from super. It may not be abstract unless it is overridden by a member declared `abstract' and `override'

@@ -1,0 +1,8 @@
+[166..172..208] in i5008.scala
+class Quuz in package <empty> extends enum Foo, but extending enums is prohibited.
+[134..140..156] in i5008.scala
+class Quuw in package <empty> extends enum Foo, but extending enums is prohibited.
+[109..112] in i5008.scala
+class Bar is not a trait
+[40..45..71] in i5008.scala
+class Baz in package <empty> extends enum Foo, but extending enums is prohibited.

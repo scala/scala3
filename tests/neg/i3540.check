@@ -1,0 +1,14 @@
+[695..715..729] in i3540.scala
+A case class may not be defined as implicit
+[601..621..627] in i3540.scala
+A case class may not be defined as implicit
+[520..524] in i3540.scala
+A case class must have at least one parameter list
+[379..394..408] in i3540.scala
+Implicit classes must accept exactly one primary constructor parameter
+[258..273..279] in i3540.scala
+Implicit classes must accept exactly one primary constructor parameter
+[137..152..156] in i3540.scala
+Implicit classes must accept exactly one primary constructor parameter
+[16..31..53] in i3540.scala
+Implicit classes must accept exactly one primary constructor parameter

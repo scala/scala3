@@ -1,0 +1,74 @@
+[1662..1663] in i4373.scala
+no wildcard type allowed here
+[1588..1589] in i4373.scala
+no wildcard type allowed here
+[1535..1536] in i4373.scala
+no wildcard type allowed here
+[1476..1477] in i4373.scala
+no wildcard type allowed here
+[1449..1450] in i4373.scala
+no wildcard type allowed here
+[1369..1370] in i4373.scala
+no wildcard type allowed here
+[1316..1317] in i4373.scala
+no wildcard type allowed here
+[1251..1252] in i4373.scala
+no wildcard type allowed here
+[1224..1225] in i4373.scala
+no wildcard type allowed here
+[1150..1151] in i4373.scala
+no wildcard type allowed here
+[1097..1098] in i4373.scala
+no wildcard type allowed here
+[1038..1039] in i4373.scala
+no wildcard type allowed here
+[1013..1014] in i4373.scala
+ is not a class type
+[230..231] in i4373.scala
+no wildcard type allowed here
+[182..183] in i4373.scala
+no wildcard type allowed here
+[156..157] in i4373.scala
+no wildcard type allowed here
+[122..123] in i4373.scala
+no wildcard type allowed here
+[80..81] in i4373.scala
+no wildcard type allowed here
+[46..47] in i4373.scala
+no wildcard type allowed here
+[962..963] in i4373.scala
+Unbound wildcard type
+<914..916> in i4373.scala
+an identifier expected, but '=>' found
+<865..867> in i4373.scala
+an identifier expected, but '=>' found
+<819..821> in i4373.scala
+an identifier expected, but '=>' found
+[755..761] in i4373.scala
+By-name parameter type => Int not allowed here.
+[710..716] in i4373.scala
+By-name parameter type => Int not allowed here.
+[665..671] in i4373.scala
+By-name parameter type => Int not allowed here.
+[612..613] in i4373.scala
+Unbound wildcard type
+[566..567] in i4373.scala
+Unbound wildcard type
+[510..511] in i4373.scala
+Unbound wildcard type
+[469..470] in i4373.scala
+Unbound wildcard type
+[441..442] in i4373.scala
+Unbound wildcard type
+[418..419] in i4373.scala
+Unbound wildcard type
+[370..371] in i4373.scala
+Unbound wildcard type
+[342..343] in i4373.scala
+Unbound wildcard type
+[295..296] in i4373.scala
+Unbound wildcard type
+[288..289] in i4373.scala
+Unbound wildcard type
+[260..261] in i4373.scala
+Unbound wildcard type

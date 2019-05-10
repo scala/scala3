@@ -1,0 +1,2 @@
+[0..15..18] in i2463.scala
+Implicit classes must accept exactly one primary constructor parameter

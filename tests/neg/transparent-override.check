@@ -1,0 +1,6 @@
+<118..118> in B_2.scala
+error overriding method g in class A of type (x: Int): Int;
+  method g of type (x: Int): Int needs `override' modifier
+<33..33> in B_2.scala
+error overriding method f in class A of type (x: Int): Int;
+  method f of type (x: Int): Int is an inline method, must override at least one concrete method

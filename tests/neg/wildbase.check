@@ -1,0 +1,6 @@
+[86..87] in wildbase.scala
+class C cannot be instantiated since it has a base type A[_ >: Any <: Nothing] with possibly conflicting parameter bounds Any <: ... <: Nothing
+[98..117] in wildbase.scala
+Type argument must be fully defined
+[30..31] in wildbase.scala
+Type argument must be fully defined

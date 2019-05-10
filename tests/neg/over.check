@@ -1,0 +1,8 @@
+<149..149> in over.scala
+error overriding method x in trait T of type => Int;
+  method x of type (): String needs `override' modifier
+<97..97> in over.scala
+value y overrides nothing
+<52..52> in over.scala
+error overriding method x in trait T of type => Int;
+  value x of type Int needs `override' modifier

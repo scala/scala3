@@ -1,0 +1,30 @@
+[322..324] in quote-0.scala
+access to type T from wrong staging level:
+ - the definition is at level 0,
+ - but the access is at level 1.
+
+ The access would be accepted with the right type tag, but
+ no implicit argument of type scala.quoted.Type[T] was found
+<319..319> in quote-0.scala
+access to type T from wrong staging level:
+ - the definition is at level 0,
+ - but the access is at level 1.
+
+ The access would be accepted with the right type tag, but
+ no implicit argument of type scala.quoted.Type[T] was found
+[233..234] in quote-0.scala
+access to value y from wrong staging level:
+ - the definition is at level 1,
+ - but the access is at level 0.
+<171..171> in quote-0.scala
+access to Test.this from wrong staging level:
+ - the definition is at level 0,
+ - but the access is at level 1.
+[126..127] in quote-0.scala
+access to value y from wrong staging level:
+ - the definition is at level 2,
+ - but the access is at level 1.
+<62..62> in quote-0.scala
+access to Test.this from wrong staging level:
+ - the definition is at level 0,
+ - but the access is at level 2.

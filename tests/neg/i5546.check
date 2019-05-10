@@ -1,0 +1,4 @@
+<482..496> in i5546.scala
+Values of types O.Feet.Feet and Double cannot be compared with == or !=
+<423..443> in i5546.scala
+Values of types O.Feet.Feet and O.Meters.Meters cannot be compared with == or !=

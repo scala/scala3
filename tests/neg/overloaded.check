@@ -1,0 +1,5 @@
+[242..245] in overloaded.scala
+Ambiguous overload. The overloaded alternatives of method foo in object Test with types
+ (f: Int => Int): String
+ (f: Char => Char): Unit
+both match arguments (? => ?)

@@ -1,0 +1,4 @@
+<140..141> in i2030.scala
+symbol literal 'a is no longer supported,
+use a string literal "a" or an application Symbol("a") instead,
+or enclose in braces '{a} if you want a quoted expression.

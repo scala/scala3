@@ -1,0 +1,2 @@
+[52..56] in t3272.scala
+covariant type T occurs in contravariant position in type T of value t

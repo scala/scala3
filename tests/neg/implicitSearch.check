@@ -1,0 +1,9 @@
+<411..411> in implicitSearch.scala
+no implicit argument of type Test.Ord[Test.T] was found for parameter ev of method implicitly in object DottyPredef
+<306..306> in implicitSearch.scala
+no implicit argument of type Test.Ord[List[List[T]]] was found for parameter o of method sort in object Test.
+I found:
+
+    Test.listOrd[T](Test.listOrd[T](/* missing */implicitly[Test.Ord[T]]))
+
+But no implicit values were found that match type Test.Ord[T].

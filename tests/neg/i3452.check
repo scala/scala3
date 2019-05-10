@@ -1,0 +1,14 @@
+<468..468> in i3452.scala
+no implicit argument of type Test2.TC[Int] was found for parameter ev of method implicitly in object DottyPredef.
+I found:
+
+    Test2.case2[G](Test2.case1[F])
+
+But method case1 in object Test2 does not match type Test2.TC[G[Any]].
+<266..266> in i3452.scala
+no implicit argument of type Test.TC[Int] was found for parameter ev of method implicitly in object DottyPredef.
+I found:
+
+    Test.case2[A, F](Test.case2[A, F](Test.case2[A, F](Test.case1[F])))
+
+But method case1 in object Test does not match type Test.TC[F[Any]].

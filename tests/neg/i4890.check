@@ -1,0 +1,4 @@
+<121..122> in i4890.scala
+symbol literal 's is no longer supported,
+use a string literal "s" or an application Symbol("s") instead,
+or enclose in braces '{s} if you want a quoted expression.

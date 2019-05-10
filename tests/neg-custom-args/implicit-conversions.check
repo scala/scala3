@@ -1,0 +1,14 @@
+<386..391> in implicit-conversions.scala
+Use of implicit conversion object Conversion_A_C_instance in object D should be enabled
+by making the implicit value scala.language.implicitConversions visible.
+This can be achieved by adding the import clause 'import scala.language.implicitConversions'
+or by setting the compiler option -language:implicitConversions.
+See the Scala docs for value scala.language.implicitConversions for a discussion
+why the feature should be explicitly enabled.
+<324..329> in implicit-conversions.scala
+Use of implicit conversion object Conversion_A_B_instance in object A should be enabled
+by making the implicit value scala.language.implicitConversions visible.
+This can be achieved by adding the import clause 'import scala.language.implicitConversions'
+or by setting the compiler option -language:implicitConversions.
+See the Scala docs for value scala.language.implicitConversions for a discussion
+why the feature should be explicitly enabled.

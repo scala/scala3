@@ -1,0 +1,12 @@
+[259..260] in erased-1.scala
+value a is declared as erased, but is in fact used
+[226..230] in erased-1.scala
+method foo3 is declared as erased, but is in fact used
+[205..206] in erased-1.scala
+value a is declared as erased, but is in fact used
+[184..188] in erased-1.scala
+method foo2 is declared as erased, but is in fact used
+[144..145] in erased-1.scala
+value a is declared as erased, but is in fact used
+[94..95] in erased-1.scala
+value a is declared as erased, but is in fact used

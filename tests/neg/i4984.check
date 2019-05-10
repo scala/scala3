@@ -1,0 +1,12 @@
+[990..996..1004] in i4984.scala
+ Array3.Data is not a valid result type of an unapplySeq method of an extractor.
+[946..952..966] in i4984.scala
+ Array3.Data is not a valid result type of an unapplySeq method of an extractor.
+[902..908..914] in i4984.scala
+ Array3.Data is not a valid result type of an unapplySeq method of an extractor.
+[807..813..821] in i4984.scala
+ Array2.Data is not a valid result type of an unapplySeq method of an extractor.
+[763..769..783] in i4984.scala
+ Array2.Data is not a valid result type of an unapplySeq method of an extractor.
+[719..725..731] in i4984.scala
+ Array2.Data is not a valid result type of an unapplySeq method of an extractor.

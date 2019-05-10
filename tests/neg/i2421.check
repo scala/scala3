@@ -1,0 +1,12 @@
+<528..528> in i2421.scala
+illegal combination of modifiers: `lazy` and `inline` for: lazy value y
+<434..434> in i2421.scala
+modifier `inline` is not allowed for this definition
+<354..354> in i2421.scala
+modifier `inline` is not allowed for this definition
+<256..256> in i2421.scala
+modifier `inline` is not allowed for this definition
+<174..174> in i2421.scala
+modifier `inline` is not allowed for this definition
+<83..83> in i2421.scala
+modifier `inline` is not allowed for this definition

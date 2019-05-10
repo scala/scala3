@@ -1,0 +1,16 @@
+[1070..1078] in existentials.scala
+unreducible application of higher-kinded type [T] => Seq[Test6014.CC[T]] to wildcard arguments
+[846..851] in existentials.scala
+unreducible application of higher-kinded type [X] => TestX.this.D[TestX.this.D[X]] to wildcard arguments
+[754..759] in existentials.scala
+unreducible application of higher-kinded type [X] => TestX.this.C[TestX.this.C[X]] to wildcard arguments
+[659..678] in existentials.scala
+unreducible application of higher-kinded type [Y] => TestX.this.C[TestX.this.C[Y]] to wildcard arguments
+[352..380] in existentials.scala
+unreducible application of higher-kinded type [Y] => Set[Iterable[Y]] to wildcard arguments
+[281..304] in existentials.scala
+unreducible application of higher-kinded type [Y] => Set[Set[Y]] to wildcard arguments
+[101..125] in existentials.scala
+unreducible application of higher-kinded type [X] => List[Seq[X]] to wildcard arguments
+[28..53] in existentials.scala
+unreducible application of higher-kinded type [X] => List[List[X]] to wildcard arguments

@@ -1,0 +1,4 @@
+[107..108] in quotedPatterns-2.scala
+access to value a from wrong staging level:
+ - the definition is at level 1,
+ - but the access is at level 2.

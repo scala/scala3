@@ -1,0 +1,5 @@
+<113..113> in i6036.scala
+Found:    Object{...}
+Required: ?1.AProxy
+
+where:    ?1 is an unknown value of type A

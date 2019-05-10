@@ -1,0 +1,4 @@
+<132..132> in i1169.scala
+bridge generated for member method produce: X in class XProducer
+which overrides method produce: T in trait Producer
+clashes with definition of the member itself; both have erased type (): Object."

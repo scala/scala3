@@ -1,0 +1,6 @@
+[94..95] in extendsTest.scala
+case class D has case ancestor class A, but case-to-case inheritance is prohibited.
+To overcome this limitation, use extractors to pattern match on non-leaf nodes.
+[38..41] in extendsTest.scala
+case class B has case ancestor class A, but case-to-case inheritance is prohibited.
+To overcome this limitation, use extractors to pattern match on non-leaf nodes.

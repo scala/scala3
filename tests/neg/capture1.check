@@ -1,0 +1,6 @@
+<487..489> in capture1.scala
+Found:    scala.collection.mutable.Seq[?1.CAP]
+Required: collection.mutable.Seq[?2.CAP]
+
+where:    ?1 is an unknown value of type scala.internal.TypeBox[String & Int, String | Int]
+          ?2 is an unknown value of type scala.internal.TypeBox[String & Int, String | Int]

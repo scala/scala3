@@ -1,0 +1,10 @@
+<276..276> in anykind1.scala
+Type argument [X, Y] => X does not conform to upper bound [_$1] => AnyKind 
+<222..222> in anykind1.scala
+Type argument Either does not conform to upper bound [_$1] => AnyKind 
+<193..193> in anykind1.scala
+Type argument Either does not conform to upper bound [_$1] => AnyKind 
+<165..165> in anykind1.scala
+Type argument Int does not conform to upper bound [_$1] => AnyKind 
+<137..137> in anykind1.scala
+Type argument Int does not conform to upper bound [_$1] => AnyKind 

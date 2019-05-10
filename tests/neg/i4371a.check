@@ -1,0 +1,2 @@
+<32..32> in i4371a.scala
+illegal cyclic reference: alias App.Boo#B of type A refers back to the type itself

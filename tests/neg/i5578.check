@@ -1,0 +1,3 @@
+<34..34> in i5578.scala
+class C needs to be abstract, since def a: [T] => Int is not defined 
+(The class implements a member with a different type: def a: => Int)

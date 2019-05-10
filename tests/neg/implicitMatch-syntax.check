@@ -1,0 +1,35 @@
+[888..897..982] in implicitMatch-syntax.scala
+implicit match can only be used in an inline method
+<578..578> in implicitMatch-syntax.scala
+No implicit Ordering defined for T..
+I found:
+
+    scala.math.Ordering.ordered[A]($conforms[Nothing])
+
+But method $conforms in object Predef does not match type A => Comparable[A].
+<407..407> in implicitMatch-syntax.scala
+No implicit Ordering defined for T..
+I found:
+
+    scala.math.Ordering.ordered[A]($conforms[Nothing])
+
+But method $conforms in object Predef does not match type A => Comparable[A].
+<235..235> in implicitMatch-syntax.scala
+No implicit Ordering defined for T..
+I found:
+
+    scala.math.Ordering.ordered[A]($conforms[Nothing])
+
+But method $conforms in object Predef does not match type A => Comparable[A].
+[735..737..742] in implicitMatch-syntax.scala
+not a legal pattern for an implicit match
+[681..684] in implicitMatch-syntax.scala
+not a legal pattern for an implicit match
+[485..491] in implicitMatch-syntax.scala
+illegal modifier for implicit match
+[323..329] in implicitMatch-syntax.scala
+illegal modifier for implicit match
+[121..129] in implicitMatch-syntax.scala
+illegal modifier for implicit match
+<130..135> in implicitMatch-syntax.scala
+Repeated modifier implicit

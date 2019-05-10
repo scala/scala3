@@ -1,0 +1,13 @@
+[252..256] in traitParamsTyper.scala
+trait T is already implemented by superclass E,
+its constructor cannot be called again
+[192..196] in traitParamsTyper.scala
+trait W may not call constructor of trait T
+[152..156] in traitParamsTyper.scala
+trait V may not call constructor of trait T
+[142..146] in traitParamsTyper.scala
+trait V may not call constructor of class C
+[86..89] in traitParamsTyper.scala
+missing argument for parameter x of constructor T: (x: Int): T
+[50..51] in traitParamsTyper.scala
+Parameterized trait T lacks argument list

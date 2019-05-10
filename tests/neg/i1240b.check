@@ -1,0 +1,12 @@
+<326..350> in i1240b.scala
+cannot merge
+  method foo in class A of type (x: String): String  and
+  method foo in class A of type (x: X): X
+they are both defined in class A but have matching signatures
+  (x: String): String and
+  (x: String): String
+as members of object Test
+       
+<313..313> in i1240b.scala
+error overriding method foo in class A of type (x: String): String;
+  method foo in trait U of type (x: String): String cannot override a concrete member without a third member that's overridden by both (this rule is designed to prevent ``accidental overrides'')

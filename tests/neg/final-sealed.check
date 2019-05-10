@@ -1,0 +1,4 @@
+<76..76> in final-sealed.scala
+Cannot extend sealed class Option in a different source file
+<20..20> in final-sealed.scala
+class B cannot extend final class A

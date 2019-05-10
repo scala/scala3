@@ -1,0 +1,26 @@
+[1445..1451..1454] in structural.scala
+Structural access not allowed on method fun4 because it has a method type with inter-parameter dependencies
+[1405..1411..1417] in structural.scala
+Structural access not allowed on method fun2 because it has a method type with inter-parameter dependencies
+[1095..1100..1105] in structural.scala
+missing argument for parameter y of <none>: (x: Int, y: Int): Unit
+[986..991..997] in structural.scala
+Structural access not allowed on method foo because it has a method type with inter-parameter dependencies
+<724..724> in structural.scala
+Double definition:
+val foo: Int in trait <refinement> at line 12 and
+def foo: => Int in trait <refinement> at line 12
+[602..606..626] in structural.scala
+Refinements cannot introduce overloaded definitions
+[579..583..600] in structural.scala
+Refinements cannot introduce overloaded definitions
+[466..470..485] in structural.scala
+Polymorphic refinement method f without matching type in parent class Object is no longer allowed
+<132..132> in structural.scala
+No ClassTag available for x.T
+[773..777..785] in structural.scala
+illegal refinement
+[316..320..333] in structural.scala
+illegal refinement
+[305..309..314] in structural.scala
+illegal refinement

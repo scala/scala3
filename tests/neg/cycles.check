@@ -1,0 +1,16 @@
+<840..840> in cycles.scala
+illegal cyclic reference: alias (T2.this.U, T2.this.U) of type X refers back to the type itself
+<774..774> in cycles.scala
+illegal cyclic reference: alias (T1.this.U, T1.this.U) of type X refers back to the type itself
+<655..655> in cycles.scala
+illegal cyclic reference: upper bound E.this.F#T(E.this.x) of type T refers back to the type itself
+<541..541> in cycles.scala
+Cyclic reference involving value x
+<340..340> in cycles.scala
+illegal cyclic reference: upper bound B.this.T(B.this.x) of type T refers back to the type itself
+<268..268> in cycles.scala
+Cyclic reference involving value x
+<128..128> in cycles.scala
+illegal cyclic reference: lower bound T of type T refers back to the type itself
+<10..10> in cycles.scala
+illegal cyclic reference: upper bound U of type T refers back to the type itself

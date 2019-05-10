@@ -1,0 +1,4 @@
+<1616..1620> in i2960.scala
+symbol literal 'html is no longer supported,
+use a string literal "html" or an application Symbol("html") instead,
+or enclose in braces '{html} if you want a quoted expression.

@@ -1,0 +1,3 @@
+[206..216..224] in dynamicApplyNamedDynamicTest2.scala
+value applyDynamicNamed is not a member of Foo
+possible cause: maybe a wrong Dynamic method signature?

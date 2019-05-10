@@ -1,0 +1,3 @@
+<61..61> in i6064.scala
+Found:    (Int, String)[X](arg)
+Required: (Int, String)[X]

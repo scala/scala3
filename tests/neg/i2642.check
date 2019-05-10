@@ -1,0 +1,13 @@
+[368..370] in i2642.scala
+Found:    Unit
+Required: Int
+[288..304..310] in i2642.scala
+An empty function cannot not be erased
+[238..240] in i2642.scala
+Found:    Unit
+Required: Foo.Y
+[164..174..180] in i2642.scala
+An empty function cannot not be erased
+[112..114] in i2642.scala
+Found:    Unit
+Required: Int

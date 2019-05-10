@@ -1,0 +1,5 @@
+<90..90> in i3989b.scala
+illegal inheritance: class C inherits conflicting instances of non-variant base trait A.
+
+  Direct basetype: Test.A[X]
+  Basetype via case class B: Test.A[Any]

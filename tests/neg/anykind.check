@@ -1,0 +1,18 @@
+[522..523] in anykind.scala
+X.this.L cannot be used as a value type
+[292..293] in anykind.scala
+X cannot be used as a value type
+[264..271] in anykind.scala
+AnyKind cannot be used as a value type
+[217..224] in anykind.scala
+AnyKind cannot be used as a value type
+[210..214] in anykind.scala
+Type argument List has not the same kind as its bound 
+<167..167> in anykind.scala
+AnyKind cannot be used as a value type
+[136..142] in anykind.scala
+X does not take type parameters
+[97..112] in anykind.scala
+AnyKind does not take type parameters
+[28..35] in anykind.scala
+AnyKind cannot be used as a value type

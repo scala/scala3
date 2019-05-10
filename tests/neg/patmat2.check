@@ -1,0 +1,2 @@
+<785..785> in patmat2.scala
+this case is unreachable since class Throwable and class Integer are unrelated

@@ -1,0 +1,5 @@
+<51..51> in i2202.scala
+Name clash between inherited members:
+def compareTo(x$0: T): Int in trait Comparable and
+def compareTo(o: Any): Int in class A at line 2
+have the same type after erasure.

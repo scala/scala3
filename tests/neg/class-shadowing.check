@@ -1,0 +1,2 @@
+<86..86> in class-shadowing.scala
+class Ops cannot have the same name as class Ops in class Base -- class definitions cannot be overridden

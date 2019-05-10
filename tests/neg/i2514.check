@@ -1,0 +1,14 @@
+[207..208] in i2514.scala
+Not found: x
+[162..163] in i2514.scala
+Not found: x
+<42..42> in i2514.scala
+Declaration of value f not allowed here: only classes can have declared but undefined members
+<212..220> in i2514.scala
+an identifier expected, but 'implicit' found
+<197..198> in i2514.scala
+'=>' expected, but ':' found
+<152..153> in i2514.scala
+'=>' expected, but ':' found
+<45..53> in i2514.scala
+an identifier expected, but 'implicit' found

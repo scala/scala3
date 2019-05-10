@@ -1,0 +1,2 @@
+[61..65] in i4377.scala
+unreducible application of higher-kinded type [A <: (a: LazyRef(A)) => a.type] => A to wildcard arguments

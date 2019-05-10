@@ -1,0 +1,4 @@
+[103..108..110] in a.scala
+missing argument for parameter index of method apply: (index: Int): Char
+[57..62..64] in a.scala
+missing argument for parameter index of method apply: (index: Int): Char

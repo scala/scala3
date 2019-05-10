@@ -1,0 +1,14 @@
+<423..423> in i1240.scala
+Double definition:
+def foo(x: test.D): test.D in class X at line 24 and
+def foo(x: test.D): test.D in class X at line 25
+have the same type after erasure.
+<190..190> in i1240.scala
+cannot merge
+  method foo in class C of type (x: T): Unit  and
+  method foo in class C of type (x: test.D): Unit
+they are both defined in class C but have matching signatures
+  (x: test.D): Unit and
+  (x: test.D): Unit
+as members of type test.C[test.D]
+       

@@ -1,0 +1,5 @@
+<60..60> in automatic-tupling-of-function-parameters.scala
+Found:    Int => Int
+Required: (Tuple1[Int]) => Int
+<101..101> in automatic-tupling-of-function-parameters.scala
+Unbound placeholder parameter; incorrect use of _

@@ -1,0 +1,13 @@
+[22..24] in i6056.scala
+=> Unit(i0.i0') is not stable
+
+where:    i0  is a object
+          i0' is a method in object i0
+<96..96> in i6056.scala
+Recursive import i0.i0 needs type
+<60..60> in i6056.scala
+Recursive import i0.i0 needs type
+<119..119> in i6056.scala
+an identifier expected, but '}' found
+<67..68> in i6056.scala
+an identifier expected, but '_' found

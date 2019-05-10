@@ -1,0 +1,2 @@
+<93..93> in parser-stability-26.scala
+class E needs to be abstract, since def apply(v1: Int): Int(1) is not defined 

@@ -1,0 +1,3 @@
+<61..61> in i3246.scala
+Found:    Int => Int
+Required: () => Int

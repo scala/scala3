@@ -1,0 +1,9 @@
+[1972..1983] in Iter3.scala
+class ArrayBuffer cannot be instantiated since it has conflicting base types dotty1.collections.immutable.Iter2.FromIterator[dotty1.collections.immutable.Iter2.Iterable] & 
+  dotty1.collections.immutable.Iter2.FromIterator[dotty1.collections.immutable.Iter2.Seq] and dotty1.collections.immutable.Iter2.FromIterator[dotty1.collections.immutable.Iter2.ArrayBuffer]
+[1837..1840] in Iter3.scala
+object Nil cannot be instantiated since it has conflicting base types dotty1.collections.immutable.Iter2.FromIterator[dotty1.collections.immutable.Iter2.Iterable] & 
+  dotty1.collections.immutable.Iter2.FromIterator[dotty1.collections.immutable.Iter2.Seq] and dotty1.collections.immutable.Iter2.FromIterator[dotty1.collections.immutable.Iter2.List]
+[1681..1685] in Iter3.scala
+class Cons cannot be instantiated since it has conflicting base types dotty1.collections.immutable.Iter2.FromIterator[dotty1.collections.immutable.Iter2.Iterable] & 
+  dotty1.collections.immutable.Iter2.FromIterator[dotty1.collections.immutable.Iter2.Seq] and dotty1.collections.immutable.Iter2.FromIterator[dotty1.collections.immutable.Iter2.List]

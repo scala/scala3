@@ -1,0 +1,10 @@
+<212..212> in i3067.scala
+Cyclic reference involving trait CanBuildFrom
+<195..195> in i3067.scala
+parent type of implicit definition needs to be given explicitly
+<136..136> in i3067.scala
+parent type of implicit definition needs to be given explicitly
+<96..96> in i3067.scala
+result type of implicit definition needs to be given explicitly
+<64..64> in i3067.scala
+type of implicit definition needs to be given explicitly

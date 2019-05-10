@@ -1,0 +1,6 @@
+<169..169> in extmethod-override.scala
+error overriding method g in class A of type (x: Int)(y: Int): Int;
+  method g of type (x: Int)(y: Int): Int is a normal method, cannot override an extension method
+<115..115> in extmethod-override.scala
+error overriding method f in class A of type (x: Int)(y: Int): Int;
+  method f of type (x: Int)(y: Int): Int is an extension method, cannot override a normal method

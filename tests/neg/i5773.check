@@ -1,0 +1,5 @@
+[567..569..576] in i5773.scala
+value appendS is not a member of Int.
+An extension method was tried, but could not be fully constructed:
+
+    Semigroup.sumSemigroup[Any](/* ambiguous */implicitly[Numeric[Any]]).appendS()

@@ -1,0 +1,9 @@
+<781..781> in tcpoly_typealias.scala
+error overriding type m in trait A with bounds <: [+x] => Any;
+  type m, which equals FooBound has incompatible type
+<703..703> in tcpoly_typealias.scala
+error overriding type m in trait A with bounds <: [+x] => Any;
+  type m, which equals FooCon has incompatible type
+<619..619> in tcpoly_typealias.scala
+error overriding type m in trait A with bounds <: [+x] => Any;
+  type m, which equals FooCov has incompatible type

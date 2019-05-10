@@ -1,0 +1,4 @@
+<179..179> in i280.scala
+illegal cyclic reference: upper bound infpaths3.a.x.g.U of type U refers back to the type itself
+<63..63> in i280.scala
+illegal cyclic reference: upper bound T.this.g.N of type M refers back to the type itself

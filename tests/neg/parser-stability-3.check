@@ -1,0 +1,10 @@
+[105..107..110] in parser-stability-3.scala
+missing argument for parameter x1$1 of method x0: (x1: <error Not found: type x2>, x1$1: <error unspecified error>): Null
+[23..25] in parser-stability-3.scala
+Not found: type x2
+<129..129> in parser-stability-3.scala
+'}' expected, but eof found
+<38..40> in parser-stability-3.scala
+'=' expected, but identifier found
+<34..36> in parser-stability-3.scala
+':' expected, but identifier found

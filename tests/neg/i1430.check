@@ -1,0 +1,36 @@
+[815..816] in i1430.scala
+Found:    T(y)
+Required: T'
+
+where:    T  is a type in the initializer of value s which is an alias of String
+          T' is a type in an anonymous function in method f which is an alias of Int
+[719..720] in i1430.scala
+Found:    T(y)
+Required: T'
+
+where:    T  is a type in the initializer of value s which is an alias of String
+          T' is a type in an anonymous class in method f which is an alias of Int
+[615..616] in i1430.scala
+Found:    C.this.T(C.this.x)
+Required: T'
+
+where:    T  is a type in class C
+          T' is a type in the initializer of value s which is an alias of String
+[469..470] in i1430.scala
+Found:    Int(1)
+Required: String
+<366..376> in i1430.scala
+Found:    Inv[Int]
+Required: String
+[246..249] in i1430.scala
+Found:    String("a")
+Required: Int
+[237..238] in i1430.scala
+Found:    Int(1)
+Required: String
+[148..149] in i1430.scala
+Found:    Int(1)
+Required: String
+[63..64] in i1430.scala
+Found:    Int(1)
+Required: String

@@ -1,0 +1,6 @@
+[350..352] in refinedSubtyping.scala
+Found:    Test3.this.U2(Test3.this.y2)
+Required: Test3.this.T2
+[332..334] in refinedSubtyping.scala
+Found:    Test3.this.U1(Test3.this.y1)
+Required: Test3.this.T2

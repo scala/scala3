@@ -1,0 +1,39 @@
+<671..671> in i3442.scala
+error overriding method wait in class Object of type (x$0: Long): Unit;
+  method wait of type (timeout: Long): Unit cannot override final member method wait in class Object
+<603..603> in i3442.scala
+error overriding method wait in class Object of type (x$0: Long, x$1: Int): Unit;
+  method wait of type (timeout: Long, nanos: Int): Unit cannot override final member method wait in class Object
+<560..560> in i3442.scala
+error overriding method wait in class Object of type (): Unit;
+  method wait of type (): Unit cannot override final member method wait in class Object
+<512..512> in i3442.scala
+error overriding method notifyAll in class Object of type (): Unit;
+  method notifyAll of type (): Unit cannot override final member method notifyAll in class Object
+<467..467> in i3442.scala
+error overriding method notify in class Object of type (): Unit;
+  method notify of type (): Unit cannot override final member method notify in class Object
+<411..411> in i3442.scala
+error overriding method ne in class Object of type (x$0: Object): Boolean;
+  method ne of type (that: AnyRef): Boolean cannot override final member method ne in class Object
+<355..355> in i3442.scala
+error overriding method eq in class Object of type (x$0: Object): Boolean;
+  method eq of type (that: AnyRef): Boolean cannot override final member method eq in class Object
+<291..291> in i3442.scala
+error overriding method asInstanceOf in class Any of type [X0] => X0;
+  method asInstanceOf of type [T0] => T0 cannot override final member method asInstanceOf in class Any
+<235..235> in i3442.scala
+error overriding method isInstanceOf in class Any of type [X0] => Boolean;
+  method isInstanceOf of type [T0] => Boolean cannot override final member method isInstanceOf in class Any
+<195..195> in i3442.scala
+error overriding method ## in class Any of type => Int;
+  method ## of type (): Int cannot override final member method ## in class Any
+<141..141> in i3442.scala
+error overriding method != in class Any of type (x$0: Any): Boolean;
+  method != of type (that: Any): Boolean cannot override final member method != in class Any
+<88..88> in i3442.scala
+error overriding method == in class Any of type (x$0: Any): Boolean;
+  method == of type (that: Any): Boolean cannot override final member method == in class Any
+<37..37> in i3442.scala
+error overriding method getClass in class Any of type (): Class[_];
+  method getClass of type (): Class[_] cannot override final member method getClass in class Any

@@ -1,0 +1,5 @@
+[236..239..242] in i803.scala
+missing arguments for method foo
+<201..201> in i803.scala
+Found:    Foo => Foo
+Required: Foo

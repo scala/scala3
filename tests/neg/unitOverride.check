@@ -1,0 +1,6 @@
+<154..154> in unitOverride.scala
+error overriding method g in trait C of type (): Unit;
+  method g of type => Unit has incompatible type
+<116..116> in unitOverride.scala
+error overriding method f in trait C of type => Unit;
+  method f of type (): Unit has incompatible type

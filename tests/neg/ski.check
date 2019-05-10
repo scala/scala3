@@ -1,0 +1,31 @@
+[3115..3123] in ski.scala
+x#ap[Test.An] is not a legal path
+since it is not a concrete type
+[2750..2758] in ski.scala
+x#ap[Test.A1] is not a legal path
+since it is not a concrete type
+[2635..2643] in ski.scala
+x#ap[Test.A0] is not a legal path
+since it is not a concrete type
+<1590..1590> in ski.scala
+Type argument I1[c]#eval does not conform to upper bound d 
+<1444..1444> in ski.scala
+Type argument String does not conform to upper bound Int 
+[1074..1075] in ski.scala
+x is not a legal path
+since it is not a concrete type
+[1022..1026] in ski.scala
+I1.this.eval is not a legal path
+since it is not a concrete type
+[837..838] in ski.scala
+x is not a legal path
+since it is not a concrete type
+[785..789] in ski.scala
+K2.this.eval is not a legal path
+since it is not a concrete type
+[482..501] in ski.scala
+x#ap[z]#ap[y#ap[z]] is not a legal path
+since it is not a concrete type
+[430..434] in ski.scala
+S3.this.eval is not a legal path
+since it is not a concrete type

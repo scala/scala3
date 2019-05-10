@@ -1,0 +1,22 @@
+[414..418] in sip23-symbols.scala
+Found:    Symbol(Test.sym3)
+Required: Symbol('s)
+[79..83] in sip23-symbols.scala
+Found:    Symbol(Test.sym0)
+Required: Symbol('s)
+<420..421> in sip23-symbols.scala
+symbol literal 's is no longer supported,
+use a string literal "s" or an application Symbol("s") instead,
+or enclose in braces '{s} if you want a quoted expression.
+<359..360> in sip23-symbols.scala
+symbol literal 's is no longer supported,
+use a string literal "s" or an application Symbol("s") instead,
+or enclose in braces '{s} if you want a quoted expression.
+<85..86> in sip23-symbols.scala
+symbol literal 's is no longer supported,
+use a string literal "s" or an application Symbol("s") instead,
+or enclose in braces '{s} if you want a quoted expression.
+<27..28> in sip23-symbols.scala
+symbol literal 's is no longer supported,
+use a string literal "s" or an application Symbol("s") instead,
+or enclose in braces '{s} if you want a quoted expression.

@@ -1,0 +1,6 @@
+[341..344] in erased-24.scala
+foo.B(bar) is not a legal path
+since its underlying type foo.B(bar) is not a concrete type
+[300..303] in erased-24.scala
+foo.B(bar) is not a legal path
+since its underlying type foo.B(bar) is not a concrete type

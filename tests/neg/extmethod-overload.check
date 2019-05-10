@@ -1,0 +1,5 @@
+[146..147] in extmethod-overload.scala
+Found:    Int(1)
+Required: ?{ |+| : ? }
+Note that implicit extension methods cannot be applied because they are ambiguous;
+both object A in object Test and object B in object Test provide an extension method `|+|` on Int(1)

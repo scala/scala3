@@ -1,0 +1,9 @@
+<515..530> in i4241.scala
+Found:    Int => String
+Required: PartialFunction[Int, String]
+<455..461> in i4241.scala
+Found:    Int => Int
+Required: PartialFunction[Int, Int]
+<358..406> in i4241.scala
+Found:    Int => Int
+Required: PartialFunction[Int, Int]

@@ -1,0 +1,4 @@
+[40..43] in i1653.scala
+illegal trait inheritance: superclass Unit does not derive from trait Foo's superclass Object
+<26..26> in i1653.scala
+anonymous class {...} cannot extend final class Unit

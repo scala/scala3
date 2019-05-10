@@ -1,0 +1,2 @@
+[203..209] in implicit-match-ambiguous-bind.scala
+ambiguous implicit arguments: both value ibox in object implicit-match-ambiguous-bind and value sbox in object implicit-match-ambiguous-bind match type implicit-match-ambiguous-bind.Box[t]

@@ -1,0 +1,8 @@
+<214..220> in skolemize.scala
+Found:    Inv[?1.CAP]
+Required: Inv[Foo]
+
+where:    ?1 is an unknown value of type scala.internal.TypeBox[Nothing, Foo]
+[154..157..160] in skolemize.scala
+Found:    Inv[Foo(e1)](e1.foo)
+Required: Inv[Foo]

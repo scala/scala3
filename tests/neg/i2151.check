@@ -1,0 +1,2 @@
+[121..124] in i2151.scala
+Type argument Test.this.Nil has not the same kind as its bound  <: [H, A] => H

@@ -1,0 +1,6 @@
+<264..264> in leaks.scala
+non-private method foo refers to private value x
+in its type signature => Int(Inner.this.x)
+<64..64> in leaks.scala
+non-private method foo refers to private value x
+in its type signature => Int(Outer.this.x)

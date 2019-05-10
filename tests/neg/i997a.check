@@ -1,0 +1,5 @@
+[214..215] in i997a.scala
+Found:    Int(1)
+Required: C.this.Super
+[155..157..159] in i997a.scala
+object CC in object O cannot be accessed as a member of C.this.O.type from class C.

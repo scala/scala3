@@ -1,0 +1,2 @@
+[42..51] in i3901.scala
+=> Boolean(cond) is not stable

@@ -1,0 +1,8 @@
+[262..263] in erased-match.scala
+value a is declared as erased, but is in fact used
+[227..228] in erased-match.scala
+value a is declared as erased, but is in fact used
+[138..139] in erased-match.scala
+value a is declared as erased, but is in fact used
+[68..69] in erased-match.scala
+value a is declared as erased, but is in fact used

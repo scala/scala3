@@ -1,0 +1,16 @@
+<389..390> in instantiateAbstract.scala
+A does not conform to its self type B; cannot be instantiated
+<370..372> in instantiateAbstract.scala
+TT is a trait; it cannot be instantiated
+<351..353> in instantiateAbstract.scala
+AA is abstract; it cannot be instantiated
+<304..332> in instantiateAbstract.scala
+Annotation is abstract; it cannot be instantiated
+<249..277> in instantiateAbstract.scala
+Annotation is abstract; it cannot be instantiated
+<199..227> in instantiateAbstract.scala
+Annotation is abstract; it cannot be instantiated
+<143..171> in instantiateAbstract.scala
+Annotation is abstract; it cannot be instantiated
+<54..82> in instantiateAbstract.scala
+Annotation is abstract; it cannot be instantiated

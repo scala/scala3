@@ -1,0 +1,15 @@
+[404..416..421] in gadt-banal.scala
+Found:    banal.Box[Nothing]
+Required: banal.Box[A]
+
+where:    A is a type in method noeval which is an alias of Int
+[361..369..372] in gadt-banal.scala
+Found:    banal.Box[Any]
+Required: banal.Box[A]
+
+where:    A is a type in method noeval which is an alias of String
+[234..240] in gadt-banal.scala
+Found:    Any
+Required: A
+
+where:    A is a type in method evul which is an alias of String

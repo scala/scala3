@@ -1,0 +1,4 @@
+[248..249] in i2771b.scala
+Type argument F has not the same kind as its bound  <: [_$3] => Any
+[166..168..169] in i2771b.scala
+Type argument y.L has not the same kind as its bound  <: [_$1] => Any

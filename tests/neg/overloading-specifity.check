@@ -1,0 +1,2 @@
+<773..773> in overloading-specifity.scala
+no implicit argument of type Test.Context was found for parameter ctx of method foo in object a

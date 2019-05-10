@@ -1,0 +1,8 @@
+[229..233] in 3324b.scala
+the type test for T cannot be checked at runtime
+[173..188] in 3324b.scala
+the type test for List[String] cannot be checked at runtime
+[96..110..113] in 3324b.scala
+the type test for T cannot be checked at runtime
+[38..52..66] in 3324b.scala
+the type test for List[String] cannot be checked at runtime

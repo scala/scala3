@@ -1,0 +1,8 @@
+[430..434] in i5948.scala
+Found:    List[Foo](list)
+Required: List[Foo{A = T}]
+
+where:    T is a type variable
+[396..400] in i5948.scala
+Found:    List[Foo](list)
+Required: List[Foo{A = Foo#A}]

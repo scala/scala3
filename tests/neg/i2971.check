@@ -1,0 +1,3 @@
+[514..518] in i2971.scala
+Found:    Foo[B](fooB)
+Required: Foo[A]

@@ -1,0 +1,12 @@
+[153..163] in patvars.scala
+Illegal variable y3 in pattern alternative
+[143..150] in patvars.scala
+Illegal variable x3 in pattern alternative
+[105..107] in patvars.scala
+Illegal variable y2 in pattern alternative
+[99..101] in patvars.scala
+Illegal variable t2 in pattern alternative
+[52..54] in patvars.scala
+Illegal variable y1 in pattern alternative
+[47..49] in patvars.scala
+Illegal variable x1 in pattern alternative

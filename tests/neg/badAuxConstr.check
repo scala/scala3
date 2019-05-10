@@ -1,0 +1,4 @@
+[177..178] in badAuxConstr.scala
+u is not accessible from constructor arguments
+[109..110] in badAuxConstr.scala
+Not found: z

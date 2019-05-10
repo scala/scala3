@@ -1,0 +1,6 @@
+[84..87] in erased-6.scala
+method foo is declared as erased, but is in fact used
+[67..70] in erased-6.scala
+method foo is declared as erased, but is in fact used
+[48..51] in erased-6.scala
+method foo is declared as erased, but is in fact used

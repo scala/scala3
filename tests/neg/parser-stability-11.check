@@ -1,0 +1,8 @@
+<13..13> in parser-stability-11.scala
+Not found: type x0$
+[24..26] in parser-stability-11.scala
+A case class must have at least one parameter list
+<86..86> in parser-stability-11.scala
+'}' expected, but eof found
+<59..64> in parser-stability-11.scala
+'{' expected, but 'end of statement' found

@@ -1,0 +1,15 @@
+<31..31> in i4470c.scala
+Double definition:
+final lazy module object Maybe: DuplicatedEnum.Maybe$ in object DuplicatedEnum at line 6 and
+final lazy module object Maybe: DuplicatedEnum.Maybe$ in object DuplicatedEnum at line 2
+<56..56> in i4470c.scala
+cannot merge
+  object Maybe in object DuplicatedEnum of type DuplicatedEnum.Maybe$  and
+  object Maybe in object DuplicatedEnum of type DuplicatedEnum.Maybe$
+they are both defined in object DuplicatedEnum but have matching signatures
+  DuplicatedEnum.Maybe$ and
+  DuplicatedEnum.Maybe$
+as members of object DuplicatedEnum
+       
+[88..93..137] in i4470c.scala
+Maybe is already defined as class Maybe

@@ -1,0 +1,3 @@
+[88..107..108] in dynamicApplyDynamicTest3.scala
+Only function types can be followed by _ but the current expression has type <error value selectDynamic is not a member of Foo
+possible cause: maybe a wrong Dynamic method signature?>

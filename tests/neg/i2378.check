@@ -1,0 +1,4 @@
+<555..560> in i2378.scala
+Apply cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
+<426..434> in i2378.scala
+Test.this.tb.Apply cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method

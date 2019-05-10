@@ -1,0 +1,4 @@
+[277..286..293] in tailrec-and-or.scala
+Cannot rewrite recursive call: it is not in tail position
+[155..164..171] in tailrec-and-or.scala
+Cannot rewrite recursive call: it is not in tail position

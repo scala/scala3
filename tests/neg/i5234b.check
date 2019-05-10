@@ -1,0 +1,2 @@
+<866..866> in i5234b.scala
+ambiguous implicit arguments: both method amb1 in object Not2 and method amb2 in object Not2 match type Not2[Test.Foo] of parameter ev of method implicitly in object DottyPredef

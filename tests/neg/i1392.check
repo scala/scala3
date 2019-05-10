@@ -1,0 +1,3 @@
+[127..136..137] in i1392.scala
+Super call cannot be emitted: the selected method m is declared in class A, which is not the direct superclass of class C.
+An unqualified super call (super.m) would be allowed.

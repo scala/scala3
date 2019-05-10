@@ -1,0 +1,4 @@
+<735..735> in i5427.scala
+ambiguous implicit arguments: both method fooInt in object Test2 and method fooString in object Test2 match type Foo[A] of parameter f1 of method test4 in object Test2
+<267..267> in i5427.scala
+no implicit argument of type Foo[A] was found for parameter f1 of method test2 in object Test

@@ -1,0 +1,7 @@
+<296..303> in i1641.scala
+Found:    (Int, Int, Int)
+Required: Double
+[278..285] in i1641.scala
+package println does not take parameters
+[241..248] in i1641.scala
+package println does not take parameters

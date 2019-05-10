@@ -1,0 +1,4 @@
+[203..211..218] in quotedPatterns-4.scala
+Type must be fully defined.
+Consider annotating the splice using a type ascription:
+  (${Repeated(parts)}: XYZ).

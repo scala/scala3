@@ -1,0 +1,2 @@
+<132..132> in i5234a.scala
+no implicit argument of type implicits.Not[Test.Foo] was found for parameter ev of method implicitly in object DottyPredef

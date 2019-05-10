@@ -1,0 +1,12 @@
+[1000..1003..1010] in t1672b.scala
+Cannot rewrite recursive call: it is not in tail position
+<704..707> in t1672b.scala
+Cannot rewrite recursive call: it is not in tail position
+<596..599> in t1672b.scala
+Cannot rewrite recursive call: it is not in tail position
+<399..402> in t1672b.scala
+Cannot rewrite recursive call: it is not in tail position
+<228..231> in t1672b.scala
+Cannot rewrite recursive call: it is not in tail position
+<165..168> in t1672b.scala
+Cannot rewrite recursive call: it is not in tail position

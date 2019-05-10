@@ -1,0 +1,12 @@
+<243..256> in equality2.scala
+Values of types equality2.A and Boolean cannot be compared with == or !=
+<202..215> in equality2.scala
+Values of types Boolean and equality2.A cannot be compared with == or !=
+<163..173> in equality2.scala
+Values of types equality2.A and Int cannot be compared with == or !=
+<125..135> in equality2.scala
+Values of types Int and equality2.A cannot be compared with == or !=
+<87..97> in equality2.scala
+Values of types equality2.A and Int cannot be compared with == or !=
+<49..59> in equality2.scala
+Values of types Int and equality2.A cannot be compared with == or !=

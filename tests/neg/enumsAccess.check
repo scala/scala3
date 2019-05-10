@@ -1,0 +1,25 @@
+[1583..1587] in enumsAccess.scala
+illegal reference to object E from enum case
+[1104..1112] in enumsAccess.scala
+illegal reference to value defaultX from enum case
+[1099..1102] in enumsAccess.scala
+illegal reference to type INT from enum case
+[1010..1018] in enumsAccess.scala
+illegal reference to value defaultX from enum case
+[1005..1008] in enumsAccess.scala
+illegal reference to type INT from enum case
+[1201..1208] in enumsAccess.scala
+Found:    enums.test5.E5.type(enums.test5.E5)
+Required: enums.test5.E5[_]
+[826..829] in enumsAccess.scala
+illegal reference to type INT from enum case
+[771..779] in enumsAccess.scala
+illegal reference to value defaultX from enum case
+[717..720] in enumsAccess.scala
+illegal reference to type INT from enum case
+[167..170] in enumsAccess.scala
+illegal reference to type INT from enum case
+[112..120] in enumsAccess.scala
+illegal reference to value defaultX from enum case
+[58..61] in enumsAccess.scala
+illegal reference to type INT from enum case

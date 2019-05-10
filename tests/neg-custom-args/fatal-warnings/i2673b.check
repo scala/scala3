@@ -1,0 +1,2 @@
+<20..20> in i2673b.scala
+class Bar differs only in case from object bar in package Foos. Such classes will overwrite one another on case-insensitive filesystems.

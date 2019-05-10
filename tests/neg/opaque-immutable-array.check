@@ -1,0 +1,6 @@
+<1305..1307> in opaque-immutable-array.scala
+value update is not a member of ia.IArray.IArray[Long]
+[1267..1270..1275] in opaque-immutable-array.scala
+value apply is not a member of ia.IArray.IArray[Long]
+[1229..1232..1238] in opaque-immutable-array.scala
+value length is not a member of ia.IArray.IArray[Long]

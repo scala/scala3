@@ -1,0 +1,8 @@
+[1291..1292] in tagging.scala
+Found:    Ordering[Double](tagging.o)
+Required: Ordering[B]
+
+where:    B is a type variable with constraint >: tagging.Tagged.Tagged[Double, tagging.Meter]
+[1250..1251] in tagging.scala
+Found:    tagging.Tagged.Tagged[Double, tagging.Foot](tagging.y)
+Required: tagging.Tagged.Tagged[Double, tagging.Meter]

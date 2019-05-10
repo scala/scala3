@@ -1,0 +1,8 @@
+[245..250..255] in t3235-minimal.scala
+method round in package math is deprecated: This is an integer type; there is no reason to round it. Perhaps you meant to call this with a floating-point value?
+[173..194..199] in t3235-minimal.scala
+method round in class RichLong is deprecated: this is an integer type; there is no reason to round it.  Perhaps you meant to call this on a floating-point value?
+[117..122..127] in t3235-minimal.scala
+method round in package math is deprecated: This is an integer type; there is no reason to round it. Perhaps you meant to call this with a floating-point value?
+[67..77..82] in t3235-minimal.scala
+method round in class RichInt is deprecated: this is an integer type; there is no reason to round it.  Perhaps you meant to call this on a floating-point value?

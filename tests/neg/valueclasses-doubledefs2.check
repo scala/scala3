@@ -1,0 +1,5 @@
+<146..146> in valueclasses-doubledefs2.scala
+Name clash between inherited members:
+def apply(x: Double): String in trait A at line 4 and
+def apply(x: Meter): String in trait B at line 7
+have the same type after erasure.

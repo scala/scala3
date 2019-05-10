@@ -1,0 +1,73 @@
+<1943..1943> in EqualityStrawman1.scala
+no implicit argument of type strawman.equality.EqualityStrawman1.Eql[strawman.equality.EqualityStrawman1.CondEquals] was found for parameter evidence$2 of method ddistinct.
+I found:
+
+    strawman.equality.EqualityStrawman1.eqEq[strawman.equality.EqualityStrawman1.Equals[_]]
+
+But method eqEq in object EqualityStrawman1 does not match type strawman.equality.EqualityStrawman1.Eql[strawman.equality.EqualityStrawman1.CondEquals].
+<1908..1908> in EqualityStrawman1.scala
+cannot compare value of type strawman.equality.EqualityStrawman1.Other with a value outside its equality class
+<1880..1880> in EqualityStrawman1.scala
+cannot compare value of type strawman.equality.EqualityStrawman1.Option[strawman.equality.EqualityStrawman1.Str] with a value outside its equality class
+<1852..1852> in EqualityStrawman1.scala
+no implicit argument of type strawman.equality.EqualityStrawman1.Eql[strawman.equality.EqualityStrawman1.CondEquals] was found for parameter ce of method === in trait CondEquals.
+I found:
+
+    strawman.equality.EqualityStrawman1.eqEq[strawman.equality.EqualityStrawman1.Equals[_]]
+
+But method eqEq in object EqualityStrawman1 does not match type strawman.equality.EqualityStrawman1.Eql[strawman.equality.EqualityStrawman1.CondEquals].
+<1831..1831> in EqualityStrawman1.scala
+no implicit argument of type strawman.equality.EqualityStrawman1.Eql[
+  strawman.equality.EqualityStrawman1.Option[strawman.equality.EqualityStrawman1.Num | 
+    strawman.equality.EqualityStrawman1.Str
+  ]
+] was found for parameter ce of method === in trait CondEquals.
+I found:
+
+    strawman.equality.EqualityStrawman1.eqOption[T](
+      strawman.equality.EqualityStrawman1.eqEq[strawman.equality.EqualityStrawman1.Equals[_]]
+    )
+
+But method eqEq in object EqualityStrawman1 does not match type strawman.equality.EqualityStrawman1.Eql[T].
+
+Note: implied instance method eqStr in object EqualityStrawman1 was not considered because it was not imported with an `import implied`.
+<1804..1804> in EqualityStrawman1.scala
+no implicit argument of type strawman.equality.EqualityStrawman1.Eql[strawman.equality.EqualityStrawman1.CondEquals] was found for parameter ce of method === in trait CondEquals.
+I found:
+
+    strawman.equality.EqualityStrawman1.eqEq[strawman.equality.EqualityStrawman1.Equals[_]]
+
+But method eqEq in object EqualityStrawman1 does not match type strawman.equality.EqualityStrawman1.Eql[strawman.equality.EqualityStrawman1.CondEquals].
+<1783..1783> in EqualityStrawman1.scala
+no implicit argument of type strawman.equality.EqualityStrawman1.Eql[
+  strawman.equality.EqualityStrawman1.Option[strawman.equality.EqualityStrawman1.Str | 
+    strawman.equality.EqualityStrawman1.Num
+  ]
+] was found for parameter ce of method === in trait CondEquals.
+I found:
+
+    strawman.equality.EqualityStrawman1.eqOption[T](
+      strawman.equality.EqualityStrawman1.eqEq[strawman.equality.EqualityStrawman1.Equals[_]]
+    )
+
+But method eqEq in object EqualityStrawman1 does not match type strawman.equality.EqualityStrawman1.Eql[T].
+
+Note: implied instance method eqStr in object EqualityStrawman1 was not considered because it was not imported with an `import implied`.
+<1756..1756> in EqualityStrawman1.scala
+cannot compare value of type strawman.equality.EqualityStrawman1.Str with a value outside its equality class
+<1727..1727> in EqualityStrawman1.scala
+cannot compare value of type strawman.equality.EqualityStrawman1.Other with a value outside its equality class
+<1698..1698> in EqualityStrawman1.scala
+no implicit argument of type strawman.equality.EqualityStrawman1.Eql[(strawman.equality.EqualityStrawman1.CondEquals & Product & Serializable)] was found for parameter ce of method === in trait CondEquals.
+I found:
+
+    strawman.equality.EqualityStrawman1.eqEq[strawman.equality.EqualityStrawman1.Equals[_]]
+
+But method eqEq in object EqualityStrawman1 does not match type strawman.equality.EqualityStrawman1.Eql[(strawman.equality.EqualityStrawman1.CondEquals & Product & Serializable)].
+<1676..1676> in EqualityStrawman1.scala
+no implicit argument of type strawman.equality.EqualityStrawman1.Eql[(strawman.equality.EqualityStrawman1.CondEquals & Product & Serializable)] was found for parameter ce of method === in trait CondEquals.
+I found:
+
+    strawman.equality.EqualityStrawman1.eqEq[strawman.equality.EqualityStrawman1.Equals[_]]
+
+But method eqEq in object EqualityStrawman1 does not match type strawman.equality.EqualityStrawman1.Eql[(strawman.equality.EqualityStrawman1.CondEquals & Product & Serializable)].

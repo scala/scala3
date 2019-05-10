@@ -1,0 +1,8 @@
+[386..390..391] in i1707.scala
+value a is not a member of Object - did you mean dep.eq?
+[349..350] in i1707.scala
+Not found: a
+<272..272> in i1707.scala
+<none> does not take parameters
+<209..209> in i1707.scala
+'=' expected, but '{' found

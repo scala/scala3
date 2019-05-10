@@ -1,0 +1,9 @@
+[568..569] in i50-volatile.scala
+(Test2.A & Test2.B)(Test2.o) is not a legal path
+since its underlying type (Test2.A & Test2.B)(Test2.o) has a member X with possibly conflicting bounds String | Int <: ... <: String & Int
+[339..340] in i50-volatile.scala
+(Test.this.A & Test.this.B)(Test.this.o) is not a legal path
+since it refers to nonfinal lazy value o
+[277..278] in i50-volatile.scala
+(Test.this.A & Test.this.B)(Test.this.o) is not a legal path
+since it refers to nonfinal lazy value o

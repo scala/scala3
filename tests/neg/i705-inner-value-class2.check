@@ -1,0 +1,4 @@
+[157..158] in i705-inner-value-class2.scala
+Not found: type B
+<20..20> in i705-inner-value-class2.scala
+Value classes may not be a member of another class

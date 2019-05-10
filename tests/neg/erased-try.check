@@ -1,0 +1,4 @@
+[204..205] in erased-try.scala
+value a is declared as erased, but is in fact used
+[65..66] in erased-try.scala
+value a is declared as erased, but is in fact used

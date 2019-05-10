@@ -1,0 +1,3 @@
+<56..56> in i2051.scala
+error overriding value x in class C of type Int;
+  method x of type => Int needs to be a stable, immutable value

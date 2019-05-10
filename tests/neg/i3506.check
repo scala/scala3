@@ -1,0 +1,5 @@
+<9..21> in i3506.scala
+Found:    specialized
+Required: scala.annotation.Annotation
+<60..60> in i3506.scala
+Cyclic reference involving type A

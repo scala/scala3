@@ -1,0 +1,2 @@
+[141..148] in 3324g.scala
+the type test for Test.this.B[T] cannot be checked at runtime

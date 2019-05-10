@@ -1,0 +1,3 @@
+[88..98..106] in dynamicApplyNamedDynamicTest1.scala
+value applyDynamicNamed is not a member of Foo
+possible cause: maybe a wrong Dynamic method signature?

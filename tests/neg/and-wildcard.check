@@ -1,0 +1,2 @@
+[50..59] in and-wildcard.scala
+unreducible application of higher-kinded type [X, Y] => X & Y to wildcard arguments

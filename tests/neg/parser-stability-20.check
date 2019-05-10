@@ -1,0 +1,6 @@
+<64..66> in parser-stability-20.scala
+x0 cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
+<86..86> in parser-stability-20.scala
+pattern expected
+<40..42> in parser-stability-20.scala
+'{' expected, but identifier found

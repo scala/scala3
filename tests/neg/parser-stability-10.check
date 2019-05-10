@@ -1,0 +1,15 @@
+[293..297..304] in parser-stability-10.scala
+value mutable is not a member of Nothing
+<232..232> in parser-stability-10.scala
+Found:    Unit
+Required: Int
+[197..199] in parser-stability-10.scala
+Not found: i2
+[173..175..183] in parser-stability-10.scala
+ List[Int] => Int is not a valid result type of an unapply method of an extractor.
+[106..108..111] in parser-stability-10.scala
+ List[Int] => Int is not a valid result type of an unapply method of an extractor.
+[70..72] in parser-stability-10.scala
+Not found: type i0
+<356..356> in parser-stability-10.scala
+'}' expected, but eof found

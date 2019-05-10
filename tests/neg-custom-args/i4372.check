@@ -1,0 +1,2 @@
+[23..24] in i4372.scala
+class X cannot be instantiated since it has a member A with possibly conflicting bounds i4372.X[_ <: i4372.X[_]] <: ... <: i4372.X[LazyRef(A)]

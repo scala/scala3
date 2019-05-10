@@ -1,0 +1,10 @@
+[22..24] in parser-stability-17.scala
+Missing type parameter for x0
+<95..97> in parser-stability-17.scala
+';' expected, but identifier found
+<92..94> in parser-stability-17.scala
+end of statement expected
+<90..90> in parser-stability-17.scala
+an identifier expected, but ']' found
+<9..9> in parser-stability-17.scala
+an identifier expected, but ']' found

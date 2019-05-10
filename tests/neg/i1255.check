@@ -1,0 +1,2 @@
+<66..66> in i1255.scala
+this case is unreachable since class Int is not a subclass of class Double

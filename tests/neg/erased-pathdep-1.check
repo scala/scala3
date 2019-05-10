@@ -1,0 +1,24 @@
+[431..432] in erased-pathdep-1.scala
+f.B(b) is not a legal path
+since its underlying type f.B(b) is not a concrete type
+[407..408] in erased-pathdep-1.scala
+f.B(b) is not a legal path
+since its underlying type f.B(b) is not a concrete type
+[401..402] in erased-pathdep-1.scala
+F(f) is not a legal path
+since its underlying type F(f) is not a concrete type
+[316..317] in erased-pathdep-1.scala
+F(f) is not a legal path
+since its underlying type F(f) is not a concrete type
+[292..293] in erased-pathdep-1.scala
+F(f) is not a legal path
+since its underlying type F(f) is not a concrete type
+[286..287] in erased-pathdep-1.scala
+F(f) is not a legal path
+since its underlying type F(f) is not a concrete type
+[208..209] in erased-pathdep-1.scala
+F(f) is not a legal path
+since its underlying type F(f) is not a concrete type
+[184..185] in erased-pathdep-1.scala
+F(f) is not a legal path
+since its underlying type F(f) is not a concrete type

@@ -1,0 +1,45 @@
+[1059..1060..1061] in i6047.scala
+contravariant type parameter X occurs in covariant position in Y match {
+  case [_] => scala.internal.MatchCase[List[_], X]
+  case [_] => scala.internal.MatchCase[_, String]
+}
+[923..924..925] in i6047.scala
+contravariant type parameter X occurs in invariant position in Y match {
+  case [_ <: X] => scala.internal.MatchCase[List[_], Int]
+  case [_] => scala.internal.MatchCase[_, String]
+}
+[787..788..789] in i6047.scala
+contravariant type parameter X occurs in invariant position in Y match {
+  case [_ >: X] => scala.internal.MatchCase[List[_], Int]
+  case [_] => scala.internal.MatchCase[_, String]
+}
+[655..656..657] in i6047.scala
+contravariant type parameter X occurs in invariant position in Y match {
+  case List[X] => Int
+  case [_] => scala.internal.MatchCase[_, String]
+}
+[526..527..528] in i6047.scala
+contravariant type parameter X occurs in invariant position in X match {
+  case Int => Int
+  case String => String
+}
+[393..394..395] in i6047.scala
+covariant type parameter X occurs in invariant position in Y match {
+  case [_ <: X] => scala.internal.MatchCase[List[_], Int]
+  case [_] => scala.internal.MatchCase[_, String]
+}
+[261..262..263] in i6047.scala
+covariant type parameter X occurs in invariant position in Y match {
+  case [_ >: X] => scala.internal.MatchCase[List[_], Int]
+  case [_] => scala.internal.MatchCase[_, String]
+}
+[133..134..135] in i6047.scala
+covariant type parameter X occurs in invariant position in Y match {
+  case List[X] => Int
+  case [_] => scala.internal.MatchCase[_, String]
+}
+[8..9..10] in i6047.scala
+covariant type parameter X occurs in invariant position in X match {
+  case Int => Int
+  case String => String
+}

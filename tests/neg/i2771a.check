@@ -1,0 +1,4 @@
+[238..239] in i2771a.scala
+Type argument F has not the same kind as its bound 
+[163..165..166] in i2771a.scala
+Type argument y.L has not the same kind as its bound 

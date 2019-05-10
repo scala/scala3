@@ -1,0 +1,4 @@
+<174..174> in i3067b.scala
+Cyclic reference involving trait CanBuildFrom
+<157..157> in i3067b.scala
+parent type of implicit definition needs to be given explicitly

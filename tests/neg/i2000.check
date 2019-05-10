@@ -1,0 +1,6 @@
+<475..475> in i2000.scala
+error overriding method foo in class A of type (implicit i: Int): Int;
+  method foo of type (i: Int): Int has incompatible type
+<250..250> in i2000.scala
+error overriding method foo in class C of type (a: String): String;
+  method foo of type (implicit s: String): String cannot override final member method foo in class C

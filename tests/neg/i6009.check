@@ -1,0 +1,2 @@
+<26..34> in i6009.scala
+Types with erased keyword can only be function types `erased (...) => ...`

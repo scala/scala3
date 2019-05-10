@@ -1,0 +1,25 @@
+<1004..1004> in i5592.scala
+Found:    (x: Test.Obj) => (x: Test.Obj) => (Test.EQ[_ <: Test.Obj, x.type] => Test.EQ[x.type, _ <: Test.Obj]) & 
+  Test.Forall[[y] => Test.EQ[x'.type, y] => Test.EQ[y, x'.type]]
+Required: Test.Forall[[x] => Test.Forall[[y] => Test.EQ[x, y'] => Test.EQ[y', x]]]
+
+where:    x  is a reference to a value parameter
+          x' is a reference to a value parameter
+          y  is a type variable
+          y' is a type variable
+<1002..1002> in i5592.scala
+Found:    (y: Test.Obj) => Test.EQ[Test.Obj(x), y.type] => Test.EQ[y.type, Test.Obj(x)]
+Required: (x: Test.Obj) => (Test.EQ[_ <: Test.Obj, x'.type] => Test.EQ[x'.type, _ <: Test.Obj]) & 
+  Test.Forall[[y] => Test.EQ[Test.Obj(x), y] => Test.EQ[y, Test.Obj(x)]]
+
+where:    x  is a value in an anonymous function in object Test
+          x' is a reference to a value parameter
+<829..829> in i5592.scala
+Found:    (x: Test.Obj) => (y: Test.Obj) => Test.EQ[_ <: Test.Obj, y.type] => Test.EQ[y.type, x.type]
+Required: Test.Forall[[x] => (y: Test.Obj) => Test.EQ[x, y'.type] => Test.EQ[y'.type, x]]
+
+where:    y  is a reference to a value parameter
+          y' is a reference to a value parameter
+<825..825> in i5592.scala
+Found:    Test.EQ[Test.Obj(x), Test.Obj(y)] => Test.EQ[Test.Obj(y), Test.Obj(x)]
+Required: Test.EQ[_ <: Test.Obj, Test.Obj(y)] => Test.EQ[Test.Obj(y), Test.Obj(x)]

@@ -1,0 +1,24 @@
+[325..332] in i4557.scala
+Not enough type arguments for O.S0[A, B]
+expected: [A, B]
+actual:   [Int]
+[294..296] in i4557.scala
+C1 is not a class type
+[249..264] in i4557.scala
+Too many type arguments for O.T0[A]
+expected: [A]
+actual:   [String, Int]
+[191..193] in i4557.scala
+C0 is not a class type
+[154..161] in i4557.scala
+Not enough type arguments for C1[A, B]
+expected: [A, B]
+actual:   [Int]
+[106..116] in i4557.scala
+Too many type arguments for C0[A]
+expected: [A]
+actual:   [A, Int]
+[66..81] in i4557.scala
+Too many type arguments for C0[A]
+expected: [A]
+actual:   [String, Int]

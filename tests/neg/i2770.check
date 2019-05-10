@@ -1,0 +1,12 @@
+<422..422> in i2770.scala
+error overriding type I in trait E with bounds <: String;
+  type I in trait H with bounds >: Int has incompatible type
+<207..207> in i2770.scala
+error overriding type L in trait B2 with bounds <: [X] => String;
+  type L with bounds <: [X, Y] => String has incompatible type
+<136..136> in i2770.scala
+error overriding type L in trait A2 with bounds <: String;
+  type L with bounds <: [X] => String has incompatible type
+<44..44> in i2770.scala
+error overriding type L in trait A with bounds;
+  type L with bounds <: [X] => Any has incompatible type

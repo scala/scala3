@@ -1,0 +1,42 @@
+[322..329..354] in dynamicNoImport.scala
+extension of type scala.Dynamic needs to be enabled
+by making the implicit value scala.language.dynamics visible.
+This can be achieved by adding the import clause 'import scala.language.dynamics'
+or by setting the compiler option -language:dynamics.
+See the Scala docs for value scala.language.dynamics for a discussion
+why the feature needs to be explicitly enabled.
+[277..283..308] in dynamicNoImport.scala
+extension of type scala.Dynamic needs to be enabled
+by making the implicit value scala.language.dynamics visible.
+This can be achieved by adding the import clause 'import scala.language.dynamics'
+or by setting the compiler option -language:dynamics.
+See the Scala docs for value scala.language.dynamics for a discussion
+why the feature needs to be explicitly enabled.
+[232..238..263] in dynamicNoImport.scala
+extension of type scala.Dynamic needs to be enabled
+by making the implicit value scala.language.dynamics visible.
+This can be achieved by adding the import clause 'import scala.language.dynamics'
+or by setting the compiler option -language:dynamics.
+See the Scala docs for value scala.language.dynamics for a discussion
+why the feature needs to be explicitly enabled.
+[82..89..114] in dynamicNoImport.scala
+extension of type scala.Dynamic needs to be enabled
+by making the implicit value scala.language.dynamics visible.
+This can be achieved by adding the import clause 'import scala.language.dynamics'
+or by setting the compiler option -language:dynamics.
+See the Scala docs for value scala.language.dynamics for a discussion
+why the feature needs to be explicitly enabled.
+[41..47..72] in dynamicNoImport.scala
+extension of type scala.Dynamic needs to be enabled
+by making the implicit value scala.language.dynamics visible.
+This can be achieved by adding the import clause 'import scala.language.dynamics'
+or by setting the compiler option -language:dynamics.
+See the Scala docs for value scala.language.dynamics for a discussion
+why the feature needs to be explicitly enabled.
+[0..6..31] in dynamicNoImport.scala
+extension of type scala.Dynamic needs to be enabled
+by making the implicit value scala.language.dynamics visible.
+This can be achieved by adding the import clause 'import scala.language.dynamics'
+or by setting the compiler option -language:dynamics.
+See the Scala docs for value scala.language.dynamics for a discussion
+why the feature needs to be explicitly enabled.

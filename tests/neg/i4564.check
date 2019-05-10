@@ -1,0 +1,17 @@
+<1387..1387> in i4564.scala
+Found:    ClashNoSigPoly
+Required: Nothing
+<1228..1228> in i4564.scala
+Overloaded or recursive method apply needs return type
+<954..954> in i4564.scala
+Overloaded or recursive method apply needs return type
+<728..728> in i4564.scala
+Overloaded or recursive method apply needs return type
+<704..704> in i4564.scala
+Overloaded or recursive method apply needs return type
+<515..515> in i4564.scala
+Overloaded or recursive method apply needs return type
+<327..327> in i4564.scala
+Overloaded or recursive method apply needs return type
+<101..101> in i4564.scala
+Overloaded or recursive method apply needs return type

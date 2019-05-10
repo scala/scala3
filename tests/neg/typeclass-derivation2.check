@@ -1,0 +1,7 @@
+<8191..8191> in typeclass-derivation2.scala
+no implicit argument of type Show[Lst[Either[Int, Pair[Int]]]] was found for parameter evidence$4 of method showPrintln in object Test.
+I found:
+
+    Lst.LstShow[T](Either.EitherShow[Int, Pair[Int]](Show.IntShow, /* missing */implicitly[Show[Pair[Int]]]))
+
+But no implicit values were found that match type Show[Pair[Int]].

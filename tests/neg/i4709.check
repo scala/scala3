@@ -1,0 +1,4 @@
+<274..274> in i4709.scala
+value i needs result type because its right-hand side attempts implicit search
+<178..178> in i4709.scala
+value ctx needs result type because its right-hand side attempts implicit search

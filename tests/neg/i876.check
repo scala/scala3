@@ -1,0 +1,3 @@
+[138..139] in i876.scala
+Found:    Int(Test.b)
+Required: String

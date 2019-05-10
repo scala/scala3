@@ -1,0 +1,8 @@
+[418..434..437] in t8764.scala
+Found:    Any
+Required: AnyVal
+Note that implicit conversions cannot be applied because they are ambiguous;
+both method StringFormat in object Predef and method any2stringadd in object Predef convert from Any to AnyVal
+[166..182..185] in t8764.scala
+Found:    Any
+Required: Int

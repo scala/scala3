@@ -1,0 +1,5 @@
+<46..46> in i2002.scala
+Double definition:
+def foo(i: Int): Int in class Test at line 2 and
+def foo(implicit i: Int): Int in class Test at line 3
+have the same type after erasure.

@@ -1,0 +1,12 @@
+<199..204> in dynamicApplyNamedDynamicTest5.scala
+Found:    (String, String)
+Required: String
+<192..193> in dynamicApplyNamedDynamicTest5.scala
+Found:    (String, Int)
+Required: String
+<185..186> in dynamicApplyNamedDynamicTest5.scala
+Found:    (String, Int)
+Required: String
+<178..183> in dynamicApplyNamedDynamicTest5.scala
+Found:    (String, String)
+Required: String

@@ -1,0 +1,5 @@
+[258..260] in gadt-banal-nested.scala
+Found:    String("")
+Required: A
+
+where:    A is a type in method eval which is an alias of Int

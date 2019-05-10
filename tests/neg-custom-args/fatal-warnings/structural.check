@@ -1,0 +1,10 @@
+[1418..1419] in structural.scala
+forward reference in refinement is deprecated
+[905..923..926] in structural.scala
+Found:    Responder[Int]
+Required: Object{map: [U](f: Any => U): Any}
+[800..804..807] in structural.scala
+Found:    Some[Int]
+Required: Object{map: [U](f: Any => U): Any}
+[590..594..617] in structural.scala
+Polymorphic refinement method map without matching type in parent class Object is no longer allowed

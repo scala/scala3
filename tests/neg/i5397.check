@@ -1,0 +1,12 @@
+[722..732..738] in i5397.scala
+Cannot rewrite recursive call: it is not in tail position
+<514..518> in i5397.scala
+Cannot rewrite recursive call: it is not in tail position
+<424..428> in i5397.scala
+Cannot rewrite recursive call: it is not in tail position
+<334..338> in i5397.scala
+Cannot rewrite recursive call: it is not in tail position
+<209..213> in i5397.scala
+Cannot rewrite recursive call: it is not in tail position
+<131..135> in i5397.scala
+Cannot rewrite recursive call: it is not in tail position

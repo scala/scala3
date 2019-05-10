@@ -1,0 +1,12 @@
+[133..134] in i4044b.scala
+access to value b from wrong staging level:
+ - the definition is at level 1,
+ - but the access is at level 3.
+[107..108] in i4044b.scala
+access to value b from wrong staging level:
+ - the definition is at level 1,
+ - but the access is at level 2.
+[74..75] in i4044b.scala
+access to value b from wrong staging level:
+ - the definition is at level 1,
+ - but the access is at level 2.

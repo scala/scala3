@@ -1,0 +1,35 @@
+[674..678..681] in anykind3.scala
+Found:    Some[Int]
+Required: Test.X[Test.Foo, [X <: [_$7] => Any] => X'[Int]]#B
+
+where:    X  is a trait in object Test
+          X' is a type variable with constraint <: [_$7] => Any
+[583..587..590] in anykind3.scala
+Found:    Some[Int]
+Required: Test.X[Either, List]#B
+[535..539..542] in anykind3.scala
+Found:    Some[Int]
+Required: Test.X[Either, [X <: [_$4] => Any] => X'[Int]]#B
+
+where:    X  is a trait in object Test
+          X' is a type variable with constraint <: [_$4] => Any
+[466..469] in anykind3.scala
+Found:    Double(5.0)
+Required: Test.X[Double, [X <: [_$3] => Any] => X'[Int]]#B
+
+where:    X  is a trait in object Test
+          X' is a type variable with constraint <: [_$3] => Any
+[393..397..400] in anykind3.scala
+Found:    Some[Int]
+Required: Test.X[Option[Double], [X <: [_$2] => Any] => X'[Int]]#B
+
+where:    X  is a trait in object Test
+          X' is a type variable with constraint <: [_$2] => Any
+[312..316..319] in anykind3.scala
+Found:    Some[Int]
+Required: Test.X[Option[Double], List]#B
+[256..260..263] in anykind3.scala
+Found:    Some[Int]
+Required: Test.X[Option, List]#B
+[196..202] in anykind3.scala
+Type argument Double has not the same kind as its bound  <: [_$1 <: AnyKind] => Any

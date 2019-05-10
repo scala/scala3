@@ -1,0 +1,3 @@
+<45..45> in leak-type.scala
+non-private constructor Inner refers to private class Foo
+in its type signature [T <: A.this.Foo](): A.this.Inner[T]

@@ -1,0 +1,4 @@
+[230..234] in i1503.scala
+method bar1 must be called with () argument
+[220..224] in i1503.scala
+method foo1 must be called with () argument

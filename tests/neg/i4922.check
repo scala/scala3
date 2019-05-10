@@ -1,0 +1,4 @@
+[222..224] in i4922.scala
+Not found: xs
+[209..210..218] in i4922.scala
+ SQ is not a valid result type of an unapplySeq method of an extractor.

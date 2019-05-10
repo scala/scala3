@@ -1,0 +1,3 @@
+[27..28..46] in i2032.scala
+Found:    foo
+Required: scala.annotation.Annotation

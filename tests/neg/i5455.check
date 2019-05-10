@@ -1,0 +1,6 @@
+[628..632..635] in i5455.scala
+type Nat in object Nat cannot be accessed as a member of Library.Nat.type from module class User$.
+[618..622..625] in i5455.scala
+type Nat in object Nat cannot be accessed as a member of Library.Nat.type from module class User$.
+[560..564..567] in i5455.scala
+type Nat in object Nat cannot be accessed as a member of Library.Nat.type from module class User$.

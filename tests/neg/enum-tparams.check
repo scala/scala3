@@ -1,0 +1,8 @@
+[936..940..950] in enum-tparams.scala
+method apply in object C4 does not take type parameters
+[798..802..812] in enum-tparams.scala
+method apply in object C2 does not take type parameters
+[712..716..726] in enum-tparams.scala
+method apply in object C1 does not take type parameters
+[526..531..536] in enum-tparams.scala
+method apply in object I does not take type parameters

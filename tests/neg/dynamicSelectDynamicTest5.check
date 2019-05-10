@@ -1,0 +1,3 @@
+[88..98..113] in dynamicSelectDynamicTest5.scala
+value selectDynamic is not a member of Foo
+possible cause: maybe a wrong Dynamic method signature?

@@ -1,0 +1,20 @@
+<1090..1090> in i5823.scala
+Double definition:
+def gen4: [T <: Int](i: T | Nothing): Unit in class Foo at line 36 and
+def gen4: [T <: Boolean](b: T | Nothing): Unit in class Foo at line 37
+have the same type after erasure.
+<813..813> in i5823.scala
+Double definition:
+def bar2(a: Int | Nothing): Unit in class Foo at line 29 and
+def bar2(b: Boolean | Nothing): Unit in class Foo at line 30
+have the same type after erasure.
+<587..587> in i5823.scala
+Double definition:
+def gen2: [T <: Int](i: T | Null): Unit in class Foo at line 22 and
+def gen2: [T <: Boolean](b: T | Null): Unit in class Foo at line 23
+have the same type after erasure.
+<325..325> in i5823.scala
+Double definition:
+def bar(a: Int | Null): Unit in class Foo at line 15 and
+def bar(b: Boolean | Null): Unit in class Foo at line 16
+have the same type after erasure.

@@ -1,0 +1,16 @@
+<76..76> in parser-stability-19.scala
+Double definition:
+final lazy module object x0: x0.x0$ in object x0 at line 2 and
+def x0(): Null in object x0 at line 3
+[155..157] in parser-stability-19.scala
+Not found: x1
+<14..14> in parser-stability-19.scala
+method x0 must be called with () argument
+[140..142] in parser-stability-19.scala
+Missing type parameter for x0.x0
+<188..188> in parser-stability-19.scala
+'}' expected, but eof found
+<81..81> in parser-stability-19.scala
+Missing return type
+<28..28> in parser-stability-19.scala
+an identifier expected, but ']' found

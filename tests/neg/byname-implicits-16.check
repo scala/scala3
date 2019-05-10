@@ -1,0 +1,13 @@
+<384..384> in byname-implicits-16.scala
+no implicit argument of type Test.O[Test.Z] was found for parameter ev of method implicitly in object DottyPredef.
+I found:
+
+    Test.mkN[Test.Z, Test.E[Test.O[Test.Z]]](Test.Expand.expando[Test.Z], 
+      Test.mkN[Test.O[Test.Z], Test.O[Test.E[Test.O[Test.Z]]]](Test.Expand.expande[Test.O[Test.Z]], 
+        Test.mkN[Test.E[Test.O[Test.Z]], Test.E[Test.O[Test.E[Test.O[Test.Z]]]]](Test.Expand.expando[Test.E[Test.O[Test.Z]]]
+          , 
+        /* missing */implicitly[Test.E[Test.O[Test.E[Test.O[Test.Z]]]]])
+      )
+    )
+
+But method mkN in object Test produces a diverging implicit search when trying to match type Test.E[Test.O[Test.E[Test.O[Test.Z]]]].

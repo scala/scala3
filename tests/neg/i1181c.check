@@ -1,0 +1,5 @@
+[659..660] in i1181c.scala
+Found:    Foo[Int](Baz.this.x)
+Required: M[Int, Int]
+
+where:    M is a type variable with constraint <: [_$3, _$4] => Any

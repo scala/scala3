@@ -1,0 +1,8 @@
+<86..86> in i4936.scala
+abstract override modifier only allowed for members of traits
+[29..35] in i4936.scala
+sealed modifier is redundant for objects
+[42..50] in i4936.scala
+abstract modifier cannot be used for objects
+[0..8] in i4936.scala
+abstract modifier cannot be used for objects

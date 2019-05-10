@@ -1,0 +1,2 @@
+<365..365> in patmat1.scala
+this case is unreachable since class C and class D are unrelated

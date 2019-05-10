@@ -1,0 +1,38 @@
+<1628..1628> in overrides.scala
+error overriding method m in class A of type => String;
+  method m of type => Int has incompatible type
+<1546..1546> in overrides.scala
+error overriding method m in class A of type => String;
+  value m of type Int has incompatible type
+<1401..1401> in overrides.scala
+error overriding method head in class C of type => T;
+  value head of type Int has incompatible type
+<1293..1293> in overrides.scala
+type T overrides nothing
+<1220..1220> in overrides.scala
+error overriding type T in class X2, which equals A1;
+  type T, which equals B1 needs `override' modifier
+<1115..1115> in overrides.scala
+error overriding method f in class X1 of type (): A1;
+  method f of type (): B1 has incompatible type
+<970..970> in overrides.scala
+error overriding method f in class X of type => A[Int];
+  method f of type => A[Int] needs `override' modifier
+<857..857> in overrides.scala
+error overriding method next in class A of type => Int;
+  method next of type (): Int has incompatible type
+<773..773> in overrides.scala
+error overriding method f in class A of type (x: Int)(y: Int): Int;
+  method f of type (x: Int)(y: Int): Int needs `override' modifier
+<186..186> in overrides.scala
+error overriding type B in class Foo with bounds >: Int <: Int;
+  type B with bounds >: String has incompatible type
+<278..278> in overrides.scala
+error overriding value y in trait T of type Int;
+  lazy value y of type Int may not override a non-lazy value
+<251..251> in overrides.scala
+error overriding lazy value x in trait T of type Int;
+  value x of type Int must be declared lazy to override a lazy value
+<160..160> in overrides.scala
+error overriding type A in class Foo, which equals Int;
+  type A, which equals Any has incompatible type

@@ -1,0 +1,4 @@
+[149..155] in variances-constr.scala
+covariant type A occurs in contravariant position in type  <: A of type B
+[77..81] in variances-constr.scala
+covariant type A occurs in contravariant position in type A of value x

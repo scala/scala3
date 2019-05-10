@@ -1,0 +1,22 @@
+<1019..1019> in tcpoly_variance_enforce.scala
+Type argument FooContra does not conform to upper bound [+x] => Any 
+<967..967> in tcpoly_variance_enforce.scala
+Type argument FooInvar does not conform to upper bound [+x] => Any 
+<884..884> in tcpoly_variance_enforce.scala
+Type argument FooString does not conform to upper bound [x] => Any 
+<828..828> in tcpoly_variance_enforce.scala
+Type argument FooString does not conform to upper bound [x <: Int] => Any 
+<724..724> in tcpoly_variance_enforce.scala
+Type argument FooString does not conform to upper bound [x] => Any 
+<545..545> in tcpoly_variance_enforce.scala
+Type argument FooString does not conform to upper bound [-x] => Any 
+<451..451> in tcpoly_variance_enforce.scala
+Type argument FooInvar does not conform to upper bound [-x] => Any 
+<397..397> in tcpoly_variance_enforce.scala
+Type argument FooCov does not conform to upper bound [-x] => Any 
+<341..341> in tcpoly_variance_enforce.scala
+Type argument FooString does not conform to upper bound [+x] => Any 
+<289..289> in tcpoly_variance_enforce.scala
+Type argument FooContra does not conform to upper bound [+x] => Any 
+<236..236> in tcpoly_variance_enforce.scala
+Type argument FooInvar does not conform to upper bound [+x] => Any 

@@ -1,0 +1,7 @@
+[63..64] in i4350.scala
+access to type T from wrong staging level:
+ - the definition is at level 0,
+ - but the access is at level 1.
+
+ The access would be accepted with the right type tag, but
+ no implicit argument of type scala.quoted.Type[T] was found

@@ -1,0 +1,8 @@
+[2211..2224..2342] in switches.scala
+Could not emit switch for @switch annotated match
+[2053..2066..2184] in switches.scala
+Could not emit switch for @switch annotated match
+[1483..1507..1663] in switches.scala
+Could not emit switch for @switch annotated match since there are not enough cases
+[1260..1284..1440] in switches.scala
+Could not emit switch for @switch annotated match since there are not enough cases

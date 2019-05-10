@@ -1,0 +1,6 @@
+<119..119> in i2473.scala
+class Inner cannot have the same name as trait Inner in trait Foo -- cannot define class member with the same name as a trait member in self reference baz.
+(Note: this can be resolved by using another name)
+<57..57> in i2473.scala
+type Inner cannot have the same name as trait Inner in trait Foo -- cannot define type member with the same name as a trait member in self reference foo.
+(Note: this can be resolved by using another name)

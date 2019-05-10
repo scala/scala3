@@ -1,0 +1,6 @@
+[336..337] in realizability.scala
+Test.this.D(Test.this.d) is not a legal path
+since its underlying type Test.this.D(Test.this.d) is not a concrete type
+[155..156] in realizability.scala
+C(Test.this.a) is not a legal path
+since it refers to nonfinal lazy value a

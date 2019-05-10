@@ -1,0 +1,3 @@
+<124..124> in overrideFinalImplicit.scala
+error overriding method FooExtender in class Implicits of type (foo: String): Test.this.FooExtender;
+  method FooExtender of type (foo: String): Test.this.FooExtender cannot override final member method FooExtender in class Implicits

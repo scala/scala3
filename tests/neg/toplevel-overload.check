@@ -1,0 +1,5 @@
+[45..46] in Test_3.scala
+Ambiguous overload. The overloaded alternatives of method f with types
+ (x: A): String
+ (x: B): String
+both match arguments (C(c))

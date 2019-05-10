@@ -1,0 +1,5 @@
+[277..278] in assignments.scala
+assignments.C(assignments.c) is not stable
+[205..206] in assignments.scala
+Found:    Int(2)
+Required: Int => Unit

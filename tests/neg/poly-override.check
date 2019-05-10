@@ -1,0 +1,25 @@
+<599..599> in poly-override.scala
+error overriding method b in class Super of type [T](x: String): Unit;
+  method b of type [T >: String](x: String): Unit has incompatible type
+<555..555> in poly-override.scala
+error overriding method a in class Super of type [T] => Unit;
+  method a of type [T >: String] => Unit has incompatible type
+<483..483> in poly-override.scala
+method n has a different signature than the overridden declaration
+<444..444> in poly-override.scala
+method m has a different signature than the overridden declaration
+<405..405> in poly-override.scala
+error overriding method d in class Super of type [F <: [_$3] => Any] => Unit;
+  method d of type [F <: [+_$6] => Any] => Unit has incompatible type
+<367..367> in poly-override.scala
+error overriding method c1 in class Super of type [F <: [_$2 >: String] => Any] => Unit;
+  method c1 of type [F <: [_$5] => Any] => Unit has incompatible type
+<330..330> in poly-override.scala
+error overriding method c in class Super of type [F <: [_$1 <: String] => Any] => Unit;
+  method c of type [F <: [_$4] => Any] => Unit has incompatible type
+<275..275> in poly-override.scala
+error overriding method b in class Super of type [T](x: String): Unit;
+  method b of type [T <: String](x: String): Unit has incompatible type
+<231..231> in poly-override.scala
+error overriding method a in class Super of type [T] => Unit;
+  method a of type [T <: String] => Unit has incompatible type

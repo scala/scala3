@@ -1,0 +1,2 @@
+<177..177> in i1750.scala
+class Visitor cannot have the same name as trait Visitor in trait Lang1 -- class definitions cannot be overridden

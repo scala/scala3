@@ -1,0 +1,16 @@
+[396..398] in alloc-abstract.scala
+too many arguments for constructor Object: (): Object
+[381..395] in alloc-abstract.scala
+IArray.IArray[String] is not a class type
+[328..342] in alloc-abstract.scala
+IArray.IArray[String] is not a class type
+[275..289] in alloc-abstract.scala
+IArray.IArray[String] is not a class type
+[222..223] in alloc-abstract.scala
+Test.this.U is not a class type
+[169..170] in alloc-abstract.scala
+Test.this.U is not a class type
+[116..117] in alloc-abstract.scala
+T is not a class type
+[63..64] in alloc-abstract.scala
+T is not a class type

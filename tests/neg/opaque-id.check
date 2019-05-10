@@ -1,0 +1,6 @@
+[170..171] in opaque-id.scala
+Found:    Test.T.T[Int](Test.x)
+Required: Int
+[144..145] in opaque-id.scala
+Found:    Int(2)
+Required: Test.T.T[Int]

@@ -1,0 +1,6 @@
+[1158..1173..1183] in t7239.scala
+value withFilter is not a member of Test.HasFilter[(Int, String)]
+[598..613..623] in t7239.scala
+value withFilter is not a member of Test.HasFilter[(Int, String)]
+[463..478..488] in t7239.scala
+value withFilter is not a member of Test.HasFilter[(Int, String)]

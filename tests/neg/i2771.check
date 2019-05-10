@@ -1,0 +1,6 @@
+[358..362] in i2771.scala
+missing type parameter(s) for List
+[287..291] in i2771.scala
+missing type parameter(s) for List
+<189..189> in i2771.scala
+Type argument Int does not conform to upper bound [_$3] => Any 

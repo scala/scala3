@@ -1,0 +1,6 @@
+[234..235] in i6324.scala
+Not found: b
+[114..115] in i6324.scala
+Type must be fully defined.
+Consider annotating the splice using a type ascription:
+  (${b}: XYZ).

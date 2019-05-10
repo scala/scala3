@@ -1,0 +1,3 @@
+[55..56] in erased-singleton.scala
+Sys(Obj.this.s) is not a legal path
+since it refers to nonfinal value s

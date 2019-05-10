@@ -1,0 +1,45 @@
+<820..820> in i997.scala
+non-private class H refers to private trait U
+in its type signature Object with C.this.U{...}
+<744..744> in i997.scala
+non-private constructor F refers to private type T
+in its type signature (x: C.this.T): C.this.F
+<714..714> in i997.scala
+non-private type U2 refers to private type T
+in its type signature  = C.this.T
+<685..685> in i997.scala
+non-private type U1 refers to private type T
+in its type signature  <: [X <: C.this.T] => Any
+<652..652> in i997.scala
+non-private value v2 refers to private value p
+in its type signature C.this.p.D
+<623..623> in i997.scala
+non-private value v1 refers to private type T
+in its type signature C.this.T
+<583..583> in i997.scala
+non-private method f2 refers to private value p
+in its type signature (x: C.this.p.D): Unit
+<546..546> in i997.scala
+non-private method f1 refers to private type T
+in its type signature (x: C.this.T): Unit
+<281..281> in i997.scala
+non-private type U2 refers to private type T
+in its type signature  = C.this.T
+<254..254> in i997.scala
+non-private type U1 refers to private type T
+in its type signature  <: [X <: C.this.T] => Any
+<223..223> in i997.scala
+non-private value v2 refers to private value p
+in its type signature C.this.p.D
+<196..196> in i997.scala
+non-private value v1 refers to private type T
+in its type signature C.this.T
+<158..158> in i997.scala
+non-private method f2 refers to private value p
+in its type signature (x: C.this.p.D): Unit
+<89..89> in i997.scala
+non-private method f1 refers to private type T
+in its type signature (x: C.this.T): Unit
+<515..515> in i997.scala
+non-private class D refers to private class E
+in its type signature C.this.E{...}

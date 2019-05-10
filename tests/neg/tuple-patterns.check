@@ -1,0 +1,4 @@
+<113..113> in tuple-patterns.scala
+this case is unreachable since class String is not a subclass of class Tuple3
+<40..40> in tuple-patterns.scala
+this case is unreachable since class Tuple2 is not a subclass of class Tuple3

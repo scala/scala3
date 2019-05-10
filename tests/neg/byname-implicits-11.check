@@ -1,0 +1,9 @@
+<135..135> in byname-implicits-11.scala
+no implicit argument of type Foo[Int] was found for parameter ev of method implicitly in object DottyPredef.
+I found:
+
+    Foo.foo[T](/* missing */implicitly[=> Foo[Foo[Int]]])
+
+But no implicit values were found that match type => Foo[Foo[Int]].
+
+Note: implied instance method foo in object Foo was not considered because it was not imported with an `import implied`.

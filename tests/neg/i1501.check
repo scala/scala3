@@ -1,0 +1,8 @@
+<477..477> in i1501.scala
+missing argument for parameter x of constructor SubA: (x: Int): Test2.SubA
+[398..405] in i1501.scala
+trait TSubA may not call constructor of class SubA
+[172..173] in i1501.scala
+illegal trait inheritance: superclass D does not derive from trait B's superclass A
+[111..112] in i1501.scala
+illegal trait inheritance: superclass D does not derive from trait B's superclass A

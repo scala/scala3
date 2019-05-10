@@ -1,0 +1,4 @@
+[185..190] in i5954.scala
+access to value a from wrong staging level:
+ - the definition is at level 0,
+ - but the access is at level 1.

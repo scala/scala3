@@ -1,0 +1,4 @@
+<89..89> in hk-variance.scala
+Type argument E does not conform to upper bound [+X] => Any 
+<57..57> in hk-variance.scala
+Type argument Test.D does not conform to upper bound [+X] => Any 

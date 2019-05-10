@@ -1,0 +1,3 @@
+[183..185..186] in i3989a.scala
+Found:    _(a.x)
+Required: Int

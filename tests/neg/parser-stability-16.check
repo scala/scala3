@@ -1,0 +1,9 @@
+[67..68] in parser-stability-16.scala
+Found:    Int(0)
+Required: x3.this.x0
+[48..50] in parser-stability-16.scala
+Missing type parameter for x0
+<103..103> in parser-stability-16.scala
+';' expected, but eof found
+<69..75> in parser-stability-16.scala
+end of statement expected

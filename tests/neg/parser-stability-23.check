@@ -1,0 +1,6 @@
+<49..53> in parser-stability-23.scala
+';' expected, but 'true' found
+<48..48> in parser-stability-23.scala
+end of statement expected
+<46..46> in parser-stability-23.scala
+an identifier expected, but '}' found

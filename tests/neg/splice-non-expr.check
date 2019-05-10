@@ -1,0 +1,15 @@
+<109..116> in splice-non-expr.scala
+Found:    Foo
+Required: quoted.Expr[Any]
+[90..92] in splice-non-expr.scala
+Found:    Unit
+Required: quoted.Expr[Any]
+[68..73] in splice-non-expr.scala
+Found:    String("abc")
+Required: quoted.Expr[Any]
+<41..51> in splice-non-expr.scala
+Found:    Object
+Required: quoted.Expr[Any]
+[23..24] in splice-non-expr.scala
+Found:    Int(3)
+Required: quoted.Expr[Any]

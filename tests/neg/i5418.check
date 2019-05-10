@@ -1,0 +1,3 @@
+[276..278] in i5418.scala
+Found:    Iterator[Int](it)
+Required: Iterator[E]

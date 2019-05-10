@@ -1,0 +1,3 @@
+[212..213] in i4060.scala
+A(a) is not a legal path
+since its underlying type A(a) is not a concrete type

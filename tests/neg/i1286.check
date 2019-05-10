@@ -1,0 +1,14 @@
+[355..365] in i1286.scala
+value idontexist is not a member of object scalaShadowing.language
+[237..248] in i1286.scala
+value Idontexist5 is not a member of io
+[189..200] in i1286.scala
+value Idontexist4 is not a member of io
+[147..158] in i1286.scala
+value Idontexist3 is not a member of io
+[96..107] in i1286.scala
+value Idontexist2 is not a member of io
+[49..59] in i1286.scala
+value Idontexist is not a member of io
+[13..23] in i1286.scala
+value idontexist is not a member of scala

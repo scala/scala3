@@ -1,0 +1,2 @@
+[138..141] in conditionalWarnings.scala
+method foo in object Test is deprecated

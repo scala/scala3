@@ -1,0 +1,3 @@
+[141..142] in i2871.scala
+Found:    ({z1 => Object{A; x: z1.A}} & Object{A = Int})(Test.c)
+Required: Selectable

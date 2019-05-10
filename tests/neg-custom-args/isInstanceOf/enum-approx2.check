@@ -1,0 +1,4 @@
+[200..221] in enum-approx2.scala
+the type test for Exp[Int => String] cannot be checked at runtime
+[141..160] in enum-approx2.scala
+the type test for Fun[Int, Double] cannot be checked at runtime

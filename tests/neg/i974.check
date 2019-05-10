@@ -1,0 +1,4 @@
+<107..107> in i974.scala
+illegal cyclic reference: upper bound Bar2[T]#Elem of type T refers back to the type itself
+<10..10> in i974.scala
+illegal cyclic reference: upper bound Bar[T]#Elem of type T refers back to the type itself

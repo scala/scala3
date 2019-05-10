@@ -1,0 +1,68 @@
+[2707..2713..2784] in i2973.scala
+contravariant type T occurs in invariant position in type CoClass[T] @uncheckedVariance with InvTrait[T]{...} of class ContraCoInv2
+[2608..2614..2693] in i2973.scala
+contravariant type T occurs in invariant position in type ContraClass[T] @uncheckedVariance with InvTrait[T]{...} of class ContraContraInv2
+[2540..2546..2593] in i2973.scala
+covariant type T occurs in invariant position in type InvClass[T] with CoTrait[T]{...} of class CoInvCo
+[2469..2475..2526] in i2973.scala
+contravariant type T occurs in invariant position in type InvClass[T] with CoTrait[T]{...} of class ContraInvCo
+[2394..2400..2455] in i2973.scala
+covariant type T occurs in invariant position in type InvClass[T] with ContraTrait[T]{...} of class CoInvContra
+[2315..2321..2380] in i2973.scala
+contravariant type T occurs in invariant position in type InvClass[T] with ContraTrait[T]{...} of class ContraInvContra
+[2247..2253..2300] in i2973.scala
+covariant type T occurs in invariant position in type CoClass[T] with InvTrait[T]{...} of class CoCoInv
+[2176..2182..2233] in i2973.scala
+contravariant type T occurs in covariant position in type CoClass[T] with InvTrait[T]{...} of class ContraCoInv
+[2097..2103..2162] in i2973.scala
+contravariant type T occurs in invariant position in type ContraClass[T] with InvTrait[T]{...} of class ContraContraInv
+[2022..2028..2082] in i2973.scala
+covariant type T occurs in contravariant position in type Object with ContraTrait[T] with CoTrait[T]{...} of class CoContraCoT
+[1954..1960..2008] in i2973.scala
+covariant type T occurs in invariant position in type Object with InvTrait[T] with CoTrait[T]{...} of class CoInvCoT
+[1898..1904..1940] in i2973.scala
+covariant type T occurs in contravariant position in type Object with ContraTrait[T]{...} of class CoContraT
+[1848..1854..1884] in i2973.scala
+covariant type T occurs in invariant position in type Object with InvTrait[T]{...} of class CoInvT
+[1796..1802..1834] in i2973.scala
+contravariant type T occurs in covariant position in type Object with CoTrait[T]{...} of class ContraCoT
+[1742..1748..1782] in i2973.scala
+contravariant type T occurs in invariant position in type Object with InvTrait[T]{...} of class ContraInvT
+[1695..1701..1727] in i2973.scala
+covariant type T occurs in invariant position in type InvClass[T]{...} of class Co
+[1594..1600..1630] in i2973.scala
+contravariant type T occurs in invariant position in type InvClass[T]{...} of class Contra
+[1258..1264..1335] in i2973.scala
+contravariant type T occurs in invariant position in type CoClass[T] @uncheckedVariance with InvTrait[T]{...} of class ContraCoInv2
+[1163..1169..1248] in i2973.scala
+contravariant type T occurs in invariant position in type ContraClass[T] @uncheckedVariance with InvTrait[T]{...} of class ContraContraInv2
+[1054..1060..1107] in i2973.scala
+covariant type T occurs in invariant position in type InvClass[T] with CoTrait[T]{...} of class CoInvCo
+[987..993..1044] in i2973.scala
+contravariant type T occurs in invariant position in type InvClass[T] with CoTrait[T]{...} of class ContraInvCo
+[916..922..977] in i2973.scala
+covariant type T occurs in invariant position in type InvClass[T] with ContraTrait[T]{...} of class CoInvContra
+[841..847..906] in i2973.scala
+contravariant type T occurs in invariant position in type InvClass[T] with ContraTrait[T]{...} of class ContraInvContra
+[777..783..830] in i2973.scala
+covariant type T occurs in invariant position in type CoClass[T] with InvTrait[T]{...} of class CoCoInv
+[710..716..767] in i2973.scala
+contravariant type T occurs in covariant position in type CoClass[T] with InvTrait[T]{...} of class ContraCoInv
+[635..641..700] in i2973.scala
+contravariant type T occurs in invariant position in type ContraClass[T] with InvTrait[T]{...} of class ContraContraInv
+[564..570..624] in i2973.scala
+covariant type T occurs in contravariant position in type Object with ContraTrait[T] with CoTrait[T]{...} of class CoContraCoT
+[500..506..554] in i2973.scala
+covariant type T occurs in invariant position in type Object with InvTrait[T] with CoTrait[T]{...} of class CoInvCoT
+[448..454..490] in i2973.scala
+covariant type T occurs in contravariant position in type Object with ContraTrait[T]{...} of class CoContraT
+[402..408..438] in i2973.scala
+covariant type T occurs in invariant position in type Object with InvTrait[T]{...} of class CoInvT
+[354..360..392] in i2973.scala
+contravariant type T occurs in covariant position in type Object with CoTrait[T]{...} of class ContraCoT
+[304..310..344] in i2973.scala
+contravariant type T occurs in invariant position in type Object with InvTrait[T]{...} of class ContraInvT
+[261..267..293] in i2973.scala
+covariant type T occurs in invariant position in type InvClass[T]{...} of class Co
+[164..170..200] in i2973.scala
+contravariant type T occurs in invariant position in type InvClass[T]{...} of class Contra

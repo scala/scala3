@@ -1,0 +1,14 @@
+<1130..1130> in t7278.scala
+Type argument C & D does not conform to upper bound EC 
+<1039..1039> in t7278.scala
+Type argument C does not conform to upper bound EC 
+<561..561> in t7278.scala
+Type argument B does not conform to upper bound EC 
+<475..475> in t7278.scala
+Type argument A does not conform to upper bound EC 
+[349..350] in t7278.scala
+X is not a legal path
+since it is not a concrete type
+[289..290] in t7278.scala
+X is not a legal path
+since it is not a concrete type

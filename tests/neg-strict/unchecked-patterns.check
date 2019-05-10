@@ -1,0 +1,27 @@
+<655..663> in unchecked-patterns.scala
+pattern's type Some[Int] is more specialized than the right hand side expression's type Option[Int]
+
+If the narrowing is intentional, this can be communicated by writing `: @unchecked` after the full pattern.
+[609..617..620] in unchecked-patterns.scala
+pattern's type Int is more specialized than the right hand side expression's type Int(5)
+
+If the narrowing is intentional, this can be communicated by writing `: @unchecked` after the full pattern.
+[291..297] in unchecked-patterns.scala
+pattern's type Int is more specialized than the right hand side expression's type Any
+
+If the narrowing is intentional, this can be communicated by writing `: @unchecked` after the full pattern.
+[243..244] in unchecked-patterns.scala
+pattern's type Int(1) is more specialized than the right hand side expression's type Int
+
+If the narrowing is intentional, this can be communicated by writing `: @unchecked` after the full pattern.
+[198..199] in unchecked-patterns.scala
+pattern's type Int(1) is more specialized than the right hand side expression's type Int
+
+If the narrowing is intentional, this can be communicated by writing `: @unchecked` after the full pattern.
+<151..158> in unchecked-patterns.scala
+pattern's type ::[Int] is more specialized than the right hand side expression's type List[Int]
+
+If the narrowing is intentional, this can be communicated by writing `: @unchecked` after the full pattern.
+[111..131] in unchecked-patterns.scala
+Found:    Option[Int]
+Required: Some[Int] @unchecked

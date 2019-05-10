@@ -1,0 +1,6 @@
+[320..330] in errorTypes.scala
+Not found: type iDontExist
+[193..203] in errorTypes.scala
+Not found: type iDontExist
+[23..33] in errorTypes.scala
+Not found: type iDontExist

@@ -1,0 +1,6 @@
+[192..193] in i5013.scala
+A pure expression does nothing in statement position; you may be omitting necessary parentheses
+[123..124] in i5013.scala
+A pure expression does nothing in statement position; you may be omitting necessary parentheses
+[32..33] in i5013.scala
+A pure expression does nothing in statement position; you may be omitting necessary parentheses

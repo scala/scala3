@@ -1,0 +1,16 @@
+[1463..1467..1470] in i1050c.scala
+Found:    Tiark7.B#L
+Required: Nothing
+[1387..1388] in i1050c.scala
+=> Tiark7.B(x) is not stable
+[1213..1214] in i1050c.scala
+=> (Tiark5Inherited.A2 & Tiark5Inherited.B2)(x) is not stable
+[965..966] in i1050c.scala
+=> (Tiark5.A & Tiark5.B)(x) is not stable
+[698..699] in i1050c.scala
+object V cannot be instantiated since it has a member Y with possibly conflicting bounds Any <: ... <: Nothing
+[626..631] in i1050c.scala
+anonymous class Object with Tiark4.V{...} cannot be instantiated since it has a member Y with possibly conflicting bounds Any <: ... <: Nothing
+[240..241] in i1050c.scala
+Import.B(U.this.p) is not a legal path
+since it refers to nonfinal lazy value p

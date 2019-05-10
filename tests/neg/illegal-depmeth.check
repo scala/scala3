@@ -1,0 +1,6 @@
+[166..167] in illegal-depmeth.scala
+=> Test.C(x) is not stable
+<127..127> in illegal-depmeth.scala
+Cyclic reference involving value x
+[86..87] in illegal-depmeth.scala
+illegal forward reference to method parameter

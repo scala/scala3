@@ -1,0 +1,4 @@
+[266..268..272] in private-case-class-constr.scala
+method copy in class Nat cannot be accessed as a member of Nat(n) from module class Test$.
+[195..198..201] in private-case-class-constr.scala
+missing argument for parameter disable of method apply: (value: Int, disable: Boolean): Option[Nat]

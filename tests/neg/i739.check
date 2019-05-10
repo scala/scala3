@@ -1,0 +1,2 @@
+<130..130> in i739.scala
+no implicit argument of type Foo[Int, B] was found for parameter f of method t in class Test

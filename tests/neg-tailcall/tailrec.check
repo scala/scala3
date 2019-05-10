@@ -1,0 +1,6 @@
+[1226..1233..1240] in tailrec.scala
+Cannot rewrite recursive call: it is not in tail position
+[1530..1538..1542] in tailrec.scala
+Cannot rewrite recursive call: it is not in tail position
+<1302..1302> in tailrec.scala
+TailRec optimisation not applicable, method fail1 is neither private nor final so can be overridden

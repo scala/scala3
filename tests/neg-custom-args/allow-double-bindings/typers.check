@@ -1,0 +1,36 @@
+<1315..1315> in typers.scala
+Overloaded or recursive method foo needs return type
+<1218..1218> in typers.scala
+Overloaded or recursive method factorial needs return type
+[1061..1069] in typers.scala
+return outside method definition
+[992..1000] in typers.scala
+method foo has a return statement; it needs a result type
+[897..898] in typers.scala
+Missing type parameter for typers.M
+[843..844] in typers.scala
+Missing type parameter for typers.M
+[800..801] in typers.scala
+Missing type parameter for typers.L
+<434..434> in typers.scala
+Double definition:
+val z: Int in class C at line 22 and
+def z(): String in class C at line 23
+<373..373> in typers.scala
+Double definition:
+val y: Int in class C at line 20 and
+def y: => String in class C at line 21
+<312..312> in typers.scala
+Double definition:
+val x: Int in class C at line 18 and
+val x: String in class C at line 19
+<186..186> in typers.scala
+Double definition:
+def self: => Int in class B at line 13 and
+private[this] val self: typers.B in class B at line 12
+<45..45> in typers.scala
+Double definition:
+private[this] val x: Int in class A at line 3 and
+val x: String in class A at line 4
+[115..119..129] in typers.scala
+y is already defined as value y

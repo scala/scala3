@@ -1,0 +1,2 @@
+[38..50..58] in static-no-companion.scala
+object T does not have a companion class

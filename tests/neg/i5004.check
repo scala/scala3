@@ -1,0 +1,8 @@
+[59..63..69] in i5004.scala
+<init> is already defined as constructor <local i0$>
+<83..83> in i5004.scala
+'=' expected, but '}' found
+<32..33> in i5004.scala
+'=' expected, but ':' found
+<22..25> in i5004.scala
+'case' expected, but 'def' found

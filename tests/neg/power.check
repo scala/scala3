@@ -1,0 +1,4 @@
+[251..256..274] in power.scala
+Maximal number of successive inlines (32) exceeded,
+Maybe this is caused by a recursive inline method?
+You can use -Xmax-inlines to change the limit.

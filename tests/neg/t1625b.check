@@ -1,0 +1,5 @@
+<14..14> in t1625b.scala
+Found:    String*
+Required: String
+[32..39] in t1625b.scala
+varargs parameter must come last

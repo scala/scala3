@@ -1,0 +1,6 @@
+[191..192] in erased-pathdep-2.scala
+Test.F(A.this.f) is not a legal path
+since it refers to nonfinal value f
+[161..162] in erased-pathdep-2.scala
+Test.F(A.this.f) is not a legal path
+since it refers to nonfinal value f

@@ -1,0 +1,20 @@
+<776..776> in inlinevals.scala
+inline modifier can only be used for parameters of inline methods
+[674..678..687] in inlinevals.scala
+right-hand side of inline value xs must be a known value
+[610..611] in inlinevals.scala
+right-hand side of inline value M must be a known value
+[520..521] in inlinevals.scala
+argument to inline parameter must be a known value
+<395..395> in inlinevals.scala
+abstract method bar may not have `inline' modifier
+<327..327> in inlinevals.scala
+abstract value foo may not have `inline' modifier
+<284..284> in inlinevals.scala
+inline modifier can only be used for parameters of inline methods
+<257..257> in inlinevals.scala
+inline modifier can only be used for parameters of inline methods
+<46..46> in inlinevals.scala
+inline modifier can only be used for parameters of inline methods
+<196..199> in inlinevals.scala
+Repeated modifier inline

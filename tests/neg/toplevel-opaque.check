@@ -1,0 +1,6 @@
+[63..64] in Test.scala
+Found:    T.T[Int](Test.x)
+Required: Int
+[32..33] in Test.scala
+Found:    Int(2)
+Required: T.T[Int]

@@ -1,0 +1,4 @@
+<252..252> in t7868.scala
+this case is unreachable since class Short is not a subclass of class Int
+<97..97> in t7868.scala
+this case is unreachable since class Short is not a subclass of class Int

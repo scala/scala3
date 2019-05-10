@@ -1,0 +1,20 @@
+[1581..1604] in variances.scala
+covariant type X occurs in contravariant position in type HasY{Y <: X} of value x
+[1527..1533] in variances.scala
+covariant type X occurs in contravariant position in type  <: X of type Y
+[1454..1477] in variances.scala
+contravariant type X occurs in covariant position in type HasY{Y >: X} of value x
+[1400..1406] in variances.scala
+contravariant type X occurs in covariant position in type  >: X of type Y
+[1214..1237] in variances.scala
+contravariant type X occurs in covariant position in type HasY{Y >: X} of value x
+[1160..1166] in variances.scala
+contravariant type X occurs in covariant position in type  >: X of type Y
+[1087..1110] in variances.scala
+covariant type X occurs in contravariant position in type HasY{Y <: X} of value x
+[1033..1039] in variances.scala
+covariant type X occurs in contravariant position in type  <: X of type Y
+[535..549] in variances.scala
+covariant type A occurs in contravariant position in type A of value constrParam
+<160..182> in variances.scala
+covariant type A occurs in invariant position in type [B] => Array[A] of method f$default$1

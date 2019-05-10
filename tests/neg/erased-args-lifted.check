@@ -1,0 +1,2 @@
+[168..171] in erased-args-lifted.scala
+method bar is declared as erased, but is in fact used

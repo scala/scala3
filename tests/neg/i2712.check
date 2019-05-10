@@ -1,0 +1,12 @@
+[443..453..454] in i2712.scala
+modifier(s) `lazy' incompatible with type definition
+<109..109> in i2712.scala
+modifier `lazy` is not allowed for this definition
+<24..24> in i2712.scala
+modifier `lazy` is not allowed for this definition
+[264..284..287] in i2712.scala
+modifier(s) `lazy abstract' incompatible with type definition
+[186..197..200] in i2712.scala
+modifier(s) `lazy' incompatible with type definition
+<365..370> in i2712.scala
+Modifier(s) lazy not allowed for trait

@@ -1,0 +1,3 @@
+<23..31> in emptyCatch.scala
+The catch block does not contain a valid expression, try
+adding a case like - case e: Exception => to the block

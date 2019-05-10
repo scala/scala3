@@ -1,0 +1,4 @@
+<220..224> in while-loops.scala
+Cannot rewrite recursive call: it is not in tail position
+<129..133> in while-loops.scala
+Cannot rewrite recursive call: it is not in tail position

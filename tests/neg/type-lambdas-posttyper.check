@@ -1,0 +1,30 @@
+[1088..1089..1090] in type-lambdas-posttyper.scala
+covariant type parameter X occurs in invariant position in Test.Ref[X]
+[1034..1035..1036] in type-lambdas-posttyper.scala
+covariant type parameter X occurs in invariant position in Test.Ref[X]
+[995..996..997] in type-lambdas-posttyper.scala
+covariant type parameter X occurs in invariant position in Test.Ref[X]
+[956..957..958] in type-lambdas-posttyper.scala
+covariant type parameter X occurs in invariant position in Test.Ref[X]
+[921..922..923] in type-lambdas-posttyper.scala
+covariant type parameter X occurs in invariant position in Test.Ref[X]
+[887..888..889] in type-lambdas-posttyper.scala
+covariant type parameter X occurs in invariant position in Test.Ref[X]
+[856..857..858] in type-lambdas-posttyper.scala
+contravariant type parameter X occurs in covariant position in X
+[807..808..809] in type-lambdas-posttyper.scala
+contravariant type parameter X occurs in covariant position in X
+[773..774..775] in type-lambdas-posttyper.scala
+contravariant type parameter X occurs in covariant position in X
+[739..740..741] in type-lambdas-posttyper.scala
+contravariant type parameter X occurs in covariant position in X
+[709..710..711] in type-lambdas-posttyper.scala
+contravariant type parameter X occurs in covariant position in X
+[680..681..682] in type-lambdas-posttyper.scala
+contravariant type parameter X occurs in covariant position in X
+[410..411..412] in type-lambdas-posttyper.scala
+contravariant type parameter X occurs in covariant position in X => X
+[303..304..305] in type-lambdas-posttyper.scala
+covariant type parameter X occurs in invariant position in Test.Ref[X]
+<123..123> in type-lambdas-posttyper.scala
+Type argument Int does not conform to upper bound Test.Ord[LazyRef(Int)] 

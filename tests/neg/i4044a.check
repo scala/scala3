@@ -1,0 +1,12 @@
+<108..108> in i4044a.scala
+access to Test.this from wrong staging level:
+ - the definition is at level 0,
+ - but the access is at level 2.
+<86..86> in i4044a.scala
+access to Test.this from wrong staging level:
+ - the definition is at level 0,
+ - but the access is at level 1.
+<61..61> in i4044a.scala
+access to Test.this from wrong staging level:
+ - the definition is at level 0,
+ - but the access is at level 1.

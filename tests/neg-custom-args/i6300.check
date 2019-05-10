@@ -1,0 +1,7 @@
+<161..161> in i6300.scala
+no implicit argument of type Test.Foo[Test.Bar] was found for parameter ev of method implicitly in object DottyPredef.
+I found:
+
+    Test.i[T](/* missing */implicitly[Test.Foo[Test.Foo[T]]])
+
+But method i in object Test produces a diverging implicit search when trying to match type Test.Foo[Test.Foo[T]].

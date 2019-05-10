@@ -1,0 +1,3 @@
+[185..195..203] in dynamicApplyDynamicTest8.scala
+value applyDynamic is not a member of Foo
+possible cause: maybe a wrong Dynamic method signature?

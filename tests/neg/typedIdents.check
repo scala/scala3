@@ -1,0 +1,8 @@
+[975..976] in typedIdents.scala
+Reference to y is ambiguous
+it is both imported by name by import Q.X.y
+and imported subsequently by import P.X._
+[637..638] in typedIdents.scala
+Reference to x is ambiguous
+it is both defined in object C
+and imported subsequently by import Q.X._

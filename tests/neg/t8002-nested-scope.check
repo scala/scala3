@@ -1,0 +1,2 @@
+[394..402..403] in t8002-nested-scope.scala
+method x cannot be accessed as a member of C from module class C$.

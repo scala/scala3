@@ -1,0 +1,2 @@
+[6..10] in hklower2.scala
+class Test cannot be instantiated since it has a member Z with possibly conflicting bounds [X] => String <: ... <: Test.this.T

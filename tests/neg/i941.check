@@ -1,0 +1,6 @@
+[115..116..118] in i941.scala
+missing argument for parameter index of method apply: (index: Int): Char
+[82..84..85] in i941.scala
+Only function types can be followed by _ but the current expression has type String
+[56..59..60] in i941.scala
+Only function types can be followed by _ but the current expression has type String

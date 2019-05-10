@@ -1,0 +1,3 @@
+<58..58> in traitParamsMixin.scala
+parameterized trait T is indirectly implemented,
+needs to be implemented directly so that arguments can be passed

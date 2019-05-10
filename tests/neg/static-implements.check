@@ -1,0 +1,2 @@
+[90..111..117] in static-implements.scala
+@static members cannot override or implement non-static ones

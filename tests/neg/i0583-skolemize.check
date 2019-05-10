@@ -1,0 +1,8 @@
+[550..555..558] in i0583-skolemize.scala
+Found:    collection.mutable.ListBuffer[_]#A
+Required: ?1.A
+
+where:    ?1 is an unknown value of type collection.mutable.ListBuffer[_]
+[271..277..278] in i0583-skolemize.scala
+Found:    Test1.C[_]#T
+Required: Nothing

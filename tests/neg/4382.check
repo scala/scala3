@@ -1,0 +1,3 @@
+[21..32] in 4382.scala
+Found:    x0[_]
+Required: x0[Int]

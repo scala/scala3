@@ -1,0 +1,10 @@
+[595..609..630] in i4297.scala
+the type test for Int => Any cannot be checked at runtime
+[493..507..529] in i4297.scala
+the type test for Int => Unit cannot be checked at runtime
+[395..409..428] in i4297.scala
+the type test for Int => _ cannot be checked at runtime
+[297..311..330] in i4297.scala
+the type test for Int => _ cannot be checked at runtime
+[231..245..264] in i4297.scala
+the type test for Any => _ cannot be checked at runtime

@@ -1,0 +1,81 @@
+[777..779] in boundspropagation.scala
+Found:    String("")
+Required: {z1 => 
+  Object{
+    U = 
+      {z2 => 
+        Object{
+          U = 
+            {z3 => 
+              Object{
+                U = 
+                  {z4 => 
+                    Object{
+                      U = 
+                        {z5 => 
+                          Object{
+                            U = 
+                              {z6 => 
+                                Object{
+                                  U = 
+                                    {z7 => 
+                                      Object{
+                                        U = 
+                                          {z8 => 
+                                            Object{
+                                              U = 
+                                                {z9 => 
+                                                  Object{
+                                                    U = 
+                                                      {z10 => 
+                                                        Object{
+                                                          U = 
+                                                            {z11 => 
+                                                              Object{
+                                                                U = 
+                                                                  {z12 => 
+                                                                    Object{
+                                                                      U = 
+                                                                        {z13 => Object{U = {z14 => ...{U = ...}}(z1)}}(
+                                                                          z1
+                                                                        )
+                                                                    }
+                                                                  }(z1)
+                                                              }
+                                                            }(z1)
+                                                        }
+                                                      }(z1)
+                                                  }
+                                                }(z1)
+                                            }
+                                          }(z1)
+                                      }
+                                    }(z1)
+                                }
+                              }(z1)
+                          }
+                        }(z1)
+                    }
+                  }(z1)
+              }
+            }(z1)
+        }
+      }(z1)
+  }
+}#U
+[666..667] in boundspropagation.scala
+Found:    Base.this.Tree[_, _'](y)
+Required: Base.this.Tree[_, _ <: Option[Base.this.N]]
+
+where:    _  is a type in method g
+          _' is a type in method g with bounds >: Option[Nothing]
+[424..425] in boundspropagation.scala
+Found:    test3.Tree[_](y)
+Required: test3.Tree[Null]
+
+where:    _ is a type in method f with bounds >: Null
+[273..274] in boundspropagation.scala
+Found:    test2.Tree[_](y)
+Required: test2.Tree[Null]
+
+where:    _ is a type in method f with bounds >: Null

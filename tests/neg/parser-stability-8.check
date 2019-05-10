@@ -1,0 +1,4 @@
+[11..13] in parser-stability-8.scala
+A case class must have at least one parameter list
+[22..26] in parser-stability-8.scala
+Expected an additional member selection after the keyword this

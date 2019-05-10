@@ -1,0 +1,6 @@
+[250..251] in isRef.scala
+Found:    Foo2.this.B[Int]
+Required: Foo2.this.A[Int] & Foo2.this.B[Int]
+[126..127] in isRef.scala
+Found:    Foo.this.B
+Required: Foo.this.A & Foo.this.B

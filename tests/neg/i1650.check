@@ -1,0 +1,5 @@
+[71..72] in i1650.scala
+Not found: type X
+<73..80> in i1650.scala
+Existential types are no longer supported -
+use a wildcard or dependent type instead

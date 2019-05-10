@@ -1,0 +1,2 @@
+[135..161] in t1843-variances.scala
+covariant type A occurs in invariant position in type Crash.UpdateType[A] of value updateType

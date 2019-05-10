@@ -1,0 +1,4 @@
+<119..119> in i3989.scala
+method get in class B is not a legal implementation of `get' in class C
+  its type             => Any
+  does not conform to  => X

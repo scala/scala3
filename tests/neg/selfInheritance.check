@@ -1,0 +1,18 @@
+<811..811> in selfInheritance.scala
+missing requirement: self type Y & X of trait X does not conform to self type Z
+of required trait Y
+<673..673> in selfInheritance.scala
+illegal inheritance: self type Test.M.type of object M does not conform to self type B
+of parent class C
+<535..535> in selfInheritance.scala
+illegal inheritance: self type Test.O.type of object O does not conform to self type B
+of parent class A
+<390..390> in selfInheritance.scala
+illegal inheritance: self type A{...} of anonymous class A{...} does not conform to self type B
+of parent class A
+<242..242> in selfInheritance.scala
+illegal inheritance: self type E of class E does not conform to self type B
+of parent trait T
+<119..119> in selfInheritance.scala
+illegal inheritance: self type D of class D does not conform to self type B
+of parent class A

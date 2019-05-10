@@ -1,0 +1,8 @@
+[290..292] in i0091-infpaths.scala
+Found:    infpaths.a.x.b.M(infpaths.m2)
+Required: infpaths.a.x.b.b.M
+[225..227] in i0091-infpaths.scala
+Found:    infpaths.a.x.M(infpaths.m1)
+Required: infpaths.a.x.b.M
+<62..62> in i0091-infpaths.scala
+illegal cyclic reference: upper bound T.this.b.M of type M refers back to the type itself

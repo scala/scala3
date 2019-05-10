@@ -1,0 +1,2 @@
+<18..18> in enum-List3.scala
+explicit extends clause needed because both enum case and enum class have type parameters

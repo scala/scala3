@@ -1,0 +1,6 @@
+<672..672> in i1802.scala
+No ClassTag available for Nothing
+<851..851> in i1802.scala
+Overloaded or recursive method mkCatcher needs return type
+<721..721> in i1802.scala
+result type of implicit definition needs to be given explicitly

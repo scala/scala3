@@ -1,0 +1,34 @@
+<571..571> in validate.scala
+Declaration of value u not allowed here: only classes can have declared but undefined members
+<476..476> in validate.scala
+Declaration of variable y not allowed here: only classes can have declared but undefined members
+<256..256> in validate.scala
+implicit modifier cannot be used for types or traits
+[329..344..345] in validate.scala
+implicit modifier cannot be used for types or traits
+[165..185..188] in validate.scala
+A case class may not be defined as implicit
+<1522..1522> in validate.scala
+trait UU may not be final
+<1452..1452> in validate.scala
+trait TT cannot extend AnyVal
+<1373..1373> in validate.scala
+@native members may not have an implementation
+[1270..1293..1294] in validate.scala
+modifier(s) `abstract override' incompatible with type definition
+<1172..1172> in validate.scala
+abstract override modifier only allowed for members of traits
+<1047..1047> in validate.scala
+illegal combination of modifiers: `private` and `protected` for: method f
+<958..958> in validate.scala
+illegal combination of modifiers: `final` and `sealed` for: class A
+<873..873> in validate.scala
+abstract method baz may not have `final' modifier
+<796..796> in validate.scala
+abstract method bar may not have `private' modifier
+<701..701> in validate.scala
+Declaration of variable x not allowed here: only classes can have declared but undefined members
+<78..78> in validate.scala
+abstract modifier can be used only for classes; it should be omitted for abstract members
+<34..34> in validate.scala
+abstract modifier can be used only for classes; it should be omitted for abstract members

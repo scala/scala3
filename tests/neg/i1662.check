@@ -1,0 +1,7 @@
+[126..128] in i1662.scala
+Found:    String("")
+Required: Nothing
+<90..90> in i1662.scala
+':' expected, but ')' found
+<31..31> in i1662.scala
+Missing return type

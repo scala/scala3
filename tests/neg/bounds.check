@@ -1,0 +1,4 @@
+<243..243> in bounds.scala
+Type argument Int does not conform to lower bound String 
+<103..103> in bounds.scala
+Type argument String does not conform to upper bound Int 

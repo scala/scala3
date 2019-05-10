@@ -1,0 +1,4 @@
+<41..68> in i5019.scala
+anonymous class A{...} in method newA extends enum A, but extending enums is prohibited.
+[5..6] in i5019.scala
+Enumerations must constain at least one case

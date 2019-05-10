@@ -1,0 +1,6 @@
+[163..164] in autoTuplingTest.scala
+Not found: a
+[149..153..159] in autoTuplingTest.scala
+Wrong number of argument patterns for Some; expected: (Nothing)
+[40..41] in autoTuplingTest.scala
+too many arguments for method apply: (value: A): Some[A]

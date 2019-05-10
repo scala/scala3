@@ -1,0 +1,3 @@
+<91..91> in i3775.scala
+error overriding method next in trait Iterator of type (): T;
+  method next of type => T has incompatible type

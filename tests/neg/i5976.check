@@ -1,0 +1,6 @@
+[130..131] in i5976.scala
+Found:    (=> Int => Int)(Test.g)
+Required: Int => Int
+<67..67> in i5976.scala
+Found:    => Int => Int
+Required: Int => Int

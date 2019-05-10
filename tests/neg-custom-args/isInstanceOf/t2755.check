@@ -1,0 +1,4 @@
+[967..968] in t2755.scala
+Only null is matched. Consider using case null => instead.
+[644..645] in t2755.scala
+Only null is matched. Consider using case null => instead.

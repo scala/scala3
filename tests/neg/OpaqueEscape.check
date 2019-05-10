@@ -1,0 +1,7 @@
+<228..228> in OpaqueEscape.scala
+method unwrap overrides nothing
+<150..150> in OpaqueEscape.scala
+class Escaper needs to be abstract, since there is a deferred declaration of method unwrap in class EscaperBase of type (i: OpaqueEscape.Wrapped): Int which is not implemented in a subclass
+<301..301> in OpaqueEscape.scala
+error overriding method wrap in class EscaperBase of type (i: Int): OpaqueEscape.Wrapped;
+  method wrap of type (i: Int): Int has incompatible type

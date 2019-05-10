@@ -1,0 +1,4 @@
+[203..206] in i3171.scala
+missing argument for parameter y of constructor C: (x: Int, y: Int): Test.C
+<54..54> in i3171.scala
+two or more overloaded variants of constructor C have default arguments

@@ -1,0 +1,4 @@
+[164..287] in quote-simple-hole.scala
+Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.
+[38..138] in quote-simple-hole.scala
+Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.

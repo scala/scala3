@@ -1,0 +1,3 @@
+<217..225> in t6920.scala
+Found:    ((String, Int), (String, Int))
+Required: Seq[(String, Any)]

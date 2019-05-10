@@ -1,0 +1,8 @@
+[315..331] in i0248-inherit-refined.scala
+Object{x: Int} is not a class type
+[243..244] in i0248-inherit-refined.scala
+test.A | test.B is not a class type
+[163..164] in i0248-inherit-refined.scala
+test.A & test.B is not a class type
+[83..84] in i0248-inherit-refined.scala
+test.A{T = Int} is not a class type

@@ -1,0 +1,6 @@
+[101..103] in parser-stability-7.scala
+Not found: x5
+[68..72..78] in parser-stability-7.scala
+x3.this.x1 is not defined in inferred type x3.this.x1
+[45..47] in parser-stability-7.scala
+Missing type parameter for x0

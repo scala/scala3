@@ -1,0 +1,3 @@
+[65..69] in t1292.scala
+Enum is not a legal path
+since it is not a concrete type

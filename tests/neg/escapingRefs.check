@@ -1,0 +1,5 @@
+[236..238..244] in escapingRefs.scala
+value member is not a member of Object
+<97..97> in escapingRefs.scala
+Found:    O.B{...}
+Required: O.A

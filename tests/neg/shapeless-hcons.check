@@ -1,0 +1,2 @@
+<585..585> in shapeless-hcons.scala
+this case is unreachable since class List and class :: are unrelated

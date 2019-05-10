@@ -1,0 +1,10 @@
+<36..36> in ensureReported.scala
+Missing parameter type
+
+I could not infer the type of the parameter x$1 of expanded function:
+x$1 => 
+  x$1 match 
+    {
+      case l @ List(1) => 
+        Some(l)
+    }.

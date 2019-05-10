@@ -1,0 +1,12 @@
+[520..522] in inline-overload.scala
+Found:    Any(x2)
+Required: String
+[469..471] in inline-overload.scala
+Found:    Any(x1)
+Required: Int
+[369..371] in inline-overload.scala
+Found:    Any(x2)
+Required: String
+[318..320] in inline-overload.scala
+Found:    Any(x1)
+Required: Int

@@ -1,0 +1,9 @@
+[179..180] in dynamicApplyDynamicTest5.scala
+Found:    Int(3)
+Required: String
+[176..177] in dynamicApplyDynamicTest5.scala
+Found:    Int(2)
+Required: String
+[173..174] in dynamicApplyDynamicTest5.scala
+Found:    Int(1)
+Required: String

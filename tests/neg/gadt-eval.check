@@ -1,0 +1,10 @@
+[717..743] in gadt-eval.scala
+Found:    (t1, t1)
+Required: T
+
+where:    T is a type in method eval2 which is an alias of (t1, t2)
+[243..261] in gadt-eval.scala
+Found:    (A$1, A$1)
+Required: T
+
+where:    T is a type in method eval which is an alias of (A$1, B$1)

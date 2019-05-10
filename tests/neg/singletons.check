@@ -1,0 +1,14 @@
+<254..254> in singletons.scala
+Declaration of value foo not allowed here: only classes can have declared but undefined members
+<124..124> in singletons.scala
+Declaration of value n not allowed here: only classes can have declared but undefined members
+[88..89] in singletons.scala
+Found:    Int(Test.x)
+Required: Int(42)
+[28..30] in singletons.scala
+Found:    Int(43)
+Required: Int(42)
+<259..260> in singletons.scala
+an identifier expected, but string interpolator found
+<127..131> in singletons.scala
+an identifier expected, but 'null' found

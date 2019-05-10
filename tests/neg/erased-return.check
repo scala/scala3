@@ -1,0 +1,4 @@
+[149..150] in erased-return.scala
+value a is declared as erased, but is in fact used
+[88..89] in erased-return.scala
+value a is declared as erased, but is in fact used

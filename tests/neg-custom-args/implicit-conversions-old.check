@@ -1,0 +1,31 @@
+<405..410> in implicit-conversions-old.scala
+Use of implicit conversion method a2c in object D should be enabled
+by making the implicit value scala.language.implicitConversions visible.
+This can be achieved by adding the import clause 'import scala.language.implicitConversions'
+or by setting the compiler option -language:implicitConversions.
+See the Scala docs for value scala.language.implicitConversions for a discussion
+why the feature should be explicitly enabled.
+<343..348> in implicit-conversions-old.scala
+Use of implicit conversion method a2b in object A should be enabled
+by making the implicit value scala.language.implicitConversions visible.
+This can be achieved by adding the import clause 'import scala.language.implicitConversions'
+or by setting the compiler option -language:implicitConversions.
+See the Scala docs for value scala.language.implicitConversions for a discussion
+why the feature should be explicitly enabled.
+<218..218> in implicit-conversions-old.scala
+Definition of implicit conversion method a2c should be enabled
+by making the implicit value scala.language.implicitConversions visible.
+This can be achieved by adding the import clause 'import scala.language.implicitConversions'
+or by setting the compiler option -language:implicitConversions.
+See the Scala docs for value scala.language.implicitConversions for a discussion
+why the feature should be explicitly enabled.
+<120..120> in implicit-conversions-old.scala
+Definition of implicit conversion method b2a should be enabled
+by making the implicit value scala.language.implicitConversions visible.
+<44..44> in implicit-conversions-old.scala
+Definition of implicit conversion method a2b should be enabled
+by making the implicit value scala.language.implicitConversions visible.
+This can be achieved by adding the import clause 'import scala.language.implicitConversions'
+or by setting the compiler option -language:implicitConversions.
+See the Scala docs for value scala.language.implicitConversions for a discussion
+why the feature should be explicitly enabled.

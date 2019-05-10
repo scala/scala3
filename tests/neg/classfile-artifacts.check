@@ -1,0 +1,6 @@
+[238..244..260] in classfile-artifacts.scala
+value languageFeature$ is not a member of scala - did you mean scala.languageFeature?
+[183..189..205] in classfile-artifacts.scala
+value language$Scala2$ is not a member of scala
+[114..120..149] in classfile-artifacts.scala
+value languageFeature$experimental$ is not a member of scala

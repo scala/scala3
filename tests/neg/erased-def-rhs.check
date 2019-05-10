@@ -1,0 +1,2 @@
+[59..60] in erased-def-rhs.scala
+value i is declared as erased, but is in fact used

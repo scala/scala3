@@ -1,0 +1,3 @@
+<116..116> in i2146.scala
+Found:    Int
+Required: given A => given B => Int

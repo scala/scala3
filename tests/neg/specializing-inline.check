@@ -1,0 +1,3 @@
+[213..214] in specializing-inline.scala
+Found:    Any(Test.x)
+Required: Int

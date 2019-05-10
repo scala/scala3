@@ -1,0 +1,6 @@
+[196..200..201] in i5521.scala
+Hello.this.foo.Bar(Hello.this.foo.s) is not a legal path
+since it refers to nonfinal lazy value foo
+[115..119..120] in i5521.scala
+Hello.this.foo.Bar(Hello.this.foo.s) is not a legal path
+since it refers to nonfinal lazy value foo

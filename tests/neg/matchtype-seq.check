@@ -1,0 +1,81 @@
+[3801..3802] in matchtype-seq.scala
+Found:    Int(1)
+Required: Test4.M[Test4.Inv[Foo.this.A]]
+[3451..3452] in matchtype-seq.scala
+Found:    Int(1)
+Required: Test3.M[Test3.Inv[A]]
+[3140..3142] in matchtype-seq.scala
+Found:    String("")
+Required: Test2.M[Some[A]]
+[3103..3104] in matchtype-seq.scala
+Found:    Int(1)
+Required: Test2.M[Some[A]]
+[2959..2961] in matchtype-seq.scala
+Found:    String("")
+Required: Test.TD[Test.Box2_C[Int, Int, String]]
+[2466..2468] in matchtype-seq.scala
+Found:    String("")
+Required: Test.TA[Test.Box2[Int, Int, String]]
+[2415..2416] in matchtype-seq.scala
+Found:    Int(1)
+Required: Test.TA[Test.Box2[Int, Int, String]]
+[2173..2174] in matchtype-seq.scala
+Found:    Int(1)
+Required: Test.T9[(Any, Any)]
+[2127..2129] in matchtype-seq.scala
+Found:    String("")
+Required: Test.T9[(Any, Any)]
+[2082..2083] in matchtype-seq.scala
+Found:    Int(1)
+Required: Test.T9[(_, _)]
+[2040..2042] in matchtype-seq.scala
+Found:    String("")
+Required: Test.T9[(_, _)]
+[1642..1644] in matchtype-seq.scala
+Found:    String("")
+Required: Test.T8[Test.E2]
+[1610..1612] in matchtype-seq.scala
+Found:    String("")
+Required: Int
+[1579..1580] in matchtype-seq.scala
+Found:    Int(1)
+Required: Test.T8[Test.E2]
+[1431..1432] in matchtype-seq.scala
+Found:    Int(1)
+Required: Test.T7[Test.D]
+[1400..1402] in matchtype-seq.scala
+Found:    String("")
+Required: Test.T7[Test.D]
+[998..1000] in matchtype-seq.scala
+Found:    String("")
+Required: Test.T5[Test.A]
+[968..969] in matchtype-seq.scala
+Found:    Int(1)
+Required: Test.T5[Test.A]
+[691..693] in matchtype-seq.scala
+Found:    String("")
+Required: Test.T3[Test.A]
+[661..662] in matchtype-seq.scala
+Found:    Int(1)
+Required: Test.T3[Test.A]
+[448..449] in matchtype-seq.scala
+Found:    Int(1)
+Required: Test.T2[Int]
+[416..417] in matchtype-seq.scala
+Found:    Int(1)
+Required: String
+[385..387] in matchtype-seq.scala
+Found:    String("")
+Required: Test.T2[Int]
+[240..241] in matchtype-seq.scala
+Found:    Int(1)
+Required: Test.T1[Int]
+[207..209] in matchtype-seq.scala
+Found:    String("")
+Required: Test.T1[Int]
+[175..176] in matchtype-seq.scala
+Found:    Int(1)
+Required: Test.T1[Int(3)]
+[144..146] in matchtype-seq.scala
+Found:    String("")
+Required: Test.T1[Int(3)]

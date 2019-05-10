@@ -1,0 +1,6 @@
+[119..120] in i3200b.scala
+Found:    Any(n)
+Required: => collection.immutable.Nil.type(Nil')
+
+where:    Nil  is a object in package immutable
+          Nil' is a getter in package object scala

@@ -1,0 +1,12 @@
+<461..461> in deriving.scala
+cannot take shape of trait F
+it has anonymous or inaccessible subclasses
+<362..362> in deriving.scala
+cannot take shape of class E
+it is neither sealed nor a case class
+<228..228> in deriving.scala
+cannot take shape of trait B
+its subclass class D is not a case class
+<47..47> in deriving.scala
+cannot take shape of trait A
+it has anonymous or inaccessible subclasses

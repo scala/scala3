@@ -1,0 +1,4 @@
+<55..55> in i1806.scala
+class Inner cannot have the same name as class Inner in trait A -- class definitions cannot be overridden
+[69..75..80] in i1806.scala
+Cyclic inheritance: class Inner extends itself

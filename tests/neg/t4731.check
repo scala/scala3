@@ -1,0 +1,4 @@
+<173..173> in t4731.scala
+method foo in trait Trait2 is not a legal implementation of `foo' in class Class1
+  its type             (arg: java.util.Comparator[String]): Int
+  does not conform to  (arg: java.util.Comparator[String]): Int & String

@@ -1,0 +1,2 @@
+[38..42] in t7093.scala
+covariant type X occurs in contravariant position in type X of value x

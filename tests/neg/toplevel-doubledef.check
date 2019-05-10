@@ -1,0 +1,9 @@
+<27..27> in Test_2.scala
+cannot merge
+  method hello of type (x: String): Unit  and
+  method hello of type (x: String): Unit
+they are both defined in package <empty> but have matching signatures
+  (x: String): Unit and
+  (x: String): Unit
+as members of package <empty>
+       

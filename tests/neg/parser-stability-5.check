@@ -1,0 +1,6 @@
+[11..13] in parser-stability-5.scala
+Not found: x1
+[29..33..35] in parser-stability-5.scala
+illegal refinement
+<55..55> in parser-stability-5.scala
+'=' expected, but eof found

@@ -1,0 +1,8 @@
+<390..390> in i2088.scala
+illegal cyclic reference: alias Object{m: Foo.E} of type D refers back to the type itself
+[325..329..330] in i2088.scala
+type C is not a member of object Foo
+<165..165> in i2088.scala
+illegal cyclic reference: alias Object{m: Foo.B} of type B refers back to the type itself
+<20..20> in i2088.scala
+illegal cyclic reference: alias Object{m: Foo.A} of type A refers back to the type itself

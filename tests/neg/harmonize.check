@@ -1,0 +1,27 @@
+[1355..1357] in harmonize.scala
+Found:    Array[Float](Test.a4)
+Required: Array[Double]
+[1276..1278] in harmonize.scala
+Found:    Array[AnyVal](Test.a3)
+Required: Array[Float]
+[1192..1194] in harmonize.scala
+Found:    Array[AnyVal](Test.a2)
+Required: Array[Int]
+[1107..1109] in harmonize.scala
+Found:    Array[Char](Test.a1)
+Required: Array[Int]
+[981..983] in harmonize.scala
+Found:    List[AnyVal](xs)
+Required: List[Double]
+[746..747] in harmonize.scala
+Found:    AnyVal(a)
+Required: Long
+[575..578] in harmonize.scala
+Found:    AnyVal(yy3)
+Required: Double
+[417..420] in harmonize.scala
+Found:    AnyVal(yy2)
+Required: Float
+[151..152] in harmonize.scala
+Found:    AnyVal(y)
+Required: Int

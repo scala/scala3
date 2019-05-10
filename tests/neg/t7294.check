@@ -1,0 +1,2 @@
+<80..80> in t7294.scala
+this case is unreachable since class Tuple2 is not a subclass of trait Seq

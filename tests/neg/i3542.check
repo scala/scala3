@@ -1,0 +1,7 @@
+<189..189> in i3542.scala
+no implicit argument of type Test.TC[Int] was found for parameter ev of method implicitly in object DottyPredef.
+I found:
+
+    Test.case2[G](Test.case1[F])
+
+But method case1 in object Test does not match type Test.TC[G[Any]].

@@ -1,0 +1,17 @@
+[552..554] in gadt-uninjectivity.scala
+Found:    F[X](fx)
+Required: F[Y]
+
+where:    F is a type in method absurd3 with bounds <: [_$4] => Any
+[519..521] in gadt-uninjectivity.scala
+Found:    F[X](fx)
+Required: G[X]
+
+where:    F is a type in method absurd3 with bounds <: [_$4] => Any
+          G is a type in method absurd3 with bounds <: [_$5] => Any
+[359..361] in gadt-uninjectivity.scala
+Found:    F[String](fs)
+Required: G[String]
+
+where:    F is a type in method absurd2 with bounds <: [_$2] => Any
+          G is a type in method absurd2 with bounds <: [_$3] => Any

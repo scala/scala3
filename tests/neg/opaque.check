@@ -1,0 +1,26 @@
+[1331..1333..1334] in opaque.scala
+value / is not a member of logs.Logarithm.Logarithm - did you mean l.==?
+[1264..1265] in opaque.scala
+Found:    Int(2)
+Required: logs.Logarithm.Logarithm
+[1209..1212] in opaque.scala
+Found:    Double(1.0)
+Required: logs.Logarithm
+[1134..1135] in opaque.scala
+Found:    logs.Logarithm.Logarithm(logs.l)
+Required: Double
+[249..251] in opaque.scala
+Found:    String("")
+Required: opaquetypes.O
+<169..169> in opaque.scala
+opaquetypes.Fix.Fix does not take type parameters
+<161..161> in opaque.scala
+illegal cyclic reference: alias [F <: [_$1] => Any] => F[opaquetypes.Fix.Fix[F]] of type Fix refers back to the type itself
+<71..71> in opaque.scala
+modifier `opaque` is not allowed for this definition
+[24..35..45] in opaque.scala
+modifier(s) `opaque' incompatible with value definition
+[113..125..136] in opaque.scala
+opaque type U must be an alias type
+[87..99..100] in opaque.scala
+opaque type T must be an alias type

@@ -1,0 +1,12 @@
+[365..367] in gadt-injectivity.scala
+Found:    (C, D)(cd)
+Required: (D, D)
+[328..330] in gadt-injectivity.scala
+Found:    (C, D)(cd)
+Required: (C, C)
+[291..293] in gadt-injectivity.scala
+Found:    (A, B)(ab)
+Required: (B, B)
+
+where:    A is a type in method conform which is an alias of C
+          B is a type in method conform which is an alias of D

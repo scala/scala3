@@ -1,0 +1,5 @@
+[90..92..93] in i3930.scala
+Ambiguous overload. The overloaded alternatives of method a in object A with types
+ [F](x: String): Int
+ [F](x: Int): Int
+both match type arguments [String] and type arguments [Int] and arguments (Int(3))

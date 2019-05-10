@@ -1,0 +1,24 @@
+<120..120> in A.scala
+Definition of implicit conversion value i2s should be enabled
+by making the implicit value scala.language.implicitConversions visible.
+<45..45> in A.scala
+Definition of implicit conversion method s2i should be enabled
+by making the implicit value scala.language.implicitConversions visible.
+This can be achieved by adding the import clause 'import scala.language.implicitConversions'
+or by setting the compiler option -language:implicitConversions.
+See the Scala docs for value scala.language.implicitConversions for a discussion
+why the feature should be explicitly enabled.
+[108..109] in B.scala
+Use of implicit conversion trait Function1 in package scala should be enabled
+by making the implicit value scala.language.implicitConversions visible.
+This can be achieved by adding the import clause 'import scala.language.implicitConversions'
+or by setting the compiler option -language:implicitConversions.
+See the Scala docs for value scala.language.implicitConversions for a discussion
+why the feature should be explicitly enabled.
+[68..70] in B.scala
+Use of implicit conversion method s2i in object A should be enabled
+by making the implicit value scala.language.implicitConversions visible.
+This can be achieved by adding the import clause 'import scala.language.implicitConversions'
+or by setting the compiler option -language:implicitConversions.
+See the Scala docs for value scala.language.implicitConversions for a discussion
+why the feature should be explicitly enabled.

@@ -1,0 +1,12 @@
+[220..221] in moduleSubtyping.scala
+Found:    C.this.o.type(C.o)(C.o.b)
+Required: Test.o.type
+[199..200] in moduleSubtyping.scala
+Found:    C.this.o.type(C.o.a)
+Required: Test.o.type
+[178..179] in moduleSubtyping.scala
+Found:    Test.o.type(C.o.c)
+Required: C.this.o.type(C.o)
+[157..158] in moduleSubtyping.scala
+Found:    Test.o.type(C.o.c)
+Required: C.this.o.type

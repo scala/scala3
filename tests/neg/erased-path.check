@@ -1,0 +1,6 @@
+[144..145] in erased-path.scala
+Sys(Obj.this.t) is not a legal path
+since it refers to nonfinal lazy value t
+[85..86] in erased-path.scala
+Sys(Obj.this.s) is not a legal path
+since it refers to nonfinal value s

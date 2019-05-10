@@ -1,0 +1,2 @@
+[109..113..117] in i209.scala
+method copy in class Foo cannot be accessed as a member of Foo(Test.foo) from module class Test$.

@@ -1,0 +1,2 @@
+[74..75] in erased-assign.scala
+value a is declared as erased, but is in fact used

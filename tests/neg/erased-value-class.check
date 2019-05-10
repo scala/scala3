@@ -1,0 +1,4 @@
+<70..70> in erased-value-class.scala
+value class can only have one non `erased` parameter
+<19..19> in erased-value-class.scala
+value class first parameter cannot be `erased`

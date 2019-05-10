@@ -1,0 +1,14 @@
+<315..315> in parser-stability-25.scala
+Found:    Null
+Required: Int
+[260..261] in parser-stability-25.scala
+Found:    Int(2)
+Required: Int(1)
+[24..26] in parser-stability-25.scala
+Not found: type i1
+<334..334> in parser-stability-25.scala
+expression expected
+[104..108] in parser-stability-25.scala
+Expected an additional member selection after the keyword this
+[61..65] in parser-stability-25.scala
+Expected an additional member selection after the keyword this

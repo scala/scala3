@@ -1,0 +1,8 @@
+[437..442] in typelevel-noeta.scala
+method test2 must be called with () argument
+[419..424] in typelevel-noeta.scala
+method test2 must be called with () argument
+[388..392] in typelevel-noeta.scala
+missing arguments for method test
+[371..375] in typelevel-noeta.scala
+missing arguments for method test

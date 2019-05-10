@@ -1,0 +1,4 @@
+[169..171..173] in extension-methods.scala
+value l1 is not a member of Int - did you mean Int(1).+?
+[152..155..157] in extension-methods.scala
+value l2 is not a member of String - did you mean String("").+?

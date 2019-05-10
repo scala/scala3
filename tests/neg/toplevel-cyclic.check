@@ -1,0 +1,2 @@
+<5..5> in defs_1.scala
+illegal cyclic reference: alias B of type A refers back to the type itself

@@ -1,0 +1,5 @@
+<197..197> in overrideClass.scala
+trait Ax cannot have the same name as class Ax in class FooA -- class definitions cannot be overridden
+[208..214..216] in overrideClass.scala
+Cyclic inheritance: trait Ax extends itself
+(Note that inheriting a class of the same name is no longer allowed)

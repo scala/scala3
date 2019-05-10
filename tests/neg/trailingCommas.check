@@ -1,0 +1,62 @@
+<606..606> in trailingCommas.scala
+<error> is already defined as value <error>
+<494..494> in trailingCommas.scala
+<error> is already defined as value <error>
+<395..395> in trailingCommas.scala
+too many arguments for constructor ValidClass: (implicit ev0: foo.Ev0, ev1: foo.Ev1): foo.package.ValidClass
+<304..304> in trailingCommas.scala
+too many arguments for constructor ValidClass: (foo: Int, bar: String)(implicit ev0: foo.Ev0, ev1: foo.Ev1): foo.package.ValidClass
+<233..233> in trailingCommas.scala
+too many arguments for method validMethod: (implicit ev0: foo.Ev0, ev1: foo.Ev1): Int
+<145..145> in trailingCommas.scala
+too many arguments for method validMethod: (foo: Int, bar: String)(implicit ev0: foo.Ev0, ev1: foo.Ev1): Int
+<1826..1826> in trailingCommas.scala
+an identifier expected, but ')' found
+<1668..1668> in trailingCommas.scala
+expression expected
+<1483..1483> in trailingCommas.scala
+'=' expected, but ',' found
+<1440..1441> in trailingCommas.scala
+an identifier expected, but '=' found
+<1394..1395> in trailingCommas.scala
+an identifier expected, but '=' found
+<1353..1353> in trailingCommas.scala
+an identifier expected, but '}' found
+<1299..1299> in trailingCommas.scala
+an identifier expected, but '}' found
+<1226..1226> in trailingCommas.scala
+pattern expected
+<1164..1164> in trailingCommas.scala
+an identifier expected, but ')' found
+<1105..1105> in trailingCommas.scala
+an identifier expected, but ')' found
+<1043..1043> in trailingCommas.scala
+Missing return type
+<1042..1042> in trailingCommas.scala
+an identifier expected, but ']' found
+<990..990> in trailingCommas.scala
+an identifier expected, but ']' found
+<939..939> in trailingCommas.scala
+an identifier expected, but ']' found
+<876..876> in trailingCommas.scala
+expression expected
+<831..831> in trailingCommas.scala
+an identifier expected, but ')' found
+<702..702> in trailingCommas.scala
+an identifier expected, but ')' found
+<608..608> in trailingCommas.scala
+an identifier expected, but ')' found
+<577..577> in trailingCommas.scala
+an identifier expected, but ')' found
+<496..496> in trailingCommas.scala
+an identifier expected, but ')' found
+<465..465> in trailingCommas.scala
+an identifier expected, but ')' found
+<397..397> in trailingCommas.scala
+expression expected
+<306..306> in trailingCommas.scala
+expression expected
+<235..235> in trailingCommas.scala
+expression expected
+<147..147> in trailingCommas.scala
+expression expected

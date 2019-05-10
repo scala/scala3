@@ -1,0 +1,2 @@
+<182..182> in t3683-modified.scala
+illegal cyclic reference: lower bound T of type T refers back to the type itself

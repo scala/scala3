@@ -1,0 +1,32 @@
+[781..794..799] in namedTypeParams.scala
+illegal repeated type application
+[705..718..727] in namedTypeParams.scala
+illegal repeated type application
+[632..642..650] in namedTypeParams.scala
+illegal repeated type application
+[556..566..578] in namedTypeParams.scala
+illegal repeated type application
+[470..480..489] in namedTypeParams.scala
+illegal repeated type application
+<440..440> in namedTypeParams.scala
+Type parameter String is undefined. Expected one of X, Y.
+[325..326] in namedTypeParams.scala
+Not found: type T
+[249..250] in namedTypeParams.scala
+Not found: type T
+[171..172] in namedTypeParams.scala
+Not found: type T
+[102..103] in namedTypeParams.scala
+Not found: type T
+<441..441> in namedTypeParams.scala
+'=' expected, but ']' found
+<327..328> in namedTypeParams.scala
+']' expected, but '=' found
+<251..252> in namedTypeParams.scala
+']' expected, but '=' found
+<173..174> in namedTypeParams.scala
+']' expected, but '=' found
+<104..105> in namedTypeParams.scala
+']' expected, but '=' found
+<19..23> in namedTypeParams.scala
+an identifier expected, but 'type' found

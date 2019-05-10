@@ -1,0 +1,2 @@
+[34..42..46] in i3348.scala
+value toto is not a member of String - did you mean String("Hello").+?

@@ -1,0 +1,5 @@
+<125..125> in i3989g.scala
+illegal inheritance: class C inherits conflicting instances of parameterized base class A.
+
+  Direct basetype: Test.A[Int & String]
+  Basetype via superclass B: Test.A[Int]

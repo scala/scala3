@@ -1,0 +1,3 @@
+<178..178> in i1750a.scala
+class Visitor cannot have the same name as trait Visitor in trait Lang1 -- cannot define class member with the same name as a trait member in self reference self.
+(Note: this can be resolved by using another name)

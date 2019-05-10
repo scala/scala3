@@ -1,0 +1,4 @@
+[128..140] in duplicate-parents.scala
+trait Serializable is extended twice
+[50..62] in duplicate-parents.scala
+trait Serializable is extended twice

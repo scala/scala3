@@ -1,0 +1,6 @@
+[396..398..403] in t6355b.scala
+value applyDynamic is not a member of A
+possible cause: maybe a wrong Dynamic method signature?
+[362..364..369] in t6355b.scala
+value applyDynamic is not a member of A
+possible cause: maybe a wrong Dynamic method signature?

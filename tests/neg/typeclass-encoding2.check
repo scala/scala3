@@ -1,0 +1,3 @@
+[746..755..758] in typeclass-encoding2.scala
+Found:    ev.To[A]
+Required: ev.To[A]{This = From}

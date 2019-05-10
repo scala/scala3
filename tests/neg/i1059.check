@@ -1,0 +1,4 @@
+<162..162> in i1059.scala
+The syntax `_*' is no longer supported; use `x : _*' instead
+<84..84> in i1059.scala
+The syntax `x @ _*' is no longer supported; use `x : _*' instead

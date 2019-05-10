@@ -1,0 +1,2 @@
+[229..230] in i4364.scala
+method f is eta-expanded even though java.io.OutputStream does not have the @FunctionalInterface annotation.

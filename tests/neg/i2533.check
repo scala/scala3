@@ -1,0 +1,2 @@
+<34..34> in i2533.scala
+illegal cyclic reference: alias <refinement>.this.A of type A refers back to the type itself

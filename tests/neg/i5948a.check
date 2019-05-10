@@ -1,0 +1,6 @@
+[248..250] in i5948a.scala
+Found:    List[Bar](b1)
+Required: List[Bar{A = Bar#A}]
+[126..128] in i5948a.scala
+Found:    Bar(b1)
+Required: Bar{A = Bar#A}

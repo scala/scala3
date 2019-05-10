@@ -1,0 +1,14 @@
+<478..480> in validate-parsing.scala
+val parameters may not be call-by-name
+<400..408> in validate-parsing.scala
+end of statement expected
+<329..333> in validate-parsing.scala
+Expected start of definition
+<257..261> in validate-parsing.scala
+Expected start of definition
+<171..176> in validate-parsing.scala
+Modifier(s) lazy not allowed for trait
+<102..103> in validate-parsing.scala
+Modifier(s) sealed not allowed for variable
+<24..25> in validate-parsing.scala
+Modifier(s) sealed not allowed for method

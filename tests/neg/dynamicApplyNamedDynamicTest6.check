@@ -1,0 +1,3 @@
+<171..171> in dynamicApplyNamedDynamicTest6.scala
+Found:    String("bazApply")
+Required: Int

@@ -1,0 +1,3 @@
+<63..63> in i5445.scala
+object creation impossible, since def polymorphic: [x] => Int is not defined 
+(The class implements a member with a different type: val polymorphic: Unit.type)

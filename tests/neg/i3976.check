@@ -1,0 +1,12 @@
+[796..800..816] in i3976.scala
+Type argument [X] => [Y] => String has not the same kind as its bound  <: [G <: [_$5] => Any] => Any
+[736..740..747] in i3976.scala
+Type argument [X] => List has not the same kind as its bound  <: [G <: [_$5] => Any] => Any
+<618..628> in i3976.scala
+Values of types Test2.Hoge[[F <: [_$3] => Any] => F[Int]] and Test2.C cannot be compared with == or !=
+<579..586> in i3976.scala
+Values of types Test2.Hoge[[F <: [_$3] => Any] => F[Int]] and String cannot be compared with == or !=
+<324..334> in i3976.scala
+Values of types Test.Hoge[List] and Test.C cannot be compared with == or !=
+<285..292> in i3976.scala
+Values of types Test.Hoge[List] and String cannot be compared with == or !=

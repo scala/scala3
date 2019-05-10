@@ -1,0 +1,2 @@
+<77..77> in i3882.scala
+Type argument T does not conform to upper bound Ring[LazyRef(T)] 

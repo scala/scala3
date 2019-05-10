@@ -1,0 +1,2 @@
+<45..45> in i3253.scala
+method test needs result type because its right-hand side attempts implicit search

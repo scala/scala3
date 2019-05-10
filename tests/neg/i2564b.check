@@ -1,0 +1,2 @@
+<45..48> in i2564b.scala
+Implementation restriction: cannot use private constructors in inlineinline methods

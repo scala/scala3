@@ -1,0 +1,12 @@
+[399..403..406] in typedapply.scala
+value baz is not a member of Int => Int
+[344..347..352] in typedapply.scala
+method bar in object typedapply does not take type parameters
+[126..129..150] in typedapply.scala
+Too many type arguments for typedapply.foo[X, Y]
+expected: [X, Y]
+actual:   [Int, String, String]
+[61..64..69] in typedapply.scala
+Not enough type arguments for typedapply.foo[X, Y]
+expected: [X, Y]
+actual:   [Int]

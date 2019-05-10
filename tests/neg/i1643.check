@@ -1,0 +1,18 @@
+[634..635] in i1643.scala
+Type argument must be fully defined
+<404..404> in i1643.scala
+missing argument for parameter _length of constructor Array: (_length: Int): Array[T]
+[332..338..346] in i1643.scala
+value varargs1 is not a member of Object
+[263..271] in i1643.scala
+Not found: varargs1
+[204..210] in i1643.scala
+Not found: type Base_1
+[152..158..166] in i1643.scala
+value varargs1 is not a member of Array
+[83..91] in i1643.scala
+Not found: varargs1
+[16..21] in i1643.scala
+Missing type parameter for Array
+<6..6> in i1643.scala
+trait T cannot extend final class Array

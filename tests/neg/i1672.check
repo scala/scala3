@@ -1,0 +1,4 @@
+[235..238..239] in i1672.scala
+value < is not a member of Unit
+<29..29> in i1672.scala
+result type of implicit definition needs to be given explicitly

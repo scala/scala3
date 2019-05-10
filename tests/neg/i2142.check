@@ -1,0 +1,29 @@
+<367..374> in i2142.scala
+Found:    Foo.A
+Required: Nothing
+[322..324] in i2142.scala
+Found:    Foo.A(Foo.a1)
+Required: Foo.A(?4)
+
+where:    ?4 is an unknown value of type Foo.A
+<293..300> in i2142.scala
+Found:    Foo.A
+Required: Foo.A(?3)
+
+where:    ?3 is an unknown value of type Foo.A
+[259..261] in i2142.scala
+Found:    Foo.A(Foo.a2)
+Required: Foo.A(Foo.a1)
+[180..182] in i2142.scala
+Found:    Foo.A(Foo.a1)
+Required: Foo.A(?2)
+
+where:    ?2 is an unknown value of type Foo.A
+<151..158> in i2142.scala
+Found:    Foo.A
+Required: Foo.A(?1)
+
+where:    ?1 is an unknown value of type Foo.A
+[117..119] in i2142.scala
+Found:    Foo.A(Foo.a2)
+Required: Foo.A(Foo.a1)

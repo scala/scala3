@@ -1,0 +1,6 @@
+<414..414> in valueclasses-impl-restrictions.scala
+Value classes may not define non-parameter field
+[199..219..236] in valueclasses-impl-restrictions.scala
+Value classes may not define an inner class
+[43..49..152] in valueclasses-impl-restrictions.scala
+Value classes may not define an inner class

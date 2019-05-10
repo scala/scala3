@@ -1,0 +1,2 @@
+<42..42> in i2673c.scala
+object X differs only in case from object x in object Outer. Such classes will overwrite one another on case-insensitive filesystems.

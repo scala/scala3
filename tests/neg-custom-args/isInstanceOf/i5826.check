@@ -1,0 +1,6 @@
+[368..376] in i5826.scala
+the type test for Foo.this.A[X] cannot be checked at runtime
+[180..193] in i5826.scala
+the type test for List[Int] cannot be checked at runtime
+[61..74] in i5826.scala
+the type test for List[Int] cannot be checked at runtime

@@ -1,0 +1,8 @@
+[396..398..399] in unions.scala
+value g is not a member of unions.B | unions.A
+[372..374..375] in unions.scala
+value f is not a member of unions.B | unions.A
+[345..347..348] in unions.scala
+value g is not a member of unions.A | unions.B
+[320..322..323] in unions.scala
+value f is not a member of unions.A | unions.B

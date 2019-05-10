@@ -1,0 +1,6 @@
+<290..290> in i5052.scala
+illegal combination of modifiers: `private` and `override` for: value foo3
+<249..249> in i5052.scala
+illegal combination of modifiers: `private` and `override` for: method foo2
+<203..203> in i5052.scala
+illegal combination of modifiers: `private` and `override` for: method foo

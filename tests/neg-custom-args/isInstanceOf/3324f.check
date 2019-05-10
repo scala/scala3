@@ -1,0 +1,4 @@
+[111..120] in 3324f.scala
+the type test for C[Int] cannot be checked at runtime
+[79..86] in 3324f.scala
+the type test for D[T] cannot be checked at runtime

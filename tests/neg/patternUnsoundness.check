@@ -1,0 +1,5 @@
+<213..227> in patternUnsoundness.scala
+Found:    Integer
+Required: S$1
+
+where:    S$1 is a type locally defined in object patternUnsoundness with bounds <: Object

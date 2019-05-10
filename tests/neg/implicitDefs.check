@@ -1,0 +1,6 @@
+<494..494> in implicitDefs.scala
+value x needs result type because its right-hand side attempts implicit search
+<210..210> in implicitDefs.scala
+result type of implicit definition needs to be given explicitly
+<122..122> in implicitDefs.scala
+type of implicit definition needs to be given explicitly

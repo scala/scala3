@@ -1,0 +1,8 @@
+[251..252] in erased-if-else.scala
+value a is declared as erased, but is in fact used
+[225..226] in erased-if-else.scala
+value a is declared as erased, but is in fact used
+[157..158] in erased-if-else.scala
+value a is declared as erased, but is in fact used
+[80..81] in erased-if-else.scala
+value a is declared as erased, but is in fact used

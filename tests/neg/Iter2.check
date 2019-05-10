@@ -1,0 +1,6 @@
+[904..908] in Iter2.scala
+Found:    D[Int](dget)
+Required: C[Int]
+[877..881] in Iter2.scala
+Found:    C[Int](cget)
+Required: D[Int]

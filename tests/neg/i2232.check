@@ -1,0 +1,2 @@
+<997..997> in i2232.scala
+no implicit argument of type Cats.Category.ByF[Function1] was found for parameter F of method >>> in class CategoryOps

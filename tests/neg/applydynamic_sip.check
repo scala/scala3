@@ -1,0 +1,27 @@
+[777..782..785] in applydynamic_sip.scala
+method updateDynamic in class Bad2 does not take parameters
+[750..755..758] in applydynamic_sip.scala
+method applyDynamicNamed in class Bad2 does not take parameters
+[727..732..735] in applydynamic_sip.scala
+method applyDynamic in class Bad2 does not take parameters
+[707..712..715] in applydynamic_sip.scala
+method selectDynamic in class Bad2 does not take parameters
+<526..526> in applydynamic_sip.scala
+Found:    String("sel")
+Required: Int
+<499..499> in applydynamic_sip.scala
+Found:    String("sel")
+Required: Int
+<476..476> in applydynamic_sip.scala
+Found:    String("sel")
+Required: Int
+<456..456> in applydynamic_sip.scala
+Found:    String("sel")
+Required: Int
+[204..212..238] in applydynamic_sip.scala
+applyDynamicNamed does not support passing a vararg parameter
+[167..175..192] in applydynamic_sip.scala
+applyDynamicNamed does not support passing a vararg parameter
+[136..141..144] in applydynamic_sip.scala
+value applyDynamic is not a member of Dynamic
+possible cause: maybe a wrong Dynamic method signature?

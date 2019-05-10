@@ -1,0 +1,6 @@
+<395..395> in i4611a.scala
+Found:    Int => Int
+Required: Bar[given Int => Int]
+<336..336> in i4611a.scala
+Found:    Int => Int
+Required: Foo

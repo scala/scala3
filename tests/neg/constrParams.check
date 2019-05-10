@@ -1,0 +1,4 @@
+[106..107] in constrParams.scala
+illegal reference to class I from secondary constructor
+[53..56] in constrParams.scala
+illegal reference to type INT from secondary constructor

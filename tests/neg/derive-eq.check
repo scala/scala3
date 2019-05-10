@@ -1,0 +1,23 @@
+<582..588> in derive-eq.scala
+Values of types Triple[One, List[Two], One] and Triple[List[Two], One, Two] cannot be compared with == or !=.
+I found:
+
+    Triple.derived$Eql[One, List[Two], List[Two], One, One, Two](/* missing */implicitly[Eql[One, List[Two]]], ???, ???)
+
+But no implicit values were found that match type Eql[One, List[Two]].
+<564..570> in derive-eq.scala
+Values of types Triple[List[One], One, Two] and Triple[One, List[Two], One] cannot be compared with == or !=.
+I found:
+
+    Triple.derived$Eql[List[One], One, One, List[Two], Two, One](/* missing */implicitly[Eql[List[One], One]], ???, ???)
+
+But no implicit values were found that match type Eql[List[One], One].
+<546..552> in derive-eq.scala
+Values of types Triple[List[Two], One, Two] and Triple[List[One], One, Two] cannot be compared with == or !=.
+I found:
+
+    Triple.derived$Eql[List[Two], List[One], One, One, Two, Two](
+      Eql.eqlSeq[Two, One](/* missing */implicitly[Eql[Two, One]])
+    , ???, ???)
+
+But no implicit values were found that match type Eql[Two, One].

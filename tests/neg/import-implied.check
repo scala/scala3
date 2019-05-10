@@ -1,0 +1,6 @@
+[160..162] in import-implied.scala
+Not found: tc
+<95..95> in import-implied.scala
+no implicit argument of type TC was found for parameter x$1 of method foo in object A
+
+Note: implied instance object tc in object A was not considered because it was not imported with an `import implied`.

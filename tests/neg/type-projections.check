@@ -1,0 +1,12 @@
+[273..274] in type-projections.scala
+Test.this.T is not a legal path
+since it is not a concrete type
+[237..238] in type-projections.scala
+Test.this.T is not a legal path
+since it is not a concrete type
+[201..202] in type-projections.scala
+Test.this.T is not a legal path
+since it is not a concrete type
+[165..166] in type-projections.scala
+Test.this.T is not a legal path
+since it is not a concrete type

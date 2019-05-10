@@ -1,0 +1,20 @@
+<822..822> in function-arity.scala
+Found:    (String, String) => String
+Required: ((Int, Int)) => String
+[598..601] in function-arity.scala
+None of the overloaded alternatives of method foo in object Test with types
+ (a: Any => String): Unit
+ (a: ((Int, Int)) => String): String
+match arguments ((Int, String) => String)
+[477..492..497] in function-arity.scala
+Wrong number of parameters, expected: 1
+[430..440..445] in function-arity.scala
+Wrong number of parameters, expected: 1
+<397..397> in function-arity.scala
+Found:    () => Unit
+Required: ((Int, Int)) => Unit
+[308..315..320] in function-arity.scala
+Wrong number of parameters, expected: 1
+[156..157] in function-arity.scala
+Found:    Int(0)
+Required: String

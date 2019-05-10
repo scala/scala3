@@ -1,0 +1,2 @@
+[51..52] in aliasing-subtypes.scala
+class C cannot be instantiated since it has a member A with possibly conflicting bounds Int | Test.A <: ... <: Int & Test.A

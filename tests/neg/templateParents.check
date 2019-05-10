@@ -1,0 +1,6 @@
+<298..298> in templateParents.scala
+conflicting type arguments in inferred superclass templateParentsNeg1.C[String] & templateParentsNeg1.C[Int]
+[154..156] in templateParents.scala
+class C2 is not a trait
+[79..85] in templateParents.scala
+trait D may not call constructor of class C

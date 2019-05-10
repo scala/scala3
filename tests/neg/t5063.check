@@ -1,0 +1,2 @@
+[12..18..19] in t5063.scala
+value + is not a member of Object - did you mean Object(A.super).eq?

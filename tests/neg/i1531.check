@@ -1,0 +1,2 @@
+<32..32> in i1531.scala
+class A needs to be abstract, since def f: => Int is not defined 

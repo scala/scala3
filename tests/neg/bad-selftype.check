@@ -1,0 +1,6 @@
+[117..121..125] in bad-selftype.scala
+Missing type parameter for [X] => X
+[20..22] in bad-selftype.scala
+Missing type parameter for x0
+<69..71> in bad-selftype.scala
+an identifier expected, but '=>' found

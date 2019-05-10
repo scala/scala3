@@ -1,0 +1,6 @@
+<211..211> in i3627.scala
+Found:    Int => Boolean
+Required: Comparinator2[_, U]
+<91..91> in i3627.scala
+Found:    Int => Boolean
+Required: Comparinator[_]

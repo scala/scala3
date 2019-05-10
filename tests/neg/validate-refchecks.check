@@ -1,0 +1,4 @@
+<116..116> in validate-refchecks.scala
+type C cannot have the same name as class C in trait A -- class definitions cannot be overridden
+<55..55> in validate-refchecks.scala
+class C cannot have the same name as class C in trait A -- class definitions cannot be overridden

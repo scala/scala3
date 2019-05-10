@@ -1,0 +1,2 @@
+<20..20> in erased-implicit.scala
+method doubleImplicit is declared as erased, but is in fact used

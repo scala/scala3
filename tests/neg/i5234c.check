@@ -1,0 +1,2 @@
+<131..131> in i5234c.scala
+no implicit argument of type implicits.Not[Test.Foo] was found for parameter ev of method foo in object Test

@@ -1,0 +1,3 @@
+<35..35> in S.scala
+error overriding method foo in class J of type (): String;
+  method foo of type (): Int has incompatible type

@@ -1,0 +1,2 @@
+[217..226..320] in inline-unapply.scala
+inline match cannot be used in an inline unapply

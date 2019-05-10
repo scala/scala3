@@ -1,0 +1,12 @@
+<545..545> in i705-inner-value-class.scala
+Value classes may not be a local class
+[385..392..398] in i705-inner-value-class.scala
+Value classes may not contain initialization statements
+[316..320..325] in i705-inner-value-class.scala
+Value classes may not define non-parameter field
+[247..251..256] in i705-inner-value-class.scala
+Value classes may not define non-parameter field
+[165..169..185] in i705-inner-value-class.scala
+Value classes may not define a secondary constructor
+<20..20> in i705-inner-value-class.scala
+Value classes may not be a member of another class

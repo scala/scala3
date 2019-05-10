@@ -1,0 +1,4 @@
+[141..145] in i4653.scala
+Missing type parameter for => C.this.D
+[98..99] in i4653.scala
+Missing type parameter for C.this.D

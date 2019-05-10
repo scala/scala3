@@ -1,0 +1,2 @@
+[157..158] in erased-4.scala
+value x is declared as erased, but is in fact used

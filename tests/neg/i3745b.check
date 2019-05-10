@@ -1,0 +1,2 @@
+[31..34] in i3745b.scala
+Seq is renamed twice on the same import line.

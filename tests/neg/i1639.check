@@ -1,0 +1,12 @@
+<201..201> in i1639.scala
+None of the overloaded alternatives of constructor Foo in class Foo with types
+ (): Foo
+ ()(implicit bar: String): Foo
+match arguments (String("baz"))
+<84..84> in i1639.scala
+no implicit argument of type String was found for parameter x of method f in class Bar.
+I found:
+
+    this.f(/* missing */implicitly[String])
+
+But method f in class Bar produces a diverging implicit search when trying to match type String.

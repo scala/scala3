@@ -1,0 +1,6 @@
+<11..11> in erased-case-class.scala
+object creation impossible, since def apply(v1: Int): Foo1 is not defined 
+(Note that T1 does not match Int)
+<0..0> in erased-case-class.scala
+error overriding method apply in trait Function1 of type (v1: Int): Foo1;
+  method apply of type  erased (x: Int): Foo1 has incompatible type

@@ -1,0 +1,6 @@
+<18..20> in i4453.scala
+== cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
+<215..215> in i4453.scala
+'=' expected, but eof found
+[21..22] in i4453.scala
+_* can be used only for last argument

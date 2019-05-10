@@ -1,0 +1,2 @@
+[81..82] in C_1.scala
+class D in package p cannot be accessed as a member of p.type from module class Test$.

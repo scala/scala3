@@ -1,0 +1,6 @@
+[524..526] in repeatedArgs213.scala
+Found:    Seq[String](ys)
+Required: scala.collection.immutable.Seq[Any]
+[294..296] in repeatedArgs213.scala
+Found:    Seq[String](ys)
+Required: scala.collection.immutable.Seq[Any]

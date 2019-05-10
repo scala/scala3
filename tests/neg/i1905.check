@@ -1,0 +1,4 @@
+<309..309> in i1905.scala
+bridge generated for member method fromIterableWithSameElemType(): Arr[A] in class ArrOps
+which overrides method fromIterableWithSameElemType(): Repr in class SeqMonoTransforms
+clashes with definition of the member itself; both have erased type (): Object."

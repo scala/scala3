@@ -1,0 +1,17 @@
+[399..400] in implicit-params.scala
+Found:    Test.C.type
+Required: Int
+[377..378] in implicit-params.scala
+Found:    Test.C.type
+Required: Int
+[340..345..352] in implicit-params.scala
+Missing arguments for method g in object Test
+[327..328] in implicit-params.scala
+Found:    Int(2)
+Required: Test.C
+<252..256> in implicit-params.scala
+method f in object Test does not take more parameters
+[230..231] in implicit-params.scala
+Missing arguments for method f in object Test
+<155..155> in implicit-params.scala
+an identifier expected, but ')' found

@@ -1,0 +1,2 @@
+<100..100> in type-lambdas.scala
+illegal cyclic reference: lower bound Test.Ord[X] of type X refers back to the type itself

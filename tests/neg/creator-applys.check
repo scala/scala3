@@ -1,0 +1,10 @@
+[635..638] in creator-applys.scala
+too many arguments for method apply: (): Test3.A
+<475..475> in creator-applys.scala
+Overloaded or recursive method apply needs return type
+[314..325..326] in creator-applys.scala
+value B is not a member of Test - did you mean Test.B?
+[241..252..253] in creator-applys.scala
+value B is not a member of Test - did you mean Test.B?
+[166..177..178] in creator-applys.scala
+object A in class Test does not take parameters

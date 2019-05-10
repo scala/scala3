@@ -1,0 +1,12 @@
+<905..905> in hk-bounds.scala
+Type argument Test2.Alias does not conform to upper bound [_$1 <: [_$2] => Any] => Any 
+<683..683> in hk-bounds.scala
+Type argument Foo does not conform to lower bound Baz 
+<520..520> in hk-bounds.scala
+Type argument Foo does not conform to lower bound Bar 
+<418..418> in hk-bounds.scala
+Type argument Baz does not conform to lower bound Bar 
+<270..270> in hk-bounds.scala
+Type argument Bar does not conform to upper bound Foo 
+<124..124> in hk-bounds.scala
+Type argument Bar does not conform to upper bound Foo 

@@ -1,0 +1,4 @@
+<133..133> in i3364.scala
+Name clash: both class Test2 and its companion object defines Foo
+<51..51> in i3364.scala
+Name clash: both class Test and its companion object defines Foo

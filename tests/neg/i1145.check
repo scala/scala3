@@ -1,0 +1,4 @@
+[59..60] in i1145.scala
+Reference to x is ambiguous
+it is both defined in object A
+and imported subsequently by import B._

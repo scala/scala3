@@ -1,0 +1,16 @@
+[717..719] in pureStatement.scala
+too many arguments for constructor Object: (): Object
+[706..716] in pureStatement.scala
+Not found: type IDontExist
+[608..621..624] in pureStatement.scala
+A pure expression does nothing in statement position; you may be omitting necessary parentheses
+[542..543] in pureStatement.scala
+A pure expression does nothing in statement position; you may be omitting necessary parentheses
+[272..299] in pureStatement.scala
+A pure expression does nothing in statement position; you may be omitting necessary parentheses
+[203..205] in pureStatement.scala
+A pure expression does nothing in statement position; you may be omitting necessary parentheses
+[117..119] in pureStatement.scala
+A pure expression does nothing in statement position; you may be omitting necessary parentheses
+[36..38] in pureStatement.scala
+A pure expression does nothing in statement position; you may be omitting necessary parentheses

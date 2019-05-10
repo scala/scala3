@@ -1,0 +1,11 @@
+[666..669] in i5978.scala
+Found:    Char('x')
+Required: Position.Position[CharSequence]
+<615..615> in i5978.scala
+no implicit argument of type Conversion[Char, Position.Position[CharSequence]] was found for parameter x of method the in object DottyPredef
+
+Note: implied instance method FromCharToken in object TextParser was not considered because it was not imported with an `import implied`.
+<545..545> in i5978.scala
+no implicit argument of type TokenParser[Char, Position.Position[CharSequence]] was found for parameter x of method the in object DottyPredef
+
+Note: implied instance object TP in object TextParser was not considered because it was not imported with an `import implied`.

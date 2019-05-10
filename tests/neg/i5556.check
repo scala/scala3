@@ -1,0 +1,3 @@
+<159..159> in i5556.scala
+SAM{T = String} is not a legal SAM type
+since it has a member T with possibly conflicting bounds Int | String <: ... <: String

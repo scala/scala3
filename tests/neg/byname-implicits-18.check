@@ -1,0 +1,24 @@
+<1520..1520> in byname-implicits-18.scala
+no implicit argument of type Test.Tc[Test.Bootstrap[Int]] was found for parameter ev of method implicitly in object DottyPredef.
+I found:
+
+    Test.Tc.tcGen[Test.Bootstrap[Int], (Int :: Option[Test.Bootstrap[(Int, Int)]] :: HNil)](Test.Bootstrap.bootstrapGen[Int]
+      , 
+    Test.Tc.tcHCons[Int, (Option[Test.Bootstrap[(Int, Int)]] :: HNil)](Test.Tc.tcInt, 
+      Test.Tc.tcHCons[H, T](
+        Test.Tc.tcOpt[A](
+          Test.Tc.tcGen[Test.Bootstrap[(Int, Int)], ((Int, Int) :: Option[Test.Bootstrap[((Int, Int), (Int, Int))]] :: HNil)
+            ]
+          (Test.Bootstrap.bootstrapGen[(Int, Int)], 
+            Test.Tc.tcGen[A, R](
+              /* missing */implicitly[
+                Generic[(Int, Int) :: Option[Test.Bootstrap[((Int, Int), (Int, Int))]] :: HNil]{Repr <: HList}
+              ]
+            , ???)
+          )
+        )
+      , ???)
+    )
+    )
+
+But no implicit values were found that match type Generic[(Int, Int) :: Option[Test.Bootstrap[((Int, Int), (Int, Int))]] :: HNil]{Repr <: HList}.

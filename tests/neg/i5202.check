@@ -1,0 +1,17 @@
+[780..782..785] in i5202.scala
+Found:    Int | String
+Required: String
+[642..644] in i5202.scala
+Found:    String("")
+Required: Int & String
+[522..524] in i5202.scala
+Found:    String("")
+Required: Int & String
+[266..270] in i5202.scala
+covariant type A occurs in contravariant position in type A of value a
+[137..140] in i5202.scala
+Found:    String("c")
+Required: Int & String
+[85..86] in i5202.scala
+Found:    Int(5)
+Required: Int & String
