@@ -218,7 +218,7 @@ object Erasure {
               adaptToType(tree, underlying)
             else if (!(tree.tpe <:< tycon)) {
               assert(!(tree.tpe.typeSymbol.isPrimitiveValueClass))
-              val nullTree = Literal(Constant(null))
+              val nullTree = nullLiteral
               val unboxedNull = adaptToType(nullTree, underlying)
 
               evalOnce(tree) { t =>
