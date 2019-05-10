@@ -240,7 +240,7 @@ object Checking {
               )
             case prefix: NamedType =>
               (!sym.is(Private) && prefix.derivesFrom(sym.owner)) ||
-              (!prefix.symbol.isStaticOwner && isInteresting(prefix.prefix))
+              (!prefix.symbol.moduleClass.isStaticOwner && isInteresting(prefix.prefix))
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)

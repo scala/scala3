@@ -48,7 +48,15 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
       compileDir("compiler/src/dotty/tools/dotc/reporting", withCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/typer", withCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/util", withCompilerOptions),
-      compileDir("compiler/src/dotty/tools/io", withCompilerOptions)
+      compileDir("compiler/src/dotty/tools/io", withCompilerOptions),
+      compileList(
+        "testIssue6460",
+        List(
+          "compiler/src/dotty/tools/dotc/core/SymbolLoaders.scala",
+          "compiler/src/dotty/tools/dotc/core/Types.scala"
+        ),
+        withCompilerOptions
+      ),
     ).checkCompile()
   }
 
