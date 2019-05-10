@@ -92,6 +92,8 @@ If you have a lot of false-negatives due to large amount of bad checkfiles and y
 testOnly dotty.tools.dotc.CompilationTests -- *example* -Ddotty.tests.updateCheckfiles=TRUE
 ```
 
+Sometimes you do not want to generate and check against the checkfiles. This requirement most frequently arises when the expected output is non-deterministic. E.g. when you know for sure that the compilation should fail, but each time it fails, the error message is different. To ignore checkfiles for a given test file, suffix its name with `\_ignore_checkfile`. E.g: `tests/neg/i4385_ignore_checkfile.scala`.
+
 ## Integration tests
 These tests are Scala source files expected to compile with Dotty (pos tests),
 along with their expected output (run tests) or errors (neg tests).
