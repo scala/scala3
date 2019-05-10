@@ -2247,7 +2247,8 @@ object Parsers {
           val tps = commaSeparated(() => annotType())
           var counter = nparams
           def nextIdx = { counter += 1; counter }
-          val params = tps.map(makeSyntheticParameter(nextIdx, _, Given | Implicit))
+          val paramFlags = if (ofClass) Private | Local | ParamAccessor else Param
+          val params = tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | Given | Implicit))
           params :: recur(firstClause = false, nparams + params.length)
         }
         else Nil

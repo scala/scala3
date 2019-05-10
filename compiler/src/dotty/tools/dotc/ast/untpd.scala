@@ -415,9 +415,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     vdef.withMods(mods | Param)
   }
 
-  def makeSyntheticParameter(n: Int = 1, tpt: Tree = null, flags: FlagSet = EmptyFlags)(implicit ctx: Context): ValDef =
+  def makeSyntheticParameter(n: Int = 1, tpt: Tree = null, flags: FlagSet = SyntheticTermParam)(implicit ctx: Context): ValDef =
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
-      .withFlags(flags | SyntheticTermParam)
+      .withFlags(flags)
 
   def lambdaAbstract(tparams: List[TypeDef], tpt: Tree)(implicit ctx: Context): Tree =
     if (tparams.isEmpty) tpt else LambdaTypeTree(tparams, tpt)
