@@ -1,0 +1,14 @@
+[287..289..292] in module-class-name.scala
+value foo is not a member of object Test.C
+[247..248] in module-class-name.scala
+Found:    object Test.C
+Required: Int
+[192..193] in module-class-name.scala
+Found:    object Test.C
+Required: Test.C
+[127..128] in module-class-name.scala
+Found:    Test.C.type
+Required: Test.C
+[74..75] in module-class-name.scala
+Found:    Test.C.type
+Required: Test.C
