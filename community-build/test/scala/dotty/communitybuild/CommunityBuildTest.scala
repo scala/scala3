@@ -109,6 +109,12 @@ class CommunityBuildTest {
     updateCommand = "scalatest/update"
   )
 
+  @Test def scalaXml = test(
+    project       = "scala-xml",
+    testCommand   = "xml/test",
+    updateCommand = "xml/update"
+  )
+
   @Test def scopt = test(
     project       = "scopt",
     testCommand   = "scoptJVM/compile",

@@ -450,8 +450,6 @@ object Build {
       // get libraries onboard
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "6.0.0-scala-1", // used by the backend
-        // FIXME: Not needed, but should be on the compiler CP
-        ("org.scala-lang.modules" %% "scala-xml" % "1.1.0").withDottyCompat(scalaVersion.value),
         "org.scala-lang" % "scala-library" % scalacVersion % "test",
         Dependencies.`compiler-interface`,
         "org.jline" % "jline-reader" % "3.9.0",   // used by the REPL
@@ -515,7 +513,6 @@ object Build {
           "-Ddotty.tests.classes.compilerInterface=" + findLib(attList, "compiler-interface"),
           "-Ddotty.tests.classes.scalaLibrary=" + findLib(attList, "scala-library-"),
           "-Ddotty.tests.classes.scalaAsm=" + findLib(attList, "scala-asm"),
-          "-Ddotty.tests.classes.scalaXml=" + findLib(attList, "scala-xml"),
           "-Ddotty.tests.classes.jlineTerminal=" + findLib(attList, "jline-terminal"),
           "-Ddotty.tests.classes.jlineReader=" + findLib(attList, "jline-reader")
         )
