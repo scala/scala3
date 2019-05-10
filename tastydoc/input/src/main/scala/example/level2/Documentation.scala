@@ -121,3 +121,7 @@ object Documentation {
 trait TraitTest {
 
 }
+
+val valueInAPackage = 0
+
+def defInAPackage(abc: String): List[Int] = ???

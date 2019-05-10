@@ -17,30 +17,24 @@
 
 # Other
 * handle things such as $genericCanBuildFromInfo
-* Main
 
 # Representation
-* All modifiers present?
 * Define wiki or markdown syntax
-* Beautify type parameters (+ variance + bound two direction)
-* Make sense of the parent field
-* SuperTypes
+* Make sense of the parent field (+ parents?)
 * Known subclasses
 * Annotations (+ everywhere or only where it makes sense?)
-* Type default
-* Type parameters definiton are .show
+* Type default in def
 * Alias type
-* Make sure no Entity is left
-* Verify we have every entities-like
-* Remove showCode whenever possible
+* Beautify type parameters (+ variance + bound two direction)
 
 # Output
 * Output inner class/object if not inherited
-* List Package content => def/val too?
 * Don't link scala lib
+* Case classes are linked right now
 * Case class remove artefacts?
 * Class inside class print parents
 * Rework class output
+* Doc for packages
 
 # Report
 * Goal Why we wanted to generated from tasty why to markdown
@@ -50,3 +44,6 @@
 
 # To Ask
 * Showcode became show?
+* Main ok?
+* Need return of consumeTasty for packages + passing parameter for wiki/markdown
+* All modifiers present?

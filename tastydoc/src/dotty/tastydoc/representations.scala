@@ -17,12 +17,11 @@ object representations extends CommentParser with CommentCleaner {
     val name : String
     val path : List[String]
     val comments: Option[Comment]
-    val parent = None //TODO: Temporary fix for HTMLParsers
+    val parent = None //Equivalent to owner, parent is used to be consistent with dotty-doc TODO
   }
 
   trait Parents {
-    val parent : Option[String]
-    val parents : List[Reference]
+    val parents : List[Reference] //Inheritance similar to supertypes in dotty-doc
   }
 
   trait Members {
@@ -125,7 +124,7 @@ object representations extends CommentParser with CommentCleaner {
         !x.symbol.flags.is(Flags.Private)
       }
       .map(convertToRepresentation(reflect)) ++
-    symbol.methods.map{x => convertToRepresentation(reflect)(x.tree)})
+    symbol.methods.map{x => convertToRepresentation(reflect)(x.tree)}) //TOASK Calling this method fails
     .sortBy(_.name)
   }
 
@@ -158,23 +157,23 @@ object representations extends CommentParser with CommentCleaner {
       case reflect.Type.IsThisType(reflect.Type.ThisType(tpe)) => inner(tpe)
       case reflect.Type.IsAnnotatedType(reflect.Type.AnnotatedType(tpe, _)) => inner(tpe)
       case reflect.Type.IsTypeLambda(reflect.Type.TypeLambda(paramNames, paramTypes, resType)) => ConstantReference(removeColorFromType(tp.show)) //TOFIX
-      case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) => inner(tpe) match {
-        case TypeReference(label, link, _, hasOwnFile) =>
-          if(link == "./scala"){
-            if(label.matches("Function[1-9]") || label.matches("Function[1-9][0-9]")){
-              val argsAndReturn = typeOrBoundsList.map(typeOrBoundsHandling)
-              FunctionReference(argsAndReturn.take(argsAndReturn.size - 1), argsAndReturn.last, false) //TODO: Implict
-            }else if(label.matches("Tuple[1-9]") || label.matches("Tuple[1-9][0-9]")){
-              TupleReference(typeOrBoundsList.map(typeOrBoundsHandling))
+      case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) =>
+        inner(tpe) match {
+          case TypeReference(label, link, _, hasOwnFile) =>
+            if(link == "./scala"){
+              if(label.matches("Function[1-9]") || label.matches("Function[1-9][0-9]")){
+                val argsAndReturn = typeOrBoundsList.map(typeOrBoundsHandling)
+                FunctionReference(argsAndReturn.take(argsAndReturn.size - 1), argsAndReturn.last, false) //TODO: Implict
+              }else if(label.matches("Tuple[1-9]") || label.matches("Tuple[1-9][0-9]")){
+                TupleReference(typeOrBoundsList.map(typeOrBoundsHandling))
+              }else{
+                TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling), hasOwnFile)
+              }
             }else{
               TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling), hasOwnFile)
             }
-          }else{
-            TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling), hasOwnFile)
-          }
-        case _ => throw Exception("Match error in AppliedType. This should not happen, please open an issue. " + tp)
-      }
-
+          case _ => throw Exception("Match error in AppliedType. This should not happen, please open an issue. " + tp)
+        }
       case reflect.Type.IsTypeRef(reflect.Type.TypeRef(typeName, qual)) =>
         typeOrBoundsHandling(qual) match {
           case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true) //TODO check hasOwnFile
@@ -240,7 +239,6 @@ object representations extends CommentParser with CommentCleaner {
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
     override val members = extractMembers(reflect)(internal.body, internal.symbol)
-    override val parent = None
     override val parents = extractParents(reflect)(internal.parents)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
@@ -271,7 +269,6 @@ object representations extends CommentParser with CommentCleaner {
     override val path = extractPath(reflect)(internal.symbol)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val members = extractMembers(reflect)(internal.body, internal.symbol)
-    override val parent = None
     override val parents = extractParents(reflect)(internal.parents)
     override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
       case Some(_) => path.init ++ List(name)

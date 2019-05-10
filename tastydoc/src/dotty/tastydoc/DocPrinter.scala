@@ -100,25 +100,103 @@ object DocPrinter{
       (if(c.authors.nonEmpty) Md.bold(Md.italics("authors")) + " " + c.authors.mkString(", ") else "") +
       (if(c.see.nonEmpty) Md.bold(Md.italics("see")) + " "  + c.see.mkString(", ")else "") +
       (if(c.result.isDefined) Md.bold(Md.italics("return")) + " "  + c.result.get else "") +
-      (if(c.throws.nonEmpty) c.throws.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
-      (if(c.valueParams.nonEmpty) c.valueParams.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
-      (if(c.typeParams.nonEmpty) c.typeParams.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
+      (if(c.throws.nonEmpty) c.throws.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("") else "") +
+      (if(c.valueParams.nonEmpty) c.valueParams.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("") else "") +
+      (if(c.typeParams.nonEmpty) c.typeParams.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("") else "") +
       (if(c.version.isDefined) Md.bold(Md.italics("version")) + " "  + c.version.get else "") +
       (if(c.since.isDefined) Md.bold(Md.italics("since")) + " "  + c.since.get else "") +
       (if(c.todo.nonEmpty) Md.bold(Md.italics("TODO")) + " " + c.todo.mkString(", ") else "") +
       (if(c.deprecated.isDefined) Md.bold(Md.italics("deprecated")) + " "  + c.deprecated.get else "") +
-      (if(c.note.nonEmpty) Md.bold(Md.italics("Note")) + " " + c.note.mkString("\n") else "") +
-      (if(c.example.nonEmpty) Md.bold(Md.italics("Example")) + " " + c.example.mkString("\n") else "") +
+      (if(c.note.nonEmpty) Md.bold(Md.italics("Note")) + " " + c.note.mkString("") else "") +
+      (if(c.example.nonEmpty) Md.bold(Md.italics("Example")) + " " + c.example.mkString("") else "") +
       (if(c.constructor.isDefined) Md.bold(Md.italics("Constructor")) + " "  + c.constructor.get else "") +
       (if(c.group.isDefined) Md.bold(Md.italics("Group")) + " "  + c.group.get else "") +
-      (if(c.groupDesc.nonEmpty) c.groupDesc.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
-      (if(c.groupNames.nonEmpty) c.groupNames.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
-      (if(c.groupPrio.nonEmpty) c.groupPrio.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("\n") else "") +
+      (if(c.groupDesc.nonEmpty) c.groupDesc.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("") else "") +
+      (if(c.groupNames.nonEmpty) c.groupNames.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("") else "") +
+      (if(c.groupPrio.nonEmpty) c.groupPrio.map((x, y) => Md.bold(Md.italics(x)) + " " + y).mkString("") else "") +
       (if(c.hideImplicitConversions.nonEmpty) Md.bold(Md.italics("Hide Implicit Conversions")) + " " + c.hideImplicitConversions.mkString(", ") else "")
     case None => ""
   }
 
-  def formatRepresentationToMarkdown(representation: Representation, insideClassOrObject: Boolean, declarationPath: List[String]) : String = representation match {
+  private def formatDefRepresentation(representation: DefRepresentation, declarationPath: List[String]): String = {
+    htmlPreCode(
+    formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
+    "def " +
+    representation.name +
+    (if(representation.typeParams.nonEmpty) representation.typeParams.mkString("[", ", ", "]") else "") +
+    representation.paramLists.map(formatParamList(_, declarationPath)).mkString("") +
+    ": " +
+    formatReferences(representation.returnValue, declarationPath), "scala") +
+    "\n" +
+    {
+      val com = formatComments(representation.comments)
+      if(com == "") "\n" else com
+    }
+  }
+
+  private def formatValRepresentation(representation: ValRepresentation, declarationPath: List[String]): String = {
+    htmlPreCode(
+    formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
+    "val " +
+    representation.name +
+    ": " +
+    formatReferences(representation.returnValue, declarationPath), "scala") +
+    "\n" +
+    formatComments(representation.comments) +
+    "\n"
+  }
+
+  private def formatTypeRepresentation(representation: TypeRepresentation, declarationPath: List[String]): String = {
+    htmlPreCode(
+    formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
+    "type " +
+    representation.name +
+    ": ", "scala") +
+    "\n" +
+    formatComments(representation.comments) +
+    "\n"
+  }
+
+  private def formatMembers(members: List[Representation], declarationPath: List[String]): String = {
+    Md.header2("Type Members:") +
+    members.flatMap{
+      case x: TypeRepresentation => Some(x)
+      case _ => None
+      }
+      .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
+    Md.header2("Definition members:") +
+    members.flatMap{
+      case x : DefRepresentation => Some(x)
+      case _ => None
+      }
+      .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
+    Md.header2("Value members:") +
+    members.flatMap{
+      case x : ValRepresentation => Some(x)
+      case _ => None
+      }
+      .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
+    Md.header2("Object members:") +
+    members.flatMap{
+      case x : ObjectRepresentation => Some(x)
+      case _ => None
+      }
+      .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
+    Md.header2("Class Members:") +
+    members.flatMap{
+      case x: ClassRepresentation if !x.isTrait => Some(x)
+      case _ => None
+      }
+      .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
+    Md.header2("Trait Members:") +
+    members.flatMap{
+      case x: ClassRepresentation if x.isTrait => Some(x)
+      case _ => None
+      }
+      .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("")
+  }
+
+  def formatRepresentationToMarkdown(representation: Representation, insideClassOrObject: Boolean, declarationPath: List[String]): String = representation match {
     case r : PackageRepresentation =>
       r.name +
       "\n" +
@@ -153,23 +231,7 @@ object DocPrinter{
         "\n" +
         r.annotations.mkString("\n") +
         "\n" +
-        Md.header2("Members:") +
-        "\n" +
-        Md.header3("Definitions: ") +
-        r.members.flatMap{case x : DefRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n" +
-        Md.header3("Values: ") +
-        r.members.flatMap{case x : ValRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n" +
-        Md.header3("Types: ") +
-        r.members.flatMap{case x : TypeRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n" +
-        Md.header3("Classes: ") +
-        r.members.flatMap{case x : ClassRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n" +
-        Md.header3("Objects: ") +
-        r.members.flatMap{case x : ObjectRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n"
+        formatMembers(r.members, declarationPath)
       }
 
     case r: ClassRepresentation =>
@@ -199,23 +261,7 @@ object DocPrinter{
         Md.header2("Constructors:")+
         r.constructors.map((ls, com) => htmlPreCode(r.name + ls.paramLists.map(formatParamList(_, r.path)).mkString(""), "scala") + "\n" + formatComments(com)).mkString("") +
         "\n" +
-        Md.header2("Members:") +
-        "\n" +
-        Md.header3("Definitions: ") +
-        r.members.flatMap{case x : DefRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n" +
-        Md.header3("Values: ") +
-        r.members.flatMap{case x : ValRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n" +
-        Md.header3("Types: ") +
-        r.members.flatMap{case x : TypeRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n" +
-        Md.header3("Classes: ") +
-        r.members.flatMap{case x : ClassRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n" +
-        Md.header3("Objects: ") +
-        r.members.flatMap{case x : ObjectRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n"
+        formatMembers(r.members, declarationPath)
       }
 
     case r: ObjectRepresentation =>
@@ -242,58 +288,14 @@ object DocPrinter{
         "\n" +
         r.annotations.mkString("\n") +
         "\n" +
-        Md.header2("Members:") +
-        "\n" +
-        Md.header3("Definitions: ") +
-        r.members.flatMap{case x : DefRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n" +
-        Md.header3("Values: ") +
-        r.members.flatMap{case x : ValRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n" +
-        Md.header3("Types: ") +
-        r.members.flatMap{case x : TypeRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n" +
-        Md.header3("Classes: ") +
-        r.members.flatMap{case x : ClassRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n" +
-        Md.header3("Objects: ") +
-        r.members.flatMap{case x : ObjectRepresentation => Some(x) case _ => None}.map(x => Md.header4(x.name) + formatRepresentationToMarkdown(x, true, r.path)).mkString("") +
-        "\n"
+        formatMembers(r.members, declarationPath)
       }
 
-    case r: DefRepresentation =>
-      htmlPreCode(
-        formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin, declarationPath) +
-        "def " +
-        r.name +
-        (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
-        r.paramLists.map(formatParamList(_, declarationPath)).mkString("") +
-        ": " +
-        formatReferences(r.returnValue, declarationPath), "scala") +
-        "\n" +
-        formatComments(r.comments) +
-        "\n"
+    case r: DefRepresentation => formatDefRepresentation(r, declarationPath)
 
-    case r: ValRepresentation =>
-      htmlPreCode(
-        formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin, declarationPath) +
-        "val " +
-        r.name +
-        ": " +
-        formatReferences(r.returnValue, declarationPath), "scala") +
-        "\n" +
-        formatComments(r.comments) +
-        "\n"
+    case r: ValRepresentation => formatValRepresentation(r, declarationPath)
 
-    case r: TypeRepresentation =>
-        htmlPreCode(
-        formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin, declarationPath) +
-        "type " +
-        r.name +
-        ": ", "scala") +
-        "\n" +
-        formatComments(r.comments) +
-        "\n"
+    case r: TypeRepresentation => formatTypeRepresentation(r, declarationPath)
   }
 
   //TODO: Remove zzz
@@ -334,6 +336,11 @@ object DocPrinter{
       }else{
         packagesSet + ((r.path, "object " + Md.link(r.name, "./" + r.name + ".md")))
       }
+
+    case r: DefRepresentation => packagesSet + ((r.path, formatDefRepresentation(r, r.path)))
+
+    case r: ValRepresentation => packagesSet + ((r.path, formatValRepresentation(r, r.path)))
+
     case _ => packagesSet
   }
 }
