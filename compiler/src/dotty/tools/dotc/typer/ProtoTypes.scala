@@ -253,7 +253,7 @@ object ProtoTypes {
       def isPoly(tree: Tree) = tree.tpe.widenSingleton.isInstanceOf[PolyType]
       // See remark in normalizedCompatible for why we can't keep the constraint
       // if one of the arguments has a PolyType.
-      typer.isApplicable(tp, Nil, args, resultType, keepConstraint && !args.exists(isPoly))
+      typer.isApplicableType(tp, Nil, args, resultType, keepConstraint && !args.exists(isPoly))
     }
 
     def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =
@@ -399,7 +399,7 @@ object ProtoTypes {
     override def resultType(implicit ctx: Context): Type = resType
 
     def isMatchedBy(tp: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean =
-      ctx.typer.isApplicable(tp, argType :: Nil, resultType) || {
+      ctx.typer.isApplicableType(tp, argType :: Nil, resultType) || {
         resType match {
           case SelectionProto(name: TermName, mbrType, _, _) =>
             ctx.typer.hasExtensionMethod(tp, name, argType, mbrType)

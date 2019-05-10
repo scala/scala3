@@ -6,7 +6,8 @@ object Test {
   val i1: Int = a given (new T{})
   implied for T = new T {}
   val i2: Int =  a
+  val i3: Int =  a2
 
-  def a given (t: T) given (q: Q): Int = 1
+  def a2 given (t: T) given (q: Q): Int = 1
 
 }
