@@ -117,7 +117,7 @@ object representations extends CommentParser with CommentCleaner {
 
   private def extractMembers(reflect: Reflection)(body: List[reflect.Statement], symbol: reflect.ClassDefSymbol) : List[Representation] = {
     import reflect._
-    body.flatMap{
+    (body.flatMap{
         case IsDefDef(_) => None //No definitions, they are appended with symbol.methods below
         case x => Some(x)
       }.filter{x => //Filter fields which shouldn't be displayed in the doc
@@ -125,7 +125,8 @@ object representations extends CommentParser with CommentCleaner {
         !x.symbol.flags.is(Flags.Private)
       }
       .map(convertToRepresentation(reflect)) ++
-    symbol.methods.map{x => convertToRepresentation(reflect)(x.tree)}
+    symbol.methods.map{x => convertToRepresentation(reflect)(x.tree)})
+    .sortBy(_.name)
   }
 
   private def extractParents(reflect: Reflection)(parents: List[reflect.Tree]): List[Reference] = {
