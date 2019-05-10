@@ -219,20 +219,32 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       case ts: SeparateCompilationSource =>
         Option(new JFile(ts.dir.getAbsolutePath + ".check"))
-    }).filter(_.exists)
+    })
 
     /**
      * Checks if the given actual lines are the same as the ones in the check file.
      * If not, fails the test.
      */
-    final def diffTest(testSource: TestSource, checkFile: JFile, actual: List[String]) = {
-      val expected = Source.fromFile(checkFile, "UTF-8").getLines().toList
-      for (msg <- diffMessage(testSource.title, actual, expected)) {
-        echo(msg)
-        failTestSource(testSource)
-        dumpOutputToFile(checkFile, actual)
+    final def diffTest(testSource: TestSource, actual: List[String]) =
+      checkFile(testSource) match {
+        case Some(checkFile) =>
+          if (checkFile.exists) {
+            val expected = Source.fromFile(checkFile, "UTF-8").getLines().toList
+            for (msg <- diffMessage(testSource.title, actual, expected)) {
+              echo(msg)
+              failTestSource(testSource)
+              dumpOutputToFile(checkFile, actual)
+            }
+          }
+          else {
+            echo(s"Warning: diff check is not performed for ${testSource} since checkfile does not exist. Generating the checkfile now.")
+            dumpOutputToFile(checkFile, actual, true)
+          }
+
+        case _ =>
+          val actualOutput = actual.mkString("=== BEGIN CHECKFILE DUMP ===\n", EOL, "\n=== END CHECKFILE DUMP ===")
+          echo(s"Unable to infer the checkfile path for ${testSource}. Dumping the actual output here:\n${actualOutput}")
       }
-    }
 
     /** Entry point: runs the test */
     final def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable { self =>
@@ -568,11 +580,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       this
     }
 
-    protected def dumpOutputToFile(checkFile: JFile, lines: Seq[String]): Unit = {
-      if (updateCheckFiles) {
+    protected def dumpOutputToFile(checkFile: JFile, lines: Seq[String], createNew: Boolean = false): Unit = {
+      if (updateCheckFiles || (createNew && !checkFile.exists)) {
         val outFile = dotty.tools.io.File(checkFile.toPath)
         outFile.writeAll(lines.mkString("", EOL, EOL))
-        echo("Updated checkfile: " + checkFile.getPath)
+        val infoMsg = if (updateCheckFiles) "Updated checkfile: " else "Created checkfile: "
+        echo(infoMsg + checkFile.getPath)
       } else {
         val outFile = dotty.tools.io.File(checkFile.toPath.resolveSibling(checkFile.toPath.getFileName + ".out"))
         outFile.writeAll(lines.mkString("", EOL, EOL))
@@ -609,13 +622,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       }
     }
 
-    private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int) = {
+    private def verifyOutput(dir: JFile, testSource: TestSource, warnings: Int) = {
       if (Properties.testsNoRun) addNoRunWarning()
       else runMain(testSource.runClassPath) match {        
-        case Success(output) => checkFile match {
-          case Some(file) if file.exists => diffTest(testSource, file, output.linesIterator.toList)
-          case _ =>
-        }
+        case Success(output) => diffTest(testSource, output.linesIterator.toList)
         case Failure(output) => 
           echo(s"Test '${testSource.title}' failed with output:")
           echo(output)
@@ -627,7 +637,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
-      verifyOutput(checkFile(testSource), testSource.outDir, testSource, countWarnings(reporters))
+      verifyOutput(testSource.outDir, testSource, countWarnings(reporters))
   }
 
   private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
@@ -649,7 +659,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
-      checkFile(testSource).foreach(diffTest(testSource, _, reporterOutputLines(reporters)))
+      diffTest(testSource, reporterOutputLines(reporters))
 
     def reporterOutputLines(reporters: Seq[TestReporter]): List[String] =
       reporters.flatMap(_.allErrors).sortBy(_.pos.source.toString).flatMap { error =>
