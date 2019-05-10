@@ -46,7 +46,11 @@ object Scala2Unpickler {
   /** Convert temp poly type to poly type and leave other types alone. */
   def translateTempPoly(tp: Type)(implicit ctx: Context): Type = tp match {
     case TempPolyType(tparams, restpe) =>
-      (if (tparams.head.owner.isTerm) PolyType else HKTypeLambda)
+      // This check used to read `owner.isTerm` but that wasn't always correct,
+      // I'm not sure `owner.is(Method)` is 100% correct either but it seems to
+      // work better. See the commit message where this change was introduced
+      // for more information.
+      (if (tparams.head.owner.is(Method)) PolyType else HKTypeLambda)
         .fromParams(tparams, restpe)
     case tp => tp
   }
