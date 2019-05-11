@@ -3,23 +3,23 @@ layout: doc-page
 title: Typeclass Derivation
 ---
 
-Typeclass derivation is a way to generate implicit instances for certain type classes automatically or with minimal code hints. A type class in this sense is any trait or class with a type parameter that describes the type being operated on. Commonly used examples are `Eql`, `Ordering`, `Show`, or `Pickling`. Example:
+Typeclass derivation is a way to generate instances of certain type classes automatically or with minimal code hints. A type class in this sense is any trait or class with a type parameter that describes the type being operated on. Commonly used examples are `Eql`, `Ordering`, `Show`, or `Pickling`. Example:
 ```scala
 enum Tree[T] derives Eql, Ordering, Pickling {
   case Branch(left: Tree[T], right: Tree[T])
   case Leaf(elem: T)
 }
 ```
-The `derives` clause generates implicit instances for the `Eql`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
+The `derives` clause generates implied instances of the `Eql`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
 ```scala
-implicit [T: Eql]      for Eql[Tree[T]]      = Eql.derived
-implicit [T: Ordering] for Ordering[Tree[T]] = Ordering.derived
-implicit [T: Pickling] for Pickling[Tree[T]] = Pickling.derived
+implied [T: Eql]       for Eql[Tree[T]]       = Eql.derived
+implied [T: Ordering]  for Ordering[Tree[T]] = Ordering.derived
+implied [T: Pickling]  for Pickling[Tree[T]] = Pickling.derived
 ```
 
 ### Deriving Types
 
-Besides for enums, typeclasses can also be derived for other sets of classes and objects that form an algebraic data type. These are:
+Besides for `enums`, typeclasses can also be derived for other sets of classes and objects that form an algebraic data type. These are:
 
  - individual case classes or case objects
  - sealed classes or traits that have only case classes and case objects as children.
@@ -42,7 +42,8 @@ A trait or class can appear in a `derives` clause if its companion object define
 ```scala
   def derived[T] given Generic[T] = ...
 ```
-That is, the `derived` method takes an implicit parameter of type `Generic` that determines the _shape_ of the deriving type `T` and it computes the typeclass implementation according to that shape. An implicit `Generic` instance is generated automatically for any type that derives a typeclass with a `derived` method that refers to `Generic`. One can also derive `Generic` alone, which means a `Generic` instance is generated without any other type class instances. E.g.:
+That is, the `derived` method takes an inferable parameter of type `Generic` that determines the _shape_ of the deriving type `T` and it computes the typeclass implementation according to that shape. An implied `Generic` instance is generated automatically for any type that derives a typeclass with a `derived`
+method that refers to `Generic`. One can also derive `Generic` alone, which means a `Generic` instance is generated without any other type class instances. E.g.:
 ```scala
 sealed trait ParseResult[T] derives Generic
 ```
@@ -93,9 +94,10 @@ is represented as `T *: Unit` since there is no direct syntax for such tuples: `
 
 ### The Generic Typeclass
 
-For every class `C[T_1,...,T_n]` with a `derives` clause, the compiler generates in the companion object of `C` an implicit instance for `Generic[C[T_1,...,T_n]]` that follows the outline below:
+For every class `C[T_1,...,T_n]` with a `derives` clause, the compiler generates in the companion object of `C` an implied instance of `Generic[C[T_1,...,T_n]]` that follows
+the outline below:
 ```scala
-implicit [T_1, ..., T_n] for Generic[C[T_1,...,T_n]] {
+implied [T_1, ..., T_n] for Generic[C[T_1,...,T_n]] {
   type Shape = ...
   ...
 }
@@ -113,7 +115,7 @@ would produce:
 object Result {
   import scala.compiletime.Shape._
 
-  implicit [T, E] for Generic[Result[T, E]] {
+  implied [T, E] for Generic[Result[T, E]] {
     type Shape = Cases[(
       Case[Ok[T], T *: Unit],
       Case[Err[E], E *: Unit]
@@ -140,7 +142,7 @@ abstract class Generic[T] {
 ```
 It defines the `Shape` type for the ADT `T`, as well as two methods that map between a
 type `T` and a generic representation of `T`, which we call a `Mirror`:
-The `reflect` method maps an instance of the ADT `T` to its mirror whereas
+The `reflect` method maps an instance value of the ADT `T` to its mirror whereas
 the `reify` method goes the other way. There's also a `common` method that returns
 a value of type `GenericClass` which contains information that is the same for all
 instances of a class (right now, this consists of the runtime `Class` value and
@@ -148,7 +150,7 @@ the names of the cases and their parameters).
 
 ### Mirrors
 
-A mirror is a generic representation of an instance of an ADT. `Mirror` objects have three components:
+A mirror is a generic representation of an instance value of an ADT. `Mirror` objects have three components:
 
  - `adtClass: GenericClass`: The representation of the ADT class
  - `ordinal: Int`: The ordinal number of the case among all cases of the ADT, starting from 0
@@ -213,8 +215,8 @@ trait Eql[T] {
   def eql(x: T, y: T): Boolean
 }
 ```
-We need to implement a method `Eql.derived` that produces an implicit instance of type `Eql[T]` provided
-there exists an implicit instance of type `Generic[T]`. Here's a possible solution:
+We need to implement a method `Eql.derived` that produces an instance of `Eql[T]` provided
+there exists evidence of type `Generic[T]`. Here's a possible solution:
 ```scala
   inline def derived[T] given (ev: Generic[T]): Eql[T] = new Eql[T] {
     def eql(x: T, y: T): Boolean = {
@@ -233,7 +235,7 @@ there exists an implicit instance of type `Generic[T]`. Here's a possible soluti
 The implementation of the inline method `derived` creates an instance of `Eql[T]` and implements its `eql` method. The right-hand side of `eql` mixes compile-time and runtime elements. In the code above, runtime elements are marked with a number in parentheses, i.e
 `(1)`, `(2)`, `(3)`. Compile-time calls that expand to runtime code are marked with a number in brackets, i.e. `[4]`, `[5]`. The implementation of `eql` consists of the following steps.
 
-  1. Map the compared values `x` and `y` to their mirrors using the `reflect` method of the implicitly passed `Generic` `(1)`, `(2)`.
+  1. Map the compared values `x` and `y` to their mirrors using the `reflect` method of the implicitly passed `Generic` evidence `(1)`, `(2)`.
   2. Match at compile-time against the shape of the ADT given in `ev.Shape`. Dotty does not have a construct for matching types directly, but we can emulate it using an `inline` match over an `erasedValue`. Depending on the actual type `ev.Shape`, the match will reduce at compile time to one of its two alternatives.
   3. If `ev.Shape` is of the form `Cases[alts]` for some tuple `alts` of alternative types, the equality test consists of comparing the ordinal values of the two mirrors `(3)` and, if they are equal, comparing the elements of the case indicated by that ordinal value. That second step is performed by code that results from the compile-time expansion of the `eqlCases` call `[4]`.
   4. If `ev.Shape` is of the form `Case[elems]` for some tuple `elems` for element types, the elements of the case are compared by code that results from the compile-time expansion of the `eqlElems` call `[5]`.
@@ -304,7 +306,7 @@ The last, and in a sense most interesting part of the derivation is the comparis
       error("No `Eql` instance was found for $T")
   }
 ```
-`tryEql` is an inline method that takes an element type `T` and two element values of that type as arguments. It is defined using an `implicit match` that tries to find an implicit instance for `Eql[T]`. If an instance `ev` is found, it proceeds by comparing the arguments using `ev.eql`. On the other hand, if no instance is found
+`tryEql` is an inline method that takes an element type `T` and two element values of that type as arguments. It is defined using an `implicit match` that tries to find an implied instance of `Eql[T]`. If an instance `ev` is found, it proceeds by comparing the arguments using `ev.eql`. On the other hand, if no instance is found
 this signals a compilation error: the user tried a generic derivation of `Eql` for a class with an element type that does not support an `Eql` instance itself. The error is signaled by
 calling the `error` method defined in `scala.compiletime`.
 
@@ -313,7 +315,7 @@ calling the `error` method defined in `scala.compiletime`.
 **Example:** Here is a slightly polished and compacted version of the code that's generated by inline expansion for the derived `Eql` instance of class `Tree`.
 
 ```scala
-implicit [T] for Eql[Tree[T]] given (elemEq: Eql[T]) {
+implied [T] given (elemEq: Eql[T]) for Eql[Tree[T]] {
   def eql(x: Tree[T], y: Tree[T]): Boolean = {
     val ev = the[Generic[Tree[T]]]
     val mx = ev.reflect(x)
@@ -332,22 +334,22 @@ implicit [T] for Eql[Tree[T]] given (elemEq: Eql[T]) {
 }
 ```
 
-One important difference between this approach and Scala-2 typeclass derivation frameworks such as Shapeless or Magnolia is that no automatic attempt is made to generate typeclass instances of elements recursively using the generic derivation framework. There must be an implicit instance of type `Eql[T]` (which can of course be produced in turn using `Eql.derived`), or the compilation will fail. The advantage of this more restrictive approach to typeclass derivation is that it avoids uncontrolled transitive typeclass derivation by design. This keeps code sizes smaller, compile times lower, and is generally more predictable.
+One important difference between this approach and Scala-2 typeclass derivation frameworks such as Shapeless or Magnolia is that no automatic attempt is made to generate typeclass instances of elements recursively using the generic derivation framework. There must be an implied instance of `Eql[T]` (which can of course be produced in turn using `Eql.derived`), or the compilation will fail. The advantage of this more restrictive approach to typeclass derivation is that it avoids uncontrolled transitive typeclass derivation by design. This keeps code sizes smaller, compile times lower, and is generally more predictable.
 
-### Deriving Instances Elsewhere
+### Derived Instances Elsewhere
 
 Sometimes one would like to derive a typeclass instance for an ADT after the ADT is defined, without being able to change the code of the ADT itself.
-To do this, simply define an implicit instance with the `derived` method of the typeclass as right-hand side. E.g, to implement `Ordering` for `Option`, define:
+To do this, simply define an instance with the `derived` method of the typeclass as right-hand side. E.g, to implement `Ordering` for `Option`, define:
 ```scala
-implicit [T: Ordering] for Ordering[Option[T]] = Ordering.derived
+implied [T: Ordering]: Ordering[Option[T]] = Ordering.derived
 ```
-Usually, the `Ordering.derived` clause has an implicit parameter of type
+Usually, the `Ordering.derived` clause has an inferable parameter of type
 `Generic[Option[T]]`. Since the `Option` trait has a `derives` clause,
-the necessary implicit instance is already present in the companion object of `Option`.
-If the ADT in question does not have a `derives` clause, an implicit instance for `Generic`
+the necessary implied instance is already present in the companion object of `Option`.
+If the ADT in question does not have a `derives` clause, an implied `Generic` instance
 would still be synthesized by the compiler at the point where `derived` is called.
-This is similar to the situation with type tags or class tags: If no implicit instance is found,
-the compiler will synthesize one.
+This is similar to the situation with type tags or class tags: If no implied instance
+is found, the compiler will synthesize one.
 
 ### Syntax
 

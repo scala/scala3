@@ -1,98 +1,99 @@
 ---
 layout: doc-page
-title: "Given Clauses"
+title: "Inferable Parameters"
 ---
 
 Functional programming tends to express most dependencies as simple function parameterization.
 This is clean and powerful, but it sometimes leads to functions that take many parameters and
 call trees where the same value is passed over and over again in long call chains to many
-functions. Given clauses can help here since they enable the compiler to synthesize
+functions. Inferable parameters can help here since they enable the compiler to synthesize
 repetitive arguments instead of the programmer having to write them explicitly.
 
-For example, given the [implicit instances](./instance-defs.md) defined previously,
+For example, given the [implied instances](./instance-defs.md) defined previously,
 a maximum function that works for any arguments for which an ordering exists can be defined as follows:
 ```scala
 def max[T](x: T, y: T) given (ord: Ord[T]): T =
   if (ord.compare(x, y) < 1) y else x
 ```
-Here, `ord` is an _implicit parameter_ introduced with a `given` clause.
+Here, `ord` is an _inferable parameter_. Inferable parameters are introduced with a `given` clause.
 The `max` method can be applied as follows:
 ```scala
-max(2, 3).given(IntOrd)
+max(2, 3) given IntOrd
 ```
-The `.given(IntOrd)` part passes `IntOrd` as an argument for the `ord` parameter. But the point of
-implicit parameters is that this argument can also be left out (and it usually is). So the following
+The `given IntOrd` part provides the `IntOrd` instance as an argument for the `ord` parameter. But the point of inferable parameters is that this argument can also be left out (and it usually is). So the following
 applications are equally valid:
 ```scala
 max(2, 3)
 max(List(1, 2, 3), Nil)
 ```
 
-## Anonymous Implicit Parameters
+## Anonymous Inferable Parameters
 
-In many situations, the name of an implicit parameter of a method need not be
+In many situations, the name of an inferable parameter of a method need not be
 mentioned explicitly at all, since it is only used in synthesized arguments for
-other implicit parameters. In that case one can avoid defining a parameter name
+other inferable parameters. In that case one can avoid defining a parameter name
 and just provide its type. Example:
 ```scala
 def maximum[T](xs: List[T]) given Ord[T]: T =
   xs.reduceLeft(max)
 ```
-`maximum` takes an implicit parameter of type `Ord` only to pass it on as a
-synthesized argument to `max`. The name of the parameter is left out.
+`maximum` takes an inferable parameter of type `Ord` only to pass it on as an
+inferred argument to `max`. The name of the parameter is left out.
 
-Generally, implicit parameters may be given either as a parameter list `(p_1: T_1, ..., p_n: T_n)`
+Generally, inferable parameters may be given either as a parameter list `(p_1: T_1, ..., p_n: T_n)`
 or as a sequence of types, separated by commas.
 
 ## Inferring Complex Arguments
 
-Here are two other methods that have an implicit parameter of type `Ord[T]`:
+Here are two other methods that have an inferable parameter of type `Ord[T]`:
 ```scala
 def descending[T] given (asc: Ord[T]): Ord[T] = new Ord[T] {
   def compare(x: T, y: T) = asc.compare(y, x)
 }
 
 def minimum[T](xs: List[T]) given Ord[T] =
-  maximum(xs).given(descending)
+  maximum(xs) given descending
 ```
 The `minimum` method's right hand side passes `descending` as an explicit argument to `maximum(xs)`.
 With this setup, the following calls are all well-formed, and they all normalize to the last one:
 ```scala
 minimum(xs)
-maximum(xs).given(descending)
-maximum(xs).given(descending.given(ListOrd))
-maximum(xs).given(descending.given(ListOrd.given(IntOrd)))
+maximum(xs) given descending
+maximum(xs) given (descending given ListOrd)
+maximum(xs) given (descending given (ListOrd given IntOrd))
 ```
 
-## Mixing Given Clauses And Normal Parameters
+## Mixing Inferable And Normal Parameters
 
-Given clauses can be freely mixed with normal parameters.
-A given clause may be followed by a normal parameter and _vice versa_.
-There can be several given clauses in a definition. Example:
+Inferable parameters can be freely mixed with normal parameters.
+An inferable parameter may be followed by a normal parameter and _vice versa_.
+There can be several inferable parameter lists in a definition. Example:
 ```scala
 def f given (u: Universe) (x: u.T) given Context = ...
 
-implicit global for Universe { type T = String ... }
-implicit ctx for Context { ... }
+implied global for Universe { type T = String ... }
+implied ctx for Context { ... }
 ```
 Then the following calls are all valid (and normalize to the last one)
 ```scala
 f("abc")
-f.given(global)("abc")
-f("abc").given(ctx)
-f.given(global)("abc").given(ctx)
+(f given global)("abc")
+f("abc") given ctx
+(f given global)("abc") given ctx
 ```
 
-## Summoning Implicit Instances
+## Querying Implied Instances
 
-A method `the` in `Predef` returns an implicit instance for a given type. For example, the implicit for `Ord[List[Int]]` is generated by
+A method `the` in `Predef` creates an implied instance of a given type. For example,
+the implied instance of `Ord[List[Int]]` is generated by
 ```scala
 the[Ord[List[Int]]]  // reduces to ListOrd given IntOrd
 ```
-The `the` method is simply defined as the (non-widening) identity function over an implicit parameter.
+The `the` method is simply defined as the (non-widening) identity function over an inferable parameter.
 ```scala
 def the[T] given (x: T): x.type = x
 ```
+Functions like `the` that have only inferable parameters are also called _context queries_.
 
 ## Syntax
 

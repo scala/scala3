@@ -3,20 +3,20 @@ layout: doc-page
 title: "Implicit Conversions"
 ---
 
-Implicit conversions are defined by implied instances of the `scala.Conversion` class.
+Implicit conversions are defined by implicit instances of the `scala.Conversion` class.
 This class is defined in package `scala` as follows:
 ```scala
 abstract class Conversion[-T, +U] extends (T => U)
 ```
 For example, here is an implicit conversion from `String` to `Token`:
 ```scala
-implied for Conversion[String, Token] {
+implicit for Conversion[String, Token] {
   def apply(str: String): Token = new KeyWord(str)
 }
 ```
-Using an implied alias this can be expressed more concisely as:
+Using an alias implicit this can be expressed more concisely as:
 ```scala
-implied for Conversion[String, Token] = new KeyWord(_)
+implicit for Conversion[String, Token] = new KeyWord(_)
 ```
 An implicit conversion is applied automatically by the compiler in three situations:
 
@@ -25,11 +25,11 @@ An implicit conversion is applied automatically by the compiler in three situati
 3. In an application `e.m(args)` with `e` of type `T`, if `T` does define
    some member(s) named `m`, but none of these members can be applied to the arguments `args`.
 
-In the first case, the compiler looks in the implied scope for a an instance of
+In the first case, the compiler looks for an implicit value of class
 `scala.Conversion` that maps an argument of type `T` to type `S`. In the second and third
-case, it looks for an instance of `scala.Conversion` that maps an argument of type `T`
+case, it looks for an implicit value of class `scala.Conversion` that maps an argument of type `T`
 to a type that defines a member `m` which can be applied to `args` if present.
-If such an instance `C` is found, the expression `e` is replaced by `C.apply(e)`.
+If such a value `C` is found, the expression `e` is replaced by `C.apply(e)`.
 
 ## Examples
 
@@ -37,7 +37,7 @@ If such an instance `C` is found, the expression `e` is replaced by `C.apply(e)`
 primitive number types to subclasses of `java.lang.Number`. For instance, the
 conversion from `Int` to `java.lang.Integer` can be defined as follows:
 ```scala
-implied int2Integer for Conversion[Int, java.lang.Integer] =
+implicit int2Integer for Conversion[Int, java.lang.Integer] =
  java.lang.Integer.valueOf(_)
 ```
 
@@ -59,9 +59,9 @@ object Completions {
     //
     //   CompletionArg.fromStatusCode(statusCode)
 
-    implied fromString for Conversion[String, CompletionArg] = Error(_)
-    implied fromFuture for Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    implied fromStatusCode for Conversion[Future[StatusCode], CompletionArg] = Status(_)
+    implicit fromString     for Conversion[String, CompletionArg]               = Error(_)
+    implicit fromFuture     for Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    implicit fromStatusCode for Conversion[Future[StatusCode], CompletionArg]   = Status(_)
   }
   import CompletionArg._
 

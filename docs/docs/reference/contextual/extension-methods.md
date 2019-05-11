@@ -36,7 +36,7 @@ When is an extension method applicable? There are two possibilities.
 
  - An extension method is applicable if it is visible under a simple name, by being defined
    or inherited or imported in a scope enclosing the application.
- - An extension method is applicable if it is a member of some implied instance at the point of the application.
+ - An extension method is applicable if it is a member of some implicit instance at the point of the application.
 
 As an example, consider an extension method `longestStrings` on `String` defined in a trait `StringSeqOps`.
 
@@ -48,15 +48,15 @@ trait StringSeqOps {
   }
 }
 ```
-We can make the extension method available by defining an implied instance of `StringSeqOps`, like this:
+We can make the extension method available by defining an implicit instance for `StringSeqOps`, like this:
 ```scala
-implied ops1 for StringSeqOps
+implicit ops1 for StringSeqOps
 ```
 Then
 ```scala
 List("here", "is", "a", "list").longestStrings
 ```
-is legal everywhere `ops1` is available as an implied instance. Alternatively, we can define `longestStrings` as a member of a normal object. But then the method has to be brought into scope to be usable as an extension method.
+is legal everywhere `ops1` is available as an implicit. Alternatively, we can define `longestStrings` as a member of a normal object. But then the method has to be brought into scope to be usable as an extension method.
 
 ```scala
 object ops2 extends StringSeqOps
@@ -69,32 +69,32 @@ Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type ar
 and where `T` is the expected type. The following two rewritings are tried in order:
 
  1. The selection is rewritten to `m[Ts](e)`.
- 2. If the first rewriting does not typecheck with expected type `T`, and there is an implied instance `i`
-    in either the current scope or in the implied scope of `T`, and `i` defines an extension
+ 2. If the first rewriting does not typecheck with expected type `T`, and there is an implicit `i`
+    in either the current scope or in the implicit scope of `T`, and `i` defines an extension
     method named `m`, then selection is expanded to `i.m[Ts](e)`.
     This second rewriting is attempted at the time where the compiler also tries an implicit conversion
     from `T` to a type containing `m`. If there is more than one way of rewriting, an ambiguity error results.
 
 So `circle.circumference` translates to `CircleOps.circumference(circle)`, provided
-`circle` has type `Circle` and `CircleOps` is an eligible implied instance (i.e. it is visible at the point of call or it is defined in the companion object of `Circle`).
+`circle` has type `Circle` and `CircleOps` is an eligible implicit (i.e. it is visible at the point of call or it is defined in the companion object of `Circle`).
 
-### Implied Instances for Extension Methods
+### Implicits for Extension Methods
 
-Implied instances that define extension methods can also be defined without a `for` clause. E.g.,
+An implicit instance that define extension methods can also be defined without a `for` clause. E.g.,
 
 ```scala
-implied StringOps {
+implicit StringOps {
   def (xs: Seq[String]) longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
 
-implied ListOps {
+implicit {
   def (xs: List[T]) second[T] = xs.tail.head
 }
 ```
-If such implied instances are anonymous (as in the examples above), their name is synthesized from the name
+If such an implicit is anonymous (as in the second example above), its name is synthesized from the name
 of the first defined extension method.
 
 ### Operators
@@ -144,7 +144,3 @@ to the [current syntax](https://github.com/lampepfl/dotty/blob/master/docs/docs/
 DefSig            ::=  ...
                     |  ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] DefParamClauses
 ```
-
-
-
-
