@@ -2276,7 +2276,7 @@ object Parsers {
      */
     def importClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
-      val importImplied = in.token == IMPLICIT || in.token == IMPLIED
+      val importImplied = in.token == IMPLICIT
       if (importImplied) in.nextToken()
       commaSeparated(importExpr(importImplied, mkTree)) match {
         case t :: rest =>
@@ -2585,8 +2585,6 @@ object Parsers {
           objectDef(start, posMods(start, mods | Case | Module))
         case ENUM =>
           enumDef(start, mods, atSpan(in.skipToken()) { Mod.Enum() })
-        case IMPLIED =>
-          instanceDef(start, addMod(mods, atSpan(in.skipToken()) { Mod.Instance() }))
         case _ =>
           mods.mods.lastOption match {
             case Some(impl @ Mod.Implicit()) =>
