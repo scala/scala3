@@ -310,7 +310,7 @@ object Matcher {
       }
     }
 
-    implied for Env = Set.empty
+    implicit val env0: Env = Set.empty
     (scrutineeExpr.unseal =#= patternExpr.unseal).asOptionOfTuple.asInstanceOf[Option[Tup]]
   }
 
