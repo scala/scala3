@@ -500,7 +500,16 @@ object desugar {
         case _ =>
           constrVparamss
       }
-      New(classTypeRef, vparamss.nestedMap(refOfDef))
+      val nu = (makeNew(classTypeRef) /: vparamss) { (nu, vparams) =>
+        val app = Apply(nu, vparams.map(refOfDef))
+        vparams match {
+          case vparam :: _ if vparam.mods.is(Given) => app.pushAttachment(ApplyGiven, ())
+          case _ =>
+        }
+        app
+      }
+      ensureApplied(nu)
+        //.reporting(res => i"CREATE $cdef = $res")
     }
 
     val copiedAccessFlags = if (ctx.scala2Setting) EmptyFlags else AccessFlags
@@ -847,7 +856,7 @@ object desugar {
    */
   def normalizeName(mdef: MemberDef, impl: Tree)(implicit ctx: Context): Name = {
     var name = mdef.name
-    if (name.isEmpty) name = name.likeSpaced(s"${inventName(impl)}_instance".toTermName)
+    if (name.isEmpty) name = name.likeSpaced(s"${inventName(impl)}_ev".toTermName)
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
       def kind = if (name.isTypeName) "class" else "object"
       ctx.error(em"illegal redefinition of standard $kind $name", mdef.sourcePos)
