@@ -71,7 +71,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def PrintableFlags(isType: Boolean): FlagSet = {
     if (isType) TypeSourceModifierFlags | Module | Local
-    else TermSourceModifierFlags | Module | Local
+    else TermSourceModifierFlags | Module | Local | Given
   }.toCommonFlags
 
   override def nameString(name: Name): String =
@@ -705,7 +705,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val (leading, paramss) =
       if (isExtension && vparamss.nonEmpty) (paramsText(vparamss.head) ~ " " ~ txt, vparamss.tail)
       else (txt, vparamss)
-    (txt /: paramss)((txt, params) => txt ~ paramsText(params))
+    (txt /: paramss)((txt, params) =>
+      txt ~
+      (Str(" given ") provided params.nonEmpty && hasFlag(params.head, Given)) ~
+      paramsText(params))
   }
   protected def valDefToText[T >: Untyped](tree: ValDef[T]): Text = {
     import untpd.{modsDeco => _}
@@ -797,13 +800,18 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else if (suppressKw) PrintableFlags(isType) &~ Private
       else PrintableFlags(isType)
     if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= ImplicitOrImplied // drop implicit/implied from classes
-    val flags = (if (sym.exists) sym.flags else (mods.flags)) & flagMask
+    val rawFlags = if (sym.exists) sym.flags else mods.flags
+    if (rawFlags.is(Param)) flagMask = flagMask &~ Given
+    val flags = rawFlags & flagMask
     val flagsText = if (flags.isEmpty) "" else keywordStr(flags.toString)
     val annotations =
       if (sym.exists) sym.annotations.filterNot(ann => dropAnnotForModText(ann.symbol)).map(_.tree)
       else mods.annotations.filterNot(tree => dropAnnotForModText(tree.symbol))
     Text(annotations.map(annotText), " ") ~~ flagsText ~~ (Str(kw) provided !suppressKw)
   }
+
+  private def hasFlag(tree: untpd.MemberDef, flag: FlagSet): Boolean =
+    tree.mods.is(flag) || tree.symbol.is(flag)
 
   def optText(name: Name)(encl: Text => Text): Text =
     if (name.isEmpty) "" else encl(toText(name))
