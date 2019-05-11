@@ -852,7 +852,9 @@ object SymDenotations {
      * During completion, references to moduleClass and sourceModules are stored in
      * the completers.
      */
-    /** The class implementing this module, NoSymbol if not applicable. */
+    /** If this a module, return the corresponding class, if this is a module, return itself,
+     *  otherwise NoSymbol
+     */
     final def moduleClass(implicit ctx: Context): Symbol = {
       def notFound = {
       	if (Config.showCompletions) println(s"missing module class for $name: $myInfo")
@@ -870,23 +872,34 @@ object SymDenotations {
             }
           case _ => notFound
         }
-      else NoSymbol
-    }
-
-    /** The module implemented by this module class, NoSymbol if not applicable. */
-    final def sourceModule(implicit ctx: Context): Symbol = myInfo match {
-      case ClassInfo(_, _, _, _, selfType) if this is ModuleClass =>
-        def sourceOfSelf(tp: TypeOrSymbol): Symbol = tp match {
-          case tp: TermRef => tp.symbol
-          case tp: Symbol => sourceOfSelf(tp.info)
-          case tp: RefinedType => sourceOfSelf(tp.parent)
-        }
-        sourceOfSelf(selfType)
-      case info: LazyType =>
-        info.sourceModule
-      case _ =>
+      else if (this is ModuleClass)
+        symbol
+      else
         NoSymbol
     }
+
+    /** If this a module class, return the corresponding module, if this is a module, return itself,
+     *  otherwise NoSymbol
+     */
+    final def sourceModule(implicit ctx: Context): Symbol =
+      if (this is ModuleClass)
+        myInfo match {
+          case ClassInfo(_, _, _, _, selfType) =>
+            def sourceOfSelf(tp: TypeOrSymbol): Symbol = tp match {
+              case tp: TermRef => tp.symbol
+              case tp: Symbol => sourceOfSelf(tp.info)
+              case tp: RefinedType => sourceOfSelf(tp.parent)
+            }
+            sourceOfSelf(selfType)
+          case info: LazyType =>
+            info.sourceModule
+          case _ =>
+            NoSymbol
+        }
+      else if (this is ModuleVal)
+        symbol
+      else
+        NoSymbol
 
     /** The field accessed by this getter or setter, or if it does not exist, the getter */
     def accessedFieldOrGetter(implicit ctx: Context): Symbol = {
