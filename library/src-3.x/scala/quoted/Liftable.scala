@@ -16,15 +16,15 @@ abstract class Liftable[T] {
  */
 object Liftable {
 
-  implied for Liftable[Boolean] = new PrimitiveLifable
-  implied for Liftable[Short] = new PrimitiveLifable
-  implied for Liftable[Int] = new PrimitiveLifable
-  implied for Liftable[Long] = new PrimitiveLifable
-  implied for Liftable[Float] = new PrimitiveLifable
-  implied for Liftable[Double] = new PrimitiveLifable
-  implied for Liftable[Char] = new PrimitiveLifable
-  implied for Liftable[String] = new PrimitiveLifable
-  implied ClassIsLiftable[T] for Liftable[Class[T]] = new PrimitiveLifable // FIXME: annonymous implied with type parameter not working
+  implicit def BooleanIsLiftable: Liftable[Boolean] = new PrimitiveLifable
+  implicit def ShortIsLiftable: Liftable[Short] = new PrimitiveLifable
+  implicit def IntIsLiftable: Liftable[Int] = new PrimitiveLifable
+  implicit def LongIsLiftable: Liftable[Long] = new PrimitiveLifable
+  implicit def FloatIsLiftable: Liftable[Float] = new PrimitiveLifable
+  implicit def DoubleIsLiftable: Liftable[Double] = new PrimitiveLifable
+  implicit def CharIsLiftable: Liftable[Char] = new PrimitiveLifable
+  implicit def StringIsLiftable: Liftable[String] = new PrimitiveLifable
+  implicit def ClassIsLiftable[T]: Liftable[Class[T]] = new PrimitiveLifable
 
   private class PrimitiveLifable[T] extends Liftable[T] {
     override def toExpr(x: T): Expr[T] = liftedExpr(x)
