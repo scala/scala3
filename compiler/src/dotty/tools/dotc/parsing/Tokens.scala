@@ -178,7 +178,7 @@ object Tokens extends TokensCommon {
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val ENUM = 62;             enter(ENUM, "enum")
   final val ERASED = 63;           enter(ERASED, "erased")
-  final val IMPLIED = 64;          enter(IMPLIED, "implied")
+  final val IMPLIED = 64;          enter(IMPLIED, "implied")  // FIXME: remove
   final val GIVEN = 65;            enter(GIVEN, "given")
   final val EXPORT = 66;           enter(EXPORT, "export")
   final val MACRO = 67;            enter(MACRO, "macro") // TODO: remove
@@ -218,8 +218,6 @@ object Tokens extends TokensCommon {
 
   final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)
-
-  final val canStartBindingTokens: TokenSet = identifierTokens | BitSet(USCORE, LPAREN)
 
   final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
 

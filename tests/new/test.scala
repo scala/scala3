@@ -4,10 +4,10 @@ trait T {
 
 object Test0 {
   trait A[T]
-  implied a[T] for A[T]
+  implicit a[T] for A[T]
 
   class B[T]
-  implied b[T] for B[T]
+  implicit b[T] for B[T]
 }
 
 class C extends T

@@ -193,9 +193,13 @@ object Parsers {
     /** Is current token a hard or soft modifier (in modifier position or not)? */
     def isModifier: Boolean = modifierTokens.contains(in.token) || in.isSoftModifier
 
-    def isBindingIntro: Boolean =
-      canStartBindingTokens.contains(in.token) &&
-      !in.isSoftModifierInModifierPosition
+    def isBindingIntro: Boolean = {
+      in.token match {
+        case USCORE | LPAREN => true
+        case IDENTIFIER | BACKQUOTED_IDENT => in.lookaheadIn(BitSet(COLON, ARROW))
+        case _ => false
+      }
+    } && !in.isSoftModifierInModifierPosition
 
     def isExprIntro: Boolean =
       canStartExpressionTokens.contains(in.token) &&
@@ -2267,12 +2271,12 @@ object Parsers {
 
     type ImportConstr = (Boolean, Tree, List[Tree]) => Tree
 
-    /** Import  ::= import [implied] [ImportExpr {`,' ImportExpr}
-     *  Export  ::= export [implied] [ImportExpr {`,' ImportExpr}
+    /** Import  ::= import [implicit] [ImportExpr {`,' ImportExpr}
+     *  Export  ::= export [implicit] [ImportExpr {`,' ImportExpr}
      */
     def importClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
-      val importImplied = in.token == IMPLIED
+      val importImplied = in.token == IMPLICIT || in.token == IMPLIED
       if (importImplied) in.nextToken()
       commaSeparated(importExpr(importImplied, mkTree)) match {
         case t :: rest =>
@@ -2582,10 +2586,16 @@ object Parsers {
         case ENUM =>
           enumDef(start, mods, atSpan(in.skipToken()) { Mod.Enum() })
         case IMPLIED =>
-          instanceDef(start, mods, atSpan(in.skipToken()) { Mod.Instance() })
+          instanceDef(start, addMod(mods, atSpan(in.skipToken()) { Mod.Instance() }))
         case _ =>
-          syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
-          EmptyTree
+          mods.mods.lastOption match {
+            case Some(impl @ Mod.Implicit()) =>
+              val strippedMods = mods.withFlags(mods.flags &~ Implicit).withMods(mods.mods.init)
+              instanceDef(start, addMod(strippedMods, Mod.Instance().withSpan(impl.span)))
+            case _ =>
+              syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
+              EmptyTree
+          }
       }
     }
 
@@ -2683,8 +2693,8 @@ object Parsers {
      *  InstanceBody   ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
      *                   |  ‘for’ Type {GivenParamClause} ‘=’ Expr
      */
-    def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
-      var mods1 = addMod(mods, instanceMod)
+    def instanceDef(start: Offset, mods: Modifiers) = atSpan(start, nameStart) {
+      var mods1 = mods
       val name = if (isIdent) ident() else EmptyTermName
       val tparams = typeParamClauseOpt(ParamOwner.Def)
       val parents =
@@ -2981,9 +2991,9 @@ object Parsers {
       }
     }
 
-    /** BlockStatSeq ::= { BlockStat semi } [ResultExpr]
+    /** BlockStatSeq ::= { BlockStat semi } [Expr]
      *  BlockStat    ::= Import
-     *                 | Annotations [implicit] [lazy] Def
+     *                 | Annotations [implicit] [lazy] [erased] Def
      *                 | Annotations LocalModifiers TmplDef
      *                 | Expr1
      *                 |
@@ -3005,13 +3015,12 @@ object Parsers {
             var imods = modifiers(closureMods)
             if (isBindingIntro)
               stats += implicitClosure(start, Location.InBlock, imods)
-            else if (in.token == MATCH)
+            else if (in.token == MATCH && imods.mods == Mod.Implicit() :: Nil)
               stats += implicitMatch(start, imods)
             else
               stats +++= localDef(start, imods)
-          } else {
-            stats +++= localDef(in.offset)
           }
+          else stats +++= localDef(in.offset)
         else if (!isStatSep && (in.token != CASE)) {
           exitOnError = mustStartStat
           syntaxErrorOrIncomplete(IllegalStartOfStatement(isModifier))

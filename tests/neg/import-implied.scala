@@ -1,6 +1,6 @@
 class TC
 object A {
-  implied tc for TC
+  implicit tc for TC
   def foo given TC = ()
 }
 object B {
@@ -11,19 +11,19 @@ object B {
 }
 object C {
   import A._
-  import implied A.tc
+  import implicit A.tc
   foo            // ok
   foo given tc   // ok
 }
 object D {
   import A.foo
-  import implied A._
+  import implicit A._
   foo            // ok
   foo given tc   // ok
 }
 object E {
   import A._
-  import implied A._
+  import implicit A._
   foo            // ok
   foo given tc   // ok
 }

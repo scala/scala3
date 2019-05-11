@@ -5,7 +5,7 @@ object A {
 }
 
 class C () {
-  implicit this() = this() // error: ';' expected but 'implicit' found.
+  implicit this() = this() // error: end of statement expected // error: anonymous instance must have `for` part ...
   override this() = this() // error: ';' expected but 'override' found.
 }
 class D override() // error: ';' expected but 'override' found.

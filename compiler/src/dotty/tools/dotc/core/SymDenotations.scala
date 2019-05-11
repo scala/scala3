@@ -1878,7 +1878,6 @@ object SymDenotations {
           throw ex
       }
 
-
       /*>|>*/ trace.onDebug(s"$tp.baseType($this)") /*<|<*/ {
         Stats.record("baseTypeOf")
         recur(tp)

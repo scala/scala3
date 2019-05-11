@@ -9,7 +9,7 @@ object PostConditions {
   def result[T] given (r: WrappedResult[T]): T = WrappedResult.unwrap(r)
 
   def (x: T) ensuring [T](condition: given WrappedResult[T] => Boolean): T = {
-    implied for WrappedResult[T] = WrappedResult.wrap(x)
+    implicit for WrappedResult[T] = WrappedResult.wrap(x)
     assert(condition)
     x
   }

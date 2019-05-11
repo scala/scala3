@@ -10,7 +10,7 @@ object Generic {
 
 object Test extends App {
   trait Context
-  implied ctx for Context
+  implicit ctx for Context
 
   object b {
     def foo[T](implicit gen: Generic): Show[T] = new Show[T](1)

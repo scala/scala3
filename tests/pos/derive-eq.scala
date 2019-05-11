@@ -2,7 +2,7 @@
 case class One() derives Eql
 case class Two() derives Eql
 
-implied for Eql[One, Two] = Eql.derived
+implicit for Eql[One, Two] = Eql.derived
 
 enum Lst[T] derives Eql {
   case Cons(x: T, xs: Lst[T])
