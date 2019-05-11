@@ -663,7 +663,7 @@ trait Checking {
     }
 
   /** If `sym` is an implicit conversion, check that implicit conversions are enabled.
-   *  @pre  sym.is(Implicit)
+   *  @pre  sym.is(ImplicitOrGiven)
    */
   def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = {
     def check(): Unit = {
@@ -694,7 +694,7 @@ trait Checking {
   def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(implicit ctx: Context): Unit =
     if (sym.exists) {
       val conv =
-        if (sym.is(Implicit)) sym
+        if (sym.is(ImplicitOrGiven)) sym
         else {
           assert(sym.name == nme.apply)
           sym.owner

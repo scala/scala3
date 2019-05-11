@@ -125,7 +125,7 @@ trait NamerContextOps { this: Context =>
   /** if isConstructor, make sure it has one non-implicit parameter list */
   def normalizeIfConstructor(termParamss: List[List[Symbol]], isConstructor: Boolean): List[List[Symbol]] =
     if (isConstructor &&
-      (termParamss.isEmpty || termParamss.head.nonEmpty && (termParamss.head.head is Implicit)))
+      (termParamss.isEmpty || termParamss.head.nonEmpty && (termParamss.head.head is ImplicitOrGiven)))
       Nil :: termParamss
     else
       termParamss
@@ -749,7 +749,7 @@ class Namer { typer: Typer =>
 
   def missingType(sym: Symbol, modifier: String)(implicit ctx: Context): Unit = {
     ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.sourcePos)
-    sym.resetFlag(Implicit)
+    sym.resetFlag(ImplicitOrGiven)
   }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
@@ -949,7 +949,7 @@ class Namer { typer: Typer =>
 
         def whyNoForwarder(mbr: SingleDenotation): String = {
           val sym = mbr.symbol
-          if (sym.is(ImplicitOrImplied) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}implied"
+          if (sym.is(ImplicitOrImpliedOrGiven) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}implied"
           else if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
           else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) SKIP
           else if (cls.derivesFrom(sym.owner) &&

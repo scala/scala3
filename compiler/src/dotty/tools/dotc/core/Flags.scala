@@ -487,7 +487,7 @@ object Flags {
     HigherKinded.toCommonFlags | Param | ParamAccessor.toCommonFlags |
     Scala2ExistentialCommon | MutableOrOpaque | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
-    Extension.toCommonFlags | NonMember | Implicit | Implied | Permanent | Synthetic |
+    Extension.toCommonFlags | NonMember | Implicit | Given | Implied | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
@@ -589,8 +589,10 @@ object Flags {
   final val InlineOrProxy: FlagSet = Inline | InlineProxy
 
   final val ImplicitOrImplied = Implicit | Implied
+  final val ImplicitOrImpliedOrGiven = Implicit | Implied | Given
+  final val ImplicitOrGiven = Implicit | Given
 
-  final val ImplicitOrImpliedTerm = ImplicitOrImplied.toTermFlags
+  final val ImplicitOrImpliedOrGivenTerm = ImplicitOrImpliedOrGiven.toTermFlags
 
   /** Assumed to be pure */
   final val StableOrErased: FlagSet = StableRealizable | Erased
