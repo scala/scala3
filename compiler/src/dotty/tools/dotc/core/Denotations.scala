@@ -1301,12 +1301,12 @@ object Denotations {
         if (owner.exists) {
           val result = if (isPackage) owner.info.decl(selector) else owner.info.member(selector)
           if (result.exists) result
+          else if (isPackageFromCoreLibMissing) throw new MissingCoreLibraryException(selector.toString)
           else {
             val alt =
               if (generateStubs) missingHook(owner.symbol.moduleClass, selector)
               else NoSymbol
             if (alt.exists) alt.denot
-            else if (isPackageFromCoreLibMissing) throw new MissingCoreLibraryException(selector.toString)
             else MissingRef(owner, selector)
           }
         }
