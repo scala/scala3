@@ -554,7 +554,7 @@ trait Printers
 
         case Import(importImplied, expr, selectors) =>
           this += "import "
-          if (importImplied) this += "implied "
+          if (importImplied) this += "implied "// FIXME: change to "implicit "
           printTree(expr)
           this += "."
           printImportSelectors(selectors)

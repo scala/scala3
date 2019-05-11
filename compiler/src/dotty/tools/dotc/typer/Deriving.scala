@@ -247,7 +247,7 @@ trait Deriving { this: Typer =>
     }
 
     /** If any of the instances has a companion with a `derived` member
-     *  that refers to `scala.reflect.Generic`, add an implied instance
+     *  that refers to `scala.reflect.Generic`, add an implicit instance
      *  of `Generic`. Note: this is just an optimization to avoid possible
      *  code duplication. Generic instances are created on the fly if they
      *  are missing from the companion.

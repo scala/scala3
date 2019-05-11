@@ -504,7 +504,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case id :: Nil => toText(id)
           case _ => "{" ~ Text(selectors map selectorText, ", ") ~ "}"
         }
-        keywordText("import ") ~ (keywordText("implied ") provided importImplied) ~
+        keywordText("import ") ~ (keywordText("implicit ") provided importImplied) ~
         toTextLocal(expr) ~ "." ~ selectorsText
       case packageDef: PackageDef =>
         packageDefText(packageDef)
