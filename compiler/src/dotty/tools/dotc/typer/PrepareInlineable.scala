@@ -24,16 +24,6 @@ import dotty.tools.dotc.transform.TreeMapWithStages._
 object PrepareInlineable {
   import tpd._
 
-  /** Marks an implicit reference found in the context (as opposed to the implicit scope)
-   *  from an inlineable body. Such references will be carried along with the body to
-   *  the expansion site.
-   */
-  private val ContextualImplicit = new Property.StickyKey[Unit]
-
-  def markContextualImplicit(tree: Tree)(implicit ctx: Context): Unit =
-    if (!defn.ScalaPredefModule.moduleClass.derivesFrom(tree.symbol.maybeOwner))
-      methPart(tree).putAttachment(ContextualImplicit, ())
-
   class InlineAccessors extends AccessProxies {
 
     /** If an inline accessor name wraps a unique inline name, this is taken as indication
