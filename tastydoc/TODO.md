@@ -21,7 +21,7 @@
 # Representation
 * Define wiki or markdown syntax
 * Make sense of the parent field (+ parents?)
-* Known subclasses
+* Inherited declaration
 * Annotations (+ everywhere or only where it makes sense?)
 * Type default in def
 * Alias type
@@ -40,10 +40,12 @@
 * Goal Why we wanted to generated from tasty why to markdown
 * General architecture, same intermediate interface as dotty doc
 * intermediate representation md to xxxx
-* Difficulties, problmes with dottydoc + md libraries
+* Difficulties, problems with dottydoc + md libraries
+* benchmark?
 
 # To Ask
 * Showcode became show?
+* Known subclasses
 * Main ok?
 * Need return of consumeTasty for packages + passing parameter for wiki/markdown
 * All modifiers present?

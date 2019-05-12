@@ -87,6 +87,7 @@ object representations extends CommentParser with CommentCleaner {
     (if(flags.is(Flags.Sealed)) "sealed" else "") ::
     (if(flags.is(Flags.Implicit)) "implicit" else "") ::
     (if(flags.is(Flags.Abstract)) "abstract" else "") ::
+    (if(flags.is(Flags.Inline)) "inline" else "") ::
     Nil) filter (_ != ""),
 
     privateWithin match {

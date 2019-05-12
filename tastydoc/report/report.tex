@@ -8,18 +8,36 @@
 \maketitle
 
 \begin{abstract}
-Current documentation tool (dottydoc) relies on compiler internals. The tool introduced here aims to build a program not dependant on compiler internals but instead use Tasty files which are output when a Scala program is compiled.
+The current documentation tool (dottydoc) relies on compiler internals and low level code. The tool introduced here aims to build a program not dependant on compiler internals but instead use Tasty files which are output when a Scala program is compiled.
 \end{abstract}
 
-\chapter{Introduction}
+\tableofcontents
 
-\chapter{Goal}
+\chapter{Introduction}
+In dotty the documentation generation tool is called \texttt{dotty-doc}. However the tool is flawed in many ways, these flaws include:
+\begin{itemize}
+    \item Reliance on compiler internals
+    \item Low level and unecessarily complex code
+    \item Not maintened and not documented
+    \item Not flexible in its output, it outputs html/css in a hard to modify way
+    \item Malformed type output such as \texttt{[32m"getOffset"[0m}
+    \item Lacks features, especially:
+    \begin{itemize}
+        
+        \item 
+    \end{itemize}
+\end{itemize}
+The tool introduced here aims to address all these issues.
+
+\chapter{Features}
 
 \chapter{Output format}
 
 \chapter{Architecture}
 
 \chapter{Problems encountered}
+
+\chapter{Further work}
 
 \chapter{Conclusion}
 
