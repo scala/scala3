@@ -1914,8 +1914,8 @@ object Parsers {
       if (in.token == RPAREN) Nil else patterns()
 
 
-    /** ArgumentPatterns  ::=  `(' [Patterns] `)'
-     *                      |  `(' [Patterns `,'] Pattern2 `:' `_' `*' ')
+    /** ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
+     *                      |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
      */
     def argumentPatterns(): List[Tree] =
       inParens(patternsOpt())
@@ -2065,18 +2065,18 @@ object Parsers {
 
  /* -------- PARAMETERS ------------------------------------------- */
 
-    /** ClsTypeParamClause::=  `[' ClsTypeParam {`,' ClsTypeParam} `]'
-     *  ClsTypeParam      ::=  {Annotation} [`+' | `-']
+    /** ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
+     *  ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]
      *                         id [HkTypeParamClause] TypeParamBounds
      *
-     *  DefTypeParamClause::=  `[' DefTypeParam {`,' DefTypeParam} `]'
+     *  DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
      *  DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
      *
-     *  TypTypeParamCaluse::=  `[' TypTypeParam {`,' TypTypeParam} `]'
+     *  TypTypeParamCaluse::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
      *  TypTypeParam      ::=  {Annotation} id [HkTypePamClause] TypeBounds
      *
-     *  HkTypeParamClause ::=  `[' HkTypeParam {`,' HkTypeParam} `]'
-     *  HkTypeParam       ::=  {Annotation} ['+' | `-'] (id [HkTypePamClause] | _') TypeBounds
+     *  HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
+     *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypePamClause] | ‘_’) TypeBounds
      */
     def typeParamClause(ownerKind: ParamOwner.Value): List[TypeDef] = inBrackets {
       def typeParam(): TypeDef = {
@@ -2557,8 +2557,8 @@ object Parsers {
       }
     }
 
-    /** TmplDef ::=  ([`case'] ‘class’ | trait’) ClassDef
-     *            |  [`case'] `object' ObjectDef
+    /** TmplDef ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
+     *            |  [‘case’] ‘object’ ObjectDef
      *            |  ‘enum’ EnumDef
      *            |  ‘instance’ InstanceDef
      */
