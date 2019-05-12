@@ -789,7 +789,7 @@ object Types {
     }
 
     /** The set of implicit term members of this type
-     *  @param kind   A subset of {Implicit, Implied} that sepcifies what kind of implicit should
+     *  @param kind   A subset of {Implicit, Implied} that specifies what kind of implicit should
      *                be returned
      */
     final def implicitMembers(kind: FlagSet)(implicit ctx: Context): List[TermRef] = track("implicitMembers") {

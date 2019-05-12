@@ -230,7 +230,7 @@ object Implicits {
     assert(initctx.typer != null)
     lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
-      for (companion <- companionRefs) buf ++= companion.implicitMembers(ImplicitOrImplied)
+      for (companion <- companionRefs) buf ++= companion.implicitMembers(ImplicitOrImpliedOrGiven)
       buf.toList
     }
 
