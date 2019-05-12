@@ -132,7 +132,7 @@ class ReplCompilerTests extends ReplTest {
     fromInitialState { implicit state => run("implicit for Int = 10") }
     .andThen         { implicit state =>
       assertEquals(
-        "def Int_instance: Int",
+        "def Int_ev: Int",
         storedOutput().trim
       )
       run("implicitly[Int]")
