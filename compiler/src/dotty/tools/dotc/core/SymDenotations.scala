@@ -2031,7 +2031,15 @@ object SymDenotations {
       def recur(pobjs: List[ClassDenotation], acc: PreDenotation): PreDenotation = pobjs match {
         case pcls :: pobjs1 =>
           if (pcls.isCompleting) recur(pobjs1, acc)
-          else recur(pobjs1, acc.union(pcls.computeNPMembersNamed(name)))
+          else {
+            // A package object inherits members from `Any` and `Object` which
+            // should not be accessible from the package prefix.
+            val pmembers = pcls.computeNPMembersNamed(name).filterWithPredicate { d =>
+              val owner = d.symbol.maybeOwner
+              (owner ne defn.AnyClass) && (owner ne defn.ObjectClass)
+            }
+            recur(pobjs1, acc.union(pmembers))
+          }
         case nil =>
           val directMembers = super.computeNPMembersNamed(name)
           if (acc.exists) acc.union(directMembers.filterWithPredicate(!_.symbol.isAbsent))
