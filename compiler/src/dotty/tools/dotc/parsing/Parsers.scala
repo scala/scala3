@@ -549,8 +549,8 @@ object Parsers {
     /**   operand { infixop operand | ‘given’ (operand | ParArgumentExprs) } [postfixop],
      *
      *  respecting rules of associativity and precedence.
-     *  @param notAnOperator  a token that does not count as operator.
-     *  @param maybePostfix   postfix operators are allowed.
+     *  @param isOperator    the current token counts as an operator.
+     *  @param maybePostfix  postfix operators are allowed.
      */
     def infixOps(
         first: Tree, canStartOperand: Token => Boolean, operand: () => Tree,
