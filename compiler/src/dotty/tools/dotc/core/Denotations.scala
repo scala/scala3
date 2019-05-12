@@ -624,8 +624,8 @@ object Denotations {
           tp2 match {
             case tp2: PolyType =>
               tp1
-            case tp2: MethodType if ctx.typeComparer.matchingMethodParams(tp1, tp2) &&
-                tp1.isImplicitMethod == tp2.isImplicitMethod =>
+            case tp2: MethodType
+            if ctx.typeComparer.matchingMethodParams(tp1, tp2) && (tp1.companion eq tp2.companion) =>
               tp1.derivedLambdaType(
                 mergeParamNames(tp1, tp2),
                 tp1.paramInfos,
@@ -683,8 +683,7 @@ object Denotations {
       case tp1: MethodType =>
         tp2 match {
           case tp2: MethodType
-          if ctx.typeComparer.matchingMethodParams(tp1, tp2) &&
-              tp1.isImplicitMethod == tp2.isImplicitMethod =>
+          if ctx.typeComparer.matchingMethodParams(tp1, tp2) && (tp1.companion eq tp2.companion) =>
             tp1.derivedLambdaType(
               mergeParamNames(tp1, tp2),
               tp1.paramInfos,
