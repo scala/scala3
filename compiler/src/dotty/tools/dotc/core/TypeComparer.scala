@@ -1219,6 +1219,17 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     fix(tp)
   }
 
+  /** Returns true iff the result of evaluating either `op1` or `op2` is true and approximates resulting constraints.
+   *
+   *  If we're _not_ in GADTFlexible mode, we try to keep the smaller of the two constraints.
+   *  If we're _in_ GADTFlexible mode, we keep the smaller constraint if any, or no constraint at all.
+   *
+   *  @see [[sufficientEither]] for the normal case
+   *  @see [[necessaryEither]] for the GADTFlexible case
+   */
+  private def either(op1: => Boolean, op2: => Boolean): Boolean =
+    if (ctx.mode.is(Mode.GADTflexible)) necessaryEither(op1, op2) else sufficientEither(op1, op2)
+
   /** Returns true iff the result of evaluating either `op1` or `op2` is true,
    *  trying at the same time to keep the constraint as wide as possible.
    *  E.g, if
@@ -1247,13 +1258,79 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *
    *  Here, each precondition leads to a different constraint, and neither of
    *  the two post-constraints subsumes the other.
+   *
+   *  Note that to be complete when it comes to typechecking, we would instead need to backtrack
+   *  and attempt to typecheck with the other constraint.
+   *
+   *  Method name comes from the notion that we are keeping a constraint which is sufficient to satisfy
+   *  one of subtyping relationships.
    */
-  private def either(op1: => Boolean, op2: => Boolean): Boolean = {
+  private def sufficientEither(op1: => Boolean, op2: => Boolean): Boolean = {
+    val preConstraint = constraint
+    op1 && {
+      val leftConstraint = constraint
+      constraint = preConstraint
+      if (!(op2 && subsumes(leftConstraint, constraint, preConstraint))) {
+        if (constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint))
+          constr.println(i"CUT - prefer $leftConstraint over $constraint")
+        constraint = leftConstraint
+      }
+      true
+    } || op2
+  }
+
+  /** Returns true iff the result of evaluating either `op1` or `op2` is true, keeping the smaller constraint if any.
+   *  E.g., if
+   *
+   *    tp11 <:< tp12 = true   with constraint c1 and GADT constraint g1
+   *    tp12 <:< tp22 = true   with constraint c2 and GADT constraint g2
+   *
+   *  We keep:
+   *    - (c1, g1) if c2 subsumes c1 and g2 subsumes g1
+   *    - (c2, g2) if c1 subsumes c2 and g1 subsumes g2
+   *    - neither constraint pair otherwise.
+   *
+   *  Like [[sufficientEither]], this method is used to approximate a solution in one of the following cases:
+   *
+   *     T1 & T2 <:< T3
+   *     T1 <:< T2 | T3
+   *
+   *  Unlike [[sufficientEither]], this method is used in GADTFlexible mode, when we are attempting to infer GADT
+   *  constraints that necessarily follow from the subtyping relationship. For instance, if we have
+   *
+   *     enum Expr[T] {
+   *       case IntExpr(i: Int) extends Expr[Int]
+   *       case StrExpr(s: String) extends Expr[String]
+   *     }
+   *
+   *  and `A` is an abstract type and we know that
+   *
+   *     Expr[A] <: IntExpr | StrExpr
+   *
+   *  (the case with &-type is analogous) then this may follow either from
+   *
+   *     Expr[A] <: IntExpr    or    Expr[A] <: StrExpr
+   *
+   *  Since we don't know which branch is true, we need to give up and not keep either constraint. OTOH, if one
+   *  constraint pair is subsumed by the other, we know that it is necessary for both cases and therefore we can
+   *  keep it.
+   *
+   *  Like [[sufficientEither]], this method is not complete because sometimes, the necessary constraint
+   *  is neither of the pairs. For instance, if
+   *
+   *     g1 = { A = Int, B = String }
+   *     g2 = { A = Int, B = Int }
+   *
+   *  then the necessary constraint is { A = Int }, but correctly inferring that is, as far as we know, too expensive.
+   *
+   *  Method name comes from the notion that we are keeping the constraint which is necessary to satisfy both
+   *  subtyping relationships.
+   */
+  private def necessaryEither(op1: => Boolean, op2: => Boolean): Boolean = {
     val preConstraint = constraint
 
-    if (ctx.mode.is(Mode.GADTflexible)) {
       val preGadt = ctx.gadt.fresh
-      // if GADTflexible mode is on, we always have a ProperGadtConstraint
+      // if GADTflexible mode is on, we expect to always have a ProperGadtConstraint
       val pre = preGadt.asInstanceOf[ProperGadtConstraint]
       if (op1) {
         val leftConstraint = constraint
@@ -1284,18 +1361,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           true
         }
       } else op2
-    } else {
-      op1 && {
-        val leftConstraint = constraint
-        constraint = preConstraint
-        if (!(op2 && subsumes(leftConstraint, constraint, preConstraint))) {
-          if (constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint))
-            constr.println(i"CUT - prefer $leftConstraint over $constraint")
-          constraint = leftConstraint
-        }
-        true
-      } || op2
-    }
   }
 
   /** Does type `tp1` have a member with name `name` whose normalized type is a subtype of
