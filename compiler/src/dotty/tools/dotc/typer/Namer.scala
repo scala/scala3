@@ -1335,8 +1335,15 @@ class Namer { typer: Typer =>
       // it would be erased to BoxedUnit.
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-      var rhsCtx = ctx.addMode(Mode.InferringReturnType)
+      var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
       if (sym.isInlineMethod) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
+      if (typeParams.nonEmpty) {
+        // we'll be typing an expression from a polymorphic definition's body,
+        // so we must allow constraining its type parameters
+        // compare with typedDefDef, see tests/pos/gadt-inference.scala
+        rhsCtx.setFreshGADTBounds
+        rhsCtx.gadt.addToConstraint(typeParams)
+      }
       def rhsType = typedAheadExpr(mdef.rhs, (inherited orElse rhsProto).widenExpr)(rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.

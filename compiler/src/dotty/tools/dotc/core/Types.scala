@@ -3710,7 +3710,12 @@ object Types {
 
   // ----- Skolem types -----------------------------------------------
 
-  /** A skolem type reference with underlying type `info` */
+  /** A skolem type reference with underlying type `info`.
+   *
+   * For Dotty, a skolem type is a singleton type of some unknown value of type `info`.
+   * Note that care is needed when creating them, since not all types need to be inhabited.
+   * A skolem is equal to itself and no other type.
+   */
   case class SkolemType(info: Type) extends UncachedProxyType with ValueType with SingletonType {
     override def underlying(implicit ctx: Context): Type = info
     def derivedSkolemType(info: Type)(implicit ctx: Context): SkolemType =
@@ -3884,10 +3889,10 @@ object Types {
       def contextInfo(tp: Type): Type = tp match {
         case tp: TypeParamRef =>
           val constraint = ctx.typerState.constraint
-          if (constraint.entry(tp).exists) constraint.fullBounds(tp)
+          if (constraint.entry(tp).exists) ctx.typeComparer.fullBounds(tp)
           else NoType
         case tp: TypeRef =>
-          val bounds = ctx.gadt.bounds(tp.symbol)
+          val bounds = ctx.gadt.fullBounds(tp.symbol)
           if (bounds == null) NoType else bounds
         case tp: TypeVar =>
           tp.underlying

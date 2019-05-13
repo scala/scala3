@@ -49,7 +49,7 @@ object Mode {
   /** We are in a pattern alternative */
   val InPatternAlternative: Mode = newMode(7, "InPatternAlternative")
 
-  /** Allow GADTFlexType labelled types to have their bounds adjusted */
+  /** Infer GADT constraints during type comparisons `A <:< B` */
   val GADTflexible: Mode = newMode(8, "GADTflexible")
 
   /** Assume -language:strictEquality */

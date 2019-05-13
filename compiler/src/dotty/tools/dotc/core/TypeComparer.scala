@@ -442,8 +442,18 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           val gbounds2 = gadtBounds(tp2.symbol)
           (gbounds2 != null) &&
             (isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
+              (tp1 match {
+                case tp1: NamedType if ctx.gadt.contains(tp1.symbol) =>
+                  // Note: since we approximate constrained types only with their non-param bounds,
+                  // we need to manually handle the case when we're comparing two constrained types,
+                  // one of which is constrained to be a subtype of another.
+                  // We do not need similar code in fourthTry, since we only need to care about
+                  // comparing two constrained types, and that case will be handled here first.
+                  ctx.gadt.isLess(tp1.symbol, tp2.symbol) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
+                case _ => false
+              }) ||
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
-            GADTusage(tp2.symbol)
+            { tp1.isRef(NothingClass) || GADTusage(tp2.symbol) }
         }
         isSubApproxHi(tp1, info2.lo) || compareGADT || fourthTry
 
@@ -702,7 +712,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
               (gbounds1 != null) &&
                 (isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
                 narrowGADTBounds(tp1, tp2, approx, isUpper = true)) &&
-                GADTusage(tp1.symbol)
+                { tp2.isRef(AnyClass) || GADTusage(tp1.symbol) }
             }
             isSubType(hi1, tp2, approx.addLow) || compareGADT
           case _ =>
@@ -1209,6 +1219,17 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     fix(tp)
   }
 
+  /** Returns true iff the result of evaluating either `op1` or `op2` is true and approximates resulting constraints.
+   *
+   *  If we're _not_ in GADTFlexible mode, we try to keep the smaller of the two constraints.
+   *  If we're _in_ GADTFlexible mode, we keep the smaller constraint if any, or no constraint at all.
+   *
+   *  @see [[sufficientEither]] for the normal case
+   *  @see [[necessaryEither]] for the GADTFlexible case
+   */
+  private def either(op1: => Boolean, op2: => Boolean): Boolean =
+    if (ctx.mode.is(Mode.GADTflexible)) necessaryEither(op1, op2) else sufficientEither(op1, op2)
+
   /** Returns true iff the result of evaluating either `op1` or `op2` is true,
    *  trying at the same time to keep the constraint as wide as possible.
    *  E.g, if
@@ -1237,8 +1258,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *
    *  Here, each precondition leads to a different constraint, and neither of
    *  the two post-constraints subsumes the other.
+   *
+   *  Note that to be complete when it comes to typechecking, we would instead need to backtrack
+   *  and attempt to typecheck with the other constraint.
+   *
+   *  Method name comes from the notion that we are keeping a constraint which is sufficient to satisfy
+   *  one of subtyping relationships.
    */
-  private def either(op1: => Boolean, op2: => Boolean): Boolean = {
+  private def sufficientEither(op1: => Boolean, op2: => Boolean): Boolean = {
     val preConstraint = constraint
     op1 && {
       val leftConstraint = constraint
@@ -1250,6 +1277,90 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       }
       true
     } || op2
+  }
+
+  /** Returns true iff the result of evaluating either `op1` or `op2` is true, keeping the smaller constraint if any.
+   *  E.g., if
+   *
+   *    tp11 <:< tp12 = true   with constraint c1 and GADT constraint g1
+   *    tp12 <:< tp22 = true   with constraint c2 and GADT constraint g2
+   *
+   *  We keep:
+   *    - (c1, g1) if c2 subsumes c1 and g2 subsumes g1
+   *    - (c2, g2) if c1 subsumes c2 and g1 subsumes g2
+   *    - neither constraint pair otherwise.
+   *
+   *  Like [[sufficientEither]], this method is used to approximate a solution in one of the following cases:
+   *
+   *     T1 & T2 <:< T3
+   *     T1 <:< T2 | T3
+   *
+   *  Unlike [[sufficientEither]], this method is used in GADTFlexible mode, when we are attempting to infer GADT
+   *  constraints that necessarily follow from the subtyping relationship. For instance, if we have
+   *
+   *     enum Expr[T] {
+   *       case IntExpr(i: Int) extends Expr[Int]
+   *       case StrExpr(s: String) extends Expr[String]
+   *     }
+   *
+   *  and `A` is an abstract type and we know that
+   *
+   *     Expr[A] <: IntExpr | StrExpr
+   *
+   *  (the case with &-type is analogous) then this may follow either from
+   *
+   *     Expr[A] <: IntExpr    or    Expr[A] <: StrExpr
+   *
+   *  Since we don't know which branch is true, we need to give up and not keep either constraint. OTOH, if one
+   *  constraint pair is subsumed by the other, we know that it is necessary for both cases and therefore we can
+   *  keep it.
+   *
+   *  Like [[sufficientEither]], this method is not complete because sometimes, the necessary constraint
+   *  is neither of the pairs. For instance, if
+   *
+   *     g1 = { A = Int, B = String }
+   *     g2 = { A = Int, B = Int }
+   *
+   *  then the necessary constraint is { A = Int }, but correctly inferring that is, as far as we know, too expensive.
+   *
+   *  Method name comes from the notion that we are keeping the constraint which is necessary to satisfy both
+   *  subtyping relationships.
+   */
+  private def necessaryEither(op1: => Boolean, op2: => Boolean): Boolean = {
+    val preConstraint = constraint
+
+      val preGadt = ctx.gadt.fresh
+      // if GADTflexible mode is on, we expect to always have a ProperGadtConstraint
+      val pre = preGadt.asInstanceOf[ProperGadtConstraint]
+      if (op1) {
+        val leftConstraint = constraint
+        val leftGadt = ctx.gadt.fresh
+        constraint = preConstraint
+        ctx.gadt.restore(preGadt)
+        if (op2) {
+          if (pre.subsumes(leftGadt, ctx.gadt, preGadt) && subsumes(leftConstraint, constraint, preConstraint)) {
+            gadts.println(i"GADT CUT - prefer ${ctx.gadt} over $leftGadt")
+            constr.println(i"CUT - prefer $constraint over $leftConstraint")
+            true
+          } else if (pre.subsumes(ctx.gadt, leftGadt, preGadt) && subsumes(constraint, leftConstraint, preConstraint)) {
+            gadts.println(i"GADT CUT - prefer $leftGadt over ${ctx.gadt}")
+            constr.println(i"CUT - prefer $leftConstraint over $constraint")
+            constraint = leftConstraint
+            ctx.gadt.restore(leftGadt)
+            true
+          } else {
+            gadts.println(i"GADT CUT - no constraint is preferable, reverting to $preGadt")
+            constr.println(i"CUT - no constraint is preferable, reverting to $preConstraint")
+            constraint = preConstraint
+            ctx.gadt.restore(preGadt)
+            true
+          }
+        } else {
+          constraint = leftConstraint
+          ctx.gadt.restore(leftGadt)
+          true
+        }
+      } else op2
   }
 
   /** Does type `tp1` have a member with name `name` whose normalized type is a subtype of
@@ -1364,7 +1475,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *  Test that the resulting bounds are still satisfiable.
    */
   private def narrowGADTBounds(tr: NamedType, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = {
-    val boundImprecise = if (isUpper) approx.high else approx.low
+    val boundImprecise = approx.high || approx.low
     ctx.mode.is(Mode.GADTflexible) && !frozenConstraint && !boundImprecise && {
       val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
