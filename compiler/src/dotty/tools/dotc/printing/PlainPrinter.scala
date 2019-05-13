@@ -208,10 +208,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else {
           val constr = ctx.typerState.constraint
           val bounds =
-            if (constr.contains(tp)) {
-              val ctx0 = ctx.addMode(Mode.Printing)
-              ctx0.typeComparer.fullBounds(tp.origin)
-            }
+            if (constr.contains(tp)) ctx.addMode(Mode.Printing).typeComparer.fullBounds(tp.origin)
             else TypeBounds.empty
           if (bounds.isTypeAlias) toText(bounds.lo) ~ (Str("^") provided ctx.settings.YprintDebug.value)
           else if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
