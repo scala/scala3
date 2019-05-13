@@ -16,7 +16,7 @@ Result: Some(List())
 
 Scrutinee: 1
 Pattern: (1: scala.Int)
-Result: None
+Result: Some(List())
 
 Scrutinee: 3
 Pattern: scala.internal.Quoted.patternHole[scala.Int]
@@ -713,4 +713,119 @@ Pattern: try scala.internal.Quoted.patternHole[scala.Int] finally {
   ()
 }
 Result: Some(List(Expr(1), Expr(2)))
+
+Scrutinee: scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
+Pattern: {
+  @scala.internal.Quoted.patternType type T
+  scala.internal.Quoted.patternHole[scala.List[scala.Int]].foreach[T](scala.internal.Quoted.patternHole[scala.Function1[scala.Int, T]])
+}
+Result: Some(List(Type(scala.Unit), Expr(scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int]))), Expr(((x: scala.Int) => scala.Predef.println(x)))))
+
+Scrutinee: scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
+Pattern: {
+  @scala.internal.Quoted.patternType type T = scala.Unit
+  scala.internal.Quoted.patternHole[scala.List[scala.Int]].foreach[T](scala.internal.Quoted.patternHole[scala.Function1[scala.Int, T]])
+}
+Result: Some(List(Type(scala.Unit), Expr(scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int]))), Expr(((x: scala.Int) => scala.Predef.println(x)))))
+
+Scrutinee: scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
+Pattern: {
+  @scala.internal.Quoted.patternType type T <: scala.Predef.String
+  scala.internal.Quoted.patternHole[scala.List[scala.Int]].foreach[T](scala.internal.Quoted.patternHole[scala.Function1[scala.Int, T]])
+}
+Result: None
+
+Scrutinee: {
+  val a: scala.Int = 4
+  val b: scala.Int = 4
+  ()
+}
+Pattern: {
+  @scala.internal.Quoted.patternType type T
+  val a: T = scala.internal.Quoted.patternHole[T]
+  val b: T = scala.internal.Quoted.patternHole[T]
+  ()
+}
+Result: Some(List(Type(scala.Int), Expr(4), Expr(4)))
+
+Scrutinee: {
+  val a: scala.Int = 4
+  val b: scala.Int = 5
+  ()
+}
+Pattern: {
+  @scala.internal.Quoted.patternType type T
+  val a: T = scala.internal.Quoted.patternHole[T]
+  val b: T = scala.internal.Quoted.patternHole[T]
+  ()
+}
+Result: Some(List(Type(scala.Int), Expr(4), Expr(5)))
+
+Scrutinee: {
+  val a: scala.Int = 4
+  val b: scala.Predef.String = "x"
+  ()
+}
+Pattern: {
+  @scala.internal.Quoted.patternType type T
+  val a: T = scala.internal.Quoted.patternHole[T]
+  val b: T = scala.internal.Quoted.patternHole[T]
+  ()
+}
+Result: Some(List(Type(scala.Int | java.lang.String), Expr(4), Expr("x")))
+
+Scrutinee: {
+  val a: scala.Int = 4
+  val b: scala.Predef.String = "x"
+  ()
+}
+Pattern: {
+  @scala.internal.Quoted.patternType type T <: scala.Int
+  val a: T = scala.internal.Quoted.patternHole[T]
+  val b: T = scala.internal.Quoted.patternHole[T]
+  ()
+}
+Result: None
+
+Scrutinee: scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).map[scala.Double, scala.collection.immutable.List[scala.Double]](((x: scala.Int) => x.toDouble./(2)))(scala.collection.immutable.List.canBuildFrom[scala.Double]).map[java.lang.String, scala.collection.immutable.List[java.lang.String]](((y: scala.Double) => y.toString()))(scala.collection.immutable.List.canBuildFrom[java.lang.String])
+Pattern: {
+  @scala.internal.Quoted.patternType type T
+  @scala.internal.Quoted.patternType type U
+  @scala.internal.Quoted.patternType type V
+
+  (scala.internal.Quoted.patternHole[scala.List[T]].map[U, scala.collection.immutable.List[U]](scala.internal.Quoted.patternHole[scala.Function1[T, U]])(scala.collection.immutable.List.canBuildFrom[U]).map[V, scala.collection.immutable.List[V]](scala.internal.Quoted.patternHole[scala.Function1[U, V]])(scala.collection.immutable.List.canBuildFrom[V]): scala.collection.immutable.List[scala.Any])
+}
+Result: Some(List(Type(scala.Int), Type(scala.Double), Type(java.lang.String), Expr(scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int]))), Expr(((x: scala.Int) => x.toDouble./(2))), Expr(((y: scala.Double) => y.toString()))))
+
+Scrutinee: ((x: scala.Int) => x)
+Pattern: {
+  @scala.internal.Quoted.patternType type T
+
+  (scala.internal.Quoted.patternHole[scala.Function1[T, T]]: scala.Function1[scala.Nothing, scala.Any])
+}
+Result: Some(List(Type(scala.Int), Expr(((x: scala.Int) => x))))
+
+Scrutinee: ((x: scala.Int) => x.toString())
+Pattern: {
+  @scala.internal.Quoted.patternType type T
+
+  (scala.internal.Quoted.patternHole[scala.Function1[T, T]]: scala.Function1[scala.Nothing, scala.Any])
+}
+Result: None
+
+Scrutinee: ((x: scala.Any) => scala.Predef.???)
+Pattern: {
+  @scala.internal.Quoted.patternType type T
+
+  (scala.internal.Quoted.patternHole[scala.Function1[T, T]]: scala.Function1[scala.Nothing, scala.Any])
+}
+Result: Some(List(Type(scala.Nothing), Expr(((x: scala.Any) => scala.Predef.???))))
+
+Scrutinee: ((x: scala.Nothing) => (1: scala.Any))
+Pattern: {
+  @scala.internal.Quoted.patternType type T
+
+  (scala.internal.Quoted.patternHole[scala.Function1[T, T]]: scala.Function1[scala.Nothing, scala.Any])
+}
+Result: None
 

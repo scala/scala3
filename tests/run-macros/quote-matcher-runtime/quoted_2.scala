@@ -3,7 +3,7 @@ import Macros._
 
 import scala.internal.quoted.Matcher._
 
-import scala.internal.Quoted.{patternHole, patternBindHole}
+import scala.internal.Quoted.{patternHole, patternBindHole, patternType}
 
 object Test {
 
@@ -134,6 +134,18 @@ object Test {
     matches(try 1 finally 2, try 1 finally 2)
     matches(try 1 catch { case _ => 2 }, try patternHole[Int] catch { case _ => patternHole[Int] })
     matches(try 1 finally 2, try patternHole[Int] finally patternHole[Int])
+    matches(List(1, 2, 3).foreach(x => println(x)), { @patternType type T; patternHole[List[Int]].foreach[T](patternHole[Int => T]) })
+    matches(List(1, 2, 3).foreach(x => println(x)), { @patternType type T = Unit; patternHole[List[Int]].foreach[T](patternHole[Int => T]) })
+    matches(List(1, 2, 3).foreach(x => println(x)), { @patternType type T <: String; patternHole[List[Int]].foreach[T](patternHole[Int => T]) })
+    matches({ val a: Int = 4; val b: Int = 4 }, { @patternType type T; { val a: T = patternHole[T]; val b: T = patternHole[T] } })
+    matches({ val a: Int = 4; val b: Int = 5 }, { @patternType type T; { val a: T = patternHole[T]; val b: T = patternHole[T] } })
+    matches({ val a: Int = 4; val b: String = "x" }, { @patternType type T; { val a: T = patternHole[T]; val b: T = patternHole[T] } })
+    matches({ val a: Int = 4; val b: String = "x" }, { @patternType type T <: Int; { val a: T = patternHole[T]; val b: T = patternHole[T] } })
+    matches(List(1, 2, 3).map(x => x.toDouble / 2).map(y => y.toString), { @patternType type T; @patternType type U; @patternType type V; patternHole[List[T]].map(patternHole[T => U]).map(patternHole[U => V]) })
+    matches((x: Int) => x, { @patternType type T; patternHole[T => T] })
+    matches((x: Int) => x.toString, { @patternType type T; patternHole[T => T] })
+    matches((x: Any) => ???, { @patternType type T; patternHole[T => T] })
+    matches((x: Nothing) => (1 : Any), { @patternType type T; patternHole[T => T] })
 
   }
 }

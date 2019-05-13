@@ -140,6 +140,10 @@ trait Kernel {
   /** Returns the source file being compiled. The path is relative to the current working directory. */
   def Context_source(self: Context): java.nio.file.Path
 
+  def Context_GADT_setFreshGADTBounds(self: Context): Context
+  def Context_GADT_addToConstraint(self: Context)(syms: List[Symbol]): Boolean
+  def Context_GADT_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type
+
   //
   // REPORTING
   //
