@@ -7,10 +7,10 @@ import scala.language.implicitConversions
 import scala.quoted.Exprs.LiftedExpr
 import reflect._
 
-object StringContext {
+object StringContextMacro {
 
   /** Implemetation of scala.StringContext.f used in Dotty while the standard library is still not bootstrapped */
-  inline def f(sc: => scala.StringContext)(args: Any*): String = ${ fImpl('sc, 'args) }
+  inline def f(sc: => StringContext)(args: Any*): String = ${ fImpl('sc, 'args) }
 
   /** This trait defines a tool to report errors/warnings that do not depend on Position. */
   trait Reporter{
