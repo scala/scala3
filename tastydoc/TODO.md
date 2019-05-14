@@ -33,6 +33,8 @@
 * Known subclasses
 * Fix companion
 * Problem when link is a type inside an object (due to the $)
+* Try type at top level
+* Id for typeparams so we can link
 
 # Output
 * Output inner class/object if not inherited

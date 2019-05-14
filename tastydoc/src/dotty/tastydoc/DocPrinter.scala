@@ -15,8 +15,7 @@ object DocPrinter{
   }
 
   private def makeLink(label: String, link: String, hasOwnFile: Boolean, declarationPath: List[String]): String = {
-    val packageFormLink = link.replaceAll("\\./", "").replaceAll("/", ".")
-    println(link + label)
+    val packageFormLink = link.replaceFirst("/", "").replaceAll("/", ".")
     if(TastydocConsumer.packagesToLink.exists(packageFormLink.matches(_))){
       @tailrec
       def ascendPath(path: List[String], link: List[String]): String = path match {
@@ -25,7 +24,7 @@ object DocPrinter{
       }
 
       val relativeLink = {
-        if(link == "."){
+        if(link == ""){
           if(hasOwnFile){
             if(declarationPath.isEmpty){
               "."
@@ -129,7 +128,7 @@ object DocPrinter{
       htmlPreCode(formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
         representation.kind +
         " " +
-        makeLink(representation.name, declarationPath.mkString("/", "/", ""), true, declarationPath)
+        makeLink(representation.name, (declarationPath :+ declarationPath.last).mkString("/", "/", ""), true, declarationPath) // TODO Need twice the last because it should be defined in a subfolder with same name otherwise makeLink thinks it is inside the defintion file
         , "scala") +
         "\n"
     }
@@ -190,7 +189,7 @@ object DocPrinter{
         .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("") +
       Md.header2("Object members:") +
       representation.members.flatMap{
-        case x : ClassRepresentation if !x.isObject => Some(x)
+        case x : ClassRepresentation if x.isObject => Some(x)
         case _ => None
         }
         .map{x =>
@@ -209,7 +208,8 @@ object DocPrinter{
 
           Md.header3(x.name) +
           formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
-        }.mkString("") +      Md.header2("Trait Members:") +
+        }.mkString("") +
+      Md.header2("Trait Members:") +
       representation.members.flatMap{
         case x: ClassRepresentation if x.isTrait => Some(x)
         case _ => None
