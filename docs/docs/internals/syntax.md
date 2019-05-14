@@ -292,8 +292,9 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
                        SubtypeBounds
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
-ClsParamClause    ::=  [nl] [‘erased’] ‘(’ [ClsParams] ‘)’
-                    |  ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | GivenTypes)
+                    |  {ClsParamClause} {GivenClsParamClause}
+ClsParamClause    ::=  [‘erased’] (‘(’ ClsParams ‘)’
+GivenClsParamClause::= ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | GivenTypes)
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
@@ -301,7 +302,8 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
                     |  INT
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
-DefParamClause    ::=  [nl] [‘erased’] ‘(’ [DefParams] ‘)’ | GivenParamClause
+                    |  {DefParamClause} {GivenParamClause}
+DefParamClause    ::=  [‘erased’] (‘(’ DefParams ‘)’
 GivenParamClause  ::=  ‘given’ [‘erased’] (‘(’ DefParams ‘)’ | GivenTypes)
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.

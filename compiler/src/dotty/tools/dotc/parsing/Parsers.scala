@@ -2114,15 +2114,16 @@ object Parsers {
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
-    /** ClsParamClause    ::=  [nl] [‘erased’] ‘(’ [ClsParams] ‘)’
-     *                      |  ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | GivenTypes)
-     *  ClsParams         ::=  ClsParam {`' ClsParam}
-     *  ClsParam          ::=  {Annotation} [{ParamModifier} (`val' | `var') | `inline'] Param
-     *  DefParamClause    ::=  [nl] [‘erased’] ‘(’ [DefParams] ‘)’ | GivenParamClause
+    /** ClsParamClause    ::=  [‘erased’] (‘(’ ClsParams ‘)’
+     *  GivenClsParamClause::= ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | GivenTypes)
+     *  ClsParams         ::=  ClsParam {‘,’ ClsParam}
+     *  ClsParam          ::=  {Annotation}
+     *
+     *  DefParamClause    ::=  [‘erased’] (‘(’ DefParams ‘)’
      *  GivenParamClause  ::=  ‘given’ [‘erased’] (‘(’ DefParams ‘)’ | GivenTypes)
-     *  GivenTypes        ::=  RefinedType {`,' RefinedType}
-     *  DefParams         ::=  DefParam {`,' DefParam}
-     *  DefParam          ::=  {Annotation} [`inline'] Param
+     *  DefParams         ::=  DefParam {‘,’ DefParam}
+     *  DefParam          ::=  {Annotation} [‘inline’] Param
+     *
      *  Param             ::=  id `:' ParamType [`=' Expr]
      *
      *  @return   the list of parameter definitions
@@ -2204,14 +2205,16 @@ object Parsers {
     }
 
     /** ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
+     *                      |  {ClsParamClause} {GivenClsParamClause}
      *  DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
+     *                      |  {DefParamClause} {GivenParamClause}
      *
      *  @return  The parameter definitions
      */
     def paramClauses(ofClass: Boolean = false,
                      ofCaseClass: Boolean = false,
                      ofInstance: Boolean = false): List[List[ValDef]] = {
-      def recur(firstClause: Boolean, nparams: Int): List[List[ValDef]] = {
+      def recur(firstClause: Boolean, nparams: Int, contextualOnly: Boolean): List[List[ValDef]] = {
         var initialMods = EmptyModifiers
         if (in.token == GIVEN) {
           in.nextToken()
@@ -2236,8 +2239,9 @@ object Parsers {
             }
           }
         if (in.token == LPAREN && isParamClause) {
-          if (ofInstance && !isContextual)
-            syntaxError(em"parameters of instance definitions must come after `given'")
+          if (contextualOnly && !isContextual)
+            if (ofInstance) syntaxError(em"parameters of instance definitions must come after `given'")
+            else syntaxError(em"normal parameters cannot come after `given' clauses")
           val params = paramClause(
               ofClass = ofClass,
               ofCaseClass = ofCaseClass,
@@ -2245,7 +2249,7 @@ object Parsers {
               initialMods = initialMods)
           val lastClause =
             params.nonEmpty && params.head.mods.flags.is(Implicit, butNot = Given)
-          params :: (if (lastClause) Nil else recur(firstClause = false, nparams + params.length))
+          params :: (if (lastClause) Nil else recur(firstClause = false, nparams + params.length, isContextual))
         }
         else if (isContextual) {
           val tps = commaSeparated(() => annotType())
@@ -2253,11 +2257,11 @@ object Parsers {
           def nextIdx = { counter += 1; counter }
           val paramFlags = if (ofClass) Private | Local | ParamAccessor else Param
           val params = tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | Given | Implicit))
-          params :: recur(firstClause = false, nparams + params.length)
+          params :: recur(firstClause = false, nparams + params.length, isContextual)
         }
         else Nil
       }
-      recur(firstClause = true, 0)
+      recur(firstClause = true, 0, ofInstance)
     }
 
 /* -------- DEFS ------------------------------------------- */
