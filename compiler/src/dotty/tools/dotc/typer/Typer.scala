@@ -819,7 +819,7 @@ class Typer extends Namer
       if (!funFlags.isEmpty)
         params1.foreach(_.symbol.setFlag(funFlags))
       val resultTpt = typed(body)
-      val companion = MethodType.maker(
+      val companion = MethodType.companion(
           isContextual = funFlags.is(Given), isErased = funFlags.is(Erased))
       val mt = companion.fromSymbols(params1.map(_.symbol), resultTpt.tpe)
       if (mt.isParamDependent)
