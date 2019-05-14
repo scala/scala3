@@ -1037,6 +1037,11 @@ object Parsers {
       else if (in.token == LBRACE)
         atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
       else if (isSimpleLiteral) { SingletonTypeTree(literal()) }
+      else if (isIdent(nme.raw.MINUS) && in.lookaheadIn(numericLitTokens)) {
+        val start = in.offset
+        in.nextToken()
+        SingletonTypeTree(literal(negOffset = start))
+      }
       else if (in.token == USCORE) {
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
