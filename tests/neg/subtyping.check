@@ -1,14 +1,18 @@
-<230..230> in subtyping.scala
-Cannot prove that a.T <:< a.U..
-I found:
-
-    $conforms[Nothing]
-
-But method $conforms in object Predef does not match type a.T <:< a.U.
-<106..106> in subtyping.scala
-Cannot prove that B#X <:< A#X..
-I found:
-
-    $conforms[Nothing]
-
-But method $conforms in object Predef does not match type B#X <:< A#X.
+-- Error: tests/neg/subtyping.scala:8:27 -------------------------------------------------------------------------------
+8 |    implicitly[B#X <:< A#X] // error: no implicit argument
+  |                           ^
+  |                           Cannot prove that B#X <:< A#X..
+  |                           I found:
+  |                           
+  |                               $conforms[Nothing]
+  |                           
+  |                           But method $conforms in object Predef does not match type B#X <:< A#X.
+-- Error: tests/neg/subtyping.scala:12:27 ------------------------------------------------------------------------------
+12 |    implicitly[a.T <:< a.U] // error: no implicit argument
+   |                           ^
+   |                           Cannot prove that a.T <:< a.U..
+   |                           I found:
+   |                           
+   |                               $conforms[Nothing]
+   |                           
+   |                           But method $conforms in object Predef does not match type a.T <:< a.U.
