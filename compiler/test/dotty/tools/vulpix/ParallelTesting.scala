@@ -90,9 +90,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       sb.append(
         s"""|
             |Test '$title' compiled with $errors error(s) and $warnings warning(s),
-            |the test can be reproduced by running:""".stripMargin
+            |the test can be reproduced by running from SBT (prefix it with ./bin/ if you
+            |want to run from the command line):""".stripMargin
       )
-      sb.append("\n\n./bin/dotc ")
+      sb.append("\n\ndotc ")
       flags.all.foreach { arg =>
         if (lineLen > maxLen) {
           sb.append(" \\\n        ")
@@ -225,11 +226,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      * Checks if the given actual lines are the same as the ones in the check file.
      * If not, fails the test.
      */
-    final def diffTest(testSource: TestSource, checkFile: JFile, actual: List[String]) = {
+    final def diffTest(testSource: TestSource, checkFile: JFile, actual: List[String], reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       val expected = Source.fromFile(checkFile, "UTF-8").getLines().toList
       for (msg <- diffMessage(testSource.title, actual, expected)) {
-        echo(msg)
-        failTestSource(testSource)
+        onFailure(testSource, reporters, logger, Some(msg))
         dumpOutputToFile(checkFile, actual)
       }
     }
@@ -609,11 +609,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       }
     }
 
-    private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int) = {
+    private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       if (Properties.testsNoRun) addNoRunWarning()
       else runMain(testSource.runClassPath) match {        
         case Success(output) => checkFile match {
-          case Some(file) if file.exists => diffTest(testSource, file, output.linesIterator.toList)
+          case Some(file) if file.exists => diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
           case _ =>
         }
         case Failure(output) => 
@@ -627,7 +627,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
-      verifyOutput(checkFile(testSource), testSource.outDir, testSource, countWarnings(reporters))
+      verifyOutput(checkFile(testSource), testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
   }
 
   private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
@@ -649,11 +649,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
-      checkFile(testSource).foreach(diffTest(testSource, _, reporterOutputLines(reporters)))
+      checkFile(testSource).foreach(diffTest(testSource, _, reporterOutputLines(reporters), reporters, logger))
 
     def reporterOutputLines(reporters: Seq[TestReporter]): List[String] =
-      reporters.flatMap(_.allErrors).sortBy(_.pos.source.toString).flatMap { error =>
-        (error.pos.span.toString + " in " + error.pos.source.file.name) :: error.getMessage().linesIterator.toList }.toList
+      reporters.flatMap(_.consoleOutput.split("\n")).toList
 
     // In neg-tests we allow two types of error annotations,
     // "nopos-error" which doesn't care about position and "error" which
@@ -715,16 +714,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def linesMatch =
       (outputLines, checkLines).zipped.forall(_ == _)
 
-    if (outputLines.length != checkLines.length || !linesMatch) {
-      // Print diff to files and summary:
-      val diff = DiffUtil.mkColoredLineDiff(checkLines :+ DiffUtil.EOF, outputLines :+ DiffUtil.EOF)
-
-      Some(
-        s"""|Output from '$sourceTitle' did not match check file.
-            |Diff (expected on the left, actual right):
-            |""".stripMargin + diff + "\n")
-    } else None
-
+    if (outputLines.length != checkLines.length || !linesMatch) Some(
+      s"""|Output from '$sourceTitle' did not match check file. Actual output:
+          |${outputLines.mkString(EOL)}
+          |""".stripMargin + "\n")
+    else None
   }
 
   /** The `CompilationTest` is the main interface to `ParallelTesting`, it
