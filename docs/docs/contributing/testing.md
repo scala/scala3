@@ -54,6 +54,30 @@ You can also run all paths of classes of a certain name:
 > testOnly *.TreeTransformerTest
 ```
 
+### Testing with checkfiles
+Some tests support checking the output of the run or the compilation against a checkfile. A checkfile is a file in which the expected output of the compilation or run is defined. A test against a checkfile fails if the actual output mismatches the expected output.
+
+Currently, the `run` and `neg` (compilation must fail for the test to succeed) tests support the checkfiles. `run`'s checkfiles contain an expected run output of the successfully compiled program. `neg`'s checkfiles contain an expected error output during compilation.
+
+Absence of a checkfile is **not** a condition for the test failure. E.g. if a `neg` test fails with the expected number of errors and there is no checkfile for it, the test still passes.
+
+Checkfiles are located in the same directories as the tests they check, have the same name as these tests with the extension `*.check`. E.g. if you have a test named `tests/neg/foo.scala`, you can create a checkfile for it named `tests/neg/foo.check`. And if you have a test composed of several files in a single directory, e.g. `tests/neg/manyScalaFiles`, the checkfile will be `tests/neg/manyScalaFiles.check`.
+
+If the actual output mismatches the expected output, the test framework will dump the actual output in the file `*.check.out` and fail the test suite. It will also output the instructions to quickly replace the expected output with the actual output, in the following format:
+
+```
+Test output dumped in: tests/playground/neg/Sample.check.out
+  See diff of the checkfile
+    > diff tests/playground/neg/Sample.check tests/playground/neg/Sample.check.out
+  Replace checkfile with current output output
+    > mv tests/playground/neg/Sample.check.out tests/playground/neg/Sample.check
+```
+
+To create a checkfile for a test, you can do one of the following:
+
+- Create a dummy checkfile with a random content, run the test, and, when it fails, use the `mv` command reported by the test to replace the dummy checkfile with the actual output.
+- Manually compile the file you are testing with `dotc` and copy-paste whatever console output the compiler produces to the checkfile.
+
 ## Integration tests
 These tests are Scala source files expected to compile with Dotty (pos tests),
 along with their expected output (run tests) or errors (neg tests).
