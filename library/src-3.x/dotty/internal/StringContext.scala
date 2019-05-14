@@ -82,15 +82,13 @@ object StringContext {
       * @throws an Exception if the given Expr does not correspond to a StringContext
       */
     private def getListOfExpr(strCtxExpr : Expr[StringContext])(implicit reflect : Reflection): List[Expr[String]] = {
-      import reflect._
-      println(strCtxExpr.unseal.show)
-      println(strCtxExpr.unseal.showExtractors)
-      println()
-      strCtxExpr match {
-        case '{ StringContext($partsExpr: _*) } =>
-        val ExprSeq(parts) = partsExpr
-        parts.toList
-        // case '{ new StringContext(${ExprSeq(parts)}: _*) } => parts.toList
+      import reflect._ //TODO : keep comment - bootstraping issues
+      strCtxExpr.unseal.underlyingArgument match {
+        case Apply(Select(Select(Select(Ident("_root_"), "scala"), "StringContext"), "apply"), List(parts1)) =>
+          parts1.seal.cast[Seq[String]] match {
+            case ExprSeq(parts2) => parts2.toList
+            case _ => throw new Exception("Expected statically known String Context")
+          }
         case _ => throw new Exception("Expected statically known String Context")
       }
     }

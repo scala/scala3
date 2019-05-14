@@ -8,7 +8,7 @@ import scala.tasty._
 
 object Matcher {
 
-  private final val debug = true
+  private final val debug = false
 
   /** Pattern matches an the scrutineeExpr aquainsnt the patternExpr and returns a tuple
    *  with the matched holes if successful.
