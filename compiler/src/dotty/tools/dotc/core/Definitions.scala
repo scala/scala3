@@ -637,10 +637,10 @@ class Definitions {
     lazy val StringContextModule_applyR: TermRef = StringContextModule.requiredMethodRef(nme.apply)
     def StringContextModule_apply(implicit ctx: Context): Symbol = StringContextModule_applyR.symbol
 
-  lazy val InternalStringContextModuleR: TermRef = ctx.requiredModuleRef("dotty.internal.StringContext")
-  def InternalStringContextModule(implicit ctx: Context): Symbol = InternalStringContextModuleR.termSymbol
-    lazy val InternalStringContextModule_fR: TermRef = InternalStringContextModule.requiredMethodRef(nme.f)
-    def InternalStringContextModule_f(implicit ctx: Context): Symbol = InternalStringContextModule_fR.symbol
+  lazy val InternalStringContextMacroModuleR: TermRef = ctx.requiredModuleRef("dotty.internal.StringContextMacro")
+  def InternalStringContextMacroModule(implicit ctx: Context): Symbol = InternalStringContextMacroModuleR.termSymbol
+    lazy val InternalStringContextMacroModule_fR: TermRef = InternalStringContextMacroModule.requiredMethodRef(nme.f)
+    def InternalStringContextMacroModule_f(implicit ctx: Context): Symbol = InternalStringContextMacroModule_fR.symbol
 
   lazy val PartialFunctionType: TypeRef         = ctx.requiredClassRef("scala.PartialFunction")
   def PartialFunctionClass(implicit ctx: Context): ClassSymbol = PartialFunctionType.symbol.asClass
