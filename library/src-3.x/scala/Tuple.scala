@@ -141,7 +141,7 @@ object Tuple {
 
   private[scala] type BoundedSize[X] = BoundedSizeRecur[X, 23]
 
-  val $emptyArray = Array[Object]()
+  private[scala] val $emptyArray = Array[Object]()
 
   def to$Array(xs: Tuple, n: Int) = {
     val arr = new Array[Object](n)
