@@ -3,6 +3,14 @@ import scala.reflect.ClassTag
 object Test {
   def main(args: Array[String]): Unit = {
 
+    def testArray[T: ClassTag](n: Int, elem: Int => T): Unit = {
+      val t: Int *: Tuple = 0 *: Tuple.fromArray(Array.tabulate(n)(elem))
+      println(t.tail)
+    }
+
+    for (i <- 0 to 25)
+      testArray(i, j => j)
+
     println(Tuple1(1).tail)
     println((1, 2).tail)
     println((1, 2, 3).tail)

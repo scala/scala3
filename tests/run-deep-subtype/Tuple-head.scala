@@ -3,6 +3,14 @@ import scala.reflect.ClassTag
 object Test {
   def main(args: Array[String]): Unit = {
 
+    def testArray[T: ClassTag](n: Int, elem: Int => T): Unit = {
+      val t: Int *: Tuple = 0 *: Tuple.fromArray(Array.tabulate(n)(elem))
+      assert(0 == t.head)
+    }
+
+    for (i <- 0 to 25)
+      testArray(i, j => j)
+
     assert(1 == Tuple1(1).head)
     assert(1 == (1, 2).head)
     assert(1 == (1, 2, 3).head)
