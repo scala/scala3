@@ -68,7 +68,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def isType: Boolean = body.isType
   }
 
-  /** A function type with `implicit`, `erased`, or `contextual` modifiers */
+  /** A function type with `implicit`, `erased`, or `given` modifiers */
   class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers)(implicit @constructorOnly src: SourceFile)
     extends Function(args, body)
 
@@ -343,7 +343,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  navigation into these arguments from the IDE, and to do the right thing in
    *  PrepareInlineable.
    */
-  def New(tpt: Tree, argss: List[List[Tree]])(implicit ctx: Context): Tree = {
+  def New(tpt: Tree, argss: List[List[Tree]])(implicit ctx: Context): Tree =
+    ensureApplied((makeNew(tpt) /: argss)(Apply(_, _)))
+
+  /** A new expression with constrictor and possibly type arguments. See
+   *  `New(tpt, argss)` for details.
+   */
+  def makeNew(tpt: Tree)(implicit ctx: Context): Tree = {
     val (tycon, targs) = tpt match {
       case AppliedTypeTree(tycon, targs) =>
         (tycon, targs)
@@ -354,9 +360,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case _ =>
         (tpt, Nil)
     }
-    var prefix: Tree = Select(New(tycon), nme.CONSTRUCTOR)
-    if (targs.nonEmpty) prefix = TypeApply(prefix, targs)
-    ensureApplied((prefix /: argss)(Apply(_, _)))
+    val nu: Tree = Select(New(tycon), nme.CONSTRUCTOR)
+    if (targs.nonEmpty) TypeApply(nu, targs) else nu
   }
 
   def Block(stat: Tree, expr: Tree)(implicit src: SourceFile): Block =

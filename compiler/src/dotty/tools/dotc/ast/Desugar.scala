@@ -500,7 +500,15 @@ object desugar {
         case _ =>
           constrVparamss
       }
-      New(classTypeRef, vparamss.nestedMap(refOfDef))
+      val nu = (makeNew(classTypeRef) /: vparamss) { (nu, vparams) =>
+        val app = Apply(nu, vparams.map(refOfDef))
+        vparams match {
+          case vparam :: _ if vparam.mods.is(Given) => app.pushAttachment(ApplyGiven, ())
+          case _ =>
+        }
+        app
+      }
+      ensureApplied(nu)
     }
 
     val copiedAccessFlags = if (ctx.scala2Setting) EmptyFlags else AccessFlags
