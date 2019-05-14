@@ -86,6 +86,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val sb = new StringBuilder
       val maxLen = 80
       var lineLen = 0
+      val delimiter = " "
 
       sb.append(
         s"""|
@@ -96,7 +97,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       sb.append("\n\ndotc ")
       flags.all.foreach { arg =>
         if (lineLen > maxLen) {
-          sb.append(" \\\n        ")
+          sb.append(delimiter)
           lineLen = 4
         }
         sb.append(arg)
@@ -107,7 +108,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       self match {
         case source: JointCompilationSource => {
           source.sourceFiles.map(_.getAbsolutePath).foreach { path =>
-            sb.append("\\\n        ")
+            sb.append(delimiter)
             sb.append(path)
             sb += ' '
           }
@@ -118,7 +119,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           val fsb = new StringBuilder(command)
           self.compilationGroups.foreach { files =>
             files.map(_.getPath).foreach { path =>
-              fsb.append("\\\n        ")
+              fsb.append(delimiter)
               lineLen = 8
               fsb.append(path)
               fsb += ' '
