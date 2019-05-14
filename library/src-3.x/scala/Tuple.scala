@@ -72,7 +72,7 @@ sealed trait Tuple extends Any {
             val u = that.asInstanceOf[Tuple2[_, _]]
             Tuple4(t._1, t._2, u._1, u._2).asInstanceOf[Result]
           case _ =>
-            genericConcat[Result](this, that).asInstanceOf[Result]
+            knownTupleFromArray[Result](this.toArray ++ that.toArray)
         }
       case Some(3) =>
         val t = asInstanceOf[Tuple3[_, _, _]]
@@ -82,18 +82,15 @@ sealed trait Tuple extends Any {
             val u = that.asInstanceOf[Tuple1[_]]
             Tuple4(t._1, t._2, t._3, u._1).asInstanceOf[Result]
           case _ =>
-            genericConcat[Result](this, that).asInstanceOf[Result]
+            knownTupleFromArray[Result](this.toArray ++ that.toArray)
         }
       case Some(_) =>
         if (constValue[BoundedSize[that.type]] == 0) this.asInstanceOf[Result]
-        else genericConcat[Result](this, that).asInstanceOf[Result]
+        else knownTupleFromArray[Result](this.toArray ++ that.toArray)
       case None =>
         runtime.DynamicTuple.dynamic_++[This, that.type](this, that)
     }
   }
-
-  inline def genericConcat[T <: Tuple](xs: Tuple, ys: Tuple): Tuple =
-    knownTupleFromArray[T](xs.toArray ++ ys.toArray)
 
   inline def size[This >: this.type <: Tuple]: Size[This] = {
     type Result = Size[This]
