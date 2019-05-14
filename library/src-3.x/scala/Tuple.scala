@@ -47,7 +47,7 @@ sealed trait Tuple extends Any {
         val t = asInstanceOf[Tuple4[_, _, _, _]]
         Tuple5(x, t._1, t._2, t._3, t._4).asInstanceOf[Result]
       case Some(n) =>
-        fromArray[H *: this.type](cons$Array(x, toArray))
+        knowTupleFromArray[H *: this.type](cons$Array(x, toArray))
       case _ =>
         runtime.DynamicTuple.dynamic_*:[This, H](this, x)
     }
@@ -93,7 +93,7 @@ sealed trait Tuple extends Any {
   }
 
   inline def genericConcat[T <: Tuple](xs: Tuple, ys: Tuple): Tuple =
-    fromArray[T](xs.toArray ++ ys.toArray)
+    knowTupleFromArray[T](xs.toArray ++ ys.toArray)
 
   inline def size[This >: this.type <: Tuple]: Size[This] = {
     type Result = Size[This]
@@ -164,7 +164,7 @@ object Tuple {
     elems1
   }
 
-  inline def fromArray[T <: Tuple](xs: Array[Object]): T =
+  private[scala] inline def knowTupleFromArray[T <: Tuple](xs: Array[Object]): T =
     inline constValue[BoundedSize[T]] match {
       case 0  => ().asInstanceOf[T]
       case 1  => Tuple1(xs(0)).asInstanceOf[T]
@@ -191,6 +191,15 @@ object Tuple {
       case 22 => Tuple22(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20), xs(21)).asInstanceOf[T]
       case _ => TupleXXL(xs).asInstanceOf[T]
     }
+
+  def fromArray[T](xs: Array[T]): Tuple = {
+    val xs2 = xs match {
+      case xs: Array[Object] => xs
+      case xs => xs.map(_.asInstanceOf[Object])
+    }
+    runtime.DynamicTuple.dynamicFromArray[Tuple](xs2)
+  }
+
 }
 
 sealed trait NonEmptyTuple extends Tuple {
@@ -240,7 +249,7 @@ sealed trait NonEmptyTuple extends Tuple {
         val t = asInstanceOf[Tuple5[_, _, _, _, _]]
         Tuple4(t._2, t._3, t._4, t._5).asInstanceOf[Result]
       case Some(n) if n > 5 =>
-        fromArray[Result](toArray.tail)
+        knowTupleFromArray[Result](toArray.tail)
       case None =>
         runtime.DynamicTuple.dynamicTail[This](this)
     }
