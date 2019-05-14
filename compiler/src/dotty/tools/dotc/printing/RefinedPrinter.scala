@@ -341,7 +341,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         optDotPrefix(tree) ~ keywordStr("this") ~ idText(tree)
       case Super(qual: This, mix) =>
         optDotPrefix(qual) ~ keywordStr("super") ~ optText(mix)("[" ~ _ ~ "]")
-      case Apply(fun, args) =>
+      case app @ Apply(fun, args) =>
         if (fun.hasType && fun.symbol == defn.throwMethod)
           changePrec (GlobalPrec) {
             keywordStr("throw ") ~ toText(args.head)
@@ -350,7 +350,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else if (!ctx.settings.YprintDebug.value && fun.hasType && fun.symbol == defn.InternalQuoted_exprSplice)
           keywordStr("${") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
-        else if (tree.getAttachment(untpd.ApplyGiven).isDefined && !homogenizedView)
+        else if (app.isGivenApply && !homogenizedView)
           changePrec(InfixPrec) {
             toTextLocal(fun) ~ " given " ~
             (if (args.length == 1) toTextLocal(args.head) else "(" ~ toTextGlobal(args, ", ") ~ ")")

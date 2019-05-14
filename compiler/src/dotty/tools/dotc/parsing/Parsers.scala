@@ -585,15 +585,12 @@ object Parsers {
       recur(first)
     }
 
-    def applyGiven(t: Tree, operand: () => Tree): Tree = {
-      val app = atSpan(startOffset(t), in.offset) {
+    def applyGiven(t: Tree, operand: () => Tree): Tree =
+      atSpan(startOffset(t), in.offset) {
         in.nextToken()
         val args = if (in.token == LPAREN) parArgumentExprs() else operand() :: Nil
         Apply(t, args)
-      }
-      app.pushAttachment(ApplyGiven, ())
-      app
-    }
+      }.setGivenApply()
 
 /* -------- IDENTIFIERS AND LITERALS ------------------------------------------- */
 

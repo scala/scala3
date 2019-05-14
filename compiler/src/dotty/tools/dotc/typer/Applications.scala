@@ -802,7 +802,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
-      val originalProto = new FunProto(tree.args, IgnoredProto(pt))(this, tree.isContextual)(argCtx(tree))
+      val originalProto = new FunProto(tree.args, IgnoredProto(pt))(this, tree.isGivenApply)(argCtx(tree))
       record("typedApply")
       val fun1 = typedFunPart(tree.fun, originalProto)
 

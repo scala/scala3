@@ -912,7 +912,7 @@ class Typer extends Namer
               expr1.tpe
             case _ =>
               val protoArgs = args map (_ withType WildcardType)
-              val callProto = FunProto(protoArgs, WildcardType)(this, isContextual = app.isContextual)
+              val callProto = FunProto(protoArgs, WildcardType)(this, app.isGivenApply)
               val expr1 = typedExpr(expr, callProto)
               fnBody = cpy.Apply(fnBody)(untpd.TypedSplice(expr1), args)
               expr1.tpe
@@ -2551,7 +2551,7 @@ class Typer extends Namer
             errorTree(tree, NoMatchingOverload(altDenots, pt)(err))
           def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
           pt match {
-            case pt: FunProto if !pt.isContextual =>
+            case pt: FunProto if !pt.isGivenApply =>
               // insert apply or convert qualifier only for a regular application
               tryInsertApplyOrImplicit(tree, pt, locked)(noMatches)
             case _ =>
@@ -2687,7 +2687,7 @@ class Typer extends Namer
             }
             tryEither { implicit ctx =>
               val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
-              if (wtp.isContextual) app.pushAttachment(untpd.ApplyGiven, ())
+              if (wtp.isContextual) app.setGivenApply()
               typr.println(i"try with default implicit args $app")
               typed(app, pt, locked)
             } { (_, _) =>
@@ -3113,8 +3113,8 @@ class Typer extends Namer
    *  Overridden in `ReTyper`, where all applications are treated the same
    */
   protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(implicit ctx: Context): Boolean =
-    methType.isContextual == pt.isContextual ||
-    methType.isImplicitMethod && pt.isContextual // for a transition allow `with` arguments for regular implicit parameters
+    methType.isContextual == pt.isGivenApply ||
+    methType.isImplicitMethod && pt.isGivenApply // for a transition allow `with` arguments for regular implicit parameters
 
   /** Check that `tree == x: pt` is typeable. Used when checking a pattern
    *  against a selector of type `pt`. This implementation accounts for

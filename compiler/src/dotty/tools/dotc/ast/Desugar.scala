@@ -503,10 +503,9 @@ object desugar {
       val nu = (makeNew(classTypeRef) /: vparamss) { (nu, vparams) =>
         val app = Apply(nu, vparams.map(refOfDef))
         vparams match {
-          case vparam :: _ if vparam.mods.is(Given) => app.pushAttachment(ApplyGiven, ())
-          case _ =>
+          case vparam :: _ if vparam.mods.is(Given) => app.setGivenApply()
+          case _ => app
         }
-        app
       }
       ensureApplied(nu)
     }
