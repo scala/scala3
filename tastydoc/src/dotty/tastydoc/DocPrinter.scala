@@ -14,20 +14,10 @@ object DocPrinter{
     "<pre><code" + (if(language != "") " class=\"language-" + language + "\" " else "") + ">" + content + "</pre></code>"
   }
 
-  private def makeLink(label: String, link: String, hasOwnFile: Boolean, linkScala: Boolean = false): String = {
-    if(hasOwnFile){
-      "<a href=\"" + link + "/" + label + ".md\">" + label + "</a>"
-    } else if(link == "") {
-      label
-    } else if(link == "."){
-      "<a href=\"#" + label + "\">" + label + "</a>"
-    } else{
-      "<a href=\"" + link + ".md#" + label + "\">" + label + "</a>"
-    }
-  }
-
-  private def formatReferences(reference: Reference, declarationPath: List[String]) : String = reference match {
-    case TypeReference(label, link, typeParams, hasOwnFile) =>
+  private def makeLink(label: String, link: String, hasOwnFile: Boolean, declarationPath: List[String]): String = {
+    val packageFormLink = link.replaceAll("\\./", "").replaceAll("/", ".")
+    println(link + label)
+    if(TastydocConsumer.packagesToLink.exists(packageFormLink.matches(_))){
       @tailrec
       def ascendPath(path: List[String], link: List[String]): String = path match {
         case x::xs if link.nonEmpty && link.head == x => ascendPath(xs, link.tail)
@@ -50,10 +40,26 @@ object DocPrinter{
         }
       }
 
+      if(hasOwnFile){
+        "<a href=\"" + relativeLink + "/" + label + ".md\">" + label + "</a>"
+      } else if(relativeLink == "") {
+        label
+      } else if(relativeLink == "."){
+        "<a href=\"#" + label + "\">" + label + "</a>"
+      } else{
+        "<a href=\"" + relativeLink + ".md#" + label + "\">" + label + "</a>"
+      }
+    }else{
+      label
+    }
+  }
+
+  private def formatReferences(reference: Reference, declarationPath: List[String]) : String = reference match {
+    case TypeReference(label, link, typeParams, hasOwnFile) =>
       if(typeParams.isEmpty){
-        makeLink(label, relativeLink, hasOwnFile)
+        makeLink(label, link, hasOwnFile, declarationPath)
       }else{
-        makeLink(label, relativeLink, hasOwnFile) + typeParams.map(formatReferences(_, declarationPath)).mkString("[", ", ", "]")
+        makeLink(label, link, hasOwnFile, declarationPath) + typeParams.map(formatReferences(_, declarationPath)).mkString("[", ", ", "]")
       }
     case OrTypeReference(left, right) =>
       formatReferences(left, declarationPath) + " | " + formatReferences(right, declarationPath)
@@ -118,6 +124,126 @@ object DocPrinter{
     case None => ""
   }
 
+  private def formatSimplifiedClassRepresentation(representation: ClassRepresentation, declarationPath: List[String]): String = {
+    def formatSimplifiedSignature(): String = {
+      htmlPreCode(formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
+        representation.kind +
+        " " +
+        makeLink(representation.name, declarationPath.mkString("/", "/", ""), true, declarationPath)
+        , "scala") +
+        "\n"
+    }
+
+    formatSimplifiedSignature() +
+    formatComments(representation.comments)
+  }
+
+  private def formatClassRepresentation(representation: ClassRepresentation, declarationPath: List[String]): String = {
+    def formatCompanion(): String = (representation.companion, representation.companionKind) match {
+      case (Some(ref@TypeReference(label, link, ls, hasOwnFile)), Some(kind)) =>
+        Md.header2("Companion " +
+          kind +
+          " " +
+          (if(kind.contains("object")) formatReferences(TypeReference(label, link, ls, hasOwnFile), declarationPath) else formatReferences(ref, declarationPath))
+          ) +
+          "\n"
+      case _ => ""
+    }
+
+    def formatSignature(): String = {
+      htmlPreCode(formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, representation.path) +
+        representation.kind +
+        " " +
+        representation.name +
+        (if(representation.typeParams.nonEmpty) representation.typeParams.mkString("[", ", ", "]") else "") +
+        (if(representation.parents.nonEmpty) " extends " + formatReferences(representation.parents.head, representation.path) + representation.parents.tail.map(" with " + formatReferences(_, representation.path)).mkString("") else "")
+        , "scala") +
+        "\n"
+    }
+
+    def formatAnnotations(): String = {
+      if(representation.annotations.isEmpty){
+        ""
+      }else{
+        Md.header2("Annotations:") +
+        representation.annotations.mkString("\n") +
+        "\n"
+      }
+    }
+
+    def formatConstructors(): String = {
+      if(representation.constructors.isEmpty){
+        ""
+      }else{
+        Md.header2("Constructors:") +
+        representation.constructors.map((ls, com) => htmlPreCode(representation.name + ls.paramLists.map(formatParamList(_, representation.path)).mkString(""), "scala") + "\n" + formatComments(com)).mkString("") +
+        "\n"
+      }
+    }
+
+    def formatMembers(): String = {
+      Md.header2("Type Members:") +
+      representation.members.flatMap{
+        case x: TypeRepresentation => Some(x)
+        case _ => None
+        }
+        .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("") +
+      Md.header2("Object members:") +
+      representation.members.flatMap{
+        case x : ClassRepresentation if !x.isObject => Some(x)
+        case _ => None
+        }
+        .map{x =>
+          traverseRepresentation(x, Set.empty)
+
+          Md.header3(x.name) +
+          formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
+        }.mkString("") +
+      Md.header2("Class Members:") +
+      representation.members.flatMap{
+        case x: ClassRepresentation if !x.isTrait && !x.isObject => Some(x)
+        case _ => None
+        }
+        .map{x =>
+          traverseRepresentation(x, Set.empty)
+
+          Md.header3(x.name) +
+          formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
+        }.mkString("") +      Md.header2("Trait Members:") +
+      representation.members.flatMap{
+        case x: ClassRepresentation if x.isTrait => Some(x)
+        case _ => None
+        }
+        .map{x =>
+          traverseRepresentation(x, Set.empty)
+
+          Md.header3(x.name) +
+          formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
+        }.mkString("") +
+      Md.header2("Definition members:") +
+      representation.members.flatMap{
+        case x : DefRepresentation => Some(x)
+        case _ => None
+        }
+        .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("") +
+      Md.header2("Value members:") +
+      representation.members.flatMap{
+        case x : ValRepresentation => Some(x)
+        case _ => None
+        }
+        .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("")
+    }
+
+    Md.header1(representation.kind + " " + representation.name) +
+    "\n" +
+    formatCompanion() +
+    formatSignature() +
+    formatComments(representation.comments) +
+    formatAnnotations() +
+    formatConstructors() +
+    formatMembers()
+  }
+
   private def formatDefRepresentation(representation: DefRepresentation, declarationPath: List[String]): String = {
     htmlPreCode(
     formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
@@ -157,11 +283,11 @@ object DocPrinter{
     "\n"
   }
 
-  def formatRepresentationToMarkdown(representation: Representation, insideClassOrObject: Boolean, declarationPath: List[String]): String = representation match {
+  def formatRepresentationToMarkdown(representation: Representation, declarationPath: List[String]): String = representation match {
     case r : PackageRepresentation =>
       r.name +
       "\n" +
-      r.members.map(formatRepresentationToMarkdown(_, insideClassOrObject, r.path)).mkString("\n")
+      r.members.map(formatRepresentationToMarkdown(_, r.path)).mkString("\n")
 
     case r: ImportRepresentation =>
       "import " +
@@ -169,113 +295,7 @@ object DocPrinter{
       r.name +
       "\n"
 
-    case r: ClassRepresentation =>
-
-      def formatCompanion(): String = (r.companion, r.companionKind) match {
-        case (Some(ref@TypeReference(label, link, ls, hasOwnFile)), Some(kind)) =>
-          Md.header2("Companion " +
-            kind +
-            " " +
-            (if(kind.contains("object")) formatReferences(TypeReference(label, link, ls, hasOwnFile), declarationPath) else formatReferences(ref, declarationPath))
-            ) +
-            "\n"
-        case _ => ""
-      }
-
-      def formatSimplifiedSignature(): String = {
-        htmlPreCode(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin, declarationPath) +
-          r.kind +
-          " " +
-          makeLink(r.name, "./" + declarationPath.last, true)
-          , "scala") +
-          "\n"
-      }
-
-      def formatSignature(): String = {
-        htmlPreCode(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin, r.path) +
-          r.kind +
-          " " +
-          r.name +
-          (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
-          (if(r.parents.nonEmpty) " extends " + formatReferences(r.parents.head, r.path) + r.parents.tail.map(" with " + formatReferences(_, r.path)).mkString("") else "")
-          , "scala") +
-          "\n"
-      }
-
-      def formatAnnotations(): String = {
-        if(r.annotations.isEmpty){
-          ""
-        }else{
-          Md.header2("Annotations:") +
-          r.annotations.mkString("\n") +
-          "\n"
-        }
-      }
-
-      def formatConstructors(): String = {
-        if(r.constructors.isEmpty){
-          ""
-        }else{
-          Md.header2("Constructors:") +
-          r.constructors.map((ls, com) => htmlPreCode(r.name + ls.paramLists.map(formatParamList(_, r.path)).mkString(""), "scala") + "\n" + formatComments(com)).mkString("") +
-          "\n"
-        }
-      }
-
-      def formatMembers(): String = {
-        Md.header2("Type Members:") +
-        r.members.flatMap{
-          case x: TypeRepresentation => Some(x)
-          case _ => None
-          }
-          .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
-        Md.header2("Definition members:") +
-        r.members.flatMap{
-          case x : DefRepresentation => Some(x)
-          case _ => None
-          }
-          .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
-        Md.header2("Value members:") +
-        r.members.flatMap{
-          case x : ValRepresentation => Some(x)
-          case _ => None
-          }
-          .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
-        Md.header2("Object members:") +
-        r.members.flatMap{
-          case x : ClassRepresentation if !x.isObject => Some(x)
-          case _ => None
-          }
-          .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath :+ r.name)).mkString("") + // Need one more level of declarationPath for linking to itself
-        Md.header2("Class Members:") +
-        r.members.flatMap{
-          case x: ClassRepresentation if !x.isTrait && !x.isObject => Some(x)
-          case _ => None
-          }
-          .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath :+ r.name)).mkString("") + // Need one more level of declarationPath for linking to itself
-        Md.header2("Trait Members:") +
-        r.members.flatMap{
-          case x: ClassRepresentation if x.isTrait => Some(x)
-          case _ => None
-          }
-          .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath :+ r.name)).mkString("") // Need one more level of declarationPath for linking to itself
-      }
-
-      if(insideClassOrObject){
-        traverseRepresentation(r, Set.empty) //TODO Need returned package?
-
-        formatSimplifiedSignature() +
-        formatComments(r.comments)
-      }else{
-        Md.header1(r.kind + " " + r.name) +
-        "\n" +
-        formatCompanion() +
-        formatSignature() +
-        formatComments(r.comments) +
-        formatAnnotations() +
-        formatConstructors() +
-        formatMembers()
-      }
+    case r: ClassRepresentation => formatClassRepresentation(r, declarationPath)
 
     case r: DefRepresentation => formatDefRepresentation(r, declarationPath)
 
@@ -300,14 +320,10 @@ object DocPrinter{
       val file = new File("./" + folderPrefix + r.path.mkString("", "/", "/") + r.name + ".md")
       file.getParentFile.mkdirs
       val pw = new PrintWriter(file)
-      pw.write(formatRepresentationToMarkdown(r, false, r.path))
+      pw.write(formatRepresentationToMarkdown(r, r.path))
       pw.close
 
-      if(r.path.nonEmpty){
-        packagesSet + ((r.path, r.kind + " " + Md.link(r.name, "./" + r.path.last + "/" + r.name + ".md")))
-      }else{
-        packagesSet + ((r.path, r.kind + " " + Md.link(r.name, "./" + r.name + ".md")))
-      }
+      packagesSet + ((r.path, formatSimplifiedClassRepresentation(r, r.path)))
 
     case r: DefRepresentation => packagesSet + ((r.path, formatDefRepresentation(r, r.path)))
 

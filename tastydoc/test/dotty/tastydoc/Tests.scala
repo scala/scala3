@@ -50,18 +50,19 @@ class Tests {
   //   )
   // }
   @Test def testDocumentation(): Unit = {
-    ConsumeTasty(
+    Main.main(Array(
+      "-classpath",
       "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.15/classes",
-      List("example.level2.Documentation"),
-      new dotty.tastydoc.TastydocConsumer
-    )
-  }
-  @Test def testReturnTypeClass(): Unit = {
-    ConsumeTasty(
-      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.15/classes",
-      List("example.ReturnTypeClass"),
-      new dotty.tastydoc.TastydocConsumer
-    )
+      "-syntax",
+      "wiki",
+      "-packagestolink",
+      "example.*",
+      //"scala.*",
+      "-i",
+      "example.level2.Documentation",
+      "example.ReturnTypeClass",
+      "example.ReturnObjectWithType"
+    ))
   }
   // @Test def testListFromLib(): Unit = {
   //   ConsumeTasty(

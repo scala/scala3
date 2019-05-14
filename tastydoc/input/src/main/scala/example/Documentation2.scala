@@ -1,7 +1,7 @@
 package example
 
 class ReturnTypeClass[T] {
-
+  def linkMeFromUserDoc() = ???
 }
 
 object ReturnObjectWithType {

@@ -73,6 +73,11 @@ sealed abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String
   def iterator = ???
   override def length = ???
 
+  /** [[dotty.tastydoc.example.ReturnTypeClass.linkMeFromUserDoc]]
+  * [[dotty.tastydoc.example.level2.Documentation.apply]]
+  */
+  def linkMethodInDoc() = ???
+
   /** An example documention with markdown formatting
    *
    *  **I'm bold**

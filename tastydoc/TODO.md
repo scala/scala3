@@ -15,17 +15,24 @@
 * WikiParser (just error reporting (span))
   * Span + error printing
 
+* method linking
+* Markdown parser broken
+
 # Other
 * handle things such as $genericCanBuildFromInfo
 
 # Representation
-* Define wiki or markdown syntax
 * Make sense of the parent field (+ parents?)
 * Inherited declaration
 * Annotations (+ everywhere or only where it makes sense?)
 * Type default in def
 * Alias type
 * Beautify type parameters (+ variance + bound two direction)
+* Linking to type with a def with the same name
+* User doc for inherited method
+* Known subclasses
+* Fix companion
+* Problem when link is a type inside an object (due to the $)
 
 # Output
 * Output inner class/object if not inherited
@@ -33,9 +40,7 @@
 * Case classes are linked right now
 * Case class remove artefacts?
 * Class inside class print parents
-* Rework class output
 * Doc for packages
-* Linking companion
 
 # Report
 * Goal Why we wanted to generated from tasty why to markdown
@@ -46,8 +51,4 @@
 * Say everything is split into function
 
 # To Ask
-* Showcode became show?
-* Known subclasses
-* Main ok?
-* Need return of consumeTasty for packages + passing parameter for wiki/markdown
-* All modifiers present?
+* Too much operations on String for path?

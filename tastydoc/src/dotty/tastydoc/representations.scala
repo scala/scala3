@@ -105,10 +105,12 @@ object representations extends CommentParser with CommentCleaner {
     comment match {
       case Some(com) =>
         val parsed = parse(Map.empty, clean(com.raw), com.raw)
-        if (true) { //TODO option of tool
+        if (TastydocConsumer.userDocSyntax == "markdown") {
+          Some(MarkdownComment(rep, parsed).comment)
+        }else if(TastydocConsumer.userDocSyntax == "wiki"){
           Some(WikiComment(rep, parsed).comment)
         }else{
-          Some(MarkdownComment(rep, parsed).comment)
+          Some(WikiComment(rep, parsed).comment)
         }
       case None => None
     }
@@ -120,8 +122,10 @@ object representations extends CommentParser with CommentCleaner {
         case IsDefDef(_) => None //No definitions, they are appended with symbol.methods below
         case x => Some(x)
       }.filter{x => //Filter fields which shouldn't be displayed in the doc
-        !x.symbol.flags.is(Flags.Local) && //Locally defined
-        !x.symbol.flags.is(Flags.Private)
+        //!x.symbol.flags.is(Flags.Local) && //Locally defined
+        !x.symbol.flags.is(Flags.Private) &&
+        !x.symbol.flags.is(Flags.Synthetic) &&
+        !x.symbol.flags.is(Flags.Artifact)
       }
       .map(convertToRepresentation(reflect)) ++
     symbol.methods.map{x => convertToRepresentation(reflect)(x.tree)}) //TOASK Calling this method fails
@@ -175,7 +179,7 @@ object representations extends CommentParser with CommentCleaner {
       case Some(c) =>
         val path = extractPath(reflect)(c)
         val (_, _, isObject, kind) = extractKind(reflect)(c.flags) //TOASK bug here isObject
-        (Some(TypeReference(c.name + (if (isObject) "$" else ""), if(path.nonEmpty) path.mkString("./", "/", "") else ".", Nil, true)),
+        (Some(TypeReference(c.name + (if (isObject) "$" else ""), path.mkString("/", "/", ""), Nil, true)),
         Some(kind))
       case None => (None, None)
     }
@@ -202,7 +206,7 @@ object representations extends CommentParser with CommentCleaner {
       case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) =>
         inner(tpe) match {
           case TypeReference(label, link, _, hasOwnFile) =>
-            if(link == "./scala"){
+            if(link == "/scala"){
               if(label.matches("Function[1-9]") || label.matches("Function[1-9][0-9]")){
                 val argsAndReturn = typeOrBoundsList.map(typeOrBoundsHandling)
                 FunctionReference(argsAndReturn.take(argsAndReturn.size - 1), argsAndReturn.last, false) //TODO: Implict
@@ -219,28 +223,28 @@ object representations extends CommentParser with CommentCleaner {
       case reflect.Type.IsTypeRef(reflect.Type.TypeRef(typeName, qual)) =>
         typeOrBoundsHandling(qual) match {
           case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true) //TODO check hasOwnFile
-          case EmptyReference => TypeReference(typeName, ".", Nil, true) //TODO check hasOwnFile
+          case EmptyReference => TypeReference(typeName, "", Nil, true) //TODO check hasOwnFile
           case _ => throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + typeOrBoundsHandling(qual))
         }
       case reflect.Type.IsTermRef(reflect.Type.TermRef(typeName, qual)) =>
         typeOrBoundsHandling(qual) match {
           case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs)
-          case EmptyReference => TypeReference(typeName, ".", Nil)
+          case EmptyReference => TypeReference(typeName, "", Nil)
           case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue. " + typeOrBoundsHandling(qual))
         }
       case reflect.Type.IsSymRef(reflect.Type.SymRef(symbol, typeOrBounds)) => symbol match {
         case reflect.IsClassDefSymbol(_) =>
           typeOrBoundsHandling(typeOrBounds) match {
             case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs, true) //TOASK: Should we include case as own file?
-            case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference //TOASK: Not consistant root
-            case EmptyReference => TypeReference(symbol.name, ".", Nil, true)
+            case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
+            case EmptyReference => TypeReference(symbol.name, "", Nil, true)
             case _ => throw Exception("Match error in SymRef/TypeOrBounds. This should not happen, please open an issue. " + typeOrBoundsHandling(typeOrBounds))
           }
         case reflect.IsPackageDefSymbol(_) | reflect.IsTypeDefSymbol(_) | reflect.IsValDefSymbol(_) =>
           typeOrBoundsHandling(typeOrBounds) match {
             case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs)
             case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
-            case EmptyReference => TypeReference(symbol.name, ".", Nil)
+            case EmptyReference => TypeReference(symbol.name, "", Nil)
             case _ => throw Exception("Match error in SymRef/TypeOrBounds. This should not happen, please open an issue. " + typeOrBoundsHandling(typeOrBounds))
           }
         case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue. " + symbol)
@@ -277,6 +281,8 @@ object representations extends CommentParser with CommentCleaner {
 
   class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams with Annotations {
     import reflect._
+
+    //internal.symbol.companionModule.foreach(x => println(x.name + x.flags.is(Flags.Object)))
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
