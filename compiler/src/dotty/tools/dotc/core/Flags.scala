@@ -462,7 +462,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Final, Case, Implicit, Implied, Override, JavaStatic)
+    commonFlags(Private, Protected, Final, Case, Implicit, Implied, Given, Override, JavaStatic)
 
   final val TypeSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque
