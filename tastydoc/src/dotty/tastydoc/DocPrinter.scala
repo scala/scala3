@@ -157,45 +157,6 @@ object DocPrinter{
     "\n"
   }
 
-  private def formatMembers(members: List[Representation], declarationPath: List[String]): String = {
-    Md.header2("Type Members:") +
-    members.flatMap{
-      case x: TypeRepresentation => Some(x)
-      case _ => None
-      }
-      .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
-    Md.header2("Definition members:") +
-    members.flatMap{
-      case x : DefRepresentation => Some(x)
-      case _ => None
-      }
-      .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
-    Md.header2("Value members:") +
-    members.flatMap{
-      case x : ValRepresentation => Some(x)
-      case _ => None
-      }
-      .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
-    Md.header2("Object members:") +
-    members.flatMap{
-      case x : ClassRepresentation if !x.isObject => Some(x)
-      case _ => None
-      }
-      .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
-    Md.header2("Class Members:") +
-    members.flatMap{
-      case x: ClassRepresentation if !x.isTrait && !x.isObject => Some(x)
-      case _ => None
-      }
-      .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
-    Md.header2("Trait Members:") +
-    members.flatMap{
-      case x: ClassRepresentation if x.isTrait => Some(x)
-      case _ => None
-      }
-      .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("")
-  }
-
   def formatRepresentationToMarkdown(representation: Representation, insideClassOrObject: Boolean, declarationPath: List[String]): String = representation match {
     case r : PackageRepresentation =>
       r.name +
@@ -225,7 +186,7 @@ object DocPrinter{
         htmlPreCode(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin, declarationPath) +
           r.kind +
           " " +
-          r.name
+          makeLink(r.name, "./" + declarationPath.last, true)
           , "scala") +
           "\n"
       }
@@ -261,11 +222,50 @@ object DocPrinter{
         }
       }
 
+      def formatMembers(): String = {
+        Md.header2("Type Members:") +
+        r.members.flatMap{
+          case x: TypeRepresentation => Some(x)
+          case _ => None
+          }
+          .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
+        Md.header2("Definition members:") +
+        r.members.flatMap{
+          case x : DefRepresentation => Some(x)
+          case _ => None
+          }
+          .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
+        Md.header2("Value members:") +
+        r.members.flatMap{
+          case x : ValRepresentation => Some(x)
+          case _ => None
+          }
+          .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
+        Md.header2("Object members:") +
+        r.members.flatMap{
+          case x : ClassRepresentation if !x.isObject => Some(x)
+          case _ => None
+          }
+          .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath :+ r.name)).mkString("") + // Need one more level of declarationPath for linking to itself
+        Md.header2("Class Members:") +
+        r.members.flatMap{
+          case x: ClassRepresentation if !x.isTrait && !x.isObject => Some(x)
+          case _ => None
+          }
+          .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath :+ r.name)).mkString("") + // Need one more level of declarationPath for linking to itself
+        Md.header2("Trait Members:") +
+        r.members.flatMap{
+          case x: ClassRepresentation if x.isTrait => Some(x)
+          case _ => None
+          }
+          .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath :+ r.name)).mkString("") // Need one more level of declarationPath for linking to itself
+      }
+
       if(insideClassOrObject){
+        traverseRepresentation(r, Set.empty) //TODO Need returned package?
+
         formatSimplifiedSignature() +
-        "\n" +
-        formatComments(r.comments) +
-        "\n"
+        formatComments(r.comments)
       }else{
         Md.header1(r.kind + " " + r.name) +
         "\n" +
@@ -274,7 +274,7 @@ object DocPrinter{
         formatComments(r.comments) +
         formatAnnotations() +
         formatConstructors() +
-        formatMembers(r.members, declarationPath)
+        formatMembers()
       }
 
     case r: DefRepresentation => formatDefRepresentation(r, declarationPath)
