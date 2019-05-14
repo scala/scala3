@@ -130,7 +130,7 @@ class Definitions {
         val resParamRef = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls).typeRef
         val methodType = MethodType.maker(
           isJava = false,
-          isImplicit = name.isImplicitFunction,
+          isImplicit = false,
           isContextual = name.isImplicitFunction,
           isErased = name.isErasedFunction)
         decls.enter(newMethod(cls, nme.apply, methodType(argParamRefs, resParamRef), Deferred))

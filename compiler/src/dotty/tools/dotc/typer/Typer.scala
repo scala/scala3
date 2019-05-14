@@ -3114,7 +3114,7 @@ class Typer extends Namer
    */
   protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(implicit ctx: Context): Boolean =
     methType.isContextual == pt.isContextual ||
-    methType.isImplicit && pt.isContextual // for a transition allow `with` arguments for regular implicit parameters
+    methType.isImplicitMethod && pt.isContextual // for a transition allow `with` arguments for regular implicit parameters
 
   /** Check that `tree == x: pt` is typeable. Used when checking a pattern
    *  against a selector of type `pt`. This implementation accounts for

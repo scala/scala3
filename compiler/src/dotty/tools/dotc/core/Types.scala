@@ -333,19 +333,16 @@ object Types {
     /** Is this an alias TypeBounds? */
     final def isTypeAlias: Boolean = this.isInstanceOf[TypeAlias]
 
-    /** Is this a MethodType which is from Java */
+    /** Is this a MethodType which is from Java? */
     def isJavaMethod: Boolean = false
 
-    /** Is this a MethodType which has implicit or contextual parameters */
+    /** Is this a Method or PolyType which has implicit or contextual parameters? */
     def isImplicitMethod: Boolean = false
 
     /** Is this a Method or PolyType which has contextual parameters as first value parameter list? */
     def isContextual: Boolean = false
 
-    /** Is this a Method or PolyType which has implicit parameters as first value parameter list? */
-    def isImplicit: Boolean = false
-
-    /** Is this a MethodType for which the parameters will not be used */
+    /** Is this a MethodType for which the parameters will not be used? */
     def isErasedMethod: Boolean = false
 
     /** Is this a match type or a higher-kinded abstraction of one?
@@ -3196,7 +3193,6 @@ object Types {
     final override def isContextual: Boolean =
       companion.eq(ContextualMethodType) ||
       companion.eq(ErasedContextualMethodType)
-    final override def isImplicit = isImplicitMethod
 
     def computeSignature(implicit ctx: Context): Signature = {
       val params = if (isErasedMethod) Nil else paramInfos
@@ -3389,7 +3385,7 @@ object Types {
     def computeSignature(implicit ctx: Context): Signature = resultSignature
 
     override def isContextual = resType.isContextual
-    override def isImplicit = resType.isImplicit
+    override def isImplicitMethod = resType.isImplicitMethod
 
     /** Merge nested polytypes into one polytype. nested polytypes are normally not supported
      *  but can arise as temporary data structures.
