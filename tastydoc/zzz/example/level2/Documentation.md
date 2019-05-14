@@ -1,6 +1,6 @@
 # class Documentation
 
-## Companion object : example.Documentation
+## Companion class <a href="./Documentation.md">Documentation</a>
 
 <pre><code class="language-scala" >sealed abstract class Documentation[T, A <: scala.Int, B >: scala.Predef.String, X, Y] extends <a href="../../scala/collection/Seq.md">Seq</a>[<a href="./Documentation.md#T">T</a>] with <a href="../../scala/Product.md">Product</a> with <a href="../../scala/Serializable.md">Serializable</a></pre></code>
 This class is used for testing tasty doc generation
@@ -14,10 +14,6 @@ This class is used for testing tasty doc generation
 ***T*** class type parameter
 
 ***Constructor*** create new object
-
-
-## Annotations:
-
 
 ## Constructors:
 <pre><code class="language-scala" >Documentation(c1: <a href="../../scala/Predef/String.md">String</a>, c2: <a href="../../immutable/List.md">List</a>[T])</pre></code>
@@ -694,23 +690,29 @@ Test value
 <pre><code class="language-scala" >private[<a href="../../example.md">example</a>] val valWithScopeModifier: <a href="../../scala/Nothing.md">Nothing</a></pre></code>
 
 ## Object members:
-### IAmACaseClass$
-<pre><code class="language-scala" >final object IAmACaseClass$ extends (<a href="./Documentation.md#T">T</a>, <a href="../../scala/Int.md">Int</a>) => <a href="./Documentation/IAmACaseClass.md">IAmACaseClass</a> with <a href="../../scala/Serializable.md">Serializable</a></pre></code>
+### CaseImplementThis
+<pre><code class="language-scala" >sealed trait CaseImplementThis</pre></code>
 
-### IAmACaseObject$
-<pre><code class="language-scala" >final case object IAmACaseObject$ extends <a href="./Documentation/CaseImplementThis.md">CaseImplementThis</a> with <a href="../../scala/Product.md">Product</a> with <a href="../../scala/Serializable.md">Serializable</a></pre></code>
 
-### testObject$
-<pre><code class="language-scala" >final object testObject$ extends <a href="../../scala/Serializable.md">Serializable</a></pre></code>
+### IAmACaseClass
+<pre><code class="language-scala" >case class IAmACaseClass</pre></code>
+
+
+### innerDocumentationClass
+<pre><code class="language-scala" >class innerDocumentationClass</pre></code>
+
 
 ## Class Members:
 ### IAmACaseClass
 <pre><code class="language-scala" >case class IAmACaseClass</pre></code>
 
+
 ### innerDocumentationClass
 <pre><code class="language-scala" >class innerDocumentationClass</pre></code>
+
 
 ## Trait Members:
 ### CaseImplementThis
 <pre><code class="language-scala" >sealed trait CaseImplementThis</pre></code>
+
 

@@ -178,13 +178,13 @@ object DocPrinter{
       .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
     Md.header2("Object members:") +
     members.flatMap{
-      case x : ObjectRepresentation => Some(x)
+      case x : ClassRepresentation if !x.isObject => Some(x)
       case _ => None
       }
       .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
     Md.header2("Class Members:") +
     members.flatMap{
-      case x: ClassRepresentation if !x.isTrait => Some(x)
+      case x: ClassRepresentation if !x.isTrait && !x.isObject => Some(x)
       case _ => None
       }
       .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, true, declarationPath)).mkString("") +
@@ -208,86 +208,72 @@ object DocPrinter{
       r.name +
       "\n"
 
-    case r: ClassRepresentation if r.isTrait =>
-      if(insideClassOrObject){
-        htmlPreCode(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin, declarationPath) + "trait " + r.name, "scala") +
-        "\n" +
-        formatComments(r.comments) +
-        "\n"
-      }else{
-        Md.header1("trait " + r.name) +
-        "\n" +
-        (if (r.hasCompanion) Md.header2("Companion object : " + r.companionPath.mkString(".")) + "\n" else "") +
-        htmlPreCode(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin, r.path) +
-          "trait " +
-          r.name +
-          (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
-          (if(r.parents.nonEmpty) " extends " + formatReferences(r.parents.head, r.path) + r.parents.tail.map(" with " + formatReferences(_, r.path)).mkString("") else "")
-          ,"scala") +
-        "\n" +
-        formatComments(r.comments) +
-        "\n" +
-        Md.header2("Annotations:") +
-        "\n" +
-        r.annotations.mkString("\n") +
-        "\n" +
-        formatMembers(r.members, declarationPath)
-      }
-
     case r: ClassRepresentation =>
-      if(insideClassOrObject){
-        htmlPreCode(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin, declarationPath) + (if(r.isCase) "case " else "") + "class " + r.name, "scala") +
-        "\n" +
-        formatComments(r.comments) +
-        "\n"
-      }else{
-        Md.header1("class " + r.name) +
-        "\n" +
-        (if (r.hasCompanion) Md.header2("Companion object : " + r.companionPath.mkString(".")) + "\n" else "") +
+
+      def formatCompanion(): String = (r.companion, r.companionKind) match {
+        case (Some(ref@TypeReference(label, link, ls, hasOwnFile)), Some(kind)) =>
+          Md.header2("Companion " +
+            kind +
+            " " +
+            (if(kind.contains("object")) formatReferences(TypeReference(label, link, ls, hasOwnFile), declarationPath) else formatReferences(ref, declarationPath))
+            ) +
+            "\n"
+        case _ => ""
+      }
+
+      def formatSimplifiedSignature(): String = {
+        htmlPreCode(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin, declarationPath) +
+          r.kind +
+          " " +
+          r.name
+          , "scala") +
+          "\n"
+      }
+
+      def formatSignature(): String = {
         htmlPreCode(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin, r.path) +
-          (if(r.isCase) "case " else "") +
-          "class " +
+          r.kind +
+          " " +
           r.name +
           (if(r.typeParams.nonEmpty) r.typeParams.mkString("[", ", ", "]") else "") +
           (if(r.parents.nonEmpty) " extends " + formatReferences(r.parents.head, r.path) + r.parents.tail.map(" with " + formatReferences(_, r.path)).mkString("") else "")
           , "scala") +
-        "\n" +
-        formatComments(r.comments) +
-        "\n" +
-        Md.header2("Annotations:") +
-        "\n" +
-        r.annotations.mkString("\n") +
-        "\n" +
-        Md.header2("Constructors:")+
-        r.constructors.map((ls, com) => htmlPreCode(r.name + ls.paramLists.map(formatParamList(_, r.path)).mkString(""), "scala") + "\n" + formatComments(com)).mkString("") +
-        "\n" +
-        formatMembers(r.members, declarationPath)
+          "\n"
       }
 
-    case r: ObjectRepresentation =>
+      def formatAnnotations(): String = {
+        if(r.annotations.isEmpty){
+          ""
+        }else{
+          Md.header2("Annotations:") +
+          r.annotations.mkString("\n") +
+          "\n"
+        }
+      }
+
+      def formatConstructors(): String = {
+        if(r.constructors.isEmpty){
+          ""
+        }else{
+          Md.header2("Constructors:") +
+          r.constructors.map((ls, com) => htmlPreCode(r.name + ls.paramLists.map(formatParamList(_, r.path)).mkString(""), "scala") + "\n" + formatComments(com)).mkString("") +
+          "\n"
+        }
+      }
+
       if(insideClassOrObject){
-        htmlPreCode(
-          formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin, declarationPath) +
-          (if(r.isCase) "case " else "") +
-          "object " +
-          r.name +
-          (if(r.parents.nonEmpty) " extends " + formatReferences(r.parents.head, declarationPath) + r.parents.tail.map(" with " + formatReferences(_, declarationPath)).mkString("") else "")
-          , "scala") +
+        formatSimplifiedSignature() +
         "\n" +
         formatComments(r.comments) +
         "\n"
       }else{
-        Md.header1("object " + r.name) +
+        Md.header1(r.kind + " " + r.name) +
         "\n" +
-        (if (r.hasCompanion) Md.header2("Companion class : " + r.companionPath.mkString(".")) + "\n" else "") +
-        htmlPreCode(formatModifiers(r.modifiers, r.privateWithin, r.protectedWithin, r.path) + (if(r.isCase) "case " else "") + "object " + r.name, "scala") +
-        "\n" +
+        formatCompanion() +
+        formatSignature() +
         formatComments(r.comments) +
-        "\n" +
-        Md.header2("Annotations:") +
-        "\n" +
-        r.annotations.mkString("\n") +
-        "\n" +
+        formatAnnotations() +
+        formatConstructors() +
         formatMembers(r.members, declarationPath)
       }
 
@@ -317,24 +303,10 @@ object DocPrinter{
       pw.write(formatRepresentationToMarkdown(r, false, r.path))
       pw.close
 
-      val kind = if(r.isTrait) "trait" else "class"
-
       if(r.path.nonEmpty){
-        packagesSet + ((r.path, kind + " " + Md.link(r.name, "./" + r.path.last + "/" + r.name + ".md")))
+        packagesSet + ((r.path, r.kind + " " + Md.link(r.name, "./" + r.path.last + "/" + r.name + ".md")))
       }else{
-        packagesSet + ((r.path, kind + " " + Md.link(r.name, "./" + r.name + ".md")))
-      }
-
-    case r: ObjectRepresentation =>
-      val file = new File("./" + folderPrefix + r.path.mkString("", "/", "/") + r.name + ".md")
-      file.getParentFile.mkdirs
-      val pw = new PrintWriter(file)
-      pw.write(formatRepresentationToMarkdown(r, false, r.path))
-      pw.close
-      if(r.path.nonEmpty){
-        packagesSet + ((r.path, "object " + Md.link(r.name, "./" + r.path.last + "/" + r.name + ".md")))
-      }else{
-        packagesSet + ((r.path, "object " + Md.link(r.name, "./" + r.name + ".md")))
+        packagesSet + ((r.path, r.kind + " " + Md.link(r.name, "./" + r.name + ".md")))
       }
 
     case r: DefRepresentation => packagesSet + ((r.path, formatDefRepresentation(r, r.path)))

@@ -35,6 +35,7 @@
 * Class inside class print parents
 * Rework class output
 * Doc for packages
+* Linking companion
 
 # Report
 * Goal Why we wanted to generated from tasty why to markdown
@@ -42,6 +43,7 @@
 * intermediate representation md to xxxx
 * Difficulties, problems with dottydoc + md libraries
 * benchmark?
+* Say everything is split into function
 
 # To Ask
 * Showcode became show?

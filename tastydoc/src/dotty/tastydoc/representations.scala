@@ -38,10 +38,10 @@ object representations extends CommentParser with CommentCleaner {
   }
 
   trait Companion {
-    def hasCompanion: Boolean = companionPath ne Nil
+    val companion: Option[TypeReference] //Hacky solution usign TypeReference so that we can use methods already implemented for linking.
+    val companionKind: Option[String]
 
-    val companionPath: List[String]
-
+    def hasCompanion: Boolean = companion.isDefined //To be consistent with dotty-doc
     // val companionPath_=(xs: List[String]): Unit
   }
 
@@ -107,8 +107,7 @@ object representations extends CommentParser with CommentCleaner {
         val parsed = parse(Map.empty, clean(com.raw), com.raw)
         if (true) { //TODO option of tool
           Some(WikiComment(rep, parsed).comment)
-        }
-        else{
+        }else{
           Some(MarkdownComment(rep, parsed).comment)
         }
       case None => None
@@ -138,6 +137,48 @@ object representations extends CommentParser with CommentCleaner {
       case _ => throw Exception("Unhandeld case in parents. Please open an issue.")
     }
     if(parentsReferences.nonEmpty) parentsReferences.tail else Nil //Object is always at head position and it's pointless to display it
+  }
+
+  /** The kind of a ClassDef can be one of the following: class, case class, object, case object, trait
+  *
+  * @return (is case, is a trait, is an object, the kind as a String)
+  */
+  private def extractKind(reflect: Reflection)(flags: reflect.Flags): (Boolean, Boolean, Boolean, String) = { //TOASK All in Classrepresentation?
+    import reflect._
+
+    val isCase = flags.is(reflect.Flags.Case)
+    val isTrait = flags.is(reflect.Flags.Trait)
+    val isObject = flags.is(reflect.Flags.Object)
+    val kind = {
+      if(isTrait){
+        "trait"
+      }else{
+        (if(isCase){
+          "case "
+        }else{
+          ""
+        }) +
+        (if(isObject){
+          "object"
+        }else{
+          "class"
+        })
+      }
+    }
+    (isCase, isTrait, isObject, kind)
+  }
+
+  private def extractCompanion(reflect: Reflection)(companion: Option[reflect.ClassDefSymbol]): (Option[TypeReference], Option[String]) = {
+    import reflect._
+
+    companion match {
+      case Some(c) =>
+        val path = extractPath(reflect)(c)
+        val (_, _, isObject, kind) = extractKind(reflect)(c.flags) //TOASK bug here isObject
+        (Some(TypeReference(c.name + (if (isObject) "$" else ""), if(path.nonEmpty) path.mkString("./", "/", "") else ".", Nil, true)),
+        Some(kind))
+      case None => (None, None)
+    }
   }
 
   private def convertTypeToReference(reflect: Reflection)(tp: reflect.Type): Reference = {
@@ -234,7 +275,7 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef, val isCase: Boolean = false, val isTrait: Boolean = false) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams with Annotations {
+  class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams with Annotations {
     import reflect._
 
     override val name = internal.name
@@ -242,10 +283,7 @@ object representations extends CommentParser with CommentCleaner {
     override val members = extractMembers(reflect)(internal.body, internal.symbol)
     override val parents = extractParents(reflect)(internal.parents)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
-    override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
-      case Some(x) => path.init ++ List(name)
-      case None => Nil
-    }
+    override val (companion, companionKind) = extractCompanion(reflect)(internal.symbol.companionClass)
     override val constructors = (convertToRepresentation(reflect)(internal.constructor) ::
     (internal.body.filter{x =>
         val noColorshow = removeColorFromType(x.show)
@@ -261,22 +299,8 @@ object representations extends CommentParser with CommentCleaner {
     override val annotations = Nil
 
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
-  }
 
-  class ObjectRepresentation(reflect: Reflection, internal: reflect.ClassDef, val isCase: Boolean = false) extends Representation with Modifiers with Members with Parents with Companion with Annotations {
-    import reflect._
-
-    override val name = internal.name
-    override val path = extractPath(reflect)(internal.symbol)
-    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
-    override val members = extractMembers(reflect)(internal.body, internal.symbol)
-    override val parents = extractParents(reflect)(internal.parents)
-    override val companionPath = internal.symbol.companionClass match { //TOASK: Right way?
-      case Some(_) => path.init ++ List(name)
-      case None => Nil
-    }
-    override val annotations = Nil
-    override val comments = extractComments(reflect)(internal.symbol.comment, this)
+    val (isCase, isTrait, isObject, kind) = extractKind(reflect)(internal.symbol.flags)
   }
 
   class DefRepresentation(reflect: Reflection, internal: reflect.DefDef) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue with Annotations{
@@ -330,12 +354,7 @@ object representations extends CommentParser with CommentCleaner {
 
       case IsImport(t@reflect.Import(_)) => new ImportRepresentation(reflect, t)
 
-      case IsClassDef(t@reflect.ClassDef(_)) =>
-        if(t.symbol.flags.is(Flags.Object)){
-          new ObjectRepresentation(reflect, t, t.symbol.flags.is(Flags.Case))
-        }else{
-          new ClassRepresentation(reflect, t, t.symbol.flags.is(Flags.Case), t.symbol.flags.is(Flags.Trait))
-        }
+      case IsClassDef(t@reflect.ClassDef(_)) => new ClassRepresentation(reflect, t)
       case IsDefDef(t@reflect.DefDef(_)) => new DefRepresentation(reflect, t)
 
       case IsValDef(t@reflect.ValDef(_)) => new ValRepresentation(reflect, t) //TODO: contains object too, separate from Val
