@@ -231,7 +231,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
         def valueParam(name: TermName, origInfo: Type): TermSymbol = {
           val maybeImplicit =
-            if (tp.isContextual) Given
+            if (tp.isContextualMethod) Given
             else if (tp.isImplicitMethod) Implicit
             else EmptyFlags
           val maybeErased = if (tp.isErasedMethod) Erased else EmptyFlags

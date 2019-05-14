@@ -2589,7 +2589,7 @@ class Typer extends Namer
             adapt(tree, pt.tupled, locked)
           else
             tree
-        else if (wtp.isContextual)
+        else if (wtp.isContextualMethod)
           adaptNoArgs(wtp)  // insert arguments implicitly
         else if (tree.symbol.isPrimaryConstructor && tree.symbol.info.firstParamTypes.isEmpty)
           readapt(tree.appliedToNone) // insert () to primary constructors
@@ -2687,7 +2687,7 @@ class Typer extends Namer
             }
             tryEither { implicit ctx =>
               val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
-              if (wtp.isContextual) app.setGivenApply()
+              if (wtp.isContextualMethod) app.setGivenApply()
               typr.println(i"try with default implicit args $app")
               typed(app, pt, locked)
             } { (_, _) =>
@@ -3113,7 +3113,7 @@ class Typer extends Namer
    *  Overridden in `ReTyper`, where all applications are treated the same
    */
   protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(implicit ctx: Context): Boolean =
-    methType.isContextual == pt.isGivenApply ||
+    methType.isContextualMethod == pt.isGivenApply ||
     methType.isImplicitMethod && pt.isGivenApply // for a transition allow `with` arguments for regular implicit parameters
 
   /** Check that `tree == x: pt` is typeable. Used when checking a pattern
