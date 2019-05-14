@@ -11,7 +11,7 @@ sealed trait Tuple extends Any {
   inline def toArray: Array[Object] =
     inline constValueOpt[BoundedSize[this.type]] match {
       case Some(0) =>
-        scala.runtime.DynamicTuple.empty$Array
+        DynamicTuple.empty$Array
       case Some(1) =>
         val t = asInstanceOf[Tuple1[Object]]
         Array(t._1)
@@ -29,7 +29,7 @@ sealed trait Tuple extends Any {
       case Some(n) =>
         asInstanceOf[TupleXXL].elems
       case None =>
-        runtime.DynamicTuple.dynamicToArray(this)
+        DynamicTuple.dynamicToArray(this)
     }
 
   inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This = {
@@ -51,7 +51,7 @@ sealed trait Tuple extends Any {
       case Some(n) =>
         knownTupleFromArray[H *: this.type](DynamicTuple.cons$Array(x, toArray))
       case _ =>
-        runtime.DynamicTuple.dynamic_*:[This, H](this, x)
+        DynamicTuple.dynamic_*:[This, H](this, x)
     }
   }
 
@@ -90,7 +90,7 @@ sealed trait Tuple extends Any {
         if (constValue[BoundedSize[that.type]] == 0) this.asInstanceOf[Result]
         else knownTupleFromArray[Result](this.toArray ++ that.toArray)
       case None =>
-        runtime.DynamicTuple.dynamic_++[This, that.type](this, that)
+        DynamicTuple.dynamic_++[This, that.type](this, that)
     }
   }
 
@@ -98,7 +98,7 @@ sealed trait Tuple extends Any {
     type Result = Size[This]
     inline constValueOpt[BoundedSize[this.type]] match {
       case Some(n) => n.asInstanceOf[Result]
-      case _ => runtime.DynamicTuple.dynamicSize(this)
+      case _ => DynamicTuple.dynamicSize(this)
     }
   }
 
@@ -178,7 +178,7 @@ object Tuple {
       case xs: Array[Object] => xs
       case xs => xs.map(_.asInstanceOf[Object])
     }
-    runtime.DynamicTuple.dynamicFromArray[Tuple](xs2)
+    DynamicTuple.dynamicFromArray[Tuple](xs2)
   }
 
 }
@@ -201,13 +201,13 @@ sealed trait NonEmptyTuple extends Tuple {
       case Some(4) =>
         val t = asInstanceOf[Tuple4[_, _, _, _]]
         t._1
-      case Some(n) if n > 4 && n <= scala.runtime.DynamicTuple.MaxSpecialized =>
+      case Some(n) if n > 4 && n <= DynamicTuple.MaxSpecialized =>
         asInstanceOf[Product].productElement(0)
-      case Some(n) if n > scala.runtime.DynamicTuple.MaxSpecialized =>
+      case Some(n) if n > DynamicTuple.MaxSpecialized =>
         val t = asInstanceOf[TupleXXL]
         t.elems(0)
       case None =>
-        scala.runtime.DynamicTuple.dynamicHead[this.type](this)
+        DynamicTuple.dynamicHead[this.type](this)
     }
     resVal.asInstanceOf[Result]
   }
@@ -232,14 +232,14 @@ sealed trait NonEmptyTuple extends Tuple {
       case Some(n) if n > 5 =>
         knownTupleFromArray[Result](toArray.tail)
       case None =>
-        runtime.DynamicTuple.dynamicTail[This](this)
+        DynamicTuple.dynamicTail[This](this)
     }
   }
 
   inline def fallbackApply(n: Int) =
     inline constValueOpt[n.type] match {
       case Some(n: Int) => error("index out of bounds: ", n)
-      case None => runtime.DynamicTuple.dynamicApply[this.type, n.type](this, n)
+      case None => DynamicTuple.dynamicApply[this.type, n.type](this, n)
     }
 
   inline def apply[This >: this.type <: NonEmptyTuple](n: Int): Elem[This, n.type] = {
@@ -275,13 +275,13 @@ sealed trait NonEmptyTuple extends Tuple {
           case Some(3) => t._4.asInstanceOf[Result]
           case _ => fallbackApply(n).asInstanceOf[Result]
         }
-      case Some(s) if s > 4 && s <= scala.runtime.DynamicTuple.MaxSpecialized =>
+      case Some(s) if s > 4 && s <= DynamicTuple.MaxSpecialized =>
         val t = asInstanceOf[Product]
         inline constValueOpt[n.type] match {
           case Some(n) if n >= 0 && n < s => t.productElement(n).asInstanceOf[Result]
           case _ => fallbackApply(n).asInstanceOf[Result]
         }
-      case Some(s) if s > scala.runtime.DynamicTuple.MaxSpecialized =>
+      case Some(s) if s > DynamicTuple.MaxSpecialized =>
         val t = asInstanceOf[TupleXXL]
         inline constValueOpt[n.type] match {
           case Some(n) if n >= 0 && n < s => t.elems(n).asInstanceOf[Result]
