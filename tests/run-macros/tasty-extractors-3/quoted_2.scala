@@ -10,6 +10,7 @@ object Test {
       def f2[T >: Int <: Int](): T = ???
       class Foo { type X }
       val foo = new Foo { type X = String }
+      while (true) println()
     }
   }
 }
