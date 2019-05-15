@@ -1366,7 +1366,7 @@ object desugar {
 
       def needsNoFilter(gen: GenFrom): Boolean =
         if (gen.checkMode == GenCheckMode.FilterAlways) // pattern was prefixed by `case`
-          isIrrefutable(gen.pat, gen.expr)
+          false
         else (
           gen.checkMode != GenCheckMode.FilterNow ||
           IdPattern.unapply(gen.pat).isDefined ||
