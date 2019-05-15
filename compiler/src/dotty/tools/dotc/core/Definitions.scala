@@ -883,6 +883,10 @@ class Definitions {
   def ShowAsInfixAnnot(implicit ctx: Context): ClassSymbol = ShowAsInfixAnotType.symbol.asClass
   lazy val FunctionalInterfaceAnnotType = ctx.requiredClassRef("java.lang.FunctionalInterface")
   def FunctionalInterfaceAnnot(implicit ctx: Context) = FunctionalInterfaceAnnotType.symbol.asClass
+  lazy val InfixAnnotType = ctx.requiredClassRef("scala.annotation.infix")
+  def InfixAnnot(implicit ctx: Context) = InfixAnnotType.symbol.asClass
+  lazy val AlphaAnnotType = ctx.requiredClassRef("scala.annotation.alpha")
+  def AlphaAnnot(implicit ctx: Context) = AlphaAnnotType.symbol.asClass
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
@@ -1282,6 +1286,10 @@ class Definitions {
     if (isTupleClass(cls) || cls == UnitClass) parents :+ syntheticParent(tparams)
     else parents
   }
+
+  /** Is synthesized symbol with alphanumeric name allowed to be used as an infix operator? */
+  def isInfix(sym: Symbol)(implicit ctx: Context): Boolean =
+    (sym eq Object_eq) || (sym eq Object_ne)
 
   // ----- primitive value class machinery ------------------------------------------
 

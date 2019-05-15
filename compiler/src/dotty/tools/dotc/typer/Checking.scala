@@ -20,19 +20,24 @@ import rewrites.Rewrites.patch
 import util.Spans.Span
 
 import util.SourcePosition
+import util.Spans.Span
+import rewrites.Rewrites.patch
 import transform.SymUtils._
+import transform.ValueClasses._
 import Decorators._
 import ErrorReporting.{err, errorType}
 import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
+import NameOps._
+import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import transform.patmat.SpaceEngine.isIrrefutableUnapply
 
+
 import collection.mutable
-import SymDenotations.{NoCompleter, NoDenotation}
-import dotty.tools.dotc.reporting.diagnostic.Message
-import dotty.tools.dotc.reporting.diagnostic.messages._
-import dotty.tools.dotc.transform.ValueClasses._
+import reporting.diagnostic.Message
+import reporting.diagnostic.messages._
+import scala.tasty.util.Chars.isOperatorPart
 
 object Checking {
   import tpd._
@@ -716,6 +721,55 @@ trait Checking {
           i"Use of implicit conversion ${conv.showLocated}", NoSymbol, posd.sourcePos)
     }
 
+  private def infixOKSinceFollowedBy(tree: untpd.Tree): Boolean = tree match {
+    case _: untpd.Block | _: untpd.Match => true
+    case _ => false
+  }
+
+  /** Check that `tree` is a valid infix operation. That is, if the
+   *  operator is alphanumeric, it must be declared `@infix`.
+   */
+  def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(implicit ctx: Context): Unit = {
+
+    def isInfix(sym: Symbol): Boolean =
+      sym.hasAnnotation(defn.InfixAnnot) ||
+      defn.isInfix(sym) ||
+      sym.name.isUnapplyName &&
+        sym.owner.is(Module) && sym.owner.linkedClass.is(Case) &&
+        isInfix(sym.owner.linkedClass)
+
+    tree.op match {
+      case _: untpd.BackquotedIdent =>
+        ()
+      case Ident(name: Name) =>
+        name.toTermName match {
+          case name: SimpleName
+          if !name.exists(isOperatorPart) &&
+            !isInfix(meth) &&
+            !meth.maybeOwner.is(Scala2x) &&
+            !infixOKSinceFollowedBy(tree.right) &&
+            ctx.settings.strict.value =>
+            val (kind, alternative) =
+              if (ctx.mode.is(Mode.Type))
+                ("type", (n: Name) => s"prefix syntax $n[...]")
+              else if (ctx.mode.is(Mode.Pattern))
+                ("extractor", (n: Name) => s"prefix syntax $n(...)")
+              else
+                ("method", (n: Name) => s"method syntax .$n(...)")
+            ctx.deprecationWarning(
+              i"""Alphanumeric $kind $name is not declared @infix; it should not be used as infix operator.
+                 |The operation can be rewritten automatically to `$name` under -deprecation -rewrite.
+                 |Or rewrite to ${alternative(name)} manually.""",
+              tree.op.sourcePos)
+            if (ctx.settings.deprecation.value) {
+              patch(Span(tree.op.span.start, tree.op.span.start), "`")
+              patch(Span(tree.op.span.end, tree.op.span.end), "`")
+            }
+          case _ =>
+        }
+    }
+  }
+
   /** Issue a feature warning if feature is not enabled */
   def checkFeature(name: TermName,
                    description: => String,
@@ -985,7 +1039,7 @@ trait Checking {
   def checkInInlineContext(what: String, posd: Positioned)(implicit ctx: Context): Unit =
     if (!ctx.inInlineMethod && !ctx.isInlineContext) {
       val inInlineUnapply = ctx.owner.ownersIterator.exists(owner =>
-        owner.name == nme.unapply && owner.is(Inline) && owner.is(Method))
+        owner.name.isUnapplyName && owner.is(Inline) && owner.is(Method))
       val msg =
         if (inInlineUnapply) "cannot be used in an inline unapply"
         else "can only be used in an inline method"
@@ -1099,5 +1153,6 @@ trait NoChecking extends ReChecking {
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SourcePosition)(implicit ctx: Context): Type = tp
   override def checkInInlineContext(what: String, posd: Positioned)(implicit ctx: Context): Unit = ()
+  override def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(implicit ctx: Context): Unit = ()
   override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = ()
 }

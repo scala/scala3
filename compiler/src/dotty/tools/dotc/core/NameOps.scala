@@ -71,6 +71,7 @@ object NameOps {
     def isSelectorName: Boolean = testSimple(n => n.startsWith("_") && n.drop(1).forall(_.isDigit))
     def isAnonymousClassName: Boolean = name.startsWith(str.ANON_CLASS)
     def isAnonymousFunctionName: Boolean = name.startsWith(str.ANON_FUN)
+    def isUnapplyName: Boolean = name == nme.unapply || name == nme.unapplySeq
 
     /** Is name a variable name? */
     def isVariableName: Boolean = testSimple { n =>
