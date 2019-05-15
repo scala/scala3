@@ -1029,8 +1029,10 @@ class Typer extends Namer
         }
         else {
           val (protoFormals, _) = decomposeProtoFunction(pt, 1)
-          val unchecked = pt.isRef(defn.PartialFunctionClass)
-          typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked).withSpan(tree.span), pt)
+          val checkMode =
+            if (pt.isRef(defn.PartialFunctionClass)) desugar.MatchCheck.None
+            else desugar.MatchCheck.Exhaustive
+          typed(desugar.makeCaseLambda(tree.cases, checkMode, protoFormals.length).withSpan(tree.span), pt)
         }
       case _ =>
         if (tree.isInline) checkInInlineContext("inline match", tree.posd)
@@ -1038,10 +1040,15 @@ class Typer extends Namer
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.span).widen
         val result = typedMatchFinish(tree, sel1, selType, tree.cases, pt)
         result match {
-          case Match(sel, CaseDef(pat, _, _) :: _)
-          if (tree.selector.removeAttachment(desugar.PatDefMatch).isDefined) =>
-            if (!checkIrrefutable(pat, sel.tpe) && ctx.scala2Mode)
-              patch(Span(pat.span.end), ": @unchecked")
+          case Match(sel, CaseDef(pat, _, _) :: _) =>
+            tree.selector.removeAttachment(desugar.CheckIrrefutable) match {
+              case Some(checkMode) =>
+                val isPatDef = checkMode == desugar.MatchCheck.IrrefutablePatDef
+                if (!checkIrrefutable(pat, sel.tpe, isPatDef) && ctx.settings.migration.value)
+                  if (isPatDef) patch(Span(pat.span.end), ": @unchecked")
+                  else patch(Span(pat.span.start), "case ")
+              case _ =>
+            }
           case _ =>
         }
         result

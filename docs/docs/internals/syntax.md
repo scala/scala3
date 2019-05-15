@@ -245,7 +245,7 @@ Enumerators       ::=  Generator {semi Enumerator | Guard}
 Enumerator        ::=  Generator
                     |  Guard
                     |  Pattern1 ‘=’ Expr                                        GenAlias(pat, expr)
-Generator         ::=  Pattern1 ‘<-’ Expr                                       GenFrom(pat, expr)
+Generator         ::=  [‘case’] Pattern1 ‘<-’ Expr                                       GenFrom(pat, expr)
 Guard             ::=  ‘if’ PostfixExpr
 
 CaseClauses       ::=  CaseClause { CaseClause }                                Match(EmptyTree, cases)

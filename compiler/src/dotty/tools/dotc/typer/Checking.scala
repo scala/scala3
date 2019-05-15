@@ -602,41 +602,48 @@ trait Checking {
    *  This means `pat` is either marked @unchecked or `pt` conforms to the
    *  pattern's type. If pattern is an UnApply, do the check recursively.
    */
-  def checkIrrefutable(pat: Tree, pt: Type)(implicit ctx: Context): Boolean = {
-    patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
+  def checkIrrefutable(pat: Tree, pt: Type, isPatDef: Boolean)(implicit ctx: Context): Boolean = {
 
     def fail(pat: Tree, pt: Type): Boolean = {
+      var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
+      if (!pat.tpe.isSingleton) reportedPt = reportedPt.widen
+      val problem = if (pat.tpe <:< reportedPt) "is more specialized than" else "does not match"
+      val fix = if (isPatDef) "`: @unchecked` after" else "`case ` before"
       ctx.errorOrMigrationWarning(
-        ex"""pattern's type ${pat.tpe} is more specialized than the right hand side expression's type ${pt.dropAnnot(defn.UncheckedAnnot)}
+        ex"""pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt
             |
-            |If the narrowing is intentional, this can be communicated by writing `: @unchecked` after the full pattern.${err.rewriteNotice}""",
+            |If the narrowing is intentional, this can be communicated by writing $fix the full pattern.${err.rewriteNotice}""",
         pat.sourcePos)
       false
     }
 
     def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt)
 
-    !ctx.settings.strict.value || // only in -strict mode for now since mitigations work only after this PR
-    pat.tpe.widen.hasAnnotation(defn.UncheckedAnnot) || {
-      pat match {
-        case Bind(_, pat1) =>
-          checkIrrefutable(pat1, pt)
-        case UnApply(fn, _, pats) =>
-          check(pat, pt) &&
-          (isIrrefutableUnapply(fn) || fail(pat, pt)) && {
-            val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.sourcePos)
-            pats.corresponds(argPts)(checkIrrefutable)
-          }
-        case Alternative(pats) =>
-          pats.forall(checkIrrefutable(_, pt))
-        case Typed(arg, tpt) =>
-          check(pat, pt) && checkIrrefutable(arg, pt)
-        case Ident(nme.WILDCARD) =>
-          true
-        case _ =>
-          check(pat, pt)
+    def recur(pat: Tree, pt: Type): Boolean =
+      !ctx.settings.strict.value || // only in -strict mode for now since mitigations work only after this PR
+      pat.tpe.widen.hasAnnotation(defn.UncheckedAnnot) || {
+        patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
+        pat match {
+          case Bind(_, pat1) =>
+            recur(pat1, pt)
+          case UnApply(fn, _, pats) =>
+            check(pat, pt) &&
+            (isIrrefutableUnapply(fn) || fail(pat, pt)) && {
+              val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.sourcePos)
+              pats.corresponds(argPts)(recur)
+            }
+          case Alternative(pats) =>
+            pats.forall(recur(_, pt))
+          case Typed(arg, tpt) =>
+            check(pat, pt) && recur(arg, pt)
+          case Ident(nme.WILDCARD) =>
+            true
+          case _ =>
+            check(pat, pt)
+        }
       }
-    }
+
+    recur(pat, pt)
   }
 
   /** Check that `path` is a legal prefix for an import or export clause */

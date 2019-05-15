@@ -107,7 +107,9 @@ sidebar:
               url: docs/reference/changed-features/overload-resolution.html
             - title: Vararg Patterns
               url: docs/reference/changed-features/vararg-patterns.html
-            - title: Pattern matching
+            - title: Pattern Bindings
+              url: docs/reference/changed-features/pattern-bindings.html
+            - title: Pattern Matching
               url: docs/reference/changed-features/pattern-matching.html
             - title: Eta Expansion
               url: docs/reference/changed-features/eta-expansion.html
