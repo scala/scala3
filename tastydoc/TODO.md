@@ -22,25 +22,21 @@
 * handle things such as $genericCanBuildFromInfo
 
 # Representation
-* Make sense of the parent field (+ parents?)
-* Inherited declaration
 * Annotations (+ everywhere or only where it makes sense?)
-* Type default in def
+* Make sense of the parent field (+ parents?)
+* Fix companion
+* Id for typeparams so we can link
+* Inherited declaration
+* User doc for inherited method
+* default value in def
 * Alias type
 * Beautify type parameters (+ variance + bound two direction)
-* Linking to type with a def with the same name
-* User doc for inherited method
 * Known subclasses
-* Fix companion
 * Problem when link is a type inside an object (due to the $)
 * Try type at top level
-* Id for typeparams so we can link
 
 # Output
 * Output inner class/object if not inherited
-* Don't link scala lib
-* Case classes are linked right now
-* Case class remove artefacts?
 * Class inside class print parents
 * Doc for packages
 
@@ -51,6 +47,8 @@
 * Difficulties, problems with dottydoc + md libraries
 * benchmark?
 * Say everything is split into function
+* Linking to type with a def with the same name
 
 # To Ask
 * Too much operations on String for path?
+* Case classes are linked right now

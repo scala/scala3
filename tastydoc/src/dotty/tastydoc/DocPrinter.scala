@@ -16,6 +16,7 @@ object DocPrinter{
 
   private def makeLink(label: String, link: String, hasOwnFile: Boolean, declarationPath: List[String]): String = {
     val packageFormLink = link.replaceFirst("/", "").replaceAll("/", ".")
+
     if(TastydocConsumer.packagesToLink.exists(packageFormLink.matches(_))){
       @tailrec
       def ascendPath(path: List[String], link: List[String]): String = path match {
@@ -69,7 +70,7 @@ object DocPrinter{
     case TupleReference(args) =>
       args.map(formatReferences(_, declarationPath)).mkString("(", ", ", ")")
     case BoundsReference(low, high) =>
-      formatReferences(low, declarationPath) + ">:" + formatReferences(high, declarationPath)
+      formatReferences(low, declarationPath) + " <: " + formatReferences(high, declarationPath)
     case ByNameReference(ref) =>
       "=> " + formatReferences(ref, declarationPath)
     case ConstantReference(label) => label
@@ -277,7 +278,8 @@ object DocPrinter{
     formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
     "type " +
     representation.name +
-    ": ", "scala") +
+    (if(representation.isAbstract) "" else ": " + formatReferences(representation.alias.get, declarationPath))
+    , "scala") +
     "\n" +
     formatComments(representation.comments) +
     "\n"

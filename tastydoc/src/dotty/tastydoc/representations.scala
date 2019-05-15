@@ -185,67 +185,78 @@ object representations extends CommentParser with CommentCleaner {
     }
   }
 
-  private def convertTypeToReference(reflect: Reflection)(tp: reflect.Type): Reference = {
+  private def convertTypeOrBoundsToReference(reflect: Reflection)(typeOrBounds: reflect.TypeOrBounds): Reference = {
     import reflect._
 
-    def typeOrBoundsHandling(typeOrBounds: reflect.TypeOrBounds): Reference = typeOrBounds match {
-      case reflect.IsType(tpe) => inner(tpe)
-      case reflect.IsTypeBounds(reflect.TypeBounds(low, hi)) => BoundsReference(inner(low), inner(hi))
+    typeOrBounds match {
+      case reflect.IsType(tpe) => convertTypeToReference(reflect)(tpe)
+      case reflect.IsTypeBounds(reflect.TypeBounds(low, hi)) => BoundsReference(convertTypeToReference(reflect)(low), convertTypeToReference(reflect)(hi))
       case reflect.NoPrefix() => EmptyReference
     }
+  }
+
+  private def convertTypeToReference(reflect: Reflection)(tp: reflect.Type): Reference = {
+    import reflect._
 
     //Inner method to avoid passing the reflection each time
     def inner(tp: reflect.Type): Reference = tp match {
       case reflect.Type.IsOrType(reflect.Type.OrType(left, right)) => OrTypeReference(inner(left), inner(right))
       case reflect.Type.IsAndType(reflect.Type.AndType(left, right)) => AndTypeReference(inner(left), inner(right))
       case reflect.Type.IsByNameType(reflect.Type.ByNameType(tpe)) => ByNameReference(inner(tpe))
-      case reflect.Type.IsConstantType(reflect.Type.ConstantType(constant)) => ConstantReference(constant.value.toString) //TOASK What is constant
+      case reflect.Type.IsConstantType(reflect.Type.ConstantType(constant)) => ConstantReference(constant.value.toString)
       case reflect.Type.IsThisType(reflect.Type.ThisType(tpe)) => inner(tpe)
       case reflect.Type.IsAnnotatedType(reflect.Type.AnnotatedType(tpe, _)) => inner(tpe)
       case reflect.Type.IsTypeLambda(reflect.Type.TypeLambda(paramNames, paramTypes, resType)) => ConstantReference(removeColorFromType(tp.show)) //TOFIX
+      // case reflect.Type.IsTypeLambda(reflect.Type.TypeLambda(paramNames, paramTypes, resType)) => //TOASK
+      //   println("===================")
+      //   println(tp)
+      //   println("paramTypes: " + paramTypes.map(convertTypeOrBoundsToReference(reflect)(_)))
+      //   println("resType: " + inner(resType.widen))
+      //   ConstantReference(removeColorFromType(tp.show)) //TOFIX
+      // case reflect.Type.IsParamRef(reflect.Type.ParamRef(tpe, x)) => println("paramref     " + tpe.widen); ConstantReference("XXXXX")
       case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) =>
         inner(tpe) match {
           case TypeReference(label, link, _, hasOwnFile) =>
             if(link == "/scala"){
               if(label.matches("Function[1-9]") || label.matches("Function[1-9][0-9]")){
-                val argsAndReturn = typeOrBoundsList.map(typeOrBoundsHandling)
+                val argsAndReturn = typeOrBoundsList.map(convertTypeOrBoundsToReference(reflect)(_))
                 FunctionReference(argsAndReturn.take(argsAndReturn.size - 1), argsAndReturn.last, false) //TODO: Implict
               }else if(label.matches("Tuple[1-9]") || label.matches("Tuple[1-9][0-9]")){
-                TupleReference(typeOrBoundsList.map(typeOrBoundsHandling))
+                TupleReference(typeOrBoundsList.map(convertTypeOrBoundsToReference(reflect)(_)))
               }else{
-                TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling), hasOwnFile)
+                TypeReference(label, link, typeOrBoundsList.map(convertTypeOrBoundsToReference(reflect)(_)), hasOwnFile)
               }
             }else{
-              TypeReference(label, link, typeOrBoundsList.map(typeOrBoundsHandling), hasOwnFile)
+              TypeReference(label, link, typeOrBoundsList.map(convertTypeOrBoundsToReference(reflect)(_)), hasOwnFile)
             }
           case _ => throw Exception("Match error in AppliedType. This should not happen, please open an issue. " + tp)
         }
       case reflect.Type.IsTypeRef(reflect.Type.TypeRef(typeName, qual)) =>
-        typeOrBoundsHandling(qual) match {
+        convertTypeOrBoundsToReference(reflect)(qual) match {
           case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true) //TODO check hasOwnFile
           case EmptyReference => TypeReference(typeName, "", Nil, true) //TODO check hasOwnFile
-          case _ => throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + typeOrBoundsHandling(qual))
+          case _ => throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
         }
       case reflect.Type.IsTermRef(reflect.Type.TermRef(typeName, qual)) =>
-        typeOrBoundsHandling(qual) match {
+        convertTypeOrBoundsToReference(reflect)(qual) match {
           case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs)
           case EmptyReference => TypeReference(typeName, "", Nil)
-          case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue. " + typeOrBoundsHandling(qual))
+          case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
         }
       case reflect.Type.IsSymRef(reflect.Type.SymRef(symbol, typeOrBounds)) => symbol match {
         case reflect.IsClassDefSymbol(_) =>
-          typeOrBoundsHandling(typeOrBounds) match {
+          convertTypeOrBoundsToReference(reflect)(typeOrBounds) match {
             case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs, true) //TOASK: Should we include case as own file?
             case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
             case EmptyReference => TypeReference(symbol.name, "", Nil, true)
-            case _ => throw Exception("Match error in SymRef/TypeOrBounds. This should not happen, please open an issue. " + typeOrBoundsHandling(typeOrBounds))
+            case _ => throw Exception("Match error in SymRef/TypeOrBounds. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(typeOrBounds))
           }
         case reflect.IsPackageDefSymbol(_) | reflect.IsTypeDefSymbol(_) | reflect.IsValDefSymbol(_) =>
-          typeOrBoundsHandling(typeOrBounds) match {
+          convertTypeOrBoundsToReference(reflect)(typeOrBounds) match {
             case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs)
             case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
             case EmptyReference => TypeReference(symbol.name, "", Nil)
-            case _ => throw Exception("Match error in SymRef/TypeOrBounds. This should not happen, please open an issue. " + typeOrBoundsHandling(typeOrBounds))
+            case _ => throw Exception("Match error in SymRef/TypeOrBounds. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(typeOrBounds))
           }
         case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue. " + symbol)
       }
@@ -347,7 +358,11 @@ object representations extends CommentParser with CommentCleaner {
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val typeParams = Nil
     override val annotations = Nil
-    val alias: Option[Reference] = None //TODO
+    val alias: Option[Reference] = internal.rhs match{
+      case reflect.IsTypeBoundsTree(t) => Some(convertTypeOrBoundsToReference(reflect)(t.tpe))
+      case reflect.IsTypeTree(t) => Some(convertTypeOrBoundsToReference(reflect)(t.tpe.asInstanceOf[reflect.TypeOrBounds]))
+      case _ => None
+    }
     def isAbstract: Boolean = !alias.isDefined
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
@@ -361,6 +376,7 @@ object representations extends CommentParser with CommentCleaner {
       case IsImport(t@reflect.Import(_)) => new ImportRepresentation(reflect, t)
 
       case IsClassDef(t@reflect.ClassDef(_)) => new ClassRepresentation(reflect, t)
+
       case IsDefDef(t@reflect.DefDef(_)) => new DefRepresentation(reflect, t)
 
       case IsValDef(t@reflect.ValDef(_)) => new ValRepresentation(reflect, t) //TODO: contains object too, separate from Val

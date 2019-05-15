@@ -111,6 +111,8 @@ sealed abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String
 
   type typeExamle[X] >: X <: String //TypeBound
 
+  type abstractType
+
   def useOfOutsideType(): ReturnTypeClass[T] = ???
   def useOfOutsideTypeInsideObject(): ReturnObjectWithType.returnType = ???
   def useOfSameLevelOutsideType(): SameLevelTypeLinking = ???

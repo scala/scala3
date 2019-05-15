@@ -26,8 +26,11 @@ Auxiliary constructor
 <pre><code class="language-scala" >Documentation(x: T)</pre></code>
 
 ## Type Members:
+### abstractType
+<pre><code class="language-scala" >type abstractType: Nothing <: Any</pre></code>
+
 ### typeExamle
-<pre><code class="language-scala" >type typeExamle: </pre></code>
+<pre><code class="language-scala" >type typeExamle: [X >: scala.Nothing <: scala.Any] => X <: [X >: scala.Nothing <: scala.Any] => scala.Predef.String</pre></code>
 
 ## Object members:
 ### IAmACaseObject$
@@ -253,7 +256,7 @@ def someScalaCode(x: String) = println("Hello " + x)
 <pre><code class="language-scala" >def genericBuilder[B]: Builder[B, CC[B]]</pre></code>
 
 ### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing>:Any]</pre></code>
+<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
 
 ### groupBy
 <pre><code class="language-scala" >def groupBy[K](f: (A) => K): Map[K, Repr]</pre></code>
