@@ -1,3 +1,5 @@
-<267..267> in i5311.scala
-Found:    s.T[Int] => s.T[Int]
-Required: m.Foo
+-- [E007] Type Mismatch Error: tests/neg/i5311.scala:11:27 -------------------------------------------------------------
+11 |    baz((x : s.T[Int]) => x) // error
+   |                           ^
+   |                           Found:    s.T[Int] => s.T[Int]
+   |                           Required: m.Foo
