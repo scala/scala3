@@ -128,10 +128,10 @@ class Definitions {
           enterTypeParam(cls, paramNamePrefix ++ "T" ++ (i + 1).toString, Contravariant, decls).typeRef
         }
         val resParamRef = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls).typeRef
-        val methodType = MethodType.maker(
+        val methodType = MethodType.companion(
           isJava = false,
-          isImplicit = name.isImplicitFunction,
           isContextual = name.isImplicitFunction,
+          isImplicit = false,
           isErased = name.isErasedFunction)
         decls.enter(newMethod(cls, nme.apply, methodType(argParamRefs, resParamRef), Deferred))
         denot.info =

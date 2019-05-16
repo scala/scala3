@@ -249,7 +249,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 13
+  val MajorVersion: Int = 14
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names */
@@ -441,7 +441,7 @@ object TastyFormat {
   final val MATCHtype = 190
   final val MATCHtpt = 191
 
-  def methodType(isContextual: Boolean, isImplicit: Boolean, isErased: Boolean): Int = {
+  def methodTypeTag(isContextual: Boolean, isImplicit: Boolean, isErased: Boolean): Int = {
     val implicitOffset =
       if (isContextual) 2
       else if (isImplicit) { assert(!isErased); 4 }

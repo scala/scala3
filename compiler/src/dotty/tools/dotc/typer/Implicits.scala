@@ -230,7 +230,7 @@ object Implicits {
     assert(initctx.typer != null)
     lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
-      for (companion <- companionRefs) buf ++= companion.implicitMembers(ImplicitOrImplied)
+      for (companion <- companionRefs) buf ++= companion.implicitMembers(ImplicitOrImpliedOrGiven)
       buf.toList
     }
 
@@ -1313,8 +1313,6 @@ trait Implicits { self: Typer =>
             else implicitScope(wildProto).eligible
           searchImplicits(eligible, contextual) match {
             case result: SearchSuccess =>
-              if (contextual && ctx.mode.is(Mode.InlineableBody))
-                PrepareInlineable.markContextualImplicit(result.tree)
               result
             case failure: SearchFailure =>
               failure.reason match {

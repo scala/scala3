@@ -585,15 +585,12 @@ object Parsers {
       recur(first)
     }
 
-    def applyGiven(t: Tree, operand: () => Tree): Tree = {
-      val app = atSpan(startOffset(t), in.offset) {
+    def applyGiven(t: Tree, operand: () => Tree): Tree =
+      atSpan(startOffset(t), in.offset) {
         in.nextToken()
         val args = if (in.token == LPAREN) parArgumentExprs() else operand() :: Nil
         Apply(t, args)
-      }
-      app.pushAttachment(ApplyGiven, ())
-      app
-    }
+      }.setGivenApply()
 
 /* -------- IDENTIFIERS AND LITERALS ------------------------------------------- */
 
@@ -936,7 +933,7 @@ object Parsers {
         case MATCH => matchType(EmptyTree, t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
-          if (imods.is(Implicit) && !t.isInstanceOf[FunctionWithMods])
+          if (imods.is(ImplicitOrGiven) && !t.isInstanceOf[FunctionWithMods])
             syntaxError("Types with implicit keyword can only be function types `implicit (...) => ...`", implicitKwPos(start))
           if (imods.is(Erased) && !t.isInstanceOf[FunctionWithMods])
             syntaxError("Types with erased keyword can only be function types `erased (...) => ...`", implicitKwPos(start))
@@ -2133,15 +2130,16 @@ object Parsers {
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
-    /** ClsParamClause    ::=  [nl] [‘erased’] ‘(’ [ClsParams] ‘)’
-     *                      |  ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | GivenTypes)
-     *  ClsParams         ::=  ClsParam {`' ClsParam}
-     *  ClsParam          ::=  {Annotation} [{ParamModifier} (`val' | `var') | `inline'] Param
-     *  DefParamClause    ::=  [nl] [‘erased’] ‘(’ [DefParams] ‘)’ | GivenParamClause
+    /** ClsParamClause    ::=  [‘erased’] (‘(’ ClsParams ‘)’
+     *  GivenClsParamClause::= ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | GivenTypes)
+     *  ClsParams         ::=  ClsParam {‘,’ ClsParam}
+     *  ClsParam          ::=  {Annotation}
+     *
+     *  DefParamClause    ::=  [‘erased’] (‘(’ DefParams ‘)’
      *  GivenParamClause  ::=  ‘given’ [‘erased’] (‘(’ DefParams ‘)’ | GivenTypes)
-     *  GivenTypes        ::=  RefinedType {`,' RefinedType}
-     *  DefParams         ::=  DefParam {`,' DefParam}
-     *  DefParam          ::=  {Annotation} [`inline'] Param
+     *  DefParams         ::=  DefParam {‘,’ DefParam}
+     *  DefParam          ::=  {Annotation} [‘inline’] Param
+     *
      *  Param             ::=  id `:' ParamType [`=' Expr]
      *
      *  @return   the list of parameter definitions
@@ -2223,18 +2221,20 @@ object Parsers {
     }
 
     /** ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
+     *                      |  {ClsParamClause} {GivenClsParamClause}
      *  DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
+     *                      |  {DefParamClause} {GivenParamClause}
      *
      *  @return  The parameter definitions
      */
     def paramClauses(ofClass: Boolean = false,
                      ofCaseClass: Boolean = false,
                      ofInstance: Boolean = false): List[List[ValDef]] = {
-      def recur(firstClause: Boolean, nparams: Int): List[List[ValDef]] = {
+      def recur(firstClause: Boolean, nparams: Int, contextualOnly: Boolean): List[List[ValDef]] = {
         var initialMods = EmptyModifiers
         if (in.token == GIVEN) {
           in.nextToken()
-          initialMods |= Given | Implicit
+          initialMods |= Given
         }
         if (in.token == ERASED) {
           in.nextToken()
@@ -2255,28 +2255,28 @@ object Parsers {
             }
           }
         if (in.token == LPAREN && isParamClause) {
-          if (ofInstance && !isContextual)
-            syntaxError(em"parameters of instance definitions must come after `given'")
+          if (contextualOnly && !isContextual)
+            if (ofInstance) syntaxError(em"parameters of instance definitions must come after `given'")
+            else syntaxError(em"normal parameters cannot come after `given' clauses")
           val params = paramClause(
               ofClass = ofClass,
               ofCaseClass = ofCaseClass,
               firstClause = firstClause,
               initialMods = initialMods)
-          val lastClause =
-            params.nonEmpty && params.head.mods.flags.is(Implicit, butNot = Given)
-          params :: (if (lastClause) Nil else recur(firstClause = false, nparams + params.length))
+          val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
+          params :: (if (lastClause) Nil else recur(firstClause = false, nparams + params.length, isContextual))
         }
         else if (isContextual) {
           val tps = commaSeparated(() => annotType())
           var counter = nparams
           def nextIdx = { counter += 1; counter }
           val paramFlags = if (ofClass) Private | Local | ParamAccessor else Param
-          val params = tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | Given | Implicit))
-          params :: recur(firstClause = false, nparams + params.length)
+          val params = tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | Given))
+          params :: recur(firstClause = false, nparams + params.length, isContextual)
         }
         else Nil
       }
-      recur(firstClause = true, 0)
+      recur(firstClause = true, 0, ofInstance)
     }
 
 /* -------- DEFS ------------------------------------------- */
@@ -2465,7 +2465,7 @@ object Parsers {
       if (in.token == THIS) {
         in.nextToken()
         val vparamss = paramClauses()
-        if (vparamss.isEmpty || vparamss.head.take(1).exists(_.mods.is(Implicit)))
+        if (vparamss.isEmpty || vparamss.head.take(1).exists(_.mods.is(ImplicitOrGiven)))
           in.token match {
             case LBRACKET   => syntaxError("no type parameters allowed here")
             case EOF        => incompleteInputError(AuxConstructorNeedsNonImplicitParameter())
@@ -2996,7 +2996,7 @@ object Parsers {
       }
     }
 
-    /** BlockStatSeq ::= { BlockStat semi } [ResultExpr]
+    /** BlockStatSeq ::= { BlockStat semi } [Expr]
      *  BlockStat    ::= Import
      *                 | Annotations [implicit] [lazy] Def
      *                 | Annotations LocalModifiers TmplDef

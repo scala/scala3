@@ -13,7 +13,7 @@ import Scopes._
 import Uniques._
 import ast.Trees._
 import ast.untpd
-import Flags.ImplicitOrImplied
+import Flags.ImplicitOrImpliedOrGiven
 import util.{FreshNameCreator, NoSource, SimpleIdentityMap, SourceFile}
 import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, SearchRoot, TypeAssigner, Typer}
 import Implicits.ContextualImplicits
@@ -214,7 +214,7 @@ object Contexts {
         implicitsCache = {
           val implicitRefs: List[ImplicitRef] =
             if (isClassDefContext)
-              try owner.thisType.implicitMembers(ImplicitOrImplied)
+              try owner.thisType.implicitMembers(ImplicitOrImpliedOrGiven)
               catch {
                 case ex: CyclicReference => Nil
               }

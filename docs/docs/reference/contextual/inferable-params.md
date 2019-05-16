@@ -64,24 +64,25 @@ maximum(xs) given (descending given ListOrd)
 maximum(xs) given (descending given (ListOrd given IntOrd))
 ```
 
-## Mixing Given Clauses And Normal Parameters
+## Multiple Given Clauses
 
-Given clauses can be freely mixed with normal parameters.
-A given clause may be followed by a normal parameter and _vice versa_.
 There can be several given clauses in a definition. Example:
 ```scala
-def f given (u: Universe) (x: u.T) given Context = ...
-
-implied global for Universe { type T = String ... }
-implied ctx for Context { ... }
+def f given (u: Universe) given (x: u.Context) = ...
+```
+However, all `given` clauses in a definition must come after any normal parameter clauses.
+Multiple given clauses are matched left-to-right in applications. Example:
+```scala
+implied global for Universe { type Context = ... }
+implied ctx for global.Context { ... }
 ```
 Then the following calls are all valid (and normalize to the last one)
 ```scala
-f("abc")
-(f given global)("abc")
-f("abc") given ctx
-(f given global)("abc") given ctx
+f
+(f given global)
+(f given global) given ctx
 ```
+But `f given ctx` would give a type error.
 
 ## Summoning Implied Instances
 
@@ -100,13 +101,14 @@ Functions like `the` that have only context parameters are also called _context 
 
 Here is the new syntax of parameters and arguments seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).
 ```
-ClsParamClause    ::=  ...
-                    |  ‘given’ (‘(’ [ClsParams] ‘)’ | GivenTypes)
-DefParamClause    ::=  ...
-                    |  GivenParamClause
-GivenParamClause  ::=  ‘given’ (‘(’ DefParams ‘)’ | GivenTypes)
-GivenTypes        ::=  AnnotType {‘,’ AnnotType}
+ClsParamClauses     ::=  ...
+                      |  {ClsParamClause} {GivenClsParamClause}
+GivenClsParamClause ::=  ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | GivenTypes)
+DefParamClauses     ::=  ...
+                      |  {DefParamClause} {GivenParamClause}
+GivenParamClause    ::=  ‘given’ [‘erased’] (‘(’ DefParams ‘)’ | GivenTypes)
+GivenTypes          ::=  AnnotType {‘,’ AnnotType}
 
-InfixExpr         ::=  ...
-                    |  InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)
+InfixExpr           ::=  ...
+                      |  InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)
 ```
