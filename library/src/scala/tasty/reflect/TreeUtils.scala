@@ -46,6 +46,8 @@ trait TreeUtils
           foldTree(foldTrees(x, stats), expr)
         case If(cond, thenp, elsep) =>
           foldTree(foldTree(foldTree(x, cond), thenp), elsep)
+        case While(cond, body) =>
+          foldTree(foldTree(x, cond), body)
         case Lambda(meth, tpt) =>
           val a = foldTree(x, meth)
           tpt.fold(a)(b => foldTree(a, b))
