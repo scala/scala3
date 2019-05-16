@@ -68,8 +68,8 @@ pipeline:
       - export PATH="/usr/lib/jvm/java-11-openjdk-amd64/bin:$PATH"
       - cp -R . /tmp/6/ && cd /tmp/6/
       - ./project/scripts/sbt ";compile ;test"
-    # when:
-    #   event: [ push, tag, deployment ]
+    when:
+      event: [ push, tag, deployment ]
 
   # DOCUMENTATION:
   documentation:
