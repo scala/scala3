@@ -293,7 +293,11 @@ object representations extends CommentParser with CommentCleaner {
   class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams with Annotations {
     import reflect._
 
-    //internal.symbol.companionModule.foreach(x => println(x.name + x.flags.is(Flags.Object)))
+    // println("NAME: " + internal.name) //TOASK
+    // internal.symbol.companionModule match {
+    //   case Some(x) => println("OBJECT   " + x.name + " ISOBJECT: " + x.flags.is(Flags.Object) + "   CLASS    " + internal.symbol.companionClass)
+    //   case None => println("CLASS " + internal.symbol.companionClass)
+    // }
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
@@ -383,6 +387,6 @@ object representations extends CommentParser with CommentCleaner {
 
       case IsTypeDef(t@reflect.TypeDef(_)) => new TypeRepresentation(reflect, t)
 
-      case _ => throw new Exception("Tree match error in conversion to representation. Please open an issue.")
+      case _ => throw new Exception("Tree match error in conversion to representation. Please open an issue." + tree)
   }}
 }

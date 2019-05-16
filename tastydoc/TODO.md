@@ -52,3 +52,4 @@
 # To Ask
 * Too much operations on String for path?
 * Case classes are linked right now
+* Companion problem both are object
