@@ -1,68 +1,17 @@
-package dotty.internal
-
 import scala.quoted._
+import scala.quoted.autolift._
 import scala.quoted.matching._
 import scala.tasty.Reflection
+
 import scala.language.implicitConversions
-import scala.quoted.Exprs.LiftedExpr
-import reflect._
 
-object StringContext {
-
-  /** Implemetation of scala.StringContext.f used in Dotty while the standard library is still not bootstrapped */
-  inline def f(sc: => scala.StringContext)(args: Any*): String = ${ fImpl('sc, 'args) }
+object TestFooErrors { // Defined in tests
+  implicit object StringContextOps {
+    inline def (ctx: => StringContext) foo (args: => Any*): List[(Boolean, Int, Int, Int, String)] = ${ Macro.fooErrors('ctx, 'args) }
+  }
 }
 
-/** This object implements the f interpolator macro.
-  *
-  * This kind of interpolator lets the user prepend f to any string literal to create formatted strings.
-  * Every variable used in the string literal should have a format, like "%d" for integers, "%2.2f", etc.
-  * For example, f"$name%s is $height%2.2f meters tall") will return "James is 1.90 meters tall"
-  */
-object fImpl{
-
-  /** This trait defines a tool to report errors/warnings that do not depend on Position. */
-  trait Reporter{
-
-    /** Reports error/warning of size 1 linked with a part of the StringContext.
-      *
-      * @param message the message to report as error/warning
-      * @param index the index of the part inside the list of parts of the StringContext
-      * @param offset the index in the part String where the error is
-      * @return an error/warning depending on the function
-      */
-    def partError(message : String, index : Int, offset : Int) : Unit
-    def partWarning(message : String, index : Int, offset : Int) : Unit
-
-    /** Reports error/warning linked with an argument to format.
-      *
-      * @param message the message to report as error/warning
-      * @param index the index of the argument inside the list of arguments of the format function
-      * @return an error/warning depending on the function
-      */
-    def argError(message : String, index : Int) : Unit
-    def argWarning(message : String, index : Int) : Unit
-
-    /** Reports error linked with the list of arguments or the StringContext.
-      *
-      * @param message the message to report in the error
-      * @return an error
-      */
-    def strCtxError(message : String) : Unit
-    def argsError(message : String) : Unit
-
-    /** Claims whether an error or a warning has been reported
-      *
-      * @return true if an error/warning has been reported, false
-      */
-    def hasReported() : Boolean
-
-    /** Stores the old value of the reported and reset it to false */
-    def resetReported() : Unit
-
-    /** Restores the value of the reported boolean that has been reset */
-    def restoreReported() : Unit
-  }
+object Macro {
 
   /** Retrieves a String from an Expr containing it
     *
@@ -123,77 +72,66 @@ object fImpl{
     }
   }
 
-  /** Interpolates the arguments to the formatting String given inside a StringContext
-    *
-    * @param strCtxExpr the Expr that holds the StringContext which contains all the chunks of the formatting string
-    * @param args the Expr that holds the sequence of arguments to interpolate to the String in the correct format
-    * @return the Expr containing the formatted and interpolated String or an error/warning if the parameters are not correct
-    */
-  private def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(implicit reflect: Reflection): Expr[String] = {
-    import reflect._
-    val sourceFile = strCtxExpr.unseal.pos.sourceFile
+  def fooErrors(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]]) given (reflect: Reflection): Expr[List[(Boolean, Int, Int, Int, String)]] = {
+    (strCtxExpr, argsExpr) match {
+      case ('{ StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
+        val errors = List.newBuilder[Expr[(Boolean, Int, Int, Int, String)]]
+         // true if error, false if warning
+        // 0 if part, 1 if arg, 2 if strCtx, 3 if args
+        // index in the list if arg or part, -1 otherwise
+        // offset, 0 if strCtx, args or arg
+        // message as given
+        val reporter = new Reporter{
+          private[this] var reported = false
+          private[this] var oldReported = false
+          def partError(message : String, index : Int, offset : Int) : Unit = {
+            reported = true
+            errors += '{ Tuple5(true, 0, $index, $offset, $message) }
+          }
+          def partWarning(message : String, index : Int, offset : Int) : Unit = {
+            reported = true
+            errors += '{ Tuple5(false, 0, $index, $offset, $message) }
+          }
 
-    val partsExpr = getListOfExpr(strCtxExpr)
-    val args = getArgsList(argsExpr)
+          def argError(message : String, index : Int) : Unit = {
+            reported = true
+            errors += '{ Tuple5(true, 1, $index, 0, $message) }
+          }
+          def argWarning(message : String, index : Int) : Unit = {
+            reported = true
+            errors += '{ Tuple5(false, 1, $index, 0, $message) }
+          }
 
-    val reporter = new Reporter{
-      private[this] var reported = false
-      private[this] var oldReported = false
-      def partError(message : String, index : Int, offset : Int) : Unit = {
-        reported = true
-        val positionStart = partsExpr(index).unseal.pos.start + offset
-        reflect.error(message, sourceFile, positionStart, positionStart)
-      }
-      def partWarning(message : String, index : Int, offset : Int) : Unit = {
-        reported = true
-        val positionStart = partsExpr(index).unseal.pos.start + offset
-        reflect.warning(message, sourceFile, positionStart, positionStart)
-      }
+          def strCtxError(message : String) : Unit = {
+            reported = true
+            errors += '{ Tuple5(true, 2, -1, 0, $message) }
+          }
+          def argsError(message : String) : Unit = {
+            reported = true
+            errors += '{ Tuple5(true, 3, -1, 0, $message) }
+          }
 
-      def argError(message : String, index : Int) : Unit = {
-        reported = true
-        reflect.error(message, args(index).unseal.pos)
-      }
-      def argWarning(message : String, index : Int) : Unit = {
-        reported = true
-        reflect.warning(message, args(index).unseal.pos)
-      }
+          def hasReported() : Boolean = {
+            reported
+          }
 
-      def strCtxError(message : String) : Unit = {
-        reported = true
-        val positionStart = strCtxExpr.unseal.pos.start
-        reflect.error(message, sourceFile, positionStart, positionStart)
-      }
-      def argsError(message : String) : Unit = {
-        reported = true
-        reflect.error(message, argsExpr.unseal.pos)
-      }
+          def resetReported() : Unit = {
+            oldReported = reported
+            reported = false
+          }
 
-      def hasReported() : Boolean = {
-        reported
-      }
-
-      def resetReported() : Unit = {
-        oldReported = reported
-        reported = false
-      }
-
-      def restoreReported() : Unit = {
-        reported = oldReported
-      }
+          def restoreReported() : Unit = {
+            reported = oldReported
+          }
+        }
+        val partsExpr = getListOfExpr(strCtxExpr)
+        val args = getArgsList(argsExpr)
+        fooCore(partsExpr, args, argsExpr, reporter) // Discard result
+        errors.result().toExprOfList
     }
-
-    interpolate(partsExpr, args, argsExpr, reporter)
   }
 
-  /** Helper function for the interpolate function above
-    *
-    * @param partsExpr the list of parts enumerated as Expr
-    * @param args the list of arguments enumerated as Expr
-    * @param reporter the reporter to return any error/warning when a problem is encountered
-    * @return the Expr containing the formatted and interpolated String or an error/warning report if the parameters are not correct
-    */
-  private def interpolate(partsExpr : List[Expr[String]], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter)(implicit reflect: Reflection) : Expr[String] = {
+  private def fooCore(partsExpr : List[Expr[String]], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter) given Reflection: Expr[String] = {
     import reflect.{Literal => LiteralTree, _}
 
     /** Checks whether a part contains a formatting substring
@@ -771,18 +709,16 @@ object fImpl{
     '{(${parts.mkString.toExpr}).format(${argsExpr}: _*)}
   }
 
-  /** Applies the interpolation to the input of the f-interpolator macro
-    * @param strCtxExpr the Expr containing the StringContext with the parts of the formatting String
-    * @param argsExpr the Expr containing the list of arguments to interpolate
-    * @return the Expr containing the interpolated String, reports an error/warning if any formatting parameter does not
-    * respect the formatting rules
-    */
-  final def apply(strCtxExpr: Expr[StringContext], args: Expr[Seq[Any]])(implicit reflect:Reflection): Expr[String] = {
-    import reflect._
-    try interpolate(strCtxExpr, args)
-    catch {
-      case ex: Exception =>
-        QuoteError(ex.getMessage)
-    }
+  trait Reporter{ //Same reporter as in the StringContext
+    def partError(message : String, index : Int, offset : Int) : Unit
+    def partWarning(message : String, index : Int, offset : Int) : Unit
+    def argError(message : String, index : Int) : Unit
+    def argWarning(message : String, index : Int) : Unit
+    def strCtxError(message : String) : Unit
+    def argsError(message : String) : Unit
+    def hasReported() : Boolean
+    def resetReported() : Unit
+    def restoreReported() : Unit
   }
+
 }
