@@ -37,7 +37,7 @@ object Instances extends Common {
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  implied ListOrd[T] given Ord[T] for Ord[List[T]] {
+  implied ListOrd[T] for Ord[List[T]] given Ord[T] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -132,7 +132,7 @@ object Instances extends Common {
         println(the[D[Int]])
       }
       locally {
-        implied given Context for D[Int]
+        implied for D[Int] given Context
         println(the[D[Int]])
       }
     }
@@ -195,7 +195,7 @@ object AnonymousInstances extends Common {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  implied [From, To] given (c: Convertible[From, To]) for Convertible[List[From], List[To]] {
+  implied [From, To] for Convertible[List[From], List[To]] given (c: Convertible[From, To]) {
     def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
 

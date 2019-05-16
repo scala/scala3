@@ -70,6 +70,7 @@ object NavigateAST {
    */
   def pathTo(span: Span, from: Positioned, skipZeroExtent: Boolean = false)(implicit ctx: Context): List[Positioned] = {
     def childPath(it: Iterator[Any], path: List[Positioned]): List[Positioned] = {
+      var bestFit: List[Positioned] = path
       while (it.hasNext) {
         val path1 = it.next() match {
           case p: Positioned => singlePath(p, path)
@@ -77,9 +78,13 @@ object NavigateAST {
           case xs: List[_] => childPath(xs.iterator, path)
           case _ => path
         }
-        if (path1 ne path) return path1
+        if ((path1 ne path) &&
+            ((bestFit eq path) ||
+             bestFit.head.span != path1.head.span &&
+             bestFit.head.span.contains(path1.head.span)))
+          bestFit = path1
       }
-      path
+      bestFit
     }
     def singlePath(p: Positioned, path: List[Positioned]): List[Positioned] =
       if (p.span.exists && !(skipZeroExtent && p.span.isZeroExtent) && p.span.contains(span)) {

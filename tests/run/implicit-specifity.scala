@@ -9,7 +9,7 @@ object Show {
 class Generic
 object Generic {
   implied gen for Generic = new Generic
-  implied showGen[T] given Generic for Show[T] = new Show[T](2)
+  implied showGen[T] for Show[T] given Generic = new Show[T](2)
 }
 
 class Generic2
@@ -25,9 +25,9 @@ object SubGen {
 object Contextual {
   trait Context
   implied ctx for Context
-  implied showGen[T] given Generic for Show[T] = new Show[T](2)
-  implied showGen[T] given Generic, Context for Show[T] = new Show[T](3)
-  implied showGen[T] given SubGen for Show[T] = new Show[T](4)
+  implied showGen[T] for Show[T] given Generic = new Show[T](2)
+  implied showGen[T] for Show[T] given Generic, Context = new Show[T](3)
+  implied showGen[T] for Show[T] given SubGen = new Show[T](4)
 }
 
 object Test extends App {

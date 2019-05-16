@@ -9,8 +9,8 @@ package p1 {
   object TextParser {
     implied TP for TokenParser[Char, Position[CharSequence]] {}
 
-    implied FromCharToken
-      given (T: TokenParser[Char, Position[CharSequence]]) for Conversion[Char, Position[CharSequence]] = ???
+    implied FromCharToken for Conversion[Char, Position[CharSequence]]
+      given (T: TokenParser[Char, Position[CharSequence]])= ???
   }
 
 
