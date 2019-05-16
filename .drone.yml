@@ -61,6 +61,16 @@ pipeline:
     when:
       event: [ push, tag, deployment ]
 
+  test_java11:
+    group: test
+    image: lampepfl/dotty:2019-04-22
+    commands:
+      - export PATH="/usr/lib/jvm/java-11-openjdk-amd64/bin:$PATH"
+      - cp -R . /tmp/6/ && cd /tmp/6/
+      - ./project/scripts/sbt ";compile ;test"
+    # when:
+    #   event: [ push, tag, deployment ]
+
   # DOCUMENTATION:
   documentation:
     image: lampepfl/dotty:2019-04-22
