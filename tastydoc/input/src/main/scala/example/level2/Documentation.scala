@@ -56,6 +56,11 @@ sealed abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String
 
   def methodsWithDefault(x: Int = 42) = ???
 
+  class Graph {
+    type Node = Int
+  }
+  def linkingGraph(g: Graph): g.Node = ???
+
   /** Test value
   */
   @showAsInfix

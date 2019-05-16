@@ -38,6 +38,8 @@ Auxiliary constructor
 ### testObject$
 <pre><code class="language-scala" >final object <a href="./Documentation/testObject$.md">testObject$</a></pre></code>
 ## Class Members:
+### Graph
+<pre><code class="language-scala" >class <a href="./Documentation/Graph.md">Graph</a></pre></code>
 ### IAmACaseClass
 <pre><code class="language-scala" >case class <a href="./Documentation/IAmACaseClass.md">IAmACaseClass</a></pre></code>
 ### innerDocumentationClass
@@ -359,6 +361,9 @@ def someScalaCode(x: String) = println("Hello " + x)
 dotty.tastydoc.example.ReturnTypeClass.linkMeFromUserDoc
 dotty.tastydoc.example.level2.Documentation.apply
 
+
+### linkingGraph
+<pre><code class="language-scala" >def linkingGraph(g: <a href="./Documentation/Graph.md">Graph</a>): Node</pre></code>
 
 ### map
 <pre><code class="language-scala" >def map[B, That](f: (A) => B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>

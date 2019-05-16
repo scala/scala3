@@ -62,7 +62,8 @@ class Tests {
       "example.level2.Documentation",
       "example.ReturnTypeClass",
       "example.ReturnObjectWithType",
-      "example.level2.SameLevelTypeLinking"
+      "example.level2.SameLevelTypeLinking",
+      "example.ReturnObjectWithType"
     ))
   }
   // @Test def testListFromLib(): Unit = {

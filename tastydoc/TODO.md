@@ -34,6 +34,7 @@
 * Known subclasses
 * Problem when link is a type inside an object (due to the $)
 * Try type at top level
+* Type like Graph.Node
 
 # Output
 * Output inner class/object if not inherited
