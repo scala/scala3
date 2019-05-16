@@ -235,7 +235,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
           else {
             // insert test: if ($outer eq null) throw new NullPointerException
             val nullTest =
-              If(ref(param).select(defn.Object_eq).appliedTo(Literal(Constant(null))),
+              If(ref(param).select(defn.Object_eq).appliedTo(nullLiteral),
                  Throw(New(defn.NullPointerExceptionClass.typeRef, Nil)),
                  unitLiteral)
             nullTest :: assigns

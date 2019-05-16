@@ -656,6 +656,7 @@ class TreePickler(pickler: TastyPickler) {
       if (flags is Extension) writeByte(EXTENSION)
       if (flags is Given) writeByte(GIVEN)
       if (flags is ParamAccessor) writeByte(PARAMsetter)
+      if (flags is Exported) writeByte(EXPORTED)
       assert(!(flags is Label))
     } else {
       if (flags is Sealed) writeByte(SEALED)

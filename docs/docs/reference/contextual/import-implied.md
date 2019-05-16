@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Implied Imports"
+title: "Importing Implied Instances"
 ---
 
 A special form of import is used to import implied instances. Example:
@@ -18,7 +18,7 @@ object B {
 In the code above, the `import A._` clause of object `B` will import all members
 of `A` _except_ the implied instance `tc`. Conversely, the second import `import implied A._` will import _only_ that implied instance.
 
-Generally, a normal import clause brings all definitions except implied instances into scope whereas an `import implied` clause brings only implied instances into scope.
+Generally, a normal import clause brings all members except implied instances into scope whereas an `import implied` clause brings only implied instances into scope.
 
 There are two main benefits arising from these rules:
 
@@ -28,22 +28,22 @@ There are two main benefits arising from these rules:
    instances can be anonymous, so the usual recourse of using named imports is not
    practical.
 
-### Relationship with Old-Style Implicits
+### Migration
 
-The rules of implied imports above have the consequence that a library
+The rules for `import implied` above have the consequence that a library
 would have to migrate in lockstep with all its users from old style implicits and
 normal imports to implied instances and imports.
 
 The following modifications avoid this hurdle to migration.
 
- 1. An implied import also brings old style implicits into scope. So, in Scala 3.0
-    an old-style implicit definition can be brought into scope either by a normal or
-    by an implied import.
+ 1. An `import implied` also brings old style implicits into scope. So, in Scala 3.0
+    an old-style implicit definition can be brought into scope either by a normal import or
+    by an `import implied`.
 
- 2. In Scala 3.1, an old-style implicits accessed implicitly through a normal import
+ 2. In Scala 3.1, old-style implicits accessed through a normal import
     will give a deprecation warning.
 
- 3. In some version after 3.1, an old-style implicits accessed implicitly through a normal import
+ 3. In some version after 3.1, an old-style implicit accessed through a normal import
     will give a compiler error.
 
 These rules mean that library users can use `import implied` to access old-style implicits in Scala 3.0,

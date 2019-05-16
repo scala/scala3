@@ -57,6 +57,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def unitLiteral(implicit ctx: Context): Literal =
     Literal(Constant(()))
 
+  def nullLiteral(implicit ctx: Context): Literal =
+    Literal(Constant(null))
+
   def New(tpt: Tree)(implicit ctx: Context): New =
     ta.assignType(untpd.New(tpt), tpt)
 
@@ -496,7 +499,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else if (tpw isRef defn.DoubleClass) Literal(Constant(0d))
     else if (tpw isRef defn.ByteClass) Literal(Constant(0.toByte))
     else if (tpw isRef defn.ShortClass) Literal(Constant(0.toShort))
-    else Literal(Constant(null)).select(defn.Any_asInstanceOf).appliedToType(tpe)
+    else nullLiteral.select(defn.Any_asInstanceOf).appliedToType(tpe)
   }
 
   private class FindLocalDummyAccumulator(cls: ClassSymbol)(implicit ctx: Context) extends TreeAccumulator[Symbol] {
@@ -915,7 +918,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         Typed(tree, TypeTree(defn.AnyRefType))
       }
       else tree.ensureConforms(defn.ObjectType)
-      receiver.select(defn.Object_ne).appliedTo(Literal(Constant(null)))
+      receiver.select(defn.Object_ne).appliedTo(nullLiteral)
     }
 
     /** If inititializer tree is `_', the default value of its type,

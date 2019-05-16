@@ -32,7 +32,7 @@ Implicit instances can be mapped to combinations of implicit objects and implici
 
   - If the right hand side is a simple reference, we can
     use a forwarder to that reference without caching it.
-  - If the right hand side is more complex, but still known to be pure, we can
+  - If the right hand side is more complex, but still known to be a pure path, we can
     create a `val` that computes it ahead of time.
 
  Examples:
@@ -41,20 +41,21 @@ Implicit instances can be mapped to combinations of implicit objects and implici
       implicit global for ExecutionContext = new ForkJoinContext()
       implicit config for Config = default.config
 
-      def ctx: Context
+      val ctx: Context
       implicit for Context = ctx
     ```
     would map to
     ```scala
-      private[this] var global$cache: ExecutionContext | Null = null
+      private[this] var global$_cache: ExecutionContext | Null = null
       final implicit def global: ExecutionContext = {
-        if (global$cache == null) global$cache = new ForkJoinContext()
-        global$cache
+        if (global$_cache == null) global$_cache = new ForkJoinContext()
+        global$_cache
       }
 
       final implicit val config: Config = default.config
 
-      final implicit def Context_repr = ctx
+      val ctx: Context
+      final implicit def Context_ev = ctx
     ```
 
 ### Anonymous Implicit Instances

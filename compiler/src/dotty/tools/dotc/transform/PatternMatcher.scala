@@ -361,7 +361,7 @@ object PatternMatcher {
           val unappPlan = if (defn.isBottomType(scrutinee.info)) {
             // Generate a throwaway but type-correct plan.
             // This plan will never execute because it'll be guarded by a `NonNullTest`.
-            ResultPlan(tpd.Throw(tpd.Literal(Constant(null))))
+            ResultPlan(tpd.Throw(tpd.nullLiteral))
           } else {
             val mt @ MethodType(_) = extractor.tpe.widen
             var unapp = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))

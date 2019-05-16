@@ -394,6 +394,9 @@ object Flags {
   /** Symbol is an enum class or enum case (if used with case) */
   final val Enum: FlagSet = commonFlag(40, "<enum>")
 
+  /** An export forwarder */
+  final val Exported: FlagSet = commonFlag(41, "exported")
+
   /** Labeled with `erased` modifier (erased value)  */
   final val Erased: FlagSet = termFlag(42, "erased")
 
@@ -459,7 +462,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Final, Case, Implicit, Implied, Override, JavaStatic)
+    commonFlags(Private, Protected, Final, Case, Implicit, Implied, Given, Override, JavaStatic)
 
   final val TypeSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque

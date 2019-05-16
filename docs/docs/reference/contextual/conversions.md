@@ -14,7 +14,7 @@ implied for Conversion[String, Token] {
   def apply(str: String): Token = new KeyWord(str)
 }
 ```
-Using an implied alias this can be expressed more concisely as:
+Using an implied alias instance this can be expressed more concisely as:
 ```scala
 implied for Conversion[String, Token] = new KeyWord(_)
 ```
@@ -25,7 +25,7 @@ An implicit conversion is applied automatically by the compiler in three situati
 3. In an application `e.m(args)` with `e` of type `T`, if `T` does define
    some member(s) named `m`, but none of these members can be applied to the arguments `args`.
 
-In the first case, the compiler looks in the implied scope for a an instance of
+In the first case, the compiler looks for an implied instance of
 `scala.Conversion` that maps an argument of type `T` to type `S`. In the second and third
 case, it looks for an instance of `scala.Conversion` that maps an argument of type `T`
 to a type that defines a member `m` which can be applied to `args` if present.
@@ -59,9 +59,9 @@ object Completions {
     //
     //   CompletionArg.fromStatusCode(statusCode)
 
-    implied fromString for Conversion[String, CompletionArg] = Error(_)
-    implied fromFuture for Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    implied fromStatusCode for Conversion[Future[StatusCode], CompletionArg] = Status(_)
+    implied fromString     for Conversion[String, CompletionArg]               = Error(_)
+    implied fromFuture     for Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    implied fromStatusCode for Conversion[Future[StatusCode], CompletionArg]   = Status(_)
   }
   import CompletionArg._
 

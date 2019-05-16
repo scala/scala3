@@ -981,14 +981,14 @@ class Namer { typer: Typer =>
               if (mbr.isType)
                 ctx.newSymbol(
                   cls, alias.toTypeName,
-                  Final,
+                  Exported | Final,
                   fwdInfo(path.tpe.select(mbr.symbol), mbr.info),
                   coord = span)
               else {
                 val maybeStable = if (mbr.symbol.isStableMember) StableRealizable else EmptyFlags
                 ctx.newSymbol(
                   cls, alias,
-                  Method | Final | maybeStable | mbr.symbol.flags & ImplicitOrImplied,
+                  Exported | Method | Final | maybeStable | mbr.symbol.flags & ImplicitOrImplied,
                   mbr.info.ensureMethodic,
                   coord = span)
               }
