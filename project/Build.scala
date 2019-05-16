@@ -65,7 +65,7 @@ object Build {
   val referenceVersion = "0.22.0-bin-20200114-193f7de-NIGHTLY"
 
   val baseVersion = "0.22.0"
-  val baseSbtDottyVersion = "0.3.5"
+  val baseSbtDottyVersion = "0.4.0"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -195,6 +195,11 @@ object Build {
 
       state
     },
+
+    // Turn off the sbt supershell because it can mangle the output of some tasks
+    // (see https://github.com/sbt/sbt/issues/5122, https://github.com/sbt/sbt/issues/5352)
+    // and in general I find it more distracting than helpful anyway.
+    useSuperShell := false,
 
     // Credentials to release to Sonatype
     credentials ++= (
@@ -1114,8 +1119,6 @@ object Build {
       version := "0.1.17-snapshot", // Keep in sync with package.json
       autoScalaLibrary := false,
       publishArtifact := false,
-      includeFilter in unmanagedSources := NothingFilter | "*.ts" | "**.json",
-      watchSources in Global ++= (unmanagedSources in Compile).value,
       resourceGenerators in Compile += Def.task {
         // Resources that will be copied when bootstrapping a new project
         val buildSbtFile = baseDirectory.value / "out" / "build.sbt"
