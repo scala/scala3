@@ -97,10 +97,6 @@ object Macro {
             reported = true
             errors += '{ Tuple5(true, 1, $index, 0, $message) }
           }
-          def argWarning(message : String, index : Int) : Unit = {
-            reported = true
-            errors += '{ Tuple5(false, 1, $index, 0, $message) }
-          }
 
           def strCtxError(message : String) : Unit = {
             reported = true
@@ -713,7 +709,6 @@ object Macro {
     def partError(message : String, index : Int, offset : Int) : Unit
     def partWarning(message : String, index : Int, offset : Int) : Unit
     def argError(message : String, index : Int) : Unit
-    def argWarning(message : String, index : Int) : Unit
     def strCtxError(message : String) : Unit
     def argsError(message : String) : Unit
     def hasReported() : Boolean

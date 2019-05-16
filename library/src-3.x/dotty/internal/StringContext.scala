@@ -34,14 +34,13 @@ object fImpl{
     def partError(message : String, index : Int, offset : Int) : Unit
     def partWarning(message : String, index : Int, offset : Int) : Unit
 
-    /** Reports error/warning linked with an argument to format.
+    /** Reports error linked with an argument to format.
       *
       * @param message the message to report as error/warning
       * @param index the index of the argument inside the list of arguments of the format function
-      * @return an error/warning depending on the function
+      * @return an error depending on the function
       */
     def argError(message : String, index : Int) : Unit
-    def argWarning(message : String, index : Int) : Unit
 
     /** Reports error linked with the list of arguments or the StringContext.
       *
@@ -68,20 +67,20 @@ object fImpl{
     *
     * @param expression the Expr containing the String
     * @return the String contained in the given Expr
-    * @throws an Exception if the given Expr does not contain a String
+    * quotes an error if the given Expr does not contain a String
     */
   private def literalToString(expression : Expr[String])(implicit reflect: Reflection) : String = expression match {
     case Const(string : String) => string
-    case _ => throw new Exception("Expected statically known part list")
+    case _ => QuoteError("Expected statically known part list")
   }
 
   /** Retrieves the parts from a StringContext, given inside an Expr, and returns them as a list of Expr of String
     *
     * @param strCtxExpr the Expr containing the StringContext
     * @return a list of Expr containing Strings, each corresponding to one parts of the given StringContext
-    * @throws an Exception if the given Expr does not correspond to a StringContext
+    * quotes an error if the given Expr does not correspond to a StringContext
     */
-  private def getListOfExpr(strCtxExpr : Expr[StringContext])(implicit reflect : Reflection): List[Expr[String]] = {
+  private def getPartsExprs(strCtxExpr : Expr[StringContext])(implicit reflect : Reflection): List[Expr[String]] = {
     import reflect._
     strCtxExpr.unseal.underlyingArgument match {
       case Apply(Select(Select(Select(Ident("_root_"), "scala"), "StringContext"), "apply"), List(parts1)) =>
@@ -89,7 +88,7 @@ object fImpl{
           case ExprSeq(parts2) => parts2.toList
           case _ => throw new Exception("Expected statically known String Context")
         }
-      case _ => throw new Exception("Expected statically known String Context")
+      case _ => QuoteError("Expected statically known String Context")
     }
   }
 
@@ -97,13 +96,13 @@ object fImpl{
     *
     * @param argsExpr the Expr containing the list of arguments
     * @return a list of Expr containing arguments
-    * @throws an Exception if the given Expr does not contain a list of arguments
+    * quotes an error if the given Expr does not contain a list of arguments
     */
-  private def getArgsList(argsExpr: Expr[Seq[Any]])(implicit reflect: Reflection): List[Expr[Any]] = {
+  private def getArgsExprs(argsExpr: Expr[Seq[Any]])(implicit reflect: Reflection): List[Expr[Any]] = {
     import reflect._
     argsExpr.unseal.underlyingArgument match {
       case Typed(Repeated(args, _), _) => args.map(_.seal)
-      case tree => throw new Exception("Expected statically known argument list")
+      case tree => QuoteError("Expected statically known argument list")
     }
   }
 
@@ -133,8 +132,8 @@ object fImpl{
     import reflect._
     val sourceFile = strCtxExpr.unseal.pos.sourceFile
 
-    val partsExpr = getListOfExpr(strCtxExpr)
-    val args = getArgsList(argsExpr)
+    val partsExpr = getPartsExprs(strCtxExpr)
+    val args = getArgsExprs(argsExpr)
 
     val reporter = new Reporter{
       private[this] var reported = false
@@ -153,10 +152,6 @@ object fImpl{
       def argError(message : String, index : Int) : Unit = {
         reported = true
         reflect.error(message, args(index).unseal.pos)
-      }
-      def argWarning(message : String, index : Int) : Unit = {
-        reported = true
-        reflect.warning(message, args(index).unseal.pos)
       }
 
       def strCtxError(message : String) : Unit = {
@@ -196,22 +191,26 @@ object fImpl{
   private def interpolate(partsExpr : List[Expr[String]], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter)(implicit reflect: Reflection) : Expr[String] = {
     import reflect.{Literal => LiteralTree, _}
 
-    /** Checks whether a part contains a formatting substring
+    /** Checks if the number of arguments are the same as the number of formatting strings
       *
-      * @param part the part to check
-      * @param l the length of the given part
-      * @param index the index where to start to look for a potential new formatting string
-      * @return an Option containing the index in the part where a new formatting String starts, None otherwise
+      * @param format the number of formatting parts in the StringContext
+      * @param argument the number of arguments to interpolate in the string
+      * @return reports an error if the number of arguments does not match with the number of formatting strings,
+      * nothing otherwise
       */
-    def getFormattingSubstring(part : String, l : Int, index : Int) : Option[Int] = {
-      var i = index
-      var result : Option[Int] = None
-      while (i < l){
-        if (part.charAt(i) == '%' && result.isEmpty)
-          result = Some(i)
-        i += 1
-      }
-      result
+    def checkSizes(format : Int, argument : Int) : Unit = {
+      if (format > argument && !(format == -1 && argument == 0))
+        if (argument == 0)
+          reporter.argsError("too few arguments for interpolated string")
+        else
+          reporter.argError("too few arguments for interpolated string", argument - 1)
+      if (format < argument && !(format == -1 && argument == 0))
+        if (argument == 0)
+          reporter.argsError("too many arguments for interpolated string")
+        else
+          reporter.argError("too many arguments for interpolated string", format)
+      if (format == -1)
+        reporter.strCtxError("there are no parts")
     }
 
     /** Adds the default "%s" to the Strings that do not have any given format
@@ -232,6 +231,24 @@ object fImpl{
           } else "%s" + part
         } else part
       })
+    }
+
+    /** Checks whether a part contains a formatting substring
+      *
+      * @param part the part to check
+      * @param l the length of the given part
+      * @param index the index where to start to look for a potential new formatting string
+      * @return an Option containing the index in the part where a new formatting String starts, None otherwise
+      */
+    def getFormattingSubstring(part : String, l : Int, index : Int) : Option[Int] = {
+      var i = index
+      var result : Option[Int] = None
+      while (i < l){
+        if (part.charAt(i) == '%' && result.isEmpty)
+          result = Some(i)
+        i += 1
+      }
+      result
     }
 
     /** Finds all the flags that are inside a formatting String from a given index
@@ -305,9 +322,13 @@ object fImpl{
 
       //argument index
       if (conversion < l && part.charAt(conversion) == '$'){
-        hasArgumentIndex = true
-        argumentIndex = width1
-        conversion += 1
+        if (hasWidth1){
+          hasArgumentIndex = true
+          argumentIndex = width1
+          conversion += 1
+        } else {
+          reporter.partError("Missing conversion operator in '" + part.substring(0, conversion) + "'; use %% for literal %, %n for newline", partIndex, 0)
+        }
       }
 
       //relative indexing
@@ -346,28 +367,6 @@ object fImpl{
       val hasWidth = (hasWidth1 && !hasArgumentIndex) || hasWidth2
       val width = if (hasWidth1 && !hasArgumentIndex) width1 else width2
       (hasArgumentIndex, argumentIndex, flags, hasWidth, width, hasPrecision, precision, hasRelative, relativeIndex, conversion)
-    }
-
-    /** Checks if the number of arguments are the same as the number of formatting strings
-      *
-      * @param format the number of formatting parts in the StringContext
-      * @param argument the number of arguments to interpolate in the string
-      * @return reports an error if the number of arguments does not match with the number of formatting strings,
-      * nothing otherwise
-      */
-    def checkSizes(format : Int, argument : Int) : Unit = {
-      if (format > argument && !(format == -1 && argument == 0))
-        if (argument == 0)
-          reporter.argsError("too few arguments for interpolated string")
-        else
-          reporter.argError("too few arguments for interpolated string", argument - 1)
-      if (format < argument && !(format == -1 && argument == 0))
-        if (argument == 0)
-          reporter.argsError("too many arguments for interpolated string")
-        else
-          reporter.argError("too many arguments for interpolated string", argument - 1)
-      if (format == -1)
-        reporter.strCtxError("there are no parts")
     }
 
     /** Checks if a given type is a subtype of any of the possibilities
@@ -742,11 +741,11 @@ object fImpl{
 
     val argument = args.size
 
+    // check validity of formatting
+    checkSizes(partsExpr.size - 1, argument)
+
     // add default format
     val parts = addDefaultFormat(partsExpr.map(literalToString))
-
-    // check validity of formatting
-    checkSizes(parts.size - 1, argument)
 
     if (!parts.isEmpty) {
       if (parts.size == 1 && args.size == 0 && parts.head.size != 0){
@@ -778,11 +777,6 @@ object fImpl{
     * respect the formatting rules
     */
   final def apply(strCtxExpr: Expr[StringContext], args: Expr[Seq[Any]])(implicit reflect:Reflection): Expr[String] = {
-    import reflect._
-    try interpolate(strCtxExpr, args)
-    catch {
-      case ex: Exception =>
-        QuoteError(ex.getMessage)
-    }
+    interpolate(strCtxExpr, args)
   }
 }
