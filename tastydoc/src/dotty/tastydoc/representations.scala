@@ -17,7 +17,7 @@ object representations extends CommentParser with CommentCleaner {
     val name : String
     val path : List[String]
     val comments: Option[Comment]
-    val parent = None //Equivalent to owner, parent is used to be consistent with dotty-doc TODO
+    val parentRepresentation: Option[Representation] //Called simply "parent" in dotty-doc
   }
 
   trait Parents {
@@ -116,7 +116,7 @@ object representations extends CommentParser with CommentCleaner {
     }
   }
 
-  private def extractMembers(reflect: Reflection)(body: List[reflect.Statement], symbol: reflect.ClassDefSymbol) : List[Representation] = {
+  private def extractMembers(reflect: Reflection)(body: List[reflect.Statement], symbol: reflect.ClassDefSymbol, parentRepresentation: Some[Representation]) : List[Representation] = {
     import reflect._
     (body.flatMap{
         case IsDefDef(_) => None //No definitions, they are appended with symbol.methods below
@@ -127,8 +127,8 @@ object representations extends CommentParser with CommentCleaner {
         !x.symbol.flags.is(Flags.Synthetic) &&
         !x.symbol.flags.is(Flags.Artifact)
       }
-      .map(convertToRepresentation(reflect)) ++
-    symbol.methods.map{x => convertToRepresentation(reflect)(x.tree)}) //TOASK Calling this method fails
+      .map(convertToRepresentation(reflect)(_, parentRepresentation)) ++
+    symbol.methods.map{x => convertToRepresentation(reflect)(x.tree, parentRepresentation)})
     .sortBy(_.name)
   }
 
@@ -274,19 +274,19 @@ object representations extends CommentParser with CommentCleaner {
     inner(tp)
   }
 
-  class PackageRepresentation(reflect: Reflection, internal: reflect.PackageClause) extends Representation with Members {
+  class PackageRepresentation(reflect: Reflection, internal: reflect.PackageClause, override val parentRepresentation: Option[Representation]) extends Representation with Members {
     import reflect._
 
     override val (name, path) = {
       val pidSplit = internal.pid.symbol.show.split("\\.")
       (pidSplit.last, pidSplit.init.toList)
     }
-    override val members = internal.stats.map(convertToRepresentation(reflect)(_))
+    override val members = internal.stats.map(convertToRepresentation(reflect)(_, Some(this)))
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
   //TODO: Handle impliedOnly
-  class ImportRepresentation(reflect: Reflection, internal: reflect.Import) extends Representation {
+  class ImportRepresentation(reflect: Reflection, internal: reflect.Import, override val parentRepresentation: Option[Representation]) extends Representation {
     import reflect._
 
     override val name = if (internal.selectors.size > 1){
@@ -298,19 +298,19 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams with Annotations {
+  class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef, override val parentRepresentation: Option[Representation]) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams with Annotations {
     import reflect._
 
     override val path = extractPath(reflect)(internal.symbol)
-    override val members = extractMembers(reflect)(internal.body, internal.symbol)
+    override val members = extractMembers(reflect)(internal.body, internal.symbol, Some(this))
     override val parents = extractParents(reflect)(internal.parents)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
-    override val constructors = (convertToRepresentation(reflect)(internal.constructor) ::
+    override val constructors = (convertToRepresentation(reflect)(internal.constructor, Some(this)) ::
     (internal.body.filter{x =>
         val noColorshow = removeColorFromType(x.show)
         noColorshow.contains("def this(") || noColorshow.contains("def this[") //For performance use this to filter before mapping instead of using name == "<init>"
       }
-      .map(convertToRepresentation(reflect)(_))
+      .map(convertToRepresentation(reflect)(_, Some(this)))
     )).flatMap{r => r match {
       case r: DefRepresentation => Some(r)
       case _ => None
@@ -328,7 +328,7 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  class DefRepresentation(reflect: Reflection, internal: reflect.DefDef) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue with Annotations{
+  class DefRepresentation(reflect: Reflection, internal: reflect.DefDef, override val parentRepresentation: Option[Representation]) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue with Annotations{
     import reflect._
 
     override val name = internal.name
@@ -347,7 +347,7 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  class ValRepresentation(reflect: Reflection, internal: reflect.ValDef) extends Representation with Modifiers with ReturnValue with Annotations {
+  class ValRepresentation(reflect: Reflection, internal: reflect.ValDef, override val parentRepresentation: Option[Representation]) extends Representation with Modifiers with ReturnValue with Annotations {
     import reflect._
 
     override val name = internal.name
@@ -358,7 +358,7 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  class TypeRepresentation(reflect: Reflection, internal: reflect.TypeDef) extends Representation with Modifiers with TypeParams with Annotations {
+  class TypeRepresentation(reflect: Reflection, internal: reflect.TypeDef, override val parentRepresentation: Option[Representation]) extends Representation with Modifiers with TypeParams with Annotations {
     import reflect._
 
     override val name = internal.name
@@ -375,21 +375,21 @@ object representations extends CommentParser with CommentCleaner {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  def convertToRepresentation(reflect: Reflection)(tree: reflect.Tree) = {
+  def convertToRepresentation(reflect: Reflection)(tree: reflect.Tree, parentRepresentation: Option[Representation]) = {
     import reflect._
 
     tree match {
-      case IsPackageClause(t@reflect.PackageClause(_)) => new PackageRepresentation(reflect, t)
+      case IsPackageClause(t@reflect.PackageClause(_)) => new PackageRepresentation(reflect, t, parentRepresentation)
 
-      case IsImport(t@reflect.Import(_)) => new ImportRepresentation(reflect, t)
+      case IsImport(t@reflect.Import(_)) => new ImportRepresentation(reflect, t, parentRepresentation)
 
-      case IsClassDef(t@reflect.ClassDef(_)) => new ClassRepresentation(reflect, t)
+      case IsClassDef(t@reflect.ClassDef(_)) => new ClassRepresentation(reflect, t, parentRepresentation)
 
-      case IsDefDef(t@reflect.DefDef(_)) => new DefRepresentation(reflect, t)
+      case IsDefDef(t@reflect.DefDef(_)) => new DefRepresentation(reflect, t, parentRepresentation)
 
-      case IsValDef(t@reflect.ValDef(_)) => new ValRepresentation(reflect, t) //TODO: contains object too, separate from Val
+      case IsValDef(t@reflect.ValDef(_)) => new ValRepresentation(reflect, t, parentRepresentation) //TODO: contains object too, separate from Val
 
-      case IsTypeDef(t@reflect.TypeDef(_)) => new TypeRepresentation(reflect, t)
+      case IsTypeDef(t@reflect.TypeDef(_)) => new TypeRepresentation(reflect, t, parentRepresentation)
 
       case _ => throw new Exception("Tree match error in conversion to representation. Please open an issue." + tree)
   }}

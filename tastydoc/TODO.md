@@ -23,7 +23,7 @@
 
 # Representation
 * Annotations (+ everywhere or only where it makes sense?)
-* Make sense of the parent field (+ parents?)
+* Make sense of the parents field
 * Fix companion
 * Id for typeparams so we can link
 * Inherited declaration

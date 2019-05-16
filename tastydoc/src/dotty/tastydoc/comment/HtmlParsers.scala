@@ -64,7 +64,7 @@ object HtmlParsers {
             case LinkToExternal(_, url) => url
             case LinkToRepresentation(t: Representation) => t match {
               case e: Representation with Members => inlineToMarkdown.relativePath(t)
-              case x => x.parent.fold("#") { xpar => inlineToMarkdown.relativePath(xpar) }
+              case x => x.parentRepresentation.fold("#") { xpar => inlineToMarkdown.relativePath(xpar) }
             }
           }
 
@@ -253,7 +253,7 @@ object HtmlParsers {
         case e: Representation with Members =>
           s"[${toMarkdown(target)}](${relativePath(t)})"
         // Representation is a Val / Def
-        case x => x.parent.fold(toMarkdown(target)) { xpar =>
+        case x => x.parentRepresentation.fold(toMarkdown(target)) { xpar =>
           s"[${toMarkdown(target)}](${relativePath(xpar)}#${x.name})"
         }
       }

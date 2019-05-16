@@ -11,7 +11,7 @@ class TastydocConsumer extends TastyConsumer {
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
 
-    val representationConversion = representations.convertToRepresentation(reflect)(root)
+    val representationConversion = representations.convertToRepresentation(reflect)(root, None)
     val packagesSet = DocPrinter.traverseRepresentation(representationConversion, Set[(List[String], String)]())
     TastydocConsumer.mutablePackagesSet ++= packagesSet
   }
