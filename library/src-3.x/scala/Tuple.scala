@@ -200,6 +200,9 @@ object Tuple {
     runtime.DynamicTuple.dynamicFromArray[Tuple](xs2)
   }
 
+  def fromProduct(product: Product): Tuple =
+    runtime.DynamicTuple.dynamicFromProduct[Tuple](product)
+
 }
 
 sealed trait NonEmptyTuple extends Tuple {
