@@ -80,6 +80,7 @@ sealed abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String
 
   /** [[dotty.tastydoc.example.ReturnTypeClass.linkMeFromUserDoc]]
   * [[dotty.tastydoc.example.level2.Documentation.apply]]
+  * [[length]]
   */
   def linkMethodInDoc() = ???
 

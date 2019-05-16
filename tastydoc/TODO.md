@@ -17,6 +17,7 @@
 
 * method linking
 * Markdown parser broken
+* linking method in userdoc
 
 # Other
 * handle things such as $genericCanBuildFromInfo
@@ -24,15 +25,12 @@
 # Representation
 * Annotations (+ everywhere or only where it makes sense?)
 * Make sense of the parents field
-* Fix companion
 * Id for typeparams so we can link
 * Inherited declaration
 * User doc for inherited method
-* default value in def
 * Alias type
 * Beautify type parameters (+ variance + bound two direction)
 * Known subclasses
-* Problem when link is a type inside an object (due to the $)
 * Try type at top level
 * Type like Graph.Node
 
@@ -54,3 +52,4 @@
 * Too much operations on String for path?
 * Case classes are linked right now
 * Abstract flag not working
+* default value in def
