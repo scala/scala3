@@ -575,20 +575,24 @@ object Parsers {
           }
           else recur(operand())
         }
-        else if (in.token == GIVEN) {
+        else if (in.token == GIVEN && !isType) {
           val top1 = reduceStack(base, top, minInfixPrec, leftAssoc = true, nme.WITHkw, isType)
           assert(opStack `eq` base)
-          val app = atSpan(startOffset(top1), in.offset) {
-            in.nextToken()
-            val args = if (in.token == LPAREN) parArgumentExprs() else operand() :: Nil
-            Apply(top, args)
-          }
-          app.pushAttachment(ApplyGiven, ())
-          recur(app)
+          recur(applyGiven(top1, operand))
         }
         else reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
 
       recur(first)
+    }
+
+    def applyGiven(t: Tree, operand: () => Tree): Tree = {
+      val app = atSpan(startOffset(t), in.offset) {
+        in.nextToken()
+        val args = if (in.token == LPAREN) parArgumentExprs() else operand() :: Nil
+        Apply(t, args)
+      }
+      app.pushAttachment(ApplyGiven, ())
+      app
     }
 
 /* -------- IDENTIFIERS AND LITERALS ------------------------------------------- */
@@ -2266,7 +2270,8 @@ object Parsers {
           val tps = commaSeparated(() => annotType())
           var counter = nparams
           def nextIdx = { counter += 1; counter }
-          val params = tps.map(makeSyntheticParameter(nextIdx, _, Given | Implicit))
+          val paramFlags = if (ofClass) Private | Local | ParamAccessor else Param
+          val params = tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | Given | Implicit))
           params :: recur(firstClause = false, nparams + params.length)
         }
         else Nil
@@ -2724,13 +2729,43 @@ object Parsers {
 
 /* -------- TEMPLATES ------------------------------------------- */
 
-    /** ConstrApp         ::=  SimpleType {ParArgumentExprs}
+    /** SimpleConstrApp  ::=  AnnotType {ParArgumentExprs}
+     *  ConstrApp        ::=  SimpleConstrApp
+     *                     |  ‘(’ SimpleConstrApp {‘given’ (PrefixExpr | ParArgumentExprs)} ‘)’
      */
     val constrApp: () => Tree = () => {
-      // Using Ident(nme.ERROR) to avoid causing cascade errors on non-user-written code
-      val t = rejectWildcardType(annotType(), fallbackTree = Ident(nme.ERROR))
-      if (in.token == LPAREN) parArgumentExprss(wrapNew(t))
-      else t
+
+      def isAnnotType(t: Tree) = t match {
+        case _: Ident
+           | _: Select
+           | _: AppliedTypeTree
+           | _: Tuple
+           | _: Parens
+           | _: RefinedTypeTree
+           | _: SingletonTypeTree
+           | _: TypSplice
+           | _: Annotated => true
+        case _ => false
+      }
+
+      def givenArgs(t: Tree): Tree = {
+        if (in.token == GIVEN) givenArgs(applyGiven(t, prefixExpr)) else t
+      }
+
+      if (in.token == LPAREN)
+        inParens {
+          val t = toplevelTyp()
+          if (isAnnotType(t))
+            if (in.token == LPAREN) givenArgs(parArgumentExprss(wrapNew(t)))
+            else if (in.token == GIVEN) givenArgs(wrapNew(t))
+            else t
+          else Parens(t)
+        }
+      else {
+        val t = rejectWildcardType(annotType(), fallbackTree = Ident(nme.ERROR))
+          // Using Ident(nme.ERROR) to avoid causing cascade errors on non-user-written code
+        if (in.token == LPAREN) parArgumentExprss(wrapNew(t)) else t
+      }
     }
 
     /** ConstrApps ::=  ConstrApp {‘with’ ConstrApp}  (to be deprecated in 3.1)

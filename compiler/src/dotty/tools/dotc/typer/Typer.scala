@@ -2588,6 +2588,8 @@ class Typer extends Namer
             tree
         else if (wtp.isContextual)
           adaptNoArgs(wtp)  // insert arguments implicitly
+        else if (tree.symbol.isPrimaryConstructor && tree.symbol.info.firstParamTypes.isEmpty)
+          readapt(tree.appliedToNone) // insert () to primary constructors
         else
           errorTree(tree, em"Missing arguments for $methodStr")
       case _ => tryInsertApplyOrImplicit(tree, pt, locked) {

@@ -75,8 +75,9 @@ TmplDef          ::=  ...
 InstanceDef      ::=  [id] [DefTypeParamClause] InstanceBody
 InstanceBody     ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
                    |  ‘for’ Type {GivenParamClause} ‘=’ Expr
-ConstrApp        ::=  AnnotType {ArgumentExprs}
-                   |  ‘(’ ConstrApp {‘given’ (InfixExpr | ParArgumentExprs)} ‘)’
+ConstrApp        ::=  SimpleConstrApp
+                   |  ‘(’ SimpleConstrApp {‘given’ (PrefixExpr | ParArgumentExprs)} ‘)’
+SimpleConstrApp  ::=  AnnotType {ArgumentExprs}
 GivenParamClause ::=  ‘given’ (‘(’ [DefParams] ‘)’ | GivenTypes)
 GivenTypes       ::=  AnnotType {‘,’ AnnotType}
 ```
