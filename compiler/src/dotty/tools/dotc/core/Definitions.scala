@@ -8,6 +8,7 @@ import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
 import collection.mutable
 import Denotations.SingleDenotation
+import Annotations.Annotation
 import util.SimpleIdentityMap
 
 object Definitions {
@@ -317,6 +318,11 @@ class Definitions {
 
     def ObjectMethods: List[TermSymbol] = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
+
+  lazy val JavaObjectType = AnnotatedType(ObjectType, Annotation(ObjectClass))
+
+  def objectToJava(tp: Type)(implicit ctx: Context) =
+    if (tp.isDirectRef(ObjectClass) && !ctx.erasedTypes) JavaObjectType else tp
 
   lazy val AnyKindClass: ClassSymbol = {
     val cls = ctx.newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil)
@@ -1407,8 +1413,8 @@ class Definitions {
       for (m <- ScalaShadowingPackageClass.info.decls)
         ScalaPackageClass.enter(m)
 
-      // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
+      // force initialization of every symbol or type that is synthesized or hijacked by the compiler
+      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() ++ List(JavaObjectType)
 
       isInitialized = true
     }

@@ -219,7 +219,10 @@ trait TypeAssigner {
             else errorType(ex"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
           }
         }
-        else ctx.makePackageObjPrefixExplicit(tpe withDenot d)
+        else {
+          val result = ctx.makePackageObjPrefixExplicit(tpe withDenot d)
+          if (ctx.compilationUnit.isJava) defn.objectToJava(result) else result
+        }
       case _ =>
         tpe
     }

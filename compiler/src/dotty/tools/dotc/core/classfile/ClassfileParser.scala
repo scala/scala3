@@ -288,7 +288,8 @@ class ClassfileParser(
 
   /** Map direct references to Object to references to Any */
   final def objToAny(tp: Type)(implicit ctx: Context): Type =
-    if (tp.isDirectRef(defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else tp
+    if (tp.stripAnnots.isDirectRef(defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType
+    else tp
 
   private def sigToType(sig: SimpleName, owner: Symbol = null)(implicit ctx: Context): Type = {
     var index = 0
@@ -355,7 +356,10 @@ class ClassfileParser(
           }
 
           val classSym = classNameToSymbol(subName(c => c == ';' || c == '<'))
-          var tpe = processClassType(processInner(classSym.typeRef))
+          val classTpe =
+            if ((classSym eq defn.ObjectClass) && !ctx.erasedTypes) defn.JavaObjectType
+            else classSym.typeRef
+          var tpe = processClassType(processInner(classTpe))
           while (sig(index) == '.') {
             accept('.')
             val name = subName(c => c == ';' || c == '<' || c == '.').toTypeName
@@ -449,7 +453,7 @@ class ClassfileParser(
         classTParams = tparams
         val parents = new ListBuffer[Type]()
         while (index < end) {
-          parents += sig2type(tparams, skiptvs = false)  // here the variance doesnt'matter
+          parents += defn.objectToJava(sig2type(tparams, skiptvs = false)) // here the variance doesnt'matter
         }
         TempClassInfoType(parents.toList, instanceScope, owner)
       }

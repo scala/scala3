@@ -285,7 +285,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       case tp2: LazyRef =>
         !tp2.evaluating && recur(tp1, tp2.ref)
       case tp2: AnnotatedType if !tp2.isRefining =>
-        recur(tp1, tp2.parent)
+        recur(tp1, if (tp2 eq defn.JavaObjectType) defn.AnyType else tp2.parent)
       case tp2: ThisType =>
         def compareThis = {
           val cls2 = tp2.cls
@@ -962,7 +962,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         case _: TypeVar =>
           recur(tp1, tp2.superType)
         case tycon2: AnnotatedType if !tycon2.isRefining =>
-          recur(tp1, tp2.superType)
+          recur(tp1, if (tycon2 eq defn.JavaObjectType) defn.AnyType else tp2.superType)
         case tycon2: AppliedType =>
           fallback(tycon2.lowerBound)
         case _ =>

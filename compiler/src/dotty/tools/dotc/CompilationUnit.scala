@@ -19,7 +19,7 @@ class CompilationUnit protected (val source: SourceFile) {
 
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
-  def isJava: Boolean = source.file.name.endsWith(".java")
+  val isJava: Boolean = source.file.name.endsWith(".java")
 
   /** Pickled TASTY binaries, indexed by class. */
   var pickled: Map[ClassSymbol, Array[Byte]] = Map()
