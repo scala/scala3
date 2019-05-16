@@ -14,7 +14,12 @@ object DocPrinter{
     "<pre><code" + (if(language != "") " class=\"language-" + language + "\" " else "") + ">" + content + "</pre></code>"
   }
 
-  private def makeLink(label: String, link: String, hasOwnFile: Boolean, declarationPath: List[String]): String = {
+  private def makeLink(label: String, link: String, hasOwnFile: Boolean, declarationPath: List[String], differentLabelName: Option[String] = None): String = {
+    val labelName = differentLabelName match {
+      case Some(s) => s
+      case None => label
+    }
+
     val packageFormLink = link.replaceFirst("/", "").replaceAll("/", ".")
 
     if(TastydocConsumer.packagesToLink.exists(packageFormLink.matches(_))){
@@ -41,20 +46,22 @@ object DocPrinter{
       }
 
       if(hasOwnFile){
-        "<a href=\"" + relativeLink + "/" + label + ".md\">" + label + "</a>"
+        "<a href=\"" + relativeLink + "/" + label + ".md\">" + labelName + "</a>"
       } else if(relativeLink == "") {
-        label
+        labelName
       } else if(relativeLink == "."){
-        "<a href=\"#" + label + "\">" + label + "</a>"
+        "<a href=\"#" + label + "\">" + labelName + "</a>"
       } else{
-        "<a href=\"" + relativeLink + ".md#" + label + "\">" + label + "</a>"
+        "<a href=\"" + relativeLink + ".md#" + label + "\">" + labelName + "</a>"
       }
     }else{
-      label
+      labelName
     }
   }
 
   private def formatReferences(reference: Reference, declarationPath: List[String]) : String = reference match {
+    case CompanionReference(label, link, kind) =>
+      makeLink(label, link, true, declarationPath, if(kind == "object") Some(label.stripSuffix("$")) else None)
     case TypeReference(label, link, typeParams, hasOwnFile) =>
       if(typeParams.isEmpty){
         makeLink(label, link, hasOwnFile, declarationPath)
@@ -139,12 +146,12 @@ object DocPrinter{
   }
 
   private def formatClassRepresentation(representation: ClassRepresentation, declarationPath: List[String]): String = {
-    def formatCompanion(): String = (representation.companion, representation.companionKind) match {
-      case (Some(ref@TypeReference(label, link, ls, hasOwnFile)), Some(kind)) =>
+    def formatCompanion(): String = representation.companion match {
+      case Some(ref@CompanionReference(_, _, kind)) =>
         Md.header2("Companion " +
           kind +
           " " +
-          (if(kind.contains("object")) formatReferences(TypeReference(label, link, ls, hasOwnFile), declarationPath) else formatReferences(ref, declarationPath))
+          formatReferences(ref, declarationPath)
           ) +
           "\n"
       case _ => ""
@@ -172,7 +179,7 @@ object DocPrinter{
     }
 
     def formatConstructors(): String = {
-      if(representation.constructors.isEmpty){
+      if(representation.constructors.isEmpty || representation.isObject){
         ""
       }else{
         Md.header2("Constructors:") +
@@ -182,57 +189,145 @@ object DocPrinter{
     }
 
     def formatMembers(): String = {
-      Md.header2("Type Members:") +
-      representation.members.flatMap{
-        case x: TypeRepresentation => Some(x)
+
+      val typeMembers = representation.members.flatMap {
+        case r: TypeRepresentation => Some(r)
         case _ => None
-        }
-        .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("") +
-      Md.header2("Object members:") +
-      representation.members.flatMap{
-        case x : ClassRepresentation if x.isObject => Some(x)
+      }
+      val objectMembers = representation.members.flatMap {
+        case r: ClassRepresentation if r.isObject => Some(r)
         case _ => None
-        }
-        .map{x =>
+      }
+      val classMembers = representation.members.flatMap {
+        case r:  ClassRepresentation if !r.isObject && !r.isTrait => Some(r)
+        case _ => None
+      }
+      val traitMembers = representation.members.flatMap {
+        case r: ClassRepresentation if r.isTrait => Some(r)
+        case _ => None
+      }
+      val defMembers = representation.members.flatMap {
+        case r: DefRepresentation => Some(r)
+        case _ => None
+      }
+      val valMembers = representation.members.flatMap {
+        case r: ValRepresentation => Some(r)
+        case _ => None
+      }
+
+      val abstractTypeMembers =
+        typeMembers.filter(_.isAbstract).map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("") +
+        objectMembers.filter(_.isAbstract).map{x =>
           traverseRepresentation(x, Set.empty)
 
           Md.header3(x.name) +
           formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
         }.mkString("") +
-      Md.header2("Class Members:") +
-      representation.members.flatMap{
-        case x: ClassRepresentation if !x.isTrait && !x.isObject => Some(x)
-        case _ => None
-        }
-        .map{x =>
+        classMembers.filter(_.isAbstract).map{x =>
+          traverseRepresentation(x, Set.empty)
+
+          Md.header3(x.name) +
+          formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
+        }.mkString("")
+
+      val concreteTypeMembers =
+        typeMembers.filter(!_.isAbstract).map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("") +
+        objectMembers.filter(!_.isAbstract).map{x =>
           traverseRepresentation(x, Set.empty)
 
           Md.header3(x.name) +
           formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
         }.mkString("") +
-      Md.header2("Trait Members:") +
-      representation.members.flatMap{
-        case x: ClassRepresentation if x.isTrait => Some(x)
-        case _ => None
-        }
-        .map{x =>
+        classMembers.filter(!_.isAbstract).map{x =>
           traverseRepresentation(x, Set.empty)
 
           Md.header3(x.name) +
           formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
-        }.mkString("") +
-      Md.header2("Definition members:") +
-      representation.members.flatMap{
-        case x : DefRepresentation => Some(x)
-        case _ => None
-        }
-        .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("") +
-      Md.header2("Value members:") +
-      representation.members.flatMap{
-        case x : ValRepresentation => Some(x)
-        case _ => None
-        }
-        .map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("")
+        }.mkString("")
+
+      val abstractValueMembers =
+        defMembers.filter(_.isAbstract).map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("") +
+        valMembers.filter(_.isAbstract).map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("")
+      val concreteValueMembers =
+        defMembers.filter(!_.isAbstract).map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("") +
+        valMembers.filter(!_.isAbstract).map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("")
+
+      (if(abstractTypeMembers.nonEmpty){
+        Md.header2("Abstract Type Members:") +
+        abstractTypeMembers
+      }else{
+        ""
+      }) +
+      (if(concreteTypeMembers.nonEmpty){
+        Md.header2("Concrete Type Members:") +
+        concreteTypeMembers
+      }else{
+        ""
+      }) +
+      (if(abstractValueMembers.nonEmpty){
+        Md.header2("Abstract Value Members:") +
+        abstractValueMembers
+      }else{
+        ""
+      }) +
+      (if(concreteValueMembers.nonEmpty){
+        Md.header2("Concrete Value Members:") +
+        concreteValueMembers
+      }else{
+        ""
+      })
+
+      // (if(typeMembers.nonEmpty){
+      //   Md.header2("Type Members:") +
+      //   typeMembers.map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("")
+      // }else{
+      //   ""
+      // }) +
+      // (if(objectMembers.nonEmpty){
+      //   Md.header2("Object Members:") +
+      //   objectMembers.map{x =>
+      //     traverseRepresentation(x, Set.empty)
+
+      //     Md.header3(x.name) +
+      //     formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
+      //   }.mkString("")
+      // }else{
+      //   ""
+      // }) +
+      // (if(classMembers.nonEmpty){
+      //   Md.header2("Class Members:") +
+      //   classMembers.map{x =>
+      //     traverseRepresentation(x, Set.empty)
+
+      //     Md.header3(x.name) +
+      //     formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
+      //   }.mkString("")
+      // }else{
+      //   ""
+      // }) +
+      // (if(traitMembers.nonEmpty){
+      //   Md.header2("Trait Members:") +
+      //   traitMembers.map{x =>
+      //     traverseRepresentation(x, Set.empty)
+
+      //     Md.header3(x.name) +
+      //     formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
+      //   }.mkString("")
+      // }else{
+      //   ""
+      // }) +
+      // (if(defMembers.nonEmpty){
+      //   Md.header2("Definition Members:") +
+      //   defMembers.map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("")
+      // }else{
+      //   ""
+      // }) +
+      // (if(valMembers.nonEmpty){
+      //   Md.header2("Val Members:") +
+      //   valMembers.map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("")
+      // }else{
+      //   ""
+      // })
     }
 
     Md.header1(representation.kind + " " + representation.name) +
@@ -319,7 +414,8 @@ object DocPrinter{
       }
 
     case r: ClassRepresentation =>
-      val file = new File("./" + folderPrefix + r.path.mkString("", "/", "/") + r.name + ".md")
+      val filename = if(r.isObject) r.name + "$" else r.name
+      val file = new File("./" + folderPrefix + r.path.mkString("", "/", "/") + filename + ".md")
       file.getParentFile.mkdirs
       val pw = new PrintWriter(file)
       pw.write(formatRepresentationToMarkdown(r, r.path))

@@ -63,14 +63,15 @@ class Tests {
       "example.ReturnTypeClass",
       "example.ReturnObjectWithType",
       "example.level2.SameLevelTypeLinking",
-      "example.ReturnObjectWithType"
+      "example.ReturnObjectWithType",
+      "example.level2.TraitWithCompanion"
     ))
   }
-  // @Test def testListFromLib(): Unit = {
-  //   ConsumeTasty(
-  //     "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.15/classes",
-  //     List("scala.collection.immutable.List"),
-  //     new dotty.tastydoc.TastydocConsumer
-  //   )
-  // }
+  @Test def testListFromLib(): Unit = {
+    ConsumeTasty(
+      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.15/classes",
+      List("scala.collection.immutable.List"),
+      new dotty.tastydoc.TastydocConsumer
+    )
+  }
 }

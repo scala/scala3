@@ -1,6 +1,6 @@
 # class Documentation
 
-## Companion class <a href="./Documentation.md">Documentation</a>
+## Companion object <a href="./Documentation$.md">Documentation</a>
 
 <pre><code class="language-scala" >sealed abstract class Documentation[T, A <: scala.Int, B >: scala.Predef.String, X, Y] extends Seq[<a href="./Documentation.md#T">T</a>] with Product with Serializable</pre></code>
 This class is used for testing tasty doc generation
@@ -25,29 +25,24 @@ Auxiliary constructor
 <pre><code class="language-scala" >Documentation()</pre></code>
 <pre><code class="language-scala" >Documentation(x: T)</pre></code>
 
-## Type Members:
+## Concrete Type Members:
 ### abstractType
 <pre><code class="language-scala" >type abstractType: Nothing <: Any</pre></code>
 
 ### typeExamle
 <pre><code class="language-scala" >type typeExamle: [X >: scala.Nothing <: scala.Any] => X <: [X >: scala.Nothing <: scala.Any] => scala.Predef.String</pre></code>
 
-## Object members:
-### IAmACaseObject$
-<pre><code class="language-scala" >final case object <a href="./Documentation/IAmACaseObject$.md">IAmACaseObject$</a></pre></code>
-### testObject$
-<pre><code class="language-scala" >final object <a href="./Documentation/testObject$.md">testObject$</a></pre></code>
-## Class Members:
+### IAmACaseObject
+<pre><code class="language-scala" >final case object <a href="./Documentation/IAmACaseObject.md">IAmACaseObject</a></pre></code>
+### testObject
+<pre><code class="language-scala" >final object <a href="./Documentation/testObject.md">testObject</a></pre></code>
 ### Graph
 <pre><code class="language-scala" >class <a href="./Documentation/Graph.md">Graph</a></pre></code>
 ### IAmACaseClass
 <pre><code class="language-scala" >case class <a href="./Documentation/IAmACaseClass.md">IAmACaseClass</a></pre></code>
 ### innerDocumentationClass
 <pre><code class="language-scala" >class <a href="./Documentation/innerDocumentationClass.md">innerDocumentationClass</a></pre></code>
-## Trait Members:
-### CaseImplementThis
-<pre><code class="language-scala" >sealed trait <a href="./Documentation/CaseImplementThis.md">CaseImplementThis</a></pre></code>
-## Definition members:
+## Concrete Value Members:
 ### !=
 <pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
 
@@ -659,7 +654,7 @@ Test methods with params
 <pre><code class="language-scala" >def useOfOutsideType(): <a href="../ReturnTypeClass.md">ReturnTypeClass</a>[<a href="./Documentation.md#T">T</a>]</pre></code>
 
 ### useOfOutsideTypeInsideObject
-<pre><code class="language-scala" >def useOfOutsideTypeInsideObject(): <a href="../ReturnObjectWithType.md#returnType">returnType</a></pre></code>
+<pre><code class="language-scala" >def useOfOutsideTypeInsideObject(): <a href="../ReturnObjectWithType$.md#returnType">returnType</a></pre></code>
 
 ### useOfSameLevelOutsideType
 <pre><code class="language-scala" >def useOfSameLevelOutsideType(): <a href="./SameLevelTypeLinking.md">SameLevelTypeLinking</a></pre></code>
@@ -691,7 +686,6 @@ Test methods with params
 ### zipWithIndex
 <pre><code class="language-scala" >def zipWithIndex[A1, That](bf: CanBuildFrom[Repr, (A1, Int), That]): That</pre></code>
 
-## Value members:
 ### IAmACaseObject
 <pre><code class="language-scala" >final val IAmACaseObject: <a href="./Documentation/IAmACaseObject$.md">IAmACaseObject$</a></pre></code>
 

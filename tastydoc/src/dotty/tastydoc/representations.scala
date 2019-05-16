@@ -35,11 +35,11 @@ object representations extends CommentParser with CommentCleaner {
 
     def isPrivate: Boolean = modifiers.contains("private")
     def isProtected: Boolean = modifiers.contains("protected")
+    def isAbstract: Boolean = modifiers.contains("abstract")
   }
 
   trait Companion {
-    val companion: Option[TypeReference] //Hacky solution usign TypeReference so that we can use methods already implemented for linking.
-    val companionKind: Option[String]
+    val companion: Option[CompanionReference]
 
     def hasCompanion: Boolean = companion.isDefined //To be consistent with dotty-doc
     // val companionPath_=(xs: List[String]): Unit
@@ -172,16 +172,24 @@ object representations extends CommentParser with CommentCleaner {
     (isCase, isTrait, isObject, kind)
   }
 
-  private def extractCompanion(reflect: Reflection)(companion: Option[reflect.ClassDefSymbol]): (Option[TypeReference], Option[String]) = {
+  private def extractCompanion(reflect: Reflection)(companionModule: Option[reflect.ValDefSymbol], companionClass: Option[reflect.ClassDefSymbol], companionIsObject: Boolean): Option[CompanionReference] = {
     import reflect._
 
-    companion match {
-      case Some(c) =>
-        val path = extractPath(reflect)(c)
-        val (_, _, isObject, kind) = extractKind(reflect)(c.flags) //TOASK bug here isObject
-        (Some(TypeReference(c.name + (if (isObject) "$" else ""), path.mkString("/", "/", ""), Nil, true)),
-        Some(kind))
-      case None => (None, None)
+    if(companionIsObject){
+      companionModule match {
+        case Some(c) =>
+          val path = extractPath(reflect)(c)
+          Some(CompanionReference(c.name + "$", path.mkString("/", "/", ""), "object"))
+        case None => None
+      }
+    }else{
+      companionClass match {
+        case Some(c) =>
+          val path = extractPath(reflect)(c)
+          val (_, _, _, kind) = extractKind(reflect)(c.flags)
+          Some(CompanionReference(c.name, path.mkString("/", "/", ""), "object"))
+        case None => None
+      }
     }
   }
 
@@ -239,7 +247,7 @@ object representations extends CommentParser with CommentCleaner {
         }
       case reflect.Type.IsTermRef(reflect.Type.TermRef(typeName, qual)) =>
         convertTypeOrBoundsToReference(reflect)(qual) match {
-          case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs)
+          case TypeReference(label, link, xs, _) => TypeReference(typeName + "$", link + "/" + label, xs)
           case EmptyReference => TypeReference(typeName, "", Nil)
           case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
         }
@@ -293,18 +301,10 @@ object representations extends CommentParser with CommentCleaner {
   class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams with Annotations {
     import reflect._
 
-    // println("NAME: " + internal.name) //TOASK
-    // internal.symbol.companionModule match {
-    //   case Some(x) => println("OBJECT   " + x.name + " ISOBJECT: " + x.flags.is(Flags.Object) + "   CLASS    " + internal.symbol.companionClass)
-    //   case None => println("CLASS " + internal.symbol.companionClass)
-    // }
-
-    override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
     override val members = extractMembers(reflect)(internal.body, internal.symbol)
     override val parents = extractParents(reflect)(internal.parents)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
-    override val (companion, companionKind) = extractCompanion(reflect)(internal.symbol.companionClass)
     override val constructors = (convertToRepresentation(reflect)(internal.constructor) ::
     (internal.body.filter{x =>
         val noColorshow = removeColorFromType(x.show)
@@ -319,9 +319,13 @@ object representations extends CommentParser with CommentCleaner {
     override val typeParams = internal.constructor.typeParams.map(x => removeColorFromType(x.show).stripPrefix("type "))
     override val annotations = Nil
 
-    override val comments = extractComments(reflect)(internal.symbol.comment, this)
-
     val (isCase, isTrait, isObject, kind) = extractKind(reflect)(internal.symbol.flags)
+
+    override val name = if(isObject) internal.name.stripSuffix("$") else internal.name
+
+    override val companion = extractCompanion(reflect)(internal.symbol.companionModule, internal.symbol.companionClass, !isObject)
+
+    override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
   class DefRepresentation(reflect: Reflection, internal: reflect.DefDef) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue with Annotations{
@@ -367,7 +371,7 @@ object representations extends CommentParser with CommentCleaner {
       case reflect.IsTypeTree(t) => Some(convertTypeOrBoundsToReference(reflect)(t.tpe.asInstanceOf[reflect.TypeOrBounds]))
       case _ => None
     }
-    def isAbstract: Boolean = !alias.isDefined
+    override def isAbstract: Boolean = !alias.isDefined
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
