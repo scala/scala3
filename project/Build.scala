@@ -302,7 +302,8 @@ object Build {
     val dottyLib = jars("dotty-library")
     val dottyInterfaces = jars("dotty-interfaces")
     val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(File.pathSeparator)
-    dottyLib + File.pathSeparator + dottyInterfaces + File.pathSeparator + otherDeps
+    val attList = (dependencyClasspath in Runtime).value
+    dottyLib + File.pathSeparator + findLib(attList, "scala-library-")
   }
 
   lazy val semanticdbSettings = Seq(
@@ -317,8 +318,7 @@ object Build {
     )
   )
 
-  // Settings shared between dotty-doc and dotty-doc-bootstrapped
-  lazy val dottyDocSettings = Seq(
+  def dottyDocSettings(implicit mode: Mode) = Seq(
     baseDirectory in (Compile, run) := baseDirectory.value / "..",
     baseDirectory in Test := baseDirectory.value / "..",
 
@@ -336,12 +336,10 @@ object Build {
       val majorVersion = baseVersion.take(baseVersion.lastIndexOf('.'))
       IO.write(file("./docs/_site/versions/latest-nightly-base"), majorVersion)
 
-      val sources =
-        unmanagedSources.in(Compile, compile).value ++
-        unmanagedSources.in(`dotty-compiler`, Compile).value ++
-        // TODO use bootstrapped library
-        // Blocked by #6295, also see https://github.com/lampepfl/dotty/pull/5499
-        unmanagedSources.in(`dotty-library`, Compile).value
+      val sources = unmanagedSources.in(mode match {
+        case NonBootstrapped => `dotty-library`
+        case Bootstrapped => `dotty-library-bootstrapped`
+      }, Compile).value
       val args = Seq(
         "-siteroot", "docs",
         "-project", "Dotty",
