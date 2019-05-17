@@ -164,6 +164,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")),
       compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")),
       compileFile("tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")),
+      compileFile("tests/neg-custom-args/i1650.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i4372.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i1754.scala", allowDeepSubtypes),
