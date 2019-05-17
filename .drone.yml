@@ -77,10 +77,10 @@ pipeline:
     commands:
       - ./project/scripts/genDocs
     secrets: [ bot_token ]
-    # when:
-    #   event: push
-    #   # We only generate the documentation for the master branch
-    #   branch: master
+    when:
+      event: push
+      # We only generate the documentation for the master branch
+      branch: master
 
   # PUBLISHING:
   # Publishing expect NIGHTLYBUILD or RELEASEBUILD to be set. See dottyVersion in Build.scala

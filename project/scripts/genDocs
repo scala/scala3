@@ -11,7 +11,7 @@ shopt -s extglob
 # make sure that BOT_TOKEN is set
 if [ -z "$BOT_TOKEN" ]; then
     echo "Error: BOT_TOKEN env unset, unable to push without password" 1>&2
-    # exit 1
+    exit 1
 fi
 
 echo "Working directory: $PWD"
@@ -29,7 +29,6 @@ fi
 # save current head for commit message in gh-pages
 GIT_HEAD=$(git rev-parse HEAD)
 
-exit 0
 
 # set up remote and github credentials
 git remote add doc-remote "https://dotty-bot:$BOT_TOKEN@github.com/lampepfl/dotty-website.git"
