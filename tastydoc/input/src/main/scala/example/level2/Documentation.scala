@@ -132,6 +132,8 @@ object Documentation {
 
 }
 
+abstract class ClassExtendingDocumentation[T, A <: Int, B >: String, -X, +Y] extends Documentation[T, A, B, X, Y] {}
+
 trait TraitTest {
 
 }

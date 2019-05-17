@@ -131,14 +131,21 @@ object DocPrinter{
     case None => ""
   }
 
+  private def formatAnnotations(annotations: List[TypeReference], declarationPath: List[String]): String = {
+    val str = annotations.map("@" + formatReferences(_, declarationPath)).mkString(" ")
+    if(str.isEmpty) str else str + " "
+  }
+
   private def formatSimplifiedClassRepresentation(representation: ClassRepresentation, declarationPath: List[String]): String = {
     def formatSimplifiedSignature(): String = {
-      htmlPreCode(formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
+      htmlPreCode(
+        formatAnnotations(representation.annotations, declarationPath) +
+        formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
         representation.kind +
         " " +
         makeLink(representation.name, (declarationPath :+ declarationPath.last).mkString("/", "/", ""), true, declarationPath) // TODO Need twice the last because it should be defined in a subfolder with same name otherwise makeLink thinks it is inside the defintion file
-        , "scala") +
-        "\n"
+      , "scala") +
+      "\n"
     }
 
     formatSimplifiedSignature() +
@@ -168,12 +175,22 @@ object DocPrinter{
         "\n"
     }
 
-    def formatAnnotations(): String = {
+    def formatClassAnnotations(): String = {
       if(representation.annotations.isEmpty){
         ""
       }else{
         Md.header2("Annotations:") +
-        representation.annotations.mkString("\n") +
+        formatAnnotations(representation.annotations, declarationPath) +
+        "\n"
+      }
+    }
+
+    def formatKnownSubclasses(): String = {
+      if(representation.knownSubclasses.isEmpty){
+        ""
+      }else{
+        Md.header2("Known Subclasses:") +
+        representation.knownSubclasses.map(formatReferences(_, declarationPath)).mkString(", ") +
         "\n"
       }
     }
@@ -335,20 +352,23 @@ object DocPrinter{
     formatCompanion() +
     formatSignature() +
     formatComments(representation.comments) +
-    formatAnnotations() +
+    formatClassAnnotations() +
+    formatKnownSubclasses() +
     formatConstructors() +
     formatMembers()
   }
 
   private def formatDefRepresentation(representation: DefRepresentation, declarationPath: List[String]): String = {
     htmlPreCode(
-    formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
-    "def " +
-    representation.name +
-    (if(representation.typeParams.nonEmpty) representation.typeParams.mkString("[", ", ", "]") else "") +
-    representation.paramLists.map(formatParamList(_, declarationPath)).mkString("") +
-    ": " +
-    formatReferences(representation.returnValue, declarationPath), "scala") +
+      formatAnnotations(representation.annotations, declarationPath) +
+      formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
+      "def " +
+      representation.name +
+      (if(representation.typeParams.nonEmpty) representation.typeParams.mkString("[", ", ", "]") else "") +
+      representation.paramLists.map(formatParamList(_, declarationPath)).mkString("") +
+      ": " +
+      formatReferences(representation.returnValue, declarationPath)
+    , "scala") +
     "\n" +
     {
       val com = formatComments(representation.comments)
@@ -358,11 +378,13 @@ object DocPrinter{
 
   private def formatValRepresentation(representation: ValRepresentation, declarationPath: List[String]): String = {
     htmlPreCode(
-    formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
-    "val " +
-    representation.name +
-    ": " +
-    formatReferences(representation.returnValue, declarationPath), "scala") +
+      formatAnnotations(representation.annotations, declarationPath) +
+      formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
+      "val " +
+      representation.name +
+      ": " +
+      formatReferences(representation.returnValue, declarationPath)
+    , "scala") +
     "\n" +
     formatComments(representation.comments) +
     "\n"
@@ -370,10 +392,11 @@ object DocPrinter{
 
   private def formatTypeRepresentation(representation: TypeRepresentation, declarationPath: List[String]): String = {
     htmlPreCode(
-    formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
-    "type " +
-    representation.name +
-    (if(representation.isAbstract) "" else ": " + formatReferences(representation.alias.get, declarationPath))
+      formatAnnotations(representation.annotations, declarationPath) +
+      formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
+      "type " +
+      representation.name +
+      (if(representation.isAbstract) "" else ": " + formatReferences(representation.alias.get, declarationPath))
     , "scala") +
     "\n" +
     formatComments(representation.comments) +

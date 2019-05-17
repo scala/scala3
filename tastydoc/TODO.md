@@ -23,14 +23,14 @@
 * handle things such as $genericCanBuildFromInfo
 
 # Representation
-* Annotations (+ everywhere or only where it makes sense?)
 * Make sense of the parents field
 * Id for typeparams so we can link
 * Inherited declaration
 * User doc for inherited method
 * Alias type
 * Beautify type parameters (+ variance + bound two direction)
-* Known subclasses
+* Known subclasses print $
+* Rework type matching
 * Try type at top level
 * Type like Graph.Node
 

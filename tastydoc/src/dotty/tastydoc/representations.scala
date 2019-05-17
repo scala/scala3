@@ -18,7 +18,7 @@ object representations extends CommentParser with CommentCleaner {
     val path : List[String]
     val comments: Option[Comment]
     val parentRepresentation: Option[Representation] //Called simply "parent" in dotty-doc
-    val annotations: List[String] = Nil
+    val annotations: List[TypeReference]
   }
 
   trait Parents {
@@ -137,7 +137,11 @@ object representations extends CommentParser with CommentCleaner {
       case reflect.IsTerm(c) => convertTypeToReference(reflect)(c.tpe)
       case _ => throw Exception("Unhandeld case in parents. Please open an issue.")
     }
-    if(parentsReferences.nonEmpty) parentsReferences.tail else Nil //Object is always at head position and it's pointless to display it
+
+    parentsReferences.filter{_ match{
+      case TypeReference("Object", "/lang", _, _) => false
+      case _ => true
+    }}
   }
 
   /** The kind of a ClassDef can be one of the following: class, case class, object, case object, trait
@@ -190,6 +194,33 @@ object representations extends CommentParser with CommentCleaner {
     }
   }
 
+  private def extractAnnotations(reflect: Reflection)(annots: List[reflect.Term]): List[TypeReference] = {
+    import reflect._
+
+    def keepAnnot(label: String, link: String): Boolean = {
+      !(label == "SourceFile" && link == "/internal") &&
+      !(label == "Child" && link == "/internal") //TOASK ok?
+    }
+
+    annots.flatMap{a =>
+      convertTypeToReference(reflect)(a.tpe) match {
+        case ref@TypeReference(label, link, _, _) if keepAnnot(label, link) => Some(ref)
+        case _ => None
+      }
+    }
+  }
+
+  private def extractKnownSubclasses(reflect: Reflection)(annots: List[reflect.Term]): List[Reference] = {
+    import reflect._
+
+    annots.flatMap{a =>
+      convertTypeToReference(reflect)(a.tpe) match {
+        case ref@TypeReference(label, link, xs, _) if label == "Child" && link == "/internal" => Some(xs.head)
+        case _ => None
+      }
+    }
+  }
+
   private def convertTypeOrBoundsToReference(reflect: Reflection)(typeOrBounds: reflect.TypeOrBounds): Reference = {
     import reflect._
 
@@ -236,7 +267,7 @@ object representations extends CommentParser with CommentCleaner {
             }
           case _ => throw Exception("Match error in AppliedType. This should not happen, please open an issue. " + tp)
         }
-      case reflect.Type.IsTypeRef(reflect.Type.TypeRef(typeName, qual)) =>
+      case reflect.Type.IsTypeRef(reflect.Type.TypeRef(typeName, qual)) => //TODO Verify all these typeOrBounds handling
         convertTypeOrBoundsToReference(reflect)(qual) match {
           case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true) //TODO check hasOwnFile
           case EmptyReference => TypeReference(typeName, "", Nil, true) //TODO check hasOwnFile
@@ -254,14 +285,20 @@ object representations extends CommentParser with CommentCleaner {
             case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs, true) //TOASK: Should we include case as own file?
             case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
             case EmptyReference => TypeReference(symbol.name, "", Nil, true)
-            case _ => throw Exception("Match error in SymRef/TypeOrBounds. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(typeOrBounds))
+            case _ => throw Exception("Match error in SymRef/TypeOrBounds/ClassDef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(typeOrBounds))
           }
         case reflect.IsPackageDefSymbol(_) | reflect.IsTypeDefSymbol(_) | reflect.IsValDefSymbol(_) =>
           convertTypeOrBoundsToReference(reflect)(typeOrBounds) match {
             case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs)
             case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
             case EmptyReference => TypeReference(symbol.name, "", Nil)
-            case _ => throw Exception("Match error in SymRef/TypeOrBounds. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(typeOrBounds))
+            case _ => throw Exception("Match error in SymRef/TypeOrBounds/Other. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(typeOrBounds))
+          }
+        case reflect.IsTermSymbol(_) => convertTypeOrBoundsToReference(reflect)(typeOrBounds) match {
+            case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs)
+            case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
+            case EmptyReference => TypeReference(symbol.name, "", Nil)
+            case _ => throw Exception("Match error in SymRef/TypeOrBounds/Term. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(typeOrBounds))
           }
         case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue. " + symbol)
       }
@@ -279,6 +316,8 @@ object representations extends CommentParser with CommentCleaner {
       (pidSplit.last, pidSplit.init.toList)
     }
     override val members = internal.stats.map(convertToRepresentation(reflect)(_, Some(this)))
+    override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
+
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
@@ -292,6 +331,8 @@ object representations extends CommentParser with CommentCleaner {
         internal.selectors.head.toString
       }
     override val path = internal.expr.symbol.show.split("\\.").toList
+    override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
+
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
@@ -315,7 +356,8 @@ object representations extends CommentParser with CommentCleaner {
         }
       }.map(r => (new MultipleParamList{val paramLists = r.paramLists}, r.comments))
     override val typeParams = internal.constructor.typeParams.map(x => removeColorFromType(x.show).stripPrefix("type "))
-    override val annotations = Nil
+    override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
+    val knownSubclasses: List[Reference] = extractKnownSubclasses(reflect)(internal.symbol.annots)
 
     val (isCase, isTrait, isObject, kind) = extractKind(reflect)(internal.symbol.flags)
 
@@ -341,7 +383,7 @@ object representations extends CommentParser with CommentCleaner {
       }
     }
     override val returnValue = convertTypeToReference(reflect)(internal.returnTpt.tpe)
-    override val annotations = Nil
+    override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
@@ -352,7 +394,7 @@ object representations extends CommentParser with CommentCleaner {
     override val path = extractPath(reflect)(internal.symbol)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val returnValue = convertTypeToReference(reflect)(internal.tpt.tpe)
-    override val annotations = Nil
+    override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
@@ -363,7 +405,7 @@ object representations extends CommentParser with CommentCleaner {
     override val path = extractPath(reflect)(internal.symbol)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val typeParams = Nil
-    override val annotations = Nil
+    override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
     val alias: Option[Reference] = internal.rhs match{
       case reflect.IsTypeBoundsTree(t) => Some(convertTypeOrBoundsToReference(reflect)(t.tpe))
       case reflect.IsTypeTree(t) => Some(convertTypeOrBoundsToReference(reflect)(t.tpe.asInstanceOf[reflect.TypeOrBounds]))

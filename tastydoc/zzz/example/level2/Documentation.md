@@ -15,6 +15,10 @@ This class is used for testing tasty doc generation
 
 ***Constructor*** create new object
 
+## Annotations:
+@strictfp 
+## Known Subclasses:
+<a href="./ClassExtendingDocumentation.md">ClassExtendingDocumentation</a>
 ## Constructors:
 <pre><code class="language-scala" >Documentation(c1: String, c2: List[T])</pre></code>
 <pre><code class="language-scala" >Documentation(ac: String)</pre></code>
@@ -125,7 +129,7 @@ Auxiliary constructor
 <pre><code class="language-scala" >override def companion: GenericCompanion[[+A >: scala.Nothing <: scala.Any] => scala.collection.Seq[+A]]</pre></code>
 
 ### compose
-<pre><code class="language-scala" >def compose[A](g: (A) => T1): (A) => R</pre></code>
+<pre><code class="language-scala" >@unspecialized def compose[A](g: (A) => T1): (A) => R</pre></code>
 
 ### contains
 <pre><code class="language-scala" >def contains[A1](elem: A1): Boolean</pre></code>
@@ -514,7 +518,7 @@ Test methods with params
 <pre><code class="language-scala" >def scanLeft[B, That](z: B)(op: (B, A) => B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### scanRight
-<pre><code class="language-scala" >def scanRight[B, That](z: B)(op: (A, B) => B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >@migration def scanRight[B, That](z: B)(op: (A, B) => B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### segmentLength
 <pre><code class="language-scala" >def segmentLength(p: (A) => Boolean, from: Int): Int</pre></code>
@@ -610,7 +614,7 @@ Test methods with params
 <pre><code class="language-scala" >override def toIterable: Iterable[A]</pre></code>
 
 ### toIterator
-<pre><code class="language-scala" >override def toIterator: Iterator[A]</pre></code>
+<pre><code class="language-scala" >@deprecatedOverriding override def toIterator: Iterator[A]</pre></code>
 
 ### toList
 <pre><code class="language-scala" >def toList: List[A]</pre></code>
@@ -631,13 +635,13 @@ Test methods with params
 <pre><code class="language-scala" >override def toString(): String</pre></code>
 
 ### toTraversable
-<pre><code class="language-scala" >def toTraversable: Traversable[A]</pre></code>
+<pre><code class="language-scala" >@deprecatedOverriding def toTraversable: Traversable[A]</pre></code>
 
 ### toVector
 <pre><code class="language-scala" >def toVector: Vector[A]</pre></code>
 
 ### transpose
-<pre><code class="language-scala" >def transpose[B](asTraversable: (A) => GenTraversableOnce[B]): CC[CC[B]]</pre></code>
+<pre><code class="language-scala" >@migration def transpose[B](asTraversable: (A) => GenTraversableOnce[B]): CC[CC[B]]</pre></code>
 
 ### union
 <pre><code class="language-scala" >override def union[B, That](that: GenSeq[B])(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
@@ -703,7 +707,7 @@ Test methods with params
 <pre><code class="language-scala" >final val testObject: <a href="./Documentation/testObject$.md">testObject$</a></pre></code>
 
 ### v
-<pre><code class="language-scala" >val v: Int</pre></code>
+<pre><code class="language-scala" >@showAsInfix val v: Int</pre></code>
 Test value
 
 
