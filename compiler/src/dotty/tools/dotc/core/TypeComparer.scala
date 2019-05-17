@@ -2057,9 +2057,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
   /** Returns last check's debug mode, if explicitly enabled. */
   def lastTrace(): String = ""
 
-  /** Do `tp1` and `tp2` share a non-null inhabitant?
+  /** Are `tp1` and `tp2` disjoint types?
    *
-   *  `false` implies that we found a proof; uncertainty default to `true`.
+   *  `true` implies that we found a proof; uncertainty default to `false`.
    *
    *  Proofs rely on the following properties of Scala types:
    *
@@ -2068,8 +2068,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *  3. ConstantTypes with distinc values are non intersecting
    *  4. There is no value of type Nothing
    */
-  def intersecting(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = {
-    // println(s"intersecting(${tp1.show}, ${tp2.show})")
+  def disjoint(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = {
+    // println(s"disjoint(${tp1.show}, ${tp2.show})")
     /** Can we enumerate all instantiations of this type? */
     def isClosedSum(tp: Symbol): Boolean =
       tp.is(Sealed) && tp.is(AbstractOrTrait) && !tp.hasAnonymousChild
@@ -2082,46 +2082,35 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
       sym.children.map(x => ctx.refineUsingParent(tp, x)).filter(_.exists)
 
     (tp1.dealias, tp2.dealias) match {
+      case (tp1: TypeRef, tp2: TypeRef) if tp1.symbol == defn.SingletonClass || tp2.symbol == defn.SingletonClass =>
+        false
       case (tp1: ConstantType, tp2: ConstantType) =>
-        tp1 == tp2
+        tp1 != tp2
       case (tp1: TypeRef, tp2: TypeRef) if tp1.symbol.isClass && tp2.symbol.isClass =>
         val cls1 = tp1.classSymbol
         val cls2 = tp2.classSymbol
         if (cls1.derivesFrom(cls2) || cls2.derivesFrom(cls1)) {
-          true
+          false
         } else {
           if (cls1.is(Final) || cls2.is(Final))
             // One of these types is final and they are not mutually
             // subtype, so they must be unrelated.
-            false
+            true
           else if (!cls2.is(Trait) && !cls1.is(Trait))
             // Both of these types are classes and they are not mutually
             // subtype, so they must be unrelated by single inheritance
             // of classes.
-            false
-          else if (isClosedSum(cls1))
-            decompose(cls1, tp1).exists(x => intersecting(x, tp2))
-          else if (isClosedSum(cls2))
-            decompose(cls2, tp2).exists(x => intersecting(x, tp1))
-          else
             true
+          else if (isClosedSum(cls1))
+            decompose(cls1, tp1).forall(x => disjoint(x, tp2))
+          else if (isClosedSum(cls2))
+            decompose(cls2, tp2).forall(x => disjoint(x, tp1))
+          else
+            false
         }
       case (AppliedType(tycon1, args1), AppliedType(tycon2, args2)) if tycon1 == tycon2 =>
-        // Unboxed xs.zip(ys).zip(zs).forall { case ((a, b), c) => f(a, b, c) }
-        def zip_zip_forall[A, B, C](xs: List[A], ys: List[B], zs: List[C])(f: (A, B, C) => Boolean): Boolean = {
-          xs match {
-            case x :: xs => ys match {
-              case y :: ys => zs match {
-                case z :: zs => f(x, y, z) && zip_zip_forall(xs, ys, zs)(f)
-                case _ => true
-              }
-              case _ => true
-            }
-            case _ => true
-          }
-        }
-        def covariantIntersecting(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean = {
-          intersecting(tp1, tp2) || {
+        def covariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean = {
+          disjoint(tp1, tp2) && {
             // We still need to proof that `Nothing` is not a valid
             // instantiation of this type parameter. We have two ways
             // to get to that conclusion:
@@ -2139,24 +2128,24 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                 case _ =>
                   false
               }
-            lowerBoundedByNothing && !typeUsedAsField
+            !lowerBoundedByNothing || typeUsedAsField
           }
         }
 
-        zip_zip_forall(args1, args2, tycon1.typeParams) {
+        (args1, args2, tycon1.typeParams).zipped.exists {
           (arg1, arg2, tparam) =>
             val v = tparam.paramVariance
             if (v > 0)
-              covariantIntersecting(arg1, arg2, tparam)
+              covariantDisjoint(arg1, arg2, tparam)
             else if (v < 0)
               // Contravariant case: a value where this type parameter is
               // instantiated to `Any` belongs to both types.
-              true
+              false
             else
-              covariantIntersecting(arg1, arg2, tparam) && (isSameType(arg1, arg2) || {
+              covariantDisjoint(arg1, arg2, tparam) || !isSameType(arg1, arg2) && {
                 // We can only trust a "no" from `isSameType` when both
                 // `arg1` and `arg2` are fully instantiated.
-                val fullyInstantiated = new TypeAccumulator[Boolean] {
+                def fullyInstantiated(tp: Type): Boolean = new TypeAccumulator[Boolean] {
                   override def apply(x: Boolean, t: Type) =
                     x && {
                       t match {
@@ -2165,34 +2154,36 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                         case _ => foldOver(x, t)
                       }
                     }
-                }
-                !(fullyInstantiated.apply(true, arg1) &&
-                  fullyInstantiated.apply(true, arg2))
-              })
+                }.apply(true, tp)
+                fullyInstantiated(arg1) && fullyInstantiated(arg2)
+              }
         }
       case (tp1: HKLambda, tp2: HKLambda) =>
-        intersecting(tp1.resType, tp2.resType)
+        disjoint(tp1.resType, tp2.resType)
       case (_: HKLambda, _) =>
-        // The intersection is ill kinded and therefore empty.
-        false
-      case (_, _: HKLambda) =>
-        false
-      case (tp1: OrType, _)  =>
-        intersecting(tp1.tp1, tp2) || intersecting(tp1.tp2, tp2)
-      case (_, tp2: OrType)  =>
-        intersecting(tp1, tp2.tp1) || intersecting(tp1, tp2.tp2)
-      case (tp1: AndType, _) =>
-        intersecting(tp1.tp1, tp2) && intersecting(tp1.tp2, tp2) && intersecting(tp1.tp1, tp1.tp2)
-      case (_, tp2: AndType) =>
-        intersecting(tp1, tp2.tp1) && intersecting(tp1, tp2.tp2) && intersecting(tp2.tp1, tp2.tp2)
-      case (tp1: TypeProxy, tp2: TypeProxy) =>
-        intersecting(tp1.underlying, tp2) && intersecting(tp1, tp2.underlying)
-      case (tp1: TypeProxy, _) =>
-        intersecting(tp1.underlying, tp2)
-      case (_, tp2: TypeProxy) =>
-        intersecting(tp1, tp2.underlying)
-      case _ =>
+        // The intersection of these two types would be ill kinded, they are therefore disjoint.
         true
+      case (_, _: HKLambda) =>
+        true
+      case (tp1: OrType, _)  =>
+        disjoint(tp1.tp1, tp2) && disjoint(tp1.tp2, tp2)
+      case (_, tp2: OrType)  =>
+        disjoint(tp1, tp2.tp1) && disjoint(tp1, tp2.tp2)
+      case (tp1: AndType, tp2: AndType) =>
+        (disjoint(tp1.tp1, tp2.tp1) || disjoint(tp1.tp2, tp2.tp2)) &&
+        (disjoint(tp1.tp1, tp2.tp2) || disjoint(tp1.tp2, tp2.tp1))
+      case (tp1: AndType, _) =>
+        disjoint(tp1.tp2, tp2) || disjoint(tp1.tp1, tp2)
+      case (_, tp2: AndType) =>
+        disjoint(tp1, tp2.tp2) || disjoint(tp1, tp2.tp1)
+      case (tp1: TypeProxy, tp2: TypeProxy) =>
+        disjoint(tp1.underlying, tp2) || disjoint(tp1, tp2.underlying)
+      case (tp1: TypeProxy, _) =>
+        disjoint(tp1.underlying, tp2)
+      case (_, tp2: TypeProxy) =>
+        disjoint(tp1, tp2.underlying)
+      case _ =>
+        false
     }
   }
 }
@@ -2321,6 +2312,24 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         case _ =>
           cas
       }
+      def widenAbstractTypes(tp: Type): Type = new TypeMap {
+        def apply(tp: Type) = tp match {
+          case tp: TypeRef =>
+            if (tp.symbol.isAbstractOrParamType | tp.symbol.isOpaqueAlias)
+              WildcardType
+            else tp.info match {
+              case TypeAlias(alias) =>
+                val alias1 = widenAbstractTypes(alias)
+                if (alias1 ne alias) alias1 else tp
+              case _ => mapOver(tp)
+            }
+
+          case tp: TypeVar if !tp.isInstantiated => WildcardType
+          case _: TypeParamRef => WildcardType
+          case _ => mapOver(tp)
+        }
+      }.apply(tp)
+
       val defn.MatchCase(pat, body) = cas1
       if (isSubType(scrut, pat))
         // `scrut` is a subtype of `pat`: *It's a Match!*
@@ -2333,12 +2342,14 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
               body
           }
         }
-      else if (intersecting(scrut, pat))
+      else if (isSubType(widenAbstractTypes(scrut), widenAbstractTypes(pat)))
         Some(NoType)
-      else
+      else if (disjoint(scrut, pat))
         // We found a proof that `scrut` and  `pat` are incompatible.
         // The search continues.
         None
+      else
+        Some(NoType)
     }
 
     def recur(cases: List[Type]): Type = cases match {

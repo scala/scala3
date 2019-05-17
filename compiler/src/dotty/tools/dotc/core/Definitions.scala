@@ -564,7 +564,6 @@ class Definitions {
   lazy val BoxedUnitModule: TermSymbol    = ctx.requiredModule("java.lang.Void")
 
   lazy val ByNameParamClass2x: ClassSymbol = enterSpecialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, Seq(AnyType))
-  lazy val EqualsPatternClass: ClassSymbol = enterSpecialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, Seq(AnyType))
 
   lazy val RepeatedParamClass: ClassSymbol = enterSpecialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, Seq(ObjectType, SeqType))
 
@@ -1385,8 +1384,7 @@ class Definitions {
     AnyValClass,
     NullClass,
     NothingClass,
-    SingletonClass,
-    EqualsPatternClass)
+    SingletonClass)
 
   lazy val syntheticCoreClasses: List[Symbol] = syntheticScalaClasses ++ List(
     EmptyPackageVal,
