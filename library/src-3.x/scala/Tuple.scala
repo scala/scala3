@@ -49,7 +49,7 @@ sealed trait Tuple extends Any {
         val t = asInstanceOf[Tuple4[_, _, _, _]]
         Tuple5(x, t._1, t._2, t._3, t._4).asInstanceOf[Result]
       case Some(n) =>
-        knownTupleFromItrator[H *: this.type](Iterator.single(x) ++ this.asInstanceOf[Product].productIterator)
+        knownTupleFromItrator[H *: this.type](n + 1, Iterator.single(x) ++ this.asInstanceOf[Product].productIterator)
       case _ =>
         DynamicTuple.dynamic_*:[This, H](this, x)
     }
@@ -73,8 +73,8 @@ sealed trait Tuple extends Any {
           case 2 =>
             val u = that.asInstanceOf[Tuple2[_, _]]
             Tuple4(t._1, t._2, u._1, u._2).asInstanceOf[Result]
-          case _ =>
-            knownTupleFromItrator[Result](this.asInstanceOf[Product].productIterator ++ that.asInstanceOf[Product].productIterator)
+          case m =>
+            knownTupleFromItrator[Result](2 + m, this.asInstanceOf[Product].productIterator ++ that.asInstanceOf[Product].productIterator)
         }
       case Some(3) =>
         val t = asInstanceOf[Tuple3[_, _, _]]
@@ -83,12 +83,14 @@ sealed trait Tuple extends Any {
           case 1 =>
             val u = that.asInstanceOf[Tuple1[_]]
             Tuple4(t._1, t._2, t._3, u._1).asInstanceOf[Result]
-          case _ =>
-            knownTupleFromItrator[Result](this.asInstanceOf[Product].productIterator ++ that.asInstanceOf[Product].productIterator)
+          case m =>
+            knownTupleFromItrator[Result](3 + m, this.asInstanceOf[Product].productIterator ++ that.asInstanceOf[Product].productIterator)
       }
-      case Some(_) =>
-        if (constValue[BoundedSize[that.type]] == 0) this.asInstanceOf[Result]
-        else knownTupleFromItrator[Result](this.asInstanceOf[Product].productIterator ++ that.asInstanceOf[Product].productIterator)
+      case Some(n) =>
+        inline constValue[BoundedSize[that.type]] match {
+          case 0 => this.asInstanceOf[Result]
+          case m => knownTupleFromItrator[Result](n + m, this.asInstanceOf[Product].productIterator ++ that.asInstanceOf[Product].productIterator)
+        }
       case None =>
         DynamicTuple.dynamic_++[This, that.type](this, that)
     }
@@ -141,10 +143,10 @@ object Tuple {
       }
   }
 
-  private[scala] type BoundedSize[X] = BoundedSizeRecur[X, 23]
+  private[scala] type BoundedSize[X] = BoundedSizeRecur[X, 24]
 
-  private[scala] inline def knownTupleFromItrator[T <: Tuple](it: Iterator[Any]): T =
-    inline constValue[BoundedSize[T]] match {
+  private[scala] inline def knownTupleFromItrator[T <: Tuple](n: Int, it: Iterator[Any]): T =
+    inline n match {
       case 0  => ().asInstanceOf[T]
       case 1  => Tuple1(it.next()).asInstanceOf[T]
       case 2  => Tuple2(it.next(), it.next()).asInstanceOf[T]
@@ -233,7 +235,7 @@ sealed trait NonEmptyTuple extends Tuple {
       case Some(n) if n > 5 =>
         val it = this.asInstanceOf[Product].productIterator
         it.next()
-        knownTupleFromItrator[Result](it)
+        knownTupleFromItrator[Result](n - 1, it)
       case None =>
         DynamicTuple.dynamicTail[This](this)
     }
