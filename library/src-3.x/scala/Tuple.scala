@@ -49,7 +49,7 @@ sealed trait Tuple extends Any {
         val t = asInstanceOf[Tuple4[_, _, _, _]]
         Tuple5(x, t._1, t._2, t._3, t._4).asInstanceOf[Result]
       case Some(n) =>
-        knownTupleFromArray[H *: this.type](DynamicTuple.cons$Array(x, toArray))
+        knownTupleFromItrator[H *: this.type](Iterator.single(x) ++ this.asInstanceOf[Product].productIterator)
       case _ =>
         DynamicTuple.dynamic_*:[This, H](this, x)
     }
@@ -74,7 +74,7 @@ sealed trait Tuple extends Any {
             val u = that.asInstanceOf[Tuple2[_, _]]
             Tuple4(t._1, t._2, u._1, u._2).asInstanceOf[Result]
           case _ =>
-            knownTupleFromArray[Result](this.toArray ++ that.toArray)
+            knownTupleFromItrator[Result](this.asInstanceOf[Product].productIterator ++ that.asInstanceOf[Product].productIterator)
         }
       case Some(3) =>
         val t = asInstanceOf[Tuple3[_, _, _]]
@@ -84,11 +84,11 @@ sealed trait Tuple extends Any {
             val u = that.asInstanceOf[Tuple1[_]]
             Tuple4(t._1, t._2, t._3, u._1).asInstanceOf[Result]
           case _ =>
-            knownTupleFromArray[Result](this.toArray ++ that.toArray)
-        }
+            knownTupleFromItrator[Result](this.asInstanceOf[Product].productIterator ++ that.asInstanceOf[Product].productIterator)
+      }
       case Some(_) =>
         if (constValue[BoundedSize[that.type]] == 0) this.asInstanceOf[Result]
-        else knownTupleFromArray[Result](this.toArray ++ that.toArray)
+        else knownTupleFromItrator[Result](this.asInstanceOf[Product].productIterator ++ that.asInstanceOf[Product].productIterator)
       case None =>
         DynamicTuple.dynamic_++[This, that.type](this, that)
     }
@@ -143,34 +143,32 @@ object Tuple {
 
   private[scala] type BoundedSize[X] = BoundedSizeRecur[X, 23]
 
-  private[scala] val $emptyArray = Array[Object]()
-
-  private[scala] inline def knownTupleFromArray[T <: Tuple](xs: Array[Object]): T =
+  private[scala] inline def knownTupleFromItrator[T <: Tuple](it: Iterator[Any]): T =
     inline constValue[BoundedSize[T]] match {
       case 0  => ().asInstanceOf[T]
-      case 1  => Tuple1(xs(0)).asInstanceOf[T]
-      case 2  => Tuple2(xs(0), xs(1)).asInstanceOf[T]
-      case 3  => Tuple3(xs(0), xs(1), xs(2)).asInstanceOf[T]
-      case 4  => Tuple4(xs(0), xs(1), xs(2), xs(3)).asInstanceOf[T]
-      case 5  => Tuple5(xs(0), xs(1), xs(2), xs(3), xs(4)).asInstanceOf[T]
-      case 6  => Tuple6(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5)).asInstanceOf[T]
-      case 7  => Tuple7(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6)).asInstanceOf[T]
-      case 8  => Tuple8(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7)).asInstanceOf[T]
-      case 9  => Tuple9(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8)).asInstanceOf[T]
-      case 10 => Tuple10(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9)).asInstanceOf[T]
-      case 11 => Tuple11(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10)).asInstanceOf[T]
-      case 12 => Tuple12(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11)).asInstanceOf[T]
-      case 13 => Tuple13(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12)).asInstanceOf[T]
-      case 14 => Tuple14(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13)).asInstanceOf[T]
-      case 15 => Tuple15(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14)).asInstanceOf[T]
-      case 16 => Tuple16(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15)).asInstanceOf[T]
-      case 17 => Tuple17(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16)).asInstanceOf[T]
-      case 18 => Tuple18(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17)).asInstanceOf[T]
-      case 19 => Tuple19(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18)).asInstanceOf[T]
-      case 20 => Tuple20(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19)).asInstanceOf[T]
-      case 21 => Tuple21(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20)).asInstanceOf[T]
-      case 22 => Tuple22(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20), xs(21)).asInstanceOf[T]
-      case _ => TupleXXL(xs).asInstanceOf[T]
+      case 1  => Tuple1(it.next()).asInstanceOf[T]
+      case 2  => Tuple2(it.next(), it.next()).asInstanceOf[T]
+      case 3  => Tuple3(it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 4  => Tuple4(it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 5  => Tuple5(it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 6  => Tuple6(it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 7  => Tuple7(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 8  => Tuple8(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 9  => Tuple9(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 10 => Tuple10(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 11 => Tuple11(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 12 => Tuple12(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 13 => Tuple13(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 14 => Tuple14(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 15 => Tuple15(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 16 => Tuple16(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 17 => Tuple17(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 18 => Tuple18(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 19 => Tuple19(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 20 => Tuple20(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 21 => Tuple21(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case 22 => Tuple22(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+      case _ => TupleXXL(it.asInstanceOf[Iterator[Object]].toArray).asInstanceOf[T]
     }
 
   def fromArray[T](xs: Array[T]): Tuple = {
@@ -233,7 +231,9 @@ sealed trait NonEmptyTuple extends Tuple {
         val t = asInstanceOf[Tuple5[_, _, _, _, _]]
         Tuple4(t._2, t._3, t._4, t._5).asInstanceOf[Result]
       case Some(n) if n > 5 =>
-        knownTupleFromArray[Result](toArray.tail)
+        val it = this.asInstanceOf[Product].productIterator
+        it.next()
+        knownTupleFromItrator[Result](it)
       case None =>
         DynamicTuple.dynamicTail[This](this)
     }
