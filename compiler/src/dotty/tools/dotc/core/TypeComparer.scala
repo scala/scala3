@@ -2313,19 +2313,30 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
           cas
       }
       def widenAbstractTypes(tp: Type): Type = new TypeMap {
+        var seen = Set[TypeParamRef]()
         def apply(tp: Type) = tp match {
           case tp: TypeRef =>
-            if (tp.symbol.isAbstractOrParamType | tp.symbol.isOpaqueAlias)
-              WildcardType
-            else tp.info match {
-              case TypeAlias(alias) =>
-                val alias1 = widenAbstractTypes(alias)
-                if (alias1 ne alias) alias1 else tp
-              case _ => mapOver(tp)
+            tp.info match {
+              case info: MatchAlias =>
+                mapOver(tp)
+                  // TODO: We should follow the alias in this case, but doing so
+                  // risks infinite recursion
+              case TypeBounds(lo, hi) =>
+                if (hi frozen_<:< lo) {
+                  val alias = apply(lo)
+                  if (alias ne lo) alias else mapOver(tp)
+                }
+                else WildcardType
+              case _ =>
+                mapOver(tp)
             }
-
+          case tp: TypeLambda =>
+            val saved = seen
+            seen ++= tp.paramRefs
+            try mapOver(tp)
+            finally seen = saved
           case tp: TypeVar if !tp.isInstantiated => WildcardType
-          case _: TypeParamRef => WildcardType
+          case tp: TypeParamRef if !seen.contains(tp) => WildcardType
           case _ => mapOver(tp)
         }
       }.apply(tp)
