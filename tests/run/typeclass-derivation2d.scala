@@ -19,7 +19,6 @@ object Deriving {
   type MirrorOf[T]        = Mirror { type MonoType = T }
   type ProductMirrorOf[T] = Mirror.Product { type MonoType = T }
   type SumMirrorOf[T]     = Mirror.Sum { type MonoType = T }
-  type SingletonMirror    = Mirror.Singleton
 
   object Mirror {
 
@@ -369,7 +368,7 @@ object Show {
   inline def showCase(x: Any, m: ProductMirrorOf[_]): String = {
     val label = constValue[m.CaseLabel]
     inline m match {
-      case m: SingletonMirror => label
+      case m: Mirror.Singleton => label
       case _ => showElems[m.ElemTypes, m.ElemLabels](0)(x).mkString(s"$label(", ", ", ")")
     }
   }

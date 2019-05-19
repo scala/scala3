@@ -547,7 +547,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     val saved = maxSummarized
     maxSummarized = ctx.base.toTextRecursions + depth
     try op
-    finally maxSummarized = depth
+    finally maxSummarized = saved
   }
 
   def summarized[T](op: => T): T = summarized(summarizeDepth)(op)
