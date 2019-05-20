@@ -35,7 +35,7 @@ import SymUtils._
  *    def equals(other: Any): Boolean
  *    def hashCode(): Int
  */
-class SyntheticMethods(thisPhase: DenotTransformer) {
+class SyntheticMembers(thisPhase: DenotTransformer) {
   import ast.tpd._
 
   private[this] var myValueSymbols: List[Symbol] = Nil
@@ -386,7 +386,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
     cpy.Template(impl)(parents = newParents, body = newBody)
   }
 
-  def addSyntheticMethods(impl: Template)(implicit ctx: Context): Template = {
+  def addSyntheticMembers(impl: Template)(implicit ctx: Context): Template = {
     val clazz = ctx.owner.asClass
     addMirrorSupport(
       cpy.Template(impl)(body = serializableObjectMethod(clazz) ::: caseAndValueMethods(clazz) ::: impl.body))
