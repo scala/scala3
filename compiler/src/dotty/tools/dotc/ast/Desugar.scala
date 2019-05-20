@@ -15,6 +15,7 @@ import reporting.diagnostic.messages._
 import reporting.trace
 import annotation.constructorOnly
 import printing.Formatting.hl
+import config.Printers
 
 import scala.annotation.internal.sharable
 
@@ -51,7 +52,7 @@ object desugar {
   private type VarInfo = (NameTree, Tree)
 
   /** Is `name` the name of a method that can be invalidated as a compiler-generated
-   *  case class method that clashes with a user-defined method?
+   *  case class method if it clashes with a user-defined method?
    */
   def isRetractableCaseClassMethodName(name: Name)(implicit ctx: Context): Boolean = name match {
     case nme.apply | nme.unapply | nme.unapplySeq | nme.copy => true
@@ -765,7 +766,7 @@ object desugar {
     }
 
     flatTree(cdef1 :: companions ::: implicitWrappers)
-  }
+  }.reporting(res => i"desugared: $res", Printers.desugar)
 
   /** Expand
    *
