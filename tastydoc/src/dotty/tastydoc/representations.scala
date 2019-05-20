@@ -340,7 +340,6 @@ object representations extends CommentParser with CommentCleaner {
     import reflect._
 
     override val path = extractPath(reflect)(internal.symbol)
-    override val members = extractMembers(reflect)(internal.body, internal.symbol, Some(this))
     override val parents = extractParents(reflect)(internal.parents)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val constructors =
@@ -357,13 +356,21 @@ object representations extends CommentParser with CommentCleaner {
       }.map(r => (new MultipleParamList{val paramLists = r.paramLists}, r.comments))
     override val typeParams = internal.constructor.typeParams.map(x => removeColorFromType(x.show).stripPrefix("type "))
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
-    val knownSubclasses: List[Reference] = extractKnownSubclasses(reflect)(internal.symbol.annots)
+    var knownSubclasses: List[Reference] = Nil
 
     val (isCase, isTrait, isObject, kind) = extractKind(reflect)(internal.symbol.flags)
 
     override val name = if(isObject) internal.name.stripSuffix("$") else internal.name
 
     override val companion = extractCompanion(reflect)(internal.symbol.companionModule, internal.symbol.companionClass, !isObject)
+    override val members = extractMembers(reflect)(internal.body, internal.symbol, Some(this))
+
+    //Add itself to parents subclasses:
+    parentRepresentation match {
+      case Some(r: ClassRepresentation) =>
+        r.knownSubclasses = CompanionReference(internal.name, path.mkString("/", "/", ""), kind) :: r.knownSubclasses
+      case _ =>
+    }
 
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }

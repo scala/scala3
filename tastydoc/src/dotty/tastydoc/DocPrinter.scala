@@ -61,7 +61,7 @@ object DocPrinter{
 
   private def formatReferences(reference: Reference, declarationPath: List[String]) : String = reference match {
     case CompanionReference(label, link, kind) =>
-      makeLink(label, link, true, declarationPath, if(kind == "object") Some(label.stripSuffix("$")) else None)
+      makeLink(label, link, true, declarationPath, if(kind.contains("object")) Some(label.stripSuffix("$")) else None)
     case TypeReference(label, link, typeParams, hasOwnFile) =>
       if(typeParams.isEmpty){
         makeLink(label, link, hasOwnFile, declarationPath)

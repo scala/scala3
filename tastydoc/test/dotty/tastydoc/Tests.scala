@@ -61,6 +61,7 @@ class Tests {
       "-i",
       "example.level2.Documentation",
       "example.level2.ClassExtendingDocumentation",
+      "example.DocumentationInheritance",
       "example.ReturnTypeClass",
       "example.ReturnObjectWithType",
       "example.level2.SameLevelTypeLinking",

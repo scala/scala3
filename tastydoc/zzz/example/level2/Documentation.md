@@ -2,7 +2,7 @@
 
 ## Companion object <a href="./Documentation$.md">Documentation</a>
 
-<pre><code class="language-scala" >sealed abstract class Documentation[T, A <: scala.Int, B >: scala.Predef.String, X, Y] extends Seq[<a href="./Documentation.md#T">T</a>] with Product with Serializable</pre></code>
+<pre><code class="language-scala" >abstract class Documentation[T, A <: scala.Int, B >: scala.Predef.String, X, Y] extends Seq[<a href="./Documentation.md#T">T</a>] with Product with Serializable</pre></code>
 This class is used for testing tasty doc generation
 
 ***authors*** Bryan Abate
@@ -18,7 +18,7 @@ This class is used for testing tasty doc generation
 ## Annotations:
 @strictfp 
 ## Known Subclasses:
-<a href="./ClassExtendingDocumentation.md">ClassExtendingDocumentation</a>
+<a href="./Documentation/Graph.md">Graph</a>, <a href="./Documentation/testObject$.md">testObject</a>, <a href="./Documentation/IAmACaseObject$.md">IAmACaseObject</a>, <a href="./Documentation/IAmACaseClass.md">IAmACaseClass</a>, <a href="./Documentation/CaseImplementThis.md">CaseImplementThis</a>, <a href="./Documentation/innerDocumentationClass.md">innerDocumentationClass</a>
 ## Constructors:
 <pre><code class="language-scala" >Documentation(c1: String, c2: List[T])</pre></code>
 <pre><code class="language-scala" >Documentation(ac: String)</pre></code>
