@@ -68,10 +68,36 @@ class SymUtils(val self: Symbol) extends AnyVal {
    *  Excluded are value classes, abstract classes and case classes with more than one
    *  parameter section.
    */
-  def isGenericProduct(implicit ctx: Context): Boolean =
-    self.is(CaseClass, butNot = Abstract) &&
-    self.primaryConstructor.info.paramInfoss.length == 1 &&
-    !isDerivedValueClass(self)
+  def whyNotGenericProduct(implicit ctx: Context): String =
+    if (!self.is(CaseClass)) "it is not a case class"
+    else if (self.is(Abstract)) "it is an abstract class"
+    else if (self.primaryConstructor.info.paramInfoss.length != 1) "it takes more than one parameter list"
+    else if (isDerivedValueClass(self)) "it is a value class"
+    else ""
+
+  def isGenericProduct(implicit ctx: Context): Boolean = whyNotGenericProduct.isEmpty
+
+  /** Is this a sealed class or trait for which a sum mirror is generated?
+   *  Excluded are
+   */
+  def whyNotGenericSum(implicit ctx: Context): String =
+    if (!self.is(Sealed))
+      s"it is not a sealed ${if (self.is(Trait)) "trait" else "class"}"
+    else {
+      val children = self.children
+      def problem(child: Symbol) =
+        if (child == self) "it has anonymous or inaccessible subclasses"
+        else if (!child.isClass) ""
+        else {
+          val s = child.whyNotGenericProduct
+          if (s.isEmpty) s
+          else "its child $child is not a generic product because $s"
+        }
+      if (children.isEmpty) "it does not have subclasses"
+      else children.filter(_.isClass).map(problem).find(!_.isEmpty).getOrElse("")
+    }
+
+  def isGenericSum(implicit ctx: Context): Boolean = whyNotGenericSum.isEmpty
 
   /** If this is a constructor, its owner: otherwise this. */
   final def skipConstructor(implicit ctx: Context): Symbol =
@@ -160,6 +186,10 @@ class SymUtils(val self: Symbol) extends AnyVal {
     else if (owner.is(Package)) false
     else owner.isLocal
   }
+
+  /** The typeRef with wildcard arguments for each type parameter */
+  def rawTypeRef(implicit ctx: Context) =
+    self.typeRef.appliedTo(self.typeParams.map(_ => TypeBounds.empty))
 
   /** Is symbol a quote operation? */
   def isQuote(implicit ctx: Context): Boolean =

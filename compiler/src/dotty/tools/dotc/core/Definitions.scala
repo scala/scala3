@@ -697,6 +697,9 @@ class Definitions {
     lazy val Mirror_Product_fromProductR: TermRef = Mirror_ProductClass.requiredMethodRef(nme.fromProduct)
     def Mirror_Product_fromProduct(implicit ctx: Context): Symbol = Mirror_Product_fromProductR.symbol
 
+  lazy val Mirror_SumType: TypeRef = ctx.requiredClassRef("scala.deriving.Mirror.Sum")
+  def Mirror_SumClass(implicit ctx: Context): ClassSymbol = Mirror_SumType.symbol.asClass
+
   lazy val Mirror_SingletonType: TypeRef = ctx.requiredClassRef("scala.deriving.Mirror.Singleton")
   def Mirror_SingletonClass(implicit ctx: Context): ClassSymbol = Mirror_SingletonType.symbol.asClass
 

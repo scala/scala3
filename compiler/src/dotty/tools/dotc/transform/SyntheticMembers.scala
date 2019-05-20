@@ -54,9 +54,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   def caseSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myCaseSymbols }
   def caseModuleSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myCaseModuleSymbols }
 
-  private def alreadyDefined(sym: Symbol, clazz: ClassSymbol)(implicit ctx: Context): Boolean = {
+  private def existingDef(sym: Symbol, clazz: ClassSymbol)(implicit ctx: Context): Symbol = {
     val existing = sym.matchingMember(clazz.thisType)
-    existing.exists && !(existing == sym || existing.is(Deferred))
+    if (existing != sym && !existing.is(Deferred)) existing
+    else NoSymbol
   }
 
   private def synthesizeDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Context => Tree)(implicit ctx: Context): Tree =
@@ -80,7 +81,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       else Nil
 
     def syntheticDefIfMissing(sym: Symbol): List[Tree] =
-      if (alreadyDefined(sym, clazz)) Nil else syntheticDef(sym) :: Nil
+      if (existingDef(sym, clazz).exists) Nil else syntheticDef(sym) :: Nil
 
     def syntheticDef(sym: Symbol): Tree = {
       val synthetic = sym.copy(
@@ -344,42 +345,79 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       }
     }
 
+  /** For an enum T:
+   *
+   *     def ordinal(x: MonoType) = x.enumTag
+   *
+   *  For  sealed trait with children of normalized types C_1, ..., C_n:
+   *
+   *     def ordinal(x: MonoType) = x match {
+   *        case _: C_1 => 0
+   *        ...
+   *        case _: C_n => n - 1
+   *
+   *  Here, the normalized type of a class C is C[_, ...., _] with
+   *  a wildcard for each type parameter. The normalized type of an object
+   *  O is O.type.
+   */
+  def ordinalBody(cls: Symbol, param: Tree)(implicit ctx: Context): Tree =
+    if (cls.is(Enum)) param.select(nme.enumTag)
+    else {
+      val cases =
+        for ((child, idx) <- cls.children.zipWithIndex) yield {
+          val patType = if (child.isTerm) child.termRef else child.rawTypeRef
+          val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
+          CaseDef(pat, EmptyTree, Literal(Constant(idx)))
+        }
+      Match(param, cases)
+    }
+
+  /** - If `impl` is the companion of a generic sum, add `deriving.Mirror.Sum` parent
+   *    and `MonoType` and `ordinal` members.
+   *  - If `impl` is the companion of a generic product, add `deriving.Mirror.Product` parent
+   *    and `MonoType` and `fromProduct` members.
+   */
   def addMirrorSupport(impl: Template)(implicit ctx: Context): Template = {
     val clazz = ctx.owner.asClass
-    var newBody = serializableObjectMethod(clazz) ::: caseAndValueMethods(clazz) ::: impl.body
+    val linked = clazz.linkedClass
+
+    var newBody = impl.body
     var newParents = impl.parents
-    def addParent(parent: Type) = {
+    def addParent(parent: Type): Unit = {
       newParents = newParents :+ TypeTree(parent)
       val oldClassInfo = clazz.classInfo
       val newClassInfo = oldClassInfo.derivedClassInfo(
         classParents = oldClassInfo.classParents :+ parent)
       clazz.copySymDenotation(info = newClassInfo).installAfter(thisPhase)
     }
+    def addMethod(name: TermName, info: Type, body: (Symbol, Tree, Context) => Tree): Unit = {
+      val meth = ctx.newSymbol(clazz, name, Synthetic | Method, info, coord = clazz.coord)
+      if (!existingDef(meth, clazz).exists) {
+        meth.entered
+        newBody = newBody :+
+          synthesizeDef(meth, vrefss => ctx => body(linked, vrefss.head.head, ctx))
+      }
+    }
+    lazy val monoType = {
+      val monoType =
+        ctx.newSymbol(clazz, tpnme.MonoType, Synthetic, TypeAlias(linked.rawTypeRef), coord = clazz.coord)
+      existingDef(monoType, clazz).orElse {
+        newBody = newBody :+ TypeDef(monoType).withSpan(ctx.owner.span.focus)
+        monoType.entered
+      }
+    }
     if (clazz.is(Module)) {
-      if (clazz.is(Case)) addParent(defn.Mirror_SingletonType)
-      else {
-        val linked = clazz.linkedClass
-        if (linked.isGenericProduct) {
-          addParent(defn.Mirror_ProductType)
-          val rawClassType =
-            linked.typeRef.appliedTo(linked.typeParams.map(_ => TypeBounds.empty))
-          val monoType =
-            ctx.newSymbol(clazz, tpnme.MonoType, Synthetic, TypeAlias(rawClassType), coord = clazz.coord)
-          if (!alreadyDefined(monoType, clazz)) {
-            monoType.entered
-            newBody = newBody :+ TypeDef(monoType).withSpan(ctx.owner.span.focus)
-          }
-          val fromProduct =
-            ctx.newSymbol(clazz, nme.fromProduct, Synthetic | Method,
-              info = MethodType(defn.ProductType :: Nil, monoType.typeRef), coord = clazz.coord)
-          if (!alreadyDefined(fromProduct, clazz)) {
-            fromProduct.entered
-            newBody = newBody :+
-              synthesizeDef(fromProduct, vrefss => ctx =>
-                fromProductBody(linked, vrefss.head.head)(ctx)
-                  .ensureConforms(rawClassType)) // t4758.scala or i3381.scala are examples where a cast is needed
-          }
-        }
+      if (clazz.is(Case))
+        addParent(defn.Mirror_SingletonType)
+      else if (linked.isGenericProduct) {
+        addParent(defn.Mirror_ProductType)
+        addMethod(nme.fromProduct, MethodType(defn.ProductType :: Nil, monoType.typeRef),
+          fromProductBody(_, _)(_).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
+      }
+      else if (linked.isGenericSum) {
+        addParent(defn.Mirror_SumType)
+        addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType),
+          ordinalBody(_, _)(_))
       }
     }
 

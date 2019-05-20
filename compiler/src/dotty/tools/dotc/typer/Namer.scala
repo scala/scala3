@@ -868,8 +868,10 @@ class Namer { typer: Typer =>
           val child = if (denot.is(Module)) denot.sourceModule else denot.symbol
           register(child, parent)
         }
-      else if (denot.is(CaseVal, butNot = Method | Module))
+      else if (denot.is(CaseVal, butNot = Method | Module)) {
+        assert(denot.is(Enum), denot)
         register(denot.symbol, denot.info)
+      }
     }
 
     /** Intentionally left without `implicit ctx` parameter. We need
