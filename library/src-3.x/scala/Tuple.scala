@@ -32,28 +32,28 @@ sealed trait Tuple extends Any {
         DynamicTuple.dynamicToArray(this)
     }
 
-  inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This = {
-    type Result = H *: This
-    inline constValueOpt[BoundedSize[this.type]] match {
-      case Some(0) =>
-        Tuple1(x).asInstanceOf[Result]
-      case Some(1) =>
-        Tuple2(x, asInstanceOf[Tuple1[_]]._1).asInstanceOf[Result]
-      case Some(2) =>
-        val t = asInstanceOf[Tuple2[_, _]]
-        Tuple3(x, t._1, t._2).asInstanceOf[Result]
-      case Some(3) =>
-        val t = asInstanceOf[Tuple3[_, _, _]]
-        Tuple4(x, t._1, t._2, t._3).asInstanceOf[Result]
-      case Some(4) =>
-        val t = asInstanceOf[Tuple4[_, _, _, _]]
-        Tuple5(x, t._1, t._2, t._3, t._4).asInstanceOf[Result]
-      case Some(n) =>
-        knownTupleFromItrator[H *: this.type](n + 1, Iterator.single(x) ++ this.asInstanceOf[Product].productIterator)
-      case _ =>
-        DynamicTuple.dynamic_*:[This, H](this, x)
-    }
-  }
+//  inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This = {
+//    type Result = H *: This
+//    inline constValueOpt[BoundedSize[this.type]] match {
+//      case Some(0) =>
+//        Tuple1(x).asInstanceOf[Result]
+//      case Some(1) =>
+//        Tuple2(x, asInstanceOf[Tuple1[_]]._1).asInstanceOf[Result]
+//      case Some(2) =>
+//        val t = asInstanceOf[Tuple2[_, _]]
+//        Tuple3(x, t._1, t._2).asInstanceOf[Result]
+//      case Some(3) =>
+//        val t = asInstanceOf[Tuple3[_, _, _]]
+//        Tuple4(x, t._1, t._2, t._3).asInstanceOf[Result]
+//      case Some(4) =>
+//        val t = asInstanceOf[Tuple4[_, _, _, _]]
+//        Tuple5(x, t._1, t._2, t._3, t._4).asInstanceOf[Result]
+//      case Some(n) =>
+//        knownTupleFromItrator[H *: this.type](n + 1, Iterator.single(x) ++ this.asInstanceOf[Product].productIterator)
+//      case _ =>
+//        DynamicTuple.dynamic_*:[This, H](this, x)
+//    }
+//  }
 
   inline def ++ [This >: this.type <: Tuple](that: Tuple): Concat[This, that.type] = {
     type Result = Concat[This, that.type]
@@ -107,6 +107,41 @@ sealed trait Tuple extends Any {
 }
 
 object Tuple {
+
+  implicit class TupleOps[This <: Tuple](`this`: This) {
+    inline def *: [T](elem: T): T *: This = ${ impl[T, This]('elem, '{`this`}, constValueOpt[BoundedSize[This]]) }
+  }
+
+  def impl[H: scala.quoted.Type, This <: Tuple: scala.quoted.Type](elem: scala.quoted.Expr[H], tup: scala.quoted.Expr[This], size: Option[Int]): scala.quoted.Expr[H *: This] = {
+    size match {
+      case Some(0) =>
+        '{ Tuple1($elem).asInstanceOf[H *: This] }
+      case Some(1) =>
+        '{ Tuple2($elem, $tup.asInstanceOf[Tuple1[_]]._1).asInstanceOf[H *: This] }
+      case Some(2) =>
+       '{
+          val t = $tup.asInstanceOf[Tuple2[_, _]]
+          Tuple3($elem, t._1, t._2).asInstanceOf[H *: This]
+        }
+      case Some(3) =>
+       '{
+          val t = $tup.asInstanceOf[Tuple3[_, _, _]]
+          Tuple4($elem, t._1, t._2, t._3).asInstanceOf[H *: This]
+        }
+      case Some(4) =>
+        '{
+          val t = $tup.asInstanceOf[Tuple4[_, _, _, _]]
+          Tuple5($elem, t._1, t._2, t._3, t._4).asInstanceOf[H *: This]
+        }
+      case Some(n) =>
+        '{
+          val iterator = Iterator.single($elem) ++ $tup.asInstanceOf[Product].productIterator
+          ${knownTupleFromItrator[H *: This](n + 1, 'iterator)}
+        }
+      case _ =>
+        '{ runtime.DynamicTuple.dynamic_*:[This, H]($tup, $elem) }
+    }
+  }
 
   type Head[X <: NonEmptyTuple] = X match {
     case x *: _ => x
@@ -171,6 +206,34 @@ object Tuple {
       case 21 => Tuple21(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
       case 22 => Tuple22(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
       case _ => TupleXXL(it.asInstanceOf[Iterator[Object]].toArray).asInstanceOf[T]
+    }
+
+  private[scala] def knownTupleFromItrator[T <: Tuple: scala.quoted.Type](n: Int, it: scala.quoted.Expr[Iterator[Any]]): scala.quoted.Expr[T] =
+    n match {
+      case 0  => '{ ().asInstanceOf[T] }
+      case 1  => '{ Tuple1($it.next()).asInstanceOf[T] }
+      case 2  => '{ Tuple2($it.next(), $it.next()).asInstanceOf[T] }
+      case 3  => '{ Tuple3($it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 4  => '{ Tuple4($it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 5  => '{ Tuple5($it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 6  => '{ Tuple6($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 7  => '{ Tuple7($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 8  => '{ Tuple8($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 9  => '{ Tuple9($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 10 => '{ Tuple10($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 11 => '{ Tuple11($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 12 => '{ Tuple12($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 13 => '{ Tuple13($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 14 => '{ Tuple14($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 15 => '{ Tuple15($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 16 => '{ Tuple16($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 17 => '{ Tuple17($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 18 => '{ Tuple18($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 19 => '{ Tuple19($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 20 => '{ Tuple20($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 21 => '{ Tuple21($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case 22 => '{ Tuple22($it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next(), $it.next()).asInstanceOf[T] }
+      case _ => '{ TupleXXL($it.asInstanceOf[Iterator[Object]].toArray).asInstanceOf[T] }
     }
 
   def fromArray[T](xs: Array[T]): Tuple = {
