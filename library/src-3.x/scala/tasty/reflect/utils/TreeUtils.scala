@@ -23,4 +23,12 @@ trait TreeUtils {
     expr.unseal
   }
 
+  /** Bind the given `terms` to names and use them in the `body` */
+  def lets(terms: List[Term])(body: List[Term] => Term): Term = {
+    def rec(xs: List[Term], acc: List[Term]): Term = xs match {
+      case Nil => body(acc)
+      case x :: xs => let(x) { (x: Term) => rec(xs, x :: acc) }
+    }
+    rec(terms, Nil)
+  }
 }
