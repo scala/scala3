@@ -2,13 +2,16 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Symbols._, Types._, Contexts._, StdNames._, Constants._, SymUtils._
+import Symbols._, Types._, Contexts._, Names._, StdNames._, Constants._, SymUtils._
 import Flags._
 import DenotTransformers._
 import Decorators._
 import NameOps._
 import Annotations.Annotation
+import typer.ProtoTypes.constrained
+import ast.untpd
 import ValueClasses.isDerivedValueClass
+import SymUtils._
 
 /** Synthetic method implementations for case classes, case objects,
  *  and value classes.
@@ -51,6 +54,14 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
   def caseSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myCaseSymbols }
   def caseModuleSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myCaseModuleSymbols }
 
+  private def alreadyDefined(sym: Symbol, clazz: ClassSymbol)(implicit ctx: Context): Boolean = {
+    val existing = sym.matchingMember(clazz.thisType)
+    existing.exists && !(existing == sym || existing.is(Deferred))
+  }
+
+  private def synthesizeDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Context => Tree)(implicit ctx: Context): Tree =
+    DefDef(sym, rhsFn(_)(ctx.withOwner(sym))).withSpan(ctx.owner.span.focus)
+
   /** If this is a case or value class, return the appropriate additional methods,
    *  otherwise return nothing.
    */
@@ -68,36 +79,34 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
       else if (isDerivedValueClass(clazz)) valueSymbols
       else Nil
 
-    def syntheticDefIfMissing(sym: Symbol): List[Tree] = {
-      val existing = sym.matchingMember(clazz.thisType)
-      if (existing == sym || existing.is(Deferred)) syntheticDef(sym) :: Nil
-      else Nil
-    }
+    def syntheticDefIfMissing(sym: Symbol): List[Tree] =
+      if (alreadyDefined(sym, clazz)) Nil else syntheticDef(sym) :: Nil
 
     def syntheticDef(sym: Symbol): Tree = {
       val synthetic = sym.copy(
         owner = clazz,
         flags = sym.flags &~ Deferred | Synthetic | Override,
+        info = clazz.thisType.memberInfo(sym),
         coord = clazz.coord).enteredAfter(thisPhase).asTerm
 
-      def forwardToRuntime(vrefss: List[List[Tree]]): Tree =
-        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefss.head)
+      def forwardToRuntime(vrefs: List[Tree]): Tree =
+        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefs)
 
-      def ownName(vrefss: List[List[Tree]]): Tree =
+      def ownName: Tree =
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString))
 
-      def syntheticRHS(implicit ctx: Context): List[List[Tree]] => Tree = synthetic.name match {
-        case nme.hashCode_ if isDerivedValueClass(clazz) => vrefss => valueHashCodeBody
-        case nme.hashCode_ => vrefss => caseHashCodeBody
-        case nme.toString_ => if (clazz.is(ModuleClass)) ownName else forwardToRuntime
-        case nme.equals_ => vrefss => equalsBody(vrefss.head.head)
-        case nme.canEqual_ => vrefss => canEqualBody(vrefss.head.head)
-        case nme.productArity => vrefss => Literal(Constant(accessors.length))
+      def syntheticRHS(vrefss: List[List[Tree]])(implicit ctx: Context): Tree = synthetic.name match {
+        case nme.hashCode_ if isDerivedValueClass(clazz) => valueHashCodeBody
+        case nme.hashCode_ => caseHashCodeBody
+        case nme.toString_ => if (clazz.is(ModuleClass)) ownName else forwardToRuntime(vrefss.head)
+        case nme.equals_ => equalsBody(vrefss.head.head)
+        case nme.canEqual_ => canEqualBody(vrefss.head.head)
+        case nme.productArity => Literal(Constant(accessors.length))
         case nme.productPrefix => ownName
-        case nme.productElement => vrefss => productElementBody(accessors.length, vrefss.head.head)
+        case nme.productElement => productElementBody(accessors.length, vrefss.head.head)
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
-      DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic))).withSpan(ctx.owner.span.focus)
+      synthesizeDef(synthetic, syntheticRHS)
     }
 
     /** The class
@@ -289,9 +298,97 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
       Nil
   }
 
-  def addSyntheticMethods(impl: Template)(implicit ctx: Context): Template = {
+   /** The class
+     *
+     *  ```
+     *  case class C[T <: U](x: T, y: String*)
+     *  ```
+     *
+     *  gets the `fromProduct` method:
+     *
+     *  ```
+     *  def fromProduct(x$0: Product): MonoType =
+     *    new C[U](
+     *      x$0.productElement(0).asInstanceOf[U],
+     *      x$0.productElement(1).asInstanceOf[Seq[String]]: _*)
+     *  ```
+     *  where
+     *  ```
+     *  type MonoType = C[_]
+     *  ```
+     */
+    def fromProductBody(caseClass: Symbol, param: Tree)(implicit ctx: Context): Tree = {
+      val (classRef, methTpe) =
+        caseClass.primaryConstructor.info match {
+          case tl: PolyType =>
+            val (tl1, tpts) = constrained(tl, untpd.EmptyTree, alwaysAddTypeVars = true)
+            val targs =
+              for (tpt <- tpts) yield
+                tpt.tpe match {
+                  case tvar: TypeVar => tvar.instantiate(fromBelow = false)
+                }
+            (caseClass.typeRef.appliedTo(targs), tl.instantiate(targs))
+          case methTpe =>
+            (caseClass.typeRef, methTpe)
+        }
+      methTpe match {
+        case methTpe: MethodType =>
+          val elems =
+            for ((formal, idx) <- methTpe.paramInfos.zipWithIndex) yield {
+              val elem =
+                param.select(defn.Product_productElement).appliedTo(Literal(Constant(idx)))
+                  .ensureConforms(formal.underlyingIfRepeated(isJava = false))
+               if (formal.isRepeatedParam) ctx.typer.seqToRepeated(elem) else elem
+            }
+          New(classRef, elems)
+      }
+    }
+
+  def addMirrorSupport(impl: Template)(implicit ctx: Context): Template = {
     val clazz = ctx.owner.asClass
-    cpy.Template(impl)(body = serializableObjectMethod(clazz) ::: caseAndValueMethods(clazz) ::: impl.body)
+    var newBody = serializableObjectMethod(clazz) ::: caseAndValueMethods(clazz) ::: impl.body
+    var newParents = impl.parents
+    def addParent(parent: Type) = {
+      newParents = newParents :+ TypeTree(parent)
+      val oldClassInfo = clazz.classInfo
+      val newClassInfo = oldClassInfo.derivedClassInfo(
+        classParents = oldClassInfo.classParents :+ parent)
+      clazz.copySymDenotation(info = newClassInfo).installAfter(thisPhase)
+    }
+    if (clazz.is(Module)) {
+      if (clazz.is(Case)) addParent(defn.Mirror_SingletonType)
+      else {
+        val linked = clazz.linkedClass
+        if (linked.isGenericProduct) {
+          addParent(defn.Mirror_ProductType)
+          val rawClassType =
+            linked.typeRef.appliedTo(linked.typeParams.map(_ => TypeBounds.empty))
+          val monoType =
+            ctx.newSymbol(clazz, tpnme.MonoType, Synthetic, TypeAlias(rawClassType), coord = clazz.coord)
+          if (!alreadyDefined(monoType, clazz)) {
+            monoType.entered
+            newBody = newBody :+ TypeDef(monoType).withSpan(ctx.owner.span.focus)
+          }
+          val fromProduct =
+            ctx.newSymbol(clazz, nme.fromProduct, Synthetic | Method,
+              info = MethodType(defn.ProductType :: Nil, monoType.typeRef), coord = clazz.coord)
+          if (!alreadyDefined(fromProduct, clazz)) {
+            fromProduct.entered
+            newBody = newBody :+
+              synthesizeDef(fromProduct, vrefss => ctx =>
+                fromProductBody(linked, vrefss.head.head)(ctx)
+                  .ensureConforms(rawClassType)) // t4758.scala or i3381.scala are examples where a cast is needed
+          }
+        }
+      }
+    }
+
+    cpy.Template(impl)(parents = newParents, body = newBody)
   }
 
+  def addSyntheticMethods(impl: Template)(implicit ctx: Context): Template = {
+    val clazz = ctx.owner.asClass
+    addMirrorSupport(
+      cpy.Template(impl)(body = serializableObjectMethod(clazz) ::: caseAndValueMethods(clazz) ::: impl.body))
+  }
 }
