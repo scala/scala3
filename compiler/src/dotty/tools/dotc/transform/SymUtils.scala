@@ -12,6 +12,7 @@ import StdNames._
 import NameKinds._
 import Flags._
 import Annotations._
+import ValueClasses.isDerivedValueClass
 
 import language.implicitConversions
 import scala.annotation.tailrec
@@ -59,9 +60,18 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   def isSuperAccessor(implicit ctx: Context): Boolean = self.name.is(SuperAccessorName)
 
-  /** A type or term parameter or a term parameter accessor */
+  /** Is this a type or term parameter or a term parameter accessor? */
   def isParamOrAccessor(implicit ctx: Context): Boolean =
     self.is(Param) || self.is(ParamAccessor)
+
+  /** Is this a case class for which a product mirror is generated?
+   *  Excluded are value classes, abstract classes and case classes with more than one
+   *  parameter section.
+   */
+  def isGenericProduct(implicit ctx: Context): Boolean =
+    self.is(CaseClass, butNot = Abstract) &&
+    self.primaryConstructor.info.paramInfoss.length == 1 &&
+    !isDerivedValueClass(self)
 
   /** If this is a constructor, its owner: otherwise this. */
   final def skipConstructor(implicit ctx: Context): Symbol =
