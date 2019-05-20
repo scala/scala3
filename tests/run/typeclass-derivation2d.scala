@@ -14,11 +14,11 @@ object Deriving {
   sealed abstract class Mirror {
 
     /** The mirrored *-type */
-    type MonoType
+    type _MonoType
   }
-  type MirrorOf[T]        = Mirror { type MonoType = T }
-  type ProductMirrorOf[T] = Mirror.Product { type MonoType = T }
-  type SumMirrorOf[T]     = Mirror.Sum { type MonoType = T }
+  type MirrorOf[T]        = Mirror { type _MonoType = T }
+  type ProductMirrorOf[T] = Mirror.Product { type _MonoType = T }
+  type SumMirrorOf[T]     = Mirror.Sum { type _MonoType = T }
 
   object Mirror {
 
@@ -28,7 +28,7 @@ object Deriving {
       type ElemTypes <: Tuple
 
       /** The ordinal number of the case class of `x`. For enums, `ordinal(x) == x.ordinal` */
-      def ordinal(x: MonoType): Int
+      def ordinal(x: _MonoType): Int
     }
 
     /** The Mirror for a product type */
@@ -44,12 +44,12 @@ object Deriving {
       type ElemLabels <: Tuple
 
       /** Create a new instance of type `T` with elements taken from product `p`. */
-      def fromProduct(p: scala.Product): MonoType
+      def _fromProduct(p: scala.Product): _MonoType
     }
 
     trait Singleton extends Product {
-      type MonoType = this.type
-      def fromProduct(p: scala.Product) = this
+      type _MonoType = this.type
+      def _fromProduct(p: scala.Product) = this
     }
   }
 
@@ -74,7 +74,7 @@ import Deriving._
 sealed trait Lst[+T] // derives Eq, Pickler, Show
 
 object Lst extends Mirror.Sum {
-  type MonoType = Lst[_]
+  type _MonoType = Lst[_]
 
   def ordinal(x: Lst[_]) = x match {
     case x: Cons[_] => 0
@@ -82,22 +82,22 @@ object Lst extends Mirror.Sum {
   }
 
   implicit def mirror[T]: Mirror.Sum {
-    type MonoType = Lst[T]
+    type _MonoType = Lst[T]
     type ElemTypes = (Cons[T], Nil.type)
   } = this.asInstanceOf
 
   case class Cons[T](hd: T, tl: Lst[T]) extends Lst[T]
 
   object Cons extends Mirror.Product {
-    type MonoType = Lst[_]
+    type _MonoType = Lst[_]
 
     def apply[T](x: T, xs: Lst[T]): Lst[T] = new Cons(x, xs)
 
-    def fromProduct(p: Product): Cons[_] =
+    def _fromProduct(p: Product): Cons[_] =
       new Cons(productElement[Any](p, 0), productElement[Lst[Any]](p, 1))
 
     implicit def mirror[T]: Mirror.Product {
-      type MonoType = Cons[T]
+      type _MonoType = Cons[T]
       type ElemTypes = (T, Lst[T])
       type CaseLabel = "Cons"
       type ElemLabels = ("hd", "tl")
@@ -107,7 +107,7 @@ object Lst extends Mirror.Sum {
   case object Nil extends Lst[Nothing] with Mirror.Singleton {
 
     implicit def mirror: Mirror.Singleton {
-      type MonoType = Nil.type
+      type _MonoType = Nil.type
       type ElemTypes = Unit
       type CaseLabel = "Nil"
       type ElemLabels = Unit
@@ -125,13 +125,13 @@ object Lst extends Mirror.Sum {
 case class Pair[T](x: T, y: T) // derives Eq, Pickler, Show
 
 object Pair extends Mirror.Product {
-  type MonoType = Pair[_]
+  type _MonoType = Pair[_]
 
-  def fromProduct(p: Product): Pair[_] =
+  def _fromProduct(p: Product): Pair[_] =
     Pair(productElement[Any](p, 0), productElement[Any](p, 1))
 
   implicit def mirror[T]: Mirror.Product {
-    type MonoType = Pair[T]
+    type _MonoType = Pair[T]
     type ElemTypes = (T, T)
     type CaseLabel = "Pair"
     type ElemLabels = ("x", "y")
@@ -148,7 +148,7 @@ object Pair extends Mirror.Product {
 sealed trait Either[+L, +R] extends Product with Serializable // derives Eq, Pickler, Show
 
 object Either extends Mirror.Sum {
-  type MonoType = Either[_, _]
+  type _MonoType = Either[_, _]
 
   def ordinal(x: Either[_, _]) = x match {
     case x: Left[_] => 0
@@ -156,7 +156,7 @@ object Either extends Mirror.Sum {
   }
 
   implicit def mirror[L, R]: Mirror.Sum {
-    type MonoType = Either[L, R]
+    type _MonoType = Either[L, R]
     type ElemTypes = (Left[L], Right[R])
   } = this.asInstanceOf
 
@@ -169,10 +169,10 @@ case class Left[L](elem: L) extends Either[L, Nothing]
 case class Right[R](elem: R) extends Either[Nothing, R]
 
 object Left extends Mirror.Product {
-  type MonoType = Left[_]
-  def fromProduct(p: Product): Left[_] = Left(productElement[Any](p, 0))
+  type _MonoType = Left[_]
+  def _fromProduct(p: Product): Left[_] = Left(productElement[Any](p, 0))
   implicit def mirror[L]: Mirror.Product {
-    type MonoType = Left[L]
+    type _MonoType = Left[L]
     type ElemTypes = L *: Unit
     type CaseLabel = "Left"
     type ElemLabels = "x" *: Unit
@@ -180,10 +180,10 @@ object Left extends Mirror.Product {
 }
 
 object Right extends Mirror.Product {
-  type MonoType = Right[_]
-  def fromProduct(p: Product): Right[_] = Right(productElement[Any](p, 0))
+  type _MonoType = Right[_]
+  def _fromProduct(p: Product): Right[_] = Right(productElement[Any](p, 0))
   implicit def mirror[R]: Mirror.Product {
-    type MonoType = Right[R]
+    type _MonoType = Right[R]
     type ElemTypes = R *: Unit
     type CaseLabel = "Right"
     type ElemLabels = "x" *: Unit
@@ -293,11 +293,11 @@ object Pickler {
   inline def unpickleCase[T, Elems <: Tuple](buf: mutable.ListBuffer[Int], m: ProductMirrorOf[T]): T = {
     inline val size = constValue[Tuple.Size[Elems]]
     inline if (size == 0)
-      m.fromProduct(EmptyProduct)
+      m._fromProduct(EmptyProduct)
     else {
       val elems = new ArrayProduct(size)
       unpickleElems[Elems](0)(buf, elems)
-      m.fromProduct(elems)
+      m._fromProduct(elems)
     }
   }
 

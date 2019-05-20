@@ -690,6 +690,16 @@ class Definitions {
     lazy val ModuleSerializationProxyConstructor: TermSymbol =
       ModuleSerializationProxyClass.requiredMethod(nme.CONSTRUCTOR, List(ClassType(TypeBounds.empty)))
 
+  //lazy val MirrorType: TypeRef = ctx.requiredClassRef("scala.deriving.Mirror")
+  lazy val Mirror_ProductType: TypeRef = ctx.requiredClassRef("scala.deriving.Mirror.Product")
+  def Mirror_ProductClass(implicit ctx: Context): ClassSymbol = Mirror_ProductType.symbol.asClass
+
+    lazy val Mirror_Product_fromProductR: TermRef = Mirror_ProductClass.requiredMethodRef(nme.fromProduct)
+    def Mirror_Product_fromProduct(implicit ctx: Context): Symbol = Mirror_Product_fromProductR.symbol
+
+  lazy val Mirror_SingletonType: TypeRef = ctx.requiredClassRef("scala.deriving.Mirror.Singleton")
+  def Mirror_SingletonClass(implicit ctx: Context): ClassSymbol = Mirror_SingletonType.symbol.asClass
+
   lazy val GenericType: TypeRef                = ctx.requiredClassRef("scala.reflect.Generic")
   def GenericClass(implicit ctx: Context): ClassSymbol    = GenericType.symbol.asClass
   lazy val ShapeType: TypeRef                  = ctx.requiredClassRef("scala.compiletime.Shape")
