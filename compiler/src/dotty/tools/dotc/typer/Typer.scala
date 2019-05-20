@@ -1949,9 +1949,12 @@ class Typer extends Namer
    */
   def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
     tree.quoted match {
-      case untpd.Splice(innerExpr) =>
+      case untpd.Splice(innerExpr) if tree.isTerm =>
         ctx.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.sourcePos)
         typed(innerExpr, pt)
+      case untpd.TypSplice(innerType) if tree.isType =>
+        ctx.warning("Canceled splice directly inside a quote. '[ ${ XYZ } ] is equivalent to XYZ.", tree.sourcePos)
+        typed(innerType, pt)
       case quoted if quoted.isType =>
         ctx.compilationUnit.needsStaging = true
         typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), quoted :: Nil), pt)(quoteContext).withSpan(tree.span)
@@ -2027,7 +2030,7 @@ class Typer extends Namer
   def typedSplice(tree: untpd.Splice, pt: Type)(implicit ctx: Context): Tree = track("typedSplice") {
     checkSpliceOutsideQuote(tree)
     tree.expr match {
-      case untpd.Quote(innerExpr) =>
+      case untpd.Quote(innerExpr) if innerExpr.isTerm =>
         ctx.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.sourcePos)
         typed(innerExpr, pt)
       case expr =>
@@ -2062,7 +2065,13 @@ class Typer extends Namer
   def typedTypSplice(tree: untpd.TypSplice, pt: Type)(implicit ctx: Context): Tree = track("typedTypSplice") {
     ctx.compilationUnit.needsStaging = true
     checkSpliceOutsideQuote(tree)
-    typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(spliceContext).withSpan(tree.span)
+    tree.expr match {
+      case untpd.Quote(innerType) if innerType.isType =>
+        ctx.warning("Canceled quote directly inside a splice. ${ '[ XYZ ] } is equivalent to XYZ.", tree.sourcePos)
+        typed(innerType, pt)
+      case expr =>
+        typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(spliceContext).withSpan(tree.span)
+    }
   }
 
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(implicit ctx: Context): Unit = {
