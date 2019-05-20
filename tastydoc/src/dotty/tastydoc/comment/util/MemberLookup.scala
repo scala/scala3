@@ -22,7 +22,7 @@ trait MemberLookup {
         .sortBy(_.path.last)
         .headOption
 
-    /** Looks for an Representation down in the structure, if the search list is Nil,
+    /** Looks for a Representation down in the structure, if the search list is Nil,
      *  the search stops
      */
     def downwardLookup(ent: Representation with Members, search: List[String]): Option[Representation] =

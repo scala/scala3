@@ -7,36 +7,30 @@
   * Packages map
   * Figure out ShortHtml
 * CommentParser
-  * ParseWikiAtSymbol (useless?)
   * Span + error printing
 * HTMLParsers
   * Packages map
-  * Multi level list not working when ordered and unordered are combined
 * WikiParser (just error reporting (span))
   * Span + error printing
 
-* method linking
 * Markdown parser broken
 * linking method in userdoc
 
 # Other
 * handle things such as $genericCanBuildFromInfo
+* Check remaining TODOs/TOASKs
 
 # Representation
 * Make sense of the parents field
 * Id for typeparams so we can link
 * Inherited declaration
-* User doc for inherited method
 * Alias type
 * Beautify type parameters (+ variance + bound two direction)
-* Known subclasses print $
 * Rework type matching
-* Try type at top level
 * Type like Graph.Node
 
 # Output
 * Output inner class/object if not inherited
-* Class inside class print parents
 * Doc for packages
 
 # Report
@@ -47,6 +41,7 @@
 * benchmark?
 * Say everything is split into function
 * Linking to type with a def with the same name
+* Multi level list not working when ordered and unordered are combined (HTMLParsers)
 
 # To Ask
 * Too much operations on String for path?

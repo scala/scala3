@@ -82,7 +82,7 @@ object DocPrinter{
       "=> " + formatReferences(ref, declarationPath)
     case ConstantReference(label) => label
     case NamedReference(name, ref, isRepeated) => name + ": " + formatReferences(ref, declarationPath) + (if(isRepeated) "*" else "")
-    case EmptyReference => throw Exception("EmptyReference should never occur outside of conversion from reflect.")
+    case EmptyReference => ""
   }
 
   private def formatParamList(paramList: ParamList, declarationPath: List[String]) : String = paramList.list.map(x => formatReferences(x, declarationPath)).mkString(

@@ -218,18 +218,4 @@ trait CommentParser {
   /** Something that should not have happened, happened, and Scaladoc should exit. */
   private def oops(msg: String): Nothing =
     throw new IllegalArgumentException("program logic: " + msg)
-
-  /** Parses a string containing wiki syntax into a `Comment` object.
-    * Note that the string is assumed to be clean:
-    *  - Removed Scaladoc start and end markers.
-    *  - Removed start-of-line star and one whitespace afterwards (if present).
-    *  - Removed all end-of-line whitespace.
-    *  - Only `endOfLine` is used to mark line endings. */
-  // def parseWikiAtSymbol(
-  //   entity: Entity,
-  //   packages: Map[String, Package],
-  //   string: String,
-  //   span: Span,
-  //   site: Symbol
-  // ): Body = new WikiParser(entity, packages, string, span, site).document()
 }

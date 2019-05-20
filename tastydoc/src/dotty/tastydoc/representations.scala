@@ -180,7 +180,8 @@ object representations extends CommentParser with CommentCleaner {
       companionModule match {
         case Some(c) =>
           val path = extractPath(reflect)(c)
-          Some(CompanionReference(c.name + "$", path.mkString("/", "/", ""), "object"))
+           val (_, _, _, kind) = extractKind(reflect)(c.flags)
+          Some(CompanionReference(c.name + "$", path.mkString("/", "/", ""), kind))
         case None => None
       }
     }else{
@@ -188,7 +189,7 @@ object representations extends CommentParser with CommentCleaner {
         case Some(c) =>
           val path = extractPath(reflect)(c)
           val (_, _, _, kind) = extractKind(reflect)(c.flags)
-          Some(CompanionReference(c.name, path.mkString("/", "/", ""), "object"))
+          Some(CompanionReference(c.name, path.mkString("/", "/", ""), kind))
         case None => None
       }
     }
