@@ -1,6 +1,6 @@
 [link](#title-1)
 
-d
+[link to type](#T)
 d
 d
 d
@@ -8,6 +8,8 @@ d
 d
 d
 
+
+# Type T {#T}
 d
 
 
