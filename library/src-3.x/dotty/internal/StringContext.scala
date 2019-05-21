@@ -83,11 +83,8 @@ object fImpl{
   private def getPartsExprs(strCtxExpr : Expr[StringContext])(implicit reflect : Reflection): List[Expr[String]] = {
     import reflect._
     strCtxExpr.unseal.underlyingArgument match {
-      case Apply(Select(Select(Select(Ident("_root_"), "scala"), "StringContext"), "apply"), List(parts1)) =>
-        parts1.seal.cast[Seq[String]] match {
-          case ExprSeq(parts2) => parts2.toList
-          case _ => throw new Exception("Expected statically known String Context")
-        }
+      case '{ scala.StringContext(${ExprSeq(parts)}: _*) } => parts.toList
+      case '{ new scala.StringContext(${ExprSeq(parts)}: _*) } => parts.toList
       case _ => QuoteError("Expected statically known String Context")
     }
   }
