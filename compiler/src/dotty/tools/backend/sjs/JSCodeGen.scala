@@ -862,7 +862,10 @@ class JSCodeGen()(implicit ctx: Context) {
         }, label)
 
       case WhileDo(cond, body) =>
-        js.While(genExpr(cond), genStat(body))
+        val genCond =
+          if (cond == EmptyTree) js.BooleanLiteral(true)
+          else genExpr(cond)
+        js.While(genCond, genStat(body))
 
       case t: Try =>
         genTry(t, isStat)
