@@ -6,7 +6,7 @@ authorImg: /images/anatolii.png
 date: 2019-05-24
 ---
 
-Hi! In this article, we'd like to announce the 15th release of Dotty. With this release comes a bunch of improvements
+Hi! In this article, we'd like to announce the 15th release of Dotty. With this release comes a bunch of new features and improvements, such as the ability to enforce whether an operator is intended to be used in an infix position, the type safe pattern bindings and more.
 
 This release serves as a technology preview that demonstrates new
 language features and the compiler supporting them.
@@ -27,12 +27,12 @@ You can learn more about Dotty on our [website](https://dotty.epfl.ch).
 
 <!--more-->
 
-This is our 14th scheduled release according to our
-[6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
+This is our 15th scheduled release according to our
+[6-week release schedule](https://dotty.epfl.ch/docs/contributing/release.html).
 
 # What’s new in the 0.15.0-RC1 technology preview?
 ## Operator Rules
-This change addresses the problem of the regulation of whether an operator is supposed to be used in an infix position. The motivation is for the library authors to be able to enforce whether a method or a type is supposed to be used in an infix position by the users.
+This change addresses the problem of the regulation of whether an operator is supposed to be used in an infix position. The motivation is for the library authors to be able to enforce whether a method or a type is supposed to be used in an infix position by the users. This ability will help to make code bases more consistent in the way the calls to methods are performed.
 
 Methods with symbolic names like `+` are allowed to be used in an infix position by default:
 
@@ -44,7 +44,7 @@ scala> Foo(1) + Foo(2)
 val res0: Int = 3
 ```
 
-Methods with alphanumeric names are not allowed to be used in an infix position by default. Breaking this constraint will raise a deprecation warning:
+Methods with alphanumeric names are not allowed to be used in an infix position. Breaking this constraint will raise a deprecation warning:
 
 ```scala
 scala> case class Foo(x: Int) { def plus(other: Foo) = x + other.x }
@@ -62,7 +62,7 @@ scala> Foo(1).plus(Foo(2))
 val res2: Int = 3
 ```
 
-As the warning says, if you want the users of your library to be able to use it in an infix position, you can do so as follows:
+As the warning says, if you want the users of the method to be able to use it in an infix position, you can do so as follows:
 
 ```scala
 scala> import scala.annotation.infix
@@ -74,11 +74,9 @@ scala> Foo(1) plus Foo(2)
 val res3: Int = 3
 ```
 
-The above change will allow for more consistency across the code base, as the author of a method is able to make a decision on how the method is supposed to be called.
-
 To smoothen the migration, the deprecation warnings will only be emitted if you compile with the `-strict` flag under Dotty 3. Alphanumeric methods that are defined without the `@infix` annotation used in an infix position will be deprecated by default starting with Dotty 3.1.
 
-For more information, see the [documentation](http://dotty.epfl.ch/docs/reference/changed-features/operators.html#the-infix-annotation). Note that the `@alpha` annotation also described in the documentation is a work in progress and is not available in this release.
+For more information, see the the [documentation](http://dotty.epfl.ch/docs/reference/changed-features/operators.html#the-infix-annotation). Note that the `@alpha` annotation also described in the documentation is planned for the future and is not available in this release.
 
 ## `given` clause comes last
 In the previous release, you could write something like this:
@@ -99,7 +97,7 @@ Now, however, `given` clauses must come last. The above code will fail with:
 one error found
 ```
 
-The following code is the correct way to express the program in question:
+The following snippet is the correct way to express the program in question:
 
 ```scala
 implied for String = "foo"
@@ -107,7 +105,7 @@ def f(x: Int)(z: Int) given (y: String) = x + z
 f(1)(3)
 ```
 
-This change is done to reduce confusion when calling functions with mixed explicit and implied parameters.
+We changed this to reduce confusion when calling functions with mixed explicit and implied parameters.
 
 ## Type-safe Pattern Bindings
 ```scala
@@ -128,10 +126,8 @@ Dotty compiler will allow such a pattern binding only if the pattern is *irrefut
 If we want to force the pattern binding if the pattern is not irrefutable, we can do so with an annotation:
 
 ```scala
-scala> val xs: List[Any] = List("1", "2", "3")
-     | val (x: String) :: _: @unchecked = xs
-val x: String = 1
-val xs: List[Any] = List(1, 2, 3)
+  val xs: List[Any] = List("1", "2", "3")
+  val (x: String) :: _: @unchecked = xs
 ```
 
 The same is implemented for pattern bindings in `for` expressions:
@@ -142,12 +138,12 @@ The same is implemented for pattern bindings in `for` expressions:
                                      // than the right hand side expression's type Any
 ```
 
-For the migration purposes, the above change will only take effect in Dotty 3.1 by default. You can use it from Dotty 3 with the `-strict` flag.
+For the migration purposes, the above change will only take effect in Dotty 3.1. You can use it in Dotty 3 with the `-strict` flag.
 
 For more information, see the [documentation](http://dotty.epfl.ch/docs/reference/changed-features/pattern-bindings.html).
 
-## Further improvements to GADT support
-In this release, we've further improved our support for Generalised Algebraic Data Types (GADTs). Most notably, we now support variant GADTs:
+## Further improvements to Generalised Algebraic Data Types (GADTs) support
+In this release, we've further improved our support for GADTs. Most notably, we now support variant GADTs:
 
 ```scala
 enum Expr[+T] {
