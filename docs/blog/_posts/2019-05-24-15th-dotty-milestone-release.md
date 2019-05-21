@@ -81,9 +81,55 @@ To smoothen the migration, the deprecation warnings will only be emitted if you 
 For more information, see the [documentation](http://dotty.epfl.ch/docs/reference/changed-features/operators.html#the-infix-annotation). Note that the `@alpha` annotation also described in the documentation is a work in progress and is not available in this release.
 
 ## `given` clause comes last
+In the previous release, you could write something like this:
 
+```scala
+implied for String = "foo"
+def f(x: Int) given (y: String) (z: Int) = x + z
+f(1)(3)
+```
 
-### Compatibility: the `@alpha` annotation
+Now, however, `given` clauses must come last:
+
+```scala
+implied for String = "foo"
+def f(x: Int)(z: Int) given (y: String) = x + z
+f(1)(3)
+```
+
+This change is done to reduce confusion when calling functions with mixed explicit and implied parameters.
+
+## Type-safe Pattern Bindings
+```scala
+  val xs: List[Any] = List(1, 2, 3)
+  val (x: String) :: _ = xs   // error: pattern's type String is more specialized
+                              // than the right hand side expression's type Any
+```
+
+The above code will fail with a compile-time error in Dotty 3.1 and in Dotty 3 with the `-strict` flag. In contrast, in Scala 2, the above would have compiled fine but failed on runtime with an exception.
+
+Dotty compiler will allow such a pattern binding only if the pattern is *irrefutable* – that is, if the right-hand side conforms to the pattern's type. E.g. the following is OK:
+
+```scala
+  val pair = (1, true)
+  val (x, y) = pair
+```
+
+If we want to force the pattern binding if the pattern is not irrefutable, we can do so with an annotation:
+
+```scala
+  val first :: rest : @unchecked = elems   // OK
+```
+
+The same is implemented for pattern bindings in `for` expressions:
+
+```scala
+  val elems: List[Any] = List((1, 2), "hello", (3, 4))
+  for ((x, y) <- elems) yield (y, x) // error: pattern's type (Any, Any) is more specialized
+                                     // than the right hand side expression's type Any
+```
+
+For the migration purposes, the above change will only take effect in Dotty 3.1 by default. You can use it from Dotty 3 with the `-strict` flag.
 
 
 ## Other changes
