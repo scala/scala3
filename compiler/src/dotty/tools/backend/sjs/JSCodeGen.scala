@@ -446,8 +446,8 @@ class JSCodeGen()(implicit ctx: Context) {
     assert(currentClassSym.get == classSym,
         "genClassFields called with a ClassDef other than the current one")
 
-    // Non-method term members are fields
-    classSym.info.decls.filter(f => !f.is(Method) && f.isTerm).map({ f =>
+    // Term members that are neither methods nor modules are fields
+    classSym.info.decls.filter(f => !f.is(Method | Module) && f.isTerm).map({ f =>
       implicit val pos = f.span
 
       val name =
