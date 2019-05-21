@@ -1,6 +1,6 @@
 ---
 layout: blog-page
-title: Announcing Dotty 0.15.0-RC1 with TODO
+title: Announcing Dotty 0.15.0-RC1 with the new infix operator rules, type safe pattern bindings and more 
 author: Anatolii Kmetiuk
 authorImg: /images/anatolii.png
 date: 2019-05-24
