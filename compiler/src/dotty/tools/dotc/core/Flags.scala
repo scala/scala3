@@ -626,6 +626,7 @@ object Flags {
 
   /** An enum case */
   final val EnumCase: FlagConjunction = allOf(Enum, Case)
+  final val EnumCaseVal: FlagConjunction = allOf(Enum, CaseVal)
 
   /** A term parameter or parameter accessor */
   final val TermParamOrAccessor: FlagSet = Param | ParamAccessor

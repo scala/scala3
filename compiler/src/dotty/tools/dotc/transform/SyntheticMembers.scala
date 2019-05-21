@@ -423,6 +423,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       else if (linked.is(Sealed))
         derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum}")
     }
+    else if (clazz.isAnonymousClass &&
+             (clazz.owner.is(EnumCaseVal) ||
+              clazz.owner.name == nme.DOLLAR_NEW && clazz.owner.is(Synthetic)))
+      addParent(defn.Mirror_SingletonType)
     cpy.Template(impl)(parents = newParents, body = newBody)
   }
 

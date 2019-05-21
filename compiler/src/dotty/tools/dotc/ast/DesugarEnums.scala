@@ -117,14 +117,14 @@ object DesugarEnums {
         .withFlags(Override)
     def creator = New(Template(
       constr = emptyConstructor,
-      parents = enumClassRef :: TypeTree(defn.Mirror_SingletonType) :: Nil,
+      parents = enumClassRef :: Nil,
       derived = Nil,
       self = EmptyValDef,
       body = List(enumTagDef, toStringDef) ++ registerCall
     ))
     DefDef(nme.DOLLAR_NEW, Nil,
         List(List(param(nme.tag, defn.IntType), param(nme.name, defn.StringType))),
-        TypeTree(), creator)
+        TypeTree(), creator).withFlags(Private | Synthetic)
   }
 
   /** The return type of an enum case apply method and any widening methods in which
@@ -263,9 +263,7 @@ object DesugarEnums {
         DefDef(nme.toString_, Nil, Nil, TypeTree(defn.StringType), Literal(Constant(name.toString)))
           .withFlags(Override)
       val (tagMeth, scaffolding) = enumTagMeth(CaseKind.Object)
-      val impl1 = cpy.Template(impl)(
-        parents = impl.parents :+ TypeTree(defn.Mirror_SingletonType),
-        body = List(tagMeth, toStringMeth) ++ registerCall)
+      val impl1 = cpy.Template(impl)(body = List(tagMeth, toStringMeth) ++ registerCall)
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final)
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
