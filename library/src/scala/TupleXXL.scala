@@ -21,6 +21,7 @@ final class TupleXXL private (es: Array[Object]) extends Product {
   def elems: Array[Object] = es
 }
 object TupleXXL {
+  def fromIterator(elems: Iterator[Any]) = new TupleXXL(elems.map(_.asInstanceOf[Object]).toArray)
   def apply(elems: Array[Object]) = new TupleXXL(elems.clone)
   def apply(elems: Any*) = new TupleXXL(elems.asInstanceOf[Seq[Object]].toArray)
   def unapplySeq(x: TupleXXL): Option[Seq[Any]] = Some(x.elems.toSeq)

@@ -688,6 +688,10 @@ class Definitions {
     lazy val Product_productPrefixR: TermRef = ProductClass.requiredMethodRef(nme.productPrefix)
     def Product_productPrefix(implicit ctx: Context): Symbol = Product_productPrefixR.symbol
 
+  lazy val IteratorType: TypeRef = ctx.requiredClassRef("scala.collection.Iterator")
+  def IteratorClass(implicit ctx: Context): ClassSymbol = IteratorType.symbol.asClass
+  def IteratorModule(implicit ctx: Context): Symbol = IteratorClass.companionModule
+
   lazy val ModuleSerializationProxyType: TypeRef  = ctx.requiredClassRef("scala.runtime.ModuleSerializationProxy")
   def ModuleSerializationProxyClass(implicit ctx: Context): ClassSymbol = ModuleSerializationProxyType.symbol.asClass
     lazy val ModuleSerializationProxyConstructor: TermSymbol =
@@ -792,8 +796,12 @@ class Definitions {
 
   lazy val TupleTypeRef: TypeRef = ctx.requiredClassRef("scala.Tuple")
   def TupleClass(implicit ctx: Context): ClassSymbol = TupleTypeRef.symbol.asClass
+    lazy val Tuple_consR: TermRef = TupleClass.requiredMethod("*:").termRef
+    def Tuple_cons: Symbol = Tuple_consR.symbol
   lazy val NonEmptyTupleTypeRef: TypeRef = ctx.requiredClassRef("scala.NonEmptyTuple")
   def NonEmptyTupleClass(implicit ctx: Context): ClassSymbol = NonEmptyTupleTypeRef.symbol.asClass
+    lazy val NonEmptyTuple_tailR: TermRef = NonEmptyTupleClass.requiredMethod("tail").termRef
+    def NonEmptyTuple_tail: Symbol = NonEmptyTuple_tailR.symbol
 
   lazy val PairType: TypeRef = ctx.requiredClassRef("scala.*:")
   def PairClass(implicit ctx: Context): ClassSymbol = PairType.symbol.asClass
@@ -803,6 +811,19 @@ class Definitions {
 
     def TupleXXL_apply(implicit ctx: Context): Symbol =
       TupleXXLModule.info.member(nme.apply).requiredSymbol("method", nme.apply, TupleXXLModule)(_.info.isVarArgsMethod)
+    def TupleXXL_fromIterator(implicit ctx: Context): Symbol = TupleXXLModule.requiredMethod("fromIterator")
+
+  lazy val DynamicTupleModule: Symbol = ctx.requiredModule("scala.runtime.DynamicTuple")
+    lazy val DynamicTuple_consIterator: Symbol = DynamicTupleModule.requiredMethod("consIterator")
+    lazy val DynamicTuple_concatIterator: Symbol = DynamicTupleModule.requiredMethod("concatIterator")
+    lazy val DynamicTuple_dynamicApply: Symbol = DynamicTupleModule.requiredMethod("dynamicApply")
+    lazy val DynamicTuple_dynamicCons: Symbol = DynamicTupleModule.requiredMethod("dynamicCons")
+    lazy val DynamicTuple_dynamicHead: Symbol = DynamicTupleModule.requiredMethod("dynamicHead")
+    lazy val DynamicTuple_dynamicSize: Symbol = DynamicTupleModule.requiredMethod("dynamicSize")
+    lazy val DynamicTuple_dynamicTail: Symbol = DynamicTupleModule.requiredMethod("dynamicTail")
+    lazy val DynamicTuple_dynamicConcat: Symbol = DynamicTupleModule.requiredMethod("dynamicConcat")
+    lazy val DynamicTuple_dynamicToArray: Symbol = DynamicTupleModule.requiredMethod("dynamicToArray")
+    lazy val DynamicTuple_productToArray: Symbol = DynamicTupleModule.requiredMethod("productToArray")
 
   lazy val TupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.TupledFunction")
   def TupledFunctionClass(implicit ctx: Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass

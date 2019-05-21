@@ -632,14 +632,18 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     if (ctx.settings.XprintTypes.value && tree.hasType) {
       // add type to term nodes; replace type nodes with their types unless -Yprint-pos is also set.
-      def tp = tree.typeOpt match {
+      val tp1 = tree.typeOpt match {
         case tp: TermRef if tree.isInstanceOf[RefTree] && !tp.denot.isOverloaded => tp.underlying
         case tp => tp
       }
+      val tp2 = {
+        val tp = tp1.tryNormalize
+        if (tp != NoType) tp else tp1
+      }
       if (!suppressTypes)
-        txt = ("<" ~ txt ~ ":" ~ toText(tp) ~ ">").close
+        txt = ("<" ~ txt ~ ":" ~ toText(tp2) ~ ">").close
       else if (tree.isType && !homogenizedView)
-        txt = toText(tp)
+        txt = toText(tp2)
     }
     if (!suppressPositions) {
       if (printPos) {

@@ -10,8 +10,6 @@ object DynamicTuple {
   inline val MaxSpecialized = 22
   inline private val XXL = MaxSpecialized + 1
 
-  val empty$Array = Array[Object]()
-
   def to$Array(xs: Tuple, n: Int) = {
     val arr = new Array[Object](n)
     var i = 0
@@ -178,28 +176,20 @@ object DynamicTuple {
 
   def dynamicToArray(self: Tuple): Array[Object] = (self: Any) match {
     case self: Unit =>
-      scala.runtime.DynamicTuple.empty$Array
-    case self: Tuple1[_] =>
-      val t = self.asInstanceOf[Tuple1[Object]]
-      Array(t._1)
-    case self: Tuple2[_, _] =>
-      val t = self.asInstanceOf[Tuple2[Object, Object]]
-      Array(t._1, t._2)
-    case self: Tuple3[_, _, _] =>
-      val t = self.asInstanceOf[Tuple3[Object, Object, Object]]
-      Array(t._1, t._2, t._3)
-    case self: Tuple4[_, _, _, _] =>
-      val t = self.asInstanceOf[Tuple4[Object, Object, Object, Object]]
-      Array(t._1, t._2, t._3, t._4)
+      Array.emptyObjectArray
     case self: TupleXXL =>
       self.elems
     case self: Product =>
-      val arr = new Array[Object](self.productArity)
-      for (i <- 0 until arr.length) arr(i) = self.productElement(i).asInstanceOf[Object]
-      arr
+      productToArray(self)
   }
 
-  def dynamic_*: [This <: Tuple, H] (self: Tuple, x: H): H *: This = {
+  def productToArray(self: Product): Array[Object] = {
+    val arr = new Array[Object](self.productArity)
+    for (i <- 0 until arr.length) arr(i) = self.productElement(i).asInstanceOf[Object]
+    arr
+  }
+
+  def dynamicCons[This <: Tuple, H] (self: Tuple, x: H): H *: This = {
     type Result = H *: This
     (self: Any) match {
       case () =>
@@ -217,7 +207,7 @@ object DynamicTuple {
     }
   }
 
-  def dynamic_++[This <: Tuple, That <: Tuple](self: This, that: That): Concat[This, That] = {
+  def dynamicConcat[This <: Tuple, That <: Tuple](self: This, that: That): Concat[This, That] = {
     type Result = Concat[This, That]
     (this: Any) match {
       case self: Unit => return self.asInstanceOf[Result]
@@ -236,18 +226,8 @@ object DynamicTuple {
     case self: Product => self.productArity.asInstanceOf[Size[This]]
   }
 
-  def dynamicHead[This <: NonEmptyTuple] (self: This): Head[This] = {
-    type Result = Head[This]
-    val res = (self: Any) match {
-      case self: Tuple1[_] => self._1
-      case self: Tuple2[_, _] => self._1
-      case self: Tuple3[_, _, _] => self._1
-      case self: Tuple4[_, _, _, _] => self._1
-      case self: TupleXXL => self.elems(0)
-      case self: Product => self.productElement(0)
-    }
-    res.asInstanceOf[Result]
-  }
+  def dynamicHead[This <: NonEmptyTuple] (self: This): Head[This] =
+    self.asInstanceOf[Product].productElement(0).asInstanceOf[Head[This]]
 
   def dynamicTail[This <: NonEmptyTuple] (self: This): Tail[This] = {
     type Result = Tail[This]
@@ -264,9 +244,16 @@ object DynamicTuple {
   def dynamicApply[This <: NonEmptyTuple, N <: Int] (self: This, n: Int): Elem[This, N] = {
     type Result = Elem[This, N]
     val res = (self: Any) match {
+      case self: Unit => throw new IndexOutOfBoundsException(n.toString)
       case self: TupleXXL => self.elems(n)
       case self: Product => self.productElement(n)
     }
     res.asInstanceOf[Result]
   }
+
+  def consIterator(head: Any, tail: Tuple): Iterator[Any] =
+    Iterator.single(head) ++ tail.asInstanceOf[Product].productIterator
+
+  def concatIterator(tup1: Tuple, tup2: Tuple): Iterator[Any] =
+    tup1.asInstanceOf[Product].productIterator ++ tup2.asInstanceOf[Product].productIterator
 }
