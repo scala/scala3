@@ -43,7 +43,7 @@ object Test {
       {
         implicit val strToInt1 = (s: String) => 1
         implicit val strToInt2 = (s: String) => 2
-        assertEquals(foo"$s%d", List((true, 1, 1, 0, "type mismatch;\nfound   : String\nrequired: Int\nNote that implicit conversions are not applicable because they are ambiguous:\nboth value strToInt2 of type String => Int\nand value strToInt1 of type String => Int\nare possible conversion functions from String to Int")))
+        assertEquals(foo"$s%d", List((true, 1, 1, 0, "type mismatch;\nfound   : String\nrequired: Int")))
       }
 
       assertEquals(foo"$s%i", List((true, 0, 1, 1, "illegal conversion character 'i'")))
@@ -90,14 +90,14 @@ object Test {
 
     def badArgTypes(s : String) = {
       import TestFooErrors._
-      assertEquals(foo"$s%#s", List((true, 1, 1, 0, "error: type mismatch;\nfound   : String\nrequired: java.util.Formattable")))
+      assertEquals(foo"$s%#s", List((true, 1, 1, 0, "type mismatch;\nfound   : String\nrequired: java.util.Formattable")))
     }
 
     def misunderstoodConversions(t : java.util.Date, s : String) = {
       import TestFooErrors._
       assertEquals(foo"$t%tG", List((true, 0, 1, 2, "'G' doesn't seem to be a date or time conversion")))
-      assertEquals(foo$"$t%t", List((true, 0, 1, 1, "Date/time conversion must have two characters")))
-      assertEquals(foo$"$s%10.5", List((true, 0, 1, 0, "Missing conversion operator in '%10.5'; use %% for literal %, %n for newline")))
+      assertEquals(foo"$t%t", List((true, 0, 1, 1, "Date/time conversion must have two characters")))
+      assertEquals(foo"$s%10.5", List((true, 0, 1, 0, "Missing conversion operator in '%10.5'; use %% for literal %, %n for newline")))
     }
 
     def otherBrainFailures(d : Int) = {

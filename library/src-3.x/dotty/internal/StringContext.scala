@@ -11,15 +11,6 @@ object StringContext {
 
   /** Implemetation of scala.StringContext.f used in Dotty while the standard library is still not bootstrapped */
   inline def f(sc: => scala.StringContext)(args: Any*): String = ${ fImpl('sc, 'args) }
-}
-
-/** This object implements the f interpolator macro.
-  *
-  * This kind of interpolator lets the user prepend f to any string literal to create formatted strings.
-  * Every variable used in the string literal should have a format, like "%d" for integers, "%2.2f", etc.
-  * For example, f"$name%s is $height%2.2f meters tall") will return "James is 1.90 meters tall"
-  */
-object fImpl{
 
   /** This trait defines a tool to report errors/warnings that do not depend on Position. */
   trait Reporter{
@@ -80,15 +71,20 @@ object fImpl{
     * @return a list of Expr containing Strings, each corresponding to one parts of the given StringContext
     * quotes an error if the given Expr does not correspond to a StringContext
     */
-  private def getPartsExprs(strCtxExpr : Expr[StringContext])(implicit reflect : Reflection): List[Expr[String]] = {
+  def getPartsExprs(strCtxExpr : Expr[scala.StringContext])(implicit reflect : Reflection): List[Expr[String]] = {
     import reflect._
     strCtxExpr.unseal.underlyingArgument match {
-      case Apply(Select(Select(Select(Ident("_root_"), "scala"), "StringContext"), "apply"), List(parts1)) =>
+      case Apply(Select(Select(_, "StringContext") | Ident("StringContext"), "apply"), List(parts1)) =>
         parts1.seal.cast[Seq[String]] match {
           case ExprSeq(parts2) => parts2.toList
           case _ => throw new Exception("Expected statically known String Context")
         }
-      case _ => QuoteError("Expected statically known String Context")
+      case Apply(Select(New(TypeIdent("StringContext")), _), List(parts1)) =>
+        parts1.seal.cast[Seq[String]] match {
+          case ExprSeq(parts2) => parts2.toList
+          case _ => throw new Exception("Expected statically known String Context")
+        }
+      case _ => QuoteError("Expected statically known String Context") //TODO : quotes?
     }
   }
 
@@ -98,7 +94,7 @@ object fImpl{
     * @return a list of Expr containing arguments
     * quotes an error if the given Expr does not contain a list of arguments
     */
-  private def getArgsExprs(argsExpr: Expr[Seq[Any]])(implicit reflect: Reflection): List[Expr[Any]] = {
+  def getArgsExprs(argsExpr: Expr[Seq[Any]])(implicit reflect: Reflection): List[Expr[Any]] = {
     import reflect._
     argsExpr.unseal.underlyingArgument match {
       case Typed(Repeated(args, _), _) => args.map(_.seal)
@@ -188,7 +184,7 @@ object fImpl{
     * @param reporter the reporter to return any error/warning when a problem is encountered
     * @return the Expr containing the formatted and interpolated String or an error/warning report if the parameters are not correct
     */
-  private def interpolate(partsExpr : List[Expr[String]], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter)(implicit reflect: Reflection) : Expr[String] = {
+  def interpolate(partsExpr : List[Expr[String]], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter)(implicit reflect: Reflection) : Expr[String] = {
     import reflect.{Literal => LiteralTree, _}
 
     /** Checks if the number of arguments are the same as the number of formatting strings
@@ -776,7 +772,7 @@ object fImpl{
     * @return the Expr containing the interpolated String, reports an error/warning if any formatting parameter does not
     * respect the formatting rules
     */
-  final def apply(strCtxExpr: Expr[StringContext], args: Expr[Seq[Any]])(implicit reflect:Reflection): Expr[String] = {
+  final def fImpl(strCtxExpr: Expr[StringContext], args: Expr[Seq[Any]])(implicit reflect:Reflection): Expr[String] = {
     interpolate(strCtxExpr, args)
   }
 }
