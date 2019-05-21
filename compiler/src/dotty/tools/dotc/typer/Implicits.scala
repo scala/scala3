@@ -643,15 +643,12 @@ trait Implicits { self: Typer =>
     }
   }
 
-  /** Find an implicit argument for parameter `formal`.
-   *  Return a failure as a SearchFailureType in the type of the returned tree.
-   */
-  def inferImplicitArg(formal: Type, span: Span)(implicit ctx: Context): Tree = {
+  /** Handlers to synthesize implicits for special types */
+  type SpecialHandler = (Type, Span) => Context => Tree
+  type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
 
-    /** If `formal` is of the form ClassTag[T], where `T` is a class type,
-     *  synthesize a class tag for `T`.
-     */
-    def synthesizedClassTag(formal: Type): Tree = formal.argInfos match {
+  lazy val synthesizedClassTag: SpecialHandler =
+    (formal: Type, span: Span) => implicit (ctx: Context) => formal.argInfos match {
       case arg :: Nil =>
         fullyDefinedType(arg, "ClassTag argument", span) match {
           case defn.ArrayOf(elemTp) =>
@@ -673,7 +670,8 @@ trait Implicits { self: Typer =>
         EmptyTree
     }
 
-    def synthesizedTypeTag(formal: Type): Tree = {
+  lazy val synthesizedTypeTag: SpecialHandler =
+    (formal: Type, span: Span) => implicit (ctx: Context) => {
       def quotedType(t: Type) = {
         if (StagingContext.level == 0)
           ctx.compilationUnit.needsStaging = true // We will need to run ReifyQuotes
@@ -705,59 +703,60 @@ trait Implicits { self: Typer =>
       }
     }
 
-    def synthesizedTastyContext(formal: Type): Tree =
+  lazy val synthesizedTastyContext: SpecialHandler =
+    (formal: Type, span: Span) => implicit (ctx: Context) =>
       if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.TastyReflection_macroContext)
       else EmptyTree
 
-    def synthesizedTupleFunction(formal: Type): Tree = {
-      formal match {
-        case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
-          def functionTypeEqual(baseFun: Type, actualArgs: List[Type], actualRet: Type, expected: Type) = {
-            expected =:= defn.FunctionOf(actualArgs, actualRet, defn.isImplicitFunctionType(baseFun), defn.isErasedFunctionType(baseFun))
-          }
-          val arity: Int = {
-            if (defn.isErasedFunctionType(fun) || defn.isErasedFunctionType(fun)) -1 // TODO support?
-            else if (defn.isFunctionType(fun)) {
-              // TupledFunction[(...) => R, ?]
-              fun.dropDependentRefinement.dealias.argInfos match {
-                case funArgs :+ funRet if functionTypeEqual(fun, defn.tupleType(funArgs) :: Nil, funRet, tupled) =>
-                  // TupledFunction[(...funArgs...) => funRet, ?]
-                  funArgs.size
-                case _ => -1
-              }
-            } else if (defn.isFunctionType(tupled)) {
-              // TupledFunction[?, (...) => R]
-              tupled.dropDependentRefinement.dealias.argInfos match {
-                case tupledArgs :: funRet :: Nil =>
-                  defn.tupleTypes(tupledArgs) match {
-                    case Some(funArgs) if functionTypeEqual(tupled, funArgs, funRet, fun) =>
-                      // TupledFunction[?, ((...funArgs...)) => funRet]
-                      funArgs.size
-                    case _ => -1
-                  }
-                case _ => -1
-              }
+  lazy val synthesizedTupleFunction: SpecialHandler =
+    (formal: Type, span: Span) => implicit (ctx: Context) => formal match {
+      case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
+        def functionTypeEqual(baseFun: Type, actualArgs: List[Type], actualRet: Type, expected: Type) = {
+          expected =:= defn.FunctionOf(actualArgs, actualRet, defn.isImplicitFunctionType(baseFun), defn.isErasedFunctionType(baseFun))
+        }
+        val arity: Int = {
+          if (defn.isErasedFunctionType(fun) || defn.isErasedFunctionType(fun)) -1 // TODO support?
+          else if (defn.isFunctionType(fun)) {
+            // TupledFunction[(...) => R, ?]
+            fun.dropDependentRefinement.dealias.argInfos match {
+              case funArgs :+ funRet if functionTypeEqual(fun, defn.tupleType(funArgs) :: Nil, funRet, tupled) =>
+                // TupledFunction[(...funArgs...) => funRet, ?]
+                funArgs.size
+              case _ => -1
             }
-            else {
-              // TupledFunction[?, ?]
-              -1
+          } else if (defn.isFunctionType(tupled)) {
+            // TupledFunction[?, (...) => R]
+            tupled.dropDependentRefinement.dealias.argInfos match {
+              case tupledArgs :: funRet :: Nil =>
+                defn.tupleTypes(tupledArgs) match {
+                  case Some(funArgs) if functionTypeEqual(tupled, funArgs, funRet, fun) =>
+                    // TupledFunction[?, ((...funArgs...)) => funRet]
+                    funArgs.size
+                  case _ => -1
+                }
+              case _ => -1
             }
           }
-          if (arity == -1)
-            EmptyTree
-          else if (arity <= Definitions.MaxImplementedFunctionArity)
-            ref(defn.InternalTupleFunctionModule).select(s"tupledFunction$arity".toTermName).appliedToTypes(funArgs)
-          else
-            ref(defn.InternalTupleFunctionModule).select("tupledFunctionXXL".toTermName).appliedToTypes(funArgs)
-        case _ =>
+          else {
+            // TupledFunction[?, ?]
+            -1
+          }
+        }
+        if (arity == -1)
           EmptyTree
-      }
+        else if (arity <= Definitions.MaxImplementedFunctionArity)
+          ref(defn.InternalTupleFunctionModule).select(s"tupledFunction$arity".toTermName).appliedToTypes(funArgs)
+        else
+          ref(defn.InternalTupleFunctionModule).select("tupledFunctionXXL".toTermName).appliedToTypes(funArgs)
+      case _ =>
+        EmptyTree
     }
 
-    /** If `formal` is of the form Eql[T, U], try to synthesize an
-     *  `Eql.eqlAny[T, U]` as solution.
-     */
-    def synthesizedEq(formal: Type)(implicit ctx: Context): Tree = {
+  /** If `formal` is of the form Eql[T, U], try to synthesize an
+    *  `Eql.eqlAny[T, U]` as solution.
+    */
+  lazy val synthesizedEq: SpecialHandler =
+    (formal: Type, span: Span) => implicit (ctx: Context) => {
 
       /** Is there an `Eql[T, T]` instance, assuming -strictEquality? */
       def hasEq(tp: Type)(implicit ctx: Context): Boolean = {
@@ -818,10 +817,11 @@ trait Implicits { self: Typer =>
       }
     }
 
-    /** Creates a tree that will produce a ValueOf instance for the requested type.
-      * An EmptyTree is returned if materialization fails.
-      */
-    def synthesizedValueOf(formal: Type)(implicit ctx: Context): Tree = {
+  /** Creates a tree that will produce a ValueOf instance for the requested type.
+   * An EmptyTree is returned if materialization fails.
+   */
+  lazy val synthesizedValueOf: SpecialHandler =
+    (formal: Type, span: Span) => implicit (ctx: Context) => {
       def success(t: Tree) = New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
 
       formal.argTypes match {
@@ -841,10 +841,11 @@ trait Implicits { self: Typer =>
       }
     }
 
-    /** If `formal` is of the form `scala.reflect.Generic[T]` for some class type `T`,
-     *  synthesize an instance for it.
-     */
-    def synthesizedGeneric(formal: Type): Tree =
+  /** If `formal` is of the form `scala.reflect.Generic[T]` for some class type `T`,
+   *  synthesize an instance for it.
+   */
+  lazy val synthesizedGeneric: SpecialHandler =
+    (formal: Type, span: Span) => implicit (ctx: Context) =>
       formal.argTypes match {
         case arg :: Nil =>
           val pos = ctx.source.atSpan(span)
@@ -855,26 +856,44 @@ trait Implicits { self: Typer =>
           EmptyTree
       }
 
+  private var mySpecialHandlers: SpecialHandlers = null
+
+  private def specialHandlers(implicit ctx: Context) = {
+    if (mySpecialHandlers == null)
+      mySpecialHandlers = List(
+        defn.ClassTagClass -> synthesizedClassTag,
+        defn.QuotedTypeClass -> synthesizedTypeTag,
+        defn.GenericClass -> synthesizedGeneric,
+        defn.TastyReflectionClass -> synthesizedTastyContext,
+        defn.EqlClass -> synthesizedEq,
+        defn.TupledFunctionClass -> synthesizedTupleFunction,
+        defn.ValueOfClass -> synthesizedValueOf
+      )
+    mySpecialHandlers
+  }
+
+  /** Find an implicit argument for parameter `formal`.
+   *  Return a failure as a SearchFailureType in the type of the returned tree.
+   */
+  def inferImplicitArg(formal: Type, span: Span)(implicit ctx: Context): Tree = {
     inferImplicit(formal, EmptyTree, span)(ctx) match {
       case SearchSuccess(arg, _, _) => arg
       case fail @ SearchFailure(failed) =>
-        def trySpecialCase(cls: ClassSymbol, handler: Type => Tree, ifNot: => Tree) = {
-          val base = formal.baseType(cls)
-          if (base <:< formal) {
-            // With the subtype test we enforce that the searched type `formal` is of the right form
-            handler(base).orElse(ifNot)
-          }
-          else ifNot
+        def trySpecialCases(handlers: SpecialHandlers): Tree = handlers match {
+          case (cls, handler) :: rest =>
+            val base = formal.baseType(cls)
+            val result =
+              if (base <:< formal) {
+                // With the subtype test we enforce that the searched type `formal` is of the right form
+                handler(base, span)(ctx)
+              }
+              else EmptyTree
+            result.orElse(trySpecialCases(rest))
+          case Nil =>
+            failed
         }
-        if (fail.isAmbiguous) failed
-        else
-          trySpecialCase(defn.ClassTagClass, synthesizedClassTag,
-            trySpecialCase(defn.QuotedTypeClass, synthesizedTypeTag,
-              trySpecialCase(defn.GenericClass, synthesizedGeneric,
-                trySpecialCase(defn.TastyReflectionClass, synthesizedTastyContext,
-                  trySpecialCase(defn.EqlClass, synthesizedEq,
-                    trySpecialCase(defn.TupledFunctionClass, synthesizedTupleFunction,
-                      trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed)))))))
+      if (fail.isAmbiguous) failed
+      else trySpecialCases(specialHandlers)
     }
   }
 
