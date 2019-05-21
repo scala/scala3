@@ -225,9 +225,28 @@ object representations extends CommentParser with CommentCleaner {
   private def convertTypeOrBoundsToReference(reflect: Reflection)(typeOrBounds: reflect.TypeOrBounds): Reference = {
     import reflect._
 
+    def anyOrNothing(reference: Reference): Boolean = reference match {
+      case TypeReference("Any", "/scala", _, _) => true
+      case TypeReference("Nothing", "/scala", _, _) => true
+      case _ => false
+    }
+
     typeOrBounds match {
       case reflect.IsType(tpe) => convertTypeToReference(reflect)(tpe)
-      case reflect.IsTypeBounds(reflect.TypeBounds(low, hi)) => BoundsReference(convertTypeToReference(reflect)(low), convertTypeToReference(reflect)(hi))
+      case reflect.IsTypeBounds(reflect.TypeBounds(low, hi)) =>
+        val lowRef = convertTypeToReference(reflect)(low)
+        val hiRef = convertTypeToReference(reflect)(hi)
+        if(anyOrNothing(lowRef)){
+          if(anyOrNothing(hiRef)){
+            EmptyReference
+          }else{
+            hiRef
+          }
+        }else if(anyOrNothing(hiRef)){
+          lowRef
+        }else{
+          BoundsReference(lowRef, hiRef)
+        }
       case reflect.NoPrefix() => EmptyReference
     }
   }
@@ -382,6 +401,22 @@ object representations extends CommentParser with CommentCleaner {
 
   class DefRepresentation(reflect: Reflection, internal: reflect.DefDef, override val parentRepresentation: Option[Representation]) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue {
     import reflect._
+
+    // println(internal.name + "==========") //TOASK Bug again?
+    // println()
+    // private def test(sym: reflect.Symbol): Unit = sym match {
+    //   case reflect.IsClassDefSymbol(classSym) =>
+    //     print(classSym.name)
+    //     classSym.method(internal.name).filter(_.hashCode == internal.symbol.hashCode) match {
+    //       case Nil =>
+    //       case x::_ =>
+    //           print("-->")
+    //           test(x)
+    //     }
+    //   case _ =>
+    // }
+    // test(internal.symbol.owner)
+    // println()
 
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
