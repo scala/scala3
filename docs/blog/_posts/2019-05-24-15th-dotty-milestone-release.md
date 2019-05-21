@@ -78,6 +78,11 @@ The above change will allow for more consistency across the code base, as the au
 
 To smoothen the migration, the deprecation warnings will only be emitted if you compile with the `-strict` flag under Dotty 3. Alphanumeric methods that are defined without the `@infix` annotation used in an infix position will be deprecated by default starting with Dotty 3.1.
 
+For more information, see the [documentation](http://dotty.epfl.ch/docs/reference/changed-features/operators.html#the-infix-annotation). Note that the `@alpha` annotation also described in the documentation is a work in progress and is not available in this release.
+
+## `given` clause comes last
+
+
 ### Compatibility: the `@alpha` annotation
 
 
