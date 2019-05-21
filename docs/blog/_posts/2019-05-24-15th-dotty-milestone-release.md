@@ -89,7 +89,17 @@ def f(x: Int) given (y: String) (z: Int) = x + z
 f(1)(3)
 ```
 
-Now, however, `given` clauses must come last:
+Now, however, `given` clauses must come last. The above code will fail with:
+
+```
+-- Error: ../issues/Playground.scala:3:34 --------------------------------------
+3 |  def f(x: Int) given (y: String) (z: Int) = x + z
+  |                                  ^
+  |                       normal parameters cannot come after `given' clauses
+one error found
+```
+
+The following code is the correct way to express the program in question:
 
 ```scala
 implied for String = "foo"
@@ -118,7 +128,10 @@ Dotty compiler will allow such a pattern binding only if the pattern is *irrefut
 If we want to force the pattern binding if the pattern is not irrefutable, we can do so with an annotation:
 
 ```scala
-  val first :: rest : @unchecked = elems   // OK
+scala> val xs: List[Any] = List("1", "2", "3")
+     | val (x: String) :: _: @unchecked = xs
+val x: String = 1
+val xs: List[Any] = List(1, 2, 3)
 ```
 
 The same is implemented for pattern bindings in `for` expressions:
@@ -131,13 +144,13 @@ The same is implemented for pattern bindings in `for` expressions:
 
 For the migration purposes, the above change will only take effect in Dotty 3.1 by default. You can use it from Dotty 3 with the `-strict` flag.
 
+For more information, see the [documentation](http://dotty.epfl.ch/docs/reference/changed-features/pattern-bindings.html).
+
 
 ## Other changes
+Some of the other notable changes include:
 
-Some of the other changes include:
-
-- `infer` method renamed to `the`, the semantics of which is now the same as that of the `the` method of Shapeless. Namely, the implicits are resolved more precisely – see this [gist](https://gist.github.com/milessabin/8833a1dbf7e8245b30f8) for an example in Shapeless, and the Dotty [documentation](http://dotty.epfl.ch/docs/reference/contextual/inferable-params.html#querying-implied-instances) for more details.
-- The syntax of quoting and splicing was changed. Now the quoting is expressed via `'{ ... }` and `'[...]` and splicing – via `${...}` and `$id`. Please see the [documentation](http://dotty.epfl.ch/docs/reference/other-new-features/principled-meta-programming.html) for more details on these features.
+- Dotty is now fully B
 
 # Let us know what you think!
 
