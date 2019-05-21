@@ -1012,8 +1012,10 @@ class JSCodeGen()(implicit ctx: Context) {
         genJavaSeqLiteral(javaSeqLiteral)
 
       /** A Match reaching the backend is supposed to be optimized as a switch */
-      /*case mtch: Match =>
-        genMatch(mtch, isStat)*/
+      case mtch: Match =>
+        // TODO Correctly handle `Match` nodes
+        //genMatch(mtch, isStat)
+        js.Throw(js.Null())
 
       case tree: Closure =>
         genClosure(tree)
