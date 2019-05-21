@@ -981,8 +981,9 @@ class JSCodeGen()(implicit ctx: Context) {
                 currentMethodSym.get.owner == qualifier.symbol &&
                 qualifier.isInstanceOf[This]
             )
-            if (!sym.is(Mutable) && !ctorAssignment)
-              throw new FatalError(s"Assigning to immutable field ${sym.fullName} at $pos")
+            // TODO This fails for OFFSET$x fields. Re-enable when we can.
+            /*if (!sym.is(Mutable) && !ctorAssignment)
+              throw new FatalError(s"Assigning to immutable field ${sym.fullName} at $pos")*/
 
             val genQual = genExpr(qualifier)
 
