@@ -18,7 +18,7 @@
 
 # Other
 * handle things such as $genericCanBuildFromInfo
-* Check remaining TODOs/TOASKs
+* Check remaining TODOs/TOASKs/TOFIX
 
 # Representation
 * Make sense of the parents field
@@ -28,6 +28,7 @@
 * Beautify type parameters (+ variance + bound two direction)
 * Rework type matching
 * Type like Graph.Node
+* Remove artifcat and synthetic in package members
 
 # Output
 * Output inner class/object if not inherited
