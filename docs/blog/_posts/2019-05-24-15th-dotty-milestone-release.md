@@ -146,11 +146,32 @@ For the migration purposes, the above change will only take effect in Dotty 3.1 
 
 For more information, see the [documentation](http://dotty.epfl.ch/docs/reference/changed-features/pattern-bindings.html).
 
+## Further improvements to GADT support
+In this release, we've further improved our support for Generalised Algebraic Data Types (GADTs). Most notably, we now support variant GADTs:
+
+```scala
+enum Expr[+T] {
+  case StrLit(s: String) extends Expr[String]
+  case Pair[A, B](a: Expr[A], b: Expr[B]) extends Expr[(A, B)]
+}
+
+def eval[T](e: Expr[T]): T = e match {
+  case Expr.StrLit(s) => s
+  case Expr.Pair(a, b) => (eval(a), eval(b))
+}
+```
+
+We've also plugged a few soundness problems caused by inferring too much when matching on abstract, union and intersection types.
+
 
 ## Other changes
-Some of the other notable changes include:
+Some of the other notable changes include the following:
 
-- Dotty is now fully B
+- Dotty is now fully boostrapped. This means that we are able to compile Dotty with Dotty itself, and hence use all the new features in the compiler code base.
+- Singletones are now allowed in union types. E.g. the following is allowed: `object foo; type X = Int | foo.type`.
+- A bunch of improvements was made for the type inference system – see, e.g., PRs [#6454](https://github.com/lampepfl/dotty/pull/6454) and [#6467](https://github.com/lampepfl/dotty/pull/6467).
+- Improvements to the Scala 2 code support which, in particular, improves Cats support – see PRs [#6494](https://github.com/lampepfl/dotty/pull/6494) and [#6498](https://github.com/lampepfl/dotty/pull/6498).
+
 
 # Let us know what you think!
 
@@ -162,36 +183,10 @@ If you have questions or any sort of feedback, feel free to send us a message on
 
 Thank you to all the contributors who made this release possible!
 
-According to `git shortlog -sn --no-merges 0.13.0-RC1..0.14.0-RC1` these are:
+According to `git shortlog -sn --no-merges 0.14.0-RC1..0.15.0-RC1` these are:
 
 ```
-   214  Martin Odersky
-   151  Nicolas Stucki
-    71  Liu Fengyun
-    53  Guillaume Martres
-    26  Olivier Blanvillain
-    10  Aleksander Boruch-Gruszecki
-     9  Aggelos Biboudis
-     6  Miles Sabin
-     4  Allan Renucci
-     4  Dale Wijnand
-     3  Anatolii Kmetiuk
-     2  Fengyun Liu
-     2  Alex Zolotko
-     1  gnp
-     1  tim-zh
-     1  Dmitry Petrashko
-     1  Dotty CI
-     1  Jasper Moeys
-     1  Jentsch
-     1  Jim Van Horn
-     1  Lionel Parreaux
-     1  Master-Killer
-     1  Olivier ROLAND
-     1  Robert Stoll
-     1  Seth Tisue
-     1  Tomasz Godzik
-     1  Victor
+TODO
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
@@ -223,3 +218,4 @@ to make sure that our regression suite includes your library.
 [@Duhemm]: https://github.com/Duhemm
 [@AleksanderBG]: https://github.com/AleksanderBG
 [@milessabin]: https://github.com/milessabin
+[@anatoliykmetyuk]: https://github.com/anatoliykmetyuk
