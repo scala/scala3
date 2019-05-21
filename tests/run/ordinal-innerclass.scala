@@ -33,6 +33,6 @@ object Test extends App {
     }
   }
 
-  trait T1
+  sealed trait T1
   case class A1() extends T1
 }
