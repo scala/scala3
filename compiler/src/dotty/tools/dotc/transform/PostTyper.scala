@@ -122,7 +122,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case pkg: PackageClassDenotation =>
           val pobj = pkg.packageObjFor(tree.symbol)
           if (pobj.exists)
-            return transformSelect(cpy.Select(tree)(qual.select(pobj), tree.name), targs)
+            return transformSelect(cpy.Select(tree)(qual.select(pobj).withSpan(qual.span), tree.name), targs)
         case _ =>
       }
       val tree1 = super.transform(tree)
