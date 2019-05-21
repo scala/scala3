@@ -13,6 +13,7 @@ import NameKinds._
 import Flags._
 import Annotations._
 import ValueClasses.isDerivedValueClass
+import Decorators._
 
 import language.implicitConversions
 import scala.annotation.tailrec
@@ -78,23 +79,34 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isGenericProduct(implicit ctx: Context): Boolean = whyNotGenericProduct.isEmpty
 
   /** Is this a sealed class or trait for which a sum mirror is generated?
-   *  Excluded are
+   *  It must satisfy the following conditions:
+   *   - it has at least one child class or object
+   *   - none of its children are anonymous classes
+   *   - all of its children are addressable through a path from its companion object
+   *   - all of its children are generic products or singletons
    */
   def whyNotGenericSum(implicit ctx: Context): String =
     if (!self.is(Sealed))
       s"it is not a sealed ${if (self.is(Trait)) "trait" else "class"}"
     else {
       val children = self.children
-      def problem(child: Symbol) =
+      val companion = self.linkedClass
+      def problem(child: Symbol) = {
+
+        def isAccessible(sym: Symbol): Boolean =
+          companion.isContainedIn(sym) || sym.is(Module) && isAccessible(sym.owner)
+
         if (child == self) "it has anonymous or inaccessible subclasses"
+        else if (!isAccessible(child.owner)) i"its child $child is not accessible"
         else if (!child.isClass) ""
         else {
           val s = child.whyNotGenericProduct
           if (s.isEmpty) s
-          else "its child $child is not a generic product because $s"
+          else i"its child $child is not a generic product because $s"
         }
+      }
       if (children.isEmpty) "it does not have subclasses"
-      else children.filter(_.isClass).map(problem).find(!_.isEmpty).getOrElse("")
+      else children.map(problem).find(!_.isEmpty).getOrElse("")
     }
 
   def isGenericSum(implicit ctx: Context): Boolean = whyNotGenericSum.isEmpty

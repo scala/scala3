@@ -12,6 +12,7 @@ import typer.ProtoTypes.constrained
 import ast.untpd
 import ValueClasses.isDerivedValueClass
 import SymUtils._
+import config.Printers.derive
 
 /** Synthetic method implementations for case classes, case objects,
  *  and value classes.
@@ -419,8 +420,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType),
           ordinalBody(_, _)(_))
       }
+      else if (linked.is(Sealed))
+        derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum}")
     }
-
     cpy.Template(impl)(parents = newParents, body = newBody)
   }
 
