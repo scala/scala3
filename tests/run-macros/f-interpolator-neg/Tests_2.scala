@@ -40,12 +40,7 @@ object Test {
       assertEquals(foo"$f%o", List((true, 1, 1, 0, "type mismatch;\nfound   : Double\nrequired: Int")))
       assertEquals(foo"$s%e", List((true, 1, 1, 0, "type mismatch;\nfound   : String\nrequired: Double")))
       assertEquals(foo"$b%f", List((true, 1, 1, 0, "type mismatch;\nfound   : Boolean\nrequired: Double")))
-      {
-        implicit val strToInt1 = (s: String) => 1
-        implicit val strToInt2 = (s: String) => 2
-        assertEquals(foo"$s%d", List((true, 1, 1, 0, "type mismatch;\nfound   : String\nrequired: Int")))
-      }
-
+      assertEquals(foo"$s%i", List((true, 0, 1, 1, "illegal conversion character 'i'")))
       assertEquals(foo"$s%i", List((true, 0, 1, 1, "illegal conversion character 'i'")))
     }
 

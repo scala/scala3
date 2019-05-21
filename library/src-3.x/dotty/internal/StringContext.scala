@@ -517,16 +517,15 @@ object StringContext {
         * part of the allowed ones
         */
       def checkTime(part : String, partIndex : Int, conversionIndex : Int) : Unit = {
-        val partSize = part.size
-
-        if (conversionIndex == partSize - 1)
+        if (conversionIndex + 1 >= part.size)
           reporter.partError("Date/time conversion must have two characters", partIndex, conversionIndex)
-
-        part.charAt(conversionIndex + 1) match {
-          case 'H' | 'I' | 'k' | 'l' | 'M' | 'S' | 'L' | 'N' | 'p' | 'z' | 'Z' | 's' | 'Q' => //times
-          case 'B' | 'b' | 'h' | 'A' | 'a' | 'C' | 'Y' | 'y' | 'j' | 'm' | 'd' | 'e' => //dates
-          case 'R' | 'T' | 'r' | 'D' | 'F' | 'c' => //dates and times
-          case c => reporter.partError("'" + c + "' doesn't seem to be a date or time conversion", partIndex, conversionIndex + 1)
+        else {
+          part.charAt(conversionIndex + 1) match {
+            case 'H' | 'I' | 'k' | 'l' | 'M' | 'S' | 'L' | 'N' | 'p' | 'z' | 'Z' | 's' | 'Q' => //times
+            case 'B' | 'b' | 'h' | 'A' | 'a' | 'C' | 'Y' | 'y' | 'j' | 'm' | 'd' | 'e' => //dates
+            case 'R' | 'T' | 'r' | 'D' | 'F' | 'c' => //dates and times
+            case c => reporter.partError("'" + c + "' doesn't seem to be a date or time conversion", partIndex, conversionIndex + 1)
+          }
         }
       }
 
@@ -743,7 +742,7 @@ object StringContext {
     // add default format
     val parts = addDefaultFormat(partsExpr.map(literalToString))
 
-    if (!parts.isEmpty) {
+    if (!parts.isEmpty && !reporter.hasReported()) {
       if (parts.size == 1 && args.size == 0 && parts.head.size != 0){
         val argTypeWithConversion = checkPart(parts.head, 0, None, None)
         if (!reporter.hasReported())
