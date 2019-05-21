@@ -248,9 +248,13 @@ object representations extends CommentParser with CommentCleaner {
       //   println("===================")
       //   println(tp)
       //   println("paramTypes: " + paramTypes.map(convertTypeOrBoundsToReference(reflect)(_)))
-      //   println("resType: " + inner(resType.widen))
+      //   println("resType: " + inner(resType))
+      //   inner(resType) match {
+      //     case EmptyReference => ConstantReference(paramNames.head)
+      //     case ref =>
+      //   }
       //   ConstantReference(removeColorFromType(tp.show)) //TOFIX
-      // case reflect.Type.IsParamRef(reflect.Type.ParamRef(tpe, x)) => println("paramref     " + tpe.widen); ConstantReference("XXXXX")
+      // case reflect.Type.IsParamRef(reflect.Type.ParamRef(tpe, x)) => EmptyReference//println("paramref     " + tpe); ConstantReference("XXXXX")
       case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) =>
         inner(tpe) match {
           case TypeReference(label, link, _, hasOwnFile) =>
@@ -369,7 +373,7 @@ object representations extends CommentParser with CommentCleaner {
     //Add itself to parents subclasses:
     parentRepresentation match {
       case Some(r: ClassRepresentation) =>
-        r.knownSubclasses = CompanionReference(internal.name, path.mkString("/", "/", ""), kind) :: r.knownSubclasses
+        r.knownSubclasses = CompanionReference(internal.name, path.mkString("/", "/", ""), kind) :: r.knownSubclasses //Hacky solution using CompanionReference so that it is printed the way we want
       case _ =>
     }
 

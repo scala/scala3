@@ -31,7 +31,7 @@ Auxiliary constructor
 
 ## Concrete Type Members:
 ### abstractType
-<pre><code class="language-scala" >type abstractType: Nothing <: Any</pre></code>
+<pre><code class="language-scala" >type abstractType: </pre></code>
 
 ### typeExamle
 <pre><code class="language-scala" >type typeExamle: [X >: scala.Nothing <: scala.Any] => X <: [X >: scala.Nothing <: scala.Any] => scala.Predef.String</pre></code>
@@ -257,7 +257,7 @@ def someScalaCode(x: String) = println("Hello " + x)
 <pre><code class="language-scala" >def genericBuilder[B]: Builder[B, CC[B]]</pre></code>
 
 ### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
+<pre><code class="language-scala" >final def getClass(): Class[]</pre></code>
 
 ### groupBy
 <pre><code class="language-scala" >def groupBy[K](f: (A) => K): Map[K, Repr]</pre></code>
