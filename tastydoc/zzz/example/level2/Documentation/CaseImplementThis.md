@@ -4,7 +4,7 @@
 ## Constructors:
 <pre><code class="language-scala" >CaseImplementThis(id: Int)</pre></code>
 
-## Definition Members:
+## Concrete Value Members:
 ### !=
 <pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
 
@@ -36,7 +36,7 @@
 <pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
 
 ### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
+<pre><code class="language-scala" >final def getClass(): Class[]</pre></code>
 
 ### hashCode
 <pre><code class="language-scala" >def hashCode(): Int</pre></code>

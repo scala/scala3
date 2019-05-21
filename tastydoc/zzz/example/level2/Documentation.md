@@ -46,6 +46,8 @@ Auxiliary constructor
 <pre><code class="language-scala" >case class <a href="./Documentation/IAmACaseClass.md">IAmACaseClass</a></pre></code>
 ### innerDocumentationClass
 <pre><code class="language-scala" >class <a href="./Documentation/innerDocumentationClass.md">innerDocumentationClass</a></pre></code>
+### CaseImplementThis
+<pre><code class="language-scala" >sealed trait <a href="./Documentation/CaseImplementThis.md">CaseImplementThis</a></pre></code>
 ## Concrete Value Members:
 ### !=
 <pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>

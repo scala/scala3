@@ -50,3 +50,4 @@
 * Abstract flag not working
 * default value in def
 * How to remove color in show
+* Not consistant reference (f.ex object in parents)

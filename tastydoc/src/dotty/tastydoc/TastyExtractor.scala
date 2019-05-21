@@ -78,7 +78,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     }
 
     parentsReferences.filter{_ match{
-      case TypeReference("Object", "/lang", _, _) => false
+      case TypeReference("Object", "/lang", _, _) | TypeReference("Object", "/java/lang", _, _) => false
       case _ => true
     }}
   }

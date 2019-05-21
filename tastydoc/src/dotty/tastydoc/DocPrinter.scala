@@ -245,6 +245,12 @@ object DocPrinter{
 
           Md.header3(x.name) +
           formatSimplifiedClassRepresentation(x, declarationPath)
+        }.mkString("") +
+        traitMembers.filter(_.isAbstract).map{x =>
+          traverseRepresentation(x)
+
+          Md.header3(x.name) +
+          formatSimplifiedClassRepresentation(x, declarationPath)
         }.mkString("")
 
       val concreteTypeMembers =
@@ -256,6 +262,12 @@ object DocPrinter{
           formatSimplifiedClassRepresentation(x, declarationPath)
         }.mkString("") +
         classMembers.filter(!_.isAbstract).map{x =>
+          traverseRepresentation(x)
+
+          Md.header3(x.name) +
+          formatSimplifiedClassRepresentation(x, declarationPath)
+        }.mkString("") +
+        traitMembers.filter(!_.isAbstract).map{x =>
           traverseRepresentation(x)
 
           Md.header3(x.name) +
