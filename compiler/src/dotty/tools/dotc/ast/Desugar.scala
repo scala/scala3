@@ -682,7 +682,7 @@ object desugar {
         }
         companionDefs(companionParent, applyMeths ::: unapplyMeth :: companionMembers)
       }
-      else if (companionMembers.nonEmpty || companionDerived.nonEmpty || isEnum || mods.is(Sealed))
+      else if (companionMembers.nonEmpty || companionDerived.nonEmpty || isEnum)
         companionDefs(anyRef, companionMembers)
       else if (isValueClass) {
         impl.constr.vparamss match {
