@@ -150,14 +150,8 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     }
   }
 
-  def extractKnownSubclasses(reflect: Reflection)(annots: List[reflect.Term]): List[Reference] = {
-    import reflect._
-
-    annots.flatMap{a =>
-      convertTypeToReference(reflect)(a.tpe) match {
-        case ref@TypeReference(label, link, xs, _) if label == "Child" && link == "/internal" => Some(xs.head)
-        case _ => None
-      }
-    }
+  def extractPackageNameAndPath(pidShow: String): (String, List[String]) = {
+    val pidSplit = representations.removeColorFromType(pidShow).split("\\.")
+    (pidSplit.last, pidSplit.init.toList)
   }
 }

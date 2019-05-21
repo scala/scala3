@@ -143,7 +143,7 @@ object DocPrinter{
         formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
         representation.kind +
         " " +
-        makeLink(representation.name, (declarationPath :+ declarationPath.last).mkString("/", "/", ""), true, declarationPath) // TODO Need twice the last because it should be defined in a subfolder with same name otherwise makeLink thinks it is inside the defintion file
+        makeLink(representation.name, representation.path.mkString("/", "/", ""), true, declarationPath)
       , "scala") +
       "\n"
     }
@@ -235,31 +235,31 @@ object DocPrinter{
       val abstractTypeMembers =
         typeMembers.filter(_.isAbstract).map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("") +
         objectMembers.filter(_.isAbstract).map{x =>
-          traverseRepresentation(x, Set.empty)
+          traverseRepresentation(x)
 
           Md.header3(x.name) +
-          formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
+          formatSimplifiedClassRepresentation(x, declarationPath)
         }.mkString("") +
         classMembers.filter(_.isAbstract).map{x =>
-          traverseRepresentation(x, Set.empty)
+          traverseRepresentation(x)
 
           Md.header3(x.name) +
-          formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
+          formatSimplifiedClassRepresentation(x, declarationPath)
         }.mkString("")
 
       val concreteTypeMembers =
         typeMembers.filter(!_.isAbstract).map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("") +
         objectMembers.filter(!_.isAbstract).map{x =>
-          traverseRepresentation(x, Set.empty)
+          traverseRepresentation(x)
 
           Md.header3(x.name) +
-          formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
+          formatSimplifiedClassRepresentation(x, declarationPath)
         }.mkString("") +
         classMembers.filter(!_.isAbstract).map{x =>
-          traverseRepresentation(x, Set.empty)
+          traverseRepresentation(x)
 
           Md.header3(x.name) +
-          formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
+          formatSimplifiedClassRepresentation(x, declarationPath)
         }.mkString("")
 
       val abstractValueMembers =
@@ -403,19 +403,33 @@ object DocPrinter{
     "\n"
   }
 
-  def formatRepresentationToMarkdown(representation: Representation, declarationPath: List[String]): String = representation match {
+  def formatRepresentationToMarkdown(representation: Representation, declarationPath: List[String], useSimplifiedFormat: Boolean = false): String = representation match {
+    case r: EmulatedPackage =>
+      @tailrec
+      def formatMembers(seenPackages: Set[String], members: List[Representation], acc: String): (String, Set[String]) = members match {
+        case Nil => (acc, seenPackages)
+        case (x: PackageRepresentation)::xs if seenPackages.contains(x.name) => formatMembers(seenPackages, xs, acc)
+        case (x: PackageRepresentation)::xs => formatMembers(seenPackages + x.name, xs, acc + formatRepresentationToMarkdown(x, declarationPath, true))
+        case x::xs => formatMembers(seenPackages, xs, acc + formatRepresentationToMarkdown(x, declarationPath, true))
+      } //TODO check declarationPath passin is right
+
+      Md.header1("Package " + r.name) +
+      Md.header2("Members:") +
+      r.members.foldLeft(("", Set.empty[String])){(acc, p) =>
+        formatMembers(acc._2, p.members, acc._1)
+      }._1
+
     case r : PackageRepresentation =>
-      r.name +
-      "\n" +
-      r.members.map(formatRepresentationToMarkdown(_, r.path)).mkString("\n")
+      htmlPreCode("package " + makeLink(r.name, (r.path :+ r.name).mkString("/", "/", ""), true, declarationPath), "scala") //Package file are at one level below the current package
 
-    case r: ImportRepresentation =>
-      "import " +
-      r.path.mkString("", ".", ".") +
-      r.name +
-      "\n"
+    case r: ImportRepresentation => ""
 
-    case r: ClassRepresentation => formatClassRepresentation(r, declarationPath)
+    case r: ClassRepresentation =>
+      if(useSimplifiedFormat){
+        formatSimplifiedClassRepresentation(r, declarationPath)
+      }else{
+        formatClassRepresentation(r, declarationPath)
+      }
 
     case r: DefRepresentation => formatDefRepresentation(r, declarationPath)
 
@@ -427,14 +441,12 @@ object DocPrinter{
   //TODO: Remove zzz
   val folderPrefix = "tastydoc/zzz/"
   //TOASK: Path in representation with or without name at the end?
-  def traverseRepresentation(representation: Representation, packagesSet: Set[(List[String], String)]) : Set[(List[String], String)] = representation match {
+  def traverseRepresentation(representation: Representation): Unit = representation match {
+    case r: EmulatedPackage =>
+      r.members.foreach(traverseRepresentation)
+
     case r: PackageRepresentation =>
-      if(r.path.nonEmpty && r.name != "<empty>"){
-        val z = packagesSet + ((r.path, "package " + Md.link(r.name, "./" + r.path.last + "/" + r.name + ".md")))
-        r.members.foldLeft(z)((acc, m) => traverseRepresentation(m, acc))
-      }else{
-        r.members.foldLeft(packagesSet)((acc, m) => traverseRepresentation(m, acc))
-      }
+      r.members.foreach(traverseRepresentation)
 
     case r: ClassRepresentation =>
       val filename = if(r.isObject) r.name + "$" else r.name
@@ -444,12 +456,6 @@ object DocPrinter{
       pw.write(formatRepresentationToMarkdown(r, r.path))
       pw.close
 
-      packagesSet + ((r.path, formatSimplifiedClassRepresentation(r, r.path)))
-
-    case r: DefRepresentation => packagesSet + ((r.path, formatDefRepresentation(r, r.path)))
-
-    case r: ValRepresentation => packagesSet + ((r.path, formatValRepresentation(r, r.path)))
-
-    case _ => packagesSet
+    case _ =>
   }
 }

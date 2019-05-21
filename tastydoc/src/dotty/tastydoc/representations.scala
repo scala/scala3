@@ -24,7 +24,7 @@ object representations extends TastyExtractor {
   }
 
   trait Members {
-    val members : List[Representation]
+    def members : List[Representation] //Is a def because so we can override with either a var or a val (Needed for EmulatedPackage) //TOASK Efficiency + is ok
   }
 
   trait Modifiers {
@@ -65,13 +65,16 @@ object representations extends TastyExtractor {
     val typeParams: List[String]
   }
 
+  class EmulatedPackage(val name: String, val path: List[String], val comments: Option[Comment]) extends Representation with Members { //This contains all the packages representing a single package
+    override val parentRepresentation = None
+    override val annotations = Nil
+    var members: List[PackageRepresentation] = Nil
+  }
+
   class PackageRepresentation(reflect: Reflection, internal: reflect.PackageClause, override val parentRepresentation: Option[Representation]) extends Representation with Members {
     import reflect._
 
-    override val (name, path) = {
-      val pidSplit = internal.pid.symbol.show.split("\\.")
-      (pidSplit.last, pidSplit.init.toList)
-    }
+    override val (name, path) = extractPackageNameAndPath(internal.pid.show)
     override val members = internal.stats.map(convertToRepresentation(reflect)(_, Some(this)))
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
 
@@ -195,11 +198,23 @@ object representations extends TastyExtractor {
     override val comments = extractComments(reflect)(internal.symbol.comment, this)
   }
 
-  def convertToRepresentation(reflect: Reflection)(tree: reflect.Tree, parentRepresentation: Option[Representation]) = {
+  def convertToRepresentation(reflect: Reflection)(tree: reflect.Tree, parentRepresentation: Option[Representation]): Representation = {
     import reflect._
 
     tree match {
-      case IsPackageClause(t@reflect.PackageClause(_)) => new PackageRepresentation(reflect, t, parentRepresentation)
+      case IsPackageClause(t@reflect.PackageClause(_)) =>
+        val noColorPid = removeColorFromType(t.pid.symbol.show)
+        val emulatedPackage = TastydocConsumer.mutablePackagesMap.get(noColorPid) match {
+          case Some(x) => x
+          case None =>
+            val (name, path) = extractPackageNameAndPath(t.pid.symbol.show)
+            val x = new EmulatedPackage(name, path, None)
+            TastydocConsumer.mutablePackagesMap += ((noColorPid, x))
+            x
+        }
+        val r = new PackageRepresentation(reflect, t, parentRepresentation)
+        emulatedPackage.members = r :: emulatedPackage.members
+        r
 
       case IsImport(t@reflect.Import(_)) => new ImportRepresentation(reflect, t, parentRepresentation)
 
@@ -207,7 +222,7 @@ object representations extends TastyExtractor {
 
       case IsDefDef(t@reflect.DefDef(_)) => new DefRepresentation(reflect, t, parentRepresentation)
 
-      case IsValDef(t@reflect.ValDef(_)) => new ValRepresentation(reflect, t, parentRepresentation) //TODO: contains object too, separate from Val
+      case IsValDef(t@reflect.ValDef(_)) => new ValRepresentation(reflect, t, parentRepresentation)
 
       case IsTypeDef(t@reflect.TypeDef(_)) => new TypeRepresentation(reflect, t, parentRepresentation)
 

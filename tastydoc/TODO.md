@@ -49,3 +49,4 @@
 * Case classes are linked right now
 * Abstract flag not working
 * default value in def
+* How to remove color in show

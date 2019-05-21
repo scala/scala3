@@ -18,7 +18,7 @@ trait CommentParser {
    */
   def parse(
     //representation: Representation,
-    packages: Map[String, Package],
+    packages: Map[String, PackageRepresentation],
     comment: List[String],
     src: String,
     // span: Span,
