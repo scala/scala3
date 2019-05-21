@@ -16,9 +16,6 @@ object Deriving {
     /** The mirrored *-type */
     type _MonoType
   }
-  type MirrorOf[T]        = Mirror { type _MonoType = T }
-  type ProductMirrorOf[T] = Mirror.Product { type _MonoType = T }
-  type SumMirrorOf[T]     = Mirror.Sum { type _MonoType = T }
 
   object Mirror {
 
@@ -51,7 +48,10 @@ object Deriving {
       type _MonoType = this.type
       def _fromProduct(p: scala.Product) = this
     }
-  }
+    type Of[T]        = Mirror { type _MonoType = T }
+    type ProductOf[T] = Mirror.Product { type _MonoType = T }
+    type SumOf[T]     = Mirror.Sum { type _MonoType = T }
+   }
 
   /** Helper class to turn arrays into products */
   class ArrayProduct(val elems: Array[AnyRef]) extends Product {
@@ -212,7 +212,7 @@ object Eq {
         true
     }
 
-  inline def eqlProduct[T](m: ProductMirrorOf[T])(x: Any, y: Any): Boolean =
+  inline def eqlProduct[T](m: Mirror.ProductOf[T])(x: Any, y: Any): Boolean =
     eqlElems[m.ElemTypes](0)(x, y)
 
   inline def eqlCases[Alts](n: Int)(x: Any, y: Any, ord: Int): Boolean =
@@ -220,20 +220,20 @@ object Eq {
       case _: (alt *: alts1) =>
         if (ord == n)
           implicit match {
-            case m: ProductMirrorOf[`alt`] => eqlElems[m.ElemTypes](0)(x, y)
+            case m: Mirror.ProductOf[`alt`] => eqlElems[m.ElemTypes](0)(x, y)
           }
         else eqlCases[alts1](n + 1)(x, y, ord)
       case _: Unit =>
         false
     }
 
-  inline def derived[T](implicit ev: MirrorOf[T]): Eq[T] = new Eq[T] {
+  inline def derived[T](implicit ev: Mirror.Of[T]): Eq[T] = new Eq[T] {
     def eql(x: T, y: T): Boolean =
       inline ev match {
-        case m: SumMirrorOf[T] =>
+        case m: Mirror.SumOf[T] =>
           val ord = m.ordinal(x)
           ord == m.ordinal(y) && eqlCases[m.ElemTypes](0)(x, y, ord)
-        case m: ProductMirrorOf[T] =>
+        case m: Mirror.ProductOf[T] =>
           eqlElems[m.ElemTypes](0)(x, y)
       }
   }
@@ -272,7 +272,7 @@ object Pickler {
       case _: (alt *: alts1) =>
         if (ord == n)
           implicit match {
-            case m: ProductMirrorOf[`alt`] => pickleElems[m.ElemTypes](0)(buf, x)
+            case m: Mirror.ProductOf[`alt`] => pickleElems[m.ElemTypes](0)(buf, x)
           }
         else pickleCases[alts1](n + 1)(buf, x, ord)
       case _: Unit =>
@@ -290,7 +290,7 @@ object Pickler {
       case _: Unit =>
     }
 
-  inline def unpickleCase[T, Elems <: Tuple](buf: mutable.ListBuffer[Int], m: ProductMirrorOf[T]): T = {
+  inline def unpickleCase[T, Elems <: Tuple](buf: mutable.ListBuffer[Int], m: Mirror.ProductOf[T]): T = {
     inline val size = constValue[Tuple.Size[Elems]]
     inline if (size == 0)
       m._fromProduct(EmptyProduct)
@@ -306,7 +306,7 @@ object Pickler {
       case _: (alt *: alts1) =>
         if (ord == n)
           implicit match {
-            case m: ProductMirrorOf[`alt` & T] =>
+            case m: Mirror.ProductOf[`alt` & T] =>
               unpickleCase[`alt` & T, m.ElemTypes](buf, m)
           }
         else unpickleCases[T, alts1](n + 1)(buf, ord)
@@ -314,22 +314,22 @@ object Pickler {
         throw new IndexOutOfBoundsException(s"unexpected ordinal number: $ord")
     }
 
-  inline def derived[T](implicit ev: MirrorOf[T]): Pickler[T] = new {
+  inline def derived[T](implicit ev: Mirror.Of[T]): Pickler[T] = new {
     def pickle(buf: mutable.ListBuffer[Int], x: T): Unit =
       inline ev match {
-        case m: SumMirrorOf[T] =>
+        case m: Mirror.SumOf[T] =>
           val ord = m.ordinal(x)
           buf += ord
           pickleCases[m.ElemTypes](0)(buf, x, ord)
-        case m: ProductMirrorOf[T] =>
+        case m: Mirror.ProductOf[T] =>
           pickleElems[m.ElemTypes](0)(buf, x)
       }
     def unpickle(buf: mutable.ListBuffer[Int]): T =
       inline ev match {
-        case m: SumMirrorOf[T] =>
+        case m: Mirror.SumOf[T] =>
           val ord = nextInt(buf)
           unpickleCases[T, m.ElemTypes](0)(buf, ord)
-        case m: ProductMirrorOf[T] =>
+        case m: Mirror.ProductOf[T] =>
           unpickleCase[T, m.ElemTypes](buf, m)
       }
   }
@@ -365,7 +365,7 @@ object Show {
         Nil
   }
 
-  inline def showCase(x: Any, m: ProductMirrorOf[_]): String = {
+  inline def showCase(x: Any, m: Mirror.ProductOf[_]): String = {
     val label = constValue[m.CaseLabel]
     inline m match {
       case m: Mirror.Singleton => label
@@ -378,7 +378,7 @@ object Show {
       case _: (alt *: alts1) =>
         if (ord == n)
           implicit match {
-            case m: ProductMirrorOf[`alt`] =>
+            case m: Mirror.ProductOf[`alt`] =>
               showCase(x, m)
           }
         else showCases[alts1](n + 1)(x, ord)
@@ -386,13 +386,13 @@ object Show {
         throw new MatchError(x)
     }
 
-  inline def derived[T](implicit ev: MirrorOf[T]): Show[T] = new {
+  inline def derived[T](implicit ev: Mirror.Of[T]): Show[T] = new {
     def show(x: T): String =
       inline ev match {
-        case m: SumMirrorOf[T] =>
+        case m: Mirror.SumOf[T] =>
           val ord = m.ordinal(x)
           showCases[m.ElemTypes](0)(x, ord)
-        case m: ProductMirrorOf[T] =>
+        case m: Mirror.ProductOf[T] =>
           showCase(x, m)
       }
   }

@@ -37,18 +37,18 @@ object deriving {
       def fromProduct(p: scala.Product): MonoType
     }
 
-    trait Singleton extends Product with scala.Product {
+    trait Singleton extends Product {
       type MonoType = this.type
       def fromProduct(p: scala.Product) = this
 
       def productElement(n: Int): Any = throw new IndexOutOfBoundsException(n.toString)
       def productArity: Int = 0
     }
-  }
 
-  type MirrorOf[T]        = Mirror { type MonoType = T }
-  type ProductMirrorOf[T] = Mirror.Product { type MonoType = T }
-  type SumMirrorOf[T]     = Mirror.Sum { type MonoType = T }
+    type Of[T]        = Mirror { type MonoType = T }
+    type ProductOf[T] = Mirror.Product { type MonoType = T }
+    type SumOf[T]     = Mirror.Sum { type MonoType = T }
+  }
 
   /** Helper class to turn arrays into products */
   class ArrayProduct(val elems: Array[AnyRef]) extends Product {
