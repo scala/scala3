@@ -6,7 +6,7 @@ authorImg: /images/anatolii.png
 date: 2019-05-24
 ---
 
-Hi! In this article, we'd like to announce the 15th release of Dotty. The most exciting thing in this release is the full bootstrap for Dotty introduced by PR [#5923](https://github.com/lampepfl/dotty/pull/5923). This means that we are able to compile Dotty with Dotty itself, and hence use all the new features in the compiler code base.
+Hi! We are very excited to announce the 15th release of Dotty. The most exciting thing in this release is the full bootstrap for Dotty introduced by PR [#5923](https://github.com/lampepfl/dotty/pull/5923)🎉😍. This means that we are able to compile Dotty with Dotty itself, hence use all the new features in the compiler code base.
 
 With this release comes a bunch of new features and improvements, such as the ability to enforce whether an operator is intended to be used in an infix position, the type safe pattern bindings and more.
 
@@ -33,6 +33,11 @@ This is our 15th scheduled release according to our
 [6-week release schedule](https://dotty.epfl.ch/docs/contributing/release.html).
 
 # What’s new in the 0.15.0-RC1 technology preview?
+## Full Bootstrap
+Bootstrapping Dotty is a big milestone for us and in compiler construction in general. Firstly, we feel more confident that our compiler works as is (even without reusing the new features). Secondly, in the immediate future, we will be able to reuse many of the features that dotty proposes within dotty itself. For example, we have no fewer than 2641 occurrences of the text string (implicit ctx: Context) in the compiler that we can scrap with [Contextual Function types](https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html). Big milestones have high risk/high gain and we must be attentive. That is the reason that we will wait a bit until we start using new features. Consequently, at the moment we cross-compile the build with 2.12 on the CI so that we don't accidentally start using Dotty features in case we need to revise the bootstrap process (we'll start using Dotty features eventually, but let's wait until we're confident that this setup works well enough).
+
+Check the following for more information [#5923 (comment)](https://github.com/lampepfl/dotty/pull/5923#issuecomment-485421148) and please let us know if you have any incremental compilation issues or anything else!
+
 ## Operator Rules
 This change addresses the problem of the regulation of whether an operator is supposed to be used in an infix position. The motivation is for the library authors to be able to enforce whether a method or a type is supposed to be used in an infix position by the users. This ability will help to make code bases more consistent in the way the calls to methods are performed.
 
