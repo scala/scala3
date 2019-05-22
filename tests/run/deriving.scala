@@ -4,6 +4,9 @@ object T
 case class A(x: Int, y: Int) extends T
 case object B extends T
 
+sealed trait U
+case class C() extends U
+
 object Test extends App {
   import deriving.{Mirror, EmptyProduct}
 
@@ -23,5 +26,9 @@ object Test extends App {
   the[Mirror.Of[T]] match {
     case m: Mirror.SumOf[T] =>
       println(m.ordinal(B))
+  }
+  the[Mirror.Of[U]] match {
+    case m: Mirror.SumOf[U] =>
+      println(m.ordinal(C()))
   }
 }

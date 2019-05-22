@@ -10,10 +10,19 @@ import NameOps._
 import Annotations.Annotation
 import typer.ProtoTypes.constrained
 import ast.untpd
-import ast.DesugarEnums.SingletonCase
 import ValueClasses.isDerivedValueClass
 import SymUtils._
+import util.Property
 import config.Printers.derive
+
+object SyntheticMembers {
+
+  /** Attachment marking an anonymous class as a singleton case that will extend from Mirror.Singleton. */
+  val ExtendsSingletonMirror: Property.StickyKey[Unit] = new Property.StickyKey
+
+  /** Attachment marking an anonymous class as a sum mirror that will extends from Mirror.Sum. */
+  val ExtendsSumMirror: Property.StickyKey[Unit] = new Property.StickyKey
+}
 
 /** Synthetic method implementations for case classes, case objects,
  *  and value classes.
@@ -38,6 +47,7 @@ import config.Printers.derive
  *    def hashCode(): Int
  */
 class SyntheticMembers(thisPhase: DenotTransformer) {
+  import SyntheticMembers._
   import ast.tpd._
 
   private[this] var myValueSymbols: List[Symbol] = Nil
@@ -381,7 +391,6 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    */
   def addMirrorSupport(impl: Template)(implicit ctx: Context): Template = {
     val clazz = ctx.owner.asClass
-    val linked = clazz.linkedClass
 
     var newBody = impl.body
     var newParents = impl.parents
@@ -392,40 +401,56 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         classParents = oldClassInfo.classParents :+ parent)
       clazz.copySymDenotation(info = newClassInfo).installAfter(thisPhase)
     }
-    def addMethod(name: TermName, info: Type, body: (Symbol, Tree, Context) => Tree): Unit = {
+    def addMethod(name: TermName, info: Type, cls: Symbol, body: (Symbol, Tree, Context) => Tree): Unit = {
       val meth = ctx.newSymbol(clazz, name, Synthetic | Method, info, coord = clazz.coord)
       if (!existingDef(meth, clazz).exists) {
         meth.entered
         newBody = newBody :+
-          synthesizeDef(meth, vrefss => ctx => body(linked, vrefss.head.head, ctx))
+          synthesizeDef(meth, vrefss => ctx => body(cls, vrefss.head.head, ctx))
       }
     }
+    val linked = clazz.linkedClass
     lazy val monoType = {
-      val monoType =
-        ctx.newSymbol(clazz, tpnme.MonoType, Synthetic, TypeAlias(linked.rawTypeRef), coord = clazz.coord)
-      existingDef(monoType, clazz).orElse {
+      val existing = clazz.info.member(tpnme.MonoType).symbol
+      if (existing.exists && !existing.is(Deferred)) existing
+      else {
+        val monoType =
+          ctx.newSymbol(clazz, tpnme.MonoType, Synthetic, TypeAlias(linked.rawTypeRef), coord = clazz.coord)
         newBody = newBody :+ TypeDef(monoType).withSpan(ctx.owner.span.focus)
         monoType.entered
       }
     }
+    def makeSingletonMirror() =
+      addParent(defn.Mirror_SingletonType)
+    def makeProductMirror() = {
+      addParent(defn.Mirror_ProductType)
+      addMethod(
+        nme.fromProduct,
+        MethodType(defn.ProductType :: Nil, monoType.typeRef),
+        linked,
+        fromProductBody(_, _)(_).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
+    }
+    def makeSumMirror(cls: Symbol) = {
+      addParent(defn.Mirror_SumType)
+      addMethod(
+        nme.ordinal,
+        MethodType(monoType.typeRef :: Nil, defn.IntType),
+        cls,
+        ordinalBody(_, _)(_))
+    }
+
     if (clazz.is(Module)) {
-      if (clazz.is(Case))
-        addParent(defn.Mirror_SingletonType)
-      else if (linked.isGenericProduct) {
-        addParent(defn.Mirror_ProductType)
-        addMethod(nme.fromProduct, MethodType(defn.ProductType :: Nil, monoType.typeRef),
-          fromProductBody(_, _)(_).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
-      }
-      else if (linked.isGenericSum) {
-        addParent(defn.Mirror_SumType)
-        addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType),
-          ordinalBody(_, _)(_))
-      }
+      if (clazz.is(Case)) makeSingletonMirror()
+      else if (linked.isGenericProduct) makeProductMirror()
+      else if (linked.isGenericSum) makeSumMirror(linked)
       else if (linked.is(Sealed))
         derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum}")
     }
-    else if (impl.removeAttachment(SingletonCase).isDefined)
-      addParent(defn.Mirror_SingletonType)
+    else if (impl.removeAttachment(ExtendsSingletonMirror).isDefined)
+      makeSingletonMirror()
+    else if (impl.removeAttachment(ExtendsSumMirror).isDefined)
+      makeSumMirror(monoType.typeRef.dealias.classSymbol)
+
     cpy.Template(impl)(parents = newParents, body = newBody)
   }
 

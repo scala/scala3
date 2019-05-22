@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import ast.{Trees, TreeTypeMap, untpd, tpd}
+import ast.{Trees, TreeTypeMap, untpd, tpd, DesugarEnums}
 import util.Spans._
 import util.Stats.{track, record, monitored}
 import printing.{Showable, Printer}
@@ -29,6 +29,7 @@ import Inferencing.fullyDefinedType
 import Trees._
 import transform.SymUtils._
 import transform.TypeUtils._
+import transform.SyntheticMembers.ExtendsSumMirror
 import Hashable._
 import util.{Property, SourceFile, NoSource}
 import config.Config
@@ -925,8 +926,22 @@ trait Implicits { self: Typer =>
               .refinedWith(tpnme.MonoType, monoAlias)
               .refinedWith(tpnme.ElemTypes, TypeAlias(TypeOps.nestedPairs(elemTypes)))
           var modul = cls.linkedClass.sourceModule
-          if (!modul.exists) ???
-          ref(modul).withSpan(span).cast(mirrorType)
+          val mirrorRef =
+            if (modul.exists) ref(modul).withSpan(span)
+            else {
+              // create an anonymous class `new Object { type MonoType = ... }`
+              // and mark it so that it is made into a `Mirror.Sum` at PostTyper.
+              val monoTypeDef = untpd.TypeDef(tpnme.MonoType, untpd.TypeTree(monoType))
+              val newImpl = untpd.Template(
+                constr = untpd.emptyConstructor,
+                parents = untpd.TypeTree(defn.ObjectType) :: Nil,
+                derived = Nil,
+                self = EmptyValDef,
+                body = monoTypeDef :: Nil
+              ).withAttachment(ExtendsSumMirror, ())
+              typed(untpd.New(newImpl).withSpan(span))
+            }
+          mirrorRef.cast(mirrorType)
         case _ =>
           EmptyTree
       }

@@ -8,6 +8,7 @@ import Symbols._, StdNames._, Trees._
 import Decorators._
 import util.{Property, SourceFile}
 import typer.ErrorReporting._
+import transform.SyntheticMembers.ExtendsSingletonMirror
 
 import scala.annotation.internal.sharable
 
@@ -21,9 +22,6 @@ object DesugarEnums {
 
   /** Attachment containing the number of enum cases and the smallest kind that was seen so far. */
   val EnumCaseCount: Property.Key[(Int, DesugarEnums.CaseKind.Value)] = new Property.Key
-
-  /** Attachment marking an anonymous class as a singleton case. */
-  val SingletonCase: Property.StickyKey[Unit] = new Property.StickyKey
 
   /** The enumeration class that belongs to an enum case. This works no matter
    *  whether the case is still in the enum class or it has been transferred to the
@@ -124,7 +122,7 @@ object DesugarEnums {
       derived = Nil,
       self = EmptyValDef,
       body = List(enumTagDef, toStringDef) ++ registerCall
-    ).withAttachment(SingletonCase, ()))
+    ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW, Nil,
         List(List(param(nme.tag, defn.IntType), param(nme.name, defn.StringType))),
         TypeTree(), creator).withFlags(Private | Synthetic)
@@ -267,7 +265,7 @@ object DesugarEnums {
           .withFlags(Override)
       val (tagMeth, scaffolding) = enumTagMeth(CaseKind.Object)
       val impl1 = cpy.Template(impl)(body = List(tagMeth, toStringMeth) ++ registerCall)
-        .withAttachment(SingletonCase, ())
+        .withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final)
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
