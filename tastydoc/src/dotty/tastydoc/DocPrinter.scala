@@ -416,20 +416,14 @@ object DocPrinter{
   }
 
   def formatRepresentationToMarkdown(representation: Representation, declarationPath: List[String], useSimplifiedFormat: Boolean = false): String = representation match {
-    case r: EmulatedPackage =>
-      @tailrec
-      def formatMembers(seenPackages: Set[String], members: List[Representation], acc: String): (String, Set[String]) = members match {
-        case Nil => (acc, seenPackages)
-        case (x: PackageRepresentation)::xs if seenPackages.contains(x.name) => formatMembers(seenPackages, xs, acc)
-        case (x: PackageRepresentation)::xs => formatMembers(seenPackages + x.name, xs, acc + formatRepresentationToMarkdown(x, declarationPath, true))
-        case x::xs => formatMembers(seenPackages, xs, acc + formatRepresentationToMarkdown(x, declarationPath, true))
-      } //TODO check declarationPath passin is right
-
-      Md.header1("Package " + r.name) +
-      Md.header2("Members:") +
-      r.members.foldLeft(("", Set.empty[String])){(acc, p) =>
-        formatMembers(acc._2, p.members, acc._1)
-      }._1
+    case r: EmulatedPackageRepresentation =>
+      if(useSimplifiedFormat){
+        htmlPreCode("package " + makeLink(r.name, (r.path :+ r.name).mkString("/", "/", ""), true, declarationPath), "scala") //Package file are at one level below the current package
+      }else{
+        Md.header1("Package " + r.name) +
+        Md.header2("Members:") +
+        r.members.foldLeft("")((acc, m) => acc + formatRepresentationToMarkdown(m, declarationPath, true))
+      }
 
     case r : PackageRepresentation =>
       htmlPreCode("package " + makeLink(r.name, (r.path :+ r.name).mkString("/", "/", ""), true, declarationPath), "scala") //Package file are at one level below the current package
@@ -454,7 +448,7 @@ object DocPrinter{
   val folderPrefix = "tastydoc/zzz/"
   //TOASK: Path in representation with or without name at the end?
   def traverseRepresentation(representation: Representation): Unit = representation match {
-    case r: EmulatedPackage =>
+    case r: EmulatedPackageRepresentation =>
       r.members.foreach(traverseRepresentation)
 
     case r: PackageRepresentation =>

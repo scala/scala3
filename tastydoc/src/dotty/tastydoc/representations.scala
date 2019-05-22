@@ -1,6 +1,7 @@
 package dotty.tastydoc
 
 import scala.tasty.Reflection
+import scala.annotation.tailrec
 import dotty.tastydoc.comment.{Comment, WikiComment, MarkdownComment}
 import dotty.tastydoc.references._
 import dotty.tastydoc.TastyExtractor
@@ -14,6 +15,7 @@ object representations extends TastyExtractor {
   trait Representation {
     val name : String
     val path : List[String]
+    //def comments(packages: Map[String, EmulatedPackageRepresentation]): Option[Comment]
     val comments: Option[Comment]
     val parentRepresentation: Option[Representation] //Called simply "parent" in dotty-doc
     val annotations: List[TypeReference]
@@ -65,10 +67,23 @@ object representations extends TastyExtractor {
     val typeParams: List[String]
   }
 
-  class EmulatedPackage(val name: String, val path: List[String], val comments: Option[Comment]) extends Representation with Members { //This contains all the packages representing a single package
+  class EmulatedPackageRepresentation(val name: String, val path: List[String], val comments: Option[Comment]) extends Representation with Members { //This contains all the packages representing a single package
     override val parentRepresentation = None
     override val annotations = Nil
-    var members: List[PackageRepresentation] = Nil
+    var packagesMembers: List[PackageRepresentation] = Nil
+
+    //From the outisde, calling members is seemless and appears like calling members on a PackageRepresentation
+    override def members = {
+      @tailrec
+      def noDuplicates(seenPackages: Set[String], members: List[Representation], acc: List[Representation]): (List[Representation], Set[String]) = members match {
+        case Nil => (acc, seenPackages)
+        case (x: PackageRepresentation)::xs if seenPackages.contains(x.name) => noDuplicates(seenPackages, xs, acc)
+        case (x: PackageRepresentation)::xs => noDuplicates(seenPackages + x.name, xs, TastydocConsumer.mutablePackagesMap((x.path :+ x.name).mkString(".")) :: acc)
+        case x::xs => noDuplicates(seenPackages, xs, x::acc)
+      }
+
+      packagesMembers.foldLeft((List.empty[Representation], Set.empty[String]))((acc, p) => noDuplicates(acc._2, p.members, acc._1))._1
+    }
   }
 
   class PackageRepresentation(reflect: Reflection, internal: reflect.PackageClause, override val parentRepresentation: Option[Representation]) extends Representation with Members {
@@ -208,12 +223,12 @@ object representations extends TastyExtractor {
           case Some(x) => x
           case None =>
             val (name, path) = extractPackageNameAndPath(t.pid.symbol.show)
-            val x = new EmulatedPackage(name, path, None)
+            val x = new EmulatedPackageRepresentation(name, path, None)
             TastydocConsumer.mutablePackagesMap += ((noColorPid, x))
             x
         }
         val r = new PackageRepresentation(reflect, t, parentRepresentation)
-        emulatedPackage.members = r :: emulatedPackage.members
+        emulatedPackage.packagesMembers = r :: emulatedPackage.packagesMembers
         r
 
       case IsImport(t@reflect.Import(_)) => new ImportRepresentation(reflect, t, parentRepresentation)
