@@ -39,19 +39,20 @@ Outside the companion object, `Logarithm` is treated as a new abstract type. So 
 following operations would be valid because they use functionality implemented in the `Logarithm` object.
 
 ```scala
-  val l = Logarithm(1.0)
+  val l1 = Logarithm(1.0)
   val l2 = Logarithm(2.0)
-  val l3 = l * l2
-  val l4 = l + l2
+  val l3 = l1 * l2
+  val l4 = l1 + l2
+  val d1 = Logarithm.exponent(l1) // unlift opaque type
 ```
 
 But the following operations would lead to type errors:
 
 ```scala
-  val d: Double = l       // error: found: Logarithm, required: Double
+  val d: Double = l1      // error: found: Logarithm, required: Double
   val l2: Logarithm = 1.0 // error: found: Double, required: Logarithm
-  l * 2                   // error: found: Int(2), required: Logarithm
-  l / l2                  // error: `/` is not a member fo Logarithm
+  l1 * 2                   // error: found: Int(2), required: Logarithm
+  l1 / l2                  // error: `/` is not a member fo Logarithm
 ```
 
 `opaque` is a [soft modifier](../soft-modifier.html).
