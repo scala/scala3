@@ -367,6 +367,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *        case _: C_1 => 0
    *        ...
    *        case _: C_n => n - 1
+   *     }
    *
    *  Here, the normalized type of a class C is C[_, ...., _] with
    *  a wildcard for each type parameter. The normalized type of an object

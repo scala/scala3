@@ -8,6 +8,9 @@ object deriving {
 
     /** The mirrored *-type */
     type MonoType
+
+    /** The name of the type */
+    type Label <: String
   }
 
   object Mirror {
@@ -15,6 +18,7 @@ object deriving {
     /** The Mirror for a sum type */
     trait Sum extends Mirror { self =>
 
+      /** The types of the alternatives */
       type ElemTypes <: Tuple
 
       /** The ordinal number of the case class of `x`. For enums, `ordinal(x) == x.ordinal` */
@@ -24,11 +28,8 @@ object deriving {
     /** The Mirror for a product type */
     trait Product extends Mirror {
 
-      /** The types of the elements */
+      /** The types of the product elements */
       type ElemTypes <: Tuple
-
-      /** The name of the whole product type */
-      type CaseLabel <: String
 
       /** The names of the product elements */
       type ElemLabels <: Tuple

@@ -865,23 +865,23 @@ trait Implicits { self: Typer =>
         case monoAlias @ TypeAlias(monoType) =>
           if (monoType.termSymbol.is(CaseVal)) {
             val modul = monoType.termSymbol
-            val caseLabel = ConstantType(Constant(modul.name.toString))
+            val label = ConstantType(Constant(modul.name.toString))
             val mirrorType = defn.Mirror_SingletonType
               .refinedWith(tpnme.MonoType, monoAlias)
-              .refinedWith(tpnme.CaseLabel, TypeAlias(caseLabel))
+              .refinedWith(tpnme.Label, TypeAlias(label))
             ref(modul).withSpan(span).cast(mirrorType)
           }
           else if (monoType.classSymbol.isGenericProduct) {
             val cls = monoType.classSymbol
             val accessors = cls.caseAccessors.filterNot(_.is(PrivateLocal))
             val elemTypes = accessors.map(monoType.memberInfo(_))
-            val caseLabel = ConstantType(Constant(cls.name.toString))
+            val label = ConstantType(Constant(cls.name.toString))
             val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
             val mirrorType =
               defn.Mirror_ProductType
                 .refinedWith(tpnme.MonoType, monoAlias)
                 .refinedWith(tpnme.ElemTypes, TypeAlias(TypeOps.nestedPairs(elemTypes)))
-                .refinedWith(tpnme.CaseLabel, TypeAlias(caseLabel))
+                .refinedWith(tpnme.Label, TypeAlias(label))
                 .refinedWith(tpnme.ElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
             val modul = cls.linkedClass.sourceModule
             assert(modul.is(Module))
@@ -897,6 +897,7 @@ trait Implicits { self: Typer =>
       formal.member(tpnme.MonoType).info match {
         case monoAlias @ TypeAlias(monoType) if monoType.classSymbol.isGenericSum =>
           val cls = monoType.classSymbol
+          val label = ConstantType(Constant(cls.name.toString))
           val elemTypes = cls.children.map {
             case caseClass: ClassSymbol =>
               assert(caseClass.is(Case))
@@ -924,6 +925,7 @@ trait Implicits { self: Typer =>
           val mirrorType =
             defn.Mirror_SumType
               .refinedWith(tpnme.MonoType, monoAlias)
+              .refinedWith(tpnme.Label, TypeAlias(label))
               .refinedWith(tpnme.ElemTypes, TypeAlias(TypeOps.nestedPairs(elemTypes)))
           var modul = cls.linkedClass.sourceModule
           val mirrorRef =
