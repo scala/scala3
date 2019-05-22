@@ -1735,8 +1735,14 @@ object SymDenotations {
       val raw = if (excluded is Private) nonPrivateMembersNamed(name) else membersNamed(name)
       raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre) match {
         case x @ NoDenotation => x
-        case sd: SymDenotation if sd.owner.denot.privateWithin != NoSymbol =>
-          sd.copySymDenotation(symbol = sd.symbol.copy(owner = this.symbol))
+        case sd: SymDenotation =>
+          val bound = sd.owner.denot.privateWithin
+          if (name.toString != "<init>" && bound.is(Flags.Package) && bound.is(Flags.JavaDefined) && !bound.is(Flags.Touched)) {
+            // if (Set("foo", "foreach").contains(name.toString))
+              println(s"findMember: ${name.show}, ${pre.show}: $sd, ${sd.flags} ${sd.owner}, ${sd.owner.denot.privateWithin.flags}, ${sd.owner.denot.privateWithin.is(Flags.Package) && sd.owner.denot.privateWithin.is(Flags.JavaDefined)}")
+            sd.copySymDenotation(symbol = sd.symbol.copy(owner = this.symbol))
+          } else sd
+          // sd
         case x => x
       }
     }
