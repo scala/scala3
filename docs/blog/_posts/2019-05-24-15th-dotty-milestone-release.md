@@ -74,7 +74,7 @@ scala> Foo(1) plus Foo(2)
 val res3: Int = 3
 ```
 
-To smoothen the migration, the deprecation warnings will only be emitted if you compile with the `-strict` flag under Dotty 3. Alphanumeric methods that are defined without the `@infix` annotation used in an infix position will be deprecated by default starting with Dotty 3.1.
+To smoothen the migration, the deprecation warnings will only be emitted if you compile with the `-strict` flag under Scala 3. Alphanumeric methods that are defined without the `@infix` annotation used in an infix position will be deprecated by default starting with Scala 3.1.
 
 For more information, see the the [documentation](http://dotty.epfl.ch/docs/reference/changed-features/operators.html#the-infix-annotation). Note that the `@alpha` annotation also described in the documentation is planned for the future and is not available in this release.
 
@@ -114,7 +114,7 @@ We changed this to reduce confusion when calling functions with mixed explicit a
                               // than the right hand side expression's type Any
 ```
 
-The above code will fail with a compile-time error in Dotty 3.1 and in Dotty 3 with the `-strict` flag. In contrast, in Scala 2, the above would have compiled fine but failed on runtime with an exception.
+The above code will fail with a compile-time error in Scala 3.1 and in Scala 3 with the `-strict` flag. In contrast, in Scala 2, the above would have compiled fine but failed on runtime with an exception.
 
 Dotty compiler will allow such a pattern binding only if the pattern is *irrefutable* – that is, if the right-hand side conforms to the pattern's type. E.g. the following is OK:
 
@@ -138,7 +138,7 @@ The same is implemented for pattern bindings in `for` expressions:
                                      // than the right hand side expression's type Any
 ```
 
-For the migration purposes, the above change will only take effect in Dotty 3.1. You can use it in Dotty 3 with the `-strict` flag.
+For the migration purposes, the above change will only take effect in Scala 3.1. You can use it in Scala 3 with the `-strict` flag.
 
 For more information, see the [documentation](http://dotty.epfl.ch/docs/reference/changed-features/pattern-bindings.html).
 
