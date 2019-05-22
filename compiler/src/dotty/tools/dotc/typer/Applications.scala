@@ -1085,21 +1085,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     def fromScala2x = unapplyFn.symbol.exists && (unapplyFn.symbol.owner is Scala2x)
 
-    /** Is `subtp` a subtype of `tp` or of some generalization of `tp`?
-     *  The generalizations of a type T are the smallest set G such that
-     *
-     *   - T is in G
-     *   - If a typeref R in G represents a class or trait, R's superclass is in G.
-     *   - If a type proxy P is not a reference to a class, P's supertype is in G
-     */
-    def isSubTypeOfParent(subtp: Type, tp: Type)(implicit ctx: Context): Boolean =
-      if (constrainPatternType(subtp, tp)) true
-      else tp match {
-        case tp: TypeRef if tp.symbol.isClass => isSubTypeOfParent(subtp, tp.firstParent)
-        case tp: TypeProxy => isSubTypeOfParent(subtp, tp.superType)
-        case _ => false
-      }
-
     unapplyFn.tpe.widen match {
       case mt: MethodType if mt.paramInfos.length == 1 =>
         val unapplyArgType = mt.paramInfos.head
@@ -1109,17 +1094,15 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             fullyDefinedType(unapplyArgType, "pattern selector", tree.span)
             selType.dropAnnot(defn.UncheckedAnnot) // need to drop @unchecked. Just because the selector is @unchecked, the pattern isn't.
-          } else if (isSubTypeOfParent(unapplyArgType, selType)(ctx.addMode(Mode.GADTflexible))) {
+          } else {
+            // note that we simply ignore whether constraining actually succeeded or not
+            // in theory, constraining should only fail if the pattern cannot possibly match
+            // however, during exhaustivity checks, we perform a strictly better check
+            ctx.addMode(Mode.GADTflexible).typeComparer.constrainPatternType(unapplyArgType, selType)
             val patternBound = maximizeType(unapplyArgType, tree.span, fromScala2x)
             if (patternBound.nonEmpty) unapplyFn = addBinders(unapplyFn, patternBound)
             unapp.println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
             unapplyArgType
-          } else {
-            unapp.println("Neither sub nor super")
-            unapp.println(TypeComparer.explained(implicit ctx => unapplyArgType <:< selType))
-            errorType(
-              ex"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $selType",
-              tree.sourcePos)
           }
         val dummyArg = dummyTreeOfType(ownType)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))

@@ -13,4 +13,20 @@ object `precise-pattern-type` {
     case Select(q) =>
       q.tpe.isType
   }
+
+  trait O {
+    type ThisTree <: Tree[Type]
+    val tree: ThisTree
+    def test = tree match {
+      case Select(q) => q.tpe.isType
+      case tree1: Select[t] => (tree1 : Select[Type]).qual.tpe.isType
+    }
+  }
+
+  trait OO {
+    type ThisTree[T >: Null] <: Tree[T]
+    def foo(t: ThisTree[Type]) = t match {
+      case Select(q) => q.tpe.isType
+    }
+  }
 }

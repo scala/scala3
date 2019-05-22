@@ -25,7 +25,7 @@ object AbsentContext {
 
 /** Provides methods to compare types.
  */
-class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
+class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] with PatternTypeConstrainer {
   import TypeComparer._
   implicit def ctx(implicit nc: AbsentContext): Context = initctx
 
@@ -1227,7 +1227,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *  @see [[sufficientEither]] for the normal case
    *  @see [[necessaryEither]] for the GADTFlexible case
    */
-  private def either(op1: => Boolean, op2: => Boolean): Boolean =
+  protected def either(op1: => Boolean, op2: => Boolean): Boolean =
     if (ctx.mode.is(Mode.GADTflexible)) necessaryEither(op1, op2) else sufficientEither(op1, op2)
 
   /** Returns true iff the result of evaluating either `op1` or `op2` is true,
