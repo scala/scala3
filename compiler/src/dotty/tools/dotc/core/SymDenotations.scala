@@ -1733,7 +1733,12 @@ object SymDenotations {
 
     override final def findMember(name: Name, pre: Type, required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Denotation = {
       val raw = if (excluded is Private) nonPrivateMembersNamed(name) else membersNamed(name)
-      raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre)
+      raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre) match {
+        case x @ NoDenotation => x
+        case sd: SymDenotation if sd.owner.denot.privateWithin != NoSymbol =>
+          sd.copySymDenotation(symbol = sd.symbol.copy(owner = this.symbol))
+        case x => x
+      }
     }
 
     /** Compute tp.baseType(this) */
