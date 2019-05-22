@@ -29,7 +29,7 @@ import Inferencing.fullyDefinedType
 import Trees._
 import transform.SymUtils._
 import transform.TypeUtils._
-import transform.SyntheticMembers.ExtendsSumMirror
+import transform.SyntheticMembers._
 import Hashable._
 import util.{Property, SourceFile, NoSource}
 import config.Config
@@ -859,35 +859,69 @@ trait Implicits { self: Typer =>
           EmptyTree
       }
 
+  /** Create an anonymous class `new Object { type MonoType = ... }`
+   *  and mark it with given attachment so that it is made into a mirror at PostTyper.
+   */
+  def anonymousMirror(monoType: Type, attachment: Property.StickyKey[Unit], span: Span)(implicit ctx: Context) = {
+    val monoTypeDef = untpd.TypeDef(tpnme.MonoType, untpd.TypeTree(monoType))
+    val newImpl = untpd.Template(
+      constr = untpd.emptyConstructor,
+      parents = untpd.TypeTree(defn.ObjectType) :: Nil,
+      derived = Nil,
+      self = EmptyValDef,
+      body = monoTypeDef :: Nil
+    ).withAttachment(attachment, ())
+    typed(untpd.New(newImpl).withSpan(span))
+  }
+
   lazy val synthesizedProductMirror: SpecialHandler =
     (formal: Type, span: Span) => implicit (ctx: Context) => {
-      formal.member(tpnme.MonoType).info match {
-        case monoAlias @ TypeAlias(monoType) =>
+      def mirrorFor(monoType: Type): Tree = monoType match {
+        case AndType(tp1, tp2) =>
+          mirrorFor(tp1).orElse(mirrorFor(tp2))
+        case _ =>
           if (monoType.termSymbol.is(CaseVal)) {
             val modul = monoType.termSymbol
             val label = ConstantType(Constant(modul.name.toString))
-            val mirrorType = defn.Mirror_SingletonType
-              .refinedWith(tpnme.MonoType, monoAlias)
-              .refinedWith(tpnme.Label, TypeAlias(label))
-            ref(modul).withSpan(span).cast(mirrorType)
+            if (modul.info.classSymbol.is(Scala2x)) {
+              val mirrorType =
+                defn.Mirror_SingletonProxyType
+                  .refinedWith(tpnme.MonoType, TypeAlias(monoType))
+                  .refinedWith(tpnme.Label, TypeAlias(label))
+              val mirrorRef = New(defn.Mirror_SingletonProxyType, ref(modul).withSpan(span) :: Nil)
+              mirrorRef.cast(mirrorType)
+            }
+            else {
+              val mirrorType = defn.Mirror_SingletonType
+                .refinedWith(tpnme.MonoType, TypeAlias(monoType))
+                .refinedWith(tpnme.Label, TypeAlias(label))
+              val mirrorRef = ref(modul).withSpan(span)
+              mirrorRef.cast(mirrorType)
+            }
           }
           else if (monoType.classSymbol.isGenericProduct) {
             val cls = monoType.classSymbol
             val accessors = cls.caseAccessors.filterNot(_.is(PrivateLocal))
-            val elemTypes = accessors.map(monoType.memberInfo(_))
+            val elemTypes = accessors.map(monoType.memberInfo(_).widenExpr)
             val label = ConstantType(Constant(cls.name.toString))
             val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
             val mirrorType =
               defn.Mirror_ProductType
-                .refinedWith(tpnme.MonoType, monoAlias)
+                .refinedWith(tpnme.MonoType, TypeAlias(monoType))
                 .refinedWith(tpnme.ElemTypes, TypeAlias(TypeOps.nestedPairs(elemTypes)))
                 .refinedWith(tpnme.Label, TypeAlias(label))
                 .refinedWith(tpnme.ElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
             val modul = cls.linkedClass.sourceModule
             assert(modul.is(Module))
-            ref(modul).withSpan(span).cast(mirrorType)
+            val mirrorRef =
+              if (cls.is(Scala2x)) anonymousMirror(monoType, ExtendsProductMirror, span)
+              else ref(modul).withSpan(span)
+            mirrorRef.cast(mirrorType)
           }
           else EmptyTree
+      }
+      formal.member(tpnme.MonoType).info match {
+        case monoAlias @ TypeAlias(monoType) => mirrorFor(monoType)
         case _ => EmptyTree
       }
     }
@@ -907,9 +941,8 @@ trait Implicits { self: Typer =>
                 case info: PolyType =>
                   def instantiate(implicit ctx: Context) = {
                     val poly = constrained(info, untpd.EmptyTree)._1
-                    val mono @ MethodType(_) = poly.resultType
-                    val resType = mono.finalResultType
-                    resType <:< cls.appliedRef
+                    val resType = poly.finalResultType
+                    resType <:< monoType
                     val tparams = poly.paramRefs
                     val variances = caseClass.typeParams.map(_.paramVariance)
                     val instanceTypes = (tparams, variances).zipped.map((tparam, variance) =>
@@ -929,20 +962,8 @@ trait Implicits { self: Typer =>
               .refinedWith(tpnme.ElemTypes, TypeAlias(TypeOps.nestedPairs(elemTypes)))
           var modul = cls.linkedClass.sourceModule
           val mirrorRef =
-            if (modul.exists) ref(modul).withSpan(span)
-            else {
-              // create an anonymous class `new Object { type MonoType = ... }`
-              // and mark it so that it is made into a `Mirror.Sum` at PostTyper.
-              val monoTypeDef = untpd.TypeDef(tpnme.MonoType, untpd.TypeTree(monoType))
-              val newImpl = untpd.Template(
-                constr = untpd.emptyConstructor,
-                parents = untpd.TypeTree(defn.ObjectType) :: Nil,
-                derived = Nil,
-                self = EmptyValDef,
-                body = monoTypeDef :: Nil
-              ).withAttachment(ExtendsSumMirror, ())
-              typed(untpd.New(newImpl).withSpan(span))
-            }
+            if (modul.exists && !cls.is(Scala2x)) ref(modul).withSpan(span)
+            else anonymousMirror(monoType, ExtendsSumMirror, span)
           mirrorRef.cast(mirrorType)
         case _ =>
           EmptyTree

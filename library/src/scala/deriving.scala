@@ -42,11 +42,15 @@ object deriving {
       type MonoType = this.type
       type ElemTypes = Unit
       type ElemLabels = Unit
-
       def fromProduct(p: scala.Product) = this
+    }
 
-      def productElement(n: Int): Any = throw new IndexOutOfBoundsException(n.toString)
-      def productArity: Int = 0
+    /** A proxy for Scala 2 singletons, which do not inherit `Singleton` directly */
+    class SingletonProxy(val value: AnyRef) extends Product {
+      type MonoType = value.type
+      type ElemTypes = Unit
+      type ElemLabels = Unit
+      def fromProduct(p: scala.Product) = value
     }
 
     type Of[T]        = Mirror { type MonoType = T }

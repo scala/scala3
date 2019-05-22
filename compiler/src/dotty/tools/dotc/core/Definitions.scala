@@ -705,6 +705,9 @@ class Definitions {
   lazy val Mirror_SingletonType: TypeRef = ctx.requiredClassRef("scala.deriving.Mirror.Singleton")
   def Mirror_SingletonClass(implicit ctx: Context): ClassSymbol = Mirror_SingletonType.symbol.asClass
 
+  lazy val Mirror_SingletonProxyType: TypeRef = ctx.requiredClassRef("scala.deriving.Mirror.SingletonProxy")
+  def Mirror_SingletonProxyClass(implicit ctx: Context): ClassSymbol = Mirror_SingletonProxyType.symbol.asClass
+
   lazy val GenericType: TypeRef                = ctx.requiredClassRef("scala.reflect.Generic")
   def GenericClass(implicit ctx: Context): ClassSymbol    = GenericType.symbol.asClass
   lazy val ShapeType: TypeRef                  = ctx.requiredClassRef("scala.compiletime.Shape")

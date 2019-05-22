@@ -17,10 +17,13 @@ import config.Printers.derive
 
 object SyntheticMembers {
 
-  /** Attachment marking an anonymous class as a singleton case that will extend from Mirror.Singleton. */
+  /** Attachment marking an anonymous class as a singleton case that will extend from Mirror.Singleton */
   val ExtendsSingletonMirror: Property.StickyKey[Unit] = new Property.StickyKey
 
-  /** Attachment marking an anonymous class as a sum mirror that will extends from Mirror.Sum. */
+  /** Attachment recording that an anonymous class should extend Mirror.Product */
+  val ExtendsProductMirror: Property.StickyKey[Unit] = new Property.StickyKey
+
+  /** Attachment recording that an anonymous class should extend Mirror.Sum */
   val ExtendsSumMirror: Property.StickyKey[Unit] = new Property.StickyKey
 }
 
@@ -423,32 +426,28 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     }
     def makeSingletonMirror() =
       addParent(defn.Mirror_SingletonType)
-    def makeProductMirror() = {
+    def makeProductMirror(cls: Symbol) = {
       addParent(defn.Mirror_ProductType)
-      addMethod(
-        nme.fromProduct,
-        MethodType(defn.ProductType :: Nil, monoType.typeRef),
-        linked,
+      addMethod(nme.fromProduct, MethodType(defn.ProductType :: Nil, monoType.typeRef), cls,
         fromProductBody(_, _)(_).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
     }
     def makeSumMirror(cls: Symbol) = {
       addParent(defn.Mirror_SumType)
-      addMethod(
-        nme.ordinal,
-        MethodType(monoType.typeRef :: Nil, defn.IntType),
-        cls,
+      addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType), cls,
         ordinalBody(_, _)(_))
     }
 
     if (clazz.is(Module)) {
       if (clazz.is(Case)) makeSingletonMirror()
-      else if (linked.isGenericProduct) makeProductMirror()
+      else if (linked.isGenericProduct) makeProductMirror(linked)
       else if (linked.isGenericSum) makeSumMirror(linked)
       else if (linked.is(Sealed))
         derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum}")
     }
     else if (impl.removeAttachment(ExtendsSingletonMirror).isDefined)
       makeSingletonMirror()
+    else if (impl.removeAttachment(ExtendsProductMirror).isDefined)
+      makeProductMirror(monoType.typeRef.dealias.classSymbol)
     else if (impl.removeAttachment(ExtendsSumMirror).isDefined)
       makeSumMirror(monoType.typeRef.dealias.classSymbol)
 
