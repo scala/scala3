@@ -14,7 +14,7 @@ import Regexes._
   */
 private[comment] final class WikiParser(
   representation: Representation,
-  packages: Map[String, PackageRepresentation],
+  packages: Map[String, EmulatedPackageRepresentation],
   val buffer: String,
   // span: Span,
   // site: Symbol

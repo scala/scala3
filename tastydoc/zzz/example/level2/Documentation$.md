@@ -73,3 +73,6 @@ Companion object
 ### writeReplace
 <pre><code class="language-scala" >private def writeReplace(): AnyRef</pre></code>
 
+### valInsideDocObject
+<pre><code class="language-scala" >val valInsideDocObject: Nothing</pre></code>
+

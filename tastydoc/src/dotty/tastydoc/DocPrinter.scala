@@ -107,7 +107,7 @@ object DocPrinter{
     (if(filteredModifiers.nonEmpty) filteredModifiers.mkString("", " ", " ") else "")
   }
 
-  private def formatComments(comment: Option[Comment]) : String = comment match {
+  private def formatComments(comment: Map[String, EmulatedPackageRepresentation] => Option[Comment]) : String = comment(TastydocConsumer.mutablePackagesMap.toMap) match {
     case Some(c) =>
       c.body +
       (if(c.authors.nonEmpty) Md.bold(Md.italics("authors")) + " " + c.authors.mkString(", ") else "") +
@@ -200,7 +200,7 @@ object DocPrinter{
         ""
       }else{
         Md.header2("Constructors:") +
-        representation.constructors.map((ls, com) => htmlPreCode(representation.name + ls.paramLists.map(formatParamList(_, representation.path)).mkString(""), "scala") + "\n" + formatComments(com)).mkString("") +
+        representation.constructors.map(ls => htmlPreCode(representation.name + ls.paramLists.map(formatParamList(_, representation.path)).mkString(""), "scala") + "\n" + formatComments(ls.comments)).mkString("") +
         "\n"
       }
     }

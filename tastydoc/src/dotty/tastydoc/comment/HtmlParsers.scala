@@ -38,7 +38,7 @@ object HtmlParsers {
         "https://github.global.ssl.fastly.net/images/icons/emoji/")
 
   implicit class StringToMarkdown(val text: String) extends AnyVal {
-    def toMarkdown(origin: Representation): MarkdownNode = {
+    def toMarkdown(origin: Representation, packages: Map[String, EmulatedPackageRepresentation]): MarkdownNode = {
       import com.vladsch.flexmark.ast.Link
       import com.vladsch.flexmark.util.ast.{Visitor, VisitHandler, NodeVisitor }
 
@@ -59,7 +59,7 @@ object HtmlParsers {
 
       val linkVisitor = new NodeVisitor(
         new VisitHandler(classOf[Link], new Visitor[Link] with MemberLookup {
-          def queryToUrl(title: String, link: String) = makeRepresentationLink(origin, Map(), Text(title), link).link match { //TODO: Replace Map() by packages
+          def queryToUrl(title: String, link: String) = makeRepresentationLink(origin, packages, Text(title), link).link match {
             case Tooltip(_) => "#"
             case LinkToExternal(_, url) => url
             case LinkToRepresentation(t: Representation) => t match {
@@ -80,8 +80,8 @@ object HtmlParsers {
       node
     }
 
-    def toMarkdownString(origin: Representation): String =
-      toMarkdown(origin).show
+    def toMarkdownString(origin: Representation, packages: Map[String, EmulatedPackageRepresentation]): String =
+      toMarkdown(origin, packages).show
   }
 
   implicit class MarkdownToHtml(val markdown: MarkdownNode) extends AnyVal {
@@ -93,7 +93,7 @@ object HtmlParsers {
   }
 
   implicit class StringToWiki(val text: String) extends AnyVal {
-    def toWiki(origin: Representation, packages: Map[String, PackageRepresentation]): Body =
+    def toWiki(origin: Representation, packages: Map[String, EmulatedPackageRepresentation]): Body =
       new WikiParser(origin, packages, text).document()
   }
 

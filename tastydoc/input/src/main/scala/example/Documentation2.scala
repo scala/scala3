@@ -1,6 +1,9 @@
 package example
 
 class ReturnTypeClass[T] {
+}
+
+class UserDocLinkingClass {
   def linkMeFromUserDoc() = ???
 }
 

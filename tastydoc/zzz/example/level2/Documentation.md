@@ -359,9 +359,13 @@ def someScalaCode(x: String) = println("Hello " + x)
 
 ### linkMethodInDoc
 <pre><code class="language-scala" >def linkMethodInDoc(): Nothing</pre></code>
-dotty.tastydoc.example.ReturnTypeClass.linkMeFromUserDoc
-dotty.tastydoc.example.level2.Documentation.apply
-length
+method: [example.UserDocLinkingClass.linkMeFromUserDoc](../UserDocLinkingClass.md#linkMeFromUserDoc)
+
+method:example.level2.Documentation.apply
+
+class: [example.UserDocLinkingClass](../UserDocLinkingClass.md)
+
+method: length
 
 
 ### linkingGraph

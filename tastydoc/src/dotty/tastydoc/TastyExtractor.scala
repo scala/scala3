@@ -36,19 +36,21 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     })
   }
 
-  def extractComments(reflect: Reflection)(comment: Option[reflect.Comment], rep: Representation) : Option[Comment] = {
+  def extractComments(reflect: Reflection)(comment: Option[reflect.Comment], rep: Representation) : Map[String, EmulatedPackageRepresentation] => Option[Comment] = {
     import reflect._
     comment match {
       case Some(com) =>
-        val parsed = parse(Map.empty, clean(com.raw), com.raw)
-        if (TastydocConsumer.userDocSyntax == "markdown") {
-          Some(MarkdownComment(rep, parsed).comment)
-        }else if(TastydocConsumer.userDocSyntax == "wiki"){
-          Some(WikiComment(rep, parsed).comment)
-        }else{
-          Some(WikiComment(rep, parsed).comment)
+        packages => {
+          val parsed = parse(packages, clean(com.raw), com.raw)
+          if (TastydocConsumer.userDocSyntax == "markdown") {
+            Some(MarkdownComment(rep, parsed, TastydocConsumer.mutablePackagesMap.toMap).comment)
+          }else if(TastydocConsumer.userDocSyntax == "wiki"){
+            Some(WikiComment(rep, parsed, TastydocConsumer.mutablePackagesMap.toMap).comment)
+          }else{
+            Some(WikiComment(rep, parsed, TastydocConsumer.mutablePackagesMap.toMap).comment)
+          }
         }
-      case None => None
+      case None => _ => None
     }
   }
 

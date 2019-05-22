@@ -10,7 +10,7 @@ trait MemberLookup {
    *  Will return a `Tooltip` if unsuccessful, otherwise a LinkToRepresentation or
    *  LinkToExternal
    */
-  def lookup(Representation: Option[Representation], packages: Map[String, PackageRepresentation], query: String): Option[Representation] = {
+  def lookup(representation: Option[Representation], packages: Map[String, EmulatedPackageRepresentation], query: String): Option[Representation] = {
     val notFound: Option[Representation] = None
     val querys = query.split("\\.").toList
 
@@ -58,7 +58,7 @@ trait MemberLookup {
       }
     }
 
-    (querys, Representation) match {
+    (querys, representation) match {
       case (xs, None) => globalLookup
       case (x :: Nil, Some(e: Representation with Members)) =>
         localLookup(e, x)
@@ -66,20 +66,20 @@ trait MemberLookup {
         downwardLookup(e, querys)
       case (x :: xs, _) =>
         if (xs.nonEmpty) globalLookup
-        else lookup(Representation, packages, "scala." + query)
+        else lookup(representation, packages, "scala." + query)
       case (Nil, _) =>
         throw new IllegalArgumentException("`query` cannot be empty")
     }
   }
 
   def makeRepresentationLink(
-    Representation: Representation,
-    packages: Map[String, PackageRepresentation],
+    representation: Representation,
+    packages: Map[String, EmulatedPackageRepresentation],
     title: Inline,
     query: String
   ): RepresentationLink = {
     val link =
-      lookup(Some(Representation), packages, query)
+      lookup(Some(representation), packages, query)
       .map(LinkToRepresentation)
       .getOrElse(Tooltip(query))
 

@@ -22,7 +22,10 @@ object traversing {
     }
 
     "../" * (from.path.length - offset) +
-    to.path.mkString("", "/", ".html")
+    (to match {
+      case r: ClassRepresentation if r.isObject => (to.path.drop(from.path.length) :+ to.name + "$").mkString("", "/", ".md")
+      case r => (to.path.drop(from.path.length) :+ to.name).mkString("", "/", ".md")
+    })
   }
 
 

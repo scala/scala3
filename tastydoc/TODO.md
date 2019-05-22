@@ -2,23 +2,21 @@
 ## Files from dotty-doc requiring work
 * util.traversing
   * ImplicitlyAddedFrom
+  * Fix offset
 * Comment
   * Span + error printing
-  * Packages map
   * Figure out ShortHtml
 * CommentParser
   * Span + error printing
-* HTMLParsers
-  * Packages map
 * WikiParser (just error reporting (span))
   * Span + error printing
 
 * Markdown parser broken
-* linking method in userdoc
 
 # Other
 * handle things such as $genericCanBuildFromInfo
 * Check remaining TODOs/TOASKs/TOFIX
+* Revert back to object name with $?
 
 # Representation
 * Make sense of the parents field

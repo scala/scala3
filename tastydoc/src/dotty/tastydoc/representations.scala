@@ -16,7 +16,7 @@ object representations extends TastyExtractor {
     val name : String
     val path : List[String]
     //def comments(packages: Map[String, EmulatedPackageRepresentation]): Option[Comment]
-    val comments: Option[Comment]
+    def comments(packages: Map[String, EmulatedPackageRepresentation]): Option[Comment]
     val parentRepresentation: Option[Representation] //Called simply "parent" in dotty-doc
     val annotations: List[TypeReference]
   }
@@ -56,7 +56,7 @@ object representations extends TastyExtractor {
   }
 
   trait Constructors {
-    val constructors: List[(MultipleParamList, Option[Comment])]
+    val constructors: List[DefRepresentation]
   }
 
   trait ReturnValue {
@@ -67,9 +67,10 @@ object representations extends TastyExtractor {
     val typeParams: List[String]
   }
 
-  class EmulatedPackageRepresentation(val name: String, val path: List[String], val comments: Option[Comment]) extends Representation with Members { //This contains all the packages representing a single package
+  class EmulatedPackageRepresentation(val name: String, val path: List[String]) extends Representation with Members { //This contains all the packages representing a single package
     override val parentRepresentation = None
     override val annotations = Nil
+    override def comments(packages: Map[String, EmulatedPackageRepresentation]) = None
     var packagesMembers: List[PackageRepresentation] = Nil
 
     //From the outisde, calling members is seemless and appears like calling members on a PackageRepresentation
@@ -93,7 +94,7 @@ object representations extends TastyExtractor {
     override val members = internal.stats.map(convertToRepresentation(reflect)(_, Some(this)))
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
 
-    override val comments = extractComments(reflect)(internal.symbol.comment, this)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation]) = extractComments(reflect)(internal.symbol.comment, this)(packages)
   }
 
   //TODO: Handle impliedOnly
@@ -108,7 +109,7 @@ object representations extends TastyExtractor {
     override val path = internal.expr.symbol.show.split("\\.").toList
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
 
-    override val comments = extractComments(reflect)(internal.symbol.comment, this)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation]) = extractComments(reflect)(internal.symbol.comment, this)(packages)
   }
 
   class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef, override val parentRepresentation: Option[Representation]) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams {
@@ -128,7 +129,7 @@ object representations extends TastyExtractor {
         case r: DefRepresentation => Some(r)
         case _ => None
         }
-      }.map(r => (new MultipleParamList{val paramLists = r.paramLists}, r.comments))
+      }
     override val typeParams = internal.constructor.typeParams.map(x => removeColorFromType(x.show).stripPrefix("type "))
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
     var knownSubclasses: List[Reference] = Nil
@@ -147,7 +148,7 @@ object representations extends TastyExtractor {
       case _ =>
     }
 
-    override val comments = extractComments(reflect)(internal.symbol.comment, this)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation]) = extractComments(reflect)(internal.symbol.comment, this)(packages)
   }
 
   class DefRepresentation(reflect: Reflection, internal: reflect.DefDef, override val parentRepresentation: Option[Representation]) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue {
@@ -182,7 +183,7 @@ object representations extends TastyExtractor {
     }
     override val returnValue = convertTypeToReference(reflect)(internal.returnTpt.tpe)
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
-    override val comments = extractComments(reflect)(internal.symbol.comment, this)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation]) = extractComments(reflect)(internal.symbol.comment, this)(packages)
   }
 
   class ValRepresentation(reflect: Reflection, internal: reflect.ValDef, override val parentRepresentation: Option[Representation]) extends Representation with Modifiers with ReturnValue {
@@ -193,7 +194,7 @@ object representations extends TastyExtractor {
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val returnValue = convertTypeToReference(reflect)(internal.tpt.tpe)
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
-    override val comments = extractComments(reflect)(internal.symbol.comment, this)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation]) = extractComments(reflect)(internal.symbol.comment, this)(packages)
   }
 
   class TypeRepresentation(reflect: Reflection, internal: reflect.TypeDef, override val parentRepresentation: Option[Representation]) extends Representation with Modifiers with TypeParams {
@@ -210,7 +211,7 @@ object representations extends TastyExtractor {
       case _ => None
     }
     override def isAbstract: Boolean = !alias.isDefined
-    override val comments = extractComments(reflect)(internal.symbol.comment, this)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation]) = extractComments(reflect)(internal.symbol.comment, this)(packages)
   }
 
   def convertToRepresentation(reflect: Reflection)(tree: reflect.Tree, parentRepresentation: Option[Representation]): Representation = {
@@ -223,7 +224,7 @@ object representations extends TastyExtractor {
           case Some(x) => x
           case None =>
             val (name, path) = extractPackageNameAndPath(t.pid.symbol.show)
-            val x = new EmulatedPackageRepresentation(name, path, None)
+            val x = new EmulatedPackageRepresentation(name, path)
             TastydocConsumer.mutablePackagesMap += ((noColorPid, x))
             x
         }

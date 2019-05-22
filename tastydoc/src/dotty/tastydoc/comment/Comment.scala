@@ -56,7 +56,7 @@ private[comment] case class ParsedComment (
   shortDescription:        List[String]
 )
 
-trait MarkupConversion[T] extends MemberLookup {
+trait MarkupConversion[T](packages: Map[String, EmulatedPackageRepresentation]) extends MemberLookup {
   def ent: Representation
   // def span: Span
   def parsed: ParsedComment
@@ -103,14 +103,14 @@ trait MarkupConversion[T] extends MemberLookup {
   )
 }
 
-case class MarkdownComment(ent: Representation, parsed: ParsedComment)//: Span)
-extends MarkupConversion[MarkdownNode] {
+case class MarkdownComment(ent: Representation, parsed: ParsedComment, packages: Map[String, EmulatedPackageRepresentation])//: Span)
+extends MarkupConversion[MarkdownNode](packages) {
 
   def stringToMarkup(str: String) =
-    str.toMarkdown(ent)
+    str.toMarkdown(ent, packages)
 
   def stringToShortHtml(str: String) =
-    str.toMarkdown(ent).shortenAndShow
+    str.toMarkdown(ent, packages).shortenAndShow
 
   def markupToMarkdown(md: MarkdownNode) =
     // Formatter.builder(new MutableDataSet).build().render(md);
@@ -119,7 +119,7 @@ extends MarkupConversion[MarkdownNode] {
   def linkedExceptions(m: Map[String, String]) = {
     val inlineToMarkdown = InlineToMarkdown(ent)
     m.map { case (targetStr, body) =>
-      val link = makeRepresentationLink(ent, Map(), Monospace(Text(targetStr)), targetStr) //TODO: Replace Map() with packages
+      val link = makeRepresentationLink(ent, packages, Monospace(Text(targetStr)), targetStr)
       (targetStr, inlineToMarkdown(link))
     }
   }
@@ -135,21 +135,21 @@ extends MarkupConversion[MarkdownNode] {
       .mapValues(stringToMarkup)
 }
 
-case class WikiComment(ent: Representation, parsed: ParsedComment)
-extends MarkupConversion[Body] {
+case class WikiComment(ent: Representation, parsed: ParsedComment, packages: Map[String, EmulatedPackageRepresentation])
+extends MarkupConversion[Body](packages) {
 
   def filterEmpty(xs: Map[String,String]) =
-    xs.mapValues(_.toWiki(ent, Map())) //TODO: Replace Map() with packages
+    xs.mapValues(_.toWiki(ent, packages))
       .filterNot { case (_, v) => v.blocks.isEmpty }
 
   def filterEmpty(xs: List[String]) =
-    xs.map(_.toWiki(ent, Map())) //TODO: Replace Map() with packages
+    xs.map(_.toWiki(ent, packages))
 
   def markupToMarkdown(t: Body) =
     t.show(ent)
 
   def stringToMarkup(str: String) =
-    str.toWiki(ent, Map()) //TODO: Replace Map() with packages
+    str.toWiki(ent, packages)
 
   def stringToShortHtml(str: String) = {
     val parsed = stringToMarkup(str)
@@ -157,12 +157,12 @@ extends MarkupConversion[Body] {
   }
 
   def linkedExceptions(m: Map[String, String]) = {
-    m.mapValues(_.toWiki(ent, Map())).map { case (targetStr, body) => //TODO: Replace Map() with packages
-      val link = lookup(Some(ent), Map(), targetStr) //TODO: Replace Map() with packages
+    m.mapValues(_.toWiki(ent, packages)).map { case (targetStr, body) =>
+      val link = lookup(Some(ent), packages, targetStr)
       val newBody = body match {
         case Body(List(Paragraph(Chain(content)))) =>
           val descr = Text(" ") +: content
-          val link = makeRepresentationLink(ent, Map(), Monospace(Text(targetStr)), targetStr) //TODO: Replace Map() with packages
+          val link = makeRepresentationLink(ent, packages, Monospace(Text(targetStr)), targetStr)
           Body(List(Paragraph(Chain(link +: descr))))
         case _ => body
       }

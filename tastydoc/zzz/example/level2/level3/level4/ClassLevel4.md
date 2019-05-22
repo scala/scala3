@@ -1,8 +1,8 @@
-# class DocumentationInheritance
+# class ClassLevel4
 
-<pre><code class="language-scala" >abstract class DocumentationInheritance[T, A <: scala.Int, B >: scala.Predef.String, X, Y] extends Documentation[<a href="./DocumentationInheritance.md#T">T</a>, <a href="./DocumentationInheritance.md#A">A</a>, <a href="./DocumentationInheritance.md#B">B</a>, <a href="./DocumentationInheritance.md#X">X</a>, <a href="./DocumentationInheritance.md#Y">Y</a>]</pre></code>
+<pre><code class="language-scala" >sealed abstract class ClassLevel4[T, A <: scala.Int, B >: scala.Predef.String, X, Y] extends Documentation[T, A, B, X, Y]</pre></code>
 ## Constructors:
-<pre><code class="language-scala" >DocumentationInheritance()</pre></code>
+<pre><code class="language-scala" >ClassLevel4()</pre></code>
 
 ## Concrete Value Members:
 ### !=
@@ -60,7 +60,7 @@
 <pre><code class="language-scala" >override def andThen[C](k: (B) => C): PartialFunction[A, C]</pre></code>
 
 ### apply
-<pre><code class="language-scala" >def apply(idx: Int): <a href="./level2/Documentation.md#T">T</a></pre></code>
+<pre><code class="language-scala" >def apply(idx: Int): <a href="../../Documentation.md#T">T</a></pre></code>
 
 ### applyOrElse
 <pre><code class="language-scala" >def applyOrElse[A1, B1](x: A1, default: (A1) => B1): B1</pre></code>
@@ -114,7 +114,7 @@
 <pre><code class="language-scala" >def count(p: (A) => Boolean): Int</pre></code>
 
 ### defReturningInnerClass
-<pre><code class="language-scala" >def defReturningInnerClass(): <a href="./level2/Documentation/innerDocumentationClass.md">innerDocumentationClass</a></pre></code>
+<pre><code class="language-scala" >def defReturningInnerClass(): <a href="../../Documentation/innerDocumentationClass.md">innerDocumentationClass</a></pre></code>
 
 ### diff
 <pre><code class="language-scala" >def diff[B](that: GenSeq[B]): Repr</pre></code>
@@ -278,7 +278,7 @@ def someScalaCode(x: String) = println("Hello " + x)
 <pre><code class="language-scala" >final def isTraversableAgain: Boolean</pre></code>
 
 ### iterator
-<pre><code class="language-scala" >def iterator: Iterator[<a href="./level2/Documentation.md#T">T</a>]</pre></code>
+<pre><code class="language-scala" >def iterator: Iterator[<a href="../../Documentation.md#T">T</a>]</pre></code>
 
 ### last
 <pre><code class="language-scala" >def last: A</pre></code>
@@ -325,7 +325,14 @@ method: length
 
 
 ### linkingGraph
-<pre><code class="language-scala" >def linkingGraph(g: <a href="./level2/Documentation/Graph.md">Graph</a>): Node</pre></code>
+<pre><code class="language-scala" >def linkingGraph(g: <a href="../../Documentation/Graph.md">Graph</a>): Node</pre></code>
+
+### linkingToDocMethodInUserDoc
+<pre><code class="language-scala" >def linkingToDocMethodInUserDoc: Nothing</pre></code>
+[example.level2.Documentation](../../../Documentation$.md)
+[example.level2.Documentation.valInsideDocObject](../../../Documentation$.md#valInsideDocObject)
+example.level2.Documentation.abstractType
+
 
 ### map
 <pre><code class="language-scala" >def map[B, That](f: (A) => B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
@@ -349,7 +356,7 @@ method: length
 <pre><code class="language-scala" >def methodsWithImplicit(x: Int)(implicit imp: Int, notImp: String): Nothing</pre></code>
 
 ### methodsWithParams
-<pre><code class="language-scala" >def methodsWithParams(x: <a href="./level2/Documentation.md#T">T</a>, y: Int): List[Map[Int, <a href="./level2/Documentation.md#T">T</a>]]</pre></code>
+<pre><code class="language-scala" >def methodsWithParams(x: <a href="../../Documentation.md#T">T</a>, y: Int): List[Map[Int, <a href="../../Documentation.md#T">T</a>]]</pre></code>
 Test methods with params
 
 
@@ -615,13 +622,13 @@ Test methods with params
 <pre><code class="language-scala" >def updated[B, That](index: Int, elem: B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### useOfOutsideType
-<pre><code class="language-scala" >def useOfOutsideType(): <a href="./ReturnTypeClass.md">ReturnTypeClass</a>[<a href="./level2/Documentation.md#T">T</a>]</pre></code>
+<pre><code class="language-scala" >def useOfOutsideType(): <a href="../../../ReturnTypeClass.md">ReturnTypeClass</a>[<a href="../../Documentation.md#T">T</a>]</pre></code>
 
 ### useOfOutsideTypeInsideObject
-<pre><code class="language-scala" >def useOfOutsideTypeInsideObject(): <a href="./ReturnObjectWithType$.md#returnType">returnType</a></pre></code>
+<pre><code class="language-scala" >def useOfOutsideTypeInsideObject(): <a href="../../../ReturnObjectWithType$.md#returnType">returnType</a></pre></code>
 
 ### useOfSameLevelOutsideType
-<pre><code class="language-scala" >def useOfSameLevelOutsideType(): <a href="./level2/SameLevelTypeLinking.md">SameLevelTypeLinking</a></pre></code>
+<pre><code class="language-scala" >def useOfSameLevelOutsideType(): <a href="../../SameLevelTypeLinking.md">SameLevelTypeLinking</a></pre></code>
 
 ### view
 <pre><code class="language-scala" >override def view(from: Int, until: Int): SeqView[A, Repr]</pre></code>

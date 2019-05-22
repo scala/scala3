@@ -1,8 +1,8 @@
-# class ReturnTypeClass
+# class UserDocLinkingClass
 
-<pre><code class="language-scala" >class ReturnTypeClass[T]</pre></code>
+<pre><code class="language-scala" >class UserDocLinkingClass</pre></code>
 ## Constructors:
-<pre><code class="language-scala" >ReturnTypeClass()</pre></code>
+<pre><code class="language-scala" >UserDocLinkingClass()</pre></code>
 
 ## Concrete Value Members:
 ### !=
@@ -43,6 +43,9 @@
 
 ### isInstanceOf
 <pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
+
+### linkMeFromUserDoc
+<pre><code class="language-scala" >def linkMeFromUserDoc(): Nothing</pre></code>
 
 ### ne
 <pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>

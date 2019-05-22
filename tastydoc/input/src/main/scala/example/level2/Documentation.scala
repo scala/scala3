@@ -78,9 +78,13 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
   def iterator = ???
   override def length = ???
 
-  /** [[dotty.tastydoc.example.ReturnTypeClass.linkMeFromUserDoc]]
-  * [[dotty.tastydoc.example.level2.Documentation.apply]]
-  * [[length]]
+  /** method: [[example.UserDocLinkingClass.linkMeFromUserDoc]]
+  *
+  * method:[[example.level2.Documentation.apply]]
+  *
+  * class: [[example.UserDocLinkingClass]]
+  *
+  * method: [[length]]
   */
   def linkMethodInDoc() = ???
 
@@ -129,7 +133,7 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
 /** Companion object
  */
 object Documentation {
-
+  val valInsideDocObject = ???
 }
 
 sealed abstract class ClassExtendingDocumentation[T, A <: Int, B >: String, -X, +Y] extends Documentation[T, A, B, X, Y] {}
