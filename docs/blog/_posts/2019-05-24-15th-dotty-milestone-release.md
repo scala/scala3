@@ -163,7 +163,7 @@ We've also plugged a few soundness problems caused by inferring too much when ma
 Some of the other notable changes include the following:
 
 - Dotty is now fully boostrapped. This means that we are able to compile Dotty with Dotty itself, and hence use all the new features in the compiler code base.
-- Singletones are now allowed in union types. E.g. the following is allowed: `object foo; type X = Int | foo.type`.
+- Singletons are now allowed in union types. E.g. the following is allowed: `object foo; type X = Int | foo.type`.
 - A bunch of improvements was made for the type inference system – see, e.g., PRs [#6454](https://github.com/lampepfl/dotty/pull/6454) and [#6467](https://github.com/lampepfl/dotty/pull/6467).
 - Improvements to the Scala 2 code support which, in particular, improves Cats support – see PRs [#6494](https://github.com/lampepfl/dotty/pull/6494) and [#6498](https://github.com/lampepfl/dotty/pull/6498).
 
