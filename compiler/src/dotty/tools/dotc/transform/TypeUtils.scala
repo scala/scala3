@@ -7,6 +7,7 @@ import TypeErasure.ErasedValueType
 import Types._
 import Contexts._
 import Symbols._
+import Names.Name
 
 object TypeUtils {
   /** A decorator that provides methods on types
@@ -63,5 +64,7 @@ object TypeUtils {
         }
         extractAlias(lo)
     }
+
+    def refinedWith(name: Name, info: Type)(implicit ctx: Context) = RefinedType(self, name, info)
   }
 }

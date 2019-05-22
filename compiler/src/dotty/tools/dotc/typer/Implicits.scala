@@ -27,6 +27,8 @@ import ErrorReporting._
 import reporting.diagnostic.Message
 import Inferencing.fullyDefinedType
 import Trees._
+import transform.SymUtils._
+import transform.TypeUtils._
 import Hashable._
 import util.{Property, SourceFile, NoSource}
 import config.Config
@@ -856,18 +858,104 @@ trait Implicits { self: Typer =>
           EmptyTree
       }
 
+  lazy val synthesizedProductMirror: SpecialHandler =
+    (formal: Type, span: Span) => implicit (ctx: Context) => {
+      formal.member(tpnme.MonoType).info match {
+        case monoAlias @ TypeAlias(monoType) =>
+          if (monoType.termSymbol.is(CaseVal)) {
+            val modul = monoType.termSymbol
+            val caseLabel = ConstantType(Constant(modul.name.toString))
+            val mirrorType = defn.Mirror_SingletonType
+              .refinedWith(tpnme.MonoType, monoAlias)
+              .refinedWith(tpnme.CaseLabel, TypeAlias(caseLabel))
+            ref(modul).withSpan(span).cast(mirrorType)
+          }
+          else if (monoType.classSymbol.isGenericProduct) {
+            val cls = monoType.classSymbol
+            val accessors = cls.caseAccessors.filterNot(_.is(PrivateLocal))
+            val elemTypes = accessors.map(monoType.memberInfo(_))
+            val caseLabel = ConstantType(Constant(cls.name.toString))
+            val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
+            val mirrorType =
+              defn.Mirror_ProductType
+                .refinedWith(tpnme.MonoType, monoAlias)
+                .refinedWith(tpnme.ElemTypes, TypeAlias(TypeOps.nestedPairs(elemTypes)))
+                .refinedWith(tpnme.CaseLabel, TypeAlias(caseLabel))
+                .refinedWith(tpnme.ElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
+            val modul = cls.linkedClass.sourceModule
+            assert(modul.is(Module))
+            ref(modul).withSpan(span).cast(mirrorType)
+          }
+          else EmptyTree
+        case _ => EmptyTree
+      }
+    }
+
+  lazy val synthesizedSumMirror: SpecialHandler =
+    (formal: Type, span: Span) => implicit (ctx: Context) =>
+      formal.member(tpnme.MonoType).info match {
+        case monoAlias @ TypeAlias(monoType) if monoType.classSymbol.isGenericSum =>
+          val cls = monoType.classSymbol
+          val elemTypes = cls.children.map {
+            case caseClass: ClassSymbol =>
+              assert(caseClass.is(Case))
+              if (caseClass.is(Module))
+                caseClass.sourceModule.termRef
+              else caseClass.primaryConstructor.info match {
+                case info: PolyType =>
+                  def instantiate(implicit ctx: Context) = {
+                    val poly = constrained(info, untpd.EmptyTree)._1
+                    val mono @ MethodType(_) = poly.resultType
+                    val resType = mono.finalResultType
+                    resType <:< cls.appliedRef
+                    val tparams = poly.paramRefs
+                    val variances = caseClass.typeParams.map(_.paramVariance)
+                    val instanceTypes = (tparams, variances).zipped.map((tparam, variance) =>
+                      ctx.typeComparer.instanceType(tparam, fromBelow = variance < 0))
+                    resType.substParams(poly, instanceTypes)
+                  }
+                  instantiate(ctx.fresh.setExploreTyperState().setOwner(caseClass))
+                case _ =>
+                  caseClass.typeRef
+              }
+            case child => child.termRef
+          }
+          val mirrorType =
+            defn.Mirror_SumType
+              .refinedWith(tpnme.MonoType, monoAlias)
+              .refinedWith(tpnme.ElemTypes, TypeAlias(TypeOps.nestedPairs(elemTypes)))
+          var modul = cls.linkedClass.sourceModule
+          if (!modul.exists) ???
+          ref(modul).withSpan(span).cast(mirrorType)
+        case _ =>
+          EmptyTree
+      }
+
+  lazy val synthesizedMirror: SpecialHandler =
+    (formal: Type, span: Span) => implicit (ctx: Context) =>
+      formal.member(tpnme.MonoType).info match {
+        case monoAlias @ TypeAlias(monoType) =>
+          if (monoType.termSymbol.is(CaseVal) || monoType.classSymbol.isGenericProduct)
+            synthesizedProductMirror(formal, span)(ctx)
+          else
+            synthesizedSumMirror(formal, span)(ctx)
+      }
+
   private var mySpecialHandlers: SpecialHandlers = null
 
   private def specialHandlers(implicit ctx: Context) = {
     if (mySpecialHandlers == null)
       mySpecialHandlers = List(
-        defn.ClassTagClass -> synthesizedClassTag,
-        defn.QuotedTypeClass -> synthesizedTypeTag,
-        defn.GenericClass -> synthesizedGeneric,
+        defn.ClassTagClass        -> synthesizedClassTag,
+        defn.QuotedTypeClass      -> synthesizedTypeTag,
+        defn.GenericClass         -> synthesizedGeneric,
         defn.TastyReflectionClass -> synthesizedTastyContext,
-        defn.EqlClass -> synthesizedEq,
+        defn.EqlClass             -> synthesizedEq,
         defn.TupledFunctionClass -> synthesizedTupleFunction,
-        defn.ValueOfClass -> synthesizedValueOf
+        defn.ValueOfClass         -> synthesizedValueOf,
+        defn.Mirror_ProductClass  -> synthesizedProductMirror,
+        defn.Mirror_SumClass      -> synthesizedSumMirror,
+        defn.MirrorClass          -> synthesizedMirror
       )
     mySpecialHandlers
   }
@@ -881,7 +969,13 @@ trait Implicits { self: Typer =>
       case fail @ SearchFailure(failed) =>
         def trySpecialCases(handlers: SpecialHandlers): Tree = handlers match {
           case (cls, handler) :: rest =>
-            val base = formal.baseType(cls)
+            def baseWithRefinements(tp: Type): Type = tp.dealias match {
+              case tp @ RefinedType(parent, rname, rinfo) =>
+                tp.derivedRefinedType(baseWithRefinements(parent), rname, rinfo)
+              case _ =>
+                tp.baseType(cls)
+            }
+            val base = baseWithRefinements(formal)
             val result =
               if (base <:< formal) {
                 // With the subtype test we enforce that the searched type `formal` is of the right form

@@ -39,6 +39,9 @@ object deriving {
 
     trait Singleton extends Product {
       type MonoType = this.type
+      type ElemTypes = Unit
+      type ElemLabels = Unit
+
       def fromProduct(p: scala.Product) = this
 
       def productElement(n: Int): Any = throw new IndexOutOfBoundsException(n.toString)

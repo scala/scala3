@@ -372,7 +372,7 @@ trait Deriving { this: Typer =>
             TypeDef(shapeAlias)
           }
           val reflectMethod: DefDef = {
-            val meth = newMethod(nme.reflect, MethodType(clsArg :: Nil, defn.MirrorType)).entered
+            val meth = newMethod(nme.reflect, MethodType(clsArg :: Nil, defn.ReflectMirrorType)).entered
             def rhs(paramRef: Tree)(implicit ctx: Context): Tree = {
               def reflectCase(scrut: Tree, idx: Int, elems: List[Type]): Tree = {
                 val ordinal = Literal(Constant(idx))
@@ -401,7 +401,7 @@ trait Deriving { this: Typer =>
           }
 
           val reifyMethod: DefDef = {
-            val meth = newMethod(nme.reify, MethodType(defn.MirrorType :: Nil, clsArg)).entered
+            val meth = newMethod(nme.reify, MethodType(defn.ReflectMirrorType :: Nil, clsArg)).entered
             def rhs(paramRef: Tree)(implicit ctx: Context): Tree = {
               def reifyCase(caseType: Type, elems: List[Type]): Tree = caseType match {
                 case caseType: TermRef =>
