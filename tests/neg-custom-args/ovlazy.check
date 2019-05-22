@@ -1,0 +1,5 @@
+-- Error: tests/neg-custom-args/ovlazy.scala:5:20 ----------------------------------------------------------------------
+5 |  override lazy val x: Int = 2 // error
+  |                    ^
+  |                    error overriding value x in class A of type Int;
+  |                      lazy value x of type Int may not override a non-lazy value
