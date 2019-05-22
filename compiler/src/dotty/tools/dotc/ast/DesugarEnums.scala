@@ -22,6 +22,9 @@ object DesugarEnums {
   /** Attachment containing the number of enum cases and the smallest kind that was seen so far. */
   val EnumCaseCount: Property.Key[(Int, DesugarEnums.CaseKind.Value)] = new Property.Key
 
+  /** Attachment marking an anonymous class as a singleton case. */
+  val SingletonCase: Property.StickyKey[Unit] = new Property.StickyKey
+
   /** The enumeration class that belongs to an enum case. This works no matter
    *  whether the case is still in the enum class or it has been transferred to the
    *  companion object.
@@ -115,13 +118,13 @@ object DesugarEnums {
     val toStringDef =
       DefDef(nme.toString_, Nil, Nil, TypeTree(), Ident(nme.name))
         .withFlags(Override)
-    def creator = New(Template(
+    val creator = New(Template(
       constr = emptyConstructor,
       parents = enumClassRef :: Nil,
       derived = Nil,
       self = EmptyValDef,
       body = List(enumTagDef, toStringDef) ++ registerCall
-    ))
+    ).withAttachment(SingletonCase, ()))
     DefDef(nme.DOLLAR_NEW, Nil,
         List(List(param(nme.tag, defn.IntType), param(nme.name, defn.StringType))),
         TypeTree(), creator).withFlags(Private | Synthetic)
@@ -264,6 +267,7 @@ object DesugarEnums {
           .withFlags(Override)
       val (tagMeth, scaffolding) = enumTagMeth(CaseKind.Object)
       val impl1 = cpy.Template(impl)(body = List(tagMeth, toStringMeth) ++ registerCall)
+        .withAttachment(SingletonCase, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final)
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }

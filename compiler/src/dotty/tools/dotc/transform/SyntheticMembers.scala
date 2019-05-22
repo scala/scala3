@@ -10,6 +10,7 @@ import NameOps._
 import Annotations.Annotation
 import typer.ProtoTypes.constrained
 import ast.untpd
+import ast.DesugarEnums.SingletonCase
 import ValueClasses.isDerivedValueClass
 import SymUtils._
 import config.Printers.derive
@@ -423,9 +424,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       else if (linked.is(Sealed))
         derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum}")
     }
-    else if (clazz.isAnonymousClass &&
-             (clazz.owner.is(EnumCaseVal) ||
-              clazz.owner.name == nme.DOLLAR_NEW && clazz.owner.is(Synthetic)))
+    else if (impl.removeAttachment(SingletonCase).isDefined)
       addParent(defn.Mirror_SingletonType)
     cpy.Template(impl)(parents = newParents, body = newBody)
   }
