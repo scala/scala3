@@ -849,8 +849,7 @@ object desugar {
           fwd
       }
       val moduleName = tdef.name.toTermName
-      val localRef = Select(Ident(moduleName), tdef.name)
-      localRef.pushAttachment(SuppressAccessCheck, ())
+      val localRef = Select(Ident(moduleName), tdef.name).withAttachment(SuppressAccessCheck, ())
       val aliasType = cpy.TypeDef(tdef)(rhs = completeForwarder(localRef)).withSpan(tdef.span.startPos)
       val localType = tdef.withMods(Modifiers(Synthetic | Opaque).withPrivateWithin(tdef.name))
 
