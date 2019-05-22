@@ -376,7 +376,7 @@ object StringContext {
       */
     def checkSubtype(actualType : Type, expectedType : String, argIndex : Int, possibilities : Type*) = {
       if (possibilities.find(actualType <:< _).isEmpty)
-        reporter.argError("type mismatch;\n found : " + actualType.show + "\nrequired : " + expectedType + "\n", argIndex)
+        reporter.argError("type mismatch;\n found : " + actualType.widen.show + "\nrequired : " + expectedType + "\n", argIndex)
     }
 
     /** Checks whether a given argument index, relative or not, is in the correct bounds
@@ -658,7 +658,7 @@ object StringContext {
         case 'h' | 'H' | 'S' | 's' =>
           if (!(argType <:< typeOf[java.util.Formattable]))
             for {flag <- flags ; if (flag._1 == '#')}
-              reporter.argError("type mismatch;\n found : " + argType.show + "\nrequired : java.util.Formattable\n", argIndex)
+              reporter.argError("type mismatch;\n found : " + argType.widen.show + "\nrequired : java.util.Formattable\n", argIndex)
         case 'n' | '%' =>
         case illegal =>
       }
