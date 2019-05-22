@@ -15,7 +15,7 @@ object Test extends App {
   val a = new A
   val b = new a.B
   val o = b.O
-  val sum: deriving.Mirror.Sum { type MonoType = o.T }= o.T.asInstanceOf
+  val sum: deriving.Mirror.Sum { type MirroredMonoType = o.T }= o.T.asInstanceOf
   assert(sum.ordinal(new o.C(1)) == 0)
   assert(sum.ordinal(new o.T.D()) == 1)
 

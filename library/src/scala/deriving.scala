@@ -7,10 +7,10 @@ object deriving {
   sealed trait Mirror {
 
     /** The mirrored *-type */
-    type MonoType
+    type MirroredMonoType
 
     /** The name of the type */
-    type Label <: String
+    type MirroredLabel <: String
   }
 
   object Mirror {
@@ -19,43 +19,43 @@ object deriving {
     trait Sum extends Mirror { self =>
 
       /** The types of the alternatives */
-      type ElemTypes <: Tuple
+      type MirroredElemTypes <: Tuple
 
       /** The ordinal number of the case class of `x`. For enums, `ordinal(x) == x.ordinal` */
-      def ordinal(x: MonoType): Int
+      def ordinal(x: MirroredMonoType): Int
     }
 
     /** The Mirror for a product type */
     trait Product extends Mirror {
 
       /** The types of the product elements */
-      type ElemTypes <: Tuple
+      type MirroredElemTypes <: Tuple
 
       /** The names of the product elements */
-      type ElemLabels <: Tuple
+      type MirroredElemLabels <: Tuple
 
       /** Create a new instance of type `T` with elements taken from product `p`. */
-      def fromProduct(p: scala.Product): MonoType
+      def fromProduct(p: scala.Product): MirroredMonoType
     }
 
     trait Singleton extends Product {
-      type MonoType = this.type
-      type ElemTypes = Unit
-      type ElemLabels = Unit
+      type MirroredMonoType = this.type
+      type MirroredElemTypes = Unit
+      type MirroredElemLabels = Unit
       def fromProduct(p: scala.Product) = this
     }
 
     /** A proxy for Scala 2 singletons, which do not inherit `Singleton` directly */
     class SingletonProxy(val value: AnyRef) extends Product {
-      type MonoType = value.type
-      type ElemTypes = Unit
-      type ElemLabels = Unit
+      type MirroredMonoType = value.type
+      type MirroredElemTypes = Unit
+      type MirroredElemLabels = Unit
       def fromProduct(p: scala.Product) = value
     }
 
-    type Of[T]        = Mirror { type MonoType = T }
-    type ProductOf[T] = Mirror.Product { type MonoType = T }
-    type SumOf[T]     = Mirror.Sum { type MonoType = T }
+    type Of[T]        = Mirror { type MirroredMonoType = T }
+    type ProductOf[T] = Mirror.Product { type MirroredMonoType = T }
+    type SumOf[T]     = Mirror.Sum { type MirroredMonoType = T }
   }
 
   /** Helper class to turn arrays into products */

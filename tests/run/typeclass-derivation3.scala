@@ -46,14 +46,14 @@ object typeclasses {
       }
 
     inline def eqlProduct[T](m: Mirror.ProductOf[T])(x: Any, y: Any): Boolean =
-      eqlElems[m.ElemTypes](0)(x, y)
+      eqlElems[m.MirroredElemTypes](0)(x, y)
 
     inline def eqlCases[Alts](n: Int)(x: Any, y: Any, ord: Int): Boolean =
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
             implicit match {
-              case m: Mirror.ProductOf[`alt`] => eqlElems[m.ElemTypes](0)(x, y)
+              case m: Mirror.ProductOf[`alt`] => eqlElems[m.MirroredElemTypes](0)(x, y)
             }
           else eqlCases[alts1](n + 1)(x, y, ord)
         case _: Unit =>
@@ -65,9 +65,9 @@ object typeclasses {
         inline ev match {
           case m: Mirror.SumOf[T] =>
             val ord = m.ordinal(x)
-            ord == m.ordinal(y) && eqlCases[m.ElemTypes](0)(x, y, ord)
+            ord == m.ordinal(y) && eqlCases[m.MirroredElemTypes](0)(x, y, ord)
           case m: Mirror.ProductOf[T] =>
-            eqlElems[m.ElemTypes](0)(x, y)
+            eqlElems[m.MirroredElemTypes](0)(x, y)
         }
     }
 
@@ -106,7 +106,7 @@ object typeclasses {
         case _: (alt *: alts1) =>
           if (ord == n)
             implicit match {
-              case m: Mirror.ProductOf[`alt`] => pickleElems[m.ElemTypes](0)(buf, x)
+              case m: Mirror.ProductOf[`alt`] => pickleElems[m.MirroredElemTypes](0)(buf, x)
             }
           else pickleCases[alts1](n + 1)(buf, x, ord)
         case _: Unit =>
@@ -141,7 +141,7 @@ object typeclasses {
           if (ord == n)
             implicit match {
               case m: Mirror.ProductOf[`alt` & T] =>
-                unpickleCase[`alt` & T, m.ElemTypes](buf, m)
+                unpickleCase[`alt` & T, m.MirroredElemTypes](buf, m)
             }
           else unpickleCases[T, alts1](n + 1)(buf, ord)
         case _: Unit =>
@@ -154,17 +154,17 @@ object typeclasses {
           case m: Mirror.SumOf[T] =>
             val ord = m.ordinal(x)
             buf += ord
-            pickleCases[m.ElemTypes](0)(buf, x, ord)
+            pickleCases[m.MirroredElemTypes](0)(buf, x, ord)
           case m: Mirror.ProductOf[T] =>
-            pickleElems[m.ElemTypes](0)(buf, x)
+            pickleElems[m.MirroredElemTypes](0)(buf, x)
         }
       def unpickle(buf: mutable.ListBuffer[Int]): T =
         inline ev match {
           case m: Mirror.SumOf[T] =>
             val ord = nextInt(buf)
-            unpickleCases[T, m.ElemTypes](0)(buf, ord)
+            unpickleCases[T, m.MirroredElemTypes](0)(buf, ord)
           case m: Mirror.ProductOf[T] =>
-            unpickleCase[T, m.ElemTypes](buf, m)
+            unpickleCase[T, m.MirroredElemTypes](buf, m)
         }
     }
 
@@ -201,10 +201,10 @@ object typeclasses {
     }
 
     inline def showCase(x: Any, m: Mirror.ProductOf[_]): String = {
-      val label = constValue[m.Label]
+      val label = constValue[m.MirroredLabel]
       inline m match {
         case m: Mirror.Singleton => label
-        case _ => showElems[m.ElemTypes, m.ElemLabels](0)(x).mkString(s"$label(", ", ", ")")
+        case _ => showElems[m.MirroredElemTypes, m.MirroredElemLabels](0)(x).mkString(s"$label(", ", ", ")")
       }
     }
 
@@ -226,7 +226,7 @@ object typeclasses {
         inline ev match {
           case m: Mirror.SumOf[T] =>
             val ord = m.ordinal(x)
-            showCases[m.ElemTypes](0)(x, ord)
+            showCases[m.MirroredElemTypes](0)(x, ord)
           case m: Mirror.ProductOf[T] =>
             showCase(x, m)
         }

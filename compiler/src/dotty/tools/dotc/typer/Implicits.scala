@@ -859,11 +859,11 @@ trait Implicits { self: Typer =>
           EmptyTree
       }
 
-  /** Create an anonymous class `new Object { type MonoType = ... }`
+  /** Create an anonymous class `new Object { type MirroredMonoType = ... }`
    *  and mark it with given attachment so that it is made into a mirror at PostTyper.
    */
   private def anonymousMirror(monoType: Type, attachment: Property.StickyKey[Unit], span: Span)(implicit ctx: Context) = {
-    val monoTypeDef = untpd.TypeDef(tpnme.MonoType, untpd.TypeTree(monoType))
+    val monoTypeDef = untpd.TypeDef(tpnme.MirroredMonoType, untpd.TypeTree(monoType))
     val newImpl = untpd.Template(
       constr = untpd.emptyConstructor,
       parents = untpd.TypeTree(defn.ObjectType) :: Nil,
@@ -876,14 +876,14 @@ trait Implicits { self: Typer =>
 
   /** The mirror type
    *
-   *     <parent> { MonoType = <monoType; Label = <label> }
+   *     <parent> { MirroredMonoType = <monoType; MirroredLabel = <label> }
    */
   private def mirrorCore(parent: Type, monoType: Type, label: Name)(implicit ctx: Context) =
     parent
-      .refinedWith(tpnme.MonoType, TypeAlias(monoType))
-      .refinedWith(tpnme.Label, TypeAlias(ConstantType(Constant(label.toString))))
+      .refinedWith(tpnme.MirroredMonoType, TypeAlias(monoType))
+      .refinedWith(tpnme.MirroredLabel, TypeAlias(ConstantType(Constant(label.toString))))
 
-  /** An implied instance for a type of the form `Mirror.Product { type MonoType = T }`
+  /** An implied instance for a type of the form `Mirror.Product { type MirroredMonoType = T }`
    *  where `T` is a generic product type or a case object or an enum case.
    */
   lazy val synthesizedProductMirror: SpecialHandler =
@@ -912,8 +912,8 @@ trait Implicits { self: Typer =>
             val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
             val mirrorType =
               mirrorCore(defn.Mirror_ProductType, monoType, cls.name)
-                .refinedWith(tpnme.ElemTypes, TypeAlias(TypeOps.nestedPairs(elemTypes)))
-                .refinedWith(tpnme.ElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
+                .refinedWith(tpnme.MirroredElemTypes, TypeAlias(TypeOps.nestedPairs(elemTypes)))
+                .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
             val modul = cls.linkedClass.sourceModule
             assert(modul.is(Module))
             val mirrorRef =
@@ -923,18 +923,18 @@ trait Implicits { self: Typer =>
           }
           else EmptyTree
       }
-      formal.member(tpnme.MonoType).info match {
+      formal.member(tpnme.MirroredMonoType).info match {
         case monoAlias @ TypeAlias(monoType) => mirrorFor(monoType)
         case _ => EmptyTree
       }
     }
 
-  /** An implied instance for a type of the form `Mirror.Sum { type MonoType = T }`
+  /** An implied instance for a type of the form `Mirror.Sum { type MirroredMonoType = T }`
    *  where `T` is a generic sum type.
    */
   lazy val synthesizedSumMirror: SpecialHandler =
     (formal: Type, span: Span) => implicit (ctx: Context) =>
-      formal.member(tpnme.MonoType).info match {
+      formal.member(tpnme.MirroredMonoType).info match {
         case TypeAlias(monoType) if monoType.classSymbol.isGenericSum =>
           val cls = monoType.classSymbol
           val elemTypes = cls.children.map {
@@ -969,7 +969,7 @@ trait Implicits { self: Typer =>
           }
           val mirrorType =
              mirrorCore(defn.Mirror_SumType, monoType, cls.name)
-              .refinedWith(tpnme.ElemTypes, TypeAlias(TypeOps.nestedPairs(elemTypes)))
+              .refinedWith(tpnme.MirroredElemTypes, TypeAlias(TypeOps.nestedPairs(elemTypes)))
           val modul = cls.linkedClass.sourceModule
           val mirrorRef =
             if (modul.exists && !cls.is(Scala2x)) ref(modul).withSpan(span)
@@ -979,12 +979,12 @@ trait Implicits { self: Typer =>
           EmptyTree
       }
 
-  /** An implied instance for a type of the form `Mirror { type MonoType = T }`
+  /** An implied instance for a type of the form `Mirror { type MirroredMonoType = T }`
    *  where `T` is a generic sum or product or singleton type.
    */
   lazy val synthesizedMirror: SpecialHandler =
     (formal: Type, span: Span) => implicit (ctx: Context) =>
-      formal.member(tpnme.MonoType).info match {
+      formal.member(tpnme.MirroredMonoType).info match {
         case monoAlias @ TypeAlias(monoType) =>
           if (monoType.termSymbol.is(CaseVal) || monoType.classSymbol.isGenericProduct)
             synthesizedProductMirror(formal, span)(ctx)

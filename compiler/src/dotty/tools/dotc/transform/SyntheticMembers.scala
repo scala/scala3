@@ -323,14 +323,14 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  gets the `fromProduct` method:
      *
      *  ```
-     *  def fromProduct(x$0: Product): MonoType =
+     *  def fromProduct(x$0: Product): MirroredMonoType =
      *    new C[U](
      *      x$0.productElement(0).asInstanceOf[U],
      *      x$0.productElement(1).asInstanceOf[Seq[String]]: _*)
      *  ```
      *  where
      *  ```
-     *  type MonoType = C[_]
+     *  type MirroredMonoType = C[_]
      *  ```
      */
     def fromProductBody(caseClass: Symbol, param: Tree)(implicit ctx: Context): Tree = {
@@ -362,11 +362,11 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   /** For an enum T:
    *
-   *     def ordinal(x: MonoType) = x.enumTag
+   *     def ordinal(x: MirroredMonoType) = x.enumTag
    *
    *  For  sealed trait with children of normalized types C_1, ..., C_n:
    *
-   *     def ordinal(x: MonoType) = x match {
+   *     def ordinal(x: MirroredMonoType) = x match {
    *        case _: C_1 => 0
    *        ...
    *        case _: C_n => n - 1
@@ -389,9 +389,13 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     }
 
   /** - If `impl` is the companion of a generic sum, add `deriving.Mirror.Sum` parent
-   *    and `MonoType` and `ordinal` members.
+   *    and `MirroredMonoType` and `ordinal` members.
    *  - If `impl` is the companion of a generic product, add `deriving.Mirror.Product` parent
-   *    and `MonoType` and `fromProduct` members.
+   *    and `MirroredMonoType` and `fromProduct` members.
+   *  - If `impl` is marked with one of the attachments ExtendsSingletonMirror, ExtendsProductMirror,
+   *    or ExtendsSumMirror, remove the attachment and generate the corresponding mirror support,
+   *    On this case the represented class or object is referred to in a pre-existing `MirroredMonoType`
+   *    member of the template.
    */
   def addMirrorSupport(impl: Template)(implicit ctx: Context): Template = {
     val clazz = ctx.owner.asClass
@@ -415,11 +419,11 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     }
     val linked = clazz.linkedClass
     lazy val monoType = {
-      val existing = clazz.info.member(tpnme.MonoType).symbol
+      val existing = clazz.info.member(tpnme.MirroredMonoType).symbol
       if (existing.exists && !existing.is(Deferred)) existing
       else {
         val monoType =
-          ctx.newSymbol(clazz, tpnme.MonoType, Synthetic, TypeAlias(linked.rawTypeRef), coord = clazz.coord)
+          ctx.newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(linked.rawTypeRef), coord = clazz.coord)
         newBody = newBody :+ TypeDef(monoType).withSpan(ctx.owner.span.focus)
         monoType.entered
       }
