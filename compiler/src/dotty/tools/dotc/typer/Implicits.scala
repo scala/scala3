@@ -844,21 +844,6 @@ trait Implicits { self: Typer =>
       }
     }
 
-  /** If `formal` is of the form `scala.reflect.Generic[T]` for some class type `T`,
-   *  synthesize an instance for it.
-   */
-  lazy val synthesizedGeneric: SpecialHandler =
-    (formal: Type, span: Span) => implicit (ctx: Context) =>
-      formal.argTypes match {
-        case arg :: Nil =>
-          val pos = ctx.source.atSpan(span)
-          val arg1 = fullyDefinedType(arg, "Generic argument", span)
-          val clsType = checkClassType(arg1, pos, traitReq = false, stablePrefixReq = true)
-          new Deriver(clsType.classSymbol.asClass, pos).genericInstance(clsType)
-        case _ =>
-          EmptyTree
-      }
-
   /** Create an anonymous class `new Object { type MirroredMonoType = ... }`
    *  and mark it with given attachment so that it is made into a mirror at PostTyper.
    */
@@ -999,7 +984,6 @@ trait Implicits { self: Typer =>
       mySpecialHandlers = List(
         defn.ClassTagClass        -> synthesizedClassTag,
         defn.QuotedTypeClass      -> synthesizedTypeTag,
-        defn.GenericClass         -> synthesizedGeneric,
         defn.TastyReflectionClass -> synthesizedTastyContext,
         defn.EqlClass             -> synthesizedEq,
         defn.TupledFunctionClass -> synthesizedTupleFunction,
