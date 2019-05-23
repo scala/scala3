@@ -3,7 +3,7 @@ layout: blog-page
 title: Announcing Dotty 0.15.0-RC1 – the fully bootstrapped compiler
 author: Anatolii Kmetiuk
 authorImg: /images/anatolii.png
-date: 2019-05-24
+date: 2019-05-23
 ---
 
 Hi! We are very excited to announce the 15th release of Dotty. The most exciting thing in this release is the full bootstrap for Dotty introduced by PR [#5923](https://github.com/lampepfl/dotty/pull/5923)🎉😍. This means that we now always compile Dotty with Dotty itself, hence we can use use all the new features in the compiler code base.
