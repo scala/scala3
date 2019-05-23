@@ -1,5 +1,4 @@
 
-import Macro._
 
 /**
   * These tests test some combinations that should make the f interpolator fail.

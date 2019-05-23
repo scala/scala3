@@ -22,7 +22,7 @@ object Macro {
         // index in the list if arg or part, -1 otherwise
         // offset, 0 if strCtx, args or arg
         // message as given
-        val reporter = new dotty.internal.StringContext.Reporter{
+        val reporter = new dotty.internal.StringContextMacro.Reporter{
           private[this] var reported = false
           private[this] var oldReported = false
           def partError(message : String, index : Int, offset : Int) : Unit = {
@@ -61,9 +61,9 @@ object Macro {
             reported = oldReported
           }
         }
-        val partsExpr = dotty.internal.StringContext.getPartsExprs(strCtxExpr)
-        val args = dotty.internal.StringContext.getArgsExprs(argsExpr)
-        dotty.internal.StringContext.interpolate(partsExpr, args, argsExpr, reporter) // Discard result
+        val partsExpr = dotty.internal.StringContextMacro.getPartsExprs(strCtxExpr)
+        val args = dotty.internal.StringContextMacro.getArgsExprs(argsExpr)
+        dotty.internal.StringContextMacro.interpolate(partsExpr, args, argsExpr, reporter) // Discard result
         errors.result().toExprOfList
     case ('{ new StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
         val errors = List.newBuilder[Expr[(Boolean, Int, Int, Int, String)]]
@@ -72,7 +72,7 @@ object Macro {
         // index in the list if arg or part, -1 otherwise
         // offset, 0 if strCtx, args or arg
         // message as given
-        val reporter = new dotty.internal.StringContext.Reporter{
+        val reporter = new dotty.internal.StringContextMacro.Reporter{
           private[this] var reported = false
           private[this] var oldReported = false
           def partError(message : String, index : Int, offset : Int) : Unit = {
@@ -111,9 +111,9 @@ object Macro {
             reported = oldReported
           }
         }
-        val partsExpr = dotty.internal.StringContext.getPartsExprs(strCtxExpr)
-        val args = dotty.internal.StringContext.getArgsExprs(argsExpr)
-        dotty.internal.StringContext.interpolate(partsExpr, args, argsExpr, reporter) // Discard result
+        val partsExpr = dotty.internal.StringContextMacro.getPartsExprs(strCtxExpr)
+        val args = dotty.internal.StringContextMacro.getArgsExprs(argsExpr)
+        dotty.internal.StringContextMacro.interpolate(partsExpr, args, argsExpr, reporter) // Discard result
         errors.result().toExprOfList
     }
   }
