@@ -18,7 +18,7 @@ import dotty.tools.dotc.ast.tpd
 import scala.annotation.tailrec
 
 /** Optimize generic operations on tuples */
-class TuplesOptimizations extends MiniPhase with IdentityDenotTransformer {
+class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   import tpd._
 
   def phaseName: String = "genericTuples"
@@ -80,7 +80,7 @@ class TuplesOptimizations extends MiniPhase with IdentityDenotTransformer {
             val elements = (1 until size).map(i => tup.select(nme.selectorName(i))).toList
             knownTupleFromElements(tpes.tail, elements)
           }
-        } else {
+        } else if (size <= MaxTupleArity + 1) {
           // val it = this.asInstanceOf[Product].productIterator
           // it.next()
           // TupleN-1(it.next(), ..., it.next())
@@ -90,6 +90,9 @@ class TuplesOptimizations extends MiniPhase with IdentityDenotTransformer {
               knownTupleFromIterator(size - 1, it).asInstance(tree.tpe)
             )
           }
+        } else {
+          // tup.asInstanceOf[TupleXXL].tailXXL
+          tup.asInstance(defn.TupleXXLType).select("tailXXL".toTermName)
         }
       case None =>
         // No optimization, keep:
@@ -183,8 +186,8 @@ class TuplesOptimizations extends MiniPhase with IdentityDenotTransformer {
           // DynamicTuple.productToArray(tup.asInstanceOf[Product])
           ref(defn.DynamicTuple_productToArray).appliedTo(tup.asInstance(defn.ProductType))
         } else {
-          // tup.asInstanceOf[TupleXXL].elems
-          tup.asInstance(defn.TupleXXLType).select(nme.elems)
+          // tup.asInstanceOf[TupleXXL].elems.clone()
+          tup.asInstance(defn.TupleXXLType).select(nme.toArray)
         }
       case None =>
         // No optimization, keep:

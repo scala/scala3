@@ -175,12 +175,9 @@ object DynamicTuple {
 
 
   def dynamicToArray(self: Tuple): Array[Object] = (self: Any) match {
-    case self: Unit =>
-      Array.emptyObjectArray
-    case self: TupleXXL =>
-      self.elems
-    case self: Product =>
-      productToArray(self)
+    case self: Unit => Array.emptyObjectArray
+    case self: TupleXXL => self.toArray
+    case self: Product => productToArray(self)
   }
 
   def productToArray(self: Product): Array[Object] = {
@@ -222,7 +219,6 @@ object DynamicTuple {
 
   def dynamicSize[This <: Tuple](self: This): Size[This] = (self: Any) match {
     case self: Unit => 0.asInstanceOf[Size[This]]
-    case self: TupleXXL => self.elems.length.asInstanceOf[Size[This]]
     case self: Product => self.productArity.asInstanceOf[Size[This]]
   }
 

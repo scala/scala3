@@ -19,6 +19,13 @@ final class TupleXXL private (es: Array[Object]) extends Product {
     case _ => false
   }
   def elems: Array[Object] = es
+
+  def tailXXL: TupleXXL = {
+    assert(es.length > 23)
+    new TupleXXL(es.tail)
+  }
+
+  def toArray: Array[Object] = es.clone
 }
 object TupleXXL {
   def fromIterator(elems: Iterator[Any]) = new TupleXXL(elems.map(_.asInstanceOf[Object]).toArray)
