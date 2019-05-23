@@ -13,6 +13,7 @@ import java.util.Optional
 import scala.util.Properties.isJavaAtLeast
 
 object DottyPlugin extends AutoPlugin {
+  val dottyScalaInstance = taskKey[ScalaInstance]("ScalaInstance for Dotty")
   object autoImport {
     val isDotty = settingKey[Boolean]("Is this project compiled with Dotty?")
 
@@ -142,6 +143,8 @@ object DottyPlugin extends AutoPlugin {
     }
   )
 
+  // https://github.com/sbt/sbt/issues/3110
+  val Def = sbt.Def
   override def projectSettings: Seq[Setting[_]] = {
     Seq(
       isDotty := scalaVersion.value.startsWith("0."),
@@ -266,41 +269,39 @@ object DottyPlugin extends AutoPlugin {
       },
       // ... instead, we'll fetch the compiler and its dependencies ourselves.
       scalaInstance := Def.taskDyn {
-        if (isDotty.value) Def.task {
-          val updateReport =
-            fetchArtifactsOf(
-              dependencyResolution.value,
-              scalaModuleInfo.value,
-              updateConfiguration.value,
-              (unresolvedWarningConfiguration in update).value,
-              streams.value.log,
-              scalaOrganization.value %% "dotty-doc" % scalaVersion.value)
-          val scalaLibraryJar = getJar(updateReport,
-            "org.scala-lang", "scala-library", revision = AllPassFilter)
-          val dottyLibraryJar = getJar(updateReport,
-            scalaOrganization.value, s"dotty-library_${scalaBinaryVersion.value}", scalaVersion.value)
-          val compilerJar = getJar(updateReport,
-            scalaOrganization.value, s"dotty-compiler_${scalaBinaryVersion.value}", scalaVersion.value)
-          val allJars =
-            getJars(updateReport, AllPassFilter, AllPassFilter, AllPassFilter)
-
-          makeScalaInstance(
-            state.value,
-            scalaVersion.value,
-            scalaLibraryJar,
-            dottyLibraryJar,
-            compilerJar,
-            allJars
-          )
-        }
-        else Def.task {
-          // This should really be `old` with `val old = scalaInstance.value`
-          // above, except that this would force the original definition of the
-          // `scalaInstance` task to be computed when `isDotty` is true, which
-          // would fail because `managedScalaInstance` is false.
-          Defaults.scalaInstanceTask.value
-        }
+        val isD = isDotty.value
+        val si = scalaInstance.taskValue
+        val siTaskInitialize = Def.valueStrict { si }
+        if (isD) dottyScalaInstance
+        else siTaskInitialize
       }.value,
+      dottyScalaInstance := {
+        val updateReport =
+          fetchArtifactsOf(
+            dependencyResolution.value,
+            scalaModuleInfo.value,
+            updateConfiguration.value,
+            (unresolvedWarningConfiguration in update).value,
+            streams.value.log,
+            scalaOrganization.value %% "dotty-doc" % scalaVersion.value)
+        val scalaLibraryJar = getJar(updateReport,
+          "org.scala-lang", "scala-library", revision = AllPassFilter)
+        val dottyLibraryJar = getJar(updateReport,
+          scalaOrganization.value, s"dotty-library_${scalaBinaryVersion.value}", scalaVersion.value)
+        val compilerJar = getJar(updateReport,
+          scalaOrganization.value, s"dotty-compiler_${scalaBinaryVersion.value}", scalaVersion.value)
+        val allJars =
+          getJars(updateReport, AllPassFilter, AllPassFilter, AllPassFilter)
+
+        makeScalaInstance(
+          state.value,
+          scalaVersion.value,
+          scalaLibraryJar,
+          dottyLibraryJar,
+          compilerJar,
+          allJars
+        )
+      },
 
       // Because managedScalaInstance is false, sbt won't add the standard library to our dependencies for us
       libraryDependencies ++= {
