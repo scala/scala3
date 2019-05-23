@@ -7,7 +7,7 @@ import scala.annotation.tailrec
 //
 // produces an output file with `wc` measures (lines/words/chars):
 //
-//   39161   97323 3124249
+//   83434  140554 6384738
 //
 // The command
 //
@@ -15,9 +15,9 @@ import scala.annotation.tailrec
 //
 // gives (best of three):
 //
-// real	0m13.095s
-// user	0m50.491s
-// sys	0m0.970s
+// real	0m16.061s
+// user	1m3.608s
+// sys	0m1.314s
 object datatypes {
   import typeclasses._
 
