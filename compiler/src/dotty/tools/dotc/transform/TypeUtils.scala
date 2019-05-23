@@ -66,5 +66,15 @@ object TypeUtils {
     }
 
     def refinedWith(name: Name, info: Type)(implicit ctx: Context) = RefinedType(self, name, info)
+
+    /** The TermRef referring to the companion of the underlying class reference
+     *  of this type, while keeping the same prefix.
+     */
+    def companionRef(implicit ctx: Context): TermRef = self match {
+      case self @ TypeRef(prefix, _) if self.symbol.isClass =>
+        prefix.select(self.symbol.companionModule).asInstanceOf[TermRef]
+      case self: TypeProxy =>
+        self.underlying.companionRef
+    }
   }
 }

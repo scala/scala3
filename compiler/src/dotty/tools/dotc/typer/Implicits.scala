@@ -868,6 +868,13 @@ trait Implicits { self: Typer =>
       .refinedWith(tpnme.MirroredMonoType, TypeAlias(monoType))
       .refinedWith(tpnme.MirroredLabel, TypeAlias(ConstantType(Constant(label.toString))))
 
+  /** A path referencing the companion of class type `clsType` */
+  private def companionPath(clsType: Type, span: Span)(implicit ctx: Context) = {
+    val ref = pathFor(clsType.companionRef)
+    assert(ref.symbol.is(Module) && ref.symbol.companionClass == clsType.classSymbol)
+    ref.withSpan(span)
+  }
+
   /** An implied instance for a type of the form `Mirror.Product { type MirroredMonoType = T }`
    *  where `T` is a generic product type or a case object or an enum case.
    */
@@ -878,16 +885,16 @@ trait Implicits { self: Typer =>
           mirrorFor(tp1).orElse(mirrorFor(tp2))
         case _ =>
           if (monoType.termSymbol.is(CaseVal)) {
-            val modul = monoType.termSymbol
-            if (modul.info.classSymbol.is(Scala2x)) {
-              val mirrorType = mirrorCore(defn.Mirror_SingletonProxyType, monoType, modul.name)
-              val mirrorRef = New(defn.Mirror_SingletonProxyType, ref(modul).withSpan(span) :: Nil)
+            val module = monoType.termSymbol
+            val modulePath = pathFor(monoType).withSpan(span)
+            if (module.info.classSymbol.is(Scala2x)) {
+              val mirrorType = mirrorCore(defn.Mirror_SingletonProxyType, monoType, module.name)
+              val mirrorRef = New(defn.Mirror_SingletonProxyType, modulePath :: Nil)
               mirrorRef.cast(mirrorType)
             }
             else {
-              val mirrorType = mirrorCore(defn.Mirror_SingletonType, monoType, modul.name)
-              val mirrorRef = ref(modul).withSpan(span)
-              mirrorRef.cast(mirrorType)
+              val mirrorType = mirrorCore(defn.Mirror_SingletonType, monoType, module.name)
+              modulePath.cast(mirrorType)
             }
           }
           else if (monoType.classSymbol.isGenericProduct) {
@@ -899,11 +906,9 @@ trait Implicits { self: Typer =>
               mirrorCore(defn.Mirror_ProductType, monoType, cls.name)
                 .refinedWith(tpnme.MirroredElemTypes, TypeAlias(TypeOps.nestedPairs(elemTypes)))
                 .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
-            val modul = cls.linkedClass.sourceModule
-            assert(modul.is(Module))
             val mirrorRef =
               if (cls.is(Scala2x)) anonymousMirror(monoType, ExtendsProductMirror, span)
-              else ref(modul).withSpan(span)
+              else companionPath(monoType, span)
             mirrorRef.cast(mirrorType)
           }
           else EmptyTree
@@ -955,9 +960,8 @@ trait Implicits { self: Typer =>
           val mirrorType =
              mirrorCore(defn.Mirror_SumType, monoType, cls.name)
               .refinedWith(tpnme.MirroredElemTypes, TypeAlias(TypeOps.nestedPairs(elemTypes)))
-          val modul = cls.linkedClass.sourceModule
           val mirrorRef =
-            if (modul.exists && !cls.is(Scala2x)) ref(modul).withSpan(span)
+            if (cls.linkedClass.exists && !cls.is(Scala2x)) companionPath(monoType, span)
             else anonymousMirror(monoType, ExtendsSumMirror, span)
           mirrorRef.cast(mirrorType)
         case _ =>
