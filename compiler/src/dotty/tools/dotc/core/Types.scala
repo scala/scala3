@@ -333,19 +333,16 @@ object Types {
     /** Is this an alias TypeBounds? */
     final def isTypeAlias: Boolean = this.isInstanceOf[TypeAlias]
 
-    /** Is this a MethodType which is from Java */
+    /** Is this a MethodType which is from Java? */
     def isJavaMethod: Boolean = false
 
-    /** Is this a MethodType which has implicit or contextual parameters */
+    /** Is this a Method or PolyType which has implicit or contextual parameters? */
     def isImplicitMethod: Boolean = false
 
     /** Is this a Method or PolyType which has contextual parameters as first value parameter list? */
-    def isContextual: Boolean = false
+    def isContextualMethod: Boolean = false
 
-    /** Is this a Method or PolyType which has implicit parameters as first value parameter list? */
-    def isImplicit: Boolean = false
-
-    /** Is this a MethodType for which the parameters will not be used */
+    /** Is this a MethodType for which the parameters will not be used? */
     def isErasedMethod: Boolean = false
 
     /** Is this a match type or a higher-kinded abstraction of one?
@@ -789,12 +786,12 @@ object Types {
     }
 
     /** The set of implicit term members of this type
-     *  @param kind   A subset of {Implicit, Implied} that sepcifies what kind of implicit should
+     *  @param kind   A subset of {Implicit, Implied} that specifies what kind of implicit should
      *                be returned
      */
     final def implicitMembers(kind: FlagSet)(implicit ctx: Context): List[TermRef] = track("implicitMembers") {
       memberDenots(implicitFilter,
-          (name, buf) => buf ++= member(name).altsWith(_.is(ImplicitOrImpliedTerm & kind)))
+          (name, buf) => buf ++= member(name).altsWith(_.is(ImplicitOrImpliedOrGivenTerm & kind)))
         .toList.map(d => TermRef(this, d.symbol.asTerm))
     }
 
@@ -1507,7 +1504,7 @@ object Types {
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
       case mt: MethodType if !mt.isParamDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
-        val isContextual = mt.isContextual && !ctx.erasedTypes
+        val isContextual = mt.isContextualMethod && !ctx.erasedTypes
         val isErased = mt.isErasedMethod && !ctx.erasedTypes
         val result1 = mt.nonDependentResultApprox match {
           case res: MethodType => res.toFunctionType()
@@ -3188,15 +3185,14 @@ object Types {
     final override def isImplicitMethod: Boolean =
       companion.eq(ImplicitMethodType) ||
       companion.eq(ErasedImplicitMethodType) ||
-      isContextual
+      isContextualMethod
     final override def isErasedMethod: Boolean =
       companion.eq(ErasedMethodType) ||
       companion.eq(ErasedImplicitMethodType) ||
       companion.eq(ErasedContextualMethodType)
-    final override def isContextual: Boolean =
+    final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType) ||
       companion.eq(ErasedContextualMethodType)
-    final override def isImplicit = isImplicitMethod
 
     def computeSignature(implicit ctx: Context): Signature = {
       val params = if (isErasedMethod) Nil else paramInfos
@@ -3289,7 +3285,7 @@ object Types {
   }
 
   object MethodType extends MethodTypeCompanion("MethodType") {
-    def maker(isJava: Boolean = false, isImplicit: Boolean = false, isErased: Boolean = false, isContextual: Boolean = false): MethodTypeCompanion = {
+    def companion(isJava: Boolean = false, isContextual: Boolean = false, isImplicit: Boolean = false, isErased: Boolean = false): MethodTypeCompanion = {
       if (isJava) {
         assert(!isImplicit)
         assert(!isErased)
@@ -3388,8 +3384,8 @@ object Types {
 
     def computeSignature(implicit ctx: Context): Signature = resultSignature
 
-    override def isContextual = resType.isContextual
-    override def isImplicit = resType.isImplicit
+    override def isContextualMethod = resType.isContextualMethod
+    override def isImplicitMethod = resType.isImplicitMethod
 
     /** Merge nested polytypes into one polytype. nested polytypes are normally not supported
      *  but can arise as temporary data structures.
@@ -3710,7 +3706,12 @@ object Types {
 
   // ----- Skolem types -----------------------------------------------
 
-  /** A skolem type reference with underlying type `info` */
+  /** A skolem type reference with underlying type `info`.
+   *
+   * For Dotty, a skolem type is a singleton type of some unknown value of type `info`.
+   * Note that care is needed when creating them, since not all types need to be inhabited.
+   * A skolem is equal to itself and no other type.
+   */
   case class SkolemType(info: Type) extends UncachedProxyType with ValueType with SingletonType {
     override def underlying(implicit ctx: Context): Type = info
     def derivedSkolemType(info: Type)(implicit ctx: Context): SkolemType =
@@ -3884,10 +3885,10 @@ object Types {
       def contextInfo(tp: Type): Type = tp match {
         case tp: TypeParamRef =>
           val constraint = ctx.typerState.constraint
-          if (constraint.entry(tp).exists) constraint.fullBounds(tp)
+          if (constraint.entry(tp).exists) ctx.typeComparer.fullBounds(tp)
           else NoType
         case tp: TypeRef =>
-          val bounds = ctx.gadt.bounds(tp.symbol)
+          val bounds = ctx.gadt.fullBounds(tp.symbol)
           if (bounds == null) NoType else bounds
         case tp: TypeVar =>
           tp.underlying
@@ -3912,8 +3913,7 @@ object Types {
         myReduced =
           trace(i"reduce match type $this $hashCode", typr, show = true) {
             try
-              if (defn.isBottomType(scrutinee)) defn.NothingType
-              else typeComparer.matchCases(scrutinee, cases)(trackingCtx)
+              typeComparer.matchCases(scrutinee, cases)(trackingCtx)
             catch {
               case ex: Throwable =>
                 handleRecursive("reduce type ", i"$scrutinee match ...", ex)

@@ -218,7 +218,7 @@ object Erasure {
               adaptToType(tree, underlying)
             else if (!(tree.tpe <:< tycon)) {
               assert(!(tree.tpe.typeSymbol.isPrimitiveValueClass))
-              val nullTree = Literal(Constant(null))
+              val nullTree = nullLiteral
               val unboxedNull = adaptToType(nullTree, underlying)
 
               evalOnce(tree) { t =>
@@ -522,7 +522,7 @@ object Erasure {
       val Apply(fun, args) = tree
       if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)
-      else typedExpr(fun, FunProto(args, pt)(this, isContextual = false)) match {
+      else typedExpr(fun, FunProto(args, pt)(this, isGivenApply = false)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1
         case fun1 =>

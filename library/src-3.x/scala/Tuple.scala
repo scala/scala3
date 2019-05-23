@@ -3,13 +3,15 @@ import annotation.showAsInfix
 import compiletime._
 import internal._
 
+import scala.runtime.DynamicTuple
+
 sealed trait Tuple extends Any {
   import Tuple._
 
   inline def toArray: Array[Object] =
     inline constValueOpt[BoundedSize[this.type]] match {
       case Some(0) =>
-        scala.runtime.DynamicTuple.empty$Array
+        DynamicTuple.empty$Array
       case Some(1) =>
         val t = asInstanceOf[Tuple1[Object]]
         Array(t._1)
@@ -22,12 +24,12 @@ sealed trait Tuple extends Any {
       case Some(4) =>
         val t = asInstanceOf[Tuple4[Object, Object, Object, Object]]
         Array(t._1, t._2, t._3, t._4)
-      case Some(n) if n <= scala.runtime.DynamicTuple.MaxSpecialized =>
-        to$Array(this, n)
+      case Some(n) if n <= DynamicTuple.MaxSpecialized =>
+        DynamicTuple.to$Array(this, n)
       case Some(n) =>
         asInstanceOf[TupleXXL].elems
       case None =>
-        runtime.DynamicTuple.dynamicToArray(this)
+        DynamicTuple.dynamicToArray(this)
     }
 
   inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This = {
@@ -47,9 +49,9 @@ sealed trait Tuple extends Any {
         val t = asInstanceOf[Tuple4[_, _, _, _]]
         Tuple5(x, t._1, t._2, t._3, t._4).asInstanceOf[Result]
       case Some(n) =>
-        fromArray[H *: this.type](cons$Array(x, toArray))
+        knownTupleFromArray[H *: this.type](DynamicTuple.cons$Array(x, toArray))
       case _ =>
-        runtime.DynamicTuple.dynamic_*:[This, H](this, x)
+        DynamicTuple.dynamic_*:[This, H](this, x)
     }
   }
 
@@ -72,7 +74,7 @@ sealed trait Tuple extends Any {
             val u = that.asInstanceOf[Tuple2[_, _]]
             Tuple4(t._1, t._2, u._1, u._2).asInstanceOf[Result]
           case _ =>
-            genericConcat[Result](this, that).asInstanceOf[Result]
+            knownTupleFromArray[Result](this.toArray ++ that.toArray)
         }
       case Some(3) =>
         val t = asInstanceOf[Tuple3[_, _, _]]
@@ -82,24 +84,21 @@ sealed trait Tuple extends Any {
             val u = that.asInstanceOf[Tuple1[_]]
             Tuple4(t._1, t._2, t._3, u._1).asInstanceOf[Result]
           case _ =>
-            genericConcat[Result](this, that).asInstanceOf[Result]
+            knownTupleFromArray[Result](this.toArray ++ that.toArray)
         }
       case Some(_) =>
         if (constValue[BoundedSize[that.type]] == 0) this.asInstanceOf[Result]
-        else genericConcat[Result](this, that).asInstanceOf[Result]
+        else knownTupleFromArray[Result](this.toArray ++ that.toArray)
       case None =>
-        runtime.DynamicTuple.dynamic_++[This, that.type](this, that)
+        DynamicTuple.dynamic_++[This, that.type](this, that)
     }
   }
-
-  inline def genericConcat[T <: Tuple](xs: Tuple, ys: Tuple): Tuple =
-    fromArray[T](xs.toArray ++ ys.toArray)
 
   inline def size[This >: this.type <: Tuple]: Size[This] = {
     type Result = Size[This]
     inline constValueOpt[BoundedSize[this.type]] match {
       case Some(n) => n.asInstanceOf[Result]
-      case _ => runtime.DynamicTuple.dynamicSize(this)
+      case _ => DynamicTuple.dynamicSize(this)
     }
   }
 
@@ -144,27 +143,9 @@ object Tuple {
 
   private[scala] type BoundedSize[X] = BoundedSizeRecur[X, 23]
 
-  val $emptyArray = Array[Object]()
+  private[scala] val $emptyArray = Array[Object]()
 
-  def to$Array(xs: Tuple, n: Int) = {
-    val arr = new Array[Object](n)
-    var i = 0
-    var it = xs.asInstanceOf[Product].productIterator
-    while (i < n) {
-      arr(i) = it.next().asInstanceOf[Object]
-      i += 1
-    }
-    arr
-  }
-
-  def cons$Array[H](x: H, elems: Array[Object]): Array[Object] = {
-    val elems1 = new Array[Object](elems.length + 1)
-    elems1(0) = x.asInstanceOf[Object]
-    System.arraycopy(elems, 0, elems1, 1, elems.length)
-    elems1
-  }
-
-  inline def fromArray[T <: Tuple](xs: Array[Object]): T =
+  private[scala] inline def knownTupleFromArray[T <: Tuple](xs: Array[Object]): T =
     inline constValue[BoundedSize[T]] match {
       case 0  => ().asInstanceOf[T]
       case 1  => Tuple1(xs(0)).asInstanceOf[T]
@@ -191,6 +172,18 @@ object Tuple {
       case 22 => Tuple22(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20), xs(21)).asInstanceOf[T]
       case _ => TupleXXL(xs).asInstanceOf[T]
     }
+
+  def fromArray[T](xs: Array[T]): Tuple = {
+    val xs2 = xs match {
+      case xs: Array[Object] => xs
+      case xs => xs.map(_.asInstanceOf[Object])
+    }
+    DynamicTuple.dynamicFromArray[Tuple](xs2)
+  }
+
+  def fromProduct(product: Product): Tuple =
+    runtime.DynamicTuple.dynamicFromProduct[Tuple](product)
+
 }
 
 sealed trait NonEmptyTuple extends Tuple {
@@ -211,13 +204,13 @@ sealed trait NonEmptyTuple extends Tuple {
       case Some(4) =>
         val t = asInstanceOf[Tuple4[_, _, _, _]]
         t._1
-      case Some(n) if n > 4 && n <= scala.runtime.DynamicTuple.MaxSpecialized =>
+      case Some(n) if n > 4 && n <= DynamicTuple.MaxSpecialized =>
         asInstanceOf[Product].productElement(0)
-      case Some(n) if n > scala.runtime.DynamicTuple.MaxSpecialized =>
+      case Some(n) if n > DynamicTuple.MaxSpecialized =>
         val t = asInstanceOf[TupleXXL]
         t.elems(0)
       case None =>
-        scala.runtime.DynamicTuple.dynamicHead[this.type](this)
+        DynamicTuple.dynamicHead[this.type](this)
     }
     resVal.asInstanceOf[Result]
   }
@@ -240,16 +233,16 @@ sealed trait NonEmptyTuple extends Tuple {
         val t = asInstanceOf[Tuple5[_, _, _, _, _]]
         Tuple4(t._2, t._3, t._4, t._5).asInstanceOf[Result]
       case Some(n) if n > 5 =>
-        fromArray[Result](toArray.tail)
+        knownTupleFromArray[Result](toArray.tail)
       case None =>
-        runtime.DynamicTuple.dynamicTail[This](this)
+        DynamicTuple.dynamicTail[This](this)
     }
   }
 
   inline def fallbackApply(n: Int) =
     inline constValueOpt[n.type] match {
       case Some(n: Int) => error("index out of bounds: ", n)
-      case None => runtime.DynamicTuple.dynamicApply[this.type, n.type](this, n)
+      case None => DynamicTuple.dynamicApply[this.type, n.type](this, n)
     }
 
   inline def apply[This >: this.type <: NonEmptyTuple](n: Int): Elem[This, n.type] = {
@@ -285,13 +278,13 @@ sealed trait NonEmptyTuple extends Tuple {
           case Some(3) => t._4.asInstanceOf[Result]
           case _ => fallbackApply(n).asInstanceOf[Result]
         }
-      case Some(s) if s > 4 && s <= scala.runtime.DynamicTuple.MaxSpecialized =>
+      case Some(s) if s > 4 && s <= DynamicTuple.MaxSpecialized =>
         val t = asInstanceOf[Product]
         inline constValueOpt[n.type] match {
           case Some(n) if n >= 0 && n < s => t.productElement(n).asInstanceOf[Result]
           case _ => fallbackApply(n).asInstanceOf[Result]
         }
-      case Some(s) if s > scala.runtime.DynamicTuple.MaxSpecialized =>
+      case Some(s) if s > DynamicTuple.MaxSpecialized =>
         val t = asInstanceOf[TupleXXL]
         inline constValueOpt[n.type] match {
           case Some(n) if n >= 0 && n < s => t.elems(n).asInstanceOf[Result]

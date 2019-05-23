@@ -1,4 +1,12 @@
-[12..15] in A.scala
-Not found: foo
-[12..15] in B.scala
-Not found: bar
+-- [E006] Unbound Identifier Error: tests/neg/multi-file-error/A.scala:2:2 ---------------------------------------------
+2 |  foo() // error
+  |  ^^^
+  |  Not found: foo
+
+longer explanation available when compiling with `-explain`
+-- [E006] Unbound Identifier Error: tests/neg/multi-file-error/B.scala:2:2 ---------------------------------------------
+2 |  bar() // error
+  |  ^^^
+  |  Not found: bar
+
+longer explanation available when compiling with `-explain`

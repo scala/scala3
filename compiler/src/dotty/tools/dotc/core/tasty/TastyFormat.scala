@@ -208,6 +208,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   EXTENSION                                                        -- An extension method
                   GIVEN                                                            -- A new style implicit parameter, introduced with `given`
                   PARAMsetter                                                      -- The setter part `x_=` of a var parameter `x` which itself is pickled as a PARAM
+                  EXPORTED                                                         -- An export forwarder
                   Annotation
 
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term             -- An annotation, given (class) type of constructor, and full application tree
@@ -248,7 +249,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 13
+  val MajorVersion: Int = 14
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names */
@@ -329,6 +330,7 @@ object TastyFormat {
   final val GIVEN = 37
   final val IMPLIED = 38
   final val PARAMsetter = 39
+  final val EXPORTED = 40
 
   // Cat. 2:    tag Nat
 
@@ -439,7 +441,7 @@ object TastyFormat {
   final val MATCHtype = 190
   final val MATCHtpt = 191
 
-  def methodType(isContextual: Boolean, isImplicit: Boolean, isErased: Boolean): Int = {
+  def methodTypeTag(isContextual: Boolean, isImplicit: Boolean, isErased: Boolean): Int = {
     val implicitOffset =
       if (isContextual) 2
       else if (isImplicit) { assert(!isErased); 4 }
@@ -457,7 +459,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
-    firstSimpleTreeTag <= tag && tag <= PARAMsetter ||
+    firstSimpleTreeTag <= tag && tag <= EXPORTED ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -500,6 +502,7 @@ object TastyFormat {
        | EXTENSION
        | GIVEN
        | PARAMsetter
+       | EXPORTED
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified => true
@@ -560,6 +563,7 @@ object TastyFormat {
     case EXTENSION => "EXTENSION"
     case GIVEN => "GIVEN"
     case PARAMsetter => "PARAMsetter"
+    case EXPORTED => "EXPORTED"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"

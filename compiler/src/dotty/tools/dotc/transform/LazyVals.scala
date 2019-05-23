@@ -189,14 +189,12 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     holders:::stats
   }
 
-  private def nullOut(nullables: List[Symbol])(implicit ctx: Context): List[Tree] = {
-    val nullConst = Literal(Constant(null))
+  private def nullOut(nullables: List[Symbol])(implicit ctx: Context): List[Tree] =
     nullables.map { field =>
       assert(field.isField)
       field.setFlag(Mutable)
-      ref(field).becomes(nullConst)
+      ref(field).becomes(nullLiteral)
     }
-  }
 
   /** Create non-threadsafe lazy accessor equivalent to such code
     * ```
@@ -237,7 +235,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val targetRef = ref(target)
     val stats = targetRef.becomes(rhs) :: nullOut(nullableFor(sym))
     val init = If(
-      targetRef.select(nme.eq).appliedTo(Literal(Constant(null))),
+      targetRef.select(nme.eq).appliedTo(nullLiteral),
       Block(stats.init, stats.last),
       unitLiteral
     )

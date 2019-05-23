@@ -123,7 +123,7 @@ abstract class Lifter {
    *
    *  unless `pre` is idempotent.
    */
-  def liftPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree = 
+  def liftPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree =
     if (isIdempotentExpr(tree)) tree else lift(defs, tree)
 }
 
@@ -208,18 +208,18 @@ object EtaExpansion extends LiftImpure {
       if (isLastApplication && mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
       else mt.paramInfos map TypeTree
     var paramFlag = Synthetic | Param
-    if (mt.isContextual) paramFlag |= Given
-    if (mt.isImplicitMethod) paramFlag |= Implicit
+    if (mt.isContextualMethod) paramFlag |= Given
+    else if (mt.isImplicitMethod) paramFlag |= Implicit
     val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
       ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.span.startPos))
     var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.span.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
-    var body: Tree = Apply(lifted, ids)
-    if (mt.isContextual) body.pushAttachment(ApplyGiven, ())
-    if (!isLastApplication) body = PostfixOp(body, Ident(nme.WILDCARD))
+    val app = Apply(lifted, ids)
+    if (mt.isContextualMethod) app.setGivenApply()
+    val body = if (isLastApplication) app else PostfixOp(app, Ident(nme.WILDCARD))
     val fn =
-      if (mt.isContextual) new untpd.FunctionWithMods(params, body, Modifiers(Implicit | Given))
+      if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given))
       else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
       else untpd.Function(params, body)
     if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn

@@ -116,6 +116,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     super.toTextPrefix(tp)
   }
 
+  override protected def toTextParents(parents: List[Type]): Text =
+    Text(parents.map(toTextLocal).map(typeText), keywordStr(" with "))
+
   override protected def refinementNameString(tp: RefinedType): String =
     if (tp.parent.isInstanceOf[WildcardType] || tp.refinedName == nme.WILDCARD)
       super.refinementNameString(tp)
@@ -212,7 +215,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case ErasedValueType(tycon, underlying) =>
         return "ErasedValueType(" ~ toText(tycon) ~ ", " ~ toText(underlying) ~ ")"
       case tp: ClassInfo =>
-        return toTextParents(tp.parents) ~ "{...}"
+        return toTextParents(tp.parents) ~~ "{...}"
       case JavaArrayType(elemtp) =>
         return toText(elemtp) ~ "[]"
       case tp: AnnotatedType if homogenizedView =>
@@ -232,7 +235,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case dummyTreeOfType(tp) :: Nil if !(tp isRef defn.NullClass) => "null: " ~ toText(tp)
           case _ => toTextGlobal(args, ", ")
         }
-        return "[applied to " ~ (Str("given ") provided tp.isContextual) ~ (Str("erased ") provided tp.isErasedMethod) ~ "(" ~ argsText ~ ") returning " ~ toText(resultType) ~ "]"
+        return "[applied to " ~ (Str("given ") provided tp.isContextualMethod) ~ (Str("erased ") provided tp.isErasedMethod) ~ "(" ~ argsText ~ ") returning " ~ toText(resultType) ~ "]"
       case IgnoredProto(ignored) =>
         return "?" ~ (("(ignored: " ~ toText(ignored) ~ ")") provided ctx.settings.verbose.value)
       case tp @ PolyProto(targs, resType) =>
@@ -341,7 +344,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         optDotPrefix(tree) ~ keywordStr("this") ~ idText(tree)
       case Super(qual: This, mix) =>
         optDotPrefix(qual) ~ keywordStr("super") ~ optText(mix)("[" ~ _ ~ "]")
-      case Apply(fun, args) =>
+      case app @ Apply(fun, args) =>
         if (fun.hasType && fun.symbol == defn.throwMethod)
           changePrec (GlobalPrec) {
             keywordStr("throw ") ~ toText(args.head)
@@ -350,6 +353,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else if (!ctx.settings.YprintDebug.value && fun.hasType && fun.symbol == defn.InternalQuoted_exprSplice)
           keywordStr("${") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
+        else if (app.isGivenApply && !homogenizedView)
+          changePrec(InfixPrec) {
+            toTextLocal(fun) ~ " given " ~
+            (if (args.length == 1) toTextLocal(args.head) else "(" ~ toTextGlobal(args, ", ") ~ ")")
+          }
         else
           toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
       case tree: TypeApply =>
@@ -460,7 +468,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         changePrec(OrPrec) { toText(trees, " | ") }
       case UnApply(fun, implicits, patterns) =>
         val extractor = fun match {
-          case Select(extractor, nme.unapply) => extractor
+          case Select(extractor, name) if name.isUnapplyName => extractor
           case _ => fun
         }
         toTextLocal(extractor) ~
@@ -567,7 +575,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         forText(enums, expr, keywordStr(" yield "))
       case ForDo(enums, expr) =>
         forText(enums, expr, keywordStr(" do "))
-      case GenFrom(pat, expr) =>
+      case GenFrom(pat, expr, checkMode) =>
+        (Str("case ") provided checkMode == untpd.GenCheckMode.FilterAlways) ~
         toText(pat) ~ " <- " ~ toText(expr)
       case GenAlias(pat, expr) =>
         toText(pat) ~ " = " ~ toText(expr)
@@ -700,7 +709,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val (leading, paramss) =
       if (isExtension && vparamss.nonEmpty) (paramsText(vparamss.head) ~ " " ~ txt, vparamss.tail)
       else (txt, vparamss)
-    (txt /: paramss)((txt, params) => txt ~ paramsText(params))
+    (txt /: paramss)((txt, params) =>
+      txt ~
+      (Str(" given ") provided params.nonEmpty && params.head.mods.is(Given)) ~
+      paramsText(params))
   }
   protected def valDefToText[T >: Untyped](tree: ValDef[T]): Text = {
     import untpd.{modsDeco => _}
@@ -792,7 +804,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else if (suppressKw) PrintableFlags(isType) &~ Private
       else PrintableFlags(isType)
     if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= ImplicitOrImplied // drop implicit/implied from classes
-    val flags = (if (sym.exists) sym.flags else (mods.flags)) & flagMask
+    val rawFlags = if (sym.exists) sym.flags else mods.flags
+    if (rawFlags.is(Param)) flagMask = flagMask &~ Given
+    val flags = rawFlags & flagMask
     val flagsText = if (flags.isEmpty) "" else keywordStr(flags.toString)
     val annotations =
       if (sym.exists) sym.annotations.filterNot(ann => dropAnnotForModText(ann.symbol)).map(_.tree)
@@ -825,14 +839,21 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         case info: ImportType => return s"import $info.expr.show"
         case _ =>
       }
-    if (sym.is(ModuleClass)) {
-      val name =
-        if (sym.isPackageObject && sym.name.stripModuleClassSuffix == tpnme.PACKAGE) sym.owner.name
-        else sym.name.stripModuleClassSuffix
-      kindString(sym) ~~ (nameString(name) + idString(sym))
-    }
-    else
-      super.toText(sym)
+    def name =
+      if (sym.is(ModuleClass) && sym.isPackageObject && sym.name.stripModuleClassSuffix == tpnme.PACKAGE)
+        nameString(sym.owner.name)
+      else if (sym.is(ModuleClass))
+        nameString(sym.name.stripModuleClassSuffix)
+      else if (hasMeaninglessName(sym))
+        simpleNameString(sym.owner)
+      else
+        nameString(sym)
+    (keywordText(kindString(sym)) ~~ {
+      if (sym.isAnonymousClass)
+        toTextParents(sym.info.parents) ~~ "{...}"
+      else
+        typeText(name)
+    }).close
   }
 
   /** String representation of symbol's kind. */

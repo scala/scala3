@@ -30,7 +30,7 @@ that derives `Eql`, e.g.
 ```scala
 class T derives Eql
 ```
-Alternatively, one can also provide the derived implied instance directly, like this:
+Alternatively, one can also define an `Eql` instance directly, like this:
 ```scala
 implied for Eql[T, T] = Eql.derived
 ```
@@ -74,13 +74,13 @@ defined as follows:
 def eqlAny[L, R]: Eql[L, R] = Eql.derived
 ```
 
-Even though `eqlAny` is not declared `implied`, the compiler will still
+Even though `eqlAny` is not declared with an `implied` clause, the compiler will still
 construct an `eqlAny` instance as answer to an implicit search for the
 type `Eql[L, R]`, unless `L` or `R` have `Eql` instances
 defined on them, or the language feature `strictEquality` is enabled
 
 The primary motivation for having `eqlAny` is backwards compatibility,
-if this is of no concern one can disable `eqlAny` by enabling the language
+if this is of no concern, one can disable `eqlAny` by enabling the language
 feature `strictEquality`. As for all language features this can be either
 done with an import
 
@@ -98,7 +98,7 @@ class Box[T](x: T) derives Eql
 By the usual rules if [typeclass derivation](./derivation.html),
 this generates the following `Eql` instance in the companion object of `Box`:
 ```scala
-implied [T, U] given Eql[T, U] for Eql[Box[T], Box[U]] = Eql.derived
+implied [T, U] for Eql[Box[T], Box[U]] given Eql[T, U] = Eql.derived
 ```
 That is, two boxes are comparable with `==` or `!=` if their elements are. Examples:
 ```scala
@@ -140,7 +140,7 @@ The `Eql` object defines implied instances for
  - `java.lang.Number`, `java.lang.Boolean`, and `java.lang.Character`,
  - `scala.collection.Seq`, and `scala.collection.Set`.
 
-Implied instances are defined so that everyone of these types is has a reflexive `Eql` instance, and the following holds:
+Implied instances are defined so that every one of these types has a reflexive `Eql` instance, and the following holds:
 
  - Primitive numeric types can be compared with each other.
  - Primitive numeric types can be compared with subtypes of `java.lang.Number` (and _vice versa_).

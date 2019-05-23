@@ -230,7 +230,7 @@ object Implicits {
     assert(initctx.typer != null)
     lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
-      for (companion <- companionRefs) buf ++= companion.implicitMembers(ImplicitOrImplied)
+      for (companion <- companionRefs) buf ++= companion.implicitMembers(ImplicitOrImpliedOrGiven)
       buf.toList
     }
 
@@ -345,7 +345,7 @@ object Implicits {
    *  @param level  The level where the reference was found
    *  @param tstate The typer state to be committed if this alternative is chosen
    */
-  case class SearchSuccess(tree: Tree, ref: TermRef, level: Int)(val tstate: TyperState, val gstate: GADTMap) extends SearchResult with Showable
+  case class SearchSuccess(tree: Tree, ref: TermRef, level: Int)(val tstate: TyperState, val gstate: GadtConstraint) extends SearchResult with Showable
 
   /** A failed search */
   case class SearchFailure(tree: Tree) extends SearchResult {
@@ -397,21 +397,27 @@ object Implicits {
      *  what was expected
      */
     override def clarify(tp: Type)(implicit ctx: Context): Type = {
-      val map = new TypeMap {
-        def apply(t: Type): Type = t match {
-          case t: TypeParamRef =>
-            constraint.entry(t) match {
-              case NoType => t
-              case bounds: TypeBounds => constraint.fullBounds(t)
-              case t1 => t1
-            }
-          case t: TypeVar =>
-            t.instanceOpt.orElse(apply(t.origin))
-          case _ =>
-            mapOver(t)
+      def replace(implicit ctx: Context): Type = {
+        val map = new TypeMap {
+          def apply(t: Type): Type = t match {
+            case t: TypeParamRef =>
+              constraint.entry(t) match {
+                case NoType => t
+                case bounds: TypeBounds => ctx.typeComparer.fullBounds(t)
+                case t1 => t1
+              }
+            case t: TypeVar =>
+              t.instanceOpt.orElse(apply(t.origin))
+            case _ =>
+              mapOver(t)
+          }
         }
+        map(tp)
       }
-      map(tp)
+
+      val ctx1 = ctx.fresh.setExploreTyperState()
+      ctx1.typerState.constraint = constraint
+      replace(ctx1)
     }
 
     def explanation(implicit ctx: Context): String =
@@ -1307,8 +1313,6 @@ trait Implicits { self: Typer =>
             else implicitScope(wildProto).eligible
           searchImplicits(eligible, contextual) match {
             case result: SearchSuccess =>
-              if (contextual && ctx.mode.is(Mode.InlineableBody))
-                PrepareInlineable.markContextualImplicit(result.tree)
               result
             case failure: SearchFailure =>
               failure.reason match {

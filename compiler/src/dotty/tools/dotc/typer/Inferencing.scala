@@ -138,6 +138,33 @@ object Inferencing {
     }
   }
 
+  /** For all type parameters occurring in `tp`:
+   *  If the bounds of `tp` in the current constraint are equal wrt =:=,
+   *  instantiate the type parameter to the lower bound's approximation
+   *  (approximation because of possible F-bounds).
+   */
+  def replaceSingletons(tp: Type)(implicit ctx: Context): Unit = {
+    val tr = new TypeTraverser {
+      def traverse(tp: Type): Unit = {
+        tp match {
+          case param: TypeParamRef =>
+            val constraint = ctx.typerState.constraint
+            constraint.entry(param) match {
+              case TypeBounds(lo, hi)
+              if (hi frozen_<:< lo) =>
+                val inst = ctx.typeComparer.approximation(param, fromBelow = true)
+                typr.println(i"replace singleton $param := $inst")
+                ctx.typerState.constraint = constraint.replace(param, inst)
+              case _ =>
+            }
+          case _ =>
+        }
+        traverseChildren(tp)
+      }
+    }
+    tr.traverse(tp)
+  }
+
   /** If `tree` has a type lambda type, infer its type parameters by comparing with expected type `pt` */
   def inferTypeParams(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match {
     case tl: TypeLambda =>
@@ -184,8 +211,6 @@ object Inferencing {
    *
    *  Invariant refinement can be assumed if `PatternType`'s class(es) are final or
    *  case classes (because of `RefChecks#checkCaseClassInheritanceInvariant`).
-   *
-   *  TODO: Update so that GADT symbols can be variant, and we special case final class types in patterns
    */
   def constrainPatternType(tp: Type, pt: Type)(implicit ctx: Context): Boolean = {
     def refinementIsInvariant(tp: Type): Boolean = tp match {
@@ -209,8 +234,9 @@ object Inferencing {
     }
 
     val widePt = if (ctx.scala2Mode || refinementIsInvariant(tp)) pt else widenVariantParams(pt)
-    trace(i"constraining pattern type $tp <:< $widePt", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
-      tp <:< widePt
+    val narrowTp = SkolemType(tp)
+    trace(i"constraining pattern type $narrowTp <:< $widePt", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
+      narrowTp <:< widePt
     }
   }
 
@@ -263,7 +289,7 @@ object Inferencing {
    *            0 if unconstrained, or constraint is from below and above.
    */
   private def instDirection(param: TypeParamRef)(implicit ctx: Context): Int = {
-    val constrained = ctx.typerState.constraint.fullBounds(param)
+    val constrained = ctx.typeComparer.fullBounds(param)
     val original = param.binder.paramInfos(param.paramNum)
     val cmp = ctx.typeComparer
     val approxBelow =
@@ -298,17 +324,22 @@ object Inferencing {
       if (v == 1) tvar.instantiate(fromBelow = false)
       else if (v == -1) tvar.instantiate(fromBelow = true)
       else {
-        val bounds = ctx.typerState.constraint.fullBounds(tvar.origin)
+        val bounds = ctx.typeComparer.fullBounds(tvar.origin)
         if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
           tvar.instantiate(fromBelow = false)
         else {
-          val wildCard = ctx.newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span)
+          // We do not add the created symbols to GADT constraint immediately, since they may have inter-dependencies.
+          // Instead, we simultaneously add them later on.
+          val wildCard = ctx.newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
           tvar.instantiateWith(wildCard.typeRef)
           patternBound += wildCard
         }
       }
     }
-    patternBound.toList
+    val res = patternBound.toList
+    // We add the created symbols to GADT constraint here.
+    if (res.nonEmpty) ctx.gadt.addToConstraint(res)
+    res
   }
 
   type VarianceMap = SimpleIdentityMap[TypeVar, Integer]

@@ -807,7 +807,7 @@ object SymDenotations {
 
     def isInlineMethod(implicit ctx: Context): Boolean =
       is(InlineMethod, butNot = Accessor) &&
-      name != nme.unapply  // unapply methods do not count as inline methods
+      !name.isUnapplyName  // unapply methods do not count as inline methods
                            // we need an inline flag on them only do that
                            // reduceProjection gets access to their rhs
 
@@ -852,7 +852,9 @@ object SymDenotations {
      * During completion, references to moduleClass and sourceModules are stored in
      * the completers.
      */
-    /** The class implementing this module, NoSymbol if not applicable. */
+    /** If this a module, return the corresponding class, if this is a module, return itself,
+     *  otherwise NoSymbol
+     */
     final def moduleClass(implicit ctx: Context): Symbol = {
       def notFound = {
       	if (Config.showCompletions) println(s"missing module class for $name: $myInfo")
@@ -870,23 +872,34 @@ object SymDenotations {
             }
           case _ => notFound
         }
-      else NoSymbol
-    }
-
-    /** The module implemented by this module class, NoSymbol if not applicable. */
-    final def sourceModule(implicit ctx: Context): Symbol = myInfo match {
-      case ClassInfo(_, _, _, _, selfType) if this is ModuleClass =>
-        def sourceOfSelf(tp: TypeOrSymbol): Symbol = tp match {
-          case tp: TermRef => tp.symbol
-          case tp: Symbol => sourceOfSelf(tp.info)
-          case tp: RefinedType => sourceOfSelf(tp.parent)
-        }
-        sourceOfSelf(selfType)
-      case info: LazyType =>
-        info.sourceModule
-      case _ =>
+      else if (this is ModuleClass)
+        symbol
+      else
         NoSymbol
     }
+
+    /** If this a module class, return the corresponding module, if this is a module, return itself,
+     *  otherwise NoSymbol
+     */
+    final def sourceModule(implicit ctx: Context): Symbol =
+      if (this is ModuleClass)
+        myInfo match {
+          case ClassInfo(_, _, _, _, selfType) =>
+            def sourceOfSelf(tp: TypeOrSymbol): Symbol = tp match {
+              case tp: TermRef => tp.symbol
+              case tp: Symbol => sourceOfSelf(tp.info)
+              case tp: RefinedType => sourceOfSelf(tp.parent)
+            }
+            sourceOfSelf(selfType)
+          case info: LazyType =>
+            info.sourceModule
+          case _ =>
+            NoSymbol
+        }
+      else if (this is ModuleVal)
+        symbol
+      else
+        NoSymbol
 
     /** The field accessed by this getter or setter, or if it does not exist, the getter */
     def accessedFieldOrGetter(implicit ctx: Context): Symbol = {
@@ -1891,7 +1904,7 @@ object SymDenotations {
           if (keepOnly eq implicitFilter)
             if (this is Package) Iterator.empty
               // implicits in package objects are added by the overriding `memberNames` in `PackageClassDenotation`
-            else info.decls.iterator filter (_ is ImplicitOrImplied)
+            else info.decls.iterator filter (_ is ImplicitOrImpliedOrGiven)
           else info.decls.iterator
         for (sym <- ownSyms) maybeAdd(sym.name)
         names
@@ -2018,7 +2031,15 @@ object SymDenotations {
       def recur(pobjs: List[ClassDenotation], acc: PreDenotation): PreDenotation = pobjs match {
         case pcls :: pobjs1 =>
           if (pcls.isCompleting) recur(pobjs1, acc)
-          else recur(pobjs1, acc.union(pcls.computeNPMembersNamed(name)))
+          else {
+            // A package object inherits members from `Any` and `Object` which
+            // should not be accessible from the package prefix.
+            val pmembers = pcls.computeNPMembersNamed(name).filterWithPredicate { d =>
+              val owner = d.symbol.maybeOwner
+              (owner ne defn.AnyClass) && (owner ne defn.ObjectClass)
+            }
+            recur(pobjs1, acc.union(pmembers))
+          }
         case nil =>
           val directMembers = super.computeNPMembersNamed(name)
           if (acc.exists) acc.union(directMembers.filterWithPredicate(!_.symbol.isAbsent))

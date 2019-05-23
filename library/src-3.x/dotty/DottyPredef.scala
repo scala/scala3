@@ -36,5 +36,5 @@ object DottyPredef {
     case ev: ValueOf[T] => ev.value
   }
 
-  inline def the[T](implicit x: T): x.type = x
+  inline def the[T] given (x: T): x.type = x
 }

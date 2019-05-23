@@ -185,9 +185,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         "<noprefix>"
       case tp: MethodType =>
         changePrec(GlobalPrec) {
-          (if (tp.isContextual) " given" else "") ~
+          (if (tp.isContextualMethod) " given" else "") ~
           (if (tp.isErasedMethod) " erased" else "") ~~
-          ("(" + (if (tp.isImplicitMethod && !tp.isContextual) "implicit " else "")) ~
+          ("(" + (if (tp.isImplicitMethod && !tp.isContextualMethod) "implicit " else "")) ~
           paramsText(tp) ~
           (if (tp.resultType.isInstanceOf[MethodType]) ")" else "): ") ~
           toText(tp.resultType)
@@ -208,7 +208,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else {
           val constr = ctx.typerState.constraint
           val bounds =
-            if (constr.contains(tp)) constr.fullBounds(tp.origin)(ctx.addMode(Mode.Printing))
+            if (constr.contains(tp)) ctx.addMode(Mode.Printing).typeComparer.fullBounds(tp.origin)
             else TypeBounds.empty
           if (bounds.isTypeAlias) toText(bounds.lo) ~ (Str("^") provided ctx.settings.YprintDebug.value)
           else if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
@@ -343,7 +343,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val declsText =
           if (trueDecls.isEmpty || !ctx.settings.Ydebug.value) Text()
           else dclsText(trueDecls)
-        tparamsText ~ " extends " ~ toTextParents(tp.parents) ~ "{" ~ selfText ~ declsText ~
+        tparamsText ~ " extends " ~ toTextParents(tp.parents) ~~ "{" ~ selfText ~ declsText ~
           "} at " ~ preText
       case mt: MethodType =>
         toTextGlobal(mt)
@@ -424,7 +424,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(sym: Symbol): Text =
     (kindString(sym) ~~ {
-      if (sym.isAnonymousClass) toText(sym.info.parents, " with ") ~ "{...}"
+      if (sym.isAnonymousClass) toTextParents(sym.info.parents) ~~ "{...}"
       else if (hasMeaninglessName(sym)) simpleNameString(sym.owner) + idString(sym)
       else nameString(sym)
     }).close

@@ -428,7 +428,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               val bound1 = massage(bound)
               if (bound1 ne bound) {
                 if (checkCtx eq ctx) checkCtx = ctx.fresh.setFreshGADTBounds
-                if (!checkCtx.gadt.contains(sym)) checkCtx.gadt.addEmptyBounds(sym)
+                if (!checkCtx.gadt.contains(sym)) checkCtx.gadt.addToConstraint(sym)
                 checkCtx.gadt.addBound(sym, bound1, fromBelow)
                 typr.println("install GADT bound $bound1 for when checking F-bounded $sym")
               }

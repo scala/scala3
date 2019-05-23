@@ -14,6 +14,7 @@ import StdNames.nme
 import Contexts.Context
 import Names.Name
 import NameKinds.{InlineAccessorName, UniqueInlineName}
+import NameOps._
 import Annotations._
 import transform.{AccessProxies, PCPCheckAndHeal, Splicer, TreeMapWithStages}
 import config.Printers.inlining
@@ -23,16 +24,6 @@ import dotty.tools.dotc.transform.TreeMapWithStages._
 
 object PrepareInlineable {
   import tpd._
-
-  /** Marks an implicit reference found in the context (as opposed to the implicit scope)
-   *  from an inlineable body. Such references will be carried along with the body to
-   *  the expansion site.
-   */
-  private val ContextualImplicit = new Property.StickyKey[Unit]
-
-  def markContextualImplicit(tree: Tree)(implicit ctx: Context): Unit =
-    if (!defn.ScalaPredefModule.moduleClass.derivesFrom(tree.symbol.maybeOwner))
-      methPart(tree).putAttachment(ContextualImplicit, ())
 
   class InlineAccessors extends AccessProxies {
 
@@ -246,7 +237,7 @@ object PrepareInlineable {
   def checkInlineMethod(inlined: Symbol, body: Tree)(implicit ctx: Context): Unit = {
     if (ctx.outer.inInlineMethod)
       ctx.error(ex"implementation restriction: nested inline methods are not supported", inlined.sourcePos)
-    if (inlined.name == nme.unapply && tupleArgs(body).isEmpty)
+    if (inlined.name.isUnapplyName && tupleArgs(body).isEmpty)
       ctx.warning(
         em"inline unapply method can be rewritten only if its right hand side is a tuple (e1, ..., eN)",
         body.sourcePos)

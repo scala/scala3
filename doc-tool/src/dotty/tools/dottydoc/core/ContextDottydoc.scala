@@ -11,6 +11,7 @@ import model.comment.Comment
 
 import dotc.core.Contexts.Context
 import dotc.printing.Highlighting._
+import dotc.printing.Formatting.hl
 import dotc.util.{ SourcePosition, NoSourcePosition }
 
 class ContextDottydoc extends ContextDocstrings {
@@ -116,7 +117,7 @@ class ContextDottydoc extends ContextDocstrings {
           |Summary:
           |
           |public members with docstrings:    ${colored(api.publicDocstrings, api.publicEntities)}
-          |${hl"${"protected"}"} members with docstrings: ${colored(api.protectedDocstrings, api.protectedEntities)}
+          |${hl("protected")} members with docstrings: ${colored(api.protectedDocstrings, api.protectedEntities)}
           |${Blue("=" * ctx.settings.pageWidth.value)}
           |
           |Documented members in internal API:
@@ -126,8 +127,8 @@ class ContextDottydoc extends ContextDocstrings {
           |Summary internal API:
           |
           |public members with docstrings:    ${colored(internalApi.publicDocstrings, internalApi.publicEntities)}
-          |${hl"${"protected"}"} members with docstrings: ${colored(internalApi.protectedDocstrings, internalApi.protectedEntities)}
-          |${hl"${"private"}"} members with docstrings:   ${colored(internalApi.privateDocstrings, internalApi.privateEntities)}
+          |${hl("protected")} members with docstrings: ${colored(internalApi.protectedDocstrings, internalApi.protectedEntities)}
+          |${hl("private")} members with docstrings:   ${colored(internalApi.privateDocstrings, internalApi.privateEntities)}
           |$warningsText""".stripMargin
     }
   }

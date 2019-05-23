@@ -62,6 +62,7 @@ class Compiler {
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
+         new CacheAliasImplicits,    // Cache RHS of parameterless alias implicits
          new ShortcutImplicits,      // Allow implicit functions without creating closures
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope

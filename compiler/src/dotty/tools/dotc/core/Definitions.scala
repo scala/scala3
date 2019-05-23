@@ -128,10 +128,10 @@ class Definitions {
           enterTypeParam(cls, paramNamePrefix ++ "T" ++ (i + 1).toString, Contravariant, decls).typeRef
         }
         val resParamRef = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls).typeRef
-        val methodType = MethodType.maker(
+        val methodType = MethodType.companion(
           isJava = false,
-          isImplicit = name.isImplicitFunction,
           isContextual = name.isImplicitFunction,
+          isImplicit = false,
           isErased = name.isErasedFunction)
         decls.enter(newMethod(cls, nme.apply, methodType(argParamRefs, resParamRef), Deferred))
         denot.info =
@@ -564,7 +564,6 @@ class Definitions {
   lazy val BoxedUnitModule: TermSymbol    = ctx.requiredModule("java.lang.Void")
 
   lazy val ByNameParamClass2x: ClassSymbol = enterSpecialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, Seq(AnyType))
-  lazy val EqualsPatternClass: ClassSymbol = enterSpecialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, Seq(AnyType))
 
   lazy val RepeatedParamClass: ClassSymbol = enterSpecialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, Seq(ObjectType, SeqType))
 
@@ -883,6 +882,10 @@ class Definitions {
   def ShowAsInfixAnnot(implicit ctx: Context): ClassSymbol = ShowAsInfixAnotType.symbol.asClass
   lazy val FunctionalInterfaceAnnotType = ctx.requiredClassRef("java.lang.FunctionalInterface")
   def FunctionalInterfaceAnnot(implicit ctx: Context) = FunctionalInterfaceAnnotType.symbol.asClass
+  lazy val InfixAnnotType = ctx.requiredClassRef("scala.annotation.infix")
+  def InfixAnnot(implicit ctx: Context) = InfixAnnotType.symbol.asClass
+  lazy val AlphaAnnotType = ctx.requiredClassRef("scala.annotation.alpha")
+  def AlphaAnnot(implicit ctx: Context) = AlphaAnnotType.symbol.asClass
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
@@ -1283,6 +1286,10 @@ class Definitions {
     else parents
   }
 
+  /** Is synthesized symbol with alphanumeric name allowed to be used as an infix operator? */
+  def isInfix(sym: Symbol)(implicit ctx: Context): Boolean =
+    (sym eq Object_eq) || (sym eq Object_ne)
+
   // ----- primitive value class machinery ------------------------------------------
 
   /** This class would also be obviated by the implicit function type design */
@@ -1377,8 +1384,7 @@ class Definitions {
     AnyValClass,
     NullClass,
     NothingClass,
-    SingletonClass,
-    EqualsPatternClass)
+    SingletonClass)
 
   lazy val syntheticCoreClasses: List[Symbol] = syntheticScalaClasses ++ List(
     EmptyPackageVal,

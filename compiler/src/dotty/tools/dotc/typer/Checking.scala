@@ -20,19 +20,24 @@ import rewrites.Rewrites.patch
 import util.Spans.Span
 
 import util.SourcePosition
+import util.Spans.Span
+import rewrites.Rewrites.patch
 import transform.SymUtils._
+import transform.ValueClasses._
 import Decorators._
 import ErrorReporting.{err, errorType}
 import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
+import NameOps._
+import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import transform.patmat.SpaceEngine.isIrrefutableUnapply
 
+
 import collection.mutable
-import SymDenotations.{NoCompleter, NoDenotation}
-import dotty.tools.dotc.reporting.diagnostic.Message
-import dotty.tools.dotc.reporting.diagnostic.messages._
-import dotty.tools.dotc.transform.ValueClasses._
+import reporting.diagnostic.Message
+import reporting.diagnostic.messages._
+import scala.tasty.util.Chars.isOperatorPart
 
 object Checking {
   import tpd._
@@ -240,7 +245,7 @@ object Checking {
               )
             case prefix: NamedType =>
               (!sym.is(Private) && prefix.derivesFrom(sym.owner)) ||
-              (!prefix.symbol.isStaticOwner && isInteresting(prefix.prefix))
+              (!prefix.symbol.moduleClass.isStaticOwner && isInteresting(prefix.prefix))
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
@@ -602,41 +607,48 @@ trait Checking {
    *  This means `pat` is either marked @unchecked or `pt` conforms to the
    *  pattern's type. If pattern is an UnApply, do the check recursively.
    */
-  def checkIrrefutable(pat: Tree, pt: Type)(implicit ctx: Context): Boolean = {
-    patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
+  def checkIrrefutable(pat: Tree, pt: Type, isPatDef: Boolean)(implicit ctx: Context): Boolean = {
 
     def fail(pat: Tree, pt: Type): Boolean = {
+      var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
+      if (!pat.tpe.isSingleton) reportedPt = reportedPt.widen
+      val problem = if (pat.tpe <:< reportedPt) "is more specialized than" else "does not match"
+      val fix = if (isPatDef) "`: @unchecked` after" else "`case ` before"
       ctx.errorOrMigrationWarning(
-        ex"""pattern's type ${pat.tpe} is more specialized than the right hand side expression's type ${pt.dropAnnot(defn.UncheckedAnnot)}
+        ex"""pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt
             |
-            |If the narrowing is intentional, this can be communicated by writing `: @unchecked` after the full pattern.${err.rewriteNotice}""",
+            |If the narrowing is intentional, this can be communicated by writing $fix the full pattern.${err.rewriteNotice}""",
         pat.sourcePos)
       false
     }
 
     def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt)
 
-    !ctx.settings.strict.value || // only in -strict mode for now since mitigations work only after this PR
-    pat.tpe.widen.hasAnnotation(defn.UncheckedAnnot) || {
-      pat match {
-        case Bind(_, pat1) =>
-          checkIrrefutable(pat1, pt)
-        case UnApply(fn, _, pats) =>
-          check(pat, pt) &&
-          (isIrrefutableUnapply(fn) || fail(pat, pt)) && {
-            val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.sourcePos)
-            pats.corresponds(argPts)(checkIrrefutable)
-          }
-        case Alternative(pats) =>
-          pats.forall(checkIrrefutable(_, pt))
-        case Typed(arg, tpt) =>
-          check(pat, pt) && checkIrrefutable(arg, pt)
-        case Ident(nme.WILDCARD) =>
-          true
-        case _ =>
-          check(pat, pt)
+    def recur(pat: Tree, pt: Type): Boolean =
+      !ctx.settings.strict.value || // only in -strict mode for now since mitigations work only after this PR
+      pat.tpe.widen.hasAnnotation(defn.UncheckedAnnot) || {
+        patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
+        pat match {
+          case Bind(_, pat1) =>
+            recur(pat1, pt)
+          case UnApply(fn, _, pats) =>
+            check(pat, pt) &&
+            (isIrrefutableUnapply(fn) || fail(pat, pt)) && {
+              val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.sourcePos)
+              pats.corresponds(argPts)(recur)
+            }
+          case Alternative(pats) =>
+            pats.forall(recur(_, pt))
+          case Typed(arg, tpt) =>
+            check(pat, pt) && recur(arg, pt)
+          case Ident(nme.WILDCARD) =>
+            true
+          case _ =>
+            check(pat, pt)
+        }
       }
-    }
+
+    recur(pat, pt)
   }
 
   /** Check that `path` is a legal prefix for an import or export clause */
@@ -663,7 +675,7 @@ trait Checking {
     }
 
   /** If `sym` is an implicit conversion, check that implicit conversions are enabled.
-   *  @pre  sym.is(Implicit)
+   *  @pre  sym.is(ImplicitOrGiven)
    */
   def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = {
     def check(): Unit = {
@@ -694,7 +706,7 @@ trait Checking {
   def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(implicit ctx: Context): Unit =
     if (sym.exists) {
       val conv =
-        if (sym.is(Implicit)) sym
+        if (sym.is(ImplicitOrGiven)) sym
         else {
           assert(sym.name == nme.apply)
           sym.owner
@@ -708,6 +720,55 @@ trait Checking {
         checkFeature(nme.implicitConversions,
           i"Use of implicit conversion ${conv.showLocated}", NoSymbol, posd.sourcePos)
     }
+
+  private def infixOKSinceFollowedBy(tree: untpd.Tree): Boolean = tree match {
+    case _: untpd.Block | _: untpd.Match => true
+    case _ => false
+  }
+
+  /** Check that `tree` is a valid infix operation. That is, if the
+   *  operator is alphanumeric, it must be declared `@infix`.
+   */
+  def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(implicit ctx: Context): Unit = {
+
+    def isInfix(sym: Symbol): Boolean =
+      sym.hasAnnotation(defn.InfixAnnot) ||
+      defn.isInfix(sym) ||
+      sym.name.isUnapplyName &&
+        sym.owner.is(Module) && sym.owner.linkedClass.is(Case) &&
+        isInfix(sym.owner.linkedClass)
+
+    tree.op match {
+      case _: untpd.BackquotedIdent =>
+        ()
+      case Ident(name: Name) =>
+        name.toTermName match {
+          case name: SimpleName
+          if !name.exists(isOperatorPart) &&
+            !isInfix(meth) &&
+            !meth.maybeOwner.is(Scala2x) &&
+            !infixOKSinceFollowedBy(tree.right) &&
+            ctx.settings.strict.value =>
+            val (kind, alternative) =
+              if (ctx.mode.is(Mode.Type))
+                ("type", (n: Name) => s"prefix syntax $n[...]")
+              else if (ctx.mode.is(Mode.Pattern))
+                ("extractor", (n: Name) => s"prefix syntax $n(...)")
+              else
+                ("method", (n: Name) => s"method syntax .$n(...)")
+            ctx.deprecationWarning(
+              i"""Alphanumeric $kind $name is not declared @infix; it should not be used as infix operator.
+                 |The operation can be rewritten automatically to `$name` under -deprecation -rewrite.
+                 |Or rewrite to ${alternative(name)} manually.""",
+              tree.op.sourcePos)
+            if (ctx.settings.deprecation.value) {
+              patch(Span(tree.op.span.start, tree.op.span.start), "`")
+              patch(Span(tree.op.span.end, tree.op.span.end), "`")
+            }
+          case _ =>
+        }
+    }
+  }
 
   /** Issue a feature warning if feature is not enabled */
   def checkFeature(name: TermName,
@@ -978,7 +1039,7 @@ trait Checking {
   def checkInInlineContext(what: String, posd: Positioned)(implicit ctx: Context): Unit =
     if (!ctx.inInlineMethod && !ctx.isInlineContext) {
       val inInlineUnapply = ctx.owner.ownersIterator.exists(owner =>
-        owner.name == nme.unapply && owner.is(Inline) && owner.is(Method))
+        owner.name.isUnapplyName && owner.is(Inline) && owner.is(Method))
       val msg =
         if (inInlineUnapply) "cannot be used in an inline unapply"
         else "can only be used in an inline method"
@@ -1092,5 +1153,6 @@ trait NoChecking extends ReChecking {
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SourcePosition)(implicit ctx: Context): Type = tp
   override def checkInInlineContext(what: String, posd: Positioned)(implicit ctx: Context): Unit = ()
+  override def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(implicit ctx: Context): Unit = ()
   override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = ()
 }

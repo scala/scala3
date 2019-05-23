@@ -90,11 +90,11 @@ implied StringOps {
   }
 }
 
-implied ListOps {
+implied {
   def (xs: List[T]) second[T] = xs.tail.head
 }
 ```
-If such implied instances are anonymous (as in the examples above), their name is synthesized from the name
+If such a representative is anonymous (as in the second clause above), its name is synthesized from the name
 of the first defined extension method.
 
 ### Operators
@@ -144,7 +144,3 @@ to the [current syntax](https://github.com/lampepfl/dotty/blob/master/docs/docs/
 DefSig            ::=  ...
                     |  ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] DefParamClauses
 ```
-
-
-
-

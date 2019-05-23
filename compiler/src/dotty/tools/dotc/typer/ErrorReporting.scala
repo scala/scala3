@@ -128,8 +128,8 @@ object ErrorReporting {
           case tp: TypeParamRef =>
             constraint.entry(tp) match {
               case bounds: TypeBounds =>
-                if (variance < 0) apply(constraint.fullUpperBound(tp))
-                else if (variance > 0) apply(constraint.fullLowerBound(tp))
+                if (variance < 0) apply(ctx.typeComparer.fullUpperBound(tp))
+                else if (variance > 0) apply(ctx.typeComparer.fullLowerBound(tp))
                 else tp
               case NoType => tp
               case instType => apply(instType)

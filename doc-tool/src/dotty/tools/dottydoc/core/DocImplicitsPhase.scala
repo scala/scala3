@@ -14,7 +14,7 @@ class DocImplicitsPhase extends MiniPhase {
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
     if (
-      tree.symbol.is(Flags.Implicit)  && // has to have an implicit flag
+      tree.symbol.is(Flags.ImplicitOrImplied) && // has to have an implicit flag
       tree.symbol.owner.isStaticOwner && // owner has to be static (e.g. top-level `object`)
       tree.vparamss.length > 0        &&
       tree.vparamss(0).length == 1       // should only take one arg, since it has to be a transformation

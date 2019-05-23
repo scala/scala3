@@ -125,7 +125,7 @@ trait NamerContextOps { this: Context =>
   /** if isConstructor, make sure it has one non-implicit parameter list */
   def normalizeIfConstructor(termParamss: List[List[Symbol]], isConstructor: Boolean): List[List[Symbol]] =
     if (isConstructor &&
-      (termParamss.isEmpty || termParamss.head.nonEmpty && (termParamss.head.head is Implicit)))
+      (termParamss.isEmpty || termParamss.head.nonEmpty && (termParamss.head.head is ImplicitOrGiven)))
       Nil :: termParamss
     else
       termParamss
@@ -134,10 +134,10 @@ trait NamerContextOps { this: Context =>
   def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(implicit ctx: Context): Type = {
     val monotpe =
       (valueParamss :\ resultType) { (params, resultType) =>
-        val (isImplicit, isErased, isContextual) =
+        val (isContextual, isImplicit, isErased) =
           if (params.isEmpty) (false, false, false)
-          else (params.head is Implicit, params.head is Erased, params.head.is(Given))
-        val make = MethodType.maker(isJava = isJava, isImplicit = isImplicit, isErased = isErased, isContextual = isContextual)
+          else (params.head.is(Given), params.head.is(Implicit), params.head.is(Erased))
+        val make = MethodType.companion(isJava = isJava, isContextual = isContextual, isImplicit = isImplicit, isErased = isErased)
         if (isJava)
           for (param <- params)
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
@@ -749,7 +749,7 @@ class Namer { typer: Typer =>
 
   def missingType(sym: Symbol, modifier: String)(implicit ctx: Context): Unit = {
     ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.sourcePos)
-    sym.resetFlag(Implicit)
+    sym.resetFlag(ImplicitOrGiven)
   }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
@@ -949,7 +949,7 @@ class Namer { typer: Typer =>
 
         def whyNoForwarder(mbr: SingleDenotation): String = {
           val sym = mbr.symbol
-          if (sym.is(ImplicitOrImplied) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}implied"
+          if (sym.is(ImplicitOrImpliedOrGiven) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}implied"
           else if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
           else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) SKIP
           else if (cls.derivesFrom(sym.owner) &&
@@ -981,14 +981,14 @@ class Namer { typer: Typer =>
               if (mbr.isType)
                 ctx.newSymbol(
                   cls, alias.toTypeName,
-                  Final,
+                  Exported | Final,
                   fwdInfo(path.tpe.select(mbr.symbol), mbr.info),
                   coord = span)
               else {
                 val maybeStable = if (mbr.symbol.isStableMember) StableRealizable else EmptyFlags
                 ctx.newSymbol(
                   cls, alias,
-                  Method | Final | maybeStable | mbr.symbol.flags & ImplicitOrImplied,
+                  Exported | Method | Final | maybeStable | mbr.symbol.flags & ImplicitOrImpliedOrGiven,
                   mbr.info.ensureMethodic,
                   coord = span)
               }
@@ -1335,8 +1335,15 @@ class Namer { typer: Typer =>
       // it would be erased to BoxedUnit.
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-      var rhsCtx = ctx.addMode(Mode.InferringReturnType)
+      var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
       if (sym.isInlineMethod) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
+      if (typeParams.nonEmpty) {
+        // we'll be typing an expression from a polymorphic definition's body,
+        // so we must allow constraining its type parameters
+        // compare with typedDefDef, see tests/pos/gadt-inference.scala
+        rhsCtx.setFreshGADTBounds
+        rhsCtx.gadt.addToConstraint(typeParams)
+      }
       def rhsType = typedAheadExpr(mdef.rhs, (inherited orElse rhsProto).widenExpr)(rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.

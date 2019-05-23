@@ -254,7 +254,7 @@ object Completion {
       !sym.isAbsent &&
       !sym.isPrimaryConstructor &&
       sym.sourceSymbol.exists &&
-      (!sym.is(Package) || !sym.moduleClass.exists) &&
+      (!sym.is(Package) || sym.is(ModuleClass)) &&
       !sym.is(allOf(Mutable, Accessor)) &&
       !sym.isPackageObject &&
       !sym.is(Artifact) &&

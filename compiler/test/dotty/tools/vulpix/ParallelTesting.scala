@@ -58,7 +58,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def flags: TestFlags
     def sourceFiles: Array[JFile]
 
-    def runClassPath: String = outDir.getAbsolutePath + JFile.pathSeparator + flags.runClassPath
+    def runClassPath: String = outDir.getPath + JFile.pathSeparator + flags.runClassPath
 
     def title: String = self match {
       case self: JointCompilationSource =>
@@ -86,16 +86,18 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val sb = new StringBuilder
       val maxLen = 80
       var lineLen = 0
+      val delimiter = " "
 
       sb.append(
         s"""|
             |Test '$title' compiled with $errors error(s) and $warnings warning(s),
-            |the test can be reproduced by running:""".stripMargin
+            |the test can be reproduced by running from SBT (prefix it with ./bin/ if you
+            |want to run from the command line):""".stripMargin
       )
-      sb.append("\n\n./bin/dotc ")
+      sb.append("\n\ndotc ")
       flags.all.foreach { arg =>
         if (lineLen > maxLen) {
-          sb.append(" \\\n        ")
+          sb.append(delimiter)
           lineLen = 4
         }
         sb.append(arg)
@@ -105,8 +107,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       self match {
         case source: JointCompilationSource => {
-          source.sourceFiles.map(_.getAbsolutePath).foreach { path =>
-            sb.append("\\\n        ")
+          source.sourceFiles.map(_.getPath).foreach { path =>
+            sb.append(delimiter)
             sb.append(path)
             sb += ' '
           }
@@ -117,7 +119,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           val fsb = new StringBuilder(command)
           self.compilationGroups.foreach { files =>
             files.map(_.getPath).foreach { path =>
-              fsb.append("\\\n        ")
+              fsb.append(delimiter)
               lineLen = 8
               fsb.append(path)
               fsb += ' '
@@ -215,21 +217,20 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      */
     final def checkFile(testSource: TestSource): Option[JFile] = (testSource match {
       case ts: JointCompilationSource =>
-        ts.files.collectFirst { case f if !f.isDirectory => new JFile(f.getAbsolutePath.replaceFirst("\\.scala$", ".check")) }
+        ts.files.collectFirst { case f if !f.isDirectory => new JFile(f.getPath.replaceFirst("\\.scala$", ".check")) }
 
       case ts: SeparateCompilationSource =>
-        Option(new JFile(ts.dir.getAbsolutePath + ".check"))
+        Option(new JFile(ts.dir.getPath + ".check"))
     }).filter(_.exists)
 
     /**
      * Checks if the given actual lines are the same as the ones in the check file.
      * If not, fails the test.
      */
-    final def diffTest(testSource: TestSource, checkFile: JFile, actual: List[String]) = {
+    final def diffTest(testSource: TestSource, checkFile: JFile, actual: List[String], reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       val expected = Source.fromFile(checkFile, "UTF-8").getLines().toList
       for (msg <- diffMessage(testSource.title, actual, expected)) {
-        echo(msg)
-        failTestSource(testSource)
+        onFailure(testSource, reporters, logger, Some(msg))
         dumpOutputToFile(checkFile, actual)
       }
     }
@@ -318,9 +319,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       if (!testFilter.isDefined) testSources
       else testSources.filter {
         case JointCompilationSource(_, files, _, _, _, _) =>
-          files.exists(file => file.getAbsolutePath.contains(testFilter.get))
+          files.exists(file => file.getPath.contains(testFilter.get))
         case SeparateCompilationSource(_, dir, _, _) =>
-          dir.getAbsolutePath.contains(testFilter.get)
+          dir.getPath.contains(testFilter.get)
       }
 
     /** Total amount of test sources being compiled by this test */
@@ -422,9 +423,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       }
 
     protected def compile(files0: Array[JFile], flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
-
-      val flags = flags0.and("-d", targetDir.getAbsolutePath)
-        .withClasspath(targetDir.getAbsolutePath)
+      val flags = flags0.and("-d", targetDir.getPath)
+        .withClasspath(targetDir.getPath)
 
       def flattenFiles(f: JFile): Array[JFile] =
         if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
@@ -468,10 +468,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       // If a test contains a Java file that cannot be parsed by Dotty's Java source parser, its
       // name must contain the string "JAVA_ONLY".
-      val dottyFiles = files.filterNot(_.getName.contains("JAVA_ONLY")).map(_.getAbsolutePath)
+      val dottyFiles = files.filterNot(_.getName.contains("JAVA_ONLY")).map(_.getPath)
       driver.process(allArgs ++ dottyFiles, reporter = reporter)
 
-      val javaFiles = files.filter(_.getName.endsWith(".java")).map(_.getAbsolutePath)
+      val javaFiles = files.filter(_.getName.endsWith(".java")).map(_.getPath)
       val javaErrors = compileWithJavac(javaFiles)
 
       if (javaErrors.isDefined) {
@@ -485,7 +485,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     protected def compileFromTasty(flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
       val tastyOutput = new JFile(targetDir.getPath + "_from-tasty")
       tastyOutput.mkdir()
-      val flags = flags0 and ("-d", tastyOutput.getAbsolutePath) and "-from-tasty"
+      val flags = flags0 and ("-d", tastyOutput.getPath) and "-from-tasty"
 
       def tastyFileToClassName(f: JFile): String = {
         val pathStr = targetDir.toPath.relativize(f.toPath).toString.replace(JFile.separatorChar, '.')
@@ -609,11 +609,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       }
     }
 
-    private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int) = {
+    private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       if (Properties.testsNoRun) addNoRunWarning()
       else runMain(testSource.runClassPath) match {        
         case Success(output) => checkFile match {
-          case Some(file) if file.exists => diffTest(testSource, file, output.linesIterator.toList)
+          case Some(file) if file.exists => diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
           case _ =>
         }
         case Failure(output) => 
@@ -627,7 +627,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
-      verifyOutput(checkFile(testSource), testSource.outDir, testSource, countWarnings(reporters))
+      verifyOutput(checkFile(testSource), testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
   }
 
   private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
@@ -649,11 +649,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
-      checkFile(testSource).foreach(diffTest(testSource, _, reporterOutputLines(reporters)))
+      checkFile(testSource).foreach(diffTest(testSource, _, reporterOutputLines(reporters), reporters, logger))
 
     def reporterOutputLines(reporters: Seq[TestReporter]): List[String] =
-      reporters.flatMap(_.allErrors).sortBy(_.pos.source.toString).flatMap { error =>
-        (error.pos.span.toString + " in " + error.pos.source.file.name) :: error.getMessage().linesIterator.toList }.toList
+      reporters.flatMap(_.consoleOutput.split("\n")).toList
 
     // In neg-tests we allow two types of error annotations,
     // "nopos-error" which doesn't care about position and "error" which
@@ -668,7 +667,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         Source.fromFile(file, "UTF-8").getLines().zipWithIndex.foreach { case (line, lineNbr) =>
           val errors = line.sliding("// error".length).count(_.mkString == "// error")
           if (errors > 0)
-            errorMap.put(s"${file.getAbsolutePath}:${lineNbr}", errors)
+            errorMap.put(s"${file.getPath}:${lineNbr}", errors)
 
           val noposErrors = line.sliding("// nopos-error".length).count(_.mkString == "// nopos-error")
           if (noposErrors > 0) {
@@ -686,7 +685,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     def getMissingExpectedErrors(errorMap: HashMap[String, Integer], reporterErrors: Iterator[MessageContainer]) = !reporterErrors.forall { error =>
       val key = if (error.pos.exists) {
-        val fileName = error.pos.source.file.toString
+        def toRelative(path: String): String =  // For some reason, absolute paths leak from the compiler itself...
+          path.split("/").dropWhile(_ != "tests").mkString("/")
+        val fileName = toRelative(error.pos.source.file.toString)
         s"$fileName:${error.pos.line}"
 
       } else "nopos"
@@ -715,16 +716,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def linesMatch =
       (outputLines, checkLines).zipped.forall(_ == _)
 
-    if (outputLines.length != checkLines.length || !linesMatch) {
-      // Print diff to files and summary:
-      val diff = DiffUtil.mkColoredLineDiff(checkLines :+ DiffUtil.EOF, outputLines :+ DiffUtil.EOF)
-
-      Some(
-        s"""|Output from '$sourceTitle' did not match check file.
-            |Diff (expected on the left, actual right):
-            |""".stripMargin + diff + "\n")
-    } else None
-
+    if (outputLines.length != checkLines.length || !linesMatch) Some(
+      s"""|Output from '$sourceTitle' did not match check file. Actual output:
+          |${outputLines.mkString(EOL)}
+          |""".stripMargin + "\n")
+    else None
   }
 
   /** The `CompilationTest` is the main interface to `ParallelTesting`, it
@@ -943,7 +939,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      *  and if so copying recursively
      */
     private def copyToDir(dir: JFile, file: JFile): JFile = {
-      val target = Paths.get(dir.getAbsolutePath, file.getName)
+      val target = Paths.get(dir.getPath, file.getName)
       Files.copy(file.toPath, target, REPLACE_EXISTING)
       if (file.isDirectory) file.listFiles.map(copyToDir(target.toFile, _))
       target.toFile
@@ -1221,7 +1217,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     val (dirs, files) = compilationTargets(sourceDir, fromTastyFilter)
 
     val filteredFiles = testFilter match {
-      case Some(str) => files.filter(_.getAbsolutePath.contains(str))
+      case Some(str) => files.filter(_.getPath.contains(str))
       case None => files
     }
 

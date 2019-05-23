@@ -160,10 +160,12 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/implicit-conversions-old.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFile("tests/neg-custom-args/i3246.scala", scala2Mode),
       compileFile("tests/neg-custom-args/overrideClass.scala", scala2Mode),
+      compileFile("tests/neg-custom-args/ovlazy.scala", scala2Mode.and("-migration", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")),
       compileFile("tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")),
       compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")),
       compileFile("tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")),
+      compileFile("tests/neg-custom-args/i1650.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i4372.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i1754.scala", allowDeepSubtypes),
@@ -177,7 +179,8 @@ class CompilationTests extends ParallelTesting {
         "tests/neg-custom-args/toplevel-samesource/S.scala",
         "tests/neg-custom-args/toplevel-samesource/nested/S.scala"),
         defaultOptions),
-      compileFile("tests/neg-custom-args/i6300.scala", allowDeepSubtypes)
+      compileFile("tests/neg-custom-args/i6300.scala", allowDeepSubtypes),
+      compileFile("tests/neg-custom-args/infix.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings"))
     ).checkExpectedErrors()
   }
 
@@ -194,7 +197,9 @@ class CompilationTests extends ParallelTesting {
       compileFilesInDir("tests/run-custom-args/Yretain-trees", defaultOptions and "-Yretain-trees"),
       compileFile("tests/run-custom-args/tuple-cons.scala", allowDeepSubtypes),
       compileFile("tests/run-custom-args/i5256.scala", allowDeepSubtypes),
+      compileFile("tests/run-custom-args/fors.scala", defaultOptions and "-strict"),
       compileFile("tests/run-custom-args/no-useless-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
+      compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run", defaultOptions)
     ).checkRuns()
   }

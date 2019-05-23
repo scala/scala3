@@ -95,6 +95,8 @@ sidebar:
               url: docs/reference/changed-features/lazy-vals.html
             - title: Structural Types
               url: docs/reference/changed-features/structural-types.html
+            - title: Operators
+              url: docs/reference/changed-features/operators.html
             - title: Type Checking
               url: docs/reference/changed-features/type-checking.html
             - title: Type Inference
@@ -107,7 +109,9 @@ sidebar:
               url: docs/reference/changed-features/overload-resolution.html
             - title: Vararg Patterns
               url: docs/reference/changed-features/vararg-patterns.html
-            - title: Pattern matching
+            - title: Pattern Bindings
+              url: docs/reference/changed-features/pattern-bindings.html
+            - title: Pattern Matching
               url: docs/reference/changed-features/pattern-matching.html
             - title: Eta Expansion
               url: docs/reference/changed-features/eta-expansion.html

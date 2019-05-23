@@ -49,8 +49,8 @@ object parsePackage extends ParserTest {
           ForYield(enums map transform, transform(expr))
         case ForDo(enums, expr) =>
           ForDo(enums map transform, transform(expr))
-        case GenFrom(pat, expr) =>
-          GenFrom(transform(pat), transform(expr))
+        case GenFrom(pat, expr, filtering) =>
+          GenFrom(transform(pat), transform(expr), filtering)
         case GenAlias(pat, expr) =>
           GenAlias(transform(pat), transform(expr))
         case PatDef(mods, pats, tpt, expr) =>

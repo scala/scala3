@@ -23,7 +23,6 @@ object Formatting {
    *     against accidentally treating an interpolated value as a margin.
    */
   class StringFormatter(protected val sc: StringContext) {
-
     protected def showArg(arg: Any)(implicit ctx: Context): String = arg match {
       case arg: Showable =>
         try arg.show
@@ -190,7 +189,7 @@ object Formatting {
       case sym: Symbol =>
         val info =
           if (ctx.gadt.contains(sym))
-            sym.info & ctx.gadt.bounds(sym)
+            sym.info & ctx.gadt.fullBounds(sym)
           else
             sym.info
         s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
@@ -210,7 +209,7 @@ object Formatting {
       case param: TermParamRef => false
       case skolem: SkolemType => true
       case sym: Symbol =>
-        ctx.gadt.contains(sym) && ctx.gadt.bounds(sym) != TypeBounds.empty
+        ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
       case _ =>
         assert(false, "unreachable")
         false
@@ -230,7 +229,7 @@ object Formatting {
       lazy val maxLen = parts.map(_._1.length).max
       parts.map {
         case (leader, trailer) =>
-          val variable = hl"$leader"
+          val variable = hl(leader)
           s"""$variable${" " * (maxLen - leader.length)} $trailer"""
       }
     }
@@ -300,4 +299,8 @@ object Formatting {
       case _ => (fnd, exp)
     }
   }
+
+  /** Explicit syntax highlighting */
+  def hl(s: String)(implicit ctx: Context): String =
+    SyntaxHighlighting.highlight(s)
 }

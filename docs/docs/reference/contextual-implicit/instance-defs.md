@@ -71,12 +71,13 @@ An implicit instance without type parameters or given clause is created on-deman
 Here is the new syntax of implicit instances, seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).
 ```
 TmplDef          ::=  ...
-                  |  ‘implicit’ InstanceDef
+                   |  ‘implicit’ InstanceDef
 InstanceDef      ::=  [id] [DefTypeParamClause] InstanceBody
-InstanceBody     ::=  [‘of’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
-                   |  ‘of’ Type {GivenParamClause} ‘=’ Expr
-ConstrApp        ::=  AnnotType {ArgumentExprs}
-                   |  ‘(’ ConstrApp {‘given’ (InfixExpr | ParArgumentExprs)} ‘)’
+InstanceBody     ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
+                   |  ‘for’ Type {GivenParamClause} ‘=’ Expr
+ConstrApp        ::=  SimpleConstrApp
+                   |  ‘(’ SimpleConstrApp {‘given’ (PrefixExpr | ParArgumentExprs)} ‘)’
+SimpleConstrApp  ::=  AnnotType {ArgumentExprs}
 GivenParamClause ::=  ‘given’ (‘(’ [DefParams] ‘)’ | GivenTypes)
 GivenTypes       ::=  AnnotType {‘,’ AnnotType}
 ```

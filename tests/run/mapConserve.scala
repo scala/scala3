@@ -10,7 +10,7 @@ object Test {
 
   def checkStackOverflow() = {
     var xs: List[String] = Nil
-    for (i <- 0 until 250000)
+    for (i <- 0 until 250)
         xs = "X" :: xs
 
     val lowers = xs.mapConserve(_.toLowerCase)
