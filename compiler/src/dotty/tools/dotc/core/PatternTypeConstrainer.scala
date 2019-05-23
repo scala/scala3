@@ -14,7 +14,9 @@ trait PatternTypeConstrainer { self: TypeComparer =>
   /** Derive type and GADT constraints that necessarily follow from a pattern with the given type matching
    *  a scrutinee of the given type.
    *
-   *  We have the following situation in case of a (dynamic) pattern match:
+   *  This function breaks down scrutinee and pattern types into subcomponents between which there must be
+   *  a subtyping relationship, and derives constraints from those relationships. We have the following situation
+   *  in case of a (dynamic) pattern match:
    *
    *       StaticScrutineeType           PatternType
    *                         \            /

@@ -1095,9 +1095,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             fullyDefinedType(unapplyArgType, "pattern selector", tree.span)
             selType.dropAnnot(defn.UncheckedAnnot) // need to drop @unchecked. Just because the selector is @unchecked, the pattern isn't.
           } else {
-            // note that we simply ignore whether constraining actually succeeded or not
-            // in theory, constraining should only fail if the pattern cannot possibly match
-            // however, during exhaustivity checks, we perform a strictly better check
+            // We ignore whether constraining the pattern succeeded.
+            // Constraining only fails if the pattern cannot possibly match,
+            // but useless pattern checks detect more such cases, so we simply rely on them instead.
             ctx.addMode(Mode.GADTflexible).typeComparer.constrainPatternType(unapplyArgType, selType)
             val patternBound = maximizeType(unapplyArgType, tree.span, fromScala2x)
             if (patternBound.nonEmpty) unapplyFn = addBinders(unapplyFn, patternBound)
