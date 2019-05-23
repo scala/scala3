@@ -1,4 +1,7 @@
 \documentclass{report}
+\usepackage{listings}
+\usepackage{hyperref}
+
 \begin{document}
 
 \title{Documentation tool for dotty using Tasty files}
@@ -9,6 +12,10 @@
 
 \begin{abstract}
 The current documentation tool (dottydoc) relies on compiler internals and low level code. The tool introduced here aims to build a program not dependant on compiler internals but instead use Tasty files which are output when a Scala program is compiled.
+
+It also aims at providing a tool with less bugs, more features and which is more easily maintenable.
+
+For flexibility the output is in markdown instead of html.
 \end{abstract}
 
 \tableofcontents
@@ -17,17 +24,29 @@ The current documentation tool (dottydoc) relies on compiler internals and low l
 In dotty the documentation generation tool is called \texttt{dotty-doc}. However the tool is flawed in many ways, these flaws include:
 \begin{itemize}
     \item Reliance on compiler internals
-    \item Low level and unecessarily complex code
+    \item Low level and unecessarily complex code which make it hard to maintain
     \item Not maintened and not documented
     \item Not flexible in its output, it outputs html/css in a hard to modify way
     \item Malformed type output such as \texttt{[32m"getOffset"[0m}
-    \item Lacks features, especially:
+    \item Classes often show to be extending Object instead of their superclass. Example: \url{https://dotty.epfl.ch/api/scala/Conversion.html}
+\begin{lstlisting}[language=scala]
+abstract class Conversion [ -T, +U ] extends Object with Function1
+\end{lstlisting}
+    \item Annotations which sould not be display, sometimes are. Example:
+    \item Lacks some features, especially:
     \begin{itemize}
-        
+        \item No known subclasses
         \item 
     \end{itemize}
 \end{itemize}
-The tool introduced here aims to address all these issues.
+
+The tool introduced here aims to address all these issues while providing with a code easy to maintain and easy to adapt to every need.
+
+One major difference with currrent documentation tools is that the output is in markdown instead of html, this has some pros and cons which will be discussed below.
+
+Althought dotty-doc has some problems, the current tool will draw inspiration for some of its architecture which will allow for its parsing code for user documentation (modified to handle this structure and output markdown) to be reused.
+
+The report will follow the structure described in this introduction and will conclude with problems of the current implementation and further work.
 
 \chapter{Features}
 
