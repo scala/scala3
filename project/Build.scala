@@ -30,7 +30,7 @@ import scala.util.Properties.isJavaAtLeast
 
 object Build {
   val scalacVersion = "2.12.8"
-  val referenceVersion = "0.14.0-RC1"
+  val referenceVersion = "0.15.0-RC1"
 
   val baseVersion = "0.16.0"
   val baseSbtDottyVersion = "0.3.2"
