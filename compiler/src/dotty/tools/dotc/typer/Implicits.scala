@@ -709,6 +709,26 @@ trait Implicits { self: Typer =>
       if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.TastyReflection_macroContext)
       else EmptyTree
 
+    def synthesizedTupleFunction(formal: Type): Tree = {
+      formal match {
+        case AppliedType(_, fun :: args :: ret :: Nil) if defn.isFunctionType(fun) =>
+          val funTypes = fun.dropDependentRefinement.dealias.argInfos
+          if (defn.tupleType(funTypes.init) =:= args && funTypes.last =:= ret) {
+            val arity = funTypes.size - 1
+            if (defn.isErasedFunctionType(fun))
+              EmptyTree // TODO support?
+            else if (defn.isImplicitFunctionType(fun))
+              EmptyTree // TODO support
+            else if (arity <= Definitions.MaxImplementedFunctionArity)
+              ref(defn.InternalTupleFunctionModule).select(s"tupledFunction$arity".toTermName).appliedToTypes(funTypes)
+            else
+              ref(defn.InternalTupleFunctionModule).select("tupledFunctionXXL".toTermName).appliedToTypes(fun :: args :: ret :: Nil)
+          } else EmptyTree
+        case _ =>
+          EmptyTree
+      }
+    }
+
     /** If `formal` is of the form Eql[T, U], try to synthesize an
      *  `Eql.eqlAny[T, U]` as solution.
      */
@@ -828,7 +848,8 @@ trait Implicits { self: Typer =>
               trySpecialCase(defn.GenericClass, synthesizedGeneric,
                 trySpecialCase(defn.TastyReflectionClass, synthesizedTastyContext,
                   trySpecialCase(defn.EqlClass, synthesizedEq,
-                    trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed))))))
+                    trySpecialCase(defn.TupleFunctionClass, synthesizedTupleFunction,
+                      trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed)))))))
     }
   }
 

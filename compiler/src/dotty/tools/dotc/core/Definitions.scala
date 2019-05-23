@@ -24,7 +24,7 @@ object Definitions {
    *  The limit 22 is chosen for Scala2x interop. It could be something
    *  else without affecting the set of programs that can be compiled.
    */
-  val MaxImplementedFunctionArity: Int = 22
+  val MaxImplementedFunctionArity: Int = MaxTupleArity
 }
 
 /** A class defining symbols and types of standard definitions
@@ -795,6 +795,13 @@ class Definitions {
     def TupleXXL_apply(implicit ctx: Context): Symbol =
       TupleXXLModule.info.member(nme.apply).requiredSymbol("method", nme.apply, TupleXXLModule)(_.info.isVarArgsMethod)
 
+  lazy val TupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.TupledFunction")
+  def TupleFunctionClass(implicit ctx: Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass
+
+  lazy val InternalTupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.internal.TupledFunction")
+  def InternalTupleFunctionClass(implicit ctx: Context): ClassSymbol = InternalTupledFunctionTypeRef.symbol.asClass
+  def InternalTupleFunctionModule(implicit ctx: Context): Symbol = ctx.requiredModule("scala.internal.TupledFunction")
+
   // Annotation base classes
   lazy val AnnotationType: TypeRef              = ctx.requiredClassRef("scala.annotation.Annotation")
   def AnnotationClass(implicit ctx: Context): ClassSymbol = AnnotationType.symbol.asClass
@@ -1187,7 +1194,7 @@ class Definitions {
 
   def tupleType(elems: List[Type]): Type = {
     val arity = elems.length
-    if (arity <= MaxTupleArity && TupleType(arity) != null) TupleType(arity).appliedTo(elems)
+    if (0 < arity && arity <= MaxTupleArity && TupleType(arity) != null) TupleType(arity).appliedTo(elems)
     else TypeOps.nestedPairs(elems)
   }
 
