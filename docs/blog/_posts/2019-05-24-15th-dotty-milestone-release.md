@@ -186,7 +186,21 @@ Thank you to all the contributors who made this release possible!
 According to `git shortlog -sn --no-merges 0.14.0-RC1..0.15.0-RC1` these are:
 
 ```
-TODO
+   191  Martin Odersky
+   112  Nicolas Stucki
+    29  Guillaume Martres
+    25  Olivier Blanvillain
+    21  Aleksander Boruch-Gruszecki
+    17  Anatolii Kmetiuk
+    10  Miles Sabin
+     9  Liu Fengyun
+     8  Aggelos Biboudis
+     8  Jentsch
+     5  Sébastien Doeraene
+     2  Anatolii
+     1  Fengyun Liu
+     1  Olivier ROLAND
+     1  phderome
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
