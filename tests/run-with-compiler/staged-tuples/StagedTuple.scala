@@ -79,7 +79,7 @@ object StagedTuple {
   }
 
   def headStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int]): Expr[Head[Tup]] = {
-    if (!specialize) '{dynamicHead($tup)}
+    if (!specialize) '{dynamicApply($tup, 0)}
     else {
       val resVal = size match {
         case Some(1) =>
@@ -95,7 +95,7 @@ object StagedTuple {
         case Some(n) if n > MaxSpecialized =>
           '{${tup.as[TupleXXL] }.elems(0)}
         case None =>
-          '{dynamicHead($tup)}
+          '{dynamicApply($tup, 0)}
       }
       resVal.as[Head[Tup]]
     }

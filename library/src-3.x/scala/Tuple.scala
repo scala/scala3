@@ -66,14 +66,15 @@ object Tuple {
 sealed trait NonEmptyTuple extends Tuple {
   import Tuple._
 
+  inline def apply[This >: this.type <: NonEmptyTuple](n: Int): Elem[This, n.type] =
+    DynamicTuple.dynamicApply[This, n.type](this, n)
+
   inline def head[This >: this.type <: NonEmptyTuple]: Head[This] =
-    DynamicTuple.dynamicHead[This](this)
+    DynamicTuple.dynamicApply[This, 0](this, 0)
 
   inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
     DynamicTuple.dynamicTail[This](this)
 
-  inline def apply[This >: this.type <: NonEmptyTuple](n: Int): Elem[This, n.type] =
-    DynamicTuple.dynamicApply[This, n.type](this, n)
 }
 
 @showAsInfix

@@ -226,9 +226,6 @@ object DynamicTuple {
     case self: Product => self.productArity.asInstanceOf[Size[This]]
   }
 
-  def dynamicHead[This <: NonEmptyTuple] (self: This): Head[This] =
-    self.asInstanceOf[Product].productElement(0).asInstanceOf[Head[This]]
-
   def dynamicTail[This <: NonEmptyTuple] (self: This): Tail[This] = {
     type Result = Tail[This]
     val res = (self: Any) match {
@@ -245,7 +242,6 @@ object DynamicTuple {
     type Result = Elem[This, N]
     val res = (self: Any) match {
       case self: Unit => throw new IndexOutOfBoundsException(n.toString)
-      case self: TupleXXL => self.elems(n)
       case self: Product => self.productElement(n)
     }
     res.asInstanceOf[Result]

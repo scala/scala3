@@ -26,7 +26,6 @@ class GenericTuples extends MiniPhase with IdentityDenotTransformer {
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
     if (tree.symbol == defn.DynamicTuple_dynamicCons) transformTupleCons(tree)
-    else if (tree.symbol == defn.DynamicTuple_dynamicHead) transformTupleHead(tree)
     else if (tree.symbol == defn.DynamicTuple_dynamicTail) transformTupleTail(tree)
     else if (tree.symbol == defn.DynamicTuple_dynamicSize) transformTupleSize(tree)
     else if (tree.symbol == defn.DynamicTuple_dynamicConcat) transformTupleConcat(tree)
@@ -92,23 +91,6 @@ class GenericTuples extends MiniPhase with IdentityDenotTransformer {
         }
       case None =>
         // DynamicTuple.dynamicTail(tup)
-        tree
-    }
-  }
-
-  private def transformTupleHead(tree: tpd.Apply)(implicit ctx: Context): Tree = {
-    val Apply(TypeApply(_, tpt :: Nil), tup :: Nil) = tree
-    tupleTypes(tpt.tpe) match { // TODO tupleBoundedTypes
-      case Some(tpes) =>
-        if (tpes.size <= Definitions.MaxTupleArity) {
-          // tup._1
-          Typed(tup, TypeTree(defn.tupleType(tpes))).select(nme.selectorName(0))
-        } else {
-          // tup.asInstanceOf[TupleXXL].productElement(0)
-          tup.asInstance(defn.TupleXXLType).select(nme.productElement).appliedTo(Literal(Constant(0)))
-        }
-      case None =>
-        // DynamicTuple.dynamicHead(tup)
         tree
     }
   }
