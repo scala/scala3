@@ -64,7 +64,7 @@ class TuplesOptimizations extends MiniPhase with IdentityDenotTransformer {
 
   private def transformTupleTail(tree: tpd.Apply)(implicit ctx: Context): Tree = {
     val Apply(TypeApply(_, tpt :: Nil), tup :: Nil) = tree
-    tupleTypes(tpt.tpe) match { // TODO tupleBoundedTypes
+    tupleTypes(tpt.tpe, MaxTupleArity + 1) match {
       case Some(tpes) =>
         // Generate a the tuple directly with TupleN-1.apply
         val size = tpes.size
@@ -154,7 +154,7 @@ class TuplesOptimizations extends MiniPhase with IdentityDenotTransformer {
         if (n < 0 || n >= size) {
           ctx.error("index out of bounds: " + n, nTree.underlyingArgument.sourcePos)
           tree
-        } else if (size <= Definitions.MaxTupleArity) {
+        } else if (size <= MaxTupleArity) {
           // tup._n
           Typed(tup, TypeTree(defn.tupleType(tpes))).select(nme.selectorName(n))
         } else {
@@ -173,13 +173,13 @@ class TuplesOptimizations extends MiniPhase with IdentityDenotTransformer {
 
   private def transformTupleToArray(tree: tpd.Apply)(implicit ctx: Context): Tree = {
     val Apply(_, tup :: Nil) = tree
-    tupleTypes(tup.tpe.widen) match { // TODO tupleBoundedTypes
+    tupleTypes(tup.tpe.widen, MaxTupleArity) match {
       case Some(tpes) =>
         val size = tpes.size
         if (size == 0) {
           // Array.emptyObjectArray
           ref(defn.ArrayModule.companionModule).select("emptyObjectArray".toTermName).ensureApplied
-        } else if (size <= Definitions.MaxTupleArity) {
+        } else if (size <= MaxTupleArity) {
           // DynamicTuple.productToArray(tup.asInstanceOf[Product])
           ref(defn.DynamicTuple_productToArray).appliedTo(tup.asInstance(defn.ProductType))
         } else {
@@ -196,7 +196,7 @@ class TuplesOptimizations extends MiniPhase with IdentityDenotTransformer {
   /** Create a TupleN (1 <= N < 23) from the elements */
   private def knownTupleFromElements(tpes: List[Type], elements: List[Tree])(implicit ctx: Context) = {
     val size = elements.size
-    assert(0 < size && size <= Definitions.MaxTupleArity)
+    assert(0 < size && size <= MaxTupleArity)
     val tupleModule = defn.TupleType(size).classSymbol.companionModule
     ref(tupleModule).select(nme.apply).appliedToTypes(tpes).appliedToArgs(elements)
   }
@@ -206,7 +206,7 @@ class TuplesOptimizations extends MiniPhase with IdentityDenotTransformer {
       // Unit for empty tuple
       Literal(Constant(())) // TODO should this code be here? Or assert(size > specializedSize)
     }
-    else if (size <= Definitions.MaxTupleArity) {
+    else if (size <= MaxTupleArity) {
       // TupleN(it.next(), ..., it.next())
 
       // TODO outline this code for the 22 alternatives (or less, may not need the smallest ones)?
@@ -222,13 +222,14 @@ class TuplesOptimizations extends MiniPhase with IdentityDenotTransformer {
     }
   }
 
-  private def tupleTypes(tp: Type)(implicit ctx: Context): Option[List[Type]] = {
-    @tailrec def rec(tp: Type, acc: List[Type]): Option[List[Type]] = tp match {
-      case tp: AppliedType if defn.PairClass == tp.classSymbol => rec(tp.args(1), tp.args(0) :: acc)
+  private def tupleTypes(tp: Type, bound: Int = Int.MaxValue)(implicit ctx: Context): Option[List[Type]] = {
+    @tailrec def rec(tp: Type, acc: List[Type], bound: Int): Option[List[Type]] = tp match {
+      case _ if bound < 0 => Some(acc.reverse)
+      case tp: AppliedType if defn.PairClass == tp.classSymbol => rec(tp.args(1), tp.args.head :: acc, bound - 1)
       case tp: AppliedType if defn.isTupleClass(tp.tycon.classSymbol) => Some(acc.reverse ::: tp.args)
       case tp if tp.classSymbol == defn.UnitClass => Some(acc.reverse)
       case _ => None
     }
-    rec(tp.stripTypeVar, Nil)
+    rec(tp.stripTypeVar, Nil, bound)
   }
 }
