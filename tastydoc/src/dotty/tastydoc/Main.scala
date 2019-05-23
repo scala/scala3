@@ -58,26 +58,7 @@ object Main {
       val x = new TastydocConsumer(null, null, null)
       ConsumeTasty(extraClasspath, classes, x)
 
-      TastydocConsumer.mutablePackagesMap.foreach{(k, v) =>
-        DocPrinter.traverseRepresentation(v)
-        val file = new File("./" + DocPrinter.folderPrefix + k.replaceAll("\\.", "/") + "/" + v.name + ".md")
-        file.getParentFile.mkdirs
-        val pw = new PrintWriter(file)
-        pw.write(DocPrinter.formatRepresentationToMarkdown(v, k.split("\\.").toList))
-        pw.close
-      }
-
-      // TastydocConsumer.mutablePackagesSet.groupBy(x => x._1).foreach{ (k, m) =>
-      //   if(k.nonEmpty){
-      //     val file = new File("./" + DocPrinter.folderPrefix + k.mkString("/") + ".md")
-      //     file.getParentFile.mkdirs
-      //     val pw = new PrintWriter(file)
-      //     pw.write(Md.header1("Package " + k.last))
-      //     pw.write(Md.header2("Members:"))
-      //     m.foreach(x => pw.write(x._2 + "\n\n"))
-      //     pw.close
-      //   }
-      // }
+      TastydocConsumer.mutablePackagesMap.foreach((_, v) => DocPrinter.traverseRepresentation(v))
     }
   }
 }

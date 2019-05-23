@@ -398,6 +398,11 @@ object DocPrinter{
   def traverseRepresentation(representation: Representation): Unit = representation match {
     case r: EmulatedPackageRepresentation =>
       r.members.foreach(traverseRepresentation)
+      val file = new File("./" + DocPrinter.folderPrefix + (r.path :+ r.name).mkString("/", "/", "/") + r.name + ".md")
+      file.getParentFile.mkdirs
+      val pw = new PrintWriter(file)
+      pw.write(DocPrinter.formatRepresentationToMarkdown(r, (r.path :+ r.name)))
+      pw.close
 
     case r: PackageRepresentation =>
       r.members.foreach(traverseRepresentation)
