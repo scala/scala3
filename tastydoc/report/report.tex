@@ -185,7 +185,7 @@ File: \texttt{dotty/tastydoc/representations.scala}
 
 Implements both \texttt{TastyExtractor} and \texttt{TastyTypeConverter}
 
-A Representation contains all the information of a specific entity. The logic is as follows: different trait such as \texttt{Modifiers} or \texttt{Members} and classes which implement those trait. This logic is inspired by dotty-doc.
+A Representation contains all the information of a specific entity. The logic is as follows: different trait such as \texttt{Modifiers} or \texttt{Members} and classes which implement those trait. This logic is inspired by dotty-doc entities (\texttt{dotty/tools/dottydoc/Entity.scala}).
 
 A Representation take a reflect type such as \texttt{reflect.ClassDef} and extract every information from it using mostly \texttt{TastyExtractor} functions.
 
@@ -250,28 +250,57 @@ File: \texttt{dotty/tastydoc/Main.scala}
 
 Manages the workflow.
 
+Command line arguments are:
+\begin{itemize}
+    \item \textbf{-syntax} \{\textit{wiki} or \textit{markdown}\} Syntax to use for user documentation parsing
+    \item \textbf{-packagestolink} \{\textit{regex1 regex2 ...}\} Regexes to specify which packages should be linked when formatting Reference
+    \item \textbf{-classpath} \{\textit{URI}\} Extra classpath for input files
+    \item \textbf{-i} \{\textit{file1 file2 ...}\} Tasty files
+\end{itemize}
+
 \subsection{mdscala}
 File: \texttt{dotty/tastydoc/mdscala.scala}
 
 Object with methods for outputing markdown (do not handle escaping).
 
 \subsection{User documentation parsing}
+Files are in the package \texttt{dotty.tastydoc.comment}.
+
 See \autoref{sec:dotty-docParsing}
 
 \section{Workflow}
+Main workflow is as follows:
 
+\begin{center}
+    \begin{tikzpicture}[node distance=2cm]
+        \node (parse) [process] {Parse command line arguments};
+        \node (convert) [process, below of=parse] {Convert Tasty files to representation while keeping track of seen packages};
+        \node (output) [process, below of=convert] {Traverse Representation, format output and write to files};
+    
+        \draw [arrow] (parse) -- (convert);
+        \draw [arrow] (convert) -- (output);
+    \end{tikzpicture}
+\end{center}
 
 \section{Formatting and writing to files}
 
+Useful ?
+
 \section{Use of dotty-doc for parsing}
 \label{sec:dotty-docParsing}
+
+Part of dotty-doc code is a parser for user documentation, basically parsing it and also getting every @. Althought the code is more complex than it should, it does the job right and hence is used for this tool. Obviously it needed some adjustements but as we have a very similar structure as Dott-doc's entities, the code nearly worked out of the box when refactoring \texttt{Entity} to \texttt{Representation}.
+
+Note that it is using a library called flexmark-java\footnote{\url{https://github.com/vsch/flexmark-java}} for parsing Markdown.
+
+The parser handles the wiki syntax as well as the Markdown syntax for user documentation.
 
 \chapter{Problems encountered and further work}
 \section{Problems encountered}
 Here is a listing of a few problems encountered:
 \begin{itemize}
     \item All the cons listed in \autoref{sec:proscons}
-    \item Multi level list are not parsed correctly when ordered and unordered list are combined, they are parsed as 2 separate list. This is a problem in Flexmark
+    \item Multi level list are not parsed correctly when ordered and unordered list are combined, they are parsed as 2 separate list. This is a problem in flexmark-java
     \item If a type (class or type alias) inside a class has the same name as a def/val/var in the same class, for linking to them directly (anchor basically), there is no way to do it in markdown (there is no id, except for title). To counter this problem we list types before values so that it will always jump to the first one
 \end{itemize}
 
@@ -280,6 +309,8 @@ Further work would include:
 \begin{itemize}
     \item Make a library for outputing markdown with escaping. For example, right now, if a method is named \texttt{\#} it will cause a problem
     \item Handle correctly Type Lambdas, right now they are handeled as constant reference
+    \item Propose a default HTML/CSS template for people who just want something working out of the box.
+    \item Simplify user documentation parsing code taken from Dotty-doc
 \end{itemize}
 
 \chapter{Conclusion}
