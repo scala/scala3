@@ -79,7 +79,7 @@ The major reason to use Markdown instead of HTML is to think of the documentatio
 With such a pipeline we do not limit the user to use a specific output for the documentation, he can easily remove, add parts, etc. manually and then use an HTML format of his choosing as Markdown only specify the structure not how it should be displayed.
 
 \section{Pros and Cons}
-
+\label{sec:proscons}
 Using Markdown as an intermediate output format comes with some pros and cons comparing to an HTML output:
 \begin{itemize}
     \item \textbf{Pros:}
@@ -122,7 +122,7 @@ Have their own \texttt{.md} file.
     \end{enumerate}
 \end{enumerate}
 
-\subsection{Package}
+\subsection{package}
 Has its own \texttt{.md} file.
 
 \begin{enumerate}
@@ -133,7 +133,7 @@ Has its own \texttt{.md} file.
     \end{enumerate}
 \end{enumerate}
 
-\subsection{Type alias, class (simplified format), def, val and var}
+\subsection{type alias, class (simplified format), def, val and var}
 No \texttt{.md} file.
 
 \label{sec:signatureSec}
@@ -143,7 +143,7 @@ No \texttt{.md} file.
     \item User documentation
 \end{enumerate}
 
-\subsection{Package (simplified format)}
+\subsection{package (simplified format)}
 No \texttt{.md} file.
 
 \label{sec:packageSignatureSec}
@@ -153,11 +153,134 @@ No \texttt{.md} file.
 
 \chapter{Architecture}
 
-\section{Use of dotty-doc parsing}
+\section{General architecture}
+\subsection{TastyExtractor}
+File: \texttt{dotty/tastydoc/TastyExtractor.scala}
 
-\chapter{Problems encountered}
+A trait containing useful methods for extracting information from the reflect API. Methods are:
+\begin{itemize}
+    \item \texttt{extractPath} extract the extractPath
+    \item \texttt{extractModifiers} extract all the useful modifiers, including scope modifiers
+    \item \texttt{extractComments} extract user documentation, more speficially a function requiring a map of packages needed for parsing
+    \item \texttt{extractClassMembers} extract the members of a class, including the inherited ones
+    \item \texttt{extractParents} extract the parents of a class, object or trait
+    \item \texttt{extractKind} extract information (is it an object? a trait? a class? a case?) on a \texttt{reflect.ClassDef}
+    \item \texttt{extractCompanion} extract the companion object or class if it exists
+    \item \texttt{extractAnnotations} extract the annotations
+    \item \texttt{extractPackageNameAndPath} extract the name and the path from a \texttt{pid}
+\end{itemize}
 
-\chapter{Further work}
+\subsection{References}
+File: \texttt{dotty/tastydoc/references.scala}
+
+Object containing case classes. References are classes containing information about a specific type to be able to link to it later on. Inspired from Dottydoc.
+
+\subsection{TastyTypeConverter}
+File: \texttt{dotty/tastydoc/TastyTypeConverter.scala}
+
+Trait containing methods for converting from Reflect types to References.
+
+\subsection{Representation}
+File: \texttt{dotty/tastydoc/representations.scala}
+
+Implements both \texttt{TastyExtractor} and \texttt{TastyTypeConverter}
+
+A Representation contains all the information of a specific entity. The logic is as follows: different trait such as \texttt{Modifiers} or \texttt{Members} and classes which implement those trait. This logic is inspired by dotty-doc.
+
+A Representation take a reflect type such as \texttt{reflect.ClassDef} and extract every information from it using mostly \texttt{TastyExtractor} functions.
+
+Representation can then be easily used for printing, their content is self explanatory and no knowledge of Tasty is required to use them as the implementation is not exposed from the outside.
+
+We give below the existing Representation, a quick description and their signature (without parameters).
+\begin{itemize}
+    \item \texttt{PackageRepresentation} For packages
+\begin{lstlisting}[language=scala]
+class PackageRepresentation(...)
+extends Representation with Members
+\end{lstlisting}
+    \item \texttt{ImportRepresentation} For import, never used in the tool
+\begin{lstlisting}[language=scala]
+class ImportRepresentation(...)
+extends Representation
+\end{lstlisting}
+    \item \texttt{ClassRepresentation} For class, object and trait, including case class and case object.
+\begin{lstlisting}[language=scala]
+class ClassRepresentation(...)
+extends Representation with Members
+with Parents with Modifiers with Companion
+with Constructors with TypeParams
+\end{lstlisting}
+    \item \texttt{DefRepresentation} For definitions
+\begin{lstlisting}[language=scala]
+class DefRepresentation(...)
+extends Representation with Modifiers
+with TypeParams with MultipleParamList
+with ReturnValue
+\end{lstlisting}
+    \item \texttt{ValRepresentation} For val and var
+\begin{lstlisting}[language=scala]
+class ValRepresentation(...)
+extends Representation with Modifiers
+with ReturnValue
+\end{lstlisting}
+    \item \texttt{TypeRepresentation} For type alias
+\begin{lstlisting}[language=scala]
+class TypeRepresentation(...)
+extends Representation with Modifiers
+with TypeParams 
+\end{lstlisting}
+    \item \texttt{EmulatedPackageRepresentation} This Representation is a trick for regrouping every PackageRepresentation of a same package under the same Representation. Indeed the way Tasty works is that for each class or trait it will have a Tasty file and the top of \texttt{reflect.Tree} is a \texttt{reflect.PackageClause}, hence when converting multiple classes of the same package, there will be mutiple \texttt{PackageRepresentation} of the same package. In the point of view of usability, this is not the best and this Representation is here to counter this problem. When using an \texttt{EmulatedPackageRepresentation}, for the user it looks like he is using a \texttt{PackageRepresentation}.
+\end{itemize}
+
+\subsection{DocPrinter}
+File: \texttt{dotty/tastydoc/DocPrinter.scala}
+
+Object with methods for formatting Representations and References and writing them to files. Basically handle all the formatting and printing logic of the tool.
+
+\subsection{mdscala}
+File: \texttt{dotty/tastydoc/mdscala.scala}
+
+\subsection{TastyDocConsumer}
+File: \texttt{dotty/tastydoc/TastyDocConsumer.scala}
+
+Extends TastyConsumer and consume Tasty Files.
+
+\subsection{Main}
+File: \texttt{dotty/tastydoc/Main.scala}
+
+Manages the workflow.
+
+\subsection{mdscala}
+File: \texttt{dotty/tastydoc/mdscala.scala}
+
+Object with methods for outputing markdown (do not handle escaping).
+
+\subsection{User documentation parsing}
+See \autoref{sec:dotty-docParsing}
+
+\section{Workflow}
+
+
+\section{Formatting and writing to files}
+
+\section{Use of dotty-doc for parsing}
+\label{sec:dotty-docParsing}
+
+\chapter{Problems encountered and further work}
+\section{Problems encountered}
+Here is a listing of a few problems encountered:
+\begin{itemize}
+    \item All the cons listed in \autoref{sec:proscons}
+    \item Multi level list are not parsed correctly when ordered and unordered list are combined, they are parsed as 2 separate list. This is a problem in Flexmark
+    \item If a type (class or type alias) inside a class has the same name as a def/val/var in the same class, for linking to them directly (anchor basically), there is no way to do it in markdown (there is no id, except for title). To counter this problem we list types before values so that it will always jump to the first one
+\end{itemize}
+
+\section{Further work}
+Further work would include:
+\begin{itemize}
+    \item Make a library for outputing markdown with escaping. For example, right now, if a method is named \texttt{\#} it will cause a problem
+    \item Handle correctly Type Lambdas, right now they are handeled as constant reference
+\end{itemize}
 
 \chapter{Conclusion}
 

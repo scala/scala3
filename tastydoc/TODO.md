@@ -39,8 +39,6 @@
 * Difficulties, problems with dottydoc + md libraries
 * benchmark?
 * Say everything is split into function
-* Linking to type with a def with the same name
-* Multi level list not working when ordered and unordered are combined (HTMLParsers)
 
 # To Ask
 * Too much operations on String for path?
