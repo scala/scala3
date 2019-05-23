@@ -150,7 +150,7 @@ For the migration purposes, the above change will only take effect in Scala 3.1.
 For more information, see the [documentation](http://dotty.epfl.ch/docs/reference/changed-features/pattern-bindings.html).
 
 ## Further improvements to Generalised Algebraic Data Types (GADTs) support
-In this release, we've further improved our support for GADTs. Most notably, we now support variant GADTs:
+In this release, we've further improved our support for GADTs. Most notably, we now support variant GADTs, thus fixing [#2985](https://github.com/lampepfl/dotty/issues/2985):
 
 ```scala
 enum Expr[+T] {
@@ -164,7 +164,7 @@ def eval[T](e: Expr[T]): T = e match {
 }
 ```
 
-We've also plugged a few soundness problems caused by inferring too much when matching on abstract, union and intersection types.
+We've also plugged a few soundness problems (e.g. [#5667](https://github.com/lampepfl/dotty/issues/5667)) caused by inferring too much when matching on abstract, union and intersection types. For more information, see PR [#5736](https://github.com/lampepfl/dotty/pull/5736).
 
 ## Other changes
 Some of the other notable changes include the following:
