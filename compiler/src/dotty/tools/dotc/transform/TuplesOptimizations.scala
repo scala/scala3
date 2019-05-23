@@ -17,9 +17,8 @@ import dotty.tools.dotc.ast.tpd
 
 import scala.annotation.tailrec
 
-/** TODO
- */
-class GenericTuples extends MiniPhase with IdentityDenotTransformer {
+/** Optimize generic operations on tuples */
+class TuplesOptimizations extends MiniPhase with IdentityDenotTransformer {
   import tpd._
 
   def phaseName: String = "genericTuples"
@@ -39,6 +38,7 @@ class GenericTuples extends MiniPhase with IdentityDenotTransformer {
     val tail :: head :: Nil = tree.args
     tupleTypes(tree.tpe) match {
       case Some(tpes) =>
+        // Generate a the tuple directly with TupleN+1.apply
         val size = tpes.size
         if (size <= 5) {
           // val t = tail
@@ -49,13 +49,14 @@ class GenericTuples extends MiniPhase with IdentityDenotTransformer {
           }
         } else {
           // val it = Iterator.single(head) ++ tail.asInstanceOf[Product].productIterator
-          // TupleN(it.next(), ..., it.next())
+          // TupleN+1(it.next(), ..., it.next())
           val fullIterator = ref(defn.DynamicTuple_consIterator).appliedToArgs(head :: tail :: Nil)
           evalOnce(fullIterator) { it =>
             knownTupleFromIterator(tpes.length, it).asInstance(tree.tpe)
           }
         }
       case _ =>
+        // No optimization, keep:
         // DynamicTuple.dynamicCons:(tail, head)
         tree
     }
@@ -65,6 +66,7 @@ class GenericTuples extends MiniPhase with IdentityDenotTransformer {
     val Apply(TypeApply(_, tpt :: Nil), tup :: Nil) = tree
     tupleTypes(tpt.tpe) match { // TODO tupleBoundedTypes
       case Some(tpes) =>
+        // Generate a the tuple directly with TupleN-1.apply
         val size = tpes.size
         assert(size > 0)
         if (size == 1) {
@@ -81,7 +83,7 @@ class GenericTuples extends MiniPhase with IdentityDenotTransformer {
         } else {
           // val it = this.asInstanceOf[Product].productIterator
           // it.next()
-          // TupleN(it.next(), ..., it.next())
+          // TupleN-1(it.next(), ..., it.next())
           evalOnce(tup.asInstance(defn.ProductType).select(nme.productIterator)) { it =>
             Block(
               it.select(nme.next).ensureApplied :: Nil,
@@ -90,6 +92,7 @@ class GenericTuples extends MiniPhase with IdentityDenotTransformer {
           }
         }
       case None =>
+        // No optimization, keep:
         // DynamicTuple.dynamicTail(tup)
         tree
     }
@@ -107,6 +110,7 @@ class GenericTuples extends MiniPhase with IdentityDenotTransformer {
 
     (tupleTypes(selfTp.tpe), tupleTypes(that.tpe.widenTermRefExpr)) match {
       case (Some(tpes1), Some(tpes2)) =>
+        // Generate a the tuple directly with TupleN+M.apply
         val n = tpes1.size
         val m = tpes2.size
         if (n == 0) that
@@ -127,13 +131,14 @@ class GenericTuples extends MiniPhase with IdentityDenotTransformer {
           }
         } else {
           // val it = self.asInstanceOf[Product].productIterator ++ that.asInstanceOf[Product].productIterator
-          // TupleN(it.next(), ..., it.next())
+          // TupleN+M(it.next(), ..., it.next())
           val fullIterator = ref(defn.DynamicTuple_concatIterator).appliedToArgs(tree.args)
           evalOnce(fullIterator) { it =>
             knownTupleFromIterator(n + m, it).asInstance(tree.tpe)
           }
         }
       case _ =>
+        // No optimization, keep:
         // DynamicTuple.dynamicCons[This, that.type](self, that)
         tree
     }
@@ -143,6 +148,7 @@ class GenericTuples extends MiniPhase with IdentityDenotTransformer {
     val Apply(TypeApply(_, tpt :: nTpt :: Nil), tup :: nTree :: Nil) = tree
     (tupleTypes(tpt.tpe), nTpt.tpe) match {
       case (Some(tpes), nTpe: ConstantType) =>
+        // Get the element directly with TupleM._n+1 or TupleXXL.productElement(n)
         val size = tpes.size
         val n = nTpe.value.intValue
         if (n < 0 || n >= size) {
@@ -159,6 +165,7 @@ class GenericTuples extends MiniPhase with IdentityDenotTransformer {
         ctx.error("index out of bounds: " + nTpe.value.intValue, nTree.sourcePos)
         tree
       case _ =>
+        // No optimization, keep:
         // DynamicTuple.dynamicApply(tup, n)
         tree
     }
@@ -180,6 +187,7 @@ class GenericTuples extends MiniPhase with IdentityDenotTransformer {
           tup.asInstance(defn.TupleXXLType).select(nme.elems)
         }
       case None =>
+        // No optimization, keep:
         // DynamicTuple.dynamicToArray(tup)
         tree
     }
@@ -208,6 +216,7 @@ class GenericTuples extends MiniPhase with IdentityDenotTransformer {
       val elements = (0 until size).map(_ => it.select(nme.next)).toList
       knownTupleFromElements(tpes, elements)
     } else {
+      // No optimization, keep:
       // TupleXXL.fromIterator(it)
       ref(defn.TupleXXL_fromIterator).appliedTo(it)
     }
