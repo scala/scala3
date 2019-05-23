@@ -269,11 +269,12 @@ object DottyPlugin extends AutoPlugin {
       },
       // ... instead, we'll fetch the compiler and its dependencies ourselves.
       scalaInstance := Def.taskDyn {
-        val isD = isDotty.value
-        val si = scalaInstance.taskValue
-        val siTaskInitialize = Def.valueStrict { si }
-        if (isD) dottyScalaInstance
-        else siTaskInitialize
+        if (isDotty.value) dottyScalaInstance
+        else {
+          // This dereferences the Initialize graph, but keeps the Task unevaluated,
+          // so its effect gets fired only when isDotty.value evalutes to false. yay monad.
+          Def.valueStrict { scalaInstance.taskValue }
+        }
       }.value,
       dottyScalaInstance := {
         val updateReport =
