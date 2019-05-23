@@ -2,7 +2,7 @@
 ## Files from dotty-doc requiring work
 * util.traversing
   * ImplicitlyAddedFrom
-  * Fix offset
+  * Fix linking for inherited method
 * Comment
   * Span + error printing
   * Figure out ShortHtml

@@ -189,7 +189,7 @@ object DocPrinter{
       if(representation.knownSubclasses.isEmpty){
         ""
       }else{
-        Md.header2("Known Subclasses:") +
+        Md.header2("Known subclasses:") +
         representation.knownSubclasses.map(formatReferences(_, declarationPath)).mkString(", ") +
         "\n"
       }
@@ -305,58 +305,6 @@ object DocPrinter{
       }else{
         ""
       })
-
-      // (if(typeMembers.nonEmpty){
-      //   Md.header2("Type Members:") +
-      //   typeMembers.map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("")
-      // }else{
-      //   ""
-      // }) +
-      // (if(objectMembers.nonEmpty){
-      //   Md.header2("Object Members:") +
-      //   objectMembers.map{x =>
-      //     traverseRepresentation(x, Set.empty)
-
-      //     Md.header3(x.name) +
-      //     formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
-      //   }.mkString("")
-      // }else{
-      //   ""
-      // }) +
-      // (if(classMembers.nonEmpty){
-      //   Md.header2("Class Members:") +
-      //   classMembers.map{x =>
-      //     traverseRepresentation(x, Set.empty)
-
-      //     Md.header3(x.name) +
-      //     formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
-      //   }.mkString("")
-      // }else{
-      //   ""
-      // }) +
-      // (if(traitMembers.nonEmpty){
-      //   Md.header2("Trait Members:") +
-      //   traitMembers.map{x =>
-      //     traverseRepresentation(x, Set.empty)
-
-      //     Md.header3(x.name) +
-      //     formatSimplifiedClassRepresentation(x, declarationPath :+ representation.name) // Need one more level of declarationPath for linking to itself
-      //   }.mkString("")
-      // }else{
-      //   ""
-      // }) +
-      // (if(defMembers.nonEmpty){
-      //   Md.header2("Definition Members:") +
-      //   defMembers.map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("")
-      // }else{
-      //   ""
-      // }) +
-      // (if(valMembers.nonEmpty){
-      //   Md.header2("Val Members:") +
-      //   valMembers.map(x => Md.header3(x.name) + formatRepresentationToMarkdown(x, declarationPath)).mkString("")
-      // }else{
-      //   ""
-      // })
     }
 
     Md.header1(representation.kind + " " + representation.name) +

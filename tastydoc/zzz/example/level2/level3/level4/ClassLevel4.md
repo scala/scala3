@@ -315,11 +315,11 @@ def someScalaCode(x: String) = println("Hello " + x)
 
 ### linkMethodInDoc
 <pre><code class="language-scala" >def linkMethodInDoc(): Nothing</pre></code>
-method: [example.UserDocLinkingClass.linkMeFromUserDoc](../UserDocLinkingClass.md#linkMeFromUserDoc)
+method: [example.UserDocLinkingClass.linkMeFromUserDoc](../../example/UserDocLinkingClass.md#linkMeFromUserDoc)
 
 method:example.level2.Documentation.apply
 
-class: [example.UserDocLinkingClass](../UserDocLinkingClass.md)
+class: [example.UserDocLinkingClass](../../example/UserDocLinkingClass.md)
 
 method: length
 
@@ -329,8 +329,8 @@ method: length
 
 ### linkingToDocMethodInUserDoc
 <pre><code class="language-scala" >def linkingToDocMethodInUserDoc: Nothing</pre></code>
-[example.level2.Documentation](../../../Documentation$.md)
-[example.level2.Documentation.valInsideDocObject](../../../Documentation$.md#valInsideDocObject)
+[example.level2.Documentation](../../../../example/level2/Documentation$.md)
+[example.level2.Documentation.valInsideDocObject](../../../../example/level2/Documentation$.md#valInsideDocObject)
 example.level2.Documentation.abstractType
 
 

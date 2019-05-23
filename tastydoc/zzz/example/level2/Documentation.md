@@ -17,7 +17,7 @@ This class is used for testing tasty doc generation
 
 ## Annotations:
 @strictfp 
-## Known Subclasses:
+## Known subclasses:
 <a href="./Documentation/Graph.md">Graph</a>, <a href="./Documentation/testObject$.md">testObject</a>, <a href="./Documentation/IAmACaseObject$.md">IAmACaseObject</a>, <a href="./Documentation/IAmACaseClass.md">IAmACaseClass</a>, <a href="./Documentation/CaseImplementThis.md">CaseImplementThis</a>, <a href="./Documentation/innerDocumentationClass.md">innerDocumentationClass</a>
 ## Constructors:
 <pre><code class="language-scala" >Documentation(c1: String, c2: List[T])</pre></code>
@@ -359,11 +359,11 @@ def someScalaCode(x: String) = println("Hello " + x)
 
 ### linkMethodInDoc
 <pre><code class="language-scala" >def linkMethodInDoc(): Nothing</pre></code>
-method: [example.UserDocLinkingClass.linkMeFromUserDoc](../UserDocLinkingClass.md#linkMeFromUserDoc)
+method: [example.UserDocLinkingClass.linkMeFromUserDoc](../../example/UserDocLinkingClass.md#linkMeFromUserDoc)
 
 method:example.level2.Documentation.apply
 
-class: [example.UserDocLinkingClass](../UserDocLinkingClass.md)
+class: [example.UserDocLinkingClass](../../example/UserDocLinkingClass.md)
 
 method: length
 
