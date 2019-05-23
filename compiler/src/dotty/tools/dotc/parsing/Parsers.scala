@@ -851,7 +851,7 @@ object Parsers {
     def toplevelTyp(): Tree = rejectWildcardType(typ())
 
     /** Type        ::=  FunTypeMods FunArgTypes `=>' Type
-     *                |  HkTypeParamClause `->' Type
+     *                |  HkTypeParamClause `=>>' Type
      *                |  InfixType
      *  FunArgTypes ::=  InfixType
      *                |  `(' [ FunArgType {`,' FunArgType } ] `)'
@@ -922,9 +922,9 @@ object Parsers {
         else if (in.token == LBRACKET) {
           val start = in.offset
           val tparams = typeParamClause(ParamOwner.TypeParam)
-          if (in.token == ARROW)
+          if (in.token == TLARROW)
             atSpan(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
-          else { accept(ARROW); typ() }
+          else { accept(TLARROW); typ() }
         }
         else infixType()
 

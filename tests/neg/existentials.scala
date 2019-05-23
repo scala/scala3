@@ -1,7 +1,7 @@
 object TestList {
 
-  var x: ([X] => List[List[X]])[_] = List(List(1)) // error: unreducible
-  var y: ([X] => List[Seq[X]])[_] = List(List(1)) // error: unreducible
+  var x: ([X] =>> List[List[X]])[_] = List(List(1)) // error: unreducible
+  var y: ([X] =>> List[Seq[X]])[_] = List(List(1)) // error: unreducible
 
   x = x
   y = y
@@ -15,8 +15,8 @@ object TestList {
 }
 object TestSet {
 
-  var x: ([Y] => Set[Set[Y]])[_] = Set(Set("a")) // error: unreducible
-  var y: ([Y] => Set[Iterable[Y]])[_] = Set(Set("a")) // error: unreducible
+  var x: ([Y] =>> Set[Set[Y]])[_] = Set(Set("a")) // error: unreducible
+  var y: ([Y] =>> Set[Iterable[Y]])[_] = Set(Set("a")) // error: unreducible
 
   x = x
   y = y
@@ -36,14 +36,14 @@ class TestX {
     def cmp: T => Boolean = (x == _)
   }
 
-  val x: ([Y] => C[C[Y]])[_] = new C(new C("a")) // error: unreducible
+  val x: ([Y] =>> C[C[Y]])[_] = new C(new C("a")) // error: unreducible
 
   type CC[X] = C[C[X]]
   val y: CC[_] = ??? // error: unreducible
 
   type D[X] <: C[X]
 
-  type DD = [X] => D[D[X]]
+  type DD = [X] =>> D[D[X]]
   val z: DD[_] = ??? // error: unreducible
 
   val g = x.get

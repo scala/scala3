@@ -819,13 +819,13 @@ object desugar {
 
   /** Expand
    *
-   *    <mods> opaque type T = [Xs] => R
+   *    <mods> opaque type T = [Xs] =>> R
    *
    *  to
    *
    *    <mods> opaque type T = T.T
    *    synthetic object T {
-   *      synthetic opaque type T >: [Xs] => R
+   *      synthetic opaque type T >: [Xs] =>> R
    *    }
    *
    *  The generated companion object will later (in Namer) be merged with the user-defined
