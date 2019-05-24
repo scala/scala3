@@ -1696,9 +1696,15 @@ object SymDenotations {
       Stats.record("nonPrivateMembersNamed")
       if (Config.cacheMembersNamed) {
         var denots: PreDenotation = memberCache lookup name
+
+        if (name.toString == "foo")
+          println(s"nonPrivateMembersNamed: lookup: $this, $name, $denots")
         if (denots == null) {
           denots = computeNPMembersNamed(name)
+          if (name.toString == "foo")
+            println(s"nonPrivateMembersNamed: computed: $this, $name, $denots")
           memberCache.enter(name, denots)
+          assert(memberCache.lookup(name) == denots, "bingo")
         } else if (Config.checkCacheMembersNamed) {
           val denots1 = computeNPMembersNamed(name)
           assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")
@@ -1727,24 +1733,28 @@ object SymDenotations {
         case nil =>
           denots
       }
-      if (name.isConstructorName) ownDenots
-      else collect(ownDenots, classParents)
+      def generateBridges(denots: PreDenotation): PreDenotation = denots match {
+        case x @ NoDenotation => x
+        case DenotUnion(d1, d2) => DenotUnion(generateBridges(d1), generateBridges(d2))
+        case sd: SingleDenotation =>
+          val bound = sd.symbol.owner.denot.privateWithin
+          if (name.toString != "<init>" && bound.is(Flags.Package) && bound.is(Flags.JavaDefined) && !bound.is(Flags.Touched)) {
+            // if (Set("foo", "foreach").contains(name.toString))
+            println(s"generateBridges: ${name.show}: $sd, ${sd.symbol.flags} ${sd.symbol.owner}, ${sd.symbol.owner.denot.privateWithin.flags}, ${sd.symbol.owner.denot.privateWithin.is(Flags.Package) && sd.symbol.owner.denot.privateWithin.is(Flags.JavaDefined)}")
+            val sym :: Nil = ctx.mapSymbols(sd.symbol :: Nil, new TreeTypeMap(oldOwners = sd.symbol.owner :: Nil, newOwners = this.symbol :: Nil))
+            sym.denot
+            // sd.copySymDenotation(symbol = sd.symbol.copy(owner = this.symbol))
+          } else sd
+          // sd
+        case x => throw new RuntimeException(s"Unknown denotation: $x of class ${x.getClass}")
+      }
+      if (name.isConstructorName) generateBridges(ownDenots)
+      else generateBridges(collect(ownDenots, classParents))
     }
 
     override final def findMember(name: Name, pre: Type, required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Denotation = {
       val raw = if (excluded is Private) nonPrivateMembersNamed(name) else membersNamed(name)
-      raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre) match {
-        case x @ NoDenotation => x
-        case sd: SymDenotation =>
-          val bound = sd.owner.denot.privateWithin
-          if (name.toString != "<init>" && bound.is(Flags.Package) && bound.is(Flags.JavaDefined) && !bound.is(Flags.Touched)) {
-            // if (Set("foo", "foreach").contains(name.toString))
-              println(s"findMember: ${name.show}, ${pre.show}: $sd, ${sd.flags} ${sd.owner}, ${sd.owner.denot.privateWithin.flags}, ${sd.owner.denot.privateWithin.is(Flags.Package) && sd.owner.denot.privateWithin.is(Flags.JavaDefined)}")
-            sd.copySymDenotation(symbol = sd.symbol.copy(owner = this.symbol))
-          } else sd
-          // sd
-        case x => x
-      }
+      raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre)
     }
 
     /** Compute tp.baseType(this) */
