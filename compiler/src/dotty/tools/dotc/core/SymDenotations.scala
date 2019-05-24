@@ -1409,6 +1409,8 @@ object SymDenotations {
 
     private def memberCache(implicit ctx: Context): LRUCache[Name, PreDenotation] = {
       if (myMemberCachePeriod != ctx.period) {
+        if (Set("class A", "class P").contains(this.toString))
+          println(s"memberCache reset: $this, $myMemberCachePeriod, ${ctx.period}")
         myMemberCache = new LRUCache
         myMemberCachePeriod = ctx.period
       }
@@ -1735,18 +1737,26 @@ object SymDenotations {
       }
       def generateBridges(denots: PreDenotation): PreDenotation = denots match {
         case x @ NoDenotation => x
-        case DenotUnion(d1, d2) => DenotUnion(generateBridges(d1), generateBridges(d2))
+        // case DenotUnion(d1, d2) => DenotUnion(generateBridges(d1), generateBridges(d2))
         case sd: SingleDenotation =>
           val bound = sd.symbol.owner.denot.privateWithin
           if (name.toString != "<init>" && bound.is(Flags.Package) && bound.is(Flags.JavaDefined) && !bound.is(Flags.Touched)) {
             // if (Set("foo", "foreach").contains(name.toString))
             println(s"generateBridges: ${name.show}: $sd, ${sd.symbol.flags} ${sd.symbol.owner}, ${sd.symbol.owner.denot.privateWithin.flags}, ${sd.symbol.owner.denot.privateWithin.is(Flags.Package) && sd.symbol.owner.denot.privateWithin.is(Flags.JavaDefined)}")
             val sym :: Nil = ctx.mapSymbols(sd.symbol :: Nil, new TreeTypeMap(oldOwners = sd.symbol.owner :: Nil, newOwners = this.symbol :: Nil))
+            val newScope = Scopes.newNestedScope(info.decls)
+            newScope.enter(sym)
+            @tailrec def updatedScope(i: Type): Type = i match {
+              case ClassInfo(prefix, cls, classParents, decls, selfInfo) => ClassInfo(prefix, cls, classParents, newScope, selfInfo)
+              case tp: TypeProxy => updatedScope(tp.underlying)
+              case _ => throw new RuntimeException(s"I choked on ${i.show}")
+            }
+            info = updatedScope(info)
             sym.denot
             // sd.copySymDenotation(symbol = sd.symbol.copy(owner = this.symbol))
           } else sd
           // sd
-        case x => throw new RuntimeException(s"Unknown denotation: $x of class ${x.getClass}")
+        case x => x// throw new RuntimeException(s"Unknown denotation: $x of class ${x.getClass}")
       }
       if (name.isConstructorName) generateBridges(ownDenots)
       else generateBridges(collect(ownDenots, classParents))
