@@ -117,7 +117,7 @@ object Test extends App {
       List(x)
   }
 
-  implied ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
+  implied ReaderMonad[Ctx] for Monad[[X] =>> Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =

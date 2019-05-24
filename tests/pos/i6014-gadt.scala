@@ -29,7 +29,7 @@ object Test3 {
     case t: T => t
   }
 
-  type K1Top = [t] => Any
+  type K1Top = [t] =>> Any
 
   class Foo[F <: K1Top]
 

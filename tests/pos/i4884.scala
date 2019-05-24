@@ -39,8 +39,8 @@ object Test {
     type Q2[c <: C] = g.H[c]
     type R1[c <: C] = f.G[c] & g.H[c]
     type R2[c <: C] = f.G[c] | g.H[c]
-    type S1[c <: C] = ([X <: C] => f.F[X] & g.G[X])[c]
-    type S2[c <: C] = ([X <: C] => f.F[X] | g.G[X])[c]
+    type S1[c <: C] = ([X <: C] =>> f.F[X] & g.G[X])[c]
+    type S2[c <: C] = ([X <: C] =>> f.F[X] | g.G[X])[c]
   }
   def f3(f: TestConstructor4[A], g: f.TestConstructor5[B]): Unit = {
     type P1[c <: C] = g.MSet[c]

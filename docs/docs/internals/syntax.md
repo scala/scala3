@@ -99,6 +99,7 @@ package   private   protected override  return    super     sealed    then
 throw     trait     true      try       type      val       var       while
 with      yield
 :         =         <-        =>        <:        :>        #         @
+=>>
 ```
 
 ### Soft keywords
@@ -139,7 +140,7 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 ### Types
 ```ebnf
 Type              ::=  { ‘erased’ | ‘given’} FunArgTypes ‘=>’ Type              Function(ts, t)
-                    |  HkTypeParamClause ‘=>’ Type                              TypeLambda(ps, t)
+                    |  HkTypeParamClause ‘=>>’ Type                              TypeLambda(ps, t)
                     |  MatchType
                     |  InfixType
 FunArgTypes       ::=  InfixType

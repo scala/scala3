@@ -3,7 +3,7 @@ class Foo {
   val bar = new Bar {
     type S = Int
     type T = Int => Int
-    type U = [X] => Int
+    type U = [X] =>> Int
     val x: Long = 2L
     def y: Boolean = true
     def z(): Char = 'f'
@@ -16,7 +16,7 @@ class Foo {
 trait Bar {
   type S
   type T
-  type U <: [X] => Any
+  type U <: [X] =>> Any
   val x: Any
   def y: Any
   def z(): Any

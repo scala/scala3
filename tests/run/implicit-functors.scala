@@ -1,6 +1,6 @@
 object Utils {
   type Id[t] = t
-  type Const[c] = [t] => c
+  type Const[c] = [t] =>> c
 }
 
 import Utils._

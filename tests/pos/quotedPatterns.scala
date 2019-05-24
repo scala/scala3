@@ -28,7 +28,7 @@ object Test {
       val a: quoted.matching.Bind[Int => Int => Int] = ff
       z
     case '{ def $ff[T](i: T): Int = $z; 2 } =>
-      val a: quoted.matching.Bind[[T] => T => Int] = ff
+      val a: quoted.matching.Bind[[T] =>> T => Int] = ff
       z
     case _ => '{1}
   }

@@ -6,7 +6,7 @@ object AnyKinds {
   }
 
   f[Int]      // OK
-  f[[X] => X] // OK
+  f[[X] =>> X] // OK
   f[Nothing]  // OK
 
   def g[X <: Any]: Any = {
