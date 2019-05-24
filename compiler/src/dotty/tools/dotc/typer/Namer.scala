@@ -112,7 +112,7 @@ trait NamerContextOps { this: Context =>
   }
 
   def packageContext(tree: untpd.PackageDef, pkg: Symbol): Context =
-    if (pkg is Package) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
+    if (pkg.is(Package)) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
     else ctx
 
   /** The given type, unless `sym` is a constructor, in which case the
@@ -125,7 +125,7 @@ trait NamerContextOps { this: Context =>
   /** if isConstructor, make sure it has one non-implicit parameter list */
   def normalizeIfConstructor(termParamss: List[List[Symbol]], isConstructor: Boolean): List[List[Symbol]] =
     if (isConstructor &&
-      (termParamss.isEmpty || termParamss.head.nonEmpty && (termParamss.head.head is ImplicitOrGiven)))
+      (termParamss.isEmpty || termParamss.head.nonEmpty && termParamss.head.head.isOneOf(ImplicitOrGiven)))
       Nil :: termParamss
     else
       termParamss
@@ -163,7 +163,7 @@ trait NamerContextOps { this: Context =>
 object NamerContextOps {
   /** Find moduleClass/sourceModule in effective scope */
   private def findModuleBuddy(name: Name, scope: Scope)(implicit ctx: Context) = {
-    val it = scope.lookupAll(name).filter(_ is Module)
+    val it = scope.lookupAll(name).filter(_.is(Module))
     if (it.hasNext) it.next()
     else NoSymbol.assertingErrorsReported(s"no companion $name in $scope")
   }
@@ -290,7 +290,7 @@ class Namer { typer: Typer =>
 
     /** Add moduleClass/sourceModule to completer if it is for a module val or class */
     def adjustIfModule(completer: LazyType, tree: MemberDef) =
-      if (tree.mods is Module) ctx.adjustModuleCompleter(completer, tree.name)
+      if (tree.mods.is(Module)) ctx.adjustModuleCompleter(completer, tree.name)
       else completer
 
     typr.println(i"creating symbol for $tree in ${ctx.mode}")
@@ -301,7 +301,7 @@ class Namer { typer: Typer =>
         name.freshened
       }
       def preExisting = ctx.effectiveScope.lookup(name)
-      if (ctx.owner is PackageClass)
+      if (ctx.owner.is(PackageClass))
         if (preExisting.isDefinedInCurrentRun)
           errorName(s"${preExisting.showLocated} has already been compiled once during this run")
         else name
@@ -370,7 +370,7 @@ class Namer { typer: Typer =>
         // Don't do this for Java constructors because they need to see the import
         // of the companion object, and it is not necessary for them because they
         // have no implementation.
-        val cctx = if (tree.name == nme.CONSTRUCTOR && !(tree.mods is JavaDefined)) ctx.outer else ctx
+        val cctx = if (tree.name == nme.CONSTRUCTOR && !tree.mods.is(JavaDefined)) ctx.outer else ctx
 
         val completer = tree match {
           case tree: TypeDef =>
@@ -409,7 +409,7 @@ class Namer { typer: Typer =>
     }
     val existing = pkgOwner.info.decls.lookup(pid.name)
 
-    if ((existing is Package) && (pkgOwner eq existing.owner)) {
+    if (existing.is(Package) && (pkgOwner eq existing.owner)) {
       existing.moduleClass.denot match {
         case d: PackageClassDenotation =>
           // Remove existing members coming from a previous compilation of this file,
@@ -459,7 +459,7 @@ class Namer { typer: Typer =>
     def invalidate(name: TypeName) =
       if (!(definedNames contains name)) {
         val member = pkg.info.decl(name).asSymDenotation
-        if (member.isClass && !(member is Package)) member.info = NoType
+        if (member.isClass && !member.is(Package)) member.info = NoType
       }
     xstats foreach {
       case stat: TypeDef if stat.isClassDef =>
@@ -532,7 +532,7 @@ class Namer { typer: Typer =>
   def addEnumConstants(mdef: DefTree, sym: Symbol)(implicit ctx: Context): Unit = mdef match {
     case vdef: ValDef if (isEnumConstant(vdef)) =>
       val enumClass = sym.owner.linkedClass
-      if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed.toFlags)
+      if (!enumClass.is(Sealed)) enumClass.setFlag(Flags.AbstractSealed.toFlags)
       addChild(enumClass, sym)
     case _ =>
   }
@@ -752,7 +752,7 @@ class Namer { typer: Typer =>
 
     protected def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
-        if (sym is Module) moduleValSig(sym)
+        if (sym.is(Module)) moduleValSig(sym)
         else valOrDefDefSig(original, sym, Nil, Nil, identity)(localContext(sym).setNewScope)
       case original: DefDef =>
         val typer1 = ctx.typer.newLikeThis
@@ -917,8 +917,8 @@ class Namer { typer: Typer =>
     val TypeDef(name, impl @ Template(constr, _, self, _)) = original
 
     private val (params, rest): (List[Tree], List[Tree]) = impl.body.span {
-      case td: TypeDef => td.mods is Param
-      case vd: ValDef => vd.mods is ParamAccessor
+      case td: TypeDef => td.mods.is(Param)
+      case vd: ValDef => vd.mods.is(ParamAccessor)
       case _ => false
     }
 
@@ -940,7 +940,7 @@ class Namer { typer: Typer =>
 
         def whyNoForwarder(mbr: SingleDenotation): String = {
           val sym = mbr.symbol
-          if (sym.is(ImplicitOrImpliedOrGiven) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}a delegate"
+          if (sym.isOneOf(ImplicitOrImpliedOrGiven) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}a delegate"
           else if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
           else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) SKIP
           else if (cls.derivesFrom(sym.owner) &&
@@ -1059,7 +1059,7 @@ class Namer { typer: Typer =>
               val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
               if (ptype.typeParams.isEmpty) ptype
               else {
-                if (denot.is(ModuleClass) && denot.sourceModule.is(ImplicitOrImplied))
+                if (denot.is(ModuleClass) && denot.sourceModule.isOneOf(ImplicitOrImplied))
                   missingType(denot.symbol, "parent ")(creationContext)
                 fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.span)
               }
@@ -1195,7 +1195,7 @@ class Namer { typer: Typer =>
    */
   def moduleValSig(sym: Symbol)(implicit ctx: Context): Type = {
     val clsName = sym.name.moduleClassName
-    val cls = ctx.denotNamed(clsName).suchThat(_ is ModuleClass)
+    val cls = ctx.denotNamed(clsName).suchThat(_.is(ModuleClass))
       .orElse(ctx.newStubSymbol(ctx.owner, clsName).assertingErrorsReported)
     ctx.owner.thisType.select(clsName, cls)
   }
@@ -1256,7 +1256,7 @@ class Namer { typer: Typer =>
       def rhsProto = sym.asTerm.name collect {
         case DefaultGetterName(original, idx) =>
           val meth: Denotation =
-            if (original.isConstructorName && (sym.owner is ModuleClass))
+            if (original.isConstructorName && (sym.owner.is(ModuleClass)))
               sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
             else
               ctx.defContext(sym).denotNamed(original)
@@ -1276,7 +1276,7 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      def isInlineVal = sym.is(FinalOrInline, butNot = Method | Mutable)
+      def isInlineVal = sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
 
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
@@ -1330,7 +1330,7 @@ class Namer { typer: Typer =>
         else inherited
       }
       else {
-        if (sym is Implicit)
+        if (sym.is(Implicit))
           mdef match {
             case _: DefDef => missingType(sym, "result ")
             case _: ValDef if sym.owner.isType => missingType(sym, "")
@@ -1406,7 +1406,7 @@ class Namer { typer: Typer =>
     val termParamss = ctx.normalizeIfConstructor(vparamss.nestedMap(symbolOfTree), isConstructor)
     def wrapMethType(restpe: Type): Type = {
       instantiateDependent(restpe, typeParams, termParamss)
-      ctx.methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods is JavaDefined)
+      ctx.methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods.is(JavaDefined))
     }
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol

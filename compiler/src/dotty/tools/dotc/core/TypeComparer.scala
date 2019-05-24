@@ -2151,7 +2151,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     // println(s"disjoint(${tp1.show}, ${tp2.show})")
     /** Can we enumerate all instantiations of this type? */
     def isClosedSum(tp: Symbol): Boolean =
-      tp.is(Sealed) && tp.is(AbstractOrTrait) && !tp.hasAnonymousChild
+      tp.is(Sealed) && tp.isOneOf(AbstractOrTrait) && !tp.hasAnonymousChild
 
     /** Splits a closed type into a disjunction of smaller types.
      *  It should hold that `tp` and `decompose(tp).reduce(_ or _)`

@@ -137,7 +137,7 @@ object Checking {
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
         val cls = tref.symbol
-        if (cls.is(AbstractOrTrait))
+        if (cls.isOneOf(AbstractOrTrait))
           ctx.error(CantInstantiateAbstractClassOrTrait(cls, isTrait = cls.is(Trait)), posd.sourcePos)
         if (!cls.is(Module)) {
           // Create a synthetic singleton type instance, and check whether
@@ -389,7 +389,7 @@ object Checking {
     def fail(msg: Message) = ctx.error(msg, sym.sourcePos)
 
     def checkWithDeferred(flag: FlagSet) =
-      if (sym.is(flag))
+      if (sym.isOneOf(flag))
         fail(AbstractMemberMayNotHaveModifier(sym, flag))
     def checkNoConflict(flag1: FlagSet, flag2: FlagSet, msg: => String) =
       if (sym.isAll(allOf(flag1, flag2))) fail(msg)
@@ -405,7 +405,7 @@ object Checking {
           ))
       fail(ParamsNoInline(sym.owner))
 
-    if (sym.is(ImplicitOrImplied)) {
+    if (sym.isOneOf(ImplicitOrImplied)) {
       if (sym.owner.is(Package))
         fail(TopLevelCantBeImplicit(sym))
       if (sym.isType)
@@ -418,7 +418,7 @@ object Checking {
     if (sym.is(Trait) && sym.is(Final))
       fail(TraitsMayNotBeFinal(sym))
     // Skip ModuleVal since the annotation will also be on the ModuleClass
-    if (sym.hasAnnotation(defn.TailrecAnnot) && !sym.is(Method | ModuleVal))
+    if (sym.hasAnnotation(defn.TailrecAnnot) && !sym.isOneOf(Method | ModuleVal))
       fail(TailrecNotApplicable(sym))
     if (sym.hasAnnotation(defn.NativeAnnot)) {
       if (!sym.is(Deferred))
@@ -439,15 +439,15 @@ object Checking {
     checkCombination(Private, Override)
     checkCombination(Lazy, Inline)
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
-    if (sym.is(Inline)) checkApplicable(Inline, sym.isTerm && !sym.is(Mutable | Module))
-    if (sym.is(Lazy)) checkApplicable(Lazy, !sym.is(Method | Mutable))
+    if (sym.is(Inline)) checkApplicable(Inline, sym.isTerm && !sym.isOneOf(Mutable | Module))
+    if (sym.is(Lazy)) checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
     if (sym.isType && !sym.is(Deferred))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
         fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
     if (sym.is(Erased))
-      checkApplicable(Erased, !sym.is(MutableOrLazy))
+      checkApplicable(Erased, !sym.isOneOf(MutableOrLazy))
   }
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
@@ -679,7 +679,7 @@ trait Checking {
   def checkClassType(tp: Type, pos: SourcePosition, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type =
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
-        if (traitReq && !(tref.symbol is Trait)) ctx.error(TraitIsExpected(tref.symbol), pos)
+        if (traitReq && !tref.symbol.is(Trait)) ctx.error(TraitIsExpected(tref.symbol), pos)
         if (stablePrefixReq && ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
         tp
       case _ =>
@@ -719,7 +719,7 @@ trait Checking {
   def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(implicit ctx: Context): Unit =
     if (sym.exists) {
       val conv =
-        if (sym.is(ImplicitOrGiven)) sym
+        if (sym.isOneOf(ImplicitOrGiven)) sym
         else {
           assert(sym.name == nme.apply)
           sym.owner
@@ -884,9 +884,9 @@ trait Checking {
           if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
         }
-        if ((decl is HasDefaultParams) && (other is HasDefaultParams)) {
+        if (decl.isOneOf(HasDefaultParamsFlags) && other.isOneOf(HasDefaultParamsFlags)) {
           ctx.error(em"two or more overloaded variants of $decl have default arguments", decl.sourcePos)
-          decl resetFlag HasDefaultParams
+          decl.resetFlag(HasDefaultParamsFlags)
         }
       }
       if (!excludeFromDoubleDeclCheck(decl))
@@ -903,7 +903,7 @@ trait Checking {
   def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context): Unit =
     if (!ctx.isAfterTyper) {
       val called = call.tpe.classSymbol
-      if (caller is Trait)
+      if (caller.is(Trait))
         ctx.error(i"$caller may not call constructor of $called", call.sourcePos)
       else if (called.is(Trait) && !caller.mixins.contains(called))
         ctx.error(i"""$called is already implemented by super${caller.superClass},
@@ -961,7 +961,7 @@ trait Checking {
    */
   def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: SourcePosition)(implicit ctx: Context): Unit =
     parent match {
-      case parent: ClassSymbol if parent is Trait =>
+      case parent: ClassSymbol if parent.is(Trait) =>
         val psuper = parent.superClass
         val csuper = cls.superClass
         val ok = csuper.derivesFrom(psuper) ||
@@ -977,7 +977,7 @@ trait Checking {
   def checkCaseInheritance(parent: Symbol, caseCls: ClassSymbol, pos: SourcePosition)(implicit ctx: Context): Unit =
     parent match {
       case parent: ClassSymbol =>
-        if (parent is Case)
+        if (parent.is(Case))
           ctx.error(ex"""case $caseCls has case ancestor $parent, but case-to-case inheritance is prohibited.
                         |To overcome this limitation, use extractors to pattern match on non-leaf nodes.""", pos)
         else checkCaseInheritance(parent.superClass, caseCls, pos)

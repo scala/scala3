@@ -63,7 +63,7 @@ class CheckReentrant extends MiniPhase {
                 i"""possible data race involving globally reachable ${sym.showLocated}: ${sym.info}
                    |  use -Ylog:checkReentrant+ to find out more about why the variable is reachable.""")
               shared += sym
-            } else if (!sym.is(Method) || sym.is(Accessor | ParamAccessor)) {
+            } else if (!sym.is(Method) || sym.isOneOf(Accessor | ParamAccessor)) {
               scanning(sym) {
                 sym.info.widenExpr.classSymbols.foreach(addVars)
               }

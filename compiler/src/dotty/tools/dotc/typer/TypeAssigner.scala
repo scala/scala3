@@ -30,7 +30,7 @@ trait TypeAssigner {
           sym.name == qual ||
           sym.is(Module) && sym.name.stripModuleClassSuffix == qual)
     ctx.outersIterator.map(_.owner).find(qualifies) match {
-      case Some(c) if packageOK || !(c is Package) =>
+      case Some(c) if packageOK || !c.is(Package) =>
         c
       case _ =>
         ctx.error(
@@ -156,7 +156,7 @@ trait TypeAssigner {
     avoid(expr.tpe, localSyms(bindings).filter(_.isTerm))
 
   def avoidPrivateLeaks(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): Type =
-    if (!sym.is(SyntheticOrPrivate) && sym.owner.isClass) checkNoPrivateLeaks(sym, pos)
+    if (!sym.isOneOf(SyntheticOrPrivate) && sym.owner.isClass) checkNoPrivateLeaks(sym, pos)
     else sym.info
 
   private def toRepeated(tree: Tree, from: ClassSymbol)(implicit ctx: Context): Tree =
@@ -550,7 +550,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.RefinedTypeTree, parent: Tree, refinements: List[Tree], refineCls: ClassSymbol)(implicit ctx: Context): RefinedTypeTree = {
     def addRefinement(parent: Type, refinement: Tree): Type = {
       val rsym = refinement.symbol
-      val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
+      val rinfo = if (rsym.is(Accessor)) rsym.info.resultType else rsym.info
       if (rinfo.isError) rinfo
       else if (!rinfo.exists) parent // can happen after failure in self type definition
       else RefinedType(parent, rsym.name, rinfo)

@@ -113,7 +113,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
     myImpliedBound
   }
 
-  private def implicitFlag(implicit ctx: Context) =
+  private def implicitFlags(implicit ctx: Context) =
     if (importImplied || ctx.mode.is(Mode.FindHiddenImplicits)) ImplicitOrImpliedOrGiven
     else Implicit
 
@@ -121,7 +121,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   def importedImplicits(implicit ctx: Context): List[ImplicitRef] = {
     val pre = site
     if (isWildcardImport)
-      pre.implicitMembers(implicitFlag).flatMap { ref =>
+      pre.implicitMembers(implicitFlags).flatMap { ref =>
         val name = ref.name.toTermName
         if (excluded.contains(name)) Nil
         else {
@@ -136,7 +136,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
     else
       for {
         renamed <- reverseMapping.keys
-        denot <- pre.member(reverseMapping(renamed)).altsWith(_ is implicitFlag)
+        denot <- pre.member(reverseMapping(renamed)).altsWith(_.isOneOf(implicitFlags))
       } yield {
         val original = reverseMapping(renamed)
         val ref = TermRef(pre, original, denot)

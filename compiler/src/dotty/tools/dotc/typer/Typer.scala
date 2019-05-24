@@ -139,7 +139,7 @@ class Typer extends Namer
       reallyExists(denot) &&
         !(pt.isInstanceOf[UnapplySelectionProto] &&
           (denot.symbol is (Method, butNot = Accessor))) &&
-        !(denot.symbol is PackageClass)
+        !(denot.symbol.is(PackageClass))
 
     /** Find the denotation of enclosing `name` in given context `ctx`.
      *  @param previous    A denotation that was found in a more deeply nested scope,
@@ -247,7 +247,7 @@ class Typer extends Namer
 
       /** Is `denot` the denotation of a self symbol? */
       def isSelfDenot(denot: Denotation)(implicit ctx: Context) = denot match {
-        case denot: SymDenotation => denot is SelfName
+        case denot: SymDenotation => denot.is(SelfName)
         case _ => false
       }
 
@@ -312,12 +312,12 @@ class Typer extends Namer
                       curOwner
                   effectiveOwner.thisType.select(name, defDenot)
                 }
-              if (!(curOwner is Package) || isDefinedInCurrentUnit(defDenot))
+              if (!(curOwner.is(Package)) || isDefinedInCurrentUnit(defDenot))
                 result = checkNewOrShadowed(found, definition) // no need to go further out, we found highest prec entry
               else {
                 if (ctx.scala2Mode && !foundUnderScala2.exists)
                   foundUnderScala2 = checkNewOrShadowed(found, definition, scala2pkg = true)
-                if (defDenot.symbol is Package)
+                if (defDenot.symbol.is(Package))
                   result = checkNewOrShadowed(previous orElse found, packageClause)
                 else if (prevPrec < packageClause)
                   result = findRefRecur(found, packageClause, ctx)(ctx.outer)
@@ -999,7 +999,7 @@ class Typer extends Namer
               if !defn.isFunctionType(pt) && mt <:< sam =>
                 if (!isFullyDefined(pt, ForceDegree.all))
                   ctx.error(ex"result type of lambda is an underspecified SAM type $pt", tree.sourcePos)
-                else if (pt.classSymbol.is(FinalOrSealed)) {
+                else if (pt.classSymbol.isOneOf(FinalOrSealed)) {
                   val offendingFlag = pt.classSymbol.flags & FinalOrSealed
                   ctx.error(ex"lambda cannot implement $offendingFlag ${pt.classSymbol}", tree.sourcePos)
                 }
@@ -1476,7 +1476,7 @@ class Typer extends Namer
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedValDef") {
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
-    if (sym is ImplicitOrImplied) checkImplicitConversionDefOK(sym)
+    if (sym.isOneOf(ImplicitOrImplied)) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
@@ -1521,7 +1521,7 @@ class Typer extends Namer
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
     vparamss1.foreach(checkNoForwardDependencies)
-    if (sym is ImplicitOrImplied) checkImplicitConversionDefOK(sym)
+    if (sym.isOneOf(ImplicitOrImplied)) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
 
     val rhsCtx = ctx.fresh
@@ -1680,7 +1680,7 @@ class Typer extends Namer
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
         .withType(dummy.termRef)
-      if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper)
+      if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
       if (cls.derivesFrom(defn.EnumClass)) {
         val firstParent = parents1.head.tpe.dealias.typeSymbol
@@ -1740,7 +1740,7 @@ class Typer extends Namer
   def ensureFirstIsClass(parents: List[Type], span: Span)(implicit ctx: Context): List[Type] = {
     def realClassParent(cls: Symbol): ClassSymbol =
       if (!cls.isClass) defn.ObjectClass
-      else if (!(cls is Trait)) cls.asClass
+      else if (!cls.is(Trait)) cls.asClass
       else cls.asClass.classParents match {
         case parentRef :: _ => realClassParent(parentRef.typeSymbol)
         case nil => defn.ObjectClass
@@ -1770,7 +1770,7 @@ class Typer extends Namer
    */
   def ensureConstrCall(cls: ClassSymbol, parents: List[Tree])(implicit ctx: Context): List[Tree] = {
     val firstParent :: otherParents = parents
-    if (firstParent.isType && !(cls is Trait) && !cls.is(JavaDefined))
+    if (firstParent.isType && !cls.is(Trait) && !cls.is(JavaDefined))
       typed(untpd.New(untpd.TypedSplice(firstParent), Nil)) :: otherParents
     else parents
   }

@@ -520,10 +520,10 @@ class Definitions {
   @threadUnsafe lazy val LongType: TypeRef = valueTypeRef("scala.Long", java.lang.Long.TYPE, LongEnc, nme.specializedTypeNames.Long)
   def LongClass(implicit ctx: Context): ClassSymbol = LongType.symbol.asClass
     @threadUnsafe lazy val Long_XOR_Long: Symbol = LongType.member(nme.XOR).requiredSymbol("method", nme.XOR, LongType.denot)(
-      x => (x is Method) && (x.info.firstParamTypes.head isRef defn.LongClass)
+      x => x.is(Method) && (x.info.firstParamTypes.head isRef defn.LongClass)
     )
     @threadUnsafe lazy val Long_LSR_Int: Symbol = LongType.member(nme.LSR).requiredSymbol("method", nme.LSR, LongType.denot)(
-      x => (x is Method) && (x.info.firstParamTypes.head isRef defn.IntClass)
+      x => x.is(Method) && (x.info.firstParamTypes.head isRef defn.IntClass)
     )
     @threadUnsafe lazy val Long_plusR: TermRef   = LongClass.requiredMethodRef(nme.PLUS, List(LongType))
     def Long_+ : Symbol = Long_plusR.symbol

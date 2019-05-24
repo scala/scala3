@@ -540,7 +540,7 @@ class JSCodeGen()(implicit ctx: Context) {
       implicit pos: SourcePosition): Option[js.Tree] = {
     val ctors =
       if (sym.is(Abstract)) Nil
-      else sym.info.member(nme.CONSTRUCTOR).alternatives.map(_.symbol).filter(m => !m.is(Private | Protected))
+      else sym.info.member(nme.CONSTRUCTOR).alternatives.map(_.symbol).filter(m => !m.isOneOf(Private | Protected))
 
     if (ctors.isEmpty) {
       None

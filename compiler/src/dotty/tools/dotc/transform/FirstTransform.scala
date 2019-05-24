@@ -71,7 +71,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
      */
     def reorder(stats: List[Tree], revPrefix: List[Tree]): List[Tree] = stats match {
       case (stat: TypeDef) :: stats1 if stat.symbol.isClass =>
-        if (stat.symbol is Flags.Module) {
+        if (stat.symbol.is(Flags.Module)) {
           def pushOnTop(xs: List[Tree], ys: List[Tree]): List[Tree] =
             (ys /: xs)((ys, x) => x :: ys)
           moduleClassDefs += (stat.name -> stat)

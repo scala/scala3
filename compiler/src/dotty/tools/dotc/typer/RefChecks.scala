@@ -83,7 +83,7 @@ object RefChecks {
    *  (Forwarding tends to hide problems by binding parameter names).
    */
   private def upwardsThisType(cls: Symbol)(implicit ctx: Context) = cls.info match {
-    case ClassInfo(_, _, _, _, tp: Type) if (tp ne cls.typeRef) && !cls.is(ModuleOrFinal) =>
+    case ClassInfo(_, _, _, _, tp: Type) if (tp ne cls.typeRef) && !cls.isOneOf(ModuleOrFinal) =>
       SkolemType(cls.appliedRef).withName(nme.this_)
     case _ =>
       cls.thisType
@@ -385,7 +385,7 @@ object RefChecks {
           "(this rule is designed to prevent ``accidental overrides'')")
       } else if (other.isStableMember && !member.isStableMember) { // (1.4)
         overrideError("needs to be a stable, immutable value")
-      } else if (member.is(ModuleVal) && !other.isRealMethod && !other.is(Deferred | Lazy)) {
+      } else if (member.is(ModuleVal) && !other.isRealMethod && !other.isOneOf(Deferred | Lazy)) {
         overrideError("may not override a concrete non-lazy value")
       } else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy) &&
                  !ctx.testScala2Mode(overrideErrorMsg("may not override a non-lazy value"), member.sourcePos)) {
@@ -394,7 +394,7 @@ object RefChecks {
         overrideError("must be declared lazy to override a lazy value")
       } else if (member.is(Erased) && !other.is(Erased)) { // (1.9.1)
         overrideError("is erased, cannot override non-erased member")
-      } else if (other.is(Erased) && !member.is(Erased | Inline)) { // (1.9.1)
+      } else if (other.is(Erased) && !member.isOneOf(Erased | Inline)) { // (1.9.1)
         overrideError("is not erased, cannot override erased member")
       } else if (member.is(Extension) && !other.is(Extension)) { // (1.9.2)
         overrideError("is an extension method, cannot override a normal method")
@@ -447,7 +447,7 @@ object RefChecks {
     printMixinOverrideErrors()
 
     // Verifying a concrete class has nothing unimplemented.
-    if (!clazz.is(AbstractOrTrait)) {
+    if (!clazz.isOneOf(AbstractOrTrait)) {
       val abstractErrors = new mutable.ListBuffer[String]
       def abstractErrorMessage =
         // a little formatting polish
@@ -638,12 +638,12 @@ object RefChecks {
           if (!seenClasses.contains(cls)) {
             seenClasses.addEntry(cls)
             for (mbr <- cls.info.decls)
-              if (mbr.isTerm && !mbr.is(Synthetic | Bridge) && mbr.memberCanMatchInheritedSymbols &&
+              if (mbr.isTerm && !mbr.isOneOf(Synthetic | Bridge) && mbr.memberCanMatchInheritedSymbols &&
                   !membersToCheck.contains(mbr.name))
                 membersToCheck.addEntry(mbr.name)
             cls.info.parents.map(_.classSymbol)
-              .filter(_.is(AbstractOrTrait))
-              .dropWhile(_.is(JavaDefined | Scala2x))
+              .filter(_.isOneOf(AbstractOrTrait))
+              .dropWhile(_.isOneOf(JavaDefined | Scala2x))
               .foreach(addDecls)
           }
         addDecls(clazz)

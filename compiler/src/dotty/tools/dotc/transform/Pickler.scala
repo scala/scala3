@@ -41,7 +41,7 @@ class Pickler extends Phase {
   /** Drop any elements of this list that are linked module classes of other elements in the list */
   private def dropCompanionModuleClasses(clss: List[ClassSymbol])(implicit ctx: Context): List[ClassSymbol] = {
     val companionModuleClasses =
-      clss.filterNot(_ is Module).map(_.linkedClass).filterNot(_.unforcedIsAbsent)
+      clss.filterNot(_.is(Module)).map(_.linkedClass).filterNot(_.unforcedIsAbsent)
     clss.filterNot(companionModuleClasses.contains)
   }
 

@@ -96,7 +96,7 @@ class VarianceChecker()(implicit ctx: Context) {
      */
     def relativeVariance(tvar: Symbol, base: Symbol, v: Variance = Covariant): Variance = /*trace(i"relative variance of $tvar wrt $base, so far: $v")*/ {
       if (base == tvar.owner) v
-      else if ((base is Param) && base.owner.isTerm)
+      else if (base.is(Param) && base.owner.isTerm)
         relativeVariance(tvar, paramOuter(base.owner), flip(v))
       else if (ignoreVarianceIn(base.owner)) Bivariant
       else if (base.isAliasType) relativeVariance(tvar, base.owner, Invariant)
@@ -127,7 +127,7 @@ class VarianceChecker()(implicit ctx: Context) {
         ctx.log(s"relative variance: ${varianceString(relative)}")
         ctx.log(s"current variance: ${this.variance}")
         ctx.log(s"owner chain: ${base.ownersIterator.toList}")
-        if (tvar is required) None
+        if (tvar.isOneOf(required)) None
         else Some(VarianceError(tvar, required))
       }
     }

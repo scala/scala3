@@ -232,7 +232,7 @@ object TypeErasure {
     }
 
   /** Is `tp` an abstract type or polymorphic type parameter that has `Any`, `AnyVal`,
-   *  or a universal trait as upper bound and that is not Java defined? Arrays of such types are
+   *  or a universal trait as upper bound and that.is(not) Java defined? Arrays of such types are
    *  erased to `Object` instead of `Object[]`.
    */
   def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
@@ -473,7 +473,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     case tp: PolyType =>
       this(tp.resultType)
     case tp @ ClassInfo(pre, cls, parents, decls, _) =>
-      if (cls is Package) tp
+      if (cls.is(Package)) tp
       else {
         def eraseParent(tp: Type) = tp.dealias match { // note: can't be opaque, since it's a class parent
           case tp: AppliedType if tp.tycon.isRef(defn.PairClass) => defn.ObjectType
@@ -484,7 +484,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           else parents.mapConserve(eraseParent) match {
             case tr :: trs1 =>
               assert(!tr.classSymbol.is(Trait), i"$cls has bad parents $parents%, %")
-              val tr1 = if (cls is Trait) defn.ObjectType else tr
+              val tr1 = if (cls.is(Trait)) defn.ObjectType else tr
               tr1 :: trs1.filterNot(_ isRef defn.ObjectClass)
             case nil => nil
           }
@@ -520,7 +520,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    */
   def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
     case ExprType(rt) =>
-      if (sym is Param) apply(tp)
+      if (sym.is(Param)) apply(tp)
         // Note that params with ExprTypes are eliminated by ElimByName,
         // but potentially re-introduced by ResolveSuper, when we add
         // forwarders to mixin methods.
@@ -547,7 +547,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
 
   private def eraseNormalClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
     val cls = tref.symbol.asClass
-    (if (cls.owner is Package) normalizeClass(cls) else cls).typeRef
+    (if (cls.owner.is(Package)) normalizeClass(cls) else cls).typeRef
   }
 
   /** The erasure of a function result type. */

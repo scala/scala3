@@ -44,6 +44,7 @@ object Flags {
      *  This means that both the kind flags and the carrier bits have non-empty intersection.
      */
     def is(flags: FlagSet): Boolean = {
+      assert(flags.numFlags == 1)
       val fs = bits & flags.bits
       (fs & KINDFLAGS) != 0 && (fs & ~KINDFLAGS) != 0
     }
@@ -51,7 +52,14 @@ object Flags {
    /** Does this flag set have a non-empty intersection with the given flag set,
     *  and at the same time contain none of the flags in the `butNot` set?
     */
-    def is(flags: FlagSet, butNot: FlagSet): Boolean = is(flags) && !is(butNot)
+    def is(flags: FlagSet, butNot: FlagSet): Boolean = is(flags) && !isOneOf(butNot)
+
+    def isOneOf(flags: FlagSet): Boolean = {
+      val fs = bits & flags.bits
+      (fs & KINDFLAGS) != 0 && (fs & ~KINDFLAGS) != 0
+    }
+
+    def isOneOf(flags: FlagSet, butNot: FlagSet): Boolean = isOneOf(flags) && !isOneOf(butNot)
 
     /** Does this flag set have all of the flags in given flag conjunction?
      *  Pre: The intersection of the typeflags of both sets must be non-empty.
@@ -507,7 +515,7 @@ object Flags {
   assert(AfterLoadFlags.isTermFlags && AfterLoadFlags.isTypeFlags)
 
   /** A value that's unstable unless complemented with a Stable flag */
-  final val UnstableValue: FlagSet = Mutable | Method
+  final val UnstableValueFlags: FlagSet = Mutable | Method
 
   /** Flags that express the variance of a type parameter. */
   final val VarianceFlags: FlagSet = Covariant | Contravariant
@@ -601,7 +609,7 @@ object Flags {
   final val StableOrErased: FlagSet = StableRealizable | Erased
 
   /** Labeled `private`, or `final` */
-  final val EffectivelyFinal: FlagSet = Private | Final
+  final val EffectivelyFinalFlags: FlagSet = Private | Final
 
   /** A private method */
   final val PrivateMethod: FlagConjunction = allOf(Private, Method)
@@ -659,10 +667,10 @@ object Flags {
   final val LocalContravariant: FlagConjunction = allOf(Local, Contravariant)
 
   /** Has defined or inherited default parameters */
-  final val HasDefaultParams: FlagSet = DefaultParameterized | InheritedDefaultParams
+  final val HasDefaultParamsFlags: FlagSet = DefaultParameterized | InheritedDefaultParams
 
   /** Is valid forever */
-  final val ValidForever: FlagSet = Package | Permanent | Scala2ExistentialCommon
+  final val ValidForeverFlags: FlagSet = Package | Permanent | Scala2ExistentialCommon
 
   /** A type parameter of a class or trait */
   final val ClassTypeParam: FlagConjunction = allOf(TypeParam, Private)

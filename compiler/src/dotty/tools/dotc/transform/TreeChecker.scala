@@ -46,7 +46,7 @@ class TreeChecker extends Phase with SymTransformer {
 
   def isValidJVMMethodName(name: Name): Boolean = name.toString.forall(isValidJVMMethodChar)
 
-  val NoSuperClass: FlagSet = Trait | Package
+  val NoSuperClassFlags: FlagSet = Trait | Package
 
   def testDuplicate(sym: Symbol, registry: mutable.Map[String, Symbol], typ: String)(implicit ctx: Context): Unit = {
     val name = sym.fullName.mangledString
@@ -70,7 +70,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     if (sym.isClass && !sym.isAbsent) {
       val validSuperclass = sym.isPrimitiveValueClass || defn.syntheticCoreClasses.contains(sym) ||
-        (sym eq defn.ObjectClass) || (sym is NoSuperClass) || (sym.asClass.superClass.exists) ||
+        (sym eq defn.ObjectClass) || sym.isOneOf(NoSuperClassFlags) || (sym.asClass.superClass.exists) ||
         sym.isRefinementClass
 
       assert(validSuperclass, i"$sym has no superclass set")
@@ -391,7 +391,7 @@ class TreeChecker extends Phase with SymTransformer {
           ddef.vparamss.foreach(_.foreach { vparam =>
             assert(vparam.symbol.is(Param),
               s"Parameter ${vparam.symbol} of ${sym.fullName} does not have flag `Param` set")
-            assert(!vparam.symbol.is(AccessFlags),
+            assert(!vparam.symbol.isOneOf(AccessFlags),
               s"Parameter ${vparam.symbol} of ${sym.fullName} has invalid flag(s): ${(vparam.symbol.flags & AccessFlags).flagsString}")
           })
 

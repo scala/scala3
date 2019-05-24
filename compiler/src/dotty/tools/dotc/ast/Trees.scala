@@ -410,7 +410,7 @@ object Trees {
     // Denotation of a This tree is always the underlying class; needs correction for modules.
     override def denot(implicit ctx: Context): Denotation = {
       typeOpt match {
-        case tpe @ TermRef(pre, _) if tpe.symbol is Module =>
+        case tpe @ TermRef(pre, _) if tpe.symbol.is(Module) =>
           tpe.symbol.moduleClass.denot.asSeenFrom(pre)
         case _ =>
           super.denot
@@ -750,7 +750,7 @@ object Trees {
     def unforced: LazyTree = preRhs
     protected def force(x: AnyRef): Unit = preRhs = x
 
-    override def disableOverlapChecks = rawMods.is(Flags.Implied)
+    override def disableOverlapChecks = rawMods.is(Implied)
       // disable order checks for implicit aliases since their given clause follows
       // their for clause, but the two appear swapped in the DefDef.
   }

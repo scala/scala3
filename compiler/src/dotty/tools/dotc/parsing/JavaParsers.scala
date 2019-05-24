@@ -494,7 +494,7 @@ object JavaParsers {
         }
       } else {
         var mods1 = mods
-        if (mods is Flags.Abstract) mods1 = mods &~ Flags.Abstract
+        if (mods.is(Flags.Abstract)) mods1 = mods &~ Flags.Abstract
         nameOffset = in.offset
         val name = ident()
         if (in.token == LPAREN) {
@@ -502,7 +502,7 @@ object JavaParsers {
           val vparams = formalParams()
           if (!isVoid) rtpt = optArrayBrackets(rtpt)
           optThrows()
-          val bodyOk = !inInterface || (mods is Flags.DefaultMethod)
+          val bodyOk = !inInterface || (mods.is(Flags.DefaultMethod))
           val body =
             if (bodyOk && in.token == LBRACE) {
               methodBody()
@@ -580,9 +580,9 @@ object JavaParsers {
 
     def varDecl(mods: Modifiers, tpt: Tree, name: TermName): ValDef = {
       val tpt1 = optArrayBrackets(tpt)
-      if (in.token == EQUALS && !(mods is Flags.Param)) skipTo(COMMA, SEMI)
-      val mods1 = if (mods is Flags.Final) mods else mods | Flags.Mutable
-      ValDef(name, tpt1, if (mods is Flags.Param) EmptyTree else unimplementedExpr).withMods(mods1)
+      if (in.token == EQUALS && !mods.is(Flags.Param)) skipTo(COMMA, SEMI)
+      val mods1 = if (mods.is(Flags.Final)) mods else mods | Flags.Mutable
+      ValDef(name, tpt1, if (mods.is(Flags.Param)) EmptyTree else unimplementedExpr).withMods(mods1)
     }
 
     def memberDecl(start: Offset, mods: Modifiers, parentToken: Int, parentTParams: List[TypeDef]): List[Tree] = in.token match {
@@ -738,7 +738,7 @@ object JavaParsers {
         } else {
           if (in.token == ENUM || definesInterface(in.token)) mods |= Flags.JavaStatic
           val decls = memberDecl(start, mods, parentToken, parentTParams)
-          (if ((mods is Flags.JavaStatic) || inInterface && !(decls exists (_.isInstanceOf[DefDef])))
+          (if ((mods.is(Flags.JavaStatic)) || inInterface && !(decls exists (_.isInstanceOf[DefDef])))
             statics
           else
             members) ++= decls

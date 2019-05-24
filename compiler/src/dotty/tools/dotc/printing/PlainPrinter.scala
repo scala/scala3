@@ -84,7 +84,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    *  to the name of the owner.
    */
   protected def hasMeaninglessName(sym: Symbol): Boolean = (
-       (sym is Param) && sym.owner.isSetter    // x$1
+       (sym.is(Param)) && sym.owner.isSetter    // x$1
     || sym.isClassConstructor                  // this
     || (sym.name == nme.PACKAGE)               // package
   )
@@ -366,21 +366,21 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** String representation of symbol's kind. */
   def kindString(sym: Symbol): String = {
     val flags = sym.flagsUNSAFE
-    if (flags is PackageClass) "package class"
-    else if (flags is PackageVal) "package"
+    if (flags.is(PackageClass)) "package class"
+    else if (flags.is(PackageVal)) "package"
     else if (sym.isPackageObject)
       if (sym.isClass) "package object class"
       else "package object"
     else if (sym.isAnonymousClass) "anonymous class"
-    else if (flags is ModuleClass) "module class"
-    else if (flags is ModuleVal) "module"
-    else if (flags is Trait) "trait"
+    else if (flags.is(ModuleClass)) "module class"
+    else if (flags.is(ModuleVal)) "module"
+    else if (flags.is(Trait)) "trait"
     else if (sym.isClass) "class"
     else if (sym.isType) "type"
     else if (sym.isGetter) "getter"
     else if (sym.isSetter) "setter"
-    else if (flags is Lazy) "lazy value"
-    else if (flags is Mutable) "variable"
+    else if (flags.is(Lazy)) "lazy value"
+    else if (flags.is(Mutable)) "variable"
     else if (sym.isClassConstructor && sym.isPrimaryConstructor) "primary constructor"
     else if (sym.isClassConstructor) "constructor"
     else if (sym.is(Method)) "method"
@@ -392,14 +392,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def keyString(sym: Symbol): String = {
     val flags = sym.flagsUNSAFE
     if (flags.isAll(JavaTrait)) "interface"
-    else if (flags is Trait) "trait"
-    else if (flags is Module) "object"
+    else if (flags.is(Trait)) "trait"
+    else if (flags.is(Module)) "object"
     else if (sym.isClass) "class"
     else if (sym.isType) "type"
-    else if (flags is Mutable) "var"
-    else if (flags is Package) "package"
-    else if (sym is Method) "def"
-    else if (sym.isTerm && (!(flags is Param))) "val"
+    else if (flags.is(Mutable)) "var"
+    else if (flags.is(Package)) "package"
+    else if (sym.is(Method)) "def"
+    else if (sym.isTerm && !flags.is(Param)) "val"
     else ""
   }
 
@@ -464,7 +464,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else if (ownr.isAnonymousFunction) nextOuter("function")
         else if (isEmptyPrefix(ownr)) ""
         else if (ownr.isLocalDummy) showLocation(ownr.owner, "locally defined in")
-        else if (ownr.isTerm && !ownr.is(Module | Method)) showLocation(ownr, "in the initializer of")
+        else if (ownr.isTerm && !ownr.isOneOf(Module | Method)) showLocation(ownr, "in the initializer of")
         else showLocation(ownr, "in")
       }
       recur(sym.owner, "")

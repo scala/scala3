@@ -67,7 +67,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   def transformLazyVal(tree: ValOrDefDef)(implicit ctx: Context): Tree = {
     val sym = tree.symbol
-    if (!(sym is Lazy) ||
+    if (!sym.is(Lazy) ||
         sym.owner.is(Trait) || // val is accessor, lazy field will be implemented in subclass
         (sym.isStatic && sym.is(Module, butNot = Method))) // static module vals are implemented in the JVM by lazy loading
       tree
@@ -389,7 +389,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         val offsetById = offsetName(id)
         if (ord != 0) { // there are unused bits in already existing flag
           offsetSymbol = claz.info.decl(offsetById)
-            .suchThat(sym => (sym is Synthetic) && sym.isTerm)
+            .suchThat(sym => sym.is(Synthetic) && sym.isTerm)
              .symbol.asTerm
         } else { // need to create a new flag
           offsetSymbol = ctx.newSymbol(claz, offsetById, Synthetic, defn.LongType).enteredAfter(this)

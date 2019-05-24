@@ -29,7 +29,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     override def parents = Array(root.superClass)
 
     override def exclude(sym: Symbol) =
-      !sym.is(MethodOrModule) ||
+      !sym.isOneOf(MethodOrModule) ||
       isImplicitShortcut(sym) ||
       super.exclude(sym)
   }

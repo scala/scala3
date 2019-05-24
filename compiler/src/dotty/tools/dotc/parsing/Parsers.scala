@@ -887,7 +887,7 @@ object Parsers {
       def functionRest(params: List[Tree]): Tree =
         atSpan(start, accept(ARROW)) {
           val t = typ()
-          if (imods.is(Given | Erased)) new FunctionWithMods(params, t, imods)
+          if (imods.isOneOf(Given | Erased)) new FunctionWithMods(params, t, imods)
           else Function(params, t)
         }
       def funArgTypesRest(first: Tree, following: () => Tree) = {
@@ -968,7 +968,7 @@ object Parsers {
         case MATCH => matchType(t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
-          if (imods.is(ImplicitOrGiven) && !t.isInstanceOf[FunctionWithMods])
+          if (imods.isOneOf(ImplicitOrGiven) && !t.isInstanceOf[FunctionWithMods])
             syntaxError("Types with implicit keyword can only be function types `implicit (...) => ...`", implicitKwPos(start))
           if (imods.is(Erased) && !t.isInstanceOf[FunctionWithMods])
             syntaxError("Types with erased keyword can only be function types `erased (...) => ...`", implicitKwPos(start))
@@ -2037,7 +2037,7 @@ object Parsers {
      *  Contract `abstract' and `override' to ABSOVERRIDE
      */
     private def normalize(mods: Modifiers): Modifiers =
-      if ((mods is Private) && mods.hasPrivateWithin)
+      if (mods.is(Private) && mods.hasPrivateWithin)
         normalize(mods &~ Private)
       else if (mods.isAll(AbstractAndOverride))
         normalize(addFlag(mods &~ (Abstract | Override), AbsOverride))
@@ -2049,7 +2049,7 @@ object Parsers {
       val name = in.name
       val mod = atSpan(in.skipToken()) { modOfToken(tok, name) }
 
-      if (mods is mod.flags) syntaxError(RepeatedModifier(mod.flags.flagsString))
+      if (mods.isOneOf(mod.flags)) syntaxError(RepeatedModifier(mod.flags.flagsString))
       addMod(mods, mod)
     }
 
@@ -2080,7 +2080,7 @@ object Parsers {
      */
     def accessQualifierOpt(mods: Modifiers): Modifiers =
       if (in.token == LBRACKET) {
-        if ((mods is Local) || mods.hasPrivateWithin)
+        if (mods.is(Local) || mods.hasPrivateWithin)
           syntaxError(DuplicatePrivateProtectedQualifier())
         inBrackets {
           if (in.token == THIS) { in.nextToken(); mods | Local }
@@ -2254,8 +2254,8 @@ object Parsers {
         atSpan(start, nameStart) {
           val name = ident()
           accept(COLON)
-          if (in.token == ARROW && ofClass && !(mods is Local))
-            syntaxError(VarValParametersMayNotBeCallByName(name, mods is Mutable))
+          if (in.token == ARROW && ofClass && !mods.is(Local))
+            syntaxError(VarValParametersMayNotBeCallByName(name, mods.is(Mutable)))
           val tpt = paramType()
           val default =
             if (in.token == EQUALS) { in.nextToken(); expr() }
@@ -2283,7 +2283,7 @@ object Parsers {
       inParens {
         if (in.token == RPAREN && !prefix && !impliedMods.is(Given)) Nil
         else {
-          if (in.token == IMPLICIT && !impliedMods.is(Given | Erased))
+          if (in.token == IMPLICIT && !impliedMods.isOneOf(Given | Erased))
             impliedMods = addMod(impliedMods, atSpan(accept(IMPLICIT)) { Mod.Implicit() })
           val clause =
             if (prefix) param() :: Nil
@@ -2518,7 +2518,7 @@ object Parsers {
       val rhs =
         if (tpt.isEmpty || in.token == EQUALS) {
           accept(EQUALS)
-          if (in.token == USCORE && !tpt.isEmpty && (mods is Mutable) &&
+          if (in.token == USCORE && !tpt.isEmpty && mods.is(Mutable) &&
               (lhs.toList forall (_.isInstanceOf[Ident]))) {
             wildcardIdent()
           } else {
@@ -2553,7 +2553,7 @@ object Parsers {
       if (in.token == THIS) {
         in.nextToken()
         val vparamss = paramClauses()
-        if (vparamss.isEmpty || vparamss.head.take(1).exists(_.mods.is(ImplicitOrGiven)))
+        if (vparamss.isEmpty || vparamss.head.take(1).exists(_.mods.isOneOf(ImplicitOrGiven)))
           in.token match {
             case LBRACKET   => syntaxError("no type parameters allowed here")
             case EOF        => incompleteInputError(AuxConstructorNeedsNonImplicitParameter())

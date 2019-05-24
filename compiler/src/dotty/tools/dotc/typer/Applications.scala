@@ -471,7 +471,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
       }
       val getterPrefix =
-        if ((meth is Synthetic) && meth.name == nme.apply) nme.CONSTRUCTOR else meth.name
+        if ((meth.is(Synthetic)) && meth.name == nme.apply) nme.CONSTRUCTOR else meth.name
       def getterName = DefaultGetterName(getterPrefix, n)
       if (!meth.hasDefaultParams)
         EmptyTree
@@ -1218,8 +1218,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     if (sym1 == sym2) 0
     else if (sym1 isSubClass sym2) 1
     else if (sym2 isSubClass sym1) -1
-    else if (sym2 is Module) compareOwner(sym1, sym2.companionClass)
-    else if (sym1 is Module) compareOwner(sym1.companionClass, sym2)
+    else if (sym2.is(Module)) compareOwner(sym1, sym2.companionClass)
+    else if (sym1.is(Module)) compareOwner(sym1.companionClass, sym2)
     else 0
 
   /** Compare to alternatives of an overloaded call or an implicit search.

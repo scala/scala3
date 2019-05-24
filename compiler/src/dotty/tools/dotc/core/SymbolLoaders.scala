@@ -360,7 +360,7 @@ abstract class SymbolLoader extends LazyType {
         // as a stand in for loading.
         // An example for this situation is scala.reflect.Manifest, which exists
         // as a class in scala.reflect and as a val in scala.reflect.package.
-        if (rootDenot is ModuleClass)
+        if (rootDenot.is(ModuleClass))
           ctx.newClassSymbol(
             rootDenot.owner, rootDenot.name.stripModuleClassSuffix.asTypeName, Synthetic,
               _ => NoType).classDenot
@@ -370,7 +370,7 @@ abstract class SymbolLoader extends LazyType {
             (module, _) => new NoCompleter() withDecls newScope withSourceModule (_ => module))
             .moduleClass.denot.asClass
     }
-    if (rootDenot is ModuleClass) (linkedDenot, rootDenot)
+    if (rootDenot.is(ModuleClass)) (linkedDenot, rootDenot)
     else (rootDenot, linkedDenot)
   }
 }

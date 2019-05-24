@@ -316,7 +316,7 @@ object messages {
       import core.Flags._
       val maxDist = 3
       val decls = site.decls.toList.flatMap { sym =>
-        if (sym.flagsUNSAFE.is(Synthetic | PrivateOrLocal) || sym.isConstructor) Nil
+        if (sym.flagsUNSAFE.isOneOf(Synthetic | PrivateOrLocal) || sym.isConstructor) Nil
         else List((sym.name.show, sym))
       }
 

@@ -525,7 +525,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val dealiasedTp = tp.dealias
     val res =
       (tp.classSymbol.is(Sealed) &&
-        tp.classSymbol.is(AbstractOrTrait) &&
+        tp.classSymbol.isOneOf(AbstractOrTrait) &&
         !tp.classSymbol.hasAnonymousChild &&
         tp.classSymbol.children.nonEmpty ) ||
       dealiasedTp.isInstanceOf[OrType] ||

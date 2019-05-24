@@ -261,7 +261,7 @@ class ReplDriver(settings: Array[String],
 
       val vals =
         info.fields
-          .filterNot(_.symbol.is(ParamAccessor | Private | Synthetic | Module))
+          .filterNot(_.symbol.isOneOf(ParamAccessor | Private | Synthetic | Module))
           .filter(_.symbol.name.is(SimpleNameKind))
           .sortBy(_.name)
 

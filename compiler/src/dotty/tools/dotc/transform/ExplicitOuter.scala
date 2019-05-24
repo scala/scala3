@@ -138,7 +138,7 @@ object ExplicitOuter {
 
   /** The outer accessor and potentially outer param accessor needed for class `cls` */
   private def newOuterAccessors(cls: ClassSymbol)(implicit ctx: Context) =
-    newOuterAccessor(cls, cls) :: (if (cls is Trait) Nil else newOuterParamAccessor(cls) :: Nil)
+    newOuterAccessor(cls, cls) :: (if (cls.is(Trait)) Nil else newOuterParamAccessor(cls) :: Nil)
 
   /** Scala 2.x and Dotty don't always agree on what should be the type of the outer parameter,
    *  so we replicate the old behavior when passing arguments to methods coming from Scala 2.x.
@@ -236,8 +236,8 @@ object ExplicitOuter {
    */
   def outerAccessor(cls: ClassSymbol)(implicit ctx: Context): Symbol =
     if (cls.isStatic) NoSymbol // fast return to avoid scanning package decls
-    else cls.info.member(outerAccName(cls)).suchThat(_ is OuterAccessor).symbol orElse
-      cls.info.decls.find(_ is OuterAccessor)
+    else cls.info.member(outerAccName(cls)).suchThat(_.is(OuterAccessor)).symbol orElse
+      cls.info.decls.find(_.is(OuterAccessor))
 
   /** Class has an outer accessor. Can be called only after phase ExplicitOuter. */
   private def hasOuter(cls: ClassSymbol)(implicit ctx: Context): Boolean =
@@ -259,7 +259,7 @@ object ExplicitOuter {
         if (ref.prefix ne NoPrefix)
           !ref.symbol.isStatic && isOuterRef(ref.prefix)
         else (
-          (ref.symbol is Hoistable) &&
+          ref.symbol.isOneOf(HoistableFlags) &&
             // ref.symbol will be placed in enclosing class scope by LambdaLift, so it might need
             // an outer path then.
             isOuterSym(ref.symbol.owner.enclosingClass)
@@ -291,7 +291,7 @@ object ExplicitOuter {
     }
   }
 
-  private final val Hoistable = Method | Lazy | Module
+  private final val HoistableFlags = Method | Lazy | Module
 
   /** The outer prefix implied by type `tpe` */
   private def outerPrefix(tpe: Type)(implicit ctx: Context): Type = tpe match {

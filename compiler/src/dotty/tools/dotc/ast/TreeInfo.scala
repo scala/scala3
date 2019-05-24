@@ -296,7 +296,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    */
   def lacksDefinition(mdef: MemberDef)(implicit ctx: Context): Boolean = mdef match {
     case mdef: ValOrDefDef =>
-      mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.is(TermParamOrAccessor)
+      mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.isOneOf(TermParamOrAccessor)
     case mdef: TypeDef =>
       def isBounds(rhs: Tree): Boolean = rhs match {
         case _: TypeBoundsTree => true
@@ -534,7 +534,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   def isVariableOrGetter(tree: Tree)(implicit ctx: Context): Boolean = {
     def sym = tree.symbol
-    def isVar    = sym is Mutable
+    def isVar = sym.is(Mutable)
     def isGetter =
       mayBeVarGetter(sym) && sym.owner.info.member(sym.name.asTermName.setterName).exists
 
@@ -661,7 +661,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   private def isSimpleThrowable(tp: Type)(implicit ctx: Context): Boolean = tp match {
     case tp @ TypeRef(pre, _) =>
       (pre == NoPrefix || pre.widen.typeSymbol.isStatic) &&
-      (tp.symbol derivesFrom defn.ThrowableClass) && !(tp.symbol is Trait)
+      (tp.symbol derivesFrom defn.ThrowableClass) && !tp.symbol.is(Trait)
     case _ =>
       false
   }
@@ -719,7 +719,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       else Nil
     case vdef: ValDef =>
       val sym = vdef.symbol
-      assert(sym is Module)
+      assert(sym.is(Module))
       if (cls == sym.companionClass || cls == sym.moduleClass) vdef :: Nil
       else Nil
     case tree =>
