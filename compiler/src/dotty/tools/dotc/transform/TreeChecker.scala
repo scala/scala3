@@ -392,7 +392,7 @@ class TreeChecker extends Phase with SymTransformer {
             assert(vparam.symbol.is(Param),
               s"Parameter ${vparam.symbol} of ${sym.fullName} does not have flag `Param` set")
             assert(!vparam.symbol.is(AccessFlags),
-              s"Parameter ${vparam.symbol} of ${sym.fullName} has invalid flag(s): ${vparam.symbol.flags & AccessFlags}")
+              s"Parameter ${vparam.symbol} of ${sym.fullName} has invalid flag(s): ${(vparam.symbol.flags & AccessFlags).flagsString}")
           })
 
           val tpdTree = super.typedDefDef(ddef, sym)

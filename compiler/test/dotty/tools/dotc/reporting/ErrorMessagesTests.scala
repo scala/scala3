@@ -702,7 +702,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertMessageCount(1, messages)
       val AbstractMemberMayNotHaveModifier(symbol, flags) :: Nil = messages
       assertEquals("value s", symbol.show)
-      assertEquals("final", flags.toString)
+      assertEquals("final", flags.flagsString)
     }
 
   @Test def typesAndTraitsCantBeImplicit =
@@ -1018,7 +1018,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
         assertMessageCount(1, messages)
         val ModifiersNotAllowed(flags, sort) :: Nil = messages
-        assertEquals(modifierAssertion, flags.toString)
+        assertEquals(modifierAssertion, flags.flagsString)
         assertEquals(typeAssertion, sort)
       }
   }

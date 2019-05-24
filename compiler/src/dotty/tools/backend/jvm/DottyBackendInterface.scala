@@ -261,7 +261,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
           val evalue = t.symbol.name.mangledString // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         } else {
-            // println(i"not an enum: ${t.symbol} / ${t.symbol.denot.owner} / ${t.symbol.denot.owner.isTerm} / ${t.symbol.denot.owner.flags}")
+            // println(i"not an enum: ${t.symbol} / ${t.symbol.denot.owner} / ${t.symbol.denot.owner.isTerm} / ${t.symbol.denot.owner.flagsString}")
             assert(toDenot(t.symbol).name.is(DefaultGetterName),
               s"${toDenot(t.symbol).name.debugString}") // this should be default getter. do not emit.
         }

@@ -261,8 +261,8 @@ object RefChecks {
           sym.is(Module)) // synthetic companion
 
       def overrideAccessError() = {
-        ctx.log(i"member: ${member.showLocated} ${member.flags}") // DEBUG
-        ctx.log(i"other: ${other.showLocated} ${other.flags}") // DEBUG
+        ctx.log(i"member: ${member.showLocated} ${member.flagsString}") // DEBUG
+        ctx.log(i"other: ${other.showLocated} ${other.flagsString}") // DEBUG
         val otherAccess = (other.flags & AccessFlags).toString
         overrideError("has weaker access privileges; it should be " +
           (if (otherAccess == "") "public" else "at least " + otherAccess))

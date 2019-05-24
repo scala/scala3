@@ -91,7 +91,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     ctx.debuglog(
       i"""generating bridge from ${other.showLocated}: ${other.info}
              |to ${member.showLocated}: ${member.info} @ ${member.span}
-             |bridge: ${bridge.showLocated} with flags: ${bridge.flags}""")
+             |bridge: ${bridge.showLocated} with flags: ${bridge.flagsString}""")
 
     bridgeTarget(bridge) = member
     bridgesScope.enter(bridge)

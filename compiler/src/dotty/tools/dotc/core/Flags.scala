@@ -122,7 +122,7 @@ object Flags {
     }
 
     /** The string representation of this flag set */
-    override def toString: String = flagStrings("").mkString(" ")
+    def flagsString: String = flagStrings("").mkString(" ")
   }
 
   def termFlagSet(x: Long) = FlagSet(TERMS | x)
@@ -132,7 +132,7 @@ object Flags {
    *  `x is fc` tests whether `x` contains all flags in `fc`.
    */
   case class FlagConjunction(bits: Long) {
-    override def toString: String = FlagSet(bits).toString
+    def flagsString: String = FlagSet(bits).flagsString
     def | (fs: FlagSet): FlagConjunction = FlagConjunction((FlagSet(bits) | fs).bits)
   }
 

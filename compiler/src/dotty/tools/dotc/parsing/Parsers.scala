@@ -2049,7 +2049,7 @@ object Parsers {
       val name = in.name
       val mod = atSpan(in.skipToken()) { modOfToken(tok, name) }
 
-      if (mods is mod.flags) syntaxError(RepeatedModifier(mod.flags.toString))
+      if (mods is mod.flags) syntaxError(RepeatedModifier(mod.flags.flagsString))
       addMod(mods, mod)
     }
 

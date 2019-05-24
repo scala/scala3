@@ -154,6 +154,8 @@ object SymDenotations {
      */
     private[dotc] final def flagsUNSAFE: FlagSet = myFlags
 
+    final def flagsString(implicit ctx: Context): String = flags.flagsString
+
     /** Adapt flag set to this denotation's term or type nature */
     private def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
 
