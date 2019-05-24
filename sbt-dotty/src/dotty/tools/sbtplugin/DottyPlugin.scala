@@ -28,12 +28,18 @@ object DottyPlugin extends AutoPlugin {
       val nightly = try {
         // get majorVersion from dotty.epfl.ch
         val source0 = Source.fromURL("http://dotty.epfl.ch/versions/latest-nightly-base")
-        val majorVersion = source0.getLines().toSeq.head
+        val majorVersionFromWebsite = source0.getLines().toSeq.head
         source0.close()
 
         // get latest nightly version from maven
-        val source1 =
-          Source.fromURL(s"http://repo1.maven.org/maven2/ch/epfl/lamp/dotty_$majorVersion/maven-metadata.xml")
+        def fetchSource(version: String): (scala.io.BufferedSource, String) =
+          try Source.fromURL(s"http://repo1.maven.org/maven2/ch/epfl/lamp/dotty_$version/maven-metadata.xml") -> version
+          catch { case t: java.io.FileNotFoundException =>
+            val major :: minor :: Nil = version.split('.').toList
+            if (minor.toInt <= 0) throw t
+            else fetchSource(s"$major.${minor.toInt - 1}")
+          }
+        val (source1, majorVersion) = fetchSource(majorVersionFromWebsite)
         val Version = s"      <version>($majorVersion\\..*-bin.*)</version>".r
         val nightly = source1
           .getLines()
