@@ -392,7 +392,7 @@ object Checking {
       if (sym.is(flag))
         fail(AbstractMemberMayNotHaveModifier(sym, flag))
     def checkNoConflict(flag1: FlagSet, flag2: FlagSet, msg: => String) =
-      if (sym.is(allOf(flag1, flag2))) fail(msg)
+      if (sym.isAll(allOf(flag1, flag2))) fail(msg)
     def checkCombination(flag1: FlagSet, flag2: FlagSet) =
       checkNoConflict(flag1, flag2, i"illegal combination of modifiers: `$flag1` and `$flag2` for: $sym")
     def checkApplicable(flag: FlagSet, ok: Boolean) =
@@ -600,7 +600,7 @@ trait Checking {
       val sym = tree.tpe.termSymbol
       // The check is avoided inside Java compilation units because it always fails
       // on the singleton type Module.type.
-      if ((sym is Package) || ((sym is JavaModule) && !ctx.compilationUnit.isJava)) ctx.error(JavaSymbolIsNotAValue(sym), tree.sourcePos)
+      if ((sym is Package) || (sym.isAll(JavaModule) && !ctx.compilationUnit.isJava)) ctx.error(JavaSymbolIsNotAValue(sym), tree.sourcePos)
     }
     tree
   }

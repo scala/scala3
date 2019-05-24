@@ -197,14 +197,14 @@ object SymDenotations {
       (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags) is (fs, butNot)
 
     /** Has this denotation all of the flags in `fs` set? */
-    final def is(fs: FlagConjunction)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs)) myFlags else flags) is fs
+    final def isAll(fs: FlagConjunction)(implicit ctx: Context): Boolean =
+      (if (isCurrent(fs.toFlags)) myFlags else flags).isAll(fs)
 
     /** Has this denotation all of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
     final def is(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags) is (fs, butNot)
+      (if (isCurrent(fs.toFlags) && isCurrent(butNot)) myFlags else flags).isAll(fs, butNot)
 
     /** The type info, or, if symbol is not yet completed, the completer */
     final def infoOrCompleter: Type = myInfo
@@ -1235,7 +1235,7 @@ object SymDenotations {
     final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol = {
       val fs = flags
       if (fs is Private) owner
-      else if (fs is StaticProtected) defn.RootClass
+      else if (fs.isAll(StaticProtected)) defn.RootClass
       else if (privateWithin.exists && !ctx.phase.erasedTypes) privateWithin
       else if (fs is Protected) base
       else defn.RootClass

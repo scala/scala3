@@ -1722,7 +1722,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Flags_ParamAccessor: Flags = core.Flags.ParamAccessor
   def Flags_Enum: Flags = core.Flags.Enum
   def Flags_ModuleClass: Flags = core.Flags.ModuleClass
-  def Flags_PrivateLocal: Flags = core.Flags.PrivateLocal
+  def Flags_PrivateLocal: Flags = core.Flags.PrivateLocal.toFlags
   def Flags_Package: Flags = core.Flags.Package
 
   //

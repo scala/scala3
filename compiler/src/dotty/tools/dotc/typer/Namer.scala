@@ -503,7 +503,7 @@ class Namer { typer: Typer =>
 
   /** Determines whether this field holds an enum constant. */
   def isEnumConstant(vd: ValDef)(implicit ctx: Context): Boolean =
-    vd.mods.is(JavaEnumValue)
+    vd.mods.isAll(JavaEnumValue)
 
   /** Add child annotation for `child` to annotations of `cls`. The annotation
    *  is added at the correct insertion point, so that Child annotations appear
@@ -532,7 +532,7 @@ class Namer { typer: Typer =>
   def addEnumConstants(mdef: DefTree, sym: Symbol)(implicit ctx: Context): Unit = mdef match {
     case vdef: ValDef if (isEnumConstant(vdef)) =>
       val enumClass = sym.owner.linkedClass
-      if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
+      if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed.toFlags)
       addChild(enumClass, sym)
     case _ =>
   }

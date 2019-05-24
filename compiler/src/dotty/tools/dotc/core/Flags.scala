@@ -56,7 +56,7 @@ object Flags {
     /** Does this flag set have all of the flags in given flag conjunction?
      *  Pre: The intersection of the typeflags of both sets must be non-empty.
      */
-    def is(flags: FlagConjunction): Boolean = {
+    def isAll(flags: FlagConjunction): Boolean = {
       val fs = bits & flags.bits
       ((fs & KINDFLAGS) != 0 || flags.bits == 0) &&
       (fs >>> TYPESHIFT) == (flags.bits >>> TYPESHIFT)
@@ -66,7 +66,7 @@ object Flags {
      *  and at the same time contain none of the flags in the `butNot` set?
      *  Pre: The intersection of the typeflags of both sets must be non-empty.
      */
-    def is(flags: FlagConjunction, butNot: FlagSet): Boolean = is(flags) && !is(butNot)
+    def isAll(flags: FlagConjunction, butNot: FlagSet): Boolean = isAll(flags) && !is(butNot)
 
     def isEmpty: Boolean = (bits & ~KINDFLAGS) == 0
 
@@ -132,8 +132,9 @@ object Flags {
    *  `x is fc` tests whether `x` contains all flags in `fc`.
    */
   case class FlagConjunction(bits: Long) {
-    def flagsString: String = FlagSet(bits).flagsString
-    def | (fs: FlagSet): FlagConjunction = FlagConjunction((FlagSet(bits) | fs).bits)
+    def toFlags = FlagSet(bits)
+    def flagsString: String = toFlags.flagsString
+    def | (fs: FlagSet): FlagConjunction = FlagConjunction((toFlags | fs).bits)
   }
 
   def termFlagConjunction(x: Long) = FlagConjunction(TERMS | x)
@@ -733,7 +734,5 @@ object Flags {
   final val SyntheticTermParam: FlagConjunction = allOf(Synthetic, TermParam)
   final val SyntheticTypeParam: FlagConjunction = allOf(Synthetic, TypeParam)
   final val SyntheticCase: FlagConjunction = allOf(Synthetic, Case)
-
-  implicit def conjToFlagSet(conj: FlagConjunction): FlagSet =
-    FlagSet(conj.bits)
+  final val SyntheticOpaque: FlagConjunction = allOf(Synthetic, Opaque)
 }

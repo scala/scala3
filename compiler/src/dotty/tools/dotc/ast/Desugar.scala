@@ -159,7 +159,7 @@ object desugar {
     val vdef @ ValDef(name, tpt, rhs) = transformQuotedPatternName(vdef0)
     val mods = vdef.mods
     val setterNeeded =
-      (mods is Mutable) && ctx.owner.isClass && (!(mods is PrivateLocal) || (ctx.owner is Trait))
+      (mods is Mutable) && ctx.owner.isClass && (!mods.isAll(PrivateLocal) || (ctx.owner is Trait))
     if (setterNeeded) {
       // TODO: copy of vdef as getter needed?
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
@@ -182,7 +182,7 @@ object desugar {
 
   def makeImplicitParameters(tpts: List[Tree], implicitFlag: FlagSet, forPrimaryConstructor: Boolean = false)(implicit ctx: Context): List[ValDef] =
     for (tpt <- tpts) yield {
-       val paramFlags: FlagSet = if (forPrimaryConstructor) PrivateLocalParamAccessor else Param
+       val paramFlags: FlagSet = if (forPrimaryConstructor) PrivateLocalParamAccessor.toFlags else Param
        val epname = EvidenceParamName.fresh()
        ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | implicitFlag)
     }
@@ -403,7 +403,7 @@ object desugar {
         val tparamReferenced = typeParamIsReferenced(
             enumClass.typeParams, originalTparams, originalVparamss, parents)
         if (originalTparams.isEmpty && (parents.isEmpty || tparamReferenced))
-          derivedEnumParams.map(tdef => tdef.withFlags(tdef.mods.flags | PrivateLocal))
+          derivedEnumParams.map(tdef => tdef.withFlags(tdef.mods.flags | PrivateLocal.toFlags))
         else originalTparams
       }
       else originalTparams
@@ -974,7 +974,7 @@ object desugar {
         case _ =>
           val tmpName = UniqueName.fresh()
           val patMods =
-            mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
+            mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal.toFlags else EmptyFlags)
           val firstDef =
             ValDef(tmpName, TypeTree(), matchExpr)
               .withSpan(pat.span.union(rhs.span)).withMods(patMods)

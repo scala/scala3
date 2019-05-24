@@ -235,7 +235,7 @@ object Types {
      *  from the ThisType of `symd`'s owner.
      */
     def isArgPrefixOf(symd: SymDenotation)(implicit ctx: Context): Boolean =
-      symd.is(ClassTypeParam) && {
+      symd.isAll(ClassTypeParam) && {
         this match {
           case tp: ThisType => tp.cls ne symd.owner
           case _ => true
@@ -2149,7 +2149,7 @@ object Types {
       else {
         if (isType) {
           val res =
-            if (currentSymbol.is(ClassTypeParam)) argForParam(prefix)
+            if (currentSymbol.isAll(ClassTypeParam)) argForParam(prefix)
             else prefix.lookupRefined(name)
           if (res.exists) return res
           if (Config.splitProjections)
@@ -4375,7 +4375,7 @@ object Types {
               //    (x: String): Int
               val approxParams = new ApproximatingTypeMap {
                 def apply(tp: Type): Type = tp match {
-                  case tp: TypeRef if tp.symbol.is(ClassTypeParam) && tp.symbol.owner == cls =>
+                  case tp: TypeRef if tp.symbol.isAll(ClassTypeParam) && tp.symbol.owner == cls =>
                     tp.info match {
                       case info: AliasingBounds =>
                         mapOver(info.alias)
@@ -4717,7 +4717,7 @@ object Types {
       else pre match {
         case Range(preLo, preHi) =>
           val forwarded =
-            if (tp.symbol.is(ClassTypeParam)) expandParam(tp, preHi)
+            if (tp.symbol.isAll(ClassTypeParam)) expandParam(tp, preHi)
             else tryWiden(tp, preHi)
           forwarded.orElse(
             range(super.derivedSelect(tp, preLo).loBound, super.derivedSelect(tp, preHi).hiBound))

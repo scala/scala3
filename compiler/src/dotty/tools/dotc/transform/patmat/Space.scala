@@ -424,7 +424,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
 
     def isSyntheticScala2Unapply(sym: Symbol) =
-      sym.is(SyntheticCase) && sym.owner.is(Scala2x)
+      sym.isAll(SyntheticCase) && sym.owner.is(Scala2x)
 
     val mt @ MethodType(_) = unapp.widen
 
@@ -494,7 +494,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         )
       case tp if tp.isRef(defn.UnitClass) =>
         Typ(ConstantType(Constant(())), true) :: Nil
-      case tp if tp.classSymbol.is(JavaEnum) =>
+      case tp if tp.classSymbol.isAll(JavaEnum) =>
         children.map(sym => Typ(sym.termRef, true))
       case tp =>
         val parts = children.map { sym =>
@@ -535,7 +535,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       }) ||
       tp.isRef(defn.BooleanClass) ||
       tp.isRef(defn.UnitClass) ||
-      tp.classSymbol.is(JavaEnumTrait)
+      tp.classSymbol.isAll(JavaEnumTrait)
 
     debug.println(s"decomposable: ${tp.show} = $res")
 
@@ -681,7 +681,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           isCheckable(and.tp1) || isCheckable(and.tp2)
         }) ||
         tpw.isRef(defn.BooleanClass) ||
-        tpw.typeSymbol.is(JavaEnum) ||
+        tpw.typeSymbol.isAll(JavaEnum) ||
         (defn.isTupleType(tpw) && tpw.argInfos.exists(isCheckable(_)))
       }
 

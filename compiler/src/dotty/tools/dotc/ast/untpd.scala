@@ -184,8 +184,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     mods: List[Mod] = Nil) {
 
     def is(fs: FlagSet): Boolean = flags is fs
-    def is(fc: FlagConjunction): Boolean = flags is fc
-    def is(fc: FlagSet, butNot: FlagSet): Boolean = flags.is(fc, butNot = butNot)
+    def is(fs: FlagSet, butNot: FlagSet): Boolean = flags.is(fs, butNot = butNot)
+    def isAll(fc: FlagConjunction): Boolean = flags.isAll(fc)
 
     def | (fs: FlagSet): Modifiers = withFlags(flags | fs)
     def & (fs: FlagSet): Modifiers = withFlags(flags & fs)
@@ -413,7 +413,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     makeConstructor(Nil, Nil)
 
   def makeSelfDef(name: TermName, tpt: Tree)(implicit ctx: Context): ValDef =
-    ValDef(name, tpt, EmptyTree).withFlags(PrivateLocal)
+    ValDef(name, tpt, EmptyTree).withFlags(PrivateLocal.toFlags)
 
   def makeTupleOrParens(ts: List[Tree])(implicit ctx: Context): Tree = ts match {
     case t :: Nil => Parens(t)
@@ -435,7 +435,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     vdef.withMods(mods | Param)
   }
 
-  def makeSyntheticParameter(n: Int = 1, tpt: Tree = null, flags: FlagSet = SyntheticTermParam)(implicit ctx: Context): ValDef =
+  def makeSyntheticParameter(n: Int = 1, tpt: Tree = null, flags: FlagSet = SyntheticTermParam.toFlags)(implicit ctx: Context): ValDef =
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
       .withFlags(flags)
 

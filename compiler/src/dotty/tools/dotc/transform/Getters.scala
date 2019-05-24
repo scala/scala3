@@ -54,7 +54,7 @@ class Getters extends MiniPhase with SymTransformer {
   override def transformSym(d: SymDenotation)(implicit ctx: Context): SymDenotation = {
     def noGetterNeeded =
       d.is(NoGetterNeeded) ||
-      d.is(PrivateLocal) && !d.owner.is(Trait) && !isDerivedValueClass(d.owner) && !d.is(Flags.Lazy) ||
+      d.isAll(PrivateLocal) && !d.owner.is(Trait) && !isDerivedValueClass(d.owner) && !d.is(Flags.Lazy) ||
       d.is(Module) && d.isStatic ||
       d.hasAnnotation(defn.ScalaStaticAnnot) ||
       d.isSelfSym

@@ -185,8 +185,8 @@ class ClassfileParser(
     if (isEnum) {
       instanceScope.toList.map(_.ensureCompleted())
       staticScope.toList.map(_.ensureCompleted())
-      classRoot.setFlag(Flags.JavaEnum)
-      moduleRoot.setFlag(Flags.JavaEnum)
+      classRoot.setFlag(Flags.JavaEnum.toFlags)
+      moduleRoot.setFlag(Flags.JavaEnum.toFlags)
     }
 
     result
@@ -276,7 +276,7 @@ class ClassfileParser(
           if (!enumClass.exists)
             ctx.warning(s"no linked class for java enum $sym in ${sym.owner}. A referencing class file might be missing an InnerClasses entry.")
           else {
-            if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
+            if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed.toFlags)
             enumClass.addAnnotation(Annotation.Child(sym))
           }
         }
@@ -555,7 +555,7 @@ class ClassfileParser(
           if (ctx.debug && ctx.verbose)
             println("" + sym + "; signature = " + sig + " type = " + newType)
         case tpnme.SyntheticATTR =>
-          sym.setFlag(Flags.SyntheticArtifact)
+          sym.setFlag(Flags.SyntheticArtifact.toFlags)
         case tpnme.BridgeATTR =>
           sym.setFlag(Flags.Bridge)
         case tpnme.DeprecatedATTR =>
@@ -583,7 +583,7 @@ class ClassfileParser(
           parseExceptions(attrLen)
 
         case tpnme.CodeATTR =>
-          if (sym.owner is Flags.JavaTrait) {
+          if (sym.owner.isAll(Flags.JavaTrait)) {
             sym.resetFlag(Flags.Deferred)
             sym.owner.resetFlag(Flags.PureInterface)
             ctx.log(s"$sym in ${sym.owner} is a java8+ default method.")
