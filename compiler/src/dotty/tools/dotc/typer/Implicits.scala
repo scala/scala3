@@ -26,6 +26,7 @@ import ProtoTypes._
 import ErrorReporting._
 import reporting.diagnostic.Message
 import Inferencing.fullyDefinedType
+import TypeApplications.EtaExpansion
 import Trees._
 import transform.SymUtils._
 import transform.TypeUtils._
@@ -861,12 +862,23 @@ trait Implicits { self: Typer =>
 
   /** The mirror type
    *
-   *     <parent> { MirroredMonoType = <monoType; MirroredLabel = <label> }
+   *     <parent> {
+   *       MirroredMonoType = <monoType>
+   *       MirroredTypeConstrictor = <tycon>
+   *       MirroredLabel = <label> }
    */
-  private def mirrorCore(parent: Type, monoType: Type, label: Name)(implicit ctx: Context) =
+  private def mirrorCore(parent: Type, monoType: Type, label: Name)(implicit ctx: Context) = {
+    val mirroredType = monoType match {
+      case monoType @ AppliedType(tycon, targs) if targs.forall(_.isInstanceOf[TypeBounds]) =>
+        EtaExpansion(tycon)
+      case _ =>
+        monoType
+    }
     parent
       .refinedWith(tpnme.MirroredMonoType, TypeAlias(monoType))
+      .refinedWith(tpnme.MirroredTypeConstructor, TypeAlias(mirroredType))
       .refinedWith(tpnme.MirroredLabel, TypeAlias(ConstantType(Constant(label.toString))))
+  }
 
   /** A path referencing the companion of class type `clsType` */
   private def companionPath(clsType: Type, span: Span)(implicit ctx: Context) = {
