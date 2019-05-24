@@ -1706,7 +1706,7 @@ object SymDenotations {
           if (name.toString == "foo")
             println(s"nonPrivateMembersNamed: computed: $this, $name, $denots")
           memberCache.enter(name, denots)
-          assert(memberCache.lookup(name) == denots, "bingo")
+          // assert(memberCache.lookup(name) == denots, "bingo")
         } else if (Config.checkCacheMembersNamed) {
           val denots1 = computeNPMembersNamed(name)
           assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")

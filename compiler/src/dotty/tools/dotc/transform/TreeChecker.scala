@@ -324,11 +324,11 @@ class TreeChecker extends Phase with SymTransformer {
           !tree.name.is(OuterSelectName) // outer selects have effectively fixed symbols
           ) {
         val qualTpe = tree.qualifier.typeOpt
-        def memberF =
+        val member =
           if (sym.is(Private)) qualTpe.member(tree.name)
           else qualTpe.nonPrivateMember(tree.name)
-        val member, member2 = memberF
-        assert(member == member2, s"bingo ${member.show}, ${member2.show}")
+        // val member, member2 = memberF
+        // assert(member == member2, s"bingo ${member.show}, ${member2.show}")
         val memberSyms = member.alternatives.map(_.symbol)
         assert(memberSyms.exists(mbr =>
                  sym == mbr ||
