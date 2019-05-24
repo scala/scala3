@@ -988,7 +988,7 @@ class Namer { typer: Typer =>
                 val maybeStable = if (mbr.symbol.isStableMember) StableRealizable else EmptyFlags
                 ctx.newSymbol(
                   cls, alias,
-                  Exported | Method | Final | maybeStable | mbr.symbol.flags & ImplicitOrImpliedOrGiven,
+                  Exported | Method | Final | maybeStable | mbr.symbol.flags & RetainedExportFlags,
                   mbr.info.ensureMethodic,
                   coord = span)
               }
