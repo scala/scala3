@@ -324,12 +324,12 @@ Binding           ::=  (id | ‘_’) [‘:’ Type]                            
 Modifier          ::=  LocalModifier
                     |  AccessModifier
                     |  ‘override’
+                    |  ‘opaque’
 LocalModifier     ::=  ‘abstract’
                     |  ‘final’
                     |  ‘sealed’
                     |  ‘implicit’
                     |  ‘lazy’
-                    |  ‘opaque’
                     |  ‘inline’
                     |  ‘erased’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]

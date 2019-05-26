@@ -201,11 +201,11 @@ object Parsers {
       canStartExpressionTokens.contains(in.token) &&
       !in.isSoftModifierInModifierPosition
 
-    def isDefIntro(allowedMods: BitSet): Boolean =
+    def isDefIntro(allowedMods: BitSet, excludedSoftModifiers: Set[TermName] = Set.empty): Boolean =
       in.token == AT ||
       (defIntroTokens `contains` in.token) ||
       (allowedMods `contains` in.token) ||
-      in.isSoftModifierInModifierPosition
+      in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
 
     def isStatSep: Boolean =
       in.token == NEWLINE || in.token == NEWLINES || in.token == SEMI
@@ -3081,7 +3081,7 @@ object Parsers {
           stats += implicitClosure(in.offset, Location.InBlock, modifiers(closureMods))
         else if (isExprIntro)
           stats += expr(Location.InBlock)
-        else if (isDefIntro(localModifierTokens))
+        else if (isDefIntro(localModifierTokens, excludedSoftModifiers = Set(nme.`opaque`)))
           if (closureMods.contains(in.token)) {
             val start = in.offset
             var imods = modifiers(closureMods)

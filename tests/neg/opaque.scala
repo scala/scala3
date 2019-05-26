@@ -18,6 +18,10 @@ object opaquetypes {
     val s: O = "" // should be OK
   }
 
+  def foo() = {
+    opaque type X = Int   // error
+  }
+
 }
 
 object logs {
