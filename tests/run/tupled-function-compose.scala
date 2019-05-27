@@ -1,14 +1,15 @@
 object Test {
   def main(args: Array[String]): Unit = {
+    import TupledFunction._
 
     val f1 = (x1: Int, x2: Int) => (x1, x2, x1 + x2)
     val g1 = (x1: Int, x2: Int, x3: Int) => x1 + x2 + x3
-    val h1 = g1.tupled.compose(f1.tupled)
+    val h1 = g1.compose(f1)
     println(h1(1, 2))
 
     val f2 = (x1: Int, x2: Int) => (1, x1, x2, x1 + x2, x1 * x2)
     val g2 = (x1: Int, x2: Int, x3: Int, x4: Int, x5: Int) => (x1 + x2, x3 + x4 + x5)
-    val h2 = g2.tupled.compose(f2.tupled)
+    val h2 = g2.compose(f2)
     println(h2(1, 2))
 
     val h3 = h1.compose(h2)
