@@ -1035,18 +1035,50 @@ object desugar {
     Bind(name, Ident(nme.WILDCARD)).withSpan(tree.span)
   }
 
-  def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case tree: ValDef => valDef(tree)
-    case tree: TypeDef =>
-      if (tree.isClassDef) classDef(tree)
-      else if (tree.mods.is(Opaque, butNot = Synthetic)) opaqueAlias(tree)
-      else tree
-    case tree: DefDef =>
-      if (tree.name.isConstructorName) tree // was already handled by enclosing classDef
-      else defDef(tree)
-    case tree: ModuleDef => moduleDef(tree)
-    case tree: PatDef => patDef(tree)
+  /** The type of tests that check whether a MemberDef is OK for some flag.
+   *  The test succeeds if the partial function is defined and returns true.
+   */
+  type MemberDefTest = PartialFunction[MemberDef, Boolean]
+
+  val legalOpaque: MemberDefTest = {
+    case TypeDef(_, rhs) =>
+      def rhsOK(tree: Tree): Boolean = tree match {
+        case _: TypeBoundsTree | _: Template => false
+        case LambdaTypeTree(_, body) => rhsOK(body)
+        case _ => true
+      }
+      rhsOK(rhs)
   }
+
+  /** Check that modifiers are legal for the definition `tree`.
+   *  Right now, we only check for `opaque`. TODO: Move other modifier checks here.
+   */
+  def checkModifiers(tree: Tree)(implicit ctx: Context): Tree = tree match {
+    case tree: MemberDef =>
+      var tested: MemberDef = tree
+      def fail(msg: String) = ctx.error(msg, tree.sourcePos)
+      def checkApplicable(flag: FlagSet, test: MemberDefTest): Unit =
+        if (tested.mods.is(flag) && !(test.isDefinedAt(tree) && test(tree))) {
+          fail(i"modifier `$flag` is not allowed for this definition")
+          tested = tested.withMods(tested.mods.withoutFlags(flag))
+        }
+      checkApplicable(Opaque, legalOpaque)
+      tested
+    case _ =>
+      tree
+  }
+
+  def defTree(tree: Tree)(implicit ctx: Context): Tree =
+    checkModifiers(tree) match {
+      case tree: ValDef => valDef(tree)
+      case tree: TypeDef =>
+        if (tree.isClassDef) classDef(tree) else tree
+      case tree: DefDef =>
+        if (tree.name.isConstructorName) tree // was already handled by enclosing classDef
+        else defDef(tree)
+      case tree: ModuleDef => moduleDef(tree)
+      case tree: PatDef => patDef(tree)
+    }
 
   /**     { stats; <empty > }
    *  ==>
