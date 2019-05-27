@@ -232,13 +232,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         def compareNamed(tp1: Type, tp2: NamedType): Boolean = {
           implicit val ctx: Context = this.ctx
           tp2.info match {
-            case info2: TypeAlias => recur(tp1, info2.alias)
+            case info2: TypeAlias =>
+              recur(tp1, info2.alias) || tryPackagePrefix2(tp1, tp2)
             case _ => tp1 match {
               case tp1: NamedType =>
                 tp1.info match {
                   case info1: TypeAlias =>
                     if (recur(info1.alias, tp2)) return true
-                    if (tp1.prefix.isStable) return false
+                    if (tp1.prefix.isStable) return tryPackagePrefix1(tp1, tp2)
                       // If tp1.prefix is stable, the alias does contain all information about the original ref, so
                       // there's no need to try something else. (This is important for performance).
                       // To see why we cannot in general stop here, consider:
@@ -260,7 +261,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
                 if ((sym1 ne NoSymbol) && (sym1 eq sym2))
                   ctx.erasedTypes ||
                   sym1.isStaticOwner ||
-                  isSubType(tp1.prefix, tp2.prefix) ||
+                  isSubType(stripPackageObject(tp1.prefix), stripPackageObject(tp2.prefix)) ||
                   thirdTryNamed(tp2)
                 else
                   (  (tp1.name eq tp2.name)
@@ -359,7 +360,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         tp1.info match {
           case info1: TypeAlias =>
             if (recur(info1.alias, tp2)) return true
-            if (tp1.prefix.isStable) return false
+            if (tp1.prefix.isStable) return tryPackagePrefix1(tp1, tp2)
           case _ =>
             if (tp1 eq NothingType) return true
         }
@@ -1072,6 +1073,33 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           throw ex
       }
     }
+  }
+
+  /** If `tp` is a reference to a package object, a reference to the package itself,
+   *  otherwise `tp`.
+   */
+  private def stripPackageObject(tp: Type) = tp match {
+    case tp: TermRef if tp.symbol.isPackageObject => tp.symbol.owner.thisType
+    case tp: ThisType if tp.cls.isPackageObject => tp.cls.owner.thisType
+    case _ => tp
+  }
+
+  /** If prefix of `tp1` is a reference to a package object, retry with
+   *  the prefix pointing to the package itself, otherwise `false`
+   */
+  private def tryPackagePrefix1(tp1: NamedType, tp2: Type) = {
+    val pre1 = tp1.prefix
+    val pre1a = stripPackageObject(pre1)
+    (pre1a ne pre1) && isSubType(tp1.withPrefix(pre1a), tp2)
+  }
+
+  /** If prefix of `tp2` is a reference to a package object, retry with
+   *  the prefix pointing to the package itself, otherwise `false`
+   */
+  private def tryPackagePrefix2(tp1: Type, tp2: NamedType) = {
+    val pre2 = tp2.prefix
+    val pre2a = stripPackageObject(pre2)
+    (pre2a ne pre2) && isSubType(tp1, tp2.withPrefix(pre2a))
   }
 
   /** Optionally, the `n` such that `tp <:< ConstantType(Constant(n: Int))` */
