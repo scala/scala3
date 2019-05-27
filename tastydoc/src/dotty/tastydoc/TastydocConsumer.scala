@@ -8,17 +8,11 @@ import scala.annotation.tailrec
 
 import dotty.tastydoc.representations._
 
-class TastydocConsumer(userDocSyntax: String, packagesToLink: List[String], mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends TastyConsumer {
+class TastydocConsumer(mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends TastyConsumer {
 
   final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
     import reflect._
 
-    val representationConversion = representations.convertToRepresentation(reflect)(root, None)
+    val representationConversion = representations.convertToRepresentation(reflect)(root, None) given (mutablePackagesMap)
   }
-}
-
-object TastydocConsumer {
-  var userDocSyntax: String = "wiki"
-  val mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation] = new scala.collection.mutable.HashMap()
-  var packagesToLink: List[String] = Nil
 }

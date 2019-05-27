@@ -36,25 +36,26 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     })
   }
 
-  def extractComments(reflect: Reflection)(comment: Option[reflect.Comment], rep: Representation) : Map[String, EmulatedPackageRepresentation] => Option[Comment] = {
+  def extractComments(reflect: Reflection)(comment: Option[reflect.Comment], rep: Representation) : (Map[String, EmulatedPackageRepresentation], String) => Option[Comment] = {
     import reflect._
+
     comment match {
       case Some(com) =>
-        packages => {
+        (packages, userDocSyntax) => {
           val parsed = parse(packages, clean(com.raw), com.raw)
-          if (TastydocConsumer.userDocSyntax == "markdown") {
-            Some(MarkdownComment(rep, parsed, TastydocConsumer.mutablePackagesMap.toMap).comment)
-          }else if(TastydocConsumer.userDocSyntax == "wiki"){
-            Some(WikiComment(rep, parsed, TastydocConsumer.mutablePackagesMap.toMap).comment)
+          if (userDocSyntax == "markdown") {
+            Some(MarkdownComment(rep, parsed, packages).comment)
+          }else if(userDocSyntax == "wiki"){
+            Some(WikiComment(rep, parsed, packages).comment)
           }else{
-            Some(WikiComment(rep, parsed, TastydocConsumer.mutablePackagesMap.toMap).comment)
+            Some(WikiComment(rep, parsed, packages).comment)
           }
         }
-      case None => _ => None
+      case None => (_, _) => None
     }
   }
 
-  def extractClassMembers(reflect: Reflection)(body: List[reflect.Statement], symbol: reflect.ClassDefSymbol, parentRepresentation: Some[Representation]) : List[Representation] = {
+  def extractClassMembers(reflect: Reflection)(body: List[reflect.Statement], symbol: reflect.ClassDefSymbol, parentRepresentation: Some[Representation]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) : List[Representation] = {
     import reflect._
     (body.flatMap{
         case IsDefDef(_) => None //No definitions, they are appended with symbol.methods below

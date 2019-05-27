@@ -8,7 +8,9 @@ import scala.annotation.tailrec
 
 import java.io._
 
-object DocPrinter{
+class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation], userDocSyntax: String, packagesToLink: List[String]){
+
+  val packagesMap = mutablePackagesMap.toMap
 
   private def htmlPreCode(content: String, language: String = ""): String = {
     "<pre><code" + (if(language != "") " class=\"language-" + language + "\" " else "") + ">" + content + "</pre></code>"
@@ -22,7 +24,7 @@ object DocPrinter{
 
     val packageFormLink = link.replaceFirst("/", "").replaceAll("/", ".")
 
-    if(TastydocConsumer.packagesToLink.exists(packageFormLink.matches(_))){
+    if(packagesToLink.exists(packageFormLink.matches(_))){
       @tailrec
       def ascendPath(path: List[String], link: List[String]): String = path match {
         case x::xs if link.nonEmpty && link.head == x => ascendPath(xs, link.tail)
@@ -107,7 +109,7 @@ object DocPrinter{
     (if(filteredModifiers.nonEmpty) filteredModifiers.mkString("", " ", " ") else "")
   }
 
-  private def formatComments(comment: Map[String, EmulatedPackageRepresentation] => Option[Comment]) : String = comment(TastydocConsumer.mutablePackagesMap.toMap) match {
+  private def formatComments(comment: (Map[String, EmulatedPackageRepresentation], String) => Option[Comment]) : String = comment(packagesMap, userDocSyntax) match {
     case Some(c) =>
       c.body +
       (if(c.authors.nonEmpty) Md.bold(Md.italics("authors")) + " " + c.authors.mkString(", ") else "") +
@@ -398,10 +400,10 @@ object DocPrinter{
   def traverseRepresentation(representation: Representation): Unit = representation match {
     case r: EmulatedPackageRepresentation =>
       r.members.foreach(traverseRepresentation)
-      val file = new File("./" + DocPrinter.folderPrefix + (r.path :+ r.name).mkString("/", "/", "/") + r.name + ".md")
+      val file = new File("./" + folderPrefix + (r.path :+ r.name).mkString("/", "/", "/") + r.name + ".md")
       file.getParentFile.mkdirs
       val pw = new PrintWriter(file)
-      pw.write(DocPrinter.formatRepresentationToMarkdown(r, (r.path :+ r.name)))
+      pw.write(formatRepresentationToMarkdown(r, (r.path :+ r.name)))
       pw.close
 
     case r: PackageRepresentation =>

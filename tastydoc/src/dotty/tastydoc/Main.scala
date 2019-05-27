@@ -3,11 +3,13 @@ package dotty.tastydoc
 import scala.tasty.Reflection
 import scala.tasty.file._
 
+import dotty.tastydoc.representations._
+
 import java.io._
 
 object Main {
   def main(args: Array[String]): Unit = {
-    TastydocConsumer.userDocSyntax = {
+    val userDocSyntax = {
       val idx = args.indexOf("-syntax")
       if(idx >= 0 && args.size > idx + 1){
         if(args(idx + 1) == "markdown"){
@@ -23,7 +25,7 @@ object Main {
       }
     }
 
-    TastydocConsumer.packagesToLink = {
+    val packagesToLink = {
       val idx = args.indexOf("-packagestolink")
       if(idx >= 0 && args.size > idx + 1){
         args.drop(idx + 1).takeWhile(! _.startsWith("-")).toList
@@ -55,10 +57,13 @@ object Main {
       println("Dotty Tastydoc: No classes were passed as argument")
     } else {
       println("Running Dotty Tastydoc on: " + classes.mkString(" "))
-      val x = new TastydocConsumer(null, null, null)
-      ConsumeTasty(extraClasspath, classes, x)
+      val mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation] = new scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]()
+      val tc = new TastydocConsumer(mutablePackagesMap)
+      ConsumeTasty(extraClasspath, classes, tc)
 
-      TastydocConsumer.mutablePackagesMap.foreach((_, v) => DocPrinter.traverseRepresentation(v))
+      val docPrinter = new DocPrinter(mutablePackagesMap, userDocSyntax, packagesToLink)
+
+      mutablePackagesMap.foreach((_, v) => docPrinter.traverseRepresentation(v))
     }
   }
 }
