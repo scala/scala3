@@ -39,8 +39,12 @@ object DottyPredef {
   inline def the[T] given (x: T): x.type = x
 
   /** Creates a tupled version of this function: instead of N arguments,
-    *  it accepts a single [[scala.Tuple]] argument.
-    */
+   *  it accepts a single [[scala.Tuple]] argument.
+   *
+   *  @tparam F the function type
+   *  @tparam Args the tuple type with the same types as the function arguments of F
+   *  @tparam R the return type of F
+   */
   def (f: F) tupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Args, R]): Args => R = {
     x => tf.applyFunctionTo(f, x)
   }
