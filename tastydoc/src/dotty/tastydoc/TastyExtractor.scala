@@ -90,7 +90,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
   *
   * @return (is case, is a trait, is an object, the kind as a String)
   */
-  def extractKind(reflect: Reflection)(flags: reflect.Flags): (Boolean, Boolean, Boolean, String) = { //TOASK All in Classrepresentation?
+  def extractKind(reflect: Reflection)(flags: reflect.Flags): (Boolean, Boolean, Boolean, String) = {
     import reflect._
 
     val isCase = flags.is(reflect.Flags.Case)

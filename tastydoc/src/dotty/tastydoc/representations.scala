@@ -26,7 +26,7 @@ object representations extends TastyExtractor {
   }
 
   trait Members {
-    def members : List[Representation] //Is a def because so we can override with either a var or a val (Needed for EmulatedPackage) //TOASK Efficiency + is ok
+    def members : List[Representation] //Is a def because so we can override with either a var or a val (Needed for EmulatedPackage)
   }
 
   trait Modifiers {
@@ -178,7 +178,7 @@ object representations extends TastyExtractor {
     override val paramLists = internal.paramss.map{p =>
       new ParamList {
         override val list = p.map(x => NamedReference(x.name, convertTypeToReference(reflect)(x.tpt.tpe)))
-        override val isImplicit = if(p.size > 1) p.tail.head.symbol.flags.is(Flags.Implicit) else false //TODO: Verfiy this
+        override val isImplicit = if(p.size > 1) p.tail.head.symbol.flags.is(Flags.Implicit) else false
       }
     }
     override val returnValue = convertTypeToReference(reflect)(internal.returnTpt.tpe)
