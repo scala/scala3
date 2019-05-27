@@ -373,8 +373,11 @@ class Namer { typer: Typer =>
         val cctx = if (tree.name == nme.CONSTRUCTOR && !(tree.mods is JavaDefined)) ctx.outer else ctx
 
         val completer = tree match {
-          case tree: TypeDef => new TypeDefCompleter(tree)(cctx)
-          case _ => new Completer(tree)(cctx)
+          case tree: TypeDef =>
+            if (flags.is(Opaque) && ctx.owner.isClass) ctx.owner.setFlag(Opaque)
+            new TypeDefCompleter(tree)(cctx)
+          case _ =>
+            new Completer(tree)(cctx)
         }
         val info = adjustIfModule(completer, tree)
         createOrRefine[Symbol](tree, name, flags | deferred | method | higherKinded,
@@ -600,7 +603,7 @@ class Namer { typer: Typer =>
       if (fromCls.mods.is(Synthetic) && !toCls.mods.is(Synthetic)) {
         removeInExpanded(fromStat, fromCls)
         val mcls = mergeModuleClass(toStat, toCls, fromCls)
-        mcls.setMods(toCls.mods | (fromCls.mods.flags & RetainedSyntheticCompanionFlags))
+        mcls.setMods(toCls.mods)
         moduleClsDef(fromCls.name) = (toStat, mcls)
       }
 
@@ -661,7 +664,7 @@ class Namer { typer: Typer =>
       val moduleDef = mutable.Map[TypeName, TypeDef]()
 
       def updateCache(cdef: TypeDef): Unit =
-        if (cdef.isClassDef && !cdef.mods.is(Package) || cdef.mods.is(Opaque, butNot = Synthetic)) {
+        if (cdef.isClassDef && !cdef.mods.is(Package)) {
           if (cdef.mods.is(ModuleClass)) moduleDef(cdef.name) = cdef
           else classDef(cdef.name) = cdef
         }
@@ -1139,37 +1142,7 @@ class Namer { typer: Typer =>
         original.putAttachment(Deriver, deriver)
       }
 
-      val finalSelfInfo: TypeOrSymbol =
-        if (cls.isOpaqueCompanion) {
-          // The self type of an opaque companion is refined with the type-alias of the original opaque type
-          def refineOpaqueCompanionSelfType(mt: Type, stats: List[Tree]): Type = (stats: @unchecked) match {
-            case (td @ TypeDef(localName, rhs)) :: _
-            if td.mods.is(SyntheticOpaque) && localName == name.stripModuleClassSuffix =>
-              // create a context owned by the current opaque helper symbol,
-              // but otherwise corresponding to the context enclosing the opaque
-              // companion object, since that's where the rhs was defined.
-              val aliasCtx = ctx.outer.fresh.setOwner(symbolOfTree(td))
-              val alias = typedAheadType(rhs)(aliasCtx).tpe
-              val original = cls.companionOpaqueType.typeRef
-              val cmp = ctx.typeComparer
-              val bounds = TypeBounds(cmp.orType(alias, original), cmp.andType(alias, original))
-              RefinedType(mt, localName, bounds)
-            case _ :: stats1 =>
-              refineOpaqueCompanionSelfType(mt, stats1)
-            case _ =>
-              mt // can happen for malformed inputs.
-          }
-          selfInfo match {
-            case self: Type =>
-              refineOpaqueCompanionSelfType(self, rest)
-            case self: Symbol =>
-              self.info = refineOpaqueCompanionSelfType(self.info, rest)
-              self
-          }
-        }
-        else selfInfo
-
-      tempInfo.finalize(denot, parentTypes, finalSelfInfo)
+      tempInfo.finalize(denot, parentTypes, selfInfo)
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)

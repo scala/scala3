@@ -9,11 +9,11 @@ object Library {
     }
     def times(x: Nat, y: Nat): Nat = x * y
     def toInt(n: Nat): Int = n
+  }
 
-    implicit class NatOps(val self: Nat) extends AnyVal {
-      def *(other: Nat): Nat = self * other
-      def toInt: Int = self.asInstanceOf
-    }
+  implicit class NatOps(val self: Nat) extends AnyVal {
+    def *(other: Nat): Nat = self * other
+    def toInt: Int = self.asInstanceOf
   }
 }
 
@@ -32,5 +32,5 @@ object Test extends App {
   assert(c.toInt == 6)
 
   def double1(n: Nat): Nat = n * Nat(2)
-  def double2(n: Nat): Nat = Nat.NatOps(n) * Nat(2)
+  def double2(n: Nat): Nat = NatOps(n) * Nat(2)
 }

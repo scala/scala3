@@ -268,7 +268,7 @@ object Flags {
   /** A mutable var */
   final val Mutable: FlagSet = termFlag(12, "mutable")
 
-  /** An opqaue type */
+  /** An opaque type or a class containing one */
   final val Opaque: FlagSet = typeFlag(12, "opaque")
 
   final val MutableOrOpaque: FlagSet = Mutable.toCommonFlags
@@ -550,13 +550,7 @@ object Flags {
     Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased
 
   /** Flags that can apply to a module class */
-  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags |
-    Enum | Opaque
-
-  /** Flags that are copied from a synthetic companion to a user-defined one
-   *  when the two are merged. See: Namer.mergeCompanionDefs
-   */
-  final val RetainedSyntheticCompanionFlags: FlagSet = Opaque
+  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
 
   /** Packages and package classes always have these flags set */
   final val PackageCreationFlags: FlagSet =
@@ -687,9 +681,6 @@ object Flags {
   /** A Java companion object */
   final val JavaModule: FlagConjunction = allOf(JavaDefined, Module)
 
-  /** An opaque companion object */
-  final val OpaqueModule: FlagConjunction = allOf(Opaque, Module)
-
   /** A Java companion object */
   final val JavaProtected: FlagConjunction = allOf(JavaDefined, Protected)
 
@@ -739,7 +730,6 @@ object Flags {
   final val SyntheticTermParam: FlagConjunction = allOf(Synthetic, TermParam)
   final val SyntheticTypeParam: FlagConjunction = allOf(Synthetic, TypeParam)
   final val SyntheticCase: FlagConjunction = allOf(Synthetic, Case)
-  final val SyntheticOpaque: FlagConjunction = allOf(Synthetic, Opaque)
 
   implicit def conjToFlagSet(conj: FlagConjunction): FlagSet =
     FlagSet(conj.bits)

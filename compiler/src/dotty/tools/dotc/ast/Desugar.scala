@@ -818,47 +818,6 @@ object desugar {
     }
   }
 
-  /** Expand
-   *
-   *    <mods> opaque type T = [Xs] =>> R
-   *
-   *  to
-   *
-   *    <mods> opaque type T = T.T
-   *    synthetic object T {
-   *      synthetic opaque type T >: [Xs] =>> R
-   *    }
-   *
-   *  The generated companion object will later (in Namer) be merged with the user-defined
-   *  companion object, and the synthetic opaque type member will go into the self type.
-   */
-  def opaqueAlias(tdef: TypeDef)(implicit ctx: Context): Tree =
-    if (lacksDefinition(tdef)) {
-      ctx.error(em"opaque type ${tdef.name} must be an alias type", tdef.sourcePos)
-      tdef.withFlags(tdef.mods.flags &~ Opaque)
-    }
-    else {
-      def completeForwarder(fwd: Tree) = tdef.rhs match {
-        case LambdaTypeTree(tparams, tpt) =>
-          val tparams1 =
-            for (tparam <- tparams)
-            yield tparam.withMods(tparam.mods | Synthetic)
-          lambdaAbstract(tparams1,
-            AppliedTypeTree(fwd, tparams.map(tparam => Ident(tparam.name))))
-        case _ =>
-          fwd
-      }
-      val moduleName = tdef.name.toTermName
-      val localRef = Select(Ident(moduleName), tdef.name).withAttachment(SuppressAccessCheck, ())
-      val aliasType = cpy.TypeDef(tdef)(rhs = completeForwarder(localRef)).withSpan(tdef.span.startPos)
-      val localType = tdef.withMods(Modifiers(Synthetic | Opaque).withPrivateWithin(tdef.name))
-
-      val companions = moduleDef(ModuleDef(
-        moduleName, Template(emptyConstructor, Nil, Nil, EmptyValDef, localType :: Nil))
-          .withFlags(Synthetic | Opaque))
-      Thicket(aliasType :: companions.toList)
-    }
-
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
    *      If it does redefine, issue an error and return a mangled name instead of the original one.

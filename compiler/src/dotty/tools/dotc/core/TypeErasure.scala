@@ -236,7 +236,7 @@ object TypeErasure {
    *  erased to `Object` instead of `Object[]`.
    */
   def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
-    case tp: TypeRef if !tp.symbol.isOpaqueHelper =>
+    case tp: TypeRef if !tp.symbol.isOpaqueAlias =>
       !tp.symbol.isClass &&
       !classify(tp).derivesFrom(defn.ObjectClass) &&
       !tp.symbol.is(JavaDefined)
@@ -253,7 +253,7 @@ object TypeErasure {
 
   /** Is `tp` an abstract type or polymorphic type parameter, or another unbounded generic type? */
   def isGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
-    case tp: TypeRef if !tp.symbol.isOpaqueHelper => !tp.symbol.isClass
+    case tp: TypeRef if !tp.symbol.isOpaqueAlias => !tp.symbol.isClass
     case tp: TypeParamRef => true
     case tp: TypeProxy => isGeneric(tp.translucentSuperType)
     case tp: AndType => isGeneric(tp.tp1) || isGeneric(tp.tp2)
@@ -365,7 +365,7 @@ object TypeErasure {
    *  possible instantiations?
    */
   def hasStableErasure(tp: Type)(implicit ctx: Context): Boolean = tp match {
-    case tp: TypeRef if !tp.symbol.isOpaqueHelper =>
+    case tp: TypeRef if !tp.symbol.isOpaqueAlias =>
       tp.info match {
         case TypeAlias(alias) => hasStableErasure(alias)
         case _: ClassInfo => true

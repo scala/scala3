@@ -58,18 +58,6 @@ object TypeUtils {
     def toNestedPairs(implicit ctx: Context): Type =
       TypeOps.nestedPairs(tupleElementTypes)
 
-    /** Extract opaque alias from TypeBounds type that combines it with the reference
-     *  to the opaque type itself
-     */
-    def extractOpaqueAlias(implicit ctx: Context): Type = self match {
-      case TypeBounds(lo, _) =>
-        def extractAlias(tp: Type): Type = tp match {
-          case OrType(alias, _) => alias
-          case self: HKTypeLambda => self.derivedLambdaType(resType = extractAlias(self.resType))
-        }
-        extractAlias(lo)
-    }
-
     def refinedWith(name: Name, info: Type)(implicit ctx: Context) = RefinedType(self, name, info)
 
     /** The TermRef referring to the companion of the underlying class reference

@@ -10,10 +10,10 @@ object Library {
     def times(x: Nat, y: Nat): Nat = x * y
     def toInt(n: Nat): Int = n
 
-    implicit class NatOps(val self: Nat) extends AnyVal {
-      def *(other: Nat): Nat = self * other
-      def toInt: Int = self.asInstanceOf
-    }
+  }
+  implied NatOps {
+    def (x: Nat) * (y: Nat): Nat = x * y
+    def (x: Nat) toInt: Int = x
   }
 }
 
