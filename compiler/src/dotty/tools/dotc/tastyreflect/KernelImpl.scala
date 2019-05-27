@@ -1549,18 +1549,16 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     }.toList
   }
 
+  private def appliedTypeRef(sym: Symbol): Type = sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef))
+
   def ClassDefSymbol_method(self: Symbol)(name: String)(implicit ctx: Context): List[DefDefSymbol] = {
-    self.typeRef.allMembers.iterator.map(_.symbol).collect {
+    appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
     }.toList
   }
 
   def ClassDefSymbol_methods(self: Symbol)(implicit ctx: Context): List[DefDefSymbol] = {
-    val classTpe = self.typeRef.appliedTo(self.typeParams.map { param =>
-      if (param.variance == -1) param.info.hiBound
-      else param.info.loBound
-    })
-    classTpe.allMembers.iterator.map(_.symbol).collect {
+    appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) => sym.asTerm
     }.toList
   }
