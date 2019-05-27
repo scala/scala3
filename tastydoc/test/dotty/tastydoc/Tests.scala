@@ -52,7 +52,7 @@ class Tests {
   @Test def testDocumentation(): Unit = {
     Main.main(Array(
       "-classpath",
-      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.15/classes",
+      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.16/classes",
       "-syntax",
       "wiki",
       "-packagestolink",

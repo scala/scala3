@@ -224,7 +224,7 @@ object representations extends TastyExtractor {
           case Some(x) => x
           case None =>
             val (name, path) = extractPackageNameAndPath(t.pid.symbol.show)
-            val x = new EmulatedPackageRepresentation(name, path)(mutablePackagesMap)
+            val x = new EmulatedPackageRepresentation(name, path)
             mutablePackagesMap += ((noColorPid, x))
             x
         }
