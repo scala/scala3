@@ -11,7 +11,7 @@ object Test {
         def formatTo(ff: java.util.Formatter, g: Int, w: Int, p: Int): Unit = ff format "xxx"
       }
 	    numberArgumentsTests(s, d)
-      interpolationMismatches(s, f, b)
+      // interpolationMismatches(s, f, b)
       flagMismatches(s, c, d, f, t)
       badPrecisions(c, d, f, t)
       badIndexes()
