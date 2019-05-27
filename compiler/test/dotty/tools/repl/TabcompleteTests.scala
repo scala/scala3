@@ -130,6 +130,6 @@ class TabcompleteTests extends ReplTest {
   }
 
   @Test def i6415 = fromInitialState { implicit s =>
-    assertEquals(List("Predef"), tabComplete("opaque type T = Pre"))
+    assertEquals(List("Predef"), tabComplete("object Foo { opaque type T = Pre"))
   }
 }
