@@ -397,6 +397,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
   //TODO: Remove zzz
   val folderPrefix = "tastydoc/zzz/"
   //TOASK: Path in representation with or without name at the end?
+  /** Traversing a Representation recursively producing markdown files along the way. In principle, this should be the only method called from outside of the class. */
   def traverseRepresentation(representation: Representation): Unit = representation match {
     case r: EmulatedPackageRepresentation =>
       r.members.foreach(traverseRepresentation)

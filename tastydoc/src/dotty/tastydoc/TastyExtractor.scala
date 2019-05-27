@@ -5,6 +5,7 @@ import dotty.tastydoc.comment.{CommentParser, CommentCleaner, Comment, WikiComme
 import dotty.tastydoc.references._
 import dotty.tastydoc.representations._
 
+/** A trait containing useful methods for extracting information from the reflect API */
 trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentCleaner{
   def extractPath(reflect: Reflection)(symbol: reflect.Symbol) : List[String] = {
     import reflect._

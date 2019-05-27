@@ -8,6 +8,13 @@ import dotty.tastydoc.representations._
 import java.io._
 
 object Main {
+
+  /** Call main with the following arguments to produce documentaiton Markdown files: (Omitting { and })
+   * * **-syntax** {*wiki or markdown*} Syntax for parsing user documentation
+   * * **-packagestolink** {*regex1 regex2 ...*} Regexes to specify which packages should be linked when formatting Reference
+   * * **-classpath** {*URI*} Extra classpath for input files
+   * * **-i** {*file1 file2 ...*} Tasty files
+   */
   def main(args: Array[String]): Unit = {
     val userDocSyntax = {
       val idx = args.indexOf("-syntax")

@@ -4,7 +4,9 @@ import scala.tasty.Reflection
 import dotty.tastydoc.references._
 import dotty.tastydoc.representations._
 
+/** Trait containing methods for converting from Reflect types to References */
 trait TastyTypeConverter {
+
   def convertTypeOrBoundsToReference(reflect: Reflection)(typeOrBounds: reflect.TypeOrBounds): Reference = {
     import reflect._
 
