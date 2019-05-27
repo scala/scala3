@@ -278,12 +278,17 @@ class Typer extends Namer
           // with the exact list of files given).
           val isNewDefScope =
             if (curOwner.is(Package) && !curOwner.isRoot) curOwner ne ctx.outer.owner
-            else ((ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner)) &&
-              !curOwner.isPackageObject
-              // Package objects are never searched directly. We wait until we
-              // hit the enclosing package. That way we make sure we consider
-              // all overloaded alternatives of a definition, even if they are
-              // in different source files.
+            else ((ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner))
+                // Was: ... && !curOwner.isPackageObject
+                //      Package objects are never searched directly. We wait until we
+                //      hit the enclosing package. That way we make sure we consider
+                //      all overloaded alternatives of a definition, even if they are
+                //      in different source files.
+                //
+                // But this is now disabled since otherwise we will not see self type refinements
+                // for opaque types.
+                // We should evaluate later whether we want to keep & spec it that way,
+                // or go back to the old scheme and compensate for opaque type refinements.
 
           if (isNewDefScope) {
             val defDenot = ctx.denotNamed(name, required)
