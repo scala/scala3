@@ -848,7 +848,7 @@ trait Implicits { self: Typer =>
               trySpecialCase(defn.GenericClass, synthesizedGeneric,
                 trySpecialCase(defn.TastyReflectionClass, synthesizedTastyContext,
                   trySpecialCase(defn.EqlClass, synthesizedEq,
-                    trySpecialCase(defn.TupleFunctionClass, synthesizedTupleFunction,
+                    trySpecialCase(defn.TupledFunctionClass, synthesizedTupleFunction,
                       trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed)))))))
     }
   }
