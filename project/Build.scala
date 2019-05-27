@@ -374,7 +374,7 @@ object Build {
   )
 
   // Settings shared between dotty-doc and dotty-doc-bootstrapped
-  lazy val dottyDocSettings = Seq(
+  def dottyDocSettings(implicit mode: Mode) = Seq(
     baseDirectory in (Compile, run) := baseDirectory.value / "..",
     baseDirectory in Test := baseDirectory.value / "..",
 
