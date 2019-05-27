@@ -59,6 +59,8 @@ final class JSDefinitions()(implicit ctx: Context) {
   lazy val JavaScriptExceptionType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.JavaScriptException")
   def JavaScriptExceptionClass(implicit ctx: Context) = JavaScriptExceptionType.symbol.asClass
 
+  lazy val JSGlobalScopeAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.JSGlobalScope")
+  def JSGlobalScopeAnnot(implicit ctx: Context) = JSGlobalScopeAnnotType.symbol.asClass
   lazy val JSNameAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.JSName")
   def JSNameAnnot(implicit ctx: Context) = JSNameAnnotType.symbol.asClass
   lazy val JSFullNameAnnotType: TypeRef = ctx.requiredClassRef("scala.scalajs.js.annotation.JSFullName")
@@ -89,6 +91,8 @@ final class JSDefinitions()(implicit ctx: Context) {
 
   lazy val JSDynamicModuleRef = ctx.requiredModuleRef("scala.scalajs.js.Dynamic")
   def JSDynamicModule(implicit ctx: Context) = JSDynamicModuleRef.symbol
+    lazy val JSDynamic_globalR = JSDynamicModule.requiredMethodRef("global")
+    def JSDynamic_global(implicit ctx: Context) = JSDynamic_globalR.symbol
     lazy val JSDynamic_newInstanceR = JSDynamicModule.requiredMethodRef("newInstance")
     def JSDynamic_newInstance(implicit ctx: Context) = JSDynamic_newInstanceR.symbol
 
