@@ -86,7 +86,9 @@ final public class DelegatingReporter extends AbstractReporter {
           return Optional.ofNullable(src.file().path());
         }
         public Optional<Integer> line() {
-          return Optional.of(pos.line());
+          int line = pos.line();
+          if (line == -1) return Optional.empty();
+          else return Optional.of(line);
         }
         public String lineContent() {
           String line = pos.lineContent();
