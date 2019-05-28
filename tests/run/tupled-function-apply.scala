@@ -1,6 +1,5 @@
 object Test {
   def main(args: Array[String]): Unit = {
-    import TupledFunction._
 
     val f0 = () => 0
     val t0 = ()
@@ -107,4 +106,13 @@ object Test {
     println(f25(t25))
 
   }
+
+  /** Apply this function to with each element of the tuple as a parameter
+    *
+    *  @tparam F the function type
+    *  @tparam Args the tuple type with the same types as the function arguments of F
+    *  @tparam R the return type of F
+    */
+  def (f: F) apply[F, Args <: Tuple, R](args: Args) given (tupled: TupledFunction[F, Args => R]): R =
+    tupled(f)(args)
 }

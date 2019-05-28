@@ -1,6 +1,5 @@
 object Test {
   def main(args: Array[String]): Unit = {
-    import TupledFunction._
 
     val f1 = (x1: Int, x2: Int) => (x1, x2, x1 + x2)
     val g1 = (x1: Int, x2: Int, x3: Int) => x1 + x2 + x3
@@ -24,4 +23,17 @@ object Test {
     val h25 = f25.andThen(g25)
     println(h25(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25))
   }
+
+  /** Composes two instances of TupledFunctions in a new TupledFunctions, with this function applied first
+    *
+    *  @tparam F a function type
+    *  @tparam G a function type
+    *  @tparam FArgs the tuple type with the same types as the function arguments of F
+    *  @tparam GArgs the tuple type with the same types as the function arguments of G and return type of F
+    *  @tparam R the return type of G
+    */
+  def (f: F) andThen[F, G, FArgs <: Tuple, GArgs <: Tuple, R](g: G) given (tf: TupledFunction[F, FArgs => GArgs], tg: TupledFunction[G, GArgs => R]): FArgs => R = {
+    x => tg(g)(tf(f)(x))
+  }
+
 }
