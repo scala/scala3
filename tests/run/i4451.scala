@@ -1,8 +1,10 @@
+import scala.annotation.threadUnsafe
+
 class InitError extends Exception
 
-class Lazy(x: Int) {
+class LazyThreadUnsafe(x: Int) {
   private[this] var init = false
-  lazy val value = {
+  @threadUnsafe lazy val value = {
     if (!init) {
       init = true
       throw new InitError
@@ -11,9 +13,9 @@ class Lazy(x: Int) {
   }
 }
 
-class LazyVolatile(x: Int) {
+class Lazy(x: Int) {
   private[this] var init = false
-  @volatile lazy val value = {
+  lazy val value = {
     if (!init) {
       init = true
       throw new InitError
@@ -46,8 +48,8 @@ object Test {
   def main(args: Array[String]) = {
     val v = 42
 
-    val l0 = new Lazy(v)
-    val l1 = new LazyVolatile(v)
+    val l0 = new LazyThreadUnsafe(v)
+    val l1 = new Lazy(v)
     assert(tryTwice(l0.value) == v)
     assert(tryTwice(l1.value) == v)
     assert(lazyInMethod(v) == v)

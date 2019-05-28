@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Changed: Lazy Vals - More Details
+title: Lazy Vals initialization
 ---
 
 Dotty implements [Version 6](https://docs.scala-lang.org/sips/improved-lazy-val-initialization.html#version-6---no-synchronization-on-this-and-concurrent-initialization-of-fields)
@@ -19,7 +19,7 @@ Given a lazy field of the form:
 
 ```scala
 class Foo {
-  @volatile lazy val bar = <RHS>
+  lazy val bar = <RHS>
 }
 ```
 
@@ -69,9 +69,8 @@ val. This id grows with the number of volatile lazy vals defined in the class.
 
 ## Note on recursive lazy vals
 
-Ideally recursive lazy vals should be flagged as an error. The current behavior for `@volatile`
-recursive lazy vals is undefined (initialization may result in a deadlock). Non `@volatile` lazy
-vals behave as in Scala 2.
+Ideally recursive lazy vals should be flagged as an error. The current behavior for
+recursive lazy vals is undefined (initialization may result in a deadlock).
 
 ## Reference
 

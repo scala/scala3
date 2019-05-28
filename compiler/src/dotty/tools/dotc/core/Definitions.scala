@@ -891,6 +891,8 @@ class Definitions {
   def TASTYLongSignatureAnnot(implicit ctx: Context): ClassSymbol = TASTYLongSignatureAnnotType.symbol.asClass
   lazy val TailrecAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.tailrec")
   def TailrecAnnot(implicit ctx: Context): ClassSymbol = TailrecAnnotType.symbol.asClass
+  lazy val ThreadUnsafeAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.threadUnsafe")
+  def ThreadUnsafeAnnot(implicit ctx: Context): ClassSymbol = ThreadUnsafeAnnotType.symbol.asClass
   lazy val TransientParamAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.constructorOnly")
   def TransientParamAnnot(implicit ctx: Context): ClassSymbol = TransientParamAnnotType.symbol.asClass
   lazy val CompileTimeOnlyAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.compileTimeOnly")

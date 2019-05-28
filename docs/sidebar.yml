@@ -99,10 +99,10 @@ sidebar:
               url: docs/reference/other-new-features/kind-polymorphism.html
             - title: Tupled Function
               url: docs/reference/other-new-features/tupled-function.html
+            - title: threadUnsafe Annotation
+              url: docs/reference/other-new-features/threadUnsafe-annotation.html
         - title: Other Changed Features
           subsection:
-            - title: Volatile Lazy Vals
-              url: docs/reference/changed-features/lazy-vals.html
             - title: Structural Types
               url: docs/reference/changed-features/structural-types.html
             - title: Operators
@@ -129,6 +129,8 @@ sidebar:
               url: docs/reference/changed-features/eta-expansion.html
             - title: Compiler Plugins
               url: docs/reference/changed-features/compiler-plugins.html
+            - title: Lazy Vals initialization
+              url: docs/reference/changed-features/lazy-vals-init.html
         - title: Dropped Features
           subsection:
             - title: DelayedInit
