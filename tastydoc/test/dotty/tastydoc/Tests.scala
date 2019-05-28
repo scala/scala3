@@ -63,7 +63,6 @@ class Tests {
       "example.level2.ClassExtendingDocumentation",
       "example.DocumentationInheritance",
       "example.ReturnTypeClass",
-      "example.ReturnObjectWithType",
       "example.level2.SameLevelTypeLinking",
       "example.ReturnObjectWithType",
       "example.level2.TraitWithCompanion",
@@ -72,10 +71,15 @@ class Tests {
     ))
   }
   @Test def testListFromLib(): Unit = {
-    // ConsumeTasty(
-    //   "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.15/classes",
-    //   List("scala.collection.immutable.List"),
-    //   new dotty.tastydoc.TastydocConsumer
-    // )
+    Main.main(Array(
+      "-classpath",
+      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.16/classes",
+      "-syntax",
+      "wiki",
+      "-packagestolink",
+      "scala.*",
+      "-i",
+      "scala.collection.immutable.List"
+    ))
   }
 }
