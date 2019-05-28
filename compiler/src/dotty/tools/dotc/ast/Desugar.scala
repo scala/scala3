@@ -1418,20 +1418,8 @@ object desugar {
       }
     }
 
-    // begin desugar
-
-    // Special case for `Parens` desugaring: unlike all the desugarings below,
-    // its output is not a new tree but an existing one whose position should
-    // be preserved, so we shouldn't call `withPos` on it.
-    tree match {
-      case Parens(t) =>
-        return t
-      case _ =>
-    }
-
-    val desugared = tree match {
-      case PolyFunction(targs, body) =>
-        val Function(vargs, res) = body
+    def makePolyFunction(targs: List[Tree], body: Tree): Tree = body match {
+      case  Function(vargs, res) =>
         // TODO: Figure out if we need a `PolyFunctionWithMods` instead.
         val mods = body match {
           case body: FunctionWithMods => body.mods
@@ -1455,10 +1443,28 @@ object desugar {
 
           val applyVParams = vargs.asInstanceOf[List[ValDef]]
             .map(varg => varg.withAddedFlags(mods.flags | Param))
-          New(Template(emptyConstructor, List(polyFunctionTpt), Nil, EmptyValDef,
-            List(DefDef(nme.apply, applyTParams, List(applyVParams), TypeTree(), res))
-          ))
+            New(Template(emptyConstructor, List(polyFunctionTpt), Nil, EmptyValDef,
+              List(DefDef(nme.apply, applyTParams, List(applyVParams), TypeTree(), res))
+              ))
         }
+      case _ =>
+        EmptyTree //may happen for erroneous input
+    }
+
+    // begin desugar
+
+    // Special case for `Parens` desugaring: unlike all the desugarings below,
+    // its output is not a new tree but an existing one whose position should
+    // be preserved, so we shouldn't call `withPos` on it.
+    tree match {
+      case Parens(t) =>
+        return t
+      case _ =>
+    }
+
+    val desugared = tree match {
+      case PolyFunction(targs, body) =>
+        makePolyFunction(targs, body) orElse tree
       case SymbolLit(str) =>
         Literal(Constant(scala.Symbol(str)))
       case InterpolatedString(id, segments) =>
