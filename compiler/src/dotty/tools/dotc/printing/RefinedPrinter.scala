@@ -561,7 +561,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case PolyFunction(targs, body) =>
         val targsText = "[" ~ Text(targs.map((arg: Tree) => toText(arg)), ", ") ~ "]"
         changePrec(GlobalPrec) {
-          targsText ~ " -> " ~ toText(body)
+          targsText ~ " => " ~ toText(body)
         }
       case InfixOp(l, op, r) =>
         val opPrec = parsing.precedence(op.name)

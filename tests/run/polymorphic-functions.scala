@@ -1,11 +1,14 @@
-object Test {
-  def test1(f: [T <: AnyVal] -> List[T] => List[(T, T)]) = {
-    f(List(1, 2, 3))
-  }
+object Test extends App {
+  // Types
+  type F0 = [T] => List[T] => Option[T]
+  type F1 = [F[_], G[_], T] => (F[T], F[T] => G[T]) => G[T]
 
-  def main(args: Array[String]): Unit = {
-    val fun = [T <: AnyVal] -> (x: List[T]) => x.map(e => (e, e))
+  // Terms
+  val t0 = [T] => (ts: List[T]) => ts.headOption
+  val t0a: F0 = t0
+  assert(t0(List(1, 2, 3)) == Some(1))
 
-    assert(test1(fun) == List((1, 1), (2, 2), (3, 3)))
-  }
+  val t1 = [F[_], G[_], T] => (ft: F[T], f: F[T] => G[T]) => f(ft)
+  val t1a: F1 = t1
+  assert(t1(List(1, 2, 3), (ts: List[Int]) => ts.headOption) == Some(1))
 }

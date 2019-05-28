@@ -924,9 +924,18 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.TypeParam)
           if (in.token == TLARROW)
             atSpan(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
-          else if (isIdent && in.name.toString == "->")
-            atSpan(start, in.skipToken())(PolyFunction(tparams, toplevelTyp()))
-          else { accept(TLARROW); typ() }
+          else if (in.token == ARROW) {
+            val arrowOffset = in.skipToken()
+            val body = toplevelTyp()
+            atSpan(start, arrowOffset) {
+              body match {
+                case _: Function => PolyFunction(tparams, body)
+                case _ =>
+                  syntaxError("Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
+                  Ident(nme.ERROR.toTypeName)
+              }
+            }
+          } else { accept(TLARROW); typ() }
         }
         else infixType()
 
@@ -1328,8 +1337,16 @@ object Parsers {
       case LBRACKET =>
         val start = in.offset
         val tparams = typeParamClause(ParamOwner.TypeParam)
-        assert(isIdent && in.name.toString == "->", "Expected `->`")
-        atSpan(start, in.skipToken())(PolyFunction(tparams, expr()))
+        val arrowOffset = accept(ARROW)
+        val body = expr()
+        atSpan(start, arrowOffset) {
+          body match {
+            case _: Function => PolyFunction(tparams, body)
+            case _ =>
+              syntaxError("Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
+              errorTermTree
+          }
+        }
       case _ =>
         if (isIdent(nme.inline) && !in.inModifierPosition() && in.lookaheadIn(canStartExpressionTokens)) {
           val start = in.skipToken()
