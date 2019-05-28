@@ -148,6 +148,8 @@ object DottyPlugin extends AutoPlugin {
     }
   )
 
+  // https://github.com/sbt/sbt/issues/3110
+  val Def = sbt.Def
   override def projectSettings: Seq[Setting[_]] = {
     Seq(
       isDotty := scalaVersion.value.startsWith("0."),
@@ -299,13 +301,10 @@ object DottyPlugin extends AutoPlugin {
             allJars
           )
         }
-        else Def.task {
-          // This should really be `old` with `val old = scalaInstance.value`
-          // above, except that this would force the original definition of the
-          // `scalaInstance` task to be computed when `isDotty` is true, which
-          // would fail because `managedScalaInstance` is false.
-          Defaults.scalaInstanceTask.value
-        }
+        else
+          // This dereferences the Initialize graph, but keeps the Task unevaluated,
+          // so its effect gets fired only when isDotty.value evaluates to false. yay monad.
+          Def.valueStrict { scalaInstance.taskValue }
       }.value,
 
       // Because managedScalaInstance is false, sbt won't add the standard library to our dependencies for us
