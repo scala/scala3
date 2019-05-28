@@ -3194,8 +3194,17 @@ object Types {
       companion.eq(ContextualMethodType) ||
       companion.eq(ErasedContextualMethodType)
 
+
     def computeSignature(implicit ctx: Context): Signature = {
-      val params = if (isErasedMethod) Nil else paramInfos
+      def polyFunctionSignature(tp: Type): Type = tp match {
+        case RefinedType(parent, nme.apply, refinedInfo) if parent.typeSymbol eq defn.PolyFunctionClass =>
+          val res = refinedInfo.resultType
+          val paramss = res.paramNamess
+          defn.FunctionType(paramss.head.length)
+        case _ => tp
+      }
+
+      val params = if (isErasedMethod) Nil else paramInfos.mapConserve(polyFunctionSignature)
       resultSignature.prepend(params, isJavaMethod)
     }
 
