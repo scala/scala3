@@ -209,10 +209,13 @@ object TypeErasure {
           einfo
       case einfo =>
         // Erase the parameters of `apply` in subclasses of PolyFunction
+        // Preserve PolyFunction argument types to support PolyFunctions with
+        // PolyFunction arguments
         if (sym.is(TermParam) && sym.owner.name == nme.apply
-            && sym.owner.owner.derivesFrom(defn.PolyFunctionClass))
+            && sym.owner.owner.derivesFrom(defn.PolyFunctionClass)
+            && !(tp <:< defn.PolyFunctionType)) {
           defn.ObjectType
-        else
+        } else
           einfo
     }
   }
