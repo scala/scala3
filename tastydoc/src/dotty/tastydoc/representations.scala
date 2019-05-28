@@ -8,10 +8,6 @@ import dotty.tastydoc.TastyExtractor
 
 object representations extends TastyExtractor {
 
-  def removeColorFromType(tpe: String) : String = { //TODO: This a workaround, fix this
-    tpe.replaceAll("\u001B\\[[;\\d]*m", "")
-  }
-
   trait Representation {
     val name : String
     val path : List[String]
@@ -90,7 +86,7 @@ object representations extends TastyExtractor {
   class PackageRepresentation(reflect: Reflection, internal: reflect.PackageClause, override val parentRepresentation: Option[Representation]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members {
     import reflect._
 
-    override val (name, path) = extractPackageNameAndPath(internal.pid.show)
+    override val (name, path) = extractPackageNameAndPath(internal.pid.show(implicitly[reflect.Context].withoutColors))
     override val members = internal.stats.map(convertToRepresentation(reflect)(_, Some(this)))
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
 
@@ -106,7 +102,7 @@ object representations extends TastyExtractor {
       } else {
         internal.selectors.head.toString
       }
-    override val path = internal.expr.symbol.show.split("\\.").toList
+    override val path = internal.expr.symbol.show(implicitly[reflect.Context].withoutColors).split("\\.").toList
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
 
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
@@ -130,7 +126,7 @@ object representations extends TastyExtractor {
         case _ => None
         }
       }
-    override val typeParams = internal.constructor.typeParams.map(x => removeColorFromType(x.show).stripPrefix("type "))
+    override val typeParams = internal.constructor.typeParams.map(x => x.show(implicitly[reflect.Context].withoutColors).stripPrefix("type "))
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
     var knownSubclasses: List[Reference] = Nil
 
@@ -176,7 +172,7 @@ object representations extends TastyExtractor {
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
-    override val typeParams = internal.typeParams.map(x => removeColorFromType(x.show).stripPrefix("type "))
+    override val typeParams = internal.typeParams.map(x => x.show(implicitly[reflect.Context].withoutColors).stripPrefix("type "))
 
     override val paramLists = internal.paramss.map{p =>
       new ParamList {
@@ -222,11 +218,11 @@ object representations extends TastyExtractor {
 
     tree match {
       case IsPackageClause(t@reflect.PackageClause(_)) =>
-        val noColorPid = removeColorFromType(t.pid.symbol.show)
+        val noColorPid = t.pid.symbol.show(implicitly[reflect.Context].withoutColors)
         val emulatedPackage = mutablePackagesMap.get(noColorPid) match {
           case Some(x) => x
           case None =>
-            val (name, path) = extractPackageNameAndPath(t.pid.symbol.show)
+            val (name, path) = extractPackageNameAndPath(noColorPid)
             val x = new EmulatedPackageRepresentation(name, path)
             mutablePackagesMap += ((noColorPid, x))
             x

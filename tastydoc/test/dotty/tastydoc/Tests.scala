@@ -55,6 +55,7 @@ class Tests {
       "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.16/classes",
       "-syntax",
       "wiki",
+      //"markdown",
       "-packagestolink",
       "example.*",
       //"scala.*",

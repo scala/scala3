@@ -10,7 +10,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
   def extractPath(reflect: Reflection)(symbol: reflect.Symbol) : List[String] = {
     import reflect._
 
-    val pathArray = symbol.show.split("\\.")
+    val pathArray = symbol.show(implicitly[reflect.Context].withoutColors).split("\\.")
     pathArray.view(0, pathArray.length - 1).toList
   }
 
@@ -24,6 +24,8 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     (if(flags.is(Flags.Sealed)) "sealed" else "") ::
     (if(flags.is(Flags.Implicit)) "implicit" else "") ::
     (if(flags.is(Flags.Abstract)) "abstract" else "") ::
+    // (if(flags.is(Flags.AbsOverride)) "absOverride" else "") :: //TODO
+    // (if(flags.is(Flags.Deferred)) "deferred" else "") :: //TODO
     (if(flags.is(Flags.Inline)) "inline" else "") ::
     Nil) filter (_ != ""),
 
@@ -154,8 +156,8 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     }
   }
 
-  def extractPackageNameAndPath(pidShow: String): (String, List[String]) = {
-    val pidSplit = representations.removeColorFromType(pidShow).split("\\.")
+  def extractPackageNameAndPath(pidShowNoColor: String): (String, List[String]) = {
+    val pidSplit = pidShowNoColor.split("\\.")
     (pidSplit.last, pidSplit.init.toList)
   }
 }

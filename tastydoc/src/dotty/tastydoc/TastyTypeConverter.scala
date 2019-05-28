@@ -2,7 +2,6 @@ package dotty.tastydoc
 
 import scala.tasty.Reflection
 import dotty.tastydoc.references._
-import dotty.tastydoc.representations._
 
 /** Trait containing methods for converting from Reflect types to References */
 trait TastyTypeConverter {
@@ -47,7 +46,7 @@ trait TastyTypeConverter {
       case reflect.Type.IsConstantType(reflect.Type.ConstantType(constant)) => ConstantReference(constant.value.toString)
       case reflect.Type.IsThisType(reflect.Type.ThisType(tpe)) => inner(tpe)
       case reflect.Type.IsAnnotatedType(reflect.Type.AnnotatedType(tpe, _)) => inner(tpe)
-      case reflect.Type.IsTypeLambda(reflect.Type.TypeLambda(paramNames, paramTypes, resType)) => ConstantReference(removeColorFromType(tp.show)) //TOFIX
+      case reflect.Type.IsTypeLambda(reflect.Type.TypeLambda(paramNames, paramTypes, resType)) => ConstantReference(tp.show(implicitly[reflect.Context].withoutColors)) //TOFIX
       // case reflect.Type.IsTypeLambda(reflect.Type.TypeLambda(paramNames, paramTypes, resType)) => //TOASK
       //   println("===================")
       //   println(tp)

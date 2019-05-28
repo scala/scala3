@@ -4,8 +4,6 @@
 
 <pre><code class="language-scala" >final object Documentation extends Serializable</pre></code>
 Companion object
-
-
 ## Concrete Value Members:
 ### !=
 <pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>

@@ -111,7 +111,19 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
 
   private def formatComments(comment: (Map[String, EmulatedPackageRepresentation], String) => Option[Comment]) : String = comment(packagesMap, userDocSyntax) match {
     case Some(c) =>
-      c.body +
+      def removeLineEnds(str: String): String = {
+        if(str.isEmpty){
+          str
+        }else{
+          str.last match {
+            case '\n' => removeLineEnds(str.stripLineEnd)
+            case _ => str
+          }
+        }
+      }
+
+      removeLineEnds(c.body) +
+      "\n" +
       (if(c.authors.nonEmpty) Md.bold(Md.italics("authors")) + " " + c.authors.mkString(", ") else "") +
       (if(c.see.nonEmpty) Md.bold(Md.italics("see")) + " "  + c.see.mkString(", ")else "") +
       (if(c.result.isDefined) Md.bold(Md.italics("return")) + " "  + c.result.get else "") +

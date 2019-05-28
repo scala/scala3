@@ -149,8 +149,6 @@ def someScalaCode(x: String) = println("Hello " + x)
 
 * multilevel try2
   * try2 level2
-
-
 ### drop
 <pre><code class="language-scala" >override def drop(n: Int): Repr</pre></code>
 
@@ -322,8 +320,6 @@ method:example.level2.Documentation.apply
 class: [example.UserDocLinkingClass](../../example/UserDocLinkingClass.md)
 
 method: length
-
-
 ### linkingGraph
 <pre><code class="language-scala" >def linkingGraph(g: <a href="./level2/Documentation/Graph.md">Graph</a>): Node</pre></code>
 
@@ -351,8 +347,6 @@ method: length
 ### methodsWithParams
 <pre><code class="language-scala" >def methodsWithParams(x: <a href="./level2/Documentation.md#T">T</a>, y: Int): List[Map[Int, <a href="./level2/Documentation.md#T">T</a>]]</pre></code>
 Test methods with params
-
-
 ***return*** something is returned
 
 ***y*** parameter 2
