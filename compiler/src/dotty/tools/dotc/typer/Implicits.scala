@@ -711,23 +711,44 @@ trait Implicits { self: Typer =>
 
     def synthesizedTupleFunction(formal: Type): Tree = {
       formal match {
-        case AppliedType(_, funArgs @ fun :: tupled :: Nil) if defn.isFunctionType(fun) && defn.isFunctionType(tupled) =>
-          lazy val funTypes = fun.dropDependentRefinement.dealias.argInfos
-          lazy val tupledTypes = tupled.dropDependentRefinement.dealias.argInfos
-          if (
-            defn.isImplicitFunctionType(fun) == defn.isImplicitFunctionType(tupled) &&
-            tupledTypes.size == 2 &&
-            defn.tupleType(funTypes.init) =:= tupledTypes.head &&
-            funTypes.last =:= tupledTypes.last
-          ) {
-            val arity = funTypes.size - 1
-            if (defn.isErasedFunctionType(fun))
-              EmptyTree // TODO support?
-            else if (arity <= Definitions.MaxImplementedFunctionArity)
-              ref(defn.InternalTupleFunctionModule).select(s"tupledFunction$arity".toTermName).appliedToTypes(funArgs)
-            else
-              ref(defn.InternalTupleFunctionModule).select("tupledFunctionXXL".toTermName).appliedToTypes(funArgs)
-          } else EmptyTree
+        case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
+          def functionTypeEqual(baseFun: Type, actualArgs: List[Type], actualRet: Type, expected: Type) = {
+            expected =:= defn.FunctionOf(actualArgs, actualRet, defn.isImplicitFunctionType(baseFun), defn.isErasedFunctionType(baseFun))
+          }
+          val arity: Int = {
+            if (defn.isErasedFunctionType(fun) || defn.isErasedFunctionType(fun)) -1 // TODO support?
+            else if (defn.isFunctionType(fun)) {
+              // TupledFunction[(...) => R, ?]
+              fun.dropDependentRefinement.dealias.argInfos match {
+                case funArgs :+ funRet if functionTypeEqual(fun, defn.tupleType(funArgs) :: Nil, funRet, tupled) =>
+                  // TupledFunction[(...funArgs...) => funRet, ?]
+                  funArgs.size
+                case _ => -1
+              }
+            } else if (defn.isFunctionType(tupled)) {
+              // TupledFunction[?, (...) => R]
+              tupled.dropDependentRefinement.dealias.argInfos match {
+                case tupledArgs :: funRet :: Nil =>
+                  defn.tupleTypes(tupledArgs) match {
+                    case Some(funArgs) if functionTypeEqual(tupled, funArgs, funRet, fun) =>
+                      // TupledFunction[?, ((...funArgs...)) => funRet]
+                      funArgs.size
+                    case _ => -1
+                  }
+                case _ => -1
+              }
+            }
+            else {
+              // TupledFunction[?, ?]
+              -1
+            }
+          }
+          if (arity == -1)
+            EmptyTree
+          else if (arity <= Definitions.MaxImplementedFunctionArity)
+            ref(defn.InternalTupleFunctionModule).select(s"tupledFunction$arity".toTermName).appliedToTypes(funArgs)
+          else
+            ref(defn.InternalTupleFunctionModule).select("tupledFunctionXXL".toTermName).appliedToTypes(funArgs)
         case _ =>
           EmptyTree
       }

@@ -10,6 +10,8 @@ import collection.mutable
 import Denotations.SingleDenotation
 import util.SimpleIdentityMap
 
+import scala.annotation.tailrec
+
 object Definitions {
 
   /** The maximum number of elements in a tuple or product.
@@ -1196,6 +1198,17 @@ class Definitions {
     val arity = elems.length
     if (0 < arity && arity <= MaxTupleArity && TupleType(arity) != null) TupleType(arity).appliedTo(elems)
     else TypeOps.nestedPairs(elems)
+  }
+
+  def tupleTypes(tp: Type, bound: Int = Int.MaxValue)(implicit ctx: Context): Option[List[Type]] = {
+    @tailrec def rec(tp: Type, acc: List[Type], bound: Int): Option[List[Type]] = tp match {
+      case _ if bound < 0 => Some(acc.reverse)
+      case tp: AppliedType if defn.PairClass == tp.classSymbol => rec(tp.args(1), tp.args.head :: acc, bound - 1)
+      case tp: AppliedType if defn.isTupleClass(tp.tycon.classSymbol) => Some(acc.reverse ::: tp.args)
+      case tp if tp.classSymbol == defn.UnitClass => Some(acc.reverse)
+      case _ => None
+    }
+    rec(tp.stripTypeVar, Nil, bound)
   }
 
   def isProductSubType(tp: Type)(implicit ctx: Context): Boolean =
