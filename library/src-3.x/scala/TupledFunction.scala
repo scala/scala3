@@ -5,12 +5,11 @@ import scala.annotation.implicitNotFound
 /** Type class relating a `FunctionN[..., R]` with an equvalent tupled function `Function1[TupleN[...], R]`
  *
  *  @tparam F a function type
- *  @tparam Args a tuple type with the same types as the function arguments of F
- *  @tparam R the return type of F
+ *  @tparam G a tupled function type (function of arity 1 receiving a tuple as argument)
  */
-@implicitNotFound("${F} cannot be tupled as ${Args} => ${R}")
-trait TupledFunction[F, Args <: Tuple, R] {
-  def applyFunctionTo(f: F, args: Args): R
+@implicitNotFound("${F} cannot be tupled as ${G}")
+trait TupledFunction[F, G] {
+  def apply(f: F): G
 }
 
 /** Module of TupledFunction containing methods for auto function tupling
@@ -37,8 +36,8 @@ object TupledFunction {
    *  @tparam Args the tuple type with the same types as the function arguments of F
    *  @tparam R the return type of F
    */
-  def (f: F) apply[F, Args <: Tuple, R](args: Args) given (tf: TupledFunction[F, Args, R]): R =
-    tf.applyFunctionTo(f, args)
+  def (f: F) apply[F, Args <: Tuple, R](args: Args) given (tupled: TupledFunction[F, Args => R]): R =
+    tupled(f)(args)
 
   /** Composes two instances of TupledFunctions in a new TupledFunctions, with this function applied last
    *
@@ -48,7 +47,7 @@ object TupledFunction {
    *  @tparam GArgs the tuple type with the same types as the function arguments of G
    *  @tparam R the return type of F
    */
-  def (f: F) compose[F, G, FArgs <: Tuple, GArgs <: Tuple, R](g: G) given TupledFunction[G, GArgs, FArgs], TupledFunction[F, FArgs, R]: GArgs => R = {
+  def (f: F) compose[F, G, FArgs <: Tuple, GArgs <: Tuple, R](g: G) given TupledFunction[G, GArgs => FArgs], TupledFunction[F, FArgs => R]: GArgs => R = {
     x => f(g(x))
   }
 
@@ -60,7 +59,7 @@ object TupledFunction {
    *  @tparam GArgs the tuple type with the same types as the function arguments of G and return type of F
    *  @tparam R the return type of G
    */
-  def (f: F) andThen[F, G, FArgs <: Tuple, GArgs <: Tuple, R](g: G) given TupledFunction[F, FArgs, GArgs], TupledFunction[G, GArgs, R]: FArgs => R = {
+  def (f: F) andThen[F, G, FArgs <: Tuple, GArgs <: Tuple, R](g: G) given TupledFunction[F, FArgs => GArgs], TupledFunction[G, GArgs => R]: FArgs => R = {
     x => g(f(x))
   }
 

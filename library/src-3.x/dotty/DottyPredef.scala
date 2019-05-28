@@ -45,8 +45,6 @@ object DottyPredef {
    *  @tparam Args the tuple type with the same types as the function arguments of F
    *  @tparam R the return type of F
    */
-  def (f: F) tupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Args, R]): Args => R = {
-    x => tf.applyFunctionTo(f, x)
-  }
+  def (f: F) tupled[F, Args <: Tuple, R] given (tupled: TupledFunction[F, Args => R]): Args => R = tupled(f)
 
 }

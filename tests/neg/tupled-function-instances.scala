@@ -1,82 +1,74 @@
 object Test {
   def main(args: Array[String]): Unit = {
+    type T
     type R
-    the[TupledFunction[given 1 => R, Tuple1[1], R]] // error
-    the[TupledFunction[given (1, 2) => R, (1, 2), R]] // error
-    the[TupledFunction[given (1, 2, 3) => R, (1, 2, 3), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4) => R, (1, 2, 3, 4), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5) => R, (1, 2, 3, 4, 5), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6) => R, (1, 2, 3, 4, 5, 6), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7) => R, (1, 2, 3, 4, 5, 6, 7), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8) => R, (1, 2, 3, 4, 5, 6, 7, 8), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24), R]] // error
-    the[TupledFunction[given (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25), R]] // error
 
-    the[TupledFunction[erased 1 => R, Tuple1[1], R]] // error
-    the[TupledFunction[erased (1, 2) => R, (1, 2), R]] // error
-    the[TupledFunction[erased (1, 2, 3) => R, (1, 2, 3), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4) => R, (1, 2, 3, 4), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5) => R, (1, 2, 3, 4, 5), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6) => R, (1, 2, 3, 4, 5, 6), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7) => R, (1, 2, 3, 4, 5, 6, 7), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8) => R, (1, 2, 3, 4, 5, 6, 7, 8), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24), R]] // error
-    the[TupledFunction[erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25), R]] // error
+    the[TupledFunction[Nothing, ((T, T, T)) => R]] // error
+    the[TupledFunction[Any, ((T, T, T)) => R]] // error
+    the[TupledFunction[Tuple1[Int], ((T, T, T)) => R]] // error
 
-    the[TupledFunction[given erased 1 => R, Tuple1[1], R]] // error
-    the[TupledFunction[given erased (1, 2) => R, (1, 2), R]] // error
-    the[TupledFunction[given erased (1, 2, 3) => R, (1, 2, 3), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4) => R, (1, 2, 3, 4), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5) => R, (1, 2, 3, 4, 5), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6) => R, (1, 2, 3, 4, 5, 6), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7) => R, (1, 2, 3, 4, 5, 6, 7), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8) => R, (1, 2, 3, 4, 5, 6, 7, 8), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24), R]] // error
-    the[TupledFunction[given erased (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25) => R, (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25), R]] // error
+    the[TupledFunction[(T, T, T))=> R, Nothing]] // error
+    the[TupledFunction[(T, T, T) => R, Any]] // error
+    the[TupledFunction[((T, T, T)) => R, Tuple1[Int]]] // error
+
+    the[TupledFunction[() => R, () => R]] // error
+    the[TupledFunction[() => Unit, () => Unit]] // error
+    the[TupledFunction[(T, T, T) => R, () => R]] // error
+    the[TupledFunction[(T, T, T) => R, (T, T) => R]] // error
+
+    the[TupledFunction[(T, T, T) => R, given ((T, T, T)) => R]] // error
+    the[TupledFunction[given (T, T, T) => R, ((T, T, T)) => R]] // error
+
+    the[TupledFunction[erased T => R, erased Tuple1[T] => R]] // error
+    the[TupledFunction[erased (T, T) => R, erased ((T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T) => R, erased ((T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T) => R, erased ((T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T) => R, erased ((T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+
+    the[TupledFunction[given erased T => R, given erased Tuple1[T] => R]] // error
+    the[TupledFunction[given erased (T, T) => R, given erased ((T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T) => R, given erased ((T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T) => R, given erased ((T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T) => R, given erased ((T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    the[TupledFunction[given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, given erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
   }
 }

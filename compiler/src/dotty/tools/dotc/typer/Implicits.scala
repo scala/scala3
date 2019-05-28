@@ -711,18 +711,22 @@ trait Implicits { self: Typer =>
 
     def synthesizedTupleFunction(formal: Type): Tree = {
       formal match {
-        case AppliedType(_, fun :: args :: ret :: Nil) if defn.isFunctionType(fun) =>
-          val funTypes = fun.dropDependentRefinement.dealias.argInfos
-          if (defn.tupleType(funTypes.init) =:= args && funTypes.last =:= ret) {
+        case AppliedType(_, funArgs @ fun :: tupled :: Nil) if defn.isFunctionType(fun) && defn.isFunctionType(tupled) =>
+          lazy val funTypes = fun.dropDependentRefinement.dealias.argInfos
+          lazy val tupledTypes = tupled.dropDependentRefinement.dealias.argInfos
+          if (
+            defn.isImplicitFunctionType(fun) == defn.isImplicitFunctionType(tupled) &&
+            tupledTypes.size == 2 &&
+            defn.tupleType(funTypes.init) =:= tupledTypes.head &&
+            funTypes.last =:= tupledTypes.last
+          ) {
             val arity = funTypes.size - 1
             if (defn.isErasedFunctionType(fun))
               EmptyTree // TODO support?
-            else if (defn.isImplicitFunctionType(fun))
-              EmptyTree // TODO support
             else if (arity <= Definitions.MaxImplementedFunctionArity)
-              ref(defn.InternalTupleFunctionModule).select(s"tupledFunction$arity".toTermName).appliedToTypes(funTypes)
+              ref(defn.InternalTupleFunctionModule).select(s"tupledFunction$arity".toTermName).appliedToTypes(funArgs)
             else
-              ref(defn.InternalTupleFunctionModule).select("tupledFunctionXXL".toTermName).appliedToTypes(fun :: args :: ret :: Nil)
+              ref(defn.InternalTupleFunctionModule).select("tupledFunctionXXL".toTermName).appliedToTypes(funArgs)
           } else EmptyTree
         case _ =>
           EmptyTree
