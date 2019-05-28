@@ -15,7 +15,7 @@
 \maketitle
 
 \begin{abstract}
-The current documentation tool (dottydoc) relies on compiler internals and low level code. The tool introduced here aims to build a program not dependant on compiler internals but instead use Tasty files which are output when a Scala program is compiled.
+The current documentation tool (Dottydoc) relies on compiler internals and low level code. The tool introduced here aims to build a program not dependant on compiler internals but instead use Tasty files which are output when a Scala program is compiled.
 
 It also aims at providing a tool with less bugs, more features and which is more easily maintenable.
 
@@ -23,6 +23,53 @@ For flexibility the output is in Markdown instead of the commonly used HTML.
 \end{abstract}
 
 \tableofcontents
+
+\chapter{Introduction}
+
+A documentation tool is a program generating information (often in the form of HTML files) about projects, it usually includes: method signatures, user written documentation, link to other pages, etc.
+In Dotty, the current tool for generating Scala project documentation is called Dottydoc. The tool introduced here, called Tastydoc, aims to improve on Dottydoc and replace it.
+
+Tastydoc makes use of TASTy files, they are output when a program is compiled, they contain information about the source code of a program. Tastydoc consumes such files to extract information about the code, that way it is completely independant from the compiler and can be used on its own.
+The tool tries to be as close as possible to the structure proposed in Dottydoc so that it can reuses partial portion of its code with minor modificaitions.
+As though documentation is often output as HTML files, here we choose to output Markdown files for reasons we detail further in the report.
+
+The tool was developped with a few goals in mind. It should be independant from the compiler, hence the use of TASTy files. It should produce humanly consumable files, hence the choice of Markdown as an output. It should have as much features as Dottydoc and produce a code easily maintenable.
+
+The report is organized in the following structure: First we will talk about the features of the tool, then give a high-level and a low-level architectural description. Dottydoc and Tastydoc will then be compared. We will finally talk about problems encountered during the development, further work and sumarise the project.
+
+\chapter{Features}
+
+\chapter{High-level architectural descriptions}
+*** Use TASTy
+Data format aimed at serializing compiler information about code,
+should be perfect to extract information from.
+*** Output Markdown
+Can be edited by hand, users can even add their own files;
+Easily consumable by other tools - renderable to HTML, PDF;
+Can be simply uploaded to Github;
+Can be processed by other tools before uploading the documentation;
+*** Reuse Dottydoc's intermediate representation
+Allows reusing Dottydoc's output;
+Dottydoc already has a complex templating mechanism which allows 
+attaching blogposts to documentation;
+
+\chapter{Low-level architecture}
+Class descriptions etc.
+
+\chapter{Comparison between DottyDoc and TastyDoc}
+*** Output/feature differences
+
+\chapter{Problems}
+*** No good Markdown library
+
+\chapter{Remaining work}
+*** Highlighting type lambdas
+*** ...
+
+\chapter{Summary}
+
+
+\chapter{BELOW IS OLD REPORT, STOP HERE}
 
 \chapter{Introduction}
 In dotty the documentation generation tool is called \texttt{dotty-doc}. However the tool is flawed in many ways, these flaws include:
@@ -316,3 +363,12 @@ Further work would include:
 \chapter{Conclusion}
 
 \end{document}
+
+% Expands introduction
+% Move flaws into own section
+% Avoid bulletpoints
+% Architecture
+% Reuse of dotty-doc backend thanks to structure
+% Explain dotty doc does not do a good job at xxx and result in yyy
+% Expands pros and cons of output
+% Remove 3.3
