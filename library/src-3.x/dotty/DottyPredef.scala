@@ -41,6 +41,8 @@ object DottyPredef {
   /** Creates a tupled version of this function: instead of N arguments,
    *  it accepts a single [[scala.Tuple]] argument.
    *
+   *  This is a generalization of [[scala.FunctionN.tupled]] that work on functions of any arity
+   *
    *  @tparam F the function type
    *  @tparam Args the tuple type with the same types as the function arguments of F
    *  @tparam R the return type of F
