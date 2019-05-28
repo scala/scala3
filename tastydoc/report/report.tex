@@ -38,6 +38,15 @@ The tool was developped with a few goals in mind. It should be independant from 
 The report is organized in the following structure: First we will talk about the features of the tool, then give a high-level and a low-level architectural description. Dottydoc and Tastydoc will then be compared. We will finally talk about problems encountered during the development, further work and sumarise the project.
 
 \chapter{Features}
+We will list here the most important features of Tastydoc. The tool has knowledge of the full signature of entities (classes, defs, vals, etc.), of classes/traits/objects/packages members, of classes constructors, known subclasses of a trait or class, companion and of user written documentation (including @ notations). It offers an easy to use interface (called Representation, see ) to access all these information for anyone willing to write their own documentation tool without worrying to consume TASTy files. The tool relies on TASTy files and is hence independant from the compiler.
+
+The intermediate structure is similar do Dottdoc \texttt{Entity}\footnote{\texttt{dotty/tools/dottydoc/Entity.scala}} which allows for an easy reuse of part of Dottydoc code with minor modifications. Right now, the tool uses some code from Dottydoc for parsing user documentation. But we can think of using it to produce the same HTMl files as does Dottydoc but without relying on compiler internals for example.
+
+Both syntax of user documentation is supported, that is the Wiki and the Markdown syntax. Linking to entities (classes, methods, etc.) is possible inside the user documentation.
+
+Tastdoc is able to link to type defined outside of the current TASTy files (as well as the one inside the file). This is particularly useful for linking to parameters and return types, companions and parents.
+
+The tool produces Markdown documentation files which are easy to modify and read.
 
 \chapter{High-level architectural descriptions}
 *** Use TASTy
