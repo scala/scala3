@@ -34,7 +34,7 @@ object Test {
     *  @tparam R the return type of F
     */
   def (f: F) compose[F, G, FArgs <: Tuple, GArgs <: Tuple, R](g: G) given (tg: TupledFunction[G, GArgs => FArgs], tf: TupledFunction[F, FArgs => R]): GArgs => R = {
-    x => tf(f)(tg(g)(x))
+    x => tf.tuple(f)(tg.tuple(g)(x))
   }
 
 }

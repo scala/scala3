@@ -18,7 +18,7 @@ The type class `TupleFunction` provides a way to abstract directly over function
  */
 @implicitNotFound("${F} cannot be tupled as ${G}")
 sealed trait TupledFunction[F, G] {
-  def apply(f: F): G
+  def tuple(f: F): G
 }
 ```
 
@@ -41,7 +41,7 @@ Examples
  *  @tparam Args the tuple type with the same types as the function arguments of F
  *  @tparam R the return type of F
  */
-def (f: F) tupled[F, Args <: Tuple, R] given (tupled: TupledFunction[F, Args => R]): Args => R = tupled(f)
+def (f: F) tupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Args => R]): Args => R = tf.tuple(f)
 ```
 
 `TupledFunction` can also be used to generalize the [`Tuple1.compose`](https://github.com/lampepfl/dotty/tests/run/tupled-function-compose.scala) and [`Tuple1.andThen`](https://github.com/lampepfl/dotty/tests/run/tupled-function-andThen.scala) methods to compose functions of larger arities and with functions that return tuples.
@@ -55,7 +55,7 @@ def (f: F) tupled[F, Args <: Tuple, R] given (tupled: TupledFunction[F, Args => 
  *  @tparam GArgs the tuple type with the same types as the function arguments of G
  *  @tparam R the return type of F
  */
-def (f: F) compose[F, G, FArgs <: Tuple, GArgs <: Tuple, R](g: G) given (tupledG: TupledFunction[G, GArgs => FArgs], tupledF: TupledFunction[F, FArgs => R]): GArgs => R = {
-  (x: GArgs) => tupledF(f)(tupledG(g)(x))
+def (f: F) compose[F, G, FArgs <: Tuple, GArgs <: Tuple, R](g: G) given (tg: TupledFunction[G, GArgs => FArgs], tf: TupledFunction[F, FArgs => R]): GArgs => R = {
+  (x: GArgs) => tf.tuple(f)(tg.tuple(g)(x))
 }
 ```

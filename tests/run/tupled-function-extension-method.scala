@@ -39,9 +39,9 @@ object Test {
   def (e: Expr[given Arg => R]) applyGiven[Arg, R](arg: Arg): R = e.x given arg
 
   // Applied to all funtions of arity 2 or more (including more than 22 parameters)
-  def (e: Expr[F]) apply[F, Args <: Tuple, R](args: Args) given (tupled: TupledFunction[F, Args => R]): R =
-    tupled(e.x)(args)
-  def (e: Expr[F]) applyGiven[F, Args <: Tuple, R](args: Args) given (tupled: TupledFunction[F, given Args => R]): R =
-    tupled(e.x) given args
+  def (e: Expr[F]) apply[F, Args <: Tuple, R](args: Args) given (tf: TupledFunction[F, Args => R]): R =
+    tf.tuple(e.x)(args)
+  def (e: Expr[F]) applyGiven[F, Args <: Tuple, R](args: Args) given (tf: TupledFunction[F, given Args => R]): R =
+    tf.tuple(e.x) given args
 
 }

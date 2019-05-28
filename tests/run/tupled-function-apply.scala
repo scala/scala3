@@ -113,6 +113,6 @@ object Test {
     *  @tparam Args the tuple type with the same types as the function arguments of F
     *  @tparam R the return type of F
     */
-  def (f: F) apply[F, Args <: Tuple, R](args: Args) given (tupled: TupledFunction[F, Args => R]): R =
-    tupled(f)(args)
+  def (f: F) apply[F, Args <: Tuple, R](args: Args) given (tf: TupledFunction[F, Args => R]): R =
+    tf.tuple(f)(args)
 }
