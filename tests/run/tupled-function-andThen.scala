@@ -33,7 +33,7 @@ object Test {
     *  @tparam R the return type of G
     */
   def (f: F) andThen[F, G, FArgs <: Tuple, GArgs <: Tuple, R](g: G) given (tf: TupledFunction[F, FArgs => GArgs], tg: TupledFunction[G, GArgs => R]): FArgs => R = {
-    x => tg.tuple(g)(tf.tuple(f)(x))
+    x => tg.tupled(g)(tf.tupled(f)(x))
   }
 
 }

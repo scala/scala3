@@ -40,8 +40,8 @@ object Test {
 
   // Applied to all funtions of arity 2 or more (including more than 22 parameters)
   def (e: Expr[F]) apply[F, Args <: Tuple, R](args: Args) given (tf: TupledFunction[F, Args => R]): R =
-    tf.tuple(e.x)(args)
+    tf.tupled(e.x)(args)
   def (e: Expr[F]) applyGiven[F, Args <: Tuple, R](args: Args) given (tf: TupledFunction[F, given Args => R]): R =
-    tf.tuple(e.x) given args
+    tf.tupled(e.x) given args
 
 }

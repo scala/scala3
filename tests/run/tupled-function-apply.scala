@@ -114,5 +114,5 @@ object Test {
     *  @tparam R the return type of F
     */
   def (f: F) apply[F, Args <: Tuple, R](args: Args) given (tf: TupledFunction[F, Args => R]): R =
-    tf.tuple(f)(args)
+    tf.tupled(f)(args)
 }

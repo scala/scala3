@@ -104,5 +104,5 @@ object Test {
     *  @tparam Args the tuple type with the same types as the function arguments of F
     *  @tparam R the return type of F
     */
-  def (f: Args => R) untupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Args => R]): F = tf.untuple(f)
+  def (f: Args => R) untupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Args => R]): F = tf.untupled(f)
 }

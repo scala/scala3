@@ -11,15 +11,15 @@ Now that we have functions and tuples generalized to [arities above 22](https://
 The type class `TupleFunction` provides a way to abstract directly over a function of any arity converting it to an equivalent function that receives all arguments in a single tuple.
 
 ```scala
-/** Type class relating a `FunctionN[..., R]` with an equvalent tupled function `Function1[TupleN[...], R]`
+/** Type class relating a `FunctionN[..., R]` with an equivalent tupled function `Function1[TupleN[...], R]`
  *
  *  @tparam F a function type
  *  @tparam G a tupled function type (function of arity 1 receiving a tuple as argument)
  */
 @implicitNotFound("${F} cannot be tupled as ${G}")
 sealed trait TupledFunction[F, G] {
-  def tuple(f: F): G
-  def untuple(g: G): F
+  def tupled(f: F): G
+  def untupled(g: G): F
 }
 ```
 
@@ -43,7 +43,7 @@ Examples
  *  @tparam Args the tuple type with the same types as the function arguments of F
  *  @tparam R the return type of F
  */
-def (f: F) tupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Args => R]): Args => R = tf.tuple(f)
+def (f: F) tupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Args => R]): Args => R = tf.tupled(f)
 ```
 
 `TupledFunction` can be used to generalize the `Function.untupled` methods to functions of any arities ([full example](https://github.com/lampepfl/dotty/tests/run/tupled-function-untupled.scala))
@@ -58,7 +58,7 @@ def (f: F) tupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Args => R]):
  *  @tparam Args the tuple type with the same types as the function arguments of F
  *  @tparam R the return type of F
  */
-def (f: Args => R) untupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Args => R]): F = tf.untuple(f)
+def (f: Args => R) untupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Args => R]): F = tf.untupled(f)
 ```
 
 `TupledFunction` can also be used to generalize the [`Tuple1.compose`](https://github.com/lampepfl/dotty/tests/run/tupled-function-compose.scala) and [`Tuple1.andThen`](https://github.com/lampepfl/dotty/tests/run/tupled-function-andThen.scala) methods to compose functions of larger arities and with functions that return tuples.
@@ -73,6 +73,6 @@ def (f: Args => R) untupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Ar
  *  @tparam R the return type of F
  */
 def (f: F) compose[F, G, FArgs <: Tuple, GArgs <: Tuple, R](g: G) given (tg: TupledFunction[G, GArgs => FArgs], tf: TupledFunction[F, FArgs => R]): GArgs => R = {
-  (x: GArgs) => tf.tuple(f)(tg.tuple(g)(x))
+  (x: GArgs) => tf.tupled(f)(tg.tupled(g)(x))
 }
 ```
