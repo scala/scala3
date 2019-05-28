@@ -48,21 +48,40 @@ Tastdoc is able to link to type defined outside of the current TASTy files (as w
 
 The tool produces Markdown documentation files which are easy to modify and read.
 
-\chapter{High-level architectural descriptions}
-*** Use TASTy
-Data format aimed at serializing compiler information about code,
-should be perfect to extract information from.
-*** Output Markdown
-Can be edited by hand, users can even add their own files;
-Easily consumable by other tools - renderable to HTML, PDF;
-Can be simply uploaded to Github;
-Can be processed by other tools before uploading the documentation;
-*** Reuse Dottydoc's intermediate representation
+\chapter{Architecture}
+\section{High-level architectural descriptions}
+\subsection{TASTy}
+TASTy is a data format aimed at serializing compiler information about code. Dotty produces these files for each classes, objects without companion, traits and packages if it contains something else than classes, traits or objects. From its nature it should be perfect to extract information from.
+This is done through the use of the reflect API and making a class extanding \texttt{TastyConsumer}\footnote{\texttt{scala/tasty/file/TastyConsumer.scala}}.
+
+\subsection{Markdown}
+Outputing Markdown instead of HTML has several advantages. It is easy to edit by hand and easily previewed. Users can easily add their own text or own file. A user could, for example, write a Markdown file and link it in the documentation of class or do the opposite, link a documentation page in a Markdown file.
+
+Markdown files can be easily uploaded to GitHub or GitLab, hence it would be extremly easy to upload documentation files along the code of a project.
+
+In addition to that lots of tools are available to consume Markdown files and output other format such as HTML or PDF. Making of Markdown a nice intermediate representation. From this we can imagine a pipeline like this:
+\begin{center}
+    \begin{tikzpicture}[node distance=2cm]
+        \node (write) [process] {User writes code and documentation};
+        \node (compile) [process, below of=write] {Compiler produces Tasty files};
+        \node (tool) [process, below of=compile] {Tastydoc consumes Tasty files and produces Markdown};
+        \node (user) [process, below of=tool] {User edits Markdown files or add files as he wishes};
+        \node (HTML) [process, below of=user] {Markdown files are consumed and transformed to any HTML/CSS combination};
+    
+        \draw [arrow] (write) -- (compile);
+        \draw [arrow] (compile) -- (tool);
+        \draw [arrow] (tool) -- (user);
+        \draw [arrow] (user) -- (HTML);
+    \end{tikzpicture}
+\end{center}
+
+\subsection{Reuse Dottydoc's intermediate representation}
+???Said enough in Features???
 Allows reusing Dottydoc's output;
 Dottydoc already has a complex templating mechanism which allows 
 attaching blogposts to documentation;
 
-\chapter{Low-level architecture}
+\section{Low-level architecture}
 Class descriptions etc.
 
 \chapter{Comparison between DottyDoc and TastyDoc}
