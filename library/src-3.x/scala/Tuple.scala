@@ -50,7 +50,7 @@ object Tuple {
   }
 
   /** Type of the element a position N in the tuple X */
-  type Elem[X <: Tuple, N] = X match {
+  type Elem[X <: Tuple, N <: Int] = X match {
     case x *: xs =>
       N match {
         case 0 => x
@@ -59,7 +59,7 @@ object Tuple {
   }
 
   /** Literal constant Int size of a tuple */
-  type Size[X] <: Int = X match {
+  type Size[X <: Tuple] <: Int = X match {
     case Unit => 0
     case x *: xs => S[Size[xs]]
   }
