@@ -82,7 +82,122 @@ Dottydoc already has a complex templating mechanism which allows
 attaching blogposts to documentation;
 
 \section{Low-level architecture}
-Class descriptions etc.
+\subsection{TastyExtractor}
+File: \texttt{dotty/tastydoc/TastyExtractor.scala}
+
+A trait containing useful methods for extracting information from the reflect API.
+
+\subsection{References}
+File: \texttt{dotty/tastydoc/references.scala}
+
+Object containing case classes. References are classes containing information about a specific type to be able to link to it later on. Inspired from Dottydoc.
+
+\subsection{TastyTypeConverter}
+File: \texttt{dotty/tastydoc/TastyTypeConverter.scala}
+
+Trait containing methods for converting from Reflect types to References.
+
+\subsection{Representation}
+File: \texttt{dotty/tastydoc/representations.scala}
+
+Implements both \texttt{TastyExtractor} and \texttt{TastyTypeConverter}
+
+A Representation contains all the information of a specific entity. The logic is as follows: different trait such as \texttt{Modifiers} or \texttt{Members} and classes which implement those trait. This logic is inspired by dotty-doc entities (\texttt{dotty/tools/dottydoc/Entity.scala}).
+
+A Representation take a reflect type such as \texttt{reflect.ClassDef} and extract every information from it using mostly \texttt{TastyExtractor} functions.
+
+Representation can then be easily used for printing, their content is self explanatory and no knowledge of Tasty is required to use them as the implementation is not exposed from the outside.
+
+We give below the existing Representation, a quick description and their signature (without parameters).
+\begin{itemize}
+    \item \texttt{PackageRepresentation} For packages
+\begin{lstlisting}[language=scala]
+class PackageRepresentation(...)
+extends Representation with Members
+\end{lstlisting}
+    \item \texttt{ImportRepresentation} For import, never used in the tool
+\begin{lstlisting}[language=scala]
+class ImportRepresentation(...)
+extends Representation
+\end{lstlisting}
+    \item \texttt{ClassRepresentation} For class, object and trait, including case class and case object.
+\begin{lstlisting}[language=scala]
+class ClassRepresentation(...)
+extends Representation with Members
+with Parents with Modifiers with Companion
+with Constructors with TypeParams
+\end{lstlisting}
+    \item \texttt{DefRepresentation} For definitions
+\begin{lstlisting}[language=scala]
+class DefRepresentation(...)
+extends Representation with Modifiers
+with TypeParams with MultipleParamList
+with ReturnValue
+\end{lstlisting}
+    \item \texttt{ValRepresentation} For val and var
+\begin{lstlisting}[language=scala]
+class ValRepresentation(...)
+extends Representation with Modifiers
+with ReturnValue
+\end{lstlisting}
+    \item \texttt{TypeRepresentation} For type alias
+\begin{lstlisting}[language=scala]
+class TypeRepresentation(...)
+extends Representation with Modifiers
+with TypeParams 
+\end{lstlisting}
+    \item \texttt{EmulatedPackageRepresentation} This Representation is a trick for regrouping every PackageRepresentation of a same package under the same Representation. Indeed the way Tasty works is that for each class or trait it will have a Tasty file and the top of \texttt{reflect.Tree} is a\texttt{reflect.PackageClause}, hence when converting multiple classes of the same package, there will be mutiple \texttt{PackageRepresentation} of the same package. In the point of view of usability, this is not the best and this Representation is here to counter this problem. When using an \texttt{EmulatedPackageRepresentation}, for the user it looks like he is using a \texttt{PackageRepresentation} containing all the members of the package.
+\end{itemize}
+
+\subsection{DocPrinter}
+File: \texttt{dotty/tastydoc/DocPrinter.scala}
+
+Object with methods for formatting Representations and References and writing them to files. Basically handle all the formatting and printing logic of the tool.
+
+\subsection{mdscala}
+File: \texttt{dotty/tastydoc/mdscala.scala}
+
+\subsection{TastyDocConsumer}
+File: \texttt{dotty/tastydoc/TastyDocConsumer.scala}
+
+Extends TastyConsumer and consumes Tasty Files to produce Representations.
+
+\subsection{Main}
+File: \texttt{dotty/tastydoc/Main.scala}
+
+Manages the workflow.
+
+Command line arguments are:
+\begin{itemize}
+    \item \textbf{-syntax} \{\textit{wiki} or \textit{markdown}\} Syntax to use for user documentation parsing
+    \item \textbf{-packagestolink} \{\textit{regex1 regex2 ...}\} Regexes to specify which packages should be linked when formatting Reference
+    \item \textbf{-classpath} \{\textit{URI}\} Extra classpath for input files
+    \item \textbf{-i} \{\textit{file1 file2 ...}\} Tasty files
+\end{itemize}
+
+\subsection{mdscala}
+File: \texttt{dotty/tastydoc/mdscala.scala}
+
+Object with methods for outputing markdown (do not handle escaping).
+
+\subsection{User documentation parsing}
+Files are in the package \texttt{dotty.tastydoc.comment}.
+
+See \autoref{sec:dotty-docParsing}
+
+\section{Workflow}
+Main workflow is as follows:
+
+\begin{center}
+    \begin{tikzpicture}[node distance=2cm]
+        \node (parse) [process] {Parse command line arguments};
+        \node (convert) [process, below of=parse] {Convert Tasty files to representation while keeping track of seen packages};
+        \node (output) [process, below of=convert] {Traverse Representation, format output and write to files};
+    
+        \draw [arrow] (parse) -- (convert);
+        \draw [arrow] (convert) -- (output);
+    \end{tikzpicture}
+\end{center}
 
 \chapter{Comparison between DottyDoc and TastyDoc}
 *** Output/feature differences
