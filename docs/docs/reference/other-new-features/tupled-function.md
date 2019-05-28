@@ -17,7 +17,7 @@ The type class `TupleFunction` provides a way to abstract directly over function
  *  @tparam G a tupled function type (function of arity 1 receiving a tuple as argument)
  */
 @implicitNotFound("${F} cannot be tupled as ${G}")
-trait TupledFunction[F, G] {
+sealed trait TupledFunction[F, G] {
   def apply(f: F): G
 }
 ```
