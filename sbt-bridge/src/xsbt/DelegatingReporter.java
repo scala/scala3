@@ -103,15 +103,19 @@ final public class DelegatingReporter extends AbstractReporter {
           return Optional.of(pos.point());
         }
         public Optional<Integer> pointer() {
-          return Optional.of(pos.point() - src.startOfLine(pos.point()));
+          if (!src.exists()) return Optional.empty();
+          else return Optional.of(pos.point() - src.startOfLine(pos.point()));
         }
         public Optional<String> pointerSpace() {
-          String lineContent = this.lineContent();
-          int pointer = this.pointer().get();
-          StringBuilder result = new StringBuilder();
-          for (int i = 0; i < pointer; i++)
-            result.append(lineContent.charAt(i) == '\t' ? '\t' : ' ');
-          return Optional.of(result.toString());
+          if (!src.exists()) return Optional.empty();
+          else {
+            String lineContent = this.lineContent();
+            int pointer = this.pointer().get();
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < pointer; i++)
+              result.append(lineContent.charAt(i) == '\t' ? '\t' : ' ');
+            return Optional.of(result.toString());
+          }
         }
       };
     } else {
