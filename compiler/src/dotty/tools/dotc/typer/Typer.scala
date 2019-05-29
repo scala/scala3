@@ -1810,8 +1810,15 @@ class Typer extends Namer
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = track("typedAnnotated") {
     val annot1 = typedExpr(tree.annot, defn.AnnotationType)
     val arg1 = typed(tree.arg, pt)
-    if (ctx.mode is Mode.Type)
-      assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
+    if (ctx.mode is Mode.Type) {
+      val result = assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
+      result.tpe match {
+        case AnnotatedType(rhs, Annotation.WithBounds(bounds)) =>
+          if (!bounds.contains(rhs)) ctx.error(em"type $rhs outside bounds $bounds", tree.sourcePos)
+        case _ =>
+      }
+      result
+    }
     else {
       val arg2 = arg1 match {
         case Typed(arg2, tpt: TypeTree) =>

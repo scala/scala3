@@ -372,7 +372,9 @@ object SymDenotations {
       case _ => unforcedDecls.openForMutations
     }
 
-    /** If this is a synthetic opaque type alias, mark it as Deferred with empty bounds.
+    /** If this is a synthetic opaque type alias, mark it as Deferred with bounds
+     *  as given by the right hand side's `WithBounds` annotation, if one is present,
+     *  or with empty bounds of the right kind, otherwise.
      *  At the same time, integrate the original alias as a refinement of the
      *  self type of the enclosing class.
      */
@@ -384,8 +386,14 @@ object SymDenotations {
       if (isOpaqueAlias) {
         info match {
           case TypeAlias(alias) =>
+            val (refiningAlias, bounds) = alias match {
+              case AnnotatedType(alias1, Annotation.WithBounds(bounds)) =>
+              	(alias1, bounds)
+              case _ =>
+              	(alias, TypeBounds(defn.NothingType, abstractRHS(alias)))
+            }
             def refineSelfType(selfType: Type) =
-              RefinedType(selfType, name, TypeAlias(alias))
+              RefinedType(selfType, name, TypeAlias(refiningAlias))
             val enclClassInfo = owner.asClass.classInfo
             enclClassInfo.selfInfo match {
               case self: Type =>
@@ -393,7 +401,7 @@ object SymDenotations {
               case self: Symbol =>
                 self.info = refineSelfType(self.info)
             }
-            info = TypeBounds(defn.NothingType, abstractRHS(alias))
+            info = bounds
             setFlag(Deferred)
             typeRef.recomputeDenot()
           case _ =>

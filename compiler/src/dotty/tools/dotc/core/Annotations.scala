@@ -171,8 +171,18 @@ object Annotations {
 
       def unapply(ann: Annotation)(implicit ctx: Context): Option[Symbol] =
         if (ann.symbol == defn.ChildAnnot) {
-          val AppliedType(tycon, (arg: NamedType) :: Nil) = ann.tree.tpe
+          val AppliedType(_, (arg: NamedType) :: Nil) = ann.tree.tpe
           Some(arg.symbol)
+        }
+        else None
+    }
+
+    /** Extractor for WithBounds[T] annotations */
+    object WithBounds {
+      def unapply(ann: Annotation)(implicit ctx: Context): Option[TypeBounds] =
+        if (ann.symbol == defn.WithBoundsAnnot) {
+          val AppliedType(_, lo :: hi :: Nil) = ann.tree.tpe
+          Some(TypeBounds(lo, hi))
         }
         else None
     }

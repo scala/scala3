@@ -450,7 +450,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           toTextLocal(tpt) ~ "[" ~ Text(args map argText, ", ") ~ "]"
       case LambdaTypeTree(tparams, body) =>
         changePrec(GlobalPrec) {
-          tparamsText(tparams) ~ " -> " ~ toText(body)
+          tparamsText(tparams) ~ " =>> " ~ toText(body)
         }
       case MatchTypeTree(bound, sel, cases) =>
         changePrec(GlobalPrec) {

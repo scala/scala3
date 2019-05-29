@@ -2313,7 +2313,8 @@ object Types {
     override def translucentSuperType(implicit ctx: Context) = info match {
       case TypeAlias(aliased) => aliased
       case TypeBounds(_, hi) =>
-        if (symbol.isOpaqueAlias) symbol.opaqueAlias.asSeenFrom(prefix, symbol.owner)
+        if (symbol.isOpaqueAlias)
+          symbol.opaqueAlias.asSeenFrom(prefix, symbol.owner).orElse(hi) // orElse can happen for malformed input
         else hi
       case _ => underlying
     }
