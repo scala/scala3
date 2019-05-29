@@ -1858,14 +1858,16 @@ object Parsers {
         // compatibility for Scala2 `x @ _*` syntax
         infixPattern() match {
           case pt @ Ident(tpnme.WILDCARD_STAR) =>
-            migrationWarningOrError("The syntax `x @ _*' is no longer supported; use `x : _*' instead", startOffset(p))
+            if (ctx.settings.strict.value)
+              migrationWarningOrError("The syntax `x @ _*' is no longer supported; use `x : _*' instead", startOffset(p))
             atSpan(startOffset(p), offset) { Typed(p, pt) }
           case pt =>
             atSpan(startOffset(p), 0) { Bind(name, pt) }
         }
       case p @ Ident(tpnme.WILDCARD_STAR) =>
         // compatibility for Scala2 `_*` syntax
-        migrationWarningOrError("The syntax `_*' is no longer supported; use `x : _*' instead", startOffset(p))
+        if (ctx.settings.strict.value)
+          migrationWarningOrError("The syntax `_*' is no longer supported; use `x : _*' instead", startOffset(p))
         atSpan(startOffset(p)) { Typed(Ident(nme.WILDCARD), p) }
       case p =>
         p
