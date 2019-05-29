@@ -24,13 +24,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
   def uniqueId: Int = myUniqueId
 
   def uniqueId_=(id: Int): Unit = {
-    if (Positioned.debugId == id) {
-      def printTrace() = {
-        val stack = Thread.currentThread().getStackTrace().map(">   " + _)
-        System.err.println(stack.mkString(s"> Debug tree (id=${Positioned.debugId}) creation \n> $this\n", "\n", "\n"))
-      }
-      printTrace()
-    }
+    if (Positioned.debugId == id) ???
     myUniqueId = id
   }
 

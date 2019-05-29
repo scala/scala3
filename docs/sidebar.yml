@@ -183,6 +183,8 @@ sidebar:
           url: docs/internals/type-system.html
         - title: "Dotty Internals 1: Trees & Symbols (Meeting Notes)"
           url: docs/internals/dotty-internals-1-notes.html
+        - title: Debug Macros
+          url: docs/internals/debug-macros.html
     - title: Resources
       subsection:
         - title: Talks
