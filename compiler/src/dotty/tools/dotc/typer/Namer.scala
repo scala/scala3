@@ -1455,21 +1455,18 @@ class Namer { typer: Typer =>
       sym.info = NoCompleter
       sym.info = checkNonCyclic(sym, unsafeInfo, reportErrors = true)
     }
+    sym.normalizeOpaque()
     sym.resetFlag(Provisional)
 
     // Here we pay the price for the cavalier setting info to TypeBounds.empty above.
     // We need to compensate by reloading the denotation of references that might
     // still contain the TypeBounds.empty. If we do not do this, stdlib factories
     // fail with a bounds error in PostTyper.
-    def ensureUpToDate(tp: Type, outdated: Type) = tp match {
-      case tref: TypeRef if tref.info == outdated && sym.info != outdated =>
-        tref.recomputeDenot()
-      case _ =>
-    }
-    sym.normalizeOpaque()
+    def ensureUpToDate(tref: TypeRef, outdated: Type) =
+      if (tref.info == outdated && sym.info != outdated) tref.recomputeDenot()
     ensureUpToDate(sym.typeRef, dummyInfo1)
     if (dummyInfo2 `ne` dummyInfo1) ensureUpToDate(sym.typeRef, dummyInfo2)
-    ensureUpToDate(sym.typeRef.appliedTo(tparamSyms.map(_.typeRef)), TypeBounds.empty)
+
     sym.info
   }
 }
