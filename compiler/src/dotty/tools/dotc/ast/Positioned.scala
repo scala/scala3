@@ -27,10 +27,11 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
   def uniqueId: Int = myUniqueId
 
   def uniqueId_=(id: Int): Unit = {
-    if (Positioned.debugId == id) {
+    def printTrace() = {
       println(s"Debug tree (id=${Positioned.debugId}) creation \n$this\n")
       Reporter.displayPrompt(Console.in, new PrintWriter(Console.err, true))
     }
+    if (Positioned.debugId == id) printTrace()
     myUniqueId = id
   }
 
