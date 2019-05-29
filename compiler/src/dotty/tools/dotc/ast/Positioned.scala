@@ -10,6 +10,9 @@ import core.Flags.{JavaDefined, Extension}
 import core.StdNames.nme
 import annotation.constructorOnly
 import annotation.internal.sharable
+import reporting.Reporter
+
+import java.io.{ PrintWriter }
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */
@@ -24,7 +27,10 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
   def uniqueId: Int = myUniqueId
 
   def uniqueId_=(id: Int): Unit = {
-    if (Positioned.debugId == id) ???
+    if (Positioned.debugId == id) {
+      println(s"Debug tree (id=${Positioned.debugId}) creation \n$this\n")
+      Reporter.displayPrompt(Console.in, new PrintWriter(Console.err, true))
+    }
     myUniqueId = id
   }
 
