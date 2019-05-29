@@ -90,7 +90,7 @@ A trait containing useful methods for extracting information from the reflect AP
 \subsection{References}
 File: \texttt{dotty/tastydoc/references.scala}
 
-Object containing case classes. References are classes containing information about a specific type to be able to link to it later on. Inspired from Dottydoc.
+Object containing case classes. References are classes containing information about a specific type to be able to link to it later on. This is inspired from Dottydoc. There exists a reference for all the existing special type such as "or type". Referencing a user defined type (such as a class or a type alias) is done using a label (the name of the type, like "String") and a path (the full path in which it is defined, like "/scala/Predef/).
 
 \subsection{TastyTypeConverter}
 File: \texttt{dotty/tastydoc/TastyTypeConverter.scala}
@@ -100,11 +100,11 @@ Trait containing methods for converting from Reflect types to References.
 \subsection{Representation}
 File: \texttt{dotty/tastydoc/representations.scala}
 
-Implements both \texttt{TastyExtractor} and \texttt{TastyTypeConverter}
+Object implementing both \texttt{TastyExtractor} and \texttt{TastyTypeConverter}
 
-A Representation contains all the information of a specific entity. The logic is as follows: different trait such as \texttt{Modifiers} or \texttt{Members} and classes which implement those trait. This logic is inspired by dotty-doc entities (\texttt{dotty/tools/dottydoc/Entity.scala}).
+A Representation contains all the information of a specific entity. The logic is as follows: there exist different trait such as \texttt{Modifiers} or \texttt{Members} and classes which implement those trait. This logic is inspired by dotty-doc Entities\footnote{\texttt{dotty/tools/dottydoc/Entity.scala}}.
 
-A Representation take a reflect type such as \texttt{reflect.ClassDef} and extract every information from it using mostly \texttt{TastyExtractor} functions.
+A Representation take a reflect class such as \texttt{reflect.ClassDef} and extract every information from it using mostly \texttt{TastyExtractor} functions while converting types to References using \texttt{TastyTypeConverter} functions.
 
 Representation can then be easily used for printing, their content is self explanatory and no knowledge of Tasty is required to use them as the implementation is not exposed from the outside.
 
@@ -152,20 +152,22 @@ with TypeParams
 \subsection{DocPrinter}
 File: \texttt{dotty/tastydoc/DocPrinter.scala}
 
-Object with methods for formatting Representations and References and writing them to files. Basically handle all the formatting and printing logic of the tool.
+Object with methods for formatting Representations and References to Markdown and writing them to files. Basically handle all the formatting and printing logic of the tool.
 
 \subsection{mdscala}
 File: \texttt{dotty/tastydoc/mdscala.scala}
 
+Object with helper methods for outputing markdown. Unfortunately it does not handle escaping as it is a non trivial task and would have required a significant amount of time.
+
 \subsection{TastyDocConsumer}
 File: \texttt{dotty/tastydoc/TastyDocConsumer.scala}
 
-Extends TastyConsumer and consumes Tasty Files to produce Representations.
+Extends TastyConsumer and consumes TASTy files to produce Representations.
 
 \subsection{Main}
 File: \texttt{dotty/tastydoc/Main.scala}
 
-Manages the workflow.
+Manages the workflow (see \autoref{sec:workflow}).
 
 Command line arguments are:
 \begin{itemize}
@@ -175,29 +177,27 @@ Command line arguments are:
     \item \textbf{-i} \{\textit{file1 file2 ...}\} Tasty files
 \end{itemize}
 
-\subsection{mdscala}
-File: \texttt{dotty/tastydoc/mdscala.scala}
-
-Object with methods for outputing markdown (do not handle escaping).
-
 \subsection{User documentation parsing}
 Files are in the package \texttt{dotty.tastydoc.comment}.
 
-See \autoref{sec:dotty-docParsing}
+These files are taken from Dottydoc (slightly modified to work with this architecture and output Markdown instead of HTML) and are responsible for parsing user written documentation.
 
 \section{Workflow}
+\label{sec:workflow}
 Main workflow is as follows:
 
 \begin{center}
     \begin{tikzpicture}[node distance=2cm]
         \node (parse) [process] {Parse command line arguments};
-        \node (convert) [process, below of=parse] {Convert Tasty files to representation while keeping track of seen packages};
-        \node (output) [process, below of=convert] {Traverse Representation, format output and write to files};
+        \node (convert) [process, below of=parse] {Convert TASTy files to Representation while keeping track of seen packages};
+        \node (output) [process, below of=convert] {Traverse Representation, parse user documentation, format output and write to files};
     
         \draw [arrow] (parse) -- (convert);
         \draw [arrow] (convert) -- (output);
     \end{tikzpicture}
 \end{center}
+
+As we can see, parsing user documentation is only done after converting to Representation. Indeed to be able to link methods, classes, etc. from user documentation we need to have converted everything to Representation first otherwise there is no way to know what is linked (a method? a class? an object?).
 
 \chapter{Comparison between DottyDoc and TastyDoc}
 *** Output/feature differences

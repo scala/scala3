@@ -39,6 +39,7 @@
 * Difficulties, problems with dottydoc + md libraries
 * benchmark?
 * Say everything is split into function
+* Be consistent in methods/function and parameters/arguments
 
 # To Ask
 * Too much operations on String for path?
