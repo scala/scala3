@@ -25,7 +25,7 @@ class ConsoleReporter(
     val didPrint = m match {
       case m: Error =>
         printMessage(messageAndPos(m.contained(), m.pos, diagnosticLevel(m)))
-        if (ctx.settings.Xprompt.value) displayPrompt()
+        if (ctx.settings.Xprompt.value) Reporter.displayPrompt(reader, writer)
         true
       case m: ConditionalWarning if !m.enablingOption.value =>
         false
@@ -38,29 +38,6 @@ class ConsoleReporter(
       printMessage(explanation(m.contained()))
     else if (didPrint && m.contained().explanation.nonEmpty)
       printMessage("\nlonger explanation available when compiling with `-explain`")
-  }
-
-  /** Show prompt if `-Xprompt` is passed as a flag to the compiler */
-  def displayPrompt(): Unit = {
-    writer.println()
-    writer.print("a)bort, s)tack, r)esume: ")
-    writer.flush()
-    if (reader != null) {
-      def loop(): Unit = reader.read match {
-        case 'a' | 'A' =>
-          new Throwable().printStackTrace(writer)
-          System.exit(1)
-        case 's' | 'S' =>
-          new Throwable().printStackTrace(writer)
-          writer.println()
-          writer.flush()
-        case 'r' | 'R' =>
-          ()
-        case _ =>
-          loop()
-      }
-      loop()
-    }
   }
 
   override def flush()(implicit ctx: Context): Unit = { writer.flush() }

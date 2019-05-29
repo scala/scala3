@@ -8,13 +8,16 @@ import core.Contexts._
 import util.{SourcePosition, NoSourcePosition}
 import core.Decorators.PhaseListDecorator
 import collection.mutable
-import java.lang.System.currentTimeMillis
 import core.Mode
 import dotty.tools.dotc.core.Symbols.{Symbol, NoSymbol}
 import diagnostic.messages._
 import diagnostic._
 import ast.{tpd, Trees}
 import Message._
+
+import java.lang.System.currentTimeMillis
+import java.io.{ BufferedReader, PrintWriter }
+
 
 object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
@@ -37,6 +40,29 @@ object Reporter {
 
   private val defaultIncompleteHandler: ErrorHandler =
     (mc, ctx) => ctx.reporter.report(mc)(ctx)
+
+  /** Show prompt if `-Xprompt` is passed as a flag to the compiler */
+  def displayPrompt(reader: BufferedReader, writer: PrintWriter): Unit = {
+    writer.println()
+    writer.print("a)bort, s)tack, r)esume: ")
+    writer.flush()
+    if (reader != null) {
+      def loop(): Unit = reader.read match {
+        case 'a' | 'A' =>
+          new Throwable().printStackTrace(writer)
+          System.exit(1)
+        case 's' | 'S' =>
+          new Throwable().printStackTrace(writer)
+          writer.println()
+          writer.flush()
+        case 'r' | 'R' =>
+          ()
+        case _ =>
+          loop()
+      }
+      loop()
+    }
+  }
 }
 
 trait Reporting { this: Context =>
