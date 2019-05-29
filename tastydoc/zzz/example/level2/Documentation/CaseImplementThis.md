@@ -1,3 +1,4 @@
+example.level2.Documentation
 # trait CaseImplementThis
 
 <pre><code class="language-scala" >sealed trait CaseImplementThis</pre></code>

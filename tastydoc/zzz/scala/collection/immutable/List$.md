@@ -1,3 +1,4 @@
+scala.collection.immutable
 # object List
 
 ## Companion class <a href="./List.md">List</a>

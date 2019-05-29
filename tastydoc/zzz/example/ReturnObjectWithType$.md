@@ -1,3 +1,4 @@
+example
 # object ReturnObjectWithType
 
 <pre><code class="language-scala" >final object ReturnObjectWithType extends Serializable</pre></code>

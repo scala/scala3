@@ -1,3 +1,4 @@
+example.level2.Documentation
 # case class IAmACaseClass
 
 ## Companion object <a href="./IAmACaseClass$.md">IAmACaseClass</a>

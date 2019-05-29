@@ -321,6 +321,8 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
       })
     }
 
+    representation.path.mkString(".") +
+    "\n" +
     Md.header1(representation.kind + " " + representation.name) +
     "\n" +
     formatCompanion() +

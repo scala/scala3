@@ -1,3 +1,4 @@
+example.level2
 # object TraitWithCompanion
 
 ## Companion trait <a href="./TraitWithCompanion.md">TraitWithCompanion</a>

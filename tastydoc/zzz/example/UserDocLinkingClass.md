@@ -1,3 +1,4 @@
+example
 # class UserDocLinkingClass
 
 <pre><code class="language-scala" >class UserDocLinkingClass</pre></code>

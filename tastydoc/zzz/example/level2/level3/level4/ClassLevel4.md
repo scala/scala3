@@ -1,3 +1,4 @@
+example.level2.level3.level4
 # class ClassLevel4
 
 <pre><code class="language-scala" >sealed abstract class ClassLevel4[T, A <: scala.Int, B >: scala.Predef.String, X, Y] extends Documentation[T, A, B, X, Y]</pre></code>
