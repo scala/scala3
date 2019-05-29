@@ -2,7 +2,7 @@ package scala
 
 import scala.annotation.implicitNotFound
 
-/** Type class relating a `FunctionN[..., R]` with an equivalent tupled function `Function1[TupleN[...], R]`
+/** Type class relating a `FunctionN[T1, ..., Tn, R]` with an equivalent tupled function `Function1[TupleN[T1, ..., Tn], R]`
  *
  *  @tparam F a function type
  *  @tparam G a tupled function type (function of arity 1 receiving a tuple as argument)
@@ -169,7 +169,7 @@ package internal {
     def tupledFunctionXXL[F, G]: TupledFunction[F, G] = new TupledFunction {
       def tupled(f: F): G = ((args: TupleXXL) => f.asInstanceOf[FunctionXXL].apply(args.elems)).asInstanceOf[G]
       def untupled(g: G): F = new FunctionXXL {
-        override def apply(xs: Array[Object]): AnyRef = g.asInstanceOf[TupleXXL => AnyRef].apply(TupleXXL(xs))
+        def apply(xs: Array[Object]): AnyRef = g.asInstanceOf[TupleXXL => AnyRef].apply(TupleXXL(xs))
       }.asInstanceOf[F]
     }
 
