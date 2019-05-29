@@ -234,6 +234,21 @@ object DottyPlugin extends AutoPlugin {
       // bootclasspath, and instead have scala-library and dotty-library on the
       // compiler classpath. This means that user code could shadow symbols
       // from these jars but we can live with that for now.
+
+      // sbt crazy scoping rules mean that when we override `classpathOptions`
+      // below we also override `classpathOptions in console` which is normally
+      // set in https://github.com/sbt/sbt/blob/b6f02b9b8cd0abb15e3d8856fd76b570deb1bd61/main/src/main/scala/sbt/Defaults.scala#L503,
+      // this breaks `sbt console` in Scala 2 projects.
+      // There seems to be no way to avoid stomping over task-scoped settings,
+      // so we need to manually set `classpathOptions in console` to something sensible,
+      // ideally this would be "whatever would be set if this plugin was not enabled",
+      // but I can't find a way to do this, so we default to whatever is set in ThisBuild.
+      classpathOptions in console := {
+        if (isDotty.value)
+          classpathOptions.value // The Dotty REPL doesn't require anything special on its classpath
+        else
+          (classpathOptions in console in ThisBuild).value
+      },
       classpathOptions := {
         val old = classpathOptions.value
         if (isDotty.value)
