@@ -865,6 +865,14 @@ trait Kernel {
   /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
   def Type_derivesFrom(self: Type)(cls: ClassDefSymbol)(implicit ctx: Context): Boolean
 
+  /** Is this type a function type?
+   *
+   *  @return true if the dealised type of `self` without refinement is `FunctionN[T1, T2, ..., Tn]`
+   *
+   *  @note `List[Int]` is not a function type, despite that `List[Int] <:< Int => Int`.
+   */
+  def Type_isFunctionType(self: Type)(implicit ctx: Context): Boolean
+
   /** A singleton type representing a known constant value */
   type ConstantType <: Type
 

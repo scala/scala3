@@ -27,6 +27,13 @@ trait TypeOrBoundsOps extends Core {
     def derivesFrom(cls: ClassDefSymbol)(implicit ctx: Context): Boolean =
       kernel.Type_derivesFrom(self)(cls)
 
+    /** Is this type a function type?
+     *
+     *  @return true if the dealised type of `self` without refinement is `FunctionN[T1, T2, ..., Tn]`
+     *
+     *  @note `List[Int]` is not a function type, despite that `List[Int] <:< Int => Int`.
+     */
+    def isFunctionType(implicit ctx: Context): Boolean = kernel.Type_isFunctionType(self)
   }
 
   object IsType {
