@@ -384,8 +384,6 @@ object SymDenotations {
       if (isOpaqueAlias) {
         info match {
           case TypeAlias(alias) =>
-            info = TypeBounds(defn.NothingType, abstractRHS(alias))
-
             def refineSelfType(selfType: Type) =
               RefinedType(selfType, name, TypeAlias(alias))
             val enclClassInfo = owner.asClass.classInfo
@@ -395,8 +393,9 @@ object SymDenotations {
               case self: Symbol =>
                 self.info = refineSelfType(self.info)
             }
-
+            info = TypeBounds(defn.NothingType, abstractRHS(alias))
             setFlag(Deferred)
+            typeRef.recomputeDenot()
           case _ =>
         }
       }
