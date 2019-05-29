@@ -918,7 +918,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         Typed(tree, TypeTree(defn.AnyRefType))
       }
       else tree.ensureConforms(defn.ObjectType)
-      receiver.select(defn.Object_ne).appliedTo(nullLiteral)
+      receiver.select(defn.Object_ne).appliedTo(nullLiteral).withSpan(tree.span)
     }
 
     /** If inititializer tree is `_', the default value of its type,
