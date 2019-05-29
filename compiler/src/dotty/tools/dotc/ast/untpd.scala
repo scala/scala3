@@ -161,8 +161,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Inline()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Inline)
 
-    case class Enum()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Enum)
-
     case class Instance()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implied)
   }
 

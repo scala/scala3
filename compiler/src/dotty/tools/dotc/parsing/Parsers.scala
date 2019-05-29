@@ -2599,7 +2599,7 @@ object Parsers {
         case CASEOBJECT =>
           objectDef(start, posMods(start, mods | Case | Module))
         case ENUM =>
-          enumDef(start, mods, atSpan(in.skipToken()) { Mod.Enum() })
+          enumDef(start, posMods(start, mods | Enum))
         case IMPLIED =>
           instanceDef(start, mods, atSpan(in.skipToken()) { Mod.Instance() })
         case _ =>
@@ -2647,18 +2647,18 @@ object Parsers {
 
     /**  EnumDef ::=  id ClassConstr InheritClauses EnumBody
      */
-    def enumDef(start: Offset, mods: Modifiers, enumMod: Mod): TypeDef = atSpan(start, nameStart) {
+    def enumDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
       val modName = ident()
       val clsName = modName.toTypeName
       val constr = classConstr()
       val templ = template(constr, isEnum = true)
-      finalizeDef(TypeDef(clsName, templ), addMod(mods, enumMod), start)
+      finalizeDef(TypeDef(clsName, templ), mods, start)
     }
 
     /** EnumCase = `case' (id ClassConstr [`extends' ConstrApps] | ids)
      */
     def enumCase(start: Offset, mods: Modifiers): DefTree = {
-      val mods1 = addMod(mods, atSpan(in.offset)(Mod.Enum())) | Case
+      val mods1 = mods | EnumCase
       in.skipCASE()
 
       atSpan(start, nameStart) {
