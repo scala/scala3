@@ -12,6 +12,7 @@ object Test extends App {
 
   class Scanner {
     def scan() = println("scanning")
+    def (x: Any) scanned = scan()
   }
   object Scanner extends Scanner
 
@@ -29,6 +30,16 @@ object Test extends App {
   Copier.cfg
   Copier.config
   Copier.config2
+
+  def test() = {
+    import Copier._
+    print()
+    scanIt()
+    val x = config2
+    val y = cfg
+    1.scanned
+  }
+  test()
 }
 
 final class Foo {

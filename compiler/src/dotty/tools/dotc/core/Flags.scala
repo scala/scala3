@@ -594,6 +594,9 @@ object Flags {
 
   final val ImplicitOrImpliedOrGivenTerm = ImplicitOrImpliedOrGiven.toTermFlags
 
+  /** Flags retained in export forwarders */
+  final val RetainedExportFlags = ImplicitOrImpliedOrGiven | Extension
+
   /** Assumed to be pure */
   final val StableOrErased: FlagSet = StableRealizable | Erased
 
