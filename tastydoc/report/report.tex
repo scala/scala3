@@ -201,13 +201,37 @@ Main workflow is as follows:
 
 As we can see, parsing user documentation is only done after converting to Representation. Indeed to be able to link methods, classes, etc. from user documentation we need to have converted everything to Representation first otherwise there is no way to know what is linked (a method? a class? an object?).
 
-\chapter{Comparison between DottyDoc and TastyDoc}
-*** Output/feature differences
+\chapter{Comparison between Dottydoc and Tastydoc}
+Here we compare Dottydoc and Tastydoc in term of features, bugs and output.
+
+Dottydoc heavily relies on compiler internals and hence cannot be detached from it. Tastdoc relies on TASTy files and hence can be completely separate from the compiler and can be distributed as a separate tool.
+
+Dottydoc relies on low level and complex code where Tastydoc relies on the comprehensive Reflect API while trying to be as clear and as maintenable as possible.
+
+Dottydoc outputs HTML/CSS with a preformatted template and offers no way to customize anything. Also HTML/CSS forces the user to host it on a website where Markdown can simply be viewed on an online git repository without further tasks. Tastydoc counters this problem by outputting Markdown.
+
+Dottydoc is not maintened and hence does not follow the evolution in Master. This opens to bugs for example it does not take care of colors in the \texttt{show} method and it results in faulty type or method output like \texttt{[32m"getOffset"[0m}. Classes often show to be extending Object instead of their superclass because Object is given first when asking for the parents list to the compiler, example\footnote{\url{https://dotty.epfl.ch/api/scala/Conversion.HTML}}:
+\begin{lstlisting}[language=scala]
+    abstract class Conversion [ -T, +U ]
+    extends Object with Function1
+\end{lstlisting}
+
+GO STRAIGHT TO NEXT SECTION (PROBLEMS) FROM HERE
+\begin{itemize}
+    \item Annotations which sould not be display, sometimes are. Example:
+    \item Lacks some features, especially:
+    \begin{itemize}
+        \item No known subclasses
+        \item 
+    \end{itemize}
+\end{itemize}
+
 
 \chapter{Problems}
+\label{sec:problems}
 A few problems were encountered during the development, some could not be fixed for reasons detailled below.
 
-The output being in Markdown we need a library to take a String as input and output Markdown, like "format this input to a header of level 1". The library also needs to escape the input, indeed if we have a String "\#", if we do not escape it, Markdown will interpret it as a header of level 1 and this is not the expected behavior. This is where we have a problem because no such library exists.
+The output being in Markdown we need a library to take a String as input and output Markdown, like "format this input to a header of level 1". The library also needs to escape the input, indeed if we have a String "\#", if we do not escape it, Markdown will interpret it as a header of level 1 and this is not the expected behavior. This is where we have a problem because no such library exists in Java or Scala.
 
 We use code blocks for formatting signatures and indicating we have a piece of code. In these code blocks we also want to be able to make links pointing to the documentation page of a type. Unfortunately Markdown fenced code blocks do not allow to have link in them. To counter this problem we use HTML pre and code tag which are also understood by Markdown viewer but this causes two problems. First it is not pure Markdown anymore and then we loose the language syntax highlight from Markdown fenced code blocks.
 
@@ -220,8 +244,13 @@ If we have twice the same header name, when linking to this header it is ambiguo
 Flexmark-java Markdown parser does not understand when ordered and unordered lists are combined, they are parsed as 2 separate list instead of a multi-level list.
 
 \chapter{Remaining work}
-*** Highlighting type lambdas
-*** ...
+Althought the project is nearly features complete. Some work needs to be done to perfect the tool.
+
+As seen in \autoref{sec:problems} we do not escape anything before outputting Markdown this is a problem that needs to be adressed by making a library capable of escaping Markdown. This is not a trivial task as Markdown has a lot of different available syntaxes, especially when we extends Markdown with some features like tables.
+
+Type Lambdas are complex types to handle and convert to References, right now they are converted to constant References. This is not the expected behavior and the output is not the one we expect and no linking can be done when using constant Reference. It is however acceptable for a first version as type lambdas do not appears that often.
+
+Markdown files for documenation are good for all the reasons mentionned in this report but some people still want a good HTML/CSS documentation. The aim here would be to either take back what Dottydoc has and use it with our code, either build something new. The first case should be pretty straightforward as our intermediate representation looks very much alike Dottydocs. The biggest change would be for References as links are handeled a bit differently in this tool.
 
 \chapter{Summary}
 
@@ -543,12 +572,3 @@ Further work would include:
 \chapter{Conclusion}
 
 \end{document}
-
-% Expands introduction
-% Move flaws into own section
-% Avoid bulletpoints
-% Architecture
-% Reuse of dotty-doc backend thanks to structure
-% Explain dotty doc does not do a good job at xxx and result in yyy
-% Expands pros and cons of output
-% Remove 3.3
