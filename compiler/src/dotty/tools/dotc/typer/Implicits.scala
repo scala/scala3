@@ -709,6 +709,51 @@ trait Implicits { self: Typer =>
       if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.TastyReflection_macroContext)
       else EmptyTree
 
+    def synthesizedTupleFunction(formal: Type): Tree = {
+      formal match {
+        case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
+          def functionTypeEqual(baseFun: Type, actualArgs: List[Type], actualRet: Type, expected: Type) = {
+            expected =:= defn.FunctionOf(actualArgs, actualRet, defn.isImplicitFunctionType(baseFun), defn.isErasedFunctionType(baseFun))
+          }
+          val arity: Int = {
+            if (defn.isErasedFunctionType(fun) || defn.isErasedFunctionType(fun)) -1 // TODO support?
+            else if (defn.isFunctionType(fun)) {
+              // TupledFunction[(...) => R, ?]
+              fun.dropDependentRefinement.dealias.argInfos match {
+                case funArgs :+ funRet if functionTypeEqual(fun, defn.tupleType(funArgs) :: Nil, funRet, tupled) =>
+                  // TupledFunction[(...funArgs...) => funRet, ?]
+                  funArgs.size
+                case _ => -1
+              }
+            } else if (defn.isFunctionType(tupled)) {
+              // TupledFunction[?, (...) => R]
+              tupled.dropDependentRefinement.dealias.argInfos match {
+                case tupledArgs :: funRet :: Nil =>
+                  defn.tupleTypes(tupledArgs) match {
+                    case Some(funArgs) if functionTypeEqual(tupled, funArgs, funRet, fun) =>
+                      // TupledFunction[?, ((...funArgs...)) => funRet]
+                      funArgs.size
+                    case _ => -1
+                  }
+                case _ => -1
+              }
+            }
+            else {
+              // TupledFunction[?, ?]
+              -1
+            }
+          }
+          if (arity == -1)
+            EmptyTree
+          else if (arity <= Definitions.MaxImplementedFunctionArity)
+            ref(defn.InternalTupleFunctionModule).select(s"tupledFunction$arity".toTermName).appliedToTypes(funArgs)
+          else
+            ref(defn.InternalTupleFunctionModule).select("tupledFunctionXXL".toTermName).appliedToTypes(funArgs)
+        case _ =>
+          EmptyTree
+      }
+    }
+
     /** If `formal` is of the form Eql[T, U], try to synthesize an
      *  `Eql.eqlAny[T, U]` as solution.
      */
@@ -828,7 +873,8 @@ trait Implicits { self: Typer =>
               trySpecialCase(defn.GenericClass, synthesizedGeneric,
                 trySpecialCase(defn.TastyReflectionClass, synthesizedTastyContext,
                   trySpecialCase(defn.EqlClass, synthesizedEq,
-                    trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed))))))
+                    trySpecialCase(defn.TupledFunctionClass, synthesizedTupleFunction,
+                      trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed)))))))
     }
   }
 

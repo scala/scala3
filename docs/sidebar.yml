@@ -89,6 +89,8 @@ sidebar:
               url: docs/reference/other-new-features/erased-terms.html
             - title: Kind Polymorphism
               url: docs/reference/other-new-features/kind-polymorphism.html
+            - title: Tupled Function
+              url: docs/reference/other-new-features/tupled-function.html
         - title: Other Changed Features
           subsection:
             - title: Volatile Lazy Vals

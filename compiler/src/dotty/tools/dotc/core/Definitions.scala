@@ -10,6 +10,8 @@ import collection.mutable
 import Denotations.SingleDenotation
 import util.SimpleIdentityMap
 
+import scala.annotation.tailrec
+
 object Definitions {
 
   /** The maximum number of elements in a tuple or product.
@@ -24,7 +26,7 @@ object Definitions {
    *  The limit 22 is chosen for Scala2x interop. It could be something
    *  else without affecting the set of programs that can be compiled.
    */
-  val MaxImplementedFunctionArity: Int = 22
+  val MaxImplementedFunctionArity: Int = MaxTupleArity
 }
 
 /** A class defining symbols and types of standard definitions
@@ -795,6 +797,13 @@ class Definitions {
     def TupleXXL_apply(implicit ctx: Context): Symbol =
       TupleXXLModule.info.member(nme.apply).requiredSymbol("method", nme.apply, TupleXXLModule)(_.info.isVarArgsMethod)
 
+  lazy val TupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.TupledFunction")
+  def TupledFunctionClass(implicit ctx: Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass
+
+  lazy val InternalTupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.internal.TupledFunction")
+  def InternalTupleFunctionClass(implicit ctx: Context): ClassSymbol = InternalTupledFunctionTypeRef.symbol.asClass
+  def InternalTupleFunctionModule(implicit ctx: Context): Symbol = ctx.requiredModule("scala.internal.TupledFunction")
+
   // Annotation base classes
   lazy val AnnotationType: TypeRef              = ctx.requiredClassRef("scala.annotation.Annotation")
   def AnnotationClass(implicit ctx: Context): ClassSymbol = AnnotationType.symbol.asClass
@@ -1187,8 +1196,19 @@ class Definitions {
 
   def tupleType(elems: List[Type]): Type = {
     val arity = elems.length
-    if (arity <= MaxTupleArity && TupleType(arity) != null) TupleType(arity).appliedTo(elems)
+    if (0 < arity && arity <= MaxTupleArity && TupleType(arity) != null) TupleType(arity).appliedTo(elems)
     else TypeOps.nestedPairs(elems)
+  }
+
+  def tupleTypes(tp: Type, bound: Int = Int.MaxValue)(implicit ctx: Context): Option[List[Type]] = {
+    @tailrec def rec(tp: Type, acc: List[Type], bound: Int): Option[List[Type]] = tp match {
+      case _ if bound < 0 => Some(acc.reverse)
+      case tp: AppliedType if defn.PairClass == tp.classSymbol => rec(tp.args(1), tp.args.head :: acc, bound - 1)
+      case tp: AppliedType if defn.isTupleClass(tp.tycon.classSymbol) => Some(acc.reverse ::: tp.args)
+      case tp if tp.classSymbol == defn.UnitClass => Some(acc.reverse)
+      case _ => None
+    }
+    rec(tp.stripTypeVar, Nil, bound)
   }
 
   def isProductSubType(tp: Type)(implicit ctx: Context): Boolean =
