@@ -182,6 +182,8 @@ Files are in the package \texttt{dotty.tastydoc.comment}.
 
 These files are taken from Dottydoc (slightly modified to work with this architecture and output Markdown instead of HTML) and are responsible for parsing user written documentation.
 
+Note that it is using a library called flexmark-java\footnote{\url{https://github.com/vsch/flexmark-java}} for parsing user documentation written in Markdown.
+
 \section{Workflow}
 \label{sec:workflow}
 Main workflow is as follows:
@@ -203,13 +205,48 @@ As we can see, parsing user documentation is only done after converting to Repre
 *** Output/feature differences
 
 \chapter{Problems}
-*** No good Markdown library
+A few problems were encountered during the development, some could not be fixed for reasons detailled below.
+
+The output being in Markdown we need a library to take a String as input and output Markdown, like "format this input to a header of level 1". The library also needs to escape the input, indeed if we have a String "\#", if we do not escape it, Markdown will interpret it as a header of level 1 and this is not the expected behavior. This is where we have a problem because no such library exists.
+
+We use code blocks for formatting signatures and indicating we have a piece of code. In these code blocks we also want to be able to make links pointing to the documentation page of a type. Unfortunately Markdown fenced code blocks do not allow to have link in them. To counter this problem we use HTML pre and code tag which are also understood by Markdown viewer but this causes two problems. First it is not pure Markdown anymore and then we loose the language syntax highlight from Markdown fenced code blocks.
+
+Markdown does not have "division" with classes like \texttt{<div>} in HTML which could be useful to better structure the page into sections.
+
+Most Markdown viewer do not understand user specified id which could be useful for linking to specific things in the same page. Like for example linking to type parameters. Hence we do not use custom ids for linking in this project and only use automatically generated ids from headers.
+
+If we have twice the same header name, when linking to this header it is ambiguous which header to link to. To mitigate this problem, we first output types and then values so that when linking it links to the first one appearing in the page which would be a type and it is what we want in most cases.
+
+Flexmark-java Markdown parser does not understand when ordered and unordered lists are combined, they are parsed as 2 separate list instead of a multi-level list.
 
 \chapter{Remaining work}
 *** Highlighting type lambdas
 *** ...
 
 \chapter{Summary}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 \chapter{BELOW IS OLD REPORT, STOP HERE}
