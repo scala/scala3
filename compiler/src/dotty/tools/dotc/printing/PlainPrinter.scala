@@ -429,7 +429,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toText(sym: Symbol): Text =
     (kindString(sym) ~~ {
       if (sym.isAnonymousClass) toTextParents(sym.info.parents) ~~ "{...}"
-      else if (hasMeaninglessName(sym)) simpleNameString(sym.owner) + idString(sym)
+      else if (hasMeaninglessName(sym) && !printDebug) simpleNameString(sym.owner) + idString(sym)
       else nameString(sym)
     }).close
 

@@ -93,7 +93,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     tp match {
       case tp: ThisType if !printDebug =>
         if (tp.cls.isAnonymousClass) return keywordStr("this")
-        if (tp.cls is ModuleClass) return fullNameString(tp.cls.sourceModule)
+        if (tp.cls.is(ModuleClass)) return fullNameString(tp.cls.sourceModule)
       case _ =>
     }
     super.toTextRef(tp)
@@ -851,7 +851,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         case _ =>
       }
     def name =
-      if (sym.is(ModuleClass) && sym.isPackageObject && sym.name.stripModuleClassSuffix == tpnme.PACKAGE)
+      if (printDebug)
+        nameString(sym)
+      else if (sym.is(ModuleClass) && sym.isPackageObject && sym.name.stripModuleClassSuffix == tpnme.PACKAGE)
         nameString(sym.owner.name)
       else if (sym.is(ModuleClass))
         nameString(sym.name.stripModuleClassSuffix)
