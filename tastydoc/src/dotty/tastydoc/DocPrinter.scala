@@ -117,13 +117,12 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
         }else{
           str.last match {
             case '\n' => removeLineEnds(str.stripLineEnd)
-            case _ => str
+            case _ => str + "\n\n"
           }
         }
       }
 
       removeLineEnds(c.body) +
-      "\n" +
       (if(c.authors.nonEmpty) Md.bold(Md.italics("authors")) + " " + c.authors.mkString(", ") else "") +
       (if(c.see.nonEmpty) Md.bold(Md.italics("see")) + " "  + c.see.mkString(", ")else "") +
       (if(c.result.isDefined) Md.bold(Md.italics("return")) + " "  + c.result.get else "") +

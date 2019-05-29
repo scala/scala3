@@ -2,8 +2,10 @@
 ## Members:
 <pre><code class="language-scala" >final object <a href="./List.md">List</a></pre></code>
 $factoryInfo
+
 <pre><code class="language-scala" >final val List: List$</pre></code>
 $factoryInfo
+
 
 <pre><code class="language-scala" >@<a href="../../SerialVersionUID.md">SerialVersionUID</a> sealed abstract class <a href="./List.md">List</a></pre></code>
 A class for immutable linked lists representing ordered collections
@@ -31,6 +33,7 @@ val with4 =    4 :: mainList  // re-uses mainList, costs one :: instance
 val with42 =   42 :: mainList // also re-uses mainList, cost one :: instance
 val shorter =  mainList.tail  // costs nothing as it uses the same 2::1::Nil instances as mainList
 ```
+
 ***authors*** Martin Odersky and others
 
 ***see*** ["Scala's Collection Library overview"](http://docs.scala-lang.org/overviews/collections/concrete-immutable-collection-classes.html#lists)

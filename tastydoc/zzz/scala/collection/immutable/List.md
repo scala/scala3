@@ -29,6 +29,7 @@ val with4 =    4 :: mainList  // re-uses mainList, costs one :: instance
 val with42 =   42 :: mainList // also re-uses mainList, cost one :: instance
 val shorter =  mainList.tail  // costs nothing as it uses the same 2::1::Nil instances as mainList
 ```
+
 ***authors*** Martin Odersky and others
 
 ***see*** ["Scala's Collection Library overview"](http://docs.scala-lang.org/overviews/collections/concrete-immutable-collection-classes.html#lists)
@@ -96,6 +97,7 @@ days match {
 ### ::
 <pre><code class="language-scala" >def ::[B >: List.this.A](x: B): List[B]</pre></code>
 Adds an element at the beginning of this list.
+
 ***return*** a list which contains `x` as first element and
          which continues with this list.
 
@@ -104,6 +106,7 @@ Adds an element at the beginning of this list.
 ### :::
 <pre><code class="language-scala" >def :::[B >: List.this.A](prefix: List[B]): List[B]</pre></code>
 Adds the elements of a given list in front of this list.
+
 ***return*** a list resulting from the concatenation of the given
   list `prefix` and this list.
 
@@ -357,6 +360,7 @@ Adds the elements of a given list in front of this list.
 Builds a new list by applying a function to all elements of this list.
 Like `xs map f`, but returns `xs` unchanged if function
 `f` maps all elements to themselves (as determined by `eq`).
+
 ***return*** a list resulting from applying the given function
               `f` to each element of this list and collecting the results.
 
@@ -474,6 +478,7 @@ Like `xs map f`, but returns `xs` unchanged if function
 Adds the elements of a given list in reverse order in front of this list.
 `xs reverse_::: ys` is equivalent to
 `xs.reverse ::: ys` but is more efficient.
+
 ***return*** the concatenation of the reversed prefix and the current list.
 
 ***prefix*** the prefix to reverse and then prepend
@@ -510,7 +515,6 @@ Adds the elements of a given list in reverse order in front of this list.
 
 ### slice
 <pre><code class="language-scala" >override def slice(from: <a href="../../Int.md">Int</a>, until: <a href="../../Int.md">Int</a>): List[A]</pre></code>
-
 ***Example*** 
 
 ```scala

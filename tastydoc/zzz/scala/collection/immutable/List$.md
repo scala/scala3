@@ -5,6 +5,7 @@ scala.collection.immutable
 
 <pre><code class="language-scala" >final object List extends SeqFactory[[+A >: scala.Nothing <: scala.Any] => scala.collection.immutable.List[+A]] with <a href="../../Serializable.md">Serializable</a></pre></code>
 $factoryInfo
+
 ## Concrete Value Members:
 ### !=
 <pre><code class="language-scala" >final def !=(x$0: <a href="../../Any.md">Any</a>): <a href="../../Boolean.md">Boolean</a></pre></code>
@@ -33,6 +34,7 @@ $factoryInfo
 ### canBuildFrom
 <pre><code class="language-scala" >implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, List[A]]</pre></code>
 $genericCanBuildFromInfo
+
 ### clone
 <pre><code class="language-scala" >protected def clone(): Object</pre></code>
 
