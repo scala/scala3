@@ -471,7 +471,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
       }
       val getterPrefix =
-        if ((meth.is(Synthetic)) && meth.name == nme.apply) nme.CONSTRUCTOR else meth.name
+        if (meth.is(Synthetic) && meth.name == nme.apply) nme.CONSTRUCTOR else meth.name
       def getterName = DefaultGetterName(getterPrefix, n)
       if (!meth.hasDefaultParams)
         EmptyTree

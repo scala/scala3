@@ -313,7 +313,7 @@ object Denotations {
     def requiredMethod(pname: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = {
       val name = pname.toTermName
       info.member(name).requiredSymbol(i"method", name, this, argTypes) { x =>
-        (x.is(Method)) && {
+        x.is(Method) && {
           x.info.paramInfoss match {
             case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
             case _ => false
@@ -1370,7 +1370,7 @@ object Denotations {
      *  enter it.
      */
     def missingHook(owner: Symbol, name: Name)(implicit ctx: Context): Symbol =
-      if ((owner.is(Package)) && name.isTermName)
+      if (owner.is(Package) && name.isTermName)
         ctx.newCompletePackageSymbol(owner, name.asTermName).entered
       else
         NoSymbol

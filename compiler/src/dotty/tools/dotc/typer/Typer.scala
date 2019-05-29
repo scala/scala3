@@ -312,7 +312,7 @@ class Typer extends Namer
                       curOwner
                   effectiveOwner.thisType.select(name, defDenot)
                 }
-              if (!(curOwner.is(Package)) || isDefinedInCurrentUnit(defDenot))
+              if (!curOwner.is(Package) || isDefinedInCurrentUnit(defDenot))
                 result = checkNewOrShadowed(found, definition) // no need to go further out, we found highest prec entry
               else {
                 if (ctx.scala2Mode && !foundUnderScala2.exists)

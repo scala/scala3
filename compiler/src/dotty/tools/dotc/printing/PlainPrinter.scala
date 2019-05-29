@@ -84,7 +84,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    *  to the name of the owner.
    */
   protected def hasMeaninglessName(sym: Symbol): Boolean = (
-       (sym.is(Param)) && sym.owner.isSetter    // x$1
+       sym.is(Param) && sym.owner.isSetter    // x$1
     || sym.isClassConstructor                  // this
     || (sym.name == nme.PACKAGE)               // package
   )

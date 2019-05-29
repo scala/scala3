@@ -738,7 +738,7 @@ object JavaParsers {
         } else {
           if (in.token == ENUM || definesInterface(in.token)) mods |= Flags.JavaStatic
           val decls = memberDecl(start, mods, parentToken, parentTParams)
-          (if ((mods.is(Flags.JavaStatic)) || inInterface && !(decls exists (_.isInstanceOf[DefDef])))
+          (if (mods.is(Flags.JavaStatic) || inInterface && !(decls exists (_.isInstanceOf[DefDef])))
             statics
           else
             members) ++= decls

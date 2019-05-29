@@ -4325,7 +4325,7 @@ object Types {
           case et: ExprType => true
           case _ => false
         }
-        if ((tp.cls.is(Trait)) || zeroParams(tp.cls.primaryConstructor.info)) tp // !!! needs to be adapted once traits have parameters
+        if (tp.cls.is(Trait) || zeroParams(tp.cls.primaryConstructor.info)) tp // !!! needs to be adapted once traits have parameters
         else NoType
       case tp: AppliedType =>
         zeroParamClass(tp.superType)
@@ -5121,7 +5121,7 @@ object Types {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
       name.isTypeName && {
         val mbr = pre.nonPrivateMember(name)
-        (mbr.symbol.is(Deferred)) && mbr.info.isInstanceOf[RealTypeBounds]
+        mbr.symbol.is(Deferred) && mbr.info.isInstanceOf[RealTypeBounds]
       }
   }
 
