@@ -263,6 +263,18 @@ class Typer extends Namer
 
           val curOwner = ctx.owner
 
+          /** Is curOwner a package object that should be skipped?
+           *  A package object should always be skipped if we look for a term.
+           *  That way we make sure we consider all overloaded alternatives of
+           *  a definition, even if they are in different source files.
+           *  If we are looking for a type, a package object should ne skipped
+           *  only if it does not contain opaque definitions. Package objects
+           *  with opaque definitions are significant, since opaque aliases
+           *  are only seen if the prefix is the this-type of the package object.
+           */
+          def isTransparentPackageObject =
+            curOwner.isPackageObject && (name.isTermName || !curOwner.is(Opaque))
+
           // Can this scope contain new definitions? This is usually the first
           // context where either the scope or the owner changes wrt the
           // context immediately nested in it. But for package contexts, it's
@@ -279,14 +291,7 @@ class Typer extends Namer
           val isNewDefScope =
             if (curOwner.is(Package) && !curOwner.isRoot) curOwner ne ctx.outer.owner
             else ((ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner)) &&
-                  (name.isTypeName || !curOwner.isPackageObject)
-                // If we are looking for a term, skip package objects and wait until we
-                // hit the enclosing package. That way we make sure we consider
-                // all overloaded alternatives of a definition, even if they are
-                // in different source files.
-                // On the other hand, for a type we should stop at the package object
-                // since the type might be opaque, so we need to have the package object's
-                // thisType as prefix in order to see the alias.
+                  !isTransparentPackageObject
 
           if (isNewDefScope) {
             val defDenot = ctx.denotNamed(name, required)
@@ -1663,7 +1668,7 @@ class Typer extends Namer
     val parentsWithClass = ensureFirstTreeIsClass(parents.mapconserve(typedParent).filterConserve(!_.isEmpty), cdef.nameSpan)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
 
-    var self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
+    val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1)) {
       // fail fast to avoid typing the body with an error type
       cdef.withType(UnspecifiedErrorType)

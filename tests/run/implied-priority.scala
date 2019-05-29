@@ -127,13 +127,13 @@ def test4 = {
  *
  * It employs a more re-usable version of the result refinement trick.
  */
-opaque type HigherPriority = Any
 object HigherPriority {
-  def inject[T](x: T): T & HigherPriority = x
+  opaque type Type = Any
+  def inject[T](x: T): T & Type = x
 }
 
 object fallback5 {
-  implied [T] for (E[T] & HigherPriority) given (ev: E[T] = new E[T]("fallback")) = HigherPriority.inject(ev)
+  implied [T] for (E[T] & HigherPriority.Type) given (ev: E[T] = new E[T]("fallback")) = HigherPriority.inject(ev)
 }
 
 def test5 = {
