@@ -1448,7 +1448,7 @@ object desugar {
               ))
         }
       case _ =>
-        EmptyTree //may happen for erroneous input
+        EmptyTree // may happen for erroneous input. An error will already have been reported.
     }
 
     // begin desugar
