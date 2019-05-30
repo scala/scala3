@@ -1044,6 +1044,9 @@ class Definitions {
     if (n <= MaxImplementedFunctionArity && (!isContextual || ctx.erasedTypes) && !isErased) ImplementedFunctionType(n)
     else FunctionClass(n, isContextual, isErased).typeRef
 
+  lazy val PolyFunctionClass = ctx.requiredClass("scala.PolyFunction")
+  def PolyFunctionType = PolyFunctionClass.typeRef
+
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(cls: Symbol)(implicit ctx: Context): TypeName =
     if (cls.isClass && cls.owner == ScalaPackageClass) cls.asClass.name else EmptyTypeName

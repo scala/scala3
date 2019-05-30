@@ -850,9 +850,13 @@ object Parsers {
      */
     def toplevelTyp(): Tree = rejectWildcardType(typ())
 
-    /** Type        ::=  FunTypeMods FunArgTypes `=>' Type
-     *                |  HkTypeParamClause `=>>' Type
+    /** Type        ::=  FunType
+     *                |  HkTypeParamClause ‘=>>’ Type
+     *                |  MatchType
      *                |  InfixType
+     *  FunType     ::=  { 'erased' | 'given' } (MonoFunType | PolyFunType)
+     *  MonoFunType ::=  FunArgTypes ‘=>’ Type
+     *  PolyFunType ::=  HKTypeParamClause '=>' Type
      *  FunArgTypes ::=  InfixType
      *                |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                |  '(' TypedFunParam {',' TypedFunParam } ')'
@@ -924,7 +928,18 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.TypeParam)
           if (in.token == TLARROW)
             atSpan(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
-          else { accept(TLARROW); typ() }
+          else if (in.token == ARROW) {
+            val arrowOffset = in.skipToken()
+            val body = toplevelTyp()
+            atSpan(start, arrowOffset) {
+              body match {
+                case _: Function => PolyFunction(tparams, body)
+                case _ =>
+                  syntaxError("Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
+                  Ident(nme.ERROR.toTypeName)
+              }
+            }
+          } else { accept(TLARROW); typ() }
         }
         else infixType()
 
@@ -1223,6 +1238,7 @@ object Parsers {
      *                      |  `throw' Expr
      *                      |  `return' [Expr]
      *                      |  ForExpr
+     *                      |  HkTypeParamClause ‘=>’ Expr
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  Expr2
@@ -1323,6 +1339,19 @@ object Parsers {
         atSpan(in.skipToken()) { Return(if (isExprIntro) expr() else EmptyTree, EmptyTree) }
       case FOR =>
         forExpr()
+      case LBRACKET =>
+        val start = in.offset
+        val tparams = typeParamClause(ParamOwner.TypeParam)
+        val arrowOffset = accept(ARROW)
+        val body = expr()
+        atSpan(start, arrowOffset) {
+          body match {
+            case _: Function => PolyFunction(tparams, body)
+            case _ =>
+              syntaxError("Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
+              errorTermTree
+          }
+        }
       case _ =>
         if (isIdent(nme.inline) && !in.inModifierPosition() && in.lookaheadIn(canStartExpressionTokens)) {
           val start = in.skipToken()

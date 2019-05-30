@@ -415,9 +415,20 @@ object Erasure {
      *      e.m -> e.[]m                if `m` is an array operation other than `clone`.
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
+      val qual1 = typed(tree.qualifier, AnySelectionProto)
 
       def mapOwner(sym: Symbol): Symbol = {
-        def recur(owner: Symbol): Symbol =
+        // PolyFunction apply Selects will not have a symbol, so deduce the owner
+        // from the typed qual.
+        def polyOwner: Symbol =
+          if (sym.exists || tree.name != nme.apply) NoSymbol
+          else {
+            val owner = qual1.tpe.widen.typeSymbol
+            if (defn.isFunctionClass(owner)) owner else NoSymbol
+          }
+
+        polyOwner orElse {
+          val owner = sym.owner
           if (defn.specialErasure.contains(owner)) {
             assert(sym.isConstructor, s"${sym.showLocated}")
             defn.specialErasure(owner)
@@ -425,12 +436,12 @@ object Erasure {
             defn.erasedFunctionClass(owner)
           else
             owner
-        recur(sym.owner)
+        }
       }
 
       val origSym = tree.symbol
       val owner = mapOwner(origSym)
-      val sym = if (owner eq origSym.owner) origSym else owner.info.decl(origSym.name).symbol
+      val sym = if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol
       assert(sym.exists, origSym.showLocated)
 
       def select(qual: Tree, sym: Symbol): Tree =
@@ -474,7 +485,7 @@ object Erasure {
         }
       }
 
-      checkNotErased(recur(typed(tree.qualifier, AnySelectionProto)))
+      checkNotErased(recur(qual1))
     }
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =

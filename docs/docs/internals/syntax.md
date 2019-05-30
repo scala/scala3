@@ -139,10 +139,13 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 
 ### Types
 ```ebnf
-Type              ::=  { ‘erased’ | ‘given’} FunArgTypes ‘=>’ Type              Function(ts, t)
-                    |  HkTypeParamClause ‘=>>’ Type                              TypeLambda(ps, t)
+Type              ::=  FunType
+                    |  HkTypeParamClause ‘=>>’ Type                             TypeLambda(ps, t)
                     |  MatchType
                     |  InfixType
+FunType           ::=  { 'erased' | 'given' } (MonoFunType | PolyFunType)
+MonoFunType       ::=  FunArgTypes ‘=>’ Type                                    Function(ts, t)
+PolyFunType       :: = HKTypeParamClause '=>' Type                              PolyFunction(ps, t)
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
                     |  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
@@ -195,6 +198,7 @@ Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl}
                     |  ‘throw’ Expr                                             Throw(expr)
                     |  ‘return’ [Expr]                                          Return(expr?)
                     |  ForExpr
+                    |  HkTypeParamClause ‘=>’ Expr                              PolyFunction(ts, expr)
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
                     |  Expr2

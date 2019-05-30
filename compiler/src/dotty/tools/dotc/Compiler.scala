@@ -90,6 +90,7 @@ class Compiler {
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
     List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
+         new ElimPolyFunction,       // Rewrite PolyFunction subclasses to FunctionN subclasses
          new TailRec,                // Rewrite tail recursion to loops
          new Mixin,                  // Expand trait fields and trait initializers
          new LazyVals,               // Expand lazy vals

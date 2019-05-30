@@ -17,7 +17,7 @@ object Test {
   type T1 = _ // error
   type T2 = _[Int] // error
   type T3 = _ { type S } // error
-  type T4 = [X] => _ // error
+  type T4 = [X] =>> _ // error
 
   // Open questions:
   type T5 = TypeConstr[_ { type S }] // error
