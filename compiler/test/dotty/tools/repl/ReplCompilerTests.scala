@@ -10,7 +10,7 @@ class ReplCompilerTests extends ReplTest {
 
   @Test def compileSingle = fromInitialState { implicit state =>
     run("def foo: 1 = 1")
-    assertEquals("def foo: Int(1)", storedOutput().trim)
+    assertEquals("def foo: 1", storedOutput().trim)
   }
 
   @Test def compileTwo =
