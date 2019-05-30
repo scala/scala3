@@ -1080,6 +1080,16 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Type_isFunctionType(self: Type)(implicit ctx: Context): Boolean =
     defn.isFunctionType(self)
 
+  def Type_isImplicitFunctionType(self: Type)(implicit ctx: Context): Boolean =
+    defn.isImplicitFunctionType(self)
+
+  def Type_isErasedFunctionType(self: Type)(implicit ctx: Context): Boolean =
+    defn.isErasedFunctionType(self)
+
+  def Type_isDependentFunctionType(self: Type)(implicit ctx: Context): Boolean = {
+    val tpNoRefinement = self.dropDependentRefinement
+    tpNoRefinement != self && defn.isNonRefinedFunction(tpNoRefinement)
+  }
 
   type ConstantType = Types.ConstantType
 

@@ -869,9 +869,31 @@ trait Kernel {
    *
    *  @return true if the dealised type of `self` without refinement is `FunctionN[T1, T2, ..., Tn]`
    *
-   *  @note `List[Int]` is not a function type, despite that `List[Int] <:< Int => Int`.
+   *  @note The function
+   *
+   *     - returns true for `given Int => Int` and `erased Int => Int`
+   *     - returns false for `List[Int]`, despite that `List[Int] <:< Int => Int`.
    */
   def Type_isFunctionType(self: Type)(implicit ctx: Context): Boolean
+
+
+  /** Is this type an implicit function type?
+   *
+   *  @see `Type_isFunctionType`
+   */
+  def Type_isImplicitFunctionType(self: Type)(implicit ctx: Context): Boolean
+
+  /** Is this type an erased function type?
+   *
+   *  @see `Type_isFunctionType`
+   */
+  def Type_isErasedFunctionType(self: Type)(implicit ctx: Context): Boolean
+
+  /** Is this type a dependent function type?
+   *
+   *  @see `Type_isFunctionType`
+   */
+  def Type_isDependentFunctionType(self: Type)(implicit ctx: Context): Boolean
 
   /** A singleton type representing a known constant value */
   type ConstantType <: Type
