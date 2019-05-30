@@ -181,7 +181,12 @@ object Annotations {
     object WithBounds {
       def unapply(ann: Annotation)(implicit ctx: Context): Option[TypeBounds] =
         if (ann.symbol == defn.WithBoundsAnnot) {
-          val AppliedType(_, lo :: hi :: Nil) = ann.tree.tpe
+          // We need to extract the type of the type tree in the New itself.
+          // The annotation's type has been simplified as the type of an expression,
+          // which means that `&` or `|` might have been lost.
+          // Test in pos/reference/opaque.scala
+          val Apply(TypeApply(Select(New(tpt), nme.CONSTRUCTOR), _), Nil) = ann.tree
+          val AppliedType(_, lo :: hi :: Nil) = tpt.tpe
           Some(TypeBounds(lo, hi))
         }
         else None
