@@ -605,8 +605,11 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       case tp: TypeVar =>
         val inst = tp.instanceOpt
         if (inst.exists) sigName(inst) else tpnme.Uninstantiated
-      case RefinedType(parent, nme.apply, refinedInfo) if parent.typeSymbol eq defn.PolyFunctionClass =>
-        sigName(defn.FunctionType(refinedInfo.resultType.paramNamess.head.length))
+      case tp @ RefinedType(parent, nme.apply, _) if parent.typeSymbol eq defn.PolyFunctionClass => 
+        // we need this case rather than falling through to the default
+        // because RefinedTypes <: TypeProxy and it would be caught by
+        // the case immediately below
+        sigName(this(tp))
       case tp: TypeProxy =>
         sigName(tp.underlying)
       case _: ErrorType | WildcardType | NoType =>
