@@ -850,9 +850,13 @@ object Parsers {
      */
     def toplevelTyp(): Tree = rejectWildcardType(typ())
 
-    /** Type        ::=  FunTypeMods FunArgTypes `=>' Type
-     *                |  HkTypeParamClause `=>>' Type
+    /** Type        ::=  FunType
+     *                |  HkTypeParamClause ‘=>>’ Type
+     *                |  MatchType
      *                |  InfixType
+     *  FunType     ::=  { 'erased' | 'given' } (MonoFunType | PolyFunType)
+     *  MonoFunType ::=  FunArgTypes ‘=>’ Type
+     *  PolyFunType ::=  HKTypeParamClause '=>' Type
      *  FunArgTypes ::=  InfixType
      *                |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                |  '(' TypedFunParam {',' TypedFunParam } ')'
@@ -1234,6 +1238,7 @@ object Parsers {
      *                      |  `throw' Expr
      *                      |  `return' [Expr]
      *                      |  ForExpr
+     *                      |  HkTypeParamClause ‘=>’ Expr
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  Expr2
