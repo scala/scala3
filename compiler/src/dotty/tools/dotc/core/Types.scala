@@ -3196,15 +3196,7 @@ object Types {
 
 
     def computeSignature(implicit ctx: Context): Signature = {
-      def polyFunctionSignature(tp: Type): Type = tp match {
-        case RefinedType(parent, nme.apply, refinedInfo) if parent.typeSymbol eq defn.PolyFunctionClass =>
-          val res = refinedInfo.resultType
-          val paramss = res.paramNamess
-          defn.FunctionType(paramss.head.length)
-        case _ => tp
-      }
-
-      val params = if (isErasedMethod) Nil else paramInfos.mapConserve(polyFunctionSignature)
+      val params = if (isErasedMethod) Nil else paramInfos
       resultSignature.prepend(params, isJavaMethod)
     }
 
