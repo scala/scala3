@@ -683,8 +683,8 @@ trait Implicits { self: Typer =>
         case arg :: Nil if !arg.typeSymbol.is(Param) =>
           object bindFreeVars extends TypeMap {
             var ok = true
-            def apply(t: Type) = t match {
-              case t @ TypeRef(NoPrefix, _) =>
+            def apply(t: Type) = t.dealias match {
+              case t @ TypeRef(NoPrefix, _) if !ctx.inInlineMethod =>
                 inferImplicit(defn.QuotedTypeType.appliedTo(t), EmptyTree, span) match {
                   case SearchSuccess(tag, _, _) if tag.tpe.isStable =>
                     tag.tpe.select(defn.QuotedType_splice)
@@ -692,7 +692,7 @@ trait Implicits { self: Typer =>
                     ok = false
                     t
                 }
-              case _ => t
+              case tp => mapOver(tp)
             }
           }
           val tag = bindFreeVars(arg)
