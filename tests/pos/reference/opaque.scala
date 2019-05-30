@@ -19,7 +19,7 @@ object Logarithms {
   }
 }
 
-object Test {
+object LogTest {
   import Logarithms._
   import Predef.{any2stringadd => _, _}
 
