@@ -39,6 +39,7 @@ import reporting.trace
 import annotation.tailrec
 
 import scala.annotation.internal.sharable
+import scala.annotation.threadUnsafe
 
 /** Implicit resolution */
 object Implicits {
@@ -231,14 +232,14 @@ object Implicits {
    */
   class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
     assert(initctx.typer != null)
-    lazy val refs: List[ImplicitRef] = {
+    @threadUnsafe lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
       for (companion <- companionRefs) buf ++= companion.implicitMembers(ImplicitOrImpliedOrGiven)
       buf.toList
     }
 
     /** The candidates that are eligible for expected type `tp` */
-    lazy val eligible: List[Candidate] =
+    @threadUnsafe lazy val eligible: List[Candidate] =
       /*>|>*/ track("eligible in tpe") /*<|<*/ {
         /*>|>*/ trace(i"eligible($tp), companions = ${companionRefs.toList}%, %", implicitsDetailed, show = true) /*<|<*/ {
           if (refs.nonEmpty && monitored) record(s"check eligible refs in tpe", refs.length)
@@ -1302,7 +1303,7 @@ trait Implicits { self: Typer =>
     private def isCoherent = pt.isRef(defn.EqlClass)
 
     /** The expected type for the searched implicit */
-    lazy val fullProto: Type = implicitProto(pt, identity)
+    @threadUnsafe lazy val fullProto: Type = implicitProto(pt, identity)
 
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
     val wildProto: Type = implicitProto(pt, wildApprox(_))

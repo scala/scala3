@@ -35,6 +35,7 @@ import reporting.trace
 import java.lang.ref.WeakReference
 
 import scala.annotation.internal.sharable
+import scala.annotation.threadUnsafe
 
 object Types {
 
@@ -3325,7 +3326,7 @@ object Types {
 
     def newParamRef(n: Int): TypeParamRef = new TypeParamRefImpl(this, n)
 
-    lazy val typeParams: List[LambdaParam] =
+    @threadUnsafe lazy val typeParams: List[LambdaParam] =
       paramNames.indices.toList.map(new LambdaParam(this, _))
 
     def derivedLambdaAbstraction(paramNames: List[TypeName], paramInfos: List[TypeBounds], resType: Type)(implicit ctx: Context): Type =
