@@ -165,4 +165,9 @@ class ReplCompilerTests extends ReplTest {
       run("IntOrd")
       assertTrue(storedOutput().startsWith("val res0: IntOrd.type ="))
     }
+
+  @Test def testSingletonPrint = fromInitialState { implicit state =>
+    run("""val a = "hello"; val x: a.type = a""")
+    assertEquals("val a: String = hello\nval x: a.type = hello", storedOutput().trim)
+  }
 }

@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types.ExprType
+import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.printing.Texts._
 
 
@@ -36,6 +36,11 @@ class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
       else if (sym.isType || sym.isClass) ""
       else ":" ~~ toText(sym.info)
     }
+  }
+
+  override def toTextSingleton(tp: SingletonType): Text = tp match {
+    case ConstantType(const) => toText(const)
+    case _                   => toTextRef(tp) ~ ".type"
   }
 
   // We don't want the colors coming from RefinedPrinter as the REPL uses its
