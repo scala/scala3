@@ -1448,7 +1448,9 @@ object desugar {
               ))
         }
       case _ =>
-        EmptyTree // may happen for erroneous input. An error will already have been reported.
+        // may happen for erroneous input. An error will already have been reported.
+        assert(ctx.reporter.errorsReported)
+        EmptyTree
     }
 
     // begin desugar
