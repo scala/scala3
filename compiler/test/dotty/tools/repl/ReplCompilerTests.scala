@@ -170,4 +170,9 @@ class ReplCompilerTests extends ReplTest {
     run("""val a = "hello"; val x: a.type = a""")
     assertEquals("val a: String = hello\nval x: a.type = hello", storedOutput().trim)
   }
+
+  @Test def i6574 = fromInitialState { implicit state =>
+    run("val a: 1 | 0 = 1")
+    assertEquals("val a: 1 | 0 = 1", storedOutput().trim)
+  }
 }
