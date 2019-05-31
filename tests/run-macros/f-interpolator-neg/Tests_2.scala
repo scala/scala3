@@ -31,15 +31,15 @@ object Test {
 
     def interpolationMismatches(s : String, f : Double, b : Boolean) = {
       import TestFooErrors._
-      assertEquals(foo"$s%b", List((true, 1, 0, 0, "type mismatch;\nfound   : String\nrequired: Boolean")))
-      assertEquals(foo"$s%c", List((true, 1, 0, 0, "type mismatch;\nfound   : String\nrequired: Char")))
-      assertEquals(foo"$f%c", List((true, 1, 0, 0, "type mismatch;\nfound   : Double\nrequired: Char")))
-      assertEquals(foo"$s%x", List((true, 1, 0, 0, "type mismatch;\nfound   : String\nrequired: Int")))
-      assertEquals(foo"$b%d", List((true, 1, 0, 0, "type mismatch;\nfound   : Boolean\nrequired: Int")))
-      assertEquals(foo"$s%d", List((true, 1, 0, 0, "type mismatch;\nfound   : String\nrequired: Int")))
-      assertEquals(foo"$f%o", List((true, 1, 0, 0, "type mismatch;\nfound   : Double\nrequired: Int")))
-      assertEquals(foo"$s%e", List((true, 1, 0, 0, "type mismatch;\nfound   : String\nrequired: Double")))
-      assertEquals(foo"$b%f", List((true, 1, 0, 0, "type mismatch;\nfound   : Boolean\nrequired: Double")))
+      assertEquals(foo"$s%b", List((true, 1, 0, 0, "type mismatch;\n found   : String\n required: Boolean")))
+      assertEquals(foo"$s%c", List((true, 1, 0, 0, "type mismatch;\n found   : String\n required: Char")))
+      assertEquals(foo"$f%c", List((true, 1, 0, 0, "type mismatch;\n found   : Double\n required: Char")))
+      assertEquals(foo"$s%x", List((true, 1, 0, 0, "type mismatch;\n found   : String\n required: Int")))
+      assertEquals(foo"$b%d", List((true, 1, 0, 0, "type mismatch;\n found   : Boolean\n required: Int")))
+      assertEquals(foo"$s%d", List((true, 1, 0, 0, "type mismatch;\n found   : String\n required: Int")))
+      assertEquals(foo"$f%o", List((true, 1, 0, 0, "type mismatch;\n found   : Double\n required: Int")))
+      assertEquals(foo"$s%e", List((true, 1, 0, 0, "type mismatch;\n found   : String\n required: Double")))
+      assertEquals(foo"$b%f", List((true, 1, 0, 0, "type mismatch;\n found   : Boolean\n required: Double")))
       assertEquals(foo"$s%i", List((true, 0, 0, 1, "illegal conversion character 'i'")))
     }
 
