@@ -401,7 +401,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** String representation of symbol's flags */
   protected def toTextFlags(sym: Symbol): Text =
-    Text(sym.flagsUNSAFE.flagStrings map stringToText, " ")
+    Text(sym.flagsUNSAFE.flagStrings(nameString(sym.privateWithin.name)) map stringToText, " ")
 
   /** String representation of symbol's variance or "" if not applicable */
   protected def varianceString(sym: Symbol): String = varianceString(sym.variance)

@@ -107,19 +107,22 @@ object Flags {
       }
 
     /** The list of non-empty names of flags that are set in this FlagSet */
-    def flagStrings: Seq[String] = {
+    def flagStrings(privateWithin: String): Seq[String] = {
       val rawStrings = (2 to MaxFlag).flatMap(flagString)
-      if (this is Local)
+      val scopeStr =
+        if (this is Local) "this"
+        else privateWithin
+      if (privateWithin != "")
         rawStrings.filter(_ != "<local>").map {
-          case "private" => "private[this]"
-          case "protected" => "protected[this]"
+          case "private" => s"private[$scopeStr]"
+          case "protected" => s"protected[$scopeStr]"
           case str => str
         }
       else rawStrings
     }
 
     /** The string representation of this flag set */
-    override def toString: String = flagStrings.mkString(" ")
+    override def toString: String = flagStrings("").mkString(" ")
   }
 
   def termFlagSet(x: Long) = FlagSet(TERMS | x)
