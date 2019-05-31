@@ -358,7 +358,7 @@ object StringContextMacro {
      */
     def checkSubtype(actualType : Type, expectedType : String, argIndex : Int, possibilities : Type*) = {
       if (possibilities.find(actualType <:< _).isEmpty)
-        reporter.argError("type mismatch;\n found   : " + actualType.widen.show.stripPrefix("scala.Predef.") + "\n required: " + expectedType + "\n", argIndex)
+        reporter.argError("type mismatch;\n found   : " + actualType.widen.show.stripPrefix("scala.Predef.") + "\n required: " + expectedType, argIndex)
     }
 
     /** Checks whether a given argument index, relative or not, is in the correct bounds
@@ -641,7 +641,7 @@ object StringContextMacro {
         case 'h' | 'H' | 'S' | 's' =>
           if (!(argType <:< typeOf[java.util.Formattable]))
             for {flag <- flags ; if (flag._1 == '#')}
-              reporter.argError("type mismatch;\n found   :" + argType.widen.show.stripPrefix("scala.Predef.") + "\n required: java.util.Formattable\n", argIndex)
+              reporter.argError("type mismatch;\n found   :" + argType.widen.show.stripPrefix("scala.Predef.") + "\n required: java.util.Formattable", argIndex)
         case 'n' | '%' =>
         case illegal =>
       }
