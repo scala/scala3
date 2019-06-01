@@ -243,6 +243,8 @@ object Denotations {
      */
     def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation
 
+    override def filterWithPredicate(p: SingleDenotation => Boolean): Denotation
+
     /** If this is a SingleDenotation, return it, otherwise throw a TypeError */
     def checkUnique(implicit ctx: Context): SingleDenotation = suchThat(alwaysTrue)
 
@@ -1253,6 +1255,8 @@ object Denotations {
         else sd1
       else sd2
     }
+    override def filterWithPredicate(p: SingleDenotation => Boolean): Denotation =
+      derivedUnionDenotation(denot1.filterWithPredicate(p), denot2.filterWithPredicate(p))
     def hasAltWith(p: SingleDenotation => Boolean): Boolean =
       denot1.hasAltWith(p) || denot2.hasAltWith(p)
     def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation = {

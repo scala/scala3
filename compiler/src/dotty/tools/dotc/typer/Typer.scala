@@ -177,7 +177,7 @@ class Typer extends Namer
           previous
         }
 
-      def selection(imp: ImportInfo, name: Name) =
+      def selection(imp: ImportInfo, name: Name, checkBounds: Boolean) =
         if (imp.sym.isCompleting) {
           ctx.warning(i"cyclic ${imp.sym}, ignored", posd.sourcePos)
           NoType
@@ -188,7 +188,10 @@ class Typer extends Namer
           var reqd = required
           var excl = EmptyFlags
           if (imp.importImplied) reqd |= Implied else excl |= Implied
-          val denot = pre.memberBasedOnFlags(name, reqd, excl).accessibleFrom(pre)(refctx)
+          var denot = pre.memberBasedOnFlags(name, reqd, excl).accessibleFrom(pre)(refctx)
+          if (checkBounds && imp.impliedBound.exists)
+            denot = denot.filterWithPredicate(_.info <:< imp.impliedBound)
+
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the
           if (reallyExists(denot)) pre.select(name, denot) else NoType
@@ -209,11 +212,10 @@ class Typer extends Namer
             }
 
             def unambiguousSelection(name: Name) =
-              checkUnambiguous(selection(imp, name))
+              checkUnambiguous(selection(imp, name, checkBounds = false))
 
             selector match {
-              case Thicket(fromId :: Ident(Name) :: _) =>
-                val Ident(from) = fromId
+              case Thicket(Ident(from) :: Ident(Name) :: _) =>
                 unambiguousSelection(if (name.isTypeName) from.toTypeName else from)
               case Ident(Name) =>
                 unambiguousSelection(name)
@@ -231,7 +233,7 @@ class Typer extends Namer
        */
       def wildImportRef(imp: ImportInfo)(implicit ctx: Context): Type =
         if (imp.isWildcardImport && !imp.excluded.contains(name.toTermName) && name != nme.CONSTRUCTOR)
-          selection(imp, name)
+          selection(imp, name, checkBounds = imp.importImplied)
         else NoType
 
       /** Is (some alternative of) the given predenotation `denot`
@@ -1785,7 +1787,12 @@ class Typer extends Namer
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = track("typedImport") {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
     checkLegalImportPath(expr1)
-    assignType(cpy.Import(imp)(imp.importImplied, expr1, imp.selectors), sym)
+    val selectors1: List[untpd.Tree] = imp.selectors map {
+      case sel @ TypeBoundsTree(_, tpt) =>
+        untpd.cpy.TypeBoundsTree(sel)(sel.lo, untpd.TypedSplice(typedType(tpt)))
+      case sel => sel
+    }
+    assignType(cpy.Import(imp)(imp.importImplied, expr1, selectors1), sym)
   }
 
   def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = track("typedPackageDef") {

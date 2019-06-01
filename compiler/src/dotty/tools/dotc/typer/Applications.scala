@@ -1353,7 +1353,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
         def prepare(tp: Type) = tp.stripTypeVar match {
           case tp: NamedType if tp.symbol.is(Module) && tp.symbol.sourceModule.is(Implied) =>
-            flip(tp.widen.widenToParents
+            flip(tp.widen.widenToParents)
           case _ => flip(tp)
         }
         (prepare(tp1) relaxed_<:< prepare(tp2)) || viewExists(tp1, tp2)

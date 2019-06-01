@@ -973,6 +973,11 @@ class TreeUnpickler(reader: TastyReader,
           case _ =>
             from :: readSelectors()
         }
+      case BOUNDED =>
+        val start = currentAddr
+        readByte()
+        val bounded = setSpan(start, untpd.TypeBoundsTree(untpd.EmptyTree, untpd.TypedSplice(readTpt())))
+        bounded :: readSelectors()
       case _ =>
         Nil
     }
