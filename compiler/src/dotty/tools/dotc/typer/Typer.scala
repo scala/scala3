@@ -190,7 +190,8 @@ class Typer extends Namer
           if (imp.importImplied) reqd |= Implied else excl |= Implied
           var denot = pre.memberBasedOnFlags(name, reqd, excl).accessibleFrom(pre)(refctx)
           if (checkBounds && imp.impliedBound.exists)
-            denot = denot.filterWithPredicate(_.info <:< imp.impliedBound)
+            denot = denot.filterWithPredicate(mbr =>
+              NoViewsAllowed.normalizedCompatible(mbr.info, imp.impliedBound, keepConstraint = false))
 
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the

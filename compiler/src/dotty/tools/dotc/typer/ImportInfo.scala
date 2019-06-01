@@ -10,6 +10,7 @@ import util.SimpleIdentityMap
 import Symbols._, Names._, Types._, Contexts._, StdNames._, Flags._
 import Implicits.RenamedImplicitRef
 import printing.Texts.Text
+import ProtoTypes.NoViewsAllowed.normalizedCompatible
 import Decorators._
 
 object ImportInfo {
@@ -127,7 +128,8 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
           val renamed = forwardMapping(ref.name)
           if (renamed == ref.name) ref :: Nil
           else if (renamed != null) new RenamedImplicitRef(ref, renamed) :: Nil
-          else if (!impliedBound.exists || (ref <:< impliedBound)) ref :: Nil
+          else if (!impliedBound.exists ||
+                   normalizedCompatible(ref, impliedBound, keepConstraint = false)) ref :: Nil
           else Nil
         }
       }
