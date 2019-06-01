@@ -2310,7 +2310,7 @@ object Parsers {
       /** ImportSelectors ::= `{' {ImportSelector `,'} FinalSelector ‘}’
        *  FinalSelector   ::=  ImportSelector
        *                    |  ‘_’
-       *                    |  ‘for’ InfixType
+       *                    |  ‘for’ InfixType {‘,’ InfixType}
        */
       def importSelectors(): List[Tree] = in.token match {
         case USCORE =>
@@ -2318,7 +2318,14 @@ object Parsers {
         case FOR =>
           if (!importImplied)
               syntaxError(em"`for` qualifier only allowed in `import implied`")
-          atSpan(in.skipToken()) { TypeBoundsTree(EmptyTree, infixType()) } :: Nil
+          atSpan(in.skipToken()) {
+            var t = infixType()
+            while (in.token == COMMA) {
+              val op = atSpan(in.skipToken()) { Ident(tpnme.raw.BAR) }
+              t = InfixOp(t, op, infixType())
+            }
+            TypeBoundsTree(EmptyTree, t)
+          } :: Nil
         case _ =>
           importSelector() :: {
             if (in.token == COMMA) {

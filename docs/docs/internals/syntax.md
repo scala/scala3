@@ -338,7 +338,7 @@ ImportExpr        ::=  StableId ‘.’ (id | ‘_’ | ImportSelectors)        
 ImportSelectors   ::=  ‘{’ {ImportSelector ‘,’} FinalSelector ‘}’
 FinalSelector     ::=  ImportSelector                                           Ident(name)
                     |  ‘_’                                                      Pair(id, id)
-                    |  ‘for’ InfixType                                          TypeBoundsTree(EmptyTree, tpt)
+                    |  ‘for’ InfixType {‘,’ InfixType}                          TypeBoundsTree(EmptyTree, tpt)
 ImportSelector    ::=  id [‘=>’ id | ‘=>’ ‘_’]
 Export            ::=  ‘export’ [‘implied’] ImportExpr {‘,’ ImportExpr}
 ```
