@@ -46,7 +46,7 @@ object Test2 {
 }
 
 object Test3 {
-  import implied Instances.{for Ordering[_]}
+  import implied Instances.{im, for Ordering[_]}
   val x = intOrd
   val y = listOrd[Int]
   val z = im

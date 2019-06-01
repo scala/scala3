@@ -8,7 +8,6 @@ A special form of import is used to import implied instances. Example:
 object A {
   class TC
   implied tc for TC
-  implied
   def f given TC = ???
 }
 object B {
