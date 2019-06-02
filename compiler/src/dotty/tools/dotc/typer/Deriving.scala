@@ -89,47 +89,57 @@ trait Deriving { this: Typer =>
       val typeClass = derivedType.classSymbol
       val nparams = typeClass.typeParams.length
 
-      // A matrix of all parameter combinations of current class parameters
-      // and derived typeclass parameters.
-      // Rows: parameters of current class
-      // Columns: parameters of typeclass
+      lazy val clsTpe = cls.typeRef.EtaExpand(cls.typeParams)
+      if (nparams == 1 && clsTpe.hasSameKindAs(typeClass.typeParams.head.info)) {
+        // A "natural" type class instance ... the kind of the data type
+        // matches the kind of the unique type class type parameter
 
-      // Running example: typeclass: class TC[X, Y, Z], deriving class: class A[T, U]
-      // clsParamss =
-      //     T_X  T_Y  T_Z
-      //     U_X  U_Y  U_Z
-      val clsParamss: List[List[TypeSymbol]] = cls.typeParams.map { tparam =>
-        if (nparams == 0) Nil
-        else if (nparams == 1) tparam :: Nil
-        else typeClass.typeParams.map(tcparam =>
-          tparam.copy(name = s"${tparam.name}_$$_${tcparam.name}".toTypeName)
-            .asInstanceOf[TypeSymbol])
+        val resultType = derivedType.appliedTo(clsTpe)
+        val instanceInfo = ExprType(resultType)
+        addDerivedInstance(originalType.typeSymbol.name, instanceInfo, derived.sourcePos)
+      } else {
+        // A matrix of all parameter combinations of current class parameters
+        // and derived typeclass parameters.
+        // Rows: parameters of current class
+        // Columns: parameters of typeclass
+
+        // Running example: typeclass: class TC[X, Y, Z], deriving class: class A[T, U]
+        // clsParamss =
+        //     T_X  T_Y  T_Z
+        //     U_X  U_Y  U_Z
+        val clsParamss: List[List[TypeSymbol]] = cls.typeParams.map { tparam =>
+          if (nparams == 0) Nil
+          else if (nparams == 1) tparam :: Nil
+          else typeClass.typeParams.map(tcparam =>
+            tparam.copy(name = s"${tparam.name}_$$_${tcparam.name}".toTypeName)
+              .asInstanceOf[TypeSymbol])
+        }
+        val firstKindedParamss = clsParamss.filter {
+          case param :: _ => !param.info.isLambdaSub
+          case nil => false
+        }
+
+        // The types of the required evidence parameters. In the running example:
+        // TC[T_X, T_Y, T_Z], TC[U_X, U_Y, U_Z]
+        val evidenceParamInfos =
+          for (row <- firstKindedParamss)
+          yield derivedType.appliedTo(row.map(_.typeRef))
+
+        // The class instances in the result type. Running example:
+        //   A[T_X, U_X], A[T_Y, U_Y], A[T_Z, U_Z]
+        val resultInstances =
+          for (n <- List.range(0, nparams))
+          yield cls.typeRef.appliedTo(clsParamss.map(row => row(n).typeRef))
+
+        // TC[A[T_X, U_X], A[T_Y, U_Y], A[T_Z, U_Z]]
+        val resultType = derivedType.appliedTo(resultInstances)
+
+        val clsParams: List[TypeSymbol] = clsParamss.flatten
+        val instanceInfo =
+          if (clsParams.isEmpty) ExprType(resultType)
+          else PolyType.fromParams(clsParams, ImplicitMethodType(evidenceParamInfos, resultType))
+        addDerivedInstance(originalType.typeSymbol.name, instanceInfo, derived.sourcePos)
       }
-      val firstKindedParamss = clsParamss.filter {
-        case param :: _ => !param.info.isLambdaSub
-        case nil => false
-      }
-
-      // The types of the required evidence parameters. In the running example:
-      // TC[T_X, T_Y, T_Z], TC[U_X, U_Y, U_Z]
-      val evidenceParamInfos =
-        for (row <- firstKindedParamss)
-        yield derivedType.appliedTo(row.map(_.typeRef))
-
-      // The class instances in the result type. Running example:
-      //   A[T_X, U_X], A[T_Y, U_Y], A[T_Z, U_Z]
-      val resultInstances =
-        for (n <- List.range(0, nparams))
-        yield cls.typeRef.appliedTo(clsParamss.map(row => row(n).typeRef))
-
-      // TC[A[T_X, U_X], A[T_Y, U_Y], A[T_Z, U_Z]]
-      val resultType = derivedType.appliedTo(resultInstances)
-
-      val clsParams: List[TypeSymbol] = clsParamss.flatten
-      val instanceInfo =
-        if (clsParams.isEmpty) ExprType(resultType)
-        else PolyType.fromParams(clsParams, ImplicitMethodType(evidenceParamInfos, resultType))
-      addDerivedInstance(originalType.typeSymbol.name, instanceInfo, derived.sourcePos)
     }
 
     /** Create symbols for derived instances and infrastructure,

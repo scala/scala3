@@ -14,7 +14,7 @@ object Test extends App {
 
   println(the[Mirror.ProductOf[A]].fromProduct(A(1, 2)))
   assert(the[Mirror.SumOf[T]].ordinal(A(1, 2)) == 0)
-  assert(the[Mirror.Sum { type MirroredMonoType = T }].ordinal(B) == 1)
+  assert(the[Mirror.Sum { type MirroredType = T }].ordinal(B) == 1)
   the[Mirror.Of[A]] match {
     case m: Mirror.Product =>
       println(m.fromProduct(A(1, 2)))

@@ -200,7 +200,7 @@ object typeclasses {
           Nil
     }
 
-    inline def showCase(x: Any, m: Mirror.ProductOf[_]): String = {
+    inline def showCase[T](x: Any, m: Mirror.ProductOf[T]): String = {
       val label = constValue[m.MirroredLabel]
       inline m match {
         case m: Mirror.Singleton => label

@@ -343,7 +343,7 @@ object StdNames {
     val MirroredElemLabels: N   = "MirroredElemLabels"
     val MirroredLabel: N        = "MirroredLabel"
     val MirroredMonoType: N     = "MirroredMonoType"
-    val MirroredTypeConstructor: N  = "MirroredTypeConstructor"
+    val MirroredType: N         = "MirroredType"
     val Modifiers: N            = "Modifiers"
     val NestedAnnotArg: N       = "NestedAnnotArg"
     val NoFlags: N              = "NoFlags"
