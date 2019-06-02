@@ -49,10 +49,14 @@ trait Deriving { this: Typer =>
       val instanceName = s"derived$$$clsName".toTermName
       if (ctx.denotNamed(instanceName).exists)
         ctx.error(i"duplicate typeclass derivation for $clsName", pos)
-      else
+      else {
+        // If we set the Synthetic flag here widenImplied will widen too far and the
+        // derived instance will have too low a priority to be selected over a freshly
+        // derived instance at the summoning site.
         synthetics +=
-          ctx.newSymbol(ctx.owner, instanceName, Implied | Synthetic | Method, info, coord = pos.span)
+          ctx.newSymbol(ctx.owner, instanceName, Implied | Method, info, coord = pos.span)
             .entered
+      }
     }
 
     /** Check derived type tree `derived` for the following well-formedness conditions:
