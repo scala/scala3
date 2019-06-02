@@ -5,7 +5,7 @@ package parsing
 import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
-import util.{ SourceFile, SourcePosition }
+import util.{ SourceFile, SourcePosition, NoSourcePosition }
 import Tokens._
 import Scanners._
 import xml.MarkupParsers.MarkupParser
@@ -473,8 +473,21 @@ object Parsers {
 
 /* -------------- XML ---------------------------------------------------- */
 
-    /** the markup parser */
-    lazy val xmlp: xml.MarkupParsers.MarkupParser = new MarkupParser(this, true)
+    /** The markup parser.
+     *  The first time this lazy val is accessed, we assume we were trying to parse an XML literal.
+     *  The current position is recorded for later error reporting if it turns out
+     *  that we don't have scala-xml on the compilation classpath.
+     */
+    lazy val xmlp: xml.MarkupParsers.MarkupParser = {
+      myFirstXmlPos = source.atSpan(Span(in.offset))
+      new MarkupParser(this, true)
+    }
+
+    /** The position of the first XML literal encountered while parsing,
+     *  NoSourcePosition if there were no XML literals.
+     */
+    def firstXmlPos: SourcePosition = myFirstXmlPos
+    private[this] var myFirstXmlPos: SourcePosition = NoSourcePosition
 
     object symbXMLBuilder extends xml.SymbolicXMLBuilder(this, true) // DEBUG choices
 
