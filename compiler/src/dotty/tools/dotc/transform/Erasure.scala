@@ -69,6 +69,8 @@ class Erasure extends Phase with DenotTransformer {
         else oldSymbol
         val oldOwner = ref.owner
         val newOwner = if (oldOwner eq defn.AnyClass) defn.ObjectClass else oldOwner
+        val oldName = ref.name
+        val newName = ref.erasedName
         val oldInfo = ref.info
         val newInfo = transformInfo(oldSymbol, oldInfo)
         val oldFlags = ref.flags
@@ -77,10 +79,11 @@ class Erasure extends Phase with DenotTransformer {
           else oldFlags &~ Flags.HasDefaultParams // HasDefaultParams needs to be dropped because overriding might become overloading
 
         // TODO: define derivedSymDenotation?
-        if ((oldSymbol eq newSymbol) && (oldOwner eq newOwner) && (oldInfo eq newInfo) && (oldFlags == newFlags)) ref
+        if ((oldSymbol eq newSymbol) && (oldOwner eq newOwner) && (oldName eq newName) && (oldInfo eq newInfo) && (oldFlags == newFlags))
+          ref
         else {
           assert(!ref.is(Flags.PackageClass), s"trans $ref @ ${ctx.phase} oldOwner = $oldOwner, newOwner = $newOwner, oldInfo = $oldInfo, newInfo = $newInfo ${oldOwner eq newOwner} ${oldInfo eq newInfo}")
-          ref.copySymDenotation(symbol = newSymbol, owner = newOwner, initFlags = newFlags, info = newInfo)
+          ref.copySymDenotation(symbol = newSymbol, owner = newOwner, name = newName, initFlags = newFlags, info = newInfo)
         }
       }
     case ref: JointRefDenotation =>

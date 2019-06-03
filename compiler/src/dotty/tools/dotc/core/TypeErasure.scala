@@ -537,7 +537,11 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   private def eraseDerivedValueClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
     val cls = tref.symbol.asClass
     val underlying = underlyingOfValueClass(cls)
-    if (underlying.exists && !isCyclic(cls)) ErasedValueType(tref, valueErasure(underlying))
+    if (underlying.exists && !isCyclic(cls)) {
+      val erasedValue = valueErasure(underlying)
+      assert(erasedValue.exists, i"no erasure for $underlying")
+      ErasedValueType(tref, erasedValue)
+    }
     else NoType
   }
 
@@ -605,7 +609,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       case tp: TypeVar =>
         val inst = tp.instanceOpt
         if (inst.exists) sigName(inst) else tpnme.Uninstantiated
-      case tp @ RefinedType(parent, nme.apply, _) if parent.typeSymbol eq defn.PolyFunctionClass => 
+      case tp @ RefinedType(parent, nme.apply, _) if parent.typeSymbol eq defn.PolyFunctionClass =>
         // we need this case rather than falling through to the default
         // because RefinedTypes <: TypeProxy and it would be caught by
         // the case immediately below

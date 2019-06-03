@@ -408,6 +408,11 @@ object RefChecks {
       } else if (!compatibleTypes(memberTp(self), otherTp(self)) &&
                  !compatibleTypes(memberTp(upwardsSelf), otherTp(upwardsSelf))) {
         overrideError("has incompatible type" + err.whyNoMatchStr(memberTp(self), otherTp(self)))
+      } else if (member.erasedName != other.erasedName) {
+        if (other.erasedName != other.name)
+          overrideError(i"needs to be declared with @alpha(${"\""}${other.erasedName}${"\""}) so that external names match")
+        else
+          overrideError("cannot have an @alpha annotation since external names would be different")
       } else {
         checkOverrideDeprecated()
       }

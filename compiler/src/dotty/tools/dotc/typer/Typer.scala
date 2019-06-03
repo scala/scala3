@@ -2312,7 +2312,9 @@ class Typer extends Namer
       case _ =>
         stat
     }
-    traverse(stats)(localCtx).mapConserve(finalize)
+    val stats1 = traverse(stats)(localCtx).mapConserve(finalize)
+    if (ctx.owner == exprOwner) checkNoAlphaConflict(stats1)
+    stats1
   }
 
   /** Given an inline method `mdef`, the method rewritten so that its body

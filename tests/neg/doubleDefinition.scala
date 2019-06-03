@@ -82,7 +82,7 @@ class Test8d {
 	def foo = 2 // error
 }
 
-// test method and contructor argument clashing
+// test method and constructor argument clashing
 
 class Test9(val foo: Int) {
 	def foo: String // error
@@ -132,14 +132,3 @@ class Test18 {
 	def foo(b: B) = 1
 }
 
-// Error when overloading polymorphic and non-polymorphic methods
-class Test19 {
-  def foo[T <: Int](x: T): T = x
-  def foo(x: Int): Int = x // error
-}
-
-// Error when overloading polymorphic methods
-class Test20 {
-  def foo[T <: Int](x: T): T = x
-  def foo[S <: Int, T <: Int](x: S): T = ??? // error
-}
