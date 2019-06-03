@@ -640,9 +640,6 @@ object Parsers {
     def wildcardIdent(): Ident =
       atSpan(accept(USCORE)) { Ident(nme.WILDCARD) }
 
-    def termIdentOrWildcard(): Ident =
-      if (in.token == USCORE) wildcardIdent() else termIdent()
-
     /** Accept identifier acting as a selector on given tree `t`. */
     def selector(t: Tree): Tree =
       atSpan(startOffset(t), in.offset) { Select(t, ident()) }
@@ -2352,8 +2349,57 @@ object Parsers {
      */
     def importExpr(importImplied: Boolean, mkTree: ImportConstr): () => Tree = {
 
+      /** ImportSelectors ::= `{' {ImportSelector `,'} FinalSelector ‘}’
+       *  FinalSelector   ::=  ImportSelector
+       *                    |  ‘_’
+       *                    |  ‘for’ InfixType {‘,’ InfixType}
+       */
+      def importSelectors(): List[Tree] = in.token match {
+        case USCORE =>
+          wildcardIdent() :: Nil
+        case FOR =>
+          if (!importImplied)
+              syntaxError(em"`for` qualifier only allowed in `import implied`")
+          atSpan(in.skipToken()) {
+            var t = infixType()
+            while (in.token == COMMA) {
+              val op = atSpan(in.skipToken()) { Ident(tpnme.raw.BAR) }
+              t = InfixOp(t, op, infixType())
+            }
+            TypeBoundsTree(EmptyTree, t)
+          } :: Nil
+        case _ =>
+          importSelector() :: {
+            if (in.token == COMMA) {
+              in.nextToken()
+              importSelectors()
+            }
+            else Nil
+          }
+      }
+
+      /** ImportSelector ::= id [`=>' id | `=>' `_']
+       */
+      def importSelector(): Tree = {
+        val from = termIdent()
+        if (in.token == ARROW)
+          atSpan(startOffset(from), in.skipToken()) {
+            val start = in.offset
+            val to = if (in.token == USCORE) wildcardIdent() else termIdent()
+            val toWithPos =
+              if (to.name == nme.ERROR)
+                // error identifiers don't consume any characters, so atSpan(start)(id) wouldn't set a span.
+                // Some testcases would then fail in Positioned.checkPos. Set a span anyway!
+                atSpan(start, start, in.lastOffset)(to)
+              else
+                to
+            Thicket(from, toWithPos)
+          }
+        else from
+      }
+
       val handleImport: Tree => Tree = { tree: Tree =>
-        if (in.token == USCORE) mkTree(importImplied, tree, importSelector() :: Nil)
+        if (in.token == USCORE) mkTree(importImplied, tree, wildcardIdent() :: Nil)
         else if (in.token == LBRACE) mkTree(importImplied, tree, inBraces(importSelectors()))
         else tree
       }
@@ -2375,41 +2421,6 @@ object Parsers {
       }
     }
 
-    /** ImportSelectors ::= `{' {ImportSelector `,'} (ImportSelector | `_') `}'
-     */
-    def importSelectors(): List[Tree] = {
-      val sel = importSelector()
-      if (in.token == RBRACE) sel :: Nil
-      else {
-        sel :: {
-          if (!isWildcardArg(sel) && in.token == COMMA) {
-            in.nextToken()
-            importSelectors()
-          }
-          else Nil
-        }
-      }
-    }
-
-    /** ImportSelector ::= id [`=>' id | `=>' `_']
-     */
-    def importSelector(): Tree = {
-      val from = termIdentOrWildcard()
-      if (from.name != nme.WILDCARD && in.token == ARROW)
-        atSpan(startOffset(from), in.skipToken()) {
-          val start = in.offset
-          val to = termIdentOrWildcard()
-          val toWithPos =
-            if (to.name == nme.ERROR)
-              // error identifiers don't consume any characters, so atSpan(start)(id) wouldn't set a span.
-              // Some testcases would then fail in Positioned.checkPos. Set a span anyway!
-              atSpan(start, start, in.lastOffset)(to)
-            else
-              to
-          Thicket(from, toWithPos)
-        }
-      else from
-    }
 
     def posMods(start: Int, mods: Modifiers): Modifiers = {
       in.nextToken()

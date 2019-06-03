@@ -21,6 +21,7 @@ import StdNames._
 import NameKinds.DefaultGetterName
 import ProtoTypes._
 import Inferencing._
+import transform.TypeUtils._
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
@@ -1332,6 +1333,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  iff
      *
      *     T => R  <:s  U => R
+     *
+     *  Also: If a compared type refers to an implied object or its module class, use
+     *  the intersection of its parent classes instead.
      */
     def isAsSpecificValueType(tp1: Type, tp2: Type)(implicit ctx: Context) =
       if (ctx.mode.is(Mode.OldOverloadingResolution))
@@ -1347,7 +1351,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             case _ => mapOver(t)
           }
         }
-        (flip(tp1) relaxed_<:< flip(tp2)) || viewExists(tp1, tp2)
+        def prepare(tp: Type) = tp.stripTypeVar match {
+          case tp: NamedType if tp.symbol.is(Module) && tp.symbol.sourceModule.is(Implied) =>
+            flip(tp.widen.widenToParents)
+          case _ => flip(tp)
+        }
+        (prepare(tp1) relaxed_<:< prepare(tp2)) || viewExists(tp1, tp2)
       }
 
     /** Widen the result type of synthetic implied methods from the implementation class to the
@@ -1375,11 +1384,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case pt: PolyType =>
         pt.derivedLambdaType(pt.paramNames, pt.paramInfos, widenImplied(pt.resultType, alt))
       case _ =>
-        if (alt.symbol.is(SyntheticImpliedMethod))
-          tp.parents match {
-            case Nil => tp
-            case ps => ps.reduceLeft(AndType(_, _))
-          }
+        if (alt.symbol.is(SyntheticImpliedMethod)) tp.widenToParents
         else tp
     }
 

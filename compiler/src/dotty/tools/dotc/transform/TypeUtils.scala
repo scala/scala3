@@ -25,6 +25,11 @@ object TypeUtils {
       case _ => if (ctx.erasedTypes) MethodType(Nil, self) else ExprType(self)
     }
 
+    def widenToParents(implicit ctx: Context): Type = self.parents match {
+      case Nil => self
+      case ps => ps.reduceLeft(AndType(_, _))
+    }
+
     /** The arity of this tuple type, which can be made up of Unit, TupleX and `*:` pairs,
      *  or -1 if this is not a tuple type.
      */

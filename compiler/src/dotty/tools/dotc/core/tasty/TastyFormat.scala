@@ -63,6 +63,7 @@ Standard-Section: "ASTs" TopLevelStat*
                                         Modifier*                                  -- modifiers def name [typeparams] paramss : returnType (= rhs)?
   Selector      = IMPORTED              name_NameRef                               -- name
                   RENAMED               to_NameRef                                 -- => name
+                  BOUNDED               type_Term?                                 -- for type
 
   TypeParam     = TYPEPARAM      Length NameRef type_Term Modifier*                -- modifiers name bounds
   Params        = PARAMS         Length Param*
@@ -80,7 +81,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   APPLY          Length fn_Term arg_Term*                          -- fn(args)
                   TYPEAPPLY      Length fn_Term arg_Type*                          -- fn[args]
                   SUPER          Length this_Term mixinTypeIdent_Tree?             -- super[mixin]
-                  TYPED          Length expr_Term ascriptionType_Tern              -- expr: ascription
+                  TYPED          Length expr_Term ascriptionType_Term              -- expr: ascription
                   ASSIGN         Length lhs_Term rhs_Term                          -- lhs = rhs
                   BLOCK          Length expr_Term Stat*                            -- { stats; expr }
                   INLINED        Length expr_Term call_Term? ValOrDefDef*          -- Inlined code from call, with given body `expr` and given bindings
@@ -369,6 +370,7 @@ object TastyFormat {
   final val RECtype = 91
   final val TYPEALIAS = 92
   final val SINGLETONtpt = 93
+  final val BOUNDED = 94
 
   // Cat. 4:    tag Nat AST
 
@@ -461,7 +463,7 @@ object TastyFormat {
   def isLegalTag(tag: Int): Boolean =
     firstSimpleTreeTag <= tag && tag <= EXPORTED ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
-    firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
+    firstASTTreeTag <= tag && tag <= BOUNDED ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
     firstLengthTreeTag <= tag && tag <= MATCHtpt ||
     tag == HOLE
@@ -601,6 +603,7 @@ object TastyFormat {
     case PARAM => "PARAM"
     case IMPORTED => "IMPORTED"
     case RENAMED => "RENAMED"
+    case BOUNDED => "BOUNDED"
     case APPLY => "APPLY"
     case TYPEAPPLY => "TYPEAPPLY"
     case NEW => "NEW"

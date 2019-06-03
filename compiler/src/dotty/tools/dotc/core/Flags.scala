@@ -592,6 +592,8 @@ object Flags {
   final val ImplicitOrImpliedOrGiven = Implicit | Implied | Given
   final val ImplicitOrGiven = Implicit | Given
 
+  final val ImpliedOrGiven = Implied | Given
+
   final val ImplicitOrImpliedOrGivenTerm = ImplicitOrImpliedOrGiven.toTermFlags
 
   /** Flags retained in export forwarders */

@@ -28,6 +28,35 @@ There are two main benefits arising from these rules:
    instances can be anonymous, so the usual recourse of using named imports is not
    practical.
 
+### Importing By Type
+
+Since implied instances can be anonymous it is not always practical to import them by their name, and wildcard imports are typically used instead. By-type imports provide a more specific alternative to wildcard imports, which makes it clearer what is imported. Example:
+
+```scala
+import implied A.{for TC}
+```
+This imports any implied instance in `A` that has a type which conforms tp `TC`. There can be several bounding types following a `for` and bounding types can contain wildcards.
+For instance, assuming the object
+```scala
+object Instances {
+  implied intOrd for Ordering[Int]
+  implied [T: Ordering] listOrd for Ordering[List[T]]
+  implied ec for ExecutionContext = ...
+  implied im for Monoid[Int]
+}
+```
+the import
+```
+import implied Instances.{for Ordering[_], ExecutionContext}
+```
+would import the `intOrd`, `listOrd`, and `ec` instances but leave out the `im` instance, since it fits none of the specified bounds.
+
+By-type imports can be mixed with by-name imports. If both are present in an import clause, by-type imports come last. For instance, the import clause
+```
+import implied Instances.{im, for Ordering[_]}
+```
+would import `im`, `intOrd`, and `listOrd` but leave out `ec`. By-type imports cannot be mixed with a wildcard import in the same import clause.
+
 ### Migration
 
 The rules for `import implied` above have the consequence that a library

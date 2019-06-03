@@ -339,8 +339,11 @@ Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                    
 
 Import            ::=  ‘import’ [‘implied’] ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  StableId ‘.’ (id | ‘_’ | ImportSelectors)                Import(expr, sels)
-ImportSelectors   ::=  ‘{’ {ImportSelector ‘,’} (ImportSelector | ‘_’) ‘}’
-ImportSelector    ::=  id [‘=>’ id | ‘=>’ ‘_’]                                  Ident(name), Pair(id, id)
+ImportSelectors   ::=  ‘{’ {ImportSelector ‘,’} FinalSelector ‘}’
+FinalSelector     ::=  ImportSelector                                           Ident(name)
+                    |  ‘_’                                                      Pair(id, id)
+                    |  ‘for’ InfixType {‘,’ InfixType}                          TypeBoundsTree(EmptyTree, tpt)
+ImportSelector    ::=  id [‘=>’ id | ‘=>’ ‘_’]
 Export            ::=  ‘export’ [‘implied’] ImportExpr {‘,’ ImportExpr}
 ```
 

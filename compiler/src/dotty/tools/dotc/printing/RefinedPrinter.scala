@@ -501,7 +501,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case Import(importImplied, expr, selectors) =>
         def selectorText(sel: Tree): Text = sel match {
           case Thicket(l :: r :: Nil) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
-          case _ => toTextGlobal(sel)
+          case _: Ident => toTextGlobal(sel)
+          case TypeBoundsTree(_, tpt) => "for " ~ toTextGlobal(tpt)
         }
         val selectorsText: Text = selectors match {
           case id :: Nil => toText(id)

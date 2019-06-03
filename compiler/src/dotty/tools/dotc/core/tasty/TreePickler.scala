@@ -606,6 +606,10 @@ class TreePickler(pickler: TastyPickler) {
         pickleSelector(RENAMED, to)
       case id @ Ident(_) =>
         pickleSelector(IMPORTED, id)
+      case bounded @ TypeBoundsTree(untpd.EmptyTree, untpd.TypedSplice(tpt)) =>
+        registerTreeAddr(bounded)
+        writeByte(BOUNDED)
+        pickleTree(tpt)
     }
 
   def pickleSelector(tag: Int, id: untpd.Ident)(implicit ctx: Context): Unit = {
