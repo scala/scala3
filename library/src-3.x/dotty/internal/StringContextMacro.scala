@@ -203,7 +203,7 @@ object StringContextMacro {
       case p :: parts1 => p :: parts1.map((part : String) => {
         if (!part.startsWith("%")) {
           val index = part.indexOf('%')
-          if (index != -1) {
+          if (!reporter.hasReported() && index != -1) {
             reporter.partError("conversions must follow a splice; use %% for literal %, %n for newline", parts.indexOf(part), index)
             "%s" + part
           } else "%s" + part
@@ -311,7 +311,7 @@ object StringContextMacro {
 
       //relative indexing
       val hasRelative = conversion < l && part.charAt(conversion) == '<'
-      val relativeIndex = conversion + 1
+      val relativeIndex = conversion
       if (hasRelative)
         conversion += 1
 
@@ -333,13 +333,13 @@ object StringContextMacro {
           conversion += 1
         }
         if (oldConversion == conversion) {
-          reporter.partError("Missing conversion operator in '" + part.substring(pos, oldConversion - 1) + "'; use %% for literal %, %n for newline", partIndex, 0)
+          reporter.partError("Missing conversion operator in '" + part.substring(pos, oldConversion - 1) + "'; use %% for literal %, %n for newline", partIndex, pos)
           hasPrecision = false
         }
       }
 
       //conversion
-      if(conversion >= l || (!part.charAt(conversion).isLetter && part.charAt(conversion) != '%'))
+      if((conversion >= l || (!part.charAt(conversion).isLetter && part.charAt(conversion) != '%')) && !reporter.hasReported())
         reporter.partError("Missing conversion operator in '" + part.substring(pos, conversion) + "'; use %% for literal %, %n for newline", partIndex, pos)
 
       val hasWidth = (hasWidth1 && !hasArgumentIndex) || hasWidth2
@@ -358,7 +358,7 @@ object StringContextMacro {
      */
     def checkSubtype(actualType : Type, expectedType : String, argIndex : Int, possibilities : Type*) = {
       if (possibilities.find(actualType <:< _).isEmpty)
-        reporter.argError("type mismatch;\n found   : " + actualType.widen.show.stripPrefix("scala.Predef.") + "\n required: " + expectedType, argIndex)
+        reporter.argError("type mismatch;\n found   : " + actualType.widen.show.stripPrefix("scala.Predef.").stripPrefix("scala.") + "\n required: " + expectedType, argIndex)
     }
 
     /** Checks whether a given argument index, relative or not, is in the correct bounds
@@ -379,7 +379,7 @@ object StringContextMacro {
       if (argumentIndex > maxArgumentIndex || argumentIndex <= 0)
         reporter.partError("Argument index out of range", partIndex, offset)
 
-      if (expectedArgumentIndex != argumentIndex)
+      if (expectedArgumentIndex != argumentIndex && !reporter.hasReported())
         reporter.partWarning("Index is not this arg", partIndex, offset)
     }
 
@@ -545,10 +545,10 @@ object StringContextMacro {
      */
     def checkSpecials(partIndex : Int, conversionChar : Char, hasPrecision : Boolean, precision : Int, hasWidth : Boolean, width : Int) = conversionChar match {
       case 'n' => {
-        checkNotAllowedParameter(hasPrecision, partIndex, precision + 1, "precision")
+        checkNotAllowedParameter(hasPrecision, partIndex, precision, "precision")
         checkNotAllowedParameter(hasWidth, partIndex, width, "width")
       }
-      case '%' => checkNotAllowedParameter(hasPrecision, partIndex, precision + 1, "precision")
+      case '%' => checkNotAllowedParameter(hasPrecision, partIndex, precision, "precision")
       case _ => // OK
     }
 
@@ -597,13 +597,14 @@ object StringContextMacro {
      *  @param conversionChar the character used for the conversion
      *  @param argument an option containing the type and index of the argument, None if there is no argument
      *  @param flags the flags used for the formatting
+     *  @param formattingStart the index in the part where the formatting substring starts, i.e. where the '%' is
      *  @return reports an error/warning if the formatting parameters are not allowed/wrong depending on the type, nothing otherwise
      */
-    def checkArgTypeWithConversion(partIndex : Int, conversionChar : Char, argument : Option[(Type, Int)], flags : List[(Char, Int)]) = {
+    def checkArgTypeWithConversion(partIndex : Int, conversionChar : Char, argument : Option[(Type, Int)], flags : List[(Char, Int)], formattingStart : Int) = {
       if (argument.nonEmpty)
         checkTypeWithArgs(argument.get, conversionChar, partIndex, flags)
       else
-        checkTypeWithoutArgs(conversionChar, partIndex, flags)
+        checkTypeWithoutArgs(conversionChar, partIndex, flags, formattingStart)
     }
 
     /** Checks whether the argument type checks with the formatting parameters
@@ -628,9 +629,9 @@ object StringContextMacro {
         case 'd' | 'o' | 'x' | 'X' => {
           checkSubtype(argType, "Int", argIndex, integral : _*)
           if (conversionChar != 'd') {
-            val notAllowedFlagOnCondition = List(('+', !(argType <:< typeOf[java.math.BigInteger]), "Only use '+' for BigInt conversions to o, x, X"),
-            (' ', !(argType <:< typeOf[java.math.BigInteger]), "Only use ' ' for BigInt conversions to o, x, X"),
-            ('(', !(argType <:< typeOf[java.math.BigInteger]), "Only use '(' for BigInt conversions to o, x, X"),
+            val notAllowedFlagOnCondition = List(('+', !(argType <:< typeOf[java.math.BigInteger]), "only use '+' for BigInt conversions to o, x, X"),
+            (' ', !(argType <:< typeOf[java.math.BigInteger]), "only use ' ' for BigInt conversions to o, x, X"),
+            ('(', !(argType <:< typeOf[java.math.BigInteger]), "only use '(' for BigInt conversions to o, x, X"),
             (',', true, "',' only allowed for d conversion of integral types"))
             checkFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
           }
@@ -641,7 +642,7 @@ object StringContextMacro {
         case 'h' | 'H' | 'S' | 's' =>
           if (!(argType <:< typeOf[java.util.Formattable]))
             for {flag <- flags ; if (flag._1 == '#')}
-              reporter.argError("type mismatch;\n found   :" + argType.widen.show.stripPrefix("scala.Predef.") + "\n required: java.util.Formattable", argIndex)
+              reporter.argError("type mismatch;\n found   : " + argType.widen.show.stripPrefix("scala.Predef.").stripPrefix("scala.") + "\n required: java.util.Formattable", argIndex)
         case 'n' | '%' =>
         case illegal =>
       }
@@ -652,23 +653,21 @@ object StringContextMacro {
      *  @param conversionChar the conversion parameter inside the formatting String
      *  @param partIndex index of the part inside the String Context
      *  @param flags the list of flags, and their index, used inside the formatting String
+     *  @param formattingStart the index in the part where the formatting substring starts, i.e. where the '%' is
      *  @return reports an error if the formatting parameter refer to the type of the parameter but no parameter is given
      *  nothing otherwise
      */
-    def checkTypeWithoutArgs(conversionChar : Char, partIndex : Int, flags : List[(Char, Int)]) = {
+    def checkTypeWithoutArgs(conversionChar : Char, partIndex : Int, flags : List[(Char, Int)], formattingStart : Int) = {
       conversionChar match {
           case 'o' | 'x' | 'X' => {
-            val notAllowedFlagOnCondition = List(('+', true, "Only use '+' for BigInt conversions to o, x, X"),
-            (' ', true, "Only use ' ' for BigInt conversions to o, x, X"),
-            ('(', true, "Only use '(' for BigInt conversions to o, x, X"),
+            val notAllowedFlagOnCondition = List(('+', true, "only use '+' for BigInt conversions to o, x, X"),
+            (' ', true, "only use ' ' for BigInt conversions to o, x, X"),
+            ('(', true, "only use '(' for BigInt conversions to o, x, X"),
             (',', true, "',' only allowed for d conversion of integral types"))
             checkFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
           }
           case _ => //OK
         }
-
-        if (!reporter.hasReported() && conversionChar != '%' && conversionChar != 'n')
-          reporter.partError("conversions must follow a splice; use %% for literal %, %n for newline", partIndex, 0)
     }
 
     /** Checks that a given part of the String Context respects every formatting constraint per parameter
@@ -699,14 +698,14 @@ object StringContextMacro {
           case None => {
             val (hasArgumentIndex, argumentIndex, flags, hasWidth, width, hasPrecision, precision, hasRelative, relativeIndex, conversion) = getFormatSpecifiers(part, 0, 0, true, formattingStart)
             if (hasArgumentIndex && !(part.charAt(argumentIndex).asDigit == 1 && (part.charAt(conversion) == 'n' || part.charAt(conversion) == '%')))
-              reporter.partError("Argument index out of range", 0, argumentIndex + 1)
+              reporter.partError("Argument index out of range", 0, argumentIndex)
             if (hasRelative)
               reporter.partError("No last arg", 0, relativeIndex)
             if (!reporter.hasReported()){
               val conversionWithType = checkFormatSpecifiers(0, hasArgumentIndex, argumentIndex, None, maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, None, part)
               nextStart = conversion + 1
               if (!reporter.hasReported() && part.charAt(conversion) != '%' && part.charAt(conversion) != 'n')
-                reporter.partError("conversions must follow a splice; use %% for literal %, %n for newline", 0, 0)
+                reporter.partError("conversions must follow a splice; use %% for literal %, %n for newline", 0, part.indexOf('%'))
               conversionWithType :: checkPart(part, nextStart, argument, maxArgumentIndex)
             } else checkPart(part, conversion + 1, argument, maxArgumentIndex)
           }
@@ -730,16 +729,15 @@ object StringContextMacro {
         val argTypeWithConversion = checkPart(parts.head, 0, None, None)
         if (!reporter.hasReported())
           for ((argument, conversionChar, flags) <- argTypeWithConversion)
-            checkArgTypeWithConversion(0, conversionChar, argument, flags)
-      }
-      else {
+            checkArgTypeWithConversion(0, conversionChar, argument, flags, parts.head.indexOf('%'))
+      } else {
         val partWithArgs = parts.tail.zip(args)
         for (i <- (0 until args.size)){
           val (part, arg) = partWithArgs(i)
           val argTypeWithConversion = checkPart(part, 0, Some((i, arg)), Some(args.size))
           if (!reporter.hasReported())
             for ((argument, conversionChar, flags) <- argTypeWithConversion)
-              checkArgTypeWithConversion(0, conversionChar, argument, flags)
+              checkArgTypeWithConversion(i + 1, conversionChar, argument, flags, parts(i).indexOf('%'))
         }
       }
     }
