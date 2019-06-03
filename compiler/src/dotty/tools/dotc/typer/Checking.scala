@@ -274,6 +274,20 @@ object Checking {
     }
   }
 
+  /** If `sym` has an operator name, check that it has an @alpha annotation under -strict */
+  def checkValidOperator(sym: Symbol)(implicit ctx: Context): Unit =
+    sym.name.toTermName match {
+      case name: SimpleName
+      if name.exists(isOperatorPart) &&
+        !sym.getAnnotation(defn.AlphaAnnot).isDefined &&
+        !sym.is(Synthetic) &&
+        !name.isConstructorName &&
+        ctx.settings.strict.value =>
+        ctx.deprecationWarning(
+          i"$sym has an operator name; it should come with an @alpha annotation", sym.sourcePos)
+      case _ =>
+    }
+
   /** Check that `info` of symbol `sym` is not cyclic.
    *  @pre     sym is not yet initialized (i.e. its type is a Completer).
    *  @return  `info` where every legal F-bounded reference is proctected
