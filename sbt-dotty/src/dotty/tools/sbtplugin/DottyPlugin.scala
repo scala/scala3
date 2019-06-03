@@ -172,21 +172,15 @@ object DottyPlugin extends AutoPlugin {
 
       scalaCompilerBridgeBinaryJar := Def.settingDyn {
         if (isDotty.value) Def.task {
-          val dottyBridgeArtifacts = fetchArtifactsOf(
+          val updateReport = fetchArtifactsOf(
             scalaOrganization.value % "dotty-sbt-bridge" % scalaVersion.value,
             dependencyResolution.value,
             scalaModuleInfo.value,
             updateConfiguration.value,
             (unresolvedWarningConfiguration in update).value,
             streams.value.log,
-          ).allFiles
-          val jars = dottyBridgeArtifacts.filter(art => art.getName.startsWith("dotty-sbt-bridge") && art.getName.endsWith(".jar")).toArray
-          if (jars.size == 0)
-            throw new MessageOnlyException("No jar found for dotty-sbt-bridge")
-          else if (jars.size > 1)
-            throw new MessageOnlyException(s"Multiple jars found for dotty-sbt-bridge: ${jars.toList}")
-          else
-            jars.headOption
+          )
+          Option(getJar(updateReport, scalaOrganization.value, "dotty-sbt-bridge", scalaVersion.value))
         }
         else Def.task {
           None: Option[File]
@@ -380,7 +374,7 @@ object DottyPlugin extends AutoPlugin {
     updateReport.select(
       configurationFilter(Runtime.name),
       moduleFilter(organization, name, revision),
-      artifactFilter(extension = "jar")
+      artifactFilter(extension = "jar", classifier = "")
     )
   }
 
