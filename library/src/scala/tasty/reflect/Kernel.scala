@@ -865,6 +865,36 @@ trait Kernel {
   /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
   def Type_derivesFrom(self: Type)(cls: ClassDefSymbol)(implicit ctx: Context): Boolean
 
+  /** Is this type a function type?
+   *
+   *  @return true if the dealised type of `self` without refinement is `FunctionN[T1, T2, ..., Tn]`
+   *
+   *  @note The function
+   *
+   *     - returns true for `given Int => Int` and `erased Int => Int`
+   *     - returns false for `List[Int]`, despite that `List[Int] <:< Int => Int`.
+   */
+  def Type_isFunctionType(self: Type)(implicit ctx: Context): Boolean
+
+
+  /** Is this type an implicit function type?
+   *
+   *  @see `Type_isFunctionType`
+   */
+  def Type_isImplicitFunctionType(self: Type)(implicit ctx: Context): Boolean
+
+  /** Is this type an erased function type?
+   *
+   *  @see `Type_isFunctionType`
+   */
+  def Type_isErasedFunctionType(self: Type)(implicit ctx: Context): Boolean
+
+  /** Is this type a dependent function type?
+   *
+   *  @see `Type_isFunctionType`
+   */
+  def Type_isDependentFunctionType(self: Type)(implicit ctx: Context): Boolean
+
   /** A singleton type representing a known constant value */
   type ConstantType <: Type
 
