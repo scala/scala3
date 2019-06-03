@@ -444,23 +444,18 @@ object SymDenotations {
     /** `fullName` where `.' is the separator character */
     def fullName(implicit ctx: Context): Name = fullNameSeparated(QualifiedName)
 
-    private var myErasedName: Name = null
-
-    final override def erasedName(implicit ctx: Context): Name = {
-      if (myErasedName == null) {
-        myErasedName = name
-        if (isTerm)
-          getAnnotation(defn.AlphaAnnot) match {
-            case Some(ann) =>
-              ann.arguments match {
-                case Literal(Constant(str: String)) :: Nil => myErasedName = str.toTermName
-                case _ =>
-              }
-            case _ =>
-          }
-      }
-      myErasedName
-    }
+    /** The name given in an `@alpha` annotation if one is present, `name` otherwise */
+    final def erasedName(implicit ctx: Context): Name =
+      if (isTerm)
+        getAnnotation(defn.AlphaAnnot) match {
+          case Some(ann) =>
+            ann.arguments match {
+              case Literal(Constant(str: String)) :: Nil => str.toTermName
+              case _ => name
+            }
+          case _ => name
+        }
+      else name
 
     // ----- Tests -------------------------------------------------
 

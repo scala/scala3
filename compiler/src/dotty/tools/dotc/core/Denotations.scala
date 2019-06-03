@@ -734,8 +734,6 @@ object Denotations {
         case _ => Signature.NotAMethod
       }
 
-    def erasedName(implicit ctx: Context): Name = symbol.erasedName
-
     def derivedSingleDenotation(symbol: Symbol, info: Type)(implicit ctx: Context): SingleDenotation =
       if ((symbol eq this.symbol) && (info eq this.info)) this
       else newLikeThis(symbol, info)
