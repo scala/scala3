@@ -12,7 +12,7 @@ object TestConfiguration {
   )
 
   val checkOptions = Array(
-    // "-Yscala2-unpickler", s"${Properties.scalaLibrary}:${Properties.scalaXml}",
+    // "-Yscala2-unpickler", s"${Properties.scalaLibrary}",
     "-Yno-deep-subtypes",
     "-Yno-double-bindings",
     "-Yforce-sbt-phases",
@@ -21,13 +21,11 @@ object TestConfiguration {
 
   val basicClasspath = mkClasspath(List(
     Properties.scalaLibrary,
-    Properties.scalaXml,
     Properties.dottyLibrary
   ))
 
   val withCompilerClasspath = mkClasspath(List(
     Properties.scalaLibrary,
-    Properties.scalaXml,
     Properties.scalaAsm,
     Properties.jlineTerminal,
     Properties.jlineReader,

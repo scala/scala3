@@ -62,14 +62,14 @@ object Build {
   val referenceVersion = "0.15.0-RC1"
 
   val baseVersion = "0.16.0"
-  val baseSbtDottyVersion = "0.3.3"
+  val baseSbtDottyVersion = "0.3.4"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
   // TODO: Have the vscode extension fetch these numbers from the Internet
   // instead of hardcoding them ?
   val publishedDottyVersion = referenceVersion
-  val publishedSbtDottyVersion = "0.3.2"
+  val publishedSbtDottyVersion = "0.3.3"
 
 
   val dottyOrganization = "ch.epfl.lamp"
@@ -294,7 +294,9 @@ object Build {
         dottyCompiler,
         allJars
       )
-    }
+    },
+    // sbt-dotty defines `scalaInstance in doc` so we need to override it manually
+    scalaInstance in doc := scalaInstance.value,
   )
 
   lazy val commonBenchmarkSettings = Seq(
@@ -450,8 +452,6 @@ object Build {
       // get libraries onboard
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "6.0.0-scala-1", // used by the backend
-        // FIXME: Not needed, but should be on the compiler CP
-        ("org.scala-lang.modules" %% "scala-xml" % "1.1.0").withDottyCompat(scalaVersion.value),
         "org.scala-lang" % "scala-library" % scalacVersion % "test",
         Dependencies.`compiler-interface`,
         "org.jline" % "jline-reader" % "3.9.0",   // used by the REPL
@@ -515,7 +515,6 @@ object Build {
           "-Ddotty.tests.classes.compilerInterface=" + findLib(attList, "compiler-interface"),
           "-Ddotty.tests.classes.scalaLibrary=" + findLib(attList, "scala-library-"),
           "-Ddotty.tests.classes.scalaAsm=" + findLib(attList, "scala-asm"),
-          "-Ddotty.tests.classes.scalaXml=" + findLib(attList, "scala-xml"),
           "-Ddotty.tests.classes.jlineTerminal=" + findLib(attList, "jline-terminal"),
           "-Ddotty.tests.classes.jlineReader=" + findLib(attList, "jline-reader")
         )

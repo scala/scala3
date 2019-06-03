@@ -223,6 +223,8 @@ class Definitions {
     lazy val Sys_errorR: TermRef = SysPackage.moduleClass.requiredMethodRef(nme.error)
     def Sys_error(implicit ctx: Context): Symbol = Sys_errorR.symbol
 
+  lazy val ScalaXmlPackageClass: Symbol = ctx.getPackageClassIfDefined("scala.xml")
+
   lazy val CompiletimePackageObjectRef: TermRef = ctx.requiredModuleRef("scala.compiletime.package")
   lazy val CompiletimePackageObject: Symbol = CompiletimePackageObjectRef.symbol.moduleClass
     lazy val Compiletime_errorR: TermRef = CompiletimePackageObjectRef.symbol.requiredMethodRef(nme.error)

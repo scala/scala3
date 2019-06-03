@@ -1,0 +1,9 @@
+-- Error: tests/neg/xml.scala:2:10 -------------------------------------------------------------------------------------
+2 |  val a = <foo>bla</foo> // error // error
+  |          ^
+  |          To support XML literals, your project must depend on scala-xml.
+  |          See https://github.com/scala/scala-xml for more information.
+-- [E008] Member Not Found Error: tests/neg/xml.scala:2:11 -------------------------------------------------------------
+2 |  val a = <foo>bla</foo> // error // error
+  |           ^
+  |           value xml is not a member of scala - did you mean scala.&?

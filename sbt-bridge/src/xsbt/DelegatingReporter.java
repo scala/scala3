@@ -80,11 +80,11 @@ final public class DelegatingReporter extends AbstractReporter {
       SourceFile src = pos.source();
       position = new Position() {
         public Optional<java.io.File> sourceFile() {
-          if (src.exists()) return Optional.empty();
+          if (!src.exists()) return Optional.empty();
           else return Optional.ofNullable(src.file().file());
         }
         public Optional<String> sourcePath() {
-          if (src.exists()) return Optional.empty();
+          if (!src.exists()) return Optional.empty();
           else return Optional.ofNullable(src.file().path());
         }
         public Optional<Integer> line() {
