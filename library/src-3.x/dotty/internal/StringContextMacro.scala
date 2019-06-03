@@ -8,7 +8,7 @@ import reflect._
 object StringContextMacro {
 
   /** Implementation of scala.StringContext.f used in Dotty */
-  inline def f(sc: => StringContext)(args: Any*): String = ${ fImpl('sc, 'args) }
+  inline def f(sc: => StringContext)(args: Any*): String = ${ interpolate('sc, 'args) }
 
   /** This trait defines a tool to report errors/warnings that do not depend on Position. */
   trait Reporter {
@@ -744,16 +744,5 @@ object StringContextMacro {
 
     // macro expansion
     '{(${parts.mkString.toExpr}).format(${argsExpr}: _*)}
-  }
-
-  /** Applies the interpolation to the input of the f-interpolator macro
-   *
-   *  @param strCtxExpr the Expr containing the StringContext with the parts of the formatting String
-   *  @param argsExpr the Expr containing the list of arguments to interpolate
-   *  @return the Expr containing the interpolated String, reports an error/warning if any formatting parameter does not
-   *  respect the formatting rules
-   */
-  final def fImpl(strCtxExpr: Expr[StringContext], args: Expr[Seq[Any]])(implicit reflect:Reflection): Expr[String] = {
-    interpolate(strCtxExpr, args)
   }
 }
