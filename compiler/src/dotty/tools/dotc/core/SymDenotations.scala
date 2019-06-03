@@ -446,16 +446,15 @@ object SymDenotations {
 
     /** The name given in an `@alpha` annotation if one is present, `name` otherwise */
     final def erasedName(implicit ctx: Context): Name =
-      if (isTerm)
-        getAnnotation(defn.AlphaAnnot) match {
-          case Some(ann) =>
-            ann.arguments match {
-              case Literal(Constant(str: String)) :: Nil => str.toTermName
-              case _ => name
-            }
-          case _ => name
-        }
-      else name
+      getAnnotation(defn.AlphaAnnot) match {
+        case Some(ann) =>
+          ann.arguments match {
+            case Literal(Constant(str: String)) :: Nil =>
+              if (isType) str.toTypeName else str.toTermName
+            case _ => name
+          }
+        case _ => name
+      }
 
     // ----- Tests -------------------------------------------------
 

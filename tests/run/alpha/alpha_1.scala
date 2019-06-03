@@ -11,7 +11,7 @@ abstract class Alpha[T] {
 
 }
 
-class Beta extends Alpha[String] {
+@alpha("Bar") class | extends Alpha[String] {
 
   @alpha("bar") override def foo(x: String) = x ++ x
 
