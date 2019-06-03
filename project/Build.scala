@@ -294,7 +294,9 @@ object Build {
         dottyCompiler,
         allJars
       )
-    }
+    },
+    // sbt-dotty defines `scalaInstance in doc` so we need to override it manually
+    scalaInstance in doc := scalaInstance.value,
   )
 
   lazy val commonBenchmarkSettings = Seq(
