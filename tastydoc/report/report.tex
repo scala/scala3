@@ -273,7 +273,7 @@ It will be parsed as:
 Although the project is near features complete. Some work needs to be done to perfect the tool.
 
 \paragraph{Markdown escaping}
-As seen in \autoref{sec:problems} we do not escape anything before outputting Markdown, this is a problem that needs to be addressed by making a library capable of escaping Markdown. This is not a trivial task as Markdown has a lot of different available syntaxes, especially when we extend Markdown with some features like tables.
+As seen in \autoref{sec:problems} we do not escape anything before outputting Markdown, this is a problem that needs to be addressed by making a library capable of making a Markdown AST and rendering it to text while escaping the input. This is not a trivial task as Markdown has a lot of different available syntaxes, especially when we extend Markdown with some features like tables.
 
 \paragraph{Type Lambdas}
 Type Lambdas are complex types to handle and convert to References, right now they are converted to constant References. This is not the expected behavior and the output is not the one we expect and no linking can be done this way. It is, however, acceptable for a first version as type lambdas do not appear that often.
