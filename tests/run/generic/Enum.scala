@@ -1,7 +1,7 @@
 package generic
 
 trait Enum {
-  def enumTag: Int
+  def ordinal: Int
 }
 
 object runtime {
@@ -10,8 +10,8 @@ object runtime {
     private[this] var fromNameCache: Map[String, E] = null
 
     def register(v: E) = {
-      require(!myMap.contains(v.enumTag))
-      myMap = myMap.updated(v.enumTag, v)
+      require(!myMap.contains(v.ordinal))
+      myMap = myMap.updated(v.ordinal, v)
       fromNameCache = null
     }
 

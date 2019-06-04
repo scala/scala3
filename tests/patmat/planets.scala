@@ -15,11 +15,10 @@ enum Planet(mass: Double, radius: Double) {
 object Test {
   def main(args: Array[String]) = {
     import Planet._
-    assert(enumValueNamed("SATURN") == SATURN)
-    assert(enumValue(2) == EARTH)
+    assert(valueOf("SATURN") == SATURN)
     val earthWeight = 100
     val mass = earthWeight/EARTH.surfaceGravity
-    for (p <- enumValues)
+    for (p <- values)
       println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
   }
 }

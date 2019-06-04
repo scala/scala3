@@ -10,7 +10,7 @@ import Shapes._
 sealed trait List0[T] extends Enum
 object List0 {
   abstract case class Cons[T](hd: T, tl: List0[T]) extends List0[T] {
-    def enumTag = 0
+    def ordinal = 0
   }
   object Cons {
     def apply[T](x: T, xs: List0[T]): List0[T] = new Cons(x, xs) {}
@@ -22,7 +22,7 @@ object List0 {
   }
 
   abstract case class Nil[T]() extends List0[T] {
-    def enumTag = 1
+    def ordinal = 1
   }
   object Nil {
     def apply[T](): List0[T] = new Nil[T]() {}
@@ -54,7 +54,7 @@ object List0 {
 sealed trait List[+T] extends Enum
 object List {
   abstract case class Cons[T](hd: T, tl: List[T]) extends List[T] {
-    def enumTag = 0
+    def ordinal = 0
   }
   object Cons {
     def apply[T](x: T, xs: List[T]): List[T] = new Cons(x, xs) {}
@@ -67,7 +67,7 @@ object List {
   }
 
   val Nil = new List[Nothing] {
-    def enumTag = 1
+    def ordinal = 1
     override def toString = "Nil"
   }
 
