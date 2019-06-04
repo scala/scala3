@@ -881,7 +881,7 @@ trait Implicits { self: Typer =>
     ref.withSpan(span)
   }
 
-  /** An implied instance for a type of the form `Mirror.Product { type MirroredMonoType = T }`
+  /** An implied instance for a type of the form `Mirror.Product { type MirroredType = T }`
    *  where `T` is a generic product type or a case object or an enum case.
    */
   lazy val synthesizedProductMirror: SpecialHandler =
@@ -942,7 +942,7 @@ trait Implicits { self: Typer =>
       }
     }
 
-  /** An implied instance for a type of the form `Mirror.Sum { type MirroredMonoType = T }`
+  /** An implied instance for a type of the form `Mirror.Sum { type MirroredType = T }`
    *  where `T` is a generic sum type.
    */
   lazy val synthesizedSumMirror: SpecialHandler =
@@ -1021,7 +1021,7 @@ trait Implicits { self: Typer =>
       }
     }
 
-  /** An implied instance for a type of the form `Mirror { type MirroredMonoType = T }`
+  /** An implied instance for a type of the form `Mirror { type MirroredType = T }`
    *  where `T` is a generic sum or product or singleton type.
    */
   lazy val synthesizedMirror: SpecialHandler =
