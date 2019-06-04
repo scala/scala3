@@ -605,6 +605,11 @@ class Definitions {
   @threadUnsafe lazy val SystemClass: ClassSymbol               = ctx.requiredClass("java.lang.System")
   @threadUnsafe lazy val SystemModule: Symbol              = SystemClass.linkedClass
 
+  lazy val NoSuchElementExceptionClass = ctx.requiredClass("java.util.NoSuchElementException")
+  def NoSuchElementExceptionType = NoSuchElementExceptionClass.typeRef
+  lazy val IllegalArgumentExceptionClass = ctx.requiredClass("java.lang.IllegalArgumentException")
+  def IllegalArgumentExceptionType = IllegalArgumentExceptionClass.typeRef
+
   // in scalac modified to have Any as parent
 
   @threadUnsafe lazy val ThrowableType: TypeRef          = ctx.requiredClassRef("java.lang.Throwable")

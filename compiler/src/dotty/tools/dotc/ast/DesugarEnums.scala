@@ -87,7 +87,12 @@ object DesugarEnums {
   /**  The following lists of definitions for an enum type E:
    *
    *   private val $values = new EnumValues[E]
-   *   def valueOf = $values.fromName
+   *   def valueOf(name: String) =
+   *     try $values.fromName(name) catch
+   *       {
+   *         case ex$:NoSuchElementException =>
+   *           throw new IllegalArgumentException("key not found: ".concat(name))
+   *       }
    *   def values = $values.values.toArray
    */
   private def enumScaffolding(implicit ctx: Context): List[Tree] = {
@@ -96,9 +101,22 @@ object DesugarEnums {
     val privateValuesDef =
       ValDef(nme.DOLLAR_VALUES, TypeTree(),
         New(TypeTree(defn.EnumValuesType.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
-        .withFlags(Private)    
+        .withFlags(Private)
+
+    val valuesOfExnMessage = Apply(
+      Select(Literal(Constant("key not found: ")), "concat".toTermName)
+    , Ident(nme.name) :: Nil)
+    val valuesOfBody = Try(
+      expr = Apply(valuesDot("fromName"), Ident(nme.name) :: Nil)
+    , cases = CaseDef(
+        pat = Typed(Ident(nme.DEFAULT_EXCEPTION_NAME), TypeTree(defn.NoSuchElementExceptionType))
+      , guard = EmptyTree
+      , body = Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(valuesOfExnMessage :: Nil)))
+      ) :: Nil
+    , finalizer = EmptyTree
+    )
     val valueOfDef = DefDef(nme.valueOf, Nil, List(param(nme.name, defn.StringType) :: Nil),
-      TypeTree(), Apply(valuesDot("fromName"), Ident(nme.name) :: Nil))
+      TypeTree(), valuesOfBody)
 
     valuesDef ::
     privateValuesDef ::
