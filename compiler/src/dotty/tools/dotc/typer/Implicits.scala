@@ -909,7 +909,7 @@ trait Implicits { self: Typer =>
               val cls = mirroredType.classSymbol
               val accessors = cls.caseAccessors.filterNot(_.is(PrivateLocal))
               val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
-              val (monoType, elemTypes) = mirroredType match {
+              val (monoType, elemsType) = mirroredType match {
                 case mirroredType: HKTypeLambda =>
                   val elems =
                     mirroredType.derivedLambdaType(
@@ -924,7 +924,7 @@ trait Implicits { self: Typer =>
               }
               val mirrorType =
                 mirrorCore(defn.Mirror_ProductType, monoType, mirroredType, cls.name)
-                  .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemTypes))
+                  .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
                   .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
               val mirrorRef =
                 if (cls.is(Scala2x)) anonymousMirror(monoType, ExtendsProductMirror, span)
@@ -990,7 +990,7 @@ trait Implicits { self: Typer =>
             case child => child.termRef
           }
 
-          val (monoType, elemTypes) = mirroredType match {
+          val (monoType, elemsType) = mirroredType match {
             case mirroredType: HKTypeLambda =>
               val elems = mirroredType.derivedLambdaType(
                 resType = TypeOps.nestedPairs(cls.children.map(solve))
@@ -1005,7 +1005,7 @@ trait Implicits { self: Typer =>
 
           val mirrorType =
              mirrorCore(defn.Mirror_SumType, monoType, mirroredType, cls.name)
-              .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemTypes))
+              .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
               .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
           val mirrorRef =
             if (cls.linkedClass.exists && !cls.is(Scala2x)) companionPath(mirroredType, span)
