@@ -58,12 +58,6 @@ days match {
 <pre><code class="language-scala" >List()</pre></code>
 
 ## Concrete Value Members:
-### !=
-<pre><code class="language-scala" >final def !=(x$0: <a href="../../Any.md">Any</a>): <a href="../../Boolean.md">Boolean</a></pre></code>
-
-### ##
-<pre><code class="language-scala" >final def ##: <a href="../../Int.md">Int</a></pre></code>
-
 ### ++
 <pre><code class="language-scala" >override def ++[B >: List.this.A, That](that: <a href="../GenTraversableOnce.md">GenTraversableOnce</a>[B])(bf: CanBuildFrom[List[A], B, That]): That</pre></code>
 
@@ -103,9 +97,6 @@ Adds the elements of a given list in front of this list.
 ### :\
 <pre><code class="language-scala" >def :\[B](z: B)(op: (A, B) => B): B</pre></code>
 
-### ==
-<pre><code class="language-scala" >final def ==(x$0: <a href="../../Any.md">Any</a>): <a href="../../Boolean.md">Boolean</a></pre></code>
-
 ### addString
 <pre><code class="language-scala" >def addString(b: <a href="../../package.md#StringBuilder">StringBuilder</a>): <a href="../../package.md#StringBuilder">StringBuilder</a></pre></code>
 
@@ -126,9 +117,6 @@ Adds the elements of a given list in front of this list.
 
 ### applyOrElse
 <pre><code class="language-scala" >def applyOrElse[A1, B1](x: A1, default: (A1) => B1): B1</pre></code>
-
-### asInstanceOf
-<pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
 
 ### canEqual
 <pre><code class="language-scala" >override def canEqual(that: <a href="../../Any.md">Any</a>): <a href="../../Boolean.md">Boolean</a></pre></code>
@@ -232,9 +220,6 @@ Adds the elements of a given list in front of this list.
 ### genericBuilder
 <pre><code class="language-scala" >def genericBuilder[B]: Builder[B, CC[B]]</pre></code>
 
-### getClass
-<pre><code class="language-scala" >final def getClass(): Class[<a href="../../Nothing.md">Nothing</a> <: <a href="../../Any.md">Any</a>]</pre></code>
-
 ### groupBy
 <pre><code class="language-scala" >def groupBy[K](f: (A) => K): Map[K, Repr]</pre></code>
 
@@ -288,9 +273,6 @@ Adds the elements of a given list in front of this list.
 
 ### isEmpty
 <pre><code class="language-scala" >def isEmpty: <a href="../../Boolean.md">Boolean</a></pre></code>
-
-### isInstanceOf
-<pre><code class="language-scala" >final def isInstanceOf[X0]: <a href="../../Boolean.md">Boolean</a></pre></code>
 
 ### isTraversableAgain
 <pre><code class="language-scala" >final def isTraversableAgain: <a href="../../Boolean.md">Boolean</a></pre></code>
@@ -368,9 +350,6 @@ Like `xs map f`, but returns `xs` unchanged if function
 ### mkString
 <pre><code class="language-scala" >def mkString(start: <a href="../../Predef.md#String">String</a>, sep: <a href="../../Predef.md#String">String</a>, end: <a href="../../Predef.md#String">String</a>): <a href="../../Predef.md#String">String</a></pre></code>
 
-### newBuilder
-<pre><code class="language-scala" >protected def newBuilder: Builder[A, CC[A]]</pre></code>
-
 ### nonEmpty
 <pre><code class="language-scala" >def nonEmpty: <a href="../../Boolean.md">Boolean</a></pre></code>
 
@@ -382,9 +361,6 @@ Like `xs map f`, but returns `xs` unchanged if function
 
 ### par
 <pre><code class="language-scala" >def par: ParRepr</pre></code>
-
-### parCombiner
-<pre><code class="language-scala" >protected override def parCombiner: Combiner[A, ParSeq[A]]</pre></code>
 
 ### partition
 <pre><code class="language-scala" >def partition(p: (A) => <a href="../../Boolean.md">Boolean</a>): (Repr, Repr)</pre></code>
@@ -452,9 +428,6 @@ Adds the elements of a given list in reverse order in front of this list.
 ***return*** the concatenation of the reversed prefix and the current list.
 
 ***prefix*** the prefix to reverse and then prepend
-
-### reversed
-<pre><code class="language-scala" >protected def reversed: List[A]</pre></code>
 
 ### runWith
 <pre><code class="language-scala" >def runWith[U](action: (<a href="../../PartialFunction.md#B">B</a>) => U): (<a href="../../PartialFunction.md#A">A</a>) => <a href="../../Boolean.md">Boolean</a></pre></code>
@@ -548,9 +521,6 @@ letters.slice(1,3) // Returns List('b','c')
 ### takeWhile
 <pre><code class="language-scala" >@<a href="../../inline.md">inline</a> override final def takeWhile(p: (A) => <a href="../../Boolean.md">Boolean</a>): List[A]</pre></code>
 
-### thisCollection
-<pre><code class="language-scala" >protected override def thisCollection: LinearSeq[A]</pre></code>
-
 ### to
 <pre><code class="language-scala" >override def to[Col](cbf: CanBuildFrom[<a href="../../Nothing.md">Nothing</a>, A, Col[A]]): Col[A]</pre></code>
 
@@ -559,9 +529,6 @@ letters.slice(1,3) // Returns List('b','c')
 
 ### toBuffer
 <pre><code class="language-scala" >def toBuffer[B]: Buffer[B]</pre></code>
-
-### toCollection
-<pre><code class="language-scala" >protected override def toCollection(repr: Repr): LinearSeq[A]</pre></code>
 
 ### toIndexedSeq
 <pre><code class="language-scala" >def toIndexedSeq: IndexedSeq[A]</pre></code>

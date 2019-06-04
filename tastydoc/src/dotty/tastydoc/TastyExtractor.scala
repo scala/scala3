@@ -64,11 +64,14 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     /** Filter fields which shouldn't be displayed in the doc
      */
     def filterSymbol(symbol: reflect.Symbol): Boolean = {
-        //!x.symbol.flags.is(Flags.Local) && //Locally defined
+        val ownerPath = extractPath(reflect)(symbol.owner)
+
+        !symbol.flags.is(Flags.Local) && //TOASK it works but why?
         !symbol.flags.is(Flags.Private) &&
         !symbol.flags.is(Flags.Synthetic) &&
         !symbol.flags.is(Flags.Artifact) &&
-        !(symbol.owner.name == "Object" && extractPath(reflect)(symbol.owner) == List("java", "lang")) //TOASK ERROR When calling owner
+        !(symbol.owner.name == "Object" && ownerPath == List("java", "lang")) &&//TOASK ERROR When calling owner
+        !(symbol.owner.name == "Any" && ownerPath == List("scala")) //TOASK ERROR When calling owner
     }
 
     (body.flatMap{

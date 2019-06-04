@@ -83,30 +83,30 @@ class Tests {
       "scala.collection.immutable.List"
     ))
   }
-  @Test def testDotty(): Unit = {
-    Main.main(Array(
-      "-classpath",
-      "tastydoc/dotty-0.15.0-RC1/lib",
-      "-syntax",
-      "wiki",
-      "-packagestolink",
-      "dotty.*",
-      "scala.internal.*",
-      "scala.annotation.*",
-      "scala.implicits.*",
-      "scala.compiletime.*",
-      "scala.quoted.*",
-      "scala.reflect.*",
-      "scala.tasty.*",
-      "scala.runtime.*",
-      //Individual files
-      "scala.Selectable*",
-      "scala.NonEmptyTuple*",
-      "scala.ValueOf*",
-      //tbc
-      "-d",
-      "dotty",
-      "scala"
-    ))
-  }
+  // @Test def testDotty(): Unit = {
+  //   Main.main(Array(
+  //     "-classpath",
+  //     "tastydoc/dotty-0.15.0-RC1/lib",
+  //     "-syntax",
+  //     "wiki",
+  //     "-packagestolink",
+  //     "dotty.*",
+  //     "scala.internal.*",
+  //     "scala.annotation.*",
+  //     "scala.implicits.*",
+  //     "scala.compiletime.*",
+  //     "scala.quoted.*",
+  //     "scala.reflect.*",
+  //     "scala.tasty.*",
+  //     "scala.runtime.*",
+  //     //Individual files
+  //     "scala.Selectable*",
+  //     "scala.NonEmptyTuple*",
+  //     "scala.ValueOf*",
+  //     //tbc
+  //     "-d",
+  //     "dotty",
+  //     "scala"
+  //   ))
+  // }
 }
