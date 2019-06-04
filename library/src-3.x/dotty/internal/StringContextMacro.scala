@@ -82,7 +82,7 @@ object StringContextMacro {
           case ExprSeq(parts2) => parts2.toList
           case _ => QuoteError("Expected statically known String Context", strCtxExpr)
         }
-      case _ => QuoteError("Expected statically known String Context", strCtxExpr) //TODO : quotes?
+      case _ => QuoteError("Expected statically known String Context", strCtxExpr)
     }
   }
 
