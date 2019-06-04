@@ -60,7 +60,7 @@ object StringContextMacro {
    */
   private def literalToString(expression : Expr[String])(implicit reflect: Reflection) : String = expression match {
     case Const(string : String) => string
-    case _ => QuoteError("Expected statically known part list", expression)
+    case _ => QuoteError("Expected statically known literal", expression)
   }
 
   /** Retrieves the parts from a StringContext, given inside an Expr, and returns them as a list of Expr of String
