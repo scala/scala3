@@ -192,16 +192,6 @@ class Definitions {
     cls
   }
 
-  private def completeTransformedJavaClass(cls: ClassSymbol, ensureCtor: Boolean = true): ClassSymbol = {
-    // The companion object of a Java class doesn't really exist, `NoType` is the general
-    // technique to do that. Here we need to set it before completing
-    // attempt to load Object's classfile, which causes issue #1648.
-    val companion = JavaLangPackageVal.info.decl(cls.name.toTermName).symbol
-    companion.moduleClass.info = NoType // to indicate that it does not really exist
-    companion.info = NoType // to indicate that it does not really exist
-    completeClass(cls, ensureCtor)
-  }
-
   lazy val RootClass: ClassSymbol = ctx.newPackageSymbol(
     NoSymbol, nme.ROOT, (root, rootcls) => ctx.base.rootLoader(root)).moduleClass.asClass
   lazy val RootPackage: TermSymbol = ctx.newSymbol(
@@ -302,7 +292,14 @@ class Definitions {
     assert(!cls.isCompleted, "race for completing java.lang.Object")
     cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
     cls.setFlag(NoInits)
-    completeTransformedJavaClass(cls)
+
+    // The companion object of a Java class doesn't really exist, `NoType` is the general
+    // technique to do that. Here we need to set it before completing
+    // attempt to load Object's classfile, which causes issue #1648.
+    val companion = JavaLangPackageVal.info.decl(cls.name.toTermName).symbol
+    companion.moduleClass.info = NoType // to indicate that it does not really exist
+    companion.info = NoType // to indicate that it does not really exist
+    completeClass(cls)
   }
   def ObjectType: TypeRef = ObjectClass.typeRef
 
@@ -632,7 +629,7 @@ class Definitions {
     constr.info = newInfo
     constr.termRef.recomputeDenot()
     cls.setFlag(NoInits)
-    completeTransformedJavaClass(cls, ensureCtor = false)
+    cls
   }
   def JavaEnumType = JavaEnumClass.typeRef
 
