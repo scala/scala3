@@ -7,7 +7,7 @@ import dotty.tastydoc.representations._
 import java.util.{ Arrays }
 
 import com.vladsch.flexmark.util.ast.{ Node => MarkdownNode}
-import com.vladsch.flexmark.html.HtmlRenderer
+import com.vladsch.flexmark.formatter.Formatter
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.util.sequence.CharSubSequence
 import com.vladsch.flexmark.parser.ParserEmulationProfile
@@ -36,6 +36,8 @@ object HtmlParsers {
       ))
       .set(EmojiExtension.ROOT_IMAGE_PATH,
         "https://github.global.ssl.fastly.net/images/icons/emoji/")
+
+  val RENDERER = Formatter.builder(markdownOptions).build()
 
   implicit class StringToMarkdown(val text: String) extends AnyVal {
     def toMarkdown(origin: Representation, packages: Map[String, EmulatedPackageRepresentation]): MarkdownNode = {
@@ -86,7 +88,7 @@ object HtmlParsers {
 
   implicit class MarkdownToHtml(val markdown: MarkdownNode) extends AnyVal {
     def show: String =
-      HtmlRenderer.builder(markdownOptions).build().render(markdown)
+      RENDERER.render(markdown)
 
     def shortenAndShow: String =
       (new MarkdownShortener).shorten(markdown).show
@@ -132,7 +134,7 @@ object HtmlParsers {
           case Title(in, 2)  => s"## ${inlineToMarkdown(in)}"
           case Title(in, 3)  => s"### ${inlineToMarkdown(in)}"
           case Title(in, _)  => s"#### ${inlineToMarkdown(in)}"
-          case Paragraph(in) => s"${inlineToMarkdown(in)}\n" //TODO: Paragraph add return?
+          case Paragraph(in) => s"${inlineToMarkdown(in)}"
           case Code(data)    => s"```scala\n$data\n```"
           case UnorderedList(items) => s"${listItemsToMarkdown(items)}"
           case OrderedList(items, listStyle) => s"${listItemsToMarkdown(items, ordered=true)}"

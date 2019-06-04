@@ -11,7 +11,7 @@
 * WikiParser (just error reporting (span))
   * Span + error printing
 
-* Markdown parser broken
+* Check remaining HTML
 
 # Other
 * handle things such as $genericCanBuildFromInfo
@@ -31,18 +31,12 @@
 # Output
 * Output inner class/object if not inherited
 * Doc for packages
+* Check spacing in comment
 
 # Report
-* Goal Why we wanted to generated from tasty why to markdown
-* General architecture, same intermediate interface as dotty doc
-* intermediate representation md to xxxx
-* Difficulties, problems with dottydoc + md libraries
-* benchmark?
-* Say everything is split into function
 * Be consistent in methods/function and parameters/arguments
 
 # To Ask
-* Too much operations on String for path?
 * Case classes are linked right now
 * Abstract flag not working
 * default value in def

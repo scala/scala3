@@ -253,22 +253,6 @@ If a single entity contains a type and a method definition with the same name (o
 
 To mitigate this problem, we first output types and then values so that when linking it links to the first one appearing in the page which would be a type and it is what we want in most cases. However, this does not solve the problem of linking to type parameters and of linking to overloaded methods.
 
-\paragraph{Multi-level lists}
-Flexmark-java Markdown parser does not understand when ordered and unordered lists are combined, they are parsed as 2 separate lists instead of a multi-level list. Basically, if we have:
-\begin{enumerate}
-    \item foo
-    \begin{itemize}
-        \item bar
-    \end{itemize}
-\end{enumerate}
-It will be parsed as:
-\begin{enumerate}
-    \item foo
-\end{enumerate}
-\begin{itemize}
-    \item bar
-\end{itemize}
-
 \chapter{Remaining work}
 Although the project is near features complete. Some work needs to be done to perfect the tool.
 
@@ -277,6 +261,16 @@ As seen in \autoref{sec:problems} we do not escape anything before outputting Ma
 
 \paragraph{Type Lambdas}
 Type Lambdas are complex types to handle and convert to References, right now they are converted to constant References. This is not the expected behavior and the output is not the one we expect and no linking can be done this way. It is, however, acceptable for a first version as type lambdas do not appear that often.
+
+\paragraph{Complex types}
+Assume the following type:
+\begin{lstlisting}[language=scala]
+    class Graph {
+        type Node = Int
+    }
+    def linkingGraph(g: Graph): g.Node = ???    
+\end{lstlisting}
+Right now the type will only be referenced as \texttt{Node} instead of \texttt{g.Node}.
 
 \paragraph{User-documentation parsing}
 User-documentation parsing lacks two features: supporting \texttt{@usecase} and supporting defined pieces of documenation with \texttt{@define name ...} and then referencing them with \texttt{\$name}\footnote{Example in \url{https://github.com/scala/scala/blob/v2.12.2/src/library/scala/collection/immutable/List.scala\#L73}}.

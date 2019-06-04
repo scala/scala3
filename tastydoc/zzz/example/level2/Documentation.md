@@ -170,23 +170,16 @@ Auxiliary constructor
 ### docWithMd
 <pre><code class="language-scala" >def docWithMd: Nothing</pre></code>
 An example documention with markdown formatting
-
 **I'm bold**
-
 *I'm italic*
-
 `some code`
 ```scala
 def someScalaCode(x: String) = println("Hello " + x)
 `````````
-
 # Title of level 1
 # Title of level 1
-
 1. I'm a list
-
 * Multilevel List
-
 1. level 2
 
 1. level 2 2
@@ -360,11 +353,8 @@ def someScalaCode(x: String) = println("Hello " + x)
 ### linkMethodInDoc
 <pre><code class="language-scala" >def linkMethodInDoc(): Nothing</pre></code>
 method: [example.UserDocLinkingClass.linkMeFromUserDoc](../../example/UserDocLinkingClass.md#linkMeFromUserDoc)
-
 method:example.level2.Documentation.apply
-
 class: [example.UserDocLinkingClass](../../example/UserDocLinkingClass.md)
-
 method: length
 
 ### linkingGraph

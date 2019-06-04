@@ -6,23 +6,17 @@ scala.collection.immutable
 <pre><code class="language-scala" >sealed abstract class List[A] extends AbstractSeq[A] with LinearSeq[A] with <a href="../../Product.md">Product</a> with GenericTraversableTemplate[A, [+A >: scala.Nothing <: scala.Any] => scala.collection.immutable.List[+A]] with <a href="../LinearSeqOptimized.md">LinearSeqOptimized</a>[A, List[A]] with <a href="../../Serializable.md">Serializable</a></pre></code>
 A class for immutable linked lists representing ordered collections
 of elements of type `A`.
-
 This class comes with two implementing case classes `scala.Nil`
 and `scala.::` that implement the abstract members `isEmpty`,
 `head` and `tail`.
-
 This class is optimal for last-in-first-out (LIFO), stack-like access patterns. If you need another access
 pattern, for example, random access or FIFO, consider using a collection more suited to this than `List`.
-
 $usesMutableState
-
 ## Performance
 **Time:** `List` has `O(1)` prepend and head/tail access. Most other operations are `O(n)` on the number of elements in the list.
 This includes the index-based lookup of elements, `length`, `append` and `reverse`.
-
 **Space:** `List` implements **structural sharing** of the tail list. This means that many operations are either
 zero- or constant-memory cost.
-
 ```scala
 val mainList = List(3, 2, 1)
 val with4 =    4 :: mainList  // re-uses mainList, costs one :: instance
@@ -44,7 +38,6 @@ section on `Lists` for more information.
       each reference to it. I.e. structural sharing is lost after serialization/deserialization.
 
 ***Example*** 
-
 ```scala
 // Make a list via the companion object factory
 val days = List("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
@@ -58,6 +51,7 @@ days match {
     println("There don't seem to be any week days.")
 }
 ```
+
 ## Annotations:
 @<a href="../../SerialVersionUID.md">SerialVersionUID</a> 
 ## Constructors:
@@ -516,7 +510,6 @@ Adds the elements of a given list in reverse order in front of this list.
 ### slice
 <pre><code class="language-scala" >override def slice(from: <a href="../../Int.md">Int</a>, until: <a href="../../Int.md">Int</a>): List[A]</pre></code>
 ***Example*** 
-
 ```scala
 // Given a list
 val letters = List('a','b','c','d','e')
@@ -524,6 +517,7 @@ val letters = List('a','b','c','d','e')
 // up until index `until` (excluding index `until`.)
 letters.slice(1,3) // Returns List('b','c')
 ```
+
 ### sliceWithKnownBound
 <pre><code class="language-scala" >private[scala] def sliceWithKnownBound(from: <a href="../../Int.md">Int</a>, until: <a href="../../Int.md">Int</a>): Repr</pre></code>
 

@@ -113,7 +113,6 @@ extends MarkupConversion[MarkdownNode](packages) {
     str.toMarkdown(ent, packages).shortenAndShow
 
   def markupToMarkdown(md: MarkdownNode) =
-    // Formatter.builder(new MutableDataSet).build().render(md);
     md.show
 
   def linkedExceptions(m: Map[String, String]) = {
