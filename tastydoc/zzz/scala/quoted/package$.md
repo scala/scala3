@@ -5,22 +5,16 @@ scala.quoted
 ## Known subclasses:
 <a href="./package$/ExprOps$.md">ExprOps</a>, <a href="./package$/autolift$.md">autolift</a>
 ## Concrete Type Members:
-### ExprOps
-<pre><code class="language-scala" >final object <a href="./package$/ExprOps.md">ExprOps</a></pre></code>
-### autolift
-<pre><code class="language-scala" >final object <a href="./package$/autolift.md">autolift</a></pre></code>
+### ExprOps$
+<pre><code class="language-scala" >final object <a href="./package$/ExprOps$.md">ExprOps</a></pre></code>
+### autolift$
+<pre><code class="language-scala" >final object <a href="./package$/autolift$.md">autolift</a></pre></code>
 ## Concrete Value Members:
 ### !=
 <pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
 
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
-
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
 
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
@@ -73,12 +67,9 @@ scala.quoted
 ### wait
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
-### writeReplace
-<pre><code class="language-scala" >private def writeReplace(): AnyRef</pre></code>
-
 ### ExprOps
-<pre><code class="language-scala" >final implicit val ExprOps: <a href="./package/ExprOps$.md">ExprOps$</a></pre></code>
+<pre><code class="language-scala" >final implicit val ExprOps: <a href="./package/ExprOps$.md">ExprOps</a></pre></code>
 
 ### autolift
-<pre><code class="language-scala" >final val autolift: <a href="./package/autolift$.md">autolift$</a></pre></code>
+<pre><code class="language-scala" >final val autolift: <a href="./package/autolift$.md">autolift</a></pre></code>
 

@@ -9,12 +9,6 @@ scala.testing
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
-
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
 
@@ -38,9 +32,6 @@ scala.testing
 
 ### hashCode
 <pre><code class="language-scala" >def hashCode(): Int</pre></code>
-
-### inline$typeChecksImpl
-<pre><code class="language-scala" >def inline$typeChecksImpl(code: String)(reflect: <a href="../tasty/Reflection.md">Reflection</a>): <a href="../quoted/Expr.md">Expr</a>[Boolean]</pre></code>
 
 ### isInstanceOf
 <pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
@@ -74,7 +65,4 @@ scala.testing
 
 ### wait
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
-
-### writeReplace
-<pre><code class="language-scala" >private def writeReplace(): AnyRef</pre></code>
 

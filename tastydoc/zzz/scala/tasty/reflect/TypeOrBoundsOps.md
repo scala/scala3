@@ -8,16 +8,16 @@ scala.tasty.reflect
 <pre><code class="language-scala" >TypeOrBoundsOps()</pre></code>
 
 ## Concrete Type Members:
-### IsType
-<pre><code class="language-scala" >final object <a href="./TypeOrBoundsOps/IsType.md">IsType</a></pre></code>
-### IsTypeBounds
-<pre><code class="language-scala" >final object <a href="./TypeOrBoundsOps/IsTypeBounds.md">IsTypeBounds</a></pre></code>
-### NoPrefix
-<pre><code class="language-scala" >final object <a href="./TypeOrBoundsOps/NoPrefix.md">NoPrefix</a></pre></code>
-### Type
-<pre><code class="language-scala" >final object <a href="./TypeOrBoundsOps/Type.md">Type</a></pre></code>
-### TypeBounds
-<pre><code class="language-scala" >final object <a href="./TypeOrBoundsOps/TypeBounds.md">TypeBounds</a></pre></code>
+### IsType$
+<pre><code class="language-scala" >final object <a href="./TypeOrBoundsOps/IsType$.md">IsType</a></pre></code>
+### IsTypeBounds$
+<pre><code class="language-scala" >final object <a href="./TypeOrBoundsOps/IsTypeBounds$.md">IsTypeBounds</a></pre></code>
+### NoPrefix$
+<pre><code class="language-scala" >final object <a href="./TypeOrBoundsOps/NoPrefix$.md">NoPrefix</a></pre></code>
+### Type$
+<pre><code class="language-scala" >final object <a href="./TypeOrBoundsOps/Type$.md">Type</a></pre></code>
+### TypeBounds$
+<pre><code class="language-scala" >final object <a href="./TypeOrBoundsOps/TypeBounds$.md">TypeBounds</a></pre></code>
 ### TypeAPI
 <pre><code class="language-scala" >class <a href="./TypeOrBoundsOps/TypeAPI.md">TypeAPI</a></pre></code>
 ### TypeBoundsAPI
@@ -67,77 +67,8 @@ scala.tasty.reflect
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
-
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
-### TypeAPI
-<pre><code class="language-scala" >final implicit def TypeAPI(self: Type): TypeAPI</pre></code>
-
-### TypeBoundsAPI
-<pre><code class="language-scala" >final implicit def TypeBoundsAPI(self: TypeBounds): TypeBoundsAPI</pre></code>
-
-### Type_AndTypeAPI
-<pre><code class="language-scala" >final implicit def Type_AndTypeAPI(self: AndType): Type_AndTypeAPI</pre></code>
-
-### Type_AnnotatedTypeAPI
-<pre><code class="language-scala" >final implicit def Type_AnnotatedTypeAPI(self: AnnotatedType): Type_AnnotatedTypeAPI</pre></code>
-
-### Type_AppliedTypeAPI
-<pre><code class="language-scala" >final implicit def Type_AppliedTypeAPI(self: AppliedType): Type_AppliedTypeAPI</pre></code>
-
-### Type_ByNameTypeAPI
-<pre><code class="language-scala" >final implicit def Type_ByNameTypeAPI(self: ByNameType): Type_ByNameTypeAPI</pre></code>
-
-### Type_ConstantTypeAPI
-<pre><code class="language-scala" >final implicit def Type_ConstantTypeAPI(self: ConstantType): Type_ConstantTypeAPI</pre></code>
-
-### Type_MatchTypeAPI
-<pre><code class="language-scala" >final implicit def Type_MatchTypeAPI(self: MatchType): Type_MatchTypeAPI</pre></code>
-
-### Type_MethodTypeAPI
-<pre><code class="language-scala" >final implicit def Type_MethodTypeAPI(self: MethodType): Type_MethodTypeAPI</pre></code>
-
-### Type_OrTypeAPI
-<pre><code class="language-scala" >final implicit def Type_OrTypeAPI(self: OrType): Type_OrTypeAPI</pre></code>
-
-### Type_ParamRefAPI
-<pre><code class="language-scala" >final implicit def Type_ParamRefAPI(self: ParamRef): Type_ParamRefAPI</pre></code>
-
-### Type_PolyTypeAPI
-<pre><code class="language-scala" >final implicit def Type_PolyTypeAPI(self: PolyType): Type_PolyTypeAPI</pre></code>
-
-### Type_RecursiveThisAPI
-<pre><code class="language-scala" >final implicit def Type_RecursiveThisAPI(self: RecursiveThis): Type_RecursiveThisAPI</pre></code>
-
-### Type_RecursiveTypeAPI
-<pre><code class="language-scala" >final implicit def Type_RecursiveTypeAPI(self: RecursiveType): Type_RecursiveTypeAPI</pre></code>
-
-### Type_RefinementAPI
-<pre><code class="language-scala" >final implicit def Type_RefinementAPI(self: Refinement): Type_RefinementAPI</pre></code>
-
-### Type_SuperTypeAPI
-<pre><code class="language-scala" >final implicit def Type_SuperTypeAPI(self: SuperType): Type_SuperTypeAPI</pre></code>
-
-### Type_SymRefAPI
-<pre><code class="language-scala" >final implicit def Type_SymRefAPI(self: SymRef): Type_SymRefAPI</pre></code>
-
-### Type_TermRefAPI
-<pre><code class="language-scala" >final implicit def Type_TermRefAPI(self: TermRef): Type_TermRefAPI</pre></code>
-
-### Type_ThisTypeAPI
-<pre><code class="language-scala" >final implicit def Type_ThisTypeAPI(self: ThisType): Type_ThisTypeAPI</pre></code>
-
-### Type_TypeLambdaAPI
-<pre><code class="language-scala" >final implicit def Type_TypeLambdaAPI(self: TypeLambda): Type_TypeLambdaAPI</pre></code>
-
-### Type_TypeRefAPI
-<pre><code class="language-scala" >final implicit def Type_TypeRefAPI(self: TypeRef): Type_TypeRefAPI</pre></code>
 
 ### asInstanceOf
 <pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
@@ -191,17 +122,17 @@ scala.tasty.reflect
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
 ### IsType
-<pre><code class="language-scala" >final val IsType: IsType$</pre></code>
+<pre><code class="language-scala" >final val IsType: IsType</pre></code>
 
 ### IsTypeBounds
-<pre><code class="language-scala" >final val IsTypeBounds: IsTypeBounds$</pre></code>
+<pre><code class="language-scala" >final val IsTypeBounds: IsTypeBounds</pre></code>
 
 ### NoPrefix
-<pre><code class="language-scala" >final val NoPrefix: NoPrefix$</pre></code>
+<pre><code class="language-scala" >final val NoPrefix: NoPrefix</pre></code>
 
 ### Type
-<pre><code class="language-scala" >final val Type: Type$</pre></code>
+<pre><code class="language-scala" >final val Type: Type</pre></code>
 
 ### TypeBounds
-<pre><code class="language-scala" >final val TypeBounds: TypeBounds$</pre></code>
+<pre><code class="language-scala" >final val TypeBounds: TypeBounds</pre></code>
 

@@ -25,26 +25,8 @@ Extension methods on scala.quoted.{Expr|Type} to convert to scala.tasty.Tasty ob
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
-
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
-### QuotedExprAPI
-<pre><code class="language-scala" >final implicit def QuotedExprAPI[T](expr: <a href="../../quoted/Expr.md">Expr</a>[T]): QuotedExprAPI[T]</pre></code>
-
-### QuotedTypeAPI
-<pre><code class="language-scala" >final implicit def QuotedTypeAPI[T <: scala.AnyKind](tpe: <a href="../../quoted/Type.md">Type</a>[T]): QuotedTypeAPI[T]</pre></code>
-
-### TermToQuotedAPI
-<pre><code class="language-scala" >final implicit def TermToQuotedAPI(term: Term): TermToQuotedAPI</pre></code>
-
-### TypeToQuotedAPI
-<pre><code class="language-scala" >final implicit def TypeToQuotedAPI(tpe: Type): TypeToQuotedAPI</pre></code>
 
 ### asInstanceOf
 <pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>

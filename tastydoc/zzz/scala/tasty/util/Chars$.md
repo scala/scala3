@@ -11,12 +11,6 @@ Contains constants and classifier methods for characters
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
-
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
 
@@ -113,9 +107,6 @@ Is character a whitespace character (but not a new line)?
 
 ### wait
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
-
-### writeReplace
-<pre><code class="language-scala" >private def writeReplace(): AnyRef</pre></code>
 
 ### CR
 <pre><code class="language-scala" >final inline val CR: </pre></code>

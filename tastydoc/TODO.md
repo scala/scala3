@@ -14,25 +14,25 @@
 * Check remaining HTML
 
 # Other
-* handle things such as $genericCanBuildFromInfo
 * Check remaining TODOs/TOASKs/TOFIX
-* Revert back to object name with $?
 
 # Representation
 * Make sense of the parents field
 * Id for typeparams so we can link (Do not link)
-* Inherited declaration
 * Alias type
-* Beautify type parameters (+ variance + bound two direction)
 * Rework type matching
-* Type like Graph.Node
 * Remove artifcat and synthetic in package members
-* Problem linking to objects like ContextualFunctionBetaReduction
 
 # Output
 * Output inner class/object if not inherited
 * Doc for packages
 * Check spacing in comment
+* Type like Graph.Node
+
+# Features for beyond the project
+* TypeLambdas
+* Inherited declaration
+* handle things such as $genericCanBuildFromInfo
 
 # Report
 * Be consistent in methods/function and parameters/arguments
@@ -42,6 +42,7 @@
 * INLINE
 * Error in calling owner
 * Order in type matching symbol counts...
+* Remove artifacts in packages
 
 * Case classes are linked right now
 * Abstract flag not working

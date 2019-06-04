@@ -7,20 +7,14 @@ Helper methods used in thread-safe lazy vals.
 ## Known subclasses:
 <a href="./LazyVals$/Names$.md">Names</a>
 ## Concrete Type Members:
-### Names
-<pre><code class="language-scala" >final object <a href="./LazyVals$/Names.md">Names</a></pre></code>
+### Names$
+<pre><code class="language-scala" >final object <a href="./LazyVals$/Names$.md">Names</a></pre></code>
 ## Concrete Value Members:
 ### !=
 <pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
 
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
-
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
 
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
@@ -51,12 +45,6 @@ Helper methods used in thread-safe lazy vals.
 
 ### getClass
 <pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
-
-### getMonitor
-<pre><code class="language-scala" >private def getMonitor(obj: Object, fieldId: Int): Object</pre></code>
-
-### getMonitor$default$2
-<pre><code class="language-scala" >private def getMonitor$default$2: Int</pre></code>
 
 ### getOffset
 <pre><code class="language-scala" >def getOffset(clz: Class[Nothing <: Any], name: String): Long</pre></code>
@@ -97,12 +85,9 @@ Helper methods used in thread-safe lazy vals.
 ### wait4Notification
 <pre><code class="language-scala" >def wait4Notification(t: Object, offset: Long, cur: Long, ord: Int): Unit</pre></code>
 
-### writeReplace
-<pre><code class="language-scala" >private def writeReplace(): AnyRef</pre></code>
-
 ### BITS_PER_LAZY_VAL
 <pre><code class="language-scala" >final inline val BITS_PER_LAZY_VAL: 2</pre></code>
 
 ### Names
-<pre><code class="language-scala" >final val Names: <a href="./LazyVals$/Names$.md">Names$</a></pre></code>
+<pre><code class="language-scala" >final val Names: <a href="./LazyVals$/Names$.md">Names</a></pre></code>
 

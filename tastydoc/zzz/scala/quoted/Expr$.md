@@ -7,10 +7,10 @@ scala.quoted
 ## Known subclasses:
 <a href="./Expr$/ContextualFunctionBetaReduction$.md">ContextualFunctionBetaReduction</a>, <a href="./Expr$/FunctionBetaReduction$.md">FunctionBetaReduction</a>, <a href="./Expr$/ExprOps.md">ExprOps</a>
 ## Concrete Type Members:
-### ContextualFunctionBetaReduction
-<pre><code class="language-scala" >final object <a href="./Expr$/ContextualFunctionBetaReduction.md">ContextualFunctionBetaReduction</a></pre></code>
-### FunctionBetaReduction
-<pre><code class="language-scala" >final object <a href="./Expr$/FunctionBetaReduction.md">FunctionBetaReduction</a></pre></code>
+### ContextualFunctionBetaReduction$
+<pre><code class="language-scala" >final object <a href="./Expr$/ContextualFunctionBetaReduction$.md">ContextualFunctionBetaReduction</a></pre></code>
+### FunctionBetaReduction$
+<pre><code class="language-scala" >final object <a href="./Expr$/FunctionBetaReduction$.md">FunctionBetaReduction</a></pre></code>
 ### ExprOps
 <pre><code class="language-scala" >class <a href="./Expr$/ExprOps.md">ExprOps</a></pre></code>
 ## Concrete Value Members:
@@ -20,17 +20,8 @@ scala.quoted
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
-
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
-### ExprOps
-<pre><code class="language-scala" >final implicit def ExprOps[T](expr: <a href="./Expr.md">Expr</a>[T]): <a href="./Expr$/ExprOps.md">ExprOps</a>[T]</pre></code>
 
 ### asInstanceOf
 <pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
@@ -80,12 +71,9 @@ scala.quoted
 ### wait
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
-### writeReplace
-<pre><code class="language-scala" >private def writeReplace(): AnyRef</pre></code>
-
 ### ContextualFunctionBetaReduction
-<pre><code class="language-scala" >final implicit val ContextualFunctionBetaReduction: <a href="./Expr$/ContextualFunctionBetaReduction$.md">ContextualFunctionBetaReduction$</a></pre></code>
+<pre><code class="language-scala" >final implicit val ContextualFunctionBetaReduction: <a href="./Expr$/ContextualFunctionBetaReduction$.md">ContextualFunctionBetaReduction</a></pre></code>
 
 ### FunctionBetaReduction
-<pre><code class="language-scala" >final implicit val FunctionBetaReduction: <a href="./Expr$/FunctionBetaReduction$.md">FunctionBetaReduction$</a></pre></code>
+<pre><code class="language-scala" >final implicit val FunctionBetaReduction: <a href="./Expr$/FunctionBetaReduction$.md">FunctionBetaReduction</a></pre></code>
 

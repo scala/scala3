@@ -11,17 +11,8 @@ scala.quoted.Toolbox$
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
-
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
-### apply
-<pre><code class="language-scala" >private def apply(outDir: Option[String], showRawTree: Boolean, compilerArgs: List[String], color: Boolean): <a href="./Settings.md">Settings</a></pre></code>
 
 ### asInstanceOf
 <pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
@@ -87,7 +78,7 @@ Make toolbox settings
 ***outDir*** Output directory for the compiled quote. If set to None the output will be in memory
 
 ### make$default$3
-<pre><code class="language-scala" >def make$default$3: None$</pre></code>
+<pre><code class="language-scala" >def make$default$3: None</pre></code>
 Make toolbox settings
 
 ***showRawTree*** Do not remove quote tree artifacts
@@ -125,9 +116,6 @@ Make toolbox settings
 ### toString
 <pre><code class="language-scala" >def toString(): String</pre></code>
 
-### unapply
-<pre><code class="language-scala" >def unapply(x$1: <a href="./Settings.md">Settings</a>): <a href="./Settings.md">Settings</a></pre></code>
-
 ### wait
 <pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>
 
@@ -136,7 +124,4 @@ Make toolbox settings
 
 ### wait
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
-
-### writeReplace
-<pre><code class="language-scala" >private def writeReplace(): AnyRef</pre></code>
 

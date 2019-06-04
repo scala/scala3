@@ -8,20 +8,14 @@ scala.tasty.reflect.Printers
 <pre><code class="language-scala" >SourceCodePrinter()</pre></code>
 
 ## Concrete Type Members:
-### PackageObject
-<pre><code class="language-scala" >final object <a href="./SourceCodePrinter/PackageObject.md">PackageObject</a></pre></code>
+### PackageObject$
+<pre><code class="language-scala" >final object <a href="./SourceCodePrinter/PackageObject$.md">PackageObject</a></pre></code>
 ## Concrete Value Members:
 ### !=
 <pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
 
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
-
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
 
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
@@ -31,9 +25,6 @@ scala.tasty.reflect.Printers
 
 ### clone
 <pre><code class="language-scala" >protected def clone(): Object</pre></code>
-
-### color
-<pre><code class="language-scala" >private def color(ctx: Context): Boolean</pre></code>
 
 ### eq
 <pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
@@ -96,5 +87,5 @@ scala.tasty.reflect.Printers
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
 ### PackageObject
-<pre><code class="language-scala" >final val PackageObject: PackageObject$</pre></code>
+<pre><code class="language-scala" >final val PackageObject: PackageObject</pre></code>
 

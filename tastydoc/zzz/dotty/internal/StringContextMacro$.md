@@ -9,12 +9,6 @@ dotty.internal
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
-
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
 
@@ -34,9 +28,6 @@ dotty.internal
 <pre><code class="language-scala" >inline def f(sc: => StringContext)(args: Seq[Any]): String</pre></code>
 Implemetation of scala.StringContext.f used in Dotty while the standard library is still not bootstrapped
 
-### fImpl
-<pre><code class="language-scala" >private def fImpl(sc: <a href="../../scala/quoted/Expr.md">Expr</a>[StringContext], args: <a href="../../scala/quoted/Expr.md">Expr</a>[Seq[Any]]): <a href="../../scala/quoted/Expr.md">Expr</a>[String]</pre></code>
-
 ### finalize
 <pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
 
@@ -45,9 +36,6 @@ Implemetation of scala.StringContext.f used in Dotty while the standard library 
 
 ### hashCode
 <pre><code class="language-scala" >def hashCode(): Int</pre></code>
-
-### inline$fImpl
-<pre><code class="language-scala" >def inline$fImpl(sc: <a href="../../scala/quoted/Expr.md">Expr</a>[StringContext], args: <a href="../../scala/quoted/Expr.md">Expr</a>[Seq[Any]]): <a href="../../scala/quoted/Expr.md">Expr</a>[String]</pre></code>
 
 ### isInstanceOf
 <pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
@@ -75,7 +63,4 @@ Implemetation of scala.StringContext.f used in Dotty while the standard library 
 
 ### wait
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
-
-### writeReplace
-<pre><code class="language-scala" >private def writeReplace(): AnyRef</pre></code>
 

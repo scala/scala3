@@ -8,8 +8,8 @@ scala.tasty.reflect
 <pre><code class="language-scala" >ConstantOps()</pre></code>
 
 ## Concrete Type Members:
-### Constant
-<pre><code class="language-scala" >final object <a href="./ConstantOps/Constant.md">Constant</a></pre></code>
+### Constant$
+<pre><code class="language-scala" >final object <a href="./ConstantOps/Constant$.md">Constant</a></pre></code>
 Module of Constant literals
 
 ### ConstantAPI
@@ -21,17 +21,8 @@ Module of Constant literals
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
-
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
-### ConstantAPI
-<pre><code class="language-scala" >final implicit def ConstantAPI(const: Constant): ConstantAPI</pre></code>
 
 ### asInstanceOf
 <pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
@@ -82,7 +73,7 @@ Module of Constant literals
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
 ### Constant
-<pre><code class="language-scala" >final val Constant: Constant$</pre></code>
+<pre><code class="language-scala" >final val Constant: Constant</pre></code>
 Module of Constant literals
 
 

@@ -8,8 +8,8 @@ scala.tasty.reflect
 <pre><code class="language-scala" >PatternOps()</pre></code>
 
 ## Concrete Type Members:
-### Pattern
-<pre><code class="language-scala" >final object <a href="./PatternOps/Pattern.md">Pattern</a></pre></code>
+### Pattern$
+<pre><code class="language-scala" >final object <a href="./PatternOps/Pattern$.md">Pattern</a></pre></code>
 ### AlternativesAPI
 <pre><code class="language-scala" >class <a href="./PatternOps/AlternativesAPI.md">AlternativesAPI</a></pre></code>
 ### BindAPI
@@ -29,32 +29,8 @@ scala.tasty.reflect
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
-
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
-### AlternativesAPI
-<pre><code class="language-scala" >final implicit def AlternativesAPI(alternatives: Alternatives): AlternativesAPI</pre></code>
-
-### BindAPI
-<pre><code class="language-scala" >final implicit def BindAPI(bind: Bind): BindAPI</pre></code>
-
-### PatternAPI
-<pre><code class="language-scala" >final implicit def PatternAPI(self: Pattern): PatternAPI</pre></code>
-
-### TypeTestAPI
-<pre><code class="language-scala" >final implicit def TypeTestAPI(typeTest: TypeTest): TypeTestAPI</pre></code>
-
-### UnapplyAPI
-<pre><code class="language-scala" >final implicit def UnapplyAPI(unapply: Unapply): UnapplyAPI</pre></code>
-
-### ValueAPI
-<pre><code class="language-scala" >final implicit def ValueAPI(value: Value): ValueAPI</pre></code>
 
 ### asInstanceOf
 <pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
@@ -105,5 +81,5 @@ scala.tasty.reflect
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
 ### Pattern
-<pre><code class="language-scala" >final val Pattern: Pattern$</pre></code>
+<pre><code class="language-scala" >final val Pattern: Pattern</pre></code>
 

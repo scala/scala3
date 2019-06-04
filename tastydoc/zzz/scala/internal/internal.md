@@ -3,8 +3,8 @@
 <pre><code class="language-scala" >final abstract class <a href="./MatchCase.md">MatchCase</a></pre></code>
 A type constructor for a case in a match type.
 
-<pre><code class="language-scala" >final object <a href="./Quoted.md">Quoted</a></pre></code>
-<pre><code class="language-scala" >final val Quoted: <a href="./Quoted$.md">Quoted$</a></pre></code>
+<pre><code class="language-scala" >final object <a href="./Quoted$.md">Quoted</a></pre></code>
+<pre><code class="language-scala" >final val Quoted: <a href="./Quoted$.md">Quoted</a></pre></code>
 
 <pre><code class="language-scala" >final abstract class <a href="./TypeBox.md">TypeBox</a></pre></code>
 A type for skolems that are generated during capture conversion. Capture conversion

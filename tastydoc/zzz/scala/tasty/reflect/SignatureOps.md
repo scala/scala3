@@ -8,8 +8,8 @@ scala.tasty.reflect
 <pre><code class="language-scala" >SignatureOps()</pre></code>
 
 ## Concrete Type Members:
-### Signature
-<pre><code class="language-scala" >final object <a href="./SignatureOps/Signature.md">Signature</a></pre></code>
+### Signature$
+<pre><code class="language-scala" >final object <a href="./SignatureOps/Signature$.md">Signature</a></pre></code>
 Erased (JVM) signatures.
 
 ### SignatureAPI
@@ -21,17 +21,8 @@ Erased (JVM) signatures.
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
-
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
-### SignatureAPI
-<pre><code class="language-scala" >final implicit def SignatureAPI(sig: Signature): SignatureAPI</pre></code>
 
 ### asInstanceOf
 <pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
@@ -82,7 +73,7 @@ Erased (JVM) signatures.
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
 ### Signature
-<pre><code class="language-scala" >final val Signature: Signature$</pre></code>
+<pre><code class="language-scala" >final val Signature: Signature</pre></code>
 Erased (JVM) signatures.
 
 

@@ -8,12 +8,12 @@ scala.tasty.reflect
 <pre><code class="language-scala" >ImportSelectorOps()</pre></code>
 
 ## Concrete Type Members:
-### OmitSelector
-<pre><code class="language-scala" >final object <a href="./ImportSelectorOps/OmitSelector.md">OmitSelector</a></pre></code>
-### RenameSelector
-<pre><code class="language-scala" >final object <a href="./ImportSelectorOps/RenameSelector.md">RenameSelector</a></pre></code>
-### SimpleSelector
-<pre><code class="language-scala" >final object <a href="./ImportSelectorOps/SimpleSelector.md">SimpleSelector</a></pre></code>
+### OmitSelector$
+<pre><code class="language-scala" >final object <a href="./ImportSelectorOps/OmitSelector$.md">OmitSelector</a></pre></code>
+### RenameSelector$
+<pre><code class="language-scala" >final object <a href="./ImportSelectorOps/RenameSelector$.md">RenameSelector</a></pre></code>
+### SimpleSelector$
+<pre><code class="language-scala" >final object <a href="./ImportSelectorOps/SimpleSelector$.md">SimpleSelector</a></pre></code>
 ### OmitSelectorAPI
 <pre><code class="language-scala" >class <a href="./ImportSelectorOps/OmitSelectorAPI.md">OmitSelectorAPI</a></pre></code>
 ### RenameSelectorAPI
@@ -27,23 +27,8 @@ scala.tasty.reflect
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
-
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
-### OmitSelectorAPI
-<pre><code class="language-scala" >final implicit def OmitSelectorAPI(self: OmitSelector): OmitSelectorAPI</pre></code>
-
-### RenameSelectorAPI
-<pre><code class="language-scala" >final implicit def RenameSelectorAPI(self: RenameSelector): RenameSelectorAPI</pre></code>
-
-### SimpleSelectorAPI
-<pre><code class="language-scala" >final implicit def SimpleSelectorAPI(self: SimpleSelector): SimpleSelectorAPI</pre></code>
 
 ### asInstanceOf
 <pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
@@ -94,11 +79,11 @@ scala.tasty.reflect
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
 ### OmitSelector
-<pre><code class="language-scala" >final val OmitSelector: OmitSelector$</pre></code>
+<pre><code class="language-scala" >final val OmitSelector: OmitSelector</pre></code>
 
 ### RenameSelector
-<pre><code class="language-scala" >final val RenameSelector: RenameSelector$</pre></code>
+<pre><code class="language-scala" >final val RenameSelector: RenameSelector</pre></code>
 
 ### SimpleSelector
-<pre><code class="language-scala" >final val SimpleSelector: SimpleSelector$</pre></code>
+<pre><code class="language-scala" >final val SimpleSelector: SimpleSelector</pre></code>
 

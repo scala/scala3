@@ -9,20 +9,14 @@ Some basic type tags, currently incomplete
 ## Known subclasses:
 <a href="./Type$/TypeOps$.md">TypeOps</a>
 ## Concrete Type Members:
-### TypeOps
-<pre><code class="language-scala" >final object <a href="./Type$/TypeOps.md">TypeOps</a></pre></code>
+### TypeOps$
+<pre><code class="language-scala" >final object <a href="./Type$/TypeOps$.md">TypeOps</a></pre></code>
 ## Concrete Value Members:
 ### !=
 <pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
 
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
-
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
 
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
@@ -102,9 +96,6 @@ Some basic type tags, currently incomplete
 ### wait
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
-### writeReplace
-<pre><code class="language-scala" >private def writeReplace(): AnyRef</pre></code>
-
 ### TypeOps
-<pre><code class="language-scala" >final implicit val TypeOps: <a href="./Type$/TypeOps$.md">TypeOps$</a></pre></code>
+<pre><code class="language-scala" >final implicit val TypeOps: <a href="./Type$/TypeOps$.md">TypeOps</a></pre></code>
 

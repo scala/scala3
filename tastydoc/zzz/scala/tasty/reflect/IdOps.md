@@ -8,8 +8,8 @@ scala.tasty.reflect
 <pre><code class="language-scala" >IdOps()</pre></code>
 
 ## Concrete Type Members:
-### Id
-<pre><code class="language-scala" >final object <a href="./IdOps/Id.md">Id</a></pre></code>
+### Id$
+<pre><code class="language-scala" >final object <a href="./IdOps/Id$.md">Id</a></pre></code>
 ### IdAPI
 <pre><code class="language-scala" >class <a href="./IdOps/IdAPI.md">IdAPI</a></pre></code>
 ## Concrete Value Members:
@@ -19,17 +19,8 @@ scala.tasty.reflect
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
-
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
-### IdAPI
-<pre><code class="language-scala" >final implicit def IdAPI(id: Id): IdAPI</pre></code>
 
 ### asInstanceOf
 <pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
@@ -80,5 +71,5 @@ scala.tasty.reflect
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
 ### Id
-<pre><code class="language-scala" >final val Id: Id$</pre></code>
+<pre><code class="language-scala" >final val Id: Id</pre></code>
 

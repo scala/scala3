@@ -11,7 +11,7 @@ the compiler (see Implicits.synthesizedEq), so they are not included here.
 ## Known subclasses:
 derived
 ## Concrete Type Members:
-### derived
+### derived$
 <pre><code class="language-scala" >final object derived</pre></code>
 A non-implied universal `Eql` instance.
 
@@ -21,12 +21,6 @@ A non-implied universal `Eql` instance.
 
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
-
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
 
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
@@ -101,11 +95,8 @@ the rules of multiversal equality require it.
 ### wait
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
-### writeReplace
-<pre><code class="language-scala" >private def writeReplace(): AnyRef</pre></code>
-
 ### derived
-<pre><code class="language-scala" >final val derived: derived$</pre></code>
+<pre><code class="language-scala" >final val derived: derived</pre></code>
 A non-implied universal `Eql` instance.
 
 

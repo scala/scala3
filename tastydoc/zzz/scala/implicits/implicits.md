@@ -1,8 +1,8 @@
 # Package implicits
 ## Members:
 <pre><code class="language-scala" >trait <a href="./LowPriorityNot.md">LowPriorityNot</a></pre></code>
-<pre><code class="language-scala" >final object <a href="./Not.md">Not</a></pre></code>
-<pre><code class="language-scala" >final val Not: <a href="./Not$.md">Not$</a></pre></code>
+<pre><code class="language-scala" >final object <a href="./Not$.md">Not</a></pre></code>
+<pre><code class="language-scala" >final val Not: <a href="./Not$.md">Not</a></pre></code>
 
 <pre><code class="language-scala" >final class <a href="./Not.md">Not</a></pre></code>
 A special class used to implement negation in implicit search.

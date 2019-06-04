@@ -7,8 +7,8 @@ scala.quoted
 ## Known subclasses:
 <a href="./Toolbox$/ToolboxNotFoundException.md">ToolboxNotFoundException</a>, <a href="./Toolbox$/Settings$.md">Settings</a>, <a href="./Toolbox$/Settings.md">Settings</a>
 ## Concrete Type Members:
-### Settings
-<pre><code class="language-scala" >final object <a href="./Toolbox$/Settings.md">Settings</a></pre></code>
+### Settings$
+<pre><code class="language-scala" >final object <a href="./Toolbox$/Settings$.md">Settings</a></pre></code>
 ### Settings
 <pre><code class="language-scala" >case class <a href="./Toolbox$/Settings.md">Settings</a></pre></code>
 Setting of the Toolbox instance.
@@ -21,12 +21,6 @@ Setting of the Toolbox instance.
 
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
-
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
 
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
@@ -94,9 +88,6 @@ implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.
 ### wait
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
-### writeReplace
-<pre><code class="language-scala" >private def writeReplace(): AnyRef</pre></code>
-
 ### Settings
-<pre><code class="language-scala" >final val Settings: <a href="./Toolbox$/Settings$.md">Settings$</a></pre></code>
+<pre><code class="language-scala" >final val Settings: <a href="./Toolbox$/Settings$.md">Settings</a></pre></code>
 

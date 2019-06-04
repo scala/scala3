@@ -8,8 +8,8 @@ scala.tasty.reflect
 <pre><code class="language-scala" >StandardDefinitions()</pre></code>
 
 ## Concrete Type Members:
-### definitions
-<pre><code class="language-scala" >final object <a href="./StandardDefinitions/definitions.md">definitions</a></pre></code>
+### definitions$
+<pre><code class="language-scala" >final object <a href="./StandardDefinitions/definitions$.md">definitions</a></pre></code>
 A value containing all standard definitions in DefinitionsAPI
 
 ***Group*** Definitions
@@ -32,12 +32,6 @@ Defines standard types.
 
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
-
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
 
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
@@ -91,7 +85,7 @@ Defines standard types.
 <pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
 ### definitions
-<pre><code class="language-scala" >final val definitions: definitions$</pre></code>
+<pre><code class="language-scala" >final val definitions: definitions</pre></code>
 A value containing all standard definitions in DefinitionsAPI
 
 ***Group*** Definitions
