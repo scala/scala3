@@ -106,12 +106,12 @@ object HtmlParsers {
       def bodyToMarkdown(body: Body): String =
         (body.blocks map blockToMarkdown).mkString
 
-      def listItemsToMarkdown(items: Seq[Block], level: Int = 0, ordered: Boolean = false): String ={ //TODO: Multilevel not working when different type combined, from parser?
+      def listItemsToMarkdown(items: Seq[Block], level: Int = 0, ordered: Boolean = false): String ={
         if(ordered){
           items.foldLeft(("", 1)){ (list, item) =>
             item match {
-              case OrderedList(itemsLvl2, _) => val x = itemsLvl2; (list._1 + s"${listItemsToMarkdown(x, level + 1, true)}\n", list._2 + 1) //TODO + TOASK itemsLvl2 not found
-              case UnorderedList(itemsLvl2) => val x = itemsLvl2; (list._1 + s"${listItemsToMarkdown(x, level + 1, false)}\n", list._2 + 1) //TODO + TOASK itemsLvl2 not found
+              case OrderedList(itemsLvl2, _) => val x = itemsLvl2; (list._1 + s"${listItemsToMarkdown(x, level + 1, true)}\n", list._2 + 1)
+              case UnorderedList(itemsLvl2) => val x = itemsLvl2; (list._1 + s"${listItemsToMarkdown(x, level + 1, false)}\n", list._2 + 1)
               case Paragraph(inl) => (list._1 + s"${"\t"*level}${list._2}. ${inlineToMarkdown(inl)}\n", list._2 + 1)
               case block => (list._1 + s"${"\t"*level}${list._2}. ${blockToMarkdown(block)}\n", list._2 + 1)
             }
@@ -119,8 +119,8 @@ object HtmlParsers {
         }else{
           items.foldLeft(""){ (list, item) =>
             item match {
-              case OrderedList(itemsLvl2, _) => val x = itemsLvl2; list + s"${listItemsToMarkdown(x, level + 1, true)}\n" //TODO + TOASK itemsLvl2 not found
-              case UnorderedList(itemsLvl2) => val x = itemsLvl2; list + s"${listItemsToMarkdown(x, level + 1, false)}\n" //TODO + TOASK itemsLvl2 not found
+              case OrderedList(itemsLvl2, _) => val x = itemsLvl2; list + s"${listItemsToMarkdown(x, level + 1, true)}\n"
+              case UnorderedList(itemsLvl2) => val x = itemsLvl2; list + s"${listItemsToMarkdown(x, level + 1, false)}\n"
               case Paragraph(inl) => list + s"${"\t"*level}* ${inlineToMarkdown(inl)}\n"
               case block => list + s"${"\t"*level}* ${blockToMarkdown(block)}\n"
             }
@@ -138,8 +138,8 @@ object HtmlParsers {
           case Code(data)    => s"```scala\n$data\n```"
           case UnorderedList(items) => s"${listItemsToMarkdown(items)}"
           case OrderedList(items, listStyle) => s"${listItemsToMarkdown(items, ordered=true)}"
-          case DefinitionList(items) => //TODO: Markdown equivalent
-            s"<dl>${items map { case (t, d) => s"<dt>${inlineToMarkdown(t)}</dt><dd>${blockToMarkdown(d)}</dd>" } }</dl>"
+          case DefinitionList(items) =>
+            s"${items map { case (t, d) => s"${inlineToMarkdown(t)}\n: ${blockToMarkdown(d)}" } }" //Not widely supported
           case HorizontalRule() =>
             "***"
         }) +
@@ -161,8 +161,8 @@ object HtmlParsers {
       case Italic(in)       => s"*${toMarkdown(in)}*"
       case Bold(in)         => s"**${toMarkdown(in)}**"
       case Underline(in)    => s"__${toMarkdown(in)}__"
-      case Superscript(in)  => s"<sup>${toMarkdown(in)}</sup>" //TODO Markdown equivalent
-      case Subscript(in)    => s"<sub>${toMarkdown(in) }</sub>" //TODO Markdown equivalent
+      case Superscript(in)  => s"<sup>${toMarkdown(in)}</sup>" //No Markdown equival
+      case Subscript(in)    => s"<sub>${toMarkdown(in) }</sub>" //No Markdown equivalent
       case Link(raw, title) => s"[${toMarkdown(title)}]($raw)"
       case Monospace(in)    => s"`${toMarkdown(in)}`"
       case Text(text)       => text

@@ -64,7 +64,7 @@ trait MarkupConversion[T](packages: Map[String, EmulatedPackageRepresentation]) 
   protected def linkedExceptions(m: Map[String, String]): Map[String, String]
   protected def stringToMarkup(str: String): T
   protected def markupToMarkdown(t: T): String
-  protected def stringToShortHtml(str: String): String //TODO: Figure this out
+  protected def stringToShortMarkdown(str: String): String
   protected def filterEmpty(xs: List[String]): List[T]
   protected def filterEmpty(xs: Map[String, String]): Map[String, T]
 
@@ -81,7 +81,7 @@ trait MarkupConversion[T](packages: Map[String, EmulatedPackageRepresentation]) 
 
   final def comment: Comment = Comment(
     body                    = markupToMarkdown(stringToMarkup(parsed.body)),
-    short                   = stringToShortHtml(parsed.body),
+    short                   = stringToShortMarkdown(parsed.body),
     authors                 = filterEmpty(parsed.authors).map(markupToMarkdown),
     see                     = filterEmpty(parsed.see).map(markupToMarkdown),
     result                  = single("@result", parsed.result).map(markupToMarkdown),
@@ -109,7 +109,7 @@ extends MarkupConversion[MarkdownNode](packages) {
   def stringToMarkup(str: String) =
     str.toMarkdown(ent, packages)
 
-  def stringToShortHtml(str: String) =
+  def stringToShortMarkdown(str: String) =
     str.toMarkdown(ent, packages).shortenAndShow
 
   def markupToMarkdown(md: MarkdownNode) =
@@ -150,7 +150,7 @@ extends MarkupConversion[Body](packages) {
   def stringToMarkup(str: String) =
     str.toWiki(ent, packages)
 
-  def stringToShortHtml(str: String) = {
+  def stringToShortMarkdown(str: String) = {
     val parsed = stringToMarkup(str)
     parsed.summary.getOrElse(parsed).show(ent)
   }

@@ -150,25 +150,6 @@ object representations extends TastyExtractor {
   class DefRepresentation(reflect: Reflection, internal: reflect.DefDef, override val parentRepresentation: Option[Representation]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue {
     import reflect._
 
-    // private def test(sym: reflect.Symbol): Unit = sym match {
-    //   case reflect.IsClassDefSymbol(classSym) =>
-    //     print(classSym.name)
-    //     classSym.method(internal.name).filter(_.hashCode == internal.symbol.hashCode) match {
-    //       case Nil =>
-    //       case x::_ =>
-    //           print("-->")
-    //           test(x)
-    //     }
-    //   case reflect.IsDefDefSymbol(defSym) => println("\nSecond owner Name:" + defSym.owner.name)
-    //   case _ =>
-    // }
-    // if(internal.name == "/:"){
-    //   println(internal.name + "==========") //TOASK no way to go up first owner
-    //   println()
-    //   test(internal.symbol.owner)
-    //   println()
-    // }
-
     override val name = internal.name
     override val path = extractPath(reflect)(internal.symbol)
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)

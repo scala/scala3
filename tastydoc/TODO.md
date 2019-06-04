@@ -33,6 +33,8 @@
 * handle things such as $genericCanBuildFromInfo
 * Type like Graph.Node
 * default value in def
+* Case classes are linked
+* Error printing in parsing
 
 # Report
 * Be consistent in methods/function and parameters/arguments
