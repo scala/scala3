@@ -692,16 +692,23 @@ class Definitions {
     lazy val ModuleSerializationProxyConstructor: TermSymbol =
       ModuleSerializationProxyClass.requiredMethod(nme.CONSTRUCTOR, List(ClassType(TypeBounds.empty)))
 
-  lazy val GenericType: TypeRef                = ctx.requiredClassRef("scala.reflect.Generic")
-  def GenericClass(implicit ctx: Context): ClassSymbol    = GenericType.symbol.asClass
-  lazy val ShapeType: TypeRef                  = ctx.requiredClassRef("scala.compiletime.Shape")
-  def ShapeClass(implicit ctx: Context): ClassSymbol      = ShapeType.symbol.asClass
-  lazy val ShapeCaseType: TypeRef              = ctx.requiredClassRef("scala.compiletime.Shape.Case")
-  def ShapeCaseClass(implicit ctx: Context): ClassSymbol  = ShapeCaseType.symbol.asClass
-  lazy val ShapeCasesType: TypeRef             = ctx.requiredClassRef("scala.compiletime.Shape.Cases")
-  def ShapeCasesClass(implicit ctx: Context): ClassSymbol = ShapeCasesType.symbol.asClass
-  lazy val MirrorType: TypeRef                 = ctx.requiredClassRef("scala.reflect.Mirror")
-  lazy val GenericClassType: TypeRef           = ctx.requiredClassRef("scala.reflect.GenericClass")
+  lazy val MirrorType: TypeRef = ctx.requiredClassRef("scala.deriving.Mirror")
+  def MirrorClass(implicit ctx: Context): ClassSymbol = MirrorType.symbol.asClass
+
+  lazy val Mirror_ProductType: TypeRef = ctx.requiredClassRef("scala.deriving.Mirror.Product")
+  def Mirror_ProductClass(implicit ctx: Context): ClassSymbol = Mirror_ProductType.symbol.asClass
+
+    lazy val Mirror_Product_fromProductR: TermRef = Mirror_ProductClass.requiredMethodRef(nme.fromProduct)
+    def Mirror_Product_fromProduct(implicit ctx: Context): Symbol = Mirror_Product_fromProductR.symbol
+
+  lazy val Mirror_SumType: TypeRef = ctx.requiredClassRef("scala.deriving.Mirror.Sum")
+  def Mirror_SumClass(implicit ctx: Context): ClassSymbol = Mirror_SumType.symbol.asClass
+
+  lazy val Mirror_SingletonType: TypeRef = ctx.requiredClassRef("scala.deriving.Mirror.Singleton")
+  def Mirror_SingletonClass(implicit ctx: Context): ClassSymbol = Mirror_SingletonType.symbol.asClass
+
+  lazy val Mirror_SingletonProxyType: TypeRef = ctx.requiredClassRef("scala.deriving.Mirror.SingletonProxy")
+  def Mirror_SingletonProxyClass(implicit ctx: Context): ClassSymbol = Mirror_SingletonProxyType.symbol.asClass
 
   lazy val LanguageModuleRef: TermSymbol = ctx.requiredModule("scala.language")
   def LanguageModuleClass(implicit ctx: Context): ClassSymbol = LanguageModuleRef.moduleClass.asClass

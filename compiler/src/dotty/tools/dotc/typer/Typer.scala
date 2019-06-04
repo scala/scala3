@@ -2445,7 +2445,7 @@ class Typer extends Namer
     def tryApply(implicit ctx: Context) = {
       val pt1 = pt.withContext(ctx)
       val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt1)
-      sel.pushAttachment(InsertedApply, ())
+        .withAttachment(InsertedApply, ())
       if (sel.tpe.isError) sel
       else try adapt(simplify(sel, pt1, locked), pt1, locked) finally sel.removeAttachment(InsertedApply)
     }

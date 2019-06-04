@@ -26,7 +26,7 @@ object PostTyper {
  *      field (corresponding = super class field is initialized with subclass field)
  *      (@see ForwardParamAccessors)
  *
- *  (3) Add synthetic methods (@see SyntheticMethods)
+ *  (3) Add synthetic members (@see SyntheticMembers)
  *
  *  (4) Check that `New` nodes can be instantiated, and that annotations are valid
  *
@@ -64,7 +64,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     case _ =>
   }
 
-  override def changesMembers: Boolean = true // the phase adds super accessors and synthetic methods
+  override def changesMembers: Boolean = true // the phase adds super accessors and synthetic members
 
   override def transformPhase(implicit ctx: Context): Phase = thisPhase.next
 
@@ -73,7 +73,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
   val paramFwd: ParamForwarding = new ParamForwarding(thisPhase)
-  val synthMth: SyntheticMethods = new SyntheticMethods(thisPhase)
+  val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
 
   private def newPart(tree: Tree): Option[New] = methPart(tree) match {
     case Select(nu: New, _) => Some(nu)
@@ -230,7 +230,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {
             val templ1 = paramFwd.forwardParamAccessors(tree)
-            synthMth.addSyntheticMethods(
+            synthMbr.addSyntheticMembers(
                 superAcc.wrapTemplate(templ1)(
                   super.transform(_).asInstanceOf[Template]))
           }

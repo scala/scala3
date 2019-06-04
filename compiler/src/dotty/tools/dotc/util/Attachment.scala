@@ -101,6 +101,11 @@ object Attachment {
       this
     }
 
+    def withAttachment[V](key: Key[V], value: V): this.type = {
+      pushAttachment(key, value)
+      this
+    }
+
     final def pushAttachment[V](key: Key[V], value: V): Unit = {
       assert(!getAttachment(key).isDefined, s"duplicate attachment for key $key")
       next = new Link(key, value, next)

@@ -8,6 +8,7 @@ import Symbols._, StdNames._, Trees._
 import Decorators._
 import util.{Property, SourceFile}
 import typer.ErrorReporting._
+import transform.SyntheticMembers.ExtendsSingletonMirror
 
 import scala.annotation.internal.sharable
 
@@ -115,11 +116,16 @@ object DesugarEnums {
     val toStringDef =
       DefDef(nme.toString_, Nil, Nil, TypeTree(), Ident(nme.name))
         .withFlags(Override)
-    def creator = New(Template(emptyConstructor, enumClassRef :: Nil, Nil, EmptyValDef,
-        List(enumTagDef, toStringDef) ++ registerCall))
+    val creator = New(Template(
+      constr = emptyConstructor,
+      parents = enumClassRef :: Nil,
+      derived = Nil,
+      self = EmptyValDef,
+      body = List(enumTagDef, toStringDef) ++ registerCall
+    ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW, Nil,
         List(List(param(nme.tag, defn.IntType), param(nme.name, defn.StringType))),
-        TypeTree(), creator)
+        TypeTree(), creator).withFlags(Private | Synthetic)
   }
 
   /** The return type of an enum case apply method and any widening methods in which
@@ -259,6 +265,7 @@ object DesugarEnums {
           .withFlags(Override)
       val (tagMeth, scaffolding) = enumTagMeth(CaseKind.Object)
       val impl1 = cpy.Template(impl)(body = List(tagMeth, toStringMeth) ++ registerCall)
+        .withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final)
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }

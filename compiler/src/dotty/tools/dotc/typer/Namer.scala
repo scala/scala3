@@ -447,7 +447,7 @@ class Namer { typer: Typer =>
     case _ => tree
   }
 
-  /** For all class definitions `stat` in `xstats`: If the companion class if
+  /** For all class definitions `stat` in `xstats`: If the companion class is
     * not also defined in `xstats`, invalidate it by setting its info to
     * NoType.
     */
@@ -702,7 +702,7 @@ class Namer { typer: Typer =>
       // If a top-level object or class has no companion in the current run, we
       // enter a dummy companion (`denot.isAbsent` returns true) in scope. This
       // ensures that we never use a companion from a previous run or from the
-      // classpath. See tests/pos/false-companion for an example where this
+      // class path. See tests/pos/false-companion for an example where this
       // matters.
       if (ctx.owner.is(PackageClass)) {
         for (cdef @ TypeDef(moduleName, _) <- moduleDef.values) {
@@ -868,8 +868,10 @@ class Namer { typer: Typer =>
           val child = if (denot.is(Module)) denot.sourceModule else denot.symbol
           register(child, parent)
         }
-      else if (denot.is(CaseVal, butNot = Method | Module))
+      else if (denot.is(CaseVal, butNot = Method | Module)) {
+        assert(denot.is(Enum), denot)
         register(denot.symbol, denot.info)
+      }
     }
 
     /** Intentionally left without `implicit ctx` parameter. We need

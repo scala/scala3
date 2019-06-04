@@ -263,10 +263,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     }
 
     /** Install the derived type tree as a dependency on `sym` */
-    def watching(sym: Symbol): this.type = {
-      pushAttachment(OriginalSymbol, sym)
-      this
-    }
+    def watching(sym: Symbol): this.type = withAttachment(OriginalSymbol, sym)
 
     /** A hook to ensure that all necessary symbols are completed so that
      *  OriginalSymbol attachments are propagated to this tree

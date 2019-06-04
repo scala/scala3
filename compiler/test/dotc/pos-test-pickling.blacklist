@@ -10,6 +10,9 @@ t3486
 t3612.scala
 reference
 
+# type of super reference changes due to late addition of Mirror.Singleton
+i939.scala
+
 # Match types
 typelevel0.scala
 matchtype.scala
