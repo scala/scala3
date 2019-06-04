@@ -704,7 +704,7 @@ object StringContextMacro {
             if (!reporter.hasReported()){
               val conversionWithType = checkFormatSpecifiers(0, hasArgumentIndex, argumentIndex, None, maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, None, part)
               nextStart = conversion + 1
-              if (!reporter.hasReported() && part.charAt(conversion) != '%' && part.charAt(conversion) != 'n')
+              if (!reporter.hasReported() && part.charAt(conversion) != '%' && part.charAt(conversion) != 'n' && !hasArgumentIndex && !hasRelative)
                 reporter.partError("conversions must follow a splice; use %% for literal %, %n for newline", 0, part.indexOf('%'))
               conversionWithType :: checkPart(part, nextStart, argument, maxArgumentIndex)
             } else checkPart(part, conversion + 1, argument, maxArgumentIndex)
