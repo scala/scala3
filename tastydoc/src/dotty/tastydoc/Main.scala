@@ -13,7 +13,8 @@ object Main {
    * * **-syntax** {*wiki or markdown*} Syntax for parsing user documentation
    * * **-packagestolink** {*regex1 regex2 ...*} Regexes to specify which packages should be linked when formatting Reference
    * * **-classpath** {*URI*} Extra classpath for input files
-   * * **-i** {*file1 file2 ...*} Tasty files
+   * * **-i** {*file1 file2 ...*} TASTy files
+   * * **-d** {*dir1 dir2 ...*} Directories to recursively find TASTy files
    */
   def main(args: Array[String]): Unit = {
     val userDocSyntax = {
@@ -51,14 +52,41 @@ object Main {
       }
     }
 
-    val classes = {
+    val classesI = {
       val idx = args.indexOf("-i")
       if(idx >= 0 && args.size > idx + 1){
-        args.drop(idx + 1).toList
+        args.drop(idx + 1).takeWhile(_!= "-d").toList
       }else{
         Nil
       }
     }
+
+    val classesD = {
+      val idx = args.indexOf("-d")
+      if(idx >= 0 && args.size > idx + 1){
+        val dirs = args.drop(idx + 1).takeWhile(_!= "-i").toList
+
+        def findTastyFiles(f: File): Array[String] = {
+          val allFiles = f.listFiles
+          val tastyFiles = allFiles.filter(f => f.getName.endsWith(".tasty")).map(x => x.getPath.stripPrefix(extraClasspath + "/").stripSuffix(".tasty").replaceAll("\\/", "."))
+          tastyFiles ++ allFiles.filter(_.isDirectory).flatMap(findTastyFiles)
+        }
+
+        dirs.flatMap{d =>
+          val f = new File(extraClasspath + "/" + d)
+          if(f.exists){
+            findTastyFiles(f)
+          }else{
+            println("[warn] Ignoring invalid directory name: " + d)
+            Nil
+          }
+        }
+      }else{
+        Nil
+      }
+    }
+
+    val classes = classesI ++ classesD
 
     if (classes.isEmpty) {
       println("Dotty Tastydoc: No classes were passed as argument")

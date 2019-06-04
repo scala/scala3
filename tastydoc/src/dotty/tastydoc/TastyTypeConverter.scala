@@ -20,17 +20,7 @@ trait TastyTypeConverter {
       case reflect.IsTypeBounds(reflect.TypeBounds(low, hi)) =>
         val lowRef = convertTypeToReference(reflect)(low)
         val hiRef = convertTypeToReference(reflect)(hi)
-        if(anyOrNothing(lowRef)){
-          if(anyOrNothing(hiRef)){
-            EmptyReference
-          }else{
-            hiRef
-          }
-        }else if(anyOrNothing(hiRef)){
-          lowRef
-        }else{
-          BoundsReference(lowRef, hiRef)
-        }
+        BoundsReference(lowRef, hiRef)
       case reflect.NoPrefix() => EmptyReference
     }
   }
@@ -58,6 +48,7 @@ trait TastyTypeConverter {
       //   }
       //   ConstantReference(removeColorFromType(tp.show)) //TOFIX
       // case reflect.Type.IsParamRef(reflect.Type.ParamRef(tpe, x)) => EmptyReference//println("paramref     " + tpe); ConstantReference("XXXXX")
+      case reflect.Type.IsRefinement(reflect.Type.Refinement(parent, name, info)) => println(tp.show); ConstantReference(name) //TOASK What to do with these types
       case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) =>
         inner(tpe) match {
           case TypeReference(label, link, _, hasOwnFile) =>

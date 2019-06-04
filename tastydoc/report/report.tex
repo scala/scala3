@@ -184,7 +184,8 @@ Command line arguments are:
     \item \textbf{-syntax} \{\textit{wiki} or \textit{markdown}\} Syntax to use for user documentation parsing
     \item \textbf{-packagestolink} \{\textit{regex1 regex2 ...}\} Regexes to specify which packages should be linked when formatting References
     \item \textbf{-classpath} \{\textit{URI}\} Extra classpath for input files
-    \item \textbf{-i} \{\textit{file1 file2 ...}\} Tasty files
+    \item \textbf{-i} \{\textit{file1 file2 ...}\} TASTy files
+    \item \textbf{-d} \{\textit{dir1 dir2 ...}\} Directories to recursively find TASTy files
 \end{itemize}
 
 \subsection{User documentation parsing}
@@ -279,3 +280,23 @@ User-documentation parsing lacks two features: supporting \texttt{@usecase} and 
 Markdown files for documentation are good for all the reasons mentioned in this report but some people still want a good HTML/CSS documentation. The aim here would be to either take back what Dottydoc has and use it with our code, either build something new. The first case should be pretty straightforward as our intermediate representation looks very much alike Dottydoc. The biggest change would be for References as links are handled a bit differently in this tool.
 
 \end{document}
+
+%Sort comparison between Dottydoc
+%   General comparison
+%   Extra features of Tastydoc
+%   Error in Dottydoc that Tastydoc fixes
+%
+%   search engine, etc. Dottydoc has
+%Remove part saying you cannot custom Dottydoc
+%Reformulate dottydoc not maintained
+%Features =>
+%   Talk more about everything
+%   Extra features here or later?
+%Further work
+%   usecase
+%   say more about define
+%   default values
+%Remaining work
+%Links no longer exist, fix it
+% https://dotty.epfl.ch/api/scala/tasty/reflect/Kernel.html Artifcats
+% Some sentences are cut

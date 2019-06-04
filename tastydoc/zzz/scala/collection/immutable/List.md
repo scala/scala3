@@ -64,12 +64,6 @@ days match {
 ### ##
 <pre><code class="language-scala" >final def ##: <a href="../../Int.md">Int</a></pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: <a href="../../Boolean.md">Boolean</a></pre></code>
-
 ### ++
 <pre><code class="language-scala" >override def ++[B >: List.this.A, That](that: <a href="../GenTraversableOnce.md">GenTraversableOnce</a>[B])(bf: CanBuildFrom[List[A], B, That]): That</pre></code>
 
@@ -139,9 +133,6 @@ Adds the elements of a given list in front of this list.
 ### canEqual
 <pre><code class="language-scala" >override def canEqual(that: <a href="../../Any.md">Any</a>): <a href="../../Boolean.md">Boolean</a></pre></code>
 
-### clone
-<pre><code class="language-scala" >protected def clone(): Object</pre></code>
-
 ### collect
 <pre><code class="language-scala" >override final def collect[B, That](pf: <a href="../../PartialFunction.md">PartialFunction</a>[A, B])(bf: CanBuildFrom[List[A], B, That]): That</pre></code>
 
@@ -199,9 +190,6 @@ Adds the elements of a given list in front of this list.
 ### endsWith
 <pre><code class="language-scala" >def endsWith[B](that: GenSeq[B]): <a href="../../Boolean.md">Boolean</a></pre></code>
 
-### eq
-<pre><code class="language-scala" >final def eq(x$0: Object): <a href="../../Boolean.md">Boolean</a></pre></code>
-
 ### equals
 <pre><code class="language-scala" >override def equals(that: <a href="../../Any.md">Any</a>): <a href="../../Boolean.md">Boolean</a></pre></code>
 
@@ -216,9 +204,6 @@ Adds the elements of a given list in front of this list.
 
 ### filterNot
 <pre><code class="language-scala" >def filterNot(p: (A) => <a href="../../Boolean.md">Boolean</a>): Repr</pre></code>
-
-### finalize
-<pre><code class="language-scala" >protected def finalize(): <a href="../../Unit.md">Unit</a></pre></code>
 
 ### find
 <pre><code class="language-scala" >override def find(p: (A) => <a href="../../Boolean.md">Boolean</a>): <a href="../../Option.md">Option</a>[A]</pre></code>
@@ -248,7 +233,7 @@ Adds the elements of a given list in front of this list.
 <pre><code class="language-scala" >def genericBuilder[B]: Builder[B, CC[B]]</pre></code>
 
 ### getClass
-<pre><code class="language-scala" >final def getClass(): Class[]</pre></code>
+<pre><code class="language-scala" >final def getClass(): Class[<a href="../../Nothing.md">Nothing</a> <: <a href="../../Any.md">Any</a>]</pre></code>
 
 ### groupBy
 <pre><code class="language-scala" >def groupBy[K](f: (A) => K): Map[K, Repr]</pre></code>
@@ -383,20 +368,11 @@ Like `xs map f`, but returns `xs` unchanged if function
 ### mkString
 <pre><code class="language-scala" >def mkString(start: <a href="../../Predef.md#String">String</a>, sep: <a href="../../Predef.md#String">String</a>, end: <a href="../../Predef.md#String">String</a>): <a href="../../Predef.md#String">String</a></pre></code>
 
-### ne
-<pre><code class="language-scala" >final def ne(x$0: Object): <a href="../../Boolean.md">Boolean</a></pre></code>
-
 ### newBuilder
 <pre><code class="language-scala" >protected def newBuilder: Builder[A, CC[A]]</pre></code>
 
 ### nonEmpty
 <pre><code class="language-scala" >def nonEmpty: <a href="../../Boolean.md">Boolean</a></pre></code>
-
-### notify
-<pre><code class="language-scala" >final def notify(): <a href="../../Unit.md">Unit</a></pre></code>
-
-### notifyAll
-<pre><code class="language-scala" >final def notifyAll(): <a href="../../Unit.md">Unit</a></pre></code>
 
 ### orElse
 <pre><code class="language-scala" >def orElse[A1, B1](that: <a href="../../PartialFunction.md">PartialFunction</a>[A1, B1]): <a href="../../PartialFunction.md">PartialFunction</a>[A1, B1]</pre></code>
@@ -557,9 +533,6 @@ letters.slice(1,3) // Returns List('b','c')
 ### sum
 <pre><code class="language-scala" >def sum[B](num: Numeric[B]): B</pre></code>
 
-### synchronized
-<pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
-
 ### tail
 <pre><code class="language-scala" >def tail: List[A]</pre></code>
 
@@ -643,15 +616,6 @@ letters.slice(1,3) // Returns List('b','c')
 
 ### view
 <pre><code class="language-scala" >override def view: <a href="../...md#AnyRef">AnyRef</a> & SeqView[A, Repr]</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: <a href="../../Long.md">Long</a>, x$1: <a href="../../Int.md">Int</a>): <a href="../../Unit.md">Unit</a></pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: <a href="../../Long.md">Long</a>): <a href="../../Unit.md">Unit</a></pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(): <a href="../../Unit.md">Unit</a></pre></code>
 
 ### withFilter
 <pre><code class="language-scala" >def withFilter(p: (A) => <a href="../../Boolean.md">Boolean</a>): FilterMonadic[A, Repr]</pre></code>

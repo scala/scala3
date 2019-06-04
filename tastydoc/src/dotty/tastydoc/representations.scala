@@ -217,7 +217,7 @@ object representations extends TastyExtractor {
     import reflect._
 
     tree match {
-      case IsPackageClause(t@reflect.PackageClause(_)) =>
+      case reflect.IsPackageClause(t@reflect.PackageClause(_)) =>
         val noColorPid = t.pid.symbol.show(implicitly[reflect.Context].withoutColors)
         val emulatedPackage = mutablePackagesMap.get(noColorPid) match {
           case Some(x) => x
@@ -231,16 +231,18 @@ object representations extends TastyExtractor {
         emulatedPackage.packagesMembers = r :: emulatedPackage.packagesMembers
         r
 
-      case IsImport(t@reflect.Import(_)) => new ImportRepresentation(reflect, t, parentRepresentation)
+      case reflect.IsImport(t@reflect.Import(_)) => new ImportRepresentation(reflect, t, parentRepresentation)
 
-      case IsClassDef(t@reflect.ClassDef(_)) => new ClassRepresentation(reflect, t, parentRepresentation)
+      case reflect.IsClassDef(t@reflect.ClassDef(_)) => new ClassRepresentation(reflect, t, parentRepresentation)
 
-      case IsDefDef(t@reflect.DefDef(_)) => new DefRepresentation(reflect, t, parentRepresentation)
+      case reflect.IsDefDef(t@reflect.DefDef(_)) => new DefRepresentation(reflect, t, parentRepresentation)
 
-      case IsValDef(t@reflect.ValDef(_)) => new ValRepresentation(reflect, t, parentRepresentation)
+      case reflect.IsValDef(t@reflect.ValDef(_)) => new ValRepresentation(reflect, t, parentRepresentation)
 
-      case IsTypeDef(t@reflect.TypeDef(_)) => new TypeRepresentation(reflect, t, parentRepresentation)
+      case reflect.IsTypeDef(t@reflect.TypeDef(_)) => new TypeRepresentation(reflect, t, parentRepresentation)
 
-      case _ => throw new Exception("Tree match error in conversion to representation. Please open an issue." + tree)
+      case reflect.IsInlined(t@reflect.Inlined(call, bindings, body)) => println(t.show); new EmulatedPackageRepresentation("DELETETHIS", List("DELETEPATH")) //TOASK
+
+      case _ => throw new Exception("Tree match error in conversion to representation. Please open an issue. " + tree)
   }}
 }

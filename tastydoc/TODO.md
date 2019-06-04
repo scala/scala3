@@ -20,13 +20,14 @@
 
 # Representation
 * Make sense of the parents field
-* Id for typeparams so we can link
+* Id for typeparams so we can link (Do not link)
 * Inherited declaration
 * Alias type
 * Beautify type parameters (+ variance + bound two direction)
 * Rework type matching
 * Type like Graph.Node
 * Remove artifcat and synthetic in package members
+* Problem linking to objects like ContextualFunctionBetaReduction
 
 # Output
 * Output inner class/object if not inherited
@@ -37,6 +38,11 @@
 * Be consistent in methods/function and parameters/arguments
 
 # To Ask
+* REFINED TYPES
+* INLINE
+* Error in calling owner
+
+
 * Case classes are linked right now
 * Abstract flag not working
 * default value in def

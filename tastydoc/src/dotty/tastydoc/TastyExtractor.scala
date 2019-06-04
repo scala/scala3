@@ -60,17 +60,22 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
 
   def extractClassMembers(reflect: Reflection)(body: List[reflect.Statement], symbol: reflect.ClassDefSymbol, parentRepresentation: Some[Representation]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) : List[Representation] = {
     import reflect._
+
+    /** Filter fields which shouldn't be displayed in the doc
+     */
+    def filterSymbol(symbol: reflect.Symbol): Boolean = {
+        //!x.symbol.flags.is(Flags.Local) && //Locally defined
+        !symbol.flags.is(Flags.Private) &&
+        !symbol.flags.is(Flags.Synthetic) &&
+        !symbol.flags.is(Flags.Artifact) &&
+        !(symbol.owner.name == "Object" && extractPath(reflect)(symbol.owner) == List("java", "lang")) //TOASK ERROR When calling owner
+    }
+
     (body.flatMap{
         case IsDefDef(_) => None //No definitions, they are appended with symbol.methods below
         case x => Some(x)
-      }.filter{x => //Filter fields which shouldn't be displayed in the doc
-        //!x.symbol.flags.is(Flags.Local) && //Locally defined
-        !x.symbol.flags.is(Flags.Private) &&
-        !x.symbol.flags.is(Flags.Synthetic) &&
-        !x.symbol.flags.is(Flags.Artifact)
-      }
-      .map(convertToRepresentation(reflect)(_, parentRepresentation)) ++
-    symbol.methods.map{x => convertToRepresentation(reflect)(x.tree, parentRepresentation)})
+      }.filter(x => filterSymbol(x.symbol)).map(convertToRepresentation(reflect)(_, parentRepresentation)) ++
+    symbol.methods.filter(x => filterSymbol(x)).map{x => convertToRepresentation(reflect)(x.tree, parentRepresentation)})
     .sortBy(_.name)
   }
 

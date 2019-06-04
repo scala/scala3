@@ -12,12 +12,6 @@ example.level2
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### $asInstanceOf$
-<pre><code class="language-scala" >final def $asInstanceOf$[X0]: X0</pre></code>
-
-### $isInstanceOf$
-<pre><code class="language-scala" >final def $isInstanceOf$[X0]: Boolean</pre></code>
-
 ### ++
 <pre><code class="language-scala" >def ++[B, That](that: GenTraversableOnce[B])(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
@@ -71,9 +65,6 @@ example.level2
 
 ### canEqual
 <pre><code class="language-scala" >override def canEqual(that: Any): Boolean</pre></code>
-
-### clone
-<pre><code class="language-scala" >protected def clone(): Object</pre></code>
 
 ### collect
 <pre><code class="language-scala" >def collect[B, That](pf: PartialFunction[A, B])(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
@@ -156,9 +147,6 @@ def someScalaCode(x: String) = println("Hello " + x)
 ### endsWith
 <pre><code class="language-scala" >def endsWith[B](that: GenSeq[B]): Boolean</pre></code>
 
-### eq
-<pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
-
 ### equals
 <pre><code class="language-scala" >override def equals(that: Any): Boolean</pre></code>
 
@@ -173,9 +161,6 @@ def someScalaCode(x: String) = println("Hello " + x)
 
 ### filterNot
 <pre><code class="language-scala" >def filterNot(p: (A) => Boolean): Repr</pre></code>
-
-### finalize
-<pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
 
 ### find
 <pre><code class="language-scala" >override def find(p: (A) => Boolean): Option[A]</pre></code>
@@ -208,7 +193,7 @@ def someScalaCode(x: String) = println("Hello " + x)
 <pre><code class="language-scala" >def genericBuilder[B]: Builder[B, CC[B]]</pre></code>
 
 ### getClass
-<pre><code class="language-scala" >final def getClass(): Class[]</pre></code>
+<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
 
 ### groupBy
 <pre><code class="language-scala" >def groupBy[K](f: (A) => K): Map[K, Repr]</pre></code>
@@ -362,20 +347,11 @@ Test methods with params
 ### mkString
 <pre><code class="language-scala" >def mkString(start: String, sep: String, end: String): String</pre></code>
 
-### ne
-<pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>
-
 ### newBuilder
 <pre><code class="language-scala" >protected def newBuilder: Builder[A, CC[A]]</pre></code>
 
 ### nonEmpty
 <pre><code class="language-scala" >def nonEmpty: Boolean</pre></code>
-
-### notify
-<pre><code class="language-scala" >final def notify(): Unit</pre></code>
-
-### notifyAll
-<pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
 
 ### orElse
 <pre><code class="language-scala" >def orElse[A1, B1](that: PartialFunction[A1, B1]): PartialFunction[A1, B1]</pre></code>
@@ -521,9 +497,6 @@ Test methods with params
 ### sum
 <pre><code class="language-scala" >def sum[B](num: Numeric[B]): B</pre></code>
 
-### synchronized
-<pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
-
 ### tail
 <pre><code class="language-scala" >override def tail: Repr</pre></code>
 
@@ -616,15 +589,6 @@ Test methods with params
 
 ### view
 <pre><code class="language-scala" >override def view: AnyRef & SeqView[A, Repr]</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long): Unit</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
 ### withFilter
 <pre><code class="language-scala" >def withFilter(p: (A) => Boolean): FilterMonadic[A, Repr]</pre></code>
