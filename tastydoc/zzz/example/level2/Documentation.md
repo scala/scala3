@@ -37,10 +37,10 @@ Auxiliary constructor
 ### typeExamle
 <pre><code class="language-scala" >type typeExamle: [X >: scala.Nothing <: scala.Any] => X <: [X >: scala.Nothing <: scala.Any] => scala.Predef.String</pre></code>
 
-### IAmACaseObject
-<pre><code class="language-scala" >final case object <a href="./Documentation/IAmACaseObject.md">IAmACaseObject</a></pre></code>
-### testObject
-<pre><code class="language-scala" >final object <a href="./Documentation/testObject.md">testObject</a></pre></code>
+### IAmACaseObject$
+<pre><code class="language-scala" >final case object <a href="./Documentation/IAmACaseObject$.md">IAmACaseObject</a></pre></code>
+### testObject$
+<pre><code class="language-scala" >final object <a href="./Documentation/testObject$.md">testObject</a></pre></code>
 ### Graph
 <pre><code class="language-scala" >class <a href="./Documentation/Graph.md">Graph</a></pre></code>
 ### IAmACaseClass
@@ -320,7 +320,7 @@ def someScalaCode(x: String) = println("Hello " + x)
 ### linkMethodInDoc
 <pre><code class="language-scala" >def linkMethodInDoc(): Nothing</pre></code>
 method: [example.UserDocLinkingClass.linkMeFromUserDoc](../../example/UserDocLinkingClass.md#linkMeFromUserDoc)
-method:example.level2.Documentation.apply
+method:[example.level2.Documentation.apply](../../example/level2/Documentation.md#apply)
 class: [example.UserDocLinkingClass](../../example/UserDocLinkingClass.md)
 method: length
 

@@ -20,6 +20,7 @@ object traversing {
       case _: ValRepresentation | _: DefRepresentation => 1
       case _ => 0
     }
+
     "../" * (from.path.length - offset) +
     (to match {
       case r: ClassRepresentation if r.isObject => (to.path :+ to.name + "$").mkString("", "/", ".md")

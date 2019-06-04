@@ -276,7 +276,7 @@ def someScalaCode(x: String) = println("Hello " + x)
 ### linkMethodInDoc
 <pre><code class="language-scala" >def linkMethodInDoc(): Nothing</pre></code>
 method: [example.UserDocLinkingClass.linkMeFromUserDoc](../../example/UserDocLinkingClass.md#linkMeFromUserDoc)
-method:example.level2.Documentation.apply
+method:[example.level2.Documentation.apply](../../example/level2/Documentation.md#apply)
 class: [example.UserDocLinkingClass](../../example/UserDocLinkingClass.md)
 method: length
 
@@ -285,9 +285,9 @@ method: length
 
 ### linkingToDocMethodInUserDoc
 <pre><code class="language-scala" >def linkingToDocMethodInUserDoc: Nothing</pre></code>
-[example.level2.Documentation](../../../../example/level2/Documentation$.md)
-[example.level2.Documentation.valInsideDocObject](../../../../example/level2/Documentation$.md#valInsideDocObject)
-example.level2.Documentation.abstractType
+[example.level2.Documentation](../../../../example/level2.md#Documentation)
+example.level2.Documentation.valInsideDocObject
+[example.level2.Documentation.abstractType](../../../../example/level2/Documentation.md#abstractType)
 
 ### map
 <pre><code class="language-scala" >def map[B, That](f: (A) => B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>

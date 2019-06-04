@@ -132,7 +132,7 @@ object representations extends TastyExtractor {
 
     val (isCase, isTrait, isObject, kind) = extractKind(reflect)(internal.symbol.flags)
 
-    override val name = if(isObject) internal.name.stripSuffix("$") else internal.name
+    override val name = internal.name
 
     override val companion = extractCompanion(reflect)(internal.symbol.companionModule, internal.symbol.companionClass, !isObject)
     override val members = extractClassMembers(reflect)(internal.body, internal.symbol, Some(this))

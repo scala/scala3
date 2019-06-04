@@ -276,7 +276,7 @@ def someScalaCode(x: String) = println("Hello " + x)
 ### linkMethodInDoc
 <pre><code class="language-scala" >def linkMethodInDoc(): Nothing</pre></code>
 method: [example.UserDocLinkingClass.linkMeFromUserDoc](../../example/UserDocLinkingClass.md#linkMeFromUserDoc)
-method:example.level2.Documentation.apply
+method:[example.level2.Documentation.apply](../../example/level2/Documentation.md#apply)
 class: [example.UserDocLinkingClass](../../example/UserDocLinkingClass.md)
 method: length
 

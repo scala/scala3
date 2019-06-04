@@ -178,7 +178,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
       htmlPreCode(formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, representation.path) +
         representation.kind +
         " " +
-        representation.name +
+        (if(representation.isObject) representation.name.stripSuffix("$") else representation.name) +
         (if(representation.typeParams.nonEmpty) representation.typeParams.mkString("[", ", ", "]") else "") +
         (if(representation.parents.nonEmpty) " extends " + formatReferences(representation.parents.head, representation.path) + representation.parents.tail.map(" with " + formatReferences(_, representation.path)).mkString("") else "")
         , "scala") +
@@ -319,7 +319,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
 
     representation.path.mkString(".") +
     "\n" +
-    Md.header1(representation.kind + " " + representation.name) +
+    Md.header1(representation.kind + " " + (if(representation.isObject) representation.name.stripSuffix("$") else representation.name)) +
     "\n" +
     formatCompanion() +
     formatSignature() +
@@ -421,8 +421,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
       r.members.foreach(traverseRepresentation)
 
     case r: ClassRepresentation =>
-      val filename = if(r.isObject) r.name + "$" else r.name
-      val file = new File("./" + folderPrefix + r.path.mkString("", "/", "/") + filename + ".md")
+      val file = new File("./" + folderPrefix + r.path.mkString("", "/", "/") + r.name + ".md")
       file.getParentFile.mkdirs
       val pw = new PrintWriter(file)
       pw.write(formatRepresentationToMarkdown(r, r.path))

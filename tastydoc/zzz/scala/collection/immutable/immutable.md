@@ -1,6 +1,6 @@
 # Package immutable
 ## Members:
-<pre><code class="language-scala" >final object <a href="./List.md">List</a></pre></code>
+<pre><code class="language-scala" >final object <a href="./List$.md">List</a></pre></code>
 $factoryInfo
 
 <pre><code class="language-scala" >final val List: List</pre></code>
