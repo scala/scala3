@@ -26,13 +26,13 @@
 # Output
 * Output inner class/object if not inherited
 * Doc for packages
-* Check spacing in comment
-* Type like Graph.Node
 
 # Features for beyond the project
 * TypeLambdas
 * Inherited declaration
 * handle things such as $genericCanBuildFromInfo
+* Type like Graph.Node
+* default value in def
 
 # Report
 * Be consistent in methods/function and parameters/arguments
@@ -43,8 +43,8 @@
 * Error in calling owner
 * Order in type matching symbol counts...
 * Remove artifacts in packages
-
-* Case classes are linked right now
+* Remove val for case classes
+* No way to get doc for packages?
 * Abstract flag not working
-* default value in def
+
 * Not consistant reference (f.ex object in parents)

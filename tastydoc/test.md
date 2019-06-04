@@ -1,5 +1,10 @@
 [link](#title-1)
 
+
+A term
+: Definition of the term
+
+
 [link to type](#T)
 d
 d
