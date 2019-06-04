@@ -192,6 +192,16 @@ class Definitions {
     cls
   }
 
+  private def completeTransformedJavaClass(cls: ClassSymbol, ensureCtor: Boolean = true): ClassSymbol = {
+    // The companion object of a Java class doesn't really exist, `NoType` is the general
+    // technique to do that. Here we need to set it before completing
+    // attempt to load Object's classfile, which causes issue #1648.
+    val companion = JavaLangPackageVal.info.decl(cls.name.toTermName).symbol
+    companion.moduleClass.info = NoType // to indicate that it does not really exist
+    companion.info = NoType // to indicate that it does not really exist
+    completeClass(cls, ensureCtor)
+  }
+
   lazy val RootClass: ClassSymbol = ctx.newPackageSymbol(
     NoSymbol, nme.ROOT, (root, rootcls) => ctx.base.rootLoader(root)).moduleClass.asClass
   lazy val RootPackage: TermSymbol = ctx.newSymbol(
@@ -292,15 +302,7 @@ class Definitions {
     assert(!cls.isCompleted, "race for completing java.lang.Object")
     cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
     cls.setFlag(NoInits)
-
-    // The companion object doesn't really exist, `NoType` is the general
-    // technique to do that. Here we need to set it before completing
-    // attempt to load Object's classfile, which causes issue #1648.
-    val companion = JavaLangPackageVal.info.decl(nme.Object).symbol
-    companion.moduleClass.info = NoType // to indicate that it does not really exist
-    companion.info = NoType // to indicate that it does not really exist
-
-    completeClass(cls)
+    completeTransformedJavaClass(cls)
   }
   def ObjectType: TypeRef = ObjectClass.typeRef
 
@@ -614,6 +616,26 @@ class Definitions {
       JavaSerializableClass.typeRef
     else
       ctx.requiredClassRef("scala.Serializable")
+
+  lazy val JavaEnumClass: ClassSymbol           = {
+    val cls = ctx.requiredClass("java.lang.Enum")
+    val constr = cls.primaryConstructor
+    val newInfo = constr.info match {
+      case info: PolyType =>
+        info.resType match {
+          case meth: MethodType =>
+            info.derivedLambdaType(
+              resType = meth.derivedLambdaType(
+                paramNames = Nil, paramInfos = Nil))
+        }
+    }
+    constr.info = newInfo
+    constr.termRef.recomputeDenot()
+    cls.setFlag(NoInits)
+    completeTransformedJavaClass(cls, ensureCtor = false)
+  }
+  def JavaEnumType = JavaEnumClass.typeRef
+
   def SerializableClass(implicit ctx: Context): ClassSymbol = SerializableType.symbol.asClass
   lazy val StringBuilderType: TypeRef      = ctx.requiredClassRef("scala.collection.mutable.StringBuilder")
   def StringBuilderClass(implicit ctx: Context): ClassSymbol = StringBuilderType.symbol.asClass
@@ -1438,7 +1460,7 @@ class Definitions {
         ScalaPackageClass.enter(m)
 
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
+      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass
 
       isInitialized = true
     }

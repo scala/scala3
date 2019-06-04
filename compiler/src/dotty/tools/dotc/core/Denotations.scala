@@ -814,8 +814,13 @@ object Denotations {
     def invalidateInheritedInfo(): Unit = ()
 
     private def updateValidity()(implicit ctx: Context): this.type = {
-      assert(ctx.runId >= validFor.runId || ctx.settings.YtestPickler.value, // mixing test pickler with debug printing can travel back in time
-          s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
+      assert(
+        ctx.runId >= validFor.runId ||
+        ctx.settings.YtestPickler.value ||          // mixing test pickler with debug printing can travel back in time
+        symbol.isContainedIn(defn.JavaEnumClass) || // the java.lang.Enum constructor highjacking leads to backwards time travel...
+        symbol.is(Package),                         // ... which also means packages can travel backwards in time.
+
+        s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
       var d: SingleDenotation = this
       do {
         d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
