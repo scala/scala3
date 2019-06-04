@@ -674,6 +674,9 @@ trait Implicits { self: Typer =>
         EmptyTree
     }
 
+  /** Synthesize the tree for `'[T]` for an implicit `scala.quoted.Type[T]`.
+   *  `T` is deeply dealiassed to avoid references to local type aliases.
+   */
   lazy val synthesizedTypeTag: SpecialHandler =
     (formal: Type, span: Span) => implicit (ctx: Context) => {
       def quotedType(t: Type) = {
@@ -682,26 +685,11 @@ trait Implicits { self: Typer =>
         ref(defn.InternalQuoted_typeQuote).appliedToType(t)
       }
       formal.argInfos match {
-        case arg :: Nil if !arg.typeSymbol.is(Param) =>
-          object bindFreeVars extends TypeMap {
-            var ok = true
-            def apply(t: Type) = t match {
-              case t @ TypeRef(NoPrefix, _) =>
-                inferImplicit(defn.QuotedTypeType.appliedTo(t), EmptyTree, span) match {
-                  case SearchSuccess(tag, _, _) if tag.tpe.isStable =>
-                    tag.tpe.select(defn.QuotedType_splice)
-                  case _ =>
-                    ok = false
-                    t
-                }
-              case _ => t
-            }
+        case arg :: Nil  =>
+          val deepDealias = new TypeMap {
+            def apply(tp: Type): Type = mapOver(tp.dealias)
           }
-          val tag = bindFreeVars(arg)
-          if (bindFreeVars.ok) quotedType(tag)
-          else EmptyTree
-        case arg :: Nil if ctx.inInlineMethod =>
-          quotedType(arg)
+          quotedType(deepDealias(arg))
         case _ =>
           EmptyTree
       }
