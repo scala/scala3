@@ -74,8 +74,12 @@ object DesugarEnums {
     else if (isEnumCase(cdef)) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Final))
     else cdef
 
+  private def valuesDotTerm(name: TermName)(implicit src: SourceFile) =
+    Select(Ident(nme.DOLLAR_VALUES), name)
+
   private def valuesDot(name: String)(implicit src: SourceFile) =
-    Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
+    valuesDotTerm(name.toTermName)
+
   private def registerCall(implicit ctx: Context): List[Tree] =
     if (enumClass.typeParams.nonEmpty) Nil
     else Apply(valuesDot("register"), This(EmptyTypeIdent) :: Nil) :: Nil
@@ -83,21 +87,22 @@ object DesugarEnums {
   /**  The following lists of definitions for an enum type E:
    *
    *   private val $values = new EnumValues[E]
-   *   def enumValue = $values.fromInt
-   *   def enumValueNamed = $values.fromName
-   *   def enumValues = $values.values
+   *   def valueOf = $values.fromName
+   *   def values = $values.values.toArray
    */
   private def enumScaffolding(implicit ctx: Context): List[Tree] = {
-    def enumDefDef(name: String, select: String) =
-      DefDef(name.toTermName, Nil, Nil, TypeTree(), valuesDot(select))
+    val valuesDef =
+      DefDef(nme.values, Nil, Nil, TypeTree(), Select(valuesDotTerm(nme.values), nme.toArray))
     val privateValuesDef =
       ValDef(nme.DOLLAR_VALUES, TypeTree(),
         New(TypeTree(defn.EnumValuesType.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
-        .withFlags(Private)
-    val valueOfDef = enumDefDef("enumValue", "fromInt")
-    val withNameDef = enumDefDef("enumValueNamed", "fromName")
-    val valuesDef = enumDefDef("enumValues", "values")
-    List(privateValuesDef, valueOfDef, withNameDef, valuesDef)
+        .withFlags(Private)    
+    val valueOfDef = DefDef(nme.valueOf, Nil, List(param(nme.name, defn.StringType) :: Nil),
+      TypeTree(), Apply(valuesDot("fromName"), Ident(nme.name) :: Nil))
+
+    valuesDef ::
+    privateValuesDef ::
+    valueOfDef :: Nil
   }
 
   /** A creation method for a value of enum type `E`, which is defined as follows:
@@ -110,8 +115,6 @@ object DesugarEnums {
    *   }
    */
   private def enumValueCreator(implicit ctx: Context) = {
-    def param(name: TermName, typ: Type) =
-      ValDef(name, TypeTree(typ), EmptyTree).withFlags(Param)
     val ordinalDef = ordinalMeth(Ident(nme.tag))
     val nameDef = nameMeth(Ident(nme.name_))
     val creator = New(Template(
@@ -241,6 +244,9 @@ object DesugarEnums {
       else enumScaffolding :+ enumValueCreator
     (count, scaffolding)
   }
+
+  def param(name: TermName, typ: Type)(implicit ctx: Context) =
+    ValDef(name, TypeTree(typ), EmptyTree).withFlags(Param)
 
   def ordinalMeth(body: Tree)(implicit ctx: Context): DefDef =
     DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body).withFlags(Override)
