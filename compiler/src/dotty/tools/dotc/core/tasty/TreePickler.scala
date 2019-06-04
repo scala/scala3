@@ -509,12 +509,7 @@ class TreePickler(pickler: TastyPickler) {
         case tree: Template =>
           registerDef(tree.symbol)
           writeByte(TEMPLATE)
-          val (params, rest) = tree.body partition {
-            case stat: TypeDef => stat.symbol is Flags.Param
-            case stat: ValOrDefDef =>
-              stat.symbol.is(Flags.ParamAccessor) && !stat.symbol.isSetter
-            case _ => false
-          }
+          val (params, rest) = decomposeTemplateBody(tree.body)
           withLength {
             pickleParams(params)
             tree.parents.foreach(pickleTree)
