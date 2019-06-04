@@ -30,12 +30,12 @@ Bob is 123 years old!
 Bob is 123 years old!
 Bob is 123 years old!
 Bob is 123%2d years old!
-The boolean is false
-The boolean is true
+The boolean is false false
+The boolean is true true
 a
-The string is null
-The string is 
-The string is string1
+The string is null null null
+The string is   
+The string is string1 string1 string1
 The string is null
 The string is 
 The string is string2

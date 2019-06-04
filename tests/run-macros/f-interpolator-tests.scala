@@ -61,11 +61,11 @@ object Test {
 
   def generalArgsTests = {
 
-    def booleanTest(b : Boolean) = println(f"The boolean is $b%b")
+    def booleanTest(b : Boolean) = println(f"The boolean is $b%b %<b")
 
     def hTest(arg : Int) = println(f"$arg%h")
 
-    def stringTest(s : String) = println(f"The string is $s%s")
+    def stringTest(s : String) = println(f"The string is $s%s $s%s %1$$s")
 
     def noFormatHasStringDefault(s : String) = println(f"The string is $s")
 

@@ -367,19 +367,20 @@ object StringContextMacro {
      *  @param offset the index in the part where there might be an error
      *  @param relative true if relative indexing is used, false otherwise
      *  @param argumentIndex the argument index parameter in the formatting String
+     *  @param expected true if we have an expectedArgumentIndex, false otherwise
      *  @param expectedArgumentIndex the expected argument index parameter
      *  @param maxArgumentIndex the maximum argument index parameter that can be used
      *  @return reports a warning if relative indexing is used but an argument is still given,
      *  an error is the argument index is not in the bounds [1, number of arguments]
      */
-    def checkArgumentIndex(partIndex : Int, offset : Int, relative : Boolean, argumentIndex : Int, expectedArgumentIndex : Int, maxArgumentIndex : Int) = {
+    def checkArgumentIndex(partIndex : Int, offset : Int, relative : Boolean, argumentIndex : Int, expected : Boolean, expectedArgumentIndex : Int, maxArgumentIndex : Int) = {
       if (relative)
         reporter.partWarning("Argument index ignored if '<' flag is present", partIndex, offset)
 
       if (argumentIndex > maxArgumentIndex || argumentIndex <= 0)
         reporter.partError("Argument index out of range", partIndex, offset)
 
-      if (expectedArgumentIndex != argumentIndex && !reporter.hasReported())
+      if (expected && expectedArgumentIndex != argumentIndex && !reporter.hasReported())
         reporter.partWarning("Index is not this arg", partIndex, offset)
     }
 
@@ -560,6 +561,7 @@ object StringContextMacro {
      *  @param hasArgumentIndex
      *  @param actualArgumentIndex
      *  @param expectedArgumentIndex
+     *  @param firstFormattingSubstring true if it is the first in the list, i.e. not an indexed argument
      *  @param maxArgumentIndex
      *  @param hasRelative
      *  @param hasWidth
@@ -571,12 +573,14 @@ object StringContextMacro {
      *  @return the argument index and its type if there is an argument, the flags and the conversion parameter
      *  reports an error/warning if the formatting parameters are not allowed/wrong, nothing otherwise
      */
-    def checkFormatSpecifiers(partIndex : Int, hasArgumentIndex : Boolean, actualArgumentIndex : Int, expectedArgumentIndex : Option[Int], maxArgumentIndex : Option[Int],
+    def checkFormatSpecifiers(partIndex : Int, hasArgumentIndex : Boolean, actualArgumentIndex : Int, expectedArgumentIndex : Option[Int], firstFormattingSubstring : Boolean, maxArgumentIndex : Option[Int],
       hasRelative : Boolean, hasWidth : Boolean, width : Int, hasPrecision : Boolean, precision : Int, flags : List[(Char, Int)], conversion : Int, argType : Option[Type], part : String) : (Option[(Type, Int)], Char, List[(Char, Int)])= {
       val conversionChar = part.charAt(conversion)
 
-      if (hasArgumentIndex && expectedArgumentIndex.nonEmpty && maxArgumentIndex.nonEmpty)
-        checkArgumentIndex(partIndex, actualArgumentIndex, hasRelative, part.charAt(actualArgumentIndex).asDigit, expectedArgumentIndex.get, maxArgumentIndex.get)
+      if (hasArgumentIndex && expectedArgumentIndex.nonEmpty && maxArgumentIndex.nonEmpty && firstFormattingSubstring)
+        checkArgumentIndex(partIndex, actualArgumentIndex, hasRelative, part.charAt(actualArgumentIndex).asDigit, true, expectedArgumentIndex.get, maxArgumentIndex.get)
+      else if(hasArgumentIndex && maxArgumentIndex.nonEmpty && !firstFormattingSubstring)
+        checkArgumentIndex(partIndex, actualArgumentIndex, hasRelative, part.charAt(actualArgumentIndex).asDigit, false, 0, maxArgumentIndex.get)
 
       conversionChar match {
         case 'c' | 'C' => checkCharacterConversion(partIndex, flags, hasPrecision, precision)
@@ -690,7 +694,7 @@ object StringContextMacro {
           case Some(argIndex, arg) => {
             val (hasArgumentIndex, argumentIndex, flags, hasWidth, width, hasPrecision, precision, hasRelative, relativeIndex, conversion) = getFormatSpecifiers(part, argIndex, argIndex + 1, false, formattingStart)
             if (!reporter.hasReported()){
-              val conversionWithType = checkFormatSpecifiers(argIndex + 1, hasArgumentIndex, argumentIndex, Some(argIndex + 1), maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, Some(arg.unseal.tpe), part)
+              val conversionWithType = checkFormatSpecifiers(argIndex + 1, hasArgumentIndex, argumentIndex, Some(argIndex + 1), start == 0, maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, Some(arg.unseal.tpe), part)
               nextStart = conversion + 1
               conversionWithType :: checkPart(part, nextStart, argument, maxArgumentIndex)
             } else checkPart(part, conversion + 1, argument, maxArgumentIndex)
@@ -702,7 +706,7 @@ object StringContextMacro {
             if (hasRelative)
               reporter.partError("No last arg", 0, relativeIndex)
             if (!reporter.hasReported()){
-              val conversionWithType = checkFormatSpecifiers(0, hasArgumentIndex, argumentIndex, None, maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, None, part)
+              val conversionWithType = checkFormatSpecifiers(0, hasArgumentIndex, argumentIndex, None, start == 0, maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, None, part)
               nextStart = conversion + 1
               if (!reporter.hasReported() && part.charAt(conversion) != '%' && part.charAt(conversion) != 'n' && !hasArgumentIndex && !hasRelative)
                 reporter.partError("conversions must follow a splice; use %% for literal %, %n for newline", 0, part.indexOf('%'))
