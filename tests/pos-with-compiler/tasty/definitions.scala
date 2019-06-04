@@ -65,13 +65,13 @@ object definitions {
   /** Trees denoting terms */
   enum Term extends Statement {
     def tpe: Type = ???
-    case Ident(nme: String, override val tpe: Type)
-    case Select(prefix: Term, nme: String, signature: Option[Signature])
+    case Ident(name: String, override val tpe: Type)
+    case Select(prefix: Term, name: String, signature: Option[Signature])
     case Literal(value: Constant)
     case This(id: Option[Id])
     case New(tpt: TypeTree)
     case Throw(expr: Term)
-    case NamedArg(nme: String, arg: Term)
+    case NamedArg(name: String, arg: Term)
     case Apply(fn: Term, args: List[Term])
     case TypeApply(fn: Term, args: List[TypeTree])
     case Super(thiz: Term, mixin: Option[Id])
@@ -94,9 +94,9 @@ object definitions {
   enum TypeTree extends Positioned {
     def tpe: Type = ???
     case Synthetic()
-    case Ident(nme: String, override val tpe: Type)
-    case TermSelect(prefix: Term, nme: String)
-    case TypeSelect(prefix: TypeTree, nme: String)
+    case Ident(name: String, override val tpe: Type)
+    case TermSelect(prefix: Term, name: String)
+    case TypeSelect(prefix: TypeTree, name: String)
     case Singleton(ref: Term)
     case Refined(underlying: TypeTree, refinements: List[Definition])
     case Applied(tycon: TypeTree, args: List[TypeTree | TypeBoundsTree])
@@ -105,7 +105,7 @@ object definitions {
     case Or(left: TypeTree, right: TypeTree)
     case ByName(tpt: TypeTree)
     case TypeLambda(tparams: List[TypeDef], body: Type | TypeBoundsTree)
-    case Bind(nme: String, bounds: TypeBoundsTree)
+    case Bind(name: String, bounds: TypeBoundsTree)
   }
 
   /** Trees denoting type bounds */
@@ -122,7 +122,7 @@ object definitions {
   enum Pattern extends Positioned {
     def tpe: Type = ???
     case Value(v: Term)
-    case Bind(nme: String, pat: Pattern)
+    case Bind(name: String, pat: Pattern)
     case Unapply(unapply: Term, implicits: List[Term], pats: List[Pattern])
     case Alternative(pats: List[Pattern])
     case TypeTest(tpt: TypeTree)

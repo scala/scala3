@@ -87,8 +87,8 @@ object DesugarEnums {
   /**  The following lists of definitions for an enum type E:
    *
    *   private val $values = new EnumValues[E]
-   *   def valueOf(name: String) =
-   *     try $values.fromName(name) catch
+   *   def valueOf($name: String) =
+   *     try $values.fromName($name) catch
    *       {
    *         case ex$:NoSuchElementException =>
    *           throw new IllegalArgumentException("key not found: ".concat(name))
@@ -105,9 +105,9 @@ object DesugarEnums {
 
     val valuesOfExnMessage = Apply(
       Select(Literal(Constant("key not found: ")), "concat".toTermName)
-    , Ident(nme.name) :: Nil)
+    , Ident(nme.nameDollar) :: Nil)
     val valuesOfBody = Try(
-      expr = Apply(valuesDot("fromName"), Ident(nme.name) :: Nil)
+      expr = Apply(valuesDot("fromName"), Ident(nme.nameDollar) :: Nil)
     , cases = CaseDef(
         pat = Typed(Ident(nme.DEFAULT_EXCEPTION_NAME), TypeTree(defn.NoSuchElementExceptionType))
       , guard = EmptyTree
@@ -115,7 +115,7 @@ object DesugarEnums {
       ) :: Nil
     , finalizer = EmptyTree
     )
-    val valueOfDef = DefDef(nme.valueOf, Nil, List(param(nme.name, defn.StringType) :: Nil),
+    val valueOfDef = DefDef(nme.valueOf, Nil, List(param(nme.nameDollar, defn.StringType) :: Nil),
       TypeTree(), valuesOfBody)
 
     valuesDef ::
@@ -125,25 +125,24 @@ object DesugarEnums {
 
   /** A creation method for a value of enum type `E`, which is defined as follows:
    *
-   *   private def $new(tag: Int, name_: String) = new E {
-   *     override def ordinal = tag
-   *     override def name = name_
-   *     override def toString = name
+   *   private def $new($tag: Int, $name: String) = new E {
+   *     override def ordinal = $tag
+   *     override def toString = $name
    *     $values.register(this)
    *   }
    */
   private def enumValueCreator(implicit ctx: Context) = {
-    val ordinalDef = ordinalMeth(Ident(nme.tag))
-    val nameDef = nameMeth(Ident(nme.name_))
+    val ordinalDef = ordinalMeth(Ident(nme.tagDollar))
+    val toStringDef = toStringMeth(Ident(nme.nameDollar))
     val creator = New(Template(
       constr = emptyConstructor,
       parents = enumClassRef :: Nil,
       derived = Nil,
       self = EmptyValDef,
-      body = List(ordinalDef, nameDef, toStringMethAsName) ++ registerCall
+      body = List(ordinalDef, toStringDef) ++ registerCall
     ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW, Nil,
-        List(List(param(nme.tag, defn.IntType), param(nme.name_, defn.StringType))),
+        List(List(param(nme.tagDollar, defn.IntType), param(nme.nameDollar, defn.StringType))),
         TypeTree(), creator).withFlags(Private | Synthetic)
   }
 
@@ -269,20 +268,14 @@ object DesugarEnums {
   def ordinalMeth(body: Tree)(implicit ctx: Context): DefDef =
     DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body).withFlags(Override)
 
-  def nameMeth(body: Tree)(implicit ctx: Context): DefDef =
-    DefDef(nme.name, Nil, Nil, TypeTree(defn.StringType), body).withFlags(Override)
-
   def toStringMeth(body: Tree)(implicit ctx: Context): DefDef =
     DefDef(nme.toString_, Nil, Nil, TypeTree(defn.StringType), body).withFlags(Override)
 
   def ordinalMethLit(ord: Int)(implicit ctx: Context): DefDef =
     ordinalMeth(Literal(Constant(ord)))
 
-  def nameMethLit(name: String)(implicit ctx: Context): DefDef =
-    nameMeth(Literal(Constant(name)))
-
-  def toStringMethAsName(implicit ctx: Context): DefDef =
-    toStringMeth(Ident(nme.name))
+  def toStringMethLit(name: String)(implicit ctx: Context): DefDef =
+    toStringMeth(Literal(Constant(name)))
 
   /** Expand a module definition representing a parameterless enum case */
   def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, span: Span)(implicit ctx: Context): Tree = {
@@ -293,8 +286,8 @@ object DesugarEnums {
     else {
       val (tag, scaffolding) = nextOrdinal(CaseKind.Object)
       val ordinalDef = ordinalMethLit(tag)
-      val nameDef = nameMethLit(name.toString)
-      val impl1 = cpy.Template(impl)(body = List(ordinalDef, nameDef, toStringMethAsName) ++ registerCall)
+      val toStringDef = toStringMethLit(name.toString)
+      val impl1 = cpy.Template(impl)(body = List(ordinalDef, toStringDef) ++ registerCall)
         .withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final)
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
