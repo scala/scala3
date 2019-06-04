@@ -140,7 +140,7 @@ object representations extends TastyExtractor {
     //Add itself to parents subclasses:
     parentRepresentation match {
       case Some(r: ClassRepresentation) =>
-        r.knownSubclasses = CompanionReference(internal.name, path.mkString("/", "/", ""), kind) :: r.knownSubclasses //Hacky solution using CompanionReference so that it is printed the way we want
+        r.knownSubclasses = TypeReference(internal.name, path.mkString("/", "/", ""), Nil, true) :: r.knownSubclasses
       case _ =>
     }
 

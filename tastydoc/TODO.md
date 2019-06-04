@@ -41,7 +41,7 @@
 * REFINED TYPES
 * INLINE
 * Error in calling owner
-
+* Order in type matching symbol counts...
 
 * Case classes are linked right now
 * Abstract flag not working

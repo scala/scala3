@@ -16,11 +16,8 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
     "<pre><code" + (if(language != "") " class=\"language-" + language + "\" " else "") + ">" + content + "</pre></code>"
   }
 
-  private def makeLink(label: String, link: String, hasOwnFile: Boolean, declarationPath: List[String], differentLabelName: Option[String] = None): String = {
-    val labelName = differentLabelName match {
-      case Some(s) => s
-      case None => label
-    }
+  private def makeLink(label: String, link: String, hasOwnFile: Boolean, declarationPath: List[String]): String = {
+    val labelName = label.stripSuffix("$")
 
     val packageFormLink = link.replaceFirst("/", "").replaceAll("/", ".")
 
@@ -63,7 +60,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
 
   private def formatReferences(reference: Reference, declarationPath: List[String]) : String = reference match {
     case CompanionReference(label, link, kind) =>
-      makeLink(label, link, true, declarationPath, if(kind.contains("object")) Some(label.stripSuffix("$")) else None)
+      makeLink(label, link, true, declarationPath)
     case TypeReference(label, link, typeParams, hasOwnFile) =>
       if(typeParams.isEmpty){
         makeLink(label, link, hasOwnFile, declarationPath)

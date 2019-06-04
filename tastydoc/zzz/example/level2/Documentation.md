@@ -614,7 +614,7 @@ Test methods with params
 <pre><code class="language-scala" >def zipWithIndex[A1, That](bf: CanBuildFrom[Repr, (A1, Int), That]): That</pre></code>
 
 ### IAmACaseObject
-<pre><code class="language-scala" >final val IAmACaseObject: <a href="./Documentation/IAmACaseObject$.md">IAmACaseObject$</a></pre></code>
+<pre><code class="language-scala" >final val IAmACaseObject: <a href="./Documentation/IAmACaseObject$.md">IAmACaseObject</a></pre></code>
 
 ### c2
 <pre><code class="language-scala" >val c2: List[<a href="./Documentation.md#T">T</a>]</pre></code>
@@ -626,7 +626,7 @@ Test methods with params
 <pre><code class="language-scala" >protected val protectedVal: Nothing</pre></code>
 
 ### testObject
-<pre><code class="language-scala" >final val testObject: <a href="./Documentation/testObject$.md">testObject$</a></pre></code>
+<pre><code class="language-scala" >final val testObject: <a href="./Documentation/testObject$.md">testObject</a></pre></code>
 
 ### v
 <pre><code class="language-scala" >@showAsInfix val v: Int</pre></code>

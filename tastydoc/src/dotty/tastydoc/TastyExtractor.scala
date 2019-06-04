@@ -153,7 +153,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
 
     def keepAnnot(label: String, link: String): Boolean = {
       !(label == "SourceFile" && link == "/internal") &&
-      !(label == "Child" && link == "/internal") //TOASK ok?
+      !(label == "Child" && link == "/internal")
     }
 
     annots.flatMap{a =>

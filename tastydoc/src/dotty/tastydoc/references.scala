@@ -2,6 +2,7 @@ package dotty.tastydoc
 
 object references {
   sealed trait Reference
+  //Be aware that the label may end with a "$" in case it is referencing an object
   final case class TypeReference(label: String, path: String, typeParams: List[Reference], hasOwnFile: Boolean = false) extends Reference
   final case class OrTypeReference(left: Reference, right: Reference) extends Reference
   final case class AndTypeReference(left: Reference, right: Reference) extends Reference
