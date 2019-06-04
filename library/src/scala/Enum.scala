@@ -4,5 +4,8 @@ package scala
 trait Enum {
 
   /** A number uniquely identifying a case of an enum */
-  def enumTag: Int
+  def ordinal: Int
+
+  /** Name of the enum's case */
+  def name: String
 }
