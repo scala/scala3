@@ -850,8 +850,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         nameString(sym.owner.name)
       else if (sym.is(ModuleClass))
         nameString(sym.name.stripModuleClassSuffix)
-      else if (hasMeaninglessName(sym))
-        simpleNameString(sym.owner)
       else
         nameString(sym)
     (keywordText(kindString(sym)) ~~ {

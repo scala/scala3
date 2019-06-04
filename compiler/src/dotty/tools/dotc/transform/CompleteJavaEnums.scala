@@ -40,10 +40,11 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       addConstrParams(sym.info)
     else tp
 
-  /** Is `sym` a Scala enum class that derives from `java.lang.Enum`?
+  /** Is `sym` a Scala enum class that derives (directly) from `java.lang.Enum`?
    */
   private def derivesFromJavaEnum(sym: Symbol)(implicit ctx: Context) =
-    sym.is(Enum, butNot = Case) && sym.derivesFrom(defn.JavaEnumClass)
+    sym.is(Enum, butNot = Case) &&
+    sym.info.parents.exists(p => p.typeSymbol == defn.JavaEnumClass)
 
   /** Add constructor parameters `$name: String` and `$ordinal: Int` to the end of
    *  the last parameter list of (method- or poly-) type `tp`.
