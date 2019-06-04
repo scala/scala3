@@ -628,7 +628,7 @@ class Definitions {
     }
     constr.info = newInfo
     constr.termRef.recomputeDenot()
-    cls.setFlag(NoInits)
+    cls.setFlag(NoInits | Permanent)
     cls
   }
   def JavaEnumType = JavaEnumClass.typeRef

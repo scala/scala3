@@ -816,10 +816,8 @@ object Denotations {
     private def updateValidity()(implicit ctx: Context): this.type = {
       assert(
         ctx.runId >= validFor.runId ||
-        ctx.settings.YtestPickler.value ||          // mixing test pickler with debug printing can travel back in time
-        symbol.isContainedIn(defn.JavaEnumClass) || // the java.lang.Enum constructor highjacking leads to backwards time travel...
-        symbol.is(Package),                         // ... which also means packages can travel backwards in time.
-
+        ctx.settings.YtestPickler.value || // mixing test pickler with debug printing can travel back in time
+        symbol.is(Permanent),              // Permanent symbols are valid in all runIds
         s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
       var d: SingleDenotation = this
       do {
