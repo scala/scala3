@@ -26,7 +26,6 @@ import ProtoTypes._
 import ErrorReporting._
 import reporting.diagnostic.Message
 import Inferencing.fullyDefinedType
-import TypeApplications.EtaExpansion
 import Trees._
 import transform.SymUtils._
 import transform.TypeUtils._
