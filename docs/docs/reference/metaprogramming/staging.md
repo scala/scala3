@@ -53,7 +53,6 @@ impose the following restrictions on the use of splices.
 
  3. Splices inside splices (but no intervening quotes) are not allowed.
 
- 4. A macro method is effectively final and it may override no other method.
 
 ## API
 
@@ -81,11 +80,11 @@ either show the code or run it respectivelly.
 // make available the necessary toolbox for runtime code generation
 implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
 
-val sum_s: Expr[Array[Int] => Int] = '{ (arr: Array[Int]) => ${sum('arr)}}
+val stagedSum: Expr[Array[Int] => Int] = '{ (arr: Array[Int]) => ${sum('arr)}}
 
-println(sum_s.show)
+println(stagedSum.show)
 
-sum_s.run.apply(Array(1, 2, 3)) // Returns 6
+stagedSum.run.apply(Array(1, 2, 3)) // Returns 6
 ```
 
 Note that if we need to run the main (in an object called `Test`) after
