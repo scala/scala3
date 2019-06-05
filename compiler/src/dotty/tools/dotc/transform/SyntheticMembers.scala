@@ -64,7 +64,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
         defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement)
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
-      myEnumCaseSymbols = List(defn.Enum_ordinal) 
+      myEnumCaseSymbols = List(defn.Enum_ordinal)
     }
 
   def valueSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myValueSymbols }
@@ -89,7 +89,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     lazy val accessors =
       if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
       else clazz.caseAccessors
-    val isEnumCase = clazz.derivesFrom(defn.EnumClass)
+    val isEnumCase = clazz.derivesFrom(defn.EnumClass) && clazz != defn.EnumClass
 
     val symbolsToSynthesize: List[Symbol] =
       if (clazz.is(Case)) {
