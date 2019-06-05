@@ -813,7 +813,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val rawFlags = if (sym.exists) sym.flags else mods.flags
     if (rawFlags.is(Param)) flagMask = flagMask &~ Given
     val flags = rawFlags & flagMask
-    val flagsText = if (flags.isEmpty) "" else keywordStr(flags.toString)
+    val flagsText = if (flags.isEmpty) "" else keywordStr(flags.flagStrings(nameString(sym.privateWithin.name)).mkString(" "))
     val annotations =
       if (sym.exists) sym.annotations.filterNot(ann => dropAnnotForModText(ann.symbol)).map(_.tree)
       else mods.annotations.filterNot(tree => dropAnnotForModText(tree.symbol))
@@ -888,7 +888,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else {
       var flags = sym.flagsUNSAFE
       if (flags is TypeParam) flags = flags &~ Protected
-      Text((flags & PrintableFlags(sym.isType)).flagStrings map (flag => stringToText(keywordStr(flag))), " ")
+      Text((flags & PrintableFlags(sym.isType)).flagStrings(nameString(sym.privateWithin.name)) map (flag => stringToText(keywordStr(flag))), " ")
     }
 
   override def toText(denot: Denotation): Text = denot match {
