@@ -132,7 +132,7 @@ object DesugarEnums {
    *   }
    */
   private def enumValueCreator(implicit ctx: Context) = {
-    val ordinalDef = ordinalMeth(Ident(nme.tagDollar))
+    val ordinalDef = ordinalMeth(Ident(nme.ordinalDollar_))
     val toStringDef = toStringMeth(Ident(nme.nameDollar))
     val creator = New(Template(
       constr = emptyConstructor,
@@ -142,9 +142,9 @@ object DesugarEnums {
       body = List(ordinalDef, toStringDef) ++ registerCall
     ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW, Nil,
-        List(List(param(nme.tagDollar, defn.IntType), param(nme.nameDollar, defn.StringType))),
+        List(List(param(nme.nameDollar, defn.StringType), param(nme.ordinalDollar_, defn.IntType))),
         TypeTree(), creator).withFlags(Private | Synthetic)
-  }
+  }.reporting(e => s"marker\n${e.show}")
 
   /** The return type of an enum case apply method and any widening methods in which
    *  the apply's right hand side will be wrapped. For parents of the form
@@ -266,7 +266,7 @@ object DesugarEnums {
     ValDef(name, TypeTree(typ), EmptyTree).withFlags(Param)
 
   def ordinalMeth(body: Tree)(implicit ctx: Context): DefDef =
-    DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body).withFlags(Override)
+    DefDef(nme.ordinalDollar, Nil, Nil, TypeTree(defn.IntType), body)
 
   def toStringMeth(body: Tree)(implicit ctx: Context): DefDef =
     DefDef(nme.toString_, Nil, Nil, TypeTree(defn.StringType), body).withFlags(Override)
@@ -304,7 +304,7 @@ object DesugarEnums {
     }
     else {
       val (tag, scaffolding) = nextOrdinal(CaseKind.Simple)
-      val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
+      val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(name.toString)), Literal(Constant(tag))))
       val vdef = ValDef(name, enumClassRef, creator).withMods(mods | Final)
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
