@@ -56,6 +56,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   private[this] var myValueSymbols: List[Symbol] = Nil
   private[this] var myCaseSymbols: List[Symbol] = Nil
   private[this] var myCaseModuleSymbols: List[Symbol] = Nil
+  private[this] var myEnumCaseSymbols: List[Symbol] = Nil
 
   private def initSymbols(implicit ctx: Context) =
     if (myValueSymbols.isEmpty) {
@@ -63,11 +64,13 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
         defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement)
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
+      myEnumCaseSymbols = List(defn.Enum_ordinal) 
     }
 
   def valueSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myValueSymbols }
   def caseSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myCaseSymbols }
   def caseModuleSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myCaseModuleSymbols }
+  def enumCaseSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myEnumCaseSymbols }
 
   private def existingDef(sym: Symbol, clazz: ClassSymbol)(implicit ctx: Context): Symbol = {
     val existing = sym.matchingMember(clazz.thisType)
@@ -86,12 +89,15 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     lazy val accessors =
       if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
       else clazz.caseAccessors
+    val isEnumCase = clazz.derivesFrom(defn.EnumClass)
 
     val symbolsToSynthesize: List[Symbol] =
       if (clazz.is(Case)) {
         if (clazz.is(Module)) caseModuleSymbols
+        else if (isEnumCase) caseSymbols ++ enumCaseSymbols
         else caseSymbols
       }
+      else if (isEnumCase) enumCaseSymbols
       else if (isDerivedValueClass(clazz)) valueSymbols
       else Nil
 
@@ -120,6 +126,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.productArity => Literal(Constant(accessors.length))
         case nme.productPrefix => ownName
         case nme.productElement => productElementBody(accessors.length, vrefss.head.head)
+        case nme.ordinal => Select(This(clazz), nme.ordinalDollar)
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
       synthesizeDef(synthetic, treess => ctx => syntheticRHS(treess)(ctx))
@@ -362,7 +369,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   /** For an enum T:
    *
-   *     def ordinal(x: MirroredMonoType) = x.ordinal
+   *     def ordinal(x: MirroredMonoType) = x.$ordinal
    *
    *  For  sealed trait with children of normalized types C_1, ..., C_n:
    *
@@ -377,7 +384,13 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *  O is O.type.
    */
   def ordinalBody(cls: Symbol, param: Tree)(implicit ctx: Context): Tree =
-    if (cls.is(Enum)) Apply(param.select(nme.ordinal), Nil)
+    if (cls.is(Enum)) {
+      val ordinalMeth = param.select(nme.ordinal)
+      val derivesFromJEnum =
+        cls.is(Enum, butNot = Case) &&
+        cls.info.parents.exists(p => p.typeSymbol == defn.JEnumClass)
+      if (derivesFromJEnum) Apply(ordinalMeth, Nil) else ordinalMeth
+    }
     else {
       val cases =
         for ((child, idx) <- cls.children.zipWithIndex) yield {

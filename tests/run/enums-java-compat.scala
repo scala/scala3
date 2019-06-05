@@ -1,6 +1,5 @@
 class JEnum {
   def name: String = "Foo"
-  def ordinal: Int = 10
   def action = "fofofo"
 }
 

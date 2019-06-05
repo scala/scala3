@@ -17,8 +17,8 @@ import dotty.tools.dotc.ast.Trees._
 object CompleteJavaEnums {
   val name: String = "completeJavaEnums"
 
-  private val nameParamName: TermName = "$name".toTermName
-  private val ordinalParamName: TermName = "$ordinal".toTermName
+  private val nameParamName: TermName = "_$name".toTermName
+  private val ordinalParamName: TermName = "_$ordinal".toTermName
 }
 
 /** For Scala enums that inherit from java.lang.Enum:
@@ -150,7 +150,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         templ.body.collect {
           case mdef: DefDef if mdef.name == name => mdef.rhs
         }.head
-      val args = List(rhsOf(nme.toString_), rhsOf(nme.ordinal))
+      val args = List(rhsOf(nme.toString_), rhsOf(nme.ordinalDollar))
       cpy.Template(templ)(
         parents = addEnumConstrArgs(cls.owner.owner.linkedClass, templ.parents, args))
     }

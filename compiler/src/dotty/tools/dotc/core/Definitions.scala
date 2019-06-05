@@ -706,6 +706,10 @@ class Definitions {
   def NoneClass(implicit ctx: Context): ClassSymbol = NoneModuleRef.symbol.moduleClass.asClass
   @threadUnsafe lazy val EnumType: TypeRef                    = ctx.requiredClassRef("scala.Enum")
   def EnumClass(implicit ctx: Context): ClassSymbol = EnumType.symbol.asClass
+    @threadUnsafe lazy val Enum_ordinalR: TermRef = EnumClass.requiredMethodRef(nme.ordinal)
+    def Enum_ordinal(implicit ctx: Context): Symbol = Enum_ordinalR.symbol
+  @threadUnsafe lazy val JEnumType: TypeRef                   = ctx.requiredClassRef("scala.compat.JEnum")
+  def JEnumClass(implicit ctx: Context): ClassSymbol = JEnumType.symbol.asClass
   @threadUnsafe lazy val EnumValuesType: TypeRef              = ctx.requiredClassRef("scala.runtime.EnumValues")
   def EnumValuesClass(implicit ctx: Context): ClassSymbol = EnumValuesType.symbol.asClass
   @threadUnsafe lazy val ProductType: TypeRef                 = ctx.requiredClassRef("scala.Product")

@@ -142,9 +142,9 @@ object DesugarEnums {
       body = List(ordinalDef, toStringDef) ++ registerCall
     ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW, Nil,
-        List(List(param(nme.nameDollar, defn.StringType), param(nme.ordinalDollar_, defn.IntType))),
+        List(List(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
         TypeTree(), creator).withFlags(Private | Synthetic)
-  }.reporting(e => s"marker\n${e.show}")
+  }
 
   /** The return type of an enum case apply method and any widening methods in which
    *  the apply's right hand side will be wrapped. For parents of the form
@@ -304,7 +304,7 @@ object DesugarEnums {
     }
     else {
       val (tag, scaffolding) = nextOrdinal(CaseKind.Simple)
-      val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(name.toString)), Literal(Constant(tag))))
+      val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
       val vdef = ValDef(name, enumClassRef, creator).withMods(mods | Final)
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
