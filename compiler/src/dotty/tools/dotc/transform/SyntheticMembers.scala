@@ -122,7 +122,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.productElement => productElementBody(accessors.length, vrefss.head.head)
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
-      synthesizeDef(synthetic, syntheticRHS)
+      synthesizeDef(synthetic, treess => ctx => syntheticRHS(treess)(ctx))
     }
 
     /** The class

@@ -12,6 +12,7 @@ import Symbols._
 import Constants._
 import Decorators._
 import DenotTransformers._
+import dotty.tools.dotc.ast.Trees._
 
 object CompleteJavaEnums {
   val name: String = "completeJavaEnums"
