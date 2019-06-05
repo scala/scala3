@@ -87,15 +87,15 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
    *  2. If this is a $new method that creates simple cases, pass $name and $ordinal parameters
    *     to the enum superclass. The $new method looks like this:
    *
-   *       def $new(..., enumTag: Int, name: String) = {
+   *       def $new(..., ordinal: Int, name: String) = {
    *         class $anon extends E(...) { ... }
    *         new $anon
    *       }
    *
    *     After the transform it is expanded to
    *
-   *       def $new(..., enumTag: Int, name: String) = {
-   *         class $anon extends E(..., name, enumTag) { ... }
+   *       def $new(..., ordinal: Int, name: String) = {
+   *         class $anon extends E(..., name, ordinal) { ... }
    *         new $anon
    *       }
    */
@@ -124,7 +124,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
    *
    *       class $anon extends E(...) {
    *          ...
-   *          def enumTag = N
+   *          def ordinal = N
    *          def toString = S
    *          ...
    *       }
@@ -150,7 +150,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         templ.body.collect {
           case mdef: DefDef if mdef.name == name => mdef.rhs
         }.head
-      val args = List(rhsOf(nme.toString_), rhsOf(nme.enumTag))
+      val args = List(rhsOf(nme.toString_), rhsOf(nme.ordinal))
       cpy.Template(templ)(
         parents = addEnumConstrArgs(cls.owner.owner.linkedClass, templ.parents, args))
     }
