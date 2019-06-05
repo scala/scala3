@@ -58,7 +58,7 @@ trait DottyBytecodeTest {
 
     val compiler = new Compiler
     val run = compiler.newRun
-    compiler.newRun.compile(source)
+    compiler.newRun.compileFromString(source)
 
     checkOutput(ctx.settings.outputDir.value)
   }
