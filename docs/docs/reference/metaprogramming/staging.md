@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Multi-Stage Programming"
-----
+---
 
 The framework expresses at the same time compile-time meta-programming and
 multi-staging programming. We can think of compile-time meta-programming as a
