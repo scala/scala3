@@ -24,7 +24,8 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   def phaseName: String = "genericTuples"
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
-    if (tree.symbol == defn.DynamicTuple_dynamicCons) transformTupleCons(tree)
+    if (!tree.symbol.exists || tree.symbol.owner != defn.DynamicTupleModuleClass) super.transformApply(tree)
+    else if (tree.symbol == defn.DynamicTuple_dynamicCons) transformTupleCons(tree)
     else if (tree.symbol == defn.DynamicTuple_dynamicTail) transformTupleTail(tree)
     else if (tree.symbol == defn.DynamicTuple_dynamicSize) transformTupleSize(tree)
     else if (tree.symbol == defn.DynamicTuple_dynamicConcat) transformTupleConcat(tree)
@@ -34,8 +35,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   }
 
   private def transformTupleCons(tree: tpd.Apply)(implicit ctx: Context): Tree = {
-    val TypeApply(_, headType :: tailType :: Nil) = tree.fun
-    val tail :: head :: Nil = tree.args
+    val head :: tail :: Nil = tree.args
     tupleTypes(tree.tpe) match {
       case Some(tpes) =>
         // Generate a the tuple directly with TupleN+1.apply
@@ -44,7 +44,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           // val t = tail
           // TupleN+1(head, t._1, ..., t._n)
           evalOnce(Typed(tail, TypeTree(defn.tupleType(tpes.tail)))) { tup =>
-            val elements = head :: (0 until size - 1).map(i => tup.select(nme.selectorName(i))).toList
+            val elements = head :: tupleSelectors(tup, size - 1)
             knownTupleFromElements(tpes, elements)
           }
         } else {
@@ -77,7 +77,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           // val t = tup.asInstanceOf[TupleN[...]]
           // TupleN-1(t._2, ..., t._n)
           evalOnce(Typed(tup, TypeTree(defn.tupleType(tpes)))) { tup =>
-            val elements = (1 until size).map(i => tup.select(nme.selectorName(i))).toList
+            val elements = tupleSelectors(tup, size).tail
             knownTupleFromElements(tpes.tail, elements)
           }
         } else if (size <= MaxTupleArity + 1) {
@@ -125,10 +125,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           evalOnce(Typed(self, TypeTree(defn.tupleType(tpes1)))) { self =>
             evalOnce(Typed(that, TypeTree(defn.tupleType(tpes2)))) { that =>
               val types = tpes1 ::: tpes2
-              val elements = {
-                (0 until n).map(i => self.select(nme.selectorName(i))) ++
-                (0 until m).map(i => that.select(nme.selectorName(i)))
-              }.toList
+              val elements = tupleSelectors(self, n) ::: tupleSelectors(that, m)
               knownTupleFromElements(types, elements)
             }
           }
@@ -235,4 +232,8 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     }
     rec(tp.stripTypeVar, Nil, bound)
   }
+
+  private def tupleSelectors(tup: Tree, size: Int)(implicit ctx: Context): List[Tree] =
+    (0 until size).map(i => tup.select(nme.selectorName(i))).toList
+
 }

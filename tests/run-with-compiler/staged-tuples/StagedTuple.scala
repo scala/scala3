@@ -184,7 +184,7 @@ object StagedTuple {
   }
 
   def consStaged[T <: Tuple & Singleton : Type, H : Type](self: Expr[T], x: Expr[H], tailSize: Option[Int]): Expr[H *: T] =
-  if (!specialize) '{dynamicCons[T, H]($self, $x)}
+  if (!specialize) '{dynamicCons[H, T]($x, $self)}
   else {
     val res = tailSize match {
       case Some(0) =>
@@ -200,7 +200,7 @@ object StagedTuple {
       case Some(n) =>
         fromArrayStaged[H *: T]('{cons$Array($x, ${ toArrayStaged(self, tailSize) })}, Some(n + 1))
       case _ =>
-        '{dynamicCons[T, H]($self, $x)}
+        '{dynamicCons[H, T]($x, $self)}
     }
     res.as[H *: T]
   }

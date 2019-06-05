@@ -17,7 +17,7 @@ sealed trait Tuple extends Any {
    *  This opteration is O(this.size)
    */
   inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This =
-    DynamicTuple.dynamicCons[This, H](this, x)
+    DynamicTuple.dynamicCons[H, This](x, this)
 
   /** Return a new tuple by concatenating `this` tuple with `that` tuple.
    *  This opteration is O(this.size + that.size)

@@ -186,7 +186,7 @@ object DynamicTuple {
     arr
   }
 
-  def dynamicCons[This <: Tuple, H] (self: Tuple, x: H): H *: This = {
+  def dynamicCons[H, This <: Tuple](x: H, self: Tuple): H *: This = {
     type Result = H *: This
     (self: Any) match {
       case () =>
