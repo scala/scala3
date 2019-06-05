@@ -200,4 +200,13 @@ class HoverTest {
       .hover(m3 to m4, hoverContent("Test.🤪"))
 
   }
+
+  @Test def topLevel: Unit = {
+    code"""package hello
+          |val x: Int = 1
+          |val y = ${m1}this${m2}.x""".withSource
+      // The test framework will place the code above in a virtual file called Source0.scala,
+      // sp the top-level definitions should be enclosed in an object called `Source0$package`.
+      .hover(m1 to m2, hoverContent("hello.Source0$package.type(hello.Source0$package)"))
+  }
 }

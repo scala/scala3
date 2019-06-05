@@ -296,7 +296,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   }
 
   private def toSource(uri: URI, sourceCode: String): SourceFile = {
-    val virtualFile = new VirtualFile(uri.toString, Paths.get(uri).toString)
+    val path = Paths.get(uri)
+    val virtualFile = new VirtualFile(path.getFileName.toString, path.toString)
     val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
     writer.write(sourceCode)
     writer.close()
