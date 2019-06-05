@@ -125,6 +125,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YshowSuppressedErrors: Setting[Boolean] = BooleanSetting("-Yshow-suppressed-errors", "Also show follow-on errors and warnings that are normally suppressed.")
   val YdetailedStats: Setting[Boolean] = BooleanSetting("-Ydetailed-stats", "show detailed internal compiler stats (needs Stats.enabled to be set to true).")
   val Yheartbeat: Setting[Boolean] = BooleanSetting("-Yheartbeat", "show heartbeat stack trace of compiler operations (needs Stats.enabled to be set to true).")
+  val YkindProjector: Setting[Boolean] = BooleanSetting("-Ykind-projector", "allow `*` as wildcard to be compatible with kind projector")
   val YprintPos: Setting[Boolean] = BooleanSetting("-Yprint-pos", "show tree positions.")
   val YprintPosSyms: Setting[Boolean] = BooleanSetting("-Yprint-pos-syms", "show symbol definitions positions.")
   val YnoDeepSubtypes: Setting[Boolean] = BooleanSetting("-Yno-deep-subtypes", "throw an exception on deep subtyping call stacks.")
