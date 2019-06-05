@@ -34,7 +34,7 @@ import core.quoted.PickledQuotes
 
 import scala.quoted
 import scala.quoted.Types.TreeType
-import scala.quoted.Exprs.TastyTreeExpr
+import scala.internal.quoted.TastyTreeExpr
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
 

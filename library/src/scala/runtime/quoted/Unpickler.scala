@@ -1,7 +1,7 @@
 package scala.runtime.quoted
 
 import scala.quoted.Types.TastyType
-import scala.quoted.Exprs.{LiftedExpr, TastyExpr}
+import scala.internal.quoted.{LiftedExpr, TastyExpr}
 import scala.quoted.{Expr, Type}
 
 /** Provides methods to unpickle `Expr` and `Type` trees. */

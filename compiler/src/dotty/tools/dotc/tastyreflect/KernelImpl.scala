@@ -1747,7 +1747,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
         tpd.Closure(closureMethod, tss => etaExpand(new tpd.TreeOps(term).appliedToArgs(tss.head)))
       case _ => term
     }
-    new scala.quoted.Exprs.TastyTreeExpr(etaExpand(self))
+    new scala.internal.quoted.TastyTreeExpr(etaExpand(self))
   }
 
   /** Checked cast to a `quoted.Expr[U]` */
