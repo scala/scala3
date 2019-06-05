@@ -29,7 +29,7 @@ package scala.tasty.reflect
  *           |                             +- Lambda
  *           |                             +- If
  *           |                             +- Match
- *           |                             +- ImplicitMatch
+ *           |                             +- ImpliedMatch
  *           |                             +- Try
  *           |                             +- Return
  *           |                             +- Repeated
@@ -209,8 +209,8 @@ trait Core {
         /** Tree representing a pattern match `x match  { ... }` in the source code */
         type Match = kernel.Match
 
-        /** Tree representing a pattern match `implicit match { ... }` in the source code */
-        type ImplicitMatch = kernel.ImplicitMatch
+        /** Tree representing a pattern match `implied match { ... }` in the source code */
+        type ImpliedMatch = kernel.ImpliedMatch
 
         /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */
         type Try = kernel.Try
