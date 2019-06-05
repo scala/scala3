@@ -388,7 +388,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case New(_) | Closure(_, _, _) =>
       Pure
     case TypeApply(fn, _) =>
-      if (fn.symbol.is(Erased)) Pure else exprPurity(fn)
+      if (fn.symbol.is(Erased) || fn.symbol == defn.InternalQuoted_typeQuote) Pure else exprPurity(fn)
     case Apply(fn, args) =>
       def isKnownPureOp(sym: Symbol) =
         sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass

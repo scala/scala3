@@ -202,13 +202,17 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           val reqType = defn.QuotedTypeType.appliedTo(tp)
           val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
           tag.tpe match {
-            case fail: SearchFailureType =>
+            case _: TermRef =>
+              Some(tag.select(tpnme.splice))
+            case _: SearchFailureType =>
               levelError(i"""
                             |
                             | The access would be accepted with the right type tag, but
                             | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
             case _ =>
-              Some(tag.select(tpnme.splice))
+              levelError(i"""
+                            |
+                            | The access would be accepted with an implict $reqType""")
           }
         }
       case _ =>
