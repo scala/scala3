@@ -17,17 +17,15 @@ package quoted {
 package internal {
   package quoted {
 
-    import scala.quoted._
-
     /** An Expr backed by a pickled TASTY tree */
-    final class TastyExpr[+T](val tasty: scala.runtime.quoted.Unpickler.Pickled, val args: Seq[Any]) extends Expr[T] {
+    final class TastyExpr[+T](val tasty: scala.runtime.quoted.Unpickler.Pickled, val args: Seq[Any]) extends scala.quoted.Expr[T] {
       override def toString: String = s"Expr(<pickled tasty>)"
     }
 
     /** An Expr backed by a lifted value.
      *  Values can only be of type Boolean, Byte, Short, Char, Int, Long, Float, Double, Unit, String or Null.
      */
-    final class LiftedExpr[+T](val value: T) extends Expr[T] {
+    final class LiftedExpr[+T](val value: T) extends scala.quoted.Expr[T] {
       override def toString: String = s"Expr($value)"
     }
 
@@ -38,7 +36,7 @@ package internal {
      *
      *  May contain references to code defined outside this TastyTreeExpr instance.
      */
-    final class TastyTreeExpr[Tree](val tree: Tree) extends quoted.Expr[Any] {
+    final class TastyTreeExpr[Tree](val tree: Tree) extends scala.quoted.Expr[Any] {
       override def toString: String = s"Expr(<tasty tree>)"
     }
 
@@ -46,7 +44,7 @@ package internal {
     // FIXME: Having the List in the code above trigers an assertion error while testing dotty.tools.dotc.reporting.ErrorMessagesTests.i3187
     //        This test does redefine `scala.collection`. Further investigation is needed.
     /** An Expr representing `'{($f).apply($x1, ..., $xn)}` but it is beta-reduced when the closure is known */
-    final class FunctionAppliedTo[+R](val f: Expr[_], val args: Array[Expr[_]]) extends Expr[R] {
+    final class FunctionAppliedTo[+R](val f: scala.quoted.Expr[_], val args: Array[scala.quoted.Expr[_]]) extends scala.quoted.Expr[R] {
       override def toString: String = s"Expr($f <applied to> ${args.toList})"
     }
 
