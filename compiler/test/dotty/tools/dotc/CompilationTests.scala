@@ -181,7 +181,7 @@ class CompilationTests extends ParallelTesting {
         defaultOptions),
       compileFile("tests/neg-custom-args/i6300.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/infix.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/alpha.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings"))
+      compileFile("tests/neg-custom-args/missing-alpha.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings"))
     ).checkExpectedErrors()
   }
 
