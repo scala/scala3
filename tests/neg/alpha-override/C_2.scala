@@ -1,4 +1,4 @@
 import annotation.alpha
 class C extends B_1 {   // error: Name clash between defined and inherited member
-  @alpha("bar") override def foo(): Int = 3
+  @alpha("bar") def foo(): Int = 3
 }
