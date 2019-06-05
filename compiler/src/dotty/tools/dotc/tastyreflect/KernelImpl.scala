@@ -282,6 +282,9 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     if (self.symbol.signature == core.Signature.NotAMethod) None
     else Some(self.symbol.signature)
 
+  def Select_apply(qualifier: Term, symbol: Symbol)(implicit ctx: Context): Select =
+    withDefaultPos(implicit ctx => tpd.Select(qualifier, Types.TermRef(qualifier.tpe, symbol)))
+
   def Select_unique(qualifier: Term, name: String)(implicit ctx: Context): Select = {
     val denot = qualifier.tpe.member(name.toTermName)
     assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")

@@ -329,6 +329,7 @@ trait Kernel {
   def Select_name(self: Select)(implicit ctx: Context): String
   def Select_signature(self: Select)(implicit ctx: Context): Option[Signature]
 
+  def Select_apply(qualifier: Term, symbol: Symbol)(implicit ctx: Context): Select
   def Select_unique(qualifier: Term, name: String)(implicit ctx: Context): Select
   // TODO rename, this returns an Apply and not a Select
   def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(implicit ctx: Context): Apply
