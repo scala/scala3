@@ -126,7 +126,7 @@ object DesugarEnums {
   /** A creation method for a value of enum type `E`, which is defined as follows:
    *
    *   private def $new($tag: Int, $name: String) = new E {
-   *     override def ordinal = $tag
+   *     def ordinal = $tag
    *     override def toString = $name
    *     $values.register(this)
    *   }
