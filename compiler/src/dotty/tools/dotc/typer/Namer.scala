@@ -459,7 +459,7 @@ class Namer { typer: Typer =>
     def invalidate(name: TypeName) =
       if (!(definedNames contains name)) {
         val member = pkg.info.decl(name).asSymDenotation
-        if (member.isClass && !member.is(Package)) member.info = NoType
+        if (member.isClass && !(member.is(Package))) member.markAbsent()
       }
     xstats foreach {
       case stat: TypeDef if stat.isClassDef =>
@@ -828,7 +828,7 @@ class Namer { typer: Typer =>
           alt != denot.symbol && alt.info.matchesLoosely(denot.info))
       if (isClashingSynthetic) {
         typr.println(i"invalidating clashing $denot in ${denot.owner}")
-        denot.info = NoType
+        denot.markAbsent()
       }
     }
 

@@ -792,7 +792,7 @@ object SymDenotations {
       }
 
       if (pre eq NoPrefix) true
-      else if (info eq NoType) false
+      else if (isAbsent) false
       else {
         val boundary = accessBoundary(owner)
 
