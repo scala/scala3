@@ -102,10 +102,10 @@ object Splicer {
     }
 
     protected def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.quoted.Exprs.TastyTreeExpr(Inlined(EmptyTree, Nil, tree).withSpan(tree.span))
+      new scala.internal.quoted.TastyTreeExpr(Inlined(EmptyTree, Nil, tree).withSpan(tree.span))
 
     protected def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.quoted.Types.TreeType(tree)
+      new scala.internal.quoted.TreeType(tree)
 
     protected def interpretLiteral(value: Any)(implicit env: Env): Object =
       value.asInstanceOf[Object]

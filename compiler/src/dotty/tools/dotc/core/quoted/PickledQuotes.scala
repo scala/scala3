@@ -15,8 +15,7 @@ import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.{PositionPickler, TastyPickler, TastyPrinter, TastyString}
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 
-import scala.quoted.Types._
-import scala.quoted.Exprs._
+import scala.internal.quoted._
 import scala.reflect.ClassTag
 
 object PickledQuotes {
