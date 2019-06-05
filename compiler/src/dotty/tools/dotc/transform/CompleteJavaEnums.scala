@@ -34,17 +34,14 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     // Because it adds additional parameters to some constructors
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
-    if (sym.isConstructor && (
-         sym == defn.JavaEnumClass.primaryConstructor ||
-         derivesFromJavaEnum(sym.owner)))
-      addConstrParams(sym.info)
+    if (sym.isConstructor && derivesFromJEnum(sym.owner)) addConstrParams(sym.info)
     else tp
 
   /** Is `sym` a Scala enum class that derives (directly) from `java.lang.Enum`?
    */
-  private def derivesFromJavaEnum(sym: Symbol)(implicit ctx: Context) =
+  private def derivesFromJEnum(sym: Symbol)(implicit ctx: Context) =
     sym.is(Enum, butNot = Case) &&
-    sym.info.parents.exists(p => p.typeSymbol == defn.JavaEnumClass)
+    sym.info.parents.exists(p => p.typeSymbol == defn.JEnumClass)
 
   /** Add constructor parameters `$name: String` and `$ordinal: Int` to the end of
    *  the last parameter list of (method- or poly-) type `tp`.
@@ -100,10 +97,10 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
    */
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): DefDef = {
     val sym = tree.symbol
-    if (sym.isConstructor && derivesFromJavaEnum(sym.owner))
+    if (sym.isConstructor && derivesFromJEnum(sym.owner))
       cpy.DefDef(tree)(
         vparamss = tree.vparamss.init :+ (tree.vparamss.last ++ addedParams(sym, Param)))
-    else if (sym.name == nme.DOLLAR_NEW && derivesFromJavaEnum(sym.owner.linkedClass)) {
+    else if (sym.name == nme.DOLLAR_NEW && derivesFromJEnum(sym.owner.linkedClass)) {
       val Block((tdef @ TypeDef(tpnme.ANON_CLASS, templ: Template)) :: Nil, call) = tree.rhs
       val args = tree.vparamss.last.takeRight(2).map(param => ref(param.symbol)).reverse
       val templ1 = cpy.Template(templ)(
@@ -115,7 +112,8 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   /** 1. If this is an enum class, add $name and $ordinal parameters to its
-   *     parameter accessors and pass them on to the java.lang.Enum constructor.
+   *     parameter accessors and pass them on to the java.lang.Enum constructor,
+   *     replacing the dummy arguments that were passed before.
    *
    *  2. If this is an anonymous class that implement a value enum case,
    *     pass $name and $ordinal parameters to the enum superclass. The class
@@ -136,15 +134,20 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
    */
   override def transformTemplate(templ: Template)(implicit ctx: Context): Template = {
     val cls = templ.symbol.owner
-    if (derivesFromJavaEnum(cls)) {
+    if (derivesFromJEnum(cls)) {
       val (params, rest) = decomposeTemplateBody(templ.body)
       val addedDefs = addedParams(cls, ParamAccessor)
       val addedSyms = addedDefs.map(_.symbol.entered)
+      val parents1 = templ.parents.map {
+        case app @ Apply(fn, _) if fn.symbol.owner == defn.JEnumClass =>
+          cpy.Apply(app)(fn, addedSyms.map(ref))
+        case p => p
+      }
       cpy.Template(templ)(
-        parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
+        parents = parents1,
         body = params ++ addedDefs ++ rest)
     }
-    else if (cls.isAnonymousClass && cls.owner.is(EnumCase) && derivesFromJavaEnum(cls.owner.owner.linkedClass)) {
+    else if (cls.isAnonymousClass && cls.owner.is(EnumCase) && derivesFromJEnum(cls.owner.owner.linkedClass)) {
       def rhsOf(name: TermName) =
         templ.body.collect {
           case mdef: DefDef if mdef.name == name => mdef.rhs

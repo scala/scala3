@@ -1057,8 +1057,8 @@ trait Checking {
       (cls.owner.flagsUNSAFE.is(Case) || cls.owner.name == nme.DOLLAR_NEW)
     if (!isEnumAnonCls) {
       if (cdef.mods.isEnumCase) {
-        if (cls.derivesFrom(defn.JavaEnumClass))
-          ctx.error(em"paramerized case is not allowed in an enum that extends java.lang.Enum", cdef.sourcePos)
+        if (cls.derivesFrom(defn.JEnumClass))
+          ctx.error(em"parameterized case is not allowed in an enum that extends java.lang.Enum", cdef.sourcePos)
       }
       else if (cls.is(Case) || firstParent.is(Enum))
         // Since enums are classes and Namer checks that classes don't extend multiple classes, we only check the class

@@ -293,10 +293,10 @@ class Definitions {
     cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
     cls.setFlag(NoInits)
 
-    // The companion object of a Java class doesn't really exist, `NoType` is the general
+    // The companion object doesn't really exist, `NoType` is the general
     // technique to do that. Here we need to set it before completing
     // attempt to load Object's classfile, which causes issue #1648.
-    val companion = JavaLangPackageVal.info.decl(cls.name.toTermName).symbol
+    val companion = JavaLangPackageVal.info.decl(nme.Object).symbol
     companion.moduleClass.info = NoType // to indicate that it does not really exist
     companion.info = NoType // to indicate that it does not really exist
     completeClass(cls)
@@ -613,26 +613,6 @@ class Definitions {
       JavaSerializableClass.typeRef
     else
       ctx.requiredClassRef("scala.Serializable")
-
-  lazy val JavaEnumClass: ClassSymbol           = {
-    val cls = ctx.requiredClass("java.lang.Enum")
-    val constr = cls.primaryConstructor
-    val newInfo = constr.info match {
-      case info: PolyType =>
-        info.resType match {
-          case meth: MethodType =>
-            info.derivedLambdaType(
-              resType = meth.derivedLambdaType(
-                paramNames = Nil, paramInfos = Nil))
-        }
-    }
-    constr.info = newInfo
-    constr.termRef.recomputeDenot()
-    cls.setFlag(NoInits | Permanent)
-    cls
-  }
-  def JavaEnumType = JavaEnumClass.typeRef
-
   def SerializableClass(implicit ctx: Context): ClassSymbol = SerializableType.symbol.asClass
   lazy val StringBuilderType: TypeRef      = ctx.requiredClassRef("scala.collection.mutable.StringBuilder")
   def StringBuilderClass(implicit ctx: Context): ClassSymbol = StringBuilderType.symbol.asClass
@@ -693,6 +673,8 @@ class Definitions {
   def NoneClass(implicit ctx: Context): ClassSymbol = NoneModuleRef.symbol.moduleClass.asClass
   lazy val EnumType: TypeRef                    = ctx.requiredClassRef("scala.Enum")
   def EnumClass(implicit ctx: Context): ClassSymbol = EnumType.symbol.asClass
+  lazy val JEnumType: TypeRef                   = ctx.requiredClassRef("scala.compat.JEnum")
+  def JEnumClass(implicit ctx: Context): ClassSymbol = JEnumType.symbol.asClass
   lazy val EnumValuesType: TypeRef              = ctx.requiredClassRef("scala.runtime.EnumValues")
   def EnumValuesClass(implicit ctx: Context): ClassSymbol = EnumValuesType.symbol.asClass
   lazy val ProductType: TypeRef                 = ctx.requiredClassRef("scala.Product")
@@ -1457,7 +1439,7 @@ class Definitions {
         ScalaPackageClass.enter(m)
 
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass
+      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
 
       isInitialized = true
     }
