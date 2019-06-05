@@ -10,7 +10,7 @@ class ReplCompilerTests extends ReplTest {
 
   @Test def compileSingle = fromInitialState { implicit state =>
     run("def foo: 1 = 1")
-    assertEquals("def foo: Int(1)", storedOutput().trim)
+    assertEquals("def foo: 1", storedOutput().trim)
   }
 
   @Test def compileTwo =
@@ -165,4 +165,14 @@ class ReplCompilerTests extends ReplTest {
       run("IntOrd")
       assertTrue(storedOutput().startsWith("val res0: IntOrd.type ="))
     }
+
+  @Test def testSingletonPrint = fromInitialState { implicit state =>
+    run("""val a = "hello"; val x: a.type = a""")
+    assertEquals("val a: String = hello\nval x: a.type = hello", storedOutput().trim)
+  }
+
+  @Test def i6574 = fromInitialState { implicit state =>
+    run("val a: 1 | 0 = 1")
+    assertEquals("val a: 1 | 0 = 1", storedOutput().trim)
+  }
 }

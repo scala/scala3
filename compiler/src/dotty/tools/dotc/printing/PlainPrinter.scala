@@ -147,7 +147,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TypeParamRef =>
         ParamRefNameString(tp) ~ lambdaHash(tp.binder)
       case tp: SingletonType =>
-        toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
+        toTextSingleton(tp)
       case AppliedType(tycon, args) =>
         (toTextLocal(tycon) ~ "[" ~ argsText(args) ~ "]").close
       case tp: RefinedType =>
@@ -225,6 +225,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         tp.fallbackToText(this)
     }
   }.close
+
+  def toTextSingleton(tp: SingletonType): Text =
+    toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
 
   protected def paramsText(tp: LambdaType): Text = {
     def paramText(name: Name, tp: Type) = toText(name) ~ toTextRHS(tp)
