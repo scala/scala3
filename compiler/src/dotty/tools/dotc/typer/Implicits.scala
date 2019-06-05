@@ -652,7 +652,7 @@ trait Implicits { self: Typer =>
   type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
 
   lazy val synthesizedClassTag: SpecialHandler =
-    (formal: Type, span: Span) => implicit (ctx: Context) => formal.argInfos match {
+    (formal, span) => implicit ctx => formal.argInfos match {
       case arg :: Nil =>
         fullyDefinedType(arg, "ClassTag argument", span) match {
           case defn.ArrayOf(elemTp) =>
@@ -678,7 +678,7 @@ trait Implicits { self: Typer =>
    *  `T` is deeply dealiassed to avoid references to local type aliases.
    */
   lazy val synthesizedTypeTag: SpecialHandler =
-    (formal: Type, span: Span) => implicit (ctx: Context) => {
+    (formal, span) => implicit ctx => {
       def quotedType(t: Type) = {
         if (StagingContext.level == 0)
           ctx.compilationUnit.needsStaging = true // We will need to run ReifyQuotes
@@ -696,12 +696,12 @@ trait Implicits { self: Typer =>
     }
 
   lazy val synthesizedTastyContext: SpecialHandler =
-    (formal: Type, span: Span) => implicit (ctx: Context) =>
+    (formal, span) => implicit ctx =>
       if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.TastyReflection_macroContext)
       else EmptyTree
 
   lazy val synthesizedTupleFunction: SpecialHandler =
-    (formal: Type, span: Span) => implicit (ctx: Context) => formal match {
+    (formal, span) => implicit ctx => formal match {
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
         def functionTypeEqual(baseFun: Type, actualArgs: List[Type], actualRet: Type, expected: Type) = {
           expected =:= defn.FunctionOf(actualArgs, actualRet, defn.isImplicitFunctionType(baseFun), defn.isErasedFunctionType(baseFun))
@@ -748,7 +748,7 @@ trait Implicits { self: Typer =>
     *  `Eql.eqlAny[T, U]` as solution.
     */
   lazy val synthesizedEq: SpecialHandler =
-    (formal: Type, span: Span) => implicit (ctx: Context) => {
+    (formal, span) => implicit ctx => {
 
       /** Is there an `Eql[T, T]` instance, assuming -strictEquality? */
       def hasEq(tp: Type)(implicit ctx: Context): Boolean = {
@@ -813,7 +813,7 @@ trait Implicits { self: Typer =>
    * An EmptyTree is returned if materialization fails.
    */
   lazy val synthesizedValueOf: SpecialHandler =
-    (formal: Type, span: Span) => implicit (ctx: Context) => {
+    (formal, span) => implicit ctx => {
       def success(t: Tree) = New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
 
       formal.argTypes match {
@@ -873,7 +873,7 @@ trait Implicits { self: Typer =>
    *  where `T` is a generic product type or a case object or an enum case.
    */
   lazy val synthesizedProductMirror: SpecialHandler =
-    (formal: Type, span: Span) => implicit (ctx: Context) => {
+    (formal, span) => implicit ctx => {
       def mirrorFor(mirroredType0: Type): Tree = {
         val mirroredType = mirroredType0.stripTypeVar
         mirroredType match {
@@ -933,7 +933,7 @@ trait Implicits { self: Typer =>
    *  where `T` is a generic sum type.
    */
   lazy val synthesizedSumMirror: SpecialHandler =
-    (formal: Type, span: Span) => implicit (ctx: Context) => {
+    (formal, span) => implicit ctx => {
       formal.member(tpnme.MirroredType).info match {
         case TypeBounds(mirroredType0, _) =>
           val mirroredType = mirroredType0.stripTypeVar
@@ -1008,7 +1008,7 @@ trait Implicits { self: Typer =>
    *  where `T` is a generic sum or product or singleton type.
    */
   lazy val synthesizedMirror: SpecialHandler =
-    (formal: Type, span: Span) => implicit (ctx: Context) => {
+    (formal, span) => implicit ctx => {
       formal.member(tpnme.MirroredType).info match {
         case TypeBounds(mirroredType, _) =>
           if (mirroredType.termSymbol.is(CaseVal) || mirroredType.classSymbol.isGenericProduct)
