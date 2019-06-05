@@ -377,7 +377,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *  O is O.type.
    */
   def ordinalBody(cls: Symbol, param: Tree)(implicit ctx: Context): Tree =
-    if (cls.is(Enum)) param.select(nme.ordinal)
+    if (cls.is(Enum)) Apply(param.select(nme.ordinal), Nil)
     else {
       val cases =
         for ((child, idx) <- cls.children.zipWithIndex) yield {
