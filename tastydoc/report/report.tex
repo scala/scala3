@@ -8,14 +8,14 @@
 
 \begin{document}
 
-\title{Tastydoc: a documentation tool for dotty using Tasty files}
+\title{Tastydoc: a documentation tool for dotty using TASTy files}
 \author{Bryan Abate
 \\\\\small{Supervised by Aleksander Boruch-Gruszecki}}
 
 \maketitle
 
 \begin{abstract}
-The current documentation tool (Dottydoc) relies on compiler internals and low-level code. The tool introduced here aims to build a program not dependant on compiler internals but instead use Tasty files which are output when a Scala program is compiled.
+The current documentation tool (Dottydoc) relies on compiler internals and low-level code. The tool introduced here aims to build a program not dependant on compiler internals but instead use TASTy files which are output when a Scala program is compiled.
 
 It also aims at providing a tool with fewer bugs, more features and which is more easily maintainable.
 
@@ -211,30 +211,46 @@ Main workflow is as follows:
 \end{center}
 
 As we can see, parsing user documentation is only done after converting to Representation. Indeed to be able to link methods, classes, etc. from user documentation we need to have converted everything to Representation first otherwise there is no way to know what is linked (a method? a class? an object?).
+
+
 \chapter{Comparison between Dottydoc and Tastydoc}
 Here we compare Dottydoc and Tastydoc in terms of features, bugs, and output.
 
+\section{General comparison}
 \paragraph{Compiler internals}
-Dottydoc heavily relies on compiler internals and hence cannot be detached from it. Tastydoc relies on TASTy files and hence can be completely moved apart from the compiler and can be distributed as a separate tool.
+Dottydoc relies on low-level and complex code which makes it very hard to maintain or add features where Tastydoc relies on the comprehensive Reflect API while trying to be as clear and as maintainable as possible. It implies that Tastydoc can be completely moved apart from the compiler and can be distributed as a separate tool.
 
-Dottydoc relies on low-level and complex code which makes it very hard to maintain or add features where Tastydoc relies on the comprehensive Reflect API while trying to be as clear and as maintainable as possible.
+\paragraph{Output}
+Dottydoc outputs HTML/CSS which is not ideal for manual edit and it forces the user to host it on a website where Markdown can simply be viewed on an online git repository without further tasks. Tastydoc counters this problem by outputting Markdown.
 
+\section{Extra features from Tastydoc}
 \paragraph{Scope modifiers}
 Dottydoc does not handle scope modifiers (such as \texttt{private[this]}) where Tastydoc does.
 
-\paragraph{Output}
-Dottydoc outputs HTML/CSS with a preformatted template and offers no way to customize anything. Also, HTML/CSS force the user to host it on a website where Markdown can simply be viewed on an online git repository without further tasks. Tastydoc counters this problem by outputting Markdown.
+\paragraph{Known subclasses}
+Tastydoc keeps track of all seen subclasses of a class and links to their documentation files.
 
-\paragraph{Not maintained}
-Dottydoc is not maintained and hence does not follow the evolution in Master. This opens to bugs for example it does not take care of colors in the \texttt{show} method and it results in faulty type or method output like \texttt{[31m2L[0m}\footnote{\url{https://dotty.epfl.ch/api/dotty/runtime/LazyVals$.html}}. Classes often show to be extending Object instead of their superclass because Object is given first when asking for the parents list to the compiler, example\footnote{\url{https://dotty.epfl.ch/API/scala/Conversion.HTML}}:
+\section{Bugs in Dottydoc that Tastydoc fixes}
+Dottydoc is not really maintained and hence does not follow the evolution in Master. Some bugs are present in Dottydoc and Tastydoc fixes all of them.
+
+\paragraph{Buggy output}
+It does not take care of colors in the \texttt{show} method and it results in faulty type or method output like \texttt{[31m2L[0m}\footnote{\url{https://dotty.epfl.ch/api/dotty/runtime/LazyVals$.html}}.
+
+\paragraph{Wrong parents}
+Classes often show to be extending Object instead of their superclass because Object is given first when asking for the parents list to the compiler, example\footnote{\url{https://dotty.epfl.ch/api/scala/Conversion.html}}:
 \begin{lstlisting}[language=scala]
     abstract class Conversion [ -T, +U ]
     extends Object with Function1
 \end{lstlisting}
+
+\paragraph{Annotations}
 Annotations which should not be displayed (like \texttt{@child}) are displayed and sometimes many times\footnote{\url{http://dotty.epfl.ch/api/scala/quoted/Expr.html}}.
 
-\paragraph{Known subclasses}
-Tastydoc keeps track of all seen subclasses of a class and links to their documentation files.
+\paragraph{Compiler artifacts}
+The compiler produces artifacts which should be removed when producing documentation files. For example default values produce artifacts and Dottydoc does not remove them\footnote{\url{https://dotty.epfl.ch/api/scala/tasty/reflect/Kernel.html}}:
+\begin{lstlisting}[language=scala]
+    def Definitions_FunctionClass$default$2 : Boolean
+\end{lstlisting}
 
 \chapter{Problems}
 \label{sec:problems}
@@ -273,22 +289,23 @@ Assume the following type:
 \end{lstlisting}
 Right now the type will only be referenced as \texttt{Node} instead of \texttt{g.Node}.
 
+\paragraph{Default value}
+Right now, the tool does not have knowledge of default values for parameters such as \texttt{def(x: Int = 0)} because the way TASTy files keep track of them is complex and not easy to access.
+
 \paragraph{User-documentation parsing}
-User-documentation parsing lacks two features: supporting \texttt{@usecase} and supporting defined pieces of documenation with \texttt{@define name ...} and then referencing them with \texttt{\$name}\footnote{Example in \url{https://github.com/scala/scala/blob/v2.12.2/src/library/scala/collection/immutable/List.scala\#L73}}.
+User-documentation parsing lacks two features. First, supporting \texttt{@usecase} so that signatures are displayed in the forme described in the usecase instead of the one in the source code. Second, supporting defined pieces of documenation with \texttt{@define name ...} and then referencing them with \texttt{\$name}\footnote{Example in \url{https://github.com/scala/scala/blob/v2.12.2/src/library/scala/collection/immutable/List.scala\#L73}}.
 
 \paragraph{HTML/CSS}
 Markdown files for documentation are good for all the reasons mentioned in this report but some people still want a good HTML/CSS documentation. The aim here would be to either take back what Dottydoc has and use it with our code, either build something new. The first case should be pretty straightforward as our intermediate representation looks very much alike Dottydoc. The biggest change would be for References as links are handled a bit differently in this tool.
 
 \end{document}
 
+%Say that dottydoc does not have these features in problems?
+
 %Sort comparison between Dottydoc
-%   General comparison
-%   Extra features of Tastydoc
-%   Error in Dottydoc that Tastydoc fixes
 %
 %   search engine, etc. Dottydoc has
-%   Dottydoc not companion
-%Remove part saying you cannot custom Dottydoc
+%   Dottydoc no companion, not true?
 %Reformulate dottydoc not maintained
 %Features =>
 %   Talk more about everything
@@ -296,8 +313,6 @@ Markdown files for documentation are good for all the reasons mentioned in this 
 %Further work
 %   usecase
 %   say more about define
-%   default values
 %Remaining work
 %Links no longer exist, fix it
-% https://dotty.epfl.ch/api/scala/tasty/reflect/Kernel.html Artifcats
 % Some sentences are cut
