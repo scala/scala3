@@ -13,22 +13,27 @@ import dotty.tools.dotc.printing.Texts._
 
 class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
 
+  val debugPrint = _ctx.settings.YprintDebug.value
+
   override def nameString(name: Name): String =
     if (name.isReplAssignName) name.decode.toString.takeWhile(_ != '$')
     else super.nameString(name)
 
   override protected def exprToText(tp: ExprType): Text =
-    ": " ~ toText(tp.resType)
+    if (debugPrint) super.exprToText(tp)
+    else ": " ~ toText(tp.resType)
 
   override def toText(sym: Symbol): Text =
     if (sym.name.isReplAssignName) nameString(sym.name)
+    else if (debugPrint) super.toText(sym)
     else keyString(sym) ~~ nameString(sym.name.stripModuleClassSuffix)
 
   override def toText(const: Constant): Text =
-    if (const.tag == Constants.StringTag) Str('"' + const.value.toString + '"')
+    if (debugPrint) super.toText(const)
+    else if (const.tag == Constants.StringTag) Str('"' + const.value.toString + '"')
     else Str(const.value.toString)
 
-  override def dclText(sym: Symbol): Text = {
+  override def dclText(sym: Symbol): Text = if (debugPrint) super.dclText(sym) else {
     ("lazy": Text).provided(sym.is(Lazy)) ~~
     toText(sym) ~ {
       if (sym.is(Method)) toText(sym.info)
@@ -38,10 +43,14 @@ class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
     }
   }
 
-  override def toTextSingleton(tp: SingletonType): Text = tp match {
-    case ConstantType(const) => toText(const)
-    case _                   => toTextRef(tp) ~ ".type"
-  }
+  override def toTextSingleton(tp: SingletonType): Text =
+    if (debugPrint)
+      super.toTextSingleton(tp)
+    else
+      tp match {
+        case ConstantType(const) => toText(const)
+        case _                   => toTextRef(tp) ~ ".type"
+      }
 
   // We don't want the colors coming from RefinedPrinter as the REPL uses its
   // own syntax coloring mechanism.
