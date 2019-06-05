@@ -315,6 +315,8 @@ object StdNames {
     val _21 : N = "_21"
     val _22 : N = "_22"
 
+    val * : N   = "*"
+    val ? : N   = "?"
     val ??? : N = "???"
 
     val genericWrapArray: N     = "genericWrapArray"

@@ -107,6 +107,8 @@ sidebar:
               url: docs/reference/changed-features/structural-types.html
             - title: Operators
               url: docs/reference/changed-features/operators.html
+            - title: Wildcard Types
+              url: docs/reference/changed-features/wildcards.html
             - title: Type Checking
               url: docs/reference/changed-features/type-checking.html
             - title: Type Inference

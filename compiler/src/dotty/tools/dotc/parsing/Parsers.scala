@@ -1069,8 +1069,20 @@ object Parsers {
         SingletonTypeTree(literal(negOffset = start))
       }
       else if (in.token == USCORE) {
+        if (ctx.settings.strict.value) {
+          deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
+          patch(source, Span(in.offset, in.offset + 1), "?")
+        }
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
+      }
+      else if (isIdent(nme.?)) {
+        val start = in.skipToken()
+        typeBounds().withSpan(Span(start, in.lastOffset, start))
+      }
+      else if (isIdent(nme.*) && ctx.settings.YkindProjector.value) {
+      	syntaxError("`*` placeholders are not implemented yet")
+        typeIdent()
       }
       else if (isSplice)
         splice(isType = true)
