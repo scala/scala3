@@ -362,7 +362,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   /** For an enum T:
    *
-   *     def ordinal(x: MirroredMonoType) = x.enumTag
+   *     def ordinal(x: MirroredMonoType) = x.ordinal
    *
    *  For  sealed trait with children of normalized types C_1, ..., C_n:
    *
@@ -377,7 +377,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *  O is O.type.
    */
   def ordinalBody(cls: Symbol, param: Tree)(implicit ctx: Context): Tree =
-    if (cls.is(Enum)) param.select(nme.enumTag)
+    if (cls.is(Enum)) param.select(nme.ordinal)
     else {
       val cases =
         for ((child, idx) <- cls.children.zipWithIndex) yield {
