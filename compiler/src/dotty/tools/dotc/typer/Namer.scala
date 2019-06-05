@@ -498,23 +498,9 @@ class Namer { typer: Typer =>
     recur(expanded(origStat))
   }
 
-  /** Determines whether this field holds an enum constant.
-    * To qualify, the following conditions must be met:
-    *  - The field's class has the ENUM flag set
-    *  - The field's class extends java.lang.Enum
-    *  - The field has the ENUM flag set
-    *  - The field is static
-    *  - The field is stable
-    */
-  def isEnumConstant(vd: ValDef)(implicit ctx: Context): Boolean = {
-    // val ownerHasEnumFlag =
-    // Necessary to check because scalac puts Java's static members into the companion object
-    // while Scala's enum constants live directly in the class.
-    // We don't check for clazz.superClass == JavaEnumClass, because this causes a illegal
-    // cyclic reference error. See the commit message for details.
-    //  if (ctx.compilationUnit.isJava) ctx.owner.companionClass.is(Enum) else ctx.owner.is(Enum)
-    vd.mods.is(JavaEnumValue) // && ownerHasEnumFlag
-  }
+  /** Determines whether this field holds an enum constant. */
+  def isEnumConstant(vd: ValDef)(implicit ctx: Context): Boolean =
+    vd.mods.is(JavaEnumValue)
 
   /** Add child annotation for `child` to annotations of `cls`. The annotation
    *  is added at the correct insertion point, so that Child annotations appear

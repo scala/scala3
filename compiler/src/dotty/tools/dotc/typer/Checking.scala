@@ -1046,20 +1046,26 @@ trait Checking {
       ctx.error(em"$what $msg", posd.sourcePos)
     }
 
-  /** Check that all case classes that extend `scala.Enum` are `enum` cases */
+  /** 1. Check that all case classes that extend `scala.Enum` are `enum` cases
+   *  2. Check that case class `enum` cases do not extend java.lang.Enum.
+   */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(implicit ctx: Context): Unit = {
     import untpd.modsDeco
     def isEnumAnonCls =
       cls.isAnonymousClass &&
       cls.owner.isTerm &&
       (cls.owner.flagsUNSAFE.is(Case) || cls.owner.name == nme.DOLLAR_NEW)
-    if (!cdef.mods.isEnumCase && !isEnumAnonCls) {
-      // Since enums are classes and Namer checks that classes don't extend multiple classes, we only check the class
-      // parent.
-      //
-      // Unlike firstParent.derivesFrom(defn.EnumClass), this test allows inheriting from `Enum` by hand;
-      // see enum-List-control.scala.
-      if (cls.is(Case) || firstParent.is(Enum))
+    if (!isEnumAnonCls) {
+      if (cdef.mods.isEnumCase) {
+        if (cls.derivesFrom(defn.JEnumClass))
+          ctx.error(em"parameterized case is not allowed in an enum that extends java.lang.Enum", cdef.sourcePos)
+      }
+      else if (cls.is(Case) || firstParent.is(Enum))
+        // Since enums are classes and Namer checks that classes don't extend multiple classes, we only check the class
+        // parent.
+        //
+        // Unlike firstParent.derivesFrom(defn.EnumClass), this test allows inheriting from `Enum` by hand;
+        // see enum-List-control.scala.
         ctx.error(ClassCannotExtendEnum(cls, firstParent), cdef.sourcePos)
     }
   }

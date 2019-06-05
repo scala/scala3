@@ -490,6 +490,7 @@ object TastyFormat {
        | STATIC
        | OBJECT
        | TRAIT
+       | ENUM
        | LOCAL
        | SYNTHETIC
        | ARTIFACT

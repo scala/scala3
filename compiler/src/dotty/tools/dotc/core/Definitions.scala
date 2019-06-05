@@ -299,7 +299,6 @@ class Definitions {
     val companion = JavaLangPackageVal.info.decl(nme.Object).symbol
     companion.moduleClass.info = NoType // to indicate that it does not really exist
     companion.info = NoType // to indicate that it does not really exist
-
     completeClass(cls)
   }
   def ObjectType: TypeRef = ObjectClass.typeRef
@@ -674,6 +673,8 @@ class Definitions {
   def NoneClass(implicit ctx: Context): ClassSymbol = NoneModuleRef.symbol.moduleClass.asClass
   lazy val EnumType: TypeRef                    = ctx.requiredClassRef("scala.Enum")
   def EnumClass(implicit ctx: Context): ClassSymbol = EnumType.symbol.asClass
+  lazy val JEnumType: TypeRef                   = ctx.requiredClassRef("scala.compat.JEnum")
+  def JEnumClass(implicit ctx: Context): ClassSymbol = JEnumType.symbol.asClass
   lazy val EnumValuesType: TypeRef              = ctx.requiredClassRef("scala.runtime.EnumValues")
   def EnumValuesClass(implicit ctx: Context): ClassSymbol = EnumValuesType.symbol.asClass
   lazy val ProductType: TypeRef                 = ctx.requiredClassRef("scala.Product")
