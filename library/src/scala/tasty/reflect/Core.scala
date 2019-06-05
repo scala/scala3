@@ -212,7 +212,7 @@ trait Core {
         /** Tree representing a pattern match `implicit match { ... }` in the source code */
         type ImplicitMatch = kernel.ImplicitMatch
 
-        /** Tree representing a tyr catch `try x catch { ... } finally { ... }` in the source code */
+        /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */
         type Try = kernel.Try
 
         /** Tree representing a `return` in the source code */

@@ -67,6 +67,20 @@ sidebar:
               url: docs/reference/contextual/inferable-by-name-parameters.html
             - title: Relationship with Scala 2 Implicits
               url: docs/reference/contextual/relationship-implicits.html
+        - title: Metaprogramming
+          subsection:
+            - title: Overview
+              url: docs/reference/metaprogramming/toc.html
+            - title: Inline
+              url: docs/reference/metaprogramming/inline.html
+            - title: Macros
+              url: docs/reference/metaprogramming/macros.html
+            - title: Staging
+              url: docs/reference/metaprogramming/staging.html
+            - title: TASTy Reflection
+              url: docs/reference/metaprogramming/tasty-reflect.html
+            - title: TASTy Inspection
+              url: docs/reference/metaprogramming/tasty-inspect.html
         - title: Other New Features
           subsection:
             - title: Trait Parameters
@@ -75,12 +89,6 @@ sidebar:
               url: docs/reference/other-new-features/creator-applications.html
             - title: Export Clauses
               url: docs/reference/other-new-features/export.html
-            - title: Inlining by Rewriting
-              url: docs/reference/other-new-features/inline.html
-            - title: Meta Programming
-              url: docs/reference/other-new-features/principled-meta-programming.html
-            - title: TASTy Reflect
-              url: docs/reference/other-new-features/tasty-reflect.html
             - title: Opaque Type Aliases
               url: docs/reference/other-new-features/opaques.html
             - title: Parameter Untupling

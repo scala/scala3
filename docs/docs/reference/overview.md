@@ -121,9 +121,9 @@ It's worth noting that macros were never included in the Scala 2 language specif
 To enable porting most uses of macros, we are experimenting with the advanced language constructs listed below. These designs are more provisional than the rest of the proposed language constructs for Scala 3.0. There might still be some changes until the final release. Stabilizing the feature set needed for meta programming is our first priority.
 
 - [Match Types](https://dotty.epfl.ch/docs/reference/new-types/match-types.html) allow computation on types.
-- [Inline](https://dotty.epfl.ch/docs/reference/other-new-features/inline.html) provides
+- [Inline](https://dotty.epfl.ch/docs/reference/metaprogramming/inline.html) provides
 by itself a straightforward implementation of some simple macros and is at the same time an essential building block for the implementation of complex macros.
-- [Quotes and Splices](https://dotty.epfl.ch/docs/reference/other-new-features/principled-meta-programming.html) provide a principled way to express macros and staging with a unified set of abstractions.
+- [Quotes and Splices](https://dotty.epfl.ch/docs/reference/metaprogramming/macros.html) provide a principled way to express macros and staging with a unified set of abstractions.
 - [Typeclass derivation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html) provides an in-language implementation of the `Gen` macro in Shapeless and other foundational libraries. The new implementation is more robust, efficient and easier to use than the macro.
 - [Implicit by-name parameters](https://dotty.epfl.ch/docs/reference/contextual/inferable-by-name-parameters.html) provide a more robust in-language implementation of the `Lazy` macro in Shapeless.
 - [Erased Terms](https://dotty.epfl.ch/docs/reference/other-new-features/erased-terms.html) provide a general mechanism for compile-time-only computations.
