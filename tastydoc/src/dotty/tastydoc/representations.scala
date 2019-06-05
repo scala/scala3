@@ -39,7 +39,6 @@ object representations extends TastyExtractor {
     val companion: Option[CompanionReference]
 
     def hasCompanion: Boolean = companion.isDefined //To be consistent with dotty-doc
-    // val companionPath_=(xs: List[String]): Unit
   }
 
   trait ParamList {
