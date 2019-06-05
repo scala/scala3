@@ -8,6 +8,7 @@ import Types._, Contexts._, Flags._, DenotTransformers._
 import Symbols._, StdNames._, Trees._
 import TypeErasure.ErasedValueType, ValueClasses._
 import reporting.diagnostic.messages.DoubleDefinition
+import NameKinds.SuperAccessorName
 
 object ElimErasedValueType {
   val name: String = "elimErasedValueType"
@@ -95,7 +96,11 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
         (sym1.owner.derivesFrom(defn.PolyFunctionClass) ||
          sym2.owner.derivesFrom(defn.PolyFunctionClass))
 
-      if (!info1.matchesLoosely(info2) && !bothPolyApply)
+      // super-accessors start as private, and their expanded name can clash after
+      // erasure. TODO: Verify that this is OK.
+      def bothSuperAccessors = sym1.name.is(SuperAccessorName) && sym2.name.is(SuperAccessorName)
+      if (sym1.name != sym2.name && !bothSuperAccessors ||
+          !info1.matchesLoosely(info2) && !bothPolyApply)
         ctx.error(DoubleDefinition(sym1, sym2, root), root.sourcePos)
     }
     val earlyCtx = ctx.withPhase(ctx.elimRepeatedPhase.next)

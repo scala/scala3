@@ -5,11 +5,13 @@ package core
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
 import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._
 import NameOps._, NameKinds._, Phases._
+import Constants.Constant
 import TypeApplications.TypeParamInfo
 import Scopes.Scope
 import dotty.tools.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
+import Trees.Literal
 import annotation.tailrec
 import util.SimpleIdentityMap
 import util.Stats
@@ -441,6 +443,18 @@ object SymDenotations {
 
     /** `fullName` where `.' is the separator character */
     def fullName(implicit ctx: Context): Name = fullNameSeparated(QualifiedName)
+
+    /** The name given in an `@alpha` annotation if one is present, `name` otherwise */
+    final def erasedName(implicit ctx: Context): Name =
+      getAnnotation(defn.AlphaAnnot) match {
+        case Some(ann) =>
+          ann.arguments match {
+            case Literal(Constant(str: String)) :: Nil =>
+              if (isType) str.toTypeName else str.toTermName
+            case _ => name
+          }
+        case _ => name
+      }
 
     // ----- Tests -------------------------------------------------
 

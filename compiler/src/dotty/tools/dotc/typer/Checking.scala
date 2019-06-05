@@ -274,6 +274,20 @@ object Checking {
     }
   }
 
+  /** If `sym` has an operator name, check that it has an @alpha annotation under -strict */
+  def checkValidOperator(sym: Symbol)(implicit ctx: Context): Unit =
+    sym.name.toTermName match {
+      case name: SimpleName
+      if name.exists(isOperatorPart) &&
+        !sym.getAnnotation(defn.AlphaAnnot).isDefined &&
+        !sym.is(Synthetic) &&
+        !name.isConstructorName &&
+        ctx.settings.strict.value =>
+        ctx.deprecationWarning(
+          i"$sym has an operator name; it should come with an @alpha annotation", sym.sourcePos)
+      case _ =>
+    }
+
   /** Check that `info` of symbol `sym` is not cyclic.
    *  @pre     sym is not yet initialized (i.e. its type is a Completer).
    *  @return  `info` where every legal F-bounded reference is proctected
@@ -864,7 +878,7 @@ trait Checking {
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
           decl.is(Method) != other.is(Method)
-        if ((decl.signature.clashes(other.signature) || decl.matches(other)) && !javaFieldMethodPair) {
+        if (decl.matches(other) && !javaFieldMethodPair) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               ctx.error(DoubleDefinition(decl, other, cls), decl.sourcePos)
@@ -1130,6 +1144,21 @@ trait Checking {
       case _ =>
     }
   }
+
+  /** Check that symbol's external name does not clash with symbols defined in the same scope */
+  def checkNoAlphaConflict(stats: List[Tree])(implicit ctx: Context): Unit = {
+    var seen = Set[Name]()
+    for (stat <- stats) {
+      val sym = stat.symbol
+      val ename = sym.erasedName
+      if (ename != sym.name) {
+        val preExisting = ctx.effectiveScope.lookup(ename)
+        if (preExisting.exists || seen.contains(ename))
+          ctx.error(em"@alpha annotation ${'"'}$ename${'"'} clashes with other definition is same scope", stat.sourcePos)
+        seen += ename
+      }
+    }
+  }
 }
 
 trait ReChecking extends Checking {
@@ -1150,7 +1179,7 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(implicit ctx: Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SourcePosition, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context): Unit = ()
-  override def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = ()
+  override def checkNoAlphaConflict(stats: List[Tree])(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt
   override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context): Unit = ()
