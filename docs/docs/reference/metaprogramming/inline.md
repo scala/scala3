@@ -3,7 +3,7 @@ layout: doc-page
 title: Inline
 ---
 
-## Inline (blackbox/whitebox)
+## Inline Definitions
 
 `inline` is a new [soft modifier](../soft-modifier.html) that guarantees that a
 definition will be inlined at the point of use. Example:
@@ -165,6 +165,8 @@ Scala 2 ignores the `@forceInline` annotation, so one must use both
 annotations to guarantee inlining for Dotty and at the same time hint inlining
 for Scala 2 (i.e. `@forceInline @inline`).
 
+<!--- (Commented out since the docs and implementation differ)
+
 ### Evaluation Rules
 
 As you noticed by the examples above a lambda of the form
@@ -185,6 +187,7 @@ corresponding binding is omitted and `y` is used instead of `x_i` in `B`.
 
 If a `inline` modifier is given for parameters, corresponding arguments must be
 pure expressions of constant type.
+-->
 
 #### The definition of constant expression
 
@@ -194,17 +197,11 @@ constant expressions in the sense defined by the [SLS §
 including _platform-specific_ extensions such as constant folding of pure
 numeric computations.
 
-### Specializing Inline (Whitebox)
+## Specializing Inline (Whitebox)
 
 Inline methods support the ` <: T` return type syntax. This means that the return type
 of the inline method is going to be specialized to a more precise type upon
-expansion.
-
-Consider the example below where the inline method `choose` can return an object
-of any of the two dynamic types. The subtype relationship is `B <: A`. Since we
-use the specializing inline syntax, the static types of the `val`s are inferred
-accordingly. Consequently, calling `meth` on `obj2` is not a compile-time error
-as `obj2` will be of type `B`.
+expansion. Example:
 
 ```scala
 class A
@@ -220,9 +217,20 @@ inline def choose(b: Boolean) <: A = {
 val obj1 = choose(true)  // static type is A
 val obj2 = choose(false) // static type is B
 
-obj1.meth() // compile-time error
-obj2.meth() // OK
+// obj1.meth() // compile-time error: `meth` is not defined on `A`
+obj2.meth()    // OK
 ```
+Here, the inline method `choose` returns an object of either of the two dynamic types
+`A` and `B`. If `choose` had been declared with a normal return type `: A`, the result
+of its expansion would always be of type `A`, even though the computed value might be
+of type `B`. The inline method is "blackbox"  in the sense that details of its
+implementation do not leak out. But with the specializing return type `<: A`,
+the type of the expansion is the type of the expanded body. If the argument `b`
+is `true`, that type is `A`, otherwise it is `B`. Consequently, calling `meth` on `obj2`
+type-checks since `obj2` has the same type as the expansion of `choose(false)`, which is `B`.
+Inline methods with specializing return types are "whitebox" in that the type
+of an application of such a method can be more specialized than its declared
+return type, depending on how the method expands.
 
 In the following example, we see how the return type of `zero` is specialized to
 the singleton type `0` permitting the addition to be ascribed with the correct
@@ -234,12 +242,42 @@ inline def zero() <: Int = 0
 final val one: 1 = zero() + 1
 ```
 
-#### Inline Match
+## Inline Conditionals
+
+If the condition of an if-then-else expressions is a constant, the expression simplifies to
+the selected branch. Prefixing an if-then-else expression with `inline` forces
+the condition to be a constant, and thus guarantees that the conditional will always
+simplify.
+
+Example:
+
+```scala
+inline def update(delta: Int) =
+  inline if (delta >= 0) increaseBy(delta)
+  else decreaseByf(delta)
+```
+A call `update(22)` would rewrite to `increaseBy(22`. But if `update` was called with
+a value that was not a compile-time constant, we would get a compile time error like the one
+below:
+```
+   |  inline if (delta >= 0) ???
+   |  ^
+   |  cannot reduce inline if
+   |   its condition
+   |     delta >= 0
+   |   is not a constant value
+   | This location is in code that was inlined at ...
+```
+
+## Inline Matches
 
 A `match` expression in the body of an `inline` method definition may be
 prefixed by the `inline` modifier. If there is enough static information to
 unambiguously take a branch, the expression is reduced to that branch and the
-type of the result is taken. The example below defines an inline method with a
+type of the result is taken. If not, a compile-time error is raised that
+reports that the match cannot be reduced.
+
+The example below defines an inline method with a
 single inline match expression that picks a case based on its static type:
 
 ```scala
@@ -275,12 +313,11 @@ val intTwo: 2 = natTwo
 
 `natTwo` is inferred to have the singleton type 2.
 
-#### scala.compiletime._
+## The scala.compiletime Package
 
-This package contains helper definitions providing support for compile time
-operations over values.
+The `scala.compiletime` package contains helper definitions that provide support for compile time operations over values. They are described in the following.
 
-##### Const Value & Const Value Opt
+#### `constValue`, `constValueOpt`, and the `S` combinator
 
 `constvalue` is a function that produces the constant value represented by a
 type.
@@ -302,7 +339,7 @@ enabling us to handle situations where a value is not present. Note that `S` is
 the type of the successor of some singleton type. For example the type `S[1]` is
 the singleton type `2`.
 
-##### Erased Value
+#### `erasedValue`
 
 We have seen so far inline methods that take terms (tuples and integers) as
 parameters. What if we want to base case distinctions on types instead? For
@@ -318,7 +355,7 @@ erased def erasedValue[T]: T = ???
 The `erasedValue` function _pretends_ to return a value of its type argument
 `T`. In fact, it would always raise a `NotImplementedError` exception when
 called. But the function can in fact never be called, since it is declared
-`erased`, so can be only used a compile-time during type checking.
+`erased`, so can be only used at compile-time during type checking.
 
 Using `erasedValue`, we can then define `defaultValue` as follows:
 
@@ -363,19 +400,19 @@ final val two = toInt[Succ[Succ[Zero]]]
 behavior. Since `toInt` performs static checks over the static type of `N` we
 can safely use it to scrutinize its return type (`S[S[Z]]` in this case).
 
-##### Error
+#### `error`
 
-This package provides a compile time `error` definition with the following signature:
+The `error` method is used to produce user-defined compile errors during inline expansion.
+It has the following signature:
 
 ```scala
 inline def error(inline msg: String, objs: Any*): Nothing
 ```
 
-The purpose of this is to expand at the point of use, an error message (a
-constant string) and append with commas, compile time values passed in the
-`objs` param.
+If an inline expansion results in a call `error(msgStr)` the compiler
+produces an error message containing the given `msgStr`.
 
-#### Implicit Match
+## Implicit Matches
 
 It is foreseen that many areas of typelevel programming can be done with rewrite
 methods instead of implicits. But sometimes implicits are unavoidable. The
