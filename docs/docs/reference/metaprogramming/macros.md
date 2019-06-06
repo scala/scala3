@@ -135,24 +135,24 @@ expressiveness.
 
 ### From `Expr`s to Functions and Back
 
-The `Expr` companion object contains an implicit `AsFunctionN` (for 0 <= N < 23) conversion that turns a tree
+The `Expr` companion object contains an implicit `AsFunction` conversion that turns a tree
 describing a function into a function mapping trees to trees.
 ```scala
     object Expr {
       ...
-      implied AsFunction1[T, U] for Conversion[Expr[T => U], Expr[T] => Expr[U]] ...
+      implicit class AsFunction[...](...) { ... }
     }
 ```
 This decorator gives `Expr` the `apply` operation of an applicative functor, where `Expr`s
 over function types can be applied to `Expr` arguments. The definition
-of `AsFunction1(f).apply(x)` is assumed to be functionally the same as
+of `AsFunction(f).apply(x)` is assumed to be functionally the same as
 `'{($f)($x)}`, however it should optimize this call by returning the
 result of beta-reducing `f(x)` if `f` is a known lambda expression.
 
-The `AsFunction1` decorator distributes applications of `Expr` over function
+The `AsFunction` decorator distributes applications of `Expr` over function
 arrows:
 ```scala
-    AsFunction1(_).apply: Expr[S => T] => (Expr[S] => Expr[T])
+    AsFunction(_).apply: Expr[S => T] => (Expr[S] => Expr[T])
 ```
 Its dual, let’s call it `reflect`, can be defined as follows:
 ```scala

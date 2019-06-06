@@ -64,6 +64,12 @@ object Tuple {
     case x *: xs => S[Size[xs]]
   }
 
+  /** Converts a tuple `(T1, ..., Tn)` to `(F[T1], ..., F[Tn])` */
+  type Map[Tup <: Tuple, F[_]] <: Tuple = Tup match {
+    case Unit => Unit
+    case h *: t => F[h] *: Map[t, F]
+  }
+
   /** Convert an array into a tuple of unknown arity and types */
   def fromArray[T](xs: Array[T]): Tuple = {
     val xs2 = xs match {

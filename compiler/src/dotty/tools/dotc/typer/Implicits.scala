@@ -720,7 +720,7 @@ trait Implicits { self: Typer =>
             // TupledFunction[?, (...) => R]
             tupled.dropDependentRefinement.dealias.argInfos match {
               case tupledArgs :: funRet :: Nil =>
-                defn.tupleTypes(tupledArgs) match {
+                defn.tupleTypes(tupledArgs.dealias) match {
                   case Some(funArgs) if functionTypeEqual(tupled, funArgs, funRet, fun) =>
                     // TupledFunction[?, ((...funArgs...)) => funRet]
                     funArgs.size

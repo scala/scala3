@@ -36,7 +36,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
 
   private def transformTupleCons(tree: tpd.Apply)(implicit ctx: Context): Tree = {
     val head :: tail :: Nil = tree.args
-    tupleTypes(tree.tpe) match {
+    defn.tupleTypes(tree.tpe) match {
       case Some(tpes) =>
         // Generate a the tuple directly with TupleN+1.apply
         val size = tpes.size
@@ -64,7 +64,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
 
   private def transformTupleTail(tree: tpd.Apply)(implicit ctx: Context): Tree = {
     val Apply(TypeApply(_, tpt :: Nil), tup :: Nil) = tree
-    tupleTypes(tpt.tpe, MaxTupleArity + 1) match {
+    defn.tupleTypes(tpt.tpe, MaxTupleArity + 1) match {
       case Some(tpes) =>
         // Generate a the tuple directly with TupleN-1.apply
         val size = tpes.size
@@ -111,7 +111,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   private def transformTupleConcat(tree: tpd.Apply)(implicit ctx: Context): Tree = {
     val Apply(TypeApply(_, selfTp :: thatTp :: Nil), self :: that :: Nil) = tree
 
-    (tupleTypes(selfTp.tpe), tupleTypes(that.tpe.widenTermRefExpr)) match {
+    (defn.tupleTypes(selfTp.tpe), defn.tupleTypes(that.tpe.widenTermRefExpr)) match {
       case (Some(tpes1), Some(tpes2)) =>
         // Generate a the tuple directly with TupleN+M.apply
         val n = tpes1.size
@@ -146,7 +146,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
 
   private def transformTupleApply(tree: tpd.Apply)(implicit ctx: Context): Tree = {
     val Apply(TypeApply(_, tpt :: nTpt :: Nil), tup :: nTree :: Nil) = tree
-    (tupleTypes(tpt.tpe), nTpt.tpe) match {
+    (defn.tupleTypes(tpt.tpe), nTpt.tpe) match {
       case (Some(tpes), nTpe: ConstantType) =>
         // Get the element directly with TupleM._n+1 or TupleXXL.productElement(n)
         val size = tpes.size
@@ -173,7 +173,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
 
   private def transformTupleToArray(tree: tpd.Apply)(implicit ctx: Context): Tree = {
     val Apply(_, tup :: Nil) = tree
-    tupleTypes(tup.tpe.widen, MaxTupleArity) match {
+    defn.tupleTypes(tup.tpe.widen, MaxTupleArity) match {
       case Some(tpes) =>
         val size = tpes.size
         if (size == 0) {
@@ -220,17 +220,6 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
       // TupleXXL.fromIterator(it)
       ref(defn.TupleXXL_fromIterator).appliedTo(it)
     }
-  }
-
-  private def tupleTypes(tp: Type, bound: Int = Int.MaxValue)(implicit ctx: Context): Option[List[Type]] = {
-    @tailrec def rec(tp: Type, acc: List[Type], bound: Int): Option[List[Type]] = tp match {
-      case _ if bound < 0 => Some(acc.reverse)
-      case tp: AppliedType if defn.PairClass == tp.classSymbol => rec(tp.args(1), tp.args.head :: acc, bound - 1)
-      case tp: AppliedType if defn.isTupleClass(tp.tycon.classSymbol) => Some(acc.reverse ::: tp.args)
-      case tp if tp.classSymbol == defn.UnitClass => Some(acc.reverse)
-      case _ => None
-    }
-    rec(tp.stripTypeVar, Nil, bound)
   }
 
   private def tupleSelectors(tup: Tree, size: Int)(implicit ctx: Context): List[Tree] =
