@@ -58,37 +58,25 @@ If `Config.logging == false`, this will be rewritten (simplified) to
 
 ```scala
 def factorial(n: BigInt): BigInt = {
-  /* parameters of log passed by-name (1) */
-  def msg = s"factorial($n)"
-  def op =
-    if (n == 0) 1
-    else n * factorial(n - 1)
-
-  /* inlined body of log  (2) */
-  op
+  if (n == 0) 1
+  else n * factorial(n - 1)
 }
 ```
 
-and if `true` it will be rewritten in the code below:
+and if `true` it will be rewritten to the code below:
 
 ```scala
 def factorial(n: BigInt): BigInt = {
-  /* parameters of log passed by-name (1) */
-  def msg = s"factorial($n)"
-  def op =
-    if (n == 0) 1
-    else n * factorial(n - 1)
-
-  /* inlined body of log  (2) */
-  println(s"${"  " * indent}start $msg")
-  indent += 1
+  val msgVal = s"factorial($n)"
+  println(s"${"  " * indent}start $msgVal")
+  Logger.inline$indent += 1
   val result = op
-  indent -= 1
-  println(s"${"  " * indent}$msg = $result")
+  Logger.inline$indent -= 1
+  println(s"${"  " * indent}$msgVal = $result")
   result
 }
 ```
-
+TODO: adapt to real code.
 Note (1) that the arguments corresponding to the parameters `msg` and `op` of
 the inline method `log` are defined before the inlined body (which is in this
 case simply `op` (2)). By-name parameters of the inline method correspond to
