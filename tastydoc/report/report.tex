@@ -117,7 +117,7 @@ Object implementing both \texttt{TastyExtractor} and \texttt{TastyTypeConverter}
 
 A Representation contains all the information of a specific entity. The logic is as follows: there are different traits such as \texttt{Modifiers} or \texttt{Members} and classes which implement those traits. That logic is inspired by dotty-doc Entities\footnote{\texttt{dotty/tools/dottydoc/Entity.scala}}.
 
-A Representation take a reflect class such as \texttt{reflect.ClassDef} and extract every information from it using mostly \texttt{TastyExtractor} functions while converting types to References using \texttt{TastyTypeConverter} functions.
+A Representation take a reflect class such as \texttt{reflect.ClassDef} and extract every information from it using mostly \texttt{TastyExtractor} methods while converting types to References using \texttt{TastyTypeConverter} methods.
 
 Representations then can be easily used for printing: their content is self-explanatory and their use requires no knowledge of TASTy as the implementation is not exposed from the outside.
 
@@ -165,23 +165,23 @@ with TypeParams
 \subsection{DocPrinter}
 File: \texttt{dotty/tastydoc/DocPrinter.scala}
 
-Object with functions that formats Representations and References to Markdown and writes them to files. Basically, it handles all the formatting and printing logic of the tool.
+Object with methods that formats Representations and References to Markdown and writes them to files. Basically, it handles all the formatting and printing logic of the tool.
 
 \subsection{mdscala}
 File: \texttt{dotty/tastydoc/mdscala.scala}
 
-Object that has helper functions for outputting markdown. Unfortunately, it does not handle escaping as it is a non-trivial task and would require a significant amount of time (see \autoref{sec:problems}).
+Object that has helper methods for outputting markdown. Unfortunately, it does not handle escaping as it is a non-trivial task and would require a significant amount of time (see \autoref{sec:problems}).
 
 \subsection{TastyDocConsumer}
 File: \texttt{dotty/tastydoc/TastyDocConsumer.scala}
 
-Extends TastyConsumer and consumes TASTy files to produce Representations. It needs a \texttt{mutable.HashMap[String, EmulatedPackageRepresentation]} as parameters for adding every new seen package to the map. This behaviour is required for two reasons: to link inside user documentation and to have a data structure for storing converted Representations.
+Extends TastyConsumer and consumes TASTy files to produce Representations. It needs a \texttt{mutable.HashMap[String, EmulatedPackageRepresentation]} as arguments for adding every new seen package to the map. This behaviour is required for two reasons: to link inside user documentation and to have a data structure for storing converted Representations.
 \subsection{Main}
 File: \texttt{dotty/tastydoc/Main.scala}
 
 Manages the workflow (see \autoref{sec:workflow}).
 
-Command line arguments are:
+Command line parameters are:
 \begin{itemize}
     \item \textbf{--syntax} \{\textit{wiki} or \textit{markdown}\} Syntax to use for user documentation parsing
     \item \textbf{--packagestolink} \{\textit{regex1 regex2 ...}\} Regexes to specify which packages should be linked when formatting References
