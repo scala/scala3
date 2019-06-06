@@ -21,10 +21,8 @@ package quoted {
       def show(implicit toolbox: Toolbox): String = toolbox.show(expr)
     }
 
-    type TupleOfExpr[Tup <: Tuple] <: Tuple = Tup match {
-      case Unit => Unit
-      case h *: t => Expr[h] *: TupleOfExpr[t]
-    }
+    /** Converts a tuple `(T1, ..., Tn)` to `(Expr[T1], ..., Expr[Tn])` */
+    type TupleOfExpr[Tup <: Tuple] = Tuple.Map[Tup, Expr]
 
     implicit class FunctionBetaReduction[F, Args <: Tuple, R](f: Expr[F]) given (tf: TupledFunction[F, Args => R]) {
       /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
