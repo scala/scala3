@@ -15,16 +15,12 @@
 * Check remaining TODOs/TOASKs/TOFIX
 
 # Representation
-* Make sense of the parents field
 * Id for typeparams so we can link (Do not link)
 * Alias type
 * Rework type matching
-* Remove artifcat and synthetic in package members
 
 # Output
 * Output inner class/object if not inherited
-* Doc for packages
-* Fix $
 
 # Features for beyond the project
 * TypeLambdas
@@ -42,8 +38,8 @@
 * Error in calling owner
 * Order in type matching symbol counts...
 * Remove artifacts in packages
-* Remove val for case classes
 * No way to get doc for packages?
 * Abstract flag not working
+* filter(!_.symbol.flags.is(Flags.StableRealizable)) good idea or not?
 
 * Not consistant reference (f.ex object in parents)

@@ -259,6 +259,13 @@ The compiler produces artifacts which should be removed when producing documenta
     def Definitions_FunctionClass$default$2 : Boolean
 \end{lstlisting}
 
+\paragraph{Potentially program breaking code}
+In Dottydoc one can find pieces of code that may break the program if used, such as\footnote{dotty/tools/dottydoc/model/entities.scala}:
+\begin{lstlisting}[language=scala]
+    def parents: List[Entity] = this :: this.parents
+\end{lstlisting}
+This is obviously an infinite recursion. Fortunately this method is never used.
+
 \chapter{Problems}
 \label{sec:problems}
 A few problems were encountered during the tools' development, some could not be fixed for reasons detailed below.
