@@ -17,12 +17,12 @@ object Logger {
 
   private var indent = 0
 
-  inline def log[T](msg: => String)(op: => T): T =
+  inline def log[T](msg: String, indentMargin: =>Int)(op: => T): T =
     if (Config.logging) {
       println(s"${"  " * indent}start $msg")
-      indent += 1
+      indent += indentMargin
       val result = op
-      indent -= 1
+      indent -= indentMargin
       println(s"${"  " * indent}$msg = $result")
       result
     }
@@ -34,24 +34,28 @@ The `Config` object contains a definition of the **inline value** `logging`.
 This means that `logging` is treated as a _constant value_, equivalent to its
 right-hand side `false`. The right-hand side of such an `inline val` must itself
 be a [constant expression](https://scala-lang.org/files/archive/spec/2.12/06-expressions.html#constant-expressions). Used in this
-way, `inline` is equivalent to Java and Scala 2's `final`. `final` meaning
-_inlined constant_ is still supported in Dotty, but will be phased out.
+way, `inline` is equivalent to Java and Scala 2's `final`. Note that `final`, meaning
+_inlined constant_, is still supported in Dotty, but will be phased out.
 
-The `Logger` object contains a definition of the **inline method** `log`.
-This method will always be inlined at the point of call.
+The `Logger` object contains a definition of the **inline method** `log`. This
+method will always be inlined at the point of call.
 
-In the inlined code, an if-then-else with a constant condition will be rewritten
-to its then- or else-part. Consequently, in the `log` method above
-`if (Config.logging)` with `Config.logging == true` will rewritten into its then-part.
+In the inlined code, an `if-then-else` with a constant condition will be rewritten
+to its `then`- or `else`-part. Consequently, in the `log` method above the
+`if (Config.loggi0ng)` with `Config.logging == true` will get rewritten into its
+`then`-part.
 
 Here's an example:
 
 ```scala
-def factorial(n: BigInt): BigInt =
-  log(s"factorial($n)") {
+var indentSetting = 2
+
+def factorial(n: BigInt): BigInt = {
+  log(s"factorial($n)", indentSetting) {
     if (n == 0) 1
     else n * factorial(n - 1)
   }
+}
 ```
 
 If `Config.logging == false`, this will be rewritten (simplified) to
@@ -63,61 +67,33 @@ def factorial(n: BigInt): BigInt = {
 }
 ```
 
-and if `true` it will be rewritten to the code below:
+As you notice, since neither `msg` or `indentMargin` were used, they do not
+appear in the generated code for `factorial`. Also note the body of our `log`
+method: the `else-` part reduces to just an `op`. In the generated code we do
+not generate any closures because we only refer to a by-name parameter *once*.
+Consequently, the code was inlined directly and the call was beta-reduced.
+
+In the `true` case the code will be rewritten to:
 
 ```scala
 def factorial(n: BigInt): BigInt = {
-  val msgVal = s"factorial($n)"
-  println(s"${"  " * indent}start $msgVal")
-  Logger.inline$indent += 1
-  val result = op
-  Logger.inline$indent -= 1
-  println(s"${"  " * indent}$msgVal = $result")
+  val msg = s"factorial($n)"
+  println(s"${"  " * indent}start $msg")
+  Logger.inline$indent += indentSetting
+  val result =
+    if (n == 0) 1
+    else n * factorial(n - 1)
+  Logger.inline$indent -= indentSetting
+  println(s"${"  " * indent}$msg = $result")
   result
 }
 ```
-TODO: adapt to real code.
-Note (1) that the arguments corresponding to the parameters `msg` and `op` of
-the inline method `log` are defined before the inlined body (which is in this
-case simply `op` (2)). By-name parameters of the inline method correspond to
-`def` bindings whereas by-value parameters correspond to `val` bindings. So if
-`log` was defined like this:
 
-```scala
-inline def log[T](msg: String)(op: => T): T = ...
-```
+Note, that the by-value parameter is evaluated only once, per the usual Scala
+semantics, by binding the value and reusing the `msg` through the body of
+`factorial`.
 
-we'd get
-
-```scala
-val msg = s"factorial($n)"
-```
-
-instead. This behavior is designed so that calling an inline method is
-semantically the same as calling a normal method: By-value arguments are
-evaluated before the call whereas by-name arguments are evaluated each time they
-are referenced. As a consequence, it is often preferable to make arguments of
-inline methods by-name in order to avoid unnecessary evaluations. Additionally,
-in the code above, our goal is to print the result after the evaluation of `op`.
-Imagine, if we were printing the duration of the evaluation between the two
-prints.
-
-For instance, here is how we can define a zero-overhead `foreach` method that
-translates into a straightforward while loop without any indirection or
-overhead:
-
-```scala
-inline def foreach(op: => Int => Unit): Unit = {
-  var i = from
-  while (i < end) {
-    op(i)
-    i += 1
-  }
-}
-```
-
-By contrast, if `op` is a call-by-value parameter, it would be evaluated
-separately as a closure.
+### Recursive Inline Methods
 
 Inline methods can be recursive. For instance, when called with a constant
 exponent `n`, the following method for `power` will be implemented by
@@ -333,30 +309,30 @@ inline def defaultValue[T] = inline erasedValue[T] match {
   case _: Double => Some(0.0d)
   case _: Boolean => Some(false)
   case _: Unit => Some(())
-  case _: t >: Null => Some(null)
   case _ => None
 }
 ```
 
 Then:
 ```scala
-defaultValue[Int] = Some(0)
-defaultValue[Boolean] = Some(false)
-defaultValue[String | Null] = Some(null)
-defaultValue[AnyVal] = None
+  val dInt: Some[Int] = defaultValue[Int]
+  val dDouble: Some[Double] = defaultValue[Double]
+  val dBoolean: Some[Boolean] = defaultValue[Boolean]
+  val dAny: None.type = defaultValue[Any]
 ```
 
-As another example, consider the type-level version of `toNat` above: given a
-_type_ representing a Peano number, return the integer _value_ corresponding to
-it. Here's how this can be defined:
+As another example, consider the type-level version of `toNat` above the we call
+`toIntT`: given a _type_ representing a Peano number, return the integer _value_
+corresponding to it. Consider the definitions of numbers as in the _Inline
+Match_ section aboce. Here's how `toIntT` can be defined:
 
 ```scala
-inline def toInt[N <: Nat] <: Int = inline scala.compiletime.erasedValue[N] match {
-  case _: Zero => 0
+inline def toIntT[N <: Nat] <: Int = inline scala.compiletime.erasedValue[N] match {
+  case _: Zero.type => 0
   case _: Succ[n] => toIntT[n] + 1
 }
 
-final val two = toInt[Succ[Succ[Zero]]]
+final val two = toIntT[Succ[Succ[Zero.type]]]
 ```
 
 `erasedValue` is an `erased` method so it cannot be used and has no runtime
