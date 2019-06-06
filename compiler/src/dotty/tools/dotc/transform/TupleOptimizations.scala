@@ -24,14 +24,14 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   def phaseName: String = "genericTuples"
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
-    if (!tree.symbol.exists || tree.symbol.owner != defn.DynamicTupleModuleClass) super.transformApply(tree)
+    if (!tree.symbol.exists || tree.symbol.owner != defn.DynamicTupleModuleClass) tree
     else if (tree.symbol == defn.DynamicTuple_dynamicCons) transformTupleCons(tree)
     else if (tree.symbol == defn.DynamicTuple_dynamicTail) transformTupleTail(tree)
     else if (tree.symbol == defn.DynamicTuple_dynamicSize) transformTupleSize(tree)
     else if (tree.symbol == defn.DynamicTuple_dynamicConcat) transformTupleConcat(tree)
     else if (tree.symbol == defn.DynamicTuple_dynamicApply) transformTupleApply(tree)
     else if (tree.symbol == defn.DynamicTuple_dynamicToArray) transformTupleToArray(tree)
-    else super.transformApply(tree)
+    else tree
   }
 
   private def transformTupleCons(tree: tpd.Apply)(implicit ctx: Context): Tree = {
