@@ -4,7 +4,7 @@ object uninjectivity {
 
   def absurd1[F[_], X, Y](eq: EQ[F[X], F[Y]], x: X): Y = eq match {
     case Refl() =>
-      x // should be an error
+      x // error
   }
 
   def absurd2[F[_], G[_]](eq: EQ[F[Int], G[Int]], fi: F[Int], fs: F[String]): G[Int] = eq match {

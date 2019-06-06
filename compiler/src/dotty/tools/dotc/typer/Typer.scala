@@ -607,7 +607,7 @@ class Typer extends Namer
       def handlePattern: Tree = {
         val tpt1 = typedTpt
         if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
-          constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
+          ctx.addMode(Mode.GadtConstraintInference).typeComparer.constrainPatternType(tpt1.tpe, pt)
         // special case for an abstract type that comes with a class tag
         tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
       }
@@ -3153,7 +3153,7 @@ class Typer extends Namer
       case _: RefTree | _: Literal
         if !isVarPattern(tree) &&
            !(pt <:< tree.tpe) &&
-           !(tree.tpe <:< pt)(ctx.addMode(Mode.GADTflexible)) =>
+           !ctx.addMode(Mode.GadtConstraintInference).typeComparer.constrainPatternType(tree.tpe, pt) =>
         val cmp =
           untpd.Apply(
             untpd.Select(untpd.TypedSplice(tree), nme.EQ),

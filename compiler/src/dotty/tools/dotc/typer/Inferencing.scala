@@ -180,66 +180,6 @@ object Inferencing {
   def isSkolemFree(tp: Type)(implicit ctx: Context): Boolean =
     !tp.existsPart(_.isInstanceOf[SkolemType])
 
-  /** Derive information about a pattern type by comparing it with some variant of the
-   *  static scrutinee type. We have the following situation in case of a (dynamic) pattern match:
-   *
-   *       StaticScrutineeType           PatternType
-   *                         \            /
-   *                      DynamicScrutineeType
-   *
-   *  If `PatternType` is not a subtype of `StaticScrutineeType, there's no information to be gained.
-   *  Now let's say we can prove that `PatternType <: StaticScrutineeType`.
-   *
-   *            StaticScrutineeType
-   *                  |         \
-   *                  |          \
-   *                  |           \
-   *                  |            PatternType
-   *                  |          /
-   *               DynamicScrutineeType
-   *
-   *  What can we say about the relationship of parameter types between `PatternType` and
-   *  `DynamicScrutineeType`?
-   *
-   *   - If `DynamicScrutineeType` refines the type parameters of `StaticScrutineeType`
-   *     in the same way as `PatternType` ("invariant refinement"), the subtype test
-   *     `PatternType <:< StaticScrutineeType` tells us all we need to know.
-   *   - Otherwise, if variant refinement is a possibility we can only make predictions
-   *     about invariant parameters of `StaticScrutineeType`. Hence we do a subtype test
-   *     where `PatternType <: widenVariantParams(StaticScrutineeType)`, where `widenVariantParams`
-   *     replaces all type argument of variant parameters with empty bounds.
-   *
-   *  Invariant refinement can be assumed if `PatternType`'s class(es) are final or
-   *  case classes (because of `RefChecks#checkCaseClassInheritanceInvariant`).
-   */
-  def constrainPatternType(tp: Type, pt: Type)(implicit ctx: Context): Boolean = {
-    def refinementIsInvariant(tp: Type): Boolean = tp match {
-      case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
-      case tp: TypeProxy => refinementIsInvariant(tp.underlying)
-      case tp: AndType => refinementIsInvariant(tp.tp1) && refinementIsInvariant(tp.tp2)
-      case tp: OrType => refinementIsInvariant(tp.tp1) && refinementIsInvariant(tp.tp2)
-      case _ => false
-    }
-
-    def widenVariantParams = new TypeMap {
-      def apply(tp: Type) = mapOver(tp) match {
-        case tp @ AppliedType(tycon, args) =>
-          val args1 = args.zipWithConserve(tycon.typeParams)((arg, tparam) =>
-            if (tparam.paramVariance != 0) TypeBounds.empty else arg
-          )
-          tp.derivedAppliedType(tycon, args1)
-        case tp =>
-          tp
-      }
-    }
-
-    val widePt = if (ctx.scala2Mode || refinementIsInvariant(tp)) pt else widenVariantParams(pt)
-    val narrowTp = SkolemType(tp)
-    trace(i"constraining pattern type $narrowTp <:< $widePt", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
-      narrowTp <:< widePt
-    }
-  }
-
   /** The list of uninstantiated type variables bound by some prefix of type `T` which
    *  occur in at least one formal parameter type of a prefix application.
    *  Considered prefixes are:
