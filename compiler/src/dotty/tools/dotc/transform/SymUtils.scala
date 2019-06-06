@@ -67,6 +67,10 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isParamOrAccessor(implicit ctx: Context): Boolean =
     self.is(Param) || self.is(ParamAccessor)
 
+  def derivesFromJavaEnum(implicit ctx: Context) =
+    self.is(Enum, butNot = Case) &&
+    self.info.parents.exists(p => p.typeSymbol == defn.JavaEnumClass)
+
   /** Is this a case class for which a product mirror is generated?
    *  Excluded are value classes, abstract classes and case classes with more than one
    *  parameter section.

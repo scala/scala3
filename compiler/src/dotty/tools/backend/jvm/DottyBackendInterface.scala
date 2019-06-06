@@ -703,7 +703,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def shouldEmitForwarders: Boolean =
       (sym is Flags.Module) && sym.isStatic
     def isJavaEntryPoint: Boolean = CollectEntryPoints.isJavaEntryPoint(sym)
-    def isJavaEnum = sym.is(Flags.Enum, butNot = Flags.Case) && sym.info.parents.exists(p => p.typeSymbol == defn.JavaEnumClass)
+    def isJavaEnum = sym.derivesFromJavaEnum
 
     def isClassConstructor: Boolean = toDenot(sym).isClassConstructor
     def isSerializable: Boolean = toDenot(sym).isSerializable

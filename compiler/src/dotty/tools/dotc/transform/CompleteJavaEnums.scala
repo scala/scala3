@@ -13,6 +13,7 @@ import Constants._
 import Decorators._
 import DenotTransformers._
 import dotty.tools.dotc.ast.Trees._
+import SymUtils._
 
 object CompleteJavaEnums {
   val name: String = "completeJavaEnums"
@@ -37,15 +38,9 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
     if (sym.isConstructor && (
          sym == defn.JavaEnumClass.primaryConstructor ||
-         derivesFromJavaEnum(sym.owner)))
+         sym.owner.derivesFromJavaEnum))
       addConstrParams(sym.info)
     else tp
-
-  /** Is `sym` a Scala enum class that derives (directly) from `java.lang.Enum`?
-   */
-  private def derivesFromJavaEnum(sym: Symbol)(implicit ctx: Context) =
-    sym.is(Enum, butNot = Case) &&
-    sym.info.parents.exists(p => p.typeSymbol == defn.JavaEnumClass)
 
   /** Add constructor parameters `$name: String` and `$ordinal: Int` to the end of
    *  the last parameter list of (method- or poly-) type `tp`.
@@ -101,10 +96,10 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
    */
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): DefDef = {
     val sym = tree.symbol
-    if (sym.isConstructor && derivesFromJavaEnum(sym.owner))
+    if (sym.isConstructor && sym.owner.derivesFromJavaEnum)
       cpy.DefDef(tree)(
         vparamss = tree.vparamss.init :+ (tree.vparamss.last ++ addedParams(sym, Param)))
-    else if (sym.name == nme.DOLLAR_NEW && derivesFromJavaEnum(sym.owner.linkedClass)) {
+    else if (sym.name == nme.DOLLAR_NEW && sym.owner.linkedClass.derivesFromJavaEnum) {
       val Block((tdef @ TypeDef(tpnme.ANON_CLASS, templ: Template)) :: Nil, call) = tree.rhs
       val args = tree.vparamss.last.takeRight(2).map(param => ref(param.symbol)).reverse
       val templ1 = cpy.Template(templ)(
@@ -137,7 +132,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
    */
   override def transformTemplate(templ: Template)(implicit ctx: Context): Template = {
     val cls = templ.symbol.owner
-    if (derivesFromJavaEnum(cls)) {
+    if (cls.derivesFromJavaEnum) {
       val (params, rest) = decomposeTemplateBody(templ.body)
       val addedDefs = addedParams(cls, ParamAccessor)
       val addedSyms = addedDefs.map(_.symbol.entered)
@@ -145,7 +140,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
         body = params ++ addedDefs ++ rest)
     }
-    else if (cls.isAnonymousClass && cls.owner.is(EnumCase) && derivesFromJavaEnum(cls.owner.owner.linkedClass)) {
+    else if (cls.isAnonymousClass && cls.owner.is(EnumCase) && cls.owner.owner.linkedClass.derivesFromJavaEnum) {
       def rhsOf(name: TermName) =
         templ.body.collect {
           case mdef: DefDef if mdef.name == name => mdef.rhs
