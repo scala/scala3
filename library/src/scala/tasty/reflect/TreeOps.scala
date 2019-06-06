@@ -231,6 +231,10 @@ trait TreeOps extends Core {
 
   /** Scala term selection */
   object Select {
+    /** Select a term member by symbol */
+    def apply(qualifier: Term, symbol: Symbol)(implicit ctx: Context): Select =
+      kernel.Select_apply(qualifier, symbol)
+
     /** Select a field or a non-overloaded method by name
      *
      *  @note The method will produce an assertion error if the selected
