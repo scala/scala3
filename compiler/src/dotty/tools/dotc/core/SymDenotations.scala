@@ -575,7 +575,7 @@ object SymDenotations {
     /** Is this symbol a user-defined opaque alias type? */
     def isOpaqueAlias(implicit ctx: Context): Boolean = is(Opaque) && !isClass
 
-    /** Is this symbol a module that contains of an opaque aliases? */
+    /** Is this symbol a module that contains opaque aliases? */
     def containsOpaques(implicit ctx: Context): Boolean = is(Opaque) && isClass
 
     def seesOpaques(implicit ctx: Context): Boolean =

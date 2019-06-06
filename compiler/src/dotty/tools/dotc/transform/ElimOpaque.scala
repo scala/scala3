@@ -47,8 +47,8 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
           info = cinfo.derivedClassInfo(selfInfo = strippedSelfType),
           initFlags = ref.flags &~ Opaque)
       case _ =>
-        // This is dubbious as it means that we do not see the alias from an external reference
-        // which has tupe UniqueRefDenotion instead of SymDenotation. But to correctly recompote
+        // This is dubious as it means that we do not see the alias from an external reference
+        // which has type UniqueRefDenotation instead of SymDenotation. But to correctly recompute
         // the alias we'd need a prefix, which we do not have here. To fix this, we'd have to
         // maintain a prefix in UniqueRefDenotations and JointRefDenotations.
         ref

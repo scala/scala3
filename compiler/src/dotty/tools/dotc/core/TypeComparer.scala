@@ -1094,15 +1094,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  but in this case the retries in tryLiftedToThis would be redundant.
    */
   private def liftToThis(tp: Type): Type = {
-  
+
     def findEnclosingThis(moduleClass: Symbol, from: Symbol): Type =
       if ((from.owner eq moduleClass) && from.isPackageObject && from.is(Opaque)) from.thisType
       else if (from.is(Package)) tp
       else if ((from eq moduleClass) && from.is(Opaque)) from.thisType
       else if (from eq NoSymbol) tp
       else findEnclosingThis(moduleClass, from.owner)
-      
-    tp.stripTypeVar.stripAnnots match {
+
+    tp match {
       case tp: TermRef if tp.symbol.is(Module) =>
         findEnclosingThis(tp.symbol.moduleClass, ctx.owner)
       case tp: TypeRef =>

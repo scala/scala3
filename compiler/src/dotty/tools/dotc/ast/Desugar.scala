@@ -1017,7 +1017,7 @@ object desugar {
       var tested: MemberDef = tree
       def fail(msg: String) = ctx.error(msg, tree.sourcePos)
       def checkApplicable(flag: FlagSet, test: MemberDefTest): Unit =
-        if (tested.mods.is(flag) && !(test.isDefinedAt(tree) && test(tree))) {
+        if (tested.mods.is(flag) && !test.applyOrElse(tree, _ => false)) {
           fail(i"modifier `$flag` is not allowed for this definition")
           tested = tested.withMods(tested.mods.withoutFlags(flag))
         }
