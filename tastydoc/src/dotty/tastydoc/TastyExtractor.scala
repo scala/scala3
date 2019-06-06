@@ -70,6 +70,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
         !symbol.flags.is(Flags.Private) &&
         !symbol.flags.is(Flags.Synthetic) &&
         !symbol.flags.is(Flags.Artifact) &&
+        !symbol.name.contains("$default$") &&
         !(symbol.owner.name == "Object" && ownerPath == List("java", "lang")) &&//TOASK ERROR When calling owner
         !(symbol.owner.name == "Any" && ownerPath == List("scala")) //TOASK ERROR When calling owner
     }

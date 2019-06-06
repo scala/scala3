@@ -345,9 +345,6 @@ method: length
 ### methodsWithDefault
 <pre><code class="language-scala" >def methodsWithDefault(x: Int): Nothing</pre></code>
 
-### methodsWithDefault$default$1
-<pre><code class="language-scala" >def methodsWithDefault$default$1: Int</pre></code>
-
 ### methodsWithImplicit
 <pre><code class="language-scala" >def methodsWithImplicit(x: Int)(implicit imp: Int, notImp: String): Nothing</pre></code>
 
