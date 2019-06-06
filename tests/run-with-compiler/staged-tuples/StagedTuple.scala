@@ -16,7 +16,7 @@ object StagedTuple {
     if (!specialize) '{dynamicToArray($tup)}
     else size match {
       case Some(0) =>
-        '{scala.runtime.DynamicTuple.empty$Array}
+        '{Array.emptyObjectArray}
       case Some(1) =>
         tup.as[Tuple1[Object]].bind(t => '{Array($t._1)})
       case Some(2) =>
@@ -79,7 +79,7 @@ object StagedTuple {
   }
 
   def headStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int]): Expr[Head[Tup]] = {
-    if (!specialize) '{dynamicHead($tup)}
+    if (!specialize) '{dynamicApply($tup, 0)}
     else {
       val resVal = size match {
         case Some(1) =>
@@ -95,7 +95,7 @@ object StagedTuple {
         case Some(n) if n > MaxSpecialized =>
           '{${tup.as[TupleXXL] }.elems(0)}
         case None =>
-          '{dynamicHead($tup)}
+          '{dynamicApply($tup, 0)}
       }
       resVal.as[Head[Tup]]
     }
@@ -184,7 +184,7 @@ object StagedTuple {
   }
 
   def consStaged[T <: Tuple & Singleton : Type, H : Type](self: Expr[T], x: Expr[H], tailSize: Option[Int]): Expr[H *: T] =
-  if (!specialize) '{dynamic_*:[T, H]($self, $x)}
+  if (!specialize) '{dynamicCons[H, T]($x, $self)}
   else {
     val res = tailSize match {
       case Some(0) =>
@@ -200,13 +200,13 @@ object StagedTuple {
       case Some(n) =>
         fromArrayStaged[H *: T]('{cons$Array($x, ${ toArrayStaged(self, tailSize) })}, Some(n + 1))
       case _ =>
-        '{dynamic_*:[T, H]($self, $x)}
+        '{dynamicCons[H, T]($x, $self)}
     }
     res.as[H *: T]
   }
 
   def concatStaged[Self <: Tuple & Singleton : Type, That <: Tuple & Singleton : Type](self: Expr[Self], selfSize: Option[Int], that: Expr[That], thatSize: Option[Int]): Expr[Concat[Self, That]] = {
-    if (!specialize) '{dynamic_++[Self, That]($self, $that)}
+    if (!specialize) '{dynamicConcat[Self, That]($self, $that)}
     else {
       def genericConcat(xs: Expr[Tuple], ys: Expr[Tuple]): Expr[Tuple] =
         // TODO remove ascriptions when #6126 is fixed
@@ -248,7 +248,7 @@ object StagedTuple {
           if (thatSize.contains(0)) self
           else genericConcat(self, that)
         case None =>
-          '{dynamic_++($self, $that)}
+          '{dynamicConcat($self, $that)}
       }
       res.as[Concat[Self, That]]
     }

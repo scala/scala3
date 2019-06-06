@@ -4,6 +4,8 @@ t3452e
 t3452g
 t7374
 tuples1.scala
+tuples1a.scala
+tuples1b.scala
 typeclass-derivation1.scala
 typeclass-derivation2.scala
 typeclass-derivation2a.scala
@@ -14,3 +16,4 @@ derive-generic.scala
 mixin-forwarder-overload
 t8905
 t10889
+i5257.scala
