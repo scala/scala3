@@ -614,6 +614,33 @@ class Definitions {
       JavaSerializableClass.typeRef
     else
       ctx.requiredClassRef("scala.Serializable")
+
+   @threadUnsafe lazy val JavaEnumClass: ClassSymbol = {
+    val cls = ctx.requiredClass("java.lang.Enum")
+    cls.infoOrCompleter match {
+      case completer: ClassfileLoader =>
+        cls.info = new ClassfileLoader(completer.classfile) {
+          override def complete(root: SymDenotation)(implicit ctx: Context): Unit = {
+            super.complete(root)
+            val constr = cls.primaryConstructor
+            val newInfo = constr.info match {
+              case info: PolyType =>
+                info.resType match {
+                  case meth: MethodType =>
+                    info.derivedLambdaType(
+                      resType = meth.derivedLambdaType(
+                      paramNames = Nil, paramInfos = Nil))
+                }
+            }
+            constr.info = newInfo
+            constr.termRef.recomputeDenot()
+          }
+        }
+        cls
+    }
+  }
+  def JavaEnumType = JavaEnumClass.typeRef
+
   def SerializableClass(implicit ctx: Context): ClassSymbol = SerializableType.symbol.asClass
   @threadUnsafe lazy val StringBuilderType: TypeRef      = ctx.requiredClassRef("scala.collection.mutable.StringBuilder")
   def StringBuilderClass(implicit ctx: Context): ClassSymbol = StringBuilderType.symbol.asClass
@@ -674,8 +701,6 @@ class Definitions {
   def NoneClass(implicit ctx: Context): ClassSymbol = NoneModuleRef.symbol.moduleClass.asClass
   @threadUnsafe lazy val EnumType: TypeRef                    = ctx.requiredClassRef("scala.Enum")
   def EnumClass(implicit ctx: Context): ClassSymbol = EnumType.symbol.asClass
-  @threadUnsafe lazy val JEnumType: TypeRef                   = ctx.requiredClassRef("scala.compat.JEnum")
-  def JEnumClass(implicit ctx: Context): ClassSymbol = JEnumType.symbol.asClass
   @threadUnsafe lazy val EnumValuesType: TypeRef              = ctx.requiredClassRef("scala.runtime.EnumValues")
   def EnumValuesClass(implicit ctx: Context): ClassSymbol = EnumValuesType.symbol.asClass
   @threadUnsafe lazy val ProductType: TypeRef                 = ctx.requiredClassRef("scala.Product")
@@ -1472,7 +1497,7 @@ class Definitions {
         ScalaPackageClass.enter(m)
 
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
+      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass
 
       isInitialized = true
     }
