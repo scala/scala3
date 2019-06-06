@@ -141,7 +141,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    */
   private [this] var leftRoot: Type = _
 
-  /** Are we forbidden from recording GADT constraints? */
+  /** Are we forbidden from recording GADT constraints?
+   *
+   *  This flag is set when we're already in [[Mode.GadtConstraintInference]],
+   *  to signify that we temporarily cannot record any GADT constraints.
+   */
   private[this] var frozenGadt = false
 
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
@@ -846,7 +850,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
                   isSubType(tycon1.prefix, tycon2.prefix) && {
                     // check both tycons to deal with the case when they are equal b/c of GADT constraint
                     val tyconIsInjective = tycon1sym.isClass || tycon2sym.isClass
-                    isSubArgs(args1, args2, tp1, tparams, inferGadtBounds = tyconIsInjective)
+                    def checkSubArgs() = isSubArgs(args1, args2, tp1, tparams)
+                    // we only record GADT constraints if tycon is guaranteed to be injective
+                    if (tyconIsInjective) checkSubArgs()
+                    else {
+                      val savedFrozenGadt = frozenGadt
+                      frozenGadt = true
+                      try checkSubArgs() finally frozenGadt = savedFrozenGadt
+                    }
                   }
                   if (res && touchedGADTs) GADTused = true
                   res
@@ -1103,7 +1114,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  @param  tp1       The applied type containing `args1`
    *  @param  tparams2  The type parameters of the type constructor applied to `args2`
    */
-  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: List[ParamInfo], inferGadtBounds: Boolean = false): Boolean = {
+  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: List[ParamInfo]): Boolean = {
     /** The bounds of parameter `tparam`, where all references to type paramneters
      *  are replaced by corresponding arguments (or their approximations in the case of
      *  wildcard arguments).
@@ -1167,17 +1178,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               case arg1: TypeBounds =>
                 compareCaptured(arg1, arg2)
               case _ =>
-                def isSub(tp: Type, pt: Type): Boolean = {
-                  if (inferGadtBounds) isSubType(tp, pt)
-                  else {
-                    val savedFrozenGadt = frozenGadt
-                    frozenGadt = true
-                    try isSubType(tp, pt) finally frozenGadt = savedFrozenGadt
-                  }
-                }
-
-                (v > 0 || isSub(arg2, arg1)) &&
-                (v < 0 || isSub(arg1, arg2))
+                (v > 0 || isSubType(arg2, arg1)) &&
+                (v < 0 || isSubType(arg1, arg2))
             }
         }
 
@@ -1243,7 +1245,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  @see [[necessaryEither]] for the GADTFlexible case
    */
   protected def either(op1: => Boolean, op2: => Boolean): Boolean =
-    if (ctx.mode.is(Mode.GADTflexible)) necessaryEither(op1, op2) else sufficientEither(op1, op2)
+    if (ctx.mode.is(Mode.GadtConstraintInference)) necessaryEither(op1, op2) else sufficientEither(op1, op2)
 
   /** Returns true iff the result of evaluating either `op1` or `op2` is true,
    *  trying at the same time to keep the constraint as wide as possible.
@@ -1491,7 +1493,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    */
   private def narrowGADTBounds(tr: NamedType, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = {
     val boundImprecise = approx.high || approx.low
-    ctx.mode.is(Mode.GADTflexible) && !frozenGadt && !frozenConstraint && !boundImprecise && {
+    ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint && !boundImprecise && {
       val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false

@@ -916,7 +916,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           }
 
         if (!isImplicit) caseBindingMap += ((NoSymbol, scrutineeBinding))
-        val gadtCtx = ctx.fresh.setFreshGADTBounds.addMode(Mode.GADTflexible)
+        val gadtCtx = ctx.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
         if (reducePattern(caseBindingMap, scrutineeSym.termRef, cdef.pat)(gadtCtx)) {
           val (caseBindings, from, to) = substBindings(caseBindingMap.toList, mutable.ListBuffer(), Nil, Nil)
           val guardOK = cdef.guard.isEmpty || {
