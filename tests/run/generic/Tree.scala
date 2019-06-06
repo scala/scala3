@@ -17,25 +17,25 @@ sealed trait Tree[TR] extends Enum
 object Tree {
 
   val True: Tree[Boolean] = new Tree[Boolean] {
-    def enumTag = 0
+    def ordinal = 0
     override def toString = "True"
   }
   implicit def TrueSingleton: Singleton[True.type] = new Singleton[True.type](True)
 
   val False: Tree[Boolean] = new Tree[Boolean] {
-    def enumTag = 1
+    def ordinal = 1
     override def toString = "False"
   }
   implicit def FalseSingleton: Singleton[False.type] = new Singleton[False.type](False)
 
   val Zero: Tree[Int] = new Tree[Int] {
-    def enumTag = 2
+    def ordinal = 2
     override def toString = "Zero"
   }
   implicit def ZeroSingleton: Singleton[Zero.type] = new Singleton[Zero.type](Zero)
 
   abstract case class Succ(n: Tree[Int]) extends Tree[Int] {
-    def enumTag = 3
+    def ordinal = 3
   }
   object Succ {
     def apply(x: Tree[Int]): Tree[Int] = new Succ(x) {}
@@ -46,7 +46,7 @@ object Tree {
   }
 
   abstract case class Pred(n: Tree[Int]) extends Tree[Int] {
-    def enumTag = 4
+    def ordinal = 4
   }
   object Pred {
     def apply(x: Tree[Int]): Tree[Int] = new Pred(x) {}
@@ -57,7 +57,7 @@ object Tree {
   }
 
   abstract case class IsZero(n: Tree[Int]) extends Tree[Boolean] {
-    def enumTag = 5
+    def ordinal = 5
   }
   object IsZero {
     def apply(x: Tree[Int]): Tree[Boolean] = new IsZero(x) {}
@@ -68,7 +68,7 @@ object Tree {
   }
 
   abstract case class If[T](cond: Tree[Boolean], thenp: Tree[T], elsep: Tree[T]) extends Tree[T] {
-    def enumTag = 6
+    def ordinal = 6
   }
   object If {
     def apply[T](cond: Tree[Boolean], thenp: Tree[T], elsep: Tree[T]): Tree[T] = new If(cond, thenp, elsep) {}

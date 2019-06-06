@@ -1,0 +1,9 @@
+ordinal:  0
+toString: EARTH
+Values class: class [LA;
+MONDAY : 0
+TUESDAY : 1
+SATURDAY : 2
+Stuff : 3
+By-name value: MONDAY
+Correctly failed to retrieve illegal name, message: key not found: stuff
