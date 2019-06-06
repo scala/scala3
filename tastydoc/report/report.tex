@@ -15,9 +15,9 @@
 \maketitle
 
 \begin{abstract}
-The current documentation tool (Dottydoc) relies on compiler internals and low-level code. The tool introduced here aims to build a program not dependant on compiler internals but instead use TASTy files which are output when a Scala program is compiled.
+The current documentation tool (Dottydoc) relies on compiler internals and low-level code. The tool introduced in this work aims to build a program that does not depend on compiler internals but instead uses TASTy files. The latter become output when a Scala program is compiled.
 
-It also aims at providing a tool with fewer bugs, more features and which is more easily maintainable.
+This work also aims at providing a better maintained tool with fewer bugs and more features.
 
 The documentation files are in Markdown instead of the commonly used HTML.
 \end{abstract}
@@ -26,31 +26,31 @@ The documentation files are in Markdown instead of the commonly used HTML.
 
 \chapter{Introduction}
 
-A documentation tool is a program generating information (often in the form of HTML files) about projects, it usually includes method signatures, user-written documentation, link to other pages of the documentation, etc.
-In Dotty, the current tool for generating Scala project documentation is called Dottydoc. The tool introduced here, called Tastydoc, aims to improve on Dottydoc and replace it.
+A documentation tool is a program generating information (often in the form of HTML files) about projects. Usually, that tool includes method signatures, user-written documentation, links to other pages of the documentation, etc.
+In Dotty, the current tool for generating Scala project documentation is called Dottydoc. The tool introduced here, Tastydoc, aims to improve on Dottydoc and replace it.
 
-Tastydoc makes use of TASTy files. These files are output when a program is compiled, they contain information about the source code of a program. Tastydoc consumes such files to extract information about the code, that way it is completely independent of the compiler and can be used on its own.
-The tool tries to be as close as possible to the structure proposed in Dottydoc so that it can reuse some partial portions of its code with minor modifications.
+Tastydoc uses TASTy files. These files contain information about the source code of a program. They become output when a program is compiled. Tastydoc consumes such files to extract information about the code, making its use completely independent of the compiler.
+The tool tries to be as close as possible to the structure proposed in Dottydoc so that it can reuse some portions of its code with minor modifications.
 
-Although documentation is often output as HTML files, here we choose to output Markdown files for reasons we detail further in the report.
+The documentation is often output as HTML files, but here we choose to output Markdown files for reasons detailed further in the report.
 
-The tool was developed with a few goals in mind. It should be independent of the compiler, hence the use of TASTy files. It should produce humanly consumable files, hence the choice of Markdown as an output. It should have as many features as Dottydoc and be easily maintainable.
+The tool was developed with a few goals in mind. First, it should be independent of the compiler, hence the use of TASTy files. It should also produce humanly consumable files, hence the choice of Markdown as an output. Finally, it should have as many features as Dottydoc and be as easily maintainable.
 
-The report is organized in the following structure: First, we will talk about the features of the tool, then give a high-level and a low-level architectural description. Dottydoc and Tastydoc will then be compared. We will finally talk about the problems encountered during the development and further work.
+The report is organized in the following structure: First, we will talk about the features of the tool. Then, we will give a high-level and a low-level architectural descriptions. Dottydoc and Tastydoc will then be compared. We will finally talk about the problems encountered during the development and the further work needed.
 
 \chapter{Features}
 We will list here the most important features of Tastydoc. For a comparison with Dottydoc features see \autoref{sec:comparison}.
 
 \paragraph{Accessible information}
-The tool has knowledge of the full signature of entities meaning it is aware of annotations, modifiers (including scope modifiers), parameters, type parameters, and return types.
+The tool has knowledge of the full signature of entities; that is, awareness of annotations, modifiers (including scope modifiers), parameters, type parameters, and return types.
 
 For classes, traits, and objects the following are also available (when applicable): members, parents, constructors, known subclasses and companion.
-Packages know all their members as long as all corresponding TASTy files were passed as arguments to the tool.
+Packages know all their members as long as all corresponding TASTy files are passed as arguments to the tool.
 
 User-written documentation, including individual access to defined @ such as \texttt{@param} (except \texttt{@usecase}). Two syntaxes are supported, which are the old Scaladoc Wiki-style syntax as well as Dottydoc Markdown syntax. Linking to entities (classes, methods, etc.) is possible inside the user documentation in the Wiki-style syntax using the notation like \texttt{[[scala.foo.bar]]}.
 
 \paragraph{TASTy}
-The tool relies on consuming TASTy files and is hence independent to the compiler.
+The tool relies on consuming TASTy files and is hence independent from the compiler.
 
 \paragraph{Linking}
 Tastydoc is able to produce links to types defined outside of the current TASTy files (as well as the one inside the file). This is particularly useful for linking to the types of the parameters and return types, companions, scope modifiers, and parents.
@@ -61,21 +61,21 @@ The tool produces Markdown documentation files that are easy to modify and read.
 \chapter{Architecture}
 \section{High-level architectural descriptions}
 \subsection{TASTy}
-TASTy is a data format aimed at serializing compiler information about code. Dotty produces these files for each class, object without companion class or trait, trait and package if it contains something else than classes, traits or objects. From its nature, it should be perfect to extract information from.
-This is done through the use of the reflect API and making a class extanding \texttt{TastyConsumer}\footnote{\texttt{scala/tasty/file/TastyConsumer.scala}}.
+TASTy is a data format aimed at serializing compiler information about code. Dotty produces these files for each class, object without companion class or trait, trait and package if it contains something else than classes, traits or objects. Given its nature, TASTy is perfect to extract information.
+This is done through the use of the reflect API and the making of a class extending \texttt{TastyConsumer}\footnote{\texttt{scala/tasty/file/TastyConsumer.scala}}.
 
 \subsection{High-level API}
-The tool offers an easy to use interface (called Representation, see \autoref{sec:representation}) to access all the information about an entity in a comprehensible format for anyone willing to write their own documentation tool without worrying to consume TASTy files.
+The tool offers an interface that is easy to use (called Representation, see \autoref{sec:representation}) to access all the information about an entity in a comprehensible format for anyone willing to write their own documentation tool without worrying to consume TASTy files.
 
 \subsection{Reuse of Dottydoc intermediate representation}
-The intermediate structure (Representation) is similar do Dottydoc \texttt{Entity}\footnote{\texttt{dotty/tools/dottydoc/Entity.scala}} which allows for an easy reuse of part of Dottydoc code with minor modifications. Right now, the tool uses some code from Dottydoc for parsing user documentation. But we can think of using it to produce the same HTML files as does Dottydoc but without relying on compiler internals for example. Especially that Dottydoc already has a complex templating mechanism that allows attaching blog posts to documentation and a search engine.
+The intermediate structure (Representation) is similar to Dottydoc \texttt{Entity}\footnote{\texttt{dotty/tools/dottydoc/Entity.scala}} allowing to easily reuse parts of Dottydoc code with only minor modifications. Right now, the tool uses parts of Dottydoc code for parsing user documentation. However, it could produce the same HTML files as Dottydoc without relying on compiler internals. Especially since Dottydoc already has a complex templating mechanism that allows to attach blog posts to documentation and a search engine.
 
 \subsection{Markdown}
-Outputting Markdown instead of HTML has several advantages. It is easy to edit by hand, easily previewed, and users can easily add their own text or own file. A user could, for example, write a Markdown file and link it in the documentation of a class or do the opposite link a documentation page in a Markdown file.
+Outputting Markdown instead of HTML has several advantages. It is easy to edit by hand, easily previewed, and users can easily add their own texts or files to it. A user could, for example, write a Markdown file and link it in the documentation of a class or do the opposite and link a documentation page in a Markdown file.
 
-Markdown files can be easily uploaded for preview to GitHub or GitLab, hence it would be extremely easy to upload documentation files along with the code of a project.
+Markdown files can easily be uploaded for preview to GitHub or GitLab. In that way, it is very easy to upload documentation files along with the code of a project.
 
-In addition to that lots of tools are available to consume Markdown files and output other formats such as HTML or PDF making Markdown a nice intermediate representation. From this we can imagine a pipeline like this:
+Additionally, a lot of tools are available to consume Markdown files and output other formats such as HTML or PDF, making Markdown a nice intermediate representation. We can then imagine a pipeline like this:
 \begin{center}
     \begin{tikzpicture}[node distance=2cm]
         \node (write) [process] {User writes code and documentation};
@@ -102,7 +102,7 @@ A trait containing useful methods for extracting information from the reflect AP
 \subsection{References}
 File: \texttt{dotty/tastydoc/references.scala}
 
-Object containing case classes. References are classes containing information about a specific type to be able to link to its documentation file later on. This is inspired from Dottydoc Reference\footnote{dotty/tools/dottydoc/model/references.scala}. There exists a reference for all the existing special types such as "or type". Referencing a user-defined type (such as a class or a type alias) is done using a label (the name of the type, like "String") and a path (the full path in which it is defined, like "/scala/Predef/").
+Object containing case classes. References are classes containing information about a specific type to be able to link to its documentation file later on. This is inspired by Dottydoc Reference\footnote{dotty/tools/dottydoc/model/references.scala}. There is a reference for all the existing special types such as "or type". Referencing a user-defined type (such as a class or a type alias) is done using a label (the name of the type, like "String") and a path (the full path in which it is defined, like "/scala/Predef/").
 
 \subsection{TastyTypeConverter}
 File: \texttt{dotty/tastydoc/TastyTypeConverter.scala}
@@ -115,11 +115,11 @@ File: \texttt{dotty/tastydoc/representations.scala}
 
 Object implementing both \texttt{TastyExtractor} and \texttt{TastyTypeConverter} and containing classes.
 
-A Representation contains all the information of a specific entity. The logic is as follows: there exist different trait such as \texttt{Modifiers} or \texttt{Members} and classes which implement those traits. This logic is inspired by dotty-doc Entities\footnote{\texttt{dotty/tools/dottydoc/Entity.scala}}.
+A Representation contains all the information of a specific entity. The logic is as follows: there are different traits such as \texttt{Modifiers} or \texttt{Members} and classes which implement those traits. That logic is inspired by dotty-doc Entities\footnote{\texttt{dotty/tools/dottydoc/Entity.scala}}.
 
 A Representation take a reflect class such as \texttt{reflect.ClassDef} and extract every information from it using mostly \texttt{TastyExtractor} functions while converting types to References using \texttt{TastyTypeConverter} functions.
 
-Representations can then be easily used for printing, their content is self-explanatory and no knowledge of TASTy is required to use them as the implementation is not exposed from the outside.
+Representations then can be easily used for printing: their content is self-explanatory and their use requires no knowledge of TASTy as the implementation is not exposed from the outside.
 
 We give below the existing Representation, a quick description and their signature (without parameters).
 \begin{itemize}
@@ -159,23 +159,23 @@ class TypeRepresentation(...)
 extends Representation with Modifiers
 with TypeParams 
 \end{lstlisting}
-    \item \texttt{EmulatedPackageRepresentation} This Representation is a trick for regrouping every PackageRepresentation of the same package under the same Representation. Indeed the way Tasty works is that for each entity in a package it will output a Tasty file and the top of the \texttt{reflect.Tree} is a \texttt{reflect.PackageClause}, hence when converting multiple classes of the same package, there will be multiple \texttt{PackageRepresentation} of the same package. In the point of view of usability, this is not the best and this Representation is here to counter this problem. When using an \texttt{EmulatedPackageRepresentation}, for the user it looks like he is using a \texttt{PackageRepresentation} containing all the members of the package.
+    \item \texttt{EmulatedPackageRepresentation} This Representation allow to regroup every PackageRepresentation of the same package under the same Representation. In fact, Tasty will output a Tasty file for each entity in a package and the top of the \texttt{reflect.Tree} is a \texttt{reflect.PackageClause}. Thus, there will be multiple \texttt{PackageRepresentation} of the same package when converting multiple classes of the same package. That latter point can be problematic in regard to usability. This Representation counters that issue. When using an \texttt{EmulatedPackageRepresentation}, it looks to the user as if he were using a \texttt{PackageRepresentation} containing all the members of the package.
 \end{itemize}
 
 \subsection{DocPrinter}
 File: \texttt{dotty/tastydoc/DocPrinter.scala}
 
-Object with functions for formatting Representations and References to Markdown and writing them to files. Basically, handle all the formatting and printing logic of the tool.
+Object with functions that formats Representations and References to Markdown and writes them to files. Basically, it handles all the formatting and printing logic of the tool.
 
 \subsection{mdscala}
 File: \texttt{dotty/tastydoc/mdscala.scala}
 
-Object with helper functions for outputting markdown. Unfortunately, it does not handle escaping as it is a non-trivial task and would have required a significant amount of time (see \autoref{sec:problems}).
+Object that has helper functions for outputting markdown. Unfortunately, it does not handle escaping as it is a non-trivial task and would require a significant amount of time (see \autoref{sec:problems}).
 
 \subsection{TastyDocConsumer}
 File: \texttt{dotty/tastydoc/TastyDocConsumer.scala}
 
-Extends TastyConsumer and consumes TASTy files to produce Representations. It needs a \texttt{mutable.HashMap[String, EmulatedPackageRepresentation]} as parameters for adding every new seen package to the map. This is some required behaviour for two things: linking inside user documentation and a data structure for storing converted Representations.
+Extends TastyConsumer and consumes TASTy files to produce Representations. It needs a \texttt{mutable.HashMap[String, EmulatedPackageRepresentation]} as parameters for adding every new seen package to the map. This behaviour is required for two reasons: to link inside user documentation and to have a data structure for storing converted Representations.
 \subsection{Main}
 File: \texttt{dotty/tastydoc/Main.scala}
 
@@ -195,7 +195,7 @@ Files are in the package \texttt{dotty.tastydoc.comment}.
 
 These files are taken from Dottydoc (modified to work with this architecture and output Markdown instead of HTML) and are responsible for parsing user-written documentation.
 
-Note that it is using a library called flexmark-java\footnote{\url{https://github.com/vsch/flexmark-java}} for parsing user documentation written in Markdown.
+Note that it uses a library called flexmark-java\footnote{\url{https://github.com/vsch/flexmark-java}} for parsing user documentation written in Markdown.
 
 \section{Workflow}
 \label{sec:workflow}
@@ -212,7 +212,7 @@ Main workflow is as follows:
     \end{tikzpicture}
 \end{center}
 
-As we can see, parsing user documentation is only done after converting to Representation. Indeed to be able to link methods, classes, etc. from user documentation we need to have converted everything to Representation first otherwise there is no way to know what is linked (a method? a class? an object?).
+As we can see, parsing user documentation is only done after converting to Representation. Indeed, in order to link methods, classes, etc. from user documentation we need to have first converted everything to Representation. Otherwise, there is no way to know what is linked (a method? a class? an object?).
 
 
 \chapter{Comparison between Dottydoc and Tastydoc}
@@ -229,13 +229,13 @@ Dottydoc outputs HTML/CSS which is not ideal for manual edit and it forces the u
 \section{Extra features from Tastydoc}
 \label{sec:extra}
 \paragraph{Scope modifiers}
-Dottydoc does not handle scope modifiers (such as \texttt{private[this]}) where Tastydoc does.
+Dottydoc does not handle scope modifiers (such as \texttt{private[this]}) whereas Tastydoc does.
 
 \paragraph{Known subclasses}
 Tastydoc keeps track of all seen subclasses of a class and links to their documentation files.
 
 \section{Bugs in Dottydoc that Tastydoc fixes}
-Dottydoc is not really maintained and hence does not follow the evolution in Master. Some bugs are present in Dottydoc and Tastydoc fixes all of them.
+Dottydoc is not really maintained and hence does not follow the evolution in Master. Some bugs are present in Dottydoc. Tastydoc fixes them all.
 
 \paragraph{Buggy output}
 It does not take care of colors in the \texttt{show} method and it results in faulty type or method output like \texttt{[31m2L[0m}\footnote{\url{https://dotty.epfl.ch/api/dotty/runtime/LazyVals$.html}}.
@@ -258,13 +258,13 @@ The compiler produces artifacts which should be removed when producing documenta
 
 \chapter{Problems}
 \label{sec:problems}
-A few problems were encountered during the development, some could not be fixed for reasons detailed below.
+A few problems were encountered during the tools' development, some could not be fixed for reasons detailed below.
 
 \paragraph{Markdown escaping}
-The output being in Markdown we need a library to create a Markdown AST and render it to text. The library also needs to escape the input, indeed, assume we have a method named "\#", if we do not escape it Markdown will interpret it as a header of level 1 and this is not the expected behaviour. This is where we have a problem because no such library exists in Java or Scala and taking care of Markdown escaping would have been time-consuming and was not the main topic of this project.
+We need a library to create a Markdown AST and render it to text, because the output is written in Markdown. The library also needs to escape the input. For instance, a method named "\#", will be interpreted as a header of level 1 if it is not escaped which is not the expected behaviour. This creates a problem because no such library exists in Java or Scala and taking care of Markdown escaping would be time-consuming and was not the main topic of this project.
 
 \paragraph{Linking inside code blocks}
-We use code blocks indicating we have a piece of code so that a signature is formatted and syntax highlighted. In these code blocks, we also want to be able to make links pointing to the documentation page of a type. Unfortunately, Markdown fenced code blocks do not allow to have links in them. To counter this problem we use HTML pre and code tag which are also understood by Markdown viewer but this causes two problems. First, it is not pure Markdown anymore and then we lose the language syntax highlight from Markdown fenced code blocks.
+We use code blocks indicating we have a piece of code so that a signature is formatted and syntax highlighted. In these code blocks, we also want to be able to make links pointing to the documentation page of a type. Unfortunately, Markdown fenced code blocks do not allow to have links in them. To counter this problem, we use HTML pre and code tag which are also understood by Markdown viewer. However, that causes two problems. First, it is not pure Markdown. Second, we lose the language syntax highlight from Markdown fenced code blocks.
 
 \paragraph{Section}
 Markdown does not have "division" with classes like the \texttt{<div>} tag in HTML which could be useful to better structure the page into sections. This is, however, the philosophy of Markdown and is hence an expected feature.
@@ -275,10 +275,10 @@ If a single entity contains a type and a method definition with the same name (o
 To mitigate this problem, we first output types and then values so that when linking it links to the first one appearing in the page which would be a type and it is what we want in most cases. However, this does not solve the problem of linking to type parameters and of linking to overloaded methods.
 
 \chapter{Remaining work}
-Although the project is near features complete. Some work needs to be done to perfect the tool.
+Although the project is nearly complete, some work needs to be done to perfect the tool.
 
 \paragraph{Markdown escaping}
-As seen in \autoref{sec:problems} we do not escape anything before outputting Markdown, this is a problem that needs to be addressed by making a library capable of making a Markdown AST and rendering it to text while escaping the input. This is not a trivial task as Markdown has a lot of different available syntaxes, especially when we extend Markdown with some features like tables.
+As seen in \autoref{sec:problems} we do not escape anything before outputting Markdown, this is a problem that needs to be addressed by making a library capable of making a Markdown AST and rendering it to text while escaping the input. This is not a trivial task as Markdown has a lot of different available syntaxes. Especially when we extend Markdown with features such as tables.
 
 \paragraph{Type Lambdas}
 Type Lambdas are complex types to handle and convert to References, right now they are converted to constant References. This is not the expected behaviour: the output is not the one we expect and no linking can be done this way. It is, however, acceptable for a first version as type lambdas do not appear that often.
@@ -294,13 +294,13 @@ Assume the following type:
 Right now the type will only be referenced as \texttt{Node} instead of \texttt{g.Node}.
 
 \paragraph{Default values}
-Right now, the tool does not have knowledge of default values for parameters such as \texttt{def(x: Int = 0)} because the way TASTy files keep track of them is complex and not easy to access.
+Right now, the tool does not have knowledge of default values for parameters such as \texttt{def(x: Int = 0)} because the way TASTy files keep track of them is complex and not easily accessible.
 
 \paragraph{User-documentation parsing}
 User-documentation parsing lacks two features. First, supporting \texttt{@usecase} so that a signature is displayed in the form described in the use case instead of the one in the source code. Second, supporting defined pieces of documentation with \texttt{@define name ...} and then referencing them with \texttt{\$name}\footnote{Example in \url{https://github.com/scala/scala/blob/v2.12.2/src/library/scala/collection/immutable/List.scala\#L73}}.
 
 \paragraph{HTML/CSS}
-Markdown files for documentation are good for all the reasons mentioned in this report but some people still want a good HTML/CSS documentation. The aim here would be to either take back what Dottydoc has and use it with our code, either build something new. The first case should be pretty straightforward as our intermediate representation looks very much alike Dottydoc. The biggest change would be for References as links are handled a bit differently in this tool.
+Markdown files for documentation are good for all the reasons mentioned in this report. However, some people still want a good HTML/CSS documentation. The aim would be to either take back what Dottydoc has and use it with our code or build something new. The first case would be pretty straightforward as our intermediate representation looks very similar to Dottydoc. The biggest modification would be made to the References as links are handled a bit differently in this tool.
 
 \end{document}
 
