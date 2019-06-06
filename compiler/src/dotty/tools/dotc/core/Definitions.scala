@@ -605,9 +605,9 @@ class Definitions {
   @threadUnsafe lazy val SystemClass: ClassSymbol               = ctx.requiredClass("java.lang.System")
   @threadUnsafe lazy val SystemModule: Symbol              = SystemClass.linkedClass
 
-  lazy val NoSuchElementExceptionClass = ctx.requiredClass("java.util.NoSuchElementException")
+  @threadUnsafe lazy val NoSuchElementExceptionClass = ctx.requiredClass("java.util.NoSuchElementException")
   def NoSuchElementExceptionType = NoSuchElementExceptionClass.typeRef
-  lazy val IllegalArgumentExceptionClass = ctx.requiredClass("java.lang.IllegalArgumentException")
+  @threadUnsafe lazy val IllegalArgumentExceptionClass = ctx.requiredClass("java.lang.IllegalArgumentException")
   def IllegalArgumentExceptionType = IllegalArgumentExceptionClass.typeRef
 
   // in scalac modified to have Any as parent
@@ -708,8 +708,6 @@ class Definitions {
   def EnumClass(implicit ctx: Context): ClassSymbol = EnumType.symbol.asClass
     @threadUnsafe lazy val Enum_ordinalR: TermRef = EnumClass.requiredMethodRef(nme.ordinal)
     def Enum_ordinal(implicit ctx: Context): Symbol = Enum_ordinalR.symbol
-  @threadUnsafe lazy val JEnumType: TypeRef                   = ctx.requiredClassRef("scala.compat.JEnum")
-  def JEnumClass(implicit ctx: Context): ClassSymbol = JEnumType.symbol.asClass
   @threadUnsafe lazy val EnumValuesType: TypeRef              = ctx.requiredClassRef("scala.runtime.EnumValues")
   def EnumValuesClass(implicit ctx: Context): ClassSymbol = EnumValuesType.symbol.asClass
   @threadUnsafe lazy val ProductType: TypeRef                 = ctx.requiredClassRef("scala.Product")

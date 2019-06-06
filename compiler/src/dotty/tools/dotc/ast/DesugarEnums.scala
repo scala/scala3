@@ -101,16 +101,16 @@ object DesugarEnums {
         .withFlags(Private)
 
     val valuesOfExnMessage = Apply(
-      Select(Literal(Constant("key not found: ")), "concat".toTermName)
-    , Ident(nme.nameDollar) :: Nil)
+      Select(Literal(Constant("key not found: ")), "concat".toTermName),
+      Ident(nme.nameDollar) :: Nil)
     val valuesOfBody = Try(
-      expr = Apply(valuesDot("fromName"), Ident(nme.nameDollar) :: Nil)
-    , cases = CaseDef(
-        pat = Typed(Ident(nme.DEFAULT_EXCEPTION_NAME), TypeTree(defn.NoSuchElementExceptionType))
-      , guard = EmptyTree
-      , body = Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(valuesOfExnMessage :: Nil)))
-      ) :: Nil
-    , finalizer = EmptyTree
+      expr = Apply(valuesDot("fromName"), Ident(nme.nameDollar) :: Nil),
+      cases = CaseDef(
+        pat = Typed(Ident(nme.DEFAULT_EXCEPTION_NAME), TypeTree(defn.NoSuchElementExceptionType)),
+        guard = EmptyTree,
+        body = Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(valuesOfExnMessage :: Nil)))
+      ) :: Nil,
+      finalizer = EmptyTree
     )
     val valueOfDef = DefDef(nme.valueOf, Nil, List(param(nme.nameDollar, defn.StringType) :: Nil),
       TypeTree(), valuesOfBody)
