@@ -74,11 +74,8 @@ object DesugarEnums {
     else if (isEnumCase(cdef)) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Final))
     else cdef
 
-  private def valuesDotTerm(name: TermName)(implicit src: SourceFile) =
-    Select(Ident(nme.DOLLAR_VALUES), name)
-
-  private def valuesDot(name: String)(implicit src: SourceFile) =
-    valuesDotTerm(name.toTermName)
+  private def valuesDot(name: PreName)(implicit src: SourceFile) =
+    Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
 
   private def registerCall(implicit ctx: Context): List[Tree] =
     if (enumClass.typeParams.nonEmpty) Nil
@@ -97,7 +94,7 @@ object DesugarEnums {
    */
   private def enumScaffolding(implicit ctx: Context): List[Tree] = {
     val valuesDef =
-      DefDef(nme.values, Nil, Nil, TypeTree(), Select(valuesDotTerm(nme.values), nme.toArray))
+      DefDef(nme.values, Nil, Nil, TypeTree(), Select(valuesDot(nme.values), nme.toArray))
     val privateValuesDef =
       ValDef(nme.DOLLAR_VALUES, TypeTree(),
         New(TypeTree(defn.EnumValuesType.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
