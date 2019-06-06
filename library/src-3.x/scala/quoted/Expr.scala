@@ -24,13 +24,13 @@ package quoted {
     /** Converts a tuple `(T1, ..., Tn)` to `(Expr[T1], ..., Expr[Tn])` */
     type TupleOfExpr[Tup <: Tuple] = Tuple.Map[Tup, Expr]
 
-    implicit class FunctionBetaReduction[F, Args <: Tuple, R](f: Expr[F]) given (tf: TupledFunction[F, Args => R]) {
+    implicit class AsFunction[F, Args <: Tuple, R](f: Expr[F]) given (tf: TupledFunction[F, Args => R]) {
       /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
       def apply[G] given (tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]]): G =
         tg.untupled(args => new FunctionAppliedTo[R](f, args.toArray.map(_.asInstanceOf[Expr[_]])))
     }
 
-    implicit class ContextualFunctionBetaReduction[F, Args <: Tuple, R](f: Expr[F]) given (tf: TupledFunction[F, given Args => R]) {
+    implicit class AsContextualFunction[F, Args <: Tuple, R](f: Expr[F]) given (tf: TupledFunction[F, given Args => R]) {
       /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
       def apply[G] given (tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]]): G =
         tg.untupled(args => new FunctionAppliedTo[R](f, args.toArray.map(_.asInstanceOf[Expr[_]])))
