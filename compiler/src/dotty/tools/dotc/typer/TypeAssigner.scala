@@ -15,6 +15,8 @@ import collection.mutable
 import reporting.diagnostic.messages._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 
+import scala.annotation.threadUnsafe
+
 trait TypeAssigner {
   import tpd._
 
@@ -91,7 +93,7 @@ trait TypeAssigner {
    */
   def avoid(tp: Type, symsToAvoid: => List[Symbol])(implicit ctx: Context): Type = {
     val widenMap = new ApproximatingTypeMap {
-      lazy val forbidden = symsToAvoid.toSet
+      @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(sym: Symbol) = !sym.isStatic && forbidden.contains(sym)
       def partsToAvoid = new NamedPartsAccumulator(tp => toAvoid(tp.symbol))
       def apply(tp: Type): Type = tp match {

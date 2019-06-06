@@ -32,7 +32,7 @@ import reporting.trace
 import Constants.{Constant, IntTag, LongTag}
 import dotty.tools.dotc.reporting.diagnostic.messages.{UnapplyInvalidReturnType, NotAnExtractor, UnapplyInvalidNumberOfArguments}
 import Denotations.SingleDenotation
-import annotation.constructorOnly
+import annotation.{constructorOnly, threadUnsafe}
 
 object Applications {
   import tpd._
@@ -311,13 +311,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** The function's type after widening and instantiating polytypes
      *  with TypeParamRefs in constraint set
      */
-    lazy val methType: Type = liftedFunType.widen match {
+    @threadUnsafe lazy val methType: Type = liftedFunType.widen match {
       case funType: MethodType => funType
       case funType: PolyType => constrained(funType).resultType
       case tp => tp //was: funType
     }
 
-    lazy val liftedFunType: Type =
+    @threadUnsafe lazy val liftedFunType: Type =
       if (needLiftFun) {
         liftFun()
         normalizedFun.tpe
@@ -327,7 +327,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** The arguments re-ordered so that each named argument matches the
      *  same-named formal parameter.
      */
-    lazy val orderedArgs: List[Arg] =
+    @threadUnsafe lazy val orderedArgs: List[Arg] =
       if (hasNamedArg(args))
         reorder(args.asInstanceOf[List[untpd.Tree]]).asInstanceOf[List[Arg]]
       else
@@ -618,7 +618,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def fail(msg: => Message): Unit =
       ok = false
     def appPos: SourcePosition = NoSourcePosition
-    lazy val normalizedFun:   Tree = ref(methRef)
+    @threadUnsafe lazy val normalizedFun:   Tree = ref(methRef)
     init()
   }
 

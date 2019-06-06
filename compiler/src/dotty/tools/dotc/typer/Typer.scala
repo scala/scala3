@@ -1477,18 +1477,8 @@ class Typer extends Namer
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     if (sym.is(Inline, butNot = DeferredOrTermParamOrAccessor))
       checkInlineConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of inline $sym")
-    patchIfLazy(vdef1)
     patchFinalVals(vdef1)
     vdef1.setDefTree
-  }
-
-  /** Add a @volitile to lazy vals when rewriting from Scala2 */
-  private def patchIfLazy(vdef: ValDef)(implicit ctx: Context): Unit = {
-    val sym = vdef.symbol
-    if (sym.is(Lazy, butNot = Deferred | Module | Synthetic) && !sym.isVolatile &&
-        ctx.scala2Mode && ctx.settings.rewrite.value.isDefined &&
-        !ctx.isAfterTyper)
-      patch(Span(toUntyped(vdef).span.start), "@volatile ")
   }
 
   /** Adds inline to final vals with idempotent rhs

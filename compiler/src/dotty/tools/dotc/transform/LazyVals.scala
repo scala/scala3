@@ -74,18 +74,18 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     else {
       val isField = sym.owner.isClass
       if (isField) {
-        if (sym.isVolatile ||
-           (sym.is(Module)/* || ctx.scala2Mode*/) &&
-            // TODO assume @volatile once LazyVals uses static helper constructs instead of
-            // ones in the companion object.
-           !sym.is(Synthetic))
-            // module class is user-defined.
-            // Should be threadsafe, to mimic safety guaranteed by global object
-          transformMemberDefVolatile(tree)
-        else if (sym.is(Module)) // synthetic module
+        if (sym.is(SyntheticModule))
           transformSyntheticModule(tree)
+        else if (sym.isThreadUnsafe) {
+          if (sym.is(Module)) {
+            ctx.error(em"@threadUnsafe is only supported on lazy vals", sym.sourcePos)
+            transformMemberDefThreadSafe(tree)
+          }
+          else
+            transformMemberDefThreadUnsafe(tree)
+        }
         else
-          transformMemberDefNonVolatile(tree)
+          transformMemberDefThreadSafe(tree)
       }
       else transformLocalDef(tree)
     }
@@ -196,7 +196,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       ref(field).becomes(nullLiteral)
     }
 
-  /** Create non-threadsafe lazy accessor equivalent to such code
+  /** Create thread-unsafe lazy accessor equivalent to such code
     * ```
     * def methodSymbol() = {
     *   if (!flag) {
@@ -208,7 +208,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     * }
     * ```
     */
-  def mkNonThreadSafeDef(sym: Symbol, flag: Symbol, target: Symbol, rhs: Tree)(implicit ctx: Context): DefDef = {
+  def mkThreadUnsafeDef(sym: Symbol, flag: Symbol, target: Symbol, rhs: Tree)(implicit ctx: Context): DefDef = {
     val targetRef = ref(target)
     val flagRef = ref(flag)
     val stats = targetRef.becomes(rhs) :: flagRef.becomes(Literal(Constant(true))) :: nullOut(nullableFor(sym))
@@ -220,7 +220,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     DefDef(sym.asTerm, Block(List(init), targetRef.ensureApplied))
   }
 
-  /** Create non-threadsafe lazy accessor for not-nullable types  equivalent to such code
+  /** Create thread-unsafe lazy accessor for not-nullable types  equivalent to such code
     * ```
     * def methodSymbol() = {
     *   if (target eq null) {
@@ -231,7 +231,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     * }
     * ```
     */
-  def mkDefNonThreadSafeNonNullable(sym: Symbol, target: Symbol, rhs: Tree)(implicit ctx: Context): DefDef = {
+  def mkDefThreadUnsafeNonNullable(sym: Symbol, target: Symbol, rhs: Tree)(implicit ctx: Context): DefDef = {
     val targetRef = ref(target)
     val stats = targetRef.becomes(rhs) :: nullOut(nullableFor(sym))
     val init = If(
@@ -242,7 +242,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     DefDef(sym.asTerm, Block(List(init), targetRef.ensureApplied))
   }
 
-  def transformMemberDefNonVolatile(x: ValOrDefDef)(implicit ctx: Context): Thicket = {
+  def transformMemberDefThreadUnsafe(x: ValOrDefDef)(implicit ctx: Context): Thicket = {
     val claz = x.symbol.owner.asClass
     val tpe = x.tpe.widen.resultType.widen
     assert(!(x.symbol is Mutable))
@@ -255,13 +255,13 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val containerTree = ValDef(containerSymbol, defaultValue(tpe))
     if (x.tpe.isNotNull && tpe <:< defn.ObjectType) {
       // can use 'null' value instead of flag
-      Thicket(containerTree, mkDefNonThreadSafeNonNullable(x.symbol, containerSymbol, x.rhs))
+      Thicket(containerTree, mkDefThreadUnsafeNonNullable(x.symbol, containerSymbol, x.rhs))
     }
     else {
       val flagName = LazyBitMapName.fresh(x.name.asTermName)
       val flagSymbol = ctx.newSymbol(x.symbol.owner, flagName,  containerFlags | Private, defn.BooleanType).enteredAfter(this)
       val flag = ValDef(flagSymbol, Literal(Constant(false)))
-      Thicket(containerTree, flag, mkNonThreadSafeDef(x.symbol, flagSymbol, containerSymbol, x.rhs))
+      Thicket(containerTree, flag, mkThreadUnsafeDef(x.symbol, flagSymbol, containerSymbol, x.rhs))
     }
   }
 
@@ -365,7 +365,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     DefDef(methodSymbol, loop)
   }
 
-  def transformMemberDefVolatile(x: ValOrDefDef)(implicit ctx: Context): Thicket = {
+  def transformMemberDefThreadSafe(x: ValOrDefDef)(implicit ctx: Context): Thicket = {
     assert(!(x.symbol is Mutable))
 
     val tpe = x.tpe.widen.resultType.widen

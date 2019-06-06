@@ -8,7 +8,6 @@ import dotty.tools.io.AbstractFile
 import scala.language.implicitConversions
 import scala.tools.asm
 
-
 /* Interface to abstract over frontend inside backend.
  * Intended to be implemented by both scalac and dotc
  */

@@ -1,71 +1,73 @@
+import scala.annotation.threadUnsafe
+
 class VCInt(val x: Int) extends AnyVal
 class VCString(val x: String) extends AnyVal
 
 class LazyNullable(a: => Int) {
-  lazy val l0 = a // null out a
+  @threadUnsafe lazy val l0 = a // null out a
 
   private[this] val b = "B"
-  lazy val l1 = b // null out b
+  @threadUnsafe lazy val l1 = b // null out b
 
   private[this] val c = "C"
-  lazy val l2 = c // null out c
+  @threadUnsafe lazy val l2 = c // null out c
 
   private[this] val d = "D"
-  lazy val l3 = d + d // null out d (Scalac require single use?)
+  @threadUnsafe lazy val l3 = d + d // null out d (Scalac require single use?)
 
   private [this] val e = "E"
-  lazy val l4 = try e finally () // null out e
+  @threadUnsafe lazy val l4 = try e finally () // null out e
 
   private[this] val i = "I"
   // null out i even though the try ends up lifted, because the LazyVals phase runs before the LiftTry phase
-  lazy val l5 = try i catch { case e: Exception => () }
+  @threadUnsafe lazy val l5 = try i catch { case e: Exception => () }
 }
 
 object LazyNullable2 {
   private[this] val a = "A"
-  lazy val l0 = a // null out a
+  @threadUnsafe lazy val l0 = a // null out a
 }
 
 class LazyNotNullable {
   private[this] val a = 'A'.toInt // not nullable type
-  lazy val l0 = a
+  @threadUnsafe lazy val l0 = a
 
   private[this] val b = new VCInt('B'.toInt) // not nullable type
-  lazy val l1 = b
+  @threadUnsafe lazy val l1 = b
 
   private[this] val c = new VCString("C") // should be nullable but is not??
-  lazy val l2 = c
+  @threadUnsafe lazy val l2 = c
 
-  private[this] lazy val d = "D" // not nullable because lazy
-  lazy val l3 = d
+  @threadUnsafe private[this]  lazy val d = "D" // not nullable because lazy
+  @threadUnsafe lazy val l3 = d
 
   private val e = "E" // not nullable because not private[this]
-  lazy val l4 = e
+  @threadUnsafe lazy val l4 = e
 
-  private[this] val f = "F" // not nullable because used in mutiple lazy vals
-  lazy val l5 = f
-  lazy val l6 = f
+  private[this] val f = "F" // not nullable because used in mutiple @threadUnsafe lazy vals
+  @threadUnsafe lazy val l5 = f
+  @threadUnsafe lazy val l6 = f
 
-  private[this] val g = "G" // not nullable because used outside a lazy val initializer
+  private[this] val g = "G" // not nullable because used outside a @threadUnsafe lazy val initializer
   def foo = g
-  lazy val l7 = g
+  @threadUnsafe lazy val l7 = g
 
-  private[this] val h = "H" // not nullable because field and lazy val not defined in the same class
+  private[this] val h = "H" // not nullable because field and @threadUnsafe lazy val not defined in the same class
   class Inner {
-    lazy val l8 = h
+    @threadUnsafe lazy val l8 = h
   }
 
 }
 
 trait LazyTrait {
   private val a = "A"
-  lazy val l0 = a
+  @threadUnsafe lazy val l0 = a
 }
 
 class Foo(val x: String)
 
 class LazyNotNullable2(x: String) extends Foo(x) {
-  lazy val y = x // not nullable. Here x is super.x
+  @threadUnsafe lazy val y = x // not nullable. Here x is super.x
 }
 
 

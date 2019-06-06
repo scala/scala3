@@ -3,7 +3,7 @@ class Sub extends T
 
 trait DT {
 
-  @volatile lazy val dx = 2
+  lazy val dx = 2
 
 }
 

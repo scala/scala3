@@ -54,6 +54,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isTypeTestOrCast(implicit ctx: Context): Boolean =
     isTypeCast || isTypeTest
 
+  def isThreadUnsafe(implicit ctx: Context): Boolean = self.hasAnnotation(defn.ThreadUnsafeAnnot)
+
   def isVolatile(implicit ctx: Context): Boolean = self.hasAnnotation(defn.VolatileAnnot)
 
   def isAnyOverride(implicit ctx: Context): Boolean = self.is(Override) || self.is(AbsOverride)
