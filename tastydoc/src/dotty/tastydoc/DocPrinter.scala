@@ -356,7 +356,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
     htmlPreCode(
       formatAnnotations(representation.annotations, declarationPath) +
       formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
-      "val " +
+      (if(representation.isVar) "var " else "val ") +
       representation.name +
       ": " +
       formatReferences(representation.returnValue, declarationPath)

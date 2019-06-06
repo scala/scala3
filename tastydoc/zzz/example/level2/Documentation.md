@@ -242,6 +242,9 @@ def someScalaCode(x: String) = println("Hello " + x)
 ### headOption
 <pre><code class="language-scala" >def headOption: Option[A]</pre></code>
 
+### iAmAVar_=
+<pre><code class="language-scala" >def iAmAVar_=(x$1: Nothing): Unit</pre></code>
+
 ### indexOf
 <pre><code class="language-scala" >def indexOf[B](elem: B, from: Int): Int</pre></code>
 
@@ -621,6 +624,9 @@ Test methods with params
 
 ### complexTypeVal
 <pre><code class="language-scala" >val complexTypeVal: Int | List[List[<a href="./Documentation.md#T">T</a>]] & String | (Double | Int, Double) | (Int) => String</pre></code>
+
+### iAmAVar
+<pre><code class="language-scala" >var iAmAVar: Nothing</pre></code>
 
 ### protectedVal
 <pre><code class="language-scala" >protected val protectedVal: Nothing</pre></code>

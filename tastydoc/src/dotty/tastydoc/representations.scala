@@ -173,6 +173,8 @@ object representations extends TastyExtractor {
     override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val returnValue = convertTypeToReference(reflect)(internal.tpt.tpe)
     override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
+    val isVar: Boolean = internal.symbol.flags.is(Flags.Mutable)
+
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 

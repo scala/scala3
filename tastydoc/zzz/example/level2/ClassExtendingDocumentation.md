@@ -198,6 +198,9 @@ def someScalaCode(x: String) = println("Hello " + x)
 ### headOption
 <pre><code class="language-scala" >def headOption: Option[A]</pre></code>
 
+### iAmAVar_=
+<pre><code class="language-scala" >def iAmAVar_=(x$1: Nothing): Unit</pre></code>
+
 ### indexOf
 <pre><code class="language-scala" >def indexOf[B](elem: B, from: Int): Int</pre></code>
 
