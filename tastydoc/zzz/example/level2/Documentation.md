@@ -397,6 +397,9 @@ Test methods with params
 ### prefixLength
 <pre><code class="language-scala" >def prefixLength(p: (A) => Boolean): Int</pre></code>
 
+### privateMethod
+<pre><code class="language-scala" >private def privateMethod: Nothing</pre></code>
+
 ### product
 <pre><code class="language-scala" >def product[B](num: Numeric[B]): B</pre></code>
 
@@ -613,9 +616,6 @@ Test methods with params
 ### zipWithIndex
 <pre><code class="language-scala" >def zipWithIndex[A1, That](bf: CanBuildFrom[Repr, (A1, Int), That]): That</pre></code>
 
-### IAmACaseObject
-<pre><code class="language-scala" >final val IAmACaseObject: <a href="./Documentation/IAmACaseObject$.md">IAmACaseObject</a></pre></code>
-
 ### c2
 <pre><code class="language-scala" >val c2: List[<a href="./Documentation.md#T">T</a>]</pre></code>
 
@@ -625,14 +625,14 @@ Test methods with params
 ### iAmAVar
 <pre><code class="language-scala" >var iAmAVar: Nothing</pre></code>
 
+### privateVal
+<pre><code class="language-scala" >private val privateVal: Nothing</pre></code>
+
 ### protectedVal
 <pre><code class="language-scala" >protected val protectedVal: Nothing</pre></code>
 
 ### refinementTest
 <pre><code class="language-scala" >val refinementTest: <a href="./Documentation/Graph.md">Graph</a>{ def x: Int; def x2: <a href="./Documentation/innerDocumentationClass.md">innerDocumentationClass</a>; type Y: String; val z: Boolean }</pre></code>
-
-### testObject
-<pre><code class="language-scala" >final val testObject: <a href="./Documentation/testObject$.md">testObject</a></pre></code>
 
 ### v
 <pre><code class="language-scala" >@showAsInfix val v: Int</pre></code>
