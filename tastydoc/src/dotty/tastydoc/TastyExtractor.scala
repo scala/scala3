@@ -58,7 +58,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     }
   }
 
-  def extractClassMembers(reflect: Reflection)(body: List[reflect.Statement], symbol: reflect.ClassDefSymbol, parentRepresentation: Some[Representation]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) : List[Representation] = {
+  def extractClassMembers(reflect: Reflection)(body: List[reflect.Statement], symbol: reflect.ClassDefSymbol, parentRepresentation: Some[Representation]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) : List[Representation with Modifiers] = {
     import reflect._
 
     /** Filter fields which shouldn't be displayed in the doc
@@ -81,6 +81,10 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
         case x => Some(x)
       }.filter(x => filterSymbol(x.symbol)).map(convertToRepresentation(reflect)(_, parentRepresentation)) ++
     symbol.methods.filter(x => filterSymbol(x)).map{x => convertToRepresentation(reflect)(x.tree, parentRepresentation)})
+    .flatMap{
+      case r: Representation with Modifiers => Some(r)
+      case _ => None
+    }
     .sortBy(_.name)
   }
 

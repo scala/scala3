@@ -22,7 +22,7 @@ object representations extends TastyExtractor {
   }
 
   trait Members {
-    def members : List[Representation] //Is a def because so we can override with either a var or a val (Needed for EmulatedPackage)
+    def members : List[Representation] //Is a def so we can override with either a var or a val (Needed for EmulatedPackage)
   }
 
   trait Modifiers {
@@ -134,7 +134,7 @@ object representations extends TastyExtractor {
     override val name = internal.name
 
     override val companion = extractCompanion(reflect)(internal.symbol.companionModule, internal.symbol.companionClass, !isObject)
-    override val members = extractClassMembers(reflect)(internal.body, internal.symbol, Some(this))
+    override val members: List[Representation with Modifiers] = extractClassMembers(reflect)(internal.body, internal.symbol, Some(this))
 
     //Add itself to parents subclasses:
     parentRepresentation match {

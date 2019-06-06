@@ -221,27 +221,29 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
 
     def formatMembers(): String = {
 
-      val typeMembers = representation.members.flatMap {
+      val nonPrivateMembers = representation.members.filter(!_.isPrivate)
+
+      val typeMembers = nonPrivateMembers.flatMap {
         case r: TypeRepresentation => Some(r)
         case _ => None
       }
-      val objectMembers = representation.members.flatMap {
+      val objectMembers = nonPrivateMembers.flatMap {
         case r: ClassRepresentation if r.isObject => Some(r)
         case _ => None
       }
-      val classMembers = representation.members.flatMap {
+      val classMembers = nonPrivateMembers.flatMap {
         case r:  ClassRepresentation if !r.isObject && !r.isTrait => Some(r)
         case _ => None
       }
-      val traitMembers = representation.members.flatMap {
+      val traitMembers = nonPrivateMembers.flatMap {
         case r: ClassRepresentation if r.isTrait => Some(r)
         case _ => None
       }
-      val defMembers = representation.members.flatMap {
+      val defMembers = nonPrivateMembers.flatMap {
         case r: DefRepresentation => Some(r)
         case _ => None
       }
-      val valMembers = representation.members.flatMap {
+      val valMembers = nonPrivateMembers.flatMap {
         case r: ValRepresentation => Some(r)
         case _ => None
       }

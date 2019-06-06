@@ -397,9 +397,6 @@ Test methods with params
 ### prefixLength
 <pre><code class="language-scala" >def prefixLength(p: (A) => Boolean): Int</pre></code>
 
-### privateMethod
-<pre><code class="language-scala" >private def privateMethod: Nothing</pre></code>
-
 ### product
 <pre><code class="language-scala" >def product[B](num: Numeric[B]): B</pre></code>
 
@@ -624,9 +621,6 @@ Test methods with params
 
 ### iAmAVar
 <pre><code class="language-scala" >var iAmAVar: Nothing</pre></code>
-
-### privateVal
-<pre><code class="language-scala" >private val privateVal: Nothing</pre></code>
 
 ### protectedVal
 <pre><code class="language-scala" >protected val protectedVal: Nothing</pre></code>

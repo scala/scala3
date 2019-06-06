@@ -8,9 +8,6 @@ $factoryInfo
 
 ## Known subclasses:
 <a href="./List$/SerializationProxy.md">SerializationProxy</a>
-## Concrete Type Members:
-### SerializationProxy
-<pre><code class="language-scala" >@<a href="../../SerialVersionUID.md">SerialVersionUID</a> private class <a href="./List$/SerializationProxy.md">SerializationProxy</a></pre></code>
 ## Concrete Value Members:
 ### ReusableCBF
 <pre><code class="language-scala" >def ReusableCBF: GenericCanBuildFrom[<a href="../../Nothing.md">Nothing</a>]</pre></code>
