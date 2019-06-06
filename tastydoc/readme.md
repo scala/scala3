@@ -4,8 +4,8 @@ This tool produces Markdown documentation files for Scala projects using TASTy f
 
 ## How to run
 Call main with the following arguments to produce Markdown documentation files: (Omitting { and })
-* **-syntax** {*wiki or markdown*} Syntax for parsing user documentation
-* **-packagestolink** {*regex1 regex2 ...*} Regexes to specify which packages should be linked when formatting Reference
-* **-classpath** {*URI*} Extra classpath for input files
+* **--syntax** {*wiki or markdown*} Syntax for parsing user documentation
+* **--packagestolink** {*regex1 regex2 ...*} Regexes to specify which packages should be linked when formatting Reference
+* **--classpath** {*URI*} Extra classpath for input files
 * **-i** {*file1 file2 ...*} TASTy files
 * **-d** {*dir1 dir2 ...*} Directories to recursively find TASTy files

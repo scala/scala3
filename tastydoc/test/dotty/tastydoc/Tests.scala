@@ -51,12 +51,12 @@ class Tests {
   // }
   @Test def testDocumentation(): Unit = {
     Main.main(Array(
-      "-classpath",
+      "--classpath",
       "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.16/classes",
-      "-syntax",
+      "--syntax",
       "wiki",
       //"markdown",
-      "-packagestolink",
+      "--packagestolink",
       "example.*",
       //"scala.*",
       "-i",
@@ -73,11 +73,11 @@ class Tests {
   }
   @Test def testListFromLib(): Unit = {
     Main.main(Array(
-      "-classpath",
+      "--classpath",
       "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.16/classes",
-      "-syntax",
+      "--syntax",
       "wiki",
-      "-packagestolink",
+      "--packagestolink",
       "scala.*",
       "-i",
       "scala.collection.immutable.List"
@@ -85,11 +85,11 @@ class Tests {
   }
   // @Test def testDotty(): Unit = {
   //   Main.main(Array(
-  //     "-classpath",
+  //     "--classpath",
   //     "tastydoc/dotty-0.15.0-RC1/lib",
-  //     "-syntax",
+  //     "--syntax",
   //     "wiki",
-  //     "-packagestolink",
+  //     "--packagestolink",
   //     "dotty.*",
   //     "scala.internal.*",
   //     "scala.annotation.*",

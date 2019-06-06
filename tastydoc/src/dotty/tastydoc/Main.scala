@@ -10,15 +10,15 @@ import java.io._
 object Main {
 
   /** Call main with the following arguments to produce Markdown documentation files: (Omitting { and })
-   * * **-syntax** {*wiki or markdown*} Syntax for parsing user documentation
-   * * **-packagestolink** {*regex1 regex2 ...*} Regexes to specify which packages should be linked when formatting Reference
-   * * **-classpath** {*URI*} Extra classpath for input files
+   * * **--syntax** {*wiki or markdown*} Syntax for parsing user documentation
+   * * **--packagestolink** {*regex1 regex2 ...*} Regexes to specify which packages should be linked when formatting Reference
+   * * **--classpath** {*URI*} Extra classpath for input files
    * * **-i** {*file1 file2 ...*} TASTy files
    * * **-d** {*dir1 dir2 ...*} Directories to recursively find TASTy files
    */
   def main(args: Array[String]): Unit = {
     val userDocSyntax = {
-      val idx = args.indexOf("-syntax")
+      val idx = args.indexOf("--syntax")
       if(idx >= 0 && args.size > idx + 1){
         if(args(idx + 1) == "markdown"){
           "markdown"
@@ -34,7 +34,7 @@ object Main {
     }
 
     val packagesToLink = {
-      val idx = args.indexOf("-packagestolink")
+      val idx = args.indexOf("--packagestolink")
       if(idx >= 0 && args.size > idx + 1){
         args.drop(idx + 1).takeWhile(! _.startsWith("-")).toList
       }else{
@@ -44,7 +44,7 @@ object Main {
 
 
     val extraClasspath = {
-      val idx = args.indexOf("-classpath")
+      val idx = args.indexOf("--classpath")
       if(idx >= 0 && args.size > idx + 1){
         args(idx + 1)
       }else{
