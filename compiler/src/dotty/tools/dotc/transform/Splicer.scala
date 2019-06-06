@@ -355,12 +355,16 @@ object Splicer {
       // Interpret `foo(j = x, i = y)` which it is expanded to
       // `val j$1 = x; val i$1 = y; foo(i = y, j = x)`
       case Block(stats, expr) =>
+        var unexpected: Option[Result] = None
         val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
           case stat: ValDef if stat.symbol.is(Synthetic) =>
             accEnv.updated(stat.name, interpretTree(stat.rhs)(accEnv))
-          case stat => return unexpectedTree(stat)
+          case stat =>
+            if (unexpected.isEmpty)
+              unexpected = Some(unexpectedTree(stat))
+            accEnv
         })
-        interpretTree(expr)(newEnv)
+        unexpected.getOrElse(interpretTree(expr)(newEnv))
       case NamedArg(_, arg) => interpretTree(arg)
 
       case Inlined(_, Nil, expansion) => interpretTree(expansion)

@@ -13,12 +13,13 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
   // From AbstractFileClassLoader
   private final def lookupPath(base: AbstractFile)(pathParts: Seq[String], directory: Boolean): AbstractFile = {
     var file: AbstractFile = base
-    for (dirPart <- pathParts.init) {
+    val dirParts = pathParts.init.toIterator
+    while (dirParts.hasNext) {
+      val dirPart = dirParts.next
       file = file.lookupName(dirPart, directory = true)
       if (file == null)
         return null
     }
-
     file.lookupName(pathParts.last, directory = directory)
   }
 
