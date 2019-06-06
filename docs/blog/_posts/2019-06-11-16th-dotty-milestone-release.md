@@ -1,17 +1,17 @@
 ---
 layout: blog-page
-title: Announcing Dotty 0.16.0-RC1 – the Scala Days 2019 release
+title: Announcing Dotty 0.16.0-RC1 – the Scala Days 2019 Release
 author: Aggelos Biboudis
 authorImg: /images/aggelos.png
 date: 2019-06-11
 ---
 
-Hello again! Today, we are super excited to announce the 16th release of Dotty.
-The development of Dotty continues according to our schedule but today, Tuesday
-June the 11th, we are extra excited as it is the first day of [Scala Days 2019](https://scaladays.org/)
-which marks the 10th anniversary of Scala Days. With this release we bring
-improvements and a few new features getting closer to the envelop of the new
-features that Dotty plans to offer.
+Hello again! Today, we are excited to announce the 16th release of Dotty. The
+development of Dotty continues according to our schedule but today, Tuesday June
+the 11th, we are electrified as it is the first day of [Scala Days 2019](https://scaladays.org/)
+which marks the *10th* anniversary of Scala Days.
+With this release we are getting closer to the _envelop_ of the new features
+that Dotty plans to offer.
 
 ![]({{ site.baseurl }}/images/others/scala-days-logo.png "Scala Days 2019")
 
@@ -41,22 +41,112 @@ This is our 16th scheduled release according to our
 
 <!-- https://github.com/lampepfl/dotty/pulls?q=is%3Apr+closed%3A%3E2019-05-23+is%3Aclosed+sort%3Acomments-desc -->
 
+## Syntax Change: Type Lambdas
+
+We reconsider the syntax of type lambdas in an effort to provide an improved
+visual cue for two categories of types: types that relate to normal function
+types and types that operate on a higher level. The _fat_ arrow `=>` definitely
+relates to the first, while we reserve now `->` to mean _pure function_ in the
+future. As a result, we disengage `=>` from type lambdas, whice are now
+represented by `=>>`. As a result a function from types to types is written as
+`[X] =>> F[X]`.
+
+For those who are interested in the discussions,
+[#6558](https://github.com/lampepfl/dotty/pull/6558) introduced the new syntax.
+
+## Syntax Change: Wildcard Arguments in Types
+
+The syntax of wildcard arguments in types has changed from `_` to `?`. Example:
+
+```scala
+List[?]
+Map[? <: AnyRef, ? >: Null]
+```
+
+Again, in an effort to fine-tune our syntax we put two features, from the world
+of terms and types, side-by-side and drew parallels at the syntactic level.
+Consequently, as `f(_)` is a shorthand for the lambda `x => f(x)` and as we plan
+ahead for making `C[_]` to be a shorthand for the type lambda `[X] =>> C[X]` in
+the future we pick `?` as a replacement syntax for wildcard types, since it
+aligns with Java's syntax.
+
+For more information please read our documentation on
+[Wildcards](https://dotty.epfl.ch/docs/reference/changed-features/wildcards.html).
+
 ## Polymorphic function types
 
-We add support for _polymorphic function types_. Nowadays if we want to write a
-universally quantified function over elements of lists of type `T` we write
-e.g., `List[T] => List[(T, T)]`.
+We add preliminary support for _polymorphic function types_. Nowadays, when we
+want to write a universally quantified function over elements of lists of type
+`T` we write e.g., `List[T] => List[(T, T)]` where `T` is bound at an enclosing
+definition. With polymorphic function types (PFT hereafter) we can quantify the
+parametric type locally. For example:
 
 ```scala
 [T <: AnyVal] => List[T] => List[(T, T)]
 ```
 
-## Other changes
-Some of the other notable changes include the following:
+As you notice, this gives us the ability to impose restrictions on the type
+variable `T` locally. Assume, you have an identity function with `type id = T => T`.
+By writing it as `type id = [T] => T => T` we abstract further the concept
+of a _polymorphic function_ and make it a *true* _family of functions_.
 
-- Singletons are now allowed in union types. E.g. the following is allowed: `object foo; type X = Int | foo.type`.
-- A bunch of improvements was made for the type inference system – see, e.g., PRs [#6454](https://github.com/lampepfl/dotty/pull/6454) and [#6467](https://github.com/lampepfl/dotty/pull/6467).
-- Improvements to the Scala 2 code support which, in particular, improves Cats support – see PRs [#6494](https://github.com/lampepfl/dotty/pull/6494) and [#6498](https://github.com/lampepfl/dotty/pull/6498).
+The code below (correctly) fails to type check because `T` needs to be bounded
+in the enclosing class:
+
+```scala
+  val id: T => T = t => t
+  println(s"${id(1)} , ${id(7.0d)}")
+```
+
+With PFTs we can now achieve what we want:
+
+```scala
+  val id = [T] => (t: T) => t
+  println(s"${id(1)} , ${id(7.0d)}")
+```
+
+For those who are interested in the discussions and more test cases,
+[#4672](https://github.com/lampepfl/dotty/pull/4672/) introduced PFTs.
+
+## lazy vals are now thread-safe by default
+
+Previously thread-safety was required using `@volatile` but that would not be
+consistent with Scala 2. The old behavior of non-volatile lazy vals can be
+recovered by using the newly-introduced `@threadUnsafe`.
+
+For more information please read our documentation on the
+[threadUnsafe annotation](https://dotty.epfl.ch/docs/reference/other-new-features/threadUnsafe-annotation.html).
+
+## Introducing `for` clauses for importing implied imports by type
+
+Since implied instances can be anonymous it is not always practical to import
+them by their name, and wildcard imports are typically used instead. By-type
+imports provide a more specific alternative to wildcard imports, which makes it
+clearer what is imported. Example:
+
+ ```scala
+import implied A.{for TC}
+```
+
+This imports any implied instance in `A` that has a type which conforms tp `TC`.
+There can be several bounding types following a `for` and bounding types can
+contain wildcards.
+For instance, assuming the object
+
+```scala
+object Instances {
+  implied intOrd for Ordering[Int]
+  implied [T: Ordering] listOrd for Ordering[List[T]]
+  implied ec for ExecutionContext = ...
+  implied im for Monoid[Int]
+}
+```
+the import
+```
+import implied Instances.{for Ordering[_], ExecutionContext}
+```
+would import the `intOrd`, `listOrd`, and `ec` instances but leave out the `im`
+instance, since it fits none of the specified bounds.
 
 # Let us know what you think!
 
@@ -68,24 +158,10 @@ If you have questions or any sort of feedback, feel free to send us a message on
 
 Thank you to all the contributors who made this release possible!
 
-According to `git shortlog -sn --no-merges 0.14.0-RC1..0.15.0-RC1` these are:
+According to `git shortlog -sn --no-merges 0.15.0-RC1..0.16.0-RC1` these are:
 
 ```
-   191  Martin Odersky
-   112  Nicolas Stucki
-    29  Guillaume Martres
-    25  Olivier Blanvillain
-    21  Aleksander Boruch-Gruszecki
-    17  Anatolii Kmetiuk
-    10  Miles Sabin
-     9  Liu Fengyun
-     8  Aggelos Biboudis
-     8  Jentsch
-     5  Sébastien Doeraene
-     2  Anatolii
-     1  Fengyun Liu
-     1  Olivier ROLAND
-     1  phderome
+
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
