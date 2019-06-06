@@ -20,7 +20,11 @@ trait TastyTypeConverter {
       case reflect.IsTypeBounds(reflect.TypeBounds(low, hi)) =>
         val lowRef = convertTypeToReference(reflect)(low)
         val hiRef = convertTypeToReference(reflect)(hi)
-        BoundsReference(lowRef, hiRef)
+        if(hiRef == lowRef){
+          hiRef
+        }else{
+          BoundsReference(lowRef, hiRef)
+        }
       case reflect.NoPrefix() => EmptyReference
     }
   }
@@ -48,7 +52,18 @@ trait TastyTypeConverter {
       //   }
       //   ConstantReference(removeColorFromType(tp.show)) //TOFIX
       // case reflect.Type.IsParamRef(reflect.Type.ParamRef(tpe, x)) => EmptyReference//println("paramref     " + tpe); ConstantReference("XXXXX")
-      case reflect.Type.IsRefinement(reflect.Type.Refinement(parent, name, info)) => println(tp.show); ConstantReference(name) //TOASK What to do with these types
+      case reflect.Type.IsRefinement(reflect.Type.Refinement(parent, name, info)) =>
+        val tuple = convertTypeOrBoundsToReference(reflect)(info) match {
+          case r if (info match {case reflect.IsTypeBounds(info) => true case _ => false}) => ("type", name, r)
+          case r@TypeReference(_, _, _, _) => ("val", name, r)
+          case ByNameReference(rChild) => ("def", name, rChild)
+          case r => throw new Exception("Match error in info of Refinement. This should not happend, please open an issue. " + r)
+        }
+        convertTypeToReference(reflect)(parent) match {
+          case RefinedReference(p, ls) =>
+            RefinedReference(p, ls:+tuple)
+          case t => RefinedReference(t, List(tuple))
+        }
       case reflect.Type.IsAppliedType(reflect.Type.AppliedType(tpe, typeOrBoundsList)) =>
         inner(tpe) match {
           case TypeReference(label, link, _, hasOwnFile) =>

@@ -81,6 +81,10 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
       "=> " + formatReferences(ref, declarationPath)
     case ConstantReference(label) => label
     case NamedReference(name, ref, isRepeated) => name + ": " + formatReferences(ref, declarationPath) + (if(isRepeated) "*" else "")
+    case RefinedReference(parent, ls) =>
+      formatReferences(parent, declarationPath) +
+      ls.map((kind, name, tpe) => kind + " " + name + ": " + formatReferences(tpe, declarationPath)).mkString("{ ", "; ", " }")
+
     case EmptyReference => ""
   }
 
@@ -247,7 +251,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
         objectMembers.filter(_.isAbstract).map{x =>
           traverseRepresentation(x)
 
-          Md.header3(x.name) +
+          Md.header3(x.name.stripSuffix("$")) +
           formatSimplifiedClassRepresentation(x, declarationPath)
         }.mkString("") +
         classMembers.filter(_.isAbstract).map{x =>
@@ -268,7 +272,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
         objectMembers.filter(!_.isAbstract).map{x =>
           traverseRepresentation(x)
 
-          Md.header3(x.name) +
+          Md.header3(x.name.stripSuffix("$")) +
           formatSimplifiedClassRepresentation(x, declarationPath)
         }.mkString("") +
         classMembers.filter(!_.isAbstract).map{x =>

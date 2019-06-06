@@ -37,9 +37,9 @@ Auxiliary constructor
 ### typeExamle
 <pre><code class="language-scala" >type typeExamle: [X >: scala.Nothing <: scala.Any] => X <: [X >: scala.Nothing <: scala.Any] => scala.Predef.String</pre></code>
 
-### IAmACaseObject$
+### IAmACaseObject
 <pre><code class="language-scala" >final case object <a href="./Documentation/IAmACaseObject$.md">IAmACaseObject</a></pre></code>
-### testObject$
+### testObject
 <pre><code class="language-scala" >final object <a href="./Documentation/testObject$.md">testObject</a></pre></code>
 ### Graph
 <pre><code class="language-scala" >class <a href="./Documentation/Graph.md">Graph</a></pre></code>
@@ -624,6 +624,9 @@ Test methods with params
 
 ### protectedVal
 <pre><code class="language-scala" >protected val protectedVal: Nothing</pre></code>
+
+### refinementTest
+<pre><code class="language-scala" >val refinementTest: <a href="./Documentation/Graph.md">Graph</a>{ def x: Int; def x2: <a href="./Documentation/innerDocumentationClass.md">innerDocumentationClass</a>; type Y: String; val z: Boolean }</pre></code>
 
 ### testObject
 <pre><code class="language-scala" >final val testObject: <a href="./Documentation/testObject$.md">testObject</a></pre></code>

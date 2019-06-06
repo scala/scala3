@@ -221,8 +221,6 @@ object representations extends TastyExtractor {
 
       case reflect.IsTypeDef(t@reflect.TypeDef(_)) => new TypeRepresentation(reflect, t, parentRepresentation)
 
-      case reflect.IsInlined(t@reflect.Inlined(call, bindings, body)) => println(t.show); new EmulatedPackageRepresentation("DELETETHIS", List("DELETEPATH")) //TOASK
-
       case _ => throw new Exception("Tree match error in conversion to representation. Please open an issue. " + tree)
   }}
 }

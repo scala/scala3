@@ -13,5 +13,6 @@ object references {
   final case class ByNameReference(ref: Reference) extends Reference
   final case class ConstantReference(label: String) extends Reference
   final case class CompanionReference(label: String, path: String, kind: String) extends Reference
+  final case class RefinedReference(parent: Reference, ls: List[(String, String, Reference)]) extends Reference
   case object EmptyReference extends Reference
 }

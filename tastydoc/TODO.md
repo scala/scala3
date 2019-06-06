@@ -11,8 +11,6 @@
 * WikiParser (just error reporting (span))
   * Span + error printing
 
-* Check remaining HTML
-
 # Other
 * Check remaining TODOs/TOASKs/TOFIX
 
@@ -26,6 +24,7 @@
 # Output
 * Output inner class/object if not inherited
 * Doc for packages
+* Fix $
 
 # Features for beyond the project
 * TypeLambdas
@@ -40,8 +39,6 @@
 * Be consistent in methods/function and parameters/arguments
 
 # To Ask
-* REFINED TYPES
-* INLINE
 * Error in calling owner
 * Order in type matching symbol counts...
 * Remove artifacts in packages

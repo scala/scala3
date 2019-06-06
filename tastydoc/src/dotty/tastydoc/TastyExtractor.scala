@@ -76,6 +76,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
 
     (body.flatMap{
         case IsDefDef(_) => None //No definitions, they are appended with symbol.methods below
+        case IsInlined(_) => None //Inlined aren't desirable members
         case x => Some(x)
       }.filter(x => filterSymbol(x.symbol)).map(convertToRepresentation(reflect)(_, parentRepresentation)) ++
     symbol.methods.filter(x => filterSymbol(x)).map{x => convertToRepresentation(reflect)(x.tree, parentRepresentation)})

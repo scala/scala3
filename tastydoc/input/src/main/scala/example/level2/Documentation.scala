@@ -61,6 +61,15 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
   }
   def linkingGraph(g: Graph): g.Node = ???
 
+  val refinementTest:
+    Graph {
+      //def x(a: String, b: Double)(c: Float): Int
+      def x: Int
+      def x2: innerDocumentationClass
+      type Y = String
+      val z: Boolean
+    }
+
   /** Test value
   */
   @showAsInfix

@@ -100,5 +100,5 @@ Root position of this tasty context. For macros it corresponds to the expansion 
 <pre><code class="language-scala" >final val typing: <a href="./Reflection/typing$.md">typing</a></pre></code>
 
 ### util
-<pre><code class="language-scala" >val util: reflect</pre></code>
+<pre><code class="language-scala" >val util: TreeUtils{ val reflect: <a href="./Reflection.md">Reflection</a> }</pre></code>
 
