@@ -1,5 +1,6 @@
 \documentclass{beamer}
- 
+
+\usepackage{listings} 
 \usepackage[utf8]{inputenc}
 %\usetheme{CambridgeUS}
 %\usefonttheme{professionalfonts}
@@ -7,7 +8,7 @@
  
 %Information to be included in the title page:
 \title{Tastydoc}
-\subtitle{A documentation tool for dotty using Tasty files}
+\subtitle{A documentation tool for dotty using TASTy files}
 \author{Bryan Abate}
 \date{19th June 2019} 
  
@@ -26,10 +27,133 @@
 \section{Introduction}
 
 \begin{frame}
-\frametitle{Sample frame title}
-This is a text in the first frame. This is a text in the first frame. This is a text in the first frame.
+\frametitle{What is Tastydoc ?}
+\begin{itemize}
+  \item Documentation tool for Dotty \pause
+  \item Uses TASTy files \pause
+  \item Outputs Markdown
+\end{itemize}
 \end{frame}
  
 \section{Features}
+
+\begin{frame}
+  \frametitle{Accessible information}
+  \begin{itemize}
+    \item
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{TASTy}
+  \begin{itemize}
+    \item
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Linking}
+  \begin{itemize}
+    \item
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Markdown}
+  \begin{itemize}
+    \item
+  \end{itemize}
+\end{frame}
+
+\section{Architecture}
+
+\begin{frame}
+  \frametitle{Representation}
+  \begin{itemize}
+    \item 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Reference}
+  \begin{itemize}
+    \item 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{User documentation}
+  \begin{itemize}
+    \item 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Workflow}
+  \begin{itemize}
+    \item 
+  \end{itemize}
+\end{frame}
+
+\section{Dottydoc vs Tastydoc}
+
+\begin{frame}
+  \frametitle{General comparison}
+  \begin{itemize}
+    \item Compiler internals \pause
+    \item Markdown vs HTML/CSS
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Extra features}
+  \begin{itemize}
+    \item Scope modifiers \pause
+    \item Known subclasses
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Bugs fixed}
+  \begin{itemize}
+    \item Buggy output
+    \begin{example}
+      \texttt{[31m2L[0m}
+    \end{example}\pause
+    \item Wrong parents \pause
+    \item Annotations \pause
+    \item Compiler artifacts
+  \end{itemize}
+\end{frame}
+
+\section{Problems \& Further work}
+
+\begin{frame}
+  \frametitle{Problems}
+  \begin{itemize}
+    \item Markdown escaping \pause
+    \item Linking inside code blocks \pause
+    \item Section \pause
+    \item IDs for linking
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Further work}
+  \begin{itemize}
+    \item Markdown escaping \pause
+    \item Type lambdas \pause
+    \item Complex types
+\begin{lstlisting}[language=scala]
+  class Graph {
+      type Node = Int
+  }
+  def linkingGraph(g: Graph): g.Node = ???    
+\end{lstlisting}\pause
+    \item Default values \pause
+    \item Extra user-documentation parsing \pause
+    \item HTML/CSS
+  \end{itemize}
+\end{frame}
 
 \end{document}
