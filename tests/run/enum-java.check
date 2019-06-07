@@ -1,0 +1,44 @@
+API Test A
+compareTo greater:-1
+compareTo lesser: 1
+compareTo self:   0
+equals other:     false
+equals self:      true
+getDeclaringClass:class A
+name:             MONDAY
+ordinal:          0
+toString:         MONDAY
+
+API Test B
+compareTo greater:-1
+compareTo lesser: 1
+compareTo self:   0
+equals other:     false
+equals self:      true
+getDeclaringClass:class B
+name:             EARTH
+ordinal:          0
+toString:         EARTH
+
+Module Test
+Values class: class [LA;
+MONDAY : 0
+TUESDAY : 1
+SATURDAY : 2
+By-name value: MONDAY
+Correctly failed to retrieve illegal name, message: key not found: stuff
+
+Collections Test
+Retrieving Monday: workday
+Contains Tuesday: false
+All days:
+MONDAY
+TUESDAY
+SATURDAY
+
+Switch Test
+Saw tuesday
+Jup
+
+Misc Tests
+Gravity on Earth: 9.8
