@@ -1279,20 +1279,21 @@ object Parsers {
 
     def expr(location: Location.Value): Tree = {
       val start = in.offset
-      if(in.token == IMPLIED) {
-        val span = in.offset
+      if (closureMods.contains(in.token)) {
+        val imods = modifiers(closureMods)
+        if (in.token == MATCH) impliedMatch(start, imods)
+        else implicitClosure(start, location, imods)
+      }
+      else if(in.token == IMPLIED) {
         in.nextToken()
         if (in.token == MATCH)
           impliedMatch(start, EmptyModifiers)
         else {
-          syntaxError(em"illegal modifier for implied match", span)
+          syntaxError("`match` expected")
           EmptyTree
         }
       }
-      else if (closureMods.contains(in.token)) {
-        val imods = modifiers(closureMods)
-        implicitClosure(start, location, imods)
-      } else {
+      else {
         val saved = placeholderParams
         placeholderParams = Nil
 
@@ -1472,7 +1473,7 @@ object Parsers {
         case _ =>
       }
       imods.mods match {
-        case Mod.Implied() :: mods => markFirstIllegal(mods)
+        case (Mod.Implicit() | Mod.Implied()) :: mods => markFirstIllegal(mods)
         case mods => markFirstIllegal(mods)
       }
       val result @ Match(t, cases) =
@@ -2008,7 +2009,6 @@ object Parsers {
       case ABSTRACT    => Mod.Abstract()
       case FINAL       => Mod.Final()
       case IMPLICIT    => Mod.Implicit()
-      case IMPLIED     => Mod.Implied()
       case GIVEN       => Mod.Given()
       case ERASED      => Mod.Erased()
       case LAZY        => Mod.Lazy()
@@ -3094,7 +3094,7 @@ object Parsers {
         else if (isDefIntro(localModifierTokens))
           if (closureMods.contains(in.token)) {
             val start = in.offset
-            var imods = modifiers(closureMods + IMPLIED)
+            var imods = modifiers(closureMods)
             if (isBindingIntro)
               stats += implicitClosure(start, Location.InBlock, imods)
             else if (in.token == MATCH)
