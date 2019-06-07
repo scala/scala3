@@ -21,7 +21,7 @@ These new constructs directly model core features of DOT, higher-kinded types, a
  - [Type lambdas](https://dotty.epfl.ch/docs/reference/new-types/type-lambdas.html),
  replacing encodings using structural types and type projection.
  - [Context Queries](https://dotty.epfl.ch/docs/reference/contextual/query-types.html)
-  (_aka_ implicit function types) offering abstraction over inferable parameters.
+  (_aka_ implicit function types) offering abstraction over implicit parameters.
 
 **Status: essential**
 
@@ -38,7 +38,7 @@ These constructs replace existing constructs with the aim of making the language
  - [Trait Parameters](https://dotty.epfl.ch/docs/reference/other-new-features/trait-parameters.html) replace [early initializers](https://dotty.epfl.ch/docs/reference/dropped-features/early-initializers.html) with a more generally useful construct.
  - [Implied Instances](https://dotty.epfl.ch/docs/reference/contextual/instance-defs.html)
    replace implicit objects and defs, focussing on intent over mechanism.
- - [Inferable parameters](https://dotty.epfl.ch/docs/reference/contextual/inferable-params.html) replace implicit parameters, avoiding their ambiguities.
+ - [Given Clauses](https://dotty.epfl.ch/docs/reference/contextual/inferable-params.html) replace implicit parameters, avoiding their ambiguities.
  - [Extension Methods](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html) replace implicit classes with a clearer and simpler mechanism.
  - [Opaque Type Aliases](https://dotty.epfl.ch/docs/reference/other-new-features/opaques.html) replace most uses
    of value classes while guaranteeing absence of boxing.
@@ -71,7 +71,7 @@ For the next several versions, old features will remain available and deprecatio
 These constructs are restricted to make the language safer.
 
  - [Implicit Conversions](https://dotty.epfl.ch/docs/reference/contextual/conversions.html): there is only one way to define implicit conversions instead of many, and potentially surprising implicit conversions require a language import.
- - [Implied Imports](https://dotty.epfl.ch/docs/reference/contextual/import-implied.html): implicits now require a special form of import, to make the import clearly visible.
+ - [Import Implied](https://dotty.epfl.ch/docs/reference/contextual/import-implied.html): implicits now require a special form of import, to make the import clearly visible.
  - [Type Projection](https://dotty.epfl.ch/docs/reference/dropped-features/type-projection.html): only classes can be used as prefix `C` of a type projection `C#A`. Type projection on abstract types is no longer supported since it is unsound.
  - [Multiversal Equality](https://dotty.epfl.ch/docs/reference/contextual/multiversal-equality.html) implements an "opt-in" scheme to rule out nonsensical comparisons with `==` and `!=`.
  - [@infix and @alpha](https://github.com/lampepfl/dotty/pull/5975)
