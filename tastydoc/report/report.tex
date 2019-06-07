@@ -265,8 +265,11 @@ Tastydoc handles refined types where Dottydoc only remember the parent of the ty
 \section{Bugs in Dottydoc that Tastydoc fixes}
 Dottydoc is not really maintained and hence does not follow the evolution in Master. Some bugs are present in Dottydoc. Tastydoc fixes them all.
 
-\paragraph{Buggy output}
-It does not take care of colors in the \texttt{show} method and it results in faulty type or method output like \texttt{[31m2L[0m}\footnote{\url{https://dotty.epfl.ch/api/dotty/runtime/LazyVals$.html}}.
+\paragraph{Weird output}
+It does not take care of colors in the \texttt{show} method and it results in faulty type or method output like\footnote{\url{https://dotty.epfl.ch/api/dotty/runtime/LazyVals$.html}}:
+\begin{lstlisting}[language=scala]
+    final val BITS_PER_LAZY_VAL : [31m2L[0m
+\end{lstlisting}
 
 \paragraph{Wrong parents}
 Classes often show to be extending Object instead of their superclass because Object is given first when asking for the parents list to the compiler, example\footnote{\url{https://dotty.epfl.ch/api/scala/Conversion.html}}:
