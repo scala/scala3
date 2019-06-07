@@ -693,6 +693,9 @@ object Flags {
   /** A Java enum value */
   final val JavaEnumValue: FlagConjunction = allOf(StableRealizable, JavaStatic, JavaDefined, Enum)
 
+  /** An enum value */
+  final val EnumValue: FlagConjunction = allOf(StableRealizable, JavaStatic, Enum)
+
   /** Labeled private[this] */
   final val PrivateLocal: FlagConjunction = allOf(Private, Local)
 

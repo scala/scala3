@@ -512,7 +512,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def isJavaDefaultMethod: Boolean
     def isClassConstructor: Boolean
     def isSerializable: Boolean
-    def isJavaEnum: Boolean
+    def isEnum: Boolean
 
     /**
      * True for module classes of modules that are top-level or owned only by objects. Module classes

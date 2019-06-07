@@ -224,7 +224,7 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
       if (sym.isVarargsMethod) ACC_VARARGS else 0,
       if (sym.isSynchronized) ACC_SYNCHRONIZED else 0,
       if (sym.isDeprecated) asm.Opcodes.ACC_DEPRECATED else 0,
-      if (sym.isJavaEnum) asm.Opcodes.ACC_ENUM else 0
+      if (sym.isEnum) asm.Opcodes.ACC_ENUM else 0
     )
   }
 
