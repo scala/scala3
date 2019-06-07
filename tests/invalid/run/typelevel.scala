@@ -153,7 +153,7 @@ object Test extends App {
     case S[type N] => toInt[N] + 1
   }
 
-  inline def toInt1[T]: Nat = implicit match {
+  inline def toInt1[T]: Nat = implied match {
     case C[type T, type U], T =:= U =>
     case T <:< S[type N] => toInt[N] + 1
   }

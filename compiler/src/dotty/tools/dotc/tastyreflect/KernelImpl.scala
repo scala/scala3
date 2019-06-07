@@ -550,7 +550,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match =
     tpd.cpy.Match(original)(selector, cases)
 
-  type ImplicitMatch = tpd.Match
+  type ImpliedMatch = tpd.Match
 
   def matchImplicitMatch(x: Term)(implicit ctx: Context): Option[Match] = x match {
     case x: tpd.Match if x.selector.isEmpty => Some(x)
@@ -559,10 +559,10 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def ImplicitMatch_cases(self: Match)(implicit ctx: Context): List[CaseDef] = self.cases
 
-  def ImplicitMatch_apply(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch =
+  def ImplicitMatch_apply(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch =
     withDefaultPos(ctx => tpd.Match(tpd.EmptyTree, cases)(ctx))
 
-  def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch =
+  def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch =
     tpd.cpy.Match(original)(tpd.EmptyTree, cases)
 
   type Try = tpd.Try

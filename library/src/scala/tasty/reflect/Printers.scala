@@ -186,8 +186,8 @@ trait Printers
           this += "Lambda(" += meth += ", " += tpt += ")"
         case Match(selector, cases) =>
           this += "Match(" += selector += ", " ++= cases += ")"
-        case ImplicitMatch(cases) =>
-          this += "ImplicitMatch(" ++= cases += ")"
+        case ImpliedMatch(cases) =>
+          this += "ImpliedMatch(" ++= cases += ")"
         case Return(expr) =>
           this += "Return(" += expr += ")"
         case While(cond, body) =>
@@ -909,8 +909,8 @@ trait Printers
           this += highlightKeyword(" match", color)
           inBlock(printCases(cases, lineBreak()))
 
-        case ImplicitMatch(cases) =>
-          this += highlightKeyword("implicit match", color)
+        case ImpliedMatch(cases) =>
+          this += highlightKeyword("implied match", color)
           inBlock(printCases(cases, lineBreak()))
 
         case Try(body, cases, finallyOpt) =>

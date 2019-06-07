@@ -628,27 +628,27 @@ trait TreeOps extends Core {
   }
 
   object IsImplicitMatch {
-    /** Matches any ImplicitMatch and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[ImplicitMatch] = kernel.matchImplicitMatch(tree)
+    /** Matches any ImpliedMatch and returns it */
+    def unapply(tree: Tree)(implicit ctx: Context): Option[ImpliedMatch] = kernel.matchImplicitMatch(tree)
   }
 
   /** Scala implicit `match` term */
-  object ImplicitMatch {
+  object ImpliedMatch {
 
-    /** Creates a pattern match `implicit match { <cases: List[CaseDef]> }` */
-    def apply(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch =
+    /** Creates a pattern match `implied match { <cases: List[CaseDef]> }` */
+    def apply(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch =
       kernel.ImplicitMatch_apply(cases)
 
-    def copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch =
+    def copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch =
       kernel.ImplicitMatch_copy(original)(cases)
 
-    /** Matches a pattern match `implicit match { <cases: List[CaseDef]> }` */
+    /** Matches a pattern match `implied match { <cases: List[CaseDef]> }` */
     def unapply(tree: Tree)(implicit ctx: Context): Option[List[CaseDef]] =
       kernel.matchImplicitMatch(tree).map(_.cases)
 
   }
 
-  implicit class ImplicitMatchAPI(self: ImplicitMatch) {
+  implicit class ImplicitMatchAPI(self: ImpliedMatch) {
     def cases(implicit ctx: Context): List[CaseDef] = kernel.ImplicitMatch_cases(self)
   }
 

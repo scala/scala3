@@ -2,32 +2,32 @@ object Test {
   import collection.immutable.TreeSet
   import collection.immutable.HashSet
 
-  inline def f1[T] = implicit implicit match { // error: repeated modifier // error: illegal modifier
-    case ord: Ordered[T] => new TreeSet[T] // error: no implicit
+  inline def f1[T] = implied implied match { // error: illegal modifier // error: ';' expected, but 'match' found // error: Declaration of method f1 not allowed here
+    case ord: Ordered[T] => new TreeSet[T]
     case _ => new HashSet[T]
 
   }
 
-  inline def f2[T] = implicit erased match { // error: illegal modifier
-    case ord: Ordered[T] => new TreeSet[T] // error: no implicit
+  inline def f2[T] = implied erased match { // error: illegal modifier // error: illegal modifier // error: Declaration of method f1 not allowed here
+    case ord: Ordered[T] => new TreeSet[T]
     case _ => new HashSet[T]
   }
 
-  inline def f3[T] = erased implicit match { // error: illegal modifier
-    case ord: Ordered[T] => new TreeSet[T] // error: no implicit
+  inline def f3[T] = erased implied match { // error: illegal modifier
+    case ord: Ordered[T] => new TreeSet[T]
     case _ => new HashSet[T]
   }
 
-  inline def f4() = implicit match {
+  inline def f4() = implied match {
     case Nil => ???     // error: not a legal pattern
     case x :: xs => ??? // error: not a legal pattern
   }
 
-  inline def f5[T] = locally { implicit match { // Ok
+  inline def f5[T] = locally { implied match { // Ok
     case _ => new HashSet[T]
   }}
 
-  def f6[T] = implicit match { // error: implicit match cannot be used here
+  def f6[T] = implied match { // error: implied match cannot be used here
     case _ => new HashSet[T]
   }
 }

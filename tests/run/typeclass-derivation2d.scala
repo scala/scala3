@@ -199,7 +199,7 @@ trait Eq[T] {
 object Eq {
   import scala.compiletime.erasedValue
 
-  inline def tryEql[T](x: T, y: T) = implicit match {
+  inline def tryEql[T](x: T, y: T) = implied match {
     case eq: Eq[T] => eq.eql(x, y)
   }
 
@@ -219,7 +219,7 @@ object Eq {
     inline erasedValue[Alts] match {
       case _: (alt *: alts1) =>
         if (ord == n)
-          implicit match {
+          implied match {
             case m: Mirror.ProductOf[`alt`] => eqlElems[m.ElemTypes](0)(x, y)
           }
         else eqlCases[alts1](n + 1)(x, y, ord)
@@ -255,7 +255,7 @@ object Pickler {
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
-  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = implicit match {
+  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = implied match {
     case pkl: Pickler[T] => pkl.pickle(buf, x)
   }
 
@@ -271,14 +271,14 @@ object Pickler {
     inline erasedValue[Alts] match {
       case _: (alt *: alts1) =>
         if (ord == n)
-          implicit match {
+          implied match {
             case m: Mirror.ProductOf[`alt`] => pickleElems[m.ElemTypes](0)(buf, x)
           }
         else pickleCases[alts1](n + 1)(buf, x, ord)
       case _: Unit =>
     }
 
-  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = implicit match {
+  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = implied match {
     case pkl: Pickler[T] => pkl.unpickle(buf)
   }
 
@@ -305,7 +305,7 @@ object Pickler {
     inline erasedValue[Alts] match {
       case _: (alt *: alts1) =>
         if (ord == n)
-          implicit match {
+          implied match {
             case m: Mirror.ProductOf[`alt` & T] =>
               unpickleCase[`alt` & T, m.ElemTypes](buf, m)
           }
@@ -348,7 +348,7 @@ trait Show[T] {
 object Show {
   import scala.compiletime.{erasedValue, constValue}
 
-  inline def tryShow[T](x: T): String = implicit match {
+  inline def tryShow[T](x: T): String = implied match {
     case s: Show[T] => s.show(x)
   }
 
@@ -377,7 +377,7 @@ object Show {
     inline erasedValue[Alts] match {
       case _: (alt *: alts1) =>
         if (ord == n)
-          implicit match {
+          implied match {
             case m: Mirror.ProductOf[`alt`] =>
               showCase(x, m)
           }
