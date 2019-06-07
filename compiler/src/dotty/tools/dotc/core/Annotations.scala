@@ -181,6 +181,7 @@ object Annotations {
     object WithBounds {
       def unapply(ann: Annotation)(implicit ctx: Context): Option[TypeBounds] =
         if (ann.symbol == defn.WithBoundsAnnot) {
+          import ast.Trees._
           // We need to extract the type of the type tree in the New itself.
           // The annotation's type has been simplified as the type of an expression,
           // which means that `&` or `|` might have been lost.
