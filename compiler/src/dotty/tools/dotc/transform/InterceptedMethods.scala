@@ -82,7 +82,7 @@ class InterceptedMethods extends MiniPhase {
     val Any_!= = defn.Any_!=
     val rewritten: Tree = tree.fun.symbol match {
       case Any_!= =>
-        qual.select(defn.Any_==).appliedToArgs(tree.args).select(defn.Boolean_!)
+        qual.select(defn.Any_==).appliedToArgs(tree.args).select(defn.Boolean_!).withSpan(tree.span)
         /*
         /* else if (isPrimitiveValueClass(qual.tpe.typeSymbol)) {
             // todo: this is needed to support value classes
@@ -100,7 +100,7 @@ class InterceptedMethods extends MiniPhase {
           //    we get a primitive form of _getClass trying to target a boxed value
           //    so we need replace that method name with Object_getClass to get correct behavior.
           //    See SI-5568.
-        qual.selectWithSig(defn.Any_getClass).appliedToNone
+        qual.selectWithSig(defn.Any_getClass).appliedToNone.withSpan(tree.span)
       case _ =>
         tree
     }

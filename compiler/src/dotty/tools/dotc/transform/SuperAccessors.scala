@@ -115,15 +115,39 @@ class SuperAccessors(thisPhase: DenotTransformer) {
               sel.sourcePos)
         else ctx.log(i"ok super $sel ${sym.showLocated} $member $clazz ${member.isIncompleteIn(clazz)}")
       }
-      else if (mix.name.isEmpty && !(sym.owner is Trait))
-        // SI-4989 Check if an intermediate class between `clazz` and `sym.owner` redeclares the method as abstract.
-        for (intermediateClass <- clazz.info.baseClasses.tail.takeWhile(_ != sym.owner)) {
-          val overriding = sym.overridingSymbol(intermediateClass)
-          if ((overriding is (Deferred, butNot = AbsOverride)) && !(overriding.owner is Trait))
-            ctx.error(
-                s"${sym.showLocated} cannot be directly accessed from ${clazz} because ${overriding.owner} redeclares it as abstract",
+      else {
+        val owner = sym.owner
+        if (!owner.is(Trait)) {
+          if (mix.name.isEmpty) {
+            // scala/bug#4989 Check if an intermediate class between `clazz` and `sym.owner` redeclares the method as abstract.
+            for (intermediateClass <- clazz.info.baseClasses.tail.takeWhile(_ != sym.owner)) {
+              val overriding = sym.overridingSymbol(intermediateClass)
+              if ((overriding is (Deferred, butNot = AbsOverride)) && !(overriding.owner is Trait))
+                ctx.error(
+                  s"${sym.showLocated} cannot be directly accessed from ${clazz} because ${overriding.owner} redeclares it as abstract",
+                  sel.sourcePos)
+            }
+          } else {
+            // scala/scala-dev#143:
+            //   a call `super[T].m` that resolves to `A.m` cannot be translated to correct bytecode if
+            //   `A` is a class (not a trait / interface), but not the direct superclass. Invokespecial
+            //   would select an overriding method in the direct superclass, rather than `A.m`.
+            //   We allow this if there are statically no intervening overrides.
+            def hasClassOverride(member: Symbol, subCls: ClassSymbol): Boolean = {
+              if (subCls == defn.ObjectClass || subCls == member.owner) false
+              else if (member.overridingSymbol(subCls).exists) true
+              else hasClassOverride(member, subCls.superClass.asClass)
+            }
+            val superCls = clazz.asClass.superClass.asClass
+            if (owner != superCls && hasClassOverride(sym, superCls)) {
+              ctx.error(
+                em"""Super call cannot be emitted: the selected $sym is declared in $owner, which is not the direct superclass of $clazz.
+                |An unqualified super call (super.${sym.name}) would be allowed.""",
                 sel.sourcePos)
+            }
+          }
         }
+      }
       if (name.isTermName && mix.name.isEmpty &&
           ((clazz is Trait) || clazz != ctx.owner.enclosingClass || !validCurrentClass))
         superAccessorCall(sel)(ctx.withPhase(thisPhase.next))

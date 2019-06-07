@@ -65,6 +65,10 @@ class Getters extends MiniPhase with SymTransformer {
         d.copySymDenotation(
           initFlags = d.flags | maybeStable | AccessorCreationFlags,
           info = ExprType(d.info))
+            // Note: This change will only affect the SymDenotation itself, not
+            // SingleDenotations referring to a getter. In this case it does not
+            // seem to be a problem since references to a getter don't care whether
+            // it's a `T` or a `=> T`
       }
       else d
 

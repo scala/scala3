@@ -40,16 +40,21 @@ class MissingType(pre: Type, name: Name) extends TypeError {
   }
 }
 
-class RecursionOverflow(val op: String, details: => String, previous: Throwable, val weight: Int) extends TypeError {
+class RecursionOverflow(val op: String, details: => String, val previous: Throwable, val weight: Int) extends TypeError {
 
   def explanation: String = s"$op $details"
 
   private def recursions: List[RecursionOverflow] = {
-    val nested = previous match {
-      case previous: RecursionOverflow => previous.recursions
-      case _ => Nil
+    import scala.collection.mutable.ListBuffer
+    val result = ListBuffer.empty[RecursionOverflow]
+    @annotation.tailrec def loop(throwable: Throwable): List[RecursionOverflow] = throwable match {
+      case ro: RecursionOverflow =>
+        result += ro
+        loop(ro.previous)
+      case _ => result.toList
+
     }
-    this :: nested
+    loop(this)
   }
 
   def opsString(rs: List[RecursionOverflow])(implicit ctx: Context): String = {
@@ -137,7 +142,7 @@ class CyclicReference private (val denot: SymDenotation) extends TypeError {
         }
       }
       // Give up and give generic errors.
-      else if (cycleSym.is(ImplicitOrImplied, butNot = Method) && cycleSym.owner.isTerm)
+      else if (cycleSym.is(ImplicitOrImpliedOrGiven, butNot = Method) && cycleSym.owner.isTerm)
         CyclicReferenceInvolvingImplicit(cycleSym)
       else
         CyclicReferenceInvolving(denot)

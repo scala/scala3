@@ -1,0 +1,2 @@
+Select(Typed(Apply(Select(New(TypeIdent("StringContextOps")), "<init>"), List(Apply(Select(Select(Select(Ident("_root_"), "scala"), "StringContext"), "apply"), List(Typed(Repeated(List(Literal(Constant.String("Hello World ")), Literal(Constant.String("!"))), Inferred()), Inferred()))))), TypeIdent("StringContextOps")), "inline$sc")
+Typed(Repeated(List(Literal(Constant.Int(1))), Inferred()), Inferred())

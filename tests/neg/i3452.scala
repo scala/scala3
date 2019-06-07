@@ -3,7 +3,7 @@ object Test {
 
   trait TC[A]
 
-  implicit def case1[F[_]](implicit t: => TC[F[Any]]): TC[Tuple2K[[_] => Any, F, Any]] = ???
+  implicit def case1[F[_]](implicit t: => TC[F[Any]]): TC[Tuple2K[[_] =>> Any, F, Any]] = ???
   implicit def case2[A, F[_]](implicit r: TC[F[Any]]): TC[A] = ???
 
   implicitly[TC[Int]] // error

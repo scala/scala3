@@ -92,7 +92,12 @@ object TypeTestsCasts {
 
     def isClassDetermined(X: Type, P: AppliedType)(implicit ctx: Context) = {
       val AppliedType(tycon, _) = P
-      val typeLambda = tycon.ensureLambdaSub.asInstanceOf[TypeLambda]
+
+      def underlyingLambda(tp: Type): TypeLambda = tp.ensureLambdaSub match {
+        case tp: TypeLambda => tp
+        case tp: TypeProxy => underlyingLambda(tp.superType)
+      }
+      val typeLambda = underlyingLambda(tycon)
       val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
       val P1 = tycon.appliedTo(tvars)
 
@@ -132,6 +137,7 @@ object TypeTestsCasts {
             recur(tp1, P) && recur(tp2, P)
           case _ =>
             // first try withou striping type parameters for performance
+            X.classSymbol.exists && P.classSymbol.exists && !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass) ||
             isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState()) ||
             isClassDetermined(stripTypeParam(X), tpe)(ctx.fresh.setNewTyperState())
         }
@@ -164,19 +170,20 @@ object TypeTestsCasts {
           else tp.classSymbol
 
         def foundCls = effectiveClass(expr.tpe.widen)
-        // println(i"ta $tree, found = $foundCls")
 
         def inMatch =
           fun.symbol == defn.Any_typeTest ||  // new scheme
           expr.symbol.is(Case)                // old scheme
 
-        def transformIsInstanceOf(expr:Tree, testType: Type, flagUnrelated: Boolean): Tree = {
+        def transformIsInstanceOf(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = {
           def testCls = effectiveClass(testType.widen)
 
-          def unreachable(why: => String) =
+          def unreachable(why: => String): Boolean = {
             if (flagUnrelated)
               if (inMatch) ctx.error(em"this case is unreachable since $why", expr.sourcePos)
               else ctx.warning(em"this will always yield false since $why", expr.sourcePos)
+            false
+          }
 
           /** Are `foundCls` and `testCls` classes that allow checks
            *  whether a test would be always false?
@@ -191,32 +198,29 @@ object TypeTestsCasts {
                // we don't have the logic to handle derived value classes
 
           /** Check whether a runtime test that a value of `foundCls` can be a `testCls`
-           *  can be true in some cases. Issure a warning or an error if that's not the case.
+           *  can be true in some cases. Issues a warning or an error otherwise.
            */
           def checkSensical: Boolean =
             if (!isCheckable) true
             else if (foundCls.isPrimitiveValueClass && !testCls.isPrimitiveValueClass) {
-                ctx.error("cannot test if value types are references", tree.sourcePos)
-                false
-              }
+              ctx.error("cannot test if value types are references", tree.sourcePos)
+              false
+            }
             else if (!foundCls.derivesFrom(testCls)) {
-              if (foundCls.is(Final)) {
+              val unrelated = !testCls.derivesFrom(foundCls) && (
+                testCls.is(Final) || !testCls.is(Trait) && !foundCls.is(Trait)
+              )
+              if (foundCls.is(Final))
                 unreachable(i"$foundCls is not a subclass of $testCls")
-                false
-              }
-              else if (!testCls.derivesFrom(foundCls) &&
-                       (testCls.is(Final) ||
-                        !testCls.is(Trait) && !foundCls.is(Trait))) {
+              else if (unrelated)
                 unreachable(i"$foundCls and $testCls are unrelated")
-                false
-              }
               else true
             }
             else true
 
           if (expr.tpe <:< testType)
             if (expr.tpe.isNotNull) {
-              ctx.warning(TypeTestAlwaysSucceeds(foundCls, testCls), tree.sourcePos)
+              if (!inMatch) ctx.warning(TypeTestAlwaysSucceeds(foundCls, testCls), tree.sourcePos)
               constant(expr, Literal(Constant(true)))
             }
             else expr.testNotNull
@@ -235,6 +239,10 @@ object TypeTestsCasts {
           def testCls = testType.widen.classSymbol
           if (expr.tpe <:< testType)
             Typed(expr, tree.args.head)
+          else if (testCls eq defn.BoxedUnitClass) {
+            // as a special case, casting to Unit always successfully returns Unit
+            Block(expr :: Nil, Literal(Constant(()))).withSpan(expr.span)
+          }
           else if (foundCls.isPrimitiveValueClass) {
             if (testCls.isPrimitiveValueClass) primitiveConversion(expr, testCls)
             else derivedTree(box(expr), defn.Any_asInstanceOf, testType)
@@ -290,7 +298,8 @@ object TypeTestsCasts {
 
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
-          if (!checkable(expr.tpe, argType, tree.span))
+          val isTrusted = tree.getAttachment(PatternMatcher.TrustedTypeTestKey).nonEmpty
+          if (!isTrusted && !checkable(expr.tpe, argType, tree.span))
             ctx.warning(i"the type test for $argType cannot be checked at runtime", tree.sourcePos)
           transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
         }

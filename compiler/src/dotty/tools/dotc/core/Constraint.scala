@@ -17,8 +17,8 @@ abstract class Constraint extends Showable {
 
   type This <: Constraint
 
-  /** Does the constraint's domain contain the type parameters of `pt`? */
-  def contains(pt: TypeLambda): Boolean
+  /** Does the constraint's domain contain the type parameters of `tl`? */
+  def contains(tl: TypeLambda): Boolean
 
   /** Does the constraint's domain contain the type parameter `param`? */
   def contains(param: TypeParamRef): Boolean
@@ -45,6 +45,18 @@ abstract class Constraint extends Showable {
   /** The parameters that are known to be greater wrt <: than `param` */
   def upper(param: TypeParamRef): List[TypeParamRef]
 
+  /** The lower dominator set.
+   *
+   * This is like `lower`, except that each parameter returned is no smaller than every other returned parameter.
+   */
+  def minLower(param: TypeParamRef): List[TypeParamRef]
+
+  /** The upper dominator set.
+   *
+   * This is like `upper`, except that each parameter returned is no greater than every other returned parameter.
+   */
+  def minUpper(param: TypeParamRef): List[TypeParamRef]
+
   /** lower(param) \ lower(butNot) */
   def exclusiveLower(param: TypeParamRef, butNot: TypeParamRef): List[TypeParamRef]
 
@@ -57,15 +69,6 @@ abstract class Constraint extends Showable {
    *  @pre `param` is not part of the constraint domain.
    */
   def nonParamBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds
-
-  /** The lower bound of `param` including all known-to-be-smaller parameters */
-  def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type
-
-  /** The upper bound of `param` including all known-to-be-greater parameters */
-  def fullUpperBound(param: TypeParamRef)(implicit ctx: Context): Type
-
-  /** The bounds of `param` including all known-to-be-smaller and -greater parameters */
-  def fullBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds
 
   /** A new constraint which is derived from this constraint by adding
    *  entries for all type parameters of `poly`.
@@ -106,14 +109,22 @@ abstract class Constraint extends Showable {
    */
   def replace(param: TypeParamRef, tp: Type)(implicit ctx: Context): This
 
-  /** Is entry associated with `pt` removable? This is the case if
+  /** Is entry associated with `tl` removable? This is the case if
    *  all type parameters of the entry are associated with type variables
    *  which have their `inst` fields set.
    */
-  def isRemovable(pt: TypeLambda): Boolean
+  def isRemovable(tl: TypeLambda): Boolean
 
-  /** A new constraint with all entries coming from `pt` removed. */
-  def remove(pt: TypeLambda)(implicit ctx: Context): This
+  /** A new constraint with all entries coming from `tl` removed. */
+  def remove(tl: TypeLambda)(implicit ctx: Context): This
+
+  /** A new constraint with entry `tl` renamed to a fresh type lambda */
+  def rename(tl: TypeLambda)(implicit ctx: Context): This
+
+  /** The given `tl` in case it is not contained in this constraint,
+   *  a fresh copy of `tl` otherwise.
+   */
+  def ensureFresh(tl: TypeLambda)(implicit ctx: Context): TypeLambda
 
   /** The type lambdas constrained by this constraint */
   def domainLambdas: List[TypeLambda]

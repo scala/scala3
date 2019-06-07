@@ -18,16 +18,11 @@ import NameKinds.ImplMethName
  *
  *    super[M].f(args)
  *
- *  where M is a Scala 2.11 trait implemented by the current class to
+ *  where M is a Scala 2.x trait implemented by the current class to
  *
- *    M$class.f(this, args)
+ *    M.f$(this, args)
  *
- *  provided the implementation class M$class defines a corresponding function `f`.
- *  If M is a Scala 2.12 or newer trait, rewrite to
- *
- *    M.f(this, args)
- *
- *  where f is a static member of M.
+ *  where f$ is a static member of M.
  */
 class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
@@ -39,32 +34,40 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
     // Adds as a side effect static members to traits which can confuse Mixin,
     // that's why it is runsAfterGroupOf
 
-  /** Copy definitions from implementation class to trait itself */
-  private def augmentScala_2_12_Trait(mixin: ClassSymbol)(implicit ctx: Context): Unit = {
-    def info_2_12(sym: Symbol) = sym.info match {
-      case mt @ MethodType(paramNames @ nme.SELF :: _) =>
-        // 2.12 seems to always assume the enclsing mixin class as self type parameter,
-        // whereas 2.11 used the self type of this class instead.
-        val selfType :: otherParamTypes = mt.paramInfos
-        MethodType(paramNames, mixin.typeRef :: otherParamTypes, mt.resType)
-      case info => info
+  private def addStaticForwarders(mixin: ClassSymbol)(implicit ctx: Context): Unit = {
+    val ops = new MixinOps(mixin, thisPhase)
+    import ops._
+
+    def newImpl(meth: TermSymbol): Symbol = {
+      def staticInfo(tp: Type) = tp match {
+        case mt: MethodType =>
+          MethodType(nme.SELF :: mt.paramNames, mixin.typeRef :: mt.paramInfos, mt.resType)
+      }
+      val mold =
+        if (meth.isConstructor)
+          meth.copySymDenotation(
+            name = nme.TRAIT_CONSTRUCTOR,
+            info = MethodType(Nil, defn.UnitType))
+        else meth.ensureNotPrivate
+      meth.copy(
+        owner = mixin,
+        name = if (meth.isConstructor) mold.name.asTermName else ImplMethName(mold.name.asTermName),
+        flags = Method | JavaStatic,
+        info = staticInfo(mold.info)
+      )
     }
-    def newImpl(sym: TermSymbol): Symbol = sym.copy(
-      owner = mixin,
-      name = if (sym.isConstructor) sym.name else ImplMethName(sym.name),
-      info = info_2_12(sym)
-    )
-    for (sym <- mixin.implClass.info.decls)
-      newImpl(sym.asTerm).enteredAfter(thisPhase)
+    for (sym <- mixin.info.decls) {
+      if (needsMixinForwarder(sym) || sym.isConstructor || sym.isGetter && sym.is(Lazy) || sym.is(Method, butNot = Deferred))
+        newImpl(sym.asTerm).enteredAfter(thisPhase)
+    }
+    // The trait is now fully augmented so the flag isn't needed anymore.
+    mixin.resetFlag(Scala2xPartiallyAugmented)
   }
 
   override def prepareForTemplate(impl: Template)(implicit ctx: Context): Context = {
     val cls = impl.symbol.owner.asClass
-    for (mixin <- cls.mixins)
-      if (mixin.is(Scala_2_12_Trait, butNot = Scala_2_12_Augmented)) {
-        augmentScala_2_12_Trait(mixin)
-        mixin.setFlag(Scala_2_12_Augmented)
-      }
+    for (mixin <- cls.mixins if (mixin.is(Scala2xPartiallyAugmented)))
+      addStaticForwarders(mixin)
     ctx
   }
 
@@ -72,14 +75,10 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
     def currentClass = ctx.owner.enclosingClass.asClass
     app match {
       case Apply(sel @ Select(Super(_, _), _), args)
-      if sel.symbol.owner.is(Scala2xTrait) && currentClass.mixins.contains(sel.symbol.owner) =>
+      if sel.symbol.owner.is(Scala2x) && currentClass.mixins.contains(sel.symbol.owner) =>
         val impl = implMethod(sel.symbol)
         if (impl.exists) Apply(ref(impl), This(currentClass) :: args).withSpan(app.span)
         else app // could have been an abstract method in a trait linked to from a super constructor
-      case Apply(sel, args)
-      if sel.symbol.maybeOwner.is(ImplClass) && sel.symbol.owner.traitOfImplClass.is(Scala_2_12_Trait) =>
-        val impl = implMethod(sel.symbol)
-        cpy.Apply(app)(ref(impl), args)
       case _ =>
         app
     }
@@ -89,9 +88,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
   private def implMethod(meth: Symbol)(implicit ctx: Context): Symbol = {
     val implName = ImplMethName(meth.name.asTermName)
     val cls = meth.owner
-    if (cls.is(ImplClass))
-      cls.traitOfImplClass.info.decl(implName).atSignature(meth.signature).symbol
-    else if (cls.is(Scala_2_12_Trait))
+    if (cls.is(Scala2xTrait))
       if (meth.isConstructor)
         cls.info.decl(nme.TRAIT_CONSTRUCTOR).symbol
       else

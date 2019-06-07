@@ -1,0 +1,4 @@
+C.bar1 : scala.Option[scala.collection.Seq[scala.Predef.String]]
+C.bar2 : scala.Option[scala.collection.Seq[scala.Predef.String]]
+C.foo1 : scala.collection.Seq[scala.Predef.String]
+C.foo2 : scala.collection.Seq[scala.Predef.String]

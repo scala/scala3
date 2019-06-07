@@ -49,8 +49,11 @@ object Mode {
   /** We are in a pattern alternative */
   val InPatternAlternative: Mode = newMode(7, "InPatternAlternative")
 
-  /** Allow GADTFlexType labelled types to have their bounds adjusted */
-  val GADTflexible: Mode = newMode(8, "GADTflexible")
+  /** Make subtyping checks instead infer constraints necessarily following from given subtyping relation.
+   *
+   *  This enables changing [[GadtConstraint]] and alters how [[TypeComparer]] approximates constraints.
+   */
+  val GadtConstraintInference: Mode = newMode(8, "GadtConstraintInference")
 
   /** Assume -language:strictEquality */
   val StrictEquality: Mode = newMode(9, "StrictEquality")
@@ -68,9 +71,6 @@ object Mode {
 
   /** We are currently unpickling Scala2 info */
   val Scala2Unpickling: Mode = newMode(13, "Scala2Unpickling")
-
-  /** We are currently unpickling from Java 8 or higher */
-  val Java8Unpickling: Mode = newMode(14, "Java8Unpickling")
 
   /** Use Scala2 scheme for overloading and implicit resolution */
   val OldOverloadingResolution: Mode = newMode(15, "OldOverloadingResolution")
@@ -104,4 +104,10 @@ object Mode {
 
   /** We are synthesizing the receiver of an extension method */
   val SynthesizeExtMethodReceiver: Mode = newMode(23, "SynthesizeExtMethodReceiver")
+
+  /** Are we trying to find a hidden implicit? */
+  val FindHiddenImplicits: Mode = newMode(24, "FindHiddenImplicits")
+
+  /** Are we in a quote in a pattern? */
+  val QuotedPattern: Mode = newMode(25, "QuotedPattern")
 }

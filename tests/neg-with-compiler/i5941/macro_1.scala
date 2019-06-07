@@ -13,21 +13,20 @@ object Lens {
   }
 
   def impl[S: Type, T: Type](getter: Expr[S => T])(implicit refl: Reflection): Expr[Lens[S, T]] = {
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(this.getClass.getClassLoader)
     import refl._
     import util._
-    import quoted.Toolbox.Default._
-
     // obj.copy(field = value)
     def setterBody(obj: Expr[S], value: Expr[T], field: String): Expr[S] =
-      Term.Select.overloaded(obj.unseal, "copy", Nil, Term.NamedArg(field, value.unseal) :: Nil).seal[S]
+      Select.overloaded(obj.unseal, "copy", Nil, NamedArg(field, value.unseal) :: Nil).seal.cast[S]
 
     // exception: getter.unseal.underlyingArgument
     getter.unseal match {
-      case Term.Inlined(
+      case Inlined(
         None, Nil,
-        Term.Block(
-          DefDef(_, Nil, (param :: Nil) :: Nil, _, Some(Term.Select(o, field))) :: Nil,
-          Term.Lambda(meth, _)
+        Block(
+          DefDef(_, Nil, (param :: Nil) :: Nil, _, Some(Select(o, field))) :: Nil,
+          Lambda(meth, _)
         )
       ) if o.symbol == param.symbol =>
         '{
@@ -35,7 +34,7 @@ object Lens {
           apply($getter)(setter)
         }
       case _ =>
-        throw new QuoteError("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
+        QuoteError("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
     }
   }
 }

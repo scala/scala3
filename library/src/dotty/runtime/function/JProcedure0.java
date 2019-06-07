@@ -9,9 +9,6 @@ import scala.runtime.BoxedUnit;
 
 @FunctionalInterface
 public interface JProcedure0 extends JFunction0<BoxedUnit>, java.io.Serializable {
-    default void $init$() {
-    }
-
     void applyVoid();
 
     default BoxedUnit apply() {

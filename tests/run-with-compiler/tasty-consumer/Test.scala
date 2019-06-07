@@ -15,7 +15,7 @@ class DBConsumer extends TastyConsumer {
 
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
         case IsDefinition(tree) =>
-          println(tree.show)
+          println(tree.showExtractors)
           super.traverseTree(tree)
         case tree =>
           super.traverseTree(tree)

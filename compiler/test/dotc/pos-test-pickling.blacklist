@@ -1,13 +1,22 @@
+i94-nada.scala
 i1812.scala
 i1867.scala
 i3067.scala
-matchtype.scala
-seqtype-cycle
 t247.scala
 t2712-5.scala
 t284-pos.scala
 t3249
 t3486
 t3612.scala
-typelevel0.scala
 reference
+
+# type of super reference changes due to late addition of Mirror.Singleton
+i939.scala
+
+# Match types
+typelevel0.scala
+matchtype.scala
+6322.scala
+
+# Opaque type
+i5720.scala

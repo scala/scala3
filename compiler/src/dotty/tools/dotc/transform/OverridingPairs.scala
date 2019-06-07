@@ -134,7 +134,7 @@ object OverridingPairs {
             case ex: TypeError =>
               // See neg/i1750a for an example where a cyclic error can arise.
               // The root cause in this example is an illegal "override" of an inner trait
-              ctx.error(ex.toMessage, base.sourcePos)
+              ctx.error(ex.toMessage, base.sourcePos, sticky = true)
           }
         } else {
           curEntry = curEntry.prev

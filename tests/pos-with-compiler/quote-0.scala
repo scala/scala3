@@ -1,8 +1,8 @@
 import scala.quoted._
-
-import scala.quoted.Toolbox.Default._
+import scala.quoted.autolift._
 
 object Macros {
+
 
   inline def assert(expr: => Boolean): Unit =
     ${ assertImpl('expr) }
@@ -10,7 +10,8 @@ object Macros {
   def assertImpl(expr: Expr[Boolean]) =
     '{ if !($expr) then throw new AssertionError(s"failed assertion: ${${showExpr(expr)}}") }
 
-  def showExpr[T](expr: Expr[T]): Expr[String] = expr.toString.toExpr
+
+  def showExpr[T](expr: Expr[T]): Expr[String] = expr.toString
 
   inline def power(inline n: Int, x: Double) = ${ powerCode(n, 'x) }
 
@@ -38,5 +39,6 @@ class Test {
     ${ powerCode(3, '{math.sqrt(2.0)}) }
   }
 
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
   program.run
 }

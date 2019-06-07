@@ -1,6 +1,7 @@
-23: Pattern Match Exhaustivity: _: Trait & OpenTrait, _: Clazz & OpenTrait, _: AbstractClass & OpenTrait, _: SealedTrait & OpenTrait, _: SealedClass & OpenTrait, _: SealedAbstractClass & OpenTrait
-27: Pattern Match Exhaustivity: _: Trait & OpenTrait & OpenTrait2, _: Clazz & OpenTrait & OpenTrait2, _: AbstractClass & OpenTrait & OpenTrait2, _: SealedTrait & OpenTrait & OpenTrait2, _: SealedClass & OpenTrait & OpenTrait2, _: SealedAbstractClass & OpenTrait & OpenTrait2
-31: Pattern Match Exhaustivity: _: Trait & OpenClass, _: SealedTrait & OpenClass
-35: Pattern Match Exhaustivity: _: Trait & OpenTrait & OpenClass, _: SealedTrait & OpenTrait & OpenClass
-43: Pattern Match Exhaustivity: _: Trait & OpenAbstractClass, _: SealedTrait & OpenAbstractClass
-47: Pattern Match Exhaustivity: _: Trait & OpenClass & (OpenTrait & OpenClassSubclass), _: SealedTrait & OpenClass & (OpenTrait & OpenClassSubclass)
+23: Pattern Match Exhaustivity: _: Trait & OpenTrait, _: Clazz & OpenTrait, _: AbstractClass & OpenTrait, _: SealedClass & OpenTrait
+27: Pattern Match Exhaustivity: _: Trait & OpenTrait & OpenTrait2, _: Clazz & OpenTrait & OpenTrait2, _: AbstractClass & OpenTrait & OpenTrait2, _: SealedClass & OpenTrait & OpenTrait2
+31: Pattern Match Exhaustivity: _: Trait & OpenClass
+35: Pattern Match Exhaustivity: _: Trait & OpenTrait & OpenClass
+39: Pattern Match Exhaustivity: _: Trait & OpenClass & (OpenTrait & OpenClass2)
+43: Pattern Match Exhaustivity: _: Trait & OpenAbstractClass
+47: Pattern Match Exhaustivity: _: Trait & OpenClass & (OpenTrait & OpenClassSubclass)

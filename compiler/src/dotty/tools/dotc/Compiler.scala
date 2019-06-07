@@ -37,6 +37,8 @@ class Compiler {
   /** Phases dealing with the frontend up to trees ready for TASTY pickling */
   protected def frontendPhases: List[List[Phase]] =
     List(new FrontEnd) ::           // Compiler frontend: scanner, parser, namer, typer
+    List(new YCheckPositions) ::    // YCheck positions
+    List(new Staging) ::            // Check PCP, heal quoted types and expand macros
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
@@ -45,7 +47,6 @@ class Compiler {
 
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
-    List(new Staging) ::            // Check PCP, heal quoted types and expand macros
     List(new Pickler) ::            // Generate TASTY info
     List(new ReifyQuotes) ::        // Turn quoted trees into explicit run-time data structures
     Nil
@@ -55,12 +56,14 @@ class Compiler {
     List(new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
-         new CookComments) ::        // Cook the comments: expand variables, doc, etc.
+         new CookComments,           // Cook the comments: expand variables, doc, etc.
+         new CompleteJavaEnums) ::   // Fill in constructors for Java enums
     List(new CheckStatic,            // Check restrictions that apply to @static members
          new ElimRepeated,           // Rewrite vararg parameters and arguments
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
+         new CacheAliasImplicits,    // Cache RHS of parameterless alias implicits
          new ShortcutImplicits,      // Allow implicit functions without creating closures
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
@@ -81,13 +84,15 @@ class Compiler {
          new ElimByName,             // Expand by-name parameter references
          new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections
-         new AugmentScala2Traits,    // Expand traits defined in Scala 2.x to simulate old-style rewritings
-         new ResolveSuper,           // Implement super accessors and add forwarders to trait methods
+         new AugmentScala2Traits,    // Augments Scala2 traits with additional members needed for mixin composition.
+         new ResolveSuper,           // Implement super accessors
          new FunctionXXLForwarders,  // Add forwarders for FunctionXXL apply method
+         new TupleOptimizations,     // Optimize generic operations on tuples
          new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
     List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
+         new ElimPolyFunction,       // Rewrite PolyFunction subclasses to FunctionN subclasses
          new TailRec,                // Rewrite tail recursion to loops
          new Mixin,                  // Expand trait fields and trait initializers
          new LazyVals,               // Expand lazy vals
@@ -111,6 +116,7 @@ class Compiler {
          new ExpandPrivate,          // Widen private definitions accessed from nested classes
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
+         new sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
          new CollectEntryPoints,     // Find classes with main methods
          new CollectSuperCalls) ::   // Find classes that are called with super
     Nil

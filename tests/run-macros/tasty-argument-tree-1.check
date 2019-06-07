@@ -1,0 +1,42 @@
+
+tree: Inlined(None, Nil, Literal(Constant.Int(3)))
+tree deref. vals: Literal(Constant.Int(3))
+
+tree: Inlined(None, Nil, Ident("v"))
+tree deref. vals: Literal(Constant.Int(1))
+
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Literal(Constant.Int(2))
+
+tree: Inlined(None, Nil, Ident("l"))
+tree deref. vals: Literal(Constant.Int(3))
+
+tree: Inlined(None, Nil, Ident("a"))
+tree deref. vals: Ident("a")
+
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Ident("b")
+
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Apply(Ident("d2"), Nil)
+
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Apply(Ident("d3"), List(Literal(Constant.Int(3))))
+
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: TypeApply(Ident("d4"), List(TypeIdent("Int")))
+
+tree: Inlined(None, Nil, Ident("vv"))
+tree deref. vals: Literal(Constant.Int(1))
+
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Literal(Constant.Int(1))
+
+tree: Inlined(None, Nil, Ident("vd"))
+tree deref. vals: Literal(Constant.Int(2))
+
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Literal(Constant.Int(2))
+
+tree: Inlined(None, Nil, Ident("x"))
+tree deref. vals: Apply(TypeApply(Select(Ident("Tuple2"), "apply"), List(Inferred(), Inferred())), List(Literal(Constant.Int(1)), Literal(Constant.Int(2))))

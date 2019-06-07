@@ -1,5 +1,6 @@
 
 import scala.quoted._
+import scala.quoted.autolift._
 
 trait VecROp[Idx, T, Unt] extends VecOp[Idx, Unt] {
   def reduce: ((T, T) => T, T, Vec[Idx, T]) => T
@@ -79,7 +80,7 @@ class VecRStaOptDynInt(r: Ring[PV[Int]]) extends VecRStaDyn(r) {
   override def reduce: ((PV[Int], PV[Int]) => PV[Int], PV[Int], Vec[PV[Int], PV[Int]]) => PV[Int] = (plus, zero, vec) => vec match {
     case Vec(Sta(n), vecf) =>
       if (count_non_zeros(n, vecf) < VecRStaOptDynInt.threshold) M.reduce(plus, zero, vec)
-      else M.reduce(plus, zero, Vec(Dyn(n.toExpr), vecf))
+      else M.reduce(plus, zero, Vec(Dyn(n), vecf))
     case _ => M.reduce(plus, zero, vec)
   }
 

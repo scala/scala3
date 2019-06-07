@@ -1,9 +1,9 @@
 ---
 layout: doc-page
-title: "Inferable By-Name Parameters"
+title: "By-Name Context Parameters"
 ---
 
-Inferable by-name parameters can be used to avoid a divergent inferred expansion. Example:
+Context parameters can be declared by-name to avoid a divergent inferred expansion. Example:
 
 ```scala
 trait Codec[T] {
@@ -12,7 +12,7 @@ trait Codec[T] {
 
 implied intCodec for Codec[Int] = ???
 
-implied optionCodec[T] given (ev: => Codec[T]) for Codec[Option[T]] {
+implied optionCodec[T] for Codec[Option[T]] given (ev: => Codec[T]) {
   def write(xo: Option[T]) = xo match {
     case Some(x) => ev.write(x)
     case None =>
@@ -24,14 +24,14 @@ val s = the[Codec[Option[Int]]]
 s.write(Some(33))
 s.write(None)
 ```
-As is the case for a normal by-name parameter, the argument for the inferable parameter `ev`
+As is the case for a normal by-name parameter, the argument for the context parameter `ev`
 is evaluated on demand. In the example above, if the option value `x` is `None`, it is
 not evaluated at all.
 
-The synthesized argument for an inferable parameter is backed by a local val
+The synthesized argument for a context parameter is backed by a local val
 if this is necessary to prevent an otherwise diverging expansion.
 
-The precise steps for constructing an inferable argument for a by-name parameter of type `=> T` are as follows.
+The precise steps for synthesizing an argument for a by-name context parameter of type `=> T` are as follows.
 
  1. Create a new implied instance of type `T`:
 

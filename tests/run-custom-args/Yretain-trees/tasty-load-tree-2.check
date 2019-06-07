@@ -1,2 +1,2 @@
-DefDef("foo", Nil, Nil, TypeTree.Ident("Int"), Some(Term.Apply(Term.Select(Term.Literal(Constant.Int(1)), "+"), List(Term.Literal(Constant.Int(2))))))
-ValDef("bar", TypeTree.Ident("Int"), Some(Term.Apply(Term.Select(Term.Literal(Constant.Int(2)), "+"), List(Term.Literal(Constant.Int(3))))))
+DefDef("foo", Nil, Nil, Inferred(), None)
+ValDef("bar", Inferred(), None)

@@ -13,3 +13,6 @@ ok: Funcs.foo('a') = 2
 ok: Funcs.foo(97) = 3
 ok: M1.f(3) = 11
 ok: M2.f(3) = 22
+ok: M3.f("abc", _.reverse) = cba
+ok: M3.f(2, _ + 2) = 4
+ok: f("abc", { case s: String => s}) = abc

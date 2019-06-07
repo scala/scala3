@@ -107,19 +107,22 @@ object Flags {
       }
 
     /** The list of non-empty names of flags that are set in this FlagSet */
-    def flagStrings: Seq[String] = {
+    def flagStrings(privateWithin: String): Seq[String] = {
       val rawStrings = (2 to MaxFlag).flatMap(flagString)
-      if (this is Local)
+      val scopeStr =
+        if (this is Local) "this"
+        else privateWithin
+      if (privateWithin != "")
         rawStrings.filter(_ != "<local>").map {
-          case "private" => "private[this]"
-          case "protected" => "protected[this]"
+          case "private" => s"private[$scopeStr]"
+          case "protected" => s"protected[$scopeStr]"
           case str => str
         }
       else rawStrings
     }
 
     /** The string representation of this flag set */
-    override def toString: String = flagStrings.mkString(" ")
+    override def toString: String = flagStrings("").mkString(" ")
   }
 
   def termFlagSet(x: Long) = FlagSet(TERMS | x)
@@ -265,7 +268,7 @@ object Flags {
   /** A mutable var */
   final val Mutable: FlagSet = termFlag(12, "mutable")
 
-  /** An opqaue type */
+  /** An opaque type or a class containing one */
   final val Opaque: FlagSet = typeFlag(12, "opaque")
 
   final val MutableOrOpaque: FlagSet = Mutable.toCommonFlags
@@ -290,7 +293,9 @@ object Flags {
   final val PackageVal: FlagSet = Package.toTermFlags
   final val PackageClass: FlagSet = Package.toTypeFlags
 
-  /** A case class or its companion object */
+  /** A case class or its companion object
+   *  Note: Case is also used to indicate that a symbol is bound by a pattern.
+   */
   final val Case: FlagSet = commonFlag(17, "case")
   final val CaseClass: FlagSet = Case.toTypeFlags
   final val CaseVal: FlagSet = Case.toTermFlags
@@ -339,6 +344,8 @@ object Flags {
 
   /** An unpickled Scala 2.x class */
   final val Scala2x: FlagSet = typeFlag(26, "<scala-2.x>")
+
+  final val Scala2xTrait: FlagSet = Scala2x | Trait
 
   final val SuperAccessorOrScala2x: FlagSet = Scala2x.toCommonFlags
 
@@ -390,6 +397,9 @@ object Flags {
   /** Symbol is an enum class or enum case (if used with case) */
   final val Enum: FlagSet = commonFlag(40, "<enum>")
 
+  /** An export forwarder */
+  final val Exported: FlagSet = commonFlag(41, "exported")
+
   /** Labeled with `erased` modifier (erased value)  */
   final val Erased: FlagSet = termFlag(42, "erased")
 
@@ -413,11 +423,6 @@ object Flags {
   /** Symbol is a self name */
   final val SelfName: FlagSet = termFlag(54, "<selfname>")
 
-  /** Symbol is an implementation class of a Scala2 trait */
-  final val ImplClass: FlagSet = typeFlag(54, "<implclass>")
-
-  final val SelfNameOrImplClass: FlagSet = SelfName.toCommonFlags
-
   /** An existentially bound symbol (Scala 2.x only) */
   final val Scala2ExistentialCommon: FlagSet = commonFlag(55, "<existential>")
   final val Scala2Existential: FlagSet = Scala2ExistentialCommon.toTypeFlags
@@ -428,14 +433,11 @@ object Flags {
   /** A module variable (Scala 2.x only) */
   final val Scala2ModuleVar: FlagSet = termFlag(57, "<modulevar>")
 
-  /** A Scala 2.12 trait that has been augmented with static members */
-  final val Scala_2_12_Augmented: FlagSet = typeFlag(57, "<scala_2_12_augmented>")
-
-  /** A definition that's initialized before the super call (Scala 2.x only) */
-  final val Scala2PreSuper: FlagSet = termFlag(58, "<presuper>")
-
-  /** A Scala 2.12 or higher trait */
-  final val Scala_2_12_Trait: FlagSet = typeFlag(58, "<scala_2_12_trait>")
+  /** A Scala 2.x trait that has been partially augmented.
+   *  This is set in `AugmentScala2Trait` and reset in `LinkScala2Impls`
+   *  when the trait is fully augmented.
+   */
+  final val Scala2xPartiallyAugmented: FlagSet = typeFlag(57, "<scala-2.x-partially-augmented>")
 
   /** A macro */
   final val Macro: FlagSet = commonFlag(59, "<macro>")
@@ -463,7 +465,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Final, Case, Implicit, Implied, Override, JavaStatic)
+    commonFlags(Private, Protected, Final, Case, Implicit, Implied, Given, Override, JavaStatic)
 
   final val TypeSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque
@@ -488,7 +490,7 @@ object Flags {
     HigherKinded.toCommonFlags | Param | ParamAccessor.toCommonFlags |
     Scala2ExistentialCommon | MutableOrOpaque | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
-    Extension.toCommonFlags | NonMember | Implicit | Implied | Permanent | Synthetic |
+    Extension.toCommonFlags | NonMember | Implicit | Given | Implied | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
@@ -497,7 +499,7 @@ object Flags {
    *  is completed)
    */
   final val AfterLoadFlags: FlagSet =
-    FromStartFlags | AccessFlags | Final | AccessorOrSealed | LazyOrTrait | SelfNameOrImplClass
+    FromStartFlags | AccessFlags | Final | AccessorOrSealed | LazyOrTrait | SelfName.toCommonFlags
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion
@@ -548,13 +550,7 @@ object Flags {
     Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased
 
   /** Flags that can apply to a module class */
-  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags |
-    ImplClass | Enum | Opaque
-
-  /** Flags that are copied from a synthetic companion to a user-defined one
-   *  when the two are merged. See: Namer.mergeCompanionDefs
-   */
-  final val RetainedSyntheticCompanionFlags: FlagSet = Opaque
+  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
 
   /** Packages and package classes always have these flags set */
   final val PackageCreationFlags: FlagSet =
@@ -590,14 +586,21 @@ object Flags {
   final val InlineOrProxy: FlagSet = Inline | InlineProxy
 
   final val ImplicitOrImplied = Implicit | Implied
+  final val ImplicitOrImpliedOrGiven = Implicit | Implied | Given
+  final val ImplicitOrGiven = Implicit | Given
 
-  final val ImplicitOrImpliedTerm = ImplicitOrImplied.toTermFlags
+  final val ImpliedOrGiven = Implied | Given
+
+  final val ImplicitOrImpliedOrGivenTerm = ImplicitOrImpliedOrGiven.toTermFlags
+
+  /** Flags retained in export forwarders */
+  final val RetainedExportFlags = ImplicitOrImpliedOrGiven | Extension
 
   /** Assumed to be pure */
   final val StableOrErased: FlagSet = StableRealizable | Erased
 
-  /** Labeled `private`, `final`, or `inline` */
-  final val EffectivelyFinal: FlagSet = Private | Final | Inline
+  /** Labeled `private`, or `final` */
+  final val EffectivelyFinal: FlagSet = Private | Final
 
   /** A private method */
   final val PrivateMethod: FlagConjunction = allOf(Private, Method)
@@ -607,6 +610,9 @@ object Flags {
 
   /** An inline method */
   final val InlineMethod: FlagConjunction = allOf(Inline, Method)
+
+  /** An inline by-name parameter proxy */
+  final val InlineByNameProxy: FlagConjunction = allOf(InlineProxy, Method)
 
   /** An inline parameter */
   final val InlineParam: FlagConjunction = allOf(Inline, Param)
@@ -619,6 +625,7 @@ object Flags {
 
   /** An enum case */
   final val EnumCase: FlagConjunction = allOf(Enum, Case)
+  final val EnumCaseVal: FlagConjunction = allOf(Enum, CaseVal)
 
   /** A term parameter or parameter accessor */
   final val TermParamOrAccessor: FlagSet = Param | ParamAccessor
@@ -662,9 +669,6 @@ object Flags {
   /** Is a default parameter in Scala 2*/
   final val DefaultParameter: FlagConjunction = allOf(Param, DefaultParameterized)
 
-  /** A Scala 2 Macro */
-  final val Scala2Macro: FlagConjunction = allOf(Macro, Scala2x)
-
   /** A trait that does not need to be initialized */
   final val NoInitsTrait: FlagConjunction = allOf(Trait, NoInits)
 
@@ -676,9 +680,6 @@ object Flags {
 
   /** A Java companion object */
   final val JavaModule: FlagConjunction = allOf(JavaDefined, Module)
-
-  /** An opaque companion object */
-  final val OpaqueModule: FlagConjunction = allOf(Opaque, Module)
 
   /** A Java companion object */
   final val JavaProtected: FlagConjunction = allOf(JavaDefined, Protected)
@@ -729,7 +730,6 @@ object Flags {
   final val SyntheticTermParam: FlagConjunction = allOf(Synthetic, TermParam)
   final val SyntheticTypeParam: FlagConjunction = allOf(Synthetic, TypeParam)
   final val SyntheticCase: FlagConjunction = allOf(Synthetic, Case)
-  final val SyntheticOpaque: FlagConjunction = allOf(Synthetic, Opaque)
 
   implicit def conjToFlagSet(conj: FlagConjunction): FlagSet =
     FlagSet(conj.bits)

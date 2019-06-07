@@ -8,7 +8,6 @@ import dotty.tools.io.AbstractFile
 import scala.language.implicitConversions
 import scala.tools.asm
 
-
 /* Interface to abstract over frontend inside backend.
  * Intended to be implemented by both scalac and dotc
  */
@@ -484,7 +483,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def isStrictFP: Boolean
     def isLabel: Boolean
     def hasPackageFlag: Boolean
-    def isImplClass: Boolean
     def isInterface: Boolean
     def isGetter: Boolean
     def isSetter: Boolean
@@ -514,6 +512,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def isJavaDefaultMethod: Boolean
     def isClassConstructor: Boolean
     def isSerializable: Boolean
+    def isJavaEnum: Boolean
 
     /**
      * True for module classes of modules that are top-level or owned only by objects. Module classes
@@ -538,7 +537,8 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def companionSymbol: Symbol
     def moduleClass: Symbol
     def enclosingClassSym: Symbol
-
+    def originalLexicallyEnclosingClass: Symbol
+    def nextOverriddenSymbol: Symbol
 
 
     // members
@@ -584,8 +584,8 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
      *   object T { def f { object U } }
      * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
      */
-    def isOriginallyStaticOwner: Boolean
-
+    def isOriginallyStaticOwner: Boolean =
+      isPackageClass || isModuleClass && originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
 
     def samMethod(): Symbol
 

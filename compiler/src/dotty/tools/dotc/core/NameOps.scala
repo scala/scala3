@@ -69,6 +69,9 @@ object NameOps {
     def isSetterName: Boolean = name endsWith str.SETTER_SUFFIX
     def isScala2LocalSuffix: Boolean = testSimple(_.endsWith(" "))
     def isSelectorName: Boolean = testSimple(n => n.startsWith("_") && n.drop(1).forall(_.isDigit))
+    def isAnonymousClassName: Boolean = name.startsWith(str.ANON_CLASS)
+    def isAnonymousFunctionName: Boolean = name.startsWith(str.ANON_FUN)
+    def isUnapplyName: Boolean = name == nme.unapply || name == nme.unapplySeq
 
     /** Is name a variable name? */
     def isVariableName: Boolean = testSimple { n =>
@@ -139,14 +142,6 @@ object NameOps {
     /** Remove the variance from the name. */
     def invariantName: N = likeSpacedN {
       name.replace { case VariantName(invariant, _) => invariant }
-    }
-
-    def implClassName: N = likeSpacedN(name ++ tpnme.IMPL_CLASS_SUFFIX)
-
-    def traitOfImplClassName: N = {
-      val suffix = tpnme.IMPL_CLASS_SUFFIX.toString
-      assert(name.endsWith(suffix), name)
-      likeSpacedN(name.mapLast(_.dropRight(suffix.length)))
     }
 
     def errorName: N = likeSpacedN(name ++ nme.ERROR)

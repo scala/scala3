@@ -3,9 +3,9 @@ layout: doc-page
 title: "Implementing Typeclasses"
 ---
 
-Implied instance definitions, extension methods and context bounds
+Implied instances, extension methods and context bounds
 allow a concise and natural expression of _typeclasses_. Typeclasses are just traits
-with canonical implementations defined by implied instance definitions. Here are some examples of standard typeclasses:
+with canonical implementations defined by implied instances. Here are some examples of standard typeclasses:
 
 ### Semigroups and monoids:
 
@@ -17,7 +17,7 @@ trait Monoid[T] extends SemiGroup[T] {
   def unit: T
 }
 object Monoid {
-  def apply[T] = the[Monoid[T]]
+  def apply[T] given Monoid[T] = the[Monoid[T]]
 }
 
 implied for Monoid[String] {
@@ -27,7 +27,7 @@ implied for Monoid[String] {
 
 implied for Monoid[Int] {
   def (x: Int) combine (y: Int): Int = x + y
-  def unit: String = 0
+  def unit: Int = 0
 }
 
 def sum[T: Monoid](xs: List[T]): T =
@@ -55,7 +55,7 @@ implied ListMonad for Monad[List] {
     List(x)
 }
 
-implied ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
+implied ReaderMonad[Ctx] for Monad[[X] =>> Ctx => X] {
   def (r: Ctx => A) flatMap [A, B] (f: A => Ctx => B): Ctx => B =
     ctx => f(r(ctx))(ctx)
   def pure[A](x: A): Ctx => A =

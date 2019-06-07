@@ -109,7 +109,7 @@ object Test extends App {
       List(x)
   }
 
-  implied [Ctx] for Monad[[X] => Ctx => X] {
+  implied [Ctx] for Monad[[X] =>> Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =

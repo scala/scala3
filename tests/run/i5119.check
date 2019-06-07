@@ -1,2 +1,0 @@
-Term.Select(Term.Typed(Term.Apply(Term.Select(Term.New(TypeTree.Ident("StringContextOps")), "<init>"), List(Term.Apply(Term.Select(Term.Select(Term.Select(Term.Ident("_root_"), "scala"), "StringContext"), "apply"), List(Term.Typed(Term.Repeated(List(Term.Literal(Constant.String("Hello World ")), Term.Literal(Constant.String("!"))), TypeTree.Inferred()), TypeTree.Inferred()))))), TypeTree.Ident("StringContextOps")), "inline$sc")
-Term.Typed(Term.Repeated(List(Term.Literal(Constant.Int(1))), TypeTree.Inferred()), TypeTree.Inferred())

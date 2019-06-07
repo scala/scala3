@@ -6,7 +6,7 @@ import java.lang.System.{lineSeparator => EOL}
 
 import core.Contexts.Context
 import core.Decorators._
-import printing.Highlighting.{Blue, Red}
+import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
 import diagnostic.{ErrorMessageID, Message, MessageContainer}
 import diagnostic.messages._
@@ -42,14 +42,15 @@ trait MessageRendering {
     *
     * @return (lines before error, lines after error, line numbers offset)
     */
-  def sourceLines(pos: SourcePosition)(implicit ctx: Context): (List[String], List[String], Int) = {
+  def sourceLines(pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): (List[String], List[String], Int) = {
+    assert(pos.exists && pos.source.file.exists)
     var maxLen = Int.MinValue
     def render(offsetAndLine: (Int, String)): String = {
       val (offset, line) = offsetAndLine
       val lineNbr = pos.source.offsetToLine(offset)
       val prefix = s"${lineNbr + 1} |"
       maxLen = math.max(maxLen, prefix.length)
-      val lnum = Red(" " * math.max(0, maxLen - prefix.length) + prefix).show
+      val lnum = hl(diagnosticLevel)(" " * math.max(0, maxLen - prefix.length) + prefix)
       lnum + line.stripLineEnd
     }
 
@@ -78,15 +79,15 @@ trait MessageRendering {
   }
 
   /** The column markers aligned under the error */
-  def columnMarker(pos: SourcePosition, offset: Int)(implicit ctx: Context): String = {
+  def columnMarker(pos: SourcePosition, offset: Int, diagnosticLevel: String)(implicit ctx: Context): String = {
     val prefix = " " * (offset - 1)
     val padding = pos.startColumnPadding
-    val carets = Red {
+    val carets = hl(diagnosticLevel) {
       if (pos.startLine == pos.endLine)
         "^" * math.max(1, pos.endColumn - pos.startColumn)
       else "^"
     }
-    s"$prefix|$padding${carets.show}"
+    s"$prefix|$padding$carets"
   }
 
   /** The error message (`msg`) aligned under `pos`
@@ -112,8 +113,10 @@ trait MessageRendering {
     * @return separator containing error location and kind
     */
   def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String =
-    if (pos.exists) Blue({
-      val file = s"${pos.source.file.toString}:${pos.line + 1}:${pos.column}"
+    if (pos.exists) hl(diagnosticLevel)({
+      val file =
+        if (pos.source.file.exists) s"${pos.source.file.toString}:${pos.line + 1}:${pos.column}"
+        else s"${pos.source.file.toString}: offset ${pos.start} (missing source file)"
       val errId =
         if (message.errorId ne ErrorMessageID.NoExplanationID) {
           val errorNumber = message.errorId.errorNumber()
@@ -126,14 +129,14 @@ trait MessageRendering {
 
       prefix +
         ("-" * math.max(ctx.settings.pageWidth.value - stripColor(prefix).length, 0))
-    }).show else ""
+    }) else ""
 
   /** Explanation rendered under "Explanation" header */
   def explanation(m: Message)(implicit ctx: Context): String = {
     val sb = new StringBuilder(
-      hl"""|
-           |${Blue("Explanation")}
-           |${Blue("===========")}"""
+      s"""|
+          |${Blue("Explanation").show}
+          |${Blue("===========").show}""".stripMargin
     )
     sb.append(EOL).append(m.explanation)
     if (m.explanation.lastOption != Some(EOL)) sb.append(EOL)
@@ -145,13 +148,21 @@ trait MessageRendering {
     val sb = mutable.StringBuilder.newBuilder
     val posString = posStr(pos, diagnosticLevel, msg)
     if (posString.nonEmpty) sb.append(posString).append(EOL)
-    if (pos.exists) {
-      val (srcBefore, srcAfter, offset) = sourceLines(pos)
-      val marker = columnMarker(pos, offset)
+    if (pos.exists && pos.source.file.exists) {
+      val (srcBefore, srcAfter, offset) = sourceLines(pos, diagnosticLevel)
+      val marker = columnMarker(pos, offset, diagnosticLevel)
       val err = errorMsg(pos, msg.msg, offset)
       sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString(EOL))
     } else sb.append(msg.msg)
     sb.toString
+  }
+
+  def hl(diagnosticLevel: String)(str: String)(implicit ctx: Context): String = diagnosticLevel match {
+    case "Info" => Blue(str).show
+    case "Error" => Red(str).show
+    case _ =>
+      assert(diagnosticLevel.contains("Warning"))
+      Yellow(str).show
   }
 
   def diagnosticLevel(cont: MessageContainer): String =

@@ -69,6 +69,8 @@ class Erasure extends Phase with DenotTransformer {
         else oldSymbol
         val oldOwner = ref.owner
         val newOwner = if (oldOwner eq defn.AnyClass) defn.ObjectClass else oldOwner
+        val oldName = ref.name
+        val newName = ref.erasedName
         val oldInfo = ref.info
         val newInfo = transformInfo(oldSymbol, oldInfo)
         val oldFlags = ref.flags
@@ -77,10 +79,11 @@ class Erasure extends Phase with DenotTransformer {
           else oldFlags &~ Flags.HasDefaultParams // HasDefaultParams needs to be dropped because overriding might become overloading
 
         // TODO: define derivedSymDenotation?
-        if ((oldSymbol eq newSymbol) && (oldOwner eq newOwner) && (oldInfo eq newInfo) && (oldFlags == newFlags)) ref
+        if ((oldSymbol eq newSymbol) && (oldOwner eq newOwner) && (oldName eq newName) && (oldInfo eq newInfo) && (oldFlags == newFlags))
+          ref
         else {
           assert(!ref.is(Flags.PackageClass), s"trans $ref @ ${ctx.phase} oldOwner = $oldOwner, newOwner = $newOwner, oldInfo = $oldInfo, newInfo = $newInfo ${oldOwner eq newOwner} ${oldInfo eq newInfo}")
-          ref.copySymDenotation(symbol = newSymbol, owner = newOwner, initFlags = newFlags, info = newInfo)
+          ref.copySymDenotation(symbol = newSymbol, owner = newOwner, name = newName, initFlags = newFlags, info = newInfo)
         }
       }
     case ref: JointRefDenotation =>
@@ -135,7 +138,7 @@ class Erasure extends Phase with DenotTransformer {
 
   def assertErased(tp: Type, tree: tpd.Tree = tpd.EmptyTree)(implicit ctx: Context): Unit = {
     def isAllowed(cls: Symbol, sourceName: String) =
-      tp.typeSymbol == cls && ctx.compilationUnit.source.file.name == sourceName
+      tp.widen.typeSymbol == cls && ctx.compilationUnit.source.file.name == sourceName
     assert(isErasedType(tp) ||
            isAllowed(defn.ArrayClass, "Array.scala") ||
            isAllowed(defn.TupleClass, "Tuple.scala") ||
@@ -218,7 +221,7 @@ object Erasure {
               adaptToType(tree, underlying)
             else if (!(tree.tpe <:< tycon)) {
               assert(!(tree.tpe.typeSymbol.isPrimitiveValueClass))
-              val nullTree = Literal(Constant(null))
+              val nullTree = nullLiteral
               val unboxedNull = adaptToType(nullTree, underlying)
 
               evalOnce(tree) { t =>
@@ -326,8 +329,19 @@ object Erasure {
     }
 
     private def checkNotErased(tree: Tree)(implicit ctx: Context): tree.type = {
-      if (isErased(tree) && !ctx.mode.is(Mode.Type))
-        ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.sourcePos)
+      if (!ctx.mode.is(Mode.Type)) {
+        if (isErased(tree))
+          ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.sourcePos)
+        tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match {
+          case Some(annot) =>
+            def defaultMsg =
+              s"""Reference to ${tree.symbol.showLocated} should not have survived,
+                 |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
+            val message = annot.argumentConstant(0).fold(defaultMsg)(_.stringValue)
+            ctx.error(message, tree.sourcePos)
+          case _ => // OK
+        }
+      }
       tree
     }
 
@@ -358,9 +372,13 @@ object Erasure {
     /** This override is only needed to semi-erase type ascriptions */
     override def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = {
       val Typed(expr, tpt) = tree
-      val tpt1 = promote(tpt)
-      val expr1 = typed(expr, tpt1.tpe)
-      assignType(untpd.cpy.Typed(tree)(expr1, tpt1), tpt1)
+      val tpt1 = tpt match {
+        case Block(_, tpt) => tpt // erase type aliases (statements) from type block
+        case tpt => tpt
+      }
+      val tpt2 = promote(tpt1)
+      val expr1 = typed(expr, tpt2.tpe)
+      assignType(untpd.cpy.Typed(tree)(expr1, tpt2), tpt2)
     }
 
     override def typedLiteral(tree: untpd.Literal)(implicit ctx: Context): Tree =
@@ -400,9 +418,20 @@ object Erasure {
      *      e.m -> e.[]m                if `m` is an array operation other than `clone`.
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
+      val qual1 = typed(tree.qualifier, AnySelectionProto)
 
       def mapOwner(sym: Symbol): Symbol = {
-        def recur(owner: Symbol): Symbol =
+        // PolyFunction apply Selects will not have a symbol, so deduce the owner
+        // from the typed qual.
+        def polyOwner: Symbol =
+          if (sym.exists || tree.name != nme.apply) NoSymbol
+          else {
+            val owner = qual1.tpe.widen.typeSymbol
+            if (defn.isFunctionClass(owner)) owner else NoSymbol
+          }
+
+        polyOwner orElse {
+          val owner = sym.owner
           if (defn.specialErasure.contains(owner)) {
             assert(sym.isConstructor, s"${sym.showLocated}")
             defn.specialErasure(owner)
@@ -410,12 +439,12 @@ object Erasure {
             defn.erasedFunctionClass(owner)
           else
             owner
-        recur(sym.owner)
+        }
       }
 
       val origSym = tree.symbol
       val owner = mapOwner(origSym)
-      val sym = if (owner eq origSym.owner) origSym else owner.info.decl(origSym.name).symbol
+      val sym = if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol
       assert(sym.exists, origSym.showLocated)
 
       def select(qual: Tree, sym: Symbol): Tree =
@@ -459,7 +488,7 @@ object Erasure {
         }
       }
 
-      checkNotErased(recur(typed(tree.qualifier, AnySelectionProto)))
+      checkNotErased(recur(qual1))
     }
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
@@ -507,7 +536,7 @@ object Erasure {
       val Apply(fun, args) = tree
       if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)
-      else typedExpr(fun, FunProto(args, pt)(this, isContextual = false)) match {
+      else typedExpr(fun, FunProto(args, pt)(this, isGivenApply = false)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1
         case fun1 =>

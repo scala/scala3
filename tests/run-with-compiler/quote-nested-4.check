@@ -1,4 +1,5 @@
 {
-  val t: scala.quoted.Type[scala.Predef.String] = scala.quoted.Type.apply[scala.Predef.String]
+  val t: scala.quoted.Type[scala.Predef.String] = '[scala.Predef.String]
+
   (t: scala.quoted.Type[scala.Predef.String])
 }

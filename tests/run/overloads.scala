@@ -31,6 +31,11 @@ object M2 {
     def f[A](x: A) = 22;
 }
 
+object M3 {
+    def f(x: Int, f: Int => Int) = f(x)
+    def f(x: String, f: String => String) = f(x)
+}
+
 object overloads {
 
     def check(what: String, actual: Any, expected: Any): Unit = {
@@ -78,8 +83,12 @@ object overloads {
 //       val y = new scala.collection.mutable.Stack[Int];
 //      check("M1.f(" + y +")", M1.f(y), 12);
 //      check("M2.f(" + y +")", M2.f(y), 21);
-    }
 
+        check("M3.f(\"abc\", _.reverse)", M3.f("abc", _.reverse), "cba")
+        check("M3.f(2, _ + 2)", M3.f(2, _ + 2), 4)
+
+        check("f(\"abc\", { case s: String => s})", M3.f("abc", { case s: String => s}), "abc")
+    }
 }
 
 //############################################################################

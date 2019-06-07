@@ -5,10 +5,10 @@ object Test {
     a = false
     (if (a) foo else bar)(x)
   }
-  def foo(erased a: Int): Unit = {
+  def foo erased (a: Int): Unit = {
     println("foo")
   }
-  def bar(erased a: Int): Unit = {
+  def bar erased (a: Int): Unit = {
     println("bar")
   }
   def x: Int = {

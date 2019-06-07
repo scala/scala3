@@ -3,6 +3,7 @@ package backend
 package jvm
 
 import scala.tools.asm
+import scala.annotation.threadUnsafe
 
 /**
  * This class mainly contains the method classBTypeFromSymbol, which extracts the necessary
@@ -30,14 +31,14 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
     coreBTypes.setBTypes(new CoreBTypes[this.type](this))
   }
 
-  protected lazy val classBTypeFromInternalNameMap = {
+  @threadUnsafe protected lazy val classBTypeFromInternalNameMap = {
     perRunCaches.recordCache(collection.concurrent.TrieMap.empty[String, ClassBType])
   }
 
   /**
    * Cache for the method classBTypeFromSymbol.
    */
-  private lazy val convertedClasses = perRunCaches.newMap[Symbol, ClassBType]()
+  @threadUnsafe private lazy val convertedClasses = perRunCaches.newMap[Symbol, ClassBType]()
 
   /**
    * The ClassBType for a class symbol `sym`.
@@ -61,7 +62,7 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
   }
 
   private def setClassInfo(classSym: Symbol, classBType: ClassBType): ClassBType = {
-    val superClassSym = if (classSym.isImplClass) ObjectClass else classSym.superClass
+    val superClassSym = classSym.superClass
     assert(
       if (classSym == ObjectClass)
         superClassSym == NoSymbol
@@ -147,7 +148,7 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
     if (!isNested) None
     else {
       // See comment in BTypes, when is a class marked static in the InnerClass table.
-      val isStaticNestedClass = innerClassSym.originalOwner.isOriginallyStaticOwner
+      val isStaticNestedClass = innerClassSym.originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
 
       // After lambdalift (which is where we are), the rawowoner field contains the enclosing class.
       val enclosingClassSym = innerClassSym.enclosingClassSym
@@ -200,16 +201,21 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
 
     val finalFlag = sym.getsJavaFinalFlag
 
-    // Primitives are "abstract final" to prohibit instantiation
-    // without having to provide any implementations, but that is an
-    // illegal combination of modifiers at the bytecode level so
-    // suppress final if abstract if present.
     import asm.Opcodes._
     GenBCodeOps.mkFlags(
       if (privateFlag) ACC_PRIVATE else ACC_PUBLIC,
       if (sym.isDeferred || sym.hasAbstractFlag) ACC_ABSTRACT else 0,
       if (sym.isInterface) ACC_INTERFACE else 0,
-      if (finalFlag && !sym.hasAbstractFlag) ACC_FINAL else 0,
+
+      if (finalFlag &&
+        // Primitives are "abstract final" to prohibit instantiation
+        // without having to provide any implementations, but that is an
+        // illegal combination of modifiers at the bytecode level so
+        // suppress final if abstract if present.
+        !sym.hasAbstractFlag &&
+        //  Mixin forwarders are bridges and can be final, but final bridges confuse some frameworks
+        !sym.isBridge)
+        ACC_FINAL else 0,
       if (sym.isStaticMember) ACC_STATIC else 0,
       if (sym.isBridge) ACC_BRIDGE | ACC_SYNTHETIC else 0,
       if (sym.isArtifact) ACC_SYNTHETIC else 0,
@@ -217,7 +223,8 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
       if (sym.hasEnumFlag) ACC_ENUM else 0,
       if (sym.isVarargsMethod) ACC_VARARGS else 0,
       if (sym.isSynchronized) ACC_SYNCHRONIZED else 0,
-      if (sym.isDeprecated) asm.Opcodes.ACC_DEPRECATED else 0
+      if (sym.isDeprecated) asm.Opcodes.ACC_DEPRECATED else 0,
+      if (sym.isJavaEnum) asm.Opcodes.ACC_ENUM else 0
     )
   }
 

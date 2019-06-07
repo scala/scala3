@@ -11,6 +11,6 @@ object Test {
 
 }
 
-class Foo(erased a: Int) {
+class Foo erased (a: Int) {
   println("Foo")
 }

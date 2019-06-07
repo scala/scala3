@@ -75,10 +75,11 @@ compiler/after-pickling.txt
 bench/compile.txt
 *.dotty-ide-version
 
-*.decompiled.out
-
 # The vscode app for testing
 vscode-dotty/.vscode-test
 
 community-build/dotty-bootstrapped.version
 community-build/sbt-dotty-sbt
+
+# Vulpix output files
+*.check.out

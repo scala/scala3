@@ -184,7 +184,6 @@ object Decorators {
   }
 
   implicit class StringInterpolators(val sc: StringContext) extends AnyVal {
-
     /** General purpose string formatting */
     def i(args: Any*)(implicit ctx: Context): String =
       new StringFormatter(sc).assemble(args)
@@ -200,10 +199,6 @@ object Decorators {
      */
     def ex(args: Any*)(implicit ctx: Context): String =
       explained(implicit ctx => em(args: _*))
-
-    /** Formatter that adds syntax highlighting to all interpolated values */
-    def hl(args: Any*)(implicit ctx: Context): String =
-      new SyntaxFormatter(sc).assemble(args).stripMargin
   }
 
   implicit class ArrayInterpolator[T <: AnyRef](val arr: Array[T]) extends AnyVal {

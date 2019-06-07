@@ -1,0 +1,36 @@
+quoted_2.scala:[173..174]
+a
+quoted_2.scala:[184..185]
+b
+quoted_2.scala:[195..196]
+c
+quoted_2.scala:[206..207]
+d
+quoted_2.scala:[217..222]
+"abc"
+quoted_2.scala:[232..245]
+("abc": scala.Predef.String)
+quoted_2.scala:[255..269]
+_root_.scala.StringContext.apply(("abc", "": scala.<repeated>[scala.Predef.String])).s(("def": scala.<repeated>[scala.Any]))
+quoted_2.scala:[281..282]
+a
+quoted_2.scala:[293..294]
+b
+quoted_2.scala:[305..306]
+c
+quoted_2.scala:[317..318]
+d
+quoted_2.scala:[329..334]
+"abc"
+quoted_2.scala:[345..358]
+("abc": scala.Predef.String)
+quoted_2.scala:[369..383]
+_root_.scala.StringContext.apply(("abc", "": scala.<repeated>[scala.Predef.String])).s(("def": scala.<repeated>[scala.Any]))
+quoted_2.scala:[426..427]
+T
+quoted_2.scala:[438..444]
+scala.Predef.String
+quoted_2.scala:[455..460]
+"abc"
+quoted_2.scala:[471..472]
+U

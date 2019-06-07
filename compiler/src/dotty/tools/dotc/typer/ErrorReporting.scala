@@ -16,14 +16,14 @@ object ErrorReporting {
 
   import tpd._
 
-  def errorTree(tree: untpd.Tree, msg: => Message, pos: SourcePosition)(implicit ctx: Context): tpd.Tree =
-    tree.withType(errorType(msg, pos))
+  def errorTree(tree: untpd.Tree, msg: => Message, pos: SourcePosition, sticky: Boolean = false)(implicit ctx: Context): tpd.Tree =
+    tree.withType(errorType(msg, pos, sticky))
 
   def errorTree(tree: untpd.Tree, msg: => Message)(implicit ctx: Context): tpd.Tree =
     errorTree(tree, msg, tree.sourcePos)
 
-  def errorType(msg: => Message, pos: SourcePosition)(implicit ctx: Context): ErrorType = {
-    ctx.error(msg, pos)
+  def errorType(msg: => Message, pos: SourcePosition, sticky: Boolean = false)(implicit ctx: Context): ErrorType = {
+    ctx.error(msg, pos, sticky)
     ErrorType(msg)
   }
 
@@ -47,7 +47,7 @@ object ErrorReporting {
           case _: WildcardType | _: IgnoredProto => ""
           case tp => em" and expected result type $tp"
         }
-        em"arguments (${tp.typedArgs.tpes}%, %)$result"
+        em"arguments (${tp.unforcedTypedArgs.tpes}%, %)$result"
       case _ =>
         em"expected type $tp"
     }
@@ -81,7 +81,7 @@ object ErrorReporting {
       if (tree.tpe.widen.exists)
         i"${exprStr(tree)} does not take ${kind}parameters"
       else {
-        new FatalError("").printStackTrace()
+        if (ctx.settings.Ydebug.value) new FatalError("").printStackTrace()
         i"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString} at ${ctx.phase}"
       }
 
@@ -128,8 +128,8 @@ object ErrorReporting {
           case tp: TypeParamRef =>
             constraint.entry(tp) match {
               case bounds: TypeBounds =>
-                if (variance < 0) apply(constraint.fullUpperBound(tp))
-                else if (variance > 0) apply(constraint.fullLowerBound(tp))
+                if (variance < 0) apply(ctx.typeComparer.fullUpperBound(tp))
+                else if (variance > 0) apply(ctx.typeComparer.fullLowerBound(tp))
                 else tp
               case NoType => tp
               case instType => apply(instType)
@@ -157,6 +157,10 @@ object ErrorReporting {
       }
       """\$\{\w*\}""".r.replaceSomeIn(raw, m => translate(m.matched.drop(2).init))
     }
+
+    def rewriteNotice: String =
+      if (ctx.scala2Mode) "\nThis patch can be inserted automatically under -rewrite."
+      else ""
   }
 
   def err(implicit ctx: Context): Errors = new Errors

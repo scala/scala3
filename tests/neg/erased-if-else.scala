@@ -1,6 +1,6 @@
 object Test {
   var b = true
-  def foo(erased a: Boolean): Boolean = {
+  def foo erased (a: Boolean): Boolean = {
     if (a) // error
       true
     else

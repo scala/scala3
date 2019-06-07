@@ -383,13 +383,15 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       val linkedClass  = moduleClass.companionClass
       lazy val conflictingNames: Set[Name] = {
-        // Dotty deviation: needed to add ": Symbol" because of https://github.com/lampepfl/dotty/issues/2143
         (linkedClass.info.members collect { case sym if sym.name.isTermName => sym.name }).toSet
       }
       debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
-      for (m <- moduleClass.info.membersBasedOnFlags(ExcludedForwarderFlags, Flag_METHOD)) {
-        if (m.isType || m.isDeferred || (m.owner eq ObjectClass) || m.isConstructor || m.isExpanded)
+      for (m0 <- moduleClass.info.membersBasedOnFlags(ExcludedForwarderFlags, Flag_METHOD)) {
+        val m = if (m0.isBridge) m0.nextOverriddenSymbol else m0
+        if (m == NoSymbol)
+          log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
+        else if (m.isType || m.isDeferred || (m.owner eq ObjectClass) || m.isConstructor || m.isExpanded)
           debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
         else if (conflictingNames(m.name))
           log(s"No forwarder for $m due to conflict with ${linkedClass.info.member(m.name)}")

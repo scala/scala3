@@ -1,0 +1,4 @@
+Apply(Ident("foo"), List(Literal(Constant.Int(1))))
+Apply(Ident("foo"), List(Literal(Constant.Int(2))))
+Apply(Ident("foo"), List(Literal(Constant.Int(4))))
+Apply(Ident("foo"), List(Literal(Constant.Int(3))))

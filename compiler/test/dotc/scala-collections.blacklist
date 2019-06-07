@@ -1,5 +1,0 @@
-## Compiling the scala.reflect package object together with other files sometimes leads to cycles,
-## but only when compiling with a non-bootstrapped dotty-library, because unpickling DottyPredef
-## requires scala.reflect.ScalaSignature which forces the scala.reflect package object.
-## Since we'll eventually be fully bootstrapped, it's not worth fixing by adding workarounds.
-scala/reflect/package.scala

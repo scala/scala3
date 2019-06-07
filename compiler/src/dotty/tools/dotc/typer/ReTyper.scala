@@ -8,7 +8,8 @@ import Symbols._
 import StdNames._
 import Decorators._
 import typer.ProtoTypes._
-import ast.{tpd, untpd}
+import ast.{tpd, untpd, Trees}
+import Trees._
 import scala.util.control.NonFatal
 import util.Spans.Span
 
@@ -64,6 +65,12 @@ class ReTyper extends Typer with ReChecking {
   override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree =
     promote(tree)
 
+  override def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(implicit ctx: Context): TypTree =
+    promote(TypeTree(tree.tpe).withSpan(tree.span))
+
+  override def typedFunPart(fn: untpd.Tree, pt: Type)(implicit ctx: Context): Tree =
+    typedExpr(fn, pt)
+
   override def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = {
     assertTyped(tree)
     val body1 = typed(tree.body, pt)
@@ -71,7 +78,11 @@ class ReTyper extends Typer with ReChecking {
   }
 
   override def typedUnApply(tree: untpd.UnApply, selType: Type)(implicit ctx: Context): UnApply = {
-    val fun1 = typedUnadapted(tree.fun, AnyFunctionProto)
+    val fun1 = {
+      // retract PatternOrTypeBits like in typedExpr
+      val ctx1 = ctx.retractMode(Mode.PatternOrTypeBits)
+      typedUnadapted(tree.fun, AnyFunctionProto)(ctx1)
+    }
     val implicits1 = tree.implicits.map(typedExpr(_))
     val patterns1 = tree.patterns.mapconserve(pat => typed(pat, pat.tpe))
     untpd.cpy.UnApply(tree)(fun1, implicits1, patterns1).withType(tree.tpe)
@@ -92,6 +103,9 @@ class ReTyper extends Typer with ReChecking {
 
   override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType, locked: TypeVars)(fallBack: => Tree)(implicit ctx: Context): Tree =
     fallBack
+
+  override def tryNew[T >: Untyped <: Type]
+    (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: => Tree)(implicit ctx: Context): Tree = fallBack
 
   override def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = ()
 

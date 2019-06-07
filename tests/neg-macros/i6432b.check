@@ -1,0 +1,16 @@
+
+-- Error: tests/neg-macros/i6432b/Test_2.scala:4:8 ---------------------------------------------------------------------
+4 |  foo"""abc${"123"}xyz${"456"}fgh""" // error // error // error
+  |        ^^^
+  |        abc
+  | This location is in code that was inlined at Test_2.scala:4
+-- Error: tests/neg-macros/i6432b/Test_2.scala:4:19 --------------------------------------------------------------------
+4 |  foo"""abc${"123"}xyz${"456"}fgh""" // error // error // error
+  |                   ^^^
+  |                   xyz
+  | This location is in code that was inlined at Test_2.scala:4
+-- Error: tests/neg-macros/i6432b/Test_2.scala:4:30 --------------------------------------------------------------------
+4 |  foo"""abc${"123"}xyz${"456"}fgh""" // error // error // error
+  |                              ^^^
+  |                              fgh
+  | This location is in code that was inlined at Test_2.scala:4

@@ -7,6 +7,8 @@ import MegaPhase._
 import Types._, Contexts._, Flags._, DenotTransformers._
 import Symbols._, StdNames._, Trees._
 import TypeErasure.ErasedValueType, ValueClasses._
+import reporting.diagnostic.messages.DoubleDefinition
+import NameKinds.SuperAccessorName
 
 object ElimErasedValueType {
   val name: String = "elimErasedValueType"
@@ -19,7 +21,7 @@ object ElimErasedValueType {
  *  of methods that now have the same signature but were not considered matching
  *  before erasure.
  */
-class ElimErasedValueType extends MiniPhase with InfoTransformer {
+class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
 
   import tpd._
 
@@ -74,54 +76,48 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
 
   /** Check that we don't have pairs of methods that override each other after
    *  this phase, yet do not have matching types before erasure.
-   *  The before erasure test is performed after phase elimRepeated, so we
-   *  do not need to special case pairs of `T* / Seq[T]` parameters.
    */
   private def checkNoClashes(root: Symbol)(implicit ctx: Context) = {
-    val opc = new OverridingPairs.Cursor(root) {
+    val opc = new OverridingPairs.Cursor(root)(ctx.withPhase(thisPhase)) {
       override def exclude(sym: Symbol) =
         !sym.is(Method) || sym.is(Bridge) || super.exclude(sym)
       override def matches(sym1: Symbol, sym2: Symbol) =
         sym1.signature == sym2.signature
     }
+
     def checkNoConflict(sym1: Symbol, sym2: Symbol, info: Type)(implicit ctx: Context): Unit = {
       val site = root.thisType
       val info1 = site.memberInfo(sym1)
       val info2 = site.memberInfo(sym2)
-      def isDefined(sym: Symbol) = sym.originDenotation.validFor.firstPhaseId <= ctx.phaseId
-      if (isDefined(sym1) && isDefined(sym2) && !info1.matchesLoosely(info2))
-        // The reason for the `isDefined` condition is that we need to exclude mixin forwarders
-        // from the tests. For instance, in compileStdLib, compiling scala.immutable.SetProxy, line 29:
-        //    new AbstractSet[B] with SetProxy[B] { val self = newSelf }
-        // This generates two forwarders, one in AbstractSet, the other in the anonymous class itself.
-        // Their signatures are:
-        // method map: [B, That]
-        //   (f: B => B)(implicit bf: scala.collection.generic.CanBuildFrom[scala.collection.immutable.Set[B], B, That]): That override <method> <touched> in anonymous class scala.collection.AbstractSet[B] with scala.collection.immutable.SetProxy[B]{...} and
-        // method map: [B, That](f: B => B)(implicit bf: scala.collection.generic.CanBuildFrom[scala.collection.Set[B], B, That]): That override <method> <touched> in class AbstractSet
-        // These have same type after erasure:
-        //   (f: Function1, bf: scala.collection.generic.CanBuildFrom): Object
-        //
-        // The problem is that `map` was forwarded twice, with different instantiated types.
-        // Maybe we should move mixin forwarding after erasure to avoid redundant forwarders like these.
-        ctx.error(
-            em"""double definition:
-                |$sym1: $info1 in ${sym1.owner} and
-                |$sym2: $info2 in ${sym2.owner}
-                |have same type after erasure: $info""",
-            root.sourcePos)
+      // PolyFunction apply methods will be eliminated later during
+      // ElimPolyFunction, so we let them pass here.
+      def bothPolyApply =
+        sym1.name == nme.apply &&
+        (sym1.owner.derivesFrom(defn.PolyFunctionClass) ||
+         sym2.owner.derivesFrom(defn.PolyFunctionClass))
+
+      // super-accessors start as private, and their expanded name can clash after
+      // erasure. TODO: Verify that this is OK.
+      def bothSuperAccessors = sym1.name.is(SuperAccessorName) && sym2.name.is(SuperAccessorName)
+      if (sym1.name != sym2.name && !bothSuperAccessors ||
+          !info1.matchesLoosely(info2) && !bothPolyApply)
+        ctx.error(DoubleDefinition(sym1, sym2, root), root.sourcePos)
     }
     val earlyCtx = ctx.withPhase(ctx.elimRepeatedPhase.next)
     while (opc.hasNext) {
       val sym1 = opc.overriding
       val sym2 = opc.overridden
+      // Do the test at the earliest phase where both symbols existed.
+      val phaseId =
+        sym1.originDenotation.validFor.firstPhaseId max sym2.originDenotation.validFor.firstPhaseId
       checkNoConflict(sym1, sym2, sym1.info)(earlyCtx)
       opc.next()
     }
   }
 
-  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context): Tree = {
+  override def prepareForTypeDef(tree: TypeDef)(implicit ctx: Context): Context = {
     checkNoClashes(tree.symbol)
-    tree
+    ctx
   }
 
   override def transformInlined(tree: Inlined)(implicit ctx: Context): Tree =

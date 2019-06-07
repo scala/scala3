@@ -5,7 +5,7 @@ object Test {
       foo
     })(x)
   }
-  def foo(erased a: Int): Unit = {
+  def foo erased (a: Int): Unit = {
     println("foo")
   }
   def x: Int = {

@@ -25,7 +25,6 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
     def isStaticMember =
       (sym is Flags.Module) && sym.initial.maybeOwner.initial.isStaticOwner ||
       (sym is Flags.JavaStatic) ||
-      (sym.maybeOwner is Flags.ImplClass) ||
       sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
     val isStaticRef = !sym.is(Package) && !sym.maybeOwner.is(Package) && isStaticMember
     val tree1 =

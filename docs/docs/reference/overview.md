@@ -3,141 +3,134 @@ layout: doc-page
 title: "Overview"
 ---
 
-This section gives an overview of the most important language additions in Scala 3.
-The new features address four major concerns:
+Dotty implements many language changes compared to Scala 2. These changes are currently discussed for inclusion in Scala 3, the new Scala language standard which will be based on the Dotty codebase.
 
- - [Consistency](http://dotty.epfl.ch/docs/reference/overview.html#consistency) - improve orthogonality and eliminate restrictions.
- - [Safety](http://dotty.epfl.ch/docs/reference/overview.html#safety) - enable precise domain modeling and safe refactoring.
- - [Ergonomics](http://dotty.epfl.ch/docs/reference/overview.html#ergonomics) - support readable and concise code.
- - [Performance](http://dotty.epfl.ch/docs/reference/overview.html#performance) - remove performance penalties for high-level code.
+## Goals
 
-Scala 3 also drops a number of features that were used rarely, or where experience showed
-that they tended to cause problems. These are listed separately in the [Dropped Features](http://dotty.epfl.ch/docs) section.
+The language redesign was guided by three main goals:
 
-Another important set of changes is about meta programming and generative programming. So far these have relied on a [macro system](https://docs.scala-lang.org/overviews/macros/overview.html) that had experimental status. This macro system will be replaced with a different solution that extends [principled meta programming](http://dotty.epfl.ch/docs/reference/other-new-features/principled-meta-programming.html) and [inline](http://dotty.epfl.ch/docs/reference/other-new-features/inline.html) definitions with some reflective capabilities. The current state of the full design and its ramifications for generative programming will be described elsewhere.
+ - Strengthen Scala's foundations.
+   Make the full programming language compatible with the foundational work on the DOT calculus and apply the lessons learned from that work.
+ - Make Scala easier and safer to use. Tame powerful constructs such as implicits to provide a gentler learning curve. Remove warts and puzzlers.
+ - Further improve the consistency and expressiveness of Scala's language constructs.
 
-<a name="consistency"></a>
-## Consistency
+Corresponding to these goals, the language changes fall into seven categories:
+(1) Core constructs to strengthen foundations, (2) simplifications and (3) restrictions, to make the language easier and safer to use, (4) dropped constructs to make the language smaller and more regular, (5) changed constructs to remove warts, and increase consistency and usability, (6) new constructs to fill gaps and increase expressiveness, (7) a new, principled approach to meta-programming that replaces today's experimental macros.
 
-The primary goal of the language constructs in this section is to make the language more consistent, both internally, and in relationship to its [foundations](http://www.scala-lang.org/blog/2016/02/03/essence-of-scala.html).
+## Essential Foundations
 
- - [Intersection types](http://dotty.epfl.ch/docs/reference/new-types/intersection-types.html) `A & B`
+These new constructs directly model core features of DOT, higher-kinded types, and the [SI calculus for implicit resolution](https://infoscience.epfl.ch/record/229878/files/simplicitly_1.pdf).
 
-   They replace compound types `A with B` (the old syntax is kept for the moment but will
-   be deprecated in the future). Intersection types are one of the core features of DOT. They
-   are commutative: `A & B` and `B & A` represent the same type.
+ - [Intersection types](https://dotty.epfl.ch/docs/reference/new-types/intersection-types.html), replacing compound types,
+ - [Union types](https://dotty.epfl.ch/docs/reference/new-types/union-types.html),
+ - [Type lambdas](https://dotty.epfl.ch/docs/reference/new-types/type-lambdas.html),
+ replacing encodings using structural types and type projection.
+ - [Context Queries](https://dotty.epfl.ch/docs/reference/contextual/query-types.html)
+  (_aka_ implicit function types) offering abstraction over inferable parameters.
 
- - [Implicit function types](http://dotty.epfl.ch/docs/reference/new-types/implicit-function-types.html) `implicit A => B`.
+## Simplifications
 
-   Methods and lambdas can have implicit parameters, so it's natural to extend the
-   same property to function types. Implicit function types help ergonomics and performance
-   as well. They can replace many uses of monads, offering better composability and an order of magnitude improvement in runtime speed.
+These constructs replace existing constructs with the aim of making the language safer and simpler to use, and to promote uniformity in code style.
 
- - [Dependent function types](http://dotty.epfl.ch/docs/reference/new-types/dependent-function-types.html) `(x: T) => x.S`.
+ - [Trait Parameters](https://dotty.epfl.ch/docs/reference/other-new-features/trait-parameters.html) replace [early initializers](https://dotty.epfl.ch/docs/reference/dropped-features/early-initializers.html) with a more generally useful construct.
+ - [Implied Instances](https://dotty.epfl.ch/docs/reference/contextual/instance-defs.html)
+   replace implicit objects and defs, focussing on intent over mechanism.
+ - [Inferable parameters](https://dotty.epfl.ch/docs/reference/contextual/inferable-params.html) replace implicit parameters, avoiding their ambiguities.
+ - [Extension Methods](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html) replace implicit classes with a clearer and simpler mechanism.
+ - [Opaque Type Aliases](https://dotty.epfl.ch/docs/reference/other-new-features/opaques.html) replace most uses
+   of value classes while guaranteeing absence of boxing.
+ - [Toplevel definitions](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html) replace package objects, dropping syntactic boilerplate.
+ - [Export clauses](https://dotty.epfl.ch/docs/reference/other-new-features/export.html)
+ provide a simple and general way to express aggregation, which can replace the
+ previous facade pattern of package objects inheriting from classes.
+ - [Vararg patterns](https://dotty.epfl.ch/docs/reference/changed-features/vararg-patterns.html) now use the form `: _*` instead of `@ _*`, mirroring vararg expressions,
+ - [Creator applications](https://dotty.epfl.ch/docs/reference/other-new-features/creator-applications.html) allow to use simple function call syntax
+ instead of `new` expressions. `new` expressions stay around as a fallback for
+ the cases where creator applications cannot be used.
 
-   The result type of a method can refer to its parameters. We now extend the same capability
-   to the result type of a function.
+With the exception of early initializers and old-style vararg patterns, all superseded constructs continue to be available in Scala 3.0. The plan is to deprecate and phase them out later.
 
- - [Trait parameters](http://dotty.epfl.ch/docs/reference/other-new-features/trait-parameters.html) `trait T(x: S)`
+Value classes (superseded by opaque type aliases) are a special case. There are currently no deprecation plans for value classes, since we might want to bring them back in a more general form if they are supported natively by the JVM as is planned by project Valhalla.
 
-   Traits can now have value parameters, just like classes do. This replaces the more complex [early initializer](http://dotty.epfl.ch/docs/reference/dropped-features/early-initializers.html) syntax.
+## Restrictions
 
- - Generic tuples
+These constructs are restricted to make the language safer.
 
-   ([Pending](https://github.com/lampepfl/dotty/pull/2199)) Tuples with arbitrary numbers of elements are treated as sequences of nested pairs. E.g. `(a, b, c)` is shorthand for `(a, (b, (c, ())))`. This lets us drop the current limit of 22 for maximal tuple length and it allows generic programs over tuples analogous to what is currently done for `HList`.
+ - [Implicit Conversions](https://dotty.epfl.ch/docs/reference/contextual/conversions.html): there is only one way to define implicit conversions instead of many, and potentially surprising implicit conversions require a language import.
+ - [Implied Imports](https://dotty.epfl.ch/docs/reference/contextual/import-implied.html): implicits now require a special form of import, to make the import clearly visible.
+ - [Type Projection](https://dotty.epfl.ch/docs/reference/dropped-features/type-projection.html): only classes can be used as prefix `C` of a type projection `C#A`. Type projection on abstract types is no longer supported since it is unsound.
+ - [Multiversal Equality](https://dotty.epfl.ch/docs/reference/contextual/multiversal-equality.html) implements an "opt-in" scheme to rule out nonsensical comparisons with `==` and `!=`.
+ - [@infix and @alpha](https://github.com/lampepfl/dotty/pull/5975)
+ make method application syntax uniform across code bases and require alphanumeric aliases for all symbolic names (proposed, not implemented).
 
-<a name="safety"></a>
-## Safety
+Unrestricted implicit conversions continue to be available in Scala 3.0, but will be deprecated and removed later. Unrestricted versions of the other constructs in the list above are available only under `-language:Scala2`.
 
-Listed in this section are new language constructs that help precise, typechecked domain modeling and that improve the reliability of refactorings.
 
- - [Union types](http://dotty.epfl.ch/docs/reference/new-types/union-types.html)  `A | B`
+## Dropped Constructs
 
-   Union types gives fine-grained control over the possible values of a type.
-   A union type `A | B` states that a value can be an `A` or a `B` without having
-   to widen to a common supertype of `A` and `B`. Union types thus enable more
-   precise domain modeling. They are also very useful for interoperating with
-   Javascript libraries and JSON protocols.
+These constructs are proposed to be dropped without a new construct replacing them. The motivation for dropping these constructs is to simplify the language and its implementation.
 
- - [Multiversal Equality](http://dotty.epfl.ch/docs/reference/other-new-features/multiversal-equality.html)
+ - [DelayedInit](https://dotty.epfl.ch/docs/reference/dropped-features/delayed-init.html),
+ - [Existential types](https://dotty.epfl.ch/docs/reference/dropped-features/existential-types.html),
+ - [Procedure syntax](https://dotty.epfl.ch/docs/reference/dropped-features/procedure-syntax.html),
+ - [Class shadowing](https://dotty.epfl.ch/docs/reference/dropped-features/class-shadowing.html),
+ - [XML literals](https://dotty.epfl.ch/docs/reference/dropped-features/xml.html),
+ - [Symbol literals](https://dotty.epfl.ch/docs/reference/dropped-features/symlits.html),
+ - [Auto application](https://dotty.epfl.ch/docs/reference/dropped-features/auto-apply.html),
+ - [Weak conformance](https://dotty.epfl.ch/docs/reference/dropped-features/weak-conformance.html),
+ - [Compound types](https://dotty.epfl.ch/docs/reference/new-types/intersection-types.html),
+ - [Auto tupling](https://github.com/lampepfl/dotty/pull/4311) (implemented, but not merged).
 
-   Multiversal equality is an opt-in way to check that comparisons using `==` and
-   `!=` only apply to compatible types. It thus removes the biggest remaining hurdle
-   to type-based refactoring. Normally, one would wish that one could change the type
-   of some value or operation in a large code base, fix all type errors, and obtain
-   at the end a working program. But universal equality `==` works for all types.
-   So what should conceptually be a type error would not be reported and
-   runtime behavior might change instead. Multiversal equality closes that loophole.
+The date when these constructs are dropped varies. The current status is:
 
- - Restrict Implicit Conversions
+ - Not implemented at all:
+   - DelayedInit, existential types, weak conformance.
+ - Supported under `-language:Scala2`:
+   - procedure syntax, class shadowing, symbol literals, auto application, auto tupling in a restricted form.
+ - Supported in 3.0, to be deprecated and phased out later:
+   - XML literals, compound types.
 
-   ([Pending](https://github.com/lampepfl/dotty/pull/4229))
-   Implicit conversions are very easily mis-used, which makes them the cause of much surprising behavior.
-   We now require a language feature import not only when an implicit conversion is defined
-   but also when it is applied. This protects users of libraries that define implicit conversions
-   from being bitten by unanticipated feature interactions.
 
- - Null safety
+## Changes
 
-   (Planned) Adding a `null` value to every type has been called a "Billion Dollar Mistake"
-   by its inventor, Tony Hoare. With the introduction of union types, we can now do better.
-   A type like `String` will not carry the `null` value. To express that a value can
-   be `null`, one will use the union type `String | Null` instead. For backwards compatibility and Java interoperability, selecting on a value that's possibly `null` will still be permitted but will have a declared effect that a `NullPointerException` can be thrown (see next section).
+These constructs have undergone changes to make them more regular and useful.
 
- - Effect Capabilities
+ - [Structural Types](https://dotty.epfl.ch/docs/reference/changed-features/structural-types.html): They now allow pluggable implementations, which greatly increases their usefulness. Some usage patterns are restricted compared to the status quo.
+ - [Name-based pattern matching](https://dotty.epfl.ch/docs/reference/changed-features/pattern-matching.html): The existing undocumented Scala 2 implementation has been codified in a slightly simplified form.
+ - [Eta expansion](https://dotty.epfl.ch/docs/reference/changed-features/eta-expansion.html) is now performed universally also in the absence of an expected type. The postfix `_` operator is thus made redundant. It will be deprecated and dropped after Scala 3.0.
+ - [Implicit Resolution](https://dotty.epfl.ch/docs/reference/changed-features/implicit-resolution.html): The implicit resolution rules have been cleaned up to make them more useful and less surprising. Implicit scope is restricted to no longer include package prefixes.
 
-   (Planned) Scala so far is an impure functional programming language in that side effects
-   are not tracked. We want to put in the hooks to allow to change this over time. The idea
-   is to treat effects as capabilities represented as implicit parameters. Some effect types
-   will be defined by the language, others can be added by libraries. Initially, the language
-   will likely only cover exceptions as effect capabilities, but this can be extended later
-   to mutations and other effects. To ensure backwards compatibility, all effect
-   capabilities are initially available in `Predef`. Un-importing effect capabilities from
-   `Predef` will enable stricter effect checking, and provide stronger guarantees of purity.
+Most aspects of old-style implicit resolution are still available under `-language:Scala2`. The other changes in this list are applied unconditionally.
 
-<a name="ergonomics"></a>
-## Ergonomics
+## New Constructs
 
-The primary goal of the language constructs in this section is to make common programming patterns more concise and readable.
+These are additions to the language that make it more powerful or pleasant to use.
 
- - [Enums](http://dotty.epfl.ch/docs/reference/enums/enums.html) `enum Color { case Red, Green, Blue }`
+ - [Enums](https://dotty.epfl.ch/docs/reference/enums/enums.html) provide concise syntax for enumerations and [algebraic data types](https://dotty.epfl.ch/docs/reference/enums/adts.html).
+ - [Parameter Untupling](https://dotty.epfl.ch/docs/reference/other-new-features/parameter-untupling.html) avoids having to use `case` for tupled parameter destructuring.
+ - [Dependent Function Types](https://dotty.epfl.ch/docs/reference/new-types/dependent-function-types.html) generalize dependent methods to dependent function values and types.
+ - [Polymorphic Function Types](https://github.com/lampepfl/dotty/pull/4672) generalize polymorphic methods to dependent function values and types. _Current status_: There is a proposal, and a prototype implementation, but the implementation has not been finalized or merged yet.
+ - [Kind Polymorphism](https://dotty.epfl.ch/docs/reference/other-new-features/kind-polymorphism.html) allows the definition of operators working equally on types and type constructors.
 
-   Enums give a simple way to express a type with a finite set of named values. They
-   are found in most languages. The previous encodings of enums as library-defined types
-   were not fully satisfactory and consequently were not adopted widely. The new native `enum` construct in Scala is quite flexible; among others it gives a more concise way to express [algebraic data types](http://dotty.epfl.ch/docs/reference/enums/adts.html).
-   Scala enums will interoperate with  the host platform. They support multiversal equality
-   out of the box, i.e. an enum can only be compared to values of the same enum type.
+## Meta Programming
 
- - [Type lambdas](http://dotty.epfl.ch/docs/reference/new-types/type-lambdas.html) `[X] => C[X]`
+The following constructs together aim to put meta programming in Scala on a new basis. So far, meta programming was achieved by a combination of macros and libraries such as Shapeless that were in turn based on some key macros. Current Scala 2 macro mechanisms are a thin veneer on top the current Scala 2 compiler, which makes them fragile and in many cases impossible to port to Scala 3.
 
-   Type lambdas were encoded previously in a roundabout way, exploiting
-   loopholes in Scala's type system which made it Turing complete. With
-   the removal of [unrestricted type projection](dropped-features/type-projection.html), the loopholes are eliminated, so the
-   previous encodings are no longer expressible. Type lambdas in the language provide
-   a safe and more ergonomic alternative.
+It's worth noting that macros were never included in the Scala 2 language specification and were so far made available only under an `-experimental` flag. This has not prevented their widespread usage.
 
- - Extension clauses `extension StringOps for String { ... }`
+To enable porting most uses of macros, we are experimenting with the advanced language constructs listed below. These designs are more provisional than the rest of the proposed language constructs for Scala 3.0. There might still be some changes until the final release. Stabilizing the feature set needed for meta programming is our first priority.
 
-   ([Pending](https://github.com/lampepfl/dotty/pull/4114)) Extension clauses allow to define extension methods and late implementations
-   of traits via instance declarations. They are more readable and convey intent better
-   than the previous encodings of these features through implicit classes and value classes.
-   Extensions will replace implicit classes. Extensions and opaque types together can
-   replace almost all usages of value classes. Value classes are kept around for the
-   time being since there might be a new good use case for them in the future if the host platform supports "structs" or some other way to express multi-field value classes.
+- [Match Types](https://dotty.epfl.ch/docs/reference/new-types/match-types.html) allow computation on types.
+- [Inline](https://dotty.epfl.ch/docs/reference/metaprogramming/inline.html) provides
+by itself a straightforward implementation of some simple macros and is at the same time an essential building block for the implementation of complex macros.
+- [Quotes and Splices](https://dotty.epfl.ch/docs/reference/metaprogramming/macros.html) provide a principled way to express macros and staging with a unified set of abstractions.
+- [Typeclass derivation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html) provides an in-language implementation of the `Gen` macro in Shapeless and other foundational libraries. The new implementation is more robust, efficient and easier to use than the macro.
+- [Implicit by-name parameters](https://dotty.epfl.ch/docs/reference/contextual/inferable-by-name-parameters.html) provide a more robust in-language implementation of the `Lazy` macro in Shapeless.
+- [Erased Terms](https://dotty.epfl.ch/docs/reference/other-new-features/erased-terms.html) provide a general mechanism for compile-time-only computations.
 
-<a name="performance"></a>
-## Performance
+## See Also
 
-The primary goal of the language constructs in this section is to enable high-level, safe code without having to pay a performance penalty.
+[A classification of proposed language features](./features-classification.html) is
+an expanded version of this page that adds the status (i.e. relative importance to be a part of Scala 3, and relative urgency when to decide this) and expected migration cost
+of each language construct.
 
- - Opaque Type Aliases `opaque type A = T`
-
-   ([Pending](https://github.com/lampepfl/dotty/pull/4028)) An opaque alias defines a new type `A` in terms of an existing type `T`.  Unlike the previous modeling using value classes, opaque types never box. Opaque types are described in detail in [SIP 35](https://docs.scala-lang.org/sips/opaque-types.html).
-
- - [Erased parameters](http://dotty.epfl.ch/docs/reference/other-new-features/erased-terms.html)
-
-   Parameters of methods and functions can be declared `erased`. This means that
-   the corresponding arguments are only used for type checking purposes and no code
-   will be generated for them. Typical candidates for erased parameters are type
-   constraints such as `=:=` and `<:<` that are expressed through implicits.
-   Erased parameters improve both run times (since no argument has to be constructed) and compile times (since potentially large arguments can be eliminated early).

@@ -78,15 +78,14 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
           tag match {
             case RENAMED =>
               printName(); printName()
-            case VALDEF | DEFDEF | TYPEDEF | OBJECTDEF | TYPEPARAM | PARAM | NAMEDARG | BIND =>
+            case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | BIND =>
               printName(); printTrees()
             case REFINEDtype | TERMREFin | TYPEREFin =>
               printName(); printTree(); printTrees()
             case RETURN | HOLE =>
               printNat(); printTrees()
             case METHODtype | ERASEDMETHODtype |
-                 CONTEXTUALMETHODtype | ERASEDCONTEXTUALMETHODtype |
-                 IMPLICITMETHODtype | ERASEDIMPLICITMETHODtype |
+                 GIVENMETHODtype | ERASEDGIVENMETHODtype | IMPLICITMETHODtype |
                  POLYtype | TYPELAMBDAtype =>
               printTree()
               until(end) { printName(); printTree() }

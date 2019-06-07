@@ -37,3 +37,6 @@
 [submodule "community-build/community-projects/sourcecode"]
 	path = community-build/community-projects/sourcecode
 	url = https://github.com/dotty-staging/sourcecode
+[submodule "community-build/community-projects/scala-xml"]
+	path = community-build/community-projects/scala-xml
+	url = https://github.com/scala/scala-xml

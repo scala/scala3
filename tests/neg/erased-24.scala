@@ -6,11 +6,11 @@ object Test {
     println(fun(new Bar))
   }
 
-  def fun(erased foo: Foo): foo.X = { // ok
+  def fun erased (foo: Foo): foo.X = { // ok
     null.asInstanceOf[foo.X] // ok
   }
 
-  def fun2(erased foo: Foo)(erased bar: foo.B): bar.X = { // error
+  def fun2 erased (foo: Foo) erased (bar: foo.B): bar.X = { // error
     null.asInstanceOf[bar.X] // error
   }
 }

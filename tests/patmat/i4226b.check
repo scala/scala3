@@ -1,1 +1,1 @@
-11: Pattern Match Exhaustivity: Just(_), _: Empty
+11: Pattern Match Exhaustivity: Just(_), _: Empty[Int]

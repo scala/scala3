@@ -17,6 +17,7 @@ import reporting._
 import collection.mutable
 
 import scala.annotation.internal.sharable
+import scala.annotation.threadUnsafe
 
 object Inferencing {
 
@@ -45,14 +46,15 @@ object Inferencing {
 
   /** Instantiate selected type variables `tvars` in type `tp` */
   def instantiateSelected(tp: Type, tvars: List[Type])(implicit ctx: Context): Unit =
-    new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains, minimizeAll = true)).process(tp)
+    if (tvars.nonEmpty)
+      new IsFullyDefinedAccumulator(new ForceDegree.Value(tvars.contains, minimizeAll = true)).process(tp)
 
   /** Instantiate any type variables in `tp` whose bounds contain a reference to
    *  one of the parameters in `tparams` or `vparamss`.
    */
   def instantiateDependent(tp: Type, tparams: List[Symbol], vparamss: List[List[Symbol]])(implicit ctx: Context): Unit = {
     val dependentVars = new TypeAccumulator[Set[TypeVar]] {
-      lazy val params = (tparams :: vparamss).flatten
+      @threadUnsafe lazy val params = (tparams :: vparamss).flatten
       def apply(tvars: Set[TypeVar], tp: Type) = tp match {
         case tp: TypeVar
         if !tp.isInstantiated &&
@@ -78,8 +80,10 @@ object Inferencing {
    *      constrained upper bound != given upper bound and
    *      constrained lower bound == given lower bound).
    *  If (1) and (2) do not apply:
-   *   3. T is maximized if it appears only contravariantly in the given type.
-   *   4. T is minimized in all other cases.
+   *   3. T is minimized if forceDegree is minimizeAll.
+   *   4. Otherwise, T is maximized if it appears only contravariantly in the given type,
+   *      or if forceDegree is `noBottom` and T's minimized value is a bottom type.
+   *   5. Otherwise, T is minimized.
    *
    *  The instantiation is done in two phases:
    *  1st Phase: Try to instantiate minimizable type variables to
@@ -88,12 +92,15 @@ object Inferencing {
    *  to their upper bound.
    */
   private class IsFullyDefinedAccumulator(force: ForceDegree.Value)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+
     private def instantiate(tvar: TypeVar, fromBelow: Boolean): Type = {
       val inst = tvar.instantiate(fromBelow)
       typr.println(i"forced instantiation of ${tvar.origin} = $inst")
       inst
     }
+
     private[this] var toMaximize: Boolean = false
+
     def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
       case _: WildcardType | _: ProtoType =>
         false
@@ -101,19 +108,13 @@ object Inferencing {
       if !tvar.isInstantiated && ctx.typerState.constraint.contains(tvar) =>
         force.appliesTo(tvar) && {
           val direction = instDirection(tvar.origin)
-          if (direction != 0) {
-            //if (direction > 0) println(s"inst $tvar dir = up")
-            instantiate(tvar, direction < 0)
-          }
-          else {
-            val minimize =
-              force.minimizeAll ||
-              variance >= 0 && !(
-                !force.allowBottom &&
-                defn.isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true)))
-            if (minimize) instantiate(tvar, fromBelow = true)
-            else toMaximize = true
-          }
+          def avoidBottom =
+            !force.allowBottom &&
+            defn.isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true))
+          def preferMin = force.minimizeAll || variance >= 0 && !avoidBottom
+          if (direction != 0) instantiate(tvar, direction < 0)
+          else if (preferMin) instantiate(tvar, fromBelow = true)
+          else toMaximize = true
           foldOver(x, tvar)
         }
       case tp =>
@@ -138,6 +139,33 @@ object Inferencing {
     }
   }
 
+  /** For all type parameters occurring in `tp`:
+   *  If the bounds of `tp` in the current constraint are equal wrt =:=,
+   *  instantiate the type parameter to the lower bound's approximation
+   *  (approximation because of possible F-bounds).
+   */
+  def replaceSingletons(tp: Type)(implicit ctx: Context): Unit = {
+    val tr = new TypeTraverser {
+      def traverse(tp: Type): Unit = {
+        tp match {
+          case param: TypeParamRef =>
+            val constraint = ctx.typerState.constraint
+            constraint.entry(param) match {
+              case TypeBounds(lo, hi)
+              if (hi frozen_<:< lo) =>
+                val inst = ctx.typeComparer.approximation(param, fromBelow = true)
+                typr.println(i"replace singleton $param := $inst")
+                ctx.typerState.constraint = constraint.replace(param, inst)
+              case _ =>
+            }
+          case _ =>
+        }
+        traverseChildren(tp)
+      }
+    }
+    tr.traverse(tp)
+  }
+
   /** If `tree` has a type lambda type, infer its type parameters by comparing with expected type `pt` */
   def inferTypeParams(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match {
     case tl: TypeLambda =>
@@ -150,66 +178,8 @@ object Inferencing {
       tree
   }
 
-  /** Derive information about a pattern type by comparing it with some variant of the
-   *  static scrutinee type. We have the following situation in case of a (dynamic) pattern match:
-   *
-   *       StaticScrutineeType           PatternType
-   *                         \            /
-   *                      DynamicScrutineeType
-   *
-   *  If `PatternType` is not a subtype of `StaticScrutineeType, there's no information to be gained.
-   *  Now let's say we can prove that `PatternType <: StaticScrutineeType`.
-   *
-   *            StaticScrutineeType
-   *                  |         \
-   *                  |          \
-   *                  |           \
-   *                  |            PatternType
-   *                  |          /
-   *               DynamicScrutineeType
-   *
-   *  What can we say about the relationship of parameter types between `PatternType` and
-   *  `DynamicScrutineeType`?
-   *
-   *   - If `DynamicScrutineeType` refines the type parameters of `StaticScrutineeType`
-   *     in the same way as `PatternType` ("invariant refinement"), the subtype test
-   *     `PatternType <:< StaticScrutineeType` tells us all we need to know.
-   *   - Otherwise, if variant refinement is a possibility we can only make predictions
-   *     about invariant parameters of `StaticScrutineeType`. Hence we do a subtype test
-   *     where `PatternType <: widenVariantParams(StaticScrutineeType)`, where `widenVariantParams`
-   *     replaces all type argument of variant parameters with empty bounds.
-   *
-   *  Invariant refinement can be assumed if `PatternType`'s class(es) are final or
-   *  case classes (because of `RefChecks#checkCaseClassInheritanceInvariant`).
-   *
-   *  TODO: Update so that GADT symbols can be variant, and we special case final class types in patterns
-   */
-  def constrainPatternType(tp: Type, pt: Type)(implicit ctx: Context): Boolean = {
-    def refinementIsInvariant(tp: Type): Boolean = tp match {
-      case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
-      case tp: TypeProxy => refinementIsInvariant(tp.underlying)
-      case tp: AndType => refinementIsInvariant(tp.tp1) && refinementIsInvariant(tp.tp2)
-      case tp: OrType => refinementIsInvariant(tp.tp1) && refinementIsInvariant(tp.tp2)
-      case _ => false
-    }
-
-    def widenVariantParams = new TypeMap {
-      def apply(tp: Type) = mapOver(tp) match {
-        case tp @ AppliedType(tycon, args) =>
-          val args1 = args.zipWithConserve(tycon.typeParams)((arg, tparam) =>
-            if (tparam.paramVariance != 0) TypeBounds.empty else arg
-          )
-          tp.derivedAppliedType(tycon, args1)
-        case tp =>
-          tp
-      }
-    }
-
-    val widePt = if (ctx.scala2Mode || refinementIsInvariant(tp)) pt else widenVariantParams(pt)
-    trace(i"constraining pattern type $tp <:< $widePt", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
-      tp <:< widePt
-    }
-  }
+  def isSkolemFree(tp: Type)(implicit ctx: Context): Boolean =
+    !tp.existsPart(_.isInstanceOf[SkolemType])
 
   /** The list of uninstantiated type variables bound by some prefix of type `T` which
    *  occur in at least one formal parameter type of a prefix application.
@@ -260,7 +230,7 @@ object Inferencing {
    *            0 if unconstrained, or constraint is from below and above.
    */
   private def instDirection(param: TypeParamRef)(implicit ctx: Context): Int = {
-    val constrained = ctx.typerState.constraint.fullBounds(param)
+    val constrained = ctx.typeComparer.fullBounds(param)
     val original = param.binder.paramInfos(param.paramNum)
     val cmp = ctx.typeComparer
     val approxBelow =
@@ -295,17 +265,22 @@ object Inferencing {
       if (v == 1) tvar.instantiate(fromBelow = false)
       else if (v == -1) tvar.instantiate(fromBelow = true)
       else {
-        val bounds = ctx.typerState.constraint.fullBounds(tvar.origin)
+        val bounds = ctx.typeComparer.fullBounds(tvar.origin)
         if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
           tvar.instantiate(fromBelow = false)
         else {
-          val wildCard = ctx.newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span)
+          // We do not add the created symbols to GADT constraint immediately, since they may have inter-dependencies.
+          // Instead, we simultaneously add them later on.
+          val wildCard = ctx.newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
           tvar.instantiateWith(wildCard.typeRef)
           patternBound += wildCard
         }
       }
     }
-    patternBound.toList
+    val res = patternBound.toList
+    // We add the created symbols to GADT constraint here.
+    if (res.nonEmpty) ctx.gadt.addToConstraint(res)
+    res
   }
 
   type VarianceMap = SimpleIdentityMap[TypeVar, Integer]
@@ -402,56 +377,65 @@ trait Inferencing { this: Typer =>
    */
   def interpolateTypeVars(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = {
     val state = ctx.typerState
-    if (state.ownedVars.size > locked.size) {
-      val qualifying = state.ownedVars -- locked
-      typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
-      val resultAlreadyConstrained =
-        tree.isInstanceOf[Apply] || tree.tpe.isInstanceOf[MethodOrPoly]
-      if (!resultAlreadyConstrained)
-        constrainResult(tree.symbol, tree.tpe, pt)
-          // This is needed because it could establish singleton type upper bounds. See i2998.scala.
 
-      val tp = tree.tpe.widen
-      val vs = variances(tp)
+    // Note that some variables in `locked` might not be in `state.ownedVars`
+    // anymore if they've been garbage-collected, so we can't use
+    // `state.ownedVars.size > locked.size` as an early check to avoid computing
+    // `qualifying`.
 
-      // Avoid interpolating variables occurring in tree's type if typerstate has unreported errors.
-      // Reason: The errors might reflect unsatisfiable constraints. In that
-      // case interpolating without taking account the constraints risks producing
-      // nonsensical types that then in turn produce incomprehensible errors.
-      // An example is in neg/i1240.scala. Without the condition in the next code line
-      // we get for
-      //
-      //      val y: List[List[String]] = List(List(1))
-      //
-      //     i1430.scala:5: error: type mismatch:
-      //     found   : Int(1)
-      //     required: Nothing
-      //     val y: List[List[String]] = List(List(1))
-      //                                           ^
-      // With the condition, we get the much more sensical:
-      //
-      //     i1430.scala:5: error: type mismatch:
-      //     found   : Int(1)
-      //     required: String
-      //     val y: List[List[String]] = List(List(1))
-      val hasUnreportedErrors = state.reporter.hasUnreportedErrors
-      def constraint = state.constraint
-      for (tvar <- qualifying)
-        if (!tvar.isInstantiated && state.constraint.contains(tvar)) {
-          // Needs to be checked again, since previous interpolations could already have
-          // instantiated `tvar` through unification.
-          val v = vs(tvar)
-          if (v == null) {
-            typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = ${tvar.hasLowerBound}, $constraint")
-            tvar.instantiate(fromBelow = tvar.hasLowerBound)
-          }
-          else if (!hasUnreportedErrors)
-            if (v.intValue != 0) {
-              typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
-              tvar.instantiate(fromBelow = v.intValue == 1)
+    val ownedVars = state.ownedVars
+    if ((ownedVars ne locked) && !ownedVars.isEmpty) {
+      val qualifying = ownedVars -- locked
+      if (!qualifying.isEmpty) {
+        typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
+        val resultAlreadyConstrained =
+          tree.isInstanceOf[Apply] || tree.tpe.isInstanceOf[MethodOrPoly]
+        if (!resultAlreadyConstrained)
+          constrainResult(tree.symbol, tree.tpe, pt)
+            // This is needed because it could establish singleton type upper bounds. See i2998.scala.
+
+        val tp = tree.tpe.widen
+        val vs = variances(tp)
+
+        // Avoid interpolating variables occurring in tree's type if typerstate has unreported errors.
+        // Reason: The errors might reflect unsatisfiable constraints. In that
+        // case interpolating without taking account the constraints risks producing
+        // nonsensical types that then in turn produce incomprehensible errors.
+        // An example is in neg/i1240.scala. Without the condition in the next code line
+        // we get for
+        //
+        //      val y: List[List[String]] = List(List(1))
+        //
+        //     i1430.scala:5: error: type mismatch:
+        //     found   : Int(1)
+        //     required: Nothing
+        //     val y: List[List[String]] = List(List(1))
+        //                                           ^
+        // With the condition, we get the much more sensical:
+        //
+        //     i1430.scala:5: error: type mismatch:
+        //     found   : Int(1)
+        //     required: String
+        //     val y: List[List[String]] = List(List(1))
+        val hasUnreportedErrors = state.reporter.hasUnreportedErrors
+        def constraint = state.constraint
+        for (tvar <- qualifying)
+          if (!tvar.isInstantiated && state.constraint.contains(tvar)) {
+            // Needs to be checked again, since previous interpolations could already have
+            // instantiated `tvar` through unification.
+            val v = vs(tvar)
+            if (v == null) {
+              typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = ${tvar.hasLowerBound}, $constraint")
+              tvar.instantiate(fromBelow = tvar.hasLowerBound)
             }
-            else typr.println(i"no interpolation for nonvariant $tvar in $state")
-        }
+            else if (!hasUnreportedErrors)
+              if (v.intValue != 0) {
+                typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
+                tvar.instantiate(fromBelow = v.intValue == 1)
+              }
+              else typr.println(i"no interpolation for nonvariant $tvar in $state")
+          }
+      }
     }
     tree
   }

@@ -1,0 +1,6 @@
+public Category C.category()
+public Category C.category1()
+public default Category<F> M1.category()
+public default Category<scala.Tuple2> M1.category1()
+public default Category<F> M2.category()
+public default Category<scala.Tuple2> M2.category1()

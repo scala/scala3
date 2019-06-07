@@ -1,4 +1,0 @@
-object Test {
-  def f: scala.Unit = try return () finally while (true) ()
-  def main(args: scala.Array[scala.Predef.String]): scala.Unit = Test.f
-}

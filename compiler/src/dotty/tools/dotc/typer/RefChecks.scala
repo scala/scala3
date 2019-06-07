@@ -156,7 +156,8 @@ object RefChecks {
    *    1.8.1  M's type is a subtype of O's type, or
    *    1.8.2  M is of type []S, O is of type ()T and S <: T, or
    *    1.8.3  M is of type ()S, O is of type []T and S <: T, or
-   *    1.9    If M or O are erased, they must be both erased
+   *    1.9.1  If M is erased, O is erased. If O is erased, M is erased or inline.
+   *    1.9.2  If M or O are extension methods, they must both be extension methods.
    *    1.10   If M is an inline or Scala-2 macro method, O cannot be deferred unless
    *           there's also a concrete method that M overrides.
    *    1.11.  If O is a Scala-2 macro, M must be a Scala-2 macro.
@@ -387,22 +388,31 @@ object RefChecks {
       } else if (member.is(ModuleVal) && !other.isRealMethod && !other.is(Deferred | Lazy)) {
         overrideError("may not override a concrete non-lazy value")
       } else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy) &&
-                 !ctx.testScala2Mode("may not override a non-lazy value", member.sourcePos)) {
+                 !ctx.testScala2Mode(overrideErrorMsg("may not override a non-lazy value"), member.sourcePos)) {
         overrideError("may not override a non-lazy value")
       } else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy)) {
         overrideError("must be declared lazy to override a lazy value")
-      } else if (member.is(Erased) && !other.is(Erased)) { // (1.9)
+      } else if (member.is(Erased) && !other.is(Erased)) { // (1.9.1)
         overrideError("is erased, cannot override non-erased member")
-      } else if (other.is(Erased) && !member.is(Erased)) { // (1.9)
+      } else if (other.is(Erased) && !member.is(Erased | Inline)) { // (1.9.1)
         overrideError("is not erased, cannot override erased member")
-      } else if ((member.isInlineMethod || member.is(Scala2Macro)) && other.is(Deferred) &&
+      } else if (member.is(Extension) && !other.is(Extension)) { // (1.9.2)
+        overrideError("is an extension method, cannot override a normal method")
+      } else if (other.is(Extension) && !member.is(Extension)) { // (1.9.2)
+        overrideError("is a normal method, cannot override an extension method")
+      } else if ((member.isInlineMethod || member.isScala2Macro) && other.is(Deferred) &&
                  member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)
         overrideError("is an inline method, must override at least one concrete method")
-      } else if (other.is(Scala2Macro) && !member.is(Scala2Macro)) { // (1.11)
+      } else if (other.isScala2Macro && !member.isScala2Macro) { // (1.11)
         overrideError("cannot be used here - only Scala-2 macros can override Scala-2 macros")
       } else if (!compatibleTypes(memberTp(self), otherTp(self)) &&
                  !compatibleTypes(memberTp(upwardsSelf), otherTp(upwardsSelf))) {
         overrideError("has incompatible type" + err.whyNoMatchStr(memberTp(self), otherTp(self)))
+      } else if (member.erasedName != other.erasedName) {
+        if (other.erasedName != other.name)
+          overrideError(i"needs to be declared with @alpha(${"\""}${other.erasedName}${"\""}) so that external names match")
+        else
+          overrideError("cannot have an @alpha annotation since external names would be different")
       } else {
         checkOverrideDeprecated()
       }
@@ -478,18 +488,7 @@ object RefChecks {
         val missing = clazz.thisType.abstractTermMembers.filterNot(ignoreDeferred)
         // Group missing members by the name of the underlying symbol,
         // to consolidate getters and setters.
-        val grouped: Map[Name, Seq[SingleDenotation]] = missing groupBy (_.symbol.underlyingSymbol.name)
-          // Dotty deviation: Added type annotation for `grouped`.
-          // The inferred type is Map[Symbol#ThisName, Seq[SingleDenotation]]
-          // but then the definition of isMultiple fails with an error:
-          // RefChecks.scala:379: error: type mismatch:
-          // found   : underlying.ThisName
-          // required: dotty.tools.dotc.core.Symbols.Symbol#ThisName
-          //
-          //  val isMultiple = grouped.getOrElse(underlying.name(ctx), Nil).size > 1
-          //                                                    ^
-          // As far as I can see, the complaint is correct, even under the
-          // old reading where Symbol#ThisName means x.ThisName forSome { val x }
+        val grouped = missing.groupBy(_.symbol.underlyingSymbol.name)
 
         val missingMethods = grouped.toList flatMap {
           case (name, syms) =>
@@ -828,16 +827,6 @@ object RefChecks {
         case _ =>
       }
     }
-    /*  (Not enabled yet)
-       *  See an explanation of compileTimeOnly in its scaladoc at scala.annotation.compileTimeOnly.
-       *
-      if (sym.isCompileTimeOnly) {
-        def defaultMsg =
-          sm"""Reference to ${sym.fullLocationString} should not have survived past type checking,
-              |it should have been processed and eliminated during expansion of an enclosing macro."""
-        // The getOrElse part should never happen, it's just here as a backstop.
-        ctx.error(sym.compileTimeOnlyMessage getOrElse defaultMsg, pos)
-      }*/
   }
 
   /** Check that a deprecated val or def does not override a
@@ -982,7 +971,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     tree
   } catch {
     case ex: TypeError =>
-      ctx.error(ex.toMessage, tree.sourcePos)
+      ctx.error(ex.toMessage, tree.sourcePos, sticky = true)
       tree
   }
 

@@ -80,7 +80,7 @@ So `circle.circumference` translates to `CircleOps.circumference(circle)`, provi
 
 ### Implied Instances for Extension Methods
 
-Implied instances that define extension methods can also be defined without an `of` clause. E.g.,
+Implied instances that define extension methods can also be defined without a `for` clause. E.g.,
 
 ```scala
 implied StringOps {
@@ -90,11 +90,11 @@ implied StringOps {
   }
 }
 
-implied ListOps {
+implied {
   def (xs: List[T]) second[T] = xs.tail.head
 }
 ```
-If such implied instances are anonymous (as in the examples above), their name is synthesized from the name
+If such a representative is anonymous (as in the second clause above), its name is synthesized from the name
 of the first defined extension method.
 
 ### Operators
@@ -130,7 +130,7 @@ def (xs: List[List[T]]) flattened [T] =
   xs.foldLeft[List[T]](Nil)(_ ++ _)
 
 def (x: T) + [T : Numeric](y: T): T =
-  implicitly[Numeric[T]].plus(x, y)
+  the[Numeric[T]].plus(x, y)
 ```
 
 As usual, type parameters of the extension method follow the defined method name. Nevertheless, such type parameters can already be used in the preceding parameter clause.
@@ -144,7 +144,3 @@ to the [current syntax](https://github.com/lampepfl/dotty/blob/master/docs/docs/
 DefSig            ::=  ...
                     |  ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] DefParamClauses
 ```
-
-
-
-

@@ -1,0 +1,5 @@
+-- [E007] Type Mismatch Error: tests/neg/i6530.scala:2:26 --------------------------------------------------------------
+2 |  inline def q : Int = ${ '[ Int ] } // error
+  |                          ^^^^^^^^
+  |                          Found:    quoted.Type[Int]
+  |                          Required: quoted.Expr[Int]

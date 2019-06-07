@@ -1,0 +1,15 @@
+1
+1
+LitAST(1)
+
+(1 + 2)
+3
+PlusAST(LitAST(1),LitAST(2))
+
+(1 * 2)
+2
+TimesAST(LitAST(1),LitAST(2))
+
+(1 + (3 * 4))
+13
+PlusAST(LitAST(1),TimesAST(LitAST(3),LitAST(4)))

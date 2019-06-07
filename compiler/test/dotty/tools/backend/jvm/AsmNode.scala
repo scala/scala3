@@ -15,8 +15,8 @@ sealed trait AsmNode[+T] {
   def attrs: List[Attribute]
   def visibleAnnotations: List[AnnotationNode]
   def invisibleAnnotations: List[AnnotationNode]
-  def characteristics = f"$name%15s $desc%-30s$accessString$sigString"
-  def erasedCharacteristics = f"$name%15s $desc%-30s$accessString"
+  def characteristics = "%15s %-30s%s%s".format(name, desc, accessString, sigString)
+  def erasedCharacteristics = "%15s %-30s%s".format(name, desc, accessString)
 
   private def accessString     = if (access == 0) "" else " " + Modifier.toString(access)
   private def sigString        = if (signature == null) "" else " " + signature

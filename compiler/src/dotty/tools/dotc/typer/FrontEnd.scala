@@ -11,6 +11,7 @@ import parsing.Parsers.Parser
 import config.Config
 import config.Printers.{typr, default}
 import util.Stats._
+import util.{ SourcePosition, NoSourcePosition }
 import scala.util.control.NonFatal
 import ast.Trees._
 
@@ -24,6 +25,11 @@ class FrontEnd extends Phase {
 
   /** The contexts for compilation units that are parsed but not yet entered */
   private[this] var remaining: List[Context] = Nil
+
+  /** The position of the first XML literal encountered while parsing,
+   *  NoSourcePosition if there were no XML literals.
+   */
+  private[this] var firstXmlPos: SourcePosition = NoSourcePosition
 
   /** Does a source file ending with `<name>.scala` belong to a compilation unit
    *  that is parsed but not yet entered?
@@ -41,9 +47,17 @@ class FrontEnd extends Phase {
 
   def parse(implicit ctx: Context): Unit = monitor("parsing") {
     val unit = ctx.compilationUnit
+
     unit.untpdTree =
       if (unit.isJava) new JavaParser(unit.source).parse()
-      else new Parser(unit.source).parse()
+      else {
+        val p = new Parser(unit.source)
+        val tree = p.parse()
+        if (p.firstXmlPos.exists && !firstXmlPos.exists)
+          firstXmlPos = p.firstXmlPos
+        tree
+      }
+
     val printer = if (ctx.settings.Xprint.value.contains("parser")) default else typr
     printer.println("parsed:\n" + unit.untpdTree.show)
     if (Config.checkPositions)
@@ -86,6 +100,12 @@ class FrontEnd extends Phase {
       enterSyms(remaining.head)
       remaining = remaining.tail
     }
+
+    if (firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists)
+      ctx.error("""To support XML literals, your project must depend on scala-xml.
+                  |See https://github.com/scala/scala-xml for more information.""".stripMargin,
+        firstXmlPos)
+
     unitContexts.foreach(typeCheck(_))
     record("total trees after typer", ast.Trees.ntrees)
     unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)

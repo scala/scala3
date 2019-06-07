@@ -1,0 +1,5 @@
+-- Error: tests/neg/override-scala2-macro.scala:2:22 -------------------------------------------------------------------
+2 |  override inline def f[A >: Any](args: A*): String = ??? // error
+  |                      ^
+  |error overriding method f in class StringContext of type [A >: Any](args: Seq[A]): String;
+  |  method f of type [A >: Any](args: Seq[A]): String cannot be used here - only Scala-2 macros can override Scala-2 macros

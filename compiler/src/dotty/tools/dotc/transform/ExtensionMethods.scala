@@ -113,7 +113,16 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       }
       ref1
     case _ =>
-      ref
+      ref.info match {
+        case ClassInfo(pre, cls, _, _, _) if cls is ModuleClass =>
+          cls.linkedClass match {
+            case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
+              val info1 = cls.denot(ctx.withPhase(ctx.phase.next)).asClass.classInfo.derivedClassInfo(prefix = pre)
+              ref.derivedSingleDenotation(ref.symbol, info1)
+            case _ => ref
+          }
+        case _ => ref
+      }
   }
 
   protected def rewiredTarget(target: Symbol, derived: Symbol)(implicit ctx: Context): Symbol =
@@ -210,13 +219,14 @@ object ExtensionMethods {
   def extensionMethod(imeth: Symbol)(implicit ctx: Context): TermSymbol =
     ctx.atPhase(ctx.extensionMethodsPhase.next) { implicit ctx =>
       // FIXME use toStatic instead?
-      val companionInfo = imeth.owner.companionModule.info
+      val companion = imeth.owner.companionModule
+      val companionInfo = companion.info
       val candidates = extensionNames(imeth) map (companionInfo.decl(_).symbol) filter (_.exists)
       val matching = candidates filter (c => FullParameterization.memberSignature(c.info) == imeth.signature)
       assert(matching.nonEmpty,
        i"""no extension method found for:
           |
-          |  $imeth:${imeth.info.show} with signature ${imeth.signature}
+          |  $imeth:${imeth.info.show} with signature ${imeth.signature} in ${companion.moduleClass}
           |
           | Candidates:
           |

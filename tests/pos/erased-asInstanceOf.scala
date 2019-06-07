@@ -1,6 +1,6 @@
 
 trait Dataset {
-  def select(erased c: Column): Unit = ()
+  def select erased (c: Column): Unit = ()
 }
 
 class Column

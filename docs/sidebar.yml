@@ -41,6 +41,8 @@ sidebar:
               url: docs/reference/enums/desugarEnums.html
         - title: Contextual Abstractions
           subsection:
+            - title: Overview
+              url: docs/reference/contextual/motivation.html
             - title: Implied Instances
               url: docs/reference/contextual/instance-defs.html
             - title: Inferable Parameters
@@ -65,32 +67,48 @@ sidebar:
               url: docs/reference/contextual/inferable-by-name-parameters.html
             - title: Relationship with Scala 2 Implicits
               url: docs/reference/contextual/relationship-implicits.html
+        - title: Metaprogramming
+          subsection:
+            - title: Overview
+              url: docs/reference/metaprogramming/toc.html
+            - title: Inline
+              url: docs/reference/metaprogramming/inline.html
+            - title: Macros
+              url: docs/reference/metaprogramming/macros.html
+            - title: Staging
+              url: docs/reference/metaprogramming/staging.html
+            - title: TASTy Reflection
+              url: docs/reference/metaprogramming/tasty-reflect.html
+            - title: TASTy Inspection
+              url: docs/reference/metaprogramming/tasty-inspect.html
         - title: Other New Features
           subsection:
             - title: Trait Parameters
               url: docs/reference/other-new-features/trait-parameters.html
-            - title: Inlining by Rewriting
-              url: docs/reference/other-new-features/inline.html
-            - title: Meta Programming
-              url: docs/reference/other-new-features/principled-meta-programming.html
-            - title: TASTy Reflect
-              url: docs/reference/other-new-features/tasty-reflect.html
+            - title: Creator Applications
+              url: docs/reference/other-new-features/creator-applications.html
+            - title: Export Clauses
+              url: docs/reference/other-new-features/export.html
             - title: Opaque Type Aliases
               url: docs/reference/other-new-features/opaques.html
-            - title: Auto Parameter Tupling
-              url: docs/reference/other-new-features/auto-parameter-tupling.html
-            - title: Named Type Arguments
-              url: docs/reference/other-new-features/named-typeargs.html
+            - title: Parameter Untupling
+              url: docs/reference/other-new-features/parameter-untupling.html
             - title: Erased Terms
               url: docs/reference/other-new-features/erased-terms.html
             - title: Kind Polymorphism
               url: docs/reference/other-new-features/kind-polymorphism.html
+            - title: Tupled Function
+              url: docs/reference/other-new-features/tupled-function.html
+            - title: threadUnsafe Annotation
+              url: docs/reference/other-new-features/threadUnsafe-annotation.html
         - title: Other Changed Features
           subsection:
-            - title: Volatile Lazy Vals
-              url: docs/reference/changed-features/lazy-vals.html
             - title: Structural Types
               url: docs/reference/changed-features/structural-types.html
+            - title: Operators
+              url: docs/reference/changed-features/operators.html
+            - title: Wildcard Types
+              url: docs/reference/changed-features/wildcards.html
             - title: Type Checking
               url: docs/reference/changed-features/type-checking.html
             - title: Type Inference
@@ -99,14 +117,20 @@ sidebar:
               url: docs/reference/changed-features/implicit-resolution.html
             - title: Implicit Conversions
               url: docs/reference/changed-features/implicit-conversions.html
+            - title: Overload Resolution
+              url: docs/reference/changed-features/overload-resolution.html
             - title: Vararg Patterns
               url: docs/reference/changed-features/vararg-patterns.html
-            - title: Pattern matching
+            - title: Pattern Bindings
+              url: docs/reference/changed-features/pattern-bindings.html
+            - title: Pattern Matching
               url: docs/reference/changed-features/pattern-matching.html
             - title: Eta Expansion
               url: docs/reference/changed-features/eta-expansion.html
             - title: Compiler Plugins
               url: docs/reference/changed-features/compiler-plugins.html
+            - title: Lazy Vals initialization
+              url: docs/reference/changed-features/lazy-vals-init.html
         - title: Dropped Features
           subsection:
             - title: DelayedInit
@@ -147,6 +171,8 @@ sidebar:
           url: docs/contributing/intellij-idea.html
         - title: Testing
           url: docs/contributing/testing.html
+        - title: Release Model
+          url: docs/contributing/release.html
     - title: Internals
       subsection:
         - title: Backend
@@ -171,6 +197,8 @@ sidebar:
           url: docs/internals/type-system.html
         - title: "Dotty Internals 1: Trees & Symbols (Meeting Notes)"
           url: docs/internals/dotty-internals-1-notes.html
+        - title: Debug Macros
+          url: docs/internals/debug-macros.html
     - title: Resources
       subsection:
         - title: Talks

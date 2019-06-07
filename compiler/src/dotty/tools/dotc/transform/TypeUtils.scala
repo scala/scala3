@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
@@ -6,6 +7,7 @@ import TypeErasure.ErasedValueType
 import Types._
 import Contexts._
 import Symbols._
+import Names.Name
 
 object TypeUtils {
   /** A decorator that provides methods on types
@@ -22,6 +24,11 @@ object TypeUtils {
     def ensureMethodic(implicit ctx: Context): Type = self match {
       case self: MethodicType => self
       case _ => if (ctx.erasedTypes) MethodType(Nil, self) else ExprType(self)
+    }
+
+    def widenToParents(implicit ctx: Context): Type = self.parents match {
+      case Nil => self
+      case ps => ps.reduceLeft(AndType(_, _))
     }
 
     /** The arity of this tuple type, which can be made up of Unit, TupleX and `*:` pairs,
@@ -47,8 +54,20 @@ object TypeUtils {
         else throw new AssertionError("not a tuple")
     }
 
-    /** The `*:` equivalent of an instantce of a Tuple class */
+    /** The `*:` equivalent of an instance of a Tuple class */
     def toNestedPairs(implicit ctx: Context): Type =
-      (tupleElementTypes :\ (defn.UnitType: Type))(defn.PairType.appliedTo(_, _))
+      TypeOps.nestedPairs(tupleElementTypes)
+
+    def refinedWith(name: Name, info: Type)(implicit ctx: Context) = RefinedType(self, name, info)
+
+    /** The TermRef referring to the companion of the underlying class reference
+     *  of this type, while keeping the same prefix.
+     */
+    def companionRef(implicit ctx: Context): TermRef = self match {
+      case self @ TypeRef(prefix, _) if self.symbol.isClass =>
+        prefix.select(self.symbol.companionModule).asInstanceOf[TermRef]
+      case self: TypeProxy =>
+        self.underlying.companionRef
+    }
   }
 }

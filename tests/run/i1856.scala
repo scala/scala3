@@ -1,6 +1,8 @@
+import scala.annotation.threadUnsafe
+
 object Test {
   var count = 0
-  lazy val lzy: Int = {
+  @threadUnsafe lazy val lzy: Int = {
     if (count < 10) {
       println(s"Iteration $count")
       count += 1
@@ -10,7 +12,7 @@ object Test {
 
   def lzy2 = {
     var countLocal = 0
-    lazy val lzyLocal: Int = {
+    @threadUnsafe lazy val lzyLocal: Int = {
       if (countLocal < 10) {
         println(s"Iteration $countLocal")
         countLocal += 1

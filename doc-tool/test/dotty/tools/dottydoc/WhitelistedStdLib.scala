@@ -32,6 +32,6 @@ class TestWhitelistedCollections extends DottyDocTest with CheckFromSource {
 
 object TestWhitelistedCollections {
   val files: List[String] =
-    TestSources.stdLibWhitelisted
+    TestSources.stdLibSources
     .filterNot(_.endsWith("package.scala"))
 }

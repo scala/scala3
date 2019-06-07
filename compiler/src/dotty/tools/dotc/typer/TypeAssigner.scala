@@ -15,6 +15,8 @@ import collection.mutable
 import reporting.diagnostic.messages._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 
+import scala.annotation.threadUnsafe
+
 trait TypeAssigner {
   import tpd._
 
@@ -54,7 +56,10 @@ trait TypeAssigner {
           required = EmptyFlagConjunction, excluded = Private)
           .suchThat(decl.matches(_))
       val inheritedInfo = inherited.info
-      if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info)) {
+      val isPolyFunctionApply = decl.name == nme.apply && (parent <:< defn.PolyFunctionType)
+      if (isPolyFunctionApply || inheritedInfo.exists &&
+          decl.info.widenExpr <:< inheritedInfo.widenExpr &&
+          !(inheritedInfo.widenExpr <:< decl.info.widenExpr)) {
         val r = RefinedType(parent, decl.name, decl.info)
         typr.println(i"add ref $parent $decl --> " + r)
         r
@@ -88,7 +93,7 @@ trait TypeAssigner {
    */
   def avoid(tp: Type, symsToAvoid: => List[Symbol])(implicit ctx: Context): Type = {
     val widenMap = new ApproximatingTypeMap {
-      lazy val forbidden = symsToAvoid.toSet
+      @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(sym: Symbol) = !sym.isStatic && forbidden.contains(sym)
       def partsToAvoid = new NamedPartsAccumulator(tp => toAvoid(tp.symbol))
       def apply(tp: Type): Type = tp match {
@@ -157,9 +162,9 @@ trait TypeAssigner {
   private def toRepeated(tree: Tree, from: ClassSymbol)(implicit ctx: Context): Tree =
     Typed(tree, TypeTree(tree.tpe.widen.translateParameterized(from, defn.RepeatedParamClass)))
 
-   def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree = toRepeated(tree, defn.SeqClass)
+  def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree = toRepeated(tree, defn.SeqClass)
 
-   def arrayToRepeated(tree: Tree)(implicit ctx: Context): Tree = toRepeated(tree, defn.ArrayClass)
+  def arrayToRepeated(tree: Tree)(implicit ctx: Context): Tree = toRepeated(tree, defn.ArrayClass)
 
   /** A denotation exists really if it exists and does not point to a stale symbol. */
   final def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean = try
@@ -197,7 +202,7 @@ trait TypeAssigner {
           val d2 = pre.nonPrivateMember(name)
           if (reallyExists(d2) && firstTry)
             test(NamedType(pre, name, d2), false)
-          else if (pre.derivesFrom(defn.DynamicClass)) {
+          else if (pre.derivesFrom(defn.DynamicClass) && name.isTermName) {
             TryDynamicCallType
           } else {
             val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
@@ -224,6 +229,17 @@ trait TypeAssigner {
     test(tpe, true)
   }
 
+  /** Return a potentially skolemized version of `qualTpe` to be used
+   *  as a prefix when selecting `name`.
+   *
+   *  @see QualSkolemType, TypeOps#asSeenFrom
+   */
+  def maybeSkolemizePrefix(qualType: Type, name: Name)(implicit ctx: Context): Type =
+    if (name.isTermName && !ctx.isLegalPrefix(qualType))
+      QualSkolemType(qualType)
+    else
+      qualType
+
   /** The type of the selection `tree`, where `qual1` is the typed qualifier part. */
   def selectionType(tree: untpd.RefTree, qual1: Tree)(implicit ctx: Context): Type = {
     var qualType = qual1.tpe.widenIfUnstable
@@ -232,11 +248,13 @@ trait TypeAssigner {
       qualType = errorType(em"$qualType takes type parameters", qual1.sourcePos)
     else if (!qualType.isInstanceOf[TermType])
       qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.sourcePos)
+
     val name = tree.name
-    val mbr = qualType.member(name)
+    val pre = maybeSkolemizePrefix(qualType, name)
+    val mbr = qualType.findMember(name, pre)
     if (reallyExists(mbr))
       qualType.select(name, mbr)
-    else if (qualType.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name))
+    else if (qualType.derivesFrom(defn.DynamicClass) && name.isTermName && !Dynamic.isDynamicMethod(name))
       TryDynamicCallType
     else if (qualType.isErroneous || name.toTermName == nme.ERROR)
       UnspecifiedErrorType
@@ -299,8 +317,16 @@ trait TypeAssigner {
     ConstFold(tree.withType(tp))
   }
 
+  /** Normalize type T appearing in a new T by following eta expansions to
+   *  avoid higher-kinded types.
+   */
+  def typeOfNew(tpt: Tree)(implicit ctx: Context): Type = tpt.tpe.dealias match {
+    case TypeApplications.EtaExpansion(tycon) => tycon
+    case t => tpt.tpe
+  }
+
   def assignType(tree: untpd.New, tpt: Tree)(implicit ctx: Context): New =
-    tree.withType(tpt.tpe)
+    tree.withType(typeOfNew(tpt))
 
   def assignType(tree: untpd.Literal)(implicit ctx: Context): Literal =
     tree.withType {
@@ -485,7 +511,7 @@ trait TypeAssigner {
         }
         HKTypeLambda.fromParams(
           params(new mutable.ListBuffer[TypeSymbol](), pat).toList,
-          defn.FunctionOf(pat.tpe :: Nil, body.tpe))
+          defn.MatchCase(pat.tpe, body.tpe))
       }
       else body.tpe
     tree.withType(ownType)

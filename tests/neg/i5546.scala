@@ -14,6 +14,9 @@ object O {
   object Feet { def apply(d: Double): Feet = d }
   implicit def eqF: Eql[Feet, Feet] = Eql.derived
 
+}
+object Test {
+  import O._
   def main(args: Array[String]): Unit = {
     println(Feet(3) == Meters(3)) // error: cannot compare
     println(Feet(3) == 3.0) // error: cannot compare

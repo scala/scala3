@@ -3,6 +3,7 @@ package transform
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeMapWithImplicits, TreeTypeMap, tpd, untpd}
+import dotty.tools.dotc.config.Printers.staging
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
@@ -10,6 +11,7 @@ import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
@@ -29,6 +31,7 @@ import scala.annotation.constructorOnly
  *  @param  levels     a stacked map from symbols to the levels in which they were defined
  */
 abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMapWithImplicits {
+
   import tpd._
   import TreeMapWithStages._
 
@@ -63,11 +66,13 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
     }
   }
 
-  /** Transform the splice `splice`. */
-  protected def transformSplice(splice: Select)(implicit ctx: Context): Tree
+  /** Transform the splice `splice` which contains the spliced `body`. */
+  protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree
 
   override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-    reporting.trace(i"StagingTransformer.transform $tree at $level", show = true) {
+    if (tree.source != ctx.source && tree.source.exists)
+      transform(tree)(ctx.withSource(tree.source))
+    else reporting.trace(i"StagingTransformer.transform $tree at $level", staging, show = true) {
       def mapOverTree(lastEntered: List[Symbol]) =
         try super.transform(tree)
         finally
@@ -92,7 +97,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
         case tree @ Spliced(splicedTree) =>
           dropEmptyBlocks(splicedTree) match {
             case Quoted(t) => transform(t) // ${ 'x } --> x
-            case _ => transformSplice(tree)
+            case _ => transformSplice(splicedTree, tree)
           }
 
         case Block(stats, _) =>
@@ -104,9 +109,12 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
           val last = enteredSyms
           // mark all bindings
           new TreeTraverser {
-            def traverse(tree: Tree)(implicit ctx: Context): Unit = {
-              markDef(tree)
-              traverseChildren(tree)
+            def traverse(tree: Tree)(implicit ctx: Context): Unit = tree match {
+              case Quoted(t) => traverse(t)(quoteContext)
+              case Splice(t) => traverse(t)(spliceContext)
+              case _ =>
+                markDef(tree)
+                traverseChildren(tree)
             }
           }.traverse(pat)
           mapOverTree(last)
@@ -128,21 +136,6 @@ object TreeMapWithStages {
 
   /** A key to be used in a context property that caches the `levelOf` mapping */
   private val LevelOfKey = new Property.Key[mutable.HashMap[Symbol, Int]]
-
-  /** A key to be used in a context property that tracks the quoteation level */
-  private val QuotationLevel = new Property.Key[Int]
-
-  /** All enclosing calls that are currently inlined, from innermost to outermost. */
-  def level(implicit ctx: Context): Int =
-    ctx.property(QuotationLevel).getOrElse(0)
-
-  /** Context with an incremented quotation level. */
-  def quoteContext(implicit ctx: Context): Context =
-    ctx.fresh.setProperty(QuotationLevel, level + 1)
-
-  /** Context with a decremented quotation level. */
-  def spliceContext(implicit ctx: Context): Context =
-    ctx.fresh.setProperty(QuotationLevel, level - 1)
 
   /** Initial context for a StagingTransformer transformation. */
   def freshStagingContext(implicit ctx: Context): Context =

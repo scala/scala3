@@ -66,6 +66,9 @@ object JSEncoding {
     def freshLocalIdent(base: String)(implicit pos: ir.Position): js.Ident =
       js.Ident(freshName(base), Some(base))
 
+    def freshLocalIdent(base: TermName)(implicit pos: ir.Position): js.Ident =
+      js.Ident(freshName(base.toString), Some(base.unexpandedName.toString))
+
     private def freshName(base: String = "x"): String = {
       var suffix = 1
       var longName = base
@@ -146,24 +149,17 @@ object JSEncoding {
   }
 
   private def encodeMethodNameInternal(sym: Symbol,
-      reflProxy: Boolean = false, inRTClass: Boolean = false)(
+      reflProxy: Boolean = false)(
       implicit ctx: Context): (String, String) = {
     require(sym.is(Flags.Method), "encodeMethodSym called with non-method symbol: " + sym)
 
     def name = encodeMemberNameInternal(sym)
 
-    val encodedName = {
-      if (sym.isClassConstructor) {
-        "init_"
-      } else if (sym.is(Flags.Private)) {
-        (mangleJSName(name) + SignatureSep + "p" +
-            sym.owner.asClass.baseClasses.size.toString)
-      } else {
-        mangleJSName(name)
-      }
-    }
+    val encodedName =
+      if (sym.isClassConstructor) "init_"
+      else mangleJSName(name)
 
-    val paramsString = makeParamsString(sym, reflProxy, inRTClass)
+    val paramsString = makeParamsString(sym, reflProxy)
 
     (encodedName, paramsString)
   }
@@ -185,9 +181,6 @@ object JSEncoding {
     js.Ident(localNames.localSymbolName(sym), Some(sym.unexpandedName.decoded))
   }
 
-  def foreignIsImplClass(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.name.endsWith(nme.IMPL_CLASS_SUFFIX.toString)
-
   def encodeClassType(sym: Symbol)(implicit ctx: Context): jstpe.Type = {
     if (sym == defn.ObjectClass) jstpe.AnyType
     else if (isJSType(sym)) jstpe.AnyType
@@ -198,17 +191,63 @@ object JSEncoding {
     }
   }
 
+  def encodeClassRef(sym: Symbol)(implicit ctx: Context): jstpe.ClassRef =
+    jstpe.ClassRef(encodeClassFullName(sym))
+
   def encodeClassFullNameIdent(sym: Symbol)(
       implicit ctx: Context, pos: ir.Position): js.Ident = {
     js.Ident(encodeClassFullName(sym), Some(sym.fullName.toString))
   }
 
-  def encodeClassFullName(sym: Symbol)(implicit ctx: Context): String =
-    ir.Definitions.encodeClassName(sym.fullName.toString)
+  def encodeClassFullName(sym: Symbol)(implicit ctx: Context): String = {
+    if (sym == defn.BoxedUnitClass) {
+      /* Rewire scala.runtime.BoxedUnit to java.lang.Void, as the IR expects.
+       * BoxedUnit$ is a JVM artifact.
+       */
+      ir.Definitions.BoxedUnitClass
+    } else {
+      ir.Definitions.encodeClassName(fullyMangledString(sym.fullName))
+    }
+  }
 
   private def encodeMemberNameInternal(sym: Symbol)(
       implicit ctx: Context): String = {
-    sym.name.toString.replace("_", "$und").replace("~", "$tilde")
+    fullyMangledString(sym.name)
+  }
+
+  /** Work around https://github.com/lampepfl/dotty/issues/5936 by bridging
+   *  most (all?) of the gap in encoding so that Dotty.js artifacts are
+   *  compatible with the restrictions on valid IR identifier names.
+   */
+  private def fullyMangledString(name: Name): String = {
+    val base = name.mangledString
+    val len = base.length
+
+    // slow path
+    def encodeFurther(): String = {
+      val result = new java.lang.StringBuilder()
+      var i = 0
+      while (i != len) {
+        val c = base.charAt(i)
+        if (c == '_')
+          result.append("$und")
+        else if (Character.isJavaIdentifierPart(c) || c == '.')
+          result.append(c)
+        else
+          result.append("$u%04x".format(c.toInt))
+        i += 1
+      }
+      result.toString()
+    }
+
+    var i = 0
+    while (i != len) {
+      val c = base.charAt(i)
+      if (c == '_' || !Character.isJavaIdentifierPart(c))
+        return encodeFurther()
+      i += 1
+    }
+    base
   }
 
   def toIRType(tp: Type)(implicit ctx: Context): jstpe.Type = {
@@ -323,15 +362,13 @@ object JSEncoding {
 
   // Encoding of method signatures
 
-  private def makeParamsString(sym: Symbol, reflProxy: Boolean,
-      inRTClass: Boolean)(
+  private def makeParamsString(sym: Symbol, reflProxy: Boolean)(
       implicit ctx: Context): String = {
     val tpe = sym.info
 
     val paramTypeNames0 = tpe.firstParamTypes.map(internalName(_))
 
-    val hasExplicitThisParameter =
-      inRTClass || isScalaJSDefinedJSClass(sym.owner)
+    val hasExplicitThisParameter = isScalaJSDefinedJSClass(sym.owner)
     val paramTypeNames =
       if (!hasExplicitThisParameter) paramTypeNames0
       else encodeClassFullName(sym.owner) :: paramTypeNames0

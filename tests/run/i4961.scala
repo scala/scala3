@@ -1,7 +1,6 @@
 trait Animal
 object Animal {
-  def enumValues: Iterable[Animal] = Dog.enumValues ++ Cat.enumValues
-  def enumValueNamed = Dog.enumValueNamed ++ Cat.enumValueNamed
+  def enumValues: Iterable[Animal] = Dog.values ++ Cat.values
 }
 
 enum Dog extends Animal {
@@ -27,7 +26,5 @@ object Test {
     )
 
     assert(Animal.enumValues == values)
-    assert(Animal.enumValueNamed("Boxer") == Boxer)
-    assert(Animal.enumValueNamed("Ragdoll") == Ragdoll)
   }
 }

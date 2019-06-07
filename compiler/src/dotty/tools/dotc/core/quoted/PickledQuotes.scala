@@ -10,13 +10,12 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.{PositionPickler, TastyPickler, TastyPrinter, TastyString}
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 
-import scala.quoted.Types._
-import scala.quoted.Exprs._
+import scala.internal.quoted._
 import scala.reflect.ClassTag
 
 object PickledQuotes {
@@ -128,15 +127,19 @@ object PickledQuotes {
   }
 
   private def functionAppliedTo(fn: Tree, args: List[Tree])(implicit ctx: Context): Tree = {
-    val argVals = args.map(arg => SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), arg).withSpan(arg.span))
-    def argRefs() = argVals.map(argVal => ref(argVal.symbol))
+    val (argVals, argRefs) = args.map(arg => arg.tpe match {
+      case tpe: SingletonType if isIdempotentExpr(arg) => (Nil, arg)
+      case _ =>
+        val argVal = SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), arg).withSpan(arg.span)
+        (argVal :: Nil, ref(argVal.symbol))
+    }).unzip
     def rec(fn: Tree): Tree = fn match {
       case Inlined(call, bindings, expansion) =>
         // this case must go before closureDef to avoid dropping the inline node
         cpy.Inlined(fn)(call, bindings, rec(expansion))
       case closureDef(ddef) =>
         val paramSyms = ddef.vparamss.head.map(param => param.symbol)
-        val paramToVals = paramSyms.zip(argRefs()).toMap
+        val paramToVals = paramSyms.zip(argRefs).toMap
         new TreeTypeMap(
           oldOwners = ddef.symbol :: Nil,
           newOwners = ctx.owner :: Nil,
@@ -145,9 +148,9 @@ object PickledQuotes {
       case Block(stats, expr) =>
         seq(stats, rec(expr)).withSpan(fn.span)
       case _ =>
-        fn.select(nme.apply).appliedToArgs(argRefs())
+        fn.select(nme.apply).appliedToArgs(argRefs).withSpan(fn.span)
     }
-    Block(argVals, rec(fn))
+    seq(argVals.flatten, rec(fn))
   }
 
   private def classToType(clazz: Class[_])(implicit ctx: Context): Type = {

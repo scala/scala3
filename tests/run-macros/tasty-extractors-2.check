@@ -1,0 +1,105 @@
+Inlined(None, Nil, Block(List(ValDef("x", Inferred(), Some(Literal(Constant.Int(1))))), Assign(Ident("x"), Literal(Constant.Int(2)))))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(DefDef("$anonfun", Nil, List(List(ValDef("x", TypeIdent("Int"), None))), Inferred(), Some(Ident("x")))), Lambda(Ident("$anonfun"), None)))
+Type.AppliedType(Type.SymRef(IsClassDefSymbol(<scala.Function1>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))), List(Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.SymRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<root>>), NoPrefix())))), Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.SymRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))))
+
+Inlined(None, Nil, Ident("???"))
+Type.SymRef(IsDefDefSymbol(<scala.Predef$.???>), Type.SymRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))))
+
+Inlined(None, Nil, Literal(Constant.Int(1)))
+Type.ConstantType(Constant.Int(1))
+
+Inlined(None, Nil, Typed(Literal(Constant.Int(1)), TypeIdent("Int")))
+Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.SymRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))
+
+Inlined(None, Nil, Typed(Ident("Nil"), Applied(TypeIdent("List"), List(TypeIdent("Int")))))
+Type.AppliedType(Type.SymRef(IsClassDefSymbol(<scala.collection.immutable.List>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.SymRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))))
+
+Inlined(None, Nil, Typed(Apply(Select(New(TypeIdent("Baz")), "<init>"), Nil), Applied(TypeIdent("&"), List(TypeIdent("Foo"), TypeIdent("Bar")))))
+Type.AndType(Type.SymRef(IsClassDefSymbol(<Foo>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<empty>>), NoPrefix()))), Type.SymRef(IsClassDefSymbol(<Bar>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<empty>>), NoPrefix()))))
+
+Inlined(None, Nil, Typed(Literal(Constant.Int(1)), Applied(TypeIdent("|"), List(TypeIdent("Int"), TypeIdent("String")))))
+Type.OrType(Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.SymRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<root>>), NoPrefix())))), Type.SymRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.SymRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, Nil)), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ValDef("Foo", TypeIdent("Foo$"), Some(Apply(Select(New(TypeIdent("Foo$")), "<init>"), Nil))), ClassDef("Foo$", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil), TypeSelect(Select(Ident("_root_"), "scala"), "Serializable")), Nil, Some(ValDef("_", Singleton(Ident("Foo")), None)), Nil)), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(TypeDef("Foo", TypeBoundsTree(Inferred(), Inferred()))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(TypeDef("Foo", TypeIdent("Int"))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(TypeDef("Foo", TypeBoundsTree(TypeIdent("Null"), TypeIdent("Object")))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("a", Inferred(), Some(Literal(Constant.Int(0)))), DefDef("a_=", Nil, List(List(ValDef("x$1", Inferred(), None))), Inferred(), Some(Literal(Constant.Unit())))))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(DefDef("a", Nil, Nil, Inferred(), Some(Literal(Constant.Int(0))))))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(DefDef("a", Nil, Nil, Inferred(), Some(Literal(Constant.Int(0))))))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(DefDef("a", Nil, Nil, Inferred(), Some(Literal(Constant.Int(0))))))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil), TypeSelect(Select(Ident("_root_"), "scala"), "Product"), TypeSelect(Select(Ident("_root_"), "scala"), "Serializable")), Nil, None, List(DefDef("productElementName", Nil, List(List(ValDef("x$1", TypeSelect(Select(Ident("_root_"), "scala"), "Int"), None))), TypeSelect(Select(Ident("java"), "lang"), "String"), Some(Match(Ident("x$1"), List(CaseDef(Pattern.WildcardPattern(), None, Apply(Ident("throw"), List(Apply(Select(New(TypeSelect(Select(Ident("java"), "lang"), "IndexOutOfBoundsException")), "<init>"), List(Apply(Select(Select(Select(Ident("java"), "lang"), "String"), "valueOf"), List(Ident("x$1")))))))))))), DefDef("copy", Nil, List(Nil), Inferred(), Some(Apply(Select(New(Inferred()), "<init>"), Nil))))), ValDef("Foo", TypeIdent("Foo$"), Some(Apply(Select(New(TypeIdent("Foo$")), "<init>"), Nil))), ClassDef("Foo$", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil), Applied(Inferred(), List(Inferred())), TypeSelect(Select(Ident("_root_"), "scala"), "Serializable")), Nil, Some(ValDef("_", Singleton(Ident("Foo")), None)), List(DefDef("apply", Nil, List(Nil), Inferred(), Some(Apply(Select(New(Inferred()), "<init>"), Nil))), DefDef("unapply", Nil, List(List(ValDef("x$1", Inferred(), None))), Inferred(), Some(Literal(Constant.Boolean(true))))))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo1", DefDef("<init>", Nil, List(List(ValDef("a", TypeIdent("Int"), None))), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("a", Inferred(), None)))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo2", DefDef("<init>", Nil, List(List(ValDef("b", TypeIdent("Int"), None))), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("b", Inferred(), None)))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo3", DefDef("<init>", Nil, List(List(ValDef("a", TypeIdent("Int"), None))), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("a", Inferred(), None))), ValDef("Foo3", TypeIdent("Foo3$"), Some(Apply(Select(New(TypeIdent("Foo3$")), "<init>"), Nil))), ClassDef("Foo3$", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil), TypeSelect(Select(Ident("_root_"), "scala"), "Serializable")), Nil, Some(ValDef("_", Singleton(Ident("Foo3")), None)), List(DefDef("$lessinit$greater$default$1", Nil, Nil, Inferred(), Some(Literal(Constant.Int(5))))))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo4", DefDef("<init>", Nil, List(List(ValDef("a", TypeIdent("Int"), None)), List(ValDef("b", TypeIdent("Int"), None))), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("a", Inferred(), None), ValDef("b", Inferred(), None)))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo5", DefDef("<init>", Nil, List(List(ValDef("a", TypeIdent("Int"), None)), List(ValDef("b", TypeIdent("Int"), None))), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("a", Inferred(), None), ValDef("b", Inferred(), None))), ValDef("Foo5", TypeIdent("Foo5$"), Some(Apply(Select(New(TypeIdent("Foo5$")), "<init>"), Nil))), ClassDef("Foo5$", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil), TypeSelect(Select(Ident("_root_"), "scala"), "Serializable")), Nil, Some(ValDef("_", Singleton(Ident("Foo5")), None)), List(DefDef("$lessinit$greater$default$2", Nil, List(List(ValDef("a", TypeIdent("Int"), None))), Inferred(), Some(Ident("a")))))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo6", DefDef("<init>", Nil, List(List(ValDef("a", TypeIdent("Int"), None)), List(ValDef("b", Singleton(Ident("a")), None))), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("a", Inferred(), None), ValDef("b", Inferred(), None)))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo7", DefDef("<init>", Nil, List(List(ValDef("a", TypeIdent("Int"), None))), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("a", Inferred(), None), DefDef("<init>", Nil, List(Nil), Inferred(), Some(Block(List(Apply(Select(This(Some(Id("Foo7"))), "<init>"), List(Literal(Constant.Int(6))))), Literal(Constant.Unit()))))))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo8", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(Apply(Ident("println"), List(Literal(Constant.Int(0))))))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo10", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("a", Inferred(), Some(Literal(Constant.Int(9))))))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo11", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("a", Inferred(), Some(Literal(Constant.Int(10)))), DefDef("a_=", Nil, List(List(ValDef("x$1", Inferred(), None))), Inferred(), Some(Literal(Constant.Unit())))))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo12", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("a", Inferred(), Some(Literal(Constant.Int(11))))))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, Nil), ClassDef("Bar", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(TypeIdent("Foo")), "<init>"), Nil)), Nil, None, Nil)), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo2", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Inferred()), Nil, None, Nil), ClassDef("Bar", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil), TypeIdent("Foo2")), Nil, None, Nil)), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(List(ValDef("i", TypeIdent("Int"), None))), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("i", Inferred(), None))), ClassDef("Bar", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(TypeIdent("Foo")), "<init>"), List(Literal(Constant.Int(1))))), Nil, None, Nil)), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(TypeDef("X", TypeIdent("Int")))), DefDef("f", Nil, List(List(ValDef("a", TypeIdent("Foo"), None))), TypeSelect(Ident("a"), "X"), Some(Ident("???")))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(TypeDef("X", TypeBoundsTree(Inferred(), Inferred())))), DefDef("f", Nil, List(List(ValDef("a", Refined(TypeIdent("Foo"), List(TypeDef("X", TypeIdent("Int")))), None))), TypeSelect(Ident("a"), "X"), Some(Ident("???")))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+
+Inlined(None, Nil, Block(List(ValDef("lambda", Applied(Inferred(), List(TypeIdent("Int"), TypeIdent("Int"))), Some(Block(List(DefDef("$anonfun", Nil, List(List(ValDef("x", Inferred(), None))), Inferred(), Some(Ident("x")))), Lambda(Ident("$anonfun"), None))))), Literal(Constant.Unit())))
+Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
+

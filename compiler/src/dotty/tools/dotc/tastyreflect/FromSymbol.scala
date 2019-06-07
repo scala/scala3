@@ -14,6 +14,7 @@ object FromSymbol {
     assert(sym.exists)
     if (sym.is(Package)) packageDefFromSym(sym)
     else if (sym.isClass) classDef(sym.asClass)
+    else if (sym.isType && sym.is(Case)) typeBindFromSym(sym.asType)
     else if (sym.isType) typeDefFromSym(sym.asType)
     else if (sym.is(Method)) defDefFromSym(sym.asTerm)
     else if (sym.is(Case)) bindFromSym(sym.asTerm)
@@ -51,6 +52,11 @@ object FromSymbol {
   }
 
   def bindFromSym(sym: TermSymbol)(implicit ctx: Context): tpd.Bind = sym.defTree match {
+    case tree: tpd.Bind => tree
+    case tpd.EmptyTree => tpd.Bind(sym, untpd.Ident(nme.WILDCARD).withType(sym.typeRef))
+  }
+
+  def typeBindFromSym(sym: TypeSymbol)(implicit ctx: Context): tpd.Bind = sym.defTree match {
     case tree: tpd.Bind => tree
     case tpd.EmptyTree => tpd.Bind(sym, untpd.Ident(nme.WILDCARD).withType(sym.typeRef))
   }

@@ -2,32 +2,23 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Names._
 import dotty.tools.dotc.transform.MegaPhase._
-import ast.Trees._
-import ast.untpd
 import Flags._
 import Types._
-import Constants.Constant
 import Contexts.Context
 import Symbols._
 import Decorators._
-import Annotations._
-import Annotations.ConcreteAnnotation
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
-import scala.collection.mutable
 import DenotTransformers._
-import NameOps._
-import NameKinds.OuterSelectName
-import StdNames._
+import TypeUtils._
 
 object ElimOpaque {
   val name: String = "elimOpaque"
 }
 
 /** Rewrites opaque type aliases to normal alias types */
-class ElimOpaque extends MiniPhase with SymTransformer {
+class ElimOpaque extends MiniPhase with DenotTransformer {
 
   override def phaseName: String = ElimOpaque.name
 
@@ -37,11 +28,30 @@ class ElimOpaque extends MiniPhase with SymTransformer {
   // base types of opaque aliases change
   override def changesBaseTypes = true
 
-  def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
-    if (sym.isOpaqueHelper) {
-      sym.copySymDenotation(
-        info = TypeAlias(sym.opaqueAlias),
-        initFlags = sym.flags &~ (Opaque | Deferred))
+  def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
+    val sym = ref.symbol
+    ref match {
+      case ref: SymDenotation if sym.isOpaqueAlias =>
+        ref.copySymDenotation(
+          info = TypeAlias(ref.opaqueAlias),
+          initFlags = ref.flags &~ (Opaque | Deferred))
+      case ref: SymDenotation if sym.containsOpaques =>
+        def stripOpaqueRefinements(tp: Type): Type = tp match {
+          case RefinedType(parent, rname, TypeAlias(_))
+          if ref.info.decl(rname).symbol.isOpaqueAlias => stripOpaqueRefinements(parent)
+          case _ => tp
+        }
+        val cinfo = sym.asClass.classInfo
+        val strippedSelfType = stripOpaqueRefinements(cinfo.selfType)
+        ref.copySymDenotation(
+          info = cinfo.derivedClassInfo(selfInfo = strippedSelfType),
+          initFlags = ref.flags &~ Opaque)
+      case _ =>
+        // This is dubious as it means that we do not see the alias from an external reference
+        // which has type UniqueRefDenotation instead of SymDenotation. But to correctly recompute
+        // the alias we'd need a prefix, which we do not have here. To fix this, we'd have to
+        // maintain a prefix in UniqueRefDenotations and JointRefDenotations.
+        ref
     }
-    else sym
+  }
 }

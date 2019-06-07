@@ -6,6 +6,7 @@
 
 html, body {
     box-sizing: border-box;
+    scroll-behavior: smooth;
 }
 
 *, *:before, *:after {
@@ -142,11 +143,39 @@ div#header li.nav-item > a.nav-link {
     color: #fff;
 }
 
+@-webkit-keyframes fadeInLogo {
+    from {
+        transform: translateY(0) scale(0.8);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInLogo {
+    from {
+        transform: translateY(0) scale(0.8);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
 div.scala-logo-container {
     height: calc(100vh - 80px);
     margin: auto;
     position: absolute;
     top: 80px; right: 0; bottom: 0; left: 0;
+    -webkit-animation: 2s fadeInLogo;
+    animation: 2s fadeInLogo;
+    -webkit-animation-timing-function: cubic-bezier(0.6, 0.2, 0.1, 1) 0.1s;
+    animation-timing-function: cubic-bezier(0.6, 0.2, 0.1, 1) 0.1s;
 }
 
 div.scala-logo-container > p {
@@ -473,6 +502,11 @@ and (-webkit-device-pixel-ratio: 2)
         list-style-type: none;
         padding-left: 0;
         font-size: 2em;
+    }
+
+    div.scala-logo-container {
+        -webkit-animation: none;
+        animation: none;
     }
 
     #collapsed-header > div > ul > li > a {

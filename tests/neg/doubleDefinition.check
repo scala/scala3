@@ -1,0 +1,124 @@
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:14:4 ------------------------------------------------
+14 |	def foo(x: List[B]): Function1[B, B] = ??? // error: same jvm signature
+   |	    ^
+   |	    Double definition:
+   |	    def foo(x: List[A]): A => A in class Test2 at line 13 and
+   |	    def foo(x: List[B]): B => B in class Test2 at line 14
+   |	    have the same type after erasure.
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:21:4 ------------------------------------------------
+21 |	def foo(x: List[A]): Function2[B, B, B] = ??? // error
+   |	    ^
+   |	    Double definition:
+   |	    def foo(x: List[A]): A => A in class Test3 at line 20 and
+   |	    def foo(x: List[A]): (B, B) => B in class Test3 at line 21
+   |	    have matching parameter types.
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:26:4 ------------------------------------------------
+26 |	def foo = 2 // error
+   |	    ^
+   |	    Double definition:
+   |	    val foo: Int in class Test4 at line 25 and
+   |	    def foo: => Int in class Test4 at line 26
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:31:4 ------------------------------------------------
+31 |	val foo = 1 // error
+   |	    ^
+   |	    Double definition:
+   |	    def foo: => Int in class Test4b at line 30 and
+   |	    val foo: Int in class Test4b at line 31
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:36:4 ------------------------------------------------
+36 |	var foo = 1 // error
+   |	    ^
+   |	    Double definition:
+   |	    def foo: => Int in class Test4c at line 35 and
+   |	    var foo: Int in class Test4c at line 36
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:41:4 ------------------------------------------------
+41 |	def foo = 2 // error
+   |	    ^
+   |	    Double definition:
+   |	    var foo: Int in class Test4d at line 40 and
+   |	    def foo: => Int in class Test4d at line 41
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:55:4 ------------------------------------------------
+55 |	def foo(x: List[B]): Function1[B, B] = ??? // error: same jvm signature
+   |	    ^
+   |	    Double definition:
+   |	    def foo(x: List[A]): A => A in trait Test6 at line 54 and
+   |	    def foo(x: List[B]): B => B in trait Test6 at line 55
+   |	    have the same type after erasure.
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:62:4 ------------------------------------------------
+62 |	def foo(x: List[A]): Function2[B, B, B] = ??? // error
+   |	    ^
+   |	    Double definition:
+   |	    def foo(x: List[A]): A => A in trait Test7 at line 61 and
+   |	    def foo(x: List[A]): (B, B) => B in trait Test7 at line 62
+   |	    have matching parameter types.
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:67:4 ------------------------------------------------
+67 |	def foo = 2 // error
+   |	    ^
+   |	    Double definition:
+   |	    val foo: Int in class Test8 at line 66 and
+   |	    def foo: => Int in class Test8 at line 67
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:72:4 ------------------------------------------------
+72 |	val foo = 1 // error
+   |	    ^
+   |	    Double definition:
+   |	    def foo: => Int in class Test8b at line 71 and
+   |	    val foo: Int in class Test8b at line 72
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:77:4 ------------------------------------------------
+77 |	var foo = 1 // error
+   |	    ^
+   |	    Double definition:
+   |	    def foo: => Int in class Test8c at line 76 and
+   |	    var foo: Int in class Test8c at line 77
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:82:4 ------------------------------------------------
+82 |	def foo = 2 // error
+   |	    ^
+   |	    Double definition:
+   |	    var foo: Int in class Test8d at line 81 and
+   |	    def foo: => Int in class Test8d at line 82
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:88:4 ------------------------------------------------
+88 |	def foo: String // error
+   |	    ^
+   |	    Double definition:
+   |	    val foo: Int in class Test9 at line 87 and
+   |	    def foo: => String in class Test9 at line 88
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:92:4 ------------------------------------------------
+92 |	def foo: Int // error
+   |	    ^
+   |	    Double definition:
+   |	    val foo: Int in class Test10 at line 91 and
+   |	    def foo: => Int in class Test10 at line 92
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:96:4 ------------------------------------------------
+96 |	def foo: String // error
+   |	    ^
+   |	    Double definition:
+   |	    val foo: Int in class Test11 at line 95 and
+   |	    def foo: => String in class Test11 at line 96
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:100:4 -----------------------------------------------
+100 |	def foo: Int // error
+    |	    ^
+    |	    Double definition:
+    |	    val foo: Int in class Test12 at line 99 and
+    |	    def foo: => Int in class Test12 at line 100
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:104:4 -----------------------------------------------
+104 |	def foo: String // error
+    |	    ^
+    |	    Double definition:
+    |	    var foo: Int in class Test13 at line 103 and
+    |	    def foo: => String in class Test13 at line 104
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:108:4 -----------------------------------------------
+108 |	def foo: Int // error
+    |	    ^
+    |	    Double definition:
+    |	    var foo: Int in class Test14 at line 107 and
+    |	    def foo: => Int in class Test14 at line 108
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:112:4 -----------------------------------------------
+112 |	def foo: String // error
+    |	    ^
+    |	    Double definition:
+    |	    var foo: Int in class Test15 at line 111 and
+    |	    def foo: => String in class Test15 at line 112
+-- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:116:4 -----------------------------------------------
+116 |	def foo: Int // error
+    |	    ^
+    |	    Double definition:
+    |	    var foo: Int in class Test16 at line 115 and
+    |	    def foo: => Int in class Test16 at line 116

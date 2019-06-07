@@ -37,7 +37,7 @@ object Instances extends Common {
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  implied ListOrd[T] given Ord[T] for Ord[List[T]] {
+  implied ListOrd[T] for Ord[List[T]] given Ord[T] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -66,7 +66,7 @@ object Instances extends Common {
       List(x)
   }
 
-  implied ReaderMonad[Ctx] for Monad[[X] => Ctx => X] {
+  implied ReaderMonad[Ctx] for Monad[[X] =>> Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -132,7 +132,7 @@ object Instances extends Common {
         println(the[D[Int]])
       }
       locally {
-        implied given Context for D[Int]
+        implied for D[Int] given Context
         println(the[D[Int]])
       }
     }
@@ -195,7 +195,7 @@ object AnonymousInstances extends Common {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  implied [From, To] given (c: Convertible[From, To]) for Convertible[List[From], List[To]] {
+  implied [From, To] for Convertible[List[From], List[To]] given (c: Convertible[From, To]) {
     def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
 
@@ -274,15 +274,9 @@ object Completions {
     //
     //   CompletionArg.from(statusCode)
 
-    implied fromString for Conversion[String, CompletionArg] {
-      def apply(s: String) = CompletionArg.Error(s)
-    }
-    implied fromFuture for Conversion[Future[HttpResponse], CompletionArg] {
-      def apply(f: Future[HttpResponse]) = CompletionArg.Response(f)
-    }
-    implied fromStatusCode for Conversion[Future[StatusCode], CompletionArg] {
-      def apply(code: Future[StatusCode]) = CompletionArg.Status(code)
-    }
+    implied fromString for Conversion[String, CompletionArg] = Error(_)
+    implied fromFuture for Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    implied fromStatusCode for Conversion[Future[StatusCode], CompletionArg] = Status(_)
   }
   import CompletionArg._
 

@@ -18,11 +18,11 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     map(n => ctx.getClassIfDefined("org.junit." + n)).
     filter(_.exists)
 
-  def implementation(member: TermSymbol): TermSymbol = {
+  def mkForwarderSym(member: TermSymbol, extraFlags: FlagSet = EmptyFlags): TermSymbol = {
     val res = member.copy(
       owner = cls,
       name = member.name.stripScala2LocalSuffix,
-      flags = member.flags &~ Deferred,
+      flags = member.flags &~ Deferred | Synthetic | extraFlags,
       info = cls.thisType.memberInfo(member)).enteredAfter(thisPhase).asTerm
     res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
     res
@@ -45,12 +45,6 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   def isCurrent(sym: Symbol): Boolean =
     ctx.atPhase(thisPhase) { implicit ctx =>
       cls.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
-      // this is a hot spot, where we spend several seconds while compiling stdlib
-      // unfortunately it will discard and recompute all the member chaches,
-      // both making itself slow and slowing down anything that runs after it
-      // because resolveSuper uses hacks with explicit adding to scopes through .enter
-      // this cannot be fixed by a smarter caching strategy. With current implementation
-      // we HAVE to discard caches here for correctness
     }
 
   /** Does `method` need a forwarder to in  class `cls`
@@ -58,26 +52,37 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
    *   - there's a class defining a method with same signature
    *   - there are multiple traits defining method with same signature
    */
-  def needsForwarder(meth: Symbol): Boolean = {
+  def needsMixinForwarder(meth: Symbol): Boolean = {
     lazy val competingMethods = competingMethodsIterator(meth).toList
 
     def needsDisambiguation = competingMethods.exists(x=> !(x is Deferred)) // multiple implementations are available
     def hasNonInterfaceDefinition = competingMethods.exists(!_.owner.is(Trait)) // there is a definition originating from class
+    !meth.isConstructor &&
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
-    (meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition || needsJUnit4Fix(meth) ) &&
+    (ctx.settings.mixinForwarderChoices.isTruthy || meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition || needsJUnit4Fix(meth)) &&
     isCurrent(meth)
   }
 
   private def needsJUnit4Fix(meth: Symbol): Boolean = {
-    meth.annotations.nonEmpty && JUnit4Annotations.exists(annot => meth.hasAnnotation(annot))
+    meth.annotations.nonEmpty && JUnit4Annotations.exists(annot => meth.hasAnnotation(annot)) &&
+      ctx.settings.mixinForwarderChoices.isAtLeastJunit
   }
 
   final val PrivateOrAccessor: FlagSet = Private | Accessor
   final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
-  def forwarder(target: Symbol): List[Type] => List[List[Tree]] => Tree =
-    targs => vrefss =>
-      superRef(target).appliedToTypes(targs).appliedToArgss(vrefss)
+  def forwarderRhsFn(target: Symbol): List[Type] => List[List[Tree]] => Tree =
+    targs => vrefss => {
+      val tapp = superRef(target).appliedToTypes(targs)
+      vrefss match {
+        case Nil | List(Nil) =>
+          // Overriding is somewhat loose about `()T` vs `=> T`, so just pick
+          // whichever makes sense for `target`
+          tapp.ensureApplied
+        case _ =>
+          tapp.appliedToArgss(vrefss)
+      }
+    }
 
   private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] = {
     cls.baseClasses.iterator

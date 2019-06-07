@@ -23,7 +23,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: given Env => T)(implicit env: Env): T =
     in given (env ++ syms.zip(values))
 
-  def interpretCall(inst: AbstractAny, sym: DefSymbol, args: List[AbstractAny]): Result = {
+  def interpretCall(inst: AbstractAny, sym: DefDefSymbol, args: List[AbstractAny]): Result = {
     // TODO
     // withLocalValue(`this`, inst) {
       val syms = sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
@@ -35,13 +35,13 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
 
   def interpretCall(fn: Term, argss: List[List[Term]]): Result = {
     fn match {
-      case Term.Select (prefix, _) =>
+      case Select (prefix, _) =>
         val pre = eval (prefix)
         // TODO use
       case _ =>
     }
     val evaluatedArgs = argss.flatten.map(arg => LocalValue.valFrom(eval(arg)))
-    val IsDefSymbol(sym) = fn.symbol
+    val IsDefDefSymbol(sym) = fn.symbol
     val syms = sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
     withLocalValues(syms, evaluatedArgs) {
       eval(sym.tree.rhs.get)
@@ -107,11 +107,11 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     tree match {
       case Call(fn, targs, argss) =>
         fn match {
-          case Term.Select(_, "<init>") =>  log("interpretNew", tree)(interpretNew(fn, argss))
-          case Term.Select(prefix, "isInstanceOf") => log("interpretIsInstanceOf", tree)(interpretIsInstanceOf(eval(prefix), targs.head))
-          case Term.Select(prefix, "asInstanceOf") => log("interpretAsInstanceOf", tree)(interpretAsInstanceOf(eval(prefix), targs.head))
-          case Term.Select(prefix, "==") => log("interpretEqEq", tree)(interpretEqEq(eval(prefix), eval(argss.head.head)))
-          case Term.Select(prefix, name @ ("+" | "-" | "*" | "<" | ">" | "<=" | "=>")) if isNumericPrimitive(prefix.tpe) =>
+          case Select(_, "<init>") =>  log("interpretNew", tree)(interpretNew(fn, argss))
+          case Select(prefix, "isInstanceOf") => log("interpretIsInstanceOf", tree)(interpretIsInstanceOf(eval(prefix), targs.head))
+          case Select(prefix, "asInstanceOf") => log("interpretAsInstanceOf", tree)(interpretAsInstanceOf(eval(prefix), targs.head))
+          case Select(prefix, "==") => log("interpretEqEq", tree)(interpretEqEq(eval(prefix), eval(argss.head.head)))
+          case Select(prefix, name @ ("+" | "-" | "*" | "<" | ">" | "<=" | "=>")) if isNumericPrimitive(prefix.tpe) =>
             val lhs = eval(prefix)
             val rhs = eval(argss.head.head)
             name match {
@@ -123,18 +123,18 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
               case "<=" => log("interpretPrivitiveLtEq", tree)(interpretPrivitiveLtEq(lhs, rhs))
               case ">=" => log("interpretPrivitiveGtEq", tree)(interpretPrivitiveGtEq(lhs, rhs))
             }
-          case Term.Select(prefix, name @ ("/" | "%")) if isIntegralPrimitive(prefix.tpe) =>
+          case Select(prefix, name @ ("/" | "%")) if isIntegralPrimitive(prefix.tpe) =>
             def lhs = eval(prefix)
             def rhs = eval(argss.head.head)
             if (name == "/") log("interpretPrivitiveQuot", tree)(interpretPrivitiveQuot(lhs, rhs))
             else log("interpretPrivitiveRem", tree)(interpretPrivitiveRem(lhs, rhs))
-          case Term.Select(prefix, name @ "/") if isFractionalPrimitive(prefix.tpe) =>
+          case Select(prefix, name @ "/") if isFractionalPrimitive(prefix.tpe) =>
             def lhs = eval(prefix)
             def rhs = eval(argss.head.head)
             log("interpretPrivitiveDiv", tree)(interpretPrivitiveDiv(lhs, rhs))
           case _ =>
             fn.symbol match {
-              case IsDefSymbol(sym) => log("interpretCall", tree)(interpretCall(fn, argss))
+              case IsDefDefSymbol(sym) => log("interpretCall", tree)(interpretCall(fn, argss))
               case _ =>
                 assert(argss.isEmpty)
                 log("interpretValGet", tree)(interpretValGet(fn))
@@ -142,17 +142,17 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
             }
         }
 
-      case Term.Assign(lhs, rhs) =>
+      case Assign(lhs, rhs) =>
         log("<interpretAssing>", tree)(localValue(lhs.symbol).update(eval(rhs)))
 
-      case Term.If(cond, thenp, elsep) => log("interpretIf", tree)(interpretIf(cond, thenp, elsep))
-      case Term.While(cond, body)      => log("interpretWhile", tree)(interpretWhile(cond, body))
-      case Term.Block(stats, expr)     => log("interpretBlock", tree)(interpretBlock(stats, expr))
-      case Term.Literal(const)         => log("interpretLiteral", tree)(interpretLiteral(const))
-      case Term.Typed(expr, _)         => log("<interpretTyped>", tree)(eval(expr))
-      case Term.Repeated(elems, _)     => log("<interpretRepeated>", tree)(interpretRepeated(elems.map(elem => eval(elem))))
+      case If(cond, thenp, elsep) => log("interpretIf", tree)(interpretIf(cond, thenp, elsep))
+      case While(cond, body)      => log("interpretWhile", tree)(interpretWhile(cond, body))
+      case Block(stats, expr)     => log("interpretBlock", tree)(interpretBlock(stats, expr))
+      case Literal(const)         => log("interpretLiteral", tree)(interpretLiteral(const))
+      case Typed(expr, _)         => log("<interpretTyped>", tree)(eval(expr))
+      case Repeated(elems, _)     => log("<interpretRepeated>", tree)(interpretRepeated(elems.map(elem => eval(elem))))
 
-      case _ => throw new MatchError(tree.show)
+      case _ => throw new MatchError(tree.showExtractors)
     }
   }
 
@@ -160,8 +160,8 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     if (LOG)
       println(
         s"""#> $tag:
-           |${tree.showCode}
            |${tree.show}
+           |${tree.showExtractors}
            |
            |""".stripMargin)
     thunk
@@ -206,10 +206,10 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
 
   private object Call {
     def unapply(arg: Tree): Option[(Term, List[TypeTree], List[List[Term]])] = arg match {
-      case Term.IsSelect(fn) => Some((fn, Nil, Nil))
-      case Term.IsIdent(fn) => Some((fn, Nil, Nil))
-      case Term.Apply(Call(fn, targs, args1), args2) => Some((fn, targs, args1 :+ args2))
-      case Term.TypeApply(Call(fn, _, _), targs) => Some((fn, targs, Nil))
+      case IsSelect(fn) => Some((fn, Nil, Nil))
+      case IsIdent(fn) => Some((fn, Nil, Nil))
+      case Apply(Call(fn, targs, args1), args2) => Some((fn, targs, args1 :+ args2))
+      case TypeApply(Call(fn, _, _), targs) => Some((fn, targs, Nil))
       case _ => None
     }
   }

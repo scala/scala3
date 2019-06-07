@@ -1,0 +1,8 @@
+
+-- [E120] Duplicate Symbol Error: tests/neg/mixin-forwarder-clash2/B_2.scala:1:6 ---------------------------------------
+1 |class Bar2 extends Bar1 with Two[Foo] // error
+  |      ^
+  |      Name clash between inherited members:
+  |      def concat(suffix: Int): X in trait One and
+  |      def concat: [Dummy](suffix: Int): Y in trait Two
+  |      have the same type after erasure.

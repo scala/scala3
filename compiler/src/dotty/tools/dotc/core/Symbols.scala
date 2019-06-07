@@ -209,16 +209,10 @@ trait Symbols { this: Context =>
       modFlags | PackageCreationFlags, clsFlags | PackageCreationFlags,
       Nil, decls)
 
-  /** Define a new symbol associated with a Bind or pattern wildcard and
-   *  make it gadt narrowable.
-   */
-  def newPatternBoundSymbol(name: Name, info: Type, span: Span): Symbol = {
+  /** Define a new symbol associated with a Bind or pattern wildcard and, by default, make it gadt narrowable. */
+  def newPatternBoundSymbol(name: Name, info: Type, span: Span, addToGadt: Boolean = true): Symbol = {
     val sym = newSymbol(owner, name, Case, info, coord = span)
-    if (name.isTypeName) {
-      val bounds = info.bounds
-      gadt.addBound(sym, bounds.lo, isUpper = false)
-      gadt.addBound(sym, bounds.hi, isUpper = true)
-    }
+    if (addToGadt && name.isTypeName) gadt.addToConstraint(sym)
     sym
   }
 
@@ -387,6 +381,15 @@ trait Symbols { this: Context =>
     val name = path.toTypeName
     base.staticRef(name, generateStubs = false)
       .requiredSymbol("class", name, generateStubs = false)(_.isClass)
+  }
+
+  /** Get ClassSymbol if package is either defined in current compilation run
+   *  or present on classpath.
+   *  Returns NoSymbol otherwise. */
+  def getPackageClassIfDefined(path: PreName): Symbol = {
+    val name = path.toTypeName
+    base.staticRef(name, isPackage = true, generateStubs = false)
+      .requiredSymbol("package", name, generateStubs = false)(_ is PackageClass)
   }
 
   def requiredModule(path: PreName): TermSymbol = {
@@ -797,19 +800,27 @@ object Symbols {
   NoDenotation // force it in order to set `denot` field of NoSymbol
 
   implicit class Copier[N <: Name](sym: Symbol { type ThisName = N })(implicit ctx: Context) {
-    /** Copy a symbol, overriding selective fields */
+    /** Copy a symbol, overriding selective fields.
+     *  Note that `coord` and `associatedFile` will be set from the fields in `owner`, not
+     *  the fields in `sym`.
+     */
     def copy(
         owner: Symbol = sym.owner,
-        name: N = (sym.name: N), // Dotty deviation: type ascription to avoid leaking private sym (only happens in unpickling), won't be needed once #1723 is fixed
+        name: N = sym.name,
         flags: FlagSet = sym.flags,
         info: Type = sym.info,
         privateWithin: Symbol = sym.privateWithin,
-        coord: Coord = sym.coord,
-        associatedFile: AbstractFile = sym.associatedFile): Symbol =
+        coord: Coord = NoCoord, // Can be `= owner.coord` once we boostrap
+        associatedFile: AbstractFile = null // Can be `= owner.associatedFile` once we boostrap
+    ): Symbol = {
+      val coord1 = if (coord == NoCoord) owner.coord else coord
+      val associatedFile1 = if (associatedFile == null) owner.associatedFile else associatedFile
+
       if (sym.isClass)
-        ctx.newClassSymbol(owner, name.asTypeName, flags, _ => info, privateWithin, coord, associatedFile)
+        ctx.newClassSymbol(owner, name.asTypeName, flags, _ => info, privateWithin, coord1, associatedFile1)
       else
-        ctx.newSymbol(owner, name, flags, info, privateWithin, coord)
+        ctx.newSymbol(owner, name, flags, info, privateWithin, coord1)
+    }
   }
 
   /** Makes all denotation operations available on symbols */

@@ -8,7 +8,7 @@ object Test {
     foo(x)
   }
 
-  def foo(erased a: Int) = {
+  def foo erased (a: Int) = {
     println("foo")
   }
 

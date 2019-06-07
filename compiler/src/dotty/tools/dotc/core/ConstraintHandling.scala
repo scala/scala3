@@ -2,10 +2,13 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._
+import Types._
+import Contexts._
+import Symbols._
 import Decorators._
 import config.Config
 import config.Printers.{constr, typr}
+import dotty.tools.dotc.reporting.trace
 
 /** Methods for adding constraints and solving them.
  *
@@ -66,6 +69,22 @@ trait ConstraintHandling[AbstractContext] {
     case tp => tp
   }
 
+  def nonParamBounds(param: TypeParamRef)(implicit actx: AbstractContext): TypeBounds = constraint.nonParamBounds(param)
+
+  def fullLowerBound(param: TypeParamRef)(implicit actx: AbstractContext): Type =
+    (nonParamBounds(param).lo /: constraint.minLower(param))(_ | _)
+
+  def fullUpperBound(param: TypeParamRef)(implicit actx: AbstractContext): Type =
+    (nonParamBounds(param).hi /: constraint.minUpper(param))(_ & _)
+
+  /** Full bounds of `param`, including other lower/upper params.
+    *
+    * Note that underlying operations perform subtype checks - for this reason, recursing on `fullBounds`
+    * of some param when comparing types might lead to infinite recursion. Consider `bounds` instead.
+    */
+  def fullBounds(param: TypeParamRef)(implicit actx: AbstractContext): TypeBounds =
+    nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
+
   protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(implicit actx: AbstractContext): Boolean =
     !constraint.contains(param) || {
       def occursIn(bound: Type): Boolean = {
@@ -85,7 +104,8 @@ trait ConstraintHandling[AbstractContext] {
 
       val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
       val equalBounds = isUpper && (lo eq bound) || !isUpper && (bound eq hi)
-      if (equalBounds && !bound.existsPart(_.isInstanceOf[WildcardType])) {
+      if (equalBounds &&
+         !bound.existsPart(bp => bp.isInstanceOf[WildcardType] || (bp eq param))) {
         // The narrowed bounds are equal and do not contain wildcards,
         // so we can remove `param` from the constraint.
         // (Handling wildcards requires choosing a bound, but we don't know which
@@ -261,7 +281,7 @@ trait ConstraintHandling[AbstractContext] {
     }
     constraint.entry(param) match {
       case _: TypeBounds =>
-        val bound = if (fromBelow) constraint.fullLowerBound(param) else constraint.fullUpperBound(param)
+        val bound = if (fromBelow) fullLowerBound(param) else fullUpperBound(param)
         val inst = avoidParam(bound)
         typr_println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
         inst
@@ -271,37 +291,31 @@ trait ConstraintHandling[AbstractContext] {
     }
   }
 
-  /** Widen inferred type `tp` with upper bound `bound`, according to the following rules:
-   *   1. If `tp` is a singleton type, yet `bound` is not a singleton type, nor a subtype
-   *      of `scala.Singleton`, widen `tp`.
-   *   2. If `tp` is a union type, yet upper bound is not a union type,
-   *      approximate the union type from above by an intersection of all common base types.
+  /** Widen inferred type `inst` with upper `bound`, according to the following rules:
+   *   1. If `inst` is a singleton type, or a union containing some singleton types,
+   *      widen (all) the singleton type(s), provied the result is a subtype of `bound`
+   *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
+   *   2. If `inst` is a union type, approximate the union type from above by an intersection
+   *      of all common base types, provied the result is a subtype of `bound`.
+   *
+   *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
+   *
+   * At this point we also drop the @Repeated annotation to avoid inferring type arguments with it,
+   * as those could leak the annotation to users (see run/inferred-repeated-result).
    */
-  def widenInferred(tp: Type, bound: Type)(implicit actx: AbstractContext): Type = {
-    def isMultiSingleton(tp: Type): Boolean = tp.stripAnnots match {
-      case tp: SingletonType => true
-      case AndType(tp1, tp2) => isMultiSingleton(tp1) | isMultiSingleton(tp2)
-      case OrType(tp1, tp2) => isMultiSingleton(tp1) & isMultiSingleton(tp2)
-      case tp: TypeRef => isMultiSingleton(tp.info.hiBound)
-      case tp: TypeVar => isMultiSingleton(tp.underlying)
-      case tp: TypeParamRef => isMultiSingleton(bounds(tp).hi)
-      case _ => false
+  def widenInferred(inst: Type, bound: Type)(implicit actx: AbstractContext): Type = {
+    def widenOr(tp: Type) = {
+      val tpw = tp.widenUnion
+      if ((tpw ne tp) && tpw <:< bound) tpw else tp
     }
-    def isOrType(tp: Type): Boolean = tp.dealias match {
-      case tp: OrType => true
-      case tp: RefinedOrRecType => isOrType(tp.parent)
-      case AndType(tp1, tp2) => isOrType(tp1) | isOrType(tp2)
-      case WildcardType(bounds: TypeBounds) => isOrType(bounds.hi)
-      case _ => false
+    def widenSingle(tp: Type) = {
+      val tpw = tp.widenSingletons
+      if ((tpw ne tp) && tpw <:< bound) tpw else tp
     }
-    def widenOr(tp: Type) =
-      if (isOrType(tp) && !isOrType(bound)) tp.widenUnion
-      else tp
-    def widenSingle(tp: Type) =
-      if (isMultiSingleton(tp) && !isMultiSingleton(bound) &&
-          !isSubTypeWhenFrozen(bound, defn.SingletonType)) tp.widen
-      else tp
-    widenOr(widenSingle(tp))
+    val wideInst =
+      if (isSubTypeWhenFrozen(bound, defn.SingletonType)) inst
+      else widenOr(widenSingle(inst))
+    wideInst.dropRepeatedAnnot
   }
 
   /** The instance type of `param` in the current constraint (which contains `param`).
@@ -312,7 +326,7 @@ trait ConstraintHandling[AbstractContext] {
    */
   def instanceType(param: TypeParamRef, fromBelow: Boolean)(implicit actx: AbstractContext): Type = {
     val inst = approximation(param, fromBelow).simplified
-    if (fromBelow) widenInferred(inst, constraint.fullUpperBound(param)) else inst
+    if (fromBelow) widenInferred(inst, param) else inst
   }
 
   /** Constraint `c1` subsumes constraint `c2`, if under `c2` as constraint we have
@@ -322,8 +336,8 @@ trait ConstraintHandling[AbstractContext] {
    *     L2 <: L1, and
    *     U1 <: U2
    *
-   *  Both `c1` and `c2` are required to derive from constraint `pre`, possibly
-   *  narrowing it with further bounds.
+   *  Both `c1` and `c2` are required to derive from constraint `pre`, without adding
+   *  any new type variables but possibly narrowing already registered ones with further bounds.
    */
   protected final def subsumes(c1: Constraint, c2: Constraint, pre: Constraint)(implicit actx: AbstractContext): Boolean =
     if (c2 eq pre) true
@@ -331,7 +345,12 @@ trait ConstraintHandling[AbstractContext] {
     else {
       val saved = constraint
       try
-        c2.forallParams(p =>
+        // We iterate over params of `pre`, instead of `c2` as the documentation may suggest.
+        // As neither `c1` nor `c2` can have more params than `pre`, this only matters in one edge case.
+        // Constraint#forallParams only iterates over params that can be directly constrained.
+        // If `c2` has, compared to `pre`, instantiated a param and we iterated over params of `c2`,
+        // we could miss that param being instantiated to an incompatible type in `c1`.
+        pre.forallParams(p =>
           c1.contains(p) &&
           c2.upper(p).forall(c1.isLess(p, _)) &&
           isSubTypeWhenFrozen(c1.nonParamBounds(p), c2.nonParamBounds(p)))
@@ -412,7 +431,7 @@ trait ConstraintHandling[AbstractContext] {
       def pruneLambdaParams(tp: Type) =
         if (comparedTypeLambdas.nonEmpty) {
           val approx = new ApproximatingTypeMap {
-            if (fromBelow) variance = -1
+            if (!fromBelow) variance = -1
             def apply(t: Type): Type = t match {
               case t @ TypeParamRef(tl: TypeLambda, n) if comparedTypeLambdas contains tl =>
                 val bounds = tl.paramInfos(n)
@@ -504,16 +523,6 @@ trait ConstraintHandling[AbstractContext] {
       }
       finally addConstraintInvocations -= 1
     }
-  }
-
-  /** Instantiate `param` to `tp` if the constraint stays satisfiable */
-  protected def tryInstantiate(param: TypeParamRef, tp: Type)(implicit actx: AbstractContext): Boolean = {
-    val saved = constraint
-    constraint =
-      if (addConstraint(param, tp, fromBelow = true) &&
-          addConstraint(param, tp, fromBelow = false)) constraint.replace(param, tp)
-      else saved
-    constraint ne saved
   }
 
   /** Check that constraint is fully propagated. See comment in Config.checkConstraintsPropagated */

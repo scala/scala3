@@ -35,7 +35,7 @@ class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
     run.printSummary()
     val unit = ctx.run.units.head
 
-    val decompiled = new ReflectionImpl(ctx).showSourceCode.showTree(unit.tpdTree)
+    val decompiled = ReflectionImpl.showTree(unit.tpdTree)
     val tree = new TastyHTMLPrinter(unit.pickled.head._2).printContents()
 
     reporter.removeBufferedMessages.foreach(message => System.err.println(message))

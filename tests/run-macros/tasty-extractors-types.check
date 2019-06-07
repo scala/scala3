@@ -1,0 +1,12 @@
+Inferred()
+Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.SymRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))
+
+Inferred()
+Type.AppliedType(Type.SymRef(IsClassDefSymbol(<scala.collection.immutable.List>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.SymRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.SymRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))))))
+
+Inferred()
+Type.AppliedType(Type.SymRef(IsClassDefSymbol(<scala.collection.immutable.Map>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.SymRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.SymRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))), Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.SymRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))))
+
+Inferred()
+Type.AppliedType(Type.SymRef(IsClassDefSymbol(<scala.collection.immutable.Map>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.SymRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.SymRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))), Type.SymRef(IsTypeDefSymbol(<Test$._$I>), NoPrefix())))
+

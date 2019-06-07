@@ -105,6 +105,7 @@ object Test6 {
     case Green  extends Color(3)
     case Red    extends Color(2)
     case Violet extends Color(Green.x + Red.x)
+    case RGB(xx: Int) extends Color(xx)
   }
 }
 

@@ -80,7 +80,6 @@ object Scala2Flags {
   final val MIXEDIN       = 1L << 35      // term member has been mixed in
   final val EXISTENTIAL   = 1L << 35      // type is an existential parameter or skolem
   final val EXPANDEDNAME  = 1L << 36      // name has been expanded with class suffix
-  final val IMPLCLASS     = 1L << 37      // symbol is an implementation class
   final val TRANS_FLAG    = 1L << 38      // transient flag guaranteed to be reset after each phase.
 
   final val LOCKED        = 1L << 39      // temporary flag to catch cyclic dependencies

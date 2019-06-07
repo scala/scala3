@@ -7,8 +7,6 @@ package dotty.runtime.function;
 
 @FunctionalInterface
 public interface JFunction1<T1, R> extends scala.Function1<T1, R>, java.io.Serializable {
-    default void $init$() {
-    };
 
     @Override
     @SuppressWarnings("unchecked")
@@ -213,7 +211,7 @@ public interface JFunction1<T1, R> extends scala.Function1<T1, R>, java.io.Seria
     default scala.Function1 compose$mcDD$sp(scala.Function1 g) {
         return compose(g);
     }
-    
+
     @SuppressWarnings("unchecked")
     default scala.Function1 andThen$mcVI$sp(scala.Function1 g) {
         return andThen(g);

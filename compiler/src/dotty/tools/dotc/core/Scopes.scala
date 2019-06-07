@@ -106,7 +106,7 @@ object Scopes {
     }
 
     /** Tests whether a predicate holds for at least one Symbol of this Scope. */
-    def exists(p: Symbol => Boolean)(implicit ctx: Context): Boolean = filter(p).isEmpty
+    def exists(p: Symbol => Boolean)(implicit ctx: Context): Boolean = filter(p).nonEmpty
 
     /** Finds the first Symbol of this Scope satisfying a predicate, if any. */
     def find(p: Symbol => Boolean)(implicit ctx: Context): Symbol = filter(p) match {
@@ -409,7 +409,7 @@ object Scopes {
       var irefs = new mutable.ListBuffer[TermRef]
       var e = lastEntry
       while (e ne null) {
-        if (e.sym is ImplicitOrImplied) {
+        if (e.sym is ImplicitOrImpliedOrGiven) {
           val d = e.sym.denot
           irefs += TermRef(NoPrefix, d.symbol.asTerm).withDenot(d)
         }

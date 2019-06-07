@@ -21,7 +21,7 @@ object factories {
 
   def flags(t: Tree)(implicit ctx: Context): List[String] =
     (t.symbol.flags & (if (t.symbol.isType) TypeSourceModifierFlags else TermSourceModifierFlags))
-      .flagStrings.toList
+      .flagStrings(t.symbol.privateWithin.name.show).toList
       .filter(_ != "<trait>")
       .filter(_ != "interface")
       .filter(_ != "case")
@@ -126,6 +126,10 @@ object factories {
 
       case tp: LazyRef =>
         expandTpe(tp.ref)
+
+      case MatchType(bound, scrutinee, cases) =>
+        // See #6295
+        ConstantReference("FIXME: MatchType support")
     }
 
     expandTpe(t)

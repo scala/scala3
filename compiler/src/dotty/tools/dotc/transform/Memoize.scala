@@ -106,8 +106,8 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (ctx.settings.YnoInline.value) EmptyFlags else Inline)
 
     def erasedBottomTree(sym: Symbol) = {
-      if (sym eq defn.NothingClass) Throw(Literal(Constant(null)))
-      else if (sym eq defn.NullClass) Literal(Constant(null))
+      if (sym eq defn.NothingClass) Throw(nullLiteral)
+      else if (sym eq defn.NullClass) nullLiteral
       else if (sym eq defn.BoxedUnitClass) ref(defn.BoxedUnit_UNIT)
       else {
         assert(false, sym + " has no erased bottom tree")

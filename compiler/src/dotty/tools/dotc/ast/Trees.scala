@@ -331,6 +331,7 @@ object Trees {
     }
 
     def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(untpd.Modifiers(flags))
+    def withAddedFlags(flags: FlagSet): ThisTree[Untyped] = withMods(rawMods | flags)
 
     def setComment(comment: Option[Comment]): this.type = {
       comment.map(putAttachment(DocComment, _))
@@ -357,10 +358,14 @@ object Trees {
 
   /** A ValDef or DefDef tree */
   abstract class ValOrDefDef[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends MemberDef[T] with WithLazyField[Tree[T]] {
+    type ThisTree[-T >: Untyped] <: ValOrDefDef[T]
     def name: TermName
     def tpt: Tree[T]
     def unforcedRhs: LazyTree = unforced
     def rhs(implicit ctx: Context): Tree[T] = forceIfLazy
+
+    /** Is this a `BackquotedValDef` or `BackquotedDefDef` ? */
+    def isBackquoted: Boolean = false
   }
 
   // ----------- Tree case classes ------------------------------------
@@ -432,7 +437,8 @@ object Trees {
     extends GenericApply[T] {
     type ThisTree[-T >: Untyped] = Apply[T]
 
-    def isContextual = getAttachment(untpd.ApplyGiven).nonEmpty
+    def isGivenApply = getAttachment(untpd.ApplyGiven).nonEmpty
+    def setGivenApply() = { pushAttachment(untpd.ApplyGiven, ()); this }
   }
 
   /** fun[args] */
@@ -640,7 +646,29 @@ object Trees {
     def forwardTo: Tree[T] = tpt
   }
 
-  /** [typeparams] -> tpt */
+  /** [typeparams] -> tpt
+   *
+   *  Note: the type of such a tree is not necessarily a `HKTypeLambda`, it can
+   *  also be a `TypeBounds` where the upper bound is an `HKTypeLambda`, and the
+   *  lower bound is either a reference to `Nothing` or an `HKTypeLambda`,
+   *  this happens because these trees are typed by `HKTypeLambda#fromParams` which
+   *  makes sure to move bounds outside of the type lambda itself to simplify their
+   *  handling in the compiler.
+   *
+   *  You may ask: why not normalize the trees too? That way,
+   *
+   *      LambdaTypeTree(X, TypeBoundsTree(A, B))
+   *
+   *  would become,
+   *
+   *      TypeBoundsTree(LambdaTypeTree(X, A), LambdaTypeTree(X, B))
+   *
+   *  which would maintain consistency between a tree and its type. The problem
+   *  with this definition is that the same tree `X` appears twice, therefore
+   *  we'd have to create two symbols for it which makes it harder to relate the
+   *  source code written by the user with the trees used by the compiler (for
+   *  example, to make "find all references" work in the IDE).
+   */
   case class LambdaTypeTree[-T >: Untyped] private[ast] (tparams: List[TypeDef[T]], body: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = LambdaTypeTree[T]
@@ -693,8 +721,9 @@ object Trees {
    *    if (result.isDefined) "match patterns against result"
    */
   case class UnApply[-T >: Untyped] private[ast] (fun: Tree[T], implicits: List[Tree[T]], patterns: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
-    extends PatternTree[T] {
+    extends ProxyTree[T] with PatternTree[T] {
     type ThisTree[-T >: Untyped] = UnApply[T]
+    def forwardTo = fun
   }
 
   /** mods val name: tpt = rhs */
@@ -706,6 +735,12 @@ object Trees {
     protected def force(x: AnyRef): Unit = preRhs = x
   }
 
+  class BackquotedValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], preRhs: LazyTree)(implicit @constructorOnly src: SourceFile)
+    extends ValDef[T](name, tpt, preRhs) {
+    override def isBackquoted: Boolean = true
+    override def productPrefix: String = "BackquotedValDef"
+  }
+
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
   case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
       vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree)(implicit @constructorOnly src: SourceFile)
@@ -714,6 +749,17 @@ object Trees {
     assert(tpt != genericEmptyTree)
     def unforced: LazyTree = preRhs
     protected def force(x: AnyRef): Unit = preRhs = x
+
+    override def disableOverlapChecks = rawMods.is(Flags.Implied)
+      // disable order checks for implicit aliases since their given clause follows
+      // their for clause, but the two appear swapped in the DefDef.
+  }
+
+  class BackquotedDefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
+      vparamss: List[List[ValDef[T]]], tpt: Tree[T], preRhs: LazyTree)(implicit @constructorOnly src: SourceFile)
+    extends DefDef[T](name, tparams, vparamss, tpt, preRhs) {
+    override def isBackquoted: Boolean = true
+    override def productPrefix: String = "BackquotedDefDef"
   }
 
   /** mods class name template     or
@@ -744,6 +790,10 @@ object Trees {
 
     def parents: List[Tree[T]] = parentsOrDerived // overridden by DerivingTemplate
     def derived: List[untpd.Tree] = Nil           // overridden by DerivingTemplate
+
+    override def disableOverlapChecks = true
+      // disable overlaps checks since templates of instance definitions have their
+      // `given` clause come last, which means that the constructor span can contain the parent spans.
   }
 
 
@@ -751,7 +801,7 @@ object Trees {
    *  where a selector is either an untyped `Ident`, `name` or
    *  an untyped thicket consisting of `name` and `rename`.
    */
-  case class Import[-T >: Untyped] private[ast] (impliedOnly: Boolean, expr: Tree[T], selectors: List[Tree[Untyped]])(implicit @constructorOnly src: SourceFile)
+  case class Import[-T >: Untyped] private[ast] (importImplied: Boolean, expr: Tree[T], selectors: List[Tree[Untyped]])(implicit @constructorOnly src: SourceFile)
     extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] = Import[T]
   }
@@ -768,6 +818,8 @@ object Trees {
     extends ProxyTree[T] {
     type ThisTree[-T >: Untyped] = Annotated[T]
     def forwardTo: Tree[T] = arg
+    override def disableOverlapChecks = true
+      // disable overlaps checks since the WithBounds annotation swaps type and annotation.
   }
 
   trait WithoutTypeOrPos[-T >: Untyped] extends Tree[T] {
@@ -932,7 +984,9 @@ object Trees {
     type Alternative = Trees.Alternative[T]
     type UnApply = Trees.UnApply[T]
     type ValDef = Trees.ValDef[T]
+    type BackquotedValDef = Trees.BackquotedValDef[T]
     type DefDef = Trees.DefDef[T]
+    type BackquotedDefDef = Trees.BackquotedDefDef[T]
     type TypeDef = Trees.TypeDef[T]
     type Template = Trees.Template[T]
     type Import = Trees.Import[T]
@@ -1125,10 +1179,16 @@ object Trees {
         case _ => finalize(tree, untpd.UnApply(fun, implicits, patterns)(sourceFile(tree)))
       }
       def ValDef(tree: Tree)(name: TermName, tpt: Tree, rhs: LazyTree)(implicit ctx: Context): ValDef = tree match {
+        case tree: BackquotedValDef =>
+          if ((name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs)) tree
+          else finalize(tree, untpd.BackquotedValDef(name, tpt, rhs)(sourceFile(tree)))
         case tree: ValDef if (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.ValDef(name, tpt, rhs)(sourceFile(tree)))
       }
       def DefDef(tree: Tree)(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree)(implicit ctx: Context): DefDef = tree match {
+        case tree: BackquotedDefDef =>
+          if ((name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs)) tree
+          else finalize(tree, untpd.BackquotedDefDef(name, tparams, vparamss, tpt, rhs)(sourceFile(tree)))
         case tree: DefDef if (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.DefDef(name, tparams, vparamss, tpt, rhs)(sourceFile(tree)))
       }
@@ -1140,9 +1200,9 @@ object Trees {
         case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (derived eq tree.derived) && (self eq tree.self) && (body eq tree.unforcedBody) => tree
         case tree => finalize(tree, untpd.Template(constr, parents, derived, self, body)(sourceFile(tree)))
       }
-      def Import(tree: Tree)(impliedOnly: Boolean, expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import = tree match {
-        case tree: Import if (impliedOnly == tree.impliedOnly) && (expr eq tree.expr) && (selectors eq tree.selectors) => tree
-        case _ => finalize(tree, untpd.Import(impliedOnly, expr, selectors)(sourceFile(tree)))
+      def Import(tree: Tree)(importImplied: Boolean, expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import = tree match {
+        case tree: Import if (importImplied == tree.importImplied) && (expr eq tree.expr) && (selectors eq tree.selectors) => tree
+        case _ => finalize(tree, untpd.Import(importImplied, expr, selectors)(sourceFile(tree)))
       }
       def PackageDef(tree: Tree)(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef = tree match {
         case tree: PackageDef if (pid eq tree.pid) && (stats eq tree.stats) => tree
@@ -1283,8 +1343,8 @@ object Trees {
               cpy.TypeDef(tree)(name, transform(rhs))
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
               cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body))
-            case Import(impliedOnly, expr, selectors) =>
-              cpy.Import(tree)(impliedOnly, transform(expr), selectors)
+            case Import(importImplied, expr, selectors) =>
+              cpy.Import(tree)(importImplied, transform(expr), selectors)
             case PackageDef(pid, stats) =>
               cpy.PackageDef(tree)(transformSub(pid), transformStats(stats)(localCtx))
             case Annotated(arg, annot) =>
@@ -1403,7 +1463,7 @@ object Trees {
               this(x, rhs)
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
               this(this(this(this(x, constr), parents), self), tree.body)
-            case Import(impliedOnly, expr, selectors) =>
+            case Import(_, expr, _) =>
               this(x, expr)
             case PackageDef(pid, stats) =>
               this(this(x, pid), stats)(localCtx)
@@ -1419,7 +1479,7 @@ object Trees {
       }
 
       def foldMoreCases(x: X, tree: Tree)(implicit ctx: Context): X = {
-        assert(ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive))
+        assert(ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), tree)
           // In interactive mode, errors might come from previous runs.
           // In case of errors it may be that typed trees point to untyped ones.
           // The IDE can still traverse inside such trees, either in the run where errors

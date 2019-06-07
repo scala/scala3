@@ -59,19 +59,23 @@ object Mixin {
  *          3.2 (done in `traitInits`) For every concrete trait getter `<mods> def x(): T` in M
  *              which is not a parameter accessor, in order of textual occurrence, produce the following:
  *
- *              3.2.1 If `x` is also a member of `C`, and M is a Dotty trait:
+ *              3.2.1 If `x` is also a member of `C`, and is a lazy val,
+ *
+ *                <mods> lazy val x: T = super[M].x
+ *
+ *              3.2.2 If `x` is also a member of `C`, and M is a Dotty trait,
  *
  *                <mods> def x(): T = super[M].initial$x()
  *
- *              3.2.2 If `x` is also a member of `C`, and M is a Scala 2.x trait:
+ *              3.2.3 If `x` is also a member of `C`, and M is a Scala 2.x trait:
  *
  *                <mods> def x(): T = _
  *
- *              3.2.3 If `x` is not a member of `C`, and M is a Dotty trait:
+ *              3.2.4 If `x` is not a member of `C`, and M is a Dotty trait:
  *
  *                super[M].initial$x()
  *
- *              3.2.4 If `x` is not a member of `C`, and M is a Scala2.x trait, nothing gets added.
+ *              3.2.5 If `x` is not a member of `C`, and M is a Scala2.x trait, nothing gets added.
  *
  *
  *          3.3 (done in `superCallOpt`) The call:
@@ -81,6 +85,14 @@ object Mixin {
  *          3.4 (done in `setters`) For every concrete setter `<mods> def x_=(y: T)` in M:
  *
  *                <mods> def x_=(y: T) = ()
+ *
+ *          3.5 (done in `mixinForwarders`) For every method
+ *          `<mods> def f[Ts](ps1)...(psN): U` imn M` that needs to be disambiguated:
+ *
+ *                <mods> def f[Ts](ps1)...(psN): U = super[M].f[Ts](ps1)...(psN)
+ *
+ *          A method in M needs to be disambiguated if it is concrete, not overridden in C,
+ *          and if it overrides another concrete method.
  *
  *   4. (done in `transformTemplate` and `transformSym`) Drop all parameters from trait
  *      constructors.
@@ -111,7 +123,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         else sym.copySymDenotation(initFlags = sym.flags &~ ParamAccessor | Deferred)
       sym1.ensureNotPrivate
     }
-    else if (sym.isConstructor && sym.owner.is(Trait))
+    else if (sym.isConstructor && sym.owner.is(Trait, butNot = Scala2x))
       sym.copySymDenotation(
         name = nme.TRAIT_CONSTRUCTOR,
         info = MethodType(Nil, sym.info.resultType))
@@ -220,28 +232,22 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         def default = Underscore(getter.info.resultType)
         def initial = transformFollowing(superRef(initializer(getter)).appliedToNone)
 
-        /** A call to the implementation of `getter` in `mixin`'s implementation class */
-        def lazyGetterCall = {
-          def canbeImplClassGetter(sym: Symbol) = sym.info.firstParamTypes match {
-            case t :: Nil => t.isDirectRef(mixin)
-            case _ => false
-          }
-          val implClassGetter = mixin.implClass.info.nonPrivateDecl(getter.name)
-            .suchThat(canbeImplClassGetter).symbol
-          ref(mixin.implClass).select(implClassGetter).appliedTo(This(cls))
-        }
-
         if (isCurrent(getter) || getter.name.is(ExpandedName)) {
           val rhs =
-            if (was(getter, ParamAccessor)) nextArgument()
-            else if (isScala2x)
-              if (getter.is(Lazy, butNot = Module)) lazyGetterCall
+            if (was(getter, ParamAccessor))
+              nextArgument()
+            else if (isScala2x) {
+              if (getter.is(Lazy, butNot = Module))
+                initial
               else if (getter.is(Module))
                 New(getter.info.resultType, List(This(cls)))
-              else Underscore(getter.info.resultType)
-            else initial
+              else
+                Underscore(getter.info.resultType)
+            }
+            else
+              initial
           // transformFollowing call is needed to make memoize & lazy vals run
-          transformFollowing(DefDef(implementation(getter.asTerm), rhs))
+          transformFollowing(DefDef(mkForwarderSym(getter.asTerm), rhs))
         }
         else if (isScala2x || was(getter, ParamAccessor | Lazy)) EmptyTree
         else initial
@@ -250,7 +256,15 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
     def setters(mixin: ClassSymbol): List[Tree] =
       for (setter <- mixin.info.decls.filter(setr => setr.isSetter && !was(setr, Deferred)))
-        yield transformFollowing(DefDef(implementation(setter.asTerm), unitLiteral.withSpan(cls.span)))
+        yield transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
+
+    def mixinForwarders(mixin: ClassSymbol): List[Tree] =
+      for (meth <- mixin.info.decls.toList if needsMixinForwarder(meth))
+      yield {
+        util.Stats.record("mixin forwarders")
+        transformFollowing(polyDefDef(mkForwarderSym(meth.asTerm, Bridge), forwarderRhsFn(meth)))
+      }
+
 
     cpy.Template(impl)(
       constr =
@@ -261,7 +275,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         if (cls is Trait) traitDefs(impl.body)
         else {
           val mixInits = mixins.flatMap { mixin =>
-            flatten(traitInits(mixin)) ::: superCallOpt(mixin) ::: setters(mixin)
+            flatten(traitInits(mixin)) ::: superCallOpt(mixin) ::: setters(mixin) ::: mixinForwarders(mixin)
           }
           superCallOpt(superCls) ::: mixInits ::: impl.body
         })

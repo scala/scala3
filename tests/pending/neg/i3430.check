@@ -1,0 +1,2 @@
+<44..44> in i3430.scala
+ambiguous implicit arguments: both object Short in object Ordering and object Int in object Ordering match type Ordering[B] of parameter cmp of method min in trait TraversableOnce

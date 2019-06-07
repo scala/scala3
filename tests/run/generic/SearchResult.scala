@@ -19,13 +19,13 @@ object SearchResult {
   def values = $values.values
 
   private def $new(tag: Int, name: String) = new SearchResult {
-    def enumTag = tag
+    def ordinal = tag
     override def toString = name
     $values.register(this)
   }
 
   abstract case class Success(result: Color) extends SearchResult {
-    def enumTag = 0
+    def ordinal = 0
   }
   object Success {
     def apply(result: Color): SearchResult = new Success(result) {}
@@ -40,7 +40,7 @@ object SearchResult {
   val NoMatch: SearchResult = $new(2, "NoMatch")
 
   abstract case class Ambiguous(alt1: SearchResult, alt2: SearchResult) extends SearchResult {
-    def enumTag = 3
+    def ordinal = 3
   }
   object Ambiguous {
     def apply(alt1: SearchResult, alt2: SearchResult): SearchResult = new Ambiguous(alt1, alt2) {}
@@ -58,7 +58,7 @@ object SearchResult {
       def toShape(x: SearchResult) = x match {
         case x: Success => Fst(x)
         case x: Ambiguous => Snd(Fst(x))
-        case x => Snd(Snd(EnumValue(x.enumTag)))
+        case x => Snd(Snd(EnumValue(x.ordinal)))
       }
       def fromShape(x: Sum[Success, Sum[Ambiguous, EnumValue[SearchResult]]]): SearchResult = x match {
         case Fst(s) => s

@@ -2,25 +2,31 @@ package scala.quoted
 
 import scala.annotation.implicitNotFound
 
-@implicitNotFound("Could not find implicit quoted.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make`\n\nIf only needed once it can also be imported with:\n `import scala.quoted.Toolbox.Default._`")
+@implicitNotFound("Could not find implicit quoted.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)`\n\n")
 trait Toolbox {
   def run[T](expr: Expr[T]): T
   def show[T](expr: Expr[T]): String
+  def show[T](tpe: Type[T]): String
 }
 
 object Toolbox {
 
-  object Default {
-    // TODO remove? It may be better to only have one way to instantiate the toolbox
-    implicit def make(implicit settings: Settings): Toolbox = Toolbox.make
-  }
-
-  def make(implicit settings: Settings): Toolbox = {
-    val cl = getClass.getClassLoader
+  /** Create a new instance of the toolbox using the the classloader of the application.
+    *
+    * Usuage:
+    * ```
+    * implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+    * ```
+    *
+    * @param appClassloader classloader of the application that generated the quotes
+    * @param settings toolbox settings
+    * @return A new instance of the toolbox
+    */
+  def make(appClassloader: ClassLoader)(implicit settings: Settings): Toolbox = {
     try {
-      val toolboxImplCls = cl.loadClass("dotty.tools.dotc.quoted.ToolboxImpl")
-      val makeMeth = toolboxImplCls.getMethod("make", classOf[Settings])
-      makeMeth.invoke(null, settings).asInstanceOf[Toolbox]
+      val toolboxImplCls = appClassloader.loadClass("dotty.tools.dotc.quoted.ToolboxImpl")
+      val makeMeth = toolboxImplCls.getMethod("make", classOf[Settings], classOf[ClassLoader])
+      makeMeth.invoke(null, settings, appClassloader).asInstanceOf[Toolbox]
     }
     catch {
       case ex: ClassNotFoundException =>
@@ -32,7 +38,7 @@ object Toolbox {
   }
 
   /** Setting of the Toolbox instance. */
-  class Settings private (val outDir: Option[String], val showRawTree: Boolean, val compilerArgs: List[String], val color: Boolean)
+  case class Settings private (outDir: Option[String], showRawTree: Boolean, compilerArgs: List[String], color: Boolean)
 
   object Settings {
 

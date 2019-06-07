@@ -7,8 +7,11 @@ import Contexts._
 import util.{SimpleIdentityMap, SimpleIdentitySet}
 import reporting._
 import config.Config
+import config.Printers.constr
 import collection.mutable
 import java.lang.ref.WeakReference
+import util.Stats
+import Decorators._
 
 import scala.annotation.internal.sharable
 
@@ -16,7 +19,9 @@ object TyperState {
   @sharable private var nextId: Int = 0
 }
 
-class TyperState(previous: TyperState /* | Null */) {
+class TyperState(private val previous: TyperState /* | Null */) {
+
+  Stats.record("typerState")
 
   val id: Int = TyperState.nextId
   TyperState.nextId += 1
@@ -138,11 +143,13 @@ class TyperState(previous: TyperState /* | Null */) {
    * many parts of dotty itself.
    */
   def commit()(implicit ctx: Context): Unit = {
+    Stats.record("typerState.commit")
     val targetState = ctx.typerState
+    if (constraint ne targetState.constraint)
+      constr.println(i"committing $this to $targetState, fromConstr = $constraint, toConstr = ${targetState.constraint}")
     assert(isCommittable)
-    targetState.constraint =
-      if (targetState.constraint eq previousConstraint) constraint
-      else targetState.constraint & (constraint, otherHasErrors = reporter.errorsReported)
+    if (targetState.constraint eq previousConstraint) targetState.constraint = constraint
+    else targetState.mergeConstraintWith(this)
     constraint foreachTypeVar { tvar =>
       if (tvar.owningState.get eq this) tvar.owningState = new WeakReference(targetState)
     }
@@ -151,6 +158,9 @@ class TyperState(previous: TyperState /* | Null */) {
     reporter.flush()
     isCommitted = true
   }
+
+  def mergeConstraintWith(that: TyperState)(implicit ctx: Context): Unit =
+    constraint = constraint & (that.constraint, otherHasErrors = that.reporter.errorsReported)
 
   /** Make type variable instances permanent by assigning to `inst` field if
    *  type variable instantiation cannot be retracted anymore. Then, remove
@@ -172,7 +182,12 @@ class TyperState(previous: TyperState /* | Null */) {
       constraint = constraint.remove(poly)
   }
 
-  override def toString: String = s"TS[$id]"
+  override def toString: String = {
+    def ids(state: TyperState): List[String] =
+      s"${state.id}${if (state.isCommittable) "" else "X"}" ::
+        (if (state.previous == null) Nil else ids(state.previous))
+    s"TS[${ids(this).mkString(", ")}]"
+  }
 
   def stateChainStr: String = s"$this${if (previous == null) "" else previous.stateChainStr}"
 }

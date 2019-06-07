@@ -8,6 +8,7 @@ import dotty.tools.dotc.transform.{Erasure, GenericSignatures}
 import dotty.tools.dotc.transform.SymUtils._
 import java.io.{File => _}
 
+import scala.annotation.threadUnsafe
 import scala.collection.generic.Clearable
 import scala.collection.mutable
 import scala.reflect.ClassTag
@@ -104,8 +105,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val nme_EQEQ_LOCAL_VAR: Name = StdNames.nme.EQEQ_LOCAL_VAR
 
    // require LambdaMetafactory: scalac uses getClassIfDefined, but we need those always.
-  override lazy val LambdaMetaFactory: ClassSymbol = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
-  override lazy val MethodHandle: ClassSymbol      = ctx.requiredClass("java.lang.invoke.MethodHandle")
+  @threadUnsafe override lazy val LambdaMetaFactory: ClassSymbol = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
+  @threadUnsafe override lazy val MethodHandle: ClassSymbol      = ctx.requiredClass("java.lang.invoke.MethodHandle")
 
   val nme_valueOf: Name = StdNames.nme.valueOf
   val nme_apply: TermName = StdNames.nme.apply
@@ -145,13 +146,13 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val PartialFunctionClass: Symbol = defn.PartialFunctionClass
   val AbstractPartialFunctionClass: Symbol = defn.AbstractPartialFunctionClass
   val String_valueOf: Symbol = defn.String_valueOf_Object
-  lazy val Predef_classOf: Symbol = defn.ScalaPredefModule.requiredMethod(nme.classOf)
+  @threadUnsafe lazy val Predef_classOf: Symbol = defn.ScalaPredefModule.requiredMethod(nme.classOf)
 
-  lazy val AnnotationRetentionAttr: ClassSymbol = ctx.requiredClass("java.lang.annotation.Retention")
-  lazy val AnnotationRetentionSourceAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
-  lazy val AnnotationRetentionClassAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
-  lazy val AnnotationRetentionRuntimeAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
-  lazy val JavaAnnotationClass: ClassSymbol = ctx.requiredClass("java.lang.annotation.Annotation")
+  @threadUnsafe lazy val AnnotationRetentionAttr: ClassSymbol = ctx.requiredClass("java.lang.annotation.Retention")
+  @threadUnsafe lazy val AnnotationRetentionSourceAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
+  @threadUnsafe lazy val AnnotationRetentionClassAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
+  @threadUnsafe lazy val AnnotationRetentionRuntimeAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
+  @threadUnsafe lazy val JavaAnnotationClass: ClassSymbol = ctx.requiredClass("java.lang.annotation.Annotation")
 
   def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses().map{x => // @darkdimius Are you sure this should be a def?
     (x, Erasure.Boxing.boxMethod(x.asClass))
@@ -254,7 +255,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         }
       case t: TypeApply if (t.fun.symbol == Predef_classOf) =>
         av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
-      case t: tpd.Select =>
+      case t: tpd.RefTree =>
         if (t.symbol.denot.owner.is(Flags.JavaEnum)) {
           val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
           val evalue = t.symbol.name.mangledString // value the actual enumeration value.
@@ -431,7 +432,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val Flag_METHOD: Flags = Flags.Method.bits
   val ExcludedForwarderFlags: Flags = {
       Flags.Specialized | Flags.Lifted | Flags.Protected | Flags.JavaStatic |
-      Flags.Bridge | Flags.Private | Flags.Macro
+      Flags.Private | Flags.Macro
   }.bits
 
   def isQualifierSafeToElide(qual: Tree): Boolean = tpd.isIdempotentExpr(qual)
@@ -482,11 +483,19 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   private def verifySignature(sym: Symbol, sig: String)(implicit ctx: Context): Unit = {
     import scala.tools.asm.util.CheckClassAdapter
-    def wrap(body: => Unit): Boolean =
-      try { body; true }
-      catch { case ex: Throwable => println(ex.getMessage); false }
+    def wrap(body: => Unit): Unit = {
+      try body
+      catch {
+        case ex: Throwable =>
+          ctx.error(i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
+                      |signature: $sig
+                      |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
+                   """.trim, sym.sourcePos)
+          throw  ex
+      }
+    }
 
-    val valid = wrap {
+    wrap {
       if (sym.is(Flags.Method)) {
         CheckClassAdapter.checkMethodSignature(sig)
       }
@@ -496,14 +505,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       else {
         CheckClassAdapter.checkClassSignature(sig)
       }
-    }
-
-    if (!valid) {
-      ctx.error(
-        i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
-            |signature: $sig
-            |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
-        """.trim, sym.sourcePos)
     }
   }
 
@@ -666,7 +667,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isStrictFP: Boolean = false // todo: implement
     def isLabel: Boolean = sym is Flags.Label
     def hasPackageFlag: Boolean = sym is Flags.Package
-    def isImplClass: Boolean = sym is Flags.ImplClass
     def isInterface: Boolean = (sym is Flags.PureInterface) || (sym is Flags.Trait)
     def isGetter: Boolean = toDenot(sym).isGetter
     def isSetter: Boolean = toDenot(sym).isSetter
@@ -683,7 +683,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def isFinal: Boolean = sym is Flags.Final
     def isStaticMember: Boolean = (sym ne NoSymbol) &&
-      ((sym is Flags.JavaStatic) || (owner is Flags.ImplClass) || toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot))
+      ((sym is Flags.JavaStatic) || toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot))
       // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
     def isBottomClass: Boolean = (sym ne defn.NullClass) && (sym ne defn.NothingClass)
@@ -701,8 +701,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isNonBottomSubClass(other: Symbol): Boolean = sym.derivesFrom(other)
     def hasAnnotation(ann: Symbol): Boolean = toDenot(sym).hasAnnotation(ann)
     def shouldEmitForwarders: Boolean =
-      (sym is Flags.Module) && !(sym is Flags.ImplClass) && sym.isStatic
+      (sym is Flags.Module) && sym.isStatic
     def isJavaEntryPoint: Boolean = CollectEntryPoints.isJavaEntryPoint(sym)
+    def isJavaEnum = sym.derivesFromJavaEnum
 
     def isClassConstructor: Boolean = toDenot(sym).isClassConstructor
     def isSerializable: Boolean = toDenot(sym).isSerializable
@@ -728,18 +729,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     // navigation
     def owner: Symbol = toDenot(sym).owner
     def rawowner: Symbol = {
-      originalOwner
+      originalOwner.originalLexicallyEnclosingClass
     }
-    def originalOwner: Symbol =
-      // used to populate the EnclosingMethod attribute.
-      // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
-      if (sym.exists) {
-        val original = toDenot(sym).initial
-        val validity = original.validFor
-        val shiftedContext = ctx.withPhase(validity.phaseId)
-        val r = toDenot(sym)(shiftedContext).maybeOwner.lexicallyEnclosingClass(shiftedContext)
-        r
-      } else NoSymbol
+    def originalOwner: Symbol = toDenot(sym).originalOwner
     def parentSymbols: List[Symbol] = toDenot(sym).info.parents.map(_.typeSymbol)
     def superClass: Symbol =  {
       val t = toDenot(sym).asClass.superClass
@@ -766,6 +758,15 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       }
       else sym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
     } //todo is handled specially for JavaDefined symbols in scalac
+    def originalLexicallyEnclosingClass: Symbol =
+      // used to populate the EnclosingMethod attribute.
+      // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
+      if (sym.exists) {
+        val validity = toDenot(sym).initial.validFor
+        val shiftedContext = ctx.withPhase(validity.phaseId)
+        toDenot(sym)(shiftedContext).lexicallyEnclosingClass(shiftedContext)
+      } else NoSymbol
+    def nextOverriddenSymbol: Symbol = toDenot(sym).nextOverriddenSymbol
 
     // members
     def primaryConstructor: Symbol = toDenot(sym).primaryConstructor
@@ -839,22 +840,16 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         toDenot(sym).owner.is(Flags.PackageClass)
       }
 
-    /**
-     * This is basically a re-implementation of sym.isStaticOwner, but using the originalOwner chain.
-     *
-     * The problem is that we are interested in a source-level property. Various phases changed the
-     * symbol's properties in the meantime, mostly lambdalift modified (destructively) the owner.
-     * Therefore, `sym.isStatic` is not what we want. For example, in
-     *   object T { def f { object U } }
-     * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
-     */
-    def isOriginallyStaticOwner: Boolean = sym.isStatic
-
-
     def addRemoteRemoteExceptionAnnotation: Unit = ()
 
-    def samMethod(): Symbol =
-      toDenot(sym).info.abstractTermMembers.headOption.getOrElse(toDenot(sym).info.member(nme.apply)).symbol
+    def samMethod(): Symbol = ctx.atPhase(ctx.erasurePhase) { implicit ctx =>
+      toDenot(sym).info.abstractTermMembers.toList match {
+        case x :: Nil => x.symbol
+        case Nil => abort(s"${sym.show} is not a functional interface. It doesn't have abstract methods")
+        case xs => abort(s"${sym.show} is not a functional interface. " +
+          s"It has the following abstract methods: ${xs.map(_.name).mkString(", ")}")
+      }
+    }
 
     def isFunctionClass: Boolean =
       defn.isFunctionClass(sym)
@@ -1177,9 +1172,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       else {
         val arity = field.meth.tpe.widenDealias.paramTypes.size - _1.size
         val returnsUnit = field.meth.tpe.widenDealias.resultType.classSymbol == UnitClass
-        if (returnsUnit)
-          ctx.requiredClass(("dotty.runtime.function.JProcedure" + arity))
-        else ctx.requiredClass(("dotty.runtime.function.JFunction" + arity))
+        if (returnsUnit) ctx.requiredClass(("dotty.runtime.function.JProcedure" + arity))
+        else if (arity <= 2) ctx.requiredClass(("dotty.runtime.function.JFunction" + arity))
+        else ctx.requiredClass(("scala.Function" + arity))
       }
     }
   }

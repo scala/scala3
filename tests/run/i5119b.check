@@ -1,4 +1,0 @@
-Term.Apply(Term.Ident("foo"), List(Term.Literal(Constant.Int(1))))
-Term.Apply(Term.Ident("foo"), List(Term.Literal(Constant.Int(2))))
-Term.Apply(Term.Ident("foo"), List(Term.Literal(Constant.Int(4))))
-Term.Apply(Term.Ident("foo"), List(Term.Literal(Constant.Int(3))))

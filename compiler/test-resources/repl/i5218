@@ -1,7 +1,6 @@
 scala> val tuple = (1, "2", 3L)
 val tuple: (Int, String, Long) = (1,2,3)
 scala> 0.0 *: tuple
-val res0: Double *: (Int, String, Long)(tuple) = (0.0,1,2,3)
+val res0: (Double, Int, String, Long) = (0.0,1,2,3)
 scala> tuple ++ tuple
-val res1: Int *: String *: Long *:
-  scala.Tuple.Concat[Unit, (Int, String, Long)(tuple)] = (1,2,3,1,2,3)
+val res1: Int *: String *: Long *: scala.Tuple.Concat[Unit, tuple.type] = (1,2,3,1,2,3)

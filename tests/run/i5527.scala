@@ -9,16 +9,15 @@ object Library {
   object Set {
     def singleton[A](a: A): Set[A] =
       _ == a
+  }
 
-    implicit class SetOps[A](private val set: Set[A]) extends AnyVal {
-      def contains(a: A): Boolean =
-        set(a)
-    }
+  implicit class SetOps[A](private val set: Set[A]) extends AnyVal {
+    def contains(a: A): Boolean = set(a)
+  }
 
-    implicit val setContravariant: Contravariant[Set] = new Contravariant[Set] {
-      def contramap[A, B](fa: Set[A])(f: B => A): Set[B] =
-        b => fa(f(b))
-    }
+  implicit val setContravariant: Contravariant[Set] = new Contravariant[Set] {
+    def contramap[A, B](fa: Set[A])(f: B => A): Set[B] =
+      b => fa(f(b))
   }
 }
 

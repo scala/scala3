@@ -10,11 +10,11 @@ object Test {
     i
   }
 
-  def fun(a: Int)(erased b: Int)(c: Int)(erased d: Int): Unit = {
+  def fun(a: Int) erased (b: Int)(c: Int) erased (d: Int): Unit = {
     println("fun " + a + " " + c)
   }
 
-  def fun2(erased a2: Int)(b2: Int)(erased c2: Int)(d2: Int): Unit = {
+  def fun2 erased (a2: Int)(b2: Int) erased (c2: Int)(d2: Int): Unit = {
     println("fun2 " + b2 + " " + d2)
   }
 }

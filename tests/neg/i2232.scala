@@ -3,9 +3,9 @@ object Cats {
   implicit def trivial[A]: Trivial[A] = new Trivial[A] { }
 
   type Obj[C[_[_[_], _[_, _]]]] =
-    [A]    => C[({type l[c0[_], c1[_, _]] = c0[A]   })#l]
+    [A]    =>> C[({type l[c0[_], c1[_, _]] = c0[A]   })#l]
   type Cat[C[_[_[_], _[_, _]]]] =
-    [A, B] => C[({type l[c0[_], c1[_, _]] = c1[A, B]})#l]
+    [A, B] =>> C[({type l[c0[_], c1[_, _]] = c1[A, B]})#l]
 
   trait Category[C[_[_[_], _[_, _]]]] {
     type ->  = Cats.Cat[C]

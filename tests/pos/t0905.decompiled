@@ -1,6 +1,0 @@
-object Test {
-  trait A[T]() extends java.lang.Object
-  def f(implicit p: Test.A[_ >: scala.Nothing <: scala.Any]): scala.Null = null
-  implicit val x: Test.A[_ >: scala.Nothing <: scala.Any] = null
-  scala.Predef.println(Test.f(Test.x))
-}

@@ -82,7 +82,7 @@ class Test8d {
 	def foo = 2 // error
 }
 
-// test method and contructor argument clashing
+// test method and constructor argument clashing
 
 class Test9(val foo: Int) {
 	def foo: String // error
@@ -131,3 +131,4 @@ class Test18 {
 	def foo(a: A) = 1
 	def foo(b: B) = 1
 }
+

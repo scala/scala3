@@ -1,0 +1,28 @@
+-- [E137] Reference Error: tests/neg/i5433.scala:17:6 ------------------------------------------------------------------
+17 |class Fail extends B with C // error
+   |      ^
+   |      class Fail cannot be defined due to a conflict between its parents when
+   |      implementing a super-accessor for foo in trait C:
+   |      
+   |      1. One of its parent (C) contains a call super.foo in its body,
+   |         and when a super-call in a trait is written without an explicit parent
+   |         listed in brackets, it is implemented by a generated super-accessor in
+   |         the class that extends this trait based on the linearization order of
+   |         the class.
+   |      2. Because B comes before C in the linearization
+   |         order of Fail, and because B overrides foo,
+   |         the super-accessor in Fail is implemented as a call to
+   |         super[B].foo.
+   |      3. However,
+   |         X (the type of super[B].foo in Fail)
+   |         is not a subtype of
+   |         Y (the type of foo in trait C).
+   |         Hence, the super-accessor that needs to be generated in Fail
+   |         is illegal.
+   |      
+   |      Here are two possible ways to resolve this:
+   |      
+   |      1. Change the linearization order of Fail such that
+   |         C comes before B.
+   |      2. Alternatively, replace super.foo in the body of trait C by a
+   |         super-call to a specific parent, e.g. super[A].foo

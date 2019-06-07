@@ -23,11 +23,11 @@ object Formatting {
    *     against accidentally treating an interpolated value as a margin.
    */
   class StringFormatter(protected val sc: StringContext) {
-
     protected def showArg(arg: Any)(implicit ctx: Context): String = arg match {
       case arg: Showable =>
         try arg.show
         catch {
+          case ex: CyclicReference => "... (caught cyclic reference) ..."
           case NonFatal(ex)
           if !ctx.mode.is(Mode.PrintShowExceptions) &&
              !ctx.settings.YshowPrintErrors.value =>
@@ -105,38 +105,58 @@ object Formatting {
 
   private type Recorded = AnyRef /*Symbol | ParamRef | SkolemType */
 
-  private class Seen extends mutable.HashMap[String, List[Recorded]] {
+  private case class SeenKey(str: String, isType: Boolean)
+  private class Seen extends mutable.HashMap[SeenKey, List[Recorded]] {
 
-    override def default(key: String) = Nil
+    override def default(key: SeenKey) = Nil
 
-    def record(str: String, entry: Recorded)(implicit ctx: Context): String = {
+    def record(str: String, isType: Boolean, entry: Recorded)(implicit ctx: Context): String = {
+
+      /** If `e1` is an alias of another class of the same name, return the other
+       *  class symbol instead. This normalization avoids recording e.g. scala.List
+       *  and scala.collection.immutable.List as two different types
+       */
       def followAlias(e1: Recorded): Recorded = e1 match {
         case e1: Symbol if e1.isAliasType =>
           val underlying = e1.typeRef.underlyingClassRef(refinementOK = false).typeSymbol
           if (underlying.name == e1.name) underlying else e1
         case _ => e1
       }
+      val key = SeenKey(str, isType)
+      val existing = apply(key)
       lazy val dealiased = followAlias(entry)
-      var alts = apply(str).dropWhile(alt => dealiased ne followAlias(alt))
+
+      // alts: The alternatives in `existing` that are equal, or follow (an alias of) `entry`
+      var alts = existing.dropWhile(alt => dealiased ne followAlias(alt))
       if (alts.isEmpty) {
-        alts = entry :: apply(str)
-        update(str, alts)
+        alts = entry :: existing
+        update(key, alts)
       }
       str + "'" * (alts.length - 1)
     }
   }
 
   private class ExplainingPrinter(seen: Seen)(_ctx: Context) extends RefinedPrinter(_ctx) {
+
+    /** True if printer should a source module instead of its module class */
+    private def useSourceModule(sym: Symbol): Boolean =
+      sym.is(ModuleClass, butNot = Package) && sym.sourceModule.exists && !_ctx.settings.YdebugNames.value
+
     override def simpleNameString(sym: Symbol): String =
-      if ((sym is ModuleClass) && sym.sourceModule.exists) simpleNameString(sym.sourceModule)
-      else seen.record(super.simpleNameString(sym), sym)
+      if (useSourceModule(sym)) simpleNameString(sym.sourceModule)
+      else seen.record(super.simpleNameString(sym), sym.isType, sym)
 
     override def ParamRefNameString(param: ParamRef): String =
-      seen.record(super.ParamRefNameString(param), param)
+      seen.record(super.ParamRefNameString(param), param.isInstanceOf[TypeParamRef], param)
 
     override def toTextRef(tp: SingletonType): Text = tp match {
-      case tp: SkolemType => seen.record(tp.repr.toString, tp)
+      case tp: SkolemType => seen.record(tp.repr.toString, isType = true, tp)
       case _ => super.toTextRef(tp)
+    }
+
+    override def toText(tp: Type): Text = tp match {
+      case tp: TypeRef if useSourceModule(tp.symbol) => Str("object ") ~ super.toText(tp)
+      case _ => super.toText(tp)
     }
   }
 
@@ -169,7 +189,7 @@ object Formatting {
       case sym: Symbol =>
         val info =
           if (ctx.gadt.contains(sym))
-            sym.info & ctx.gadt.bounds(sym)
+            sym.info & ctx.gadt.fullBounds(sym)
           else
             sym.info
         s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
@@ -189,24 +209,27 @@ object Formatting {
       case param: TermParamRef => false
       case skolem: SkolemType => true
       case sym: Symbol =>
-        ctx.gadt.contains(sym) && ctx.gadt.bounds(sym) != TypeBounds.empty
+        ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
       case _ =>
         assert(false, "unreachable")
         false
     }
 
     val toExplain: List[(String, Recorded)] = seen.toList.flatMap {
-      case (str, entry :: Nil) =>
-        if (needsExplanation(entry)) (str, entry) :: Nil else Nil
-      case (str, entries) =>
-        entries.map(alt => (seen.record(str, alt), alt))
+      case (key, entry :: Nil) =>
+        if (needsExplanation(entry)) (key.str, entry) :: Nil else Nil
+      case (key, entries) =>
+        for (alt <- entries) yield {
+          val tickedString = seen.record(key.str, key.isType, alt)
+          (tickedString, alt)
+        }
     }.sortBy(_._1)
 
     def columnar(parts: List[(String, String)]): List[String] = {
       lazy val maxLen = parts.map(_._1.length).max
       parts.map {
         case (leader, trailer) =>
-          val variable = hl"$leader"
+          val variable = hl(leader)
           s"""$variable${" " * (maxLen - leader.length)} $trailer"""
       }
     }
@@ -276,4 +299,8 @@ object Formatting {
       case _ => (fnd, exp)
     }
   }
+
+  /** Explicit syntax highlighting */
+  def hl(s: String)(implicit ctx: Context): String =
+    SyntaxHighlighting.highlight(s)
 }

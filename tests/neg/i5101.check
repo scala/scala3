@@ -1,0 +1,6 @@
+-- [E006] Unbound Identifier Error: tests/neg/i5101.scala:11:13 --------------------------------------------------------
+11 |      case A0(_) =>     // error
+   |           ^^^^^
+   |           Not found: A0
+
+longer explanation available when compiling with `-explain`

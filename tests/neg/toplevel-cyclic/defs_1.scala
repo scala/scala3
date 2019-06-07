@@ -1,2 +1,2 @@
-type A = B  // error: illegal cyclic reference
+type A = B  // error: recursion limit exceeded // error: recursion limit exceeded
 

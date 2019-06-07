@@ -16,7 +16,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
     if (fn.symbol.isDefinedInCurrentRun) {
       // Best effort to try to create a proxy
       fn.symbol.owner match {
-        case IsClassSymbol(sym) =>
+        case IsClassDefSymbol(sym) =>
           val parentSymbols = sym.tree.parents.tail.map(_.asInstanceOf[TypeTree].symbol).head
           import java.lang.reflect._
           val handler: InvocationHandler = new InvocationHandler() {
@@ -33,7 +33,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
               if (symbol.isDefinedInCurrentRun) {
                 val argsList = if (args == null) Nil else args.toList
                 symbol match {
-                  case IsDefSymbol(symbol) =>
+                  case IsDefDefSymbol(symbol) =>
                     interpretCall(this, symbol, argsList).asInstanceOf[Object]
                 }
               }
@@ -55,13 +55,13 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
     if (fn.symbol.isDefinedInCurrentRun) super.interpretCall(fn, argss)
     else {
       fn match {
-        case Term.Select(prefix, _) =>
-          val IsDefSymbol(sym) = fn.symbol
+        case Select(prefix, _) =>
+          val IsDefDefSymbol(sym) = fn.symbol
           val pre = eval(prefix).asInstanceOf[Object]
           val argss2 = evaluatedArgss(argss)
           jvmReflection.interpretMethodCall(pre, fn.symbol, argss2)
         case _ =>
-          val IsDefSymbol(sym) = fn.symbol
+          val IsDefDefSymbol(sym) = fn.symbol
           val argss2 = evaluatedArgss(argss)
           jvmReflection.interpretStaticMethodCall(fn.symbol.owner, fn.symbol, argss2)
       }
@@ -71,14 +71,13 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
   override def interpretValGet(fn: Term): Result = {
     if (fn.symbol.isDefinedInCurrentRun) super.interpretValGet(fn)
     else {
-      import Term._
       fn match {
         case Select(prefix, _) =>
           // FIXME not necesarly static
           jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
         case _ =>
           if (fn.symbol.flags.is(Flags.Object))
-            jvmReflection.loadModule(fn.symbol.asVal.moduleClass.get)
+            jvmReflection.loadModule(fn.symbol.asValDef.moduleClass.get)
           else
             jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
       }

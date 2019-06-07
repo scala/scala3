@@ -128,7 +128,7 @@ public enum ErrorMessageID {
     PolymorphicMethodMissingTypeInParentID,
     ParamsNoInlineID,
     JavaSymbolIsNotAValueID,
-    DoubleDeclarationID,
+    DoubleDefinitionID,
     MatchCaseOnlyNullWarningID,
     ImportRenamedTwiceID,
     TypeTestAlwaysSucceedsID,
@@ -144,7 +144,8 @@ public enum ErrorMessageID {
     OverloadInRefinementID,
     NoMatchingOverloadID,
     StableIdentPatternID,
-    StaticFieldsShouldPrecedeNonStaticID
+    StaticFieldsShouldPrecedeNonStaticID,
+    IllegalSuperAccessorID
     ;
 
     public int errorNumber() {

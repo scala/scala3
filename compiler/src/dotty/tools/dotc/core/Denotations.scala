@@ -243,6 +243,8 @@ object Denotations {
      */
     def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation
 
+    override def filterWithPredicate(p: SingleDenotation => Boolean): Denotation
+
     /** If this is a SingleDenotation, return it, otherwise throw a TypeError */
     def checkUnique(implicit ctx: Context): SingleDenotation = suchThat(alwaysTrue)
 
@@ -518,8 +520,8 @@ object Denotations {
           val info1 = denot1.info
           val info2 = denot2.info
           val sameSym = sym1 eq sym2
-          if (sameSym && (info1 frozen_<:< info2)) denot2
-          else if (sameSym && (info2 frozen_<:< info1)) denot1
+          if (sameSym && (info1.widenExpr frozen_<:< info2.widenExpr)) denot2
+          else if (sameSym && (info2.widenExpr frozen_<:< info1.widenExpr)) denot1
           else {
             val jointSym =
               if (sameSym) sym1
@@ -586,9 +588,11 @@ object Denotations {
       (for ((name1, name2, idx) <- (tp1.paramNames, tp2.paramNames, tp1.paramNames.indices).zipped)
        yield if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx)).toList
 
-    /** Normally, `tp1 & tp2`. Special cases for matching methods and classes, with
-      *  the possibility of raising a merge error.
-      */
+    /** Normally, `tp1 & tp2`.
+     *  Special cases for matching methods and classes, with
+     *  the possibility of raising a merge error.
+     *  Special handling of ExprTypes, where mixed intersections widen the ExprType away.
+     */
     def infoMeet(tp1: Type, tp2: Type, sym1: Symbol, sym2: Symbol, safeIntersection: Boolean)(implicit ctx: Context): Type = {
       if (tp1 eq tp2) tp1
       else tp1 match {
@@ -622,8 +626,8 @@ object Denotations {
           tp2 match {
             case tp2: PolyType =>
               tp1
-            case tp2: MethodType if ctx.typeComparer.matchingMethodParams(tp1, tp2) &&
-                tp1.isImplicitMethod == tp2.isImplicitMethod =>
+            case tp2: MethodType
+            if ctx.typeComparer.matchingMethodParams(tp1, tp2) && (tp1.companion eq tp2.companion) =>
               tp1.derivedLambdaType(
                 mergeParamNames(tp1, tp2),
                 tp1.paramInfos,
@@ -645,9 +649,13 @@ object Denotations {
             case _ =>
               mergeConflict(sym1, sym2, tp1, tp2)
           }
-
+        case ExprType(rtp1) =>
+          tp2 match {
+            case ExprType(rtp2) => ExprType(rtp1 & rtp2)
+            case _ => rtp1 & tp2
+          }
         case _ =>
-          try tp1 & tp2
+          try tp1 & tp2.widenExpr
           catch {
             case ex: Throwable =>
               println(i"error for meet: $tp1 &&& $tp2, ${tp1.getClass}, ${tp2.getClass}")
@@ -656,9 +664,11 @@ object Denotations {
       }
     }
 
-    /** Normally, `tp1 | tp2`. Special cases for matching methods and classes, with
-      *  the possibility of raising a merge error.
-      */
+    /** Normally, `tp1 | tp2`.
+     *  Special cases for matching methods and classes, with
+     *  the possibility of raising a merge error.
+     *  Special handling of ExprTypes, where mixed unions widen the ExprType away.
+     */
     def infoJoin(tp1: Type, tp2: Type, sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Type = tp1 match {
       case tp1: TypeBounds =>
         tp2 match {
@@ -675,8 +685,7 @@ object Denotations {
       case tp1: MethodType =>
         tp2 match {
           case tp2: MethodType
-          if ctx.typeComparer.matchingMethodParams(tp1, tp2) &&
-              tp1.isImplicitMethod == tp2.isImplicitMethod =>
+          if ctx.typeComparer.matchingMethodParams(tp1, tp2) && (tp1.companion eq tp2.companion) =>
             tp1.derivedLambdaType(
               mergeParamNames(tp1, tp2),
               tp1.paramInfos,
@@ -697,8 +706,13 @@ object Denotations {
           case _ =>
             mergeConflict(sym1, sym2, tp1, tp2)
         }
+      case ExprType(rtp1) =>
+        tp2 match {
+          case ExprType(rtp2) => ExprType(rtp1 | rtp2)
+          case _ => rtp1 | tp2
+        }
       case _ =>
-        tp1 | tp2
+        tp1 | tp2.widenExpr
     }
 
   /** A non-overloaded denotation */
@@ -800,8 +814,11 @@ object Denotations {
     def invalidateInheritedInfo(): Unit = ()
 
     private def updateValidity()(implicit ctx: Context): this.type = {
-      assert(ctx.runId >= validFor.runId || ctx.settings.YtestPickler.value, // mixing test pickler with debug printing can travel back in time
-          s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
+      assert(
+        ctx.runId >= validFor.runId ||
+        ctx.settings.YtestPickler.value || // mixing test pickler with debug printing can travel back in time
+        symbol.is(Permanent),              // Permanent symbols are valid in all runIds
+        s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
       var d: SingleDenotation = this
       do {
         d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
@@ -1241,6 +1258,8 @@ object Denotations {
         else sd1
       else sd2
     }
+    override def filterWithPredicate(p: SingleDenotation => Boolean): Denotation =
+      derivedUnionDenotation(denot1.filterWithPredicate(p), denot2.filterWithPredicate(p))
     def hasAltWith(p: SingleDenotation => Boolean): Boolean =
       denot1.hasAltWith(p) || denot2.hasAltWith(p)
     def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation = {
@@ -1288,12 +1307,12 @@ object Denotations {
         if (owner.exists) {
           val result = if (isPackage) owner.info.decl(selector) else owner.info.member(selector)
           if (result.exists) result
+          else if (isPackageFromCoreLibMissing) throw new MissingCoreLibraryException(selector.toString)
           else {
             val alt =
               if (generateStubs) missingHook(owner.symbol.moduleClass, selector)
               else NoSymbol
             if (alt.exists) alt.denot
-            else if (isPackageFromCoreLibMissing) throw new MissingCoreLibraryException(selector.toString)
             else MissingRef(owner, selector)
           }
         }

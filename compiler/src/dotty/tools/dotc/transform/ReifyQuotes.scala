@@ -36,7 +36,7 @@ import scala.annotation.constructorOnly
  *      val x1 = ???
  *      val x2 = ???
  *      ...
- *      ~{ ... '{ ... x1 ... x2 ...} ... }
+ *      ${ ... '{ ... x1 ... x2 ...} ... }
  *      ...
  *    }
  *    ```
@@ -56,12 +56,12 @@ import scala.annotation.constructorOnly
  *           val x1$1 = args(0).asInstanceOf[Expr[T]]
  *           val x2$1 = args(1).asInstanceOf[Expr[T]] // can be asInstanceOf[Type[T]]
  *           ...
- *           { ... '{ ... x1$1.unary_~ ... x2$1.unary_~ ...} ... }
+ *           { ... '{ ... ${x1$1} ... ${x2$1} ...} ... }
  *         }
  *       )
  *     )
  *    ```
- *  and then performs the same transformation on `'{ ... x1$1.unary_~ ... x2$1.unary_~ ...}`.
+ *  and then performs the same transformation on `'{ ... ${x1$1} ... ${x2$1} ...}`.
  *
  */
 class ReifyQuotes extends MacroTransform {
@@ -95,9 +95,9 @@ class ReifyQuotes extends MacroTransform {
    *                     Returns a version of the reference that needs to be used in its place.
    *                     '{
    *                       val x = ???
-   *                       { ... '{ ... x ... } ... }.unary_~
+   *                       ${ ... '{ ... x ... } ... }
    *                     }
-   *                     Eta expanding the `x` in `{ ... '{ ... x ... } ... }.unary_~` will return a `x$1.unary_~` for which the `x$1`
+   *                     Eta expanding the `x` in `${ ... '{ ... x ... } ... }` will return a `${x$1}` for which the `x$1`
    *                     be created by some outer reifier.
    *                     This transformation is only applied to definitions at staging level 1.
    *                     See `isCaptured`.
@@ -105,7 +105,7 @@ class ReifyQuotes extends MacroTransform {
   private class QuoteReifier(outer: QuoteReifier, capturers: mutable.HashMap[Symbol, Tree => Tree],
                              val embedded: Embedded, val owner: Symbol)(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) { self =>
 
-    import TreeMapWithStages._
+    import StagingContext._
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
     def nested(isQuote: Boolean)(implicit ctx: Context): QuoteReifier = {
@@ -113,11 +113,11 @@ class ReifyQuotes extends MacroTransform {
       new QuoteReifier(this, capturers, nestedEmbedded, ctx.owner)(ctx)
     }
 
-    /** Assuming <expr> contains types `<tag1>.unary_~, ..., <tagN>.unary_~`, the expression
+    /** Assuming <expr> contains types `${<tag1>}, ..., ${<tagN>}`, the expression
      *
-     *      { type <Type1> = <tag1>.unary_~
+     *      { type <Type1> = ${<tag1>}
      *        ...
-     *        type <TypeN> = <tagN>.unary_~
+     *        type <TypeN> = ${<tagN>}
      *        <expr>
      *      }
      *
@@ -133,7 +133,7 @@ class ReifyQuotes extends MacroTransform {
         val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
         val local = ctx.newSymbol(
           owner = ctx.owner,
-          name = UniqueName.fresh((splicedTree.symbol.name.toString + "$_~").toTermName).toTypeName,
+          name = UniqueName.fresh((splicedTree.symbol.name.toString + "$_").toTermName).toTypeName,
           flags = Synthetic,
           info = TypeAlias(splicedTree.tpe.select(tpnme.splice)),
           coord = spliced.termSymbol.coord).asType
@@ -169,8 +169,8 @@ class ReifyQuotes extends MacroTransform {
      *  core and splices as arguments.
      */
     override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
-      val isType = quote.symbol eq defn.QuotedType_apply
-      assert(!body.symbol.isSplice)
+      val isType = quote.symbol eq defn.InternalQuoted_typeQuote
+      assert(!(body.symbol.isSplice && (body.isInstanceOf[GenericApply[_]] || body.isInstanceOf[Select])))
       if (level > 0) {
         val body1 = nested(isQuote = true).transform(body)(quoteContext)
         super.transformQuotation(body1, quote)
@@ -178,18 +178,17 @@ class ReifyQuotes extends MacroTransform {
       else body match {
         case body: RefTree if isCaptured(body.symbol, level + 1) =>
           // Optimization: avoid the full conversion when capturing `x`
-          // in '{ x } to '{ x$1.unary_~ } and go directly to `x$1`
+          // in '{ x } to '{ ${x$1} } and go directly to `x$1`
           capturers(body.symbol)(body)
         case _=>
           val (body1, splices) = nested(isQuote = true).splitQuote(body)(quoteContext)
-          if (level == 0 && !ctx.inInlineMethod) {
+          if (level == 0) {
             val body2 =
               if (body1.isType) body1
               else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
             pickledQuote(body2, splices, body.tpe, isType).withSpan(quote.span)
           }
           else {
-            // In top-level splice in an inline def. Keep the tree as it is, it will be transformed at inline site.
             body
           }
       }
@@ -222,21 +221,24 @@ class ReifyQuotes extends MacroTransform {
      *  and make a hole from these parts. Otherwise issue an error, unless we
      *  are in the body of an inline method.
      */
-    protected def transformSplice(splice: Select)(implicit ctx: Context): Tree = {
+    protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree = {
       if (level > 1) {
-        val body1 = nested(isQuote = false).transform(splice.qualifier)(spliceContext)
-        body1.select(splice.name)
+        val body1 = nested(isQuote = false).transform(body)(spliceContext)
+        splice match {
+          case splice: Apply => cpy.Apply(splice)(splice.fun, body1 :: Nil)
+          case splice: Select => cpy.Select(splice)(body1, splice.name)
+        }
       }
       else {
         assert(level == 1, "unexpected top splice outside quote")
-        val (body1, quotes) = nested(isQuote = false).splitSplice(splice.qualifier)(spliceContext)
-        val tpe = outer.embedded.getHoleType(splice)
+        val (body1, quotes) = nested(isQuote = false).splitSplice(body)(spliceContext)
+        val tpe = outer.embedded.getHoleType(body, splice)
         val hole = makeHole(body1, quotes, tpe).withSpan(splice.span)
         // We do not place add the inline marker for trees that where lifted as they come from the same file as their
         // enclosing quote. Any intemediate splice will add it's own Inlined node and cancel it before splicig the lifted tree.
         // Note that lifted trees are not necessarily expressions and that Inlined nodes are expected to be expressions.
         // For example we can have a lifted tree containing the LHS of an assignment (see tests/run-with-compiler/quote-var.scala).
-        if (splice.isType || outer.embedded.isLiftedSymbol(splice.qualifier.symbol)) hole
+        if (splice.isType || outer.embedded.isLiftedSymbol(body.symbol)) hole
         else Inlined(EmptyTree, Nil, hole).withSpan(splice.span)
       }
     }
@@ -246,7 +248,7 @@ class ReifyQuotes extends MacroTransform {
      *     '{
      *        val x = ???
      *        val y = ???
-     *        { ... '{ ... x .. y ... } ... }.unary_~
+     *        ${ ... '{ ... x .. y ... } ... }
      *      }
      *  then the spliced subexpression
      *     { ... '{ ... x ... y ... } ... }
@@ -254,7 +256,7 @@ class ReifyQuotes extends MacroTransform {
      *     (args: Seq[Any]) => {
      *       val x$1 = args(0).asInstanceOf[Expr[Any]] // or .asInstanceOf[Type[Any]]
      *       val y$1 = args(1).asInstanceOf[Expr[Any]] // or .asInstanceOf[Type[Any]]
-     *       { ... '{ ... x$1.unary_~ ... y$1.unary_~ ... } ... }
+     *       { ... '{ ... ${x$1} ... ${y$1} ... } ... }
      *     }
      *
      *  See: `capture`
@@ -303,7 +305,14 @@ class ReifyQuotes extends MacroTransform {
 
       val tpe = MethodType(defn.SeqType.appliedTo(defn.AnyType) :: Nil, tree.tpe.widen)
       val meth = ctx.newSymbol(lambdaOwner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
-      Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth))
+      val closure = Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth)).withSpan(tree.span)
+
+      enclosingInlineds match {
+        case enclosingInline :: _ =>
+         // In case a tree was inlined inside of the quote and we this closure corresponds to code within it we need to keep the inlined node.
+         Inlined(enclosingInline, Nil, closure)(ctx.withSource(lambdaOwner.topLevelClass.source))
+        case Nil => closure
+      }
     }
 
     private def transformWithCapturer(tree: Tree)(capturer: mutable.Map[Symbol, Tree] => Tree => Tree)(implicit ctx: Context): Tree = {
@@ -343,21 +352,18 @@ class ReifyQuotes extends MacroTransform {
       Hole(idx, splices).withType(tpe).asInstanceOf[Hole]
     }
 
-    override def transform(tree: Tree)(implicit ctx: Context): Tree =
-      reporting.trace(i"Reifier.transform $tree at $level", show = true) {
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+      if (tree.source != ctx.source && tree.source.exists)
+        transform(tree)(ctx.withSource(tree.source))
+      else reporting.trace(i"Reifier.transform $tree at $level", show = true) {
         tree match {
-          case TypeApply(Select(spliceTree @ Spliced(_), _), tp) if tree.symbol.isTypeCast =>
-            // Splice term which should be in the form `x.unary_~.asInstanceOf[T]` where T is an artefact of
-            // typer to allow pickling/unpickling phase consistent types
-            transformSplice(spliceTree)
-
-          case tree: TypeTree if tree.tpe.typeSymbol.isSplice =>
-            val splicedType = tree.tpe.stripTypeVar.asInstanceOf[TypeRef].prefix.termSymbol
-            transformSplice(ref(splicedType).select(tpnme.splice).withSpan(tree.span))
-
           case tree: RefTree if isCaptured(tree.symbol, level) =>
-            val t = capturers(tree.symbol).apply(tree)
-            transformSplice(t.select(if (tree.isTerm) nme.splice else tpnme.splice))
+            val body = capturers(tree.symbol).apply(tree)
+            val splice: Tree =
+              if (tree.isType) body.select(tpnme.splice)
+              else ref(defn.InternalQuoted_exprSplice).appliedToType(tree.tpe).appliedTo(body)
+
+            transformSplice(body, splice)
 
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
             // Shrink size of the tree. The methods have already been inlined.
@@ -368,6 +374,7 @@ class ReifyQuotes extends MacroTransform {
             super.transform(tree)
         }
       }
+    }
 
     private def liftList(list: List[Tree], tpe: Type)(implicit ctx: Context): Tree = {
       list.foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>
@@ -400,11 +407,11 @@ object ReifyQuotes {
     }
 
     /** Type used for the hole that will replace this splice */
-    def getHoleType(splice: tpd.Select)(implicit ctx: Context): Type = {
+    def getHoleType(body: tpd.Tree, splice: tpd.Tree)(implicit ctx: Context): Type = {
       // For most expressions the splice.tpe but there are some types that are lost by lifting
       // that can be recoverd from the original tree. Currently the cases are:
       //  * Method types: the splice represents a method reference
-      map.get(splice.qualifier.symbol).map(_.tpe.widen).getOrElse(splice.tpe)
+      map.get(body.symbol).map(_.tpe.widen).getOrElse(splice.tpe)
     }
 
     def isLiftedSymbol(sym: Symbol)(implicit ctx: Context): Boolean = map.contains(sym)

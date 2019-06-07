@@ -1,5 +1,5 @@
 object MyErased {
-  def f1[U](erased a: Int): Int = 0
+  def f1[U] erased (a: Int): Int = 0
 }
 
 object Test {

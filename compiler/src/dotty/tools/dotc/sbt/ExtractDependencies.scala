@@ -339,10 +339,10 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     tree match {
       case Match(selector, _) =>
         addPatMatDependency(selector.tpe)
-      case Import(impliedOnly, expr, selectors) =>
+      case Import(importImplied, expr, selectors) =>
         def lookupImported(name: Name) = {
           val sym = expr.tpe.member(name).symbol
-          if (sym.is(Implied) == impliedOnly) sym else NoSymbol
+          if (sym.is(Implied) == importImplied) sym else NoSymbol
         }
         def addImported(name: Name) = {
           // importing a name means importing both a term and a type (if they exist)

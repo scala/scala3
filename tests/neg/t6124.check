@@ -1,0 +1,70 @@
+-- Error: tests/neg/t6124.scala:3:14 -----------------------------------------------------------------------------------
+3 |  def f = 3_14_E-2 // error
+  |              ^
+  |              trailing separator is not allowed
+-- Error: tests/neg/t6124.scala:4:10 -----------------------------------------------------------------------------------
+4 |  def e = 3_14E-_2 // error
+  |          ^
+  |          Invalid literal number
+-- Error: tests/neg/t6124.scala:5:17 -----------------------------------------------------------------------------------
+5 |  def d = 3_14E-2_ // error
+  |                 ^
+  |                 trailing separator is not allowed
+-- Error: tests/neg/t6124.scala:7:15 -----------------------------------------------------------------------------------
+7 |  def p = 3.1_4_ // error
+  |               ^
+  |               trailing separator is not allowed
+-- Error: tests/neg/t6124.scala:8:15 -----------------------------------------------------------------------------------
+8 |  def q = 3.1_4_d // error
+  |               ^
+  |               trailing separator is not allowed
+-- Error: tests/neg/t6124.scala:9:15 -----------------------------------------------------------------------------------
+9 |  def r = 3.1_4_dd // error // error
+  |               ^
+  |               trailing separator is not allowed
+-- Error: tests/neg/t6124.scala:9:10 -----------------------------------------------------------------------------------
+9 |  def r = 3.1_4_dd // error // error
+  |          ^
+  |          Invalid literal number
+-- Error: tests/neg/t6124.scala:10:11 ----------------------------------------------------------------------------------
+10 |  def s = 3_.1 // error
+   |           ^
+   |           trailing separator is not allowed
+-- Error: tests/neg/t6124.scala:12:17 ----------------------------------------------------------------------------------
+12 |  def tooSmall = 1.0E-325 // error
+   |                 ^
+   |                 double precision floating point number too small
+-- Error: tests/neg/t6124.scala:17:13 ----------------------------------------------------------------------------------
+17 |  val pi1 = 3_.1415F // error
+   |             ^
+   |             trailing separator is not allowed
+-- Error: tests/neg/t6124.scala:20:17 ----------------------------------------------------------------------------------
+20 |    = 999_99_9999_L // error
+   |                 ^
+   |                 trailing separator is not allowed
+-- Error: tests/neg/t6124.scala:22:13 ----------------------------------------------------------------------------------
+22 |  val x3 = 52_ // error
+   |             ^
+   |             trailing separator is not allowed
+-- Error: tests/neg/t6124.scala:24:12 ----------------------------------------------------------------------------------
+24 |  val x5 = 0_x52 // error
+   |            ^
+   |            trailing separator is not allowed
+-- Error: tests/neg/t6124.scala:25:13 ----------------------------------------------------------------------------------
+25 |  val x6 = 0x_52 // error
+   |             ^
+   |             leading separator is not allowed
+-- Error: tests/neg/t6124.scala:26:14 ----------------------------------------------------------------------------------
+26 |  val x8 = 0x52_ // error
+   |              ^
+   |              trailing separator is not allowed
+-- [E008] Member Not Found Error: tests/neg/t6124.scala:18:14 ----------------------------------------------------------
+18 |  val pi2 = 3._1415F // error
+   |            ^^^^^^^^
+   |            value _1415F is not a member of Int
+-- [E006] Unbound Identifier Error: tests/neg/t6124.scala:21:11 --------------------------------------------------------
+21 |  val x1 = _52 // error
+   |           ^^^
+   |           Not found: _52
+
+longer explanation available when compiling with `-explain`

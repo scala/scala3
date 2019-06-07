@@ -28,7 +28,7 @@ object Test extends App {
   val tl = xs.tail
   val tl2 = xs.tail.tail
 
-  type Concat[+Xs <: HList, +Ys <: HList] <: HList = Xs match {
+  type Concat[Xs <: HList, Ys <: HList] <: HList = Xs match {
     case HNil => Ys
     case x1 :: xs1 => x1 :: Concat[xs1, Ys]
   }

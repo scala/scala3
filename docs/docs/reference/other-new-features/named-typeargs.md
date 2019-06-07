@@ -3,6 +3,8 @@ layout: doc-page
 title: "Named Type Arguments"
 ---
 
+**Note:** This feature is implemented in Dotty, but is not expected to be part of Scala 3.0.
+
 Type arguments of methods can now be named, as well as by position. Example:
 
 ``` scala

@@ -129,6 +129,9 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
             .appliedToArgss(vparamSymss.map(_.map(ref(_))) :+ clparamSyms.map(ref(_)))
           val fwdClosure = cpy.Block(tree)(cpy.DefDef(meth)(rhs = forwarder) :: Nil, cl)
           (remappedCore, fwdClosure)
+        case id: RefTree =>
+          val SAMType(mt) = id.tpe.widen
+          splitClosure(tpd.Lambda(mt, args => id.select(nme.apply).appliedToArgs(args))(ctx.withOwner(original)))
         case EmptyTree =>
           (_ => _ => EmptyTree, EmptyTree)
       }

@@ -1,0 +1,4 @@
+private static final int C.foo$$anonfun$1(int)
+private static final void C.notfive$1(int)
+private static java.lang.Object C.$deserializeLambda$(java.lang.invoke.SerializedLambda)
+public scala.collection.Seq C.foo()

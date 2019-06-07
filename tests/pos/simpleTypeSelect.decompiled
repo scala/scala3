@@ -1,6 +1,0 @@
-trait Foo() extends java.lang.Object {
-  type Bar
-}
-object Test {
-  val x: Foo#Bar = scala.Predef.???
-}

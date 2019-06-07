@@ -22,3 +22,9 @@ lazy val app = project
   .settings(
     scalaVersion := dottyVersion
   )
+
+lazy val appOk = project
+  .in(file("appOk"))
+  .settings(
+    scalaVersion := dottyVersion
+  )

@@ -46,7 +46,11 @@ object Scala2Unpickler {
   /** Convert temp poly type to poly type and leave other types alone. */
   def translateTempPoly(tp: Type)(implicit ctx: Context): Type = tp match {
     case TempPolyType(tparams, restpe) =>
-      (if (tparams.head.owner.isTerm) PolyType else HKTypeLambda)
+      // This check used to read `owner.isTerm` but that wasn't always correct,
+      // I'm not sure `owner.is(Method)` is 100% correct either but it seems to
+      // work better. See the commit message where this change was introduced
+      // for more information.
+      (if (tparams.head.owner.is(Method)) PolyType else HKTypeLambda)
         .fromParams(tparams, restpe)
     case tp => tp
   }
@@ -467,6 +471,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def completeRoot(denot: ClassDenotation, completer: LazyType): Symbol = {
       denot.setFlag(flags)
       denot.resetFlag(Touched) // allow one more completion
+
+      // Temporary measure, as long as we do not read these classes from Tasty.
+      // Scala-2 classes don't have NoInits set even if they are pure. We override this
+      // for Product and Serializable so that case classes can be pure. A full solution
+      // requires that we read all Scala code from Tasty.
+      if (owner == defn.ScalaPackageClass && ((name eq tpnme.Serializable) || (name eq tpnme.Product)))
+        denot.setFlag(NoInits)
+
       denot.info = completer
       denot.symbol
     }
@@ -474,8 +486,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def finishSym(sym: Symbol): Symbol = {
       if (sym.isClass) {
         sym.setFlag(Scala2x)
-        if (flags.is(Trait) && ctx.mode.is(Mode.Java8Unpickling))
-          sym.setFlag(Scala_2_12_Trait)
       }
       if (!(isRefinementClass(sym) || isUnpickleRoot(sym) || (sym is Scala2Existential))) {
         val owner = sym.owner
@@ -757,10 +767,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case METHODtpe | IMPLICITMETHODtpe =>
         val restpe = readTypeRef()
         val params = until(end, () => readSymbolRef())
-        def isImplicit =
-          tag == IMPLICITMETHODtpe ||
-          params.nonEmpty && (params.head is Implicit)
-        val maker = MethodType.maker(isImplicit = isImplicit)
+        val maker = MethodType.companion(
+          isImplicit = tag == IMPLICITMETHODtpe || params.nonEmpty && params.head.is(Implicit))
         maker.fromSymbols(params, restpe)
       case POLYtpe =>
         val restpe = readTypeRef()
@@ -1051,7 +1059,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           val to = untpd.Ident(toName)
           if (toName.isEmpty) from else untpd.Thicket(from, untpd.Ident(toName))
         })
-        Import(impliedOnly = false, expr, selectors)
+        Import(importImplied = false, expr, selectors)
 
       case TEMPLATEtree =>
         setSym()

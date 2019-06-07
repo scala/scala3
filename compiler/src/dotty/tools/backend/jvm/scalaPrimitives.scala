@@ -14,6 +14,7 @@ import Names.TermName, StdNames._
 import Types.{JavaArrayType, UnspecifiedErrorType, Type}
 import Symbols.{Symbol, NoSymbol}
 
+import scala.annotation.threadUnsafe
 import scala.collection.immutable
 
 
@@ -37,7 +38,7 @@ import scala.collection.immutable
 class DottyPrimitives(ctx: Context) {
   import dotty.tools.backend.ScalaPrimitivesOps._
 
-  private lazy val primitives: immutable.Map[Symbol, Int] = init
+  @threadUnsafe private lazy val primitives: immutable.Map[Symbol, Int] = init
 
   /** Return the code for the given symbol. */
   def getPrimitive(sym: Symbol): Int = {

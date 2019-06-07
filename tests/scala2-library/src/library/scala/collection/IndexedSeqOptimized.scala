@@ -70,11 +70,11 @@ trait IndexedSeqOptimized[+A, +Repr] extends Any with IndexedSeqLike[A, Repr] { 
 
   override /*TraversableLike*/
   def reduceLeft[B >: A](op: (B, A) => B): B =
-    if (length > 0) foldl(1, length, this(0), op) else super.reduceLeft(op)
+    if (length > 0) foldl(1, length, this(0), op) else super[IndexedSeqLike].reduceLeft(op)
 
   override /*IterableLike*/
   def reduceRight[B >: A](op: (A, B) => B): B =
-    if (length > 0) foldr(0, length - 1, this(length - 1), op) else super.reduceRight(op)
+    if (length > 0) foldr(0, length - 1, this(length - 1), op) else super[IndexedSeqLike].reduceRight(op)
 
   override /*IterableLike*/
   def zip[A1 >: A, B, That](that: GenIterable[B])(implicit bf: CanBuildFrom[Repr, (A1, B), That]): That = that match {
@@ -89,7 +89,7 @@ trait IndexedSeqOptimized[+A, +Repr] extends Any with IndexedSeqLike[A, Repr] { 
       }
       b.result()
     case _ =>
-      super.zip[A1, B, That](that)(bf)
+      super[IndexedSeqLike].zip[A1, B, That](that)(bf)
   }
 
   override /*IterableLike*/
@@ -122,16 +122,16 @@ trait IndexedSeqOptimized[+A, +Repr] extends Any with IndexedSeqLike[A, Repr] { 
   }
 
   override /*IterableLike*/
-  def head: A = if (isEmpty) super.head else this(0)
+  def head: A = if (isEmpty) super[IndexedSeqLike].head else this(0)
 
   override /*TraversableLike*/
-  def tail: Repr = if (isEmpty) super.tail else slice(1, length)
+  def tail: Repr = if (isEmpty) super[IndexedSeqLike].tail else slice(1, length)
 
   override /*TraversableLike*/
-  def last: A = if (length > 0) this(length - 1) else super.last
+  def last: A = if (length > 0) this(length - 1) else super[IndexedSeqLike].last
 
   override /*IterableLike*/
-  def init: Repr = if (length > 0) slice(0, length - 1) else super.init
+  def init: Repr = if (length > 0) slice(0, length - 1) else super[IndexedSeqLike].init
 
   override /*TraversableLike*/
   def take(n: Int): Repr = slice(0, n)
@@ -167,7 +167,7 @@ trait IndexedSeqOptimized[+A, +Repr] extends Any with IndexedSeqLike[A, Repr] { 
         i == len
       }
     case _ =>
-      super.sameElements(that)
+      super[IndexedSeqLike].sameElements(that)
   }
 
   override /*IterableLike*/
@@ -274,7 +274,7 @@ trait IndexedSeqOptimized[+A, +Repr] extends Any with IndexedSeqLike[A, Repr] { 
         true
       }
     case _ =>
-      super.endsWith(that)
+      super[IndexedSeqLike].endsWith(that)
   }
 }
 

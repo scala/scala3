@@ -33,27 +33,25 @@ explicit extends clause.
 ### Methods defined for enums
 
 The values of an enum correspond to unique integers. The integer
-associated with an enum value is returned by its `enumTag` method:
+associated with an enum value is returned by its `ordinal` method:
 
 ```scala
 scala> val red = Color.Red
 val red: Color = Red
-scala> red.enumTag
+scala> red.ordinal
 val res0: Int = 0
 ```
 
-The companion object of an enum also defines three utility methods.
-The `enumValue` and `enumValueNamed` methods obtain an enum value
-by its tag or its name. The `enumValues` method returns all enum values
-defined in an enumeration in an `Iterable`.
+The companion object of an enum also defines two utility methods.
+The `valueOf` method obtains an enum value
+by its name. The `values` method returns all enum values
+defined in an enumeration in an `Array`.
 
 ```scala
-scala> Color.enumValue(1)
-val res1: Color = Green
-scala> Color.enumValueNamed("Blue")
-val res2: Color = Blue
-scala> Color.enumValues
-val res3: collection.Iterable[Color] = MapLike(Red, Green, Blue)
+scala> Color.valueOf("Blue")
+val res0: Color = Blue
+scala> Color.values
+val res1: Array[Color] = Array(Red, Green, Blue)
 ```
 
 ### User-defined members of enums
@@ -66,14 +64,14 @@ enum Planet(mass: Double, radius: Double) {
   def surfaceGravity = G * mass / (radius * radius)
   def surfaceWeight(otherMass: Double) =  otherMass * surfaceGravity
 
-  case MERCURY extends Planet(3.303e+23, 2.4397e6)
-  case VENUS   extends Planet(4.869e+24, 6.0518e6)
-  case EARTH   extends Planet(5.976e+24, 6.37814e6)
-  case MARS    extends Planet(6.421e+23, 3.3972e6)
-  case JUPITER extends Planet(1.9e+27,   7.1492e7)
-  case SATURN  extends Planet(5.688e+26, 6.0268e7)
-  case URANUS  extends Planet(8.686e+25, 2.5559e7)
-  case NEPTUNE extends Planet(1.024e+26, 2.4746e7)
+  case Mercury extends Planet(3.303e+23, 2.4397e6)
+  case Venus   extends Planet(4.869e+24, 6.0518e6)
+  case Earth   extends Planet(5.976e+24, 6.37814e6)
+  case Mars    extends Planet(6.421e+23, 3.3972e6)
+  case Jupiter extends Planet(1.9e+27,   7.1492e7)
+  case Saturn  extends Planet(5.688e+26, 6.0268e7)
+  case Uranus  extends Planet(8.686e+25, 2.5559e7)
+  case Neptune extends Planet(1.024e+26, 2.4746e7)
 }
 ```
 
@@ -83,17 +81,33 @@ It is also possible to define an explicit companion object for an enum:
 object Planet {
   def main(args: Array[String]) = {
     val earthWeight = args(0).toDouble
-    val mass = earthWeight/EARTH.surfaceGravity
-    for (p <- enumValues)
+    val mass = earthWeight / Earth.surfaceGravity
+    for (p <- values)
       println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
   }
 }
 ```
 
+### Compatibility with Java Enums
+If you want to use the Scala-defined enums as Java enums, you can do so by extending `compat.JEnum` class as follows:
+
+```scala
+enum Color extends compat.JEnum[Color] { case Red, Green, Blue }
+```
+
+The type parameter comes from the Java enum [definition](https://docs.oracle.com/javase/8/docs/api/index.html?java/lang/Enum.html) and should me the same as the type of the enum. The compiler will transform the definition above so that `Color` extends `java.lang.Enum`.
+
+After defining `Color` like that, you can use like you would a Java enum:
+
+```scala
+scala> Color.Red.compareTo(Color.Green)
+val res15: Int = -1
+```
+
 ### Implementation
 
 Enums are represented as `sealed` classes that extend the `scala.Enum` trait.
-This trait defines a single method, `enumTag`:
+This trait defines a single public method, `ordinal`:
 
 ```scala
 package scala
@@ -102,18 +116,18 @@ package scala
 trait Enum {
 
   /** A number uniquely identifying a case of an enum */
-  def enumTag: Int
+  def ordinal: Int
 }
 ```
 
 Enum values with `extends` clauses get expanded to anonymous class instances.
-For instance, the `VENUS` value above would be defined like this:
+For instance, the `Venus` value above would be defined like this:
 
 ```scala
-val VENUS: Planet =
+val Venus: Planet =
   new Planet(4.869E24, 6051800.0) {
-    def enumTag: Int = 1
-    override def toString: String = "VENUS"
+    def ordinal: Int = 1
+    override def toString: String = "Venus"
     // internal code to register value
   }
 ```

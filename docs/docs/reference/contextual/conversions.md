@@ -14,6 +14,10 @@ implied for Conversion[String, Token] {
   def apply(str: String): Token = new KeyWord(str)
 }
 ```
+Using an implied alias instance this can be expressed more concisely as:
+```scala
+implied for Conversion[String, Token] = new KeyWord(_)
+```
 An implicit conversion is applied automatically by the compiler in three situations:
 
 1. If an expression `e` has type `T`, and `T` does not conform to the expression's expected type `S`.
@@ -21,7 +25,7 @@ An implicit conversion is applied automatically by the compiler in three situati
 3. In an application `e.m(args)` with `e` of type `T`, if `T` does define
    some member(s) named `m`, but none of these members can be applied to the arguments `args`.
 
-In the first case, the compiler looks in the implied scope for a an instance of
+In the first case, the compiler looks for an implied instance of
 `scala.Conversion` that maps an argument of type `T` to type `S`. In the second and third
 case, it looks for an instance of `scala.Conversion` that maps an argument of type `T`
 to a type that defines a member `m` which can be applied to `args` if present.
@@ -33,9 +37,8 @@ If such an instance `C` is found, the expression `e` is replaced by `C.apply(e)`
 primitive number types to subclasses of `java.lang.Number`. For instance, the
 conversion from `Int` to `java.lang.Integer` can be defined as follows:
 ```scala
-implied int2Integer for Conversion[Int, java.lang.Integer] {
-  def apply(x: Int) = new java.lang.Integer(x)
-}
+implied int2Integer for Conversion[Int, java.lang.Integer] =
+ java.lang.Integer.valueOf(_)
 ```
 
 2. The "magnet" pattern is sometimes used to express many variants of a method. Instead of defining overloaded versions of the method, one can also let the method take one or more arguments of specially defined "magnet" types, into which various argument types can be converted. E.g.
@@ -56,15 +59,9 @@ object Completions {
     //
     //   CompletionArg.fromStatusCode(statusCode)
 
-    implied fromString for Conversion[String, CompletionArg] {
-      def apply(s: String) = CompletionArg.Error(s)
-    }
-    implied fromFuture for Conversion[Future[HttpResponse], CompletionArg] {
-      def apply(f: Future[HttpResponse]) = CompletionArg.Response(f)
-    }
-    implied fromStatusCode for Conversion[Future[StatusCode], CompletionArg] {
-      def apply(code: Future[StatusCode]) = CompletionArg.Status(code)
-    }
+    implied fromString     for Conversion[String, CompletionArg]               = Error(_)
+    implied fromFuture     for Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    implied fromStatusCode for Conversion[Future[StatusCode], CompletionArg]   = Status(_)
   }
   import CompletionArg._
 

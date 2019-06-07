@@ -129,6 +129,8 @@ object TypeApplications {
     def apply(t: Type): Type = t match {
       case t @ AppliedType(tycon, args1) if tycon.typeSymbol.isClass =>
         t.derivedAppliedType(apply(tycon), args1.mapConserve(applyArg))
+      case t @ RefinedType(parent, name, TypeAlias(info)) =>
+        t.derivedRefinedType(apply(parent), name, applyArg(info).bounds)
       case p: TypeParamRef if p.binder == tycon =>
         args(p.paramNum) match {
           case TypeBounds(lo, hi) =>
@@ -211,7 +213,10 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** Is self type of kind "*"? */
   def hasSimpleKind(implicit ctx: Context): Boolean =
-    typeParams.isEmpty && !self.hasAnyKind
+    typeParams.isEmpty && !self.hasAnyKind || {
+      val alias = self.dealias
+      (alias ne self) && alias.hasSimpleKind
+    }
 
   /** If self type is higher-kinded, its result type, otherwise NoType.
    *  Note: The hkResult of an any-kinded type is again AnyKind.
@@ -400,7 +405,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case dealiased: LazyRef =>
         LazyRef(c => dealiased.ref(c).appliedTo(args))
       case dealiased: WildcardType =>
-        WildcardType(dealiased.optBounds.appliedTo(args).bounds)
+        WildcardType(dealiased.optBounds.orElse(TypeBounds.empty).appliedTo(args).bounds)
       case dealiased: TypeRef if dealiased.symbol == defn.NothingClass =>
         dealiased
       case dealiased =>
