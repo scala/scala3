@@ -47,7 +47,7 @@ We reconsider the syntax of type lambdas in an effort to provide an improved
 visual cue for two categories of types: types that relate to normal function
 types and types that operate on a higher level. The _fat_ arrow `=>` definitely
 relates to the first, while we reserve now `->` to mean _pure function_ in the
-future. As a result, we disengage `=>` from type lambdas, whice are now
+future. As a result, we disengage `=>` from type lambdas, which are now
 represented by `=>>`. As a result a function from types to types is written as
 `[X] =>> F[X]`.
 
