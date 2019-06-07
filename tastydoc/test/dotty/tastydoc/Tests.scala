@@ -14,41 +14,6 @@ import scala.tasty.file.TastyConsumer
 import java.lang.reflect.InvocationTargetException
 
 class Tests {
-  // @Test def testAccess(): Unit = {
-  //   ConsumeTasty(
-  //     "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
-  //     List("example.Access"),
-  //     new dotty.tastydoc.TastydocConsumer
-  //   )
-  // }
-  // @Test def testExample(): Unit = {
-  //   ConsumeTasty(
-  //     "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
-  //     List("example.Example"),
-  //     new dotty.tastydoc.TastydocConsumer
-  //   )
-  // }
-  // @Test def testExample2(): Unit = {
-  //   ConsumeTasty(
-  //     "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
-  //     List("example.OExample"),
-  //     new dotty.tastydoc.TastydocConsumer
-  //   )
-  // }
-  // @Test def testClasses(): Unit = {
-  //   ConsumeTasty(
-  //     "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
-  //     List("example.C2"),
-  //     new dotty.tastydoc.TastydocConsumer
-  //   )
-  // }
-  // @Test def testMethods(): Unit = {
-  //   ConsumeTasty(
-  //     "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.14/classes",
-  //     List("example.Methods"),
-  //     new dotty.tastydoc.TastydocConsumer
-  //   )
-  // }
   @Test def testDocumentation(): Unit = {
     Main.main(Array(
       "--classpath",
