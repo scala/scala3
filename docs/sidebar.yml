@@ -159,6 +159,8 @@ sidebar:
               url: docs/reference/dropped-features/auto-apply.html
             - title: Weak Conformance
               url: docs/reference/dropped-features/weak-conformance.html
+            - title: Nonlocal Returns
+              url: docs/reference/dropped-features/nonlocal-returns.html
     - title: Contributing
       subsection:
         - title: Getting Started

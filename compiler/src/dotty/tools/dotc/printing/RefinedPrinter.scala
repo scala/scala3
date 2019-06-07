@@ -92,11 +92,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: ThisType if !printDebug =>
-        if (tp.cls.isAnonymousClass) return keywordStr("this")
-        if (tp.cls.is(ModuleClass)) return fullNameString(tp.cls.sourceModule)
+        if (tp.cls.isAnonymousClass) keywordStr("this")
+        if (tp.cls.is(ModuleClass)) fullNameString(tp.cls.sourceModule)
+        else super.toTextRef(tp)
       case _ =>
+        super.toTextRef(tp)
     }
-    super.toTextRef(tp)
   }
 
   override def toTextPrefix(tp: Type): Text = controlled {
@@ -105,15 +106,15 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else if (homogenizedView) isEmptyPrefix(sym) // drop <root> and anonymous classes, but not scala, Predef.
       else isOmittablePrefix(sym)
     tp match {
-      case tp: ThisType =>
-        if (isOmittable(tp.cls)) return ""
+      case tp: ThisType if isOmittable(tp.cls) =>
+        ""
       case tp @ TermRef(pre, _) =>
         val sym = tp.symbol
-        if (sym.isPackageObject && !homogenizedView) return toTextPrefix(pre)
-        if (isOmittable(sym)) return ""
-      case _ =>
+        if (sym.isPackageObject && !homogenizedView) toTextPrefix(pre)
+        else if (isOmittable(sym)) ""
+        else super.toTextPrefix(tp)
+      case _ => super.toTextPrefix(tp)
     }
-    super.toTextPrefix(tp)
   }
 
   override protected def toTextParents(parents: List[Type]): Text =
@@ -180,69 +181,69 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     homogenize(tp) match {
       case tp @ AppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
-        if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
-        if (defn.isFunctionClass(cls)) return toTextFunction(args, cls.name.isImplicitFunction, cls.name.isErasedFunction)
-        if (tp.tupleArity >= 2 && !printDebug) return toTextTuple(tp.tupleElementTypes)
-        if (isInfixType(tp)) {
+        if (tycon.isRepeatedParam)  toTextLocal(args.head) ~ "*"
+        else if (defn.isFunctionClass(cls))  toTextFunction(args, cls.name.isImplicitFunction, cls.name.isErasedFunction)
+        else if (tp.tupleArity >= 2 && !printDebug)  toTextTuple(tp.tupleElementTypes)
+        else if (isInfixType(tp)) {
           val l :: r :: Nil = args
           val opName = tyconName(tycon)
-
-          return toTextInfixType(tyconName(tycon), l, r) { simpleNameString(tycon.typeSymbol) }
+          toTextInfixType(tyconName(tycon), l, r) { simpleNameString(tycon.typeSymbol) }
         }
+        else super.toText(tp)
 
       // Since RefinedPrinter, unlike PlainPrinter, can output right-associative type-operators, we must override handling
       // of AndType and OrType to account for associativity
       case AndType(tp1, tp2) =>
-        return toTextInfixType(tpnme.raw.AMP, tp1, tp2) { toText(tpnme.raw.AMP) }
+        toTextInfixType(tpnme.raw.AMP, tp1, tp2) { toText(tpnme.raw.AMP) }
       case OrType(tp1, tp2) =>
-        return toTextInfixType(tpnme.raw.BAR, tp1, tp2) { toText(tpnme.raw.BAR) }
-
+        toTextInfixType(tpnme.raw.BAR, tp1, tp2) { toText(tpnme.raw.BAR) }
       case EtaExpansion(tycon) if !printDebug =>
-        return toText(tycon)
+        toText(tycon)
       case tp: RefinedType if defn.isFunctionType(tp) =>
-        return toTextDependentFunction(tp.refinedInfo.asInstanceOf[MethodType])
+        toTextDependentFunction(tp.refinedInfo.asInstanceOf[MethodType])
       case tp: TypeRef =>
         if (tp.symbol.isAnonymousClass && !ctx.settings.uniqid.value)
-          return toText(tp.info)
-        if (tp.symbol.is(Param))
+          toText(tp.info)
+        else if (tp.symbol.is(Param))
           tp.prefix match {
             case pre: ThisType if pre.cls == tp.symbol.owner =>
-              return nameString(tp.symbol)
-            case _ =>
+              nameString(tp.symbol)
+            case _ => super.toText(tp)
           }
+        else super.toText(tp)
       case tp: ExprType =>
-        return exprToText(tp)
+        exprToText(tp)
       case ErasedValueType(tycon, underlying) =>
-        return "ErasedValueType(" ~ toText(tycon) ~ ", " ~ toText(underlying) ~ ")"
+        "ErasedValueType(" ~ toText(tycon) ~ ", " ~ toText(underlying) ~ ")"
       case tp: ClassInfo =>
-        return toTextParents(tp.parents) ~~ "{...}"
+        toTextParents(tp.parents) ~~ "{...}"
       case JavaArrayType(elemtp) =>
-        return toText(elemtp) ~ "[]"
+        toText(elemtp) ~ "[]"
       case tp: AnnotatedType if homogenizedView =>
         // Positions of annotations in types are not serialized
         // (they don't need to because we keep the original type tree with
         //  the original annotation anyway. Therefore, there will always be
         //  one version of the annotation tree that has the correct positions).
-        return withoutPos(super.toText(tp))
+        withoutPos(super.toText(tp))
       case tp: SelectionProto =>
-        return "?{ " ~ toText(tp.name) ~
+        "?{ " ~ toText(tp.name) ~
            (Str(" ") provided !tp.name.toSimpleName.last.isLetterOrDigit) ~
            ": " ~ toText(tp.memberProto) ~ " }"
       case tp: ViewProto =>
-        return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
+        toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
       case tp @ FunProto(args, resultType) =>
         val argsText = args match {
           case dummyTreeOfType(tp) :: Nil if !(tp isRef defn.NullClass) => "null: " ~ toText(tp)
           case _ => toTextGlobal(args, ", ")
         }
-        return "[applied to " ~ (Str("given ") provided tp.isContextualMethod) ~ (Str("erased ") provided tp.isErasedMethod) ~ "(" ~ argsText ~ ") returning " ~ toText(resultType) ~ "]"
+        "[applied to " ~ (Str("given ") provided tp.isContextualMethod) ~ (Str("erased ") provided tp.isErasedMethod) ~ "(" ~ argsText ~ ") returning " ~ toText(resultType) ~ "]"
       case IgnoredProto(ignored) =>
-        return "?" ~ (("(ignored: " ~ toText(ignored) ~ ")") provided printDebug)
+        "?" ~ (("(ignored: " ~ toText(ignored) ~ ")") provided printDebug)
       case tp @ PolyProto(targs, resType) =>
-        return "[applied to [" ~ toTextGlobal(targs, ", ") ~ "] returning " ~ toText(resType)
+        "[applied to [" ~ toTextGlobal(targs, ", ") ~ "] returning " ~ toText(resType)
       case _ =>
+        super.toText(tp)
     }
-    super.toText(tp)
   }
 
   protected def exprToText(tp: ExprType): Text =
