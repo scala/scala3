@@ -32,14 +32,18 @@ introduce the following fundamental facilities:
    stages. Consequently, this method generative programming is called "Multi-Stage Programming". Staging is built on the same foundations as macros. It uses
    quotes and splices, but leaves out `inline`.
 
-4. [TASTy Reflection](./tasty-reflect.html) Quotations are a "black-box"
+4. [Erased Terms](./erased-terms.html) Erased terms are used to enforce
+   guarantees about program constraints. As `erased` terms are guaranteed not to
+   be used in computations, they will not appear at the generated code.
+
+5. [TASTy Reflection](./tasty-reflect.html) Quotations are a "black-box"
    representation of code. They can be parameterized and composed using
    splices but their structure cannot be analyzed from the outside. Tasty
    reflection gives a way to analyze code structure by partly revealing the representation type of a piece of code in a standard API. The representation
    type is a form of typed abstract syntax tree, which gives rise to the "TASTy`
    moniker.
 
-5. [TASTy Inspection](./tasty-inspect.html) Typed abstract syntax trees are serialized
+6. [TASTy Inspection](./tasty-inspect.html) Typed abstract syntax trees are serialized
    in a custom compressed binary format in `.tasty` files. TASTy inspection allows
    to load these files and analyze their content's tree structure.
 

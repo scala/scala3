@@ -235,7 +235,8 @@ inline def update(delta: Int) =
 A call `update(22)` would rewrite to `increaseBy(22)`. But if `update` was called with
 a value that was not a compile-time constant, we would get a compile time error like the one
 below:
-```
+
+```scala
    |  inline if (delta >= 0) ???
    |  ^
    |  cannot reduce inline if
