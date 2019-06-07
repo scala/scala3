@@ -230,9 +230,9 @@ Example:
 ```scala
 inline def update(delta: Int) =
   inline if (delta >= 0) increaseBy(delta)
-  else decreaseByf(delta)
+  else decreaseBy(-delta)
 ```
-A call `update(22)` would rewrite to `increaseBy(22`. But if `update` was called with
+A call `update(22)` would rewrite to `increaseBy(22)`. But if `update` was called with
 a value that was not a compile-time constant, we would get a compile time error like the one
 below:
 ```
@@ -289,7 +289,7 @@ val intTwo: 2 = natTwo
 
 `natTwo` is inferred to have the singleton type 2.
 
-## The scala.compiletime Package
+## The `scala.compiletime` Package
 
 The `scala.compiletime` package contains helper definitions that provide support for compile time operations over values. They are described in the following.
 
