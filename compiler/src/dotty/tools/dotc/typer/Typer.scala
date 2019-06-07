@@ -263,6 +263,18 @@ class Typer extends Namer
 
           val curOwner = ctx.owner
 
+          /** Is curOwner a package object that should be skipped?
+           *  A package object should always be skipped if we look for a term.
+           *  That way we make sure we consider all overloaded alternatives of
+           *  a definition, even if they are in different source files.
+           *  If we are looking for a type, a package object should ne skipped
+           *  only if it does not contain opaque definitions. Package objects
+           *  with opaque definitions are significant, since opaque aliases
+           *  are only seen if the prefix is the this-type of the package object.
+           */
+          def isTransparentPackageObject =
+            curOwner.isPackageObject && (name.isTermName || !curOwner.is(Opaque))
+
           // Can this scope contain new definitions? This is usually the first
           // context where either the scope or the owner changes wrt the
           // context immediately nested in it. But for package contexts, it's
@@ -279,11 +291,7 @@ class Typer extends Namer
           val isNewDefScope =
             if (curOwner.is(Package) && !curOwner.isRoot) curOwner ne ctx.outer.owner
             else ((ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner)) &&
-              !curOwner.isPackageObject
-              // Package objects are never searched directly. We wait until we
-              // hit the enclosing package. That way we make sure we consider
-              // all overloaded alternatives of a definition, even if they are
-              // in different source files.
+                  !isTransparentPackageObject
 
           if (isNewDefScope) {
             val defDenot = ctx.denotNamed(name, required)
@@ -777,7 +785,7 @@ class Typer extends Namer
       case _: WildcardType => untpd.TypeTree()
       case _ => untpd.TypeTree(tp)
     }
-    pt.stripTypeVar.dealias.followSyntheticOpaque match {
+    pt.stripTypeVar.dealias match {
       case pt1 if defn.isNonRefinedFunction(pt1) =>
         // if expected parameter type(s) are wildcards, approximate from below.
         // if expected result type is a wildcard, approximate from above.
@@ -1660,11 +1668,7 @@ class Typer extends Namer
     val parentsWithClass = ensureFirstTreeIsClass(parents.mapconserve(typedParent).filterConserve(!_.isEmpty), cdef.nameSpan)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
 
-    var self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
-    if (cls.isOpaqueCompanion && !ctx.isAfterTyper) {
-      // this is necessary to ensure selftype is correctly pickled
-      self1 = tpd.cpy.ValDef(self1)(tpt = TypeTree(cls.classInfo.selfType))
-    }
+    val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1)) {
       // fail fast to avoid typing the body with an error type
       cdef.withType(UnspecifiedErrorType)
@@ -1806,8 +1810,15 @@ class Typer extends Namer
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = track("typedAnnotated") {
     val annot1 = typedExpr(tree.annot, defn.AnnotationType)
     val arg1 = typed(tree.arg, pt)
-    if (ctx.mode is Mode.Type)
-      assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
+    if (ctx.mode is Mode.Type) {
+      val result = assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
+      result.tpe match {
+        case AnnotatedType(rhs, Annotation.WithBounds(bounds)) =>
+          if (!bounds.contains(rhs)) ctx.error(em"type $rhs outside bounds $bounds", tree.sourcePos)
+        case _ =>
+      }
+      result
+    }
     else {
       val arg2 = arg1 match {
         case Typed(arg2, tpt: TypeTree) =>

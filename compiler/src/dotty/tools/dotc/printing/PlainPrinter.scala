@@ -16,6 +16,7 @@ import scala.annotation.switch
 
 class PlainPrinter(_ctx: Context) extends Printer {
   protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
+  protected[this] def printDebug = ctx.settings.YprintDebug.value
 
   private[this] var openRecs: List[RecType] = Nil
 
@@ -204,13 +205,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
         if (tp.isInstantiated)
-          toTextLocal(tp.instanceOpt) ~ (Str("^") provided ctx.settings.YprintDebug.value)
+          toTextLocal(tp.instanceOpt) ~ (Str("^") provided printDebug)
         else {
           val constr = ctx.typerState.constraint
           val bounds =
             if (constr.contains(tp)) ctx.addMode(Mode.Printing).typeComparer.fullBounds(tp.origin)
             else TypeBounds.empty
-          if (bounds.isTypeAlias) toText(bounds.lo) ~ (Str("^") provided ctx.settings.YprintDebug.value)
+          if (bounds.isTypeAlias) toText(bounds.lo) ~ (Str("^") provided printDebug)
           else if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
           else toText(tp.origin)
         }
@@ -428,7 +429,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toText(sym: Symbol): Text =
     (kindString(sym) ~~ {
       if (sym.isAnonymousClass) toTextParents(sym.info.parents) ~~ "{...}"
-      else if (hasMeaninglessName(sym)) simpleNameString(sym.owner) + idString(sym)
+      else if (hasMeaninglessName(sym) && !printDebug) simpleNameString(sym.owner) + idString(sym)
       else nameString(sym)
     }).close
 
@@ -510,7 +511,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       else
         Text()
 
-    nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.sourcePos.toString) provided ctx.settings.YprintPos.value)
+    nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.sourcePos.toString) provided printDebug)
   }.close // todo: override in refined printer
 
   def toText(pos: SourcePosition): Text = {

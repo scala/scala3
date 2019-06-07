@@ -118,15 +118,10 @@ As a larger example, here is a way to define constructs for checking arbitrary p
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  private object WrappedResult {
-    def wrap[T](x: T): WrappedResult[T] = x
-    def unwrap[T](x: WrappedResult[T]): T = x
-  }
-
-  def result[T] given (r: WrappedResult[T]): T = WrappedResult.unwrap(r)
+  def result[T] given (r: WrappedResult[T]): T = f
 
   def (x: T) ensuring [T](condition: given WrappedResult[T] => Boolean): T = {
-    implied for WrappedResult[T] = WrappedResult.wrap(x)
+    implied for WrappedResult[T] = x
     assert(condition)
     x
   }

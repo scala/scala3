@@ -19,6 +19,7 @@ import ast.Trees._
 import StdNames._
 import util.Spans._
 import Constants._
+import Symbols.defn
 import ScriptParsers._
 import Decorators._
 import scala.tasty.util.Chars.isIdentifierStart
@@ -201,11 +202,11 @@ object Parsers {
       canStartExpressionTokens.contains(in.token) &&
       !in.isSoftModifierInModifierPosition
 
-    def isDefIntro(allowedMods: BitSet): Boolean =
+    def isDefIntro(allowedMods: BitSet, excludedSoftModifiers: Set[TermName] = Set.empty): Boolean =
       in.token == AT ||
       (defIntroTokens `contains` in.token) ||
       (allowedMods `contains` in.token) ||
-      in.isSoftModifierInModifierPosition
+      in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
 
     def isStatSep: Boolean =
       in.token == NEWLINE || in.token == NEWLINES || in.token == SEMI
@@ -955,7 +956,7 @@ object Parsers {
 
       in.token match {
         case ARROW => functionRest(t :: Nil)
-        case MATCH => matchType(EmptyTree, t)
+        case MATCH => matchType(t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
           if (imods.is(ImplicitOrGiven) && !t.isInstanceOf[FunctionWithMods])
@@ -1481,9 +1482,9 @@ object Parsers {
 
     /**    `match' { TypeCaseClauses }
      */
-    def matchType(bound: Tree, t: Tree): MatchTypeTree =
-      atSpan((if (bound.isEmpty) t else bound).span.start, accept(MATCH)) {
-        inBraces(MatchTypeTree(bound, t, caseClauses(typeCaseClause)))
+    def matchType(t: Tree): MatchTypeTree =
+      atSpan(t.span.start, accept(MATCH)) {
+        inBraces(MatchTypeTree(EmptyTree, t, caseClauses(typeCaseClause)))
       }
 
     /** FunParams         ::=  Bindings
@@ -2075,6 +2076,7 @@ object Parsers {
      *  Modifier       ::= LocalModifier
      *                  |  AccessModifier
      *                  |  override
+     *                  |  opaque
      *  LocalModifier  ::= abstract | final | sealed | implicit | lazy | erased | inline
      */
     def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
@@ -2617,8 +2619,7 @@ object Parsers {
         Block(stats, Literal(Constant(())))
       }
 
-    /** TypeDcl ::=  id [TypeParamClause] (TypeBounds | ‘=’ Type)
-     *            |  id [TypeParamClause] <: Type = MatchType
+    /** TypeDcl ::=  id [TypeParamClause] TypeBounds [‘=’ Type]
      */
     def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
       newLinesOpt()
@@ -2631,15 +2632,33 @@ object Parsers {
           case EQUALS =>
             in.nextToken()
             makeTypeDef(toplevelTyp())
-          case SUBTYPE =>
-            in.nextToken()
-            val bound = toplevelTyp()
+          case SUBTYPE | SUPERTYPE =>
+            val bounds = typeBounds()
             if (in.token == EQUALS) {
-              in.nextToken()
-              makeTypeDef(matchType(bound, infixType()))
+              val eqOffset = in.skipToken()
+              var rhs = toplevelTyp()
+              rhs match {
+                case mtt: MatchTypeTree =>
+                  bounds match {
+                    case TypeBoundsTree(EmptyTree, upper) =>
+                      rhs = MatchTypeTree(upper, mtt.selector, mtt.cases)
+                    case _ =>
+                      syntaxError(i"cannot combine lower bound and match type alias", eqOffset)
+                  }
+                case _ =>
+                  if (mods.is(Opaque)) {
+                    val annotType = AppliedTypeTree(
+                      TypeTree(defn.WithBoundsAnnotType),
+                        bounds.lo.orElse(TypeTree(defn.NothingType)) ::
+                        bounds.hi.orElse(TypeTree(defn.AnyType)) :: Nil)
+                    rhs = Annotated(rhs, ensureApplied(wrapNew(annotType)))
+                  }
+                  else syntaxError(i"cannot combine bound and alias", eqOffset)
+              }
+              makeTypeDef(rhs)
             }
-            else makeTypeDef(TypeBoundsTree(EmptyTree, bound))
-          case SUPERTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
+            else makeTypeDef(bounds)
+          case SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
             makeTypeDef(typeBounds())
           case _ =>
             syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))
@@ -3081,7 +3100,7 @@ object Parsers {
           stats += implicitClosure(in.offset, Location.InBlock, modifiers(closureMods))
         else if (isExprIntro)
           stats += expr(Location.InBlock)
-        else if (isDefIntro(localModifierTokens))
+        else if (isDefIntro(localModifierTokens, excludedSoftModifiers = Set(nme.`opaque`)))
           if (closureMods.contains(in.token)) {
             val start = in.offset
             var imods = modifiers(closureMods)

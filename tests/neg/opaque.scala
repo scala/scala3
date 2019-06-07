@@ -4,20 +4,25 @@ object opaquetypes {
 
   opaque class Foo // error
 
+  opaque object Foo // error
+
   opaque type T // error
 
   opaque type U <: String // error
 
-  opaque type Fix[F[_]] = F[Fix[F]] // error: cyclic // error
+  opaque type Fix[F[_]] = F[Fix[F]] // error: cyclic
 
   opaque type O = String
 
-  val s: O = "" // error
+  val s: O = "" // should now be OK
 
   object O {
     val s: O = "" // should be OK
   }
 
+  def foo() = {
+    opaque type X = Int   // error
+  }
 }
 
 object logs {
@@ -42,7 +47,10 @@ object logs {
       def *(that: Logarithm): Logarithm = Logarithm(`this` + that)
     }
   }
+}
 
+object Test {
+  import logs._
   val l = Logarithm(2.0)
   val d: Double = l       // error: found: Logarithm, required: Double
   val l2: Logarithm = 1.0 // error: found: Double, required: Logarithm

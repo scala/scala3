@@ -1140,18 +1140,6 @@ object Types {
     /** Like `dealiasKeepAnnots`, but keeps only refining annotations */
     final def dealiasKeepRefiningAnnots(implicit ctx: Context): Type = dealias1(keepIfRefining)
 
-    /** If this is a synthetic opaque type seen from inside the opaque companion object,
-     *  its opaque alias, otherwise the type itself.
-     */
-    final def followSyntheticOpaque(implicit ctx: Context): Type = this match {
-      case tp: TypeProxy if tp.typeSymbol.is(SyntheticOpaque) =>
-        tp.superType match {
-          case AndType(alias, _) => alias   // in this case we are inside the companion object
-          case _ => this
-        }
-      case _ => this
-    }
-
     /** The result of normalization using `tryNormalize`, or the type itself if
      *  tryNormlize yields NoType
      */
@@ -1896,8 +1884,10 @@ object Types {
             finish(memberDenot(symd.initial.name, allowPrivate = false))
           else if (prefix.isArgPrefixOf(symd))
             finish(argDenot(sym.asType))
-          else if (infoDependsOnPrefix(symd, prefix))
+          else if (infoDependsOnPrefix(symd, prefix)) {
+            if (!symd.isClass && symd.is(Opaque, butNot = Deferred)) symd.normalizeOpaque()
             finish(memberDenot(symd.initial.name, allowPrivate = symd.is(Private)))
+          }
           else
             finish(symd.current)
       }
@@ -2323,7 +2313,8 @@ object Types {
     override def translucentSuperType(implicit ctx: Context) = info match {
       case TypeAlias(aliased) => aliased
       case TypeBounds(_, hi) =>
-        if (symbol.isOpaqueHelper) symbol.opaqueAlias.asSeenFrom(prefix, symbol.owner)
+        if (symbol.isOpaqueAlias)
+          symbol.opaqueAlias.asSeenFrom(prefix, symbol.owner).orElse(hi) // orElse can happen for malformed input
         else hi
       case _ => underlying
     }
@@ -3521,7 +3512,7 @@ object Types {
     }
 
     override def translucentSuperType(implicit ctx: Context): Type = tycon match {
-      case tycon: TypeRef if tycon.symbol.isOpaqueHelper =>
+      case tycon: TypeRef if tycon.symbol.isOpaqueAlias =>
         tycon.translucentSuperType.applyIfParameterized(args)
       case _ =>
         superType

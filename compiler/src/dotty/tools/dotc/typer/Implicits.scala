@@ -492,15 +492,15 @@ trait ImplicitRunInfo { self: Run =>
       override implicit protected val ctx: Context = liftingCtx
       override def stopAtStatic = true
       def apply(tp: Type) = tp match {
-        case tp: TypeRef if !tp.symbol.canHaveCompanion =>
+        case tp: TypeRef if !tp.symbol.isClass =>
           val pre = tp.prefix
           def joinClass(tp: Type, cls: ClassSymbol) =
             AndType.make(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
-          val lead = if (tp.prefix eq NoPrefix) defn.AnyType else apply(tp.prefix)
+          val lead = if (pre eq NoPrefix) defn.AnyType else apply(pre)
           (lead /: tp.classSymbols)(joinClass)
         case tp: TypeVar =>
           apply(tp.underlying)
-        case tp: AppliedType if !tp.tycon.typeSymbol.canHaveCompanion =>
+        case tp: AppliedType if !tp.tycon.typeSymbol.isClass =>
           def applyArg(arg: Type) = arg match {
             case TypeBounds(lo, hi) => AndType.make(lo, hi)
             case WildcardType(TypeBounds(lo, hi)) => AndType.make(lo, hi)
@@ -558,9 +558,7 @@ trait ImplicitRunInfo { self: Run =>
                 for (parent <- cls.classParents; ref <- iscopeRefs(tp.baseType(parent.classSymbol)))
                   addRef(ref)
               }
-              val underlyingTypeSym = tp.widen.typeSymbol
-              if (underlyingTypeSym.isOpaqueAlias) addCompanionOf(underlyingTypeSym)
-              else tp.classSymbols(liftingCtx).foreach(addClassScope)
+              tp.classSymbols(liftingCtx).foreach(addClassScope)
             }
           case _ =>
             for (part <- tp.namedPartsWith(_.isType)) comps ++= iscopeRefs(part)

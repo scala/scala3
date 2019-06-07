@@ -884,6 +884,8 @@ class Definitions {
   def BodyAnnot(implicit ctx: Context): ClassSymbol = BodyAnnotType.symbol.asClass
   @threadUnsafe lazy val ChildAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.Child")
   def ChildAnnot(implicit ctx: Context): ClassSymbol = ChildAnnotType.symbol.asClass
+  @threadUnsafe lazy val WithBoundsAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.WithBounds")
+  def WithBoundsAnnot(implicit ctx: Context): ClassSymbol = WithBoundsAnnotType.symbol.asClass
   @threadUnsafe lazy val CovariantBetweenAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.CovariantBetween")
   def CovariantBetweenAnnot(implicit ctx: Context): ClassSymbol = CovariantBetweenAnnotType.symbol.asClass
   @threadUnsafe lazy val ContravariantBetweenAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.ContravariantBetween")

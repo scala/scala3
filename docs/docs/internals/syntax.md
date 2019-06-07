@@ -324,12 +324,12 @@ Binding           ::=  (id | ‘_’) [‘:’ Type]                            
 Modifier          ::=  LocalModifier
                     |  AccessModifier
                     |  ‘override’
+                    |  ‘opaque’
 LocalModifier     ::=  ‘abstract’
                     |  ‘final’
                     |  ‘sealed’
                     |  ‘implicit’
                     |  ‘lazy’
-                    |  ‘opaque’
                     |  ‘inline’
                     |  ‘erased’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
@@ -360,8 +360,7 @@ VarDcl            ::=  ids ‘:’ Type                                         
 DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  ‘(’ DefParam ‘)’ [nl] id
                        [DefTypeParamClause] DefParamClauses
-TypeDcl           ::=  id [TypeParamClause] (SubtypeBounds | ‘=’ Type)             TypeDefTree(_, name, tparams, bounds)
-                    |  id [TypeParamClause] <: Type = MatchType
+TypeDcl           ::=  id [TypeParamClause] SubtypeBounds [‘=’ Type]           TypeDefTree(_, name, tparams, bound
 
 Def               ::=  ‘val’ PatDef
                     |  ‘var’ VarDef

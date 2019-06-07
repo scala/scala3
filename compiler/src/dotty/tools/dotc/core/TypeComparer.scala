@@ -232,7 +232,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         def compareNamed(tp1: Type, tp2: NamedType): Boolean = {
           implicit val ctx: Context = this.ctx
           tp2.info match {
-            case info2: TypeAlias => recur(tp1, info2.alias)
+            case info2: TypeAlias =>
+              recur(tp1, info2.alias)
             case _ => tp1 match {
               case tp1: NamedType =>
                 tp1.info match {
@@ -359,7 +360,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         tp1.info match {
           case info1: TypeAlias =>
             if (recur(info1.alias, tp2)) return true
-            if (tp1.prefix.isStable) return false
+            if (tp1.prefix.isStable) return tryLiftedToThis1
           case _ =>
             if (tp1 eq NothingType) return true
         }
@@ -462,7 +463,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
             { tp1.isRef(NothingClass) || GADTusage(tp2.symbol) }
         }
-        isSubApproxHi(tp1, info2.lo) || compareGADT || fourthTry
+        isSubApproxHi(tp1, info2.lo) || compareGADT || tryLiftedToThis2 || fourthTry
 
       case _ =>
         val cls2 = tp2.symbol
@@ -721,7 +722,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
                 narrowGADTBounds(tp1, tp2, approx, isUpper = true)) &&
                 { tp2.isRef(AnyClass) || GADTusage(tp1.symbol) }
             }
-            isSubType(hi1, tp2, approx.addLow) || compareGADT
+            isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
           case _ =>
             def isNullable(tp: Type): Boolean = tp.widenDealias match {
               case tp: TypeRef => tp.symbol.isNullableClass
@@ -975,7 +976,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               case _ =>
                 fourthTry
             }
-          }
+          } || tryLiftedToThis2
+
         case _: TypeVar =>
           recur(tp1, tp2.superType)
         case tycon2: AnnotatedType if !tycon2.isRefining =>
@@ -1002,9 +1004,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             isSubType(bounds(param1).hi.applyIfParameterized(args1), tp2, approx.addLow)
         case tycon1: TypeRef =>
           val sym = tycon1.symbol
-          !sym.isClass && (
+          !sym.isClass && {
             defn.isCompiletime_S(sym) && compareS(tp1, tp2, fromBelow = false) ||
-            recur(tp1.superType, tp2))
+            recur(tp1.superType, tp2) ||
+            tryLiftedToThis1
+          }
         case tycon1: TypeProxy =>
           recur(tp1.superType, tp2)
         case _ =>
@@ -1045,6 +1049,16 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     def isSubApproxHi(tp1: Type, tp2: Type): Boolean =
       tp1.eq(tp2) || tp2.ne(NothingType) && isSubType(tp1, tp2, approx.addHigh)
 
+    def tryLiftedToThis1: Boolean = {
+      val tp1a = liftToThis(tp1)
+      (tp1a ne tp1) && recur(tp1a, tp2)
+    }
+
+    def tryLiftedToThis2: Boolean = {
+      val tp2a = liftToThis(tp2)
+      (tp2a ne tp2) && recur(tp1, tp2a)
+    }
+
     // begin recur
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
@@ -1071,6 +1085,41 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           successCount = savedSuccessCount
           throw ex
       }
+    }
+  }
+
+  /** If `tp` is an external reference to an enclosing module M that contains opaque types,
+   *  convert to M.this.
+   *  Note: It would be legal to do the lifting also if M does not contain opaque types,
+   *  but in this case the retries in tryLiftedToThis would be redundant.
+   */
+  private def liftToThis(tp: Type): Type = {
+
+    def findEnclosingThis(moduleClass: Symbol, from: Symbol): Type =
+      if ((from.owner eq moduleClass) && from.isPackageObject && from.is(Opaque)) from.thisType
+      else if (from.is(Package)) tp
+      else if ((from eq moduleClass) && from.is(Opaque)) from.thisType
+      else if (from eq NoSymbol) tp
+      else findEnclosingThis(moduleClass, from.owner)
+
+    tp match {
+      case tp: TermRef if tp.symbol.is(Module) =>
+        findEnclosingThis(tp.symbol.moduleClass, ctx.owner)
+      case tp: TypeRef =>
+        val pre1 = liftToThis(tp.prefix)
+        if (pre1 ne tp.prefix) tp.withPrefix(pre1) else tp
+      case tp: ThisType if tp.cls.is(Package) =>
+        findEnclosingThis(tp.cls, ctx.owner)
+      case tp: AppliedType =>
+        val tycon1 = liftToThis(tp.tycon)
+        if (tycon1 ne tp.tycon) tp.derivedAppliedType(tycon1, tp.args) else tp
+      case tp: TypeVar if tp.isInstantiated =>
+        liftToThis(tp.inst)
+      case tp: AnnotatedType =>
+        val parent1 = liftToThis(tp.parent)
+        if (parent1 ne tp.parent) tp.derivedAnnotatedType(parent1, tp.annot) else tp
+      case _ =>
+        tp
     }
   }
 

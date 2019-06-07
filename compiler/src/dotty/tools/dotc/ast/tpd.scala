@@ -206,8 +206,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def DefDef(sym: TermSymbol, tparams: List[TypeSymbol], vparamss: List[List[TermSymbol]],
              resultType: Type, rhs: Tree)(implicit ctx: Context): DefDef =
     ta.assignType(
-      untpd.DefDef(sym.name, tparams map TypeDef, vparamss.nestedMap(ValDef(_)),
-                   TypeTree(resultType), rhs),
+      untpd.DefDef(
+        sym.name,
+        tparams.map(tparam => TypeDef(tparam).withSpan(tparam.span)),
+        vparamss.nestedMap(vparam => ValDef(vparam).withSpan(vparam.span)),
+        TypeTree(resultType),
+        rhs),
       sym)
 
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =

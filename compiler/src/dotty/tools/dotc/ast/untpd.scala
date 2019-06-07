@@ -198,6 +198,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       if (this.flags == flags) this
       else copy(flags = flags)
 
+    def withoutFlags(flags: FlagSet): Modifiers =
+      if (this.is(flags))
+        Modifiers(this.flags &~ flags, this.privateWithin, this.annotations, this.mods.filterNot(_.flags.is(flags)))
+      else this
+
     def withAddedMod(mod: Mod): Modifiers =
       if (mods.exists(_ eq mod)) this
       else withMods(mods :+ mod)

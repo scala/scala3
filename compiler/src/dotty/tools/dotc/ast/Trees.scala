@@ -818,6 +818,8 @@ object Trees {
     extends ProxyTree[T] {
     type ThisTree[-T >: Untyped] = Annotated[T]
     def forwardTo: Tree[T] = arg
+    override def disableOverlapChecks = true
+      // disable overlaps checks since the WithBounds annotation swaps type and annotation.
   }
 
   trait WithoutTypeOrPos[-T >: Untyped] extends Tree[T] {
