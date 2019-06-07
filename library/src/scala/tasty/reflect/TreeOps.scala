@@ -179,6 +179,43 @@ trait TreeOps extends Core {
     def pos(implicit ctx: Context): Position = kernel.Term_pos(self)
     def underlyingArgument(implicit ctx: Context): Term = kernel.Term_underlyingArgument(self)
     def underlying(implicit ctx: Context): Term = kernel.Term_underlying(self)
+
+    /** A unary apply node with given argument: `tree(arg)` */
+    def appliedTo(arg: Term)(implicit ctx: Context): Term =
+      appliedToArgs(arg :: Nil)
+
+    /** An apply node with given arguments: `tree(arg, args0, ..., argsN)` */
+    def appliedTo(arg: Term, args: Term*)(implicit ctx: Context): Term =
+      appliedToArgs(arg :: args.toList)
+
+    /** An apply node with given argument list `tree(args(0), ..., args(args.length - 1))` */
+    def appliedToArgs(args: List[Term])(implicit ctx: Context): Apply =
+      Apply(self, args)
+
+    /** The current tree applied to given argument lists:
+     *  `tree (argss(0)) ... (argss(argss.length -1))`
+     */
+    def appliedToArgss(argss: List[List[Term]])(implicit ctx: Context): Term =
+      ((self: Term) /: argss)(Apply(_, _))
+
+    /** The current tree applied to (): `tree()` */
+    def appliedToNone(implicit ctx: Context): Apply = appliedToArgs(Nil)
+
+    /** The current tree applied to given type argument: `tree[targ]` */
+    def appliedToType(targ: Type)(implicit ctx: Context): Term =
+      appliedToTypes(targ :: Nil)
+
+    /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
+    def appliedToTypes(targs: List[Type])(implicit ctx: Context): Term =
+      appliedToTypeTrees(targs map (Inferred(_)))
+
+    /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
+    def appliedToTypeTrees(targs: List[TypeTree])(implicit ctx: Context): Term =
+      if (targs.isEmpty) self else TypeApply(self, targs)
+
+    /** A select node that selects the given symbol.
+     */
+    def select(sym: Symbol)(implicit ctx: Context): Select = Select(self, sym)
   }
 
   object IsTerm {
