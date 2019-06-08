@@ -586,13 +586,4 @@ val a: Int = defaultOf("int")
 val b: String = defaultOf("string")
 ```
 
-### Let
-
-`scala.tasty.reflect.utils.TreeUtils` offers a method `let` that allows us to
-bind the `rhs` to a `val` and use it in `body`. Its definition is shown below:
-
-```scala
-def let(rhs: Term)(body: Ident => Term): Term
-```
-
 [More details](./macros-spec.html)
