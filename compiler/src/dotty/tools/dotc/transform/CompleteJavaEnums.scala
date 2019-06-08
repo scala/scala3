@@ -110,6 +110,13 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     else tree
   }
 
+  override def transformValDef(tree: ValDef)(implicit ctx: Context): ValDef = {
+    val sym = tree.symbol
+    if ((sym.is(EnumValue) || sym.name == nme.DOLLAR_VALUES) && sym.owner.linkedClass.derivesFromJavaEnum)
+      sym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
+    tree
+  }
+
   /** 1. If this is an enum class, add $name and $ordinal parameters to its
    *     parameter accessors and pass them on to the java.lang.Enum constructor.
    *

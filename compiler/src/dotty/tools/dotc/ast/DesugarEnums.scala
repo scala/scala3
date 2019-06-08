@@ -84,13 +84,13 @@ object DesugarEnums {
   /**  The following lists of definitions for an enum type E:
    *
    *   private val $values = new EnumValues[E]
+   *   def values = $values.values.toArray
    *   def valueOf($name: String) =
    *     try $values.fromName($name) catch
    *       {
    *         case ex$:NoSuchElementException =>
    *           throw new IllegalArgumentException("key not found: ".concat(name))
    *       }
-   *   def values = $values.values.toArray
    */
   private def enumScaffolding(implicit ctx: Context): List[Tree] = {
     val valuesDef =
@@ -286,7 +286,7 @@ object DesugarEnums {
       val toStringDef = toStringMethLit(name.toString)
       val impl1 = cpy.Template(impl)(body = List(ordinalDef, toStringDef) ++ registerCall)
         .withAttachment(ExtendsSingletonMirror, ())
-      val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final)
+      val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | EnumValue)
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
   }
@@ -302,7 +302,7 @@ object DesugarEnums {
     else {
       val (tag, scaffolding) = nextOrdinal(CaseKind.Simple)
       val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
-      val vdef = ValDef(name, enumClassRef, creator).withMods(mods | Final)
+      val vdef = ValDef(name, enumClassRef, creator).withMods(mods | EnumValue)
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
 }
