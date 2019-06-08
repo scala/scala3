@@ -19,12 +19,15 @@ object factories {
 
   type TypeTree = dotty.tools.dotc.ast.Trees.Tree[Type]
 
-  def flags(t: Tree)(implicit ctx: Context): List[String] =
+  def flags(t: Tree)(implicit ctx: Context): List[String] = {
+    val pw = t.symbol.privateWithin
+    val pwStr = if (pw.exists) pw.name.show else ""
     (t.symbol.flags & (if (t.symbol.isType) TypeSourceModifierFlags else TermSourceModifierFlags))
-      .flagStrings(t.symbol.privateWithin.name.show).toList
+      .flagStrings(pwStr).toList
       .filter(_ != "<trait>")
       .filter(_ != "interface")
       .filter(_ != "case")
+  }
 
   def path(sym: Symbol)(implicit ctx: Context): List[String] = {
     @tailrec def go(sym: Symbol, acc: List[String]): List[String] =

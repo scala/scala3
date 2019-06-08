@@ -4,9 +4,18 @@ object Config {
   inline val logging = true
 }
 
+class Logger {
+  protected[this] var a = 0
+  protected [Logger] var b = 0
+  protected var c = 0
+
+}
+
 object Logger {
 
   private var indent = 0
+  private[this] var a = 0
+  private[Logger] var b = 0
 
   inline def log[T](msg: String, indentMargin: => Int)(op: => T): T =
     if (Config.logging) {

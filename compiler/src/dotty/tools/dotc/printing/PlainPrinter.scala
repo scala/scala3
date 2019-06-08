@@ -403,9 +403,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else ""
   }
 
+  protected def privateWithinString(sym: Symbol): String =
+  	if (sym.exists && sym.privateWithin.exists)
+      nameString(sym.privateWithin.name.stripModuleClassSuffix)
+    else ""
+
   /** String representation of symbol's flags */
-  protected def toTextFlags(sym: Symbol): Text =
-    Text(sym.flagsUNSAFE.flagStrings(nameString(sym.privateWithin.name)) map stringToText, " ")
+  protected def toTextFlags(sym: Symbol): Text = toTextFlags(sym, sym.flagsUNSAFE)
+
+  protected def toTextFlags(sym: Symbol, flags: FlagSet): Text =
+    Text(flags.flagStrings(privateWithinString(sym)).map(flag => stringToText(keywordStr(flag))), " ")
 
   /** String representation of symbol's variance or "" if not applicable */
   protected def varianceString(sym: Symbol): String = varianceString(sym.variance)
