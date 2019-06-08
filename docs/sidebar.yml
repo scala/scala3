@@ -77,6 +77,8 @@ sidebar:
               url: docs/reference/metaprogramming/macros.html
             - title: Staging
               url: docs/reference/metaprogramming/staging.html
+            - title: Erased Terms
+              url: docs/reference/metaprogramming/erased-terms.html
             - title: TASTy Reflection
               url: docs/reference/metaprogramming/tasty-reflect.html
             - title: TASTy Inspection
