@@ -6,7 +6,7 @@ object Test {
 
     inline def f(): Contextual[Boolean] = the[Context].t
 
-    implied ctx for Context = new Context(true)
+    delegate ctx for Context = new Context(true)
 
     f()
   }

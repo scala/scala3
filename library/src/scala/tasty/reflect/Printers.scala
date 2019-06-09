@@ -554,7 +554,7 @@ trait Printers
 
         case Import(importImplied, expr, selectors) =>
           this += "import "
-          if (importImplied) this += "implied "
+          if (importImplied) this += "delegate "
           printTree(expr)
           this += "."
           printImportSelectors(selectors)
@@ -910,7 +910,7 @@ trait Printers
           inBlock(printCases(cases, lineBreak()))
 
         case ImpliedMatch(cases) =>
-          this += highlightKeyword("implied match", color)
+          this += highlightKeyword("delegate match", color)
           inBlock(printCases(cases, lineBreak()))
 
         case Try(body, cases, finallyOpt) =>

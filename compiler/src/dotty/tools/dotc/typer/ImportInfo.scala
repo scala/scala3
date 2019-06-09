@@ -28,7 +28,7 @@ object ImportInfo {
  *  @param   selectors     The selector clauses
  *  @param   symNameOpt    Optionally, the name of the import symbol. None for root imports.
  *                         Defined for all explicit imports from ident or select nodes.
- *  @param   importImplied true if this is an implied import
+ *  @param   importImplied true if this is a delegate import
  *  @param   isRootImport  true if this is one of the implicit imports of scala, java.lang,
  *                         scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */

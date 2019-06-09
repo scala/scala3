@@ -7,7 +7,7 @@ import reflect.ClassTag
 opaque type IArray[+T] = Array[_ <: T]
 
 /** Defines extension methods for immutable arrays */
-implied arrayOps {
+implicit object arrayOps {
 
   /** The selection operation on an immutable array.
     *

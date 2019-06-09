@@ -1,5 +1,5 @@
 class TC
-implied tc for TC
+delegate tc for TC
 
 class Foo given TC {
   println("hi")

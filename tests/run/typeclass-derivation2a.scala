@@ -222,7 +222,7 @@ object Eq {
   import scala.compiletime.erasedValue
   import TypeLevel._
 
-  inline def tryEql[T](x: T, y: T) = implied match {
+  inline def tryEql[T](x: T, y: T) = delegate match {
     case eq: Eq[T] => eq.eql(x, y)
   }
 
@@ -275,7 +275,7 @@ object Pickler {
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
-  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = implied match {
+  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = delegate match {
     case pkl: Pickler[T] => pkl.pickle(buf, x)
   }
 
@@ -295,7 +295,7 @@ object Pickler {
       case _: Unit =>
     }
 
-  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = implied match {
+  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = delegate match {
     case pkl: Pickler[T] => pkl.unpickle(buf)
   }
 
@@ -360,7 +360,7 @@ object Show {
   import scala.compiletime.erasedValue
   import TypeLevel._
 
-  inline def tryShow[T](x: T): String = implied match {
+  inline def tryShow[T](x: T): String = delegate match {
     case s: Show[T] => s.show(x)
   }
 

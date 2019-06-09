@@ -41,13 +41,13 @@ object Test {
     }
   }
 
-  class TestExecutionContext(delegate: ExecutionContext) extends ExecutionContext {
+  class TestExecutionContext(deleg: ExecutionContext) extends ExecutionContext {
     def execute(runnable: Runnable): Unit = ???
 
     def reportFailure(t: Throwable): Unit = ???
 
     override def prepare(): ExecutionContext = {
-      val preparedDelegate = delegate.prepare()
+      val preparedDelegate = deleg.prepare()
       return new ExecutionContext {
         def execute(runnable: Runnable): Unit = {
           println("execute()")
