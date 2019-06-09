@@ -17,7 +17,7 @@ This defines a type that, depending on the scrutinee type `X`, can reduce to one
    Elem[String]       =:=  Char
    Elem[Array[Int]]   =:=  Int
    Elem[List[Float]]  =:=  Float
-   Elem[Nil]          =:=  Nothing
+   Elem[Nil.type]     =:=  Nothing
 ```
 Here `=:=` is understood to mean that left and right hand sides are mutually subtypes of each other.
 
