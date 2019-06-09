@@ -34,10 +34,10 @@ prints it again in an error message if it evaluates to `false`.
     import scala.quoted._
 
     inline def assert(expr: => Boolean): Unit =
-      ${ assertImpl('{ expr }) }
+      ${ assertImpl('expr) }
 
     def assertImpl(expr: Expr[Boolean]) = '{
-      if !(${ expr }) then
+      if !($expr) then
         throw new AssertionError(s"failed assertion: ${${ showExpr(expr) }}")
     }
 
@@ -45,7 +45,7 @@ prints it again in an error message if it evaluates to `false`.
       '{ "<some source code>" } // Better implementation later in this document
 ```
 
-If `e` is an expression, then `'{e}` represent the typed
+If `e` is an expression, then `'{e}` represents the typed
 abstract syntax tree representing `e`. If `T` is a type, then `'[T]`
 represents the type structure representing `T`.  The precise
 definitions of "typed abstract syntax tree" or "type-structure" do not
@@ -88,7 +88,7 @@ The two types can be defined in package `scala.quoted` as follows:
 ```scala
     package scala.quoted
 
-    sealed abstract class Expr[T]
+    sealed abstract class Expr[+T]
     sealed abstract class Type[T]
 ```
 Both `Expr` and `Type` are abstract and sealed, so all constructors for

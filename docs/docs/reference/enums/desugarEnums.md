@@ -170,8 +170,8 @@ Companion objects of enumerations that contain at least one simple case define i
      ordinal number and name. This method can be thought as being defined as
      follows.
 
-         private def $new(\_$ordinal: Int, $name: String) = new E {
-           def $ordinal = $tag
+         private def $new(_$ordinal: Int, $name: String) = new E {
+           def $ordinal = $_ordinal
            override def toString = $name
            $values.register(this) // register enum value so that `valueOf` and `values` can return it.
          }
@@ -185,6 +185,14 @@ identifiers.
 
 Even though translated enum cases are located in the enum's companion object, referencing
 this object or its members via `this` or a simple identifier is also illegal. The compiler typechecks enum cases in the scope of the enclosing companion object but flags any such illegal accesses as errors.
+
+### Translation of Java-compatible enums
+A Java-compatible enum is an enum that extends `java.lang.Enum`. The translation rules are the same as above, with the reservations defined in this section.
+
+It is a compile-time error for a Java-compatible enum to have class cases.
+
+Cases such as `case C` expand to a `@static val` as opposed to a `val`. This allows them to be generated as static fields of the enum type, thus ensuring they are represented the same way as Java enums.
+
 
 ### Other Rules
 

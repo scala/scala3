@@ -146,16 +146,18 @@ class CheckRealizable(implicit ctx: Context) {
   private def boundsRealizability(tp: Type) = {
 
     val memberProblems =
-      for mbr <- tp.nonClassTypeMembers if !(mbr.info.loBound <:< mbr.info.hiBound)
-      yield new HasProblemBounds(mbr.name, mbr.info)
+      for {
+        mbr <- tp.nonClassTypeMembers
+        if !(mbr.info.loBound <:< mbr.info.hiBound)
+      } yield new HasProblemBounds(mbr.name, mbr.info)
 
     val refinementProblems =
-      for
+      for {
         name <- refinedNames(tp)
         if (name.isTypeName)
         mbr <- tp.member(name).alternatives
         if !(mbr.info.loBound <:< mbr.info.hiBound)
-      yield new HasProblemBounds(name, mbr.info)
+      } yield new HasProblemBounds(name, mbr.info)
 
     def baseTypeProblems(base: Type) = base match {
       case AndType(base1, base2) =>

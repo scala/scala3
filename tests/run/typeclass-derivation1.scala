@@ -38,7 +38,7 @@ object Deriving {
   }
 
   object Eq {
-    inline def tryEq[T](x: T, y: T) = implicit match {
+    inline def tryEq[T](x: T, y: T) = implied match {
       case eq: Eq[T] => eq.equals(x, y)
     }
 

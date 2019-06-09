@@ -199,8 +199,8 @@ object Parsers {
       !in.isSoftModifierInModifierPosition
 
     def isExprIntro: Boolean =
-      canStartExpressionTokens.contains(in.token) &&
-      !in.isSoftModifierInModifierPosition
+      if (in.token == IMPLIED) in.lookaheadIn(BitSet(MATCH))
+      else (canStartExpressionTokens.contains(in.token) && !in.isSoftModifierInModifierPosition)
 
     def isDefIntro(allowedMods: BitSet, excludedSoftModifiers: Set[TermName] = Set.empty): Boolean =
       in.token == AT ||
@@ -1266,7 +1266,7 @@ object Parsers {
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  Expr2
      *                      |  [‘inline’] Expr2 `match' `{' CaseClauses `}'
-     *                      |  `implicit' `match' `{' ImplicitCaseClauses `}'
+     *                      |  `implied' `match' `{' ImplicitCaseClauses `}'
      *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
      *  Binding           ::=  (id | `_') [`:' Type]
      *  Expr2             ::=  PostfixExpr [Ascription]
@@ -1282,9 +1282,19 @@ object Parsers {
       val start = in.offset
       if (closureMods.contains(in.token)) {
         val imods = modifiers(closureMods)
-        if (in.token == MATCH) implicitMatch(start, imods)
+        if (in.token == MATCH) impliedMatch(start, imods)
         else implicitClosure(start, location, imods)
-      } else {
+      }
+      else if(in.token == IMPLIED) {
+        in.nextToken()
+        if (in.token == MATCH)
+          impliedMatch(start, EmptyModifiers)
+        else {
+          syntaxError("`match` expected")
+          EmptyTree
+        }
+      }
+      else {
         val saved = placeholderParams
         placeholderParams = Nil
 
@@ -1458,13 +1468,13 @@ object Parsers {
 
     /**    `match' { ImplicitCaseClauses }
      */
-    def implicitMatch(start: Int, imods: Modifiers) = {
+    def impliedMatch(start: Int, imods: Modifiers) = {
       def markFirstIllegal(mods: List[Mod]) = mods match {
-        case mod :: _ => syntaxError(em"illegal modifier for implicit match", mod.span)
+        case mod :: _ => syntaxError(em"illegal modifier for implied match", mod.span)
         case _ =>
       }
       imods.mods match {
-        case Mod.Implicit() :: mods => markFirstIllegal(mods)
+        case (Mod.Implicit() | Mod.Implied()) :: mods => markFirstIllegal(mods)
         case mods => markFirstIllegal(mods)
       }
       val result @ Match(t, cases) =
@@ -1475,7 +1485,7 @@ object Parsers {
           case pat => isVarPattern(pat)
         }
         if (!isImplicitPattern(pat))
-          syntaxError(em"not a legal pattern for an implicit match", pat.span)
+          syntaxError(em"not a legal pattern for an implied match", pat.span)
       }
       result
     }
@@ -2687,7 +2697,7 @@ object Parsers {
         case ENUM =>
           enumDef(start, posMods(start, mods | Enum))
         case IMPLIED =>
-          instanceDef(start, mods, atSpan(in.skipToken()) { Mod.Instance() })
+          instanceDef(start, mods, atSpan(in.skipToken()) { Mod.Implied() })
         case _ =>
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
           EmptyTree
@@ -3107,7 +3117,7 @@ object Parsers {
             if (isBindingIntro)
               stats += implicitClosure(start, Location.InBlock, imods)
             else if (in.token == MATCH)
-              stats += implicitMatch(start, imods)
+              stats += impliedMatch(start, imods)
             else
               stats +++= localDef(start, imods)
           } else {
