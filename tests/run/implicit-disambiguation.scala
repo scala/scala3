@@ -9,12 +9,12 @@ class C extends A {
 }
 object M {
   def f given B, C : String = {
-    implied a for A = the[B]
+    delegate a for A = the[B]
     the[A].show
   }
 }
 object Test extends App {
-  implied b for B
-  implied c for C
+  delegate b for B
+  delegate c for C
   println(M.f)
 }

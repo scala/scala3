@@ -3,7 +3,7 @@
 object Test {
   @deprecated def foo = ???
 
-  implied for Conversion[String, Int] = _.length
+  delegate for Conversion[String, Int] = _.length
 
   foo    // error
 

@@ -3,13 +3,13 @@ class B extends T
 class C extends T
 
 object A {
-  implied b for B
-  implied c for C
+  delegate b for B
+  delegate c for C
 }
 
 object Test extends App {
   import A._
-  import implied A.{for B}
+  import delegate A.{for B}
 
   val x: B = b // OK
   println(c) // error: not found

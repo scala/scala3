@@ -1,9 +1,9 @@
-// implied matches that bind parameters don't work yet.
+// delegate matches that bind parameters don't work yet.
 object `implicit-match` {
   object invariant {
     case class Box[T](value: T)
     implicit val box: Box[Int] = Box(0)
-    inline def unbox <: Any = implied match {
+    inline def unbox <: Any = delegate match {
       case b: Box[t] => b.value
     }
     val i: Int = unbox
@@ -14,7 +14,7 @@ object `implicit-match` {
   object covariant {
     case class Box[+T](value: T)
     implicit val box: Box[Int] = Box(0)
-    inline def unbox <: Any = implied match {
+    inline def unbox <: Any = delegate match {
       case b: Box[t] => b.value
     }
     val i: Int = unbox
@@ -25,7 +25,7 @@ object `implicit-match` {
   object contravariant {
     case class TrashCan[-T](trash: T => Unit)
     implicit val trashCan: TrashCan[Int] = TrashCan { i => ; }
-    inline def trash <: Nothing => Unit = implied match {
+    inline def trash <: Nothing => Unit = delegate match {
       case c: TrashCan[t] => c.trash
     }
     val t1: Int => Unit = trash

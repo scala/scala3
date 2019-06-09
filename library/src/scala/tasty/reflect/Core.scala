@@ -209,7 +209,7 @@ trait Core {
         /** Tree representing a pattern match `x match  { ... }` in the source code */
         type Match = kernel.Match
 
-        /** Tree representing a pattern match `implied match { ... }` in the source code */
+        /** Tree representing a pattern match `delegate match { ... }` in the source code */
         type ImpliedMatch = kernel.ImpliedMatch
 
         /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */

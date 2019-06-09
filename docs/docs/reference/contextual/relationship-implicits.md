@@ -7,28 +7,28 @@ Many, but not all, of the new contextual abstraction features in Scala 3 can be 
 
 ## Simulating Contextual Abstraction with Implicits
 
-### Implied Instance Definitions
+### Delegates
 
-Implied instance definitions can be mapped to combinations of implicit objects and implicit methods together with normal classes.
+Delegate clauses can be mapped to combinations of implicit objects, classes and implicit methods.
 
- 1. Instance definitions without parameters are mapped to implicit objects. E.g.,
+ 1. Delegates without parameters are mapped to implicit objects. E.g.,
     ```scala
-      implied IntOrd for Ord[Int] { ... }
+      delegate IntOrd for Ord[Int] { ... }
     ```
     maps to
     ```scala
       implicit object IntOrd extends Ord[Int] { ... }
     ```
- 2. Parameterized instance definitions are mapped to combinations of classes and implicit methods. E.g.,
+ 2. Parameterized delegates are mapped to combinations of classes and implicit methods. E.g.,
     ```scala
-      implied ListOrd[T] for Ord[List[T]] given (ord: Ord[T]) { ... }
+      delegate ListOrd[T] for Ord[List[T]] given (ord: Ord[T]) { ... }
     ```
     maps to
     ```scala
       class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
       final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
     ```
- 3. Implied alias instances map to implicit methods. If an alias has neither type parameters nor a given clause, its right-hand side is cached in a variable. There are two cases that can be optimized:
+ 3. Alias delegates map to implicit methods. If an alias has neither type parameters nor a given clause, its right-hand side is cached in a variable. There are two cases that can be optimized:
 
   - If the right hand side is a simple reference, we can
     use a forwarder to that reference without caching it.
@@ -38,11 +38,11 @@ Implied instance definitions can be mapped to combinations of implicit objects a
  Examples:
 
     ```scala
-      implied global for ExecutionContext = new ForkJoinContext()
-      implied config for Config = default.config
+      delegate global for ExecutionContext = new ForkJoinContext()
+      delegate config for Config = default.config
 
       val ctx: Context
-      implied for Context = ctx
+      delegate for Context = ctx
     ```
     would map to
     ```scala
@@ -54,35 +54,35 @@ Implied instance definitions can be mapped to combinations of implicit objects a
 
       final implicit val config: Config = default.config
 
-      final implicit def Context_repr = ctx
+      final implicit def Context_delegate = ctx
     ```
 
-### Anonymous Implied Instances
+### Anonymous Delegates
 
-Anonymous instances get compiler synthesized names, which are generated in a reproducible way from the implemented type(s). For example, if the names of the `IntOrd` and `ListOrd` instances above were left out, the following names would be synthesized instead:
+Anonymous delegates get compiler synthesized names, which are generated in a reproducible way from the implemented type(s). For example, if the names of the `IntOrd` and `ListOrd` delegates above were left out, the following names would be synthesized instead:
 ```scala
-  implied Ord_Int_instance for Ord[Int] { ... }
-  implied Ord_List_instance[T] for Ord[List[T]] { ... }
+  delegate Ord_Int_delegate for Ord[Int] { ... }
+  delegate Ord_List_delegate[T] for Ord[List[T]] { ... }
 ```
 The synthesized type names are formed from
 
  - the simple name(s) of the implemented type(s), leaving out any prefixes,
  - the simple name(s) of the toplevel argument type constructors to these types
- - the suffix `_instance`.
+ - the suffix `_delegate`.
 
-Anonymous instances that define extension methods without also implementing a type
+Anonymous delegates that define extension methods without also implementing a type
 get their name from the name of the first extension method and the toplevel type
-constructor of its first parameter. For example, the instance
+constructor of its first parameter. For example, the delegate
 ```scala
-  implied {
+  delegate {
      def (xs: List[T]) second[T] = ...
   }
 ```
-gets the synthesized name `second_of_List_T_instance`.
+gets the synthesized name `second_of_List_T_delegate`.
 
-### Context Parameters
+### Given Clauses
 
-The new context parameter syntax with `given` corresponds largely to Scala-2's implicit parameters. E.g.
+Given clauses corresponds largely to Scala-2's implicit parameter clauses. E.g.
 ```scala
   def max[T](x: T, y: T) given (ord: Ord[T]): T
 ```
@@ -91,7 +91,7 @@ would be written
   def max[T](x: T, y: T)(implicit ord: Ord[T]): T
 ```
 in Scala 2. The main difference concerns applications of such parameters.
-Explicit arguments to context parameters _must_ be written using `given`,
+Explicit arguments to parameters of given clauses _must_ be written using `given`,
 mirroring the definition syntax. E.g, `max(2, 3) given IntOrd`.
 Scala 2 uses normal applications `max(2, 3)(IntOrd)` instead. The Scala 2 syntax has some inherent ambiguities and restrictions which are overcome by the new syntax. For instance, multiple implicit parameter lists are not available in the old syntax, even though they can be simulated using auxiliary objects in the "Aux" pattern.
 
@@ -121,15 +121,15 @@ could be simulated to some degree by
     def circumference: Double = c.radius * math.Pi * 2
   }
 ```
-Extension methods in implicit instances have no direct counterpart in Scala-2. The only way to simulate these is to make implicit classes available through imports. The Simulacrum macro library can automate this process in some cases.
+Extension methods in delegates have no direct counterpart in Scala-2. The only way to simulate these is to make implicit classes available through imports. The Simulacrum macro library can automate this process in some cases.
 
 ### Typeclass Derivation
 
 Typeclass derivation has no direct counterpart in the Scala 2 language. Comparable functionality can be achieved by macro-based libraries such as Shapeless, Magnolia, or scalaz-deriving.
 
-### Contextual Function Types
+### Implicit Function Types
 
-Contextual function types have no analogue in Scala 2.
+Implicit function types have no analogue in Scala 2.
 
 ### Implicit By-Name Parameters
 
@@ -139,44 +139,45 @@ Implicit by-name parameters are not supported in Scala 2, but can be emulated to
 
 ### Implicit Conversions
 
-Implicit conversion methods in Scala 2 can be expressed as implied instances
+Implicit conversion methods in Scala 2 can be expressed as delegates
 of the `scala.Conversion` class in Dotty. E.g. instead of
 ```scala
   implicit def stringToToken(str: String): Token = new Keyword(str)
 ```
 one can write
 ```scala
-  implied stringToToken for Conversion[String, Token] {
+  delegate stringToToken for Conversion[String, Token] {
     def apply(str: String): Token = new KeyWord(str)
   }
 ```
 
 ### Implicit Classes
 
-Implicit classes in Scala 2 are often used to define extension methods, which are directly supported in Dotty. Other uses of implicit classes can be simulated by a pair of a regular class and a conversion instance.
+Implicit classes in Scala 2 are often used to define extension methods, which are directly supported in Dotty. Other uses of implicit classes can be simulated by a pair of a regular class and a conversion delegate.
 
 ### Implicit Values
 
-Implicit `val` definitions in Scala 2 can be expressed in Dotty using a regular `val` definition and an alias instance. E.g., Scala 2's
+Implicit `val` definitions in Scala 2 can be expressed in Dotty using a regular `val` definition and an alias delegate.
+E.g., Scala 2's
 ```scala
   lazy implicit val pos: Position = tree.sourcePos
 ```
 can be expressed in Dotty as
 ```scala
   lazy val pos: Position = tree.sourcePos
-  implied for Position = pos
+  delegate for Position = pos
 ```
 
 ### Abstract Implicits
 
-An abstract implicit `val` or `def` in Scala 2 can be expressed in Dotty using a regular abstract definition and an implied alias instaance. E.g., Scala 2's
+An abstract implicit `val` or `def` in Scala 2 can be expressed in Dotty using a regular abstract definition and an alias delegate. E.g., Scala 2's
 ```scala
   implicit def symDeco: SymDeco
 ```
 can be expressed in Dotty as
 ```scala
   def symDeco: SymDeco
-  implied for SymDeco = symDeco
+  delegate for SymDeco = symDeco
 ```
 
 ## Implementation Status and Timeline

@@ -5,7 +5,7 @@
     type PrinterType
     def print(bits: BitMap): Unit = ???
     def status: List[String] = ???
-    implied bitmap for BitMap
+    delegate bitmap for BitMap
   }
 
   class Scanner {
@@ -23,7 +23,7 @@
     export printUnit.{stat => _, _} // error: double definition
     export scanUnit._               // error: double definition
     export printUnit.bitmap         // error: no eligible member
-    export implied printUnit.status // error: no eligible member
+    export delegate printUnit.status // error: no eligible member
 
     def status: List[String] = printUnit.status ++ scanUnit.status
   }

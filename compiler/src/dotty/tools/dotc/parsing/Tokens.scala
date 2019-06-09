@@ -178,7 +178,7 @@ object Tokens extends TokensCommon {
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val ENUM = 62;             enter(ENUM, "enum")
   final val ERASED = 63;           enter(ERASED, "erased")
-  final val IMPLIED = 64;          enter(IMPLIED, "implied")
+  final val IMPLIED = 64;          enter(IMPLIED, "delegate")
   final val GIVEN = 65;            enter(GIVEN, "given")
   final val EXPORT = 66;           enter(EXPORT, "export")
   final val MACRO = 67;            enter(MACRO, "macro") // TODO: remove
