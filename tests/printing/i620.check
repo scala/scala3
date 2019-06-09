@@ -1,0 +1,29 @@
+package O {
+  package O.A {
+    class D() extends Object() {
+      class C() extends Object() {
+        protected[D] def a: Int = 0
+        private[D] def b: Int = 0
+        private def c: Int = 0
+        protected def d: Int = 0
+        private[A] def e: Int = 0
+        protected[A] def f: Int = 0
+        def g: Int = 0
+      }
+      private[D] class E() extends Object() {}
+      private class F() extends Object() {}
+      private[A] class G() extends Object() {}
+      protected[D] class H() extends Object() {}
+      protected class I() extends Object() {}
+      protected[A] class J() extends Object() {}
+      class K() extends Object() {}
+      protected[D] val a: Int = 0
+      private[D] val b: Int = 0
+      private val c: Int = 0
+      protected val d: Int = 0
+      private[A] val e: Int = 0
+      protected[A] val f: Int = 0
+      val g: Int = 0
+    }
+  }
+}
