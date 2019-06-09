@@ -2,6 +2,7 @@ package dotty
 package tools
 package dotc
 
+import vulpix.FileDiff
 import vulpix.TestConfiguration
 import vulpix.TestConfiguration
 import reporting.TestReporter
@@ -27,11 +28,10 @@ class PrintingTest {
 
 
   private def compileFile(path: JPath): Boolean = {
-    val baseFilePath  = path.toAbsolutePath.toString.stripSuffix(".scala")
-    val outFilePath   = baseFilePath + ".out"
+    val baseFilePath  = path.toString.stripSuffix(".scala")
     val checkFilePath = baseFilePath + ".check"
-    val ps = new PrintStream(new File(outFilePath))
-    val reporter = TestReporter.reporter(ps, INFO)
+    val byteStream    = new ByteArrayOutputStream()
+    val reporter = TestReporter.reporter(new PrintStream(byteStream), INFO)
 
     try {
       Main.process((path.toString::options).toArray, reporter, null)
@@ -40,31 +40,10 @@ class PrintingTest {
         println(s"Compile $path exception:")
         e.printStackTrace()
     }
-    finally ps.close()
 
-    val actual   = fileContent(outFilePath)
-    val expected = fileContent(checkFilePath)
+    val actualLines = byteStream.toString("UTF-8").split("\\r?\\n")
 
-    val success =
-      actual.length == expected.length &&
-      (actual, expected).zipped.forall(_ == _)
-
-    success || {
-      println(
-        s"""|Output from '$outFilePath' did not match check file. Actual output:
-            |${actual.mkString(EOL)}
-            |""".stripMargin + "\n")
-
-      println(
-          s"""Test output dumped in: ${outFilePath}
-             |  See diff of the checkfile
-             |    > diff $checkFilePath $outFilePath
-             |  Replace checkfile with current output output
-             |    > mv $outFilePath $checkFilePath
-         """.stripMargin)
-
-      false
-    }
+    FileDiff.checkAndDump(path.toString, actualLines, checkFilePath)
   }
 
   @Test
