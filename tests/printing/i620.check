@@ -1,3 +1,4 @@
+result of tests/printing/i620.scala after frontend:
 package O {
   package O.A {
     class D() extends Object() {
