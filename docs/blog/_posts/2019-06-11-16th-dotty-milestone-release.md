@@ -73,6 +73,30 @@ aligns with Java's syntax.
 For more information please read our documentation on
 [Wildcards](https://dotty.epfl.ch/docs/reference/changed-features/wildcards.html).
 
+# Syntax Change: Contextual Abstractions
+
+We reconsider the syntax for contextual abstractions introducing `delegates`
+(formerly known as `implied`). `delegate`, in the context of contextual
+abstraction means that we declare a _representative of a type_. We use
+`delegate` as a noun. Note that this change is solely syntactical/grammatical
+and its motivation is to give a clearer meaning to those _canonical_ values of
+certain types (like `Ord[Int]`), that serve for synthesizing arguments to
+`given` clauses.
+
+```scala
+delegate IntOrd for Ord[Int] {
+  def compare(x: Int, y: Int) =
+    if (x < y) -1 else if (x > y) +1 else 0
+}
+```
+
+```scala
+delegate ListOrd[T] for Ord[List[T]] given (ord: Ord[T]) {
+```
+
+For more information, the documentation has been updated as part of the relevant
+PR [#6649](https://github.com/lampepfl/dotty/pull/6649)
+
 ## Polymorphic function types
 
 We add preliminary support for _polymorphic function types_. Nowadays, when we
@@ -117,33 +141,33 @@ recovered by using the newly-introduced `@threadUnsafe`.
 For more information please read our documentation on the
 [threadUnsafe annotation](https://dotty.epfl.ch/docs/reference/other-new-features/threadUnsafe-annotation.html).
 
-## Introducing `for` clauses for importing implied imports by type
+## Introducing `for` clauses for importing delegate imports by type
 
-Since implied instances can be anonymous it is not always practical to import
+Since delegate instances can be anonymous it is not always practical to import
 them by their name, and wildcard imports are typically used instead. By-type
 imports provide a more specific alternative to wildcard imports, which makes it
 clearer what is imported. Example:
 
  ```scala
-import implied A.{for TC}
+import delegate A.{for TC}
 ```
 
-This imports any implied instance in `A` that has a type which conforms tp `TC`.
+This imports any delegate instance in `A` that has a type which conforms tp `TC`.
 There can be several bounding types following a `for` and bounding types can
 contain wildcards.
 For instance, assuming the object
 
 ```scala
-object Instances {
-  implied intOrd for Ordering[Int]
-  implied [T: Ordering] listOrd for Ordering[List[T]]
-  implied ec for ExecutionContext = ...
-  implied im for Monoid[Int]
+object Delegates {
+  delegate intOrd for Ordering[Int]
+  delegate [T: Ordering] listOrd for Ordering[List[T]]
+  delegate ec for ExecutionContext = ...
+  delegate im for Monoid[Int]
 }
 ```
 the import
 ```
-import implied Instances.{for Ordering[_], ExecutionContext}
+import delegate Instances.{for Ordering[_], ExecutionContext}
 ```
 would import the `intOrd`, `listOrd`, and `ec` instances but leave out the `im`
 instance, since it fits none of the specified bounds.
