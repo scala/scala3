@@ -10,11 +10,11 @@ import java.io._
 object Main {
 
   /** Call main with the following arguments to produce Markdown documentation files: (Omitting { and })
-   * * **--syntax** {*wiki or markdown*} Syntax for parsing user documentation
-   * * **--packagestolink** {*regex1 regex2 ...*} Regexes of packages or entities (example: `scala.collection.*`). Only the types with a path matching these regexes will produce links in the documentation files
-   * * **--classpath** {*URI*} Extra classpath for input files
-   * * **-i** {*file1 file2 ...*} TASTy files
-   * * **-d** {*dir1 dir2 ...*} Directories to recursively find TASTy files
+   * * **[--syntax SYNTAX]** Syntax for parsing user documentation (either *wiki or markdown*)
+   * * **[--packagestolink REGEXES...]** Regexes of packages or entities (example: `scala.collection.*`). Only the types with a path matching these regexes will produce links in the documentation files
+   * * **[--classpath URI]** Extra classpath for input files
+   * * **[-i FILES...]** TASTy files
+   * * **[-d DIRECTORIES...]** Directories to recursively find TASTy files
    */
   def main(args: Array[String]): Unit = {
     val userDocSyntax = {

@@ -208,11 +208,11 @@ Manages the workflow (see \autoref{sec:workflow}).
 
 Command line parameters are:
 \begin{itemize}
-    \item \textbf{--syntax} \{\textit{wiki} or \textit{markdown}\} Syntax to use for user documentation parsing
-    \item \textbf{--packagestolink} \{\textit{regex1 regex2 ...}\} Regexes of packages or entities (example: \texttt{scala.collection.*}). Only the types with a path matching these regexes will produce links in the documentation files
-    \item \textbf{--classpath} \{\textit{URI}\} Extra classpath for input files
-    \item \textbf{-i} \{\textit{file1 file2 ...}\} TASTy files
-    \item \textbf{-d} \{\textit{dir1 dir2 ...}\} Directories to recursively find TASTy files
+    \item \textbf{\texttt{[--syntax SYNTAX]}} Syntax to use for user documentation parsing (either \textit{wiki} or \textit{markdown})
+    \item \textbf{\texttt{[--packagestolink REGEXES...]}} Regexes of packages or entities (example: \texttt{scala.collection.*}). Only the types with a path matching these regexes will produce links in the documentation files
+    \item \textbf{\texttt{[--classpath URI]}} Extra classpath for input files
+    \item \textbf{\texttt{[-i FILES...]}} TASTy files
+    \item \textbf{\texttt{[-d DIRECTORIES...]}} Directories to recursively find TASTy files
 \end{itemize}
 
 \subsection{User documentation parsing}
