@@ -115,7 +115,6 @@ rem echo dotty-interface: %_DOTTY_INTF%
 rem echo dotty-library: %_DOTTY_LIB%
 rem echo scala-asm: %_SCALA_ASM%
 rem echo scala-lib: %_SCALA_LIB%
-rem echo scala-xml: %_SCALA_XML%
 rem echo sbt-intface: %_SBT_INTF%
 
 set __TOOLCHAIN=%_SCALA_LIB%%_PSEP%
