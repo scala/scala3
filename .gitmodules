@@ -40,3 +40,7 @@
 [submodule "community-build/community-projects/scala-xml"]
 	path = community-build/community-projects/scala-xml
 	url = https://github.com/scala/scala-xml
+[submodule "community-build/community-projects/shapeless"]
+	path = community-build/community-projects/shapeless
+	url = https://github.com/milessabin/shapeless
+	branch = shapeless-3
