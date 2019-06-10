@@ -18,7 +18,7 @@ def max[T](x: T, y: T) given (ord: Ord[T]): T =
 Here, `ord` is an _implicit parameter_ introduced with a `given` clause.
 The `max` method can be applied as follows:
 ```scala
-max(2, 3).given(IntOrd)
+max(2, 3) given IntOrd
 ```
 The `given IntOrd` part passes `IntOrd` as an argument for the `ord` parameter. But the point of
 implicit parameters is that this argument can also be left out (and it usually is). So the following
