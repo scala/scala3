@@ -1,8 +1,7 @@
 ---
 layout: blog-page
-title: Announcing Dotty 0.16.0-RC1 – the Scala Days 2019 Release
-author: Aggelos Biboudis
-authorImg: /images/aggelos.png
+title: Announcing Dotty 0.16.0-RC3 – the Scala Days 2019 Release
+author: Aggelos Biboudis and Anatolii Kmetiuk
 date: 2019-06-11
 ---
 
@@ -10,7 +9,7 @@ Hello again! Today, we are excited to announce the 16th release of Dotty. The
 development of Dotty continues according to our schedule but today, Tuesday June
 the 11th, we are electrified as it is the first day of [Scala Days 2019](https://scaladays.org/)
 which marks the *10th* anniversary of Scala Days.
-With this release we are getting closer to the _envelop_ of the new features
+With this release we are getting closer to the _envelope_ of the new features
 that Dotty plans to offer.
 
 ![]({{ site.baseurl }}/images/others/scala-days-logo.png "Scala Days 2019")
@@ -37,7 +36,7 @@ You can learn more about Dotty on our [website](https://dotty.epfl.ch).
 This is our 16th scheduled release according to our
 [6-week release schedule](https://dotty.epfl.ch/docs/contributing/release.html).
 
-# What’s new in the 0.16.0-RC1 technology preview?
+# What’s new in the 0.16.0-RC3 technology preview?
 
 <!-- https://github.com/lampepfl/dotty/pulls?q=is%3Apr+closed%3A%3E2019-05-23+is%3Aclosed+sort%3Acomments-desc -->
 
@@ -167,10 +166,30 @@ object Delegates {
 ```
 the import
 ```
-import delegate Instances.{for Ordering[_], ExecutionContext}
+import delegate Delegates.{for Ordering[_], ExecutionContext}
 ```
 would import the `intOrd`, `listOrd`, and `ec` instances but leave out the `im`
 instance, since it fits none of the specified bounds.
+
+## New typeclass derivation scheme
+
+Summary of measured differences with the old scheme:
+
+- About 100 lines more compiler code - the rest of the lines changed diff is
+tests.
+- About 13-15% more code generated for typeclass instances
+- About 3-4% slower to compile typeclass instances
+
+Advantages of new scheme:
+
+- Fewer allocations, since mirrors (`Generic` has been renamed to `Mirror`) are
+  usually shared instead of being allocated at runtime.
+- It works well even if there are no derives clauses. The old scheme would
+  generate more code in that case.
+- Complete decoupling between derives clauses and mirror generation.
+
+For the technical details of these changes please consule the corresponding PR
+[#6531](https://github.com/lampepfl/dotty/pull/6531).
 
 # Let us know what you think!
 
@@ -182,10 +201,23 @@ If you have questions or any sort of feedback, feel free to send us a message on
 
 Thank you to all the contributors who made this release possible!
 
-According to `git shortlog -sn --no-merges 0.15.0-RC1..0.16.0-RC1` these are:
+According to `git shortlog -sn --no-merges 0.15.0-RC1..0.16.0-RC3` these are:
 
 ```
-
+88  Martin Odersky
+51  Anatolii
+48  Nicolas Stucki
+26  Guillaume Martres
+21  Miles Sabin
+19  Liu Fengyun
+12  Aleksander Boruch-Gruszecki
+11  Sébastien Doeraene
+ 8  Aggelos Biboudis
+ 4  Olivier Blanvillain
+ 3  Eugene Yokota
+ 1  Dale Wijnand
+ 1  Allan Renucci
+ 1  Olivier ROLAND
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
