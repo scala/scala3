@@ -1,8 +1,8 @@
 object Test {
-  implied A {
+  delegate A {
     def (x: Int) |+| (y: Int) = x + y
   }
-  implied B {
+  delegate B {
     def (x: Int) |+| (y: String) = x + y.length
   }
   assert((1 |+| 2) == 3)  // error ambiguous

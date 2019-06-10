@@ -43,7 +43,7 @@ They can be accessed inside `Copier` as well as from outside:
 An export clause has the same format as an import clause. Its general form is:
 ```scala
   export path . { sel_1, ..., sel_n }
-  export implied path . { sel_1, ..., sel_n }
+  export delegate path . { sel_1, ..., sel_n }
 ```
 It consists of a qualifier expression `path`, which must be a stable identifier, followed by
 one or more selectors `sel_i` that identify what gets an alias. Selectors can be
@@ -61,14 +61,14 @@ A member is _eligible_ if all of the following holds:
  - its owner is not a base class of the class(*) containing the export clause,
  - it is accessible at the export clause,
  - it is not a constructor, nor the (synthetic) class part of an object,
- - it is an `implied` instance (or an old-style `implicit` value)
-   if and only if the export is `implied`.
+ - it is delegate (or an old-style `implicit` value)
+   if and only if the export is tagged with `delegate`.
 
 It is a compile-time error if a simple or renaming selector does not identify any eligible
 members.
 
 Type members are aliased by type definitions, and term members are aliased by method definitions. Export aliases copy the type and value parameters of the members they refer to.
-Export aliases are always `final`. Aliases of implied instances are again `implied` (and aliases of old-style implicits are `implicit`). There are no other modifiers that can be given to an alias. This has the following consequences for overriding:
+Export aliases are always `final`. Aliases of delegates are again defines as delegates (and aliases of old-style implicits are `implicit`). There are no other modifiers that can be given to an alias. This has the following consequences for overriding:
 
  - Export aliases cannot be overridden, since they are final.
  - Export aliases cannot override concrete members in base classes, since they are
@@ -106,7 +106,7 @@ TemplateStat   ::=  ...
                  |  Export
 TopStat        ::=  ...
                  |  Export
-Export         ::=  ‘export’ [‘implied’] ImportExpr {‘,’ ImportExpr}
+Export         ::=  ‘export’ [‘delegate’] ImportExpr {‘,’ ImportExpr}
 ```
 
 ### Elaboration of Export Clauses

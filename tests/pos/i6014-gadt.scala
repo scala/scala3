@@ -10,7 +10,7 @@ object Test1 {
 }
 
 object Test2 {
-  inline def summon[T] = implied match {
+  inline def summon[T] = delegate match {
     case t: T => t
   }
 
@@ -25,7 +25,7 @@ object Test2 {
 }
 
 object Test3 {
-  inline def summon[T] = implied match {
+  inline def summon[T] = delegate match {
     case t: T => t
   }
 
@@ -42,7 +42,7 @@ object Test3 {
 }
 
 object Test4 {
-  inline def summon[T] = implied match {
+  inline def summon[T] = delegate match {
     case t: T => t
   }
 

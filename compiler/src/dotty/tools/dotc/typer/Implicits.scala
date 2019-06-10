@@ -1158,7 +1158,7 @@ trait Implicits { self: Typer =>
           case fail: SearchFailureType =>
 
             def hiddenImplicitNote(s: SearchSuccess) =
-              em"\n\nNote: implied instance ${s.ref.symbol.showLocated} was not considered because it was not imported with an `import implied`."
+              em"\n\nNote: delegate ${s.ref.symbol.showLocated} was not considered because it was not imported with `import delegate`."
 
             def FindHiddenImplicitsCtx(ctx: Context): Context =
               if (ctx == NoContext) ctx

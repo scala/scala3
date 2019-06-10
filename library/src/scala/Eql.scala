@@ -12,12 +12,12 @@ sealed trait Eql[-L, -R]
  *  the compiler (see Implicits.synthesizedEq), so they are not included here.
  */
 object Eql {
-  /** A non-implied universal `Eql` instance. */
+  /** A universal `Eql` instance. */
   object derived extends Eql[Any, Any]
 
   /** A fall-back instance to compare values of any types.
-   *  Even though this method is not declared implied, the compiler will
-   *  compute implied instances as solutions to `Eql[T, U]` queries if
+   *  Even though this method is not declared a delegate, the compiler will
+   *  synthesize implicit arguments as solutions to `Eql[T, U]` queries if
    *  the rules of multiversal equality require it.
    */
   def eqlAny[L, R]: Eql[L, R] = derived

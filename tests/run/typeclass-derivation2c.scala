@@ -54,7 +54,7 @@ object Deriving {
       type CaseLabel <: String
 
       /** The represented value */
-      inline def singletonValue = implied match {
+      inline def singletonValue = delegate match {
         case ev: ValueOf[T] => ev.value
       }
     }
@@ -212,7 +212,7 @@ trait Eq[T] {
 object Eq {
   import scala.compiletime.erasedValue
 
-  inline def tryEql[T](x: T, y: T) = implied match {
+  inline def tryEql[T](x: T, y: T) = delegate match {
     case eq: Eq[T] => eq.eql(x, y)
   }
 
@@ -267,7 +267,7 @@ object Pickler {
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
-  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = implied match {
+  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = delegate match {
     case pkl: Pickler[T] => pkl.pickle(buf, x)
   }
 
@@ -292,7 +292,7 @@ object Pickler {
       }
     else pickleCases[T](g, n + 1)(buf, x, ord)
 
-  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = implied match {
+  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = delegate match {
     case pkl: Pickler[T] => pkl.unpickle(buf)
   }
 
@@ -357,7 +357,7 @@ trait Show[T] {
 object Show {
   import scala.compiletime.{erasedValue, constValue}
 
-  inline def tryShow[T](x: T): String = implied match {
+  inline def tryShow[T](x: T): String = delegate match {
     case s: Show[T] => s.show(x)
   }
 

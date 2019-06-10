@@ -217,7 +217,7 @@ object typeclasses {
     import compiletime._
     import scala.deriving._
 
-    inline def tryEql[TT](x: TT, y: TT): Boolean = implied match {
+    inline def tryEql[TT](x: TT, y: TT): Boolean = delegate match {
       case eq: Eq[TT] => eq.eql(x, y)
     }
 
@@ -237,7 +237,7 @@ object typeclasses {
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
-            implied match {
+            delegate match {
               case m: Mirror.ProductOf[`alt`] => eqlElems[m.MirroredElemTypes](0)(x, y)
             }
           else eqlCases[alts1](n + 1)(x, y, ord)
@@ -274,7 +274,7 @@ object typeclasses {
 
     def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
-    inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = implied match {
+    inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = delegate match {
       case pkl: Pickler[T] => pkl.pickle(buf, x)
     }
 
@@ -290,14 +290,14 @@ object typeclasses {
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
-            implied match {
+            delegate match {
               case m: Mirror.ProductOf[`alt`] => pickleElems[m.MirroredElemTypes](0)(buf, x)
             }
           else pickleCases[alts1](n + 1)(buf, x, ord)
         case _: Unit =>
       }
 
-    inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = implied match {
+    inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = delegate match {
       case pkl: Pickler[T] => pkl.unpickle(buf)
     }
 
@@ -324,7 +324,7 @@ object typeclasses {
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
-            implied match {
+            delegate match {
               case m: Mirror.ProductOf[`alt` & T] =>
                 unpickleCase[`alt` & T, m.MirroredElemTypes](buf, m)
             }

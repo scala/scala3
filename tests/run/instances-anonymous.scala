@@ -8,7 +8,7 @@ object Test extends App {
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  implied {
+  delegate {
     def (c: Circle) circumference: Double = c.radius * math.Pi * 2
   }
 
@@ -16,7 +16,7 @@ object Test extends App {
 
   println(circle.circumference)
 
-  implied {
+  delegate {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
@@ -25,13 +25,13 @@ object Test extends App {
   val names = List("hi", "hello", "world")
   assert(names.longestStrings == List("hello", "world"))
 
-  implied {
+  delegate {
     def (xs: Seq[T]) second[T] = xs.tail.head
   }
 
   assert(names.longestStrings.second == "world")
 
-  implied {
+  delegate {
     def (xs: List[List[T]]) flattened[T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
   }
 
@@ -45,8 +45,7 @@ object Test extends App {
     def unit: T
   }
 
-  // An implied declaration:
-  implied for Monoid[String] {
+  delegate for Monoid[String] {
     def (x: String) combine (y: String): String = x.concat(y)
     def unit: String = ""
   }
@@ -64,13 +63,13 @@ object Test extends App {
     val minimum: T
   }
 
-  implied for Ord[Int] {
+  delegate for Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
   }
 
-  implied [T: Ord] for Ord[List[T]] {
+  delegate [T: Ord] for Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -102,14 +101,14 @@ object Test extends App {
     def pure[A](x: A): F[A]
   }
 
-  implied for Monad[List] {
+  delegate for Monad[List] {
     def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  implied [Ctx] for Monad[[X] =>> Ctx => X] {
+  delegate [Ctx] for Monad[[X] =>> Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =

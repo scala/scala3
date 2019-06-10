@@ -392,7 +392,7 @@ object Flags {
   /** Symbol is a Java default method */
   final val DefaultMethod: FlagSet = termFlag(38, "<defaultmethod>")
 
-  final val Implied: FlagSet = commonFlag(39, "implied")
+  final val Implied: FlagSet = commonFlag(39, "delegate")
 
   /** Symbol is an enum class or enum case (if used with case) */
   final val Enum: FlagSet = commonFlag(40, "<enum>")
