@@ -32,12 +32,12 @@ class Common {
 
 object Instances extends Common {
 
-  implied IntOrd for Ord[Int] {
+  delegate IntOrd for Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  implied ListOrd[T] for Ord[List[T]] given Ord[T] {
+  delegate ListOrd[T] for Ord[List[T]] given Ord[T] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -48,25 +48,25 @@ object Instances extends Common {
     }
   }
 
-  implied StringOps {
+  delegate StringOps {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  implied ListOps {
+  delegate ListOps {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  implied ListMonad for Monad[List] {
+  delegate ListMonad for Monad[List] {
     def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  implied ReaderMonad[Ctx] for Monad[[X] =>> Ctx => X] {
+  delegate ReaderMonad[Ctx] for Monad[[X] =>> Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -105,7 +105,7 @@ object Instances extends Common {
       def (sym: Symbol) name: String
     }
     def symDeco: SymDeco
-    implied for SymDeco = symDeco
+    delegate for SymDeco = symDeco
   }
   object TastyImpl extends TastyAPI {
     type Symbol = String
@@ -119,20 +119,20 @@ object Instances extends Common {
   class C given (ctx: Context) {
     def f() = {
       locally {
-        implied for Context = this.ctx
+        delegate for Context = this.ctx
         println(the[Context].value)
       }
       locally {
         lazy val ctx1 = this.ctx
-        implied for Context = ctx1
+        delegate for Context = ctx1
         println(the[Context].value)
       }
       locally {
-        implied d[T] for D[T]
+        delegate d[T] for D[T]
         println(the[D[Int]])
       }
       locally {
-        implied for D[Int] given Context
+        delegate for D[Int] given Context
         println(the[D[Int]])
       }
     }
@@ -141,7 +141,7 @@ object Instances extends Common {
   class Token(str: String)
 
   object Token {
-    implied StringToToken for Conversion[String, Token] {
+    delegate StringToToken for Conversion[String, Token] {
       def apply(str: String): Token = new Token(str)
     }
   }
@@ -152,14 +152,14 @@ object Instances extends Common {
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  private implied WrappedResult {
+  private delegate WrappedResult {
     def apply[T](x: T): WrappedResult[T] = x
     def (x: WrappedResult[T]) unwrap[T]: T = x
   }
 
   def result[T] given (wrapped: WrappedResult[T]): T = wrapped.unwrap
 
-  implied {
+  delegate {
     def (x: T) ensuring[T] (condition: given WrappedResult[T] => Boolean): T = {
       assert(condition given WrappedResult(x))
       x
@@ -168,12 +168,12 @@ object PostConditions {
 }
 
 object AnonymousInstances extends Common {
-  implied for Ord[Int] {
+  delegate for Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  implied [T: Ord] for Ord[List[T]] {
+  delegate [T: Ord] for Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -184,22 +184,22 @@ object AnonymousInstances extends Common {
     }
   }
 
-  implied {
+  delegate {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  implied {
+  delegate {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  implied [From, To] for Convertible[List[From], List[To]] given (c: Convertible[From, To]) {
+  delegate [From, To] for Convertible[List[From], List[To]] given (c: Convertible[From, To]) {
     def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
 
-  implied for Monoid[String] {
+  delegate for Monoid[String] {
     def (x: String) combine (y: String): String = x.concat(y)
     def unit: String = ""
   }
@@ -249,7 +249,7 @@ object Implicits extends Common {
 object Test extends App {
   Instances.test()
   import PostConditions.result
-  import implied PostConditions._
+  import delegate PostConditions._
   val s = List(1, 2, 3).sum
   s.ensuring(result == 6)
 }
@@ -274,9 +274,9 @@ object Completions {
     //
     //   CompletionArg.from(statusCode)
 
-    implied fromString for Conversion[String, CompletionArg] = Error(_)
-    implied fromFuture for Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    implied fromStatusCode for Conversion[Future[StatusCode], CompletionArg] = Status(_)
+    delegate fromString for Conversion[String, CompletionArg] = Error(_)
+    delegate fromFuture for Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    delegate fromStatusCode for Conversion[Future[StatusCode], CompletionArg] = Status(_)
   }
   import CompletionArg._
 

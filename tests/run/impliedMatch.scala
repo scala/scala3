@@ -2,12 +2,12 @@ object Test extends App {
   import collection.immutable.TreeSet
   import collection.immutable.HashSet
 
-  inline def f1[T]() = implied match {
+  inline def f1[T]() = delegate match {
     case ord: Ordering[T] => new TreeSet[T]
     case _ => new HashSet[T]
   }
 
-  inline def f2[T]() = implied match {
+  inline def f2[T]() = delegate match {
     case _: Ordering[T] => new TreeSet[T]
     case _ => new HashSet[T]
   }
@@ -16,7 +16,7 @@ object Test extends App {
   class B
   implicit val b: B = new B
 
-  inline def g = implied match {
+  inline def g = delegate match {
     case _: A => println("A")
     case _: B => println("B")
   }

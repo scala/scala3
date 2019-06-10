@@ -476,7 +476,7 @@ trait Kernel {
   def Match_apply(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match
   def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match
 
-  /** Tree representing a pattern match `implied match  { ... }` in the source code */
+  /** Tree representing a pattern match `delegate match  { ... }` in the source code */
   type ImpliedMatch <: Term
 
   def matchImplicitMatch(tree: Tree)(implicit ctx: Context): Option[ImpliedMatch]

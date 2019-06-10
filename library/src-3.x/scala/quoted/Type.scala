@@ -15,15 +15,15 @@ package quoted {
       def (tpe: Type[T]) show[T] given Toolbox: String = the[Toolbox].show(tpe.asInstanceOf[Type[Any]])
     }
 
-    implied UnitTag for Type[Unit] = new TaggedType[Unit]
-    implied BooleanTag for Type[Boolean] = new TaggedType[Boolean]
-    implied ByteTag for Type[Byte] = new TaggedType[Byte]
-    implied CharTag for Type[Char] = new TaggedType[Char]
-    implied ShortTag for Type[Short] = new TaggedType[Short]
-    implied IntTag for Type[Int] = new TaggedType[Int]
-    implied LongTag for Type[Long] = new TaggedType[Long]
-    implied FloatTag for Type[Float] = new TaggedType[Float]
-    implied DoubleTag for Type[Double] = new TaggedType[Double]
+    implicit val UnitTag: Type[Unit] = new TaggedType[Unit]
+    implicit val BooleanTag: Type[Boolean] = new TaggedType[Boolean]
+    implicit val ByteTag: Type[Byte] = new TaggedType[Byte]
+    implicit val CharTag: Type[Char] = new TaggedType[Char]
+    implicit val ShortTag: Type[Short] = new TaggedType[Short]
+    implicit val IntTag: Type[Int] = new TaggedType[Int]
+    implicit val LongTag: Type[Long] = new TaggedType[Long]
+    implicit val FloatTag: Type[Float] = new TaggedType[Float]
+    implicit val DoubleTag: Type[Double] = new TaggedType[Double]
   }
 
 }

@@ -4,7 +4,7 @@ object Test {
   implicit val a1: A = new A
   implicit val a2: A = new A
 
-  inline def f: Any = implied match {
+  inline def f: Any = delegate match {
     case _: A => ???  // error: ambiguous implicits
   }
 
