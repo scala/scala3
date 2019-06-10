@@ -15,16 +15,13 @@ object traversing {
 
   def relativePath(from: Representation, to: Representation) = {
     val offset = from match {
-      // case v: ValRepresentation if v.implicitlyAddedFrom.isDefined => 3
-      // case d: DefRepresentation if d.implicitlyAddedFrom.isDefined => 3
       case _: ValRepresentation | _: DefRepresentation => 1
       case _ => 0
     }
 
     "../" * (from.path.length - offset) +
     (to match {
-      case r: ClassRepresentation if r.isObject => (to.path :+ to.name + "$").mkString("", "/", ".md")
-      case r => (to.path :+ to.name).mkString("", "/", ".md")
+      case r => (to.path :+ to.name).mkString("/")
     })
   }
 

@@ -289,7 +289,7 @@ method: length
 ### linkingToDocMethodInUserDoc
 <pre><code class="language-scala" >def linkingToDocMethodInUserDoc: Nothing</pre></code>
 [example.level2.Documentation](../../../../example/level2.md#Documentation)
-example.level2.Documentation.valInsideDocObject
+[example.level2.Documentation$.valInsideDocObject](../../../../example/level2/Documentation$.md#valInsideDocObject)
 [example.level2.Documentation.abstractType](../../../../example/level2/Documentation.md#abstractType)
 
 ### map

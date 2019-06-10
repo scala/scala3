@@ -177,10 +177,10 @@ object HtmlParsers {
       case LinkToRepresentation(t: Representation) => t match {
         // Representation is a package member
         case e: Representation with Members =>
-          s"[${toMarkdown(target)}](${relativePath(t)})"
+          s"[${toMarkdown(target)}](${relativePath(t)}.md)"
         // Representation is a Val / Def
         case x => x.parentRepresentation.fold(toMarkdown(target)) { xpar =>
-          s"[${toMarkdown(target)}](${relativePath(xpar)}#${x.name})"
+          s"[${toMarkdown(target)}](${relativePath(xpar)}.md#${x.name})"
         }
       }
     }

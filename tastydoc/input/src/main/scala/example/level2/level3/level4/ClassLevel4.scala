@@ -6,7 +6,7 @@ sealed abstract class ClassLevel4[T, A <: Int, B >: String, -X, +Y]() extends Do
 
   /**
    * [[example.level2.Documentation]]
-   * [[example.level2.Documentation.valInsideDocObject]]
+   * [[example.level2.Documentation$.valInsideDocObject]]
    * [[example.level2.Documentation.abstractType]]
    */
   def linkingToDocMethodInUserDoc = ???
