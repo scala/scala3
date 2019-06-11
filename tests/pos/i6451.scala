@@ -1,6 +1,6 @@
 object Test {
 
-  type YZ = [Y[_]] => [Z[_]] => [T] => Y[Z[T]]
+  type YZ = [Y[_]] =>> [Z[_]] =>> [T] =>> Y[Z[T]]
 
   val r1: List[List[Int]] = ???
   def r2(): List[List[Int]] = ???

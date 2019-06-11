@@ -28,7 +28,7 @@ package scala.tasty.reflect
  *           |                             +- Lambda
  *           |                             +- If
  *           |                             +- Match
- *           |                             +- ImplicitMatch
+ *           |                             +- ImpliedMatch
  *           |                             +- Try
  *           |                             +- Return
  *           |                             +- Repeated
@@ -329,6 +329,7 @@ trait Kernel {
   def Select_name(self: Select)(implicit ctx: Context): String
   def Select_signature(self: Select)(implicit ctx: Context): Option[Signature]
 
+  def Select_apply(qualifier: Term, symbol: Symbol)(implicit ctx: Context): Select
   def Select_unique(qualifier: Term, name: String)(implicit ctx: Context): Select
   // TODO rename, this returns an Apply and not a Select
   def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(implicit ctx: Context): Apply
@@ -475,15 +476,15 @@ trait Kernel {
   def Match_apply(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match
   def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match
 
-  /** Tree representing a pattern match `implicit match  { ... }` in the source code */
-  type ImplicitMatch <: Term
+  /** Tree representing a pattern match `delegate match  { ... }` in the source code */
+  type ImpliedMatch <: Term
 
-  def matchImplicitMatch(tree: Tree)(implicit ctx: Context): Option[ImplicitMatch]
+  def matchImplicitMatch(tree: Tree)(implicit ctx: Context): Option[ImpliedMatch]
 
-  def ImplicitMatch_cases(self: ImplicitMatch)(implicit ctx: Context): List[CaseDef]
+  def ImplicitMatch_cases(self: ImpliedMatch)(implicit ctx: Context): List[CaseDef]
 
-  def ImplicitMatch_apply(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch
-  def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch
+  def ImplicitMatch_apply(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch
+  def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch
 
   /** Tree representing a tyr catch `try x catch { ... } finally { ... }` in the source code */
   type Try <: Term
@@ -864,6 +865,36 @@ trait Kernel {
 
   /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
   def Type_derivesFrom(self: Type)(cls: ClassDefSymbol)(implicit ctx: Context): Boolean
+
+  /** Is this type a function type?
+   *
+   *  @return true if the dealised type of `self` without refinement is `FunctionN[T1, T2, ..., Tn]`
+   *
+   *  @note The function
+   *
+   *     - returns true for `given Int => Int` and `erased Int => Int`
+   *     - returns false for `List[Int]`, despite that `List[Int] <:< Int => Int`.
+   */
+  def Type_isFunctionType(self: Type)(implicit ctx: Context): Boolean
+
+
+  /** Is this type an implicit function type?
+   *
+   *  @see `Type_isFunctionType`
+   */
+  def Type_isImplicitFunctionType(self: Type)(implicit ctx: Context): Boolean
+
+  /** Is this type an erased function type?
+   *
+   *  @see `Type_isFunctionType`
+   */
+  def Type_isErasedFunctionType(self: Type)(implicit ctx: Context): Boolean
+
+  /** Is this type a dependent function type?
+   *
+   *  @see `Type_isFunctionType`
+   */
+  def Type_isDependentFunctionType(self: Type)(implicit ctx: Context): Boolean
 
   /** A singleton type representing a known constant value */
   type ConstantType <: Type

@@ -2,3 +2,6 @@ config
 printing
 scanning
 config
+printing
+scanning
+scanning

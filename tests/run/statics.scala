@@ -35,6 +35,6 @@ object Test {
 }
 
 class WithLazies{
-  @volatile lazy val s = 1
+  lazy val s = 1
   //         98: getstatic     #30                 // Field WithLazies$.OFFSET$0:J
 }

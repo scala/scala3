@@ -3,6 +3,7 @@ package backend
 package jvm
 
 import scala.tools.asm
+import scala.annotation.threadUnsafe
 
 /**
  * This class mainly contains the method classBTypeFromSymbol, which extracts the necessary
@@ -30,14 +31,14 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
     coreBTypes.setBTypes(new CoreBTypes[this.type](this))
   }
 
-  protected lazy val classBTypeFromInternalNameMap = {
+  @threadUnsafe protected lazy val classBTypeFromInternalNameMap = {
     perRunCaches.recordCache(collection.concurrent.TrieMap.empty[String, ClassBType])
   }
 
   /**
    * Cache for the method classBTypeFromSymbol.
    */
-  private lazy val convertedClasses = perRunCaches.newMap[Symbol, ClassBType]()
+  @threadUnsafe private lazy val convertedClasses = perRunCaches.newMap[Symbol, ClassBType]()
 
   /**
    * The ClassBType for a class symbol `sym`.
@@ -222,7 +223,8 @@ class BTypesFromSymbols[I <: BackendInterface](val int: I) extends BTypes {
       if (sym.hasEnumFlag) ACC_ENUM else 0,
       if (sym.isVarargsMethod) ACC_VARARGS else 0,
       if (sym.isSynchronized) ACC_SYNCHRONIZED else 0,
-      if (sym.isDeprecated) asm.Opcodes.ACC_DEPRECATED else 0
+      if (sym.isDeprecated) asm.Opcodes.ACC_DEPRECATED else 0,
+      if (sym.isEnum) asm.Opcodes.ACC_ENUM else 0
     )
   }
 

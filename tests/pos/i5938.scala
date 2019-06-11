@@ -1,8 +1,8 @@
 trait Link[T, A]
 
-inline def link[T] = implicit match {
+inline def link[T] = delegate match {
   case _: Link[T, s] =>
-    implicit match {
+    delegate match {
       case stuff: s => stuff
     }
 }

@@ -18,16 +18,4 @@ object EQK {
           fa : G[Int]
       }
     }
-
-  def m2[F[_], G[_], A](fa: F[A], a: A, eq: EQ[F[A], G[Int]], eqk: EQK[F, G]): Int =
-    eqk match {
-      case ReflK() => eq match {
-        case Refl() =>
-          val r1: F[Int] = fa
-          val r2: G[A] = fa
-          val r3: F[Int] = r2
-          a
-      }
-    }
-
 }

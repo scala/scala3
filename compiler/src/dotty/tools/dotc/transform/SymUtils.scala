@@ -12,6 +12,8 @@ import StdNames._
 import NameKinds._
 import Flags._
 import Annotations._
+import ValueClasses.isDerivedValueClass
+import Decorators._
 
 import language.implicitConversions
 import scala.annotation.tailrec
@@ -52,6 +54,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isTypeTestOrCast(implicit ctx: Context): Boolean =
     isTypeCast || isTypeTest
 
+  def isThreadUnsafe(implicit ctx: Context): Boolean = self.hasAnnotation(defn.ThreadUnsafeAnnot)
+
   def isVolatile(implicit ctx: Context): Boolean = self.hasAnnotation(defn.VolatileAnnot)
 
   def isAnyOverride(implicit ctx: Context): Boolean = self.is(Override) || self.is(AbsOverride)
@@ -59,9 +63,59 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   def isSuperAccessor(implicit ctx: Context): Boolean = self.name.is(SuperAccessorName)
 
-  /** A type or term parameter or a term parameter accessor */
+  /** Is this a type or term parameter or a term parameter accessor? */
   def isParamOrAccessor(implicit ctx: Context): Boolean =
     self.is(Param) || self.is(ParamAccessor)
+
+  def derivesFromJavaEnum(implicit ctx: Context) =
+    self.is(Enum, butNot = Case) &&
+    self.info.parents.exists(p => p.typeSymbol == defn.JavaEnumClass)
+
+  /** Is this a case class for which a product mirror is generated?
+   *  Excluded are value classes, abstract classes and case classes with more than one
+   *  parameter section.
+   */
+  def whyNotGenericProduct(implicit ctx: Context): String =
+    if (!self.is(CaseClass)) "it is not a case class"
+    else if (self.is(Abstract)) "it is an abstract class"
+    else if (self.primaryConstructor.info.paramInfoss.length != 1) "it takes more than one parameter list"
+    else if (isDerivedValueClass(self)) "it is a value class"
+    else ""
+
+  def isGenericProduct(implicit ctx: Context): Boolean = whyNotGenericProduct.isEmpty
+
+  /** Is this a sealed class or trait for which a sum mirror is generated?
+   *  It must satisfy the following conditions:
+   *   - it has at least one child class or object
+   *   - none of its children are anonymous classes
+   *   - all of its children are addressable through a path from its companion object
+   *   - all of its children are generic products or singletons
+   */
+  def whyNotGenericSum(implicit ctx: Context): String =
+    if (!self.is(Sealed))
+      s"it is not a sealed ${if (self.is(Trait)) "trait" else "class"}"
+    else {
+      val children = self.children
+      val companion = self.linkedClass
+      def problem(child: Symbol) = {
+
+        def isAccessible(sym: Symbol): Boolean =
+          companion.isContainedIn(sym) || sym.is(Module) && isAccessible(sym.owner)
+
+        if (child == self) "it has anonymous or inaccessible subclasses"
+        else if (!isAccessible(child.owner)) i"its child $child is not accessible"
+        else if (!child.isClass) ""
+        else {
+          val s = child.whyNotGenericProduct
+          if (s.isEmpty) s
+          else i"its child $child is not a generic product because $s"
+        }
+      }
+      if (children.isEmpty) "it does not have subclasses"
+      else children.map(problem).find(!_.isEmpty).getOrElse("")
+    }
+
+  def isGenericSum(implicit ctx: Context): Boolean = whyNotGenericSum.isEmpty
 
   /** If this is a constructor, its owner: otherwise this. */
   final def skipConstructor(implicit ctx: Context): Symbol =
@@ -150,6 +204,10 @@ class SymUtils(val self: Symbol) extends AnyVal {
     else if (owner.is(Package)) false
     else owner.isLocal
   }
+
+  /** The typeRef with wildcard arguments for each type parameter */
+  def rawTypeRef(implicit ctx: Context) =
+    self.typeRef.appliedTo(self.typeParams.map(_ => TypeBounds.empty))
 
   /** Is symbol a quote operation? */
   def isQuote(implicit ctx: Context): Boolean =

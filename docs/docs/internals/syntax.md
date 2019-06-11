@@ -92,13 +92,14 @@ semi             ::=  ‘;’ |  nl {nl}
 ### Regular keywords
 
 ```
-abstract  case      catch     class     def       do        else      enum
-erased    extends   false     final     finally   for       given     if
-implicit  implied   import    lazy      match     new       null      object
+abstract  case      catch     class     def       delegate  do        else
+enum      export    extends   false     final     finally   for       given
+if        implicit  import    lazy      match     new       null      object
 package   private   protected override  return    super     sealed    then
 throw     trait     true      try       type      val       var       while
 with      yield
 :         =         <-        =>        <:        :>        #         @
+=>>
 ```
 
 ### Soft keywords
@@ -138,10 +139,13 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 
 ### Types
 ```ebnf
-Type              ::=  { ‘erased’ | ‘given’} FunArgTypes ‘=>’ Type              Function(ts, t)
-                    |  HkTypeParamClause ‘=>’ Type                              TypeLambda(ps, t)
+Type              ::=  FunType
+                    |  HkTypeParamClause ‘=>>’ Type                             TypeLambda(ps, t)
                     |  MatchType
                     |  InfixType
+FunType           ::=  ['given'] (MonoFunType | PolyFunType)
+MonoFunType       ::=  FunArgTypes ‘=>’ Type                                    Function(ts, t)
+PolyFunType       :: = HKTypeParamClause '=>' Type                              PolyFunction(ps, t)
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
                     |  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
@@ -194,6 +198,7 @@ Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl}
                     |  ‘throw’ Expr                                             Throw(expr)
                     |  ‘return’ [Expr]                                          Return(expr?)
                     |  ForExpr
+                    |  HkTypeParamClause ‘=>’ Expr                              PolyFunction(ts, expr)
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
                     |  Expr2
@@ -293,8 +298,8 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
                     |  {ClsParamClause} {GivenClsParamClause}
-ClsParamClause    ::=  [‘erased’] (‘(’ ClsParams ‘)’
-GivenClsParamClause::= ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | GivenTypes)
+ClsParamClause    ::=  ‘(’ ClsParams ‘)’
+GivenClsParamClause::= ‘given’ (‘(’ ClsParams ‘)’ | GivenTypes)
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
@@ -303,12 +308,12 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
                     |  {DefParamClause} {GivenParamClause}
-DefParamClause    ::=  [‘erased’] (‘(’ DefParams ‘)’
-GivenParamClause  ::=  ‘given’ [‘erased’] (‘(’ DefParams ‘)’ | GivenTypes)
+DefParamClause    ::=  ‘(’ DefParams ‘)’
+GivenParamClause  ::=  ‘given’ (‘(’ DefParams ‘)’ | GivenTypes)
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
 GivenTypes        ::=  AnnotType {‘,’ AnnotType}
-ClosureMods       ::=  { ‘implicit’ | ‘erased’ | ‘given’}
+ClosureMods       ::=  { ‘implicit’ | ‘given’}
 ```
 
 ### Bindings and Imports
@@ -319,24 +324,26 @@ Binding           ::=  (id | ‘_’) [‘:’ Type]                            
 Modifier          ::=  LocalModifier
                     |  AccessModifier
                     |  ‘override’
+                    |  ‘opaque’
 LocalModifier     ::=  ‘abstract’
                     |  ‘final’
                     |  ‘sealed’
                     |  ‘implicit’
                     |  ‘lazy’
-                    |  ‘opaque’
                     |  ‘inline’
-                    |  ‘erased’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
 
 Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                        Apply(tpe, args)
 
-Import            ::=  ‘import’ [‘implied’] ImportExpr {‘,’ ImportExpr}
+Import            ::=  ‘import’ [‘delegate’] ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  StableId ‘.’ (id | ‘_’ | ImportSelectors)                Import(expr, sels)
-ImportSelectors   ::=  ‘{’ {ImportSelector ‘,’} (ImportSelector | ‘_’) ‘}’
-ImportSelector    ::=  id [‘=>’ id | ‘=>’ ‘_’]                                  Ident(name), Pair(id, id)
-Export            ::=  ‘export’ [‘implied’] ImportExpr {‘,’ ImportExpr}
+ImportSelectors   ::=  ‘{’ {ImportSelector ‘,’} FinalSelector ‘}’
+FinalSelector     ::=  ImportSelector                                           Ident(name)
+                    |  ‘_’                                                      Pair(id, id)
+                    |  ‘for’ InfixType {‘,’ InfixType}                          TypeBoundsTree(EmptyTree, tpt)
+ImportSelector    ::=  id [‘=>’ id | ‘=>’ ‘_’]
+Export            ::=  ‘export’ [‘delegate’] ImportExpr {‘,’ ImportExpr}
 ```
 
 ### Declarations and Definitions
@@ -352,8 +359,7 @@ VarDcl            ::=  ids ‘:’ Type                                         
 DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  ‘(’ DefParam ‘)’ [nl] id
                        [DefTypeParamClause] DefParamClauses
-TypeDcl           ::=  id [TypeParamClause] (SubtypeBounds | ‘=’ Type)             TypeDefTree(_, name, tparams, bounds)
-                    |  id [TypeParamClause] <: Type = MatchType
+TypeDcl           ::=  id [TypeParamClause] SubtypeBounds [‘=’ Type]           TypeDefTree(_, name, tparams, bound
 
 Def               ::=  ‘val’ PatDef
                     |  ‘var’ VarDef
@@ -373,16 +379,15 @@ DefDef            ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr          
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
-                    |  ‘implied’ InstanceDef
+                    |  ‘delegate’ DelegateDef
                     |  Export
 ClassDef          ::=  id ClassConstr [Template]                                ClassDef(mods, name, tparams, templ)
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
-InstanceDef       ::=  [id] [DefTypeParamClause] InstanceBody
-InstanceParams    ::=  [DefTypeParamClause] {GivenParamClause}
-InstanceBody      ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
+DelegateDef       ::=  [id] [DefTypeParamClause] DelegateBody
+DelegateBody      ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
                     |  ‘for’ Type {GivenParamClause} ‘=’ Expr
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]

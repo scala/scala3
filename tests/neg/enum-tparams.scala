@@ -11,11 +11,11 @@ object Test {
   type Id[_]
 
   enum E[F[_], G[_]] {
-    case C1() extends E[[X] => X, Id]
-    case C2() extends E[[F] => F, Id]
-    case C3() extends E[[X] => { type Y = F[Int] }, Id]
-    case C4() extends E[[X] => { type F = Int }, Id]
-    case C5() extends E[[F] => G[Int], Id]
+    case C1() extends E[[X] =>> X, Id]
+    case C2() extends E[[F] =>> F, Id]
+    case C3() extends E[[X] =>> { type Y = F[Int] }, Id]
+    case C4() extends E[[X] =>> { type F = Int }, Id]
+    case C5() extends E[[F] =>> G[Int], Id]
   }
 
   Opt.S[Int](1) // OK

@@ -15,6 +15,7 @@ import reporting.diagnostic.messages._
 import reporting.trace
 import annotation.constructorOnly
 import printing.Formatting.hl
+import config.Printers
 
 import scala.annotation.internal.sharable
 
@@ -51,7 +52,7 @@ object desugar {
   private type VarInfo = (NameTree, Tree)
 
   /** Is `name` the name of a method that can be invalidated as a compiler-generated
-   *  case class method that clashes with a user-defined method?
+   *  case class method if it clashes with a user-defined method?
    */
   def isRetractableCaseClassMethodName(name: Name)(implicit ctx: Context): Boolean = name match {
     case nme.apply | nme.unapply | nme.unapplySeq | nme.copy => true
@@ -544,7 +545,7 @@ object desugar {
         yield syntheticProperty(nme.selectorName(i), caseParams(i).tpt,
           Select(This(EmptyTypeIdent), caseParams(i).name))
       }
-      def enumTagMeths = if (isEnumCase) enumTagMeth(CaseKind.Class)._1 :: Nil else Nil
+      def ordinalMeths = if (isEnumCase) ordinalMethLit(nextOrdinal(CaseKind.Class)._1) :: Nil else Nil
       def copyMeths = {
         val hasRepeatedParam = constrVparamss.exists(_.exists {
           case ValDef(_, tpt, _) => isRepeated(tpt)
@@ -581,7 +582,7 @@ object desugar {
       }
 
       if (isCaseClass)
-        productElemNameMeth :: copyMeths ::: enumTagMeths ::: productElemMeths
+        productElemNameMeth :: copyMeths ::: ordinalMeths ::: productElemMeths
       else Nil
     }
 
@@ -765,7 +766,7 @@ object desugar {
     }
 
     flatTree(cdef1 :: companions ::: implicitWrappers)
-  }
+  }.reporting(res => i"desugared: $res", Printers.desugar)
 
   /** Expand
    *
@@ -816,48 +817,6 @@ object desugar {
       Thicket(modul, classDef(cls).withSpan(mdef.span))
     }
   }
-
-  /** Expand
-   *
-   *    <mods> opaque type T = [Xs] => R
-   *
-   *  to
-   *
-   *    <mods> opaque type T = T.T
-   *    synthetic object T {
-   *      synthetic opaque type T >: [Xs] => R
-   *    }
-   *
-   *  The generated companion object will later (in Namer) be merged with the user-defined
-   *  companion object, and the synthetic opaque type member will go into the self type.
-   */
-  def opaqueAlias(tdef: TypeDef)(implicit ctx: Context): Tree =
-    if (lacksDefinition(tdef)) {
-      ctx.error(em"opaque type ${tdef.name} must be an alias type", tdef.sourcePos)
-      tdef.withFlags(tdef.mods.flags &~ Opaque)
-    }
-    else {
-      def completeForwarder(fwd: Tree) = tdef.rhs match {
-        case LambdaTypeTree(tparams, tpt) =>
-          val tparams1 =
-            for (tparam <- tparams)
-            yield tparam.withMods(tparam.mods | Synthetic)
-          lambdaAbstract(tparams1,
-            AppliedTypeTree(fwd, tparams.map(tparam => Ident(tparam.name))))
-        case _ =>
-          fwd
-      }
-      val moduleName = tdef.name.toTermName
-      val localRef = Select(Ident(moduleName), tdef.name)
-      localRef.pushAttachment(SuppressAccessCheck, ())
-      val aliasType = cpy.TypeDef(tdef)(rhs = completeForwarder(localRef)).withSpan(tdef.span.startPos)
-      val localType = tdef.withMods(Modifiers(Synthetic | Opaque).withPrivateWithin(tdef.name))
-
-      val companions = moduleDef(ModuleDef(
-        moduleName, Template(emptyConstructor, Nil, Nil, EmptyValDef, localType :: Nil))
-          .withFlags(Synthetic | Opaque))
-      Thicket(aliasType :: companions.toList)
-    }
 
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
@@ -1035,18 +994,50 @@ object desugar {
     Bind(name, Ident(nme.WILDCARD)).withSpan(tree.span)
   }
 
-  def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case tree: ValDef => valDef(tree)
-    case tree: TypeDef =>
-      if (tree.isClassDef) classDef(tree)
-      else if (tree.mods.is(Opaque, butNot = Synthetic)) opaqueAlias(tree)
-      else tree
-    case tree: DefDef =>
-      if (tree.name.isConstructorName) tree // was already handled by enclosing classDef
-      else defDef(tree)
-    case tree: ModuleDef => moduleDef(tree)
-    case tree: PatDef => patDef(tree)
+  /** The type of tests that check whether a MemberDef is OK for some flag.
+   *  The test succeeds if the partial function is defined and returns true.
+   */
+  type MemberDefTest = PartialFunction[MemberDef, Boolean]
+
+  val legalOpaque: MemberDefTest = {
+    case TypeDef(_, rhs) =>
+      def rhsOK(tree: Tree): Boolean = tree match {
+        case _: TypeBoundsTree | _: Template => false
+        case LambdaTypeTree(_, body) => rhsOK(body)
+        case _ => true
+      }
+      rhsOK(rhs)
   }
+
+  /** Check that modifiers are legal for the definition `tree`.
+   *  Right now, we only check for `opaque`. TODO: Move other modifier checks here.
+   */
+  def checkModifiers(tree: Tree)(implicit ctx: Context): Tree = tree match {
+    case tree: MemberDef =>
+      var tested: MemberDef = tree
+      def fail(msg: String) = ctx.error(msg, tree.sourcePos)
+      def checkApplicable(flag: FlagSet, test: MemberDefTest): Unit =
+        if (tested.mods.is(flag) && !test.applyOrElse(tree, (md: MemberDef) => false)) {
+          fail(i"modifier `$flag` is not allowed for this definition")
+          tested = tested.withMods(tested.mods.withoutFlags(flag))
+        }
+      checkApplicable(Opaque, legalOpaque)
+      tested
+    case _ =>
+      tree
+  }
+
+  def defTree(tree: Tree)(implicit ctx: Context): Tree =
+    checkModifiers(tree) match {
+      case tree: ValDef => valDef(tree)
+      case tree: TypeDef =>
+        if (tree.isClassDef) classDef(tree) else tree
+      case tree: DefDef =>
+        if (tree.name.isConstructorName) tree // was already handled by enclosing classDef
+        else defDef(tree)
+      case tree: ModuleDef => moduleDef(tree)
+      case tree: PatDef => patDef(tree)
+    }
 
   /**     { stats; <empty > }
    *  ==>
@@ -1418,6 +1409,41 @@ object desugar {
       }
     }
 
+    def makePolyFunction(targs: List[Tree], body: Tree): Tree = body match {
+      case  Function(vargs, res) =>
+        // TODO: Figure out if we need a `PolyFunctionWithMods` instead.
+        val mods = body match {
+          case body: FunctionWithMods => body.mods
+          case _ => untpd.EmptyModifiers
+        }
+        val polyFunctionTpt = ref(defn.PolyFunctionType)
+        val applyTParams = targs.asInstanceOf[List[TypeDef]]
+        if (ctx.mode.is(Mode.Type)) {
+          // Desugar [T_1, ..., T_M] -> (P_1, ..., P_N) => R
+          // Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
+
+          val applyVParams = vargs.zipWithIndex.map { case (p, n) =>
+            makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags)
+          }
+          RefinedTypeTree(polyFunctionTpt, List(
+            DefDef(nme.apply, applyTParams, List(applyVParams), res, EmptyTree)
+          ))
+        } else {
+          // Desugar [T_1, ..., T_M] -> (x_1: P_1, ..., x_N: P_N) => body
+          // Into    new scala.PolyFunction { def apply[T_1, ..., T_M](x_1: P_1, ..., x_N: P_N) = body }
+
+          val applyVParams = vargs.asInstanceOf[List[ValDef]]
+            .map(varg => varg.withAddedFlags(mods.flags | Param))
+            New(Template(emptyConstructor, List(polyFunctionTpt), Nil, EmptyValDef,
+              List(DefDef(nme.apply, applyTParams, List(applyVParams), TypeTree(), res))
+              ))
+        }
+      case _ =>
+        // may happen for erroneous input. An error will already have been reported.
+        assert(ctx.reporter.errorsReported)
+        EmptyTree
+    }
+
     // begin desugar
 
     // Special case for `Parens` desugaring: unlike all the desugarings below,
@@ -1430,6 +1456,8 @@ object desugar {
     }
 
     val desugared = tree match {
+      case PolyFunction(targs, body) =>
+        makePolyFunction(targs, body) orElse tree
       case SymbolLit(str) =>
         Literal(Constant(scala.Symbol(str)))
       case InterpolatedString(id, segments) =>

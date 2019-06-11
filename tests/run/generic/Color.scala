@@ -18,7 +18,7 @@ object Color {
   def values = $values.values
 
   private def $new(tag: Int, name: String) = new Color {
-    def enumTag = tag
+    def ordinal = tag
     override def toString = name
     $values.register(this)
   }
@@ -29,7 +29,7 @@ object Color {
 
   implicit val ColorShape: Color `shaped` EnumValue[Color] =
     new (Color `shaped` EnumValue[Color]) {
-      def toShape(x: Color) = EnumValue(x.enumTag)
+      def toShape(x: Color) = EnumValue(x.ordinal)
       def fromShape(x: EnumValue[Color]) = Color.valueOf(x.tag)
     }
 }

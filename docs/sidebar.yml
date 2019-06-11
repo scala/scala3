@@ -43,13 +43,13 @@ sidebar:
           subsection:
             - title: Overview
               url: docs/reference/contextual/motivation.html
-            - title: Implied Instances
+            - title: Delegates
               url: docs/reference/contextual/instance-defs.html
-            - title: Inferable Parameters
+            - title: Given Clauses
               url: docs/reference/contextual/inferable-params.html
             - title: Context Bounds
               url: docs/reference/contextual/context-bounds.html
-            - title: Implied Imports
+            - title: Delegate Imports
               url: docs/reference/contextual/import-implied.html
             - title: Extension Methods
               url: docs/reference/contextual/extension-methods.html
@@ -59,14 +59,30 @@ sidebar:
               url: docs/reference/contextual/derivation.html
             - title: Multiversal Equality
               url: docs/reference/contextual/multiversal-equality.html
-            - title: Context Queries
+            - title: Implicit Function Types
               url: docs/reference/contextual/query-types.html
             - title: Implicit Conversions
               url: docs/reference/contextual/conversions.html
-            - title: Inferable By-Name Parameters
+            - title: Implicit By-Name Parameters
               url: docs/reference/contextual/inferable-by-name-parameters.html
             - title: Relationship with Scala 2 Implicits
               url: docs/reference/contextual/relationship-implicits.html
+        - title: Metaprogramming
+          subsection:
+            - title: Overview
+              url: docs/reference/metaprogramming/toc.html
+            - title: Inline
+              url: docs/reference/metaprogramming/inline.html
+            - title: Macros
+              url: docs/reference/metaprogramming/macros.html
+            - title: Staging
+              url: docs/reference/metaprogramming/staging.html
+            - title: Erased Terms
+              url: docs/reference/metaprogramming/erased-terms.html
+            - title: TASTy Reflection
+              url: docs/reference/metaprogramming/tasty-reflect.html
+            - title: TASTy Inspection
+              url: docs/reference/metaprogramming/tasty-inspect.html
         - title: Other New Features
           subsection:
             - title: Trait Parameters
@@ -75,28 +91,24 @@ sidebar:
               url: docs/reference/other-new-features/creator-applications.html
             - title: Export Clauses
               url: docs/reference/other-new-features/export.html
-            - title: Inlining by Rewriting
-              url: docs/reference/other-new-features/inline.html
-            - title: Meta Programming
-              url: docs/reference/other-new-features/principled-meta-programming.html
-            - title: TASTy Reflect
-              url: docs/reference/other-new-features/tasty-reflect.html
             - title: Opaque Type Aliases
               url: docs/reference/other-new-features/opaques.html
             - title: Parameter Untupling
               url: docs/reference/other-new-features/parameter-untupling.html
-            - title: Erased Terms
-              url: docs/reference/other-new-features/erased-terms.html
             - title: Kind Polymorphism
               url: docs/reference/other-new-features/kind-polymorphism.html
+            - title: Tupled Function
+              url: docs/reference/other-new-features/tupled-function.html
+            - title: threadUnsafe Annotation
+              url: docs/reference/other-new-features/threadUnsafe-annotation.html
         - title: Other Changed Features
           subsection:
-            - title: Volatile Lazy Vals
-              url: docs/reference/changed-features/lazy-vals.html
             - title: Structural Types
               url: docs/reference/changed-features/structural-types.html
             - title: Operators
               url: docs/reference/changed-features/operators.html
+            - title: Wildcard Types
+              url: docs/reference/changed-features/wildcards.html
             - title: Type Checking
               url: docs/reference/changed-features/type-checking.html
             - title: Type Inference
@@ -117,6 +129,8 @@ sidebar:
               url: docs/reference/changed-features/eta-expansion.html
             - title: Compiler Plugins
               url: docs/reference/changed-features/compiler-plugins.html
+            - title: Lazy Vals initialization
+              url: docs/reference/changed-features/lazy-vals-init.html
         - title: Dropped Features
           subsection:
             - title: DelayedInit
@@ -145,6 +159,8 @@ sidebar:
               url: docs/reference/dropped-features/auto-apply.html
             - title: Weak Conformance
               url: docs/reference/dropped-features/weak-conformance.html
+            - title: Nonlocal Returns
+              url: docs/reference/dropped-features/nonlocal-returns.html
     - title: Contributing
       subsection:
         - title: Getting Started
@@ -183,6 +199,8 @@ sidebar:
           url: docs/internals/type-system.html
         - title: "Dotty Internals 1: Trees & Symbols (Meeting Notes)"
           url: docs/internals/dotty-internals-1-notes.html
+        - title: Debug Macros
+          url: docs/internals/debug-macros.html
     - title: Resources
       subsection:
         - title: Talks

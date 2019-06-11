@@ -2145,6 +2145,7 @@ object messages {
   case class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(implicit ctx: Context) extends Message(DoubleDefinitionID) {
     val kind: String = "Duplicate Symbol"
     val msg: String = {
+      def nameAnd = if (decl.name != previousDecl.name) " name and" else ""
       val details = if (decl.isRealMethod && previousDecl.isRealMethod) {
         // compare the signatures when both symbols represent methods
         decl.signature.matchDegree(previousDecl.signature) match {
@@ -2153,7 +2154,7 @@ object messages {
           case Signature.ParamMatch =>
             "have matching parameter types."
           case Signature.FullMatch =>
-            "have the same type after erasure."
+            i"have the same$nameAnd type after erasure."
         }
       } else ""
       def symLocation(sym: Symbol) = {

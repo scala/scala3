@@ -28,19 +28,48 @@ import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
 
+object MyScalaJSPlugin extends AutoPlugin {
+  import Build._
+
+  override def requires: Plugins = ScalaJSPlugin
+
+  override def projectSettings: Seq[Setting[_]] = Def.settings(
+    commonBootstrappedSettings,
+
+    /* Remove the Scala.js compiler plugin for scalac, and enable the
+     * Scala.js back-end of dotty instead.
+     */
+    libraryDependencies := {
+      val deps = libraryDependencies.value
+      deps.filterNot(_.name.startsWith("scalajs-compiler")).map(_.withDottyCompat(scalaVersion.value))
+    },
+    scalacOptions += "-scalajs",
+
+    // Replace the JVM JUnit dependency by the Scala.js one
+    libraryDependencies ~= {
+      _.filter(!_.name.startsWith("junit-interface"))
+    },
+    libraryDependencies +=
+      ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion  % "test").withDottyCompat(scalaVersion.value),
+
+    // Typecheck the Scala.js IR found on the classpath
+    scalaJSLinkerConfig ~= (_.withCheckIR(true)),
+  )
+}
+
 object Build {
   val scalacVersion = "2.12.8"
-  val referenceVersion = "0.14.0-RC1"
+  val referenceVersion = "0.16.0-RC3"
 
-  val baseVersion = "0.15.0"
-  val baseSbtDottyVersion = "0.3.2"
+  val baseVersion = "0.17.0"
+  val baseSbtDottyVersion = "0.3.4"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
   // TODO: Have the vscode extension fetch these numbers from the Internet
   // instead of hardcoding them ?
-  val publishedDottyVersion = "0.13.0-RC1"
-  val publishedSbtDottyVersion = "0.3.1"
+  val publishedDottyVersion = referenceVersion
+  val publishedSbtDottyVersion = "0.3.3"
 
 
   val dottyOrganization = "ch.epfl.lamp"
@@ -100,6 +129,8 @@ object Build {
   val ideTestsCompilerVersion = taskKey[String]("Compiler version to use in IDE tests")
   val ideTestsCompilerArguments = taskKey[Seq[String]]("Compiler arguments to use in IDE tests")
   val ideTestsDependencyClasspath = taskKey[Seq[File]]("Dependency classpath to use in IDE tests")
+
+  val fetchScalaJSSource = taskKey[File]("Fetch the sources of Scala.js")
 
   lazy val SourceDeps = config("sourcedeps")
 
@@ -263,7 +294,9 @@ object Build {
         dottyCompiler,
         allJars
       )
-    }
+    },
+    // sbt-dotty defines `scalaInstance in doc` so we need to override it manually
+    scalaInstance in doc := scalaInstance.value,
   )
 
   lazy val commonBenchmarkSettings = Seq(
@@ -419,8 +452,6 @@ object Build {
       // get libraries onboard
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "6.0.0-scala-1", // used by the backend
-        // FIXME: Not needed, but should be on the compiler CP
-        ("org.scala-lang.modules" %% "scala-xml" % "1.1.0").withDottyCompat(scalaVersion.value),
         "org.scala-lang" % "scala-library" % scalacVersion % "test",
         Dependencies.`compiler-interface`,
         "org.jline" % "jline-reader" % "3.9.0",   // used by the REPL
@@ -484,7 +515,6 @@ object Build {
           "-Ddotty.tests.classes.compilerInterface=" + findLib(attList, "compiler-interface"),
           "-Ddotty.tests.classes.scalaLibrary=" + findLib(attList, "scala-library-"),
           "-Ddotty.tests.classes.scalaAsm=" + findLib(attList, "scala-asm"),
-          "-Ddotty.tests.classes.scalaXml=" + findLib(attList, "scala-xml"),
           "-Ddotty.tests.classes.jlineTerminal=" + findLib(attList, "jline-terminal"),
           "-Ddotty.tests.classes.jlineReader=" + findLib(attList, "jline-reader")
         )
@@ -712,6 +742,23 @@ object Build {
     case Bootstrapped => `dotty-library-bootstrapped`
   }
 
+  /** The dotty standard library compiled with the Scala.js back-end, to produce
+   *  the corresponding .sjsir files.
+   *
+   *  This artifact must be on the classpath on every "Dotty.js" project.
+   *
+   *  Currently, only a very small fraction of the dotty library is actually
+   *  included in this project, and hence available to Dotty.js projects. More
+   *  will be added in the future as things are confirmed to be supported.
+   */
+  lazy val `dotty-library-bootstrappedJS`: Project = project.in(file("library-js")).
+    asDottyLibrary(Bootstrapped).
+    enablePlugins(MyScalaJSPlugin).
+    settings(
+      unmanagedSourceDirectories in Compile :=
+        (unmanagedSourceDirectories in (`dotty-library-bootstrapped`, Compile)).value,
+    )
+
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge/src")).
     // We cannot depend on any bootstrapped project to compile the bridge, since the
     // bridge is needed to compile these projects.
@@ -817,36 +864,102 @@ object Build {
    *  useful, as that would not provide the linker and JS runners.
    */
   lazy val sjsSandbox = project.in(file("sandbox/scalajs")).
-    enablePlugins(ScalaJSPlugin).
-    dependsOn(dottyLibrary(Bootstrapped)).
-    settings(commonBootstrappedSettings).
+    enablePlugins(MyScalaJSPlugin).
+    dependsOn(`dotty-library-bootstrappedJS`).
     settings(
-      /* Remove the Scala.js compiler plugin for scalac, and enable the
-       * Scala.js back-end of dotty instead.
-       */
-      libraryDependencies := {
-        val deps = libraryDependencies.value
-        deps.filterNot(_.name.startsWith("scalajs-compiler")).map(_.withDottyCompat(scalaVersion.value))
-      },
-      scalacOptions += "-scalajs",
-
-      // Replace the JVM JUnit dependency by the Scala.js one
-      libraryDependencies ~= {
-        _.filter(!_.name.startsWith("junit-interface"))
-      },
-      libraryDependencies +=
-        ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion  % "test").withDottyCompat(scalaVersion.value),
-
-      // The main class cannot be found automatically due to the empty inc.Analysis
-      mainClass in Compile := Some("hello.HelloWorld"),
-
       scalaJSUseMainModuleInitializer := true,
+    )
 
-      /* Debug-friendly Scala.js optimizer options.
-       * In particular, typecheck the Scala.js IR found on the classpath.
-       */
-      scalaJSLinkerConfig ~= {
-        _.withCheckIR(true).withParallel(false)
+  /** Scala.js test suite.
+   *
+   *  This project downloads the sources of the upstream Scala.js test suite,
+   *  and tests them with the dotty Scala.js back-end. Currently, only a very
+   *  small fraction of the upstream test suite is actually compiled and run.
+   *  It will grow in the future, as more stuff is confirmed to be supported.
+   */
+  lazy val sjsJUnitTests = project.in(file("tests/sjs-junit")).
+    enablePlugins(MyScalaJSPlugin).
+    dependsOn(`dotty-library-bootstrappedJS`).
+    settings(
+      scalacOptions --= Seq("-Xfatal-warnings", "-deprecation"),
+
+      sourceDirectory in fetchScalaJSSource := target.value / s"scala-js-src-$scalaJSVersion",
+
+      fetchScalaJSSource := {
+        import org.eclipse.jgit.api._
+
+        val s = streams.value
+        val ver = scalaJSVersion
+        val trgDir = (sourceDirectory in fetchScalaJSSource).value
+
+        if (!trgDir.exists) {
+          s.log.info(s"Fetching Scala.js source version $ver")
+          IO.createDirectory(trgDir)
+          new CloneCommand()
+            .setDirectory(trgDir)
+            .setURI("https://github.com/scala-js/scala-js.git")
+            .call()
+        }
+
+        // Checkout proper ref. We do this anyway so we fail if something is wrong
+        val git = Git.open(trgDir)
+        s.log.info(s"Checking out Scala.js source version $ver")
+        git.checkout().setName(s"v$ver").call()
+
+        trgDir
+      },
+
+      // We need JUnit in the Compile configuration
+      libraryDependencies +=
+        ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion).withDottyCompat(scalaVersion.value),
+
+      sourceGenerators in Compile += Def.task {
+        import org.scalajs.linker.CheckedBehavior
+
+        val stage = scalaJSStage.value
+
+        val linkerConfig = stage match {
+          case FastOptStage => (scalaJSLinkerConfig in (Compile, fastOptJS)).value
+          case FullOptStage => (scalaJSLinkerConfig in (Compile, fullOptJS)).value
+        }
+
+        val moduleKind = linkerConfig.moduleKind
+        val sems = linkerConfig.semantics
+
+        ConstantHolderGenerator.generate(
+            (sourceManaged in Compile).value,
+            "org.scalajs.testsuite.utils.BuildInfo",
+            "scalaVersion" -> scalaVersion.value,
+            "hasSourceMaps" -> false, //MyScalaJSPlugin.wantSourceMaps.value,
+            "isNoModule" -> (moduleKind == ModuleKind.NoModule),
+            "isESModule" -> (moduleKind == ModuleKind.ESModule),
+            "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
+            "isFullOpt" -> (stage == FullOptStage),
+            "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
+            "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
+            "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
+            "strictFloats" -> sems.strictFloats,
+            "productionMode" -> sems.productionMode,
+            "es2015" -> linkerConfig.esFeatures.useECMAScript2015,
+        )
+      }.taskValue,
+
+      managedSources in Compile ++= {
+        val dir = fetchScalaJSSource.value / "test-suite/js/src/main/scala"
+        val filter = (
+          ("*.scala": FileFilter)
+            -- "Typechecking*.scala"
+            -- "NonNativeTypeTestSeparateRun.scala"
+        )
+        (dir ** filter).get
+      },
+
+      managedSources in Test ++= {
+        val dir = fetchScalaJSSource.value / "test-suite"
+        (
+          (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** "IntTest.scala").get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
+        )
       }
     )
 

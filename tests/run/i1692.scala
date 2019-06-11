@@ -8,7 +8,7 @@ class LazyNullable(a: => Int) {
   lazy val l1 = b // null out b
 
   private[this] val c = "C"
-  @volatile lazy val l2 = c // null out c
+  lazy val l2 = c // null out c
 
   private[this] val d = "D"
   lazy val l3 = d + d // null out d (Scalac require single use?)

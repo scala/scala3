@@ -16,6 +16,7 @@ import scala.annotation.switch
 
 class PlainPrinter(_ctx: Context) extends Printer {
   protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
+  protected[this] def printDebug = ctx.settings.YprintDebug.value
 
   private[this] var openRecs: List[RecType] = Nil
 
@@ -147,7 +148,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TypeParamRef =>
         ParamRefNameString(tp) ~ lambdaHash(tp.binder)
       case tp: SingletonType =>
-        toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
+        toTextSingleton(tp)
       case AppliedType(tycon, args) =>
         (toTextLocal(tycon) ~ "[" ~ argsText(args) ~ "]").close
       case tp: RefinedType =>
@@ -204,13 +205,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
         if (tp.isInstantiated)
-          toTextLocal(tp.instanceOpt) ~ (Str("^") provided ctx.settings.YprintDebug.value)
+          toTextLocal(tp.instanceOpt) ~ (Str("^") provided printDebug)
         else {
           val constr = ctx.typerState.constraint
           val bounds =
             if (constr.contains(tp)) ctx.addMode(Mode.Printing).typeComparer.fullBounds(tp.origin)
             else TypeBounds.empty
-          if (bounds.isTypeAlias) toText(bounds.lo) ~ (Str("^") provided ctx.settings.YprintDebug.value)
+          if (bounds.isTypeAlias) toText(bounds.lo) ~ (Str("^") provided printDebug)
           else if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
           else toText(tp.origin)
         }
@@ -225,6 +226,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         tp.fallbackToText(this)
     }
   }.close
+
+  def toTextSingleton(tp: SingletonType): Text =
+    toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
 
   protected def paramsText(tp: LambdaType): Text = {
     def paramText(name: Name, tp: Type) = toText(name) ~ toTextRHS(tp)
@@ -399,9 +403,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else ""
   }
 
+  protected def privateWithinString(sym: Symbol): String =
+  	if (sym.exists && sym.privateWithin.exists)
+      nameString(sym.privateWithin.name.stripModuleClassSuffix)
+    else ""
+
   /** String representation of symbol's flags */
-  protected def toTextFlags(sym: Symbol): Text =
-    Text(sym.flagsUNSAFE.flagStrings map stringToText, " ")
+  protected def toTextFlags(sym: Symbol): Text = toTextFlags(sym, sym.flagsUNSAFE)
+
+  protected def toTextFlags(sym: Symbol, flags: FlagSet): Text =
+    Text(flags.flagStrings(privateWithinString(sym)).map(flag => stringToText(keywordStr(flag))), " ")
 
   /** String representation of symbol's variance or "" if not applicable */
   protected def varianceString(sym: Symbol): String = varianceString(sym.variance)
@@ -425,7 +436,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toText(sym: Symbol): Text =
     (kindString(sym) ~~ {
       if (sym.isAnonymousClass) toTextParents(sym.info.parents) ~~ "{...}"
-      else if (hasMeaninglessName(sym)) simpleNameString(sym.owner) + idString(sym)
+      else if (hasMeaninglessName(sym) && !printDebug) simpleNameString(sym.owner) + idString(sym)
       else nameString(sym)
     }).close
 
@@ -507,7 +518,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       else
         Text()
 
-    nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.sourcePos.toString) provided ctx.settings.YprintPos.value)
+    nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.sourcePos.toString) provided printDebug)
   }.close // todo: override in refined printer
 
   def toText(pos: SourcePosition): Text = {
@@ -547,7 +558,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     val saved = maxSummarized
     maxSummarized = ctx.base.toTextRecursions + depth
     try op
-    finally maxSummarized = depth
+    finally maxSummarized = saved
   }
 
   def summarized[T](op: => T): T = summarized(summarizeDepth)(op)

@@ -25,17 +25,17 @@ These new constructs directly model core features of DOT, higher-kinded types, a
  - [Union types](https://dotty.epfl.ch/docs/reference/new-types/union-types.html),
  - [Type lambdas](https://dotty.epfl.ch/docs/reference/new-types/type-lambdas.html),
  replacing encodings using structural types and type projection.
- - [Context Queries](https://dotty.epfl.ch/docs/reference/contextual/query-types.html)
-  (_aka_ implicit function types) offering abstraction over inferable parameters.
+ - [Implicit Function Types](https://dotty.epfl.ch/docs/reference/contextual/query-types.html)
+ offering abstraction over implicit parameters.
 
 ## Simplifications
 
 These constructs replace existing constructs with the aim of making the language safer and simpler to use, and to promote uniformity in code style.
 
  - [Trait Parameters](https://dotty.epfl.ch/docs/reference/other-new-features/trait-parameters.html) replace [early initializers](https://dotty.epfl.ch/docs/reference/dropped-features/early-initializers.html) with a more generally useful construct.
- - [Implied Instances](https://dotty.epfl.ch/docs/reference/contextual/instance-defs.html)
+ - [Delegates](https://dotty.epfl.ch/docs/reference/contextual/instance-defs.html)
    replace implicit objects and defs, focussing on intent over mechanism.
- - [Inferable parameters](https://dotty.epfl.ch/docs/reference/contextual/inferable-params.html) replace implicit parameters, avoiding their ambiguities.
+ - [Given Clauses](https://dotty.epfl.ch/docs/reference/contextual/inferable-params.html) replace implicit parameters, avoiding their ambiguities.
  - [Extension Methods](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html) replace implicit classes with a clearer and simpler mechanism.
  - [Opaque Type Aliases](https://dotty.epfl.ch/docs/reference/other-new-features/opaques.html) replace most uses
    of value classes while guaranteeing absence of boxing.
@@ -50,14 +50,15 @@ These constructs replace existing constructs with the aim of making the language
 
 With the exception of early initializers and old-style vararg patterns, all superseded constructs continue to be available in Scala 3.0. The plan is to deprecate and phase them out later.
 
-Value classes (superseded by opaque type aliases) are a special case. There are currently no deprecation plans for value classes, since we might want to bring them back in a more general form if they are supported natively by the JVM as is planned by project Valhalla.
+Value classes (superseded by opaque type aliases) ar
+e a special case. There are currently no deprecation plans for value classes, since we might want to bring them back in a more general form if they are supported natively by the JVM as is planned by project Valhalla.
 
 ## Restrictions
 
 These constructs are restricted to make the language safer.
 
  - [Implicit Conversions](https://dotty.epfl.ch/docs/reference/contextual/conversions.html): there is only one way to define implicit conversions instead of many, and potentially surprising implicit conversions require a language import.
- - [Implied Imports](https://dotty.epfl.ch/docs/reference/contextual/import-implied.html): implicits now require a special form of import, to make the import clearly visible.
+ - [Delegate Imports](https://dotty.epfl.ch/docs/reference/contextual/import-implied.html): implicits now require a special form of import, to make the import clearly visible.
  - [Type Projection](https://dotty.epfl.ch/docs/reference/dropped-features/type-projection.html): only classes can be used as prefix `C` of a type projection `C#A`. Type projection on abstract types is no longer supported since it is unsound.
  - [Multiversal Equality](https://dotty.epfl.ch/docs/reference/contextual/multiversal-equality.html) implements an "opt-in" scheme to rule out nonsensical comparisons with `==` and `!=`.
  - [@infix and @alpha](https://github.com/lampepfl/dotty/pull/5975)
@@ -121,12 +122,12 @@ It's worth noting that macros were never included in the Scala 2 language specif
 To enable porting most uses of macros, we are experimenting with the advanced language constructs listed below. These designs are more provisional than the rest of the proposed language constructs for Scala 3.0. There might still be some changes until the final release. Stabilizing the feature set needed for meta programming is our first priority.
 
 - [Match Types](https://dotty.epfl.ch/docs/reference/new-types/match-types.html) allow computation on types.
-- [Inline](https://dotty.epfl.ch/docs/reference/other-new-features/inline.html) provides
+- [Inline](https://dotty.epfl.ch/docs/reference/metaprogramming/inline.html) provides
 by itself a straightforward implementation of some simple macros and is at the same time an essential building block for the implementation of complex macros.
-- [Quotes and Splices](https://dotty.epfl.ch/docs/reference/other-new-features/principled-meta-programming.html) provide a principled way to express macros and staging with a unified set of abstractions.
+- [Quotes and Splices](https://dotty.epfl.ch/docs/reference/metaprogramming/macros.html) provide a principled way to express macros and staging with a unified set of abstractions.
 - [Typeclass derivation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html) provides an in-language implementation of the `Gen` macro in Shapeless and other foundational libraries. The new implementation is more robust, efficient and easier to use than the macro.
 - [Implicit by-name parameters](https://dotty.epfl.ch/docs/reference/contextual/inferable-by-name-parameters.html) provide a more robust in-language implementation of the `Lazy` macro in Shapeless.
-- [Erased Terms](https://dotty.epfl.ch/docs/reference/other-new-features/erased-terms.html) provide a general mechanism for compile-time-only computations.
+- [Erased Terms](https://dotty.epfl.ch/docs/reference/metaprogramming/erased-terms.html) provide a general mechanism for compile-time-only computations.
 
 ## See Also
 

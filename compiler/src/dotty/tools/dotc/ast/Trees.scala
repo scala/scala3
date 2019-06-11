@@ -331,6 +331,7 @@ object Trees {
     }
 
     def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(untpd.Modifiers(flags))
+    def withAddedFlags(flags: FlagSet): ThisTree[Untyped] = withMods(rawMods | flags)
 
     def setComment(comment: Option[Comment]): this.type = {
       comment.map(putAttachment(DocComment, _))
@@ -817,6 +818,8 @@ object Trees {
     extends ProxyTree[T] {
     type ThisTree[-T >: Untyped] = Annotated[T]
     def forwardTo: Tree[T] = arg
+    override def disableOverlapChecks = true
+      // disable overlaps checks since the WithBounds annotation swaps type and annotation.
   }
 
   trait WithoutTypeOrPos[-T >: Untyped] extends Tree[T] {

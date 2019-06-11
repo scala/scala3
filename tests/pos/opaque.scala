@@ -13,15 +13,15 @@ object opaquetypes {
     // This is the first way to unlift the logarithm type
     def exponent(l: Logarithm): Double = l
 
-    // Extension methods define opaque types' public APIs
-    implicit class LogarithmOps(val `this`: Logarithm) extends AnyVal {
-      // This is the second way to unlift the logarithm type
-      def toDouble: Double = math.exp(`this`)
-      def +(that: Logarithm): Logarithm = Logarithm(math.exp(`this`) + math.exp(that))
-      def *(that: Logarithm): Logarithm = apply(`this` + that)
-    }
-
     assert(exponent(LL) == 1.0)
+  }
+
+  // Extension methods define opaque types' public APIs
+  implicit class LogarithmOps(val `this`: Logarithm) extends AnyVal {
+    // This is the second way to unlift the logarithm type
+    def toDouble: Double = math.exp(`this`)
+    def +(that: Logarithm): Logarithm = Logarithm(math.exp(`this`) + math.exp(that))
+    def *(that: Logarithm): Logarithm = Logarithm(`this` + that)
   }
 
   val LL: Logarithm = Logarithm(1)

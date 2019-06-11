@@ -720,9 +720,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     /** Reduce an inline match
      *   @param     mtch          the match tree
      *   @param     scrutinee     the scrutinee expression, assumed to be pure, or
-     *                            EmptyTree for an implicit match
+     *                            EmptyTree for a delegate match
      *   @param     scrutType     its fully defined type, or
-     *                            ImplicitScrutineeTypeRef for an implicit match
+     *                            ImplicitScrutineeTypeRef for a delegate match
      *   @param     typer         The current inline typer
      *   @return    optionally, if match can be reduced to a matching case: A pair of
      *              bindings for all pattern-bound variables and the RHS of the case.
@@ -916,7 +916,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           }
 
         if (!isImplicit) caseBindingMap += ((NoSymbol, scrutineeBinding))
-        val gadtCtx = ctx.fresh.setFreshGADTBounds.addMode(Mode.GADTflexible)
+        val gadtCtx = ctx.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
         if (reducePattern(caseBindingMap, scrutineeSym.termRef, cdef.pat)(gadtCtx)) {
           val (caseBindings, from, to) = substBindings(caseBindingMap.toList, mutable.ListBuffer(), Nil, Nil)
           val guardOK = cdef.guard.isEmpty || {
@@ -1036,10 +1036,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"
             val msg =
               if (tree.selector.isEmpty)
-                em"""cannot reduce implicit match with
+                em"""cannot reduce delegate match with
                    | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
               else
-                em"""cannot reduce inline match with
+                em"""cannot reduce delegate match with
                     | scrutinee:  $sel : ${selType}
                     | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
             errorTree(tree, msg)

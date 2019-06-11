@@ -243,6 +243,8 @@ object Denotations {
      */
     def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation
 
+    override def filterWithPredicate(p: SingleDenotation => Boolean): Denotation
+
     /** If this is a SingleDenotation, return it, otherwise throw a TypeError */
     def checkUnique(implicit ctx: Context): SingleDenotation = suchThat(alwaysTrue)
 
@@ -812,8 +814,11 @@ object Denotations {
     def invalidateInheritedInfo(): Unit = ()
 
     private def updateValidity()(implicit ctx: Context): this.type = {
-      assert(ctx.runId >= validFor.runId || ctx.settings.YtestPickler.value, // mixing test pickler with debug printing can travel back in time
-          s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
+      assert(
+        ctx.runId >= validFor.runId ||
+        ctx.settings.YtestPickler.value || // mixing test pickler with debug printing can travel back in time
+        symbol.is(Permanent),              // Permanent symbols are valid in all runIds
+        s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
       var d: SingleDenotation = this
       do {
         d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
@@ -1253,6 +1258,8 @@ object Denotations {
         else sd1
       else sd2
     }
+    override def filterWithPredicate(p: SingleDenotation => Boolean): Denotation =
+      derivedUnionDenotation(denot1.filterWithPredicate(p), denot2.filterWithPredicate(p))
     def hasAltWith(p: SingleDenotation => Boolean): Boolean =
       denot1.hasAltWith(p) || denot2.hasAltWith(p)
     def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation = {

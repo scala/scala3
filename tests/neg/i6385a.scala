@@ -7,5 +7,5 @@ object Test {
   def f[F[_]](x: Box[F]) = ???
   def db: Box[D] = ???
   def cb: Box[C] = db  // error
-  f[[X] => C[X]](db)   // error
+  f[[X] =>> C[X]](db)   // error
 }

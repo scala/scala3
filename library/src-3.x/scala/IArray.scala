@@ -6,24 +6,24 @@ import reflect.ClassTag
  */
 opaque type IArray[+T] = Array[_ <: T]
 
+/** Defines extension methods for immutable arrays */
+implicit object arrayOps {
+
+  /** The selection operation on an immutable array.
+    *
+    *  @param arr the immutable array
+    *  @param n   the index of the element to select
+    *  @return    the element of the array at the given index
+    */
+  inline def (arr: IArray[T]) apply[T] (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
+
+  /** The number of elements in an immutable array
+    *  @param arr  the immutable array
+    */
+  inline def (arr: IArray[T]) length[T] : Int = arr.asInstanceOf[Array[T]].length
+}
+
 object IArray {
-
-  /** Defines extension methods for immutable arrays */
-  implied arrayOps {
-
-    /** The selection operation on an immutable array.
-     *
-     *  @param arr the immutable array
-     *  @param n   the index of the element to select
-     *  @return    the element of the array at the given index
-     */
-    inline def (arr: IArray[T]) apply[T] (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
-
-    /** The number of elements in an immutable array
-     *  @param arr  the immutable array
-     */
-    inline def (arr: IArray[T]) length[T] : Int = arr.asInstanceOf[Array[T]].length
-  }
 
   /** An immutable array of length 0.
    */

@@ -509,12 +509,7 @@ class TreePickler(pickler: TastyPickler) {
         case tree: Template =>
           registerDef(tree.symbol)
           writeByte(TEMPLATE)
-          val (params, rest) = tree.body partition {
-            case stat: TypeDef => stat.symbol is Flags.Param
-            case stat: ValOrDefDef =>
-              stat.symbol.is(Flags.ParamAccessor) && !stat.symbol.isSetter
-            case _ => false
-          }
+          val (params, rest) = decomposeTemplateBody(tree.body)
           withLength {
             pickleParams(params)
             tree.parents.foreach(pickleTree)
@@ -606,6 +601,10 @@ class TreePickler(pickler: TastyPickler) {
         pickleSelector(RENAMED, to)
       case id @ Ident(_) =>
         pickleSelector(IMPORTED, id)
+      case bounded @ TypeBoundsTree(untpd.EmptyTree, untpd.TypedSplice(tpt)) =>
+        registerTreeAddr(bounded)
+        writeByte(BOUNDED)
+        pickleTree(tpt)
     }
 
   def pickleSelector(tag: Int, id: untpd.Ident)(implicit ctx: Context): Unit = {
@@ -631,44 +630,48 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickleFlags(flags: FlagSet, isTerm: Boolean)(implicit ctx: Context): Unit = {
     import Flags._
-    if (flags is Private) writeByte(PRIVATE)
-    if (flags is Protected) writeByte(PROTECTED)
-    if (flags.is(Final, butNot = Module)) writeByte(FINAL)
-    if (flags is Case) writeByte(CASE)
-    if (flags is Override) writeByte(OVERRIDE)
-    if (flags is Inline) writeByte(INLINE)
-    if (flags is InlineProxy) writeByte(INLINEPROXY)
-    if (flags is Macro) writeByte(MACRO)
-    if (flags is JavaStatic) writeByte(STATIC)
-    if (flags is Module) writeByte(OBJECT)
-    if (flags is Enum) writeByte(ENUM)
-    if (flags is Local) writeByte(LOCAL)
-    if (flags is Synthetic) writeByte(SYNTHETIC)
-    if (flags is Artifact) writeByte(ARTIFACT)
-    if (flags is Scala2x) writeByte(SCALA2X)
+    def writeModTag(tag: Int) = {
+      assert(isModifierTag(tag))
+      writeByte(tag)
+    }
+    if (flags is Private) writeModTag(PRIVATE)
+    if (flags is Protected) writeModTag(PROTECTED)
+    if (flags.is(Final, butNot = Module)) writeModTag(FINAL)
+    if (flags is Case) writeModTag(CASE)
+    if (flags is Override) writeModTag(OVERRIDE)
+    if (flags is Inline) writeModTag(INLINE)
+    if (flags is InlineProxy) writeModTag(INLINEPROXY)
+    if (flags is Macro) writeModTag(MACRO)
+    if (flags is JavaStatic) writeModTag(STATIC)
+    if (flags is Module) writeModTag(OBJECT)
+    if (flags is Enum) writeModTag(ENUM)
+    if (flags is Local) writeModTag(LOCAL)
+    if (flags is Synthetic) writeModTag(SYNTHETIC)
+    if (flags is Artifact) writeModTag(ARTIFACT)
+    if (flags is Scala2x) writeModTag(SCALA2X)
     if (isTerm) {
-      if (flags is Implicit) writeByte(IMPLICIT)
-      if (flags is Implied) writeByte(IMPLIED)
-      if (flags is Erased) writeByte(ERASED)
-      if (flags.is(Lazy, butNot = Module)) writeByte(LAZY)
-      if (flags is AbsOverride) { writeByte(ABSTRACT); writeByte(OVERRIDE) }
-      if (flags is Mutable) writeByte(MUTABLE)
-      if (flags is Accessor) writeByte(FIELDaccessor)
-      if (flags is CaseAccessor) writeByte(CASEaccessor)
-      if (flags is DefaultParameterized) writeByte(DEFAULTparameterized)
-      if (flags is StableRealizable) writeByte(STABLE)
-      if (flags is Extension) writeByte(EXTENSION)
-      if (flags is Given) writeByte(GIVEN)
-      if (flags is ParamAccessor) writeByte(PARAMsetter)
-      if (flags is Exported) writeByte(EXPORTED)
+      if (flags is Implicit) writeModTag(IMPLICIT)
+      if (flags is Implied) writeModTag(IMPLIED)
+      if (flags is Erased) writeModTag(ERASED)
+      if (flags.is(Lazy, butNot = Module)) writeModTag(LAZY)
+      if (flags is AbsOverride) { writeModTag(ABSTRACT); writeModTag(OVERRIDE) }
+      if (flags is Mutable) writeModTag(MUTABLE)
+      if (flags is Accessor) writeModTag(FIELDaccessor)
+      if (flags is CaseAccessor) writeModTag(CASEaccessor)
+      if (flags is DefaultParameterized) writeModTag(DEFAULTparameterized)
+      if (flags is StableRealizable) writeModTag(STABLE)
+      if (flags is Extension) writeModTag(EXTENSION)
+      if (flags is Given) writeModTag(GIVEN)
+      if (flags is ParamAccessor) writeModTag(PARAMsetter)
+      if (flags is Exported) writeModTag(EXPORTED)
       assert(!(flags is Label))
     } else {
-      if (flags is Sealed) writeByte(SEALED)
-      if (flags is Abstract) writeByte(ABSTRACT)
-      if (flags is Trait) writeByte(TRAIT)
-      if (flags is Covariant) writeByte(COVARIANT)
-      if (flags is Contravariant) writeByte(CONTRAVARIANT)
-      if (flags is Opaque) writeByte(OPAQUE)
+      if (flags is Sealed) writeModTag(SEALED)
+      if (flags is Abstract) writeModTag(ABSTRACT)
+      if (flags is Trait) writeModTag(TRAIT)
+      if (flags is Covariant) writeModTag(COVARIANT)
+      if (flags is Contravariant) writeModTag(CONTRAVARIANT)
+      if (flags is Opaque) writeModTag(OPAQUE)
     }
   }
 

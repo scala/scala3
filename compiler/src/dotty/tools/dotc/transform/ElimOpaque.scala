@@ -31,21 +31,26 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
   def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
     val sym = ref.symbol
     ref match {
-      case ref: SymDenotation if sym.isOpaqueHelper =>
+      case ref: SymDenotation if sym.isOpaqueAlias =>
         ref.copySymDenotation(
           info = TypeAlias(ref.opaqueAlias),
           initFlags = ref.flags &~ (Opaque | Deferred))
-      case ref: SymDenotation if sym.isOpaqueCompanion =>
+      case ref: SymDenotation if sym.containsOpaques =>
+        def stripOpaqueRefinements(tp: Type): Type = tp match {
+          case RefinedType(parent, rname, TypeAlias(_))
+          if ref.info.decl(rname).symbol.isOpaqueAlias => stripOpaqueRefinements(parent)
+          case _ => tp
+        }
         val cinfo = sym.asClass.classInfo
-        val RefinedType(sourceRef, _, _) = cinfo.selfInfo
-        val ref1 = ref.copySymDenotation(
-          info = cinfo.derivedClassInfo(selfInfo = sourceRef),
+        val strippedSelfType = stripOpaqueRefinements(cinfo.selfType)
+        ref.copySymDenotation(
+          info = cinfo.derivedClassInfo(selfInfo = strippedSelfType),
           initFlags = ref.flags &~ Opaque)
-        ref1.registeredCompanion = NoSymbol
-        ref1
-      case _ if sym.isOpaqueHelper =>
-        ref.derivedSingleDenotation(sym, TypeAlias(ref.info.extractOpaqueAlias))
       case _ =>
+        // This is dubious as it means that we do not see the alias from an external reference
+        // which has type UniqueRefDenotation instead of SymDenotation. But to correctly recompute
+        // the alias we'd need a prefix, which we do not have here. To fix this, we'd have to
+        // maintain a prefix in UniqueRefDenotations and JointRefDenotations.
         ref
     }
   }

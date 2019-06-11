@@ -383,6 +383,15 @@ trait Symbols { this: Context =>
       .requiredSymbol("class", name, generateStubs = false)(_.isClass)
   }
 
+  /** Get ClassSymbol if package is either defined in current compilation run
+   *  or present on classpath.
+   *  Returns NoSymbol otherwise. */
+  def getPackageClassIfDefined(path: PreName): Symbol = {
+    val name = path.toTypeName
+    base.staticRef(name, isPackage = true, generateStubs = false)
+      .requiredSymbol("package", name, generateStubs = false)(_ is PackageClass)
+  }
+
   def requiredModule(path: PreName): TermSymbol = {
     val name = path.toTermName
     base.staticRef(name).requiredSymbol("object", name)(_ is Module).asTerm

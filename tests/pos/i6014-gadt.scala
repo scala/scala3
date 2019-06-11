@@ -10,7 +10,7 @@ object Test1 {
 }
 
 object Test2 {
-  inline def summon[T] = implicit match {
+  inline def summon[T] = delegate match {
     case t: T => t
   }
 
@@ -25,11 +25,11 @@ object Test2 {
 }
 
 object Test3 {
-  inline def summon[T] = implicit match {
+  inline def summon[T] = delegate match {
     case t: T => t
   }
 
-  type K1Top = [t] => Any
+  type K1Top = [t] =>> Any
 
   class Foo[F <: K1Top]
 
@@ -42,7 +42,7 @@ object Test3 {
 }
 
 object Test4 {
-  inline def summon[T] = implicit match {
+  inline def summon[T] = delegate match {
     case t: T => t
   }
 

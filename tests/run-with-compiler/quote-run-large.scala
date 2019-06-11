@@ -1,6 +1,4 @@
 
-import scala.quoted.Exprs.TastyExpr
-
 object Test {
   def main(args: Array[String]): Unit = {
     val a = '{ // '
@@ -62,7 +60,7 @@ object Test {
 
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
 
-    assert(a.asInstanceOf[TastyExpr[_]].tasty.size > 1, "Test should be testing a quote with TastyExpr encoded in more than one string")
+    assert(a.asInstanceOf[scala.internal.quoted.TastyExpr[_]].tasty.size > 1, "Test should be testing a quote with TastyExpr encoded in more than one string")
     a.show // Force unpiclking of the expression
   }
 }

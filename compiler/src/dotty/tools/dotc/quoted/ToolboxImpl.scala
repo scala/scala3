@@ -3,7 +3,7 @@ package dotty.tools.dotc.quoted
 import dotty.tools.dotc.ast.tpd
 
 import scala.quoted._
-import scala.quoted.Exprs.{LiftedExpr, TastyTreeExpr}
+import scala.internal.quoted.{LiftedExpr, TastyTreeExpr}
 
 /** Default runners for quoted expressions */
 object ToolboxImpl {

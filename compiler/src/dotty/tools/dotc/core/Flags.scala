@@ -107,19 +107,22 @@ object Flags {
       }
 
     /** The list of non-empty names of flags that are set in this FlagSet */
-    def flagStrings: Seq[String] = {
-      val rawStrings = (2 to MaxFlag).flatMap(flagString)
-      if (this is Local)
+    def flagStrings(privateWithin: String): Seq[String] = {
+      var rawStrings = (2 to MaxFlag).flatMap(flagString)
+      if (!privateWithin.isEmpty && !this.is(Protected))
+      	rawStrings = rawStrings :+ "private"
+      val scopeStr = if (this.is(Local)) "this" else privateWithin
+      if (scopeStr != "")
         rawStrings.filter(_ != "<local>").map {
-          case "private" => "private[this]"
-          case "protected" => "protected[this]"
+          case "private" => s"private[$scopeStr]"
+          case "protected" => s"protected[$scopeStr]"
           case str => str
         }
       else rawStrings
     }
 
     /** The string representation of this flag set */
-    override def toString: String = flagStrings.mkString(" ")
+    override def toString: String = flagStrings("").mkString(" ")
   }
 
   def termFlagSet(x: Long) = FlagSet(TERMS | x)
@@ -265,7 +268,7 @@ object Flags {
   /** A mutable var */
   final val Mutable: FlagSet = termFlag(12, "mutable")
 
-  /** An opqaue type */
+  /** An opaque type or a class containing one */
   final val Opaque: FlagSet = typeFlag(12, "opaque")
 
   final val MutableOrOpaque: FlagSet = Mutable.toCommonFlags
@@ -389,7 +392,7 @@ object Flags {
   /** Symbol is a Java default method */
   final val DefaultMethod: FlagSet = termFlag(38, "<defaultmethod>")
 
-  final val Implied: FlagSet = commonFlag(39, "implied")
+  final val Implied: FlagSet = commonFlag(39, "delegate")
 
   /** Symbol is an enum class or enum case (if used with case) */
   final val Enum: FlagSet = commonFlag(40, "<enum>")
@@ -547,13 +550,7 @@ object Flags {
     Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased
 
   /** Flags that can apply to a module class */
-  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags |
-    Enum | Opaque
-
-  /** Flags that are copied from a synthetic companion to a user-defined one
-   *  when the two are merged. See: Namer.mergeCompanionDefs
-   */
-  final val RetainedSyntheticCompanionFlags: FlagSet = Opaque
+  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
 
   /** Packages and package classes always have these flags set */
   final val PackageCreationFlags: FlagSet =
@@ -592,7 +589,12 @@ object Flags {
   final val ImplicitOrImpliedOrGiven = Implicit | Implied | Given
   final val ImplicitOrGiven = Implicit | Given
 
+  final val ImpliedOrGiven = Implied | Given
+
   final val ImplicitOrImpliedOrGivenTerm = ImplicitOrImpliedOrGiven.toTermFlags
+
+  /** Flags retained in export forwarders */
+  final val RetainedExportFlags = ImplicitOrImpliedOrGiven | Extension
 
   /** Assumed to be pure */
   final val StableOrErased: FlagSet = StableRealizable | Erased
@@ -623,6 +625,7 @@ object Flags {
 
   /** An enum case */
   final val EnumCase: FlagConjunction = allOf(Enum, Case)
+  final val EnumCaseVal: FlagConjunction = allOf(Enum, CaseVal)
 
   /** A term parameter or parameter accessor */
   final val TermParamOrAccessor: FlagSet = Param | ParamAccessor
@@ -678,9 +681,6 @@ object Flags {
   /** A Java companion object */
   final val JavaModule: FlagConjunction = allOf(JavaDefined, Module)
 
-  /** An opaque companion object */
-  final val OpaqueModule: FlagConjunction = allOf(Opaque, Module)
-
   /** A Java companion object */
   final val JavaProtected: FlagConjunction = allOf(JavaDefined, Protected)
 
@@ -692,6 +692,9 @@ object Flags {
 
   /** A Java enum value */
   final val JavaEnumValue: FlagConjunction = allOf(StableRealizable, JavaStatic, JavaDefined, Enum)
+
+  /** An enum value */
+  final val EnumValue: FlagConjunction = allOf(StableRealizable, JavaStatic, Enum)
 
   /** Labeled private[this] */
   final val PrivateLocal: FlagConjunction = allOf(Private, Local)
@@ -730,7 +733,6 @@ object Flags {
   final val SyntheticTermParam: FlagConjunction = allOf(Synthetic, TermParam)
   final val SyntheticTypeParam: FlagConjunction = allOf(Synthetic, TypeParam)
   final val SyntheticCase: FlagConjunction = allOf(Synthetic, Case)
-  final val SyntheticOpaque: FlagConjunction = allOf(Synthetic, Opaque)
 
   implicit def conjToFlagSet(conj: FlagConjunction): FlagSet =
     FlagSet(conj.bits)

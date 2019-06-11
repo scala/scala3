@@ -109,6 +109,12 @@ class CommunityBuildTest {
     updateCommand = "scalatest/update"
   )
 
+  @Test def scalaXml = test(
+    project       = "scala-xml",
+    testCommand   = "xml/test",
+    updateCommand = "xml/update"
+  )
+
   @Test def scopt = test(
     project       = "scopt",
     testCommand   = "scoptJVM/compile",
@@ -163,6 +169,12 @@ class CommunityBuildTest {
     testCommand   = "library/compile",
     updateCommand = "library/update",
     extraSbtArgs  = Seq("-Dscala.build.compileWithDotty=true")
+  )
+
+  @Test def shapeless = test(
+    project       = "shapeless",
+    testCommand   = "test",
+    updateCommand = "update"
   )
 
   // TODO @oderky? It got broken by #5458

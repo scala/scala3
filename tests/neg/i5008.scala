@@ -5,4 +5,4 @@ enum Baz extends Foo { case Z } // error
 enum Quux extends Foo with Bar { case Z } // error
 
 class Quuw extends Foo // error
-class Quuz extends Foo { val enumTag = 1 } // error
+class Quuz extends Foo { val ordinal = 1 } // error

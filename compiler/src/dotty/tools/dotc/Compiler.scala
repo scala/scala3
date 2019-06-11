@@ -56,7 +56,8 @@ class Compiler {
     List(new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
-         new CookComments) ::        // Cook the comments: expand variables, doc, etc.
+         new CookComments,           // Cook the comments: expand variables, doc, etc.
+         new CompleteJavaEnums) ::   // Fill in constructors for Java enums
     List(new CheckStatic,            // Check restrictions that apply to @static members
          new ElimRepeated,           // Rewrite vararg parameters and arguments
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
@@ -86,10 +87,12 @@ class Compiler {
          new AugmentScala2Traits,    // Augments Scala2 traits with additional members needed for mixin composition.
          new ResolveSuper,           // Implement super accessors
          new FunctionXXLForwarders,  // Add forwarders for FunctionXXL apply method
+         new TupleOptimizations,     // Optimize generic operations on tuples
          new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
     List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
+         new ElimPolyFunction,       // Rewrite PolyFunction subclasses to FunctionN subclasses
          new TailRec,                // Rewrite tail recursion to loops
          new Mixin,                  // Expand trait fields and trait initializers
          new LazyVals,               // Expand lazy vals

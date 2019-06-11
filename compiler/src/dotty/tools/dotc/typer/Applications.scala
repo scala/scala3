@@ -21,6 +21,7 @@ import StdNames._
 import NameKinds.DefaultGetterName
 import ProtoTypes._
 import Inferencing._
+import transform.TypeUtils._
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
@@ -31,7 +32,7 @@ import reporting.trace
 import Constants.{Constant, IntTag, LongTag}
 import dotty.tools.dotc.reporting.diagnostic.messages.{UnapplyInvalidReturnType, NotAnExtractor, UnapplyInvalidNumberOfArguments}
 import Denotations.SingleDenotation
-import annotation.constructorOnly
+import annotation.{constructorOnly, threadUnsafe}
 
 object Applications {
   import tpd._
@@ -310,13 +311,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** The function's type after widening and instantiating polytypes
      *  with TypeParamRefs in constraint set
      */
-    lazy val methType: Type = liftedFunType.widen match {
+    @threadUnsafe lazy val methType: Type = liftedFunType.widen match {
       case funType: MethodType => funType
       case funType: PolyType => constrained(funType).resultType
       case tp => tp //was: funType
     }
 
-    lazy val liftedFunType: Type =
+    @threadUnsafe lazy val liftedFunType: Type =
       if (needLiftFun) {
         liftFun()
         normalizedFun.tpe
@@ -326,7 +327,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** The arguments re-ordered so that each named argument matches the
      *  same-named formal parameter.
      */
-    lazy val orderedArgs: List[Arg] =
+    @threadUnsafe lazy val orderedArgs: List[Arg] =
       if (hasNamedArg(args))
         reorder(args.asInstanceOf[List[untpd.Tree]]).asInstanceOf[List[Arg]]
       else
@@ -617,7 +618,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def fail(msg: => Message): Unit =
       ok = false
     def appPos: SourcePosition = NoSourcePosition
-    lazy val normalizedFun:   Tree = ref(methRef)
+    @threadUnsafe lazy val normalizedFun:   Tree = ref(methRef)
     init()
   }
 
@@ -1084,21 +1085,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     def fromScala2x = unapplyFn.symbol.exists && (unapplyFn.symbol.owner is Scala2x)
 
-    /** Is `subtp` a subtype of `tp` or of some generalization of `tp`?
-     *  The generalizations of a type T are the smallest set G such that
-     *
-     *   - T is in G
-     *   - If a typeref R in G represents a class or trait, R's superclass is in G.
-     *   - If a type proxy P is not a reference to a class, P's supertype is in G
-     */
-    def isSubTypeOfParent(subtp: Type, tp: Type)(implicit ctx: Context): Boolean =
-      if (constrainPatternType(subtp, tp)) true
-      else tp match {
-        case tp: TypeRef if tp.symbol.isClass => isSubTypeOfParent(subtp, tp.firstParent)
-        case tp: TypeProxy => isSubTypeOfParent(subtp, tp.superType)
-        case _ => false
-      }
-
     unapplyFn.tpe.widen match {
       case mt: MethodType if mt.paramInfos.length == 1 =>
         val unapplyArgType = mt.paramInfos.head
@@ -1108,17 +1094,15 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             fullyDefinedType(unapplyArgType, "pattern selector", tree.span)
             selType.dropAnnot(defn.UncheckedAnnot) // need to drop @unchecked. Just because the selector is @unchecked, the pattern isn't.
-          } else if (isSubTypeOfParent(unapplyArgType, selType)(ctx.addMode(Mode.GADTflexible))) {
+          } else {
+            // We ignore whether constraining the pattern succeeded.
+            // Constraining only fails if the pattern cannot possibly match,
+            // but useless pattern checks detect more such cases, so we simply rely on them instead.
+            ctx.addMode(Mode.GadtConstraintInference).typeComparer.constrainPatternType(unapplyArgType, selType)
             val patternBound = maximizeType(unapplyArgType, tree.span, fromScala2x)
             if (patternBound.nonEmpty) unapplyFn = addBinders(unapplyFn, patternBound)
             unapp.println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
             unapplyArgType
-          } else {
-            unapp.println("Neither sub nor super")
-            unapp.println(TypeComparer.explained(implicit ctx => unapplyArgType <:< selType))
-            errorType(
-              ex"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $selType",
-              tree.sourcePos)
           }
         val dummyArg = dummyTreeOfType(ownType)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
@@ -1332,6 +1316,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  iff
      *
      *     T => R  <:s  U => R
+     *
+     *  Also: If a compared type refers to an delegate or its module class, use
+     *  the intersection of its parent classes instead.
      */
     def isAsSpecificValueType(tp1: Type, tp2: Type)(implicit ctx: Context) =
       if (ctx.mode.is(Mode.OldOverloadingResolution))
@@ -1347,25 +1334,30 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             case _ => mapOver(t)
           }
         }
-        (flip(tp1) relaxed_<:< flip(tp2)) || viewExists(tp1, tp2)
+        def prepare(tp: Type) = tp.stripTypeVar match {
+          case tp: NamedType if tp.symbol.is(Module) && tp.symbol.sourceModule.is(Implied) =>
+            flip(tp.widen.widenToParents)
+          case _ => flip(tp)
+        }
+        (prepare(tp1) relaxed_<:< prepare(tp2)) || viewExists(tp1, tp2)
       }
 
-    /** Widen the result type of synthetic implied methods from the implementation class to the
+    /** Widen the result type of synthetic delegate methods from the implementation class to the
      *  type that's implemented. Example
      *
-     *      implied I[X] for T { ... }
+     *      delegate I[X] for T { ... }
      *
      *  This desugars to
      *
      *      class I[X] extends T { ... }
-     *      implied def I[X]: I[X] = new I[X]
+     *      implicit def I[X]: I[X] = new I[X]
      *
      *  To compare specificity we should compare with `T`, not with its implementation `I[X]`.
-     *  No such widening is performed for implied aliases, which are not synthetic. E.g.
+     *  No such widening is performed for delegate aliases, which are not synthetic. E.g.
      *
-     *      implied J[X] for T = rhs
+     *      delegate J[X] for T = rhs
      *
-     *  already has the right result type `T`. Neither is widening performed for implied
+     *  already has the right result type `T`. Neither is widening performed for delegate
      *  objects, since these are anyway taken to be more specific than methods
      *  (by condition 3a above).
      */
@@ -1375,11 +1367,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case pt: PolyType =>
         pt.derivedLambdaType(pt.paramNames, pt.paramInfos, widenImplied(pt.resultType, alt))
       case _ =>
-        if (alt.symbol.is(SyntheticImpliedMethod))
-          tp.parents match {
-            case Nil => tp
-            case ps => ps.reduceLeft(AndType(_, _))
-          }
+        if (alt.symbol.is(SyntheticImpliedMethod)) tp.widenToParents
         else tp
     }
 

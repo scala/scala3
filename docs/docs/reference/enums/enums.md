@@ -33,27 +33,25 @@ explicit extends clause.
 ### Methods defined for enums
 
 The values of an enum correspond to unique integers. The integer
-associated with an enum value is returned by its `enumTag` method:
+associated with an enum value is returned by its `ordinal` method:
 
 ```scala
 scala> val red = Color.Red
 val red: Color = Red
-scala> red.enumTag
+scala> red.ordinal
 val res0: Int = 0
 ```
 
-The companion object of an enum also defines three utility methods.
-The `enumValue` and `enumValueNamed` methods obtain an enum value
-by its tag or its name. The `enumValues` method returns all enum values
-defined in an enumeration in an `Iterable`.
+The companion object of an enum also defines two utility methods.
+The `valueOf` method obtains an enum value
+by its name. The `values` method returns all enum values
+defined in an enumeration in an `Array`.
 
 ```scala
-scala> Color.enumValue(1)
-val res1: Color = Green
-scala> Color.enumValueNamed("Blue")
-val res2: Color = Blue
-scala> Color.enumValues
-val res3: collection.Iterable[Color] = MapLike(Red, Green, Blue)
+scala> Color.valueOf("Blue")
+val res0: Color = Blue
+scala> Color.values
+val res1: Array[Color] = Array(Red, Green, Blue)
 ```
 
 ### User-defined members of enums
@@ -84,16 +82,34 @@ object Planet {
   def main(args: Array[String]) = {
     val earthWeight = args(0).toDouble
     val mass = earthWeight / Earth.surfaceGravity
-    for (p <- enumValues)
+    for (p <- values)
       println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
   }
 }
 ```
 
+### Compatibility with Java Enums
+If you want to use the Scala-defined enums as Java enums, you can do so by extending `java.lang.Enum` class as follows:
+
+```scala
+enum Color extends java.lang.Enum[Color] { case Red, Green, Blue }
+```
+
+The type parameter comes from the Java enum [definition](https://docs.oracle.com/javase/8/docs/api/index.html?java/lang/Enum.html) and should be the same as the type of the enum. There is no need to provide constructor arguments (as defined in the API docs) to `java.lang.Enum` when extending it – the compiler will generate them automatically.
+
+After defining `Color` like that, you can use like you would a Java enum:
+
+```scala
+scala> Color.Red.compareTo(Color.Green)
+val res15: Int = -1
+```
+
+For a more in-depth example of using Scala 3 enums from Java, see [this test](https://github.com/lampepfl/dotty/tree/master/tests/run/enum-java). In the test, the enums are defined in the `MainScala.scala` file and used from a Java source, `Test.java`.
+
 ### Implementation
 
 Enums are represented as `sealed` classes that extend the `scala.Enum` trait.
-This trait defines a single method, `enumTag`:
+This trait defines a single public method, `ordinal`:
 
 ```scala
 package scala
@@ -102,7 +118,7 @@ package scala
 trait Enum {
 
   /** A number uniquely identifying a case of an enum */
-  def enumTag: Int
+  def ordinal: Int
 }
 ```
 
@@ -112,7 +128,7 @@ For instance, the `Venus` value above would be defined like this:
 ```scala
 val Venus: Planet =
   new Planet(4.869E24, 6051800.0) {
-    def enumTag: Int = 1
+    def ordinal: Int = 1
     override def toString: String = "Venus"
     // internal code to register value
   }

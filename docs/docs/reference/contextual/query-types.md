@@ -1,38 +1,37 @@
 ---
 layout: doc-page
-title: "Contextual Functions"
+title: "Implicit Function Types"
 ---
 
-_Contextual functions_ are functions with (only) context
-parameters. Their types are _contextual function types_.  Here is an
-example of a contextual function type:
+_Implicit functions_ are functions with (only) implicit parameters.
+Their types are _implicit function types_. Here is an example of an implicit function type:
 ```scala
 type Executable[T] = given ExecutionContext => T
 ```
-A contextual function is applied to inferred arguments, in
-the same way a method with context parameters is applied. For instance:
+An implicit function is applied to synthesized arguments, in
+the same way a method with a given clause is applied. For instance:
 ```scala
-  implied ec for ExecutionContext = ...
+  delegate ec for ExecutionContext = ...
 
   def f(x: Int): Executable[Int] = ...
 
   f(2) given ec    // explicit argument
   f(2)             // argument is inferred
 ```
-Conversely, if the expected type of an expression `E` is a contextual function
-type `given (T_1, ..., T_n) => U` and `E` is not already a
-contextual lambda, `E` is converted to a contextual lambda by rewriting to
+Conversely, if the expected type of an expression `E` is an implicit function type
+`given (T_1, ..., T_n) => U` and `E` is not already an
+implicit function literal, `E` is converted to an implicit function literal by rewriting to
 ```scala
   given (x_1: T1, ..., x_n: Tn) => E
 ```
 where the names `x_1`, ..., `x_n` are arbitrary. This expansion is performed
 before the expression `E` is typechecked, which means that `x_1`, ..., `x_n`
-are available as implied instances in `E`.
+are available as delegates in `E`.
 
-Like their types, contextual lamndas are written with a `given` prefix. They differ from normal lambdas in two ways:
+Like their types, implicit function literals are written with a `given` prefix. They differ from normal function literals in two ways:
 
  1. Their parameters are defined with a given clause.
- 2. Their types are contextual function types.
+ 2. Their types are implicit function types.
 
 For example, continuing with the previous definitions,
 ```scala
@@ -46,7 +45,7 @@ For example, continuing with the previous definitions,
 ```
 ### Example: Builder Pattern
 
-Contextual function types have considerable expressive power. For
+Implicit function types have considerable expressive power. For
 instance, here is how they can support the "builder pattern", where
 the aim is to construct tables like this:
 ```scala
@@ -79,17 +78,17 @@ addition of elements via `add`:
   case class Cell(elem: String)
 ```
 Then, the `table`, `row` and `cell` constructor methods can be defined
-with contextual function types as parameters to avoid the plumbing boilerplate
+with implicit function types as parameters to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
   def table(init: given Table => Unit) = {
-    implied t for Table
+    delegate t for Table
     init
     t
   }
 
   def row(init: given Row => Unit) given (t: Table) = {
-    implied r for Row
+    delegate r for Row
     init
     t.add(r)
   }
@@ -112,21 +111,16 @@ With that setup, the table construction code above compiles and expands to:
 ```
 ### Example: Postconditions
 
-As a larger example, here is a way to define constructs for checking arbitrary postconditions using an extension method `ensuring`so that the checked result can be referred to simply by `result`. The example combines opaque aliases, contextual function types, and extension methods to provide a zero-overhead abstraction.
+As a larger example, here is a way to define constructs for checking arbitrary postconditions using an extension method `ensuring`so that the checked result can be referred to simply by `result`. The example combines opaque aliases, implicit function types, and extension methods to provide a zero-overhead abstraction.
 
 ```scala
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  private object WrappedResult {
-    def wrap[T](x: T): WrappedResult[T] = x
-    def unwrap[T](x: WrappedResult[T]): T = x
-  }
-
-  def result[T] given (r: WrappedResult[T]): T = WrappedResult.unwrap(r)
+  def result[T] given (r: WrappedResult[T]): T = f
 
   def (x: T) ensuring [T](condition: given WrappedResult[T] => Boolean): T = {
-    implied for WrappedResult[T] = WrappedResult.wrap(x)
+    delegate for WrappedResult[T] = x
     assert(condition)
     x
   }
@@ -137,12 +131,12 @@ object Test {
   val s = List(1, 2, 3).sum.ensuring(result == 6)
 }
 ```
-**Explanations**: We use a contextual function type `given WrappedResult[T] => Boolean`
+**Explanations**: We use an implicit function type `given WrappedResult[T] => Boolean`
 as the type of the condition of `ensuring`. An argument to `ensuring` such as
-`(result == 6)` will therefore have an implied instance of type `WrappedResult[T]` in
+`(result == 6)` will therefore have a delegate for type `WrappedResult[T]` in
 scope to pass along to the `result` method. `WrappedResult` is a fresh type, to make sure
-that we do not get unwanted implied instances in scope (this is good practice in all cases
-where context parameters are involved). Since `WrappedResult` is an opaque type alias, its
+that we do not get unwanted delegates in scope (this is good practice in all cases
+where implicit parameters are involved). Since `WrappedResult` is an opaque type alias, its
 values need not be boxed, and since `ensuring` is added as an extension method, its argument
 does not need boxing either. Hence, the implementation of `ensuring` is as about as efficient
 as the best possible code one could write by hand:

@@ -178,7 +178,7 @@ object Tokens extends TokensCommon {
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val ENUM = 62;             enter(ENUM, "enum")
   final val ERASED = 63;           enter(ERASED, "erased")
-  final val IMPLIED = 64;          enter(IMPLIED, "implied")
+  final val IMPLIED = 64;          enter(IMPLIED, "delegate")
   final val GIVEN = 65;            enter(GIVEN, "given")
   final val EXPORT = 66;           enter(EXPORT, "export")
   final val MACRO = 67;            enter(MACRO, "macro") // TODO: remove
@@ -195,13 +195,15 @@ object Tokens extends TokensCommon {
   final val SUPERTYPE = 81;        enter(SUPERTYPE, ">:")
   final val HASH = 82;             enter(HASH, "#")
   final val VIEWBOUND = 84;        enter(VIEWBOUND, "<%")
-  final val QUOTE = 85;            enter(QUOTE, "'")
+  final val TLARROW = 85;          enter(TLARROW, "=>>")
+
+  final val QUOTE = 86;            enter(QUOTE, "'")
 
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val alphaKeywords: TokenSet = tokenRange(IF, MACRO)
-  final val symbolicKeywords: TokenSet = tokenRange(USCORE, VIEWBOUND)
+  final val symbolicKeywords: TokenSet = tokenRange(USCORE, TLARROW)
   final val keywords: TokenSet = alphaKeywords | symbolicKeywords
 
   final val allTokens: TokenSet = tokenRange(minToken, maxToken)
@@ -214,7 +216,7 @@ object Tokens extends TokensCommon {
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, QUOTEID, XMLSTART)
 
   final val canStartExpressionTokens: TokenSet = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, QUOTE, IF, DO, WHILE, FOR, NEW, TRY, THROW)
+    LBRACE, LPAREN, QUOTE, IF, DO, WHILE, FOR, NEW, TRY, THROW, IMPLIED)
 
   final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)

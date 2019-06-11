@@ -37,4 +37,5 @@ object DottyPredef {
   }
 
   inline def the[T] given (x: T): x.type = x
+
 }

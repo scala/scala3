@@ -49,8 +49,11 @@ object Mode {
   /** We are in a pattern alternative */
   val InPatternAlternative: Mode = newMode(7, "InPatternAlternative")
 
-  /** Infer GADT constraints during type comparisons `A <:< B` */
-  val GADTflexible: Mode = newMode(8, "GADTflexible")
+  /** Make subtyping checks instead infer constraints necessarily following from given subtyping relation.
+   *
+   *  This enables changing [[GadtConstraint]] and alters how [[TypeComparer]] approximates constraints.
+   */
+  val GadtConstraintInference: Mode = newMode(8, "GadtConstraintInference")
 
   /** Assume -language:strictEquality */
   val StrictEquality: Mode = newMode(9, "StrictEquality")

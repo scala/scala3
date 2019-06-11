@@ -15,6 +15,8 @@ import collection.mutable
 import reporting.diagnostic.messages._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 
+import scala.annotation.threadUnsafe
+
 trait TypeAssigner {
   import tpd._
 
@@ -54,7 +56,8 @@ trait TypeAssigner {
           required = EmptyFlagConjunction, excluded = Private)
           .suchThat(decl.matches(_))
       val inheritedInfo = inherited.info
-      if (inheritedInfo.exists &&
+      val isPolyFunctionApply = decl.name == nme.apply && (parent <:< defn.PolyFunctionType)
+      if (isPolyFunctionApply || inheritedInfo.exists &&
           decl.info.widenExpr <:< inheritedInfo.widenExpr &&
           !(inheritedInfo.widenExpr <:< decl.info.widenExpr)) {
         val r = RefinedType(parent, decl.name, decl.info)
@@ -90,7 +93,7 @@ trait TypeAssigner {
    */
   def avoid(tp: Type, symsToAvoid: => List[Symbol])(implicit ctx: Context): Type = {
     val widenMap = new ApproximatingTypeMap {
-      lazy val forbidden = symsToAvoid.toSet
+      @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(sym: Symbol) = !sym.isStatic && forbidden.contains(sym)
       def partsToAvoid = new NamedPartsAccumulator(tp => toAvoid(tp.symbol))
       def apply(tp: Type): Type = tp match {
@@ -159,9 +162,9 @@ trait TypeAssigner {
   private def toRepeated(tree: Tree, from: ClassSymbol)(implicit ctx: Context): Tree =
     Typed(tree, TypeTree(tree.tpe.widen.translateParameterized(from, defn.RepeatedParamClass)))
 
-   def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree = toRepeated(tree, defn.SeqClass)
+  def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree = toRepeated(tree, defn.SeqClass)
 
-   def arrayToRepeated(tree: Tree)(implicit ctx: Context): Tree = toRepeated(tree, defn.ArrayClass)
+  def arrayToRepeated(tree: Tree)(implicit ctx: Context): Tree = toRepeated(tree, defn.ArrayClass)
 
   /** A denotation exists really if it exists and does not point to a stale symbol. */
   final def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean = try

@@ -373,8 +373,11 @@ class Namer { typer: Typer =>
         val cctx = if (tree.name == nme.CONSTRUCTOR && !(tree.mods is JavaDefined)) ctx.outer else ctx
 
         val completer = tree match {
-          case tree: TypeDef => new TypeDefCompleter(tree)(cctx)
-          case _ => new Completer(tree)(cctx)
+          case tree: TypeDef =>
+            if (flags.is(Opaque) && ctx.owner.isClass) ctx.owner.setFlag(Opaque)
+            new TypeDefCompleter(tree)(cctx)
+          case _ =>
+            new Completer(tree)(cctx)
         }
         val info = adjustIfModule(completer, tree)
         createOrRefine[Symbol](tree, name, flags | deferred | method | higherKinded,
@@ -447,7 +450,7 @@ class Namer { typer: Typer =>
     case _ => tree
   }
 
-  /** For all class definitions `stat` in `xstats`: If the companion class if
+  /** For all class definitions `stat` in `xstats`: If the companion class is
     * not also defined in `xstats`, invalidate it by setting its info to
     * NoType.
     */
@@ -498,23 +501,9 @@ class Namer { typer: Typer =>
     recur(expanded(origStat))
   }
 
-  /** Determines whether this field holds an enum constant.
-    * To qualify, the following conditions must be met:
-    *  - The field's class has the ENUM flag set
-    *  - The field's class extends java.lang.Enum
-    *  - The field has the ENUM flag set
-    *  - The field is static
-    *  - The field is stable
-    */
-  def isEnumConstant(vd: ValDef)(implicit ctx: Context): Boolean = {
-    // val ownerHasEnumFlag =
-    // Necessary to check because scalac puts Java's static members into the companion object
-    // while Scala's enum constants live directly in the class.
-    // We don't check for clazz.superClass == JavaEnumClass, because this causes a illegal
-    // cyclic reference error. See the commit message for details.
-    //  if (ctx.compilationUnit.isJava) ctx.owner.companionClass.is(Enum) else ctx.owner.is(Enum)
-    vd.mods.is(JavaEnumValue) // && ownerHasEnumFlag
-  }
+  /** Determines whether this field holds an enum constant. */
+  def isEnumConstant(vd: ValDef)(implicit ctx: Context): Boolean =
+    vd.mods.is(JavaEnumValue)
 
   /** Add child annotation for `child` to annotations of `cls`. The annotation
    *  is added at the correct insertion point, so that Child annotations appear
@@ -614,7 +603,7 @@ class Namer { typer: Typer =>
       if (fromCls.mods.is(Synthetic) && !toCls.mods.is(Synthetic)) {
         removeInExpanded(fromStat, fromCls)
         val mcls = mergeModuleClass(toStat, toCls, fromCls)
-        mcls.setMods(toCls.mods | (fromCls.mods.flags & RetainedSyntheticCompanionFlags))
+        mcls.setMods(toCls.mods)
         moduleClsDef(fromCls.name) = (toStat, mcls)
       }
 
@@ -675,7 +664,7 @@ class Namer { typer: Typer =>
       val moduleDef = mutable.Map[TypeName, TypeDef]()
 
       def updateCache(cdef: TypeDef): Unit =
-        if (cdef.isClassDef && !cdef.mods.is(Package) || cdef.mods.is(Opaque, butNot = Synthetic)) {
+        if (cdef.isClassDef && !cdef.mods.is(Package)) {
           if (cdef.mods.is(ModuleClass)) moduleDef(cdef.name) = cdef
           else classDef(cdef.name) = cdef
         }
@@ -702,7 +691,7 @@ class Namer { typer: Typer =>
       // If a top-level object or class has no companion in the current run, we
       // enter a dummy companion (`denot.isAbsent` returns true) in scope. This
       // ensures that we never use a companion from a previous run or from the
-      // classpath. See tests/pos/false-companion for an example where this
+      // class path. See tests/pos/false-companion for an example where this
       // matters.
       if (ctx.owner.is(PackageClass)) {
         for (cdef @ TypeDef(moduleName, _) <- moduleDef.values) {
@@ -868,8 +857,10 @@ class Namer { typer: Typer =>
           val child = if (denot.is(Module)) denot.sourceModule else denot.symbol
           register(child, parent)
         }
-      else if (denot.is(CaseVal, butNot = Method | Module))
+      else if (denot.is(CaseVal, butNot = Method | Module)) {
+        assert(denot.is(Enum), denot)
         register(denot.symbol, denot.info)
+      }
     }
 
     /** Intentionally left without `implicit ctx` parameter. We need
@@ -949,7 +940,7 @@ class Namer { typer: Typer =>
 
         def whyNoForwarder(mbr: SingleDenotation): String = {
           val sym = mbr.symbol
-          if (sym.is(ImplicitOrImpliedOrGiven) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}implied"
+          if (sym.is(ImplicitOrImpliedOrGiven) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}a delegate"
           else if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
           else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) SKIP
           else if (cls.derivesFrom(sym.owner) &&
@@ -988,7 +979,7 @@ class Namer { typer: Typer =>
                 val maybeStable = if (mbr.symbol.isStableMember) StableRealizable else EmptyFlags
                 ctx.newSymbol(
                   cls, alias,
-                  Exported | Method | Final | maybeStable | mbr.symbol.flags & ImplicitOrImpliedOrGiven,
+                  Exported | Method | Final | maybeStable | mbr.symbol.flags & RetainedExportFlags,
                   mbr.info.ensureMethodic,
                   coord = span)
               }
@@ -1151,37 +1142,7 @@ class Namer { typer: Typer =>
         original.putAttachment(Deriver, deriver)
       }
 
-      val finalSelfInfo: TypeOrSymbol =
-        if (cls.isOpaqueCompanion) {
-          // The self type of an opaque companion is refined with the type-alias of the original opaque type
-          def refineOpaqueCompanionSelfType(mt: Type, stats: List[Tree]): Type = (stats: @unchecked) match {
-            case (td @ TypeDef(localName, rhs)) :: _
-            if td.mods.is(SyntheticOpaque) && localName == name.stripModuleClassSuffix =>
-              // create a context owned by the current opaque helper symbol,
-              // but otherwise corresponding to the context enclosing the opaque
-              // companion object, since that's where the rhs was defined.
-              val aliasCtx = ctx.outer.fresh.setOwner(symbolOfTree(td))
-              val alias = typedAheadType(rhs)(aliasCtx).tpe
-              val original = cls.companionOpaqueType.typeRef
-              val cmp = ctx.typeComparer
-              val bounds = TypeBounds(cmp.orType(alias, original), cmp.andType(alias, original))
-              RefinedType(mt, localName, bounds)
-            case _ :: stats1 =>
-              refineOpaqueCompanionSelfType(mt, stats1)
-            case _ =>
-              mt // can happen for malformed inputs.
-          }
-          selfInfo match {
-            case self: Type =>
-              refineOpaqueCompanionSelfType(self, rest)
-            case self: Symbol =>
-              self.info = refineOpaqueCompanionSelfType(self.info, rest)
-              self
-          }
-        }
-        else selfInfo
-
-      tempInfo.finalize(denot, parentTypes, finalSelfInfo)
+      tempInfo.finalize(denot, parentTypes, selfInfo)
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
@@ -1494,21 +1455,18 @@ class Namer { typer: Typer =>
       sym.info = NoCompleter
       sym.info = checkNonCyclic(sym, unsafeInfo, reportErrors = true)
     }
+    sym.normalizeOpaque()
     sym.resetFlag(Provisional)
 
     // Here we pay the price for the cavalier setting info to TypeBounds.empty above.
     // We need to compensate by reloading the denotation of references that might
     // still contain the TypeBounds.empty. If we do not do this, stdlib factories
     // fail with a bounds error in PostTyper.
-    def ensureUpToDate(tp: Type, outdated: Type) = tp match {
-      case tref: TypeRef if tref.info == outdated && sym.info != outdated =>
-        tref.recomputeDenot()
-      case _ =>
-    }
-    sym.normalizeOpaque()
+    def ensureUpToDate(tref: TypeRef, outdated: Type) =
+      if (tref.info == outdated && sym.info != outdated) tref.recomputeDenot()
     ensureUpToDate(sym.typeRef, dummyInfo1)
     if (dummyInfo2 `ne` dummyInfo1) ensureUpToDate(sym.typeRef, dummyInfo2)
-    ensureUpToDate(sym.typeRef.appliedTo(tparamSyms.map(_.typeRef)), TypeBounds.empty)
+
     sym.info
   }
 }

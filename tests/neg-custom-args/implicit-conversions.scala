@@ -3,11 +3,11 @@ class B
 
 object A {
 
-  implied for Conversion[A, B] {
+  delegate for Conversion[A, B] {
     def apply(x: A): B = ???
   }
 
-  implied for Conversion[B, A] {
+  delegate for Conversion[B, A] {
     def apply(x: B): A = ???
   }
 }
@@ -15,13 +15,13 @@ object A {
 class C
 
 object D {
-  implied for Conversion[A, C] {
+  delegate for Conversion[A, C] {
     def apply(x: A): C = ???
   }
 }
 
 object Test {
-  import implied D._
+  import delegate D._
 
   val x1: A = new B
   val x2: B = new A  // error under -Xfatal-warnings -feature
