@@ -139,8 +139,9 @@ object Test {
 
   def dateArgsTests = {
     import java.text.SimpleDateFormat
+    import java.util.Locale
 
-    val sdf = new SimpleDateFormat("dd-M-yyyy hh:mm:ss")
+    val sdf = new SimpleDateFormat("dd-M-yyyy hh:mm:ss", Locale.FRANCE)
     val dateInString = "31-08-1982 10:20:56"
     val date = sdf.parse(dateInString)
 
@@ -153,28 +154,28 @@ object Test {
     println(f"$date%tL")
     println(f"$date%tN")
     println(f"$date%tp")
-    // println(f"$date%tz")
-    // println(f"$date%tZ")
-    // println(f"$date%ts")
-    // println(f"$date%tQ")
-    // println(f"$date%tB")
-    // println(f"$date%tb")
-    // println(f"$date%th")
-    // println(f"$date%tA")
-    // println(f"$date%ta")
-    // println(f"$date%tC")
-    // println(f"$date%tY")
-    // println(f"$date%ty")
-    // println(f"$date%tj")
-    // println(f"$date%tm")
-    // println(f"$date%td")
-    // println(f"$date%te")
-    // println(f"$date%tR")
-    // println(f"$date%tT")
-    // println(f"$date%tr")
-    // println(f"$date%tD")
-    // println(f"$date%tF")
-    // println(f"$date%tc")
+    println(f"$date%tz")
+    println(f"$date%tZ")
+    println(f"$date%ts")
+    println(f"$date%tQ")
+    println(f"$date%tB")
+    println(f"$date%tb")
+    println(f"$date%th")
+    println(f"$date%tA")
+    println(f"$date%ta")
+    println(f"$date%tC")
+    println(f"$date%tY")
+    println(f"$date%ty")
+    println(f"$date%tj")
+    println(f"$date%tm")
+    println(f"$date%td")
+    println(f"$date%te")
+    println(f"$date%tR")
+    println(f"$date%tT")
+    println(f"$date%tr")
+    println(f"$date%tD")
+    println(f"$date%tF")
+    println(f"$date%tc")
   }
 
   def specificLiteralsTests = {
