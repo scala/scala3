@@ -24,8 +24,8 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     (if(flags.is(Flags.Sealed)) "sealed" else "") ::
     (if(flags.is(Flags.Implicit)) "implicit" else "") ::
     (if(flags.is(Flags.Abstract)) "abstract" else "") ::
-    // (if(flags.is(Flags.AbsOverride)) "absOverride" else "") :: //TODO
-    // (if(flags.is(Flags.Deferred)) "deferred" else "") :: //TODO
+    // (if(flags.is(Flags.AbsOverride)) "absOverride" else "") :: //TOFIX Not visible, fix in Dotty. When fixed, need fix in output as well
+    // (if(flags.is(Flags.Deferred)) "deferred" else "") :: //TOFIX Not visible, fix in Dotty. When fixed, need fix in output as well
     (if(flags.is(Flags.Inline)) "inline" else "") ::
     Nil) filter (_ != ""),
 

@@ -41,17 +41,6 @@ trait TastyTypeConverter {
       case reflect.Type.IsThisType(reflect.Type.ThisType(tpe)) => inner(tpe)
       case reflect.Type.IsAnnotatedType(reflect.Type.AnnotatedType(tpe, _)) => inner(tpe)
       case reflect.Type.IsTypeLambda(reflect.Type.TypeLambda(paramNames, paramTypes, resType)) => ConstantReference(tp.show(implicitly[reflect.Context].withoutColors)) //TOFIX
-      // case reflect.Type.IsTypeLambda(reflect.Type.TypeLambda(paramNames, paramTypes, resType)) => //TOASK
-      //   println("===================")
-      //   println(tp)
-      //   println("paramTypes: " + paramTypes.map(convertTypeOrBoundsToReference(reflect)(_)))
-      //   println("resType: " + inner(resType))
-      //   inner(resType) match {
-      //     case EmptyReference => ConstantReference(paramNames.head)
-      //     case ref =>
-      //   }
-      //   ConstantReference(removeColorFromType(tp.show)) //TOFIX
-      // case reflect.Type.IsParamRef(reflect.Type.ParamRef(tpe, x)) => EmptyReference//println("paramref     " + tpe); ConstantReference("XXXXX")
       case reflect.Type.IsRefinement(reflect.Type.Refinement(parent, name, info)) =>
         val tuple = convertTypeOrBoundsToReference(reflect)(info) match {
           case r if (info match {case reflect.IsTypeBounds(info) => true case _ => false}) => ("type", name, r)
