@@ -137,11 +137,17 @@ object Test {
     aTest(Float.NegativeInfinity)
   }
 
+  /**
+    * Note that dates may appear in English or in any other language. This means that they
+    * depend on the place where the program is run. For that reason, some tests are commented,
+    * to avoid this dependence.
+  */
   def dateArgsTests = {
     import java.text.SimpleDateFormat
     import java.util.Locale
+    import java.util.TimeZone
 
-    val sdf = new SimpleDateFormat("dd-M-yyyy hh:mm:ss", Locale.FRANCE)
+    val sdf = new SimpleDateFormat("dd-M-yyyy hh:mm:ss")
     val dateInString = "31-08-1982 10:20:56"
     val date = sdf.parse(dateInString)
 
@@ -154,15 +160,15 @@ object Test {
     println(f"$date%tL")
     println(f"$date%tN")
     println(f"$date%tp")
-    println(f"$date%tz")
-    println(f"$date%tZ")
+    // println(f"$date%tz")
+    // println(f"$date%tZ")
     println(f"$date%ts")
     println(f"$date%tQ")
-    println(f"$date%tB")
-    println(f"$date%tb")
-    println(f"$date%th")
-    println(f"$date%tA")
-    println(f"$date%ta")
+    // println(f"$date%tB")
+    // println(f"$date%tb")
+    // println(f"$date%th")
+    // println(f"$date%tA")
+    // println(f"$date%ta")
     println(f"$date%tC")
     println(f"$date%tY")
     println(f"$date%ty")
@@ -175,7 +181,7 @@ object Test {
     println(f"$date%tr")
     println(f"$date%tD")
     println(f"$date%tF")
-    println(f"$date%tc")
+    // println(f"$date%tc")
   }
 
   def specificLiteralsTests = {
