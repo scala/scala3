@@ -38,8 +38,6 @@ This is our 16th scheduled release according to our
 
 # What’s new in the 0.16.0-RC3 technology preview?
 
-<!-- https://github.com/lampepfl/dotty/pulls?q=is%3Apr+closed%3A%3E2019-05-23+is%3Aclosed+sort%3Acomments-desc -->
-
 ## Syntax Change: Type Lambdas
 
 We reconsider the syntax of type lambdas in an effort to provide an improved
@@ -72,7 +70,7 @@ aligns with Java's syntax.
 For more information please read our documentation on
 [Wildcards](https://dotty.epfl.ch/docs/reference/changed-features/wildcards.html).
 
-# Syntax Change: Contextual Abstractions
+## Syntax Change: Contextual Abstractions
 
 We reconsider the syntax for contextual abstractions introducing `delegates`
 (formerly known as `implied`). `delegate`, in the context of contextual
@@ -131,7 +129,7 @@ With PFTs we can now achieve what we want:
 For those who are interested in the discussions and more test cases,
 [#4672](https://github.com/lampepfl/dotty/pull/4672/) introduced PFTs.
 
-## lazy vals are now thread-safe by default
+## `lazy val`s are now thread-safe by default
 
 Previously thread-safety was required using `@volatile` but that would not be
 consistent with Scala 2. The old behavior of non-volatile lazy vals can be
@@ -139,6 +137,31 @@ recovered by using the newly-introduced `@threadUnsafe`.
 
 For more information please read our documentation on the
 [threadUnsafe annotation](https://dotty.epfl.ch/docs/reference/other-new-features/threadUnsafe-annotation.html).
+
+## Add support for Java-compatible enums
+
+We add support for Java-compatible enumerations. The users can just extend
+`java.lang.Enum[T]`.
+
+```scala
+enum A extends java.lang.Enum[A] {
+  case MONDAY, TUESDAY, SATURDAY
+}
+
+enum B(val gravity: Double) extends java.lang.Enum[B] {
+  case EARTH extends B(9.8)
+  case JUPITER extends B(100)
+  case MOON extends B(4.3)
+  case Foo extends B(10)
+}
+```
+
+For more information please check the [test case](https://github.com/lampepfl/dotty/tree/master/tests/run/enum-java) and
+also the relevant PRs [#6602](https://github.com/lampepfl/dotty/pull/6602) and
+[#6629](https://github.com/lampepfl/dotty/pull/6629).
+
+In the test, the enums are defined in the `MainScala.scala` file and used from a
+Java source, `Test.java`.
 
 ## Introducing `for` clauses for importing delegate imports by type
 
