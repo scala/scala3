@@ -1,0 +1,101 @@
+scala.tasty
+# class Reflection
+
+## Companion object <a href="./Reflection$.md">Reflection</a>
+
+<pre><code class="language-scala" >class Reflection extends Core with ConstantOps with ContextOps with CommentOps with FlagsOps with IdOps with ImportSelectorOps with QuotedOps with PatternOps with PositionOps with Printers with ReportingOps with RootPosition with SignatureOps with StandardDefinitions with SymbolOps with TreeOps with TreeUtils with TypeOrBoundsOps</pre></code>
+## Known subclasses:
+<a href="./Reflection/typing$.md">typing</a>
+## Constructors:
+<pre><code class="language-scala" >Reflection(kernel: Kernel)</pre></code>
+
+## Concrete Type Members:
+### typing
+<pre><code class="language-scala" >final object <a href="./Reflection/typing$.md">typing</a></pre></code>
+## Concrete Value Members:
+### !=
+<pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
+
+### ##
+<pre><code class="language-scala" >final def ##: Int</pre></code>
+
+### ==
+<pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
+
+### asInstanceOf
+<pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
+
+### clone
+<pre><code class="language-scala" >protected def clone(): Object</pre></code>
+
+### eq
+<pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
+
+### equals
+<pre><code class="language-scala" >def equals(x$0: Any): Boolean</pre></code>
+
+### error
+<pre><code class="language-scala" >def error(msg: => String, source: SourceFile, start: Int, end: Int)(ctx: Context): Unit</pre></code>
+
+### error
+<pre><code class="language-scala" >def error(msg: => String, pos: Position)(ctx: Context): Unit</pre></code>
+
+### finalize
+<pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
+
+### getClass
+<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
+
+### hashCode
+<pre><code class="language-scala" >def hashCode(): Int</pre></code>
+
+### isInstanceOf
+<pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
+
+### ne
+<pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>
+
+### notify
+<pre><code class="language-scala" >final def notify(): Unit</pre></code>
+
+### notifyAll
+<pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
+
+### rootContext
+<pre><code class="language-scala" >implicit def rootContext: Context</pre></code>
+Context of the macro expansion
+
+### rootPosition
+<pre><code class="language-scala" >def rootPosition: Position</pre></code>
+Root position of this tasty context. For macros it corresponds to the expansion site.
+
+### synchronized
+<pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
+
+### toString
+<pre><code class="language-scala" >def toString(): String</pre></code>
+
+### typeOf
+<pre><code class="language-scala" >def typeOf[T](evidence$1: <a href="../quoted/Type.md">Type</a>[T]): <a href="./Reflection/Type.md">Type</a></pre></code>
+
+### wait
+<pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>
+
+### wait
+<pre><code class="language-scala" >final def wait(x$0: Long): Unit</pre></code>
+
+### wait
+<pre><code class="language-scala" >final def wait(): Unit</pre></code>
+
+### warning
+<pre><code class="language-scala" >def warning(msg: => String, source: SourceFile, start: Int, end: Int)(ctx: Context): Unit</pre></code>
+
+### warning
+<pre><code class="language-scala" >def warning(msg: => String, pos: Position)(ctx: Context): Unit</pre></code>
+
+### kernel
+<pre><code class="language-scala" >val kernel: Kernel</pre></code>
+
+### util
+<pre><code class="language-scala" >val util: TreeUtils{ val reflect: <a href="./Reflection.md">Reflection</a> }</pre></code>
+
