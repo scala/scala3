@@ -60,7 +60,6 @@ classpathArgs () {
   toolchain+="$SCALA_ASM$PSEP"
   toolchain+="$SBT_INTF$PSEP"
   toolchain+="$DOTTY_INTF$PSEP"
-  toolchain+="$DOTTY_LIB$PSEP"
   toolchain+="$DOTTY_COMP$PSEP"
 
   # jine
