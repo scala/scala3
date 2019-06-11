@@ -128,7 +128,7 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
 
   val complexTypeVal : Int | List[List[T]] & String | (Double | Int, Double) | ((Int) => (String))
 
-  type typeExamle[X] >: X <: String //TypeBound
+  type typeExample[X] >: X <: String //TypeBound
 
   type abstractType
 

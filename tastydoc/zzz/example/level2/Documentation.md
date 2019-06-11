@@ -34,8 +34,8 @@ Auxiliary constructor
 ### abstractType
 <pre><code class="language-scala" >type abstractType: Nothing <: Any</pre></code>
 
-### typeExamle
-<pre><code class="language-scala" >type typeExamle: [X >: scala.Nothing <: scala.Any] => X <: [X >: scala.Nothing <: scala.Any] => scala.Predef.String</pre></code>
+### typeExample
+<pre><code class="language-scala" >type typeExample: [X >: scala.Nothing <: scala.Any] => X <: [X >: scala.Nothing <: scala.Any] => scala.Predef.String</pre></code>
 
 ### IAmACaseObject
 <pre><code class="language-scala" >final case object <a href="./Documentation/IAmACaseObject$.md">IAmACaseObject</a></pre></code>
