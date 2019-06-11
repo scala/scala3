@@ -21,7 +21,7 @@ These new constructs directly model core features of DOT, higher-kinded types, a
  - [Type lambdas](https://dotty.epfl.ch/docs/reference/new-types/type-lambdas.html),
  replacing encodings using structural types and type projection.
  - [Context Queries](https://dotty.epfl.ch/docs/reference/contextual/query-types.html)
-  (_aka_ implicit function types) offering abstraction over implicit parameters.
+  (_aka_ implicit function types) offering abstraction over given parameters.
 
 **Status: essential**
 
