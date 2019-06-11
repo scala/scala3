@@ -85,7 +85,7 @@ trait TastyTypeConverter {
       case reflect.Type.IsSymRef(reflect.Type.SymRef(symbol, typeOrBounds)) => symbol match {
         case reflect.IsClassDefSymbol(_) =>
           convertTypeOrBoundsToReference(reflect)(typeOrBounds) match {
-            case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs, true) //TOASK: Should we include case as own file?
+            case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs, true)
             case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
             case EmptyReference => TypeReference(symbol.name, "", Nil, true)
             case _ => throw Exception("Match error in SymRef/TypeOrBounds/ClassDef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(typeOrBounds))
