@@ -315,7 +315,7 @@ If a single entity contains a type and a method definition with the same name (o
 To mitigate this problem, we first output types and then values so that when linking it links to the first one appearing in the page which would be a type and it is what we want in most cases. However, this does not solve the problem of linking to type parameters and of linking to overloaded methods.
 
 \paragraph{Bug when calling owner}
-At the time of writing the documentation tool display methods inherited from Object and Any and not overridden (which is not the desired behaviour) because a bug in Dotty makes the program crash when calling \texttt{owner} of a symbol.
+At the time of writing the documentation tool displays methods inherited from Object or Any and not overridden (which is not the desired behaviour) because a bug in Dotty makes the program crash when calling \texttt{owner} from a symbol.
 
 \chapter{Further work}
 Although the project is nearly complete, some work needs to be done to perfect the tool.
