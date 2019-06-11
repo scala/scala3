@@ -11,7 +11,7 @@
   commentstyle=\color{green},    % comment style
   escapeinside={\%*}{*)},          % if you want to add LaTeX within your code
   extendedchars=true,              % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
-  frame=single,	                   % adds a frame around the code
+  frame=single,                       % adds a frame around the code
   keepspaces=true,                 % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
   keywordstyle=\color{blue},       % keyword style
   language=Scala,                  % the language of the code
@@ -22,7 +22,7 @@
   showtabs=false,                  % show tabs within strings adding particular underscores
   stepnumber=2,                    % the step between two line-numbers. If it's 1, each line will be numbered
   stringstyle=\color{purple},     % string literal style
-  tabsize=2,	                   % sets default tabsize to 2 spaces
+  tabsize=2,                       % sets default tabsize to 2 spaces
   title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
 }
 
@@ -43,7 +43,7 @@
 \begin{abstract}
 The current documentation tool (Dottydoc) relies on compiler internals and low-level code. The tool introduced in this work aims to build a program that does not depend on compiler internals but instead uses TASTy files. The latter become output when a Scala program is compiled.
 
-This work also aims at providing a better maintained tool with fewer bugs and more features.
+This work also aims at providing a better-maintained tool with fewer bugs and more features.
 
 The documentation files are in Markdown instead of the commonly used HTML.
 \end{abstract}
@@ -64,7 +64,7 @@ The documentation is often output as HTML files, but here we choose to output Ma
 
 The tool was developed with a few goals in mind. First, it should be independent of the compiler, hence the use of TASTy files. It should also produce humanly consumable files, hence the choice of Markdown as an output. Finally, it should have as many features as Dottydoc and be as easily maintainable.
 
-The report is organized in the following structure: First, we will talk about the features of the tool. Then, we will give a high-level and a low-level architectural description. Dottydoc and Tastydoc will then be compared. We will finally talk about the problems encountered during the development and the further work needed.
+The report is organized in the following structure: First, we will talk about the features of the tool. Then, we will give a high-level and low-level architectural description. Dottydoc and Tastydoc will then be compared. We will finally talk about the problems encountered during the development and the further work needed.
 
 \chapter{Features}
 We will list here the most important features of Tastydoc. For a comparison with Dottydoc features see \autoref{sec:comparison}.
@@ -116,7 +116,7 @@ This is done through the use of the reflect API and the making of a class extend
 The tool offers an interface that is easy to use (called Representation, see \autoref{sec:representation}) to access all the information about an entity in a comprehensible format for anyone willing to write their own documentation tool without worrying to consume TASTy files.
 
 \subsection{Reuse of Dottydoc intermediate representation}
-The intermediate structure (Representation) is similar to Dottydoc \texttt{Entity}\footnote{\texttt{dotty/tools/dottydoc/Entity.scala}} allowing to easily reuse parts of Dottydoc code with only minor modifications. Right now, the tool uses parts of Dottydoc code for parsing user documentation. However, it could produce the same HTML files as Dottydoc without relying on compiler internals. Especially since Dottydoc already has a complex templating mechanism that allows to attach blog posts to documentation and a search engine.
+The intermediate structure (Representation) is similar to Dottydoc \texttt{Entity}\footnote{\texttt{dotty/tools/dottydoc/Entity.scala}} allowing to easily reuse parts of Dottydoc code with only minor modifications. Right now, the tool uses parts of Dottydoc code for parsing user documentation. However, it could produce the same HTML files as Dottydoc without relying on compiler internals. Especially since Dottydoc already has a complex templating mechanism that allows attaching blog posts to documentation and a search engine.
 
 \section{Low-level architecture}
 \subsection{TastyExtractor}
@@ -190,7 +190,7 @@ with TypeParams
 \subsection{DocPrinter}
 File: \texttt{dotty/tastydoc/DocPrinter.scala}
 
-Object with methods that formats Representations and References to Markdown and writes them to files. Basically, it handles all the formatting and writting logic of the tool.
+Object with methods that formats Representations and References to Markdown and writes them to files. Basically, it handles all the formatting and writing logic of the tool.
 
 \subsection{mdscala}
 File: \texttt{dotty/tastydoc/mdscala.scala}
@@ -260,7 +260,7 @@ Dottydoc does not handle scope modifiers (such as \texttt{private[this]}) wherea
 Tastydoc keeps track of all seen subclasses of a class and links to their documentation files.
 
 \paragraph{Refined types}
-Tastydoc handles refined types where Dottydoc only remember the parent of the type.
+Tastydoc handles refined types where Dottydoc only remembers the parent of the type.
 
 \section{Bugs in Dottydoc that Tastydoc fixes}
 Dottydoc is not really maintained and hence does not follow the evolution in Master. Some bugs are present in Dottydoc. Tastydoc fixes them all.
@@ -299,7 +299,7 @@ This is obviously an infinite recursion. Fortunately this method is never used.
 A few problems were encountered during the tools' development, some could not be fixed for reasons detailed below.
 
 \paragraph{Markdown escaping}
-We need a library to create a Markdown AST and render it to text, because the output is written in Markdown. The library also needs to escape the input. For instance, a method named "\#", will be interpreted as a header of level 1 if it is not escaped which is not the expected behaviour. This creates a problem because no such library exists in Java or Scala and taking care of Markdown escaping would be time-consuming and was not the main topic of this project.
+We need a library to create a Markdown AST and render it to text because the output is written in Markdown. The library also needs to escape the input. For instance, a method named "\#", will be interpreted as a header of level 1 if it is not escaped which is not the expected behaviour. This creates a problem because no such library exists in Java or Scala and taking care of Markdown escaping would be time-consuming and was not the main topic of this project.
 
 \paragraph{Linking inside code blocks}
 We use code blocks indicating we have a piece of code so that a signature is formatted and syntax highlighted. In these code blocks, we also want to be able to make links pointing to the documentation page of a type. Unfortunately, Markdown fenced code blocks do not allow to have links in them. To counter this problem, we use HTML pre and code tag which are also understood by Markdown viewer. However, that causes two problems. First, it is not pure Markdown. Second, we lose the language syntax highlight from Markdown fenced code blocks.
@@ -311,6 +311,9 @@ Markdown does not have "division" with classes like the \texttt{<div>} tag in HT
 If a single entity contains a type and a method definition with the same name (overloaded methods suffer from the same problem), the links we generate do not always point to the correct definition because it links to the first one appearing on the page. This is because most Markdown viewers do not understand user-specified id which could be useful for linking to specific things on the same page. Hence we do not use custom ids for linking in this project and only use automatically generated ids from headers.
 
 To mitigate this problem, we first output types and then values so that when linking it links to the first one appearing in the page which would be a type and it is what we want in most cases. However, this does not solve the problem of linking to type parameters and of linking to overloaded methods.
+
+\paragraph{Bug when calling owner}
+At the time of writing the documentation tool display methods inherited from Object and Any and not overridden (which is not the desired behaviour) because a bug in Dotty makes the program crash when calling \texttt{owner} of a symbol.
 
 \chapter{Further work}
 Although the project is nearly complete, some work needs to be done to perfect the tool.
@@ -341,7 +344,3 @@ User-documentation parsing lacks two features. First, supporting \texttt{@usecas
 Markdown files for documentation are good for all the reasons mentioned in this report. However, some people still want a good HTML/CSS documentation. The aim would be to either take back what Dottydoc has and use it with our code or build something new. The first case would be pretty straightforward as our intermediate representation looks very similar to Dottydoc. The biggest modification would be made to the References as links are handled a bit differently in this tool.
 
 \end{document}
-
-%Say that dottydoc does not have these features in problems?
-%   Dottydoc no companion, not true?
-% Move Md to features from arch?
