@@ -16,7 +16,7 @@ scala
 <pre><code class="language-scala" >inline def *:[H, This >: this.type <: scala.Tuple](x: H): *:[H, This]</pre></code>
 
 ### ++
-<pre><code class="language-scala" >inline def ++[This >: this.type <: scala.Tuple](that: Tuple): Concat[This, that]</pre></code>
+<pre><code class="language-scala" >inline def ++[This >: this.type <: scala.Tuple](that: Tuple): <a href="./Tuple.md#Concat">Concat</a>[This, that]</pre></code>
 
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
@@ -64,7 +64,7 @@ scala
 <pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
 
 ### size
-<pre><code class="language-scala" >inline def size[This >: this.type <: scala.Tuple]: Size[This]</pre></code>
+<pre><code class="language-scala" >inline def size[This >: this.type <: scala.Tuple]: <a href="./Tuple.md#Size">Size</a>[This]</pre></code>
 
 ### synchronized
 <pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>

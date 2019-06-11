@@ -1,7 +1,7 @@
 scala
 # class Conversion
 
-<pre><code class="language-scala" >abstract class Conversion[T, U] extends (T) => U</pre></code>
+<pre><code class="language-scala" >abstract class Conversion[T, U] extends (<a href="./Conversion.md#T">T</a>) => <a href="./Conversion.md#U">U</a></pre></code>
 A class for implicit values that can serve as implicit conversions
 The implicit resolution algorithm will act as if there existed
 the additional implicit definition:
