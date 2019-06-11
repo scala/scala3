@@ -64,6 +64,7 @@ class Tests {
       "scala.reflect.*",
       "scala.tasty.*",
       "scala.runtime.*",
+      "scalaShadowing.*",
       //Individual files
       "scala.Selectable*",
       "scala.NonEmptyTuple*",
@@ -71,7 +72,8 @@ class Tests {
       //tbc
       "-d",
       "dotty",
-      "scala"
+      "scala",
+      "scalaShadowing"
     ))
   }
 }
