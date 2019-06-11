@@ -137,6 +137,7 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
   def useOfSameLevelOutsideType(): SameLevelTypeLinking = ???
 
   protected[example] val valWithScopeModifier = ???
+  protected[this] val valWithScopeModifierThis = ???
 
   var iAmAVar = ???
 }

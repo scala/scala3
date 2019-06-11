@@ -365,6 +365,9 @@ Test methods with params
 ### ne
 <pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>
 
+### newBuilder
+<pre><code class="language-scala" >protected def newBuilder: Builder[A, CC[A]]</pre></code>
+
 ### nonEmpty
 <pre><code class="language-scala" >def nonEmpty: Boolean</pre></code>
 
@@ -382,6 +385,9 @@ Test methods with params
 
 ### par
 <pre><code class="language-scala" >def par: ParRepr</pre></code>
+
+### parCombiner
+<pre><code class="language-scala" >protected override def parCombiner: Combiner[A, ParSeq[A]]</pre></code>
 
 ### partition
 <pre><code class="language-scala" >def partition(p: (A) => Boolean): (Repr, Repr)</pre></code>
@@ -442,6 +448,9 @@ Test methods with params
 
 ### reverseMap
 <pre><code class="language-scala" >def reverseMap[B, That](f: (A) => B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+
+### reversed
+<pre><code class="language-scala" >protected def reversed: List[A]</pre></code>
 
 ### runWith
 <pre><code class="language-scala" >def runWith[U](action: (B) => U): (A) => Boolean</pre></code>
@@ -530,6 +539,9 @@ Test methods with params
 ### takeWhile
 <pre><code class="language-scala" >override def takeWhile(p: (A) => Boolean): Repr</pre></code>
 
+### thisCollection
+<pre><code class="language-scala" >protected override def thisCollection: Seq[A]</pre></code>
+
 ### to
 <pre><code class="language-scala" >override def to[Col](cbf: CanBuildFrom[Nothing, A, Col[A]]): Col[A]</pre></code>
 
@@ -538,6 +550,9 @@ Test methods with params
 
 ### toBuffer
 <pre><code class="language-scala" >def toBuffer[B]: Buffer[B]</pre></code>
+
+### toCollection
+<pre><code class="language-scala" >protected override def toCollection(repr: Repr): Seq[A]</pre></code>
 
 ### toIndexedSeq
 <pre><code class="language-scala" >def toIndexedSeq: IndexedSeq[A]</pre></code>

@@ -66,7 +66,6 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     def filterSymbol(symbol: reflect.Symbol): Boolean = {
       val ownerPath = extractPath(reflect)(symbol.owner)
 
-      !symbol.flags.is(Flags.Local) && //TOASK it works but why?
       !symbol.flags.is(Flags.Synthetic) &&
       !symbol.flags.is(Flags.Artifact) &&
       !symbol.flags.is(Flags.StableRealizable) && //Remove val generated for object definitions inside classes
