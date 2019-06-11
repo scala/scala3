@@ -369,6 +369,9 @@ object Build {
       val majorVersion = baseVersion.take(baseVersion.lastIndexOf('.'))
       IO.write(file("./docs/_site/versions/latest-nightly-base"), majorVersion)
 
+      // This file is used by GitHub Pages when the page is available in a custom domain
+      IO.write(file("./docs/_site/CNAME"), "dotty.epfl.ch")
+
       val sources = unmanagedSources.in(mode match {
         case NonBootstrapped => `dotty-library`
         case Bootstrapped => `dotty-library-bootstrapped`
