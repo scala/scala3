@@ -39,7 +39,7 @@ import delegate A.{for TC}
 This imports any delegate in `A` that has a type which conforms tp `TC`. There can be several bounding types following a `for` and bounding types can contain wildcards.
 For instance, assuming the object
 ```scala
-object Instances {
+object Delegates {
   delegate intOrd for Ordering[Int]
   delegate [T: Ordering] listOrd for Ordering[List[T]]
   delegate ec for ExecutionContext = ...
@@ -48,7 +48,7 @@ object Instances {
 ```
 the import
 ```
-import delegate Instances.{for Ordering[_], ExecutionContext}
+import delegate Delegates.{for Ordering[_], ExecutionContext}
 ```
 would import the `intOrd`, `listOrd`, and `ec` delegates but leave out the `im` delegate, since it fits none of the specified bounds.
 

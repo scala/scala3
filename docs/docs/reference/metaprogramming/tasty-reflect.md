@@ -139,6 +139,20 @@ def collectPatternVariables(tree: Tree)(implicit ctx: Context): List[Symbol] = {
 A `TreeTraverser` extends a `TreeAccumulator` and performs the same traversal
 but without returning any value. Finally a `TreeMap` performs a transformation.
 
+#### Let
+
+`scala.tasty.reflect.utils.TreeUtils` also offers a method `let` that allows us
+to bind the `rhs` to a `val` and use it in `body`. Additionally, `lets` binds
+the given `terms` to names and use them in the `body`. Their type definitions
+are shown below:
+
+```scala
+def let(rhs: Term)(body: Ident => Term): Term = ...
+
+def lets(terms: List[Term])(body: List[Term] => Term): Term = ...
+```
+
+
 ## TASTy Reflect API
 
 TASTy Reflect provides the following types:
