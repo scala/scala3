@@ -9,6 +9,7 @@ t3249
 t3486
 t3612.scala
 reference
+scala-days-2019-slides
 
 # type of super reference changes due to late addition of Mirror.Singleton
 i939.scala
