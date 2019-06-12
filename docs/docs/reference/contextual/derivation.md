@@ -48,16 +48,17 @@ to that shape. A `Mirror` delegate is generated automatically for
  - case classes and objects,
  - enums and enum cases,
  - sealed traits or classes that have only case classes and case objects as children.
-```
 
 <!---
 This is all a user of typeclass derivation has to know. The rest of this page contains information needed to be able to write a typeclass that can appear in a `derives` clause. In particular, it details the means provided for the implementation of data generic `derived` methods.
+--->
 
-The description that follows gives a low-level way to define type class
+The description that follows gives a low-level way to define a type class.
 
 ### The Shape Type
 
 For every class with a `derives` clause, the compiler computes the shape of that class as a type. For example, here is the shape type for the `Tree[T]` enum:
+
 ```scala
 Cases[(
   Case[Branch[T], (Tree[T], Tree[T])],
@@ -112,8 +113,8 @@ where the right hand side of `Shape` is the shape type of `C[T_1,...,T_n]`.
 For instance, the definition
 ```scala
 enum Result[+T, +E] derives Logging {
-  case class Ok[T](result: T)
-  case class Err[E](err: E)
+  case Ok[T](result: T)
+  case Err[E](err: E)
 }
 ```
 would produce:
