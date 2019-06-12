@@ -2259,6 +2259,13 @@ object messages {
     override def explanation: String = ""
   }
 
+  case class LazyEnum()(implicit val ctx: Context)
+    extends Message(LazyStaticFieldID) {
+    override def msg: String = "modifier lazy is not allowed for enums"
+    override def kind: String = "Syntax"
+    override def explanation: String = ""
+  }
+
   case class StaticOverridingNonStaticMembers()(implicit val ctx: Context)
     extends Message(StaticOverridingNonStaticMembersID) {
     override def msg: String = em"${hl("@static")} members cannot override or implement non-static ones"
