@@ -10,9 +10,8 @@ introduce the following fundamental facilities:
    a definition will be inlined at the point of use. The primary motivation
    behind inline is to reduce the overhead behind function calls and access to
    values. The expansion will be performed by the Scala compiler during the
-   `Typer` compiler phase. Unlike Scala's existsing
-   As opposed to inline in some other ecosystems,
-   inlining is not merely a request to the compiler but for Scala it is a
+   `Typer` compiler phase. As opposed to inlining in some other ecosystems,
+   inlining in Scala is not merely a request to the compiler but is a
    _command_. The reason is that inlining in Scala can drive other compile-time
    operations, like inline pattern matching (enabling type-level
    programming), macros (enabling compile-time, generative, metaprogramming) and
