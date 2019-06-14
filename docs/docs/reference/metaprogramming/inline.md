@@ -384,11 +384,27 @@ The `error` method is used to produce user-defined compile errors during inline 
 It has the following signature:
 
 ```scala
-inline def error(inline msg: String, objs: Any*): Nothing
+inline def error(inline msg: String): Nothing
 ```
 
 If an inline expansion results in a call `error(msgStr)` the compiler
 produces an error message containing the given `msgStr`.
+
+```scala
+inline def fail() = {
+  error("failed for a reason")
+}
+fail() // error: failed for a reason
+```
+
+or
+
+```scala
+inline def fail(p1: => Any) = {
+  error(code"failed on: $p1")
+}
+fail(indentity("foo")) // error: failed on: indentity("foo")
+```
 
 ## Implicit Matches
 

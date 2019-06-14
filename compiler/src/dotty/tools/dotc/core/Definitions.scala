@@ -234,6 +234,8 @@ class Definitions {
     def Compiletime_constValue(implicit ctx: Context): Symbol = Compiletime_constValueR.symbol
     @threadUnsafe lazy val Compiletime_constValueOptR: TermRef = CompiletimePackageObjectRef.symbol.requiredMethodRef("constValueOpt")
     def Compiletime_constValueOpt(implicit ctx: Context): Symbol = Compiletime_constValueOptR.symbol
+    @threadUnsafe lazy val Compiletime_codeR: TermRef = CompiletimePackageObjectRef.symbol.requiredMethodRef("code")
+    def Compiletime_code(implicit ctx: Context): Symbol = Compiletime_codeR.symbol
 
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will
