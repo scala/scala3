@@ -4,7 +4,7 @@ title: "Delegates"
 ---
 
 Delegates define "canonical" values of certain types
-that serve for synthesizing arguments to [given clauses](./inferable-params.html). Example:
+that serve for synthesizing arguments to [given clauses](./given-clauses.html). Example:
 
 ```scala
 trait Ord[T] {
@@ -33,7 +33,7 @@ This code defines a trait `Ord` with two delegate definitions. `IntOrd` defines
 a delegate for the type `Ord[Int]` whereas `ListOrd[T]` defines delegates
 for `Ord[List[T]]` for all types `T` that come with a delegate for `Ord[T]` themselves.
 The `given` clause in `ListOrd` defines an implicit parameter.
-Given clauses are further explained in the [next section](./inferable-params.html).
+Given clauses are further explained in the [next section](./given-clauses.html).
 
 ## Anonymous Delegates
 
@@ -59,6 +59,8 @@ returned for this and all subsequent accesses to `global`.
 Alias delegates can be anonymous, e.g.
 ```scala
 delegate for Position = enclosingTree.position
+delegate for Context given (outer: Context) =
+  outer.withOwner(currentOwner)
 ```
 An alias delegate can have type parameters and given clauses just like any other delegate, but it can only implement a single type.
 

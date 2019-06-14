@@ -9,7 +9,7 @@ call trees where the same value is passed over and over again in long call chain
 functions. Given clauses can help here since they enable the compiler to synthesize
 repetitive arguments instead of the programmer having to write them explicitly.
 
-For example, given the [delegates](./instance-defs.md) defined previously,
+For example, given the [delegates](./delegates.md) defined previously,
 a maximum function that works for any arguments for which an ordering exists can be defined as follows:
 ```scala
 def max[T](x: T, y: T) given (ord: Ord[T]): T =

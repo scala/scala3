@@ -47,13 +47,13 @@ object Delegates {
 }
 ```
 the import
-```
+```scala
 import delegate Delegates.{for Ordering[_], ExecutionContext}
 ```
 would import the `intOrd`, `listOrd`, and `ec` delegates but leave out the `im` delegate, since it fits none of the specified bounds.
 
 By-type imports can be mixed with by-name imports. If both are present in an import clause, by-type imports come last. For instance, the import clause
-```
+```scala
 import delegate Instances.{im, for Ordering[_]}
 ```
 would import `im`, `intOrd`, and `listOrd` but leave out `ec`. By-type imports cannot be mixed with a wildcard import in the same import clause.
