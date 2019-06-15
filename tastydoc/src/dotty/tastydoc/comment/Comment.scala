@@ -58,7 +58,6 @@ private[comment] case class ParsedComment (
 
 trait MarkupConversion[T](packages: Map[String, EmulatedPackageRepresentation]) extends MemberLookup {
   def ent: Representation
-  // def span: Span
   def parsed: ParsedComment
 
   protected def linkedExceptions(m: Map[String, String]): Map[String, String]
@@ -71,10 +70,6 @@ trait MarkupConversion[T](packages: Map[String, EmulatedPackageRepresentation]) 
   private def single(annot: String, xs: List[String], filter: Boolean = true): Option[T] =
     (if (filter) filterEmpty(xs) else xs.map(stringToMarkup)) match {
       case x :: xs =>
-        // if (xs.nonEmpty) ctx.docbase.warn(
-        //   s"Only allowed to have a single annotation for $annot",
-        //   ent.symbol.sourcePosition(span)
-        // )
         Some(x)
       case _ => None
     }
@@ -103,7 +98,7 @@ trait MarkupConversion[T](packages: Map[String, EmulatedPackageRepresentation]) 
   )
 }
 
-case class MarkdownComment(ent: Representation, parsed: ParsedComment, packages: Map[String, EmulatedPackageRepresentation])//: Span)
+case class MarkdownComment(ent: Representation, parsed: ParsedComment, packages: Map[String, EmulatedPackageRepresentation])
 extends MarkupConversion[MarkdownNode](packages) {
 
   def stringToMarkup(str: String) =

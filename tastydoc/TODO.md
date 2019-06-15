@@ -12,6 +12,3 @@
 * Alias type
 * Rework type matching + Order in type matching symbol counts...
 * Remove artifacts in packages => Will fix linking as well
-
-# Output
-* Output inner class/object if not inherited
