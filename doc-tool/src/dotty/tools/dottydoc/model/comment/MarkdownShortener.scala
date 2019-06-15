@@ -10,6 +10,7 @@ package comment
   * @note calling `shorten` **will** mutate the Markdown AST node.
   */
 class MarkdownShortener {
+  import com.vladsch.flexmark.util.ast._
   import com.vladsch.flexmark.ast._
 
   def shorten(node: Node, maxLen: Int = 150): Node = {
