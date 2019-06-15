@@ -11,7 +11,7 @@ object Test {
       val name = '{ ($lclazz).getCanonicalName }
       println()
       println(name.show)
-      println(name.run)
+      println(run(name))
     }
 
     // class Object

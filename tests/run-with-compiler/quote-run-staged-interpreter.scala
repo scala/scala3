@@ -36,7 +36,9 @@ object Test {
 
     println(res1.show)
 
-    val fn = res1.run
+    val fn = run {
+      res1
+    }
     println(fn(0))
     println(fn(2))
     println(fn(3))
@@ -45,12 +47,16 @@ object Test {
 
     val res2 = compile(letExp, Map(), false)
     println(res2.show)
-    println(res2.run)
+    println(run {
+      res2
+    })
 
     println("---")
 
     val res3 = compile(letExp, Map(), true)
     println(res3.show)
-    println(res3.run)
+    println(run {
+      res3
+    })
   }
 }

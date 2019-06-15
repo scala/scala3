@@ -8,6 +8,7 @@ package quoted {
      *
      *  May throw a FreeVariableError on expressions that came from a macro.
      */
+    @deprecated("Use scala.quoted.run", "")
     final def run(implicit toolbox: Toolbox): T = toolbox.run(this)
 
   }

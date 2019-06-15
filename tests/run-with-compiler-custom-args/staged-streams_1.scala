@@ -678,25 +678,25 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    println(test1().run)
+    println(run(test1()))
     println
-    println(test2().run)
+    println(run(test2()))
     println
-    println(test3().run)
+    println(run(test3()))
     println
-    println(test4().run)
+    println(run(test4()))
     println
-    println(test5().run)
+    println(run(test5()))
     println
-    println(test6().run)
+    println(run(test6()))
     println
-    println(test7().run)
+    println(run(test7()))
     println
-    println(test8().run)
+    println(run(test8()))
     println
-    println(test9().run)
+    println(run(test9()))
     println
-    println(test10().run)
+    println(run(test10()))
   }
 }
 
