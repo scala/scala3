@@ -35,6 +35,9 @@ scala
 ### finalize
 <pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
 
+### fromIterator
+<pre><code class="language-scala" >def fromIterator(elems: Iterator[Any]): TupleXXL</pre></code>
+
 ### getClass
 <pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
 

@@ -55,6 +55,35 @@ Is this type an instance of a non-bottom subclass of the given class `cls`?
 ### hashCode
 <pre><code class="language-scala" >def hashCode(): Int</pre></code>
 
+### isDependentFunctionType
+<pre><code class="language-scala" >def isDependentFunctionType(ctx: Context): Boolean</pre></code>
+Is this type a dependent function type?
+
+***see*** `isFunctionType`
+
+### isErasedFunctionType
+<pre><code class="language-scala" >def isErasedFunctionType(ctx: Context): Boolean</pre></code>
+Is this type an erased function type?
+
+***see*** `isFunctionType`
+
+### isFunctionType
+<pre><code class="language-scala" >def isFunctionType(ctx: Context): Boolean</pre></code>
+Is this type a function type?
+
+***return*** true if the dealised type of `self` without refinement is `FunctionN[T1, T2, ..., Tn]`
+
+***Note*** The function
+* returns true for `given Int => Int` and `erased Int => Int`
+* returns false for `List[Int]`, despite that `List[Int] <:< Int => Int`.
+
+
+### isImplicitFunctionType
+<pre><code class="language-scala" >def isImplicitFunctionType(ctx: Context): Boolean</pre></code>
+Is this type an implicit function type?
+
+***see*** `isFunctionType`
+
 ### isInstanceOf
 <pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
 

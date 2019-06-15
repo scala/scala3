@@ -34,7 +34,7 @@ Tasty reflect abstract types
          |                             +- Lambda
          |                             +- If
          |                             +- Match
-         |                             +- ImplicitMatch
+         |                             +- ImpliedMatch
          |                             +- Try
          |                             +- Return
          |                             +- Repeated
@@ -142,7 +142,7 @@ Tasty reflect abstract types
          |                             +- Lambda
          |                             +- If
          |                             +- Match
-         |                             +- ImplicitMatch
+         |                             +- ImpliedMatch
          |                             +- Try
          |                             +- Return
          |                             +- Repeated

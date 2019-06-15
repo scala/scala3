@@ -71,6 +71,12 @@ scala
 ### synchronized
 <pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
 
+### tailXXL
+<pre><code class="language-scala" >def tailXXL: TupleXXL</pre></code>
+
+### toArray
+<pre><code class="language-scala" >def toArray: Array[Object]</pre></code>
+
 ### toString
 <pre><code class="language-scala" >override def toString: String</pre></code>
 

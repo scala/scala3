@@ -28,7 +28,7 @@ Tasty reflect abstract types
          |                             +- Lambda
          |                             +- If
          |                             +- Match
-         |                             +- ImplicitMatch
+         |                             +- ImpliedMatch
          |                             +- Try
          |                             +- Return
          |                             +- Repeated
@@ -245,9 +245,9 @@ Tree representing a reference to definition with a given name
 Tree representing an if/then/else `if (...) ... else ...` in the source code
 
 
-### ImplicitMatch
-<pre><code class="language-scala" >type ImplicitMatch: ImplicitMatch</pre></code>
-Tree representing a pattern match `implicit match { ... }` in the source code
+### ImpliedMatch
+<pre><code class="language-scala" >type ImpliedMatch: ImpliedMatch</pre></code>
+Tree representing a pattern match `delegate match { ... }` in the source code
 
 
 ### Import
@@ -510,7 +510,7 @@ Tree representing code written in the source
 
 ### Try
 <pre><code class="language-scala" >type Try: Try</pre></code>
-Tree representing a tyr catch `try x catch { ... } finally { ... }` in the source code
+Tree representing a try catch `try x catch { ... } finally { ... }` in the source code
 
 
 ### Type

@@ -42,3 +42,10 @@ Usage:
 ``````
 
 
+<pre><code class="language-scala" >final object <a href="./ConstSeq$.md">ConstSeq</a></pre></code>
+Literal sequence of literal constant value expressions
+
+<pre><code class="language-scala" >final val ConstSeq: ConstSeq</pre></code>
+Literal sequence of literal constant value expressions
+
+

@@ -44,6 +44,10 @@ An annotation to record a Scala2 pickled alias.
 
 ***aliased*** A TermRef pointing to the aliased field.
 
+<pre><code class="language-scala" >class <a href="./WithBounds.md">WithBounds</a></pre></code>
+An annotation to indicate a pair of type bounds that comes with a type.
+Used to indicate optional bounds of an opaque type
+
 <pre><code class="language-scala" >final class <a href="./Repeated.md">Repeated</a></pre></code>
 An annotation produced by desugaring to indicate that a
 sequence is a repeated parameter. I.e.

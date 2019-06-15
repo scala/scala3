@@ -6,7 +6,7 @@ scala.internal
 <a href="./Quoted$/patternBindHole.md">patternBindHole</a>
 ## Concrete Type Members:
 ### patternBindHole
-<pre><code class="language-scala" >class <a href="./Quoted$/patternBindHole.md">patternBindHole</a></pre></code>
+<pre><code class="language-scala" >@compileTimeOnly class <a href="./Quoted$/patternBindHole.md">patternBindHole</a></pre></code>
 A splice of a name in a quoted pattern is desugared by wrapping getting this annotation
 
 ## Concrete Value Members:
@@ -32,11 +32,11 @@ A splice of a name in a quoted pattern is desugared by wrapping getting this ann
 <pre><code class="language-scala" >def equals(x$0: Any): Boolean</pre></code>
 
 ### exprQuote
-<pre><code class="language-scala" >def exprQuote[T](x: T): <a href="../quoted/Expr.md">Expr</a>[T]</pre></code>
+<pre><code class="language-scala" >@compileTimeOnly def exprQuote[T](x: T): <a href="../quoted/Expr.md">Expr</a>[T]</pre></code>
 A term quote is desugared by the compiler into a call to this method
 
 ### exprSplice
-<pre><code class="language-scala" >def exprSplice[T](x: <a href="../quoted/Expr.md">Expr</a>[T]): T</pre></code>
+<pre><code class="language-scala" >@compileTimeOnly def exprSplice[T](x: <a href="../quoted/Expr.md">Expr</a>[T]): T</pre></code>
 A term splice is desugared by the compiler into a call to this method
 
 ### finalize
@@ -61,7 +61,7 @@ A term splice is desugared by the compiler into a call to this method
 <pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
 
 ### patternHole
-<pre><code class="language-scala" >def patternHole[T]: T</pre></code>
+<pre><code class="language-scala" >@compileTimeOnly def patternHole[T]: T</pre></code>
 A splice in a quoted pattern is desugared by the compiler into a call to this method
 
 ### synchronized
@@ -71,7 +71,7 @@ A splice in a quoted pattern is desugared by the compiler into a call to this me
 <pre><code class="language-scala" >def toString(): String</pre></code>
 
 ### typeQuote
-<pre><code class="language-scala" >def typeQuote[T <: scala.AnyKind]: <a href="../quoted/Type.md">Type</a>[T]</pre></code>
+<pre><code class="language-scala" >@compileTimeOnly def typeQuote[T <: scala.AnyKind]: <a href="../quoted/Type.md">Type</a>[T]</pre></code>
 A type quote is desugared by the compiler into a call to this method
 
 ### wait

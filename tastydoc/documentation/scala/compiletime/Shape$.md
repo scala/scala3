@@ -3,7 +3,7 @@ scala.compiletime
 
 ## Companion class <a href="./Shape.md">Shape</a>
 
-<pre><code class="language-scala" >final object Shape extends Serializable</pre></code>
+<pre><code class="language-scala" >final object Shape extends Serializable with Sum</pre></code>
 ## Known subclasses:
 <a href="./Shape$/Case.md">Case</a>, <a href="./Shape$/Cases.md">Cases</a>
 ## Concrete Type Members:

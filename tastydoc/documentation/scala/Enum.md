@@ -14,6 +14,9 @@ A base trait of all enum classes
 ### ##
 <pre><code class="language-scala" >final def ##: Int</pre></code>
 
+### $ordinal
+<pre><code class="language-scala" >protected def $ordinal: Int</pre></code>
+
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
 
@@ -22,10 +25,6 @@ A base trait of all enum classes
 
 ### clone
 <pre><code class="language-scala" >protected def clone(): Object</pre></code>
-
-### enumTag
-<pre><code class="language-scala" >def enumTag: Int</pre></code>
-A number uniquely identifying a case of an enum
 
 ### eq
 <pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
@@ -53,6 +52,10 @@ A number uniquely identifying a case of an enum
 
 ### notifyAll
 <pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
+
+### ordinal
+<pre><code class="language-scala" >def ordinal: Int</pre></code>
+A number uniquely identifying a case of an enum
 
 ### synchronized
 <pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>

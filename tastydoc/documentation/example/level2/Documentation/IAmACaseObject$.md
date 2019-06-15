@@ -1,7 +1,7 @@
 example.level2.Documentation
 # case object IAmACaseObject
 
-<pre><code class="language-scala" >final case object IAmACaseObject extends <a href="./CaseImplementThis.md">CaseImplementThis</a> with Product with Serializable</pre></code>
+<pre><code class="language-scala" >final case object IAmACaseObject extends <a href="./CaseImplementThis.md">CaseImplementThis</a> with Product with Serializable with Singleton</pre></code>
 ## Concrete Value Members:
 ### !=
 <pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
@@ -26,6 +26,9 @@ example.level2.Documentation
 
 ### finalize
 <pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
+
+### fromProduct
+<pre><code class="language-scala" >def fromProduct(p: Product): MirroredMonoType</pre></code>
 
 ### getClass
 <pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>

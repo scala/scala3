@@ -357,7 +357,7 @@ object Build {
     libraryDependencies +=
       "com.novocode" % "junit-interface" % "0.11",
     libraryDependencies ++= {
-      val flexmarkVersion = "0.40.24"
+      val flexmarkVersion = "0.42.12"
       Seq(
         "com.vladsch.flexmark" % "flexmark-all" % flexmarkVersion,
         "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,

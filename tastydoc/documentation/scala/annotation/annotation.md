@@ -6,6 +6,11 @@ A base trait for annotations that yield proper subtypes of the types they annota
 Refining annotations are more "sticky" than normal ones. They are conceptually kept
 around when normal refinements would also not be stripped away.
 
+<pre><code class="language-scala" >final class <a href="./threadUnsafe.md">threadUnsafe</a></pre></code>
+This annotation can only be used on a field which defines a lazy val.
+When this annotation is used, the initialization of the lazy val will use a
+faster mechanism which is not thread-safe.
+
 <pre><code class="language-scala" >final class <a href="./alpha.md">alpha</a></pre></code>
 An annotation that defines an external name for a definition.
 If an `alpha(extname)` annotation is given for a method or some other

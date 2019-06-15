@@ -4,8 +4,10 @@
 <pre><code class="language-scala" >final object *:</pre></code>
 <pre><code class="language-scala" >final val *:: *:</pre></code>
 
-<pre><code class="language-scala" >@showAsInfix sealed class *:</pre></code>
+<pre><code class="language-scala" >@showAsInfix sealed abstract class *:</pre></code>
 <pre><code class="language-scala" >sealed trait NonEmptyTuple</pre></code>
+Tuple of arbitrary non-zero arity
+
 <pre><code class="language-scala" >class forceInline</pre></code>
 An annotation on methods that is equivalent to Dotty `inline` modifier,
 except that it does not imply `erased`.
@@ -30,6 +32,13 @@ to the `Conversion` values.
 Also note that in bootstrapped dotty, `Predef.<:<` should inherit from
 `Conversion`. This would cut the number of special cases in `discardForView`
 from two to one.
+
+<pre><code class="language-scala" >@implicitNotFound sealed trait TupledFunction</pre></code>
+Type class relating a `FunctionN[..., R]` with an equivalent tupled function `Function1[TupleN[...], R]`
+
+***F*** a function type
+
+***G*** a tupled function type (function of arity 1 receiving a tuple as argument)
 
 <pre><code class="language-scala" >trait FunctionXXL</pre></code>
 A function with all parameters grouped in an array.
@@ -60,10 +69,22 @@ A class for Product0 which was missing from the scala distribution.
 A class for Product0 which was missing from the scala distribution.
 
 
+<pre><code class="language-scala" >trait PolyFunction</pre></code>
+Marker trait for polymorphic function types.
+This is the only trait that can be refined with a polymorphic method,
+as long as that method is called `apply`, e.g.:
+    PolyFunction { def apply[T_1, ..., T_M](x_1: P_1, ..., x_N: P_N): R }
+This type will be erased to FunctionN.
+
+<pre><code class="language-scala" >final object deriving</pre></code>
+<pre><code class="language-scala" >final val deriving: deriving</pre></code>
+
 <pre><code class="language-scala" >final object Tuple</pre></code>
 <pre><code class="language-scala" >final val Tuple: Tuple</pre></code>
 
 <pre><code class="language-scala" >sealed trait Tuple</pre></code>
+Tuple of arbitrary arity
+
 <pre><code class="language-scala" >final object IArray$package</pre></code>
 <pre><code class="language-scala" >final val IArray$package: IArray$package</pre></code>
 
@@ -167,4 +188,4 @@ incur any additional per-value storage cost. When a runtime value of the modulus
 is required in the implementation of `+` it is provided at the call site via the
 implicit argument `m` of type `ValueOf[M]`.
 
-<pre><code class="language-scala" >package <a href="./compiletime/compiletime.md">compiletime</a></pre></code><pre><code class="language-scala" >package <a href="./quoted/quoted.md">quoted</a></pre></code>
+<pre><code class="language-scala" >package <a href="./compiletime/compiletime.md">compiletime</a></pre></code><pre><code class="language-scala" >package <a href="./internal/internal.md">internal</a></pre></code><pre><code class="language-scala" >package <a href="./quoted/quoted.md">quoted</a></pre></code>

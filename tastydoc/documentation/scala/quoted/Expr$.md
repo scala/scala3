@@ -5,12 +5,17 @@ scala.quoted
 
 <pre><code class="language-scala" >final object Expr extends Serializable</pre></code>
 ## Known subclasses:
-<a href="./Expr$/ContextualFunctionBetaReduction$.md">ContextualFunctionBetaReduction</a>, <a href="./Expr$/FunctionBetaReduction$.md">FunctionBetaReduction</a>, <a href="./Expr$/ExprOps.md">ExprOps</a>
+<a href="./Expr$/AsContextualFunction.md">AsContextualFunction</a>, <a href="./Expr$/AsFunction.md">AsFunction</a>, <a href="./Expr$/ExprOps.md">ExprOps</a>
 ## Concrete Type Members:
-### ContextualFunctionBetaReduction
-<pre><code class="language-scala" >final object <a href="./Expr$/ContextualFunctionBetaReduction$.md">ContextualFunctionBetaReduction</a></pre></code>
-### FunctionBetaReduction
-<pre><code class="language-scala" >final object <a href="./Expr$/FunctionBetaReduction$.md">FunctionBetaReduction</a></pre></code>
+### TupleOfExpr
+<pre><code class="language-scala" >type TupleOfExpr: [Tup >: scala.Nothing <: scala.Tuple] => scala.Tuple.Map[Tup, [+T >: scala.Nothing <: scala.Any] => scala.quoted.Expr[+T]]</pre></code>
+Converts a tuple `(T1, ..., Tn)` to `(Expr[T1], ..., Expr[Tn])`
+
+
+### AsContextualFunction
+<pre><code class="language-scala" >class <a href="./Expr$/AsContextualFunction.md">AsContextualFunction</a></pre></code>
+### AsFunction
+<pre><code class="language-scala" >class <a href="./Expr$/AsFunction.md">AsFunction</a></pre></code>
 ### ExprOps
 <pre><code class="language-scala" >class <a href="./Expr$/ExprOps.md">ExprOps</a></pre></code>
 ## Concrete Value Members:

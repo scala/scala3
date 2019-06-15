@@ -14,15 +14,6 @@ will result in a compilation error with the given message.
 <pre><code class="language-scala" >final object <a href="./package$.md">package</a></pre></code>
 <pre><code class="language-scala" >final val package: <a href="./package$.md">package</a></pre></code>
 
-<pre><code class="language-scala" >final object <a href="./Types$.md">Types</a></pre></code>
-All implementations of Type[T].
-These should never be used directly.
-
-<pre><code class="language-scala" >final val Types: <a href="./Types$.md">Types</a></pre></code>
-All implementations of Type[T].
-These should never be used directly.
-
-
 <pre><code class="language-scala" >final object <a href="./Liftable$.md">Liftable</a></pre></code>
 Some liftable base types. To be completed with at least all types
 that are valid Scala literals. The actual implementation of these
@@ -44,15 +35,6 @@ without going through an explicit `'{...}` operation.
 <pre><code class="language-scala" >final val Toolbox: <a href="./Toolbox$.md">Toolbox</a></pre></code>
 
 <pre><code class="language-scala" >@implicitNotFound trait <a href="./Toolbox.md">Toolbox</a></pre></code>
-<pre><code class="language-scala" >final object <a href="./Exprs$.md">Exprs</a></pre></code>
-All implementations of Expr[T].
-These should never be used directly.
-
-<pre><code class="language-scala" >final val Exprs: <a href="./Exprs$.md">Exprs</a></pre></code>
-All implementations of Expr[T].
-These should never be used directly.
-
-
 <pre><code class="language-scala" >final object <a href="./Type$.md">Type</a></pre></code>
 Some basic type tags, currently incomplete
 

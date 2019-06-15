@@ -2,13 +2,6 @@ scala.IArray$package$
 # object IArray
 
 <pre><code class="language-scala" >final object IArray extends Serializable</pre></code>
-## Known subclasses:
-arrayOps
-## Concrete Type Members:
-### arrayOps
-<pre><code class="language-scala" >final object arrayOps</pre></code>
-Defines extension methods for immutable arrays
-
 ## Concrete Value Members:
 ### !=
 <pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>

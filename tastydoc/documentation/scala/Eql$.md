@@ -3,7 +3,7 @@ scala
 
 ## Companion trait Eql
 
-<pre><code class="language-scala" >final object Eql extends Serializable</pre></code>
+<pre><code class="language-scala" >final object Eql extends Serializable with Sum</pre></code>
 Companion object containing a few universally known `Eql` instances.
 Eql instances involving primitive types or the Null type are handled directly in
 the compiler (see Implicits.synthesizedEq), so they are not included here.
@@ -13,7 +13,7 @@ derived
 ## Concrete Type Members:
 ### derived
 <pre><code class="language-scala" >final object derived</pre></code>
-A non-implied universal `Eql` instance.
+A universal `Eql` instance.
 
 ## Concrete Value Members:
 ### !=
@@ -37,8 +37,8 @@ A non-implied universal `Eql` instance.
 ### eqlAny
 <pre><code class="language-scala" >def eqlAny[L, R]: Eql[L, R]</pre></code>
 A fall-back instance to compare values of any types.
-Even though this method is not declared implied, the compiler will
-compute implied instances as solutions to `Eql[T, U]` queries if
+Even though this method is not declared a delegate, the compiler will
+synthesize implicit arguments as solutions to `Eql[T, U]` queries if
 the rules of multiversal equality require it.
 
 ### eqlNumber

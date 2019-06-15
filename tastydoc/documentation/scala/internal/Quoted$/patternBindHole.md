@@ -4,6 +4,8 @@ scala.internal.Quoted$
 <pre><code class="language-scala" >class patternBindHole extends Annotation</pre></code>
 A splice of a name in a quoted pattern is desugared by wrapping getting this annotation
 
+## Annotations:
+@compileTimeOnly 
 ## Constructors:
 <pre><code class="language-scala" >patternBindHole()</pre></code>
 

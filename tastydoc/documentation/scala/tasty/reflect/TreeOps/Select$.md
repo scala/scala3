@@ -14,6 +14,10 @@ Scala term selection
 ### ==
 <pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
 
+### apply
+<pre><code class="language-scala" >def apply(qualifier: Term, symbol: Symbol)(ctx: Context): Select</pre></code>
+Select a term member by symbol
+
 ### asInstanceOf
 <pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
 

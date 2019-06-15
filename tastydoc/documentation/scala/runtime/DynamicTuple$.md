@@ -18,20 +18,29 @@ scala.runtime
 ### clone
 <pre><code class="language-scala" >protected def clone(): Object</pre></code>
 
+### concatIterator
+<pre><code class="language-scala" >def concatIterator(tup1: Tuple, tup2: Tuple): Iterator[Any]</pre></code>
+
 ### cons$Array
 <pre><code class="language-scala" >def cons$Array[H](x: H, elems: Array[Object]): Array[Object]</pre></code>
 
+### consIterator
+<pre><code class="language-scala" >def consIterator(head: Any, tail: Tuple): Iterator[Any]</pre></code>
+
 ### dynamicApply
 <pre><code class="language-scala" >def dynamicApply[This <: scala.NonEmptyTuple, N <: scala.Int](self: This, n: Int): Elem[This, N]</pre></code>
+
+### dynamicConcat
+<pre><code class="language-scala" >def dynamicConcat[This <: scala.Tuple, That <: scala.Tuple](self: This, that: That): Concat[This, That]</pre></code>
+
+### dynamicCons
+<pre><code class="language-scala" >def dynamicCons[H, This <: scala.Tuple](x: H, self: Tuple): *:[H, This]</pre></code>
 
 ### dynamicFromArray
 <pre><code class="language-scala" >def dynamicFromArray[T <: scala.Tuple](xs: Array[Object]): T</pre></code>
 
 ### dynamicFromProduct
 <pre><code class="language-scala" >def dynamicFromProduct[T <: scala.Tuple](xs: Product): T</pre></code>
-
-### dynamicHead
-<pre><code class="language-scala" >def dynamicHead[This <: scala.NonEmptyTuple](self: This): Head[This]</pre></code>
 
 ### dynamicSize
 <pre><code class="language-scala" >def dynamicSize[This <: scala.Tuple](self: This): Size[This]</pre></code>
@@ -41,12 +50,6 @@ scala.runtime
 
 ### dynamicToArray
 <pre><code class="language-scala" >def dynamicToArray(self: Tuple): Array[Object]</pre></code>
-
-### dynamic_*:
-<pre><code class="language-scala" >def dynamic_*:[This <: scala.Tuple, H](self: Tuple, x: H): *:[H, This]</pre></code>
-
-### dynamic_++
-<pre><code class="language-scala" >def dynamic_++[This <: scala.Tuple, That <: scala.Tuple](self: This, that: That): Concat[This, That]</pre></code>
 
 ### eq
 <pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
@@ -75,6 +78,9 @@ scala.runtime
 ### notifyAll
 <pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
 
+### productToArray
+<pre><code class="language-scala" >def productToArray(self: Product): Array[Object]</pre></code>
+
 ### synchronized
 <pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
 
@@ -95,7 +101,4 @@ scala.runtime
 
 ### MaxSpecialized
 <pre><code class="language-scala" >inline val MaxSpecialized: 22</pre></code>
-
-### empty$Array
-<pre><code class="language-scala" >val empty$Array: Array[Object]</pre></code>
 

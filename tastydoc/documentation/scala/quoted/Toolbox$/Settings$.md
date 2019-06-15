@@ -3,7 +3,7 @@ scala.quoted.Toolbox$
 
 ## Companion case class <a href="./Settings.md">Settings</a>
 
-<pre><code class="language-scala" >final object Settings extends Serializable</pre></code>
+<pre><code class="language-scala" >final object Settings extends Serializable with Product</pre></code>
 ## Concrete Value Members:
 ### !=
 <pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>

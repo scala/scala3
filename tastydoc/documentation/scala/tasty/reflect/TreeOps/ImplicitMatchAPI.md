@@ -3,7 +3,7 @@ scala.tasty.reflect.TreeOps
 
 <pre><code class="language-scala" >class ImplicitMatchAPI</pre></code>
 ## Constructors:
-<pre><code class="language-scala" >ImplicitMatchAPI(self: ImplicitMatch)</pre></code>
+<pre><code class="language-scala" >ImplicitMatchAPI(self: ImpliedMatch)</pre></code>
 
 ## Concrete Value Members:
 ### !=

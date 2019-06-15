@@ -28,7 +28,7 @@ Tasty reflect abstract types
          |                             +- Lambda
          |                             +- If
          |                             +- Match
-         |                             +- ImplicitMatch
+         |                             +- ImpliedMatch
          |                             +- Try
          |                             +- Return
          |                             +- Repeated
@@ -245,9 +245,9 @@ Tree representing a reference to definition with a given name
 Tree representing an if/then/else `if (...) ... else ...` in the source code
 
 
-### ImplicitMatch
-<pre><code class="language-scala" >type ImplicitMatch: Nothing <: Term</pre></code>
-Tree representing a pattern match `implicit match  { ... }` in the source code
+### ImpliedMatch
+<pre><code class="language-scala" >type ImpliedMatch: Nothing <: Term</pre></code>
+Tree representing a pattern match `delegate match  { ... }` in the source code
 
 
 ### Import
@@ -1254,13 +1254,13 @@ Position in the source code
 <pre><code class="language-scala" >def If_thenp(self: If)(ctx: Context): Term</pre></code>
 
 ### ImplicitMatch_apply
-<pre><code class="language-scala" >def ImplicitMatch_apply(cases: List[CaseDef])(ctx: Context): ImplicitMatch</pre></code>
+<pre><code class="language-scala" >def ImplicitMatch_apply(cases: List[CaseDef])(ctx: Context): ImpliedMatch</pre></code>
 
 ### ImplicitMatch_cases
-<pre><code class="language-scala" >def ImplicitMatch_cases(self: ImplicitMatch)(ctx: Context): List[CaseDef]</pre></code>
+<pre><code class="language-scala" >def ImplicitMatch_cases(self: ImpliedMatch)(ctx: Context): List[CaseDef]</pre></code>
 
 ### ImplicitMatch_copy
-<pre><code class="language-scala" >def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(ctx: Context): ImplicitMatch</pre></code>
+<pre><code class="language-scala" >def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(ctx: Context): ImpliedMatch</pre></code>
 
 ### Import_apply
 <pre><code class="language-scala" >def Import_apply(importImplied: Boolean, expr: Term, selectors: List[ImportSelector])(ctx: Context): Import</pre></code>
@@ -1639,6 +1639,9 @@ View this expression `quoted.Type[T]` as a `TypeTree`
 ### SelectOuter_tpe
 <pre><code class="language-scala" >def SelectOuter_tpe(self: SelectOuter)(ctx: Context): Type</pre></code>
 
+### Select_apply
+<pre><code class="language-scala" >def Select_apply(qualifier: Term, symbol: Symbol)(ctx: Context): Select</pre></code>
+
 ### Select_copy
 <pre><code class="language-scala" >def Select_copy(original: Tree)(qualifier: Term, name: String)(ctx: Context): Select</pre></code>
 
@@ -1973,6 +1976,35 @@ or instantiated type variable.
 <pre><code class="language-scala" >def Type_derivesFrom(self: Type)(cls: ClassDefSymbol)(ctx: Context): Boolean</pre></code>
 Is this type an instance of a non-bottom subclass of the given class `cls`?
 
+### Type_isDependentFunctionType
+<pre><code class="language-scala" >def Type_isDependentFunctionType(self: Type)(ctx: Context): Boolean</pre></code>
+Is this type a dependent function type?
+
+***see*** `Type_isFunctionType`
+
+### Type_isErasedFunctionType
+<pre><code class="language-scala" >def Type_isErasedFunctionType(self: Type)(ctx: Context): Boolean</pre></code>
+Is this type an erased function type?
+
+***see*** `Type_isFunctionType`
+
+### Type_isFunctionType
+<pre><code class="language-scala" >def Type_isFunctionType(self: Type)(ctx: Context): Boolean</pre></code>
+Is this type a function type?
+
+***return*** true if the dealised type of `self` without refinement is `FunctionN[T1, T2, ..., Tn]`
+
+***Note*** The function
+* returns true for `given Int => Int` and `erased Int => Int`
+* returns false for `List[Int]`, despite that `List[Int] <:< Int => Int`.
+
+
+### Type_isImplicitFunctionType
+<pre><code class="language-scala" >def Type_isImplicitFunctionType(self: Type)(ctx: Context): Boolean</pre></code>
+Is this type an implicit function type?
+
+***see*** `Type_isFunctionType`
+
 ### Type_isSingleton
 <pre><code class="language-scala" >def Type_isSingleton(self: Type)(ctx: Context): Boolean</pre></code>
 
@@ -2177,7 +2209,7 @@ Report a compilation error with the given message at the given position
 <pre><code class="language-scala" >def matchIf(tree: Tree)(ctx: Context): Option[If]</pre></code>
 
 ### matchImplicitMatch
-<pre><code class="language-scala" >def matchImplicitMatch(tree: Tree)(ctx: Context): Option[ImplicitMatch]</pre></code>
+<pre><code class="language-scala" >def matchImplicitMatch(tree: Tree)(ctx: Context): Option[ImpliedMatch]</pre></code>
 
 ### matchImport
 <pre><code class="language-scala" >def matchImport(tree: Tree)(ctx: Context): Option[Import]</pre></code>

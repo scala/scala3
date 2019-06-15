@@ -52,8 +52,8 @@ scala.tasty.reflect.TreeOps
 <pre><code class="language-scala" >def toString(): String</pre></code>
 
 ### unapply
-<pre><code class="language-scala" >def unapply(tree: Tree)(ctx: Context): Option[ImplicitMatch]</pre></code>
-Matches any ImplicitMatch and returns it
+<pre><code class="language-scala" >def unapply(tree: Tree)(ctx: Context): Option[ImpliedMatch]</pre></code>
+Matches any ImpliedMatch and returns it
 
 ### wait
 <pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>

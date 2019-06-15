@@ -46,7 +46,7 @@ but it should be changed to some kind of TASTY bundle.
 <pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
 
 ### liftedExpr
-<pre><code class="language-scala" >def liftedExpr[T](value: T): <a href="../../quoted/Exprs$/LiftedExpr.md">LiftedExpr</a>[T]</pre></code>
+<pre><code class="language-scala" >def liftedExpr[T](value: T): <a href="../../quoted/Expr.md">Expr</a>[T]</pre></code>
 Lift the `value` to an `Expr` tree.
 Values can only be of type Boolean, Byte, Short, Char, Int, Long, Float, Double, Unit, String, Null or Class.
 
