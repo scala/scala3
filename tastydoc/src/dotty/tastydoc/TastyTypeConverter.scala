@@ -59,7 +59,7 @@ trait TastyTypeConverter {
             if(link == "/scala"){
               if(label.matches("Function[1-9]") || label.matches("Function[1-9][0-9]")){
                 val argsAndReturn = typeOrBoundsList.map(convertTypeOrBoundsToReference(reflect)(_))
-                FunctionReference(argsAndReturn.take(argsAndReturn.size - 1), argsAndReturn.last, false) //TODO: Implict
+                FunctionReference(argsAndReturn.take(argsAndReturn.size - 1), argsAndReturn.last, false)
               }else if(label.matches("Tuple[1-9]") || label.matches("Tuple[1-9][0-9]")){
                 TupleReference(typeOrBoundsList.map(convertTypeOrBoundsToReference(reflect)(_)))
               }else{
@@ -70,10 +70,10 @@ trait TastyTypeConverter {
             }
           case _ => throw Exception("Match error in AppliedType. This should not happen, please open an issue. " + tp)
         }
-      case reflect.Type.IsTypeRef(reflect.Type.TypeRef(typeName, qual)) => //TODO Verify all these typeOrBounds handling
+      case reflect.Type.IsTypeRef(reflect.Type.TypeRef(typeName, qual)) =>
         convertTypeOrBoundsToReference(reflect)(qual) match {
-          case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true) //TODO check hasOwnFile
-          case EmptyReference => TypeReference(typeName, "", Nil, true) //TODO check hasOwnFile
+          case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true)
+          case EmptyReference => TypeReference(typeName, "", Nil, true)
           case _ => throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
         }
       case reflect.Type.IsTermRef(reflect.Type.TermRef(typeName, qual)) =>
@@ -83,25 +83,19 @@ trait TastyTypeConverter {
           case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
         }
       case reflect.Type.IsSymRef(reflect.Type.SymRef(symbol, typeOrBounds)) => symbol match {
-        case reflect.IsClassDefSymbol(_) =>
+        case reflect.IsClassDefSymbol(_) => //Need to be split because these types have their own file
           convertTypeOrBoundsToReference(reflect)(typeOrBounds) match {
             case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs, true)
             case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
             case EmptyReference => TypeReference(symbol.name, "", Nil, true)
             case _ => throw Exception("Match error in SymRef/TypeOrBounds/ClassDef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(typeOrBounds))
           }
-        case reflect.IsPackageDefSymbol(_) | reflect.IsTypeDefSymbol(_) | reflect.IsValDefSymbol(_) =>
+        case reflect.IsTermSymbol(_) | reflect.IsTypeDefSymbol(_) =>
           convertTypeOrBoundsToReference(reflect)(typeOrBounds) match {
             case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs)
             case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
             case EmptyReference => TypeReference(symbol.name, "", Nil)
             case _ => throw Exception("Match error in SymRef/TypeOrBounds/Other. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(typeOrBounds))
-          }
-        case reflect.IsTermSymbol(_) => convertTypeOrBoundsToReference(reflect)(typeOrBounds) match {
-            case TypeReference(label, link, xs, _) => TypeReference(symbol.name, link + "/" + label, xs)
-            case EmptyReference if symbol.name == "<root>" | symbol.name == "_root_" => EmptyReference
-            case EmptyReference => TypeReference(symbol.name, "", Nil)
-            case _ => throw Exception("Match error in SymRef/TypeOrBounds/Term. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(typeOrBounds))
           }
         case _ => throw Exception("Match error in SymRef. This should not happen, please open an issue. " + symbol)
       }

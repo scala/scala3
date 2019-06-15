@@ -223,7 +223,7 @@ object representations extends TastyExtractor {
     def innerLogic(representation: Representation): Unit = representation match {
       case r: ClassRepresentation =>
         r.parents.foreach{_ match {
-          case ref@TypeReference(label, path, _, _) => mutablePackagesMap.get(path.tail.replaceAll("\\/", "\\.")) match {
+          case ref@TypeReference(label, path, _, _) => mutablePackagesMap.get(path.replaceFirst("/", "").replaceAll("/", ".")) match {
             case Some(p) =>
               p.members.filter(_.name == label).foreach{_ match {
                 case parent: ClassRepresentation => parent.knownSubclasses = TypeReference(r.name, r.path.mkString("/", "/", ""), Nil, true) :: parent.knownSubclasses

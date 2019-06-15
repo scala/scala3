@@ -36,42 +36,42 @@ class Tests {
       "example.UserDocLinkingClass"
     ))
   }
-  // @Test def testDotty(): Unit = {
-  //   Main.main(Array(
-  //     "--classpath",
-  //     "tastydoc/dotty-0.16.0-RC3/lib",
-  //     "--syntax",
-  //     "wiki",
-  //     "--packagestolink",
-  //     "dotty.*",
-  //     "scala.annotation.*",
-  //     "scala.compiletime.*",
-  //     "scala.implicits.*",
-  //     "scala.internal.*",
-  //     "scala.quoted.*",
-  //     "scala.reflect.*",
-  //     "scala.runtime.*",
-  //     "scala.tasty.*",
-  //     "scala.testing.*",
-  //     "scalaShadowing.*",
-  //     //Individual files
-  //     "scala.\\$times\\$colon*",
-  //     "scala.Conversion*",
-  //     "scala.Enum*",
-  //     "scala.Eql*",
-  //     "scala.forceInline*",
-  //     "scala.FunctionXXL*",
-  //     "scala.IArray*",
-  //     "scala.NonEmptyTuple*",
-  //     "scala.Product0*",
-  //     "scala.Selectable*",
-  //     "scala.Tuple*",
-  //     "scala.TupleXXL*",
-  //     "scala.ValueOf*",
-  //     "-d",
-  //     "dotty",
-  //     "scala",
-  //     "scalaShadowing"
-  //   ))
-  // }
+  @Test def testDotty(): Unit = {
+    Main.main(Array(
+      "--classpath",
+      "tastydoc/dotty-0.16.0-RC3/lib",
+      "--syntax",
+      "wiki",
+      "--packagestolink",
+      "dotty.*",
+      "scala.annotation.*",
+      "scala.compiletime.*",
+      "scala.implicits.*",
+      "scala.internal.*",
+      "scala.quoted.*",
+      "scala.reflect.*",
+      "scala.runtime.*",
+      "scala.tasty.*",
+      "scala.testing.*",
+      "scalaShadowing.*",
+      //Individual files
+      "scala.\\$times\\$colon*",
+      "scala.Conversion*",
+      "scala.Enum*",
+      "scala.Eql*",
+      "scala.forceInline*",
+      "scala.FunctionXXL*",
+      "scala.IArray*",
+      "scala.NonEmptyTuple*",
+      "scala.Product0*",
+      "scala.Selectable*",
+      "scala.Tuple*",
+      "scala.TupleXXL*",
+      "scala.ValueOf*",
+      "-d",
+      "dotty",
+      "scala",
+      "scalaShadowing"
+    ))
+  }
 }
