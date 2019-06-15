@@ -279,7 +279,7 @@ tree machinery:
     delegate for Liftable[Int] {
       def toExpr(n: Int): Expr[Int] = n match {
         case Int.MinValue    => '{ Int.MinValue }
-        case _ if n < 0      => '{ - ${ toExpr(n) } }
+        case _ if n < 0      => '{ - ${ toExpr(-n) } }
         case 0               => '{ 0 }
         case _ if n % 2 == 0 => '{ ${ toExpr(n / 2) } * 2 }
         case _               => '{ ${ toExpr(n / 2) } * 2 + 1 }
