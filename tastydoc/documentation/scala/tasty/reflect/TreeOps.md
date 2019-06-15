@@ -341,60 +341,482 @@ TypeBoundsTree containing wildcard type bounds
 ### WildcardTypeTreeAPI
 <pre><code class="language-scala" >class <a href="./TreeOps/WildcardTypeTreeAPI.md">WildcardTypeTreeAPI</a></pre></code>
 ## Concrete Value Members:
-### !=
-<pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
+### AnnotatedAPI
+<pre><code class="language-scala" >final implicit def AnnotatedAPI(self: Annotated): AnnotatedAPI</pre></code>
 
-### ##
-<pre><code class="language-scala" >final def ##: Int</pre></code>
+### AppliedAPI
+<pre><code class="language-scala" >final implicit def AppliedAPI(self: Applied): AppliedAPI</pre></code>
 
-### ==
-<pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
+### ApplyAPI
+<pre><code class="language-scala" >final implicit def ApplyAPI(self: Apply): ApplyAPI</pre></code>
 
-### asInstanceOf
-<pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
+### AssignAPI
+<pre><code class="language-scala" >final implicit def AssignAPI(self: Assign): AssignAPI</pre></code>
 
-### clone
-<pre><code class="language-scala" >protected def clone(): Object</pre></code>
+### BlockAPI
+<pre><code class="language-scala" >final implicit def BlockAPI(self: Block): BlockAPI</pre></code>
 
-### eq
-<pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
+### ByNameAPI
+<pre><code class="language-scala" >final implicit def ByNameAPI(self: ByName): ByNameAPI</pre></code>
 
-### equals
-<pre><code class="language-scala" >def equals(x$0: Any): Boolean</pre></code>
+### CaseDefAPI
+<pre><code class="language-scala" >final implicit def CaseDefAPI(caseDef: CaseDef): CaseDefAPI</pre></code>
 
-### finalize
-<pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
+### ClassDefAPI
+<pre><code class="language-scala" >final implicit def ClassDefAPI(self: ClassDef): ClassDefAPI</pre></code>
 
-### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
+### DefDefAPI
+<pre><code class="language-scala" >final implicit def DefDefAPI(self: DefDef): DefDefAPI</pre></code>
 
-### hashCode
-<pre><code class="language-scala" >def hashCode(): Int</pre></code>
+### DefinitionAPI
+<pre><code class="language-scala" >final implicit def DefinitionAPI(self: Definition): DefinitionAPI</pre></code>
 
-### isInstanceOf
-<pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
+### IdentAPI
+<pre><code class="language-scala" >final implicit def IdentAPI(self: Ident): IdentAPI</pre></code>
 
-### ne
-<pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>
+### IfAPI
+<pre><code class="language-scala" >final implicit def IfAPI(self: If): IfAPI</pre></code>
 
-### notify
-<pre><code class="language-scala" >final def notify(): Unit</pre></code>
+### ImplicitMatchAPI
+<pre><code class="language-scala" >final implicit def ImplicitMatchAPI(self: ImpliedMatch): ImplicitMatchAPI</pre></code>
 
-### notifyAll
-<pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
+### ImportAPI
+<pre><code class="language-scala" >final implicit def ImportAPI(self: Import): ImportAPI</pre></code>
 
-### synchronized
-<pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
+### InlinedAPI
+<pre><code class="language-scala" >final implicit def InlinedAPI(self: Inlined): InlinedAPI</pre></code>
 
-### toString
-<pre><code class="language-scala" >def toString(): String</pre></code>
+### LambdaAPI
+<pre><code class="language-scala" >final implicit def LambdaAPI(self: Lambda): LambdaAPI</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>
+### LambdaTypeTreeAPI
+<pre><code class="language-scala" >final implicit def LambdaTypeTreeAPI(self: LambdaTypeTree): LambdaTypeTreeAPI</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long): Unit</pre></code>
+### LiteralAPI
+<pre><code class="language-scala" >final implicit def LiteralAPI(self: Literal): LiteralAPI</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(): Unit</pre></code>
+### MatchAPI
+<pre><code class="language-scala" >final implicit def MatchAPI(self: Match): MatchAPI</pre></code>
+
+### MatchTypeTreeAPI
+<pre><code class="language-scala" >final implicit def MatchTypeTreeAPI(self: MatchTypeTree): MatchTypeTreeAPI</pre></code>
+
+### NamedArgAPI
+<pre><code class="language-scala" >final implicit def NamedArgAPI(self: NamedArg): NamedArgAPI</pre></code>
+
+### NewAPI
+<pre><code class="language-scala" >final implicit def NewAPI(self: New): NewAPI</pre></code>
+
+### PackageClauseAPI
+<pre><code class="language-scala" >final implicit def PackageClauseAPI(self: PackageClause): PackageClauseAPI</pre></code>
+
+### PackageDefAPI
+<pre><code class="language-scala" >final implicit def PackageDefAPI(self: PackageDef): PackageDefAPI</pre></code>
+
+### ProjectionAPI
+<pre><code class="language-scala" >final implicit def ProjectionAPI(self: Projection): ProjectionAPI</pre></code>
+
+### RefinedAPI
+<pre><code class="language-scala" >final implicit def RefinedAPI(self: Refined): RefinedAPI</pre></code>
+
+### RepeatedAPI
+<pre><code class="language-scala" >final implicit def RepeatedAPI(self: Repeated): RepeatedAPI</pre></code>
+
+### ReturnAPI
+<pre><code class="language-scala" >final implicit def ReturnAPI(self: Return): ReturnAPI</pre></code>
+
+### SelectAPI
+<pre><code class="language-scala" >final implicit def SelectAPI(self: Select): SelectAPI</pre></code>
+
+### SelectOuterAPI
+<pre><code class="language-scala" >final implicit def SelectOuterAPI(self: SelectOuter): SelectOuterAPI</pre></code>
+
+### SingletonAPI
+<pre><code class="language-scala" >final implicit def SingletonAPI(self: Singleton): SingletonAPI</pre></code>
+
+### SuperAPI
+<pre><code class="language-scala" >final implicit def SuperAPI(self: Super): SuperAPI</pre></code>
+
+### TermAPI
+<pre><code class="language-scala" >final implicit def TermAPI(self: Term): TermAPI</pre></code>
+
+### ThisAPI
+<pre><code class="language-scala" >final implicit def ThisAPI(self: This): ThisAPI</pre></code>
+
+### TreeAPI
+<pre><code class="language-scala" >final implicit def TreeAPI(self: Tree): TreeAPI</pre></code>
+
+### TryAPI
+<pre><code class="language-scala" >final implicit def TryAPI(self: Try): TryAPI</pre></code>
+
+### TypeApplyAPI
+<pre><code class="language-scala" >final implicit def TypeApplyAPI(self: TypeApply): TypeApplyAPI</pre></code>
+
+### TypeBindAPI
+<pre><code class="language-scala" >final implicit def TypeBindAPI(self: TypeBind): TypeBindAPI</pre></code>
+
+### TypeBlockAPI
+<pre><code class="language-scala" >final implicit def TypeBlockAPI(self: TypeBlock): TypeBlockAPI</pre></code>
+
+### TypeBoundsTreeAPI
+<pre><code class="language-scala" >final implicit def TypeBoundsTreeAPI(self: TypeBoundsTree): TypeBoundsTreeAPI</pre></code>
+
+### TypeCaseDefAPI
+<pre><code class="language-scala" >final implicit def TypeCaseDefAPI(caseDef: TypeCaseDef): TypeCaseDefAPI</pre></code>
+
+### TypeDefAPI
+<pre><code class="language-scala" >final implicit def TypeDefAPI(self: TypeDef): TypeDefAPI</pre></code>
+
+### TypeIdentAPI
+<pre><code class="language-scala" >final implicit def TypeIdentAPI(self: TypeIdent): TypeIdentAPI</pre></code>
+
+### TypeSelectAPI
+<pre><code class="language-scala" >final implicit def TypeSelectAPI(self: TypeSelect): TypeSelectAPI</pre></code>
+
+### TypeTreeAPI
+<pre><code class="language-scala" >final implicit def TypeTreeAPI(self: TypeTree): TypeTreeAPI</pre></code>
+
+### TypedAPI
+<pre><code class="language-scala" >final implicit def TypedAPI(self: Typed): TypedAPI</pre></code>
+
+### ValDefAPI
+<pre><code class="language-scala" >final implicit def ValDefAPI(self: ValDef): ValDefAPI</pre></code>
+
+### WhileAPI
+<pre><code class="language-scala" >final implicit def WhileAPI(self: While): WhileAPI</pre></code>
+
+### WildcardTypeTreeAPI
+<pre><code class="language-scala" >final implicit def WildcardTypeTreeAPI(self: WildcardTypeTree): WildcardTypeTreeAPI</pre></code>
+
+### Annotated
+<pre><code class="language-scala" >final val Annotated: Annotated</pre></code>
+
+### Applied
+<pre><code class="language-scala" >final val Applied: Applied</pre></code>
+
+### Apply
+<pre><code class="language-scala" >final val Apply: Apply</pre></code>
+Scala parameter application
+
+
+### Assign
+<pre><code class="language-scala" >final val Assign: Assign</pre></code>
+Scala assign `x = y`
+
+
+### Block
+<pre><code class="language-scala" >final val Block: Block</pre></code>
+Scala code block `{ stat0; ...; statN; expr }` term
+
+
+### ByName
+<pre><code class="language-scala" >final val ByName: ByName</pre></code>
+
+### CaseDef
+<pre><code class="language-scala" >final val CaseDef: CaseDef</pre></code>
+
+### ClassDef
+<pre><code class="language-scala" >final val ClassDef: ClassDef</pre></code>
+
+### DefDef
+<pre><code class="language-scala" >final val DefDef: DefDef</pre></code>
+
+### Ident
+<pre><code class="language-scala" >final val Ident: Ident</pre></code>
+Scala term identifier
+
+
+### If
+<pre><code class="language-scala" >final val If: If</pre></code>
+Scala `if`/`else` term
+
+
+### ImpliedMatch
+<pre><code class="language-scala" >final val ImpliedMatch: ImpliedMatch</pre></code>
+Scala implicit `match` term
+
+
+### Import
+<pre><code class="language-scala" >final val Import: Import</pre></code>
+
+### Inferred
+<pre><code class="language-scala" >final val Inferred: Inferred</pre></code>
+TypeTree containing an inferred type
+
+
+### Inlined
+<pre><code class="language-scala" >final val Inlined: Inlined</pre></code>
+
+### IsAnnotated
+<pre><code class="language-scala" >final val IsAnnotated: IsAnnotated</pre></code>
+
+### IsApplied
+<pre><code class="language-scala" >final val IsApplied: IsApplied</pre></code>
+
+### IsApply
+<pre><code class="language-scala" >final val IsApply: IsApply</pre></code>
+
+### IsAssign
+<pre><code class="language-scala" >final val IsAssign: IsAssign</pre></code>
+
+### IsBlock
+<pre><code class="language-scala" >final val IsBlock: IsBlock</pre></code>
+
+### IsByName
+<pre><code class="language-scala" >final val IsByName: IsByName</pre></code>
+
+### IsCaseDef
+<pre><code class="language-scala" >final val IsCaseDef: IsCaseDef</pre></code>
+
+### IsClassDef
+<pre><code class="language-scala" >final val IsClassDef: IsClassDef</pre></code>
+
+### IsDefDef
+<pre><code class="language-scala" >final val IsDefDef: IsDefDef</pre></code>
+
+### IsDefinition
+<pre><code class="language-scala" >final val IsDefinition: IsDefinition</pre></code>
+
+### IsIdent
+<pre><code class="language-scala" >final val IsIdent: IsIdent</pre></code>
+
+### IsIf
+<pre><code class="language-scala" >final val IsIf: IsIf</pre></code>
+
+### IsImplicitMatch
+<pre><code class="language-scala" >final val IsImplicitMatch: IsImplicitMatch</pre></code>
+
+### IsImport
+<pre><code class="language-scala" >final val IsImport: IsImport</pre></code>
+
+### IsInferred
+<pre><code class="language-scala" >final val IsInferred: IsInferred</pre></code>
+
+### IsInlined
+<pre><code class="language-scala" >final val IsInlined: IsInlined</pre></code>
+
+### IsLambda
+<pre><code class="language-scala" >final val IsLambda: IsLambda</pre></code>
+
+### IsLambdaTypeTree
+<pre><code class="language-scala" >final val IsLambdaTypeTree: IsLambdaTypeTree</pre></code>
+
+### IsLiteral
+<pre><code class="language-scala" >final val IsLiteral: IsLiteral</pre></code>
+
+### IsMatch
+<pre><code class="language-scala" >final val IsMatch: IsMatch</pre></code>
+
+### IsMatchTypeTree
+<pre><code class="language-scala" >final val IsMatchTypeTree: IsMatchTypeTree</pre></code>
+
+### IsNamedArg
+<pre><code class="language-scala" >final val IsNamedArg: IsNamedArg</pre></code>
+
+### IsNew
+<pre><code class="language-scala" >final val IsNew: IsNew</pre></code>
+
+### IsPackageClause
+<pre><code class="language-scala" >final val IsPackageClause: IsPackageClause</pre></code>
+
+### IsPackageDef
+<pre><code class="language-scala" >final val IsPackageDef: IsPackageDef</pre></code>
+
+### IsProjection
+<pre><code class="language-scala" >final val IsProjection: IsProjection</pre></code>
+
+### IsRef
+<pre><code class="language-scala" >final val IsRef: IsRef</pre></code>
+
+### IsRefined
+<pre><code class="language-scala" >final val IsRefined: IsRefined</pre></code>
+
+### IsRepeated
+<pre><code class="language-scala" >final val IsRepeated: IsRepeated</pre></code>
+
+### IsReturn
+<pre><code class="language-scala" >final val IsReturn: IsReturn</pre></code>
+
+### IsSelect
+<pre><code class="language-scala" >final val IsSelect: IsSelect</pre></code>
+
+### IsSelectOuter
+<pre><code class="language-scala" >final val IsSelectOuter: IsSelectOuter</pre></code>
+
+### IsSingleton
+<pre><code class="language-scala" >final val IsSingleton: IsSingleton</pre></code>
+
+### IsStatement
+<pre><code class="language-scala" >final val IsStatement: IsStatement</pre></code>
+
+### IsSuper
+<pre><code class="language-scala" >final val IsSuper: IsSuper</pre></code>
+
+### IsTerm
+<pre><code class="language-scala" >final val IsTerm: IsTerm</pre></code>
+
+### IsThis
+<pre><code class="language-scala" >final val IsThis: IsThis</pre></code>
+
+### IsTry
+<pre><code class="language-scala" >final val IsTry: IsTry</pre></code>
+
+### IsTypeApply
+<pre><code class="language-scala" >final val IsTypeApply: IsTypeApply</pre></code>
+
+### IsTypeBind
+<pre><code class="language-scala" >final val IsTypeBind: IsTypeBind</pre></code>
+
+### IsTypeBlock
+<pre><code class="language-scala" >final val IsTypeBlock: IsTypeBlock</pre></code>
+
+### IsTypeBoundsTree
+<pre><code class="language-scala" >final val IsTypeBoundsTree: IsTypeBoundsTree</pre></code>
+
+### IsTypeCaseDef
+<pre><code class="language-scala" >final val IsTypeCaseDef: IsTypeCaseDef</pre></code>
+
+### IsTypeDef
+<pre><code class="language-scala" >final val IsTypeDef: IsTypeDef</pre></code>
+
+### IsTypeIdent
+<pre><code class="language-scala" >final val IsTypeIdent: IsTypeIdent</pre></code>
+
+### IsTypeSelect
+<pre><code class="language-scala" >final val IsTypeSelect: IsTypeSelect</pre></code>
+
+### IsTypeTree
+<pre><code class="language-scala" >final val IsTypeTree: IsTypeTree</pre></code>
+
+### IsTyped
+<pre><code class="language-scala" >final val IsTyped: IsTyped</pre></code>
+
+### IsValDef
+<pre><code class="language-scala" >final val IsValDef: IsValDef</pre></code>
+
+### IsWhile
+<pre><code class="language-scala" >final val IsWhile: IsWhile</pre></code>
+
+### IsWildcardTypeTree
+<pre><code class="language-scala" >final val IsWildcardTypeTree: IsWildcardTypeTree</pre></code>
+
+### Lambda
+<pre><code class="language-scala" >final val Lambda: Lambda</pre></code>
+
+### LambdaTypeTree
+<pre><code class="language-scala" >final val LambdaTypeTree: LambdaTypeTree</pre></code>
+
+### Literal
+<pre><code class="language-scala" >final val Literal: Literal</pre></code>
+Scala literal constant
+
+
+### Match
+<pre><code class="language-scala" >final val Match: Match</pre></code>
+Scala `match` term
+
+
+### MatchTypeTree
+<pre><code class="language-scala" >final val MatchTypeTree: MatchTypeTree</pre></code>
+
+### NamedArg
+<pre><code class="language-scala" >final val NamedArg: NamedArg</pre></code>
+Scala named argument `x = y` in argument position
+
+
+### New
+<pre><code class="language-scala" >final val New: New</pre></code>
+Scala `new`
+
+
+### PackageClause
+<pre><code class="language-scala" >final val PackageClause: PackageClause</pre></code>
+
+### PackageDef
+<pre><code class="language-scala" >final val PackageDef: PackageDef</pre></code>
+
+### Projection
+<pre><code class="language-scala" >final val Projection: Projection</pre></code>
+
+### Ref
+<pre><code class="language-scala" >final val Ref: Ref</pre></code>
+
+### Refined
+<pre><code class="language-scala" >final val Refined: Refined</pre></code>
+
+### Repeated
+<pre><code class="language-scala" >final val Repeated: Repeated</pre></code>
+
+### Return
+<pre><code class="language-scala" >final val Return: Return</pre></code>
+Scala local `return`
+
+
+### Select
+<pre><code class="language-scala" >final val Select: Select</pre></code>
+Scala term selection
+
+
+### SelectOuter
+<pre><code class="language-scala" >final val SelectOuter: SelectOuter</pre></code>
+
+### Singleton
+<pre><code class="language-scala" >final val Singleton: Singleton</pre></code>
+
+### Super
+<pre><code class="language-scala" >final val Super: Super</pre></code>
+Scala `x.super` or `x.super[id]`
+
+
+### This
+<pre><code class="language-scala" >final val This: This</pre></code>
+Scala `this` or `this[id]`
+
+
+### Try
+<pre><code class="language-scala" >final val Try: Try</pre></code>
+Scala `try`/`catch`/`finally` term
+
+
+### TypeApply
+<pre><code class="language-scala" >final val TypeApply: TypeApply</pre></code>
+Scala type parameter application
+
+
+### TypeBind
+<pre><code class="language-scala" >final val TypeBind: TypeBind</pre></code>
+
+### TypeBlock
+<pre><code class="language-scala" >final val TypeBlock: TypeBlock</pre></code>
+
+### TypeBoundsTree
+<pre><code class="language-scala" >final val TypeBoundsTree: TypeBoundsTree</pre></code>
+
+### TypeCaseDef
+<pre><code class="language-scala" >final val TypeCaseDef: TypeCaseDef</pre></code>
+
+### TypeDef
+<pre><code class="language-scala" >final val TypeDef: TypeDef</pre></code>
+
+### TypeIdent
+<pre><code class="language-scala" >final val TypeIdent: TypeIdent</pre></code>
+
+### TypeSelect
+<pre><code class="language-scala" >final val TypeSelect: TypeSelect</pre></code>
+
+### Typed
+<pre><code class="language-scala" >final val Typed: Typed</pre></code>
+Scala ascription `x: T`
+
+
+### ValDef
+<pre><code class="language-scala" >final val ValDef: ValDef</pre></code>
+
+### While
+<pre><code class="language-scala" >final val While: While</pre></code>
+
+### WildcardTypeTree
+<pre><code class="language-scala" >final val WildcardTypeTree: WildcardTypeTree</pre></code>
+TypeBoundsTree containing wildcard type bounds
+
 

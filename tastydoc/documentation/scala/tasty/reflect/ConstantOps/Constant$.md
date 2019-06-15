@@ -60,60 +60,68 @@ Module of scala.Symbol literals
 Module of Null literals
 
 ## Concrete Value Members:
-### !=
-<pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
+### Boolean
+<pre><code class="language-scala" >final val Boolean: Boolean</pre></code>
+Module of Boolean literals
 
-### ##
-<pre><code class="language-scala" >final def ##: Int</pre></code>
 
-### ==
-<pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
+### Byte
+<pre><code class="language-scala" >final val Byte: Byte</pre></code>
+Module of Byte literals
 
-### asInstanceOf
-<pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
 
-### clone
-<pre><code class="language-scala" >protected def clone(): Object</pre></code>
+### Char
+<pre><code class="language-scala" >final val Char: Char</pre></code>
+Module of Char literals
 
-### eq
-<pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
 
-### equals
-<pre><code class="language-scala" >def equals(x$0: Any): Boolean</pre></code>
+### ClassTag
+<pre><code class="language-scala" >final val ClassTag: ClassTag</pre></code>
+Module of ClassTag literals
 
-### finalize
-<pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
 
-### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
+### Double
+<pre><code class="language-scala" >final val Double: Double</pre></code>
+Module of Double literals
 
-### hashCode
-<pre><code class="language-scala" >def hashCode(): Int</pre></code>
 
-### isInstanceOf
-<pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
+### Float
+<pre><code class="language-scala" >final val Float: Float</pre></code>
+Module of Float literals
 
-### ne
-<pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>
 
-### notify
-<pre><code class="language-scala" >final def notify(): Unit</pre></code>
+### Int
+<pre><code class="language-scala" >final val Int: Int</pre></code>
+Module of Int literals
 
-### notifyAll
-<pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
 
-### synchronized
-<pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
+### Long
+<pre><code class="language-scala" >final val Long: Long</pre></code>
+Module of Long literals
 
-### toString
-<pre><code class="language-scala" >def toString(): String</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>
+### Null
+<pre><code class="language-scala" >final val Null: Null</pre></code>
+Module of Null literals
 
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long): Unit</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(): Unit</pre></code>
+### Short
+<pre><code class="language-scala" >final val Short: Short</pre></code>
+Module of Short literals
+
+
+### String
+<pre><code class="language-scala" >final val String: String</pre></code>
+Module of String literals
+
+
+### Symbol
+<pre><code class="language-scala" >final val Symbol: Symbol</pre></code>
+Module of scala.Symbol literals
+
+
+### Unit
+<pre><code class="language-scala" >final val Unit: Unit</pre></code>
+Module of Null literals
+
 

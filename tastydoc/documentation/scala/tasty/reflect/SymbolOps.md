@@ -49,60 +49,60 @@ Tasty reflect symbol
 ### ValDefSymbolAPI
 <pre><code class="language-scala" >class <a href="./SymbolOps/ValDefSymbolAPI.md">ValDefSymbolAPI</a></pre></code>
 ## Concrete Value Members:
-### !=
-<pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
+### BindSymbolAPI
+<pre><code class="language-scala" >final implicit def BindSymbolAPI(self: BindSymbol): BindSymbolAPI</pre></code>
 
-### ##
-<pre><code class="language-scala" >final def ##: Int</pre></code>
+### ClassDefSymbolAPI
+<pre><code class="language-scala" >final implicit def ClassDefSymbolAPI(self: ClassDefSymbol): ClassDefSymbolAPI</pre></code>
 
-### ==
-<pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
+### DefDefSymbolAPI
+<pre><code class="language-scala" >final implicit def DefDefSymbolAPI(self: DefDefSymbol): DefDefSymbolAPI</pre></code>
 
-### asInstanceOf
-<pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
+### PackageDefSymbolAPI
+<pre><code class="language-scala" >final implicit def PackageDefSymbolAPI(self: PackageDefSymbol): PackageDefSymbolAPI</pre></code>
 
-### clone
-<pre><code class="language-scala" >protected def clone(): Object</pre></code>
+### SymbolAPI
+<pre><code class="language-scala" >final implicit def SymbolAPI(self: Symbol): SymbolAPI</pre></code>
 
-### eq
-<pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
+### TypeBindSymbolAPI
+<pre><code class="language-scala" >final implicit def TypeBindSymbolAPI(self: TypeBindSymbol): TypeBindSymbolAPI</pre></code>
 
-### equals
-<pre><code class="language-scala" >def equals(x$0: Any): Boolean</pre></code>
+### TypeDefSymbolAPI
+<pre><code class="language-scala" >final implicit def TypeDefSymbolAPI(self: TypeDefSymbol): TypeDefSymbolAPI</pre></code>
 
-### finalize
-<pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
+### ValDefSymbolAPI
+<pre><code class="language-scala" >final implicit def ValDefSymbolAPI(self: ValDefSymbol): ValDefSymbolAPI</pre></code>
 
-### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
+### ClassDefSymbol
+<pre><code class="language-scala" >final val ClassDefSymbol: ClassDefSymbol</pre></code>
 
-### hashCode
-<pre><code class="language-scala" >def hashCode(): Int</pre></code>
+### IsBindSymbol
+<pre><code class="language-scala" >final val IsBindSymbol: IsBindSymbol</pre></code>
 
-### isInstanceOf
-<pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
+### IsClassDefSymbol
+<pre><code class="language-scala" >final val IsClassDefSymbol: IsClassDefSymbol</pre></code>
 
-### ne
-<pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>
+### IsDefDefSymbol
+<pre><code class="language-scala" >final val IsDefDefSymbol: IsDefDefSymbol</pre></code>
 
-### notify
-<pre><code class="language-scala" >final def notify(): Unit</pre></code>
+### IsPackageDefSymbol
+<pre><code class="language-scala" >final val IsPackageDefSymbol: IsPackageDefSymbol</pre></code>
 
-### notifyAll
-<pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
+### IsTermSymbol
+<pre><code class="language-scala" >final val IsTermSymbol: IsTermSymbol</pre></code>
 
-### synchronized
-<pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
+### IsTypeBindSymbol
+<pre><code class="language-scala" >final val IsTypeBindSymbol: IsTypeBindSymbol</pre></code>
 
-### toString
-<pre><code class="language-scala" >def toString(): String</pre></code>
+### IsTypeDefSymbol
+<pre><code class="language-scala" >final val IsTypeDefSymbol: IsTypeDefSymbol</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>
+### IsTypeSymbol
+<pre><code class="language-scala" >final val IsTypeSymbol: IsTypeSymbol</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long): Unit</pre></code>
+### IsValDefSymbol
+<pre><code class="language-scala" >final val IsValDefSymbol: IsValDefSymbol</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(): Unit</pre></code>
+### NoSymbol
+<pre><code class="language-scala" >final val NoSymbol: NoSymbol</pre></code>
 

@@ -6,15 +6,6 @@ scala.tasty.reflect.SymbolOps
 <pre><code class="language-scala" >SymbolAPI(self: Symbol)</pre></code>
 
 ## Concrete Value Members:
-### !=
-<pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
-
-### ##
-<pre><code class="language-scala" >final def ##: Int</pre></code>
-
-### ==
-<pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
 ### annots
 <pre><code class="language-scala" >def annots(ctx: Context): List[Term]</pre></code>
 Annotations attached to this symbol
@@ -31,9 +22,6 @@ Unsafe cast as to ClassSymbol. Use IsClassDefSymbol to safely check and cast to 
 <pre><code class="language-scala" >def asDefDef(ctx: Context): DefDefSymbol</pre></code>
 Unsafe cast as to DefSymbol. Use IsDefDefSymbol to safely check and cast to DefSymbol
 
-### asInstanceOf
-<pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
-
 ### asPackageDef
 <pre><code class="language-scala" >def asPackageDef(ctx: Context): PackageDefSymbol</pre></code>
 Unsafe cast as to PackageSymbol. Use IsPackageSymbol to safely check and cast to PackageSymbol
@@ -46,21 +34,9 @@ Unsafe cast as to TypeSymbol. Use IsTypeDefSymbol to safely check and cast to Ty
 <pre><code class="language-scala" >def asValDef(ctx: Context): ValDefSymbol</pre></code>
 Unsafe cast as to ValSymbol. Use IsValDefSymbol to safely check and cast to ValSymbol
 
-### clone
-<pre><code class="language-scala" >protected def clone(): Object</pre></code>
-
 ### comment
 <pre><code class="language-scala" >def comment(ctx: Context): Option[Comment]</pre></code>
 The comment for this symbol, if any
-
-### eq
-<pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
-
-### equals
-<pre><code class="language-scala" >def equals(x$0: Any): Boolean</pre></code>
-
-### finalize
-<pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
 
 ### flags
 <pre><code class="language-scala" >def flags(ctx: Context): Flags</pre></code>
@@ -69,12 +45,6 @@ Flags of this symbol
 ### fullName
 <pre><code class="language-scala" >def fullName(ctx: Context): String</pre></code>
 The full name of this symbol up to the root package
-
-### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
-
-### hashCode
-<pre><code class="language-scala" >def hashCode(): Int</pre></code>
 
 ### isAbstractType
 <pre><code class="language-scala" >def isAbstractType(ctx: Context): Boolean</pre></code>
@@ -93,9 +63,6 @@ The full name of this symbol up to the root package
 
 ### isDefinedInCurrentRun
 <pre><code class="language-scala" >def isDefinedInCurrentRun(ctx: Context): Boolean</pre></code>
-
-### isInstanceOf
-<pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
 
 ### isLocalDummy
 <pre><code class="language-scala" >def isLocalDummy(ctx: Context): Boolean</pre></code>
@@ -116,15 +83,6 @@ The full name of this symbol up to the root package
 <pre><code class="language-scala" >def name(ctx: Context): String</pre></code>
 The name of this symbol
 
-### ne
-<pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>
-
-### notify
-<pre><code class="language-scala" >final def notify(): Unit</pre></code>
-
-### notifyAll
-<pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
-
 ### owner
 <pre><code class="language-scala" >def owner(ctx: Context): Symbol</pre></code>
 Owner of this symbol. The owner is the symbol in which this symbol is defined
@@ -140,19 +98,4 @@ This symbol is private within the resulting type
 ### protectedWithin
 <pre><code class="language-scala" >def protectedWithin(ctx: Context): Option[Type]</pre></code>
 This symbol is protected within the resulting type
-
-### synchronized
-<pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
-
-### toString
-<pre><code class="language-scala" >def toString(): String</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long): Unit</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(): Unit</pre></code>
 

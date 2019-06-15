@@ -642,15 +642,6 @@ represents a type but has `TypeBound`a inside.
 
 
 ## Concrete Value Members:
-### !=
-<pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
-
-### ##
-<pre><code class="language-scala" >final def ##: Int</pre></code>
-
-### ==
-<pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
 ### AndType_left
 <pre><code class="language-scala" >def AndType_left(self: AndType)(ctx: Context): Type</pre></code>
 
@@ -1008,6 +999,12 @@ DefDef tree of this definition
 
 ### Definitions_FunctionClass
 <pre><code class="language-scala" >def Definitions_FunctionClass(arity: Int, isImplicit: Boolean, isErased: Boolean): Symbol</pre></code>
+
+### Definitions_FunctionClass$default$2
+<pre><code class="language-scala" >def Definitions_FunctionClass$default$2: Boolean</pre></code>
+
+### Definitions_FunctionClass$default$3
+<pre><code class="language-scala" >def Definitions_FunctionClass$default$3: Boolean</pre></code>
 
 ### Definitions_IntClass
 <pre><code class="language-scala" >def Definitions_IntClass: Symbol</pre></code>
@@ -2077,18 +2074,6 @@ ValDef tree of this definition
 ### WildcardTypeTree_tpe
 <pre><code class="language-scala" >def WildcardTypeTree_tpe(self: WildcardTypeTree)(ctx: Context): TypeOrBounds</pre></code>
 
-### asInstanceOf
-<pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
-
-### clone
-<pre><code class="language-scala" >protected def clone(): Object</pre></code>
-
-### eq
-<pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
-
-### equals
-<pre><code class="language-scala" >def equals(x$0: Any): Boolean</pre></code>
-
 ### error
 <pre><code class="language-scala" >def error(msg: => String, source: SourceFile, start: Int, end: Int)(ctx: Context): Unit</pre></code>
 Report a compilation error with the given message at the given position range
@@ -2096,18 +2081,6 @@ Report a compilation error with the given message at the given position range
 ### error
 <pre><code class="language-scala" >def error(msg: => String, pos: Position)(ctx: Context): Unit</pre></code>
 Report a compilation error with the given message at the given position
-
-### finalize
-<pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
-
-### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
-
-### hashCode
-<pre><code class="language-scala" >def hashCode(): Int</pre></code>
-
-### isInstanceOf
-<pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
 
 ### matchAndType
 <pre><code class="language-scala" >def matchAndType(tpe: TypeOrBounds)(ctx: Context): Option[AndType]</pre></code>
@@ -2427,15 +2400,6 @@ Report a compilation error with the given message at the given position
 ### matchWildcardTypeTree
 <pre><code class="language-scala" >def matchWildcardTypeTree(tree: Tree)(ctx: Context): Option[WildcardTypeTree]</pre></code>
 
-### ne
-<pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>
-
-### notify
-<pre><code class="language-scala" >final def notify(): Unit</pre></code>
-
-### notifyAll
-<pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
-
 ### rootContext
 <pre><code class="language-scala" >def rootContext: Context</pre></code>
 Context of the macro expansion
@@ -2447,27 +2411,12 @@ Root position of this tasty context. For macros it corresponds to the expansion 
 ### settings
 <pre><code class="language-scala" >def settings: Settings</pre></code>
 
-### synchronized
-<pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
-
-### toString
-<pre><code class="language-scala" >def toString(): String</pre></code>
-
 ### typeChecks
 <pre><code class="language-scala" >def typeChecks(code: String)(ctx: Context): Boolean</pre></code>
 Whether the code type checks in the given context?
 
 ***code*** The code to be type checked
 The code should be a sequence of expressions or statements that may appear in a block.
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long): Unit</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
 ### warning
 <pre><code class="language-scala" >def warning(msg: => String, source: SourceFile, start: Int, end: Int)(ctx: Context): Unit</pre></code>

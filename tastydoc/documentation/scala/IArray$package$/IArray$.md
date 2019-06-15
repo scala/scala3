@@ -3,15 +3,6 @@ scala.IArray$package$
 
 <pre><code class="language-scala" >final object IArray extends Serializable</pre></code>
 ## Concrete Value Members:
-### !=
-<pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
-
-### ##
-<pre><code class="language-scala" >final def ##: Int</pre></code>
-
-### ==
-<pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
 ### apply
 <pre><code class="language-scala" >def apply(x: Unit, xs: Seq[Unit]): IArray[Unit]</pre></code>
 
@@ -43,12 +34,6 @@ scala.IArray$package$
 <pre><code class="language-scala" >def apply[T](xs: Seq[T])(evidence$4: <a href="../reflect/ClassTag.md">ClassTag</a>[T]): IArray[T]</pre></code>
 An immutable array with given elements.
 
-### asInstanceOf
-<pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
-
-### clone
-<pre><code class="language-scala" >protected def clone(): Object</pre></code>
-
 ### concat
 <pre><code class="language-scala" >def concat[T](xss: Seq[IArray[T]])(evidence$5: <a href="../reflect/ClassTag.md">ClassTag</a>[T]): IArray[T]</pre></code>
 Concatenates all arrays into a single immutable array.
@@ -60,12 +45,6 @@ Concatenates all arrays into a single immutable array.
 ### empty
 <pre><code class="language-scala" >def empty[T](evidence$3: <a href="../reflect/ClassTag.md">ClassTag</a>[T]): IArray[T]</pre></code>
 An immutable array of length 0.
-
-### eq
-<pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
-
-### equals
-<pre><code class="language-scala" >def equals(x$0: Any): Boolean</pre></code>
 
 ### fill
 <pre><code class="language-scala" >def fill[T](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(elem: => T)(evidence$10: <a href="../reflect/ClassTag.md">ClassTag</a>[T]): IArray[IArray[IArray[IArray[IArray[T]]]]]</pre></code>
@@ -132,18 +111,6 @@ of times. Each element is determined by a separate computation.
 
 ***elem*** the element computation
 
-### finalize
-<pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
-
-### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
-
-### hashCode
-<pre><code class="language-scala" >def hashCode(): Int</pre></code>
-
-### isInstanceOf
-<pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
-
 ### iterate
 <pre><code class="language-scala" >def iterate[T](start: T, len: Int)(f: (T) => T)(evidence$16: <a href="../reflect/ClassTag.md">ClassTag</a>[T]): IArray[T]</pre></code>
 Returns an immutable array containing repeated applications of a function to a start value.
@@ -155,15 +122,6 @@ Returns an immutable array containing repeated applications of a function to a s
 ***len*** the number of elements returned by the array
 
 ***start*** the start value of the array
-
-### ne
-<pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>
-
-### notify
-<pre><code class="language-scala" >final def notify(): Unit</pre></code>
-
-### notifyAll
-<pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
 
 ### range
 <pre><code class="language-scala" >def range(start: Int, end: Int, step: Int): IArray[Int]</pre></code>
@@ -187,9 +145,6 @@ up to, but excluding, `end`.
 ***end*** the end value of the array, exclusive (in other words, this is the first value **not** returned)
 
 ***start*** the start value of the array
-
-### synchronized
-<pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
 
 ### tabulate
 <pre><code class="language-scala" >def tabulate[T](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(f: (Int, Int, Int, Int, Int) => T)(evidence$15: <a href="../reflect/ClassTag.md">ClassTag</a>[T]): IArray[IArray[IArray[IArray[IArray[T]]]]]</pre></code>
@@ -256,9 +211,6 @@ values starting from 0.
 
 ***f*** The function computing element values
 
-### toString
-<pre><code class="language-scala" >def toString(): String</pre></code>
-
 ### unapplySeq
 <pre><code class="language-scala" >def unapplySeq[T](x: IArray[T]): Option[IndexedSeq[T]]</pre></code>
 Returns a decomposition of the array into a sequence. This supports
@@ -267,13 +219,4 @@ a pattern match like `{ case IArray(x,y,z) => println('3 elements')}`.
 ***return*** sequence wrapped in a scala.Some, if `x` is a Seq, otherwise `None`
 
 ***x*** the selector value
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long): Unit</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(): Unit</pre></code>
 

@@ -16,12 +16,12 @@ The language features are:
 * [`implicitConversions`](../scalaShadowing/language$.md#implicitConversions) enables defining implicit methods and members
 * [`higherKinds`](../scalaShadowing/language$.md#higherKinds)         enables writing higher-kinded types
 * [`existentials`](../scalaShadowing/language$.md#existentials)        enables writing existential types
-* `experimental`        contains newer features that have not yet been tested in production
+* [`experimental`](../scalaShadowing/language$.md#experimental)        contains newer features that have not yet been tested in production
 
 and, for dotty:
-* `Scala2`]               backwards compatibility mode for Scala2
+* [`Scala2`]               backwards compatibility mode for Scala2](../scalaShadowing/language$.md#Scala2)
 * `noAutoTupling`       disable auto-tupling
-* `strictEquality`      enable strick equality
+* [`strictEquality`](../scalaShadowing/language$.md#strictEquality)      enable strick equality
 
 ***production*** Language Features
 
@@ -62,62 +62,10 @@ Where imported, auto-tupling is disabled
 Where imported loose equality using eqAny is disabled
 
 ## Concrete Value Members:
-### !=
-<pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
+### Scala2
+<pre><code class="language-scala" >final val Scala2: <a href="./language$/Scala2$.md">Scala2</a></pre></code>
+Where imported, a backwards compatibility mode for Scala2 is enabled
 
-### ##
-<pre><code class="language-scala" >final def ##: Int</pre></code>
-
-### ==
-<pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
-### asInstanceOf
-<pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
-
-### clone
-<pre><code class="language-scala" >protected def clone(): Object</pre></code>
-
-### eq
-<pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
-
-### equals
-<pre><code class="language-scala" >def equals(x$0: Any): Boolean</pre></code>
-
-### finalize
-<pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
-
-### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
-
-### hashCode
-<pre><code class="language-scala" >def hashCode(): Int</pre></code>
-
-### isInstanceOf
-<pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
-
-### ne
-<pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>
-
-### notify
-<pre><code class="language-scala" >final def notify(): Unit</pre></code>
-
-### notifyAll
-<pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
-
-### synchronized
-<pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
-
-### toString
-<pre><code class="language-scala" >def toString(): String</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long): Unit</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(): Unit</pre></code>
 
 ### dynamics
 <pre><code class="language-scala" >@volatile implicit val dynamics: dynamics</pre></code>
@@ -150,6 +98,19 @@ is generally perceived not to be a good idea. Also, complicated existential type
 might be no longer supported in a future simplification of the language.
 
 ***Group*** production
+
+
+### experimental
+<pre><code class="language-scala" >final val experimental: <a href="./language$/experimental$.md">experimental</a></pre></code>
+The experimental object contains features that have been recently added but have not
+been thoroughly tested in production yet.
+Experimental features **may undergo API changes** in future releases, so production
+code should not rely on them.
+Programmers are encouraged to try out experimental features and
+[report any bugs or API inconsistencies](http://issues.scala-lang.org)
+they encounter so they can be improved in future releases.
+
+***Group*** experimental
 
 
 ### higherKinds
@@ -216,6 +177,11 @@ the fact between unrelated types.
 ***Group*** production
 
 
+### noAutoTupling
+<pre><code class="language-scala" >final val noAutoTupling: <a href="./language$/noAutoTupling$.md">noAutoTupling</a></pre></code>
+Where imported, auto-tupling is disabled
+
+
 ### postfixOps
 <pre><code class="language-scala" >@volatile implicit val postfixOps: postfixOps</pre></code>
 Only where enabled, postfix operator notation `(expr op)` will be allowed.
@@ -241,5 +207,10 @@ such as ProGuard have problems dealing with it. Even where reflection is availab
 reflective dispatch can lead to surprising performance degradations.
 
 ***Group*** production
+
+
+### strictEquality
+<pre><code class="language-scala" >final val strictEquality: <a href="./language$/strictEquality$.md">strictEquality</a></pre></code>
+Where imported loose equality using eqAny is disabled
 
 

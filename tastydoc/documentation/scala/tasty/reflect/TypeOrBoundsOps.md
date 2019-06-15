@@ -61,63 +61,84 @@ scala.tasty.reflect
 ### Type_TypeRefAPI
 <pre><code class="language-scala" >class <a href="./TypeOrBoundsOps/Type_TypeRefAPI.md">Type_TypeRefAPI</a></pre></code>
 ## Concrete Value Members:
-### !=
-<pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
+### TypeAPI
+<pre><code class="language-scala" >final implicit def TypeAPI(self: Type): TypeAPI</pre></code>
 
-### ##
-<pre><code class="language-scala" >final def ##: Int</pre></code>
+### TypeBoundsAPI
+<pre><code class="language-scala" >final implicit def TypeBoundsAPI(self: TypeBounds): TypeBoundsAPI</pre></code>
 
-### ==
-<pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
+### Type_AndTypeAPI
+<pre><code class="language-scala" >final implicit def Type_AndTypeAPI(self: AndType): Type_AndTypeAPI</pre></code>
 
-### asInstanceOf
-<pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
+### Type_AnnotatedTypeAPI
+<pre><code class="language-scala" >final implicit def Type_AnnotatedTypeAPI(self: AnnotatedType): Type_AnnotatedTypeAPI</pre></code>
 
-### clone
-<pre><code class="language-scala" >protected def clone(): Object</pre></code>
+### Type_AppliedTypeAPI
+<pre><code class="language-scala" >final implicit def Type_AppliedTypeAPI(self: AppliedType): Type_AppliedTypeAPI</pre></code>
 
-### eq
-<pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
+### Type_ByNameTypeAPI
+<pre><code class="language-scala" >final implicit def Type_ByNameTypeAPI(self: ByNameType): Type_ByNameTypeAPI</pre></code>
 
-### equals
-<pre><code class="language-scala" >def equals(x$0: Any): Boolean</pre></code>
+### Type_ConstantTypeAPI
+<pre><code class="language-scala" >final implicit def Type_ConstantTypeAPI(self: ConstantType): Type_ConstantTypeAPI</pre></code>
 
-### finalize
-<pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
+### Type_MatchTypeAPI
+<pre><code class="language-scala" >final implicit def Type_MatchTypeAPI(self: MatchType): Type_MatchTypeAPI</pre></code>
 
-### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
+### Type_MethodTypeAPI
+<pre><code class="language-scala" >final implicit def Type_MethodTypeAPI(self: MethodType): Type_MethodTypeAPI</pre></code>
 
-### hashCode
-<pre><code class="language-scala" >def hashCode(): Int</pre></code>
+### Type_OrTypeAPI
+<pre><code class="language-scala" >final implicit def Type_OrTypeAPI(self: OrType): Type_OrTypeAPI</pre></code>
 
-### isInstanceOf
-<pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
+### Type_ParamRefAPI
+<pre><code class="language-scala" >final implicit def Type_ParamRefAPI(self: ParamRef): Type_ParamRefAPI</pre></code>
 
-### ne
-<pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>
+### Type_PolyTypeAPI
+<pre><code class="language-scala" >final implicit def Type_PolyTypeAPI(self: PolyType): Type_PolyTypeAPI</pre></code>
 
-### notify
-<pre><code class="language-scala" >final def notify(): Unit</pre></code>
+### Type_RecursiveThisAPI
+<pre><code class="language-scala" >final implicit def Type_RecursiveThisAPI(self: RecursiveThis): Type_RecursiveThisAPI</pre></code>
 
-### notifyAll
-<pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
+### Type_RecursiveTypeAPI
+<pre><code class="language-scala" >final implicit def Type_RecursiveTypeAPI(self: RecursiveType): Type_RecursiveTypeAPI</pre></code>
 
-### synchronized
-<pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
+### Type_RefinementAPI
+<pre><code class="language-scala" >final implicit def Type_RefinementAPI(self: Refinement): Type_RefinementAPI</pre></code>
 
-### toString
-<pre><code class="language-scala" >def toString(): String</pre></code>
+### Type_SuperTypeAPI
+<pre><code class="language-scala" >final implicit def Type_SuperTypeAPI(self: SuperType): Type_SuperTypeAPI</pre></code>
+
+### Type_SymRefAPI
+<pre><code class="language-scala" >final implicit def Type_SymRefAPI(self: SymRef): Type_SymRefAPI</pre></code>
+
+### Type_TermRefAPI
+<pre><code class="language-scala" >final implicit def Type_TermRefAPI(self: TermRef): Type_TermRefAPI</pre></code>
+
+### Type_ThisTypeAPI
+<pre><code class="language-scala" >final implicit def Type_ThisTypeAPI(self: ThisType): Type_ThisTypeAPI</pre></code>
+
+### Type_TypeLambdaAPI
+<pre><code class="language-scala" >final implicit def Type_TypeLambdaAPI(self: TypeLambda): Type_TypeLambdaAPI</pre></code>
+
+### Type_TypeRefAPI
+<pre><code class="language-scala" >final implicit def Type_TypeRefAPI(self: TypeRef): Type_TypeRefAPI</pre></code>
 
 ### typeOf
 <pre><code class="language-scala" >def typeOf[T](evidence$2: <a href="../../quoted/Type.md">Type</a>[T]): Type</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>
+### IsType
+<pre><code class="language-scala" >final val IsType: IsType</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long): Unit</pre></code>
+### IsTypeBounds
+<pre><code class="language-scala" >final val IsTypeBounds: IsTypeBounds</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(): Unit</pre></code>
+### NoPrefix
+<pre><code class="language-scala" >final val NoPrefix: NoPrefix</pre></code>
+
+### Type
+<pre><code class="language-scala" >final val Type: Type</pre></code>
+
+### TypeBounds
+<pre><code class="language-scala" >final val TypeBounds: TypeBounds</pre></code>
 

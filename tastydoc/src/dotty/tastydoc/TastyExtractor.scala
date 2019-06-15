@@ -70,9 +70,8 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
       !symbol.flags.is(Flags.Artifact) &&
       !symbol.flags.is(Flags.StableRealizable) && //Remove val generated for object definitions inside classes
       !symbol.name.contains("$default$") &&//Remove artifact methods generated for methods with default parameters
-      true //TOFIX Remove true and uncomment these lines when the bug in Dotty when calling owner is fixed
-      //!(symbol.owner.name == "Object" && ownerPath == List("java", "lang")) &&
-      //!(symbol.owner.name == "Any" && ownerPath == List("scala"))
+      !(symbol.owner.name == "Object" && ownerPath == List("java", "lang")) &&
+      !(symbol.owner.name == "Any" && ownerPath == List("scala"))
     }
 
     (body.flatMap{

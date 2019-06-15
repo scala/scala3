@@ -82,60 +82,117 @@ scala.tasty.reflect.TypeOrBoundsOps
 ### TypeRef
 <pre><code class="language-scala" >final object <a href="./Type$/TypeRef$.md">TypeRef</a></pre></code>
 ## Concrete Value Members:
-### !=
-<pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
+### AndType
+<pre><code class="language-scala" >final val AndType: AndType</pre></code>
 
-### ##
-<pre><code class="language-scala" >final def ##: Int</pre></code>
+### AnnotatedType
+<pre><code class="language-scala" >final val AnnotatedType: AnnotatedType</pre></code>
 
-### ==
-<pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
+### AppliedType
+<pre><code class="language-scala" >final val AppliedType: AppliedType</pre></code>
 
-### asInstanceOf
-<pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
+### ByNameType
+<pre><code class="language-scala" >final val ByNameType: ByNameType</pre></code>
 
-### clone
-<pre><code class="language-scala" >protected def clone(): Object</pre></code>
+### ConstantType
+<pre><code class="language-scala" >final val ConstantType: ConstantType</pre></code>
 
-### eq
-<pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
+### IsAndType
+<pre><code class="language-scala" >final val IsAndType: IsAndType</pre></code>
 
-### equals
-<pre><code class="language-scala" >def equals(x$0: Any): Boolean</pre></code>
+### IsAnnotatedType
+<pre><code class="language-scala" >final val IsAnnotatedType: IsAnnotatedType</pre></code>
 
-### finalize
-<pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
+### IsAppliedType
+<pre><code class="language-scala" >final val IsAppliedType: IsAppliedType</pre></code>
 
-### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
+### IsByNameType
+<pre><code class="language-scala" >final val IsByNameType: IsByNameType</pre></code>
 
-### hashCode
-<pre><code class="language-scala" >def hashCode(): Int</pre></code>
+### IsConstantType
+<pre><code class="language-scala" >final val IsConstantType: IsConstantType</pre></code>
 
-### isInstanceOf
-<pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
+### IsMatchType
+<pre><code class="language-scala" >final val IsMatchType: IsMatchType</pre></code>
 
-### ne
-<pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>
+### IsMethodType
+<pre><code class="language-scala" >final val IsMethodType: IsMethodType</pre></code>
 
-### notify
-<pre><code class="language-scala" >final def notify(): Unit</pre></code>
+### IsOrType
+<pre><code class="language-scala" >final val IsOrType: IsOrType</pre></code>
 
-### notifyAll
-<pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
+### IsParamRef
+<pre><code class="language-scala" >final val IsParamRef: IsParamRef</pre></code>
 
-### synchronized
-<pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
+### IsPolyType
+<pre><code class="language-scala" >final val IsPolyType: IsPolyType</pre></code>
 
-### toString
-<pre><code class="language-scala" >def toString(): String</pre></code>
+### IsRecursiveThis
+<pre><code class="language-scala" >final val IsRecursiveThis: IsRecursiveThis</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>
+### IsRecursiveType
+<pre><code class="language-scala" >final val IsRecursiveType: IsRecursiveType</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long): Unit</pre></code>
+### IsRefinement
+<pre><code class="language-scala" >final val IsRefinement: IsRefinement</pre></code>
 
-### wait
-<pre><code class="language-scala" >final def wait(): Unit</pre></code>
+### IsSuperType
+<pre><code class="language-scala" >final val IsSuperType: IsSuperType</pre></code>
+
+### IsSymRef
+<pre><code class="language-scala" >final val IsSymRef: IsSymRef</pre></code>
+
+### IsTermRef
+<pre><code class="language-scala" >final val IsTermRef: IsTermRef</pre></code>
+
+### IsThisType
+<pre><code class="language-scala" >final val IsThisType: IsThisType</pre></code>
+
+### IsTypeLambda
+<pre><code class="language-scala" >final val IsTypeLambda: IsTypeLambda</pre></code>
+
+### IsTypeRef
+<pre><code class="language-scala" >final val IsTypeRef: IsTypeRef</pre></code>
+
+### MatchType
+<pre><code class="language-scala" >final val MatchType: MatchType</pre></code>
+
+### MethodType
+<pre><code class="language-scala" >final val MethodType: MethodType</pre></code>
+
+### OrType
+<pre><code class="language-scala" >final val OrType: OrType</pre></code>
+
+### ParamRef
+<pre><code class="language-scala" >final val ParamRef: ParamRef</pre></code>
+
+### PolyType
+<pre><code class="language-scala" >final val PolyType: PolyType</pre></code>
+
+### RecursiveThis
+<pre><code class="language-scala" >final val RecursiveThis: RecursiveThis</pre></code>
+
+### RecursiveType
+<pre><code class="language-scala" >final val RecursiveType: RecursiveType</pre></code>
+
+### Refinement
+<pre><code class="language-scala" >final val Refinement: Refinement</pre></code>
+
+### SuperType
+<pre><code class="language-scala" >final val SuperType: SuperType</pre></code>
+
+### SymRef
+<pre><code class="language-scala" >final val SymRef: SymRef</pre></code>
+
+### TermRef
+<pre><code class="language-scala" >final val TermRef: TermRef</pre></code>
+
+### ThisType
+<pre><code class="language-scala" >final val ThisType: ThisType</pre></code>
+
+### TypeLambda
+<pre><code class="language-scala" >final val TypeLambda: TypeLambda</pre></code>
+
+### TypeRef
+<pre><code class="language-scala" >final val TypeRef: TypeRef</pre></code>
 

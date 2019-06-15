@@ -10,15 +10,6 @@ Defines standard symbols (and types via its base trait).
 <pre><code class="language-scala" >StandardSymbols()</pre></code>
 
 ## Concrete Value Members:
-### !=
-<pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
-
-### ##
-<pre><code class="language-scala" >final def ##: Int</pre></code>
-
-### ==
-<pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
 ### AnyClass
 <pre><code class="language-scala" >def AnyClass: Symbol</pre></code>
 The class symbol of core class `scala.Any`.
@@ -85,6 +76,22 @@ The class symbol of primitive class `scala.Float`.
 
 ### FunctionClass
 <pre><code class="language-scala" >def FunctionClass(arity: Int, isImplicit: Boolean, isErased: Boolean): Symbol</pre></code>
+Function-like object that maps arity to symbols for classes `scala.FunctionX`.
+*  0th element is `Function0`
+*  1st element is `Function1`
+*  ...
+*  Nth element is `FunctionN`
+
+### FunctionClass$default$2
+<pre><code class="language-scala" >def FunctionClass$default$2: Boolean</pre></code>
+Function-like object that maps arity to symbols for classes `scala.FunctionX`.
+*  0th element is `Function0`
+*  1st element is `Function1`
+*  ...
+*  Nth element is `FunctionN`
+
+### FunctionClass$default$3
+<pre><code class="language-scala" >def FunctionClass$default$3: Boolean</pre></code>
 Function-like object that maps arity to symbols for classes `scala.FunctionX`.
 *  0th element is `Function0`
 *  1st element is `Function1`
@@ -202,52 +209,4 @@ Function-like object that maps arity to symbols for classes `scala.TupleX`.
 ### UnitClass
 <pre><code class="language-scala" >def UnitClass: Symbol</pre></code>
 The class symbol of primitive class `scala.Unit`.
-
-### asInstanceOf
-<pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
-
-### clone
-<pre><code class="language-scala" >protected def clone(): Object</pre></code>
-
-### eq
-<pre><code class="language-scala" >final def eq(x$0: Object): Boolean</pre></code>
-
-### equals
-<pre><code class="language-scala" >def equals(x$0: Any): Boolean</pre></code>
-
-### finalize
-<pre><code class="language-scala" >protected def finalize(): Unit</pre></code>
-
-### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
-
-### hashCode
-<pre><code class="language-scala" >def hashCode(): Int</pre></code>
-
-### isInstanceOf
-<pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
-
-### ne
-<pre><code class="language-scala" >final def ne(x$0: Object): Boolean</pre></code>
-
-### notify
-<pre><code class="language-scala" >final def notify(): Unit</pre></code>
-
-### notifyAll
-<pre><code class="language-scala" >final def notifyAll(): Unit</pre></code>
-
-### synchronized
-<pre><code class="language-scala" >final def synchronized[X0](x$0: X0): X0</pre></code>
-
-### toString
-<pre><code class="language-scala" >def toString(): String</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long, x$1: Int): Unit</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(x$0: Long): Unit</pre></code>
-
-### wait
-<pre><code class="language-scala" >final def wait(): Unit</pre></code>
 

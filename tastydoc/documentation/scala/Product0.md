@@ -8,32 +8,8 @@ scala
 <pre><code class="language-scala" >Product0()</pre></code>
 
 ## Concrete Value Members:
-### !=
-<pre><code class="language-scala" >final def !=(x$0: Any): Boolean</pre></code>
-
-### ##
-<pre><code class="language-scala" >final def ##: Int</pre></code>
-
-### ==
-<pre><code class="language-scala" >final def ==(x$0: Any): Boolean</pre></code>
-
-### asInstanceOf
-<pre><code class="language-scala" >final def asInstanceOf[X0]: X0</pre></code>
-
 ### canEqual
 <pre><code class="language-scala" >def canEqual(that: Any): Boolean</pre></code>
-
-### equals
-<pre><code class="language-scala" >def equals(x$0: Any): Boolean</pre></code>
-
-### getClass
-<pre><code class="language-scala" >final def getClass(): Class[Nothing <: Any]</pre></code>
-
-### hashCode
-<pre><code class="language-scala" >def hashCode(): Int</pre></code>
-
-### isInstanceOf
-<pre><code class="language-scala" >final def isInstanceOf[X0]: Boolean</pre></code>
 
 ### productArity
 <pre><code class="language-scala" >override def productArity: Int</pre></code>
@@ -46,7 +22,4 @@ scala
 
 ### productPrefix
 <pre><code class="language-scala" >def productPrefix: String</pre></code>
-
-### toString
-<pre><code class="language-scala" >def toString(): String</pre></code>
 
