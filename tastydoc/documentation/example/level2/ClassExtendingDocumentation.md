@@ -308,7 +308,6 @@ def someScalaCode(x: String) = println("Hello " + x)
 method: [example.UserDocLinkingClass.linkMeFromUserDoc](../../example/UserDocLinkingClass.md#linkMeFromUserDoc)
 method:[example.level2.Documentation.apply](../../example/level2/Documentation.md#apply)
 class: [example.UserDocLinkingClass](../../example/UserDocLinkingClass.md)
-method: length
 
 ### linkingGraph
 <pre><code class="language-scala" >def linkingGraph(g: <a href="./Documentation/Graph.md">Graph</a>): Node</pre></code>

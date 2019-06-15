@@ -88,13 +88,11 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
   override def length = ???
 
   /** method: [[example.UserDocLinkingClass.linkMeFromUserDoc]]
-  *
-  * method:[[example.level2.Documentation.apply]]
-  *
-  * class: [[example.UserDocLinkingClass]]
-  *
-  * method: [[length]]
-  */
+   *
+   * method:[[example.level2.Documentation.apply]]
+   *
+   * class: [[example.UserDocLinkingClass]]
+   */
   def linkMethodInDoc() = ???
 
   /** An example documention with markdown formatting
