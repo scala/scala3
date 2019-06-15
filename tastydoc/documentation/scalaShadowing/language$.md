@@ -16,12 +16,12 @@ The language features are:
 * [`implicitConversions`](../scalaShadowing/language$.md#implicitConversions) enables defining implicit methods and members
 * [`higherKinds`](../scalaShadowing/language$.md#higherKinds)         enables writing higher-kinded types
 * [`existentials`](../scalaShadowing/language$.md#existentials)        enables writing existential types
-* [`experimental`](../scalaShadowing/language$.md#experimental)        contains newer features that have not yet been tested in production
+* `experimental`        contains newer features that have not yet been tested in production
 
 and, for dotty:
-* [`Scala2`]               backwards compatibility mode for Scala2](../scalaShadowing/language$.md#Scala2)
+* `Scala2`]               backwards compatibility mode for Scala2
 * `noAutoTupling`       disable auto-tupling
-* [`strictEquality`](../scalaShadowing/language$.md#strictEquality)      enable strick equality
+* `strictEquality`      enable strick equality
 
 ***production*** Language Features
 
@@ -34,8 +34,6 @@ imports count, implicits are disregarded) we don't need the constructions
 of the inherited language features. A simple object for each feature is
 sufficient.
 
-## Known subclasses:
-<a href="./language$/strictEquality$.md">strictEquality</a>, <a href="./language$/noAutoTupling$.md">noAutoTupling</a>, <a href="./language$/Scala2$.md">Scala2</a>, <a href="./language$/experimental$.md">experimental</a>
 ## Concrete Type Members:
 ### Scala2
 <pre><code class="language-scala" >final object <a href="./language$/Scala2$.md">Scala2</a></pre></code>
@@ -62,11 +60,6 @@ Where imported, auto-tupling is disabled
 Where imported loose equality using eqAny is disabled
 
 ## Concrete Value Members:
-### Scala2
-<pre><code class="language-scala" >final val Scala2: <a href="./language$/Scala2$.md">Scala2</a></pre></code>
-Where imported, a backwards compatibility mode for Scala2 is enabled
-
-
 ### dynamics
 <pre><code class="language-scala" >@volatile implicit val dynamics: dynamics</pre></code>
 Where enabled, direct or indirect subclasses of trait scala.Dynamic can
@@ -98,19 +91,6 @@ is generally perceived not to be a good idea. Also, complicated existential type
 might be no longer supported in a future simplification of the language.
 
 ***Group*** production
-
-
-### experimental
-<pre><code class="language-scala" >final val experimental: <a href="./language$/experimental$.md">experimental</a></pre></code>
-The experimental object contains features that have been recently added but have not
-been thoroughly tested in production yet.
-Experimental features **may undergo API changes** in future releases, so production
-code should not rely on them.
-Programmers are encouraged to try out experimental features and
-[report any bugs or API inconsistencies](http://issues.scala-lang.org)
-they encounter so they can be improved in future releases.
-
-***Group*** experimental
 
 
 ### higherKinds
@@ -177,11 +157,6 @@ the fact between unrelated types.
 ***Group*** production
 
 
-### noAutoTupling
-<pre><code class="language-scala" >final val noAutoTupling: <a href="./language$/noAutoTupling$.md">noAutoTupling</a></pre></code>
-Where imported, auto-tupling is disabled
-
-
 ### postfixOps
 <pre><code class="language-scala" >@volatile implicit val postfixOps: postfixOps</pre></code>
 Only where enabled, postfix operator notation `(expr op)` will be allowed.
@@ -207,10 +182,5 @@ such as ProGuard have problems dealing with it. Even where reflection is availab
 reflective dispatch can lead to surprising performance degradations.
 
 ***Group*** production
-
-
-### strictEquality
-<pre><code class="language-scala" >final val strictEquality: <a href="./language$/strictEquality$.md">strictEquality</a></pre></code>
-Where imported loose equality using eqAny is disabled
 
 

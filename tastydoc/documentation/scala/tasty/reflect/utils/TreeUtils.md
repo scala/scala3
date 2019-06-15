@@ -14,6 +14,3 @@ Bind the `rhs` to a `val` and use it in `body`
 <pre><code class="language-scala" >def lets(terms: List[Term])(body: (List[Term]) => Term): Term</pre></code>
 Bind the given `terms` to names and use them in the `body`
 
-### reflect
-<pre><code class="language-scala" >val reflect: <a href="../../Reflection.md">Reflection</a></pre></code>
-

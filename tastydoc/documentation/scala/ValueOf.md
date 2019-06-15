@@ -41,12 +41,6 @@ implicit argument `m` of type `ValueOf[M]`.
 <pre><code class="language-scala" >ValueOf(value: T)</pre></code>
 
 ## Concrete Value Members:
-### equals
-<pre><code class="language-scala" >override def equals(x$0: Any): Boolean</pre></code>
-
-### hashCode
-<pre><code class="language-scala" >override def hashCode(): Int</pre></code>
-
 ### value
 <pre><code class="language-scala" >val value: <a href="./ValueOf.md#T">T</a></pre></code>
 

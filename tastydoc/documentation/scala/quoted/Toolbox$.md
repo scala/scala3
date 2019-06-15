@@ -4,8 +4,6 @@ scala.quoted
 ## Companion trait <a href="./Toolbox.md">Toolbox</a>
 
 <pre><code class="language-scala" >final object Toolbox extends Serializable</pre></code>
-## Known subclasses:
-<a href="./Toolbox$/ToolboxNotFoundException.md">ToolboxNotFoundException</a>, <a href="./Toolbox$/Settings$.md">Settings</a>, <a href="./Toolbox$/Settings.md">Settings</a>
 ## Concrete Type Members:
 ### Settings
 <pre><code class="language-scala" >final object <a href="./Toolbox$/Settings$.md">Settings</a></pre></code>
@@ -30,7 +28,4 @@ implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.
 ***appClassloader*** classloader of the application that generated the quotes
 
 ***settings*** toolbox settings
-
-### Settings
-<pre><code class="language-scala" >final val Settings: <a href="./Toolbox$/Settings$.md">Settings</a></pre></code>
 

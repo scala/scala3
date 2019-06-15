@@ -1000,12 +1000,6 @@ DefDef tree of this definition
 ### Definitions_FunctionClass
 <pre><code class="language-scala" >def Definitions_FunctionClass(arity: Int, isImplicit: Boolean, isErased: Boolean): Symbol</pre></code>
 
-### Definitions_FunctionClass$default$2
-<pre><code class="language-scala" >def Definitions_FunctionClass$default$2: Boolean</pre></code>
-
-### Definitions_FunctionClass$default$3
-<pre><code class="language-scala" >def Definitions_FunctionClass$default$3: Boolean</pre></code>
-
 ### Definitions_IntClass
 <pre><code class="language-scala" >def Definitions_IntClass: Symbol</pre></code>
 

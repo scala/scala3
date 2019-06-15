@@ -2,8 +2,6 @@ scala.tasty.reflect
 # trait StandardDefinitions
 
 <pre><code class="language-scala" >trait StandardDefinitions extends Core</pre></code>
-## Known subclasses:
-<a href="./StandardDefinitions/StandardTypes.md">StandardTypes</a>, <a href="./StandardDefinitions/StandardSymbols.md">StandardSymbols</a>, <a href="./StandardDefinitions/definitions$.md">definitions</a>
 ## Constructors:
 <pre><code class="language-scala" >StandardDefinitions()</pre></code>
 
@@ -25,12 +23,4 @@ Defines standard symbols (and types via its base trait).
 Defines standard types.
 
 ***Group*** Definitions
-
-## Concrete Value Members:
-### definitions
-<pre><code class="language-scala" >final val definitions: definitions</pre></code>
-A value containing all standard definitions in DefinitionsAPI
-
-***Group*** Definitions
-
 

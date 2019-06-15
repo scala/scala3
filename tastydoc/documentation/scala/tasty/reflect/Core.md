@@ -645,7 +645,3 @@ The wildcard type `_` (for example in in `List[_]`) will be a type tree that
 represents a type but has `TypeBound`a inside.
 
 
-## Concrete Value Members:
-### kernel
-<pre><code class="language-scala" >val kernel: Kernel</pre></code>
-

@@ -2,8 +2,6 @@ scala
 # object deriving
 
 <pre><code class="language-scala" >final object deriving extends Serializable</pre></code>
-## Known subclasses:
-EmptyProduct, ArrayProduct, Mirror, Mirror
 ## Concrete Type Members:
 ### EmptyProduct
 <pre><code class="language-scala" >final object EmptyProduct</pre></code>
@@ -23,12 +21,4 @@ Mirrors allows typelevel access to enums, case classes and objects, and their se
 ### productElement
 <pre><code class="language-scala" >def productElement[T](x: Any, idx: Int): T</pre></code>
 Helper method to select a product element
-
-### EmptyProduct
-<pre><code class="language-scala" >final val EmptyProduct: EmptyProduct</pre></code>
-The empty product
-
-
-### Mirror
-<pre><code class="language-scala" >final val Mirror: Mirror</pre></code>
 

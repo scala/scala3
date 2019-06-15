@@ -6,8 +6,6 @@ scala.quoted
 <pre><code class="language-scala" >final object Type extends Serializable</pre></code>
 Some basic type tags, currently incomplete
 
-## Known subclasses:
-<a href="./Type$/TypeOps$.md">TypeOps</a>
 ## Concrete Type Members:
 ### TypeOps
 <pre><code class="language-scala" >final object <a href="./Type$/TypeOps$.md">TypeOps</a></pre></code>
@@ -35,9 +33,6 @@ Some basic type tags, currently incomplete
 
 ### ShortTag
 <pre><code class="language-scala" >implicit val ShortTag: <a href="./Type.md">Type</a>[Short]</pre></code>
-
-### TypeOps
-<pre><code class="language-scala" >final implicit val TypeOps: <a href="./Type$/TypeOps$.md">TypeOps</a></pre></code>
 
 ### UnitTag
 <pre><code class="language-scala" >implicit val UnitTag: <a href="./Type.md">Type</a>[Unit]</pre></code>

@@ -8,12 +8,7 @@ Companion object containing a few universally known `Eql` instances.
 Eql instances involving primitive types or the Null type are handled directly in
 the compiler (see Implicits.synthesizedEq), so they are not included here.
 
-## Known subclasses:
-derived
 ## Concrete Type Members:
-### MirroredMonoType
-<pre><code class="language-scala" >type MirroredMonoType: Eql[Nothing <: Any, Nothing <: Any]</pre></code>
-
 ### derived
 <pre><code class="language-scala" >final object derived</pre></code>
 A universal `Eql` instance.
@@ -40,12 +35,4 @@ the rules of multiversal equality require it.
 
 ### eqlString
 <pre><code class="language-scala" >implicit def eqlString: Eql[String, String]</pre></code>
-
-### ordinal
-<pre><code class="language-scala" >def ordinal(x$0: MirroredMonoType): Int</pre></code>
-
-### derived
-<pre><code class="language-scala" >final val derived: derived</pre></code>
-A universal `Eql` instance.
-
 

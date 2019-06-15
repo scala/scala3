@@ -11,12 +11,6 @@ scala.reflect
 ### applyDynamic
 <pre><code class="language-scala" >override def applyDynamic(name: String, paramTypes: Seq[<a href="./ClassTag.md">ClassTag</a>[Nothing <: Any]])(args: Seq[Any]): Any</pre></code>
 
-### equals
-<pre><code class="language-scala" >override def equals(x$0: Any): Boolean</pre></code>
-
-### hashCode
-<pre><code class="language-scala" >override def hashCode(): Int</pre></code>
-
 ### selectDynamic
 <pre><code class="language-scala" >def selectDynamic(name: String): Any</pre></code>
 

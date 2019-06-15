@@ -136,13 +136,6 @@ object representations extends TastyExtractor {
     override val companion = extractCompanion(reflect)(internal.symbol.companionModule, internal.symbol.companionClass, !isObject)
     override val members: List[Representation with Modifiers] = extractClassMembers(reflect)(internal.body, internal.symbol, Some(this))
 
-    //Add itself to parents subclasses:
-    parentRepresentation match {
-      case Some(r: ClassRepresentation) =>
-        r.knownSubclasses = TypeReference(internal.name, path.mkString("/", "/", ""), Nil, true) :: r.knownSubclasses
-      case _ =>
-    }
-
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 

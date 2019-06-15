@@ -9,8 +9,6 @@ that are valid Scala literals. The actual implementation of these
 typed could be in terms of `ast.tpd.Literal`; the test `quotable.scala`
 gives an alternative implementation using just the basic staging system.
 
-## Known subclasses:
-<a href="./Liftable$/PrimitiveLiftable.md">PrimitiveLiftable</a>
 ## Concrete Value Members:
 ### ClassIsLiftable
 <pre><code class="language-scala" >implicit def ClassIsLiftable[T]: <a href="./Liftable.md">Liftable</a>[Class[T]]</pre></code>

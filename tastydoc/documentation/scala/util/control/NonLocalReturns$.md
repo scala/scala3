@@ -7,8 +7,6 @@ Usage:
    import scala.util.control.NonLocalReturns._
    returning { ... throwReturn(x) ... }
 
-## Known subclasses:
-ReturnThrowable
 ## Concrete Type Members:
 ### ReturnThrowable
 <pre><code class="language-scala" >class ReturnThrowable</pre></code>

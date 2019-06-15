@@ -2,8 +2,6 @@ scala.internal.quoted
 # object Matcher
 
 <pre><code class="language-scala" >final object Matcher extends Serializable</pre></code>
-## Known subclasses:
-<a href="./Matcher$/Matching$.md">Matching</a>
 ## Concrete Value Members:
 ### unapply
 <pre><code class="language-scala" >def unapply[Tup <: scala.Tuple](scrutineeExpr: <a href="../../quoted/Expr.md">Expr</a>[Nothing <: Any])(implicit patternExpr: <a href="../../quoted/Expr.md">Expr</a>[Nothing <: Any], reflection: <a href="../../tasty/Reflection.md">Reflection</a>): Option[Tup]</pre></code>

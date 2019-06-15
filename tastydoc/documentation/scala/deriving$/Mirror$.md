@@ -4,8 +4,6 @@ scala.deriving$
 ## Companion trait Mirror
 
 <pre><code class="language-scala" >final object Mirror extends Serializable</pre></code>
-## Known subclasses:
-SingletonProxy, Singleton, Product, Sum
 ## Concrete Type Members:
 ### Of
 <pre><code class="language-scala" >type Of: [T >: scala.Nothing <: scala.Any] => scala.deriving.Mirror {

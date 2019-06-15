@@ -2,8 +2,6 @@ scala.tasty.reflect.Printers
 # class SourceCodePrinter
 
 <pre><code class="language-scala" >class SourceCodePrinter extends Printer</pre></code>
-## Known subclasses:
-<a href="./SourceCodePrinter/PackageObject$.md">PackageObject</a>, <a href="./SourceCodePrinter/Types$.md">Types</a>, <a href="./SourceCodePrinter/Annotation$.md">Annotation</a>, <a href="./SourceCodePrinter/SpecialOp$.md">SpecialOp</a>, <a href="./SourceCodePrinter/Buffer.md">Buffer</a>
 ## Constructors:
 <pre><code class="language-scala" >SourceCodePrinter()</pre></code>
 
@@ -28,7 +26,4 @@ scala.tasty.reflect.Printers
 
 ### showTypeOrBounds
 <pre><code class="language-scala" >def showTypeOrBounds(tpe: TypeOrBounds)(ctx: Context): String</pre></code>
-
-### PackageObject
-<pre><code class="language-scala" >final val PackageObject: PackageObject</pre></code>
 

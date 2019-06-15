@@ -2,8 +2,6 @@ scala.tasty.reflect.Printers
 # class ExtractorsPrinter
 
 <pre><code class="language-scala" >class ExtractorsPrinter extends Printer</pre></code>
-## Known subclasses:
-<a href="./ExtractorsPrinter/Buffer.md">Buffer</a>
 ## Constructors:
 <pre><code class="language-scala" >ExtractorsPrinter()</pre></code>
 

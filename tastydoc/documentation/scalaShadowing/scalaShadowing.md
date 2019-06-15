@@ -15,12 +15,12 @@ The language features are:
 * [`implicitConversions`](../scalaShadowing/language$.md#implicitConversions) enables defining implicit methods and members
 * [`higherKinds`](../scalaShadowing/language$.md#higherKinds)         enables writing higher-kinded types
 * [`existentials`](../scalaShadowing/language$.md#existentials)        enables writing existential types
-* [`experimental`](../scalaShadowing/language$.md#experimental)        contains newer features that have not yet been tested in production
+* `experimental`        contains newer features that have not yet been tested in production
 
 and, for dotty:
-* [`Scala2`]               backwards compatibility mode for Scala2](../scalaShadowing/language$.md#Scala2)
+* `Scala2`]               backwards compatibility mode for Scala2
 * `noAutoTupling`       disable auto-tupling
-* [`strictEquality`](../scalaShadowing/language$.md#strictEquality)      enable strick equality
+* `strictEquality`      enable strick equality
 
 ***production*** Language Features
 

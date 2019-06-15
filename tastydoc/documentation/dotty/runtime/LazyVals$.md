@@ -4,8 +4,6 @@ dotty.runtime
 <pre><code class="language-scala" >final object LazyVals extends Serializable</pre></code>
 Helper methods used in thread-safe lazy vals.
 
-## Known subclasses:
-<a href="./LazyVals$/Names$.md">Names</a>
 ## Concrete Type Members:
 ### Names
 <pre><code class="language-scala" >final object <a href="./LazyVals$/Names$.md">Names</a></pre></code>
@@ -30,7 +28,4 @@ Helper methods used in thread-safe lazy vals.
 
 ### BITS_PER_LAZY_VAL
 <pre><code class="language-scala" >final inline val BITS_PER_LAZY_VAL: 2</pre></code>
-
-### Names
-<pre><code class="language-scala" >final val Names: <a href="./LazyVals$/Names$.md">Names</a></pre></code>
 

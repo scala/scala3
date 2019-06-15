@@ -24,6 +24,3 @@ A proxy for Scala 2 singletons, which do not inherit `Singleton` directly
 ### fromProduct
 <pre><code class="language-scala" >def fromProduct(p: Product): MirroredMonoType</pre></code>
 
-### value
-<pre><code class="language-scala" >val value: AnyRef</pre></code>
-

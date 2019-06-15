@@ -82,22 +82,6 @@ Function-like object that maps arity to symbols for classes `scala.FunctionX`.
 *  ...
 *  Nth element is `FunctionN`
 
-### FunctionClass$default$2
-<pre><code class="language-scala" >def FunctionClass$default$2: Boolean</pre></code>
-Function-like object that maps arity to symbols for classes `scala.FunctionX`.
-*  0th element is `Function0`
-*  1st element is `Function1`
-*  ...
-*  Nth element is `FunctionN`
-
-### FunctionClass$default$3
-<pre><code class="language-scala" >def FunctionClass$default$3: Boolean</pre></code>
-Function-like object that maps arity to symbols for classes `scala.FunctionX`.
-*  0th element is `Function0`
-*  1st element is `Function1`
-*  ...
-*  Nth element is `FunctionN`
-
 ### IntClass
 <pre><code class="language-scala" >def IntClass: Symbol</pre></code>
 The class symbol of primitive class `scala.Int`.

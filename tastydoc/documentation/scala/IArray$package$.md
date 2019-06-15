@@ -2,8 +2,6 @@ scala
 # object IArray$package
 
 <pre><code class="language-scala" >final object IArray$package extends Serializable</pre></code>
-## Known subclasses:
-IArray, arrayOps
 ## Concrete Type Members:
 ### IArray
 <pre><code class="language-scala" >type IArray: [+T >: scala.Nothing <: scala.Any] => scala.Array[_ >: scala.Nothing <: +T]</pre></code>
@@ -16,13 +14,4 @@ but it cannot be updated. Unlike regular arrays, immutable arrays are covariant.
 ### arrayOps
 <pre><code class="language-scala" >final object arrayOps</pre></code>
 Defines extension methods for immutable arrays
-
-## Concrete Value Members:
-### IArray
-<pre><code class="language-scala" >final val IArray: IArray</pre></code>
-
-### arrayOps
-<pre><code class="language-scala" >final implicit val arrayOps: arrayOps</pre></code>
-Defines extension methods for immutable arrays
-
 

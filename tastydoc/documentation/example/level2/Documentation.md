@@ -18,8 +18,6 @@ This class is used for testing tasty doc generation
 
 ## Annotations:
 @strictfp 
-## Known subclasses:
-<a href="./Documentation/Graph.md">Graph</a>, <a href="./Documentation/testObject$.md">testObject</a>, <a href="./Documentation/IAmACaseObject$.md">IAmACaseObject</a>, <a href="./Documentation/IAmACaseClass$.md">IAmACaseClass</a>, <a href="./Documentation/IAmACaseClass.md">IAmACaseClass</a>, <a href="./Documentation/CaseImplementThis.md">CaseImplementThis</a>, <a href="./Documentation/innerDocumentationClass.md">innerDocumentationClass</a>
 ## Constructors:
 <pre><code class="language-scala" >Documentation(c1: String, c2: List[T])</pre></code>
 <pre><code class="language-scala" >Documentation(ac: String)</pre></code>
@@ -37,8 +35,6 @@ Auxiliary constructor
 ### typeExample
 <pre><code class="language-scala" >type typeExample: [X >: scala.Nothing <: scala.Any] => X <: [X >: scala.Nothing <: scala.Any] => scala.Predef.String</pre></code>
 
-### IAmACaseClass
-<pre><code class="language-scala" >final object <a href="./Documentation/IAmACaseClass$.md">IAmACaseClass</a></pre></code>
 ### IAmACaseObject
 <pre><code class="language-scala" >final case object <a href="./Documentation/IAmACaseObject$.md">IAmACaseObject</a></pre></code>
 ### testObject
@@ -346,9 +342,6 @@ class: [example.UserDocLinkingClass](../../example/UserDocLinkingClass.md)
 ### methodsWithDefault
 <pre><code class="language-scala" >def methodsWithDefault(x: Int): Nothing</pre></code>
 
-### methodsWithDefault$default$1
-<pre><code class="language-scala" >def methodsWithDefault$default$1: Int</pre></code>
-
 ### methodsWithImplicit
 <pre><code class="language-scala" >def methodsWithImplicit(x: Int)(implicit imp: Int, notImp: String): Nothing</pre></code>
 
@@ -632,9 +625,6 @@ Test methods with params
 ### zipWithIndex
 <pre><code class="language-scala" >def zipWithIndex[A1, That](bf: CanBuildFrom[Repr, (A1, Int), That]): That</pre></code>
 
-### IAmACaseClass
-<pre><code class="language-scala" >final val IAmACaseClass: <a href="./Documentation/IAmACaseClass$.md">IAmACaseClass</a></pre></code>
-
 ### c2
 <pre><code class="language-scala" >val c2: List[<a href="./Documentation.md#T">T</a>]</pre></code>
 
@@ -649,9 +639,6 @@ Test methods with params
 
 ### refinementTest
 <pre><code class="language-scala" >val refinementTest: <a href="./Documentation/Graph.md">Graph</a>{ def x: Int; def x2: <a href="./Documentation/innerDocumentationClass.md">innerDocumentationClass</a>; type Y: String; val z: Boolean }</pre></code>
-
-### testObject
-<pre><code class="language-scala" >final val testObject: <a href="./Documentation/testObject$.md">testObject</a></pre></code>
 
 ### v
 <pre><code class="language-scala" >@showAsInfix val v: Int</pre></code>

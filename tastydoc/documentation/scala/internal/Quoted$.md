@@ -2,8 +2,6 @@ scala.internal
 # object Quoted
 
 <pre><code class="language-scala" >final object Quoted extends Serializable</pre></code>
-## Known subclasses:
-<a href="./Quoted$/patternBindHole.md">patternBindHole</a>
 ## Concrete Type Members:
 ### patternBindHole
 <pre><code class="language-scala" >@compileTimeOnly class <a href="./Quoted$/patternBindHole.md">patternBindHole</a></pre></code>
