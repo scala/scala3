@@ -6,6 +6,8 @@ scala
 <pre><code class="language-scala" >sealed trait Tuple extends Any</pre></code>
 Tuple of arbitrary arity
 
+## Known subclasses:
+NonEmptyTuple
 ## Constructors:
 <pre><code class="language-scala" >Tuple()</pre></code>
 

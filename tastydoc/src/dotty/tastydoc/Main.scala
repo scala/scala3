@@ -96,6 +96,8 @@ object Main {
       val tc = new TastydocConsumer(mutablePackagesMap)
       ConsumeTasty(extraClasspath, classes, tc)
 
+      representations.setSubClasses(mutablePackagesMap)
+
       val docPrinter = new DocPrinter(mutablePackagesMap, userDocSyntax, packagesToLink)
 
       mutablePackagesMap.foreach((_, v) => docPrinter.traverseRepresentation(v))

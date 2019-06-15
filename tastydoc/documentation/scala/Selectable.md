@@ -2,6 +2,8 @@ scala
 # trait Selectable
 
 <pre><code class="language-scala" >trait Selectable extends Any</pre></code>
+## Known subclasses:
+<a href="./reflect/Selectable.md">Selectable</a>
 ## Constructors:
 <pre><code class="language-scala" >Selectable()</pre></code>
 

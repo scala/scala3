@@ -218,4 +218,25 @@ object representations extends TastyExtractor {
 
       case _ => throw new Exception("Tree match error in conversion to representation. Please open an issue. " + tree)
   }}
+
+  def setSubClasses(mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]): Unit = {
+    def innerLogic(representation: Representation): Unit = representation match {
+      case r: ClassRepresentation =>
+        r.parents.foreach{_ match {
+          case ref@TypeReference(label, path, _, _) => mutablePackagesMap.get(path.tail.replaceAll("\\/", "\\.")) match {
+            case Some(p) =>
+              p.members.filter(_.name == label).foreach{_ match {
+                case parent: ClassRepresentation => parent.knownSubclasses = TypeReference(r.name, r.path.mkString("/", "/", ""), Nil, true) :: parent.knownSubclasses
+                case _ =>
+              }}
+            case None =>
+          }
+          case _ =>
+        }}
+      case r: Representation with Members => r.members.foreach(innerLogic)
+      case _ =>
+    }
+
+    mutablePackagesMap.foreach((_, v) => innerLogic(v))
+  }
 }

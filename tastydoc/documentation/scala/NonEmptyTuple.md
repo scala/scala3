@@ -4,6 +4,8 @@ scala
 <pre><code class="language-scala" >sealed trait NonEmptyTuple extends Tuple</pre></code>
 Tuple of arbitrary non-zero arity
 
+## Known subclasses:
+*:
 ## Constructors:
 <pre><code class="language-scala" >NonEmptyTuple()</pre></code>
 
