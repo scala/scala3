@@ -421,14 +421,14 @@ object Build {
     libraryDependencies ++= {
       val flexmarkVersion = "0.28.32"
       Seq(
-        // "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
-        // "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
-        // "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % flexmarkVersion,
-        // "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
-        // "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % flexmarkVersion,
-        // "com.vladsch.flexmark" % "flexmark-ext-emoji" % flexmarkVersion,
-        // "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
-        // "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-emoji" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
         Dependencies.`jackson-dataformat-yaml`,
         "nl.big-o" % "liqp" % "0.6.7"
       )

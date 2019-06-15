@@ -17,7 +17,7 @@ class Tests {
   @Test def testDocumentation(): Unit = {
     Main.main(Array(
       "--classpath",
-      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.16/classes",
+      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.17/classes",
       "--syntax",
       "wiki",
       //"markdown",
@@ -39,7 +39,7 @@ class Tests {
   @Test def testDotty(): Unit = {
     Main.main(Array(
       "--classpath",
-      "tastydoc/dotty-0.15.0-RC1/lib",
+      "tastydoc/dotty-0.16.0-RC3/lib",
       "--syntax",
       "wiki",
       "--packagestolink",
