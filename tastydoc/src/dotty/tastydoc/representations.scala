@@ -11,7 +11,6 @@ object representations extends TastyExtractor {
   trait Representation {
     val name : String
     val path : List[String]
-    //def comments(packages: Map[String, EmulatedPackageRepresentation]): Option[Comment]
     def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String): Option[Comment]
     val parentRepresentation: Option[Representation] //Called simply "parent" in dotty-doc
     val annotations: List[TypeReference]
@@ -62,7 +61,9 @@ object representations extends TastyExtractor {
     val typeParams: List[String]
   }
 
-  class EmulatedPackageRepresentation(val name: String, val path: List[String]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members { //This contains all the packages representing a single package
+  /** This contains all the PackageRepresentation representing a single package
+   */
+  class EmulatedPackageRepresentation(val name: String, val path: List[String]) given (mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members {
     override val parentRepresentation = None
     override val annotations = Nil
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = None

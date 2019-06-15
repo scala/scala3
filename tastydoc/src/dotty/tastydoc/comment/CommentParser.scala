@@ -17,12 +17,10 @@ trait CommentParser {
    * @param span         the position of the comment in source.
    */
   def parse(
-    //representation: Representation,
+    representation: Representation,
     packages: Map[String, EmulatedPackageRepresentation],
     comment: List[String],
-    src: String,
-    // span: Span,
-    // site: Symbol = NoSymbol
+    src: String
   ): ParsedComment = {
 
     /** Parses a comment (in the form of a list of lines) to a `Comment`

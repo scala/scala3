@@ -36,18 +36,6 @@ class Tests {
       "example.UserDocLinkingClass"
     ))
   }
-  @Test def testListFromLib(): Unit = {
-    Main.main(Array(
-      "--classpath",
-      "tastydoc/out/bootstrap/dotty-tastydoc-input/scala-0.16/classes",
-      "--syntax",
-      "wiki",
-      "--packagestolink",
-      "scala.*",
-      "-i",
-      "scala.collection.immutable.List"
-    ))
-  }
   @Test def testDotty(): Unit = {
     Main.main(Array(
       "--classpath",

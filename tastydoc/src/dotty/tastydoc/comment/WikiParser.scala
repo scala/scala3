@@ -15,9 +15,7 @@ import Regexes._
 private[comment] final class WikiParser(
   representation: Representation,
   packages: Map[String, EmulatedPackageRepresentation],
-  val buffer: String,
-  // span: Span,
-  // site: Symbol
+  val buffer: String
 ) extends CharReader(buffer) with MemberLookup { wiki =>
   var summaryParsed = false
 
@@ -104,9 +102,9 @@ private[comment] final class WikiParser(
     jumpWhitespace()
     jump("{{{")
     val str = readUntil("}}}")
-    // if (char == endOfText)
-    //   reportError(span, "unclosed code block")
-    // else
+    if (char == endOfText)
+      reportError("unclosed code block")
+    else
       jump("}}}")
     blockEnded("code block")
     Code(normalizeIndentation(str))
@@ -118,8 +116,8 @@ private[comment] final class WikiParser(
     val inLevel = repeatJump('=')
     val text = getInline(check("=" * inLevel))
     val outLevel = repeatJump('=', inLevel)
-    // if (inLevel != outLevel)
-    //   reportError(span, "unbalanced or unclosed heading")
+    if (inLevel != outLevel)
+      reportError("unbalanced or unclosed heading")
     blockEnded("heading")
     Title(text, inLevel)
   }
@@ -339,7 +337,7 @@ private[comment] final class WikiParser(
   /** {{{ eol ::= { whitespace } '\n' }}} */
   def blockEnded(blockType: String): Unit = {
     if (char != endOfLine && char != endOfText) {
-      //reportError(span, "no additional content on same line after " + blockType)
+      reportError("no additional content on same line after " + blockType)
       jumpUntil(endOfLine)
     }
     while (char == endOfLine)
@@ -397,8 +395,7 @@ private[comment] final class WikiParser(
     }
   }
 
-  // def reportError(span: Span, message: String) =
-  //   dottydoc.println(s"$span: $message")
+  def reportError(message: String) = println(s"$message")
 }
 
 sealed class CharReader(buffer: String) { reader =>

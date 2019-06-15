@@ -45,7 +45,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     comment match {
       case Some(com) =>
         (packages, userDocSyntax) => {
-          val parsed = parse(packages, clean(com.raw), com.raw)
+          val parsed = parse(rep, packages, clean(com.raw), com.raw)
           if (userDocSyntax == "markdown") {
             Some(MarkdownComment(rep, parsed, packages).comment)
           }else if(userDocSyntax == "wiki"){
