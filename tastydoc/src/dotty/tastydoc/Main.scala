@@ -1,6 +1,5 @@
 package dotty.tastydoc
 
-import scala.tasty.Reflection
 import scala.tasty.file._
 
 import dotty.tastydoc.representations._

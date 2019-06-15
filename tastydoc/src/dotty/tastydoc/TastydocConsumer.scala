@@ -3,9 +3,6 @@ package dotty.tastydoc
 import scala.tasty.Reflection
 import scala.tasty.file.TastyConsumer
 
-import dotty.tools.dotc.tastyreflect
-import scala.annotation.tailrec
-
 import dotty.tastydoc.representations._
 
 /* Extends TastyConsumer and consumes Tasty Files to produce Representations

@@ -2,9 +2,8 @@ package dotty.tastydoc
 
 import scala.tasty.Reflection
 import scala.annotation.tailrec
-import dotty.tastydoc.comment.{Comment, WikiComment, MarkdownComment}
+import dotty.tastydoc.comment.Comment
 import dotty.tastydoc.references._
-import dotty.tastydoc.TastyExtractor
 
 object representations extends TastyExtractor {
 
