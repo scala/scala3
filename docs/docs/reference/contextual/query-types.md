@@ -117,7 +117,7 @@ As a larger example, here is a way to define constructs for checking arbitrary p
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  def result[T] given (r: WrappedResult[T]): T = f
+  def result[T] given (r: WrappedResult[T]): T = r
 
   def (x: T) ensuring [T](condition: given WrappedResult[T] => Boolean): T = {
     delegate for WrappedResult[T] = x
