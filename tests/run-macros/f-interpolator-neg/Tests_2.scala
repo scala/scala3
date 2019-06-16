@@ -54,6 +54,9 @@ object Test {
         (true, 0, 1, 3, "only use '(' for BigInt conversions to o, x, X")))
       assertEquals(foo"$f%,(a", List((true, 0, 1, 1, "',' not allowed for a, A"), (true, 0, 1, 2, "'(' not allowed for a, A")))
       assertEquals(foo"$t%#+ 0,(tT", List((true, 0, 1, 1, "Only '-' allowed for date/time conversions")))
+      assertEquals(foo"%-#+ 0,(n", List((true, 0, 0, 1, "flags not allowed")))
+      assertEquals(foo"%#+ 0,(%", List((true, 0, 0, 1, "Illegal flag '#'"), (true, 0, 0, 2, "Illegal flag '+'"),
+        (true, 0, 0, 3, "Illegal flag ' '"), (true, 0, 0, 4, "Illegal flag '0'"), (true, 0, 0, 5, "Illegal flag ','"), (true, 0, 0, 6, "Illegal flag '('")))
     }
 
     def badPrecisions(c : Char, d : Int, f : Double, t : java.util.Date) = {

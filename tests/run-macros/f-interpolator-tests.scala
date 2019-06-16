@@ -187,7 +187,7 @@ object Test {
   def specificLiteralsTests = {
     def percentArgsTest = println(f"the percentage is 100 %%")
 
-    def lineSeparatorArgs = println(f"we have a line separator now %%n and now, we are on the next line")
+    def lineSeparatorArgs = println(f"we have a line separator now %nand now, we are on the next line")
 
     def nothingTest = println(f"we have nothing")
 

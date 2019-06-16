@@ -544,12 +544,18 @@ object StringContextMacro {
      *  @return reports an error if precision or width is specified for '%' or
      *  if precision is specified for end of line
      */
-    def checkSpecials(partIndex : Int, conversionChar : Char, hasPrecision : Boolean, precision : Int, hasWidth : Boolean, width : Int) = conversionChar match {
+    def checkSpecials(partIndex : Int, conversionChar : Char, hasPrecision : Boolean, precision : Int, hasWidth : Boolean, width : Int, flags : List[(Char, Int)]) = conversionChar match {
       case 'n' => {
         checkNotAllowedParameter(hasPrecision, partIndex, precision, "precision")
         checkNotAllowedParameter(hasWidth, partIndex, width, "width")
+        val notAllowedFlagOnCondition = for (flag <- List('-', '#', '+', ' ', '0', ',', '(')) yield (flag, true, "flags not allowed")
+        checkUniqueFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
       }
-      case '%' => checkNotAllowedParameter(hasPrecision, partIndex, precision, "precision")
+      case '%' => {
+        checkNotAllowedParameter(hasPrecision, partIndex, precision, "precision")
+        val notAllowedFlagOnCondition = for (flag <- List('#', '+', ' ', '0', ',', '(')) yield (flag, true, "Illegal flag '" + flag + "'")
+        checkFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
+      }
       case _ => // OK
     }
 
@@ -588,7 +594,7 @@ object StringContextMacro {
         case 'e' | 'E' |'f' | 'g' | 'G' | 'a' | 'A' => checkFloatingPointConversion(partIndex, conversionChar, flags, hasPrecision, precision)
         case 't' | 'T' => checkTimeConversion(partIndex, part, conversion, flags, hasPrecision, precision)
         case 'b' | 'B' | 'h' | 'H' | 'S' | 's' => checkGeneralConversion(partIndex, argType, conversionChar, flags)
-        case 'n' | '%' => checkSpecials(partIndex, conversionChar, hasPrecision, precision, hasWidth, width)
+        case 'n' | '%' => checkSpecials(partIndex, conversionChar, hasPrecision, precision, hasWidth, width, flags)
         case illegal => reporter.partError("illegal conversion character '" + illegal + "'", partIndex, conversion)
       }
 
