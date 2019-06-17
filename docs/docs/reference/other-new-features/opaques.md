@@ -42,7 +42,7 @@ following operations would be valid because they use functionality implemented i
   import Logarithms._
   import Predef.{any2stringadd => _, _}
 
-  val l = Logarithm(1.0)
+  val l1 = Logarithm(1.0)
   val l2 = Logarithm(2.0)
   val l3 = l1 * l2
   val l4 = l1 + l2
