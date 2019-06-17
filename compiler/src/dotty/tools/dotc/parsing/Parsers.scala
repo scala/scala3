@@ -799,7 +799,10 @@ object Parsers {
     private def interpolatedString(inPattern: Boolean = false): Tree = atSpan(in.offset) {
       val segmentBuf = new ListBuffer[Tree]
       val interpolator = in.name
-      val isTripleQuoted = in.buf(in.charOffset) == '"' && in.buf(in.charOffset + 1) == '"'
+      val isTripleQuoted =
+        in.charOffset + 1 < in.buf.length &&
+        in.buf(in.charOffset) == '"' &&
+        in.buf(in.charOffset + 1) == '"'
       in.nextToken()
       def nextSegment(literalOffset: Offset) =
         segmentBuf += Thicket(
