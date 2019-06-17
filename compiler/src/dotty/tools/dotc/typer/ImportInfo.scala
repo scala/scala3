@@ -10,6 +10,8 @@ import util.SimpleIdentityMap
 import Symbols._, Names._, Types._, Contexts._, StdNames._, Flags._
 import Implicits.RenamedImplicitRef
 import printing.Texts.Text
+import ProtoTypes.NoViewsAllowed.normalizedCompatible
+import Decorators._
 
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
@@ -26,7 +28,7 @@ object ImportInfo {
  *  @param   selectors     The selector clauses
  *  @param   symNameOpt    Optionally, the name of the import symbol. None for root imports.
  *                         Defined for all explicit imports from ident or select nodes.
- *  @param   importImplied true if this is an implied import
+ *  @param   importImplied true if this is a delegate import
  *  @param   isRootImport  true if this is one of the implicit imports of scala, java.lang,
  *                         scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */
@@ -55,44 +57,60 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   /** The names that are excluded from any wildcard import */
   def excluded: Set[TermName] = { ensureInitialized(); myExcluded }
 
-  /** A mapping from renamed to original names */
-  def reverseMapping: SimpleIdentityMap[TermName, TermName] = { ensureInitialized(); myMapped }
+  /** A mapping from original to renamed names */
+  def forwardMapping: SimpleIdentityMap[TermName, TermName] = { ensureInitialized(); myForwardMapping }
 
-  /** The original names imported by-name before renaming */
-  def originals: Set[TermName] = { ensureInitialized(); myOriginals }
+  /** A mapping from renamed to original names */
+  def reverseMapping: SimpleIdentityMap[TermName, TermName] = { ensureInitialized(); myReverseMapping }
 
   /** Does the import clause end with wildcard? */
   def isWildcardImport: Boolean = { ensureInitialized(); myWildcardImport }
 
   private[this] var myExcluded: Set[TermName] = null
-  private[this] var myMapped: SimpleIdentityMap[TermName, TermName] = null
-  private[this] var myOriginals: Set[TermName] = null
+  private[this] var myForwardMapping: SimpleIdentityMap[TermName, TermName] = null
+  private[this] var myReverseMapping: SimpleIdentityMap[TermName, TermName] = null
   private[this] var myWildcardImport: Boolean = false
 
   /** Compute info relating to the selector list */
   private def ensureInitialized(): Unit = if (myExcluded == null) {
     myExcluded = Set()
-    myMapped = SimpleIdentityMap.Empty
-    myOriginals = Set()
+    myForwardMapping = SimpleIdentityMap.Empty
+    myReverseMapping = SimpleIdentityMap.Empty
     def recur(sels: List[untpd.Tree]): Unit = sels match {
       case sel :: sels1 =>
         sel match {
           case Thicket(Ident(name: TermName) :: Ident(nme.WILDCARD) :: Nil) =>
             myExcluded += name
           case Thicket(Ident(from: TermName) :: Ident(to: TermName) :: Nil) =>
-            myMapped = myMapped.updated(to, from)
+            myForwardMapping = myForwardMapping.updated(from, to)
+            myReverseMapping = myReverseMapping.updated(to, from)
             myExcluded += from
-            myOriginals += from
           case Ident(nme.WILDCARD) =>
             myWildcardImport = true
           case Ident(name: TermName) =>
-            myMapped = myMapped.updated(name, name)
-            myOriginals += name
+            myForwardMapping = myForwardMapping.updated(name, name)
+            myReverseMapping = myReverseMapping.updated(name, name)
+          case TypeBoundsTree(_, tpt) =>
+            myWildcardImport = true // details are handled separately in impliedBounds
         }
         recur(sels1)
       case nil =>
     }
     recur(selectors)
+  }
+
+  private[this] var myImpliedBound: Type = null
+
+  def impliedBound(implicit ctx: Context): Type = {
+    if (myImpliedBound == null)
+      myImpliedBound = selectors.lastOption match {
+        case Some(TypeBoundsTree(_, untpd.TypedSplice(tpt))) => tpt.tpe
+        case Some(TypeBoundsTree(_, tpt)) =>
+          myImpliedBound = NoType
+          ctx.typer.typedAheadType(tpt).tpe
+        case _ => NoType
+      }
+    myImpliedBound
   }
 
   private def implicitFlag(implicit ctx: Context) =
@@ -102,11 +120,20 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   /** The implicit references imported by this import clause */
   def importedImplicits(implicit ctx: Context): List[ImplicitRef] = {
     val pre = site
-    if (isWildcardImport) {
-      val refs = pre.implicitMembers(implicitFlag)
-      if (excluded.isEmpty) refs
-      else refs filterNot (ref => excluded contains ref.name.toTermName)
-    } else
+    if (isWildcardImport)
+      pre.implicitMembers(implicitFlag).flatMap { ref =>
+        val name = ref.name.toTermName
+        if (excluded.contains(name)) Nil
+        else {
+          val renamed = forwardMapping(ref.name)
+          if (renamed == ref.name) ref :: Nil
+          else if (renamed != null) new RenamedImplicitRef(ref, renamed) :: Nil
+          else if (!impliedBound.exists ||
+                   normalizedCompatible(ref, impliedBound, keepConstraint = false)) ref :: Nil
+          else Nil
+        }
+      }
+    else
       for {
         renamed <- reverseMapping.keys
         denot <- pre.member(reverseMapping(renamed)).altsWith(_ is implicitFlag)
@@ -149,7 +176,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   def featureImported(feature: TermName, owner: Symbol)(implicit ctx: Context): Boolean = {
     def compute = {
       val isImportOwner = site.widen.typeSymbol.eq(owner)
-      if (isImportOwner && originals.contains(feature)) true
+      if (isImportOwner && forwardMapping.contains(feature)) true
       else if (isImportOwner && excluded.contains(feature)) false
       else {
         var c = ctx.outer

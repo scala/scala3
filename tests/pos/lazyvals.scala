@@ -10,7 +10,7 @@ trait Iterator {
     val leading = new Leading
 
     class Trailing {
-      @volatile lazy val it = leading.finish()
+      lazy val it = leading.finish()
     }
     val trailing = new Trailing
     (leading, trailing)

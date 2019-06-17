@@ -3,14 +3,14 @@ layout: doc-page
 title: "Dependent Function Types - More Details"
 ---
 
-Initial implementation in (#3464)[https://github.com/lampepfl/dotty/pull/3464].
+Initial implementation in [#3464](https://github.com/lampepfl/dotty/pull/3464)
 
 ## Syntax
 
     FunArgTypes       ::=  InfixType
                         |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
-                        |  '(' TypedFunParam {',' TypedFunParam } ')'
-    TypedFunParam     ::=  id ':' Type
+                        |  ‘(’ TypedFunParam {',' TypedFunParam } ‘)’
+    TypedFunParam     ::=  id ‘:’ Type
 
 Dependent function types associate to the right, e.g.
 `(s: S) ⇒ (t: T) ⇒ U` is the same as `(s: S) ⇒ ((t: T) ⇒ U)`.
@@ -39,9 +39,9 @@ documentation](https://dotty.epfl.ch/docs/reference/dropped-features/limit22.htm
 
 ## Examples
 
-- (depfuntype.scala)[https://github.com/lampepfl/dotty/blob/0.10.x/tests/pos/depfuntype.scala]
+- [depfuntype.scala](https://github.com/lampepfl/dotty/blob/master/tests/pos/depfuntype.scala)
 
-- (eff-dependent.scala)[https://github.com/lampepfl/dotty/blob/0.10.x/tests/run/eff-dependent.scala]
+- [eff-dependent.scala](https://github.com/lampepfl/dotty/blob/master/tests/run/eff-dependent.scala)
 
 ### Type Checking
 

@@ -122,17 +122,3 @@
     |	    Double definition:
     |	    var foo: Int in class Test16 at line 115 and
     |	    def foo: => Int in class Test16 at line 116
--- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:138:6 -----------------------------------------------
-138 |  def foo(x: Int): Int = x // error
-    |      ^
-    |      Double definition:
-    |      def foo: [T <: Int](x: T): T in class Test19 at line 137 and
-    |      def foo(x: Int): Int in class Test19 at line 138
-    |      have the same type after erasure.
--- [E120] Duplicate Symbol Error: tests/neg/doubleDefinition.scala:144:6 -----------------------------------------------
-144 |  def foo[S <: Int, T <: Int](x: S): T = ??? // error
-    |      ^
-    |      Double definition:
-    |      def foo: [T <: Int](x: T): T in class Test20 at line 143 and
-    |      def foo: [S <: Int, T <: Int](x: S): T in class Test20 at line 144
-    |      have the same type after erasure.

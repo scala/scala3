@@ -1,5 +1,5 @@
 object A {
-  inline def summon[T] = implicit match {
+  inline def summon[T] = delegate match {
     case t: T => t
   }
 }

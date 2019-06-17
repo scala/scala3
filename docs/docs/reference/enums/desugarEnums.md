@@ -120,11 +120,11 @@ map into case classes or vals.
 
    expands to a value definition in `E`'s companion object:
 
-       val C = new <parents> { <body>; def enumTag = n; $values.register(this) }
+       val C = new <parents> { <body>; def ordinal = n; $values.register(this) }
 
    where `n` is the ordinal number of the case in the companion object,
    starting from 0.  The statement `$values.register(this)` registers the value
-   as one of the `enumValues` of the enumeration (see below). `$values` is a
+   as one of the `values` of the enumeration (see below). `$values` is a
    compiler-defined private value in the companion object.
 
    It is an error if a value case refers to a type parameter of the enclosing `enum`
@@ -140,10 +140,10 @@ map into case classes or vals.
 
    However, unlike for a regular case class, the return type of the associated
    `apply` method is a fully parameterized type instance of the enum class `E`
-   itself instead of `C`.  Also the enum case defines an `enumTag` method of
+   itself instead of `C`.  Also the enum case defines an `ordinal` method of
    the form
 
-       def enumTag = n
+       def ordinal = n
 
    where `n` is the ordinal number of the case in the companion object,
    starting from 0.
@@ -159,12 +159,9 @@ Non-generic enums `E` that define one or more singleton cases
 are called _enumerations_. Companion objects of enumerations define
 the following additional members.
 
-   - A method `enumValue` of type `scala.collection.immutable.Map[Int, E]`.
-     `enumValue(n)` returns the singleton case value with ordinal number `n`.
-   - A method `enumValueNamed` of type `scala.collection.immutable.Map[String, E]`.
-     `enumValueNamed(s)` returns the singleton case value whose `toString`
-     representation is `s`.
-   - A method `enumValues` which returns an `Iterable[E]` of all singleton case
+   - A method `valueOf(name: String): E`. It returns the singleton case value whose
+     `toString` representation is `name`.
+   - A method `values` which returns an `Array[E]` of all singleton case
      values in `E`, in the order of their definitions.
 
 Companion objects of enumerations that contain at least one simple case define in addition:
@@ -173,11 +170,13 @@ Companion objects of enumerations that contain at least one simple case define i
      ordinal number and name. This method can be thought as being defined as
      follows.
 
-         def $new(tag: Int, name: String): ET = new E {
-           def enumTag = tag
-           def toString = name
-           $values.register(this)   // register enum value so that `valueOf` and `values` can return it.
+         private def $new(_$ordinal: Int, $name: String) = new E {
+           def $ordinal = $_ordinal
+           override def toString = $name
+           $values.register(this) // register enum value so that `valueOf` and `values` can return it.
          }
+
+The `$ordinal` method above is used to generate the `ordinal` method if the enum does not extend a `java.lang.Enum` (as Scala enums do not extend `java.lang.Enum`s unless explicitly specified). In case it does, there is no need to generate `ordinal` as `java.lang.Enum` defines it.
 
 ### Scopes for Enum Cases
 
@@ -186,6 +185,14 @@ identifiers.
 
 Even though translated enum cases are located in the enum's companion object, referencing
 this object or its members via `this` or a simple identifier is also illegal. The compiler typechecks enum cases in the scope of the enclosing companion object but flags any such illegal accesses as errors.
+
+### Translation of Java-compatible enums
+A Java-compatible enum is an enum that extends `java.lang.Enum`. The translation rules are the same as above, with the reservations defined in this section.
+
+It is a compile-time error for a Java-compatible enum to have class cases.
+
+Cases such as `case C` expand to a `@static val` as opposed to a `val`. This allows them to be generated as static fields of the enum type, thus ensuring they are represented the same way as Java enums.
+
 
 ### Other Rules
 

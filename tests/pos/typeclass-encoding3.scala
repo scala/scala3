@@ -315,7 +315,7 @@ object Test {
 
   implicit def $eq$gt_Monad[Ctx]: $eq$gt_Monad[Ctx] = new $eq$gt_Monad[Ctx]
 
-  g[F = [X] => Int => X]((ctx: Int) => 1, x => (ctx: Int) => x.toString)
+  g[F = [X] =>> Int => X]((ctx: Int) => 1, x => (ctx: Int) => x.toString)
 
 
 /* ---------------------------------------------------------------------------------

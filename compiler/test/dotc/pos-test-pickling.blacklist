@@ -9,8 +9,15 @@ t3249
 t3486
 t3612.scala
 reference
+scala-days-2019-slides
+
+# type of super reference changes due to late addition of Mirror.Singleton
+i939.scala
 
 # Match types
 typelevel0.scala
 matchtype.scala
 6322.scala
+
+# Opaque type
+i5720.scala

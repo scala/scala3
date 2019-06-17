@@ -388,7 +388,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case New(_) | Closure(_, _, _) =>
       Pure
     case TypeApply(fn, _) =>
-      if (fn.symbol.is(Erased)) Pure else exprPurity(fn)
+      if (fn.symbol.is(Erased) || fn.symbol == defn.InternalQuoted_typeQuote) Pure else exprPurity(fn)
     case Apply(fn, args) =>
       def isKnownPureOp(sym: Symbol) =
         sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass
@@ -595,6 +595,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       }
     loop(tree, Nil, Nil)
   }
+
+  /** Decompose a template body into parameters and other statements */
+  def decomposeTemplateBody(body: List[Tree])(implicit ctx: Context): (List[Tree], List[Tree]) =
+    body.partition {
+      case stat: TypeDef => stat.symbol is Flags.Param
+      case stat: ValOrDefDef =>
+        stat.symbol.is(Flags.ParamAccessor) && !stat.symbol.isSetter
+      case _ => false
+    }
 
   /** An extractor for closures, either contained in a block or standalone.
    */

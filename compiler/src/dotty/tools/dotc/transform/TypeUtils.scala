@@ -7,6 +7,7 @@ import TypeErasure.ErasedValueType
 import Types._
 import Contexts._
 import Symbols._
+import Names.Name
 
 object TypeUtils {
   /** A decorator that provides methods on types
@@ -23,6 +24,11 @@ object TypeUtils {
     def ensureMethodic(implicit ctx: Context): Type = self match {
       case self: MethodicType => self
       case _ => if (ctx.erasedTypes) MethodType(Nil, self) else ExprType(self)
+    }
+
+    def widenToParents(implicit ctx: Context): Type = self.parents match {
+      case Nil => self
+      case ps => ps.reduceLeft(AndType(_, _))
     }
 
     /** The arity of this tuple type, which can be made up of Unit, TupleX and `*:` pairs,
@@ -52,16 +58,16 @@ object TypeUtils {
     def toNestedPairs(implicit ctx: Context): Type =
       TypeOps.nestedPairs(tupleElementTypes)
 
-    /** Extract opaque alias from TypeBounds type that combines it with the reference
-     *  to the opaque type itself
+    def refinedWith(name: Name, info: Type)(implicit ctx: Context) = RefinedType(self, name, info)
+
+    /** The TermRef referring to the companion of the underlying class reference
+     *  of this type, while keeping the same prefix.
      */
-    def extractOpaqueAlias(implicit ctx: Context): Type = self match {
-      case TypeBounds(lo, _) =>
-        def extractAlias(tp: Type): Type = tp match {
-          case OrType(alias, _) => alias
-          case self: HKTypeLambda => self.derivedLambdaType(resType = extractAlias(self.resType))
-        }
-        extractAlias(lo)
+    def companionRef(implicit ctx: Context): TermRef = self match {
+      case self @ TypeRef(prefix, _) if self.symbol.isClass =>
+        prefix.select(self.symbol.companionModule).asInstanceOf[TermRef]
+      case self: TypeProxy =>
+        self.underlying.companionRef
     }
   }
 }

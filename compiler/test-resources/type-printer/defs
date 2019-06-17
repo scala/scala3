@@ -7,4 +7,4 @@ def baz[A](a: A): A
 scala> def qux[A](a: A): a.type = a
 def qux[A](a: A): a.type
 scala> def singleton: 1 = 1
-def singleton: Int(1)
+def singleton: 1

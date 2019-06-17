@@ -20,11 +20,11 @@ object DecoratorsX {
     def toTermName: TermName = termName(s)
     def toText(printer: Printer): Text = Str(s)
   }
-  implied for Conversion[String, StringPreName] = new StringPreName(_)
+  delegate for Conversion[String, StringPreName] = new StringPreName(_)
 
   final val MaxFilterRecursions = 1000
 
-  implied {
+  delegate {
     def (s: String) splitWhere (f: Char => Boolean, doDropIndex: Boolean): Option[(String, String)] = {
       def splitAt(idx: Int, doDropIndex: Boolean): Option[(String, String)] =
         if (idx == -1) None

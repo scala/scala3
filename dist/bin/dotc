@@ -52,7 +52,6 @@ classpathArgs () {
   # echo "dotty-library: $DOTTY_LIB"
   # echo "scala-asm: $SCALA_ASM"
   # echo "scala-lib: $SCALA_LIB"
-  # echo "scala-xml: $SCALA_XML"
   # echo "sbt-intface: $SBT_INTF"
 
   toolchain=""
@@ -61,7 +60,6 @@ classpathArgs () {
   toolchain+="$SCALA_ASM$PSEP"
   toolchain+="$SBT_INTF$PSEP"
   toolchain+="$DOTTY_INTF$PSEP"
-  toolchain+="$DOTTY_LIB$PSEP"
   toolchain+="$DOTTY_COMP$PSEP"
 
   # jine

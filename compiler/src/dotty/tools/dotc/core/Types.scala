@@ -35,6 +35,7 @@ import reporting.trace
 import java.lang.ref.WeakReference
 
 import scala.annotation.internal.sharable
+import scala.annotation.threadUnsafe
 
 object Types {
 
@@ -1139,18 +1140,6 @@ object Types {
     /** Like `dealiasKeepAnnots`, but keeps only refining annotations */
     final def dealiasKeepRefiningAnnots(implicit ctx: Context): Type = dealias1(keepIfRefining)
 
-    /** If this is a synthetic opaque type seen from inside the opaque companion object,
-     *  its opaque alias, otherwise the type itself.
-     */
-    final def followSyntheticOpaque(implicit ctx: Context): Type = this match {
-      case tp: TypeProxy if tp.typeSymbol.is(SyntheticOpaque) =>
-        tp.superType match {
-          case AndType(alias, _) => alias   // in this case we are inside the companion object
-          case _ => this
-        }
-      case _ => this
-    }
-
     /** The result of normalization using `tryNormalize`, or the type itself if
      *  tryNormlize yields NoType
      */
@@ -1895,8 +1884,10 @@ object Types {
             finish(memberDenot(symd.initial.name, allowPrivate = false))
           else if (prefix.isArgPrefixOf(symd))
             finish(argDenot(sym.asType))
-          else if (infoDependsOnPrefix(symd, prefix))
+          else if (infoDependsOnPrefix(symd, prefix)) {
+            if (!symd.isClass && symd.is(Opaque, butNot = Deferred)) symd.normalizeOpaque()
             finish(memberDenot(symd.initial.name, allowPrivate = symd.is(Private)))
+          }
           else
             finish(symd.current)
       }
@@ -2322,7 +2313,8 @@ object Types {
     override def translucentSuperType(implicit ctx: Context) = info match {
       case TypeAlias(aliased) => aliased
       case TypeBounds(_, hi) =>
-        if (symbol.isOpaqueHelper) symbol.opaqueAlias.asSeenFrom(prefix, symbol.owner)
+        if (symbol.isOpaqueAlias)
+          symbol.opaqueAlias.asSeenFrom(prefix, symbol.owner).orElse(hi) // orElse can happen for malformed input
         else hi
       case _ => underlying
     }
@@ -3194,6 +3186,7 @@ object Types {
       companion.eq(ContextualMethodType) ||
       companion.eq(ErasedContextualMethodType)
 
+
     def computeSignature(implicit ctx: Context): Signature = {
       val params = if (isErasedMethod) Nil else paramInfos
       resultSignature.prepend(params, isJavaMethod)
@@ -3324,7 +3317,7 @@ object Types {
 
     def newParamRef(n: Int): TypeParamRef = new TypeParamRefImpl(this, n)
 
-    lazy val typeParams: List[LambdaParam] =
+    @threadUnsafe lazy val typeParams: List[LambdaParam] =
       paramNames.indices.toList.map(new LambdaParam(this, _))
 
     def derivedLambdaAbstraction(paramNames: List[TypeName], paramInfos: List[TypeBounds], resType: Type)(implicit ctx: Context): Type =
@@ -3519,7 +3512,7 @@ object Types {
     }
 
     override def translucentSuperType(implicit ctx: Context): Type = tycon match {
-      case tycon: TypeRef if tycon.symbol.isOpaqueHelper =>
+      case tycon: TypeRef if tycon.symbol.isOpaqueAlias =>
         tycon.translucentSuperType.applyIfParameterized(args)
       case _ =>
         superType

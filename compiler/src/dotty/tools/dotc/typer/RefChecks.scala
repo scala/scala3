@@ -388,7 +388,7 @@ object RefChecks {
       } else if (member.is(ModuleVal) && !other.isRealMethod && !other.is(Deferred | Lazy)) {
         overrideError("may not override a concrete non-lazy value")
       } else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy) &&
-                 !ctx.testScala2Mode("may not override a non-lazy value", member.sourcePos)) {
+                 !ctx.testScala2Mode(overrideErrorMsg("may not override a non-lazy value"), member.sourcePos)) {
         overrideError("may not override a non-lazy value")
       } else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy)) {
         overrideError("must be declared lazy to override a lazy value")
@@ -408,6 +408,11 @@ object RefChecks {
       } else if (!compatibleTypes(memberTp(self), otherTp(self)) &&
                  !compatibleTypes(memberTp(upwardsSelf), otherTp(upwardsSelf))) {
         overrideError("has incompatible type" + err.whyNoMatchStr(memberTp(self), otherTp(self)))
+      } else if (member.erasedName != other.erasedName) {
+        if (other.erasedName != other.name)
+          overrideError(i"needs to be declared with @alpha(${"\""}${other.erasedName}${"\""}) so that external names match")
+        else
+          overrideError("cannot have an @alpha annotation since external names would be different")
       } else {
         checkOverrideDeprecated()
       }

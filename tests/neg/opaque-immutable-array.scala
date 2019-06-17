@@ -41,6 +41,9 @@ object ia {
   }
 
   def xs: IArray[Long] = ???
+}
+object Test {
+  import ia._
 
   xs.length    // error: not a member
   xs.apply(2)  // error: not a member

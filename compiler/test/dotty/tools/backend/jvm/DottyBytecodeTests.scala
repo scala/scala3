@@ -524,21 +524,34 @@ class TestBCode extends DottyBytecodeTest {
   }
 
   /** Test that the size of lazy field accesors is under a certain threshold
-   *
-   *  - Changed from 19 to 14
    */
   @Test def lazyFields = {
-    val source =
+    val sourceUnsafe =
+      """import scala.annotation.threadUnsafe
+        |
+        |class Test {
+        |  @threadUnsafe lazy val test = 1
+        |}
+      """.stripMargin
+
+    val sourceSafe =
       """class Test {
         |  lazy val test = 1
         |}
       """.stripMargin
 
-    checkBCode(source) { dir =>
+    checkBCode(sourceUnsafe) { dir =>
       val clsIn   = dir.lookupName("Test.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
       assertEquals(14, instructionsFromMethod(method).size)
+    }
+
+    checkBCode(sourceSafe) { dir =>
+      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val method  = getMethod(clsNode, "test")
+      assertEquals(94, instructionsFromMethod(method).size)
     }
   }
 

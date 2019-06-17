@@ -336,8 +336,8 @@ trait ConstraintHandling[AbstractContext] {
    *     L2 <: L1, and
    *     U1 <: U2
    *
-   *  Both `c1` and `c2` are required to derive from constraint `pre`, possibly
-   *  narrowing it with further bounds.
+   *  Both `c1` and `c2` are required to derive from constraint `pre`, without adding
+   *  any new type variables but possibly narrowing already registered ones with further bounds.
    */
   protected final def subsumes(c1: Constraint, c2: Constraint, pre: Constraint)(implicit actx: AbstractContext): Boolean =
     if (c2 eq pre) true
@@ -345,7 +345,12 @@ trait ConstraintHandling[AbstractContext] {
     else {
       val saved = constraint
       try
-        c2.forallParams(p =>
+        // We iterate over params of `pre`, instead of `c2` as the documentation may suggest.
+        // As neither `c1` nor `c2` can have more params than `pre`, this only matters in one edge case.
+        // Constraint#forallParams only iterates over params that can be directly constrained.
+        // If `c2` has, compared to `pre`, instantiated a param and we iterated over params of `c2`,
+        // we could miss that param being instantiated to an incompatible type in `c1`.
+        pre.forallParams(p =>
           c1.contains(p) &&
           c2.upper(p).forall(c1.isLess(p, _)) &&
           isSubTypeWhenFrozen(c1.nonParamBounds(p), c2.nonParamBounds(p)))

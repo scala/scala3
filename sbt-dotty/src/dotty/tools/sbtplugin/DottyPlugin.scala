@@ -1,6 +1,7 @@
 package dotty.tools.sbtplugin
 
 import sbt._
+import sbt.Def.Initialize
 import sbt.Keys._
 import sbt.librarymanagement.{
   ivy, DependencyResolution, ScalaModuleInfo, SemanticSelector, UpdateConfiguration, UnresolvedWarningConfiguration,
@@ -28,12 +29,18 @@ object DottyPlugin extends AutoPlugin {
       val nightly = try {
         // get majorVersion from dotty.epfl.ch
         val source0 = Source.fromURL("http://dotty.epfl.ch/versions/latest-nightly-base")
-        val majorVersion = source0.getLines().toSeq.head
+        val majorVersionFromWebsite = source0.getLines().toSeq.head
         source0.close()
 
         // get latest nightly version from maven
-        val source1 =
-          Source.fromURL(s"http://repo1.maven.org/maven2/ch/epfl/lamp/dotty_$majorVersion/maven-metadata.xml")
+        def fetchSource(version: String): (scala.io.BufferedSource, String) =
+          try Source.fromURL(s"http://repo1.maven.org/maven2/ch/epfl/lamp/dotty_$version/maven-metadata.xml") -> version
+          catch { case t: java.io.FileNotFoundException =>
+            val major :: minor :: Nil = version.split('.').toList
+            if (minor.toInt <= 0) throw t
+            else fetchSource(s"$major.${minor.toInt - 1}")
+          }
+        val (source1, majorVersion) = fetchSource(majorVersionFromWebsite)
         val Version = s"      <version>($majorVersion\\..*-bin.*)</version>".r
         val nightly = source1
           .getLines()
@@ -142,6 +149,8 @@ object DottyPlugin extends AutoPlugin {
     }
   )
 
+  // https://github.com/sbt/sbt/issues/3110
+  val Def = sbt.Def
   override def projectSettings: Seq[Setting[_]] = {
     Seq(
       isDotty := scalaVersion.value.startsWith("0."),
@@ -163,20 +172,15 @@ object DottyPlugin extends AutoPlugin {
 
       scalaCompilerBridgeBinaryJar := Def.settingDyn {
         if (isDotty.value) Def.task {
-          val dottyBridgeArtifacts = fetchArtifactsOf(
+          val updateReport = fetchArtifactsOf(
+            scalaOrganization.value % "dotty-sbt-bridge" % scalaVersion.value,
             dependencyResolution.value,
             scalaModuleInfo.value,
             updateConfiguration.value,
             (unresolvedWarningConfiguration in update).value,
             streams.value.log,
-            scalaOrganization.value % "dotty-sbt-bridge" % scalaVersion.value).allFiles
-          val jars = dottyBridgeArtifacts.filter(art => art.getName.startsWith("dotty-sbt-bridge") && art.getName.endsWith(".jar")).toArray
-          if (jars.size == 0)
-            throw new MessageOnlyException("No jar found for dotty-sbt-bridge")
-          else if (jars.size > 1)
-            throw new MessageOnlyException(s"Multiple jars found for dotty-sbt-bridge: ${jars.toList}")
-          else
-            jars.headOption
+          )
+          Option(getJar(updateReport, scalaOrganization.value, "dotty-sbt-bridge", scalaVersion.value))
         }
         else Def.task {
           None: Option[File]
@@ -226,6 +230,21 @@ object DottyPlugin extends AutoPlugin {
       // bootclasspath, and instead have scala-library and dotty-library on the
       // compiler classpath. This means that user code could shadow symbols
       // from these jars but we can live with that for now.
+
+      // sbt crazy scoping rules mean that when we override `classpathOptions`
+      // below we also override `classpathOptions in console` which is normally
+      // set in https://github.com/sbt/sbt/blob/b6f02b9b8cd0abb15e3d8856fd76b570deb1bd61/main/src/main/scala/sbt/Defaults.scala#L503,
+      // this breaks `sbt console` in Scala 2 projects.
+      // There seems to be no way to avoid stomping over task-scoped settings,
+      // so we need to manually set `classpathOptions in console` to something sensible,
+      // ideally this would be "whatever would be set if this plugin was not enabled",
+      // but I can't find a way to do this, so we default to whatever is set in ThisBuild.
+      classpathOptions in console := {
+        if (isDotty.value)
+          classpathOptions.value // The Dotty REPL doesn't require anything special on its classpath
+        else
+          (classpathOptions in console in ThisBuild).value
+      },
       classpathOptions := {
         val old = classpathOptions.value
         if (isDotty.value)
@@ -266,40 +285,18 @@ object DottyPlugin extends AutoPlugin {
       },
       // ... instead, we'll fetch the compiler and its dependencies ourselves.
       scalaInstance := Def.taskDyn {
-        if (isDotty.value) Def.task {
-          val updateReport =
-            fetchArtifactsOf(
-              dependencyResolution.value,
-              scalaModuleInfo.value,
-              updateConfiguration.value,
-              (unresolvedWarningConfiguration in update).value,
-              streams.value.log,
-              scalaOrganization.value %% "dotty-doc" % scalaVersion.value)
-          val scalaLibraryJar = getJar(updateReport,
-            "org.scala-lang", "scala-library", revision = AllPassFilter)
-          val dottyLibraryJar = getJar(updateReport,
-            scalaOrganization.value, s"dotty-library_${scalaBinaryVersion.value}", scalaVersion.value)
-          val compilerJar = getJar(updateReport,
-            scalaOrganization.value, s"dotty-compiler_${scalaBinaryVersion.value}", scalaVersion.value)
-          val allJars =
-            getJars(updateReport, AllPassFilter, AllPassFilter, AllPassFilter)
+        if (isDotty.value)
+          dottyScalaInstanceTask("dotty-compiler")
+        else
+          Def.valueStrict { scalaInstance.taskValue }
+      }.value,
 
-          makeScalaInstance(
-            state.value,
-            scalaVersion.value,
-            scalaLibraryJar,
-            dottyLibraryJar,
-            compilerJar,
-            allJars
-          )
-        }
-        else Def.task {
-          // This should really be `old` with `val old = scalaInstance.value`
-          // above, except that this would force the original definition of the
-          // `scalaInstance` task to be computed when `isDotty` is true, which
-          // would fail because `managedScalaInstance` is false.
-          Defaults.scalaInstanceTask.value
-        }
+      // We need more stuff on the classpath to run the `doc` task.
+      scalaInstance in doc := Def.taskDyn {
+        if (isDotty.value)
+          dottyScalaInstanceTask("dotty-doc")
+        else
+          Def.valueStrict { (scalaInstance in doc).taskValue }
       }.value,
 
       // Because managedScalaInstance is false, sbt won't add the standard library to our dependencies for us
@@ -335,6 +332,7 @@ object DottyPlugin extends AutoPlugin {
         old
       }
     }.value,
+
     scalacOptions ++= {
       if (isDotty.value) {
         val projectName =
@@ -349,17 +347,17 @@ object DottyPlugin extends AutoPlugin {
       }
       else
         Seq()
-    }
+    },
   ))
 
   /** Fetch artifacts for moduleID */
   def fetchArtifactsOf(
+    moduleID: ModuleID,
     dependencyRes: DependencyResolution,
     scalaInfo: Option[ScalaModuleInfo],
     updateConfig: UpdateConfiguration,
     warningConfig: UnresolvedWarningConfiguration,
-    log: Logger,
-    moduleID: ModuleID): UpdateReport = {
+    log: Logger): UpdateReport = {
     val descriptor = dependencyRes.wrapDependencyInModule(moduleID, scalaInfo)
 
     dependencyRes.update(descriptor, updateConfig, warningConfig, log) match {
@@ -376,16 +374,46 @@ object DottyPlugin extends AutoPlugin {
     updateReport.select(
       configurationFilter(Runtime.name),
       moduleFilter(organization, name, revision),
-      artifactFilter(extension = "jar")
+      artifactFilter(extension = "jar", classifier = "")
     )
   }
 
   /** Get the single jar in updateReport that match the given filter.
-    * If zero or more than one jar match, an exception will be thrown. */
+   *  If zero or more than one jar match, an exception will be thrown.
+   */
   def getJar(updateReport: UpdateReport, organization: NameFilter, name: NameFilter, revision: NameFilter): File = {
     val jars = getJars(updateReport, organization, name, revision)
     assert(jars.size == 1, s"There should only be one $name jar but found: $jars")
     jars.head
+  }
+
+  /** Create a scalaInstance task that uses Dotty based on `moduleName`. */
+  def dottyScalaInstanceTask(moduleName: String): Initialize[Task[ScalaInstance]] = Def.task {
+    val updateReport =
+      fetchArtifactsOf(
+        scalaOrganization.value %% moduleName % scalaVersion.value,
+        dependencyResolution.value,
+        scalaModuleInfo.value,
+        updateConfiguration.value,
+        (unresolvedWarningConfiguration in update).value,
+        streams.value.log)
+    val scalaLibraryJar = getJar(updateReport,
+      "org.scala-lang", "scala-library", revision = AllPassFilter)
+    val dottyLibraryJar = getJar(updateReport,
+      scalaOrganization.value, s"dotty-library_${scalaBinaryVersion.value}", scalaVersion.value)
+    val compilerJar = getJar(updateReport,
+      scalaOrganization.value, s"dotty-compiler_${scalaBinaryVersion.value}", scalaVersion.value)
+    val allJars =
+      getJars(updateReport, AllPassFilter, AllPassFilter, AllPassFilter)
+
+    makeScalaInstance(
+      state.value,
+      scalaVersion.value,
+      scalaLibraryJar,
+      dottyLibraryJar,
+      compilerJar,
+      allJars
+    )
   }
 
   def makeScalaInstance(

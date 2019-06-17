@@ -17,7 +17,7 @@ This defines a type that, depending on the scrutinee type `X`, can reduce to one
    Elem[String]       =:=  Char
    Elem[Array[Int]]   =:=  Int
    Elem[List[Float]]  =:=  Float
-   Elem[Nil]          =:=  Nothing
+   Elem[Nil.type]     =:=  Nothing
 ```
 Here `=:=` is understood to mean that left and right hand sides are mutually subtypes of each other.
 
@@ -74,7 +74,7 @@ if `Ci = [Xs] => P => T` and there are minimal instantiations `Is` of the type v
   T' = [Xs := Is] T
 ```
 An instantiation `Is` is _minimal_ for `Xs` if all type variables in `Xs` that appear
-covariantly and nonvariantly in `Is` are as small as possible and all type variables in `Xs` that appear contravariantly in `Is` are as large as possible. Here, "small" and "large" are understood wrt `<:`.
+covariantly and nonvariantly in `Is` are as small as possible and all type variables in `Xs` that appear contravariantly in `Is` are as large as possible. Here, "small" and "large" are understood with respect to  `<:`.
 
 For simplicity, we have omitted constraint handling so far. The full formulation of subtyping tests describes them as a function from a constraint and a pair of types to
 either _success_ and a new constraint or _failure_. In the context of reduction, the subtyping test `S <: [Xs := Is] P` is understood to leave the bounds of all variables
@@ -88,8 +88,8 @@ if
 ```
   Match(S, C1, ..., Cn)  can-reduce  i, T
 ```
-and, for `j` in `1..i-1`: `C_j` is disjoint from `C_i`, or else `S` cannot possibly match `C_j`.
-See the section on overlapping patterns for an elaboration of "disjoint" and "cannot possibly match".
+and, for `j` in `1..i-1`: `Cj` is disjoint from `Ci`, or else `S` cannot possibly match `Cj`.
+See the section on [overlapping patterns](#overlapping-patterns) for an elaboration of "disjoint" and "cannot possibly match".
 
 ## Subtyping Rules for Match Types
 
@@ -97,11 +97,11 @@ The following rules apply to match types. For simplicity, we omit environments a
 
 The first rule is a structural comparison between two match types:
 ```
-  Match(S, C1, ..., Cn) <: Match(T, D1, ..., Dm)
+  Match(S, C1, ..., Cm) <: Match(T, D1, ..., Dn)
 ```
 `    `if
 ```
-  S <: T,  m <= n,  Ci <: Di for i in 1..n
+  S <: T,  m >= n,  Ci <: Di for i in 1..n
 ```
 I.e. scrutinees and corresponding cases must be subtypes, no case re-ordering is allowed, but the subtype can have more cases than the supertype.
 
@@ -160,7 +160,7 @@ Assuming this extension, we can then try to typecheck as usual. E.g. to typechec
 
 Typechecking the second case hits a snag, though. In general, the assumption `x.type <: B` is not enough to prove that
 `M[x.type]` reduces to `2`. However we can reduce `M[x.type]` to `2` if the types `A` and `B` do not overlap.
-So correspondence of match terms to match types is feasible only in the case of non-overlapping patterns.
+So correspondence of match terms to match types is feasible only in the case of non-overlapping patterns (see next section about [overlapping patterns](#overlapping-patterns))
 
 For simplicity, we have disregarded the `null` value in this discussion. `null` does not cause a fundamental problem but complicates things somewhat because some forms of patterns do not match `null`.
 
@@ -172,10 +172,10 @@ A complete defininition of when two patterns or types overlap still needs to be 
  - A final class `C` overlaps with a trait `T` only if `C` extends `T` directly or indirectly.
  - A class overlaps with a sealed trait `T` only if it overlaps with one of the known subclasses of `T`.
  - An abstract type or type parameter `A` overlaps with a type `B` only if `A`'s upper bound overlaps with `B`.
- - A union type `A_1 | A_2` overlaps with `B` only if `A_1` overlaps with `B` or `A_2` overlaps with `B`.
- - An intersection type `A_1 & A_2` overlaps with `B` only if both `A_1` and `A_2` overlap with `B`.
- - If `C[X_1, ..., X_n]` is a case class, then the instance type `C[A_1, ..., A_n]` overlaps with the instance type `C[B_1, ..., B_n]` only if for every index `i` in `1..n`,
- if `X_i` is the type of a parameter of the class, then `A_i` overlaps with `B_i`.
+ - A union type `A1 | ... | An` overlaps with `B` only if at least one of `Ai` for `i` in `1..n` overlaps with `B`.
+ - An intersection type `A1 & ... & An` overlaps with `B` only if all of `Ai` for `i` in `1..n` overlap with `B`.
+ - If `C[X1, ..., Xn]` is a case class, then the instance type `C[A1, ..., An]` overlaps with the instance type `C[B1, ..., Bn]` only if for every index `i` in `1..n`,
+ if `Xi` is the type of a parameter of the class, then `Ai` overlaps with `Bi`.
 
  The last rule in particular is needed to detect non-overlaps for cases where the scrutinee and the patterns are tuples. I.e. `(Int, String)` does not overlap `(Int, Int)` since
 `String` does not overlap `Int`.

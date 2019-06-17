@@ -126,8 +126,8 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
     override def input: InputStream = {
       val zipFile  = openZipFile()
       val entry    = zipFile.getEntry(name)
-      val delegate = zipFile.getInputStream(entry)
-      new FilterInputStream(delegate) {
+      val `delegate` = zipFile.getInputStream(entry)
+      new FilterInputStream(`delegate`) {
         override def close(): Unit = { zipFile.close() }
       }
     }

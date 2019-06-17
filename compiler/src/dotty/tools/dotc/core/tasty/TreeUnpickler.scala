@@ -33,8 +33,7 @@ import config.Printers.pickling
 import core.quoted.PickledQuotes
 
 import scala.quoted
-import scala.quoted.Types.TreeType
-import scala.quoted.Exprs.TastyTreeExpr
+import scala.internal.quoted.{TastyTreeExpr, TreeType}
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
 
@@ -420,7 +419,8 @@ class TreeUnpickler(reader: TastyReader,
       val prefix = readType()
       val res = NamedType(prefix, sym)
       prefix match {
-        case prefix: ThisType if prefix.cls eq sym.owner => res.withDenot(sym.denot)
+        case prefix: ThisType if (prefix.cls eq sym.owner) && !sym.is(Opaque) =>
+          res.withDenot(sym.denot)
           // without this precaution we get an infinite cycle when unpickling pos/extmethods.scala
           // the problem arises when a self type of a trait is a type parameter of the same trait.
         case _ => res
@@ -816,7 +816,7 @@ class TreeUnpickler(reader: TastyReader,
             if (companion.exists && isCodefined) sym.registerCompanion(companion)
             TypeDef(readTemplate(localCtx))
           } else {
-            sym.info = TypeBounds.empty // needed to avoid cyclic references when unpicklin rhs, see i3816.scala
+            sym.info = TypeBounds.empty // needed to avoid cyclic references when unpickling rhs, see i3816.scala
             sym.setFlag(Provisional)
             val rhs = readTpt()(localCtx)
             sym.info = new NoCompleter {
@@ -827,8 +827,8 @@ class TreeUnpickler(reader: TastyReader,
               case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
               case _ => rhs.tpe.toBounds
             }
-            sym.resetFlag(Provisional)
             sym.normalizeOpaque()
+            sym.resetFlag(Provisional)
             TypeDef(rhs)
           }
         case PARAM =>
@@ -973,6 +973,11 @@ class TreeUnpickler(reader: TastyReader,
           case _ =>
             from :: readSelectors()
         }
+      case BOUNDED =>
+        val start = currentAddr
+        readByte()
+        val bounded = setSpan(start, untpd.TypeBoundsTree(untpd.EmptyTree, untpd.TypedSplice(readTpt())))
+        bounded :: readSelectors()
       case _ =>
         Nil
     }

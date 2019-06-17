@@ -179,6 +179,43 @@ trait TreeOps extends Core {
     def pos(implicit ctx: Context): Position = kernel.Term_pos(self)
     def underlyingArgument(implicit ctx: Context): Term = kernel.Term_underlyingArgument(self)
     def underlying(implicit ctx: Context): Term = kernel.Term_underlying(self)
+
+    /** A unary apply node with given argument: `tree(arg)` */
+    def appliedTo(arg: Term)(implicit ctx: Context): Term =
+      appliedToArgs(arg :: Nil)
+
+    /** An apply node with given arguments: `tree(arg, args0, ..., argsN)` */
+    def appliedTo(arg: Term, args: Term*)(implicit ctx: Context): Term =
+      appliedToArgs(arg :: args.toList)
+
+    /** An apply node with given argument list `tree(args(0), ..., args(args.length - 1))` */
+    def appliedToArgs(args: List[Term])(implicit ctx: Context): Apply =
+      Apply(self, args)
+
+    /** The current tree applied to given argument lists:
+     *  `tree (argss(0)) ... (argss(argss.length -1))`
+     */
+    def appliedToArgss(argss: List[List[Term]])(implicit ctx: Context): Term =
+      ((self: Term) /: argss)(Apply(_, _))
+
+    /** The current tree applied to (): `tree()` */
+    def appliedToNone(implicit ctx: Context): Apply = appliedToArgs(Nil)
+
+    /** The current tree applied to given type argument: `tree[targ]` */
+    def appliedToType(targ: Type)(implicit ctx: Context): Term =
+      appliedToTypes(targ :: Nil)
+
+    /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
+    def appliedToTypes(targs: List[Type])(implicit ctx: Context): Term =
+      appliedToTypeTrees(targs map (Inferred(_)))
+
+    /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
+    def appliedToTypeTrees(targs: List[TypeTree])(implicit ctx: Context): Term =
+      if (targs.isEmpty) self else TypeApply(self, targs)
+
+    /** A select node that selects the given symbol.
+     */
+    def select(sym: Symbol)(implicit ctx: Context): Select = Select(self, sym)
   }
 
   object IsTerm {
@@ -231,6 +268,10 @@ trait TreeOps extends Core {
 
   /** Scala term selection */
   object Select {
+    /** Select a term member by symbol */
+    def apply(qualifier: Term, symbol: Symbol)(implicit ctx: Context): Select =
+      kernel.Select_apply(qualifier, symbol)
+
     /** Select a field or a non-overloaded method by name
      *
      *  @note The method will produce an assertion error if the selected
@@ -587,27 +628,27 @@ trait TreeOps extends Core {
   }
 
   object IsImplicitMatch {
-    /** Matches any ImplicitMatch and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[ImplicitMatch] = kernel.matchImplicitMatch(tree)
+    /** Matches any ImpliedMatch and returns it */
+    def unapply(tree: Tree)(implicit ctx: Context): Option[ImpliedMatch] = kernel.matchImplicitMatch(tree)
   }
 
   /** Scala implicit `match` term */
-  object ImplicitMatch {
+  object ImpliedMatch {
 
-    /** Creates a pattern match `implicit match { <cases: List[CaseDef]> }` */
-    def apply(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch =
+    /** Creates a pattern match `delegate match { <cases: List[CaseDef]> }` */
+    def apply(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch =
       kernel.ImplicitMatch_apply(cases)
 
-    def copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch =
+    def copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch =
       kernel.ImplicitMatch_copy(original)(cases)
 
-    /** Matches a pattern match `implicit match { <cases: List[CaseDef]> }` */
+    /** Matches a pattern match `delegate match { <cases: List[CaseDef]> }` */
     def unapply(tree: Tree)(implicit ctx: Context): Option[List[CaseDef]] =
       kernel.matchImplicitMatch(tree).map(_.cases)
 
   }
 
-  implicit class ImplicitMatchAPI(self: ImplicitMatch) {
+  implicit class ImplicitMatchAPI(self: ImpliedMatch) {
     def cases(implicit ctx: Context): List[CaseDef] = kernel.ImplicitMatch_cases(self)
   }
 

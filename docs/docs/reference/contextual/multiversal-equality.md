@@ -19,7 +19,8 @@ val y = ... // of type S, but should be T
 x == y      // typechecks, will always yield false
 ```
 
-If all the program does with `y` is compare it to other values of type `T`, the program will still typecheck, since values of all types can be compared with each other.
+If `y` gets compared to other values of type `T`,
+the program will still typecheck, since values of all types can be compared with each other.
 But it will probably give unexpected results and fail at runtime.
 
 Multiversal equality is an opt-in way to make universal equality
@@ -30,9 +31,9 @@ that derives `Eql`, e.g.
 ```scala
 class T derives Eql
 ```
-Alternatively, one can also define an `Eql` instance directly, like this:
+Alternatively, one can also provide an `Eql` delegate directly, like this:
 ```scala
-implied for Eql[T, T] = Eql.derived
+delegate for Eql[T, T] = Eql.derived
 ```
 This definition effectively says that values of type `T` can (only) be
 compared to other values of type `T` when using `==` or `!=`. The definition
@@ -53,30 +54,30 @@ object Eql {
 }
 ```
 
-One can have several `Eql` instances for a type. For example, the four
+One can have several `Eql` delegates for a type. For example, the four
 definitions below make values of type `A` and type `B` comparable with
 each other, but not comparable to anything else:
 
 ```scala
-implied for Eql[A, A] = Eql.derived
-implied for Eql[B, B] = Eql.derived
-implied for Eql[A, B] = Eql.derived
-implied for Eql[B, A] = Eql.derived
+delegate for Eql[A, A] = Eql.derived
+delegate for Eql[B, B] = Eql.derived
+delegate for Eql[A, B] = Eql.derived
+delegate for Eql[B, A] = Eql.derived
 ```
-The `scala.Eql` object defines a number of `Eql` instances that together
+The `scala.Eql` object defines a number of `Eql` delegates that together
 define a rule book for what standard types can be compared (more details below).
 
 There's also a "fallback" instance named `eqlAny` that allows comparisons
-over all types that do not themselves have an `Eql` instance.  `eqlAny` is
+over all types that do not themselves have an `Eql` delegate.  `eqlAny` is
 defined as follows:
 
 ```scala
 def eqlAny[L, R]: Eql[L, R] = Eql.derived
 ```
 
-Even though `eqlAny` is not declared with an `implied` clause, the compiler will still
+Even though `eqlAny` is not declared a delegate, the compiler will still
 construct an `eqlAny` instance as answer to an implicit search for the
-type `Eql[L, R]`, unless `L` or `R` have `Eql` instances
+type `Eql[L, R]`, unless `L` or `R` have `Eql` delegates
 defined on them, or the language feature `strictEquality` is enabled
 
 The primary motivation for having `eqlAny` is backwards compatibility,
@@ -89,20 +90,20 @@ import scala.language.strictEquality
 ```
 or with a command line option `-language:strictEquality`.
 
-## Deriving Eql Instances
+## Deriving Eql Delegates
 
-Instead of defining `Eql` instances directly, it is often more convenient to derive them. Example:
+Instead of defining `Eql` delegates directly, it is often more convenient to derive them. Example:
 ```scala
 class Box[T](x: T) derives Eql
 ```
 By the usual rules if [typeclass derivation](./derivation.html),
-this generates the following `Eql` instance in the companion object of `Box`:
+this generates the following `Eql` delegate in the companion object of `Box`:
 ```scala
-implied [T, U] for Eql[Box[T], Box[U]] given Eql[T, U] = Eql.derived
+delegate [T, U] for Eql[Box[T], Box[U]] given Eql[T, U] = Eql.derived
 ```
 That is, two boxes are comparable with `==` or `!=` if their elements are. Examples:
 ```scala
-new Box(1) == new Box(1L)   // ok since `Eql[Int, Long]` is an implied instance
+new Box(1) == new Box(1L)   // ok since there is a delegate for `Eql[Int, Long]`
 new Box(1) == new Box("a")  // error: can't compare
 new Box(1) == 1             // error: can't compare
 ```
@@ -115,7 +116,7 @@ If the `strictEquality` feature is enabled then
 a comparison using `x == y` or `x != y` between values `x: T` and `y: U`
 is legal if
 
- 1. there is an implied instance of type `Eql[T, U]`, or
+ 1. there is a delegate for `Eql[T, U]`, or
  2. one of `T`, `U` is `Null`.
 
 In the default case where the `strictEquality` feature is not enabled the comparison is
@@ -123,24 +124,24 @@ also legal if
 
  1. `T` and `U` the same, or
  2. one of `T` and `U`is a subtype of the _lifted_ version of the other type, or
- 3. neither `T` nor `U` have a _reflexive `Eql` instance_.
+ 3. neither `T` nor `U` have a _reflexive `Eql` delegate_.
 
 Explanations:
 
  - _lifting_ a type `S` means replacing all references to  abstract types
    in covariant positions of `S` by their upper bound, and to replacing
    all refinement types in covariant positions of `S` by their parent.
- - a type `T` has a _reflexive `Eql` instance_ if the implicit search for `Eql[T, T]`
+ - a type `T` has a _reflexive `Eql` delegate_ if the implicit search for `Eql[T, T]`
    succeeds.
 
-## Predefined Eql Instances
+## Predefined Eql Delegates
 
-The `Eql` object defines implied instances for
+The `Eql` object defines delegates for comparing
  - the primitive types `Byte`, `Short`, `Char`, `Int`, `Long`, `Float`, `Double`, `Boolean`,  and `Unit`,
  - `java.lang.Number`, `java.lang.Boolean`, and `java.lang.Character`,
  - `scala.collection.Seq`, and `scala.collection.Set`.
 
-Implied instances are defined so that every one of these types has a reflexive `Eql` instance, and the following holds:
+Delegates are defined so that every one of these types has a reflexive `Eql` delegate, and the following holds:
 
  - Primitive numeric types can be compared with each other.
  - Primitive numeric types can be compared with subtypes of `java.lang.Number` (and _vice versa_).
@@ -190,7 +191,7 @@ Unfortunately, the crucial ability to "lift" equality type checking from simple 
   def contains[U >: T](x: U) given Eql1[U]: Boolean   // (2)
 ```
 This version could be applied just as widely as the original `contains(x: Any)` method,
-since the `Eql1[Any]` fallback is always available! So we have gained nothing. What got lost in the transition to a single parameter type class was the original rule that `Eql[A, B]` is available only if neither `A` nor `B` have a reflexive `Eql` instance. That rule simply cannot be expressed if there is a single type parameter for `Eql`.
+since the `Eql1[Any]` fallback is always available! So we have gained nothing. What got lost in the transition to a single parameter type class was the original rule that `Eql[A, B]` is available only if neither `A` nor `B` have a reflexive `Eql` delegate. That rule simply cannot be expressed if there is a single type parameter for `Eql`.
 
 The situation is different under `-language:strictEquality`. In that case,
 the `Eql[Any, Any]` or `Eql1[Any]` instances would never be available, and the
@@ -199,7 +200,7 @@ single and two-parameter versions would indeed coincide for most practical purpo
 But assuming `-language:strictEquality` immediately and everywhere poses migration problems which might well be unsurmountable. Consider again `contains`, which is in the standard library. Parameterizing it with the `Eql` type class as in (1) is an immediate win since it rules out non-sensical applications while still allowing all sensible ones.
 So it can be done almost at any time, modulo binary compatibility concerns.
 On the other hand, parameterizing `contains` with `Eql1` as in (2) would make `contains`
-unusable for all types that have not yet declared an `Eql1` instance, including all
+unusable for all types that have not yet declared an `Eql1` delegate, including all
 types coming from Java. This is clearly unacceptable. It would lead to a situation where,
 rather than migrating existing libraries to use safe equality, the only upgrade path is to have parallel libraries, with the new version only catering to types deriving `Eql1` and the old version dealing with everything else. Such a split of the ecosystem would be very problematic, which means the cure is likely to be worse than the disease.
 

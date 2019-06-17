@@ -8,6 +8,7 @@ import dotty.tools.dotc.transform.{Erasure, GenericSignatures}
 import dotty.tools.dotc.transform.SymUtils._
 import java.io.{File => _}
 
+import scala.annotation.threadUnsafe
 import scala.collection.generic.Clearable
 import scala.collection.mutable
 import scala.reflect.ClassTag
@@ -104,8 +105,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val nme_EQEQ_LOCAL_VAR: Name = StdNames.nme.EQEQ_LOCAL_VAR
 
    // require LambdaMetafactory: scalac uses getClassIfDefined, but we need those always.
-  override lazy val LambdaMetaFactory: ClassSymbol = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
-  override lazy val MethodHandle: ClassSymbol      = ctx.requiredClass("java.lang.invoke.MethodHandle")
+  @threadUnsafe override lazy val LambdaMetaFactory: ClassSymbol = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
+  @threadUnsafe override lazy val MethodHandle: ClassSymbol      = ctx.requiredClass("java.lang.invoke.MethodHandle")
 
   val nme_valueOf: Name = StdNames.nme.valueOf
   val nme_apply: TermName = StdNames.nme.apply
@@ -145,13 +146,13 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val PartialFunctionClass: Symbol = defn.PartialFunctionClass
   val AbstractPartialFunctionClass: Symbol = defn.AbstractPartialFunctionClass
   val String_valueOf: Symbol = defn.String_valueOf_Object
-  lazy val Predef_classOf: Symbol = defn.ScalaPredefModule.requiredMethod(nme.classOf)
+  @threadUnsafe lazy val Predef_classOf: Symbol = defn.ScalaPredefModule.requiredMethod(nme.classOf)
 
-  lazy val AnnotationRetentionAttr: ClassSymbol = ctx.requiredClass("java.lang.annotation.Retention")
-  lazy val AnnotationRetentionSourceAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
-  lazy val AnnotationRetentionClassAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
-  lazy val AnnotationRetentionRuntimeAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
-  lazy val JavaAnnotationClass: ClassSymbol = ctx.requiredClass("java.lang.annotation.Annotation")
+  @threadUnsafe lazy val AnnotationRetentionAttr: ClassSymbol = ctx.requiredClass("java.lang.annotation.Retention")
+  @threadUnsafe lazy val AnnotationRetentionSourceAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
+  @threadUnsafe lazy val AnnotationRetentionClassAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
+  @threadUnsafe lazy val AnnotationRetentionRuntimeAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
+  @threadUnsafe lazy val JavaAnnotationClass: ClassSymbol = ctx.requiredClass("java.lang.annotation.Annotation")
 
   def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses().map{x => // @darkdimius Are you sure this should be a def?
     (x, Erasure.Boxing.boxMethod(x.asClass))
@@ -702,6 +703,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def shouldEmitForwarders: Boolean =
       (sym is Flags.Module) && sym.isStatic
     def isJavaEntryPoint: Boolean = CollectEntryPoints.isJavaEntryPoint(sym)
+    def isEnum = sym.is(Flags.Enum)
 
     def isClassConstructor: Boolean = toDenot(sym).isClassConstructor
     def isSerializable: Boolean = toDenot(sym).isSerializable

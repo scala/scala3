@@ -206,8 +206,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def DefDef(sym: TermSymbol, tparams: List[TypeSymbol], vparamss: List[List[TermSymbol]],
              resultType: Type, rhs: Tree)(implicit ctx: Context): DefDef =
     ta.assignType(
-      untpd.DefDef(sym.name, tparams map TypeDef, vparamss.nestedMap(ValDef(_)),
-                   TypeTree(resultType), rhs),
+      untpd.DefDef(
+        sym.name,
+        tparams.map(tparam => TypeDef(tparam).withSpan(tparam.span)),
+        vparamss.nestedMap(vparam => ValDef(vparam).withSpan(vparam.span)),
+        TypeTree(resultType),
+        rhs),
       sym)
 
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
@@ -398,6 +402,26 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case tp: SkolemType => singleton(tp.narrow)
     case SuperType(qual, _) => singleton(qual)
     case ConstantType(value) => Literal(value)
+  }
+
+  /** A path that corresponds to the given type `tp`. Error if `tp` is not a refinement
+   *  of an addressable singleton type.
+   */
+  def pathFor(tp: Type)(implicit ctx: Context): Tree = {
+    def recur(tp: Type): Tree = tp match {
+      case tp: NamedType =>
+        tp.info match {
+          case TypeAlias(alias) => recur(alias)
+          case _: TypeBounds => EmptyTree
+          case _ => singleton(tp)
+        }
+      case tp: TypeProxy => recur(tp.superType)
+      case _ => EmptyTree
+    }
+    recur(tp).orElse {
+      ctx.error(em"$tp is not an addressable singleton type")
+      TypeTree(tp)
+    }
   }
 
   /** A tree representing a `newXYZArray` operation of the right
@@ -918,7 +942,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         Typed(tree, TypeTree(defn.AnyRefType))
       }
       else tree.ensureConforms(defn.ObjectType)
-      receiver.select(defn.Object_ne).appliedTo(nullLiteral)
+      receiver.select(defn.Object_ne).appliedTo(nullLiteral).withSpan(tree.span)
     }
 
     /** If inititializer tree is `_', the default value of its type,
@@ -1129,7 +1153,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val alternatives = ctx.typer.resolveOverloaded(allAlts, proto)
         assert(alternatives.size == 1,
           i"${if (alternatives.isEmpty) "no" else "multiple"} overloads available for " +
-          i"$method on ${receiver.tpe.widenDealiasKeepAnnots} with targs: $targs%, %; args: $args%, % of types ${args.tpes}%, %; expectedType: $expectedType." +
+          i"$method on ${receiver.tpe.widenDealiasKeepAnnots} with targs: $targs%, %; args: $args%, % of types ${args.tpes.map(_.widenDealiasKeepAnnots)}%, %; expectedType: $expectedType." +
           i"all alternatives: ${allAlts.map(_.symbol.showDcl).mkString(", ")}\n" +
           i"matching alternatives: ${alternatives.map(_.symbol.showDcl).mkString(", ")}.") // this is parsed from bytecode tree. there's nothing user can do about it
         alternatives.head

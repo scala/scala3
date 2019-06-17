@@ -99,7 +99,7 @@ The implicit evidence `ev` is only used to constrain the type parameter `X` of `
 can safely cast from `X` to `List[_]`. The usage of the `erased` modifier ensures that the evidence
 is not used and can be safely removed at compilation time.
 
-For more information, visit the [Erased Terms](http://dotty.epfl.ch/docs/reference/erased-terms.html)
+For more information, visit the [Erased Terms](http://dotty.epfl.ch/docs/reference/metaprogramming/erased-terms.html)
 section of our documentation.
 
 **Note**: Erased terms replace _phantom types_: they have similar semantics, but with the added

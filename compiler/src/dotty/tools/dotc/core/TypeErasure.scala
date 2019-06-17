@@ -196,10 +196,27 @@ object TypeErasure {
           MethodType(Nil, defn.BoxedUnitType)
         else if (sym.isAnonymousFunction && einfo.paramInfos.length > MaxImplementedFunctionArity)
           MethodType(nme.ALLARGS :: Nil, JavaArrayType(defn.ObjectType) :: Nil, einfo.resultType)
+        else if (sym.name == nme.apply && sym.owner.derivesFrom(defn.PolyFunctionClass)) {
+          // The erasure of `apply` in subclasses of PolyFunction has to match
+          // the erasure of FunctionN#apply, since after `ElimPolyFunction` we replace
+          // a `PolyFunction` parent by a `FunctionN` parent.
+          einfo.derivedLambdaType(
+            paramInfos = einfo.paramInfos.map(_ => defn.ObjectType),
+            resType = defn.ObjectType
+          )
+        }
         else
           einfo
       case einfo =>
-        einfo
+        // Erase the parameters of `apply` in subclasses of PolyFunction
+        // Preserve PolyFunction argument types to support PolyFunctions with
+        // PolyFunction arguments
+        if (sym.is(TermParam) && sym.owner.name == nme.apply
+            && sym.owner.owner.derivesFrom(defn.PolyFunctionClass)
+            && !(tp <:< defn.PolyFunctionType)) {
+          defn.ObjectType
+        } else
+          einfo
     }
   }
 
@@ -219,7 +236,7 @@ object TypeErasure {
    *  erased to `Object` instead of `Object[]`.
    */
   def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
-    case tp: TypeRef if !tp.symbol.isOpaqueHelper =>
+    case tp: TypeRef if !tp.symbol.isOpaqueAlias =>
       !tp.symbol.isClass &&
       !classify(tp).derivesFrom(defn.ObjectClass) &&
       !tp.symbol.is(JavaDefined)
@@ -236,7 +253,7 @@ object TypeErasure {
 
   /** Is `tp` an abstract type or polymorphic type parameter, or another unbounded generic type? */
   def isGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
-    case tp: TypeRef if !tp.symbol.isOpaqueHelper => !tp.symbol.isClass
+    case tp: TypeRef if !tp.symbol.isOpaqueAlias => !tp.symbol.isClass
     case tp: TypeParamRef => true
     case tp: TypeProxy => isGeneric(tp.translucentSuperType)
     case tp: AndType => isGeneric(tp.tp1) || isGeneric(tp.tp2)
@@ -348,7 +365,7 @@ object TypeErasure {
    *  possible instantiations?
    */
   def hasStableErasure(tp: Type)(implicit ctx: Context): Boolean = tp match {
-    case tp: TypeRef if !tp.symbol.isOpaqueHelper =>
+    case tp: TypeRef if !tp.symbol.isOpaqueAlias =>
       tp.info match {
         case TypeAlias(alias) => hasStableErasure(alias)
         case _: ClassInfo => true
@@ -383,6 +400,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *      - otherwise, if T is a type parameter coming from Java, []Object
    *      - otherwise, Object
    *   - For a term ref p.x, the type <noprefix> # x.
+   *   - For a refined type scala.PolyFunction { def apply[...](x_1, ..., x_N): R }, scala.FunctionN
    *   - For a typeref scala.Any, scala.AnyVal, scala.Singleton, scala.Tuple, or scala.*: : |java.lang.Object|
    *   - For a typeref scala.Unit, |scala.runtime.BoxedUnit|.
    *   - For a typeref scala.FunctionN, where N > MaxImplementedFunctionArity, scala.FunctionXXL
@@ -429,6 +447,12 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       SuperType(this(thistpe), this(supertpe))
     case ExprType(rt) =>
       defn.FunctionType(0)
+    case RefinedType(parent, nme.apply, refinedInfo) if parent.typeSymbol eq defn.PolyFunctionClass =>
+      assert(refinedInfo.isInstanceOf[PolyType])
+      val res = refinedInfo.resultType
+      val paramss = res.paramNamess
+      assert(paramss.length == 1)
+      this(defn.FunctionType(paramss.head.length, isContextual = res.isImplicitMethod, isErased = res.isErasedMethod))
     case tp: TypeProxy =>
       this(tp.underlying)
     case AndType(tp1, tp2) =>
@@ -513,7 +537,11 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   private def eraseDerivedValueClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
     val cls = tref.symbol.asClass
     val underlying = underlyingOfValueClass(cls)
-    if (underlying.exists && !isCyclic(cls)) ErasedValueType(tref, valueErasure(underlying))
+    if (underlying.exists && !isCyclic(cls)) {
+      val erasedValue = valueErasure(underlying)
+      assert(erasedValue.exists, i"no erasure for $underlying")
+      ErasedValueType(tref, erasedValue)
+    }
     else NoType
   }
 
@@ -581,6 +609,11 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       case tp: TypeVar =>
         val inst = tp.instanceOpt
         if (inst.exists) sigName(inst) else tpnme.Uninstantiated
+      case tp @ RefinedType(parent, nme.apply, _) if parent.typeSymbol eq defn.PolyFunctionClass =>
+        // we need this case rather than falling through to the default
+        // because RefinedTypes <: TypeProxy and it would be caught by
+        // the case immediately below
+        sigName(this(tp))
       case tp: TypeProxy =>
         sigName(tp.underlying)
       case _: ErrorType | WildcardType | NoType =>

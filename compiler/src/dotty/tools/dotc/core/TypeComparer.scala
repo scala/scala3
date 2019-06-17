@@ -25,7 +25,7 @@ object AbsentContext {
 
 /** Provides methods to compare types.
  */
-class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
+class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] with PatternTypeConstrainer {
   import TypeComparer._
   implicit def ctx(implicit nc: AbsentContext): Context = initctx
 
@@ -141,6 +141,13 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    */
   private [this] var leftRoot: Type = _
 
+  /** Are we forbidden from recording GADT constraints?
+   *
+   *  This flag is set when we're already in [[Mode.GadtConstraintInference]],
+   *  to signify that we temporarily cannot record any GADT constraints.
+   */
+  private[this] var frozenGadt = false
+
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
     val savedApprox = approx
     val savedLeftRoot = leftRoot
@@ -225,7 +232,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         def compareNamed(tp1: Type, tp2: NamedType): Boolean = {
           implicit val ctx: Context = this.ctx
           tp2.info match {
-            case info2: TypeAlias => recur(tp1, info2.alias)
+            case info2: TypeAlias =>
+              recur(tp1, info2.alias)
             case _ => tp1 match {
               case tp1: NamedType =>
                 tp1.info match {
@@ -352,7 +360,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
         tp1.info match {
           case info1: TypeAlias =>
             if (recur(info1.alias, tp2)) return true
-            if (tp1.prefix.isStable) return false
+            if (tp1.prefix.isStable) return tryLiftedToThis1
           case _ =>
             if (tp1 eq NothingType) return true
         }
@@ -455,7 +463,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
             { tp1.isRef(NothingClass) || GADTusage(tp2.symbol) }
         }
-        isSubApproxHi(tp1, info2.lo) || compareGADT || fourthTry
+        isSubApproxHi(tp1, info2.lo) || compareGADT || tryLiftedToThis2 || fourthTry
 
       case _ =>
         val cls2 = tp2.symbol
@@ -714,7 +722,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                 narrowGADTBounds(tp1, tp2, approx, isUpper = true)) &&
                 { tp2.isRef(AnyClass) || GADTusage(tp1.symbol) }
             }
-            isSubType(hi1, tp2, approx.addLow) || compareGADT
+            isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
           case _ =>
             def isNullable(tp: Type): Boolean = tp.widenDealias match {
               case tp: TypeRef => tp.symbol.isNullableClass
@@ -840,8 +848,18 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
                     gadtBoundsContain(tycon1sym, tycon2) ||
                     gadtBoundsContain(tycon2sym, tycon1)
                   ) &&
-                  isSubType(tycon1.prefix, tycon2.prefix) &&
-                  isSubArgs(args1, args2, tp1, tparams)
+                  isSubType(tycon1.prefix, tycon2.prefix) && {
+                    // check both tycons to deal with the case when they are equal b/c of GADT constraint
+                    val tyconIsInjective = tycon1sym.isClass || tycon2sym.isClass
+                    def checkSubArgs() = isSubArgs(args1, args2, tp1, tparams)
+                    // we only record GADT constraints if tycon is guaranteed to be injective
+                    if (tyconIsInjective) checkSubArgs()
+                    else {
+                      val savedFrozenGadt = frozenGadt
+                      frozenGadt = true
+                      try checkSubArgs() finally frozenGadt = savedFrozenGadt
+                    }
+                  }
                   if (res && touchedGADTs) GADTused = true
                   res
                 case _ =>
@@ -958,7 +976,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
               case _ =>
                 fourthTry
             }
-          }
+          } || tryLiftedToThis2
+
         case _: TypeVar =>
           recur(tp1, tp2.superType)
         case tycon2: AnnotatedType if !tycon2.isRefining =>
@@ -985,9 +1004,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
             isSubType(bounds(param1).hi.applyIfParameterized(args1), tp2, approx.addLow)
         case tycon1: TypeRef =>
           val sym = tycon1.symbol
-          !sym.isClass && (
+          !sym.isClass && {
             defn.isCompiletime_S(sym) && compareS(tp1, tp2, fromBelow = false) ||
-            recur(tp1.superType, tp2))
+            recur(tp1.superType, tp2) ||
+            tryLiftedToThis1
+          }
         case tycon1: TypeProxy =>
           recur(tp1.superType, tp2)
         case _ =>
@@ -1028,6 +1049,16 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
     def isSubApproxHi(tp1: Type, tp2: Type): Boolean =
       tp1.eq(tp2) || tp2.ne(NothingType) && isSubType(tp1, tp2, approx.addHigh)
 
+    def tryLiftedToThis1: Boolean = {
+      val tp1a = liftToThis(tp1)
+      (tp1a ne tp1) && recur(tp1a, tp2)
+    }
+
+    def tryLiftedToThis2: Boolean = {
+      val tp2a = liftToThis(tp2)
+      (tp2a ne tp2) && recur(tp1, tp2a)
+    }
+
     // begin recur
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
@@ -1054,6 +1085,41 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
           successCount = savedSuccessCount
           throw ex
       }
+    }
+  }
+
+  /** If `tp` is an external reference to an enclosing module M that contains opaque types,
+   *  convert to M.this.
+   *  Note: It would be legal to do the lifting also if M does not contain opaque types,
+   *  but in this case the retries in tryLiftedToThis would be redundant.
+   */
+  private def liftToThis(tp: Type): Type = {
+
+    def findEnclosingThis(moduleClass: Symbol, from: Symbol): Type =
+      if ((from.owner eq moduleClass) && from.isPackageObject && from.is(Opaque)) from.thisType
+      else if (from.is(Package)) tp
+      else if ((from eq moduleClass) && from.is(Opaque)) from.thisType
+      else if (from eq NoSymbol) tp
+      else findEnclosingThis(moduleClass, from.owner)
+
+    tp match {
+      case tp: TermRef if tp.symbol.is(Module) =>
+        findEnclosingThis(tp.symbol.moduleClass, ctx.owner)
+      case tp: TypeRef =>
+        val pre1 = liftToThis(tp.prefix)
+        if (pre1 ne tp.prefix) tp.withPrefix(pre1) else tp
+      case tp: ThisType if tp.cls.is(Package) =>
+        findEnclosingThis(tp.cls, ctx.owner)
+      case tp: AppliedType =>
+        val tycon1 = liftToThis(tp.tycon)
+        if (tycon1 ne tp.tycon) tp.derivedAppliedType(tycon1, tp.args) else tp
+      case tp: TypeVar if tp.isInstantiated =>
+        liftToThis(tp.inst)
+      case tp: AnnotatedType =>
+        val parent1 = liftToThis(tp.parent)
+        if (parent1 ne tp.parent) tp.derivedAnnotatedType(parent1, tp.annot) else tp
+      case _ =>
+        tp
     }
   }
 
@@ -1227,8 +1293,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    *  @see [[sufficientEither]] for the normal case
    *  @see [[necessaryEither]] for the GADTFlexible case
    */
-  private def either(op1: => Boolean, op2: => Boolean): Boolean =
-    if (ctx.mode.is(Mode.GADTflexible)) necessaryEither(op1, op2) else sufficientEither(op1, op2)
+  protected def either(op1: => Boolean, op2: => Boolean): Boolean =
+    if (ctx.mode.is(Mode.GadtConstraintInference)) necessaryEither(op1, op2) else sufficientEither(op1, op2)
 
   /** Returns true iff the result of evaluating either `op1` or `op2` is true,
    *  trying at the same time to keep the constraint as wide as possible.
@@ -1476,7 +1542,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] {
    */
   private def narrowGADTBounds(tr: NamedType, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = {
     val boundImprecise = approx.high || approx.low
-    ctx.mode.is(Mode.GADTflexible) && !frozenConstraint && !boundImprecise && {
+    ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint && !boundImprecise && {
       val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
@@ -2313,19 +2379,30 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
           cas
       }
       def widenAbstractTypes(tp: Type): Type = new TypeMap {
+        var seen = Set[TypeParamRef]()
         def apply(tp: Type) = tp match {
           case tp: TypeRef =>
-            if (tp.symbol.isAbstractOrParamType | tp.symbol.isOpaqueAlias)
-              WildcardType
-            else tp.info match {
-              case TypeAlias(alias) =>
-                val alias1 = widenAbstractTypes(alias)
-                if (alias1 ne alias) alias1 else tp
-              case _ => mapOver(tp)
+            tp.info match {
+              case info: MatchAlias =>
+                mapOver(tp)
+                  // TODO: We should follow the alias in this case, but doing so
+                  // risks infinite recursion
+              case TypeBounds(lo, hi) =>
+                if (hi frozen_<:< lo) {
+                  val alias = apply(lo)
+                  if (alias ne lo) alias else mapOver(tp)
+                }
+                else WildcardType
+              case _ =>
+                mapOver(tp)
             }
-
+          case tp: TypeLambda =>
+            val saved = seen
+            seen ++= tp.paramRefs
+            try mapOver(tp)
+            finally seen = saved
           case tp: TypeVar if !tp.isInstantiated => WildcardType
-          case _: TypeParamRef => WildcardType
+          case tp: TypeParamRef if !seen.contains(tp) => WildcardType
           case _ => mapOver(tp)
         }
       }.apply(tp)

@@ -282,6 +282,9 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     if (self.symbol.signature == core.Signature.NotAMethod) None
     else Some(self.symbol.signature)
 
+  def Select_apply(qualifier: Term, symbol: Symbol)(implicit ctx: Context): Select =
+    withDefaultPos(implicit ctx => tpd.Select(qualifier, Types.TermRef(qualifier.tpe, symbol)))
+
   def Select_unique(qualifier: Term, name: String)(implicit ctx: Context): Select = {
     val denot = qualifier.tpe.member(name.toTermName)
     assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
@@ -547,7 +550,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match =
     tpd.cpy.Match(original)(selector, cases)
 
-  type ImplicitMatch = tpd.Match
+  type ImpliedMatch = tpd.Match
 
   def matchImplicitMatch(x: Term)(implicit ctx: Context): Option[Match] = x match {
     case x: tpd.Match if x.selector.isEmpty => Some(x)
@@ -556,10 +559,10 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def ImplicitMatch_cases(self: Match)(implicit ctx: Context): List[CaseDef] = self.cases
 
-  def ImplicitMatch_apply(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch =
+  def ImplicitMatch_apply(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch =
     withDefaultPos(ctx => tpd.Match(tpd.EmptyTree, cases)(ctx))
 
-  def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImplicitMatch =
+  def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch =
     tpd.cpy.Match(original)(tpd.EmptyTree, cases)
 
   type Try = tpd.Try
@@ -1077,6 +1080,20 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Type_derivesFrom(self: Type)(cls: ClassDefSymbol)(implicit ctx: Context): Boolean =
     self.derivesFrom(cls)
 
+  def Type_isFunctionType(self: Type)(implicit ctx: Context): Boolean =
+    defn.isFunctionType(self)
+
+  def Type_isImplicitFunctionType(self: Type)(implicit ctx: Context): Boolean =
+    defn.isImplicitFunctionType(self)
+
+  def Type_isErasedFunctionType(self: Type)(implicit ctx: Context): Boolean =
+    defn.isErasedFunctionType(self)
+
+  def Type_isDependentFunctionType(self: Type)(implicit ctx: Context): Boolean = {
+    val tpNoRefinement = self.dropDependentRefinement
+    tpNoRefinement != self && defn.isNonRefinedFunction(tpNoRefinement)
+  }
+
   type ConstantType = Types.ConstantType
 
   def matchConstantType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType] = tpe match {
@@ -1549,18 +1566,16 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     }.toList
   }
 
+  private def appliedTypeRef(sym: Symbol): Type = sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef))
+
   def ClassDefSymbol_method(self: Symbol)(name: String)(implicit ctx: Context): List[DefDefSymbol] = {
-    self.typeRef.allMembers.iterator.map(_.symbol).collect {
+    appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
     }.toList
   }
 
   def ClassDefSymbol_methods(self: Symbol)(implicit ctx: Context): List[DefDefSymbol] = {
-    val classTpe = self.typeRef.appliedTo(self.typeParams.map { param =>
-      if (param.variance == -1) param.info.hiBound
-      else param.info.loBound
-    })
-    classTpe.allMembers.iterator.map(_.symbol).collect {
+    appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) => sym.asTerm
     }.toList
   }
@@ -1735,7 +1750,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
         tpd.Closure(closureMethod, tss => etaExpand(new tpd.TreeOps(term).appliedToArgs(tss.head)))
       case _ => term
     }
-    new scala.quoted.Exprs.TastyTreeExpr(etaExpand(self))
+    new scala.internal.quoted.TastyTreeExpr(etaExpand(self))
   }
 
   /** Checked cast to a `quoted.Expr[U]` */
@@ -1756,7 +1771,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   /** Convert `Type` to an `quoted.Type[_]` */
   def QuotedType_seal(self: Type)(implicit ctx: Context): scala.quoted.Type[_] = {
     val dummySpan = ctx.owner.span // FIXME
-    new scala.quoted.Types.TreeType(tpd.TypeTree(self).withSpan(dummySpan))
+    new scala.internal.quoted.TreeType(tpd.TypeTree(self).withSpan(dummySpan))
   }
 
   //

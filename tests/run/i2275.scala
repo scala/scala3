@@ -1,7 +1,7 @@
 object Test {
   var count = 0
 
-  @volatile lazy val x: Int = {
+  lazy val x: Int = {
     if (count < 100) {
       count += 1
       ???

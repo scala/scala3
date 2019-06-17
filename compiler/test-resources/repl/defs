@@ -7,7 +7,7 @@ def baz(): Int
 scala> def qux(): Int = 2
 def qux(): Int
 scala> def id(x: 4): 4 = x
-def id(x: Int(4)): Int(4)
+def id(x: 4): 4
 scala> id(4)
 val res0: Int = 4
 scala> def f given Int = 1

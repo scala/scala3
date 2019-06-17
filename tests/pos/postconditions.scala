@@ -1,15 +1,10 @@
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  private object WrappedResult {
-    def wrap[T](x: T): WrappedResult[T] = x
-    def unwrap[T](x: WrappedResult[T]): T = x
-  }
-
-  def result[T] given (r: WrappedResult[T]): T = WrappedResult.unwrap(r)
+  def result[T] given (r: WrappedResult[T]): T = r
 
   def (x: T) ensuring [T](condition: given WrappedResult[T] => Boolean): T = {
-    implied for WrappedResult[T] = WrappedResult.wrap(x)
+    delegate for WrappedResult[T] = x
     assert(condition)
     x
   }

@@ -3,18 +3,18 @@ layout: doc-page
 title: Typeclass Derivation
 ---
 
-Typeclass derivation is a way to generate implied instances of certain type classes automatically or with minimal code hints. A type class in this sense is any trait or class with a type parameter that describes the type being operated on. Commonly used examples are `Eql`, `Ordering`, `Show`, or `Pickling`. Example:
+Typeclass derivation is a way to generate delegates for certain type classes automatically or with minimal code hints. A type class in this sense is any trait or class with a type parameter that describes the type being operated on. Commonly used examples are `Eql`, `Ordering`, `Show`, or `Pickling`. Example:
 ```scala
 enum Tree[T] derives Eql, Ordering, Pickling {
   case Branch(left: Tree[T], right: Tree[T])
   case Leaf(elem: T)
 }
 ```
-The `derives` clause generates implied instances of the `Eql`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
+The `derives` clause generates delegates for the `Eql`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
 ```scala
-implied [T: Eql]      for Eql[Tree[T]]       = Eql.derived
-implied [T: Ordering] for Ordering[Tree[T]] = Ordering.derived
-implied [T: Pickling] for Pickling[Tree[T]] = Pickling.derived
+delegate [T: Eql]      for Eql[Tree[T]]      = Eql.derived
+delegate [T: Ordering] for Ordering[Tree[T]] = Ordering.derived
+delegate [T: Pickling] for Pickling[Tree[T]] = Pickling.derived
 ```
 
 ### Deriving Types
@@ -34,24 +34,31 @@ case class Some[T] extends Option[T]
 case object None extends Option[Nothing]
 ```
 
-The generated typeclass instances are placed in the companion objects `Labelled` and `Option`, respectively.
+The generated typeclass delegates are placed in the companion objects `Labelled` and `Option`, respectively.
 
 ### Derivable Types
 
 A trait or class can appear in a `derives` clause if its companion object defines a method named `derived`. The type and implementation of a `derived` method are arbitrary, but typically it has a definition like this:
 ```scala
-  def derived[T] given Generic[T] = ...
+  def derived[T] given Mirror.Of[T] = ...
 ```
-That is, the `derived` method takes a context parameter of type `Generic` that determines the _shape_ of the deriving type `T` and it computes the typeclass implementation according to that shape. An implied `Generic` instance is generated automatically for any type that derives a typeclass with a `derived`
-method that refers to `Generic`. One can also derive `Generic` alone, which means a `Generic` instance is generated without any other type class instances. E.g.:
-```scala
-sealed trait ParseResult[T] derives Generic
-```
+That is, the `derived` method takes an implicit parameter of (some subtype of) type `Mirror` that defines the shape of the deriving type `T` and it computes the typeclass implementation according
+to that shape. A `Mirror` delegate is generated automatically for
+
+ - case classes and objects,
+ - enums and enum cases,
+ - sealed traits or classes that have only case classes and case objects as children.
+
+<!---
 This is all a user of typeclass derivation has to know. The rest of this page contains information needed to be able to write a typeclass that can appear in a `derives` clause. In particular, it details the means provided for the implementation of data generic `derived` methods.
+--->
+
+The description that follows gives a low-level way to define a type class.
 
 ### The Shape Type
 
 For every class with a `derives` clause, the compiler computes the shape of that class as a type. For example, here is the shape type for the `Tree[T]` enum:
+
 ```scala
 Cases[(
   Case[Branch[T], (Tree[T], Tree[T])],
@@ -94,10 +101,10 @@ is represented as `T *: Unit` since there is no direct syntax for such tuples: `
 
 ### The Generic Typeclass
 
-For every class `C[T_1,...,T_n]` with a `derives` clause, the compiler generates in the companion object of `C` an implied instance of `Generic[C[T_1,...,T_n]]` that follows
+For every class `C[T_1,...,T_n]` with a `derives` clause, the compiler generates in the companion object of `C` a delegate for `Generic[C[T_1,...,T_n]]` that follows
 the outline below:
 ```scala
-implied [T_1, ..., T_n] for Generic[C[T_1,...,T_n]] {
+delegate [T_1, ..., T_n] for Generic[C[T_1,...,T_n]] {
   type Shape = ...
   ...
 }
@@ -106,8 +113,8 @@ where the right hand side of `Shape` is the shape type of `C[T_1,...,T_n]`.
 For instance, the definition
 ```scala
 enum Result[+T, +E] derives Logging {
-  case class Ok[T](result: T)
-  case class Err[E](err: E)
+  case Ok[T](result: T)
+  case Err[E](err: E)
 }
 ```
 would produce:
@@ -115,7 +122,7 @@ would produce:
 object Result {
   import scala.compiletime.Shape._
 
-  implied [T, E] for Generic[Result[T, E]] {
+  delegate [T, E] for Generic[Result[T, E]] {
     type Shape = Cases[(
       Case[Ok[T], T *: Unit],
       Case[Err[E], E *: Unit]
@@ -208,15 +215,15 @@ a mirror over that array, and finally uses the `reify` method in `Reflected` to 
 
 ### How to Write Generic Typeclasses
 
-Based on the machinery developed so far it becomes possible to define type classes generically. This means that the `derived` method will compute a type class instance for any ADT that has an implied `Generic` instance, recursively.
+Based on the machinery developed so far it becomes possible to define type classes generically. This means that the `derived` method will compute a type class delegate for any ADT that has a `Generic` delegate, recursively.
 The implementation of these methods typically uses three new type-level constructs in Dotty: inline methods, inline matches, and implicit matches. As an example, here is one possible implementation of a generic `Eql` type class, with explanations. Let's assume `Eql` is defined by the following trait:
 ```scala
 trait Eql[T] {
   def eql(x: T, y: T): Boolean
 }
 ```
-We need to implement a method `Eql.derived` that produces an instance for `Eql[T]` provided
-there exists an implied instance for `Generic[T]`. Here's a possible solution:
+We need to implement a method `Eql.derived` that produces a delegate for `Eql[T]` provided
+there exists a delegate for `Generic[T]`. Here's a possible solution:
 ```scala
   inline def derived[T] given (ev: Generic[T]): Eql[T] = new Eql[T] {
     def eql(x: T, y: T): Boolean = {
@@ -232,10 +239,10 @@ there exists an implied instance for `Generic[T]`. Here's a possible solution:
     }
   }
 ```
-The implementation of the inline method `derived` creates an instance of `Eql[T]` and implements its `eql` method. The right-hand side of `eql` mixes compile-time and runtime elements. In the code above, runtime elements are marked with a number in parentheses, i.e
+The implementation of the inline method `derived` creates a delegate for `Eql[T]` and implements its `eql` method. The right-hand side of `eql` mixes compile-time and runtime elements. In the code above, runtime elements are marked with a number in parentheses, i.e
 `(1)`, `(2)`, `(3)`. Compile-time calls that expand to runtime code are marked with a number in brackets, i.e. `[4]`, `[5]`. The implementation of `eql` consists of the following steps.
 
-  1. Map the compared values `x` and `y` to their mirrors using the `reflect` method of the implicitly passed `Generic` evidence `(1)`, `(2)`.
+  1. Map the compared values `x` and `y` to their mirrors using the `reflect` method of the implicitly passed `Generic` `(1)`, `(2)`.
   2. Match at compile-time against the shape of the ADT given in `ev.Shape`. Dotty does not have a construct for matching types directly, but we can emulate it using an `inline` match over an `erasedValue`. Depending on the actual type `ev.Shape`, the match will reduce at compile time to one of its two alternatives.
   3. If `ev.Shape` is of the form `Cases[alts]` for some tuple `alts` of alternative types, the equality test consists of comparing the ordinal values of the two mirrors `(3)` and, if they are equal, comparing the elements of the case indicated by that ordinal value. That second step is performed by code that results from the compile-time expansion of the `eqlCases` call `[4]`.
   4. If `ev.Shape` is of the form `Case[elems]` for some tuple `elems` for element types, the elements of the case are compared by code that results from the compile-time expansion of the `eqlElems` call `[5]`.
@@ -303,19 +310,19 @@ The last, and in a sense most interesting part of the derivation is the comparis
     case ev: Eql[T] =>
       ev.eql(x, y)                              // (15)
     case _ =>
-      error("No `Eql` instance was found for $T")
+      error("No `Eql` delegate was found for $T")
   }
 ```
-`tryEql` is an inline method that takes an element type `T` and two element values of that type as arguments. It is defined using an `implicit match` that tries to find an implied instance of `Eql[T]`. If an instance `ev` is found, it proceeds by comparing the arguments using `ev.eql`. On the other hand, if no instance is found
-this signals a compilation error: the user tried a generic derivation of `Eql` for a class with an element type that does not have an `Eql` instance itself. The error is signaled by
+`tryEql` is an inline method that takes an element type `T` and two element values of that type as arguments. It is defined using an `implicit match` that tries to find a delegate for `Eql[T]`. If a delegate `ev` is found, it proceeds by comparing the arguments using `ev.eql`. On the other hand, if no delegate is found
+this signals a compilation error: the user tried a generic derivation of `Eql` for a class with an element type that does not have an `Eql` delegate itself. The error is signaled by
 calling the `error` method defined in `scala.compiletime`.
 
 **Note:** At the moment our error diagnostics for metaprogramming does not support yet interpolated string arguments for the `scala.compiletime.error` method that is called in the second case above. As an alternative, one can simply leave off the second case, then a missing typeclass would result in a "failure to reduce match" error.
 
-**Example:** Here is a slightly polished and compacted version of the code that's generated by inline expansion for the derived `Eql` instance of class `Tree`.
+**Example:** Here is a slightly polished and compacted version of the code that's generated by inline expansion for the derived `Eql` delegate for class `Tree`.
 
 ```scala
-implied [T] for Eql[Tree[T]] given (elemEq: Eql[T]) {
+delegate [T] for Eql[Tree[T]] given (elemEq: Eql[T]) {
   def eql(x: Tree[T], y: Tree[T]): Boolean = {
     val ev = the[Generic[Tree[T]]]
     val mx = ev.reflect(x)
@@ -334,21 +341,21 @@ implied [T] for Eql[Tree[T]] given (elemEq: Eql[T]) {
 }
 ```
 
-One important difference between this approach and Scala-2 typeclass derivation frameworks such as Shapeless or Magnolia is that no automatic attempt is made to generate typeclass instances of elements recursively using the generic derivation framework. There must be an implied instance of `Eql[T]` (which can of course be produced in turn using `Eql.derived`), or the compilation will fail. The advantage of this more restrictive approach to typeclass derivation is that it avoids uncontrolled transitive typeclass derivation by design. This keeps code sizes smaller, compile times lower, and is generally more predictable.
+One important difference between this approach and Scala-2 typeclass derivation frameworks such as Shapeless or Magnolia is that no automatic attempt is made to generate typeclass delegates for elements recursively using the generic derivation framework. There must be a delegate for `Eql[T]` (which can of course be produced in turn using `Eql.derived`), or the compilation will fail. The advantage of this more restrictive approach to typeclass derivation is that it avoids uncontrolled transitive typeclass derivation by design. This keeps code sizes smaller, compile times lower, and is generally more predictable.
 
-### Deriving Instances Elsewhere
+### Deriving Delegates Elsewhere
 
-Sometimes one would like to derive a typeclass instance for an ADT after the ADT is defined, without being able to change the code of the ADT itself.
-To do this, simply define an instance with the `derived` method of the typeclass as right-hand side. E.g, to implement `Ordering` for `Option`, define:
+Sometimes one would like to derive a typeclass delegate for an ADT after the ADT is defined, without being able to change the code of the ADT itself.
+To do this, simply define a delegate with the `derived` method of the typeclass as right-hand side. E.g, to implement `Ordering` for `Option`, define:
 ```scala
-implied [T: Ordering] for Ordering[Option[T]] = Ordering.derived
+delegate [T: Ordering]: Ordering[Option[T]] = Ordering.derived
 ```
-Usually, the `Ordering.derived` clause has a context parameter of type
+Usually, the `Ordering.derived` clause has an implicit parameter of type
 `Generic[Option[T]]`. Since the `Option` trait has a `derives` clause,
-the necessary implied instance is already present in the companion object of `Option`.
-If the ADT in question does not have a `derives` clause, an implied `Generic` instance
+the necessary delegate is already present in the companion object of `Option`.
+If the ADT in question does not have a `derives` clause, a `Generic` delegate
 would still be synthesized by the compiler at the point where `derived` is called.
-This is similar to the situation with type tags or class tags: If no implied instance
+This is similar to the situation with type tags or class tags: If no delegate
 is found, the compiler will synthesize one.
 
 ### Syntax
@@ -364,7 +371,7 @@ ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
 ### Discussion
 
 The typeclass derivation framework is quite small and low-level. There are essentially
-two pieces of infrastructure in the compiler-generated `Generic` instances:
+two pieces of infrastructure in the compiler-generated `Generic` delegates:
 
  - a type representing the shape of an ADT,
  - a way to map between ADT instances and generic mirrors.
@@ -382,3 +389,4 @@ It could make sense to explore a higher-level framework that encapsulates all ca
 in the framework. This could give more guidance to the typeclass implementer.
 It also seems quite possible to put such a framework on top of the lower-level
 mechanisms presented here.
+-->

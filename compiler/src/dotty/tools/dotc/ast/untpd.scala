@@ -72,6 +72,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers)(implicit @constructorOnly src: SourceFile)
     extends Function(args, body)
 
+  /** A polymorphic function type */
+  case class PolyFunction(targs: List[Tree], body: Tree)(implicit @constructorOnly src: SourceFile) extends Tree {
+    override def isTerm = body.isTerm
+    override def isType = body.isType
+  }
+
   /** A function created from a wildcard expression
    *  @param  placeholderParams  a list of definitions of synthetic parameters.
    *  @param  body               the function body where wildcards are replaced by
@@ -161,9 +167,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Inline()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Inline)
 
-    case class Enum()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Enum)
-
-    case class Instance()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implied)
+    case class Implied()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implied)
   }
 
   /** Modifiers and annotations for definitions
@@ -193,6 +197,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def withFlags(flags: FlagSet): Modifiers =
       if (this.flags == flags) this
       else copy(flags = flags)
+
+    def withoutFlags(flags: FlagSet): Modifiers =
+      if (this.is(flags))
+        Modifiers(this.flags &~ flags, this.privateWithin, this.annotations, this.mods.filterNot(_.flags.is(flags)))
+      else this
 
     def withAddedMod(mod: Mod): Modifiers =
       if (mods.exists(_ eq mod)) this
@@ -259,10 +268,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     }
 
     /** Install the derived type tree as a dependency on `sym` */
-    def watching(sym: Symbol): this.type = {
-      pushAttachment(OriginalSymbol, sym)
-      this
-    }
+    def watching(sym: Symbol): this.type = withAttachment(OriginalSymbol, sym)
 
     /** A hook to ensure that all necessary symbols are completed so that
      *  OriginalSymbol attachments are propagated to this tree
@@ -491,6 +497,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: Function if (args eq tree.args) && (body eq tree.body) => tree
       case _ => finalize(tree, untpd.Function(args, body)(tree.source))
     }
+    def PolyFunction(tree: Tree)(targs: List[Tree], body: Tree)(implicit ctx: Context): Tree = tree match {
+      case tree: PolyFunction if (targs eq tree.targs) && (body eq tree.body) => tree
+      case _ => finalize(tree, untpd.PolyFunction(targs, body)(tree.source))
+    }
     def InfixOp(tree: Tree)(left: Tree, op: Ident, right: Tree)(implicit ctx: Context): Tree = tree match {
       case tree: InfixOp if (left eq tree.left) && (op eq tree.op) && (right eq tree.right) => tree
       case _ => finalize(tree, untpd.InfixOp(left, op, right)(tree.source))
@@ -579,6 +589,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.InterpolatedString(tree)(id, segments.mapConserve(transform))
       case Function(args, body) =>
         cpy.Function(tree)(transform(args), transform(body))
+      case PolyFunction(targs, body) =>
+        cpy.PolyFunction(tree)(transform(targs), transform(body))
       case InfixOp(left, op, right) =>
         cpy.InfixOp(tree)(transform(left), op, transform(right))
       case PostfixOp(od, op) =>
@@ -634,6 +646,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(x, segments)
       case Function(args, body) =>
         this(this(x, args), body)
+      case PolyFunction(targs, body) =>
+        this(this(x, targs), body)
       case InfixOp(left, op, right) =>
         this(this(this(x, left), op), right)
       case PostfixOp(od, op) =>

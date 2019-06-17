@@ -160,6 +160,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/implicit-conversions-old.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFile("tests/neg-custom-args/i3246.scala", scala2Mode),
       compileFile("tests/neg-custom-args/overrideClass.scala", scala2Mode),
+      compileFile("tests/neg-custom-args/ovlazy.scala", scala2Mode.and("-migration", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")),
       compileFile("tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")),
       compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")),
@@ -179,7 +180,9 @@ class CompilationTests extends ParallelTesting {
         "tests/neg-custom-args/toplevel-samesource/nested/S.scala"),
         defaultOptions),
       compileFile("tests/neg-custom-args/i6300.scala", allowDeepSubtypes),
-      compileFile("tests/neg-custom-args/infix.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings"))
+      compileFile("tests/neg-custom-args/infix.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings")),
+      compileFile("tests/neg-custom-args/missing-alpha.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings")),
+      compileFile("tests/neg-custom-args/wildcards.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings"))
     ).checkExpectedErrors()
   }
 

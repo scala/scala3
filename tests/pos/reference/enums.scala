@@ -28,7 +28,8 @@ enum Color(val rgb: Int) {
 }
 
 
-enum Planet(mass: Double, radius: Double) {
+enum Planet(mass: Double, radius: Double)
+extends java.lang.Enum[Planet] {
   private final val G = 6.67300E-11
   def surfaceGravity = G * mass / (radius * radius)
   def surfaceWeight(otherMass: Double) =  otherMass * surfaceGravity
@@ -47,7 +48,7 @@ object Planet {
   def main(args: Array[String]) = {
     val earthWeight = args(0).toDouble
     val mass = earthWeight/EARTH.surfaceGravity
-    for (p <- enumValues)
+    for (p <- values)
       println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
   }
 }
