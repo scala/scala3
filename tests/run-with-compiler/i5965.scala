@@ -9,15 +9,15 @@ object Test {
     '[List]
     val list = bound('{List(1, 2, 3)})
     println(list.show)
-    println(list.run)
+    println(run(list))
 
     val opt = bound('{Option(4)})
     println(opt.show)
-    println(opt.run)
+    println(run(opt))
 
     val map = bound('{Map(4 -> 1)})
     println(map.show)
-    println(map.run)
+    println(run(map))
   }
 
   def bound[T: Type, S[_]: Type](x: Expr[S[T]]): Expr[S[T]] = '{

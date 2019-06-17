@@ -9,7 +9,7 @@ object Test {
     }
     println()
 
-    val lambda = lambdaExpr.run
+    val lambda = run(lambdaExpr)
     lambda(4)
     lambda(5)
   }

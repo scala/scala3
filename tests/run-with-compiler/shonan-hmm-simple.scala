@@ -147,7 +147,7 @@ object Test {
       vec2.map(_.toExpr)
     )
     println(resCode1.show)
-    println(resCode1.run)
+    println(run(resCode1))
     println()
 
     val blasExprIntExpr = new Blas1(new RingIntExpr, new ExprVecOps)
@@ -162,7 +162,7 @@ object Test {
         }
     }
     println(resCode2.show)
-    println(resCode2.run.apply(arr1, arr2))
+    println(run(resCode2).apply(arr1, arr2))
     println()
 
     val blasStaticIntPVExpr = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
@@ -171,7 +171,7 @@ object Test {
       vec2.map(i => Sta(i))
     ).expr
     println(resCode3.show)
-    println(resCode3.run)
+    println(run(resCode3))
     println()
 
     val blasExprIntPVExpr = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
@@ -187,7 +187,7 @@ object Test {
 
     }
     println(resCode4.show)
-    println(resCode4.run.apply(arr1))
+    println(run(resCode4).apply(arr1))
     println()
 
     import Complex.isLiftable
@@ -204,7 +204,7 @@ object Test {
         }
     }
     println(resCode5.show)
-    println(resCode5.run.apply(cmpxArr1))
+    println(run(resCode5).apply(cmpxArr1))
     println()
 
     val RingPVInt = new RingPV[Int](new RingInt, new RingIntExpr)
