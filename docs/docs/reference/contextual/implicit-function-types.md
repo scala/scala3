@@ -117,19 +117,14 @@ As a larger example, here is a way to define constructs for checking arbitrary p
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  def result[T] given (r: WrappedResult[T]): T = f
+  def result[T] given (r: WrappedResult[T]): T = r
 
-  def (x: T) ensuring [T](condition: given WrappedResult[T] => Boolean): T = {
-    delegate for WrappedResult[T] = x
-    assert(condition)
-    x
-  }
+  def (x: T) ensuring [T] (condition: given WrappedResult[T] => Boolean): T =
+    assert(condition) given x
 }
+import PostConditions.{ensuring, result}
 
-object Test {
-  import PostConditions.{ensuring, result}
-  val s = List(1, 2, 3).sum.ensuring(result == 6)
-}
+val s = List(1, 2, 3).sum.ensuring(result == 6)
 ```
 **Explanations**: We use an implicit function type `given WrappedResult[T] => Boolean`
 as the type of the condition of `ensuring`. An argument to `ensuring` such as
@@ -151,4 +146,4 @@ as the best possible code one could write by hand:
 For more info, see the [blog article](https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html),
 (which uses a different syntax that has been superseded).
 
-[More details](./query-types-spec.html)
+[More details](./implicit-function-types-spec.html)

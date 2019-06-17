@@ -47,11 +47,11 @@ Existing Scala programmers by and large have gotten used to the status quo and s
 
 The following pages introduce a redesign of contextual abstractions in Scala. They introduce four fundamental changes:
 
- 1. [Delegates](./instance-defs.html) are a new way to define basic terms that can be synthesized.  They replace implicit definitions. The core principle of the proposal is that, rather than mixing the `implicit` modifier with a large number of features, we have a single way to define terms that can be synthesized for types.
+ 1. [Delegates](./delegates.html) are a new way to define basic terms that can be synthesized.  They replace implicit definitions. The core principle of the proposal is that, rather than mixing the `implicit` modifier with a large number of features, we have a single way to define terms that can be synthesized for types.
 
- 2. [Given Clauses](./inferable-params.html) are a new syntax for implicit _parameters_ and their _arguments_. Both are introduced with the same keyword, `given`. This unambiguously aligns parameters and arguments, solving a number of language warts. It also allows us to have several implicit parameter sections, and to have implicit parameters followed by normal ones.
+ 2. [Given Clauses](./given-clauses.html) are a new syntax for implicit _parameters_ and their _arguments_. Both are introduced with the same keyword, `given`. This unambiguously aligns parameters and arguments, solving a number of language warts. It also allows us to have several implicit parameter sections, and to have implicit parameters followed by normal ones.
 
- 3. [Delegate Imports](./import-implied.html) are a new class of imports that specifically import delegates and nothing else. Delegates _must be_ imported with  `import delegate`, a plain import will no longer bring them into scope.
+ 3. [Delegate Imports](./import-delegate.html) are a new class of imports that specifically import delegates and nothing else. Delegates _must be_ imported with  `import delegate`, a plain import will no longer bring them into scope.
 
  4. [Implicit Conversions](./conversions.html) are now expressed as delegates of a standard `Conversion` class. All other forms of implicit conversions will be phased out.
 
@@ -63,8 +63,8 @@ This section also contains pages describing other language features that are rel
  - [Typeclass Derivation](./derivation.html) introduces constructs to automatically derive typeclass delegates for ADTs.
  - [Multiversal Equality](./multiversal-equality.html) introduces a special typeclass
   to support type safe equality.
- - [Implicit Function Types](./query-types.html) provide a way to abstract over given clauses.
- - [Implicit By-Name Parameters](./inferable-by-name-parameters.html) are an essential tool to define recursive synthesized values without looping.
+ - [Implicit Function Types](./implicit-function-types.html) provide a way to abstract over given clauses.
+ - [Implicit By-Name Parameters](./implicit-by-name-parameters.html) are an essential tool to define recursive synthesized values without looping.
  - [Relationship with Scala 2 Implicits](./relationship-implicits.html) discusses the relationship between old-style implicits and new-style delegates and given clauses and how to migrate from one to the other.
 
 Overall, the new design achieves a better separation of term inference from the rest of the language: There is a single way to define delegates instead of a multitude of forms all taking an `implicit` modifier. There is a single way to introduce implicit parameters and arguments instead of conflating implicit with normal arguments. There is a separate way to import delegates that does not allow them to hide in a sea of normal imports. And there is a single way to define an implicit conversion which is clearly marked as such and does not require special syntax.

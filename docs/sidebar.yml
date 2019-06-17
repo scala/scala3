@@ -44,13 +44,13 @@ sidebar:
             - title: Overview
               url: docs/reference/contextual/motivation.html
             - title: Delegates
-              url: docs/reference/contextual/instance-defs.html
+              url: docs/reference/contextual/delegates.html
             - title: Given Clauses
-              url: docs/reference/contextual/inferable-params.html
+              url: docs/reference/contextual/given-clauses.html
             - title: Context Bounds
               url: docs/reference/contextual/context-bounds.html
             - title: Delegate Imports
-              url: docs/reference/contextual/import-implied.html
+              url: docs/reference/contextual/import-delegate.html
             - title: Extension Methods
               url: docs/reference/contextual/extension-methods.html
             - title: Implementing Typeclasses
@@ -60,11 +60,11 @@ sidebar:
             - title: Multiversal Equality
               url: docs/reference/contextual/multiversal-equality.html
             - title: Implicit Function Types
-              url: docs/reference/contextual/query-types.html
+              url: docs/reference/contextual/implicit-function-types.html
             - title: Implicit Conversions
               url: docs/reference/contextual/conversions.html
             - title: Implicit By-Name Parameters
-              url: docs/reference/contextual/inferable-by-name-parameters.html
+              url: docs/reference/contextual/implicit-by-name-parameters.html
             - title: Relationship with Scala 2 Implicits
               url: docs/reference/contextual/relationship-implicits.html
         - title: Metaprogramming
