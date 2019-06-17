@@ -16,7 +16,7 @@ object ReflectionImpl {
     val refl = new scala.tasty.Reflection(new KernelImpl(ctx, tree.sourcePos))
     val reflCtx = ctx.asInstanceOf[refl.Context]
     val reflTree = tree.asInstanceOf[refl.Tree]
-    new refl.SourceCodePrinter().showTree(reflTree)(reflCtx)
+    new refl.SourceCodePrinter(ctx.settings.color.value == "always").showTree(reflTree)(reflCtx)
   }
 
 }

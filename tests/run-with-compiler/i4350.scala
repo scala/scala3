@@ -1,5 +1,5 @@
 
-import scala.quoted.Type
+import scala.quoted._
 
 class Foo[T: Type] {
   def q = '{(null: Any).asInstanceOf[T]}
@@ -8,7 +8,7 @@ class Foo[T: Type] {
 object Test {
   def main(args: Array[String]): Unit = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    println((new Foo[Object]).q.show)
-    println((new Foo[String]).q.show)
+    println(show((new Foo[Object]).q))
+    println(show((new Foo[String]).q))
   }
 }

@@ -8,15 +8,15 @@ object Test {
   def main(args: Array[String]): Unit = {
     '[List]
     val list = bound('{List(1, 2, 3)})
-    println(list.show)
+    println(show(list))
     println(run(list))
 
     val opt = bound('{Option(4)})
-    println(opt.show)
+    println(show(opt))
     println(run(opt))
 
     val map = bound('{Map(4 -> 1)})
-    println(map.show)
+    println(show(map))
     println(run(map))
   }
 

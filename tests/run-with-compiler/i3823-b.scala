@@ -5,6 +5,6 @@ object Test {
       val z: $t = $x
     }
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    println(f('{2})(Type.IntTag).show)
+    println(show(f('{2})(Type.IntTag)))
   }
 }

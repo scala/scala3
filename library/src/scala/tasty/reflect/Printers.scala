@@ -24,10 +24,12 @@ trait Printers
   implicit class TreeShowDeco(tree: Tree) {
     /** Shows the tree as extractors */
     def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showTree(tree)
-    /** Shows the tree as fully typed source code.
-     *  Will print Ansi colors if ctx.printColors is enabled.
-     */
-    def show(implicit ctx: Context): String = new SourceCodePrinter().showTree(tree)
+
+    /** Shows the tree as fully typed source code */
+    def show(implicit ctx: Context): String = new SourceCodePrinter(false).showTree(tree)
+
+    /** Shows the tree as fully typed source code. Will print Ansi colors. */
+    def showFormatted(implicit ctx: Context): String = new SourceCodePrinter(true).showTree(tree)
   }
 
   /** Adds `show` as an extension method of a `TypeOrBounds` */
@@ -37,7 +39,10 @@ trait Printers
     /** Shows the tree as fully typed source code.
      *  Will print Ansi colors if ctx.printColors is enabled.
      */
-    def show(implicit ctx: Context): String = new SourceCodePrinter().showTypeOrBounds(tpe)
+    def show(implicit ctx: Context): String = new SourceCodePrinter(false).showTypeOrBounds(tpe)
+
+    /** Shows the tree as fully typed source code. Will print Ansi colors. */
+    def showFormatted(implicit ctx: Context): String = new SourceCodePrinter(true).showTypeOrBounds(tpe)
   }
 
   /** Adds `show` as an extension method of a `Pattern` */
@@ -47,7 +52,10 @@ trait Printers
     /** Shows the tree as fully typed source code.
      *  Will print Ansi colors if ctx.printColors is enabled.
      */
-    def show(implicit ctx: Context): String = new SourceCodePrinter().showPattern(pattern)
+    def show(implicit ctx: Context): String = new SourceCodePrinter(false).showPattern(pattern)
+
+    /** Shows the tree as fully typed source code. Will print Ansi colors. */
+    def showFormatted(implicit ctx: Context): String = new SourceCodePrinter(true).showPattern(pattern)
   }
 
   /** Adds `show` as an extension method of a `Constant` */
@@ -57,7 +65,10 @@ trait Printers
     /** Shows the tree as fully typed source code.
      *  Will print Ansi colors if ctx.printColors is enabled.
      */
-    def show(implicit ctx: Context): String = new SourceCodePrinter().showConstant(const)
+    def show(implicit ctx: Context): String = new SourceCodePrinter(false).showConstant(const)
+
+    /** Shows the tree as fully typed source code. Will print Ansi colors. */
+    def showFormatted(implicit ctx: Context): String = new SourceCodePrinter(true).showConstant(const)
   }
 
   /** Adds `show` as an extension method of a `Symbol` */
@@ -65,7 +76,10 @@ trait Printers
     /** Shows the tree as extractors */
     def showExtractors(implicit ctx: Context): String = new ExtractorsPrinter().showSymbol(symbol)
     /** Shows the tree as fully typed source code */
-    def show(implicit ctx: Context): String = new SourceCodePrinter().showSymbol(symbol)
+    def show(implicit ctx: Context): String = new SourceCodePrinter(false).showSymbol(symbol)
+
+    /** Shows the tree as fully typed source code. Will print Ansi colors. */
+    def showFormatted(implicit ctx: Context): String = new SourceCodePrinter(true).showSymbol(symbol)
   }
 
   /** Adds `show` as an extension method of a `Flags` */
@@ -75,7 +89,10 @@ trait Printers
     /** Shows the tree as fully typed source code.
      *  Will print Ansi colors if ctx.printColors is enabled.
      */
-    def show(implicit ctx: Context): String = new SourceCodePrinter().showFlags(flags)
+    def show(implicit ctx: Context): String = new SourceCodePrinter(false).showFlags(flags)
+
+    /** Shows the tree as fully typed source code. Will print Ansi colors. */
+    def showFormatted(implicit ctx: Context): String = new SourceCodePrinter(true).showFlags(flags)
   }
 
   abstract class Printer {
@@ -435,9 +452,7 @@ trait Printers
 
   }
 
-  class SourceCodePrinter extends Printer {
-
-    private def color(implicit ctx: Context): Boolean = kernel.Context_printColors(ctx)
+  class SourceCodePrinter(color: Boolean) extends Printer {
 
     def showTree(tree: Tree)(implicit ctx: Context): String =
       (new Buffer).printTree(tree).result()
@@ -999,7 +1014,11 @@ trait Printers
       def printFlatBlock(stats: List[Statement], expr: Term)(implicit elideThis: Option[Symbol]): Buffer = {
         val (stats1, expr1) = flatBlock(stats, expr)
         // Remove Lambda nodes, lambdas are printed by their definition
-        val stats2 = stats1.filter { case Lambda(_, _) => false; case _ => true }
+        val stats2 = stats1.filter {
+          case Lambda(_, _) => false
+          case IsTypeDef(tree) => !tree.symbol.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.quoteTypeTag")
+          case _ => true
+        }
         val (stats3, expr3) = expr1 match {
           case Lambda(_, _) =>
             val init :+ last  = stats2
@@ -1467,11 +1486,8 @@ trait Printers
         case TypeBind(name, _) =>
           this += highlightTypeDef(name, color)
 
-        case TypeBlock(aliases, tpt) =>
-          inBlock {
-            printTrees(aliases, lineBreak())
-            printTypeTree(tpt)
-          }
+        case TypeBlock(_, tpt) =>
+          printTypeTree(tpt)
 
         case _ =>
           throw new MatchError(tree.showExtractors)
@@ -1498,6 +1514,9 @@ trait Printers
       def printType(tpe: Type)(implicit elideThis: Option[Symbol] = None): Buffer = tpe match {
         case Type.ConstantType(const) =>
           printConstant(const)
+
+        case Type.SymRef(sym, _) if sym.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.quoteTypeTag") =>
+          printType(tpe.dealias)
 
         case Type.SymRef(sym, prefix) if sym.isType =>
           prefix match {
@@ -1556,7 +1575,9 @@ trait Printers
           printRefinement(tpe)
 
         case Type.AppliedType(tp, args) =>
-          tp match {
+          normalize(tp) match {
+            case Type.IsTypeLambda(tp) =>
+              printType(tpe.dealias)
             case Type.TypeRef("<repeated>", Types.ScalaPackage()) =>
               this += "_*"
             case _ =>
@@ -1651,6 +1672,13 @@ trait Printers
 
         case _ =>
           throw new MatchError(tpe.showExtractors)
+      }
+
+      private def normalize(tpe: TypeOrBounds): TypeOrBounds = tpe match {
+        case Type.IsSymRef(tpe)
+            if tpe.typeSymbol.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.quoteTypeTag") =>
+          tpe.dealias
+        case _ => tpe
       }
 
       def printImportSelector(sel: ImportSelector): Buffer = sel match {

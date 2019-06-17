@@ -9,7 +9,8 @@ object Test {
       val f: (x: Int) => Int = x => x + x
       f
     }
+
     println(run(f3(x)))
-    println(f3(x).show) // TODO improve printer
+    println(show(f3(x))) // TODO improve printer
   }
 }

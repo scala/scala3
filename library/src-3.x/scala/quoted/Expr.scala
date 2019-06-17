@@ -9,7 +9,7 @@ package quoted {
      *  May throw a FreeVariableError on expressions that came from a macro.
      */
     @deprecated("Use scala.quoted.run", "")
-    final def run(implicit toolbox: Toolbox): T = toolbox.run(this)
+    final def run(implicit toolbox: Toolbox): T = toolbox.run(_ => this)
 
   }
 
@@ -19,7 +19,8 @@ package quoted {
 
     implicit class ExprOps[T](expr: Expr[T]) {
       /** Show a source code like representation of this expression */
-      def show(implicit toolbox: Toolbox): String = toolbox.show(expr)
+      def show(implicit qctx: QuoteContext): String = qctx.show(expr, false)
+      def showFormatted(implicit qctx: QuoteContext): String = qctx.show(expr, true)
     }
 
     /** Converts a tuple `(T1, ..., Tn)` to `(Expr[T1], ..., Expr[Tn])` */

@@ -7,7 +7,7 @@ object api {
 
   private def reflImpl(x: Expr[String])(implicit refl: Reflection): Expr[String] = {
     import refl._
-    x.show(the[Context].withoutColors).toExpr
+    x.show.toExpr
   }
 
   inline def (x: => String) reflectColor : String =
@@ -15,6 +15,6 @@ object api {
 
   private def reflImplColor(x: Expr[String])(implicit refl: Reflection): Expr[String] = {
     import refl._
-    x.show(the[Context].withColors).toExpr
+    x.showFormatted.toExpr
   }
 }

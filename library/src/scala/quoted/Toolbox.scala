@@ -4,9 +4,7 @@ import scala.annotation.implicitNotFound
 
 @implicitNotFound("Could not find implicit quoted.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)`\n\n")
 trait Toolbox {
-  def run[T](expr: Expr[T]): T
-  def show[T](expr: Expr[T]): String
-  def show[T](tpe: Type[T]): String
+  def run[T](expr: QuoteContext => Expr[T]): T
 }
 
 object Toolbox {
@@ -38,7 +36,7 @@ object Toolbox {
   }
 
   /** Setting of the Toolbox instance. */
-  case class Settings private (outDir: Option[String], showRawTree: Boolean, compilerArgs: List[String], color: Boolean)
+  case class Settings private (outDir: Option[String], showRawTree: Boolean, compilerArgs: List[String])
 
   object Settings {
 
@@ -46,17 +44,15 @@ object Toolbox {
 
     /** Make toolbox settings
      *  @param outDir Output directory for the compiled quote. If set to None the output will be in memory
-     *  @param color Print output with colors
      *  @param showRawTree Do not remove quote tree artifacts
      *  @param compilerArgs Compiler arguments. Use only if you know what you are doing.
      */
     def make( // TODO avoid using default parameters (for binary compat)
-      color: Boolean = false,
       showRawTree: Boolean = false,
       outDir: Option[String] = None,
       compilerArgs: List[String] = Nil
     ): Settings =
-      new Settings(outDir, showRawTree, compilerArgs, color)
+      new Settings(outDir, showRawTree, compilerArgs)
   }
 
   class ToolboxNotFoundException(msg: String, cause: ClassNotFoundException) extends Exception(msg, cause)

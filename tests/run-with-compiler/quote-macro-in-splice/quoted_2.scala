@@ -12,7 +12,7 @@ object Test {
         '{ y + $b }
       }
     }
-    println(x.show)
+    println(show(x))
   }
 
 }

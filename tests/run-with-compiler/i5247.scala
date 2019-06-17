@@ -2,8 +2,8 @@ import scala.quoted._
 object Test {
   def main(args: Array[String]): Unit = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    println(foo[Object].show)
-    println(bar[Object].show)
+    println(show(foo[Object]))
+    println(show(bar[Object]))
   }
   def foo[H : Type]: Expr[H] = {
     val t = '[H]

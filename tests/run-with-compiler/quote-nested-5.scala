@@ -12,6 +12,6 @@ object Test {
 
     }
 
-    println(q.show)
+    println(show(q))
   }
 }

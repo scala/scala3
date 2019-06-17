@@ -14,7 +14,9 @@ package object quoted {
     *
    *  May throw a FreeVariableError on expressions that came from a macro.
    */
-  def run[T](expr: Expr[T]) given (toolbox: Toolbox): T = toolbox.run(expr)
+  def run[T](expr: given QuoteContext => Expr[T]) given (toolbox: Toolbox): T = toolbox.run(expr given _)
+
+  def show[T](expr: given QuoteContext => Expr[T]) given (toolbox: Toolbox): String = run(expr.show.toExpr)
 
   object autolift {
     implicit def autoToExpr[T: Liftable](x: T): Expr[T] = x.toExpr

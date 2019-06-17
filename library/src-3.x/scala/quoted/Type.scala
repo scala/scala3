@@ -10,9 +10,10 @@ package quoted {
   /** Some basic type tags, currently incomplete */
   object Type {
 
-    implicit object TypeOps {
-      /** Show a source code like representation of this type */
-      def (tpe: Type[T]) show[T] given Toolbox: String = the[Toolbox].show(tpe.asInstanceOf[Type[Any]])
+    implicit class TypeOps[T](tpe: Type[T]) {
+      /** Show a source code like representation of this expression */
+      def show(implicit qctx: QuoteContext): String = qctx.show(tpe, false)
+      def showFormatted(implicit qctx: QuoteContext): String = qctx.show(tpe, true)
     }
 
     implicit val UnitTag: Type[Unit] = new TaggedType[Unit]

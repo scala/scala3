@@ -35,12 +35,6 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def Context_source(self: Context): java.nio.file.Path = self.compilationUnit.source.file.jpath
 
-  def Context_printColors(self: Context): Boolean = self.settings.color.value(self) == "always"
-
-  def Context_withColors(self: Context): Context = ctx.fresh.setSetting(ctx.settings.color, "always")
-
-  def Context_withoutColors(self: Context): Context = ctx.fresh.setSetting(ctx.settings.color, "never")
-
   //
   // REPORTING
   //

@@ -11,11 +11,11 @@
 {
   val y: scala.Double = 5.0.*(5.0)
   y.*({
-    val y$2: scala.Double = y.*(y)
-    y$2.*({
-      val y$3: scala.Double = y$2.*(y$2)
-      val y$4: scala.Double = y$3.*(y$3)
-      y$4
+    val y: scala.Double = y.*(y)
+    y.*({
+      val y: scala.Double = y.*(y)
+      val y: scala.Double = y.*(y)
+      y
     })
   })
 }

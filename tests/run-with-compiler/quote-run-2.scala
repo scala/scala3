@@ -10,10 +10,10 @@ object Test {
       else if (n % 2 == 0) '{ { val y = $x * $x; ${powerCode(n / 2, 'y)} } }
       else '{ $x * ${powerCode(n - 1, x)} }
 
-    println(powerCode(0, '{5}).show)
-    println(powerCode(1, '{5}).show)
-    println(powerCode(2, '{5}).show)
-    println(powerCode(3, '{5}).show)
-    println(powerCode(22, '{5}).show)
+    println(show(powerCode(0, '{5})))
+    println(show(powerCode(1, '{5})))
+    println(show(powerCode(2, '{5})))
+    println(show(powerCode(3, '{5})))
+    println(show(powerCode(22, '{5})))
   }
 }

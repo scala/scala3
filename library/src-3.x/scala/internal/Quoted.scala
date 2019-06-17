@@ -25,4 +25,6 @@ object Quoted {
   @compileTimeOnly("Illegal reference to `scala.internal.Quoted.patternBindHole`")
   class patternBindHole extends Annotation
 
+  /** Artifact of type splicing */
+  class quoteTypeTag extends Annotation
 }

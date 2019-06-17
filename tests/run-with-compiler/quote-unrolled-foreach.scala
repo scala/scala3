@@ -4,7 +4,7 @@ import scala.quoted.autolift._
 
 object Test {
   implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit = run {
     val code1 = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach1('arr, 'f) } }
     println(code1.show)
     println()
@@ -40,7 +40,7 @@ object Test {
     }
 
     println(printAll(Array(1, 3, 4, 5)).show)
-
+    '{}
   }
 
   def foreach1(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{
