@@ -11,7 +11,7 @@ the backend.
 Create an array of a reference type T.
 
 ### newGenericArray
-<pre><code class="language-scala" >def newGenericArray[T](length: Int)(tag: <a href="../../scala/reflect/ClassTag.md">ClassTag</a>[T]): Array[T]</pre></code>
+<pre><code class="language-scala" >def newGenericArray[T](length: Int)(implicit tag: <a href="../../scala/reflect/ClassTag.md">ClassTag</a>[T]): Array[T]</pre></code>
 Creates an array of some element type determined by the given `ClassTag`
 argument. The erased type of applications of this method is `Object`.
 

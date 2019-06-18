@@ -7,5 +7,5 @@ scala.testing
 <pre><code class="language-scala" >inline def typeChecks(code: String): Boolean</pre></code>
 
 ### typeChecksImpl
-<pre><code class="language-scala" >private[testing] def typeChecksImpl(code: String)(reflect: <a href="../tasty/Reflection.md">Reflection</a>): <a href="../quoted/Expr.md">Expr</a>[Boolean]</pre></code>
+<pre><code class="language-scala" >private[testing] def typeChecksImpl(code: String)(implicit reflect: <a href="../tasty/Reflection.md">Reflection</a>): <a href="../quoted/Expr.md">Expr</a>[Boolean]</pre></code>
 

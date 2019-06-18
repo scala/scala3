@@ -7,5 +7,5 @@ scala.tasty.reflect.TypeOrBoundsOps
 
 ## Concrete Value Members:
 ### tref
-<pre><code class="language-scala" >def tref(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def tref(implicit ctx: Context): Type</pre></code>
 

@@ -7,5 +7,5 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### cases
-<pre><code class="language-scala" >def cases(ctx: Context): List[CaseDef]</pre></code>
+<pre><code class="language-scala" >def cases(implicit ctx: Context): List[CaseDef]</pre></code>
 

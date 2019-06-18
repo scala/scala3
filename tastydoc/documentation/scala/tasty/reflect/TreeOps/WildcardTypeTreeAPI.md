@@ -7,5 +7,5 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### tpe
-<pre><code class="language-scala" >def tpe(ctx: Context): TypeOrBounds</pre></code>
+<pre><code class="language-scala" >def tpe(implicit ctx: Context): TypeOrBounds</pre></code>
 

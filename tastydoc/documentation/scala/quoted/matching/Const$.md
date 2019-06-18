@@ -15,5 +15,5 @@ Usage:
 
 ## Concrete Value Members:
 ### unapply
-<pre><code class="language-scala" >def unapply[T](expr: <a href="../Expr.md">Expr</a>[T])(reflect: <a href="../../tasty/Reflection.md">Reflection</a>): Option[T]</pre></code>
+<pre><code class="language-scala" >def unapply[T](expr: <a href="../Expr.md">Expr</a>[T])(implicit reflect: <a href="../../tasty/Reflection.md">Reflection</a>): Option[T]</pre></code>
 

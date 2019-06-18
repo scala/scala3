@@ -7,8 +7,8 @@ scala.tasty.reflect.TypeOrBoundsOps
 
 ## Concrete Value Members:
 ### binder
-<pre><code class="language-scala" >def binder(ctx: Context): LambdaType[TypeOrBounds]</pre></code>
+<pre><code class="language-scala" >def binder(implicit ctx: Context): LambdaType[TypeOrBounds]</pre></code>
 
 ### paramNum
-<pre><code class="language-scala" >def paramNum(ctx: Context): Int</pre></code>
+<pre><code class="language-scala" >def paramNum(implicit ctx: Context): Int</pre></code>
 

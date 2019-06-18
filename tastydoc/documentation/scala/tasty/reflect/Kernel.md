@@ -640,181 +640,181 @@ represents a type but has `TypeBound`a inside.
 
 ## Concrete Value Members:
 ### AndType_left
-<pre><code class="language-scala" >def AndType_left(self: AndType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def AndType_left(self: AndType)(implicit ctx: Context): Type</pre></code>
 
 ### AndType_right
-<pre><code class="language-scala" >def AndType_right(self: AndType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def AndType_right(self: AndType)(implicit ctx: Context): Type</pre></code>
 
 ### AnnotatedType_annot
-<pre><code class="language-scala" >def AnnotatedType_annot(self: AnnotatedType)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def AnnotatedType_annot(self: AnnotatedType)(implicit ctx: Context): Term</pre></code>
 
 ### AnnotatedType_underlying
-<pre><code class="language-scala" >def AnnotatedType_underlying(self: AnnotatedType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def AnnotatedType_underlying(self: AnnotatedType)(implicit ctx: Context): Type</pre></code>
 
 ### Annotated_annotation
-<pre><code class="language-scala" >def Annotated_annotation(self: Annotated)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Annotated_annotation(self: Annotated)(implicit ctx: Context): Term</pre></code>
 
 ### Annotated_apply
-<pre><code class="language-scala" >def Annotated_apply(arg: TypeTree, annotation: Term)(ctx: Context): Annotated</pre></code>
+<pre><code class="language-scala" >def Annotated_apply(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated</pre></code>
 
 ### Annotated_arg
-<pre><code class="language-scala" >def Annotated_arg(self: Annotated)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def Annotated_arg(self: Annotated)(implicit ctx: Context): TypeTree</pre></code>
 
 ### Annotated_copy
-<pre><code class="language-scala" >def Annotated_copy(original: Annotated)(arg: TypeTree, annotation: Term)(ctx: Context): Annotated</pre></code>
+<pre><code class="language-scala" >def Annotated_copy(original: Annotated)(arg: TypeTree, annotation: Term)(implicit ctx: Context): Annotated</pre></code>
 
 ### AppliedType_args
-<pre><code class="language-scala" >def AppliedType_args(self: AppliedType)(ctx: Context): List[TypeOrBounds]</pre></code>
+<pre><code class="language-scala" >def AppliedType_args(self: AppliedType)(implicit ctx: Context): List[TypeOrBounds]</pre></code>
 
 ### AppliedType_tycon
-<pre><code class="language-scala" >def AppliedType_tycon(self: AppliedType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def AppliedType_tycon(self: AppliedType)(implicit ctx: Context): Type</pre></code>
 
 ### Applied_apply
-<pre><code class="language-scala" >def Applied_apply(tpt: TypeTree, args: List[Tree])(ctx: Context): Applied</pre></code>
+<pre><code class="language-scala" >def Applied_apply(tpt: TypeTree, args: List[Tree])(implicit ctx: Context): Applied</pre></code>
 
 ### Applied_args
-<pre><code class="language-scala" >def Applied_args(self: Applied)(ctx: Context): List[Tree]</pre></code>
+<pre><code class="language-scala" >def Applied_args(self: Applied)(implicit ctx: Context): List[Tree]</pre></code>
 
 ### Applied_copy
-<pre><code class="language-scala" >def Applied_copy(original: Applied)(tpt: TypeTree, args: List[Tree])(ctx: Context): Applied</pre></code>
+<pre><code class="language-scala" >def Applied_copy(original: Applied)(tpt: TypeTree, args: List[Tree])(implicit ctx: Context): Applied</pre></code>
 
 ### Applied_tpt
-<pre><code class="language-scala" >def Applied_tpt(self: Applied)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def Applied_tpt(self: Applied)(implicit ctx: Context): TypeTree</pre></code>
 
 ### Apply_apply
-<pre><code class="language-scala" >def Apply_apply(fn: Term, args: List[Term])(ctx: Context): Apply</pre></code>
+<pre><code class="language-scala" >def Apply_apply(fn: Term, args: List[Term])(implicit ctx: Context): Apply</pre></code>
 
 ### Apply_args
-<pre><code class="language-scala" >def Apply_args(self: Apply)(ctx: Context): List[Term]</pre></code>
+<pre><code class="language-scala" >def Apply_args(self: Apply)(implicit ctx: Context): List[Term]</pre></code>
 
 ### Apply_copy
-<pre><code class="language-scala" >def Apply_copy(original: Tree)(fun: Term, args: List[Term])(ctx: Context): Apply</pre></code>
+<pre><code class="language-scala" >def Apply_copy(original: Tree)(fun: Term, args: List[Term])(implicit ctx: Context): Apply</pre></code>
 
 ### Apply_fun
-<pre><code class="language-scala" >def Apply_fun(self: Apply)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Apply_fun(self: Apply)(implicit ctx: Context): Term</pre></code>
 
 ### Assign_apply
-<pre><code class="language-scala" >def Assign_apply(lhs: Term, rhs: Term)(ctx: Context): Assign</pre></code>
+<pre><code class="language-scala" >def Assign_apply(lhs: Term, rhs: Term)(implicit ctx: Context): Assign</pre></code>
 
 ### Assign_copy
-<pre><code class="language-scala" >def Assign_copy(original: Tree)(lhs: Term, rhs: Term)(ctx: Context): Assign</pre></code>
+<pre><code class="language-scala" >def Assign_copy(original: Tree)(lhs: Term, rhs: Term)(implicit ctx: Context): Assign</pre></code>
 
 ### Assign_lhs
-<pre><code class="language-scala" >def Assign_lhs(self: Assign)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Assign_lhs(self: Assign)(implicit ctx: Context): Term</pre></code>
 
 ### Assign_rhs
-<pre><code class="language-scala" >def Assign_rhs(self: Assign)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Assign_rhs(self: Assign)(implicit ctx: Context): Term</pre></code>
 
 ### BindSymbol_tree
-<pre><code class="language-scala" >def BindSymbol_tree(self: BindSymbol)(ctx: Context): Bind</pre></code>
+<pre><code class="language-scala" >def BindSymbol_tree(self: BindSymbol)(implicit ctx: Context): Bind</pre></code>
 Bind pattern of this definition
 
 ### Block_apply
-<pre><code class="language-scala" >def Block_apply(stats: List[Statement], expr: Term)(ctx: Context): Block</pre></code>
+<pre><code class="language-scala" >def Block_apply(stats: List[Statement], expr: Term)(implicit ctx: Context): Block</pre></code>
 
 ### Block_copy
-<pre><code class="language-scala" >def Block_copy(original: Tree)(stats: List[Statement], expr: Term)(ctx: Context): Block</pre></code>
+<pre><code class="language-scala" >def Block_copy(original: Tree)(stats: List[Statement], expr: Term)(implicit ctx: Context): Block</pre></code>
 
 ### Block_expr
-<pre><code class="language-scala" >def Block_expr(self: Block)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Block_expr(self: Block)(implicit ctx: Context): Term</pre></code>
 
 ### Block_statements
-<pre><code class="language-scala" >def Block_statements(self: Block)(ctx: Context): List[Statement]</pre></code>
+<pre><code class="language-scala" >def Block_statements(self: Block)(implicit ctx: Context): List[Statement]</pre></code>
 
 ### ByNameType_underlying
-<pre><code class="language-scala" >def ByNameType_underlying(self: ByNameType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def ByNameType_underlying(self: ByNameType)(implicit ctx: Context): Type</pre></code>
 
 ### ByName_apply
-<pre><code class="language-scala" >def ByName_apply(result: TypeTree)(ctx: Context): ByName</pre></code>
+<pre><code class="language-scala" >def ByName_apply(result: TypeTree)(implicit ctx: Context): ByName</pre></code>
 
 ### ByName_copy
-<pre><code class="language-scala" >def ByName_copy(original: ByName)(result: TypeTree)(ctx: Context): ByName</pre></code>
+<pre><code class="language-scala" >def ByName_copy(original: ByName)(result: TypeTree)(implicit ctx: Context): ByName</pre></code>
 
 ### ByName_result
-<pre><code class="language-scala" >def ByName_result(self: ByName)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def ByName_result(self: ByName)(implicit ctx: Context): TypeTree</pre></code>
 
 ### CaseDef_guard
-<pre><code class="language-scala" >def CaseDef_guard(self: CaseDef)(ctx: Context): Option[Term]</pre></code>
+<pre><code class="language-scala" >def CaseDef_guard(self: CaseDef)(implicit ctx: Context): Option[Term]</pre></code>
 
 ### CaseDef_module_apply
-<pre><code class="language-scala" >def CaseDef_module_apply(pattern: Pattern, guard: Option[Term], body: Term)(ctx: Context): CaseDef</pre></code>
+<pre><code class="language-scala" >def CaseDef_module_apply(pattern: Pattern, guard: Option[Term], body: Term)(implicit ctx: Context): CaseDef</pre></code>
 
 ### CaseDef_module_copy
-<pre><code class="language-scala" >def CaseDef_module_copy(original: CaseDef)(pattern: Pattern, guard: Option[Term], body: Term)(ctx: Context): CaseDef</pre></code>
+<pre><code class="language-scala" >def CaseDef_module_copy(original: CaseDef)(pattern: Pattern, guard: Option[Term], body: Term)(implicit ctx: Context): CaseDef</pre></code>
 
 ### CaseDef_pattern
-<pre><code class="language-scala" >def CaseDef_pattern(self: CaseDef)(ctx: Context): Pattern</pre></code>
+<pre><code class="language-scala" >def CaseDef_pattern(self: CaseDef)(implicit ctx: Context): Pattern</pre></code>
 
 ### CaseDef_rhs
-<pre><code class="language-scala" >def CaseDef_rhs(self: CaseDef)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def CaseDef_rhs(self: CaseDef)(implicit ctx: Context): Term</pre></code>
 
 ### ClassDefSymbol_caseFields
-<pre><code class="language-scala" >def ClassDefSymbol_caseFields(self: Symbol)(ctx: Context): List[ValDefSymbol]</pre></code>
+<pre><code class="language-scala" >def ClassDefSymbol_caseFields(self: Symbol)(implicit ctx: Context): List[ValDefSymbol]</pre></code>
 Fields of a case class type -- only the ones declared in primary constructor
 
 ### ClassDefSymbol_classMethod
-<pre><code class="language-scala" >def ClassDefSymbol_classMethod(self: Symbol)(name: String)(ctx: Context): List[DefDefSymbol]</pre></code>
+<pre><code class="language-scala" >def ClassDefSymbol_classMethod(self: Symbol)(name: String)(implicit ctx: Context): List[DefDefSymbol]</pre></code>
 Get non-private named methods defined directly inside the class
 
 ### ClassDefSymbol_classMethods
-<pre><code class="language-scala" >def ClassDefSymbol_classMethods(self: Symbol)(ctx: Context): List[DefDefSymbol]</pre></code>
+<pre><code class="language-scala" >def ClassDefSymbol_classMethods(self: Symbol)(implicit ctx: Context): List[DefDefSymbol]</pre></code>
 Get all non-private methods defined directly inside the class, excluding constructors
 
 ### ClassDefSymbol_companionClass
-<pre><code class="language-scala" >def ClassDefSymbol_companionClass(self: Symbol)(ctx: Context): Option[ClassDefSymbol]</pre></code>
+<pre><code class="language-scala" >def ClassDefSymbol_companionClass(self: Symbol)(implicit ctx: Context): Option[ClassDefSymbol]</pre></code>
 The class symbol of the companion module class
 
 ### ClassDefSymbol_companionModule
-<pre><code class="language-scala" >def ClassDefSymbol_companionModule(self: Symbol)(ctx: Context): Option[ValDefSymbol]</pre></code>
+<pre><code class="language-scala" >def ClassDefSymbol_companionModule(self: Symbol)(implicit ctx: Context): Option[ValDefSymbol]</pre></code>
 The symbol of the companion module
 
 ### ClassDefSymbol_field
-<pre><code class="language-scala" >def ClassDefSymbol_field(self: Symbol)(name: String)(ctx: Context): Option[Symbol]</pre></code>
+<pre><code class="language-scala" >def ClassDefSymbol_field(self: Symbol)(name: String)(implicit ctx: Context): Option[Symbol]</pre></code>
 Field with the given name directly declared in the class
 
 ### ClassDefSymbol_fields
-<pre><code class="language-scala" >def ClassDefSymbol_fields(self: Symbol)(ctx: Context): List[Symbol]</pre></code>
+<pre><code class="language-scala" >def ClassDefSymbol_fields(self: Symbol)(implicit ctx: Context): List[Symbol]</pre></code>
 Fields directly declared in the class
 
 ### ClassDefSymbol_method
-<pre><code class="language-scala" >def ClassDefSymbol_method(self: Symbol)(name: String)(ctx: Context): List[DefDefSymbol]</pre></code>
+<pre><code class="language-scala" >def ClassDefSymbol_method(self: Symbol)(name: String)(implicit ctx: Context): List[DefDefSymbol]</pre></code>
 Get named non-private methods declared or inherited
 
 ### ClassDefSymbol_methods
-<pre><code class="language-scala" >def ClassDefSymbol_methods(self: Symbol)(ctx: Context): List[DefDefSymbol]</pre></code>
+<pre><code class="language-scala" >def ClassDefSymbol_methods(self: Symbol)(implicit ctx: Context): List[DefDefSymbol]</pre></code>
 Get all non-private methods declared or inherited
 
 ### ClassDefSymbol_moduleClass
-<pre><code class="language-scala" >def ClassDefSymbol_moduleClass(self: Symbol)(ctx: Context): Option[Symbol]</pre></code>
+<pre><code class="language-scala" >def ClassDefSymbol_moduleClass(self: Symbol)(implicit ctx: Context): Option[Symbol]</pre></code>
 The symbol of the class of the companion module
 
 ### ClassDefSymbol_of
-<pre><code class="language-scala" >def ClassDefSymbol_of(fullName: String)(ctx: Context): ClassDefSymbol</pre></code>
+<pre><code class="language-scala" >def ClassDefSymbol_of(fullName: String)(implicit ctx: Context): ClassDefSymbol</pre></code>
 
 ### ClassDefSymbol_tree
-<pre><code class="language-scala" >def ClassDefSymbol_tree(self: ClassDefSymbol)(ctx: Context): ClassDef</pre></code>
+<pre><code class="language-scala" >def ClassDefSymbol_tree(self: ClassDefSymbol)(implicit ctx: Context): ClassDef</pre></code>
 ClassDef tree of this definition
 
 ### ClassDef_body
-<pre><code class="language-scala" >def ClassDef_body(self: ClassDef)(ctx: Context): List[Statement]</pre></code>
+<pre><code class="language-scala" >def ClassDef_body(self: ClassDef)(implicit ctx: Context): List[Statement]</pre></code>
 
 ### ClassDef_constructor
-<pre><code class="language-scala" >def ClassDef_constructor(self: ClassDef)(ctx: Context): DefDef</pre></code>
+<pre><code class="language-scala" >def ClassDef_constructor(self: ClassDef)(implicit ctx: Context): DefDef</pre></code>
 
 ### ClassDef_copy
-<pre><code class="language-scala" >def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(ctx: Context): ClassDef</pre></code>
+<pre><code class="language-scala" >def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(implicit ctx: Context): ClassDef</pre></code>
 
 ### ClassDef_derived
-<pre><code class="language-scala" >def ClassDef_derived(self: ClassDef)(ctx: Context): List[TypeTree]</pre></code>
+<pre><code class="language-scala" >def ClassDef_derived(self: ClassDef)(implicit ctx: Context): List[TypeTree]</pre></code>
 
 ### ClassDef_parents
-<pre><code class="language-scala" >def ClassDef_parents(self: ClassDef)(ctx: Context): List[Tree]</pre></code>
+<pre><code class="language-scala" >def ClassDef_parents(self: ClassDef)(implicit ctx: Context): List[Tree]</pre></code>
 
 ### ClassDef_self
-<pre><code class="language-scala" >def ClassDef_self(self: ClassDef)(ctx: Context): Option[ValDef]</pre></code>
+<pre><code class="language-scala" >def ClassDef_self(self: ClassDef)(implicit ctx: Context): Option[ValDef]</pre></code>
 
 ### ClassDef_symbol
-<pre><code class="language-scala" >def ClassDef_symbol(self: ClassDef)(ctx: Context): ClassDefSymbol</pre></code>
+<pre><code class="language-scala" >def ClassDef_symbol(self: ClassDef)(implicit ctx: Context): ClassDefSymbol</pre></code>
 
 ### Comment_expanded
 <pre><code class="language-scala" >def Comment_expanded(self: Comment): Option[String]</pre></code>
@@ -826,7 +826,7 @@ ClassDef tree of this definition
 <pre><code class="language-scala" >def Comment_usecases(self: Comment): List[(String, Option[DefDef])]</pre></code>
 
 ### ConstantType_constant
-<pre><code class="language-scala" >def ConstantType_constant(self: ConstantType)(ctx: Context): Constant</pre></code>
+<pre><code class="language-scala" >def ConstantType_constant(self: ConstantType)(implicit ctx: Context): Constant</pre></code>
 
 ### Constant_Boolean_apply
 <pre><code class="language-scala" >def Constant_Boolean_apply(x: Boolean): Constant</pre></code>
@@ -891,36 +891,36 @@ Returns a new context where printColors is true
 Returns a new context where printColors is false
 
 ### DefDefSymbol_signature
-<pre><code class="language-scala" >def DefDefSymbol_signature(self: DefDefSymbol)(ctx: Context): Signature</pre></code>
+<pre><code class="language-scala" >def DefDefSymbol_signature(self: DefDefSymbol)(implicit ctx: Context): Signature</pre></code>
 Signature of this definition
 
 ### DefDefSymbol_tree
-<pre><code class="language-scala" >def DefDefSymbol_tree(self: DefDefSymbol)(ctx: Context): DefDef</pre></code>
+<pre><code class="language-scala" >def DefDefSymbol_tree(self: DefDefSymbol)(implicit ctx: Context): DefDef</pre></code>
 DefDef tree of this definition
 
 ### DefDef_apply
-<pre><code class="language-scala" >def DefDef_apply(symbol: DefDefSymbol, rhsFn: (List[Type]) => (List[List[Term]]) => Option[Term])(ctx: Context): DefDef</pre></code>
+<pre><code class="language-scala" >def DefDef_apply(symbol: DefDefSymbol, rhsFn: (List[Type]) => (List[List[Term]]) => Option[Term])(implicit ctx: Context): DefDef</pre></code>
 
 ### DefDef_copy
-<pre><code class="language-scala" >def DefDef_copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(ctx: Context): DefDef</pre></code>
+<pre><code class="language-scala" >def DefDef_copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): DefDef</pre></code>
 
 ### DefDef_paramss
-<pre><code class="language-scala" >def DefDef_paramss(self: DefDef)(ctx: Context): List[List[ValDef]]</pre></code>
+<pre><code class="language-scala" >def DefDef_paramss(self: DefDef)(implicit ctx: Context): List[List[ValDef]]</pre></code>
 
 ### DefDef_returnTpt
-<pre><code class="language-scala" >def DefDef_returnTpt(self: DefDef)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def DefDef_returnTpt(self: DefDef)(implicit ctx: Context): TypeTree</pre></code>
 
 ### DefDef_rhs
-<pre><code class="language-scala" >def DefDef_rhs(self: DefDef)(ctx: Context): Option[Term]</pre></code>
+<pre><code class="language-scala" >def DefDef_rhs(self: DefDef)(implicit ctx: Context): Option[Term]</pre></code>
 
 ### DefDef_symbol
-<pre><code class="language-scala" >def DefDef_symbol(self: DefDef)(ctx: Context): DefDefSymbol</pre></code>
+<pre><code class="language-scala" >def DefDef_symbol(self: DefDef)(implicit ctx: Context): DefDefSymbol</pre></code>
 
 ### DefDef_typeParams
-<pre><code class="language-scala" >def DefDef_typeParams(self: DefDef)(ctx: Context): List[TypeDef]</pre></code>
+<pre><code class="language-scala" >def DefDef_typeParams(self: DefDef)(implicit ctx: Context): List[TypeDef]</pre></code>
 
 ### Definition_name
-<pre><code class="language-scala" >def Definition_name(self: Definition)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def Definition_name(self: Definition)(implicit ctx: Context): String</pre></code>
 
 ### Definitions_AnyClass
 <pre><code class="language-scala" >def Definitions_AnyClass: Symbol</pre></code>
@@ -1210,147 +1210,147 @@ Is the given flag set a subset of this flag sets
 Union of the two flag sets
 
 ### Id_name
-<pre><code class="language-scala" >def Id_name(self: Id)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def Id_name(self: Id)(implicit ctx: Context): String</pre></code>
 Name of the identifier
 
 ### Id_pos
-<pre><code class="language-scala" >def Id_pos(self: Id)(ctx: Context): Position</pre></code>
+<pre><code class="language-scala" >def Id_pos(self: Id)(implicit ctx: Context): Position</pre></code>
 Position in the source code
 
 ### Ident_apply
-<pre><code class="language-scala" >def Ident_apply(tmref: TermRef)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Ident_apply(tmref: TermRef)(implicit ctx: Context): Term</pre></code>
 
 ### Ident_copy
-<pre><code class="language-scala" >def Ident_copy(original: Tree)(name: String)(ctx: Context): Ident</pre></code>
+<pre><code class="language-scala" >def Ident_copy(original: Tree)(name: String)(implicit ctx: Context): Ident</pre></code>
 
 ### Ident_name
-<pre><code class="language-scala" >def Ident_name(self: Ident)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def Ident_name(self: Ident)(implicit ctx: Context): String</pre></code>
 
 ### If_apply
-<pre><code class="language-scala" >def If_apply(cond: Term, thenp: Term, elsep: Term)(ctx: Context): If</pre></code>
+<pre><code class="language-scala" >def If_apply(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): If</pre></code>
 
 ### If_cond
-<pre><code class="language-scala" >def If_cond(self: If)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def If_cond(self: If)(implicit ctx: Context): Term</pre></code>
 
 ### If_copy
-<pre><code class="language-scala" >def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(ctx: Context): If</pre></code>
+<pre><code class="language-scala" >def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(implicit ctx: Context): If</pre></code>
 
 ### If_elsep
-<pre><code class="language-scala" >def If_elsep(self: If)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def If_elsep(self: If)(implicit ctx: Context): Term</pre></code>
 
 ### If_thenp
-<pre><code class="language-scala" >def If_thenp(self: If)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def If_thenp(self: If)(implicit ctx: Context): Term</pre></code>
 
 ### ImplicitMatch_apply
-<pre><code class="language-scala" >def ImplicitMatch_apply(cases: List[CaseDef])(ctx: Context): ImpliedMatch</pre></code>
+<pre><code class="language-scala" >def ImplicitMatch_apply(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch</pre></code>
 
 ### ImplicitMatch_cases
-<pre><code class="language-scala" >def ImplicitMatch_cases(self: ImpliedMatch)(ctx: Context): List[CaseDef]</pre></code>
+<pre><code class="language-scala" >def ImplicitMatch_cases(self: ImpliedMatch)(implicit ctx: Context): List[CaseDef]</pre></code>
 
 ### ImplicitMatch_copy
-<pre><code class="language-scala" >def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(ctx: Context): ImpliedMatch</pre></code>
+<pre><code class="language-scala" >def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch</pre></code>
 
 ### Import_apply
-<pre><code class="language-scala" >def Import_apply(importImplied: Boolean, expr: Term, selectors: List[ImportSelector])(ctx: Context): Import</pre></code>
+<pre><code class="language-scala" >def Import_apply(importImplied: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import</pre></code>
 
 ### Import_copy
-<pre><code class="language-scala" >def Import_copy(original: Import)(importImplied: Boolean, expr: Term, selectors: List[ImportSelector])(ctx: Context): Import</pre></code>
+<pre><code class="language-scala" >def Import_copy(original: Import)(importImplied: Boolean, expr: Term, selectors: List[ImportSelector])(implicit ctx: Context): Import</pre></code>
 
 ### Import_expr
-<pre><code class="language-scala" >def Import_expr(self: Import)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Import_expr(self: Import)(implicit ctx: Context): Term</pre></code>
 
 ### Import_implied
 <pre><code class="language-scala" >def Import_implied(self: Import): Boolean</pre></code>
 
 ### Import_selectors
-<pre><code class="language-scala" >def Import_selectors(self: Import)(ctx: Context): List[ImportSelector]</pre></code>
+<pre><code class="language-scala" >def Import_selectors(self: Import)(implicit ctx: Context): List[ImportSelector]</pre></code>
 
 ### Inferred_apply
-<pre><code class="language-scala" >def Inferred_apply(tpe: Type)(ctx: Context): Inferred</pre></code>
+<pre><code class="language-scala" >def Inferred_apply(tpe: Type)(implicit ctx: Context): Inferred</pre></code>
 
 ### Inlined_apply
-<pre><code class="language-scala" >def Inlined_apply(call: Option[Tree], bindings: List[Definition], expansion: Term)(ctx: Context): Inlined</pre></code>
+<pre><code class="language-scala" >def Inlined_apply(call: Option[Tree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined</pre></code>
 
 ### Inlined_bindings
-<pre><code class="language-scala" >def Inlined_bindings(self: Inlined)(ctx: Context): List[Definition]</pre></code>
+<pre><code class="language-scala" >def Inlined_bindings(self: Inlined)(implicit ctx: Context): List[Definition]</pre></code>
 
 ### Inlined_body
-<pre><code class="language-scala" >def Inlined_body(self: Inlined)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Inlined_body(self: Inlined)(implicit ctx: Context): Term</pre></code>
 
 ### Inlined_call
-<pre><code class="language-scala" >def Inlined_call(self: Inlined)(ctx: Context): Option[Tree]</pre></code>
+<pre><code class="language-scala" >def Inlined_call(self: Inlined)(implicit ctx: Context): Option[Tree]</pre></code>
 
 ### Inlined_copy
-<pre><code class="language-scala" >def Inlined_copy(original: Tree)(call: Option[Tree], bindings: List[Definition], expansion: Term)(ctx: Context): Inlined</pre></code>
+<pre><code class="language-scala" >def Inlined_copy(original: Tree)(call: Option[Tree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined</pre></code>
 
 ### Lambda_apply
-<pre><code class="language-scala" >def Lambda_apply(meth: Term, tpt: Option[TypeTree])(ctx: Context): Lambda</pre></code>
+<pre><code class="language-scala" >def Lambda_apply(meth: Term, tpt: Option[TypeTree])(implicit ctx: Context): Lambda</pre></code>
 
 ### Lambda_copy
-<pre><code class="language-scala" >def Lambda_copy(original: Tree)(meth: Tree, tpt: Option[TypeTree])(ctx: Context): Lambda</pre></code>
+<pre><code class="language-scala" >def Lambda_copy(original: Tree)(meth: Tree, tpt: Option[TypeTree])(implicit ctx: Context): Lambda</pre></code>
 
 ### Lambda_meth
-<pre><code class="language-scala" >def Lambda_meth(self: Lambda)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Lambda_meth(self: Lambda)(implicit ctx: Context): Term</pre></code>
 
 ### Lambda_tptOpt
-<pre><code class="language-scala" >def Lambda_tptOpt(self: Lambda)(ctx: Context): Option[TypeTree]</pre></code>
+<pre><code class="language-scala" >def Lambda_tptOpt(self: Lambda)(implicit ctx: Context): Option[TypeTree]</pre></code>
 
 ### Lambdaapply
-<pre><code class="language-scala" >def Lambdaapply(tparams: List[TypeDef], body: Tree)(ctx: Context): LambdaTypeTree</pre></code>
+<pre><code class="language-scala" >def Lambdaapply(tparams: List[TypeDef], body: Tree)(implicit ctx: Context): LambdaTypeTree</pre></code>
 
 ### Lambdabody
-<pre><code class="language-scala" >def Lambdabody(self: LambdaTypeTree)(ctx: Context): Tree</pre></code>
+<pre><code class="language-scala" >def Lambdabody(self: LambdaTypeTree)(implicit ctx: Context): Tree</pre></code>
 
 ### Lambdacopy
-<pre><code class="language-scala" >def Lambdacopy(original: LambdaTypeTree)(tparams: List[TypeDef], body: Tree)(ctx: Context): LambdaTypeTree</pre></code>
+<pre><code class="language-scala" >def Lambdacopy(original: LambdaTypeTree)(tparams: List[TypeDef], body: Tree)(implicit ctx: Context): LambdaTypeTree</pre></code>
 
 ### Lambdatparams
-<pre><code class="language-scala" >def Lambdatparams(self: LambdaTypeTree)(ctx: Context): List[TypeDef]</pre></code>
+<pre><code class="language-scala" >def Lambdatparams(self: LambdaTypeTree)(implicit ctx: Context): List[TypeDef]</pre></code>
 
 ### Literal_apply
-<pre><code class="language-scala" >def Literal_apply(constant: Constant)(ctx: Context): Literal</pre></code>
+<pre><code class="language-scala" >def Literal_apply(constant: Constant)(implicit ctx: Context): Literal</pre></code>
 
 ### Literal_constant
-<pre><code class="language-scala" >def Literal_constant(self: Literal)(ctx: Context): Constant</pre></code>
+<pre><code class="language-scala" >def Literal_constant(self: Literal)(implicit ctx: Context): Constant</pre></code>
 
 ### Literal_copy
-<pre><code class="language-scala" >def Literal_copy(original: Tree)(constant: Constant)(ctx: Context): Literal</pre></code>
+<pre><code class="language-scala" >def Literal_copy(original: Tree)(constant: Constant)(implicit ctx: Context): Literal</pre></code>
 
 ### MatchTypeTree_apply
-<pre><code class="language-scala" >def MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(ctx: Context): MatchTypeTree</pre></code>
+<pre><code class="language-scala" >def MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchTypeTree</pre></code>
 
 ### MatchTypeTree_bound
-<pre><code class="language-scala" >def MatchTypeTree_bound(self: MatchTypeTree)(ctx: Context): Option[TypeTree]</pre></code>
+<pre><code class="language-scala" >def MatchTypeTree_bound(self: MatchTypeTree)(implicit ctx: Context): Option[TypeTree]</pre></code>
 
 ### MatchTypeTree_cases
-<pre><code class="language-scala" >def MatchTypeTree_cases(self: MatchTypeTree)(ctx: Context): List[TypeCaseDef]</pre></code>
+<pre><code class="language-scala" >def MatchTypeTree_cases(self: MatchTypeTree)(implicit ctx: Context): List[TypeCaseDef]</pre></code>
 
 ### MatchTypeTree_copy
-<pre><code class="language-scala" >def MatchTypeTree_copy(original: MatchTypeTree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(ctx: Context): MatchTypeTree</pre></code>
+<pre><code class="language-scala" >def MatchTypeTree_copy(original: MatchTypeTree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(implicit ctx: Context): MatchTypeTree</pre></code>
 
 ### MatchTypeTree_selector
-<pre><code class="language-scala" >def MatchTypeTree_selector(self: MatchTypeTree)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def MatchTypeTree_selector(self: MatchTypeTree)(implicit ctx: Context): TypeTree</pre></code>
 
 ### MatchType_bound
-<pre><code class="language-scala" >def MatchType_bound(self: MatchType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def MatchType_bound(self: MatchType)(implicit ctx: Context): Type</pre></code>
 
 ### MatchType_cases
-<pre><code class="language-scala" >def MatchType_cases(self: MatchType)(ctx: Context): List[Type]</pre></code>
+<pre><code class="language-scala" >def MatchType_cases(self: MatchType)(implicit ctx: Context): List[Type]</pre></code>
 
 ### MatchType_scrutinee
-<pre><code class="language-scala" >def MatchType_scrutinee(self: MatchType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def MatchType_scrutinee(self: MatchType)(implicit ctx: Context): Type</pre></code>
 
 ### Match_apply
-<pre><code class="language-scala" >def Match_apply(selector: Term, cases: List[CaseDef])(ctx: Context): Match</pre></code>
+<pre><code class="language-scala" >def Match_apply(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match</pre></code>
 
 ### Match_cases
-<pre><code class="language-scala" >def Match_cases(self: Match)(ctx: Context): List[CaseDef]</pre></code>
+<pre><code class="language-scala" >def Match_cases(self: Match)(implicit ctx: Context): List[CaseDef]</pre></code>
 
 ### Match_copy
-<pre><code class="language-scala" >def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(ctx: Context): Match</pre></code>
+<pre><code class="language-scala" >def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(implicit ctx: Context): Match</pre></code>
 
 ### Match_scrutinee
-<pre><code class="language-scala" >def Match_scrutinee(self: Match)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Match_scrutinee(self: Match)(implicit ctx: Context): Term</pre></code>
 
 ### MethodType_isErased
 <pre><code class="language-scala" >def MethodType_isErased(self: MethodType): Boolean</pre></code>
@@ -1359,139 +1359,139 @@ Position in the source code
 <pre><code class="language-scala" >def MethodType_isImplicit(self: MethodType): Boolean</pre></code>
 
 ### MethodType_paramNames
-<pre><code class="language-scala" >def MethodType_paramNames(self: MethodType)(ctx: Context): List[String]</pre></code>
+<pre><code class="language-scala" >def MethodType_paramNames(self: MethodType)(implicit ctx: Context): List[String]</pre></code>
 
 ### MethodType_paramTypes
-<pre><code class="language-scala" >def MethodType_paramTypes(self: MethodType)(ctx: Context): List[Type]</pre></code>
+<pre><code class="language-scala" >def MethodType_paramTypes(self: MethodType)(implicit ctx: Context): List[Type]</pre></code>
 
 ### MethodType_resType
-<pre><code class="language-scala" >def MethodType_resType(self: MethodType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def MethodType_resType(self: MethodType)(implicit ctx: Context): Type</pre></code>
 
 ### NamedArg_apply
-<pre><code class="language-scala" >def NamedArg_apply(name: String, arg: Term)(ctx: Context): NamedArg</pre></code>
+<pre><code class="language-scala" >def NamedArg_apply(name: String, arg: Term)(implicit ctx: Context): NamedArg</pre></code>
 
 ### NamedArg_copy
-<pre><code class="language-scala" >def NamedArg_copy(tree: NamedArg)(name: String, arg: Term)(ctx: Context): NamedArg</pre></code>
+<pre><code class="language-scala" >def NamedArg_copy(tree: NamedArg)(name: String, arg: Term)(implicit ctx: Context): NamedArg</pre></code>
 
 ### NamedArg_name
-<pre><code class="language-scala" >def NamedArg_name(self: NamedArg)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def NamedArg_name(self: NamedArg)(implicit ctx: Context): String</pre></code>
 
 ### NamedArg_value
-<pre><code class="language-scala" >def NamedArg_value(self: NamedArg)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def NamedArg_value(self: NamedArg)(implicit ctx: Context): Term</pre></code>
 
 ### New_apply
-<pre><code class="language-scala" >def New_apply(tpt: TypeTree)(ctx: Context): New</pre></code>
+<pre><code class="language-scala" >def New_apply(tpt: TypeTree)(implicit ctx: Context): New</pre></code>
 
 ### New_copy
-<pre><code class="language-scala" >def New_copy(original: Tree)(tpt: TypeTree)(ctx: Context): New</pre></code>
+<pre><code class="language-scala" >def New_copy(original: Tree)(tpt: TypeTree)(implicit ctx: Context): New</pre></code>
 
 ### New_tpt
-<pre><code class="language-scala" >def New_tpt(self: New)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def New_tpt(self: New)(implicit ctx: Context): TypeTree</pre></code>
 
 ### OrType_left
-<pre><code class="language-scala" >def OrType_left(self: OrType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def OrType_left(self: OrType)(implicit ctx: Context): Type</pre></code>
 
 ### OrType_right
-<pre><code class="language-scala" >def OrType_right(self: OrType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def OrType_right(self: OrType)(implicit ctx: Context): Type</pre></code>
 
 ### PackageClause_apply
-<pre><code class="language-scala" >def PackageClause_apply(pid: Ref, stats: List[Tree])(ctx: Context): PackageClause</pre></code>
+<pre><code class="language-scala" >def PackageClause_apply(pid: Ref, stats: List[Tree])(implicit ctx: Context): PackageClause</pre></code>
 
 ### PackageClause_copy
-<pre><code class="language-scala" >def PackageClause_copy(original: PackageClause)(pid: Ref, stats: List[Tree])(ctx: Context): PackageClause</pre></code>
+<pre><code class="language-scala" >def PackageClause_copy(original: PackageClause)(pid: Ref, stats: List[Tree])(implicit ctx: Context): PackageClause</pre></code>
 
 ### PackageClause_pid
-<pre><code class="language-scala" >def PackageClause_pid(self: PackageClause)(ctx: Context): Ref</pre></code>
+<pre><code class="language-scala" >def PackageClause_pid(self: PackageClause)(implicit ctx: Context): Ref</pre></code>
 
 ### PackageClause_stats
-<pre><code class="language-scala" >def PackageClause_stats(self: PackageClause)(ctx: Context): List[Tree]</pre></code>
+<pre><code class="language-scala" >def PackageClause_stats(self: PackageClause)(implicit ctx: Context): List[Tree]</pre></code>
 
 ### PackageDefSymbol_tree
-<pre><code class="language-scala" >def PackageDefSymbol_tree(self: PackageDefSymbol)(ctx: Context): PackageDef</pre></code>
+<pre><code class="language-scala" >def PackageDefSymbol_tree(self: PackageDefSymbol)(implicit ctx: Context): PackageDef</pre></code>
 
 ### PackageDef_members
-<pre><code class="language-scala" >def PackageDef_members(self: PackageDef)(ctx: Context): List[Statement]</pre></code>
+<pre><code class="language-scala" >def PackageDef_members(self: PackageDef)(implicit ctx: Context): List[Statement]</pre></code>
 
 ### PackageDef_owner
-<pre><code class="language-scala" >def PackageDef_owner(self: PackageDef)(ctx: Context): PackageDef</pre></code>
+<pre><code class="language-scala" >def PackageDef_owner(self: PackageDef)(implicit ctx: Context): PackageDef</pre></code>
 
 ### PackageDef_symbol
-<pre><code class="language-scala" >def PackageDef_symbol(self: PackageDef)(ctx: Context): PackageDefSymbol</pre></code>
+<pre><code class="language-scala" >def PackageDef_symbol(self: PackageDef)(implicit ctx: Context): PackageDefSymbol</pre></code>
 
 ### ParamRef_binder
-<pre><code class="language-scala" >def ParamRef_binder(self: ParamRef)(ctx: Context): LambdaType[TypeOrBounds]</pre></code>
+<pre><code class="language-scala" >def ParamRef_binder(self: ParamRef)(implicit ctx: Context): LambdaType[TypeOrBounds]</pre></code>
 
 ### ParamRef_paramNum
-<pre><code class="language-scala" >def ParamRef_paramNum(self: ParamRef)(ctx: Context): Int</pre></code>
+<pre><code class="language-scala" >def ParamRef_paramNum(self: ParamRef)(implicit ctx: Context): Int</pre></code>
 
 ### Pattern_Alternatives_module_apply
-<pre><code class="language-scala" >def Pattern_Alternatives_module_apply(patterns: List[Pattern])(ctx: Context): Alternatives</pre></code>
+<pre><code class="language-scala" >def Pattern_Alternatives_module_apply(patterns: List[Pattern])(implicit ctx: Context): Alternatives</pre></code>
 
 ### Pattern_Alternatives_module_copy
-<pre><code class="language-scala" >def Pattern_Alternatives_module_copy(original: Alternatives)(patterns: List[Pattern])(ctx: Context): Alternatives</pre></code>
+<pre><code class="language-scala" >def Pattern_Alternatives_module_copy(original: Alternatives)(patterns: List[Pattern])(implicit ctx: Context): Alternatives</pre></code>
 
 ### Pattern_Alternatives_patterns
-<pre><code class="language-scala" >def Pattern_Alternatives_patterns(self: Alternatives)(ctx: Context): List[Pattern]</pre></code>
+<pre><code class="language-scala" >def Pattern_Alternatives_patterns(self: Alternatives)(implicit ctx: Context): List[Pattern]</pre></code>
 
 ### Pattern_Bind_module_copy
-<pre><code class="language-scala" >def Pattern_Bind_module_copy(original: Bind)(name: String, pattern: Pattern)(ctx: Context): Bind</pre></code>
+<pre><code class="language-scala" >def Pattern_Bind_module_copy(original: Bind)(name: String, pattern: Pattern)(implicit ctx: Context): Bind</pre></code>
 
 ### Pattern_Bind_name
-<pre><code class="language-scala" >def Pattern_Bind_name(self: Bind)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def Pattern_Bind_name(self: Bind)(implicit ctx: Context): String</pre></code>
 
 ### Pattern_Bind_pattern
-<pre><code class="language-scala" >def Pattern_Bind_pattern(self: Bind)(ctx: Context): Pattern</pre></code>
+<pre><code class="language-scala" >def Pattern_Bind_pattern(self: Bind)(implicit ctx: Context): Pattern</pre></code>
 
 ### Pattern_TypeTest_module_apply
-<pre><code class="language-scala" >def Pattern_TypeTest_module_apply(tpt: TypeTree)(ctx: Context): TypeTest</pre></code>
+<pre><code class="language-scala" >def Pattern_TypeTest_module_apply(tpt: TypeTree)(implicit ctx: Context): TypeTest</pre></code>
 
 ### Pattern_TypeTest_module_copy
-<pre><code class="language-scala" >def Pattern_TypeTest_module_copy(original: TypeTest)(tpt: TypeTree)(ctx: Context): TypeTest</pre></code>
+<pre><code class="language-scala" >def Pattern_TypeTest_module_copy(original: TypeTest)(tpt: TypeTree)(implicit ctx: Context): TypeTest</pre></code>
 
 ### Pattern_TypeTest_tpt
-<pre><code class="language-scala" >def Pattern_TypeTest_tpt(self: TypeTest)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def Pattern_TypeTest_tpt(self: TypeTest)(implicit ctx: Context): TypeTree</pre></code>
 
 ### Pattern_Unapply_fun
-<pre><code class="language-scala" >def Pattern_Unapply_fun(self: Unapply)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Pattern_Unapply_fun(self: Unapply)(implicit ctx: Context): Term</pre></code>
 
 ### Pattern_Unapply_implicits
-<pre><code class="language-scala" >def Pattern_Unapply_implicits(self: Unapply)(ctx: Context): List[Term]</pre></code>
+<pre><code class="language-scala" >def Pattern_Unapply_implicits(self: Unapply)(implicit ctx: Context): List[Term]</pre></code>
 
 ### Pattern_Unapply_module_copy
-<pre><code class="language-scala" >def Pattern_Unapply_module_copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Pattern])(ctx: Context): Unapply</pre></code>
+<pre><code class="language-scala" >def Pattern_Unapply_module_copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Pattern])(implicit ctx: Context): Unapply</pre></code>
 
 ### Pattern_Unapply_patterns
-<pre><code class="language-scala" >def Pattern_Unapply_patterns(self: Unapply)(ctx: Context): List[Pattern]</pre></code>
+<pre><code class="language-scala" >def Pattern_Unapply_patterns(self: Unapply)(implicit ctx: Context): List[Pattern]</pre></code>
 
 ### Pattern_Value_module_apply
-<pre><code class="language-scala" >def Pattern_Value_module_apply(term: Term)(ctx: Context): Value</pre></code>
+<pre><code class="language-scala" >def Pattern_Value_module_apply(term: Term)(implicit ctx: Context): Value</pre></code>
 
 ### Pattern_Value_module_copy
-<pre><code class="language-scala" >def Pattern_Value_module_copy(original: Value)(term: Term)(ctx: Context): Value</pre></code>
+<pre><code class="language-scala" >def Pattern_Value_module_copy(original: Value)(term: Term)(implicit ctx: Context): Value</pre></code>
 
 ### Pattern_Value_value
-<pre><code class="language-scala" >def Pattern_Value_value(self: Value)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Pattern_Value_value(self: Value)(implicit ctx: Context): Term</pre></code>
 
 ### Pattern_WildcardPattern_module_apply
-<pre><code class="language-scala" >def Pattern_WildcardPattern_module_apply(tpe: TypeOrBounds)(ctx: Context): WildcardPattern</pre></code>
+<pre><code class="language-scala" >def Pattern_WildcardPattern_module_apply(tpe: TypeOrBounds)(implicit ctx: Context): WildcardPattern</pre></code>
 
 ### Pattern_pos
-<pre><code class="language-scala" >def Pattern_pos(self: Pattern)(ctx: Context): Position</pre></code>
+<pre><code class="language-scala" >def Pattern_pos(self: Pattern)(implicit ctx: Context): Position</pre></code>
 
 ### Pattern_symbol
-<pre><code class="language-scala" >def Pattern_symbol(self: Pattern)(ctx: Context): Symbol</pre></code>
+<pre><code class="language-scala" >def Pattern_symbol(self: Pattern)(implicit ctx: Context): Symbol</pre></code>
 
 ### Pattern_tpe
-<pre><code class="language-scala" >def Pattern_tpe(self: Pattern)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def Pattern_tpe(self: Pattern)(implicit ctx: Context): Type</pre></code>
 
 ### PolyType_paramBounds
-<pre><code class="language-scala" >def PolyType_paramBounds(self: PolyType)(ctx: Context): List[TypeBounds]</pre></code>
+<pre><code class="language-scala" >def PolyType_paramBounds(self: PolyType)(implicit ctx: Context): List[TypeBounds]</pre></code>
 
 ### PolyType_paramNames
-<pre><code class="language-scala" >def PolyType_paramNames(self: PolyType)(ctx: Context): List[String]</pre></code>
+<pre><code class="language-scala" >def PolyType_paramNames(self: PolyType)(implicit ctx: Context): List[String]</pre></code>
 
 ### PolyType_resType
-<pre><code class="language-scala" >def PolyType_resType(self: PolyType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def PolyType_resType(self: PolyType)(implicit ctx: Context): Type</pre></code>
 
 ### Position_end
 <pre><code class="language-scala" >def Position_end(self: Position): Int</pre></code>
@@ -1530,123 +1530,123 @@ The start column in the source file
 The start line in the source file
 
 ### Projection_copy
-<pre><code class="language-scala" >def Projection_copy(original: Projection)(qualifier: TypeTree, name: String)(ctx: Context): Projection</pre></code>
+<pre><code class="language-scala" >def Projection_copy(original: Projection)(qualifier: TypeTree, name: String)(implicit ctx: Context): Projection</pre></code>
 
 ### Projection_name
-<pre><code class="language-scala" >def Projection_name(self: Projection)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def Projection_name(self: Projection)(implicit ctx: Context): String</pre></code>
 
 ### Projection_qualifier
-<pre><code class="language-scala" >def Projection_qualifier(self: Projection)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def Projection_qualifier(self: Projection)(implicit ctx: Context): TypeTree</pre></code>
 
 ### QuotedExpr_cast
 <pre><code class="language-scala" >def QuotedExpr_cast[U](self: <a href="../../quoted/Expr.md">Expr</a>[Nothing <: Any])(implicit tp: <a href="../../quoted/Type.md">Type</a>[U], ctx: Context): <a href="../../quoted/Expr.md">Expr</a>[U]</pre></code>
 Checked cast to a `quoted.Expr[U]`
 
 ### QuotedExpr_seal
-<pre><code class="language-scala" >def QuotedExpr_seal(self: Term)(ctx: Context): <a href="../../quoted/Expr.md">Expr</a>[Any]</pre></code>
+<pre><code class="language-scala" >def QuotedExpr_seal(self: Term)(implicit ctx: Context): <a href="../../quoted/Expr.md">Expr</a>[Any]</pre></code>
 Convert `Term` to an `quoted.Expr[Any]`
 
 ### QuotedExpr_unseal
-<pre><code class="language-scala" >def QuotedExpr_unseal(self: <a href="../../quoted/Expr.md">Expr</a>[Nothing <: Any])(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def QuotedExpr_unseal(self: <a href="../../quoted/Expr.md">Expr</a>[Nothing <: Any])(implicit ctx: Context): Term</pre></code>
 View this expression `quoted.Expr[_]` as a `Term`
 
 ### QuotedType_seal
-<pre><code class="language-scala" >def QuotedType_seal(self: Type)(ctx: Context): <a href="../../quoted/Type.md">Type</a>[Nothing <: AnyKind]</pre></code>
+<pre><code class="language-scala" >def QuotedType_seal(self: Type)(implicit ctx: Context): <a href="../../quoted/Type.md">Type</a>[Nothing <: AnyKind]</pre></code>
 Convert `Type` to an `quoted.Type[_]`
 
 ### QuotedType_unseal
-<pre><code class="language-scala" >def QuotedType_unseal(self: <a href="../../quoted/Type.md">Type</a>[Nothing <: AnyKind])(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def QuotedType_unseal(self: <a href="../../quoted/Type.md">Type</a>[Nothing <: AnyKind])(implicit ctx: Context): TypeTree</pre></code>
 View this expression `quoted.Type[T]` as a `TypeTree`
 
 ### RecursiveThis_binder
-<pre><code class="language-scala" >def RecursiveThis_binder(self: RecursiveThis)(ctx: Context): RecursiveType</pre></code>
+<pre><code class="language-scala" >def RecursiveThis_binder(self: RecursiveThis)(implicit ctx: Context): RecursiveType</pre></code>
 
 ### RecursiveType_underlying
-<pre><code class="language-scala" >def RecursiveType_underlying(self: RecursiveType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def RecursiveType_underlying(self: RecursiveType)(implicit ctx: Context): Type</pre></code>
 
 ### Ref_apply
-<pre><code class="language-scala" >def Ref_apply(sym: Symbol)(ctx: Context): Ref</pre></code>
+<pre><code class="language-scala" >def Ref_apply(sym: Symbol)(implicit ctx: Context): Ref</pre></code>
 
 ### Refined_copy
-<pre><code class="language-scala" >def Refined_copy(original: Refined)(tpt: TypeTree, refinements: List[Definition])(ctx: Context): Refined</pre></code>
+<pre><code class="language-scala" >def Refined_copy(original: Refined)(tpt: TypeTree, refinements: List[Definition])(implicit ctx: Context): Refined</pre></code>
 
 ### Refined_refinements
-<pre><code class="language-scala" >def Refined_refinements(self: Refined)(ctx: Context): List[Definition]</pre></code>
+<pre><code class="language-scala" >def Refined_refinements(self: Refined)(implicit ctx: Context): List[Definition]</pre></code>
 
 ### Refined_tpt
-<pre><code class="language-scala" >def Refined_tpt(self: Refined)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def Refined_tpt(self: Refined)(implicit ctx: Context): TypeTree</pre></code>
 
 ### Refinement_info
-<pre><code class="language-scala" >def Refinement_info(self: Refinement)(ctx: Context): TypeOrBounds</pre></code>
+<pre><code class="language-scala" >def Refinement_info(self: Refinement)(implicit ctx: Context): TypeOrBounds</pre></code>
 
 ### Refinement_name
-<pre><code class="language-scala" >def Refinement_name(self: Refinement)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def Refinement_name(self: Refinement)(implicit ctx: Context): String</pre></code>
 
 ### Refinement_parent
-<pre><code class="language-scala" >def Refinement_parent(self: Refinement)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def Refinement_parent(self: Refinement)(implicit ctx: Context): Type</pre></code>
 
 ### RenameSelector_from
-<pre><code class="language-scala" >def RenameSelector_from(self: RenameSelector)(ctx: Context): Id</pre></code>
+<pre><code class="language-scala" >def RenameSelector_from(self: RenameSelector)(implicit ctx: Context): Id</pre></code>
 
 ### RenameSelector_to
-<pre><code class="language-scala" >def RenameSelector_to(self: RenameSelector)(ctx: Context): Id</pre></code>
+<pre><code class="language-scala" >def RenameSelector_to(self: RenameSelector)(implicit ctx: Context): Id</pre></code>
 
 ### Repeated_apply
-<pre><code class="language-scala" >def Repeated_apply(elems: List[Term], elemtpt: TypeTree)(ctx: Context): Repeated</pre></code>
+<pre><code class="language-scala" >def Repeated_apply(elems: List[Term], elemtpt: TypeTree)(implicit ctx: Context): Repeated</pre></code>
 
 ### Repeated_copy
-<pre><code class="language-scala" >def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree)(ctx: Context): Repeated</pre></code>
+<pre><code class="language-scala" >def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree)(implicit ctx: Context): Repeated</pre></code>
 
 ### Repeated_elems
-<pre><code class="language-scala" >def Repeated_elems(self: Repeated)(ctx: Context): List[Term]</pre></code>
+<pre><code class="language-scala" >def Repeated_elems(self: Repeated)(implicit ctx: Context): List[Term]</pre></code>
 
 ### Repeated_elemtpt
-<pre><code class="language-scala" >def Repeated_elemtpt(self: Repeated)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def Repeated_elemtpt(self: Repeated)(implicit ctx: Context): TypeTree</pre></code>
 
 ### Return_apply
-<pre><code class="language-scala" >def Return_apply(expr: Term)(ctx: Context): Return</pre></code>
+<pre><code class="language-scala" >def Return_apply(expr: Term)(implicit ctx: Context): Return</pre></code>
 
 ### Return_copy
-<pre><code class="language-scala" >def Return_copy(original: Tree)(expr: Term)(ctx: Context): Return</pre></code>
+<pre><code class="language-scala" >def Return_copy(original: Tree)(expr: Term)(implicit ctx: Context): Return</pre></code>
 
 ### Return_expr
-<pre><code class="language-scala" >def Return_expr(self: Return)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Return_expr(self: Return)(implicit ctx: Context): Term</pre></code>
 
 ### SelectOuter_apply
-<pre><code class="language-scala" >def SelectOuter_apply(qualifier: Term, name: String, levels: Int)(ctx: Context): SelectOuter</pre></code>
+<pre><code class="language-scala" >def SelectOuter_apply(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): SelectOuter</pre></code>
 
 ### SelectOuter_copy
-<pre><code class="language-scala" >def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int)(ctx: Context): SelectOuter</pre></code>
+<pre><code class="language-scala" >def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int)(implicit ctx: Context): SelectOuter</pre></code>
 
 ### SelectOuter_level
-<pre><code class="language-scala" >def SelectOuter_level(self: SelectOuter)(ctx: Context): Int</pre></code>
+<pre><code class="language-scala" >def SelectOuter_level(self: SelectOuter)(implicit ctx: Context): Int</pre></code>
 
 ### SelectOuter_qualifier
-<pre><code class="language-scala" >def SelectOuter_qualifier(self: SelectOuter)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def SelectOuter_qualifier(self: SelectOuter)(implicit ctx: Context): Term</pre></code>
 
 ### SelectOuter_tpe
-<pre><code class="language-scala" >def SelectOuter_tpe(self: SelectOuter)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def SelectOuter_tpe(self: SelectOuter)(implicit ctx: Context): Type</pre></code>
 
 ### Select_apply
-<pre><code class="language-scala" >def Select_apply(qualifier: Term, symbol: Symbol)(ctx: Context): Select</pre></code>
+<pre><code class="language-scala" >def Select_apply(qualifier: Term, symbol: Symbol)(implicit ctx: Context): Select</pre></code>
 
 ### Select_copy
-<pre><code class="language-scala" >def Select_copy(original: Tree)(qualifier: Term, name: String)(ctx: Context): Select</pre></code>
+<pre><code class="language-scala" >def Select_copy(original: Tree)(qualifier: Term, name: String)(implicit ctx: Context): Select</pre></code>
 
 ### Select_name
-<pre><code class="language-scala" >def Select_name(self: Select)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def Select_name(self: Select)(implicit ctx: Context): String</pre></code>
 
 ### Select_overloaded
-<pre><code class="language-scala" >def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(ctx: Context): Apply</pre></code>
+<pre><code class="language-scala" >def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(implicit ctx: Context): Apply</pre></code>
 
 ### Select_qualifier
-<pre><code class="language-scala" >def Select_qualifier(self: Select)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Select_qualifier(self: Select)(implicit ctx: Context): Term</pre></code>
 
 ### Select_signature
-<pre><code class="language-scala" >def Select_signature(self: Select)(ctx: Context): Option[Signature]</pre></code>
+<pre><code class="language-scala" >def Select_signature(self: Select)(implicit ctx: Context): Option[Signature]</pre></code>
 
 ### Select_unique
-<pre><code class="language-scala" >def Select_unique(qualifier: Term, name: String)(ctx: Context): Select</pre></code>
+<pre><code class="language-scala" >def Select_unique(qualifier: Term, name: String)(implicit ctx: Context): Select</pre></code>
 
 ### Settings_color
 <pre><code class="language-scala" >def Settings_color(self: Settings): Boolean</pre></code>
@@ -1660,19 +1660,19 @@ The (JVM) erased signatures of the parameters
 The (JVM) erased result type
 
 ### SimpleSelector_omited
-<pre><code class="language-scala" >def SimpleSelector_omited(self: OmitSelector)(ctx: Context): Id</pre></code>
+<pre><code class="language-scala" >def SimpleSelector_omited(self: OmitSelector)(implicit ctx: Context): Id</pre></code>
 
 ### SimpleSelector_selection
-<pre><code class="language-scala" >def SimpleSelector_selection(self: SimpleSelector)(ctx: Context): Id</pre></code>
+<pre><code class="language-scala" >def SimpleSelector_selection(self: SimpleSelector)(implicit ctx: Context): Id</pre></code>
 
 ### Singleton_apply
-<pre><code class="language-scala" >def Singleton_apply(ref: Term)(ctx: Context): Singleton</pre></code>
+<pre><code class="language-scala" >def Singleton_apply(ref: Term)(implicit ctx: Context): Singleton</pre></code>
 
 ### Singleton_copy
-<pre><code class="language-scala" >def Singleton_copy(original: Singleton)(ref: Term)(ctx: Context): Singleton</pre></code>
+<pre><code class="language-scala" >def Singleton_copy(original: Singleton)(ref: Term)(implicit ctx: Context): Singleton</pre></code>
 
 ### Singleton_ref
-<pre><code class="language-scala" >def Singleton_ref(self: Singleton)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Singleton_ref(self: Singleton)(implicit ctx: Context): Term</pre></code>
 
 ### SourceFile_content
 <pre><code class="language-scala" >def SourceFile_content(self: SourceFile): String</pre></code>
@@ -1683,301 +1683,301 @@ Content of a source file
 Path to a source file
 
 ### SuperType_supertpe
-<pre><code class="language-scala" >def SuperType_supertpe(self: SuperType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def SuperType_supertpe(self: SuperType)(implicit ctx: Context): Type</pre></code>
 
 ### SuperType_thistpe
-<pre><code class="language-scala" >def SuperType_thistpe(self: SuperType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def SuperType_thistpe(self: SuperType)(implicit ctx: Context): Type</pre></code>
 
 ### Super_apply
-<pre><code class="language-scala" >def Super_apply(qual: Term, mix: Option[Id])(ctx: Context): Super</pre></code>
+<pre><code class="language-scala" >def Super_apply(qual: Term, mix: Option[Id])(implicit ctx: Context): Super</pre></code>
 
 ### Super_copy
-<pre><code class="language-scala" >def Super_copy(original: Tree)(qual: Term, mix: Option[Id])(ctx: Context): Super</pre></code>
+<pre><code class="language-scala" >def Super_copy(original: Tree)(qual: Term, mix: Option[Id])(implicit ctx: Context): Super</pre></code>
 
 ### Super_id
-<pre><code class="language-scala" >def Super_id(self: Super)(ctx: Context): Option[Id]</pre></code>
+<pre><code class="language-scala" >def Super_id(self: Super)(implicit ctx: Context): Option[Id]</pre></code>
 
 ### Super_qualifier
-<pre><code class="language-scala" >def Super_qualifier(self: Super)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Super_qualifier(self: Super)(implicit ctx: Context): Term</pre></code>
 
 ### SymRef_qualifier
-<pre><code class="language-scala" >def SymRef_qualifier(self: SymRef)(ctx: Context): TypeOrBounds</pre></code>
+<pre><code class="language-scala" >def SymRef_qualifier(self: SymRef)(implicit ctx: Context): TypeOrBounds</pre></code>
 
 ### Symbol_annots
-<pre><code class="language-scala" >def Symbol_annots(self: Symbol)(ctx: Context): List[Term]</pre></code>
+<pre><code class="language-scala" >def Symbol_annots(self: Symbol)(implicit ctx: Context): List[Term]</pre></code>
 Annotations attached to this symbol
 
 ### Symbol_comment
-<pre><code class="language-scala" >def Symbol_comment(self: Symbol)(ctx: Context): Option[Comment]</pre></code>
+<pre><code class="language-scala" >def Symbol_comment(self: Symbol)(implicit ctx: Context): Option[Comment]</pre></code>
 The comment of the symbol
 
 ### Symbol_flags
-<pre><code class="language-scala" >def Symbol_flags(self: Symbol)(ctx: Context): Flags</pre></code>
+<pre><code class="language-scala" >def Symbol_flags(self: Symbol)(implicit ctx: Context): Flags</pre></code>
 Flags of this symbol
 
 ### Symbol_fullName
-<pre><code class="language-scala" >def Symbol_fullName(self: Symbol)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def Symbol_fullName(self: Symbol)(implicit ctx: Context): String</pre></code>
 The full name of this symbol up to the root package.
 
 ### Symbol_isAbstractType
-<pre><code class="language-scala" >def Symbol_isAbstractType(self: Symbol)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Symbol_isAbstractType(self: Symbol)(implicit ctx: Context): Boolean</pre></code>
 
 ### Symbol_isAliasType
-<pre><code class="language-scala" >def Symbol_isAliasType(self: Symbol)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Symbol_isAliasType(self: Symbol)(implicit ctx: Context): Boolean</pre></code>
 
 ### Symbol_isAnonymousClass
-<pre><code class="language-scala" >def Symbol_isAnonymousClass(self: Symbol)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Symbol_isAnonymousClass(self: Symbol)(implicit ctx: Context): Boolean</pre></code>
 
 ### Symbol_isAnonymousFunction
-<pre><code class="language-scala" >def Symbol_isAnonymousFunction(self: Symbol)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Symbol_isAnonymousFunction(self: Symbol)(implicit ctx: Context): Boolean</pre></code>
 
 ### Symbol_isClassConstructor
-<pre><code class="language-scala" >def Symbol_isClassConstructor(self: Symbol)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Symbol_isClassConstructor(self: Symbol)(implicit ctx: Context): Boolean</pre></code>
 
 ### Symbol_isDefinedInCurrentRun
-<pre><code class="language-scala" >def Symbol_isDefinedInCurrentRun(self: Symbol)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Symbol_isDefinedInCurrentRun(self: Symbol)(implicit ctx: Context): Boolean</pre></code>
 
 ### Symbol_isLocalDummy
-<pre><code class="language-scala" >def Symbol_isLocalDummy(self: Symbol)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Symbol_isLocalDummy(self: Symbol)(implicit ctx: Context): Boolean</pre></code>
 
 ### Symbol_isRefinementClass
-<pre><code class="language-scala" >def Symbol_isRefinementClass(self: Symbol)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Symbol_isRefinementClass(self: Symbol)(implicit ctx: Context): Boolean</pre></code>
 
 ### Symbol_localContext
-<pre><code class="language-scala" >def Symbol_localContext(self: Symbol)(ctx: Context): Context</pre></code>
+<pre><code class="language-scala" >def Symbol_localContext(self: Symbol)(implicit ctx: Context): Context</pre></code>
 
 ### Symbol_name
-<pre><code class="language-scala" >def Symbol_name(self: Symbol)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def Symbol_name(self: Symbol)(implicit ctx: Context): String</pre></code>
 The name of this symbol.
 
 ### Symbol_owner
-<pre><code class="language-scala" >def Symbol_owner(self: Symbol)(ctx: Context): Symbol</pre></code>
+<pre><code class="language-scala" >def Symbol_owner(self: Symbol)(implicit ctx: Context): Symbol</pre></code>
 Owner of this symbol. The owner is the symbol in which this symbol is defined.
 
 ### Symbol_pos
-<pre><code class="language-scala" >def Symbol_pos(self: Symbol)(ctx: Context): Position</pre></code>
+<pre><code class="language-scala" >def Symbol_pos(self: Symbol)(implicit ctx: Context): Position</pre></code>
 The position of this symbol
 
 ### Symbol_privateWithin
-<pre><code class="language-scala" >def Symbol_privateWithin(self: Symbol)(ctx: Context): Option[Type]</pre></code>
+<pre><code class="language-scala" >def Symbol_privateWithin(self: Symbol)(implicit ctx: Context): Option[Type]</pre></code>
 This symbol is private within the resulting type.
 
 ### Symbol_protectedWithin
-<pre><code class="language-scala" >def Symbol_protectedWithin(self: Symbol)(ctx: Context): Option[Type]</pre></code>
+<pre><code class="language-scala" >def Symbol_protectedWithin(self: Symbol)(implicit ctx: Context): Option[Type]</pre></code>
 This symbol is protected within the resulting type.
 
 ### TermRef_apply
-<pre><code class="language-scala" >def TermRef_apply(qual: TypeOrBounds, name: String)(ctx: Context): TermRef</pre></code>
+<pre><code class="language-scala" >def TermRef_apply(qual: TypeOrBounds, name: String)(implicit ctx: Context): TermRef</pre></code>
 
 ### TermRef_name
-<pre><code class="language-scala" >def TermRef_name(self: TermRef)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def TermRef_name(self: TermRef)(implicit ctx: Context): String</pre></code>
 
 ### TermRef_qualifier
-<pre><code class="language-scala" >def TermRef_qualifier(self: TermRef)(ctx: Context): TypeOrBounds</pre></code>
+<pre><code class="language-scala" >def TermRef_qualifier(self: TermRef)(implicit ctx: Context): TypeOrBounds</pre></code>
 
 ### Term_pos
-<pre><code class="language-scala" >def Term_pos(self: Term)(ctx: Context): Position</pre></code>
+<pre><code class="language-scala" >def Term_pos(self: Term)(implicit ctx: Context): Position</pre></code>
 
 ### Term_tpe
-<pre><code class="language-scala" >def Term_tpe(self: Term)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def Term_tpe(self: Term)(implicit ctx: Context): Type</pre></code>
 
 ### Term_underlying
-<pre><code class="language-scala" >def Term_underlying(self: Term)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Term_underlying(self: Term)(implicit ctx: Context): Term</pre></code>
 
 ### Term_underlyingArgument
-<pre><code class="language-scala" >def Term_underlyingArgument(self: Term)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Term_underlyingArgument(self: Term)(implicit ctx: Context): Term</pre></code>
 
 ### ThisType_tref
-<pre><code class="language-scala" >def ThisType_tref(self: ThisType)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def ThisType_tref(self: ThisType)(implicit ctx: Context): Type</pre></code>
 
 ### This_apply
-<pre><code class="language-scala" >def This_apply(cls: ClassDefSymbol)(ctx: Context): This</pre></code>
+<pre><code class="language-scala" >def This_apply(cls: ClassDefSymbol)(implicit ctx: Context): This</pre></code>
 
 ### This_copy
-<pre><code class="language-scala" >def This_copy(original: Tree)(qual: Option[Id])(ctx: Context): This</pre></code>
+<pre><code class="language-scala" >def This_copy(original: Tree)(qual: Option[Id])(implicit ctx: Context): This</pre></code>
 
 ### This_id
-<pre><code class="language-scala" >def This_id(self: This)(ctx: Context): Option[Id]</pre></code>
+<pre><code class="language-scala" >def This_id(self: This)(implicit ctx: Context): Option[Id]</pre></code>
 
 ### Tree_pos
-<pre><code class="language-scala" >def Tree_pos(self: Tree)(ctx: Context): Position</pre></code>
+<pre><code class="language-scala" >def Tree_pos(self: Tree)(implicit ctx: Context): Position</pre></code>
 
 ### Tree_symbol
-<pre><code class="language-scala" >def Tree_symbol(self: Tree)(ctx: Context): Symbol</pre></code>
+<pre><code class="language-scala" >def Tree_symbol(self: Tree)(implicit ctx: Context): Symbol</pre></code>
 
 ### Try_apply
-<pre><code class="language-scala" >def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(ctx: Context): Try</pre></code>
+<pre><code class="language-scala" >def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Try</pre></code>
 
 ### Try_body
-<pre><code class="language-scala" >def Try_body(self: Try)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Try_body(self: Try)(implicit ctx: Context): Term</pre></code>
 
 ### Try_cases
-<pre><code class="language-scala" >def Try_cases(self: Try)(ctx: Context): List[CaseDef]</pre></code>
+<pre><code class="language-scala" >def Try_cases(self: Try)(implicit ctx: Context): List[CaseDef]</pre></code>
 
 ### Try_copy
-<pre><code class="language-scala" >def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(ctx: Context): Try</pre></code>
+<pre><code class="language-scala" >def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(implicit ctx: Context): Try</pre></code>
 
 ### Try_finalizer
-<pre><code class="language-scala" >def Try_finalizer(self: Try)(ctx: Context): Option[Term]</pre></code>
+<pre><code class="language-scala" >def Try_finalizer(self: Try)(implicit ctx: Context): Option[Term]</pre></code>
 
 ### TypeApply_apply
-<pre><code class="language-scala" >def TypeApply_apply(fn: Term, args: List[TypeTree])(ctx: Context): TypeApply</pre></code>
+<pre><code class="language-scala" >def TypeApply_apply(fn: Term, args: List[TypeTree])(implicit ctx: Context): TypeApply</pre></code>
 
 ### TypeApply_args
-<pre><code class="language-scala" >def TypeApply_args(self: TypeApply)(ctx: Context): List[TypeTree]</pre></code>
+<pre><code class="language-scala" >def TypeApply_args(self: TypeApply)(implicit ctx: Context): List[TypeTree]</pre></code>
 
 ### TypeApply_copy
-<pre><code class="language-scala" >def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree])(ctx: Context): TypeApply</pre></code>
+<pre><code class="language-scala" >def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree])(implicit ctx: Context): TypeApply</pre></code>
 
 ### TypeApply_fun
-<pre><code class="language-scala" >def TypeApply_fun(self: TypeApply)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def TypeApply_fun(self: TypeApply)(implicit ctx: Context): Term</pre></code>
 
 ### TypeBindSymbol_tree
-<pre><code class="language-scala" >def TypeBindSymbol_tree(self: TypeBindSymbol)(ctx: Context): TypeBind</pre></code>
+<pre><code class="language-scala" >def TypeBindSymbol_tree(self: TypeBindSymbol)(implicit ctx: Context): TypeBind</pre></code>
 TypeBind pattern of this definition
 
 ### TypeBind_body
-<pre><code class="language-scala" >def TypeBind_body(self: TypeBind)(ctx: Context): Tree</pre></code>
+<pre><code class="language-scala" >def TypeBind_body(self: TypeBind)(implicit ctx: Context): Tree</pre></code>
 
 ### TypeBind_copy
-<pre><code class="language-scala" >def TypeBind_copy(original: TypeBind)(name: String, tpt: Tree)(ctx: Context): TypeBind</pre></code>
+<pre><code class="language-scala" >def TypeBind_copy(original: TypeBind)(name: String, tpt: Tree)(implicit ctx: Context): TypeBind</pre></code>
 
 ### TypeBind_name
-<pre><code class="language-scala" >def TypeBind_name(self: TypeBind)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def TypeBind_name(self: TypeBind)(implicit ctx: Context): String</pre></code>
 
 ### TypeBlock_aliases
-<pre><code class="language-scala" >def TypeBlock_aliases(self: TypeBlock)(ctx: Context): List[TypeDef]</pre></code>
+<pre><code class="language-scala" >def TypeBlock_aliases(self: TypeBlock)(implicit ctx: Context): List[TypeDef]</pre></code>
 
 ### TypeBlock_apply
-<pre><code class="language-scala" >def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree)(ctx: Context): TypeBlock</pre></code>
+<pre><code class="language-scala" >def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock</pre></code>
 
 ### TypeBlock_copy
-<pre><code class="language-scala" >def TypeBlock_copy(original: TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(ctx: Context): TypeBlock</pre></code>
+<pre><code class="language-scala" >def TypeBlock_copy(original: TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(implicit ctx: Context): TypeBlock</pre></code>
 
 ### TypeBlock_tpt
-<pre><code class="language-scala" >def TypeBlock_tpt(self: TypeBlock)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def TypeBlock_tpt(self: TypeBlock)(implicit ctx: Context): TypeTree</pre></code>
 
 ### TypeBoundsTree_hi
-<pre><code class="language-scala" >def TypeBoundsTree_hi(self: TypeBoundsTree)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def TypeBoundsTree_hi(self: TypeBoundsTree)(implicit ctx: Context): TypeTree</pre></code>
 
 ### TypeBoundsTree_low
-<pre><code class="language-scala" >def TypeBoundsTree_low(self: TypeBoundsTree)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def TypeBoundsTree_low(self: TypeBoundsTree)(implicit ctx: Context): TypeTree</pre></code>
 
 ### TypeBoundsTree_tpe
-<pre><code class="language-scala" >def TypeBoundsTree_tpe(self: TypeBoundsTree)(ctx: Context): TypeBounds</pre></code>
+<pre><code class="language-scala" >def TypeBoundsTree_tpe(self: TypeBoundsTree)(implicit ctx: Context): TypeBounds</pre></code>
 
 ### TypeBounds_hi
-<pre><code class="language-scala" >def TypeBounds_hi(self: TypeBounds)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def TypeBounds_hi(self: TypeBounds)(implicit ctx: Context): Type</pre></code>
 
 ### TypeBounds_low
-<pre><code class="language-scala" >def TypeBounds_low(self: TypeBounds)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def TypeBounds_low(self: TypeBounds)(implicit ctx: Context): Type</pre></code>
 
 ### TypeCaseDef_module_apply
-<pre><code class="language-scala" >def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree)(ctx: Context): TypeCaseDef</pre></code>
+<pre><code class="language-scala" >def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree)(implicit ctx: Context): TypeCaseDef</pre></code>
 
 ### TypeCaseDef_module_copy
-<pre><code class="language-scala" >def TypeCaseDef_module_copy(original: TypeCaseDef)(pattern: TypeTree, body: TypeTree)(ctx: Context): TypeCaseDef</pre></code>
+<pre><code class="language-scala" >def TypeCaseDef_module_copy(original: TypeCaseDef)(pattern: TypeTree, body: TypeTree)(implicit ctx: Context): TypeCaseDef</pre></code>
 
 ### TypeCaseDef_pattern
-<pre><code class="language-scala" >def TypeCaseDef_pattern(self: TypeCaseDef)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def TypeCaseDef_pattern(self: TypeCaseDef)(implicit ctx: Context): TypeTree</pre></code>
 
 ### TypeCaseDef_rhs
-<pre><code class="language-scala" >def TypeCaseDef_rhs(self: TypeCaseDef)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def TypeCaseDef_rhs(self: TypeCaseDef)(implicit ctx: Context): TypeTree</pre></code>
 
 ### TypeDefSymbol_isTypeParam
-<pre><code class="language-scala" >def TypeDefSymbol_isTypeParam(self: TypeDefSymbol)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def TypeDefSymbol_isTypeParam(self: TypeDefSymbol)(implicit ctx: Context): Boolean</pre></code>
 
 ### TypeDefSymbol_tree
-<pre><code class="language-scala" >def TypeDefSymbol_tree(self: TypeDefSymbol)(ctx: Context): TypeDef</pre></code>
+<pre><code class="language-scala" >def TypeDefSymbol_tree(self: TypeDefSymbol)(implicit ctx: Context): TypeDef</pre></code>
 TypeDef tree of this definition
 
 ### TypeDef_apply
-<pre><code class="language-scala" >def TypeDef_apply(symbol: TypeDefSymbol)(ctx: Context): TypeDef</pre></code>
+<pre><code class="language-scala" >def TypeDef_apply(symbol: TypeDefSymbol)(implicit ctx: Context): TypeDef</pre></code>
 
 ### TypeDef_copy
-<pre><code class="language-scala" >def TypeDef_copy(original: TypeDef)(name: String, rhs: Tree)(ctx: Context): TypeDef</pre></code>
+<pre><code class="language-scala" >def TypeDef_copy(original: TypeDef)(name: String, rhs: Tree)(implicit ctx: Context): TypeDef</pre></code>
 
 ### TypeDef_rhs
-<pre><code class="language-scala" >def TypeDef_rhs(self: TypeDef)(ctx: Context): Tree</pre></code>
+<pre><code class="language-scala" >def TypeDef_rhs(self: TypeDef)(implicit ctx: Context): Tree</pre></code>
 
 ### TypeDef_symbol
-<pre><code class="language-scala" >def TypeDef_symbol(self: TypeDef)(ctx: Context): TypeDefSymbol</pre></code>
+<pre><code class="language-scala" >def TypeDef_symbol(self: TypeDef)(implicit ctx: Context): TypeDefSymbol</pre></code>
 
 ### TypeIdent_copy
-<pre><code class="language-scala" >def TypeIdent_copy(original: TypeIdent)(name: String)(ctx: Context): TypeIdent</pre></code>
+<pre><code class="language-scala" >def TypeIdent_copy(original: TypeIdent)(name: String)(implicit ctx: Context): TypeIdent</pre></code>
 
 ### TypeIdent_name
-<pre><code class="language-scala" >def TypeIdent_name(self: TypeIdent)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def TypeIdent_name(self: TypeIdent)(implicit ctx: Context): String</pre></code>
 
 ### TypeLambda_paramBounds
-<pre><code class="language-scala" >def TypeLambda_paramBounds(self: TypeLambda)(ctx: Context): List[TypeBounds]</pre></code>
+<pre><code class="language-scala" >def TypeLambda_paramBounds(self: TypeLambda)(implicit ctx: Context): List[TypeBounds]</pre></code>
 
 ### TypeLambda_paramNames
-<pre><code class="language-scala" >def TypeLambda_paramNames(self: TypeLambda)(ctx: Context): List[String]</pre></code>
+<pre><code class="language-scala" >def TypeLambda_paramNames(self: TypeLambda)(implicit ctx: Context): List[String]</pre></code>
 
 ### TypeLambda_resType
-<pre><code class="language-scala" >def TypeLambda_resType(self: TypeLambda)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def TypeLambda_resType(self: TypeLambda)(implicit ctx: Context): Type</pre></code>
 
 ### TypeRef_name
-<pre><code class="language-scala" >def TypeRef_name(self: TypeRef)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def TypeRef_name(self: TypeRef)(implicit ctx: Context): String</pre></code>
 
 ### TypeRef_qualifier
-<pre><code class="language-scala" >def TypeRef_qualifier(self: TypeRef)(ctx: Context): TypeOrBounds</pre></code>
+<pre><code class="language-scala" >def TypeRef_qualifier(self: TypeRef)(implicit ctx: Context): TypeOrBounds</pre></code>
 
 ### TypeSelect_apply
-<pre><code class="language-scala" >def TypeSelect_apply(qualifier: Term, name: String)(ctx: Context): TypeSelect</pre></code>
+<pre><code class="language-scala" >def TypeSelect_apply(qualifier: Term, name: String)(implicit ctx: Context): TypeSelect</pre></code>
 
 ### TypeSelect_copy
-<pre><code class="language-scala" >def TypeSelect_copy(original: TypeSelect)(qualifier: Term, name: String)(ctx: Context): TypeSelect</pre></code>
+<pre><code class="language-scala" >def TypeSelect_copy(original: TypeSelect)(qualifier: Term, name: String)(implicit ctx: Context): TypeSelect</pre></code>
 
 ### TypeSelect_name
-<pre><code class="language-scala" >def TypeSelect_name(self: TypeSelect)(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def TypeSelect_name(self: TypeSelect)(implicit ctx: Context): String</pre></code>
 
 ### TypeSelect_qualifier
-<pre><code class="language-scala" >def TypeSelect_qualifier(self: TypeSelect)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def TypeSelect_qualifier(self: TypeSelect)(implicit ctx: Context): Term</pre></code>
 
 ### TypeTree_pos
-<pre><code class="language-scala" >def TypeTree_pos(self: TypeTree)(ctx: Context): Position</pre></code>
+<pre><code class="language-scala" >def TypeTree_pos(self: TypeTree)(implicit ctx: Context): Position</pre></code>
 
 ### TypeTree_symbol
-<pre><code class="language-scala" >def TypeTree_symbol(self: TypeTree)(ctx: Context): Symbol</pre></code>
+<pre><code class="language-scala" >def TypeTree_symbol(self: TypeTree)(implicit ctx: Context): Symbol</pre></code>
 
 ### TypeTree_tpe
-<pre><code class="language-scala" >def TypeTree_tpe(self: TypeTree)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def TypeTree_tpe(self: TypeTree)(implicit ctx: Context): Type</pre></code>
 
 ### Type_$u003C:$u003C
-<pre><code class="language-scala" >def Type_$u003C:$u003C(self: Type)(that: Type)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Type_$u003C:$u003C(self: Type)(that: Type)(implicit ctx: Context): Boolean</pre></code>
 
 ### Type_=:=
-<pre><code class="language-scala" >def Type_=:=(self: Type)(that: Type)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Type_=:=(self: Type)(that: Type)(implicit ctx: Context): Boolean</pre></code>
 
 ### Type_classSymbol
-<pre><code class="language-scala" >def Type_classSymbol(self: Type)(ctx: Context): Option[ClassDefSymbol]</pre></code>
+<pre><code class="language-scala" >def Type_classSymbol(self: Type)(implicit ctx: Context): Option[ClassDefSymbol]</pre></code>
 
 ### Type_dealias
-<pre><code class="language-scala" >def Type_dealias(self: Type)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def Type_dealias(self: Type)(implicit ctx: Context): Type</pre></code>
 Follow aliases and dereferences LazyRefs, annotated types and instantiated
 TypeVars until type is no longer alias type, annotated type, LazyRef,
 or instantiated type variable.
 
 ### Type_derivesFrom
-<pre><code class="language-scala" >def Type_derivesFrom(self: Type)(cls: ClassDefSymbol)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Type_derivesFrom(self: Type)(cls: ClassDefSymbol)(implicit ctx: Context): Boolean</pre></code>
 Is this type an instance of a non-bottom subclass of the given class `cls`?
 
 ### Type_isDependentFunctionType
-<pre><code class="language-scala" >def Type_isDependentFunctionType(self: Type)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Type_isDependentFunctionType(self: Type)(implicit ctx: Context): Boolean</pre></code>
 Is this type a dependent function type?
 
 ***see*** `Type_isFunctionType`
 
 ### Type_isErasedFunctionType
-<pre><code class="language-scala" >def Type_isErasedFunctionType(self: Type)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Type_isErasedFunctionType(self: Type)(implicit ctx: Context): Boolean</pre></code>
 Is this type an erased function type?
 
 ***see*** `Type_isFunctionType`
 
 ### Type_isFunctionType
-<pre><code class="language-scala" >def Type_isFunctionType(self: Type)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Type_isFunctionType(self: Type)(implicit ctx: Context): Boolean</pre></code>
 Is this type a function type?
 
 ***return*** true if the dealised type of `self` without refinement is `FunctionN[T1, T2, ..., Tn]`
@@ -1988,22 +1988,22 @@ Is this type a function type?
 
 
 ### Type_isImplicitFunctionType
-<pre><code class="language-scala" >def Type_isImplicitFunctionType(self: Type)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Type_isImplicitFunctionType(self: Type)(implicit ctx: Context): Boolean</pre></code>
 Is this type an implicit function type?
 
 ***see*** `Type_isFunctionType`
 
 ### Type_isSingleton
-<pre><code class="language-scala" >def Type_isSingleton(self: Type)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def Type_isSingleton(self: Type)(implicit ctx: Context): Boolean</pre></code>
 
 ### Type_memberType
-<pre><code class="language-scala" >def Type_memberType(self: Type)(member: Symbol)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def Type_memberType(self: Type)(member: Symbol)(implicit ctx: Context): Type</pre></code>
 
 ### Type_typeSymbol
-<pre><code class="language-scala" >def Type_typeSymbol(self: Type)(ctx: Context): Symbol</pre></code>
+<pre><code class="language-scala" >def Type_typeSymbol(self: Type)(implicit ctx: Context): Symbol</pre></code>
 
 ### Type_widen
-<pre><code class="language-scala" >def Type_widen(self: Type)(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def Type_widen(self: Type)(implicit ctx: Context): Type</pre></code>
 Widen from singleton type to its underlying non-singleton
 base type by applying one or more `underlying` dereferences,
 Also go from => T to T.
@@ -2013,110 +2013,110 @@ def o: Outer
 <o.x.type>.widen = o.C
 
 ### Typed_apply
-<pre><code class="language-scala" >def Typed_apply(expr: Term, tpt: TypeTree)(ctx: Context): Typed</pre></code>
+<pre><code class="language-scala" >def Typed_apply(expr: Term, tpt: TypeTree)(implicit ctx: Context): Typed</pre></code>
 
 ### Typed_copy
-<pre><code class="language-scala" >def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree)(ctx: Context): Typed</pre></code>
+<pre><code class="language-scala" >def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree)(implicit ctx: Context): Typed</pre></code>
 
 ### Typed_expr
-<pre><code class="language-scala" >def Typed_expr(self: Typed)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def Typed_expr(self: Typed)(implicit ctx: Context): Term</pre></code>
 
 ### Typed_tpt
-<pre><code class="language-scala" >def Typed_tpt(self: Typed)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def Typed_tpt(self: Typed)(implicit ctx: Context): TypeTree</pre></code>
 
 ### ValDefSymbol_companionClass
-<pre><code class="language-scala" >def ValDefSymbol_companionClass(self: ValDefSymbol)(ctx: Context): Option[ClassDefSymbol]</pre></code>
+<pre><code class="language-scala" >def ValDefSymbol_companionClass(self: ValDefSymbol)(implicit ctx: Context): Option[ClassDefSymbol]</pre></code>
 
 ### ValDefSymbol_moduleClass
-<pre><code class="language-scala" >def ValDefSymbol_moduleClass(self: ValDefSymbol)(ctx: Context): Option[ClassDefSymbol]</pre></code>
+<pre><code class="language-scala" >def ValDefSymbol_moduleClass(self: ValDefSymbol)(implicit ctx: Context): Option[ClassDefSymbol]</pre></code>
 The class symbol of the companion module class
 
 ### ValDefSymbol_tree
-<pre><code class="language-scala" >def ValDefSymbol_tree(self: ValDefSymbol)(ctx: Context): ValDef</pre></code>
+<pre><code class="language-scala" >def ValDefSymbol_tree(self: ValDefSymbol)(implicit ctx: Context): ValDef</pre></code>
 ValDef tree of this definition
 
 ### ValDef_apply
-<pre><code class="language-scala" >def ValDef_apply(symbol: ValDefSymbol, rhs: Option[Term])(ctx: Context): ValDef</pre></code>
+<pre><code class="language-scala" >def ValDef_apply(symbol: ValDefSymbol, rhs: Option[Term])(implicit ctx: Context): ValDef</pre></code>
 
 ### ValDef_copy
-<pre><code class="language-scala" >def ValDef_copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(ctx: Context): ValDef</pre></code>
+<pre><code class="language-scala" >def ValDef_copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(implicit ctx: Context): ValDef</pre></code>
 
 ### ValDef_rhs
-<pre><code class="language-scala" >def ValDef_rhs(self: ValDef)(ctx: Context): Option[Term]</pre></code>
+<pre><code class="language-scala" >def ValDef_rhs(self: ValDef)(implicit ctx: Context): Option[Term]</pre></code>
 
 ### ValDef_symbol
-<pre><code class="language-scala" >def ValDef_symbol(self: ValDef)(ctx: Context): ValDefSymbol</pre></code>
+<pre><code class="language-scala" >def ValDef_symbol(self: ValDef)(implicit ctx: Context): ValDefSymbol</pre></code>
 
 ### ValDef_tpt
-<pre><code class="language-scala" >def ValDef_tpt(self: ValDef)(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def ValDef_tpt(self: ValDef)(implicit ctx: Context): TypeTree</pre></code>
 
 ### While_apply
-<pre><code class="language-scala" >def While_apply(cond: Term, body: Term)(ctx: Context): While</pre></code>
+<pre><code class="language-scala" >def While_apply(cond: Term, body: Term)(implicit ctx: Context): While</pre></code>
 
 ### While_body
-<pre><code class="language-scala" >def While_body(self: While)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def While_body(self: While)(implicit ctx: Context): Term</pre></code>
 
 ### While_cond
-<pre><code class="language-scala" >def While_cond(self: While)(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def While_cond(self: While)(implicit ctx: Context): Term</pre></code>
 
 ### While_copy
-<pre><code class="language-scala" >def While_copy(original: Tree)(cond: Term, body: Term)(ctx: Context): While</pre></code>
+<pre><code class="language-scala" >def While_copy(original: Tree)(cond: Term, body: Term)(implicit ctx: Context): While</pre></code>
 
 ### WildcardTypeTree_tpe
-<pre><code class="language-scala" >def WildcardTypeTree_tpe(self: WildcardTypeTree)(ctx: Context): TypeOrBounds</pre></code>
+<pre><code class="language-scala" >def WildcardTypeTree_tpe(self: WildcardTypeTree)(implicit ctx: Context): TypeOrBounds</pre></code>
 
 ### error
-<pre><code class="language-scala" >def error(msg: => String, source: SourceFile, start: Int, end: Int)(ctx: Context): Unit</pre></code>
+<pre><code class="language-scala" >def error(msg: => String, source: SourceFile, start: Int, end: Int)(implicit ctx: Context): Unit</pre></code>
 Report a compilation error with the given message at the given position range
 
 ### error
-<pre><code class="language-scala" >def error(msg: => String, pos: Position)(ctx: Context): Unit</pre></code>
+<pre><code class="language-scala" >def error(msg: => String, pos: Position)(implicit ctx: Context): Unit</pre></code>
 Report a compilation error with the given message at the given position
 
 ### matchAndType
-<pre><code class="language-scala" >def matchAndType(tpe: TypeOrBounds)(ctx: Context): Option[AndType]</pre></code>
+<pre><code class="language-scala" >def matchAndType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AndType]</pre></code>
 
 ### matchAnnotated
-<pre><code class="language-scala" >def matchAnnotated(tree: Tree)(ctx: Context): Option[Annotated]</pre></code>
+<pre><code class="language-scala" >def matchAnnotated(tree: Tree)(implicit ctx: Context): Option[Annotated]</pre></code>
 
 ### matchAnnotatedType
-<pre><code class="language-scala" >def matchAnnotatedType(tpe: TypeOrBounds)(ctx: Context): Option[AnnotatedType]</pre></code>
+<pre><code class="language-scala" >def matchAnnotatedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AnnotatedType]</pre></code>
 
 ### matchApplied
-<pre><code class="language-scala" >def matchApplied(tree: Tree)(ctx: Context): Option[Applied]</pre></code>
+<pre><code class="language-scala" >def matchApplied(tree: Tree)(implicit ctx: Context): Option[Applied]</pre></code>
 
 ### matchAppliedType
-<pre><code class="language-scala" >def matchAppliedType(tpe: TypeOrBounds)(ctx: Context): Option[AppliedType]</pre></code>
+<pre><code class="language-scala" >def matchAppliedType(tpe: TypeOrBounds)(implicit ctx: Context): Option[AppliedType]</pre></code>
 
 ### matchApply
-<pre><code class="language-scala" >def matchApply(tree: Tree)(ctx: Context): Option[Apply]</pre></code>
+<pre><code class="language-scala" >def matchApply(tree: Tree)(implicit ctx: Context): Option[Apply]</pre></code>
 
 ### matchAssign
-<pre><code class="language-scala" >def matchAssign(tree: Tree)(ctx: Context): Option[Assign]</pre></code>
+<pre><code class="language-scala" >def matchAssign(tree: Tree)(implicit ctx: Context): Option[Assign]</pre></code>
 
 ### matchBindSymbol
-<pre><code class="language-scala" >def matchBindSymbol(symbol: Symbol)(ctx: Context): Option[BindSymbol]</pre></code>
+<pre><code class="language-scala" >def matchBindSymbol(symbol: Symbol)(implicit ctx: Context): Option[BindSymbol]</pre></code>
 
 ### matchBlock
-<pre><code class="language-scala" >def matchBlock(tree: Tree)(ctx: Context): Option[Block]</pre></code>
+<pre><code class="language-scala" >def matchBlock(tree: Tree)(implicit ctx: Context): Option[Block]</pre></code>
 
 ### matchByName
-<pre><code class="language-scala" >def matchByName(tree: Tree)(ctx: Context): Option[ByName]</pre></code>
+<pre><code class="language-scala" >def matchByName(tree: Tree)(implicit ctx: Context): Option[ByName]</pre></code>
 
 ### matchByNameType
-<pre><code class="language-scala" >def matchByNameType(tpe: TypeOrBounds)(ctx: Context): Option[ByNameType]</pre></code>
+<pre><code class="language-scala" >def matchByNameType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ByNameType]</pre></code>
 
 ### matchCaseDef
-<pre><code class="language-scala" >def matchCaseDef(tree: Tree)(ctx: Context): Option[CaseDef]</pre></code>
+<pre><code class="language-scala" >def matchCaseDef(tree: Tree)(implicit ctx: Context): Option[CaseDef]</pre></code>
 
 ### matchClassDef
-<pre><code class="language-scala" >def matchClassDef(tree: Tree)(ctx: Context): Option[ClassDef]</pre></code>
+<pre><code class="language-scala" >def matchClassDef(tree: Tree)(implicit ctx: Context): Option[ClassDef]</pre></code>
 
 ### matchClassDefSymbol
-<pre><code class="language-scala" >def matchClassDefSymbol(symbol: Symbol)(ctx: Context): Option[ClassDefSymbol]</pre></code>
+<pre><code class="language-scala" >def matchClassDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[ClassDefSymbol]</pre></code>
 
 ### matchConstantType
-<pre><code class="language-scala" >def matchConstantType(tpe: TypeOrBounds)(ctx: Context): Option[ConstantType]</pre></code>
+<pre><code class="language-scala" >def matchConstantType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType]</pre></code>
 
 ### matchConstant_Boolean
 <pre><code class="language-scala" >def matchConstant_Boolean(constant: Constant): Option[Boolean]</pre></code>
@@ -2158,238 +2158,238 @@ Report a compilation error with the given message at the given position
 <pre><code class="language-scala" >def matchConstant_Unit(constant: Constant): Boolean</pre></code>
 
 ### matchDefDef
-<pre><code class="language-scala" >def matchDefDef(tree: Tree)(ctx: Context): Option[DefDef]</pre></code>
+<pre><code class="language-scala" >def matchDefDef(tree: Tree)(implicit ctx: Context): Option[DefDef]</pre></code>
 
 ### matchDefDefSymbol
-<pre><code class="language-scala" >def matchDefDefSymbol(symbol: Symbol)(ctx: Context): Option[DefDefSymbol]</pre></code>
+<pre><code class="language-scala" >def matchDefDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[DefDefSymbol]</pre></code>
 
 ### matchDefinition
-<pre><code class="language-scala" >def matchDefinition(tree: Tree)(ctx: Context): Option[Definition]</pre></code>
+<pre><code class="language-scala" >def matchDefinition(tree: Tree)(implicit ctx: Context): Option[Definition]</pre></code>
 
 ### matchIdent
-<pre><code class="language-scala" >def matchIdent(tree: Tree)(ctx: Context): Option[Ident]</pre></code>
+<pre><code class="language-scala" >def matchIdent(tree: Tree)(implicit ctx: Context): Option[Ident]</pre></code>
 
 ### matchIf
-<pre><code class="language-scala" >def matchIf(tree: Tree)(ctx: Context): Option[If]</pre></code>
+<pre><code class="language-scala" >def matchIf(tree: Tree)(implicit ctx: Context): Option[If]</pre></code>
 
 ### matchImplicitMatch
-<pre><code class="language-scala" >def matchImplicitMatch(tree: Tree)(ctx: Context): Option[ImpliedMatch]</pre></code>
+<pre><code class="language-scala" >def matchImplicitMatch(tree: Tree)(implicit ctx: Context): Option[ImpliedMatch]</pre></code>
 
 ### matchImport
-<pre><code class="language-scala" >def matchImport(tree: Tree)(ctx: Context): Option[Import]</pre></code>
+<pre><code class="language-scala" >def matchImport(tree: Tree)(implicit ctx: Context): Option[Import]</pre></code>
 
 ### matchInferred
-<pre><code class="language-scala" >def matchInferred(tree: Tree)(ctx: Context): Option[Inferred]</pre></code>
+<pre><code class="language-scala" >def matchInferred(tree: Tree)(implicit ctx: Context): Option[Inferred]</pre></code>
 
 ### matchInlined
-<pre><code class="language-scala" >def matchInlined(tree: Tree)(ctx: Context): Option[Inlined]</pre></code>
+<pre><code class="language-scala" >def matchInlined(tree: Tree)(implicit ctx: Context): Option[Inlined]</pre></code>
 
 ### matchLambda
-<pre><code class="language-scala" >def matchLambda(tree: Tree)(ctx: Context): Option[Lambda]</pre></code>
+<pre><code class="language-scala" >def matchLambda(tree: Tree)(implicit ctx: Context): Option[Lambda]</pre></code>
 
 ### matchLambdaTypeTree
-<pre><code class="language-scala" >def matchLambdaTypeTree(tree: Tree)(ctx: Context): Option[LambdaTypeTree]</pre></code>
+<pre><code class="language-scala" >def matchLambdaTypeTree(tree: Tree)(implicit ctx: Context): Option[LambdaTypeTree]</pre></code>
 
 ### matchLiteral
-<pre><code class="language-scala" >def matchLiteral(tree: Tree)(ctx: Context): Option[Literal]</pre></code>
+<pre><code class="language-scala" >def matchLiteral(tree: Tree)(implicit ctx: Context): Option[Literal]</pre></code>
 
 ### matchMatch
-<pre><code class="language-scala" >def matchMatch(tree: Tree)(ctx: Context): Option[Match]</pre></code>
+<pre><code class="language-scala" >def matchMatch(tree: Tree)(implicit ctx: Context): Option[Match]</pre></code>
 
 ### matchMatchType
-<pre><code class="language-scala" >def matchMatchType(tpe: TypeOrBounds)(ctx: Context): Option[MatchType]</pre></code>
+<pre><code class="language-scala" >def matchMatchType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MatchType]</pre></code>
 
 ### matchMatchTypeTree
-<pre><code class="language-scala" >def matchMatchTypeTree(tree: Tree)(ctx: Context): Option[MatchTypeTree]</pre></code>
+<pre><code class="language-scala" >def matchMatchTypeTree(tree: Tree)(implicit ctx: Context): Option[MatchTypeTree]</pre></code>
 
 ### matchMethodType
-<pre><code class="language-scala" >def matchMethodType(tpe: TypeOrBounds)(ctx: Context): Option[MethodType]</pre></code>
+<pre><code class="language-scala" >def matchMethodType(tpe: TypeOrBounds)(implicit ctx: Context): Option[MethodType]</pre></code>
 
 ### matchNamedArg
-<pre><code class="language-scala" >def matchNamedArg(tree: Tree)(ctx: Context): Option[NamedArg]</pre></code>
+<pre><code class="language-scala" >def matchNamedArg(tree: Tree)(implicit ctx: Context): Option[NamedArg]</pre></code>
 
 ### matchNew
-<pre><code class="language-scala" >def matchNew(tree: Tree)(ctx: Context): Option[New]</pre></code>
+<pre><code class="language-scala" >def matchNew(tree: Tree)(implicit ctx: Context): Option[New]</pre></code>
 
 ### matchNoPrefix
-<pre><code class="language-scala" >def matchNoPrefix(x: TypeOrBounds)(ctx: Context): Option[NoPrefix]</pre></code>
+<pre><code class="language-scala" >def matchNoPrefix(x: TypeOrBounds)(implicit ctx: Context): Option[NoPrefix]</pre></code>
 
 ### matchNoSymbol
-<pre><code class="language-scala" >def matchNoSymbol(symbol: Symbol)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def matchNoSymbol(symbol: Symbol)(implicit ctx: Context): Boolean</pre></code>
 
 ### matchOmitSelector
-<pre><code class="language-scala" >def matchOmitSelector(self: ImportSelector)(ctx: Context): Option[OmitSelector]</pre></code>
+<pre><code class="language-scala" >def matchOmitSelector(self: ImportSelector)(implicit ctx: Context): Option[OmitSelector]</pre></code>
 
 ### matchOrType
-<pre><code class="language-scala" >def matchOrType(tpe: TypeOrBounds)(ctx: Context): Option[OrType]</pre></code>
+<pre><code class="language-scala" >def matchOrType(tpe: TypeOrBounds)(implicit ctx: Context): Option[OrType]</pre></code>
 
 ### matchPackageClause
-<pre><code class="language-scala" >def matchPackageClause(tree: Tree)(ctx: Context): Option[PackageClause]</pre></code>
+<pre><code class="language-scala" >def matchPackageClause(tree: Tree)(implicit ctx: Context): Option[PackageClause]</pre></code>
 
 ### matchPackageDef
-<pre><code class="language-scala" >def matchPackageDef(tree: Tree)(ctx: Context): Option[PackageDef]</pre></code>
+<pre><code class="language-scala" >def matchPackageDef(tree: Tree)(implicit ctx: Context): Option[PackageDef]</pre></code>
 
 ### matchPackageDefSymbol
-<pre><code class="language-scala" >def matchPackageDefSymbol(symbol: Symbol)(ctx: Context): Option[PackageDefSymbol]</pre></code>
+<pre><code class="language-scala" >def matchPackageDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[PackageDefSymbol]</pre></code>
 
 ### matchParamRef
-<pre><code class="language-scala" >def matchParamRef(tpe: TypeOrBounds)(ctx: Context): Option[ParamRef]</pre></code>
+<pre><code class="language-scala" >def matchParamRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[ParamRef]</pre></code>
 
 ### matchPattern_Alternatives
-<pre><code class="language-scala" >def matchPattern_Alternatives(pattern: Pattern)(ctx: Context): Option[Alternatives]</pre></code>
+<pre><code class="language-scala" >def matchPattern_Alternatives(pattern: Pattern)(implicit ctx: Context): Option[Alternatives]</pre></code>
 
 ### matchPattern_Bind
-<pre><code class="language-scala" >def matchPattern_Bind(x: Pattern)(ctx: Context): Option[Bind]</pre></code>
+<pre><code class="language-scala" >def matchPattern_Bind(x: Pattern)(implicit ctx: Context): Option[Bind]</pre></code>
 
 ### matchPattern_TypeTest
-<pre><code class="language-scala" >def matchPattern_TypeTest(pattern: Pattern)(ctx: Context): Option[TypeTest]</pre></code>
+<pre><code class="language-scala" >def matchPattern_TypeTest(pattern: Pattern)(implicit ctx: Context): Option[TypeTest]</pre></code>
 
 ### matchPattern_Unapply
-<pre><code class="language-scala" >def matchPattern_Unapply(pattern: Pattern)(ctx: Context): Option[Unapply]</pre></code>
+<pre><code class="language-scala" >def matchPattern_Unapply(pattern: Pattern)(implicit ctx: Context): Option[Unapply]</pre></code>
 
 ### matchPattern_Value
 <pre><code class="language-scala" >def matchPattern_Value(pattern: Pattern): Option[Value]</pre></code>
 
 ### matchPattern_WildcardPattern
-<pre><code class="language-scala" >def matchPattern_WildcardPattern(pattern: Pattern)(ctx: Context): Option[WildcardPattern]</pre></code>
+<pre><code class="language-scala" >def matchPattern_WildcardPattern(pattern: Pattern)(implicit ctx: Context): Option[WildcardPattern]</pre></code>
 
 ### matchPolyType
-<pre><code class="language-scala" >def matchPolyType(tpe: TypeOrBounds)(ctx: Context): Option[PolyType]</pre></code>
+<pre><code class="language-scala" >def matchPolyType(tpe: TypeOrBounds)(implicit ctx: Context): Option[PolyType]</pre></code>
 
 ### matchProjection
-<pre><code class="language-scala" >def matchProjection(tree: Tree)(ctx: Context): Option[Projection]</pre></code>
+<pre><code class="language-scala" >def matchProjection(tree: Tree)(implicit ctx: Context): Option[Projection]</pre></code>
 
 ### matchRecursiveThis
-<pre><code class="language-scala" >def matchRecursiveThis(tpe: TypeOrBounds)(ctx: Context): Option[RecursiveThis]</pre></code>
+<pre><code class="language-scala" >def matchRecursiveThis(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveThis]</pre></code>
 
 ### matchRecursiveType
-<pre><code class="language-scala" >def matchRecursiveType(tpe: TypeOrBounds)(ctx: Context): Option[RecursiveType]</pre></code>
+<pre><code class="language-scala" >def matchRecursiveType(tpe: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType]</pre></code>
 
 ### matchRef
-<pre><code class="language-scala" >def matchRef(tree: Tree)(ctx: Context): Option[Ref]</pre></code>
+<pre><code class="language-scala" >def matchRef(tree: Tree)(implicit ctx: Context): Option[Ref]</pre></code>
 
 ### matchRefined
-<pre><code class="language-scala" >def matchRefined(tree: Tree)(ctx: Context): Option[Refined]</pre></code>
+<pre><code class="language-scala" >def matchRefined(tree: Tree)(implicit ctx: Context): Option[Refined]</pre></code>
 
 ### matchRefinement
-<pre><code class="language-scala" >def matchRefinement(tpe: TypeOrBounds)(ctx: Context): Option[Refinement]</pre></code>
+<pre><code class="language-scala" >def matchRefinement(tpe: TypeOrBounds)(implicit ctx: Context): Option[Refinement]</pre></code>
 
 ### matchRenameSelector
-<pre><code class="language-scala" >def matchRenameSelector(self: ImportSelector)(ctx: Context): Option[RenameSelector]</pre></code>
+<pre><code class="language-scala" >def matchRenameSelector(self: ImportSelector)(implicit ctx: Context): Option[RenameSelector]</pre></code>
 
 ### matchRepeated
-<pre><code class="language-scala" >def matchRepeated(tree: Tree)(ctx: Context): Option[Repeated]</pre></code>
+<pre><code class="language-scala" >def matchRepeated(tree: Tree)(implicit ctx: Context): Option[Repeated]</pre></code>
 
 ### matchReturn
-<pre><code class="language-scala" >def matchReturn(tree: Tree)(ctx: Context): Option[Return]</pre></code>
+<pre><code class="language-scala" >def matchReturn(tree: Tree)(implicit ctx: Context): Option[Return]</pre></code>
 
 ### matchSelect
-<pre><code class="language-scala" >def matchSelect(tree: Tree)(ctx: Context): Option[Select]</pre></code>
+<pre><code class="language-scala" >def matchSelect(tree: Tree)(implicit ctx: Context): Option[Select]</pre></code>
 
 ### matchSelectOuter
-<pre><code class="language-scala" >def matchSelectOuter(tree: Tree)(ctx: Context): Option[SelectOuter]</pre></code>
+<pre><code class="language-scala" >def matchSelectOuter(tree: Tree)(implicit ctx: Context): Option[SelectOuter]</pre></code>
 
 ### matchSimpleSelector
-<pre><code class="language-scala" >def matchSimpleSelector(self: ImportSelector)(ctx: Context): Option[SimpleSelector]</pre></code>
+<pre><code class="language-scala" >def matchSimpleSelector(self: ImportSelector)(implicit ctx: Context): Option[SimpleSelector]</pre></code>
 
 ### matchSingleton
-<pre><code class="language-scala" >def matchSingleton(tree: Tree)(ctx: Context): Option[Singleton]</pre></code>
+<pre><code class="language-scala" >def matchSingleton(tree: Tree)(implicit ctx: Context): Option[Singleton]</pre></code>
 
 ### matchStatement
-<pre><code class="language-scala" >def matchStatement(tree: Tree)(ctx: Context): Option[Statement]</pre></code>
+<pre><code class="language-scala" >def matchStatement(tree: Tree)(implicit ctx: Context): Option[Statement]</pre></code>
 
 ### matchSuper
-<pre><code class="language-scala" >def matchSuper(tree: Tree)(ctx: Context): Option[Super]</pre></code>
+<pre><code class="language-scala" >def matchSuper(tree: Tree)(implicit ctx: Context): Option[Super]</pre></code>
 
 ### matchSuperType
-<pre><code class="language-scala" >def matchSuperType(tpe: TypeOrBounds)(ctx: Context): Option[SuperType]</pre></code>
+<pre><code class="language-scala" >def matchSuperType(tpe: TypeOrBounds)(implicit ctx: Context): Option[SuperType]</pre></code>
 
 ### matchSymRef
-<pre><code class="language-scala" >def matchSymRef(tpe: TypeOrBounds)(ctx: Context): Option[SymRef]</pre></code>
+<pre><code class="language-scala" >def matchSymRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[SymRef]</pre></code>
 
 ### matchSymRef_unapply
-<pre><code class="language-scala" >def matchSymRef_unapply(tpe: TypeOrBounds)(ctx: Context): Option[(Symbol, TypeOrBounds)]</pre></code>
+<pre><code class="language-scala" >def matchSymRef_unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds)]</pre></code>
 
 ### matchTerm
-<pre><code class="language-scala" >def matchTerm(tree: Tree)(ctx: Context): Option[Term]</pre></code>
+<pre><code class="language-scala" >def matchTerm(tree: Tree)(implicit ctx: Context): Option[Term]</pre></code>
 
 ### matchTermRef
-<pre><code class="language-scala" >def matchTermRef(tpe: TypeOrBounds)(ctx: Context): Option[TermRef]</pre></code>
+<pre><code class="language-scala" >def matchTermRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TermRef]</pre></code>
 
 ### matchTermSymbol
-<pre><code class="language-scala" >def matchTermSymbol(symbol: Symbol)(ctx: Context): Option[TermSymbol]</pre></code>
+<pre><code class="language-scala" >def matchTermSymbol(symbol: Symbol)(implicit ctx: Context): Option[TermSymbol]</pre></code>
 
 ### matchThis
-<pre><code class="language-scala" >def matchThis(tree: Tree)(ctx: Context): Option[This]</pre></code>
+<pre><code class="language-scala" >def matchThis(tree: Tree)(implicit ctx: Context): Option[This]</pre></code>
 
 ### matchThisType
-<pre><code class="language-scala" >def matchThisType(tpe: TypeOrBounds)(ctx: Context): Option[ThisType]</pre></code>
+<pre><code class="language-scala" >def matchThisType(tpe: TypeOrBounds)(implicit ctx: Context): Option[ThisType]</pre></code>
 
 ### matchTry
-<pre><code class="language-scala" >def matchTry(tree: Tree)(ctx: Context): Option[Try]</pre></code>
+<pre><code class="language-scala" >def matchTry(tree: Tree)(implicit ctx: Context): Option[Try]</pre></code>
 
 ### matchType
-<pre><code class="language-scala" >def matchType(x: TypeOrBounds)(ctx: Context): Option[Type]</pre></code>
+<pre><code class="language-scala" >def matchType(x: TypeOrBounds)(implicit ctx: Context): Option[Type]</pre></code>
 
 ### matchTypeApply
-<pre><code class="language-scala" >def matchTypeApply(tree: Tree)(ctx: Context): Option[TypeApply]</pre></code>
+<pre><code class="language-scala" >def matchTypeApply(tree: Tree)(implicit ctx: Context): Option[TypeApply]</pre></code>
 
 ### matchTypeBind
-<pre><code class="language-scala" >def matchTypeBind(tree: Tree)(ctx: Context): Option[TypeBind]</pre></code>
+<pre><code class="language-scala" >def matchTypeBind(tree: Tree)(implicit ctx: Context): Option[TypeBind]</pre></code>
 
 ### matchTypeBindSymbol
-<pre><code class="language-scala" >def matchTypeBindSymbol(symbol: Symbol)(ctx: Context): Option[TypeBindSymbol]</pre></code>
+<pre><code class="language-scala" >def matchTypeBindSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeBindSymbol]</pre></code>
 
 ### matchTypeBlock
-<pre><code class="language-scala" >def matchTypeBlock(tree: Tree)(ctx: Context): Option[TypeBlock]</pre></code>
+<pre><code class="language-scala" >def matchTypeBlock(tree: Tree)(implicit ctx: Context): Option[TypeBlock]</pre></code>
 
 ### matchTypeBounds
-<pre><code class="language-scala" >def matchTypeBounds(x: TypeOrBounds)(ctx: Context): Option[TypeBounds]</pre></code>
+<pre><code class="language-scala" >def matchTypeBounds(x: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds]</pre></code>
 
 ### matchTypeBoundsTree
-<pre><code class="language-scala" >def matchTypeBoundsTree(tree: Tree)(ctx: Context): Option[TypeBoundsTree]</pre></code>
+<pre><code class="language-scala" >def matchTypeBoundsTree(tree: Tree)(implicit ctx: Context): Option[TypeBoundsTree]</pre></code>
 
 ### matchTypeCaseDef
-<pre><code class="language-scala" >def matchTypeCaseDef(tree: Tree)(ctx: Context): Option[TypeCaseDef]</pre></code>
+<pre><code class="language-scala" >def matchTypeCaseDef(tree: Tree)(implicit ctx: Context): Option[TypeCaseDef]</pre></code>
 
 ### matchTypeDef
-<pre><code class="language-scala" >def matchTypeDef(tree: Tree)(ctx: Context): Option[TypeDef]</pre></code>
+<pre><code class="language-scala" >def matchTypeDef(tree: Tree)(implicit ctx: Context): Option[TypeDef]</pre></code>
 
 ### matchTypeDefSymbol
-<pre><code class="language-scala" >def matchTypeDefSymbol(symbol: Symbol)(ctx: Context): Option[TypeDefSymbol]</pre></code>
+<pre><code class="language-scala" >def matchTypeDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeDefSymbol]</pre></code>
 
 ### matchTypeIdent
-<pre><code class="language-scala" >def matchTypeIdent(tree: Tree)(ctx: Context): Option[TypeIdent]</pre></code>
+<pre><code class="language-scala" >def matchTypeIdent(tree: Tree)(implicit ctx: Context): Option[TypeIdent]</pre></code>
 
 ### matchTypeLambda
-<pre><code class="language-scala" >def matchTypeLambda(tpe: TypeOrBounds)(ctx: Context): Option[TypeLambda]</pre></code>
+<pre><code class="language-scala" >def matchTypeLambda(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeLambda]</pre></code>
 
 ### matchTypeRef
-<pre><code class="language-scala" >def matchTypeRef(tpe: TypeOrBounds)(ctx: Context): Option[TypeRef]</pre></code>
+<pre><code class="language-scala" >def matchTypeRef(tpe: TypeOrBounds)(implicit ctx: Context): Option[TypeRef]</pre></code>
 
 ### matchTypeSelect
-<pre><code class="language-scala" >def matchTypeSelect(tree: Tree)(ctx: Context): Option[TypeSelect]</pre></code>
+<pre><code class="language-scala" >def matchTypeSelect(tree: Tree)(implicit ctx: Context): Option[TypeSelect]</pre></code>
 
 ### matchTypeSymbol
-<pre><code class="language-scala" >def matchTypeSymbol(symbol: Symbol)(ctx: Context): Option[TypeSymbol]</pre></code>
+<pre><code class="language-scala" >def matchTypeSymbol(symbol: Symbol)(implicit ctx: Context): Option[TypeSymbol]</pre></code>
 
 ### matchTypeTree
-<pre><code class="language-scala" >def matchTypeTree(tree: Tree)(ctx: Context): Option[TypeTree]</pre></code>
+<pre><code class="language-scala" >def matchTypeTree(tree: Tree)(implicit ctx: Context): Option[TypeTree]</pre></code>
 
 ### matchTyped
-<pre><code class="language-scala" >def matchTyped(tree: Tree)(ctx: Context): Option[Typed]</pre></code>
+<pre><code class="language-scala" >def matchTyped(tree: Tree)(implicit ctx: Context): Option[Typed]</pre></code>
 
 ### matchValDef
-<pre><code class="language-scala" >def matchValDef(tree: Tree)(ctx: Context): Option[ValDef]</pre></code>
+<pre><code class="language-scala" >def matchValDef(tree: Tree)(implicit ctx: Context): Option[ValDef]</pre></code>
 
 ### matchValDefSymbol
-<pre><code class="language-scala" >def matchValDefSymbol(symbol: Symbol)(ctx: Context): Option[ValDefSymbol]</pre></code>
+<pre><code class="language-scala" >def matchValDefSymbol(symbol: Symbol)(implicit ctx: Context): Option[ValDefSymbol]</pre></code>
 
 ### matchWhile
-<pre><code class="language-scala" >def matchWhile(tree: Tree)(ctx: Context): Option[While]</pre></code>
+<pre><code class="language-scala" >def matchWhile(tree: Tree)(implicit ctx: Context): Option[While]</pre></code>
 
 ### matchWildcardTypeTree
-<pre><code class="language-scala" >def matchWildcardTypeTree(tree: Tree)(ctx: Context): Option[WildcardTypeTree]</pre></code>
+<pre><code class="language-scala" >def matchWildcardTypeTree(tree: Tree)(implicit ctx: Context): Option[WildcardTypeTree]</pre></code>
 
 ### rootContext
 <pre><code class="language-scala" >def rootContext: Context</pre></code>
@@ -2403,17 +2403,17 @@ Root position of this tasty context. For macros it corresponds to the expansion 
 <pre><code class="language-scala" >def settings: Settings</pre></code>
 
 ### typeChecks
-<pre><code class="language-scala" >def typeChecks(code: String)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def typeChecks(code: String)(implicit ctx: Context): Boolean</pre></code>
 Whether the code type checks in the given context?
 
 ***code*** The code to be type checked
 The code should be a sequence of expressions or statements that may appear in a block.
 
 ### warning
-<pre><code class="language-scala" >def warning(msg: => String, source: SourceFile, start: Int, end: Int)(ctx: Context): Unit</pre></code>
+<pre><code class="language-scala" >def warning(msg: => String, source: SourceFile, start: Int, end: Int)(implicit ctx: Context): Unit</pre></code>
 Report a compilation warning with the given message at the given position range
 
 ### warning
-<pre><code class="language-scala" >def warning(msg: => String, pos: Position)(ctx: Context): Unit</pre></code>
+<pre><code class="language-scala" >def warning(msg: => String, pos: Position)(implicit ctx: Context): Unit</pre></code>
 Report a compilation warning with the given message at the given position
 

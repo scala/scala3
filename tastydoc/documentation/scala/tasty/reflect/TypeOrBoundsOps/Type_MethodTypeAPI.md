@@ -13,11 +13,11 @@ scala.tasty.reflect.TypeOrBoundsOps
 <pre><code class="language-scala" >def isImplicit: Boolean</pre></code>
 
 ### paramNames
-<pre><code class="language-scala" >def paramNames(ctx: Context): List[String]</pre></code>
+<pre><code class="language-scala" >def paramNames(implicit ctx: Context): List[String]</pre></code>
 
 ### paramTypes
-<pre><code class="language-scala" >def paramTypes(ctx: Context): List[Type]</pre></code>
+<pre><code class="language-scala" >def paramTypes(implicit ctx: Context): List[Type]</pre></code>
 
 ### resType
-<pre><code class="language-scala" >def resType(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def resType(implicit ctx: Context): Type</pre></code>
 

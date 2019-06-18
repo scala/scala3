@@ -7,6 +7,6 @@ scala.quoted.Expr$
 
 ## Concrete Value Members:
 ### show
-<pre><code class="language-scala" >def show(toolbox: <a href="../Toolbox.md">Toolbox</a>): String</pre></code>
+<pre><code class="language-scala" >def show(implicit toolbox: <a href="../Toolbox.md">Toolbox</a>): String</pre></code>
 Show a source code like representation of this expression
 

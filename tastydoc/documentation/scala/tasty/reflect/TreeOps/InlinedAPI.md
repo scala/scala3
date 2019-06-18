@@ -7,11 +7,11 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### bindings
-<pre><code class="language-scala" >def bindings(ctx: Context): List[Definition]</pre></code>
+<pre><code class="language-scala" >def bindings(implicit ctx: Context): List[Definition]</pre></code>
 
 ### body
-<pre><code class="language-scala" >def body(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def body(implicit ctx: Context): Term</pre></code>
 
 ### call
-<pre><code class="language-scala" >def call(ctx: Context): Option[Tree]</pre></code>
+<pre><code class="language-scala" >def call(implicit ctx: Context): Option[Tree]</pre></code>
 

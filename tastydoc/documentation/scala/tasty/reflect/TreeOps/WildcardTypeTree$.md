@@ -6,6 +6,6 @@ TypeBoundsTree containing wildcard type bounds
 
 ## Concrete Value Members:
 ### unapply
-<pre><code class="language-scala" >def unapply(tree: Tree)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def unapply(tree: Tree)(implicit ctx: Context): Boolean</pre></code>
 Matches a TypeBoundsTree containing wildcard type bounds
 

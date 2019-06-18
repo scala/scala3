@@ -11,10 +11,10 @@ scala.tasty.reflect.QuotedOps
 Checked cast to a `quoted.Expr[U]`
 
 ### show
-<pre><code class="language-scala" >def show(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def show(implicit ctx: Context): String</pre></code>
 Show a source code like representation of this expression
 
 ### unseal
-<pre><code class="language-scala" >def unseal(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def unseal(implicit ctx: Context): Term</pre></code>
 View this expression `quoted.Expr[T]` as a `Term`
 

@@ -15,7 +15,7 @@ Setting of the Toolbox instance.
 <pre><code class="language-scala" >class <a href="./Toolbox$/ToolboxNotFoundException.md">ToolboxNotFoundException</a></pre></code>
 ## Concrete Value Members:
 ### make
-<pre><code class="language-scala" >def make(appClassloader: ClassLoader)(settings: <a href="./Toolbox$/Settings.md">Settings</a>): <a href="./Toolbox.md">Toolbox</a></pre></code>
+<pre><code class="language-scala" >def make(appClassloader: ClassLoader)(implicit settings: <a href="./Toolbox$/Settings.md">Settings</a>): <a href="./Toolbox.md">Toolbox</a></pre></code>
 Create a new instance of the toolbox using the the classloader of the application.
 Usuage:
 ```

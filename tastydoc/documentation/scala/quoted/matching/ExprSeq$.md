@@ -6,6 +6,6 @@ Literal sequence of expressions
 
 ## Concrete Value Members:
 ### unapply
-<pre><code class="language-scala" >def unapply[T](expr: <a href="../Expr.md">Expr</a>[Seq[T]])(reflect: <a href="../../tasty/Reflection.md">Reflection</a>): Option[Seq[<a href="../Expr.md">Expr</a>[T]]]</pre></code>
+<pre><code class="language-scala" >def unapply[T](expr: <a href="../Expr.md">Expr</a>[Seq[T]])(implicit reflect: <a href="../../tasty/Reflection.md">Reflection</a>): Option[Seq[<a href="../Expr.md">Expr</a>[T]]]</pre></code>
 Matches a literal sequence of expressions
 

@@ -7,6 +7,6 @@ scala.tasty.reflect.QuotedOps
 
 ## Concrete Value Members:
 ### seal
-<pre><code class="language-scala" >def seal(ctx: Context): <a href="../../../quoted/Expr.md">Expr</a>[Any]</pre></code>
+<pre><code class="language-scala" >def seal(implicit ctx: Context): <a href="../../../quoted/Expr.md">Expr</a>[Any]</pre></code>
 Convert `Term` to an `quoted.Expr[Any]`
 

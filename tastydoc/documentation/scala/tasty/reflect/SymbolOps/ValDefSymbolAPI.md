@@ -7,13 +7,13 @@ scala.tasty.reflect.SymbolOps
 
 ## Concrete Value Members:
 ### companionClass
-<pre><code class="language-scala" >def companionClass(ctx: Context): Option[ClassDefSymbol]</pre></code>
+<pre><code class="language-scala" >def companionClass(implicit ctx: Context): Option[ClassDefSymbol]</pre></code>
 
 ### moduleClass
-<pre><code class="language-scala" >def moduleClass(ctx: Context): Option[ClassDefSymbol]</pre></code>
+<pre><code class="language-scala" >def moduleClass(implicit ctx: Context): Option[ClassDefSymbol]</pre></code>
 The class symbol of the companion module class
 
 ### tree
-<pre><code class="language-scala" >def tree(ctx: Context): ValDef</pre></code>
+<pre><code class="language-scala" >def tree(implicit ctx: Context): ValDef</pre></code>
 ValDef tree of this defintion
 

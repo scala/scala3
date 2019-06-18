@@ -7,5 +7,5 @@ scala.tasty.reflect.SymbolOps
 
 ## Concrete Value Members:
 ### tree
-<pre><code class="language-scala" >def tree(ctx: Context): PackageDef</pre></code>
+<pre><code class="language-scala" >def tree(implicit ctx: Context): PackageDef</pre></code>
 

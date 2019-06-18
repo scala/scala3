@@ -7,11 +7,11 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### expr
-<pre><code class="language-scala" >def expr(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def expr(implicit ctx: Context): Term</pre></code>
 
 ### importImplied
 <pre><code class="language-scala" >def importImplied: Boolean</pre></code>
 
 ### selectors
-<pre><code class="language-scala" >def selectors(ctx: Context): List[ImportSelector]</pre></code>
+<pre><code class="language-scala" >def selectors(implicit ctx: Context): List[ImportSelector]</pre></code>
 

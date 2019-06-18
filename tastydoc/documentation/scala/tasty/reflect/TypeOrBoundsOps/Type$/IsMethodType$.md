@@ -4,6 +4,6 @@ scala.tasty.reflect.TypeOrBoundsOps.Type$
 <pre><code class="language-scala" >final object IsMethodType extends Serializable</pre></code>
 ## Concrete Value Members:
 ### unapply
-<pre><code class="language-scala" >def unapply(tpe: TypeOrBounds)(ctx: Context): Option[MethodType]</pre></code>
+<pre><code class="language-scala" >def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[MethodType]</pre></code>
 Matches any MethodType and returns it
 

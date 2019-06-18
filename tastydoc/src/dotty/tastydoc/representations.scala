@@ -149,7 +149,7 @@ object representations extends TastyExtractor {
     override val paramLists = internal.paramss.map{p =>
       new ParamList {
         override val list = p.map(x => NamedReference(x.name, convertTypeToReference(reflect)(x.tpt.tpe)))
-        override val isImplicit = if(p.size > 1) p.tail.head.symbol.flags.is(Flags.Implicit) else false
+        override val isImplicit = if(p.nonEmpty) p.head.symbol.flags.is(Flags.Implicit) else false
       }
     }
     override val returnValue = convertTypeToReference(reflect)(internal.returnTpt.tpe)

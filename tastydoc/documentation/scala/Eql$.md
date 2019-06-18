@@ -28,10 +28,10 @@ the rules of multiversal equality require it.
 <pre><code class="language-scala" >implicit def eqlProxy: Eql[Proxy, AnyRef]</pre></code>
 
 ### eqlSeq
-<pre><code class="language-scala" >implicit def eqlSeq[T, U](eq: Eql[T, U]): Eql[GenSeq[T], GenSeq[U]]</pre></code>
+<pre><code class="language-scala" >implicit def eqlSeq[T, U](implicit eq: Eql[T, U]): Eql[GenSeq[T], GenSeq[U]]</pre></code>
 
 ### eqlSet
-<pre><code class="language-scala" >implicit def eqlSet[T, U](eq: Eql[T, U]): Eql[Set[T], Set[U]]</pre></code>
+<pre><code class="language-scala" >implicit def eqlSet[T, U](implicit eq: Eql[T, U]): Eql[Set[T], Set[U]]</pre></code>
 
 ### eqlString
 <pre><code class="language-scala" >implicit def eqlString: Eql[String, String]</pre></code>

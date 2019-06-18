@@ -7,5 +7,5 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### constant
-<pre><code class="language-scala" >def constant(ctx: Context): Constant</pre></code>
+<pre><code class="language-scala" >def constant(implicit ctx: Context): Constant</pre></code>
 

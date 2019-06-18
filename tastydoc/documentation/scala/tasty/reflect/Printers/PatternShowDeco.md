@@ -9,11 +9,11 @@ Adds `show` as an extension method of a `Pattern`
 
 ## Concrete Value Members:
 ### show
-<pre><code class="language-scala" >def show(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def show(implicit ctx: Context): String</pre></code>
 Shows the tree as fully typed source code.
 Will print Ansi colors if ctx.printColors is enabled.
 
 ### showExtractors
-<pre><code class="language-scala" >def showExtractors(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def showExtractors(implicit ctx: Context): String</pre></code>
 Shows the tree as extractors
 

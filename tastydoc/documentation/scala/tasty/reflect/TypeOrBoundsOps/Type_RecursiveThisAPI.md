@@ -7,5 +7,5 @@ scala.tasty.reflect.TypeOrBoundsOps
 
 ## Concrete Value Members:
 ### binder
-<pre><code class="language-scala" >def binder(ctx: Context): RecursiveType</pre></code>
+<pre><code class="language-scala" >def binder(implicit ctx: Context): RecursiveType</pre></code>
 

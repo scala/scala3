@@ -7,11 +7,11 @@ scala.tasty.reflect.TypeOrBoundsOps
 
 ## Concrete Value Members:
 ### info
-<pre><code class="language-scala" >def info(ctx: Context): TypeOrBounds</pre></code>
+<pre><code class="language-scala" >def info(implicit ctx: Context): TypeOrBounds</pre></code>
 
 ### name
-<pre><code class="language-scala" >def name(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def name(implicit ctx: Context): String</pre></code>
 
 ### parent
-<pre><code class="language-scala" >def parent(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def parent(implicit ctx: Context): Type</pre></code>
 

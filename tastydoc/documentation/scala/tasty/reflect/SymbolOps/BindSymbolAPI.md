@@ -7,6 +7,6 @@ scala.tasty.reflect.SymbolOps
 
 ## Concrete Value Members:
 ### tree
-<pre><code class="language-scala" >def tree(ctx: Context): Bind</pre></code>
+<pre><code class="language-scala" >def tree(implicit ctx: Context): Bind</pre></code>
 Bind pattern of this definition
 

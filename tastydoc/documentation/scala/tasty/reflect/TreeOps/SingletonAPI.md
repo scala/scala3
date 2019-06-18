@@ -7,5 +7,5 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### ref
-<pre><code class="language-scala" >def ref(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def ref(implicit ctx: Context): Term</pre></code>
 

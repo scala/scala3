@@ -7,20 +7,20 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### body
-<pre><code class="language-scala" >def body(ctx: Context): List[Statement]</pre></code>
+<pre><code class="language-scala" >def body(implicit ctx: Context): List[Statement]</pre></code>
 
 ### constructor
-<pre><code class="language-scala" >def constructor(ctx: Context): DefDef</pre></code>
+<pre><code class="language-scala" >def constructor(implicit ctx: Context): DefDef</pre></code>
 
 ### derived
-<pre><code class="language-scala" >def derived(ctx: Context): List[TypeTree]</pre></code>
+<pre><code class="language-scala" >def derived(implicit ctx: Context): List[TypeTree]</pre></code>
 
 ### parents
-<pre><code class="language-scala" >def parents(ctx: Context): List[Tree]</pre></code>
+<pre><code class="language-scala" >def parents(implicit ctx: Context): List[Tree]</pre></code>
 
 ### self
-<pre><code class="language-scala" >def self(ctx: Context): Option[ValDef]</pre></code>
+<pre><code class="language-scala" >def self(implicit ctx: Context): Option[ValDef]</pre></code>
 
 ### symbol
-<pre><code class="language-scala" >def symbol(ctx: Context): ClassDefSymbol</pre></code>
+<pre><code class="language-scala" >def symbol(implicit ctx: Context): ClassDefSymbol</pre></code>
 

@@ -4,6 +4,6 @@ scala.tasty.reflect.TreeOps
 <pre><code class="language-scala" >final object Ref extends Serializable</pre></code>
 ## Concrete Value Members:
 ### apply
-<pre><code class="language-scala" >def apply(sym: Symbol)(ctx: Context): Ref</pre></code>
+<pre><code class="language-scala" >def apply(sym: Symbol)(implicit ctx: Context): Ref</pre></code>
 Create a reference tree
 

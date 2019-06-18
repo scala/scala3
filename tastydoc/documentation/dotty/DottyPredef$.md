@@ -16,7 +16,7 @@ dotty
 <pre><code class="language-scala" >def assertFail(): Unit</pre></code>
 
 ### implicitly
-<pre><code class="language-scala" >@forceInline final inline def implicitly[T](ev: T): T</pre></code>
+<pre><code class="language-scala" >@forceInline final inline def implicitly[T](implicit ev: T): T</pre></code>
 
 ### locally
 <pre><code class="language-scala" >@forceInline inline def locally[T](body: => T): T</pre></code>

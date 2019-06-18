@@ -7,5 +7,5 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### result
-<pre><code class="language-scala" >def result(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def result(implicit ctx: Context): TypeTree</pre></code>
 

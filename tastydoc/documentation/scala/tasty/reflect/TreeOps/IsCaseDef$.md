@@ -4,5 +4,5 @@ scala.tasty.reflect.TreeOps
 <pre><code class="language-scala" >final object IsCaseDef extends Serializable</pre></code>
 ## Concrete Value Members:
 ### unapply
-<pre><code class="language-scala" >def unapply(self: Tree)(ctx: Context): Option[CaseDef]</pre></code>
+<pre><code class="language-scala" >def unapply(self: Tree)(implicit ctx: Context): Option[CaseDef]</pre></code>
 

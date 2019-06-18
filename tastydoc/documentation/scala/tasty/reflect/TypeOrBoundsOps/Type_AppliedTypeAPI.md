@@ -7,8 +7,8 @@ scala.tasty.reflect.TypeOrBoundsOps
 
 ## Concrete Value Members:
 ### args
-<pre><code class="language-scala" >def args(ctx: Context): List[TypeOrBounds]</pre></code>
+<pre><code class="language-scala" >def args(implicit ctx: Context): List[TypeOrBounds]</pre></code>
 
 ### tycon
-<pre><code class="language-scala" >def tycon(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def tycon(implicit ctx: Context): Type</pre></code>
 

@@ -7,11 +7,11 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### level
-<pre><code class="language-scala" >def level(ctx: Context): Int</pre></code>
+<pre><code class="language-scala" >def level(implicit ctx: Context): Int</pre></code>
 
 ### qualifier
-<pre><code class="language-scala" >def qualifier(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def qualifier(implicit ctx: Context): Term</pre></code>
 
 ### tpe
-<pre><code class="language-scala" >def tpe(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def tpe(implicit ctx: Context): Type</pre></code>
 

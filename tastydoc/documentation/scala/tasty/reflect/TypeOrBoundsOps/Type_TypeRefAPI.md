@@ -7,8 +7,8 @@ scala.tasty.reflect.TypeOrBoundsOps
 
 ## Concrete Value Members:
 ### name
-<pre><code class="language-scala" >def name(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def name(implicit ctx: Context): String</pre></code>
 
 ### qualifier
-<pre><code class="language-scala" >def qualifier(ctx: Context): TypeOrBounds</pre></code>
+<pre><code class="language-scala" >def qualifier(implicit ctx: Context): TypeOrBounds</pre></code>
 

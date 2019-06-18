@@ -6,13 +6,13 @@ Scala local `return`
 
 ## Concrete Value Members:
 ### apply
-<pre><code class="language-scala" >def apply(expr: Term)(ctx: Context): Return</pre></code>
+<pre><code class="language-scala" >def apply(expr: Term)(implicit ctx: Context): Return</pre></code>
 Creates `return <expr: Term>`
 
 ### copy
-<pre><code class="language-scala" >def copy(original: Tree)(expr: Term)(ctx: Context): Return</pre></code>
+<pre><code class="language-scala" >def copy(original: Tree)(expr: Term)(implicit ctx: Context): Return</pre></code>
 
 ### unapply
-<pre><code class="language-scala" >def unapply(tree: Tree)(ctx: Context): Option[Term]</pre></code>
+<pre><code class="language-scala" >def unapply(tree: Tree)(implicit ctx: Context): Option[Term]</pre></code>
 Matches `return <expr: Term>`
 

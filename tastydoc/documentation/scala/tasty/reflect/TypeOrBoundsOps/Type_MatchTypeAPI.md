@@ -7,11 +7,11 @@ scala.tasty.reflect.TypeOrBoundsOps
 
 ## Concrete Value Members:
 ### bound
-<pre><code class="language-scala" >def bound(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def bound(implicit ctx: Context): Type</pre></code>
 
 ### cases
-<pre><code class="language-scala" >def cases(ctx: Context): List[Type]</pre></code>
+<pre><code class="language-scala" >def cases(implicit ctx: Context): List[Type]</pre></code>
 
 ### scrutinee
-<pre><code class="language-scala" >def scrutinee(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def scrutinee(implicit ctx: Context): Type</pre></code>
 

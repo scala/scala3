@@ -4,6 +4,6 @@ scala.tasty.reflect.TreeOps
 <pre><code class="language-scala" >final object IsTypeApply extends Serializable</pre></code>
 ## Concrete Value Members:
 ### unapply
-<pre><code class="language-scala" >def unapply(tree: Tree)(ctx: Context): Option[TypeApply]</pre></code>
+<pre><code class="language-scala" >def unapply(tree: Tree)(implicit ctx: Context): Option[TypeApply]</pre></code>
 Matches any TypeApply and returns it
 

@@ -7,8 +7,8 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### pattern
-<pre><code class="language-scala" >def pattern(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def pattern(implicit ctx: Context): TypeTree</pre></code>
 
 ### rhs
-<pre><code class="language-scala" >def rhs(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def rhs(implicit ctx: Context): TypeTree</pre></code>
 

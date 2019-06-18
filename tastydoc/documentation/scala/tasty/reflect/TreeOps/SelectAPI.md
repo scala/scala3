@@ -7,11 +7,11 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### name
-<pre><code class="language-scala" >def name(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def name(implicit ctx: Context): String</pre></code>
 
 ### qualifier
-<pre><code class="language-scala" >def qualifier(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def qualifier(implicit ctx: Context): Term</pre></code>
 
 ### signature
-<pre><code class="language-scala" >def signature(ctx: Context): Option[Signature]</pre></code>
+<pre><code class="language-scala" >def signature(implicit ctx: Context): Option[Signature]</pre></code>
 

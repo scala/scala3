@@ -7,11 +7,11 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### guard
-<pre><code class="language-scala" >def guard(ctx: Context): Option[Term]</pre></code>
+<pre><code class="language-scala" >def guard(implicit ctx: Context): Option[Term]</pre></code>
 
 ### pattern
-<pre><code class="language-scala" >def pattern(ctx: Context): Pattern</pre></code>
+<pre><code class="language-scala" >def pattern(implicit ctx: Context): Pattern</pre></code>
 
 ### rhs
-<pre><code class="language-scala" >def rhs(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def rhs(implicit ctx: Context): Term</pre></code>
 

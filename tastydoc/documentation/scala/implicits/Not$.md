@@ -6,11 +6,11 @@ scala.implicits
 <pre><code class="language-scala" >final object Not extends <a href="./LowPriorityNot.md">LowPriorityNot</a> with Serializable</pre></code>
 ## Concrete Value Members:
 ### amb1
-<pre><code class="language-scala" >implicit def amb1[T](ev: T): <a href="./Not.md">Not</a>[T]</pre></code>
+<pre><code class="language-scala" >implicit def amb1[T](implicit ev: T): <a href="./Not.md">Not</a>[T]</pre></code>
 One of two ambiguous methods used to emulate negation in Scala 2
 
 ### amb2
-<pre><code class="language-scala" >implicit def amb2[T](ev: T): <a href="./Not.md">Not</a>[T]</pre></code>
+<pre><code class="language-scala" >implicit def amb2[T](implicit ev: T): <a href="./Not.md">Not</a>[T]</pre></code>
 One of two ambiguous methods used to emulate negation in Scala 2
 
 ### default

@@ -7,6 +7,6 @@ scala.tasty.reflect.QuotedOps
 
 ## Concrete Value Members:
 ### seal
-<pre><code class="language-scala" >def seal(ctx: Context): <a href="../../../quoted/Type.md">Type</a>[Nothing <: AnyKind]</pre></code>
+<pre><code class="language-scala" >def seal(implicit ctx: Context): <a href="../../../quoted/Type.md">Type</a>[Nothing <: AnyKind]</pre></code>
 Convert `Type` to an `quoted.Type[_]`
 

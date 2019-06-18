@@ -7,9 +7,9 @@ scala.tasty.reflect.SymbolOps
 
 ## Concrete Value Members:
 ### isTypeParam
-<pre><code class="language-scala" >def isTypeParam(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def isTypeParam(implicit ctx: Context): Boolean</pre></code>
 
 ### tree
-<pre><code class="language-scala" >def tree(ctx: Context): TypeDef</pre></code>
+<pre><code class="language-scala" >def tree(implicit ctx: Context): TypeDef</pre></code>
 TypeDef tree of this definition
 

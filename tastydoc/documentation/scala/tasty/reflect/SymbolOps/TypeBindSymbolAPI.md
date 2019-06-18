@@ -7,6 +7,6 @@ scala.tasty.reflect.SymbolOps
 
 ## Concrete Value Members:
 ### tree
-<pre><code class="language-scala" >def tree(ctx: Context): TypeBind</pre></code>
+<pre><code class="language-scala" >def tree(implicit ctx: Context): TypeBind</pre></code>
 TypeBind pattern of this definition
 

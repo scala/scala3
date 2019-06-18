@@ -7,8 +7,8 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### rhs
-<pre><code class="language-scala" >def rhs(ctx: Context): Tree</pre></code>
+<pre><code class="language-scala" >def rhs(implicit ctx: Context): Tree</pre></code>
 
 ### symbol
-<pre><code class="language-scala" >def symbol(ctx: Context): TypeDefSymbol</pre></code>
+<pre><code class="language-scala" >def symbol(implicit ctx: Context): TypeDefSymbol</pre></code>
 

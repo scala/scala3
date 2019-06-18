@@ -7,8 +7,8 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### body
-<pre><code class="language-scala" >def body(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def body(implicit ctx: Context): Term</pre></code>
 
 ### cond
-<pre><code class="language-scala" >def cond(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def cond(implicit ctx: Context): Term</pre></code>
 

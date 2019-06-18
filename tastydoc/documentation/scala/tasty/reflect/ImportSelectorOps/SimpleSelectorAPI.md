@@ -7,5 +7,5 @@ scala.tasty.reflect.ImportSelectorOps
 
 ## Concrete Value Members:
 ### selection
-<pre><code class="language-scala" >def selection(ctx: Context): Id</pre></code>
+<pre><code class="language-scala" >def selection(implicit ctx: Context): Id</pre></code>
 

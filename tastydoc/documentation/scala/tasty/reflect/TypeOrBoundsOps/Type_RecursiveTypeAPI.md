@@ -7,5 +7,5 @@ scala.tasty.reflect.TypeOrBoundsOps
 
 ## Concrete Value Members:
 ### underlying
-<pre><code class="language-scala" >def underlying(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def underlying(implicit ctx: Context): Type</pre></code>
 

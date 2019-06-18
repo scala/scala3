@@ -7,5 +7,5 @@ scala.tasty.reflect.PatternOps
 
 ## Concrete Value Members:
 ### value
-<pre><code class="language-scala" >def value(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def value(implicit ctx: Context): Term</pre></code>
 

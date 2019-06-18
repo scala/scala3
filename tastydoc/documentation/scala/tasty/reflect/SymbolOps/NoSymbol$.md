@@ -4,5 +4,5 @@ scala.tasty.reflect.SymbolOps
 <pre><code class="language-scala" >final object NoSymbol extends Serializable</pre></code>
 ## Concrete Value Members:
 ### unapply
-<pre><code class="language-scala" >def unapply(symbol: Symbol)(ctx: Context): Boolean</pre></code>
+<pre><code class="language-scala" >def unapply(symbol: Symbol)(implicit ctx: Context): Boolean</pre></code>
 

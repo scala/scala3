@@ -36,5 +36,5 @@ Adds `show` as an extension method of a `TypeOrBounds`
 
 ## Concrete Value Members:
 ### typeOf
-<pre><code class="language-scala" >def typeOf[T](evidence$2: <a href="../../quoted/Type.md">Type</a>[T]): Type</pre></code>
+<pre><code class="language-scala" >def typeOf[T](implicit evidence$2: <a href="../../quoted/Type.md">Type</a>[T]): Type</pre></code>
 

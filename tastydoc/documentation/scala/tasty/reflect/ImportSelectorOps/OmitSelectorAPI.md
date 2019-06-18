@@ -7,5 +7,5 @@ scala.tasty.reflect.ImportSelectorOps
 
 ## Concrete Value Members:
 ### omitted
-<pre><code class="language-scala" >def omitted(ctx: Context): Id</pre></code>
+<pre><code class="language-scala" >def omitted(implicit ctx: Context): Id</pre></code>
 

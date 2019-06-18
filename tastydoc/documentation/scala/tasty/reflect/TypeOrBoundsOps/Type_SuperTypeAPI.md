@@ -7,8 +7,8 @@ scala.tasty.reflect.TypeOrBoundsOps
 
 ## Concrete Value Members:
 ### supertpe
-<pre><code class="language-scala" >def supertpe(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def supertpe(implicit ctx: Context): Type</pre></code>
 
 ### thistpe
-<pre><code class="language-scala" >def thistpe(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def thistpe(implicit ctx: Context): Type</pre></code>
 

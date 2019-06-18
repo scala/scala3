@@ -7,8 +7,8 @@ scala.tasty.reflect.PatternOps
 
 ## Concrete Value Members:
 ### name
-<pre><code class="language-scala" >def name(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def name(implicit ctx: Context): String</pre></code>
 
 ### pattern
-<pre><code class="language-scala" >def pattern(ctx: Context): Pattern</pre></code>
+<pre><code class="language-scala" >def pattern(implicit ctx: Context): Pattern</pre></code>
 

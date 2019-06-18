@@ -7,8 +7,8 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### pid
-<pre><code class="language-scala" >def pid(ctx: Context): Ref</pre></code>
+<pre><code class="language-scala" >def pid(implicit ctx: Context): Ref</pre></code>
 
 ### stats
-<pre><code class="language-scala" >def stats(ctx: Context): List[Tree]</pre></code>
+<pre><code class="language-scala" >def stats(implicit ctx: Context): List[Tree]</pre></code>
 

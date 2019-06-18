@@ -7,10 +7,10 @@ scala.tasty.reflect.QuotedOps
 
 ## Concrete Value Members:
 ### show
-<pre><code class="language-scala" >def show(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def show(implicit ctx: Context): String</pre></code>
 Show a source code like representation of this type
 
 ### unseal
-<pre><code class="language-scala" >def unseal(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def unseal(implicit ctx: Context): TypeTree</pre></code>
 View this expression `quoted.Type[T]` as a `TypeTree`
 

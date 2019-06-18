@@ -49,22 +49,22 @@ Auxiliary constructor
 <pre><code class="language-scala" >sealed trait <a href="./Documentation/CaseImplementThis.md">CaseImplementThis</a></pre></code>
 ## Concrete Value Members:
 ### ++
-<pre><code class="language-scala" >def ++[B, That](that: GenTraversableOnce[B])(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def ++[B, That](that: GenTraversableOnce[B])(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### ++:
-<pre><code class="language-scala" >def ++:[B, That](that: Traversable[B])(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def ++:[B, That](that: Traversable[B])(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### ++:
-<pre><code class="language-scala" >def ++:[B, That](that: TraversableOnce[B])(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def ++:[B, That](that: TraversableOnce[B])(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### +:
-<pre><code class="language-scala" >def +:[B, That](elem: B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def +:[B, That](elem: B)(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### /:
 <pre><code class="language-scala" >def /:[B](z: B)(op: (B, A) => B): B</pre></code>
 
 ### :+
-<pre><code class="language-scala" >def :+[B, That](elem: B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def :+[B, That](elem: B)(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### :\
 <pre><code class="language-scala" >def :\[B](z: B)(op: (A, B) => B): B</pre></code>
@@ -97,7 +97,7 @@ Auxiliary constructor
 <pre><code class="language-scala" >override def canEqual(that: Any): Boolean</pre></code>
 
 ### collect
-<pre><code class="language-scala" >def collect[B, That](pf: PartialFunction[A, B])(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def collect[B, That](pf: PartialFunction[A, B])(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### collectFirst
 <pre><code class="language-scala" >def collectFirst[B](pf: PartialFunction[A, B]): Option[B]</pre></code>
@@ -196,10 +196,10 @@ def someScalaCode(x: String) = println("Hello " + x)
 <pre><code class="language-scala" >override def find(p: (A) => Boolean): Option[A]</pre></code>
 
 ### flatMap
-<pre><code class="language-scala" >def flatMap[B, That](f: (A) => GenTraversableOnce[B])(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def flatMap[B, That](f: (A) => GenTraversableOnce[B])(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### flatten
-<pre><code class="language-scala" >def flatten[B](asTraversable: (A) => GenTraversableOnce[B]): CC[B]</pre></code>
+<pre><code class="language-scala" >def flatten[B](implicit asTraversable: (A) => GenTraversableOnce[B]): CC[B]</pre></code>
 
 ### fold
 <pre><code class="language-scala" >def fold[A1](z: A1)(op: (A1, A1) => A1): A1</pre></code>
@@ -328,13 +328,13 @@ class: [example.UserDocLinkingClass](../../example/UserDocLinkingClass.md)
 <pre><code class="language-scala" >def linkingGraph(g: <a href="./Documentation/Graph.md">Graph</a>): Node</pre></code>
 
 ### map
-<pre><code class="language-scala" >def map[B, That](f: (A) => B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def map[B, That](f: (A) => B)(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### max
-<pre><code class="language-scala" >def max[B](cmp: Ordering[B]): A</pre></code>
+<pre><code class="language-scala" >def max[B](implicit cmp: Ordering[B]): A</pre></code>
 
 ### maxBy
-<pre><code class="language-scala" >def maxBy[B](f: (A) => B)(cmp: Ordering[B]): A</pre></code>
+<pre><code class="language-scala" >def maxBy[B](f: (A) => B)(implicit cmp: Ordering[B]): A</pre></code>
 
 ### methodsWithCallByName
 <pre><code class="language-scala" >def methodsWithCallByName(x: => Int): Nothing</pre></code>
@@ -356,10 +356,10 @@ Test methods with params
 ***x*** parameter 1
 
 ### min
-<pre><code class="language-scala" >def min[B](cmp: Ordering[B]): A</pre></code>
+<pre><code class="language-scala" >def min[B](implicit cmp: Ordering[B]): A</pre></code>
 
 ### minBy
-<pre><code class="language-scala" >def minBy[B](f: (A) => B)(cmp: Ordering[B]): A</pre></code>
+<pre><code class="language-scala" >def minBy[B](f: (A) => B)(implicit cmp: Ordering[B]): A</pre></code>
 
 ### mkString
 <pre><code class="language-scala" >def mkString: String</pre></code>
@@ -380,7 +380,7 @@ Test methods with params
 <pre><code class="language-scala" >def orElse[A1, B1](that: PartialFunction[A1, B1]): PartialFunction[A1, B1]</pre></code>
 
 ### padTo
-<pre><code class="language-scala" >def padTo[B, That](len: Int, elem: B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def padTo[B, That](len: Int, elem: B)(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### par
 <pre><code class="language-scala" >def par: ParRepr</pre></code>
@@ -392,7 +392,7 @@ Test methods with params
 <pre><code class="language-scala" >def partition(p: (A) => Boolean): (Repr, Repr)</pre></code>
 
 ### patch
-<pre><code class="language-scala" >def patch[B, That](from: Int, patch: GenSeq[B], replaced: Int)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def patch[B, That](from: Int, patch: GenSeq[B], replaced: Int)(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### permutations
 <pre><code class="language-scala" >def permutations: Iterator[Repr]</pre></code>
@@ -401,7 +401,7 @@ Test methods with params
 <pre><code class="language-scala" >def prefixLength(p: (A) => Boolean): Int</pre></code>
 
 ### product
-<pre><code class="language-scala" >def product[B](num: Numeric[B]): B</pre></code>
+<pre><code class="language-scala" >def product[B](implicit num: Numeric[B]): B</pre></code>
 
 ### productArity
 <pre><code class="language-scala" >def productArity: Int</pre></code>
@@ -446,7 +446,7 @@ Test methods with params
 <pre><code class="language-scala" >def reverseIterator: Iterator[A]</pre></code>
 
 ### reverseMap
-<pre><code class="language-scala" >def reverseMap[B, That](f: (A) => B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def reverseMap[B, That](f: (A) => B)(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### reversed
 <pre><code class="language-scala" >protected def reversed: List[A]</pre></code>
@@ -458,13 +458,13 @@ Test methods with params
 <pre><code class="language-scala" >def sameElements[B](that: GenIterable[B]): Boolean</pre></code>
 
 ### scan
-<pre><code class="language-scala" >def scan[B, That](z: B)(op: (B, B) => B)(cbf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def scan[B, That](z: B)(op: (B, B) => B)(implicit cbf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### scanLeft
-<pre><code class="language-scala" >def scanLeft[B, That](z: B)(op: (B, A) => B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def scanLeft[B, That](z: B)(op: (B, A) => B)(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### scanRight
-<pre><code class="language-scala" >@migration def scanRight[B, That](z: B)(op: (A, B) => B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >@migration def scanRight[B, That](z: B)(op: (A, B) => B)(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### segmentLength
 <pre><code class="language-scala" >def segmentLength(p: (A) => Boolean, from: Int): Int</pre></code>
@@ -494,13 +494,13 @@ Test methods with params
 <pre><code class="language-scala" >def sliding(size: Int): Iterator[Repr]</pre></code>
 
 ### sortBy
-<pre><code class="language-scala" >def sortBy[B](f: (A) => B)(ord: Ordering[B]): Repr</pre></code>
+<pre><code class="language-scala" >def sortBy[B](f: (A) => B)(implicit ord: Ordering[B]): Repr</pre></code>
 
 ### sortWith
 <pre><code class="language-scala" >def sortWith(lt: (A, A) => Boolean): Repr</pre></code>
 
 ### sorted
-<pre><code class="language-scala" >def sorted[B](ord: Ordering[B]): Repr</pre></code>
+<pre><code class="language-scala" >def sorted[B](implicit ord: Ordering[B]): Repr</pre></code>
 
 ### span
 <pre><code class="language-scala" >def span(p: (A) => Boolean): (Repr, Repr)</pre></code>
@@ -518,7 +518,7 @@ Test methods with params
 <pre><code class="language-scala" >def stringPrefix: String</pre></code>
 
 ### sum
-<pre><code class="language-scala" >def sum[B](num: Numeric[B]): B</pre></code>
+<pre><code class="language-scala" >def sum[B](implicit num: Numeric[B]): B</pre></code>
 
 ### tail
 <pre><code class="language-scala" >override def tail: Repr</pre></code>
@@ -539,10 +539,10 @@ Test methods with params
 <pre><code class="language-scala" >protected override def thisCollection: Seq[A]</pre></code>
 
 ### to
-<pre><code class="language-scala" >override def to[Col](cbf: CanBuildFrom[Nothing, A, Col[A]]): Col[A]</pre></code>
+<pre><code class="language-scala" >override def to[Col](implicit cbf: CanBuildFrom[Nothing, A, Col[A]]): Col[A]</pre></code>
 
 ### toArray
-<pre><code class="language-scala" >def toArray[B](evidence$1: ClassTag[B]): Array[B]</pre></code>
+<pre><code class="language-scala" >def toArray[B](implicit evidence$1: ClassTag[B]): Array[B]</pre></code>
 
 ### toBuffer
 <pre><code class="language-scala" >def toBuffer[B]: Buffer[B]</pre></code>
@@ -563,7 +563,7 @@ Test methods with params
 <pre><code class="language-scala" >def toList: List[A]</pre></code>
 
 ### toMap
-<pre><code class="language-scala" >def toMap[T, U](ev: <:<[A, (T, U)]): Map[T, U]</pre></code>
+<pre><code class="language-scala" >def toMap[T, U](implicit ev: <:<[A, (T, U)]): Map[T, U]</pre></code>
 
 ### toSeq
 <pre><code class="language-scala" >override def toSeq: Seq[A]</pre></code>
@@ -584,19 +584,19 @@ Test methods with params
 <pre><code class="language-scala" >def toVector: Vector[A]</pre></code>
 
 ### transpose
-<pre><code class="language-scala" >@migration def transpose[B](asTraversable: (A) => GenTraversableOnce[B]): CC[CC[B]]</pre></code>
+<pre><code class="language-scala" >@migration def transpose[B](implicit asTraversable: (A) => GenTraversableOnce[B]): CC[CC[B]]</pre></code>
 
 ### union
-<pre><code class="language-scala" >override def union[B, That](that: GenSeq[B])(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >override def union[B, That](that: GenSeq[B])(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### unzip
-<pre><code class="language-scala" >def unzip[A1, A2](asPair: (A) => (A1, A2)): (CC[A1], CC[A2])</pre></code>
+<pre><code class="language-scala" >def unzip[A1, A2](implicit asPair: (A) => (A1, A2)): (CC[A1], CC[A2])</pre></code>
 
 ### unzip3
-<pre><code class="language-scala" >def unzip3[A1, A2, A3](asTriple: (A) => (A1, A2, A3)): (CC[A1], CC[A2], CC[A3])</pre></code>
+<pre><code class="language-scala" >def unzip3[A1, A2, A3](implicit asTriple: (A) => (A1, A2, A3)): (CC[A1], CC[A2], CC[A3])</pre></code>
 
 ### updated
-<pre><code class="language-scala" >def updated[B, That](index: Int, elem: B)(bf: CanBuildFrom[Repr, B, That]): That</pre></code>
+<pre><code class="language-scala" >def updated[B, That](index: Int, elem: B)(implicit bf: CanBuildFrom[Repr, B, That]): That</pre></code>
 
 ### useOfOutsideType
 <pre><code class="language-scala" >def useOfOutsideType(): <a href="../ReturnTypeClass.md">ReturnTypeClass</a>[<a href="./Documentation.md#T">T</a>]</pre></code>
@@ -617,13 +617,13 @@ Test methods with params
 <pre><code class="language-scala" >def withFilter(p: (A) => Boolean): FilterMonadic[A, Repr]</pre></code>
 
 ### zip
-<pre><code class="language-scala" >def zip[A1, B, That](that: GenIterable[B])(bf: CanBuildFrom[Repr, (A1, B), That]): That</pre></code>
+<pre><code class="language-scala" >def zip[A1, B, That](that: GenIterable[B])(implicit bf: CanBuildFrom[Repr, (A1, B), That]): That</pre></code>
 
 ### zipAll
-<pre><code class="language-scala" >def zipAll[B, A1, That](that: GenIterable[B], thisElem: A1, thatElem: B)(bf: CanBuildFrom[Repr, (A1, B), That]): That</pre></code>
+<pre><code class="language-scala" >def zipAll[B, A1, That](that: GenIterable[B], thisElem: A1, thatElem: B)(implicit bf: CanBuildFrom[Repr, (A1, B), That]): That</pre></code>
 
 ### zipWithIndex
-<pre><code class="language-scala" >def zipWithIndex[A1, That](bf: CanBuildFrom[Repr, (A1, Int), That]): That</pre></code>
+<pre><code class="language-scala" >def zipWithIndex[A1, That](implicit bf: CanBuildFrom[Repr, (A1, Int), That]): That</pre></code>
 
 ### c2
 <pre><code class="language-scala" >val c2: List[<a href="./Documentation.md#T">T</a>]</pre></code>

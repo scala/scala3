@@ -7,5 +7,5 @@ scala.tasty.reflect.PatternOps
 
 ## Concrete Value Members:
 ### patterns
-<pre><code class="language-scala" >def patterns(ctx: Context): List[Pattern]</pre></code>
+<pre><code class="language-scala" >def patterns(implicit ctx: Context): List[Pattern]</pre></code>
 

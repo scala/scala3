@@ -7,8 +7,8 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### meth
-<pre><code class="language-scala" >def meth(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def meth(implicit ctx: Context): Term</pre></code>
 
 ### tptOpt
-<pre><code class="language-scala" >def tptOpt(ctx: Context): Option[TypeTree]</pre></code>
+<pre><code class="language-scala" >def tptOpt(implicit ctx: Context): Option[TypeTree]</pre></code>
 

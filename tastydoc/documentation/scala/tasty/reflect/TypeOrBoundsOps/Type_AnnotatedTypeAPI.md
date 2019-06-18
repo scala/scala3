@@ -7,8 +7,8 @@ scala.tasty.reflect.TypeOrBoundsOps
 
 ## Concrete Value Members:
 ### annot
-<pre><code class="language-scala" >def annot(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def annot(implicit ctx: Context): Term</pre></code>
 
 ### underlying
-<pre><code class="language-scala" >def underlying(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def underlying(implicit ctx: Context): Type</pre></code>
 

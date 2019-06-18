@@ -7,5 +7,5 @@ scala.tasty.reflect.TypeOrBoundsOps
 
 ## Concrete Value Members:
 ### qualifier
-<pre><code class="language-scala" >def qualifier(ctx: Context): TypeOrBounds</pre></code>
+<pre><code class="language-scala" >def qualifier(implicit ctx: Context): TypeOrBounds</pre></code>
 

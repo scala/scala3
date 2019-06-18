@@ -7,5 +7,5 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### tpt
-<pre><code class="language-scala" >def tpt(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def tpt(implicit ctx: Context): TypeTree</pre></code>
 

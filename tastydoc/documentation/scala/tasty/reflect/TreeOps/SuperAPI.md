@@ -7,8 +7,8 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### id
-<pre><code class="language-scala" >def id(ctx: Context): Option[Id]</pre></code>
+<pre><code class="language-scala" >def id(implicit ctx: Context): Option[Id]</pre></code>
 
 ### qualifier
-<pre><code class="language-scala" >def qualifier(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def qualifier(implicit ctx: Context): Term</pre></code>
 

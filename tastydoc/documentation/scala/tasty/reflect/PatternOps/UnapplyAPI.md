@@ -7,11 +7,11 @@ scala.tasty.reflect.PatternOps
 
 ## Concrete Value Members:
 ### fun
-<pre><code class="language-scala" >def fun(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def fun(implicit ctx: Context): Term</pre></code>
 
 ### implicits
-<pre><code class="language-scala" >def implicits(ctx: Context): List[Term]</pre></code>
+<pre><code class="language-scala" >def implicits(implicit ctx: Context): List[Term]</pre></code>
 
 ### patterns
-<pre><code class="language-scala" >def patterns(ctx: Context): List[Pattern]</pre></code>
+<pre><code class="language-scala" >def patterns(implicit ctx: Context): List[Pattern]</pre></code>
 

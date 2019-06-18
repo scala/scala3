@@ -7,8 +7,8 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### refinements
-<pre><code class="language-scala" >def refinements(ctx: Context): List[Definition]</pre></code>
+<pre><code class="language-scala" >def refinements(implicit ctx: Context): List[Definition]</pre></code>
 
 ### tpt
-<pre><code class="language-scala" >def tpt(ctx: Context): TypeTree</pre></code>
+<pre><code class="language-scala" >def tpt(implicit ctx: Context): TypeTree</pre></code>
 

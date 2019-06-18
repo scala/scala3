@@ -7,11 +7,11 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### members
-<pre><code class="language-scala" >def members(ctx: Context): List[Statement]</pre></code>
+<pre><code class="language-scala" >def members(implicit ctx: Context): List[Statement]</pre></code>
 
 ### owner
-<pre><code class="language-scala" >def owner(ctx: Context): PackageDef</pre></code>
+<pre><code class="language-scala" >def owner(implicit ctx: Context): PackageDef</pre></code>
 
 ### symbol
-<pre><code class="language-scala" >def symbol(ctx: Context): PackageDefSymbol</pre></code>
+<pre><code class="language-scala" >def symbol(implicit ctx: Context): PackageDefSymbol</pre></code>
 

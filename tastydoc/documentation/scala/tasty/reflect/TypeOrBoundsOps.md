@@ -57,5 +57,5 @@ scala.tasty.reflect
 <pre><code class="language-scala" >class <a href="./TypeOrBoundsOps/Type_TypeRefAPI.md">Type_TypeRefAPI</a></pre></code>
 ## Concrete Value Members:
 ### typeOf
-<pre><code class="language-scala" >def typeOf[T](evidence$2: <a href="../../quoted/Type.md">Type</a>[T]): Type</pre></code>
+<pre><code class="language-scala" >def typeOf[T](implicit evidence$2: <a href="../../quoted/Type.md">Type</a>[T]): Type</pre></code>
 

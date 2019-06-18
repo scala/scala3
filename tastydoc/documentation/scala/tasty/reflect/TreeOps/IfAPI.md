@@ -7,11 +7,11 @@ scala.tasty.reflect.TreeOps
 
 ## Concrete Value Members:
 ### cond
-<pre><code class="language-scala" >def cond(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def cond(implicit ctx: Context): Term</pre></code>
 
 ### elsep
-<pre><code class="language-scala" >def elsep(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def elsep(implicit ctx: Context): Term</pre></code>
 
 ### thenp
-<pre><code class="language-scala" >def thenp(ctx: Context): Term</pre></code>
+<pre><code class="language-scala" >def thenp(implicit ctx: Context): Term</pre></code>
 

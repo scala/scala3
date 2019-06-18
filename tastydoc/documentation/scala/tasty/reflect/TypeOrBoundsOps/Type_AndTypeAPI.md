@@ -7,8 +7,8 @@ scala.tasty.reflect.TypeOrBoundsOps
 
 ## Concrete Value Members:
 ### left
-<pre><code class="language-scala" >def left(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def left(implicit ctx: Context): Type</pre></code>
 
 ### right
-<pre><code class="language-scala" >def right(ctx: Context): Type</pre></code>
+<pre><code class="language-scala" >def right(implicit ctx: Context): Type</pre></code>
 

@@ -4,5 +4,5 @@ scala.tasty.reflect.PatternOps.Pattern$
 <pre><code class="language-scala" >final object IsTypeTest extends Serializable</pre></code>
 ## Concrete Value Members:
 ### unapply
-<pre><code class="language-scala" >def unapply(pattern: Pattern)(ctx: Context): Option[TypeTest]</pre></code>
+<pre><code class="language-scala" >def unapply(pattern: Pattern)(implicit ctx: Context): Option[TypeTest]</pre></code>
 

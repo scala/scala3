@@ -7,10 +7,10 @@ scala.tasty.reflect.IdOps
 
 ## Concrete Value Members:
 ### name
-<pre><code class="language-scala" >def name(ctx: Context): String</pre></code>
+<pre><code class="language-scala" >def name(implicit ctx: Context): String</pre></code>
 Name of the identifier
 
 ### pos
-<pre><code class="language-scala" >def pos(ctx: Context): Position</pre></code>
+<pre><code class="language-scala" >def pos(implicit ctx: Context): Position</pre></code>
 Position in the source code
 

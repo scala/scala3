@@ -5,7 +5,7 @@ scala.internal.quoted
 An Type backed by a value
 
 ## Constructors:
-<pre><code class="language-scala" >TaggedType(ct: <a href="../../reflect/ClassTag.md">ClassTag</a>[T])</pre></code>
+<pre><code class="language-scala" >TaggedType(implicit ct: <a href="../../reflect/ClassTag.md">ClassTag</a>[T])</pre></code>
 
 ## Concrete Value Members:
 ### toString

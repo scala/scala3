@@ -7,10 +7,10 @@ scala.tasty.reflect.SymbolOps
 
 ## Concrete Value Members:
 ### signature
-<pre><code class="language-scala" >def signature(ctx: Context): Signature</pre></code>
+<pre><code class="language-scala" >def signature(implicit ctx: Context): Signature</pre></code>
 Signature of this defintion
 
 ### tree
-<pre><code class="language-scala" >def tree(ctx: Context): DefDef</pre></code>
+<pre><code class="language-scala" >def tree(implicit ctx: Context): DefDef</pre></code>
 DefDef tree of this defintion
 
