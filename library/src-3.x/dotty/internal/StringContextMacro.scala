@@ -159,7 +159,7 @@ object StringContextMacro {
    *  @return the Expr containing the formatted and interpolated String or an error/warning report if the parameters are not correct
    */
   def interpolate(partsExpr : List[Expr[String]], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter)(implicit reflect: Reflection) : Expr[String] = {
-    import reflect.{Literal => LiteralTree, _}
+    import reflect._
 
     /** Checks if the number of arguments are the same as the number of formatting strings
      *
