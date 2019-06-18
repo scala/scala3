@@ -2,9 +2,6 @@ scala.tasty.reflect
 # trait ImportSelectorOps
 
 <pre><code class="language-scala" >trait ImportSelectorOps extends Core</pre></code>
-## Constructors:
-<pre><code class="language-scala" >ImportSelectorOps()</pre></code>
-
 ## Concrete Type Members:
 ### OmitSelector
 <pre><code class="language-scala" >final object <a href="./ImportSelectorOps/OmitSelector$.md">OmitSelector</a></pre></code>

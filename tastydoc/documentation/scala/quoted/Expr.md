@@ -4,9 +4,6 @@ scala.quoted
 ## Companion object <a href="./Expr$.md">Expr</a>
 
 <pre><code class="language-scala" >sealed abstract class Expr[T]</pre></code>
-## Constructors:
-<pre><code class="language-scala" >Expr()</pre></code>
-
 ## Concrete Value Members:
 ### run
 <pre><code class="language-scala" >final def run(toolbox: <a href="./Toolbox.md">Toolbox</a>): <a href="./Expr.md#T">T</a></pre></code>

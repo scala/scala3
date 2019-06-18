@@ -2,9 +2,6 @@ example.level2.level3.level4
 # class ClassLevel4
 
 <pre><code class="language-scala" >sealed abstract class ClassLevel4[T, A <: scala.Int, B >: scala.Predef.String, X, Y] extends Documentation[T, A, B, X, Y]</pre></code>
-## Constructors:
-<pre><code class="language-scala" >ClassLevel4()</pre></code>
-
 ## Concrete Value Members:
 ### ++
 <pre><code class="language-scala" >def ++[B, That](that: GenTraversableOnce[B])(bf: CanBuildFrom[Repr, B, That]): That</pre></code>

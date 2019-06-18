@@ -2,9 +2,6 @@ scala.tasty.reflect.TreeUtils
 # class TreeMap
 
 <pre><code class="language-scala" >abstract class TreeMap</pre></code>
-## Constructors:
-<pre><code class="language-scala" >TreeMap()</pre></code>
-
 ## Concrete Value Members:
 ### transformCaseDef
 <pre><code class="language-scala" >def transformCaseDef(tree: CaseDef)(ctx: Context): CaseDef</pre></code>

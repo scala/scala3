@@ -6,6 +6,3 @@ An annotation indicating to `-Ycheck:reentrant` that a class or val can be safel
 
 ***see*** scala.annotation.internal.unshared
 
-## Constructors:
-<pre><code class="language-scala" >sharable()</pre></code>
-

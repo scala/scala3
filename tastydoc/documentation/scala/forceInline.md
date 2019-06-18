@@ -11,6 +11,3 @@ both the `@inline` and `@forceInline` annotation to inline across the
 two compilers. E.g.
 ```scala```
 
-## Constructors:
-<pre><code class="language-scala" >forceInline()</pre></code>
-

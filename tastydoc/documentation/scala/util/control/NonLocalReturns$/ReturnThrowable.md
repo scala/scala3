@@ -2,9 +2,6 @@ scala.util.control.NonLocalReturns$
 # class ReturnThrowable
 
 <pre><code class="language-scala" >class ReturnThrowable[T] extends Throwable with ControlThrowable</pre></code>
-## Constructors:
-<pre><code class="language-scala" >ReturnThrowable()</pre></code>
-
 ## Concrete Value Members:
 ### addSuppressed
 <pre><code class="language-scala" >final def addSuppressed(x$0: Throwable): Unit</pre></code>

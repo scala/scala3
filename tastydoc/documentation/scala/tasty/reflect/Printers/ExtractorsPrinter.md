@@ -2,9 +2,6 @@ scala.tasty.reflect.Printers
 # class ExtractorsPrinter
 
 <pre><code class="language-scala" >class ExtractorsPrinter extends Printer</pre></code>
-## Constructors:
-<pre><code class="language-scala" >ExtractorsPrinter()</pre></code>
-
 ## Concrete Value Members:
 ### showConstant
 <pre><code class="language-scala" >def showConstant(const: Constant)(ctx: Context): String</pre></code>

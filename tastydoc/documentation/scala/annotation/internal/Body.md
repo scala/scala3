@@ -5,6 +5,3 @@ scala.annotation.internal
 The class associated with a `BodyAnnotation`, which indicates
 an inline method's right hand side
 
-## Constructors:
-<pre><code class="language-scala" >Body()</pre></code>
-

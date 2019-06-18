@@ -2,9 +2,6 @@ scala.tasty.reflect
 # trait Printers
 
 <pre><code class="language-scala" >trait Printers extends Core with ConstantOps with FlagsOps with IdOps with ImportSelectorOps with PatternOps with PositionOps with SignatureOps with StandardDefinitions with SymbolOps with TreeOps with TypeOrBoundsOps</pre></code>
-## Constructors:
-<pre><code class="language-scala" >Printers()</pre></code>
-
 ## Abstract Type Members:
 ### Printer
 <pre><code class="language-scala" >abstract class <a href="./Printers/Printer.md">Printer</a></pre></code>

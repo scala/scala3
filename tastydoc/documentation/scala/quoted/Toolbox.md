@@ -6,9 +6,6 @@ scala.quoted
 <pre><code class="language-scala" >trait Toolbox</pre></code>
 ## Annotations:
 @implicitNotFound 
-## Constructors:
-<pre><code class="language-scala" >Toolbox()</pre></code>
-
 ## Concrete Value Members:
 ### run
 <pre><code class="language-scala" >def run[T](expr: <a href="./Expr.md">Expr</a>[T]): T</pre></code>

@@ -2,9 +2,6 @@ scala.runtime
 # class EnumValues
 
 <pre><code class="language-scala" >class EnumValues[E <: scala.Enum]</pre></code>
-## Constructors:
-<pre><code class="language-scala" >EnumValues()</pre></code>
-
 ## Concrete Value Members:
 ### fromInt
 <pre><code class="language-scala" >def fromInt: Map[Int, <a href="./EnumValues.md#E">E</a>]</pre></code>

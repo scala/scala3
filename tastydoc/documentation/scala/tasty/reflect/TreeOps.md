@@ -2,9 +2,6 @@ scala.tasty.reflect
 # trait TreeOps
 
 <pre><code class="language-scala" >trait TreeOps extends Core</pre></code>
-## Constructors:
-<pre><code class="language-scala" >TreeOps()</pre></code>
-
 ## Concrete Type Members:
 ### Annotated
 <pre><code class="language-scala" >final object <a href="./TreeOps/Annotated$.md">Annotated</a></pre></code>

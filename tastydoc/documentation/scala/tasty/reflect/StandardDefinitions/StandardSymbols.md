@@ -6,9 +6,6 @@ Defines standard symbols (and types via its base trait).
 
 ***Group*** API
 
-## Constructors:
-<pre><code class="language-scala" >StandardSymbols()</pre></code>
-
 ## Concrete Value Members:
 ### AnyClass
 <pre><code class="language-scala" >def AnyClass: Symbol</pre></code>

@@ -21,6 +21,3 @@ defined, `Not` is also usable from Scala 2.
 In Dotty, ambiguity is a global error, and therefore cannot be used to implement negation.
 Instead, `Not` is treated natively in implicit search.
 
-## Constructors:
-<pre><code class="language-scala" >Not()</pre></code>
-

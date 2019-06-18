@@ -10,9 +10,6 @@ Type class relating a `FunctionN[..., R]` with an equivalent tupled function `Fu
 
 ## Annotations:
 @implicitNotFound 
-## Constructors:
-<pre><code class="language-scala" >TupledFunction()</pre></code>
-
 ## Concrete Value Members:
 ### tupled
 <pre><code class="language-scala" >def tupled(f: F): G</pre></code>

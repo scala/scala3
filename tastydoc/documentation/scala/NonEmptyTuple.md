@@ -6,9 +6,6 @@ Tuple of arbitrary non-zero arity
 
 ## Known subclasses:
 *:
-## Constructors:
-<pre><code class="language-scala" >NonEmptyTuple()</pre></code>
-
 ## Concrete Value Members:
 ### *:
 <pre><code class="language-scala" >inline def *:[H, This >: this.type <: scala.Tuple](x: H): *:[H, This]</pre></code>

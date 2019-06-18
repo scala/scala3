@@ -2,9 +2,6 @@ scala.tasty.reflect.TreeUtils
 # class TreeAccumulator
 
 <pre><code class="language-scala" >abstract class TreeAccumulator[X]</pre></code>
-## Constructors:
-<pre><code class="language-scala" >TreeAccumulator()</pre></code>
-
 ## Concrete Value Members:
 ### foldOverPattern
 <pre><code class="language-scala" >def foldOverPattern(x: X, tree: Pattern)(ctx: Context): X</pre></code>

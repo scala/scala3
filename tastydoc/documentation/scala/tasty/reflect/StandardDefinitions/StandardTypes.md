@@ -6,9 +6,6 @@ Defines standard types.
 
 ***Group*** Definitions
 
-## Constructors:
-<pre><code class="language-scala" >StandardTypes()</pre></code>
-
 ## Concrete Value Members:
 ### AnyRefType
 <pre><code class="language-scala" >def AnyRefType: Type</pre></code>

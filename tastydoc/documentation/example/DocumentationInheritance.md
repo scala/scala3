@@ -2,9 +2,6 @@ example
 # class DocumentationInheritance
 
 <pre><code class="language-scala" >abstract class DocumentationInheritance[T, A <: scala.Int, B >: scala.Predef.String, X, Y] extends Documentation[<a href="./DocumentationInheritance.md#T">T</a>, <a href="./DocumentationInheritance.md#A">A</a>, <a href="./DocumentationInheritance.md#B">B</a>, <a href="./DocumentationInheritance.md#X">X</a>, <a href="./DocumentationInheritance.md#Y">Y</a>]</pre></code>
-## Constructors:
-<pre><code class="language-scala" >DocumentationInheritance()</pre></code>
-
 ## Concrete Value Members:
 ### ++
 <pre><code class="language-scala" >def ++[B, That](that: GenTraversableOnce[B])(bf: CanBuildFrom[Repr, B, That]): That</pre></code>

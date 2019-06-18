@@ -2,9 +2,6 @@ scala.tasty.reflect
 # trait StandardDefinitions
 
 <pre><code class="language-scala" >trait StandardDefinitions extends Core</pre></code>
-## Constructors:
-<pre><code class="language-scala" >StandardDefinitions()</pre></code>
-
 ## Concrete Type Members:
 ### definitions
 <pre><code class="language-scala" >final object <a href="./StandardDefinitions/definitions$.md">definitions</a></pre></code>

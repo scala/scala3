@@ -4,9 +4,6 @@ scala.tasty.reflect
 <pre><code class="language-scala" >trait QuotedOps extends Core</pre></code>
 Extension methods on scala.quoted.{Expr|Type} to convert to scala.tasty.Tasty objects
 
-## Constructors:
-<pre><code class="language-scala" >QuotedOps()</pre></code>
-
 ## Concrete Type Members:
 ### QuotedExprAPI
 <pre><code class="language-scala" >class <a href="./QuotedOps/QuotedExprAPI.md">QuotedExprAPI</a></pre></code>

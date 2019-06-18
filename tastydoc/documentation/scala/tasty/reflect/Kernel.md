@@ -106,9 +106,6 @@ Tasty reflect abstract types
 ```
 ```
 
-## Constructors:
-<pre><code class="language-scala" >Kernel()</pre></code>
-
 ## Concrete Type Members:
 ### Alternatives
 <pre><code class="language-scala" >type Alternatives: Nothing <: Pattern</pre></code>

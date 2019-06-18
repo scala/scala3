@@ -4,9 +4,6 @@ scala.tasty.reflect
 <pre><code class="language-scala" >trait SymbolOps extends Core</pre></code>
 Tasty reflect symbol
 
-## Constructors:
-<pre><code class="language-scala" >SymbolOps()</pre></code>
-
 ## Concrete Type Members:
 ### ClassDefSymbol
 <pre><code class="language-scala" >final object <a href="./SymbolOps/ClassDefSymbol$.md">ClassDefSymbol</a></pre></code>

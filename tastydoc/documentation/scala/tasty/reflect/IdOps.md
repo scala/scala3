@@ -2,9 +2,6 @@ scala.tasty.reflect
 # trait IdOps
 
 <pre><code class="language-scala" >trait IdOps extends Core</pre></code>
-## Constructors:
-<pre><code class="language-scala" >IdOps()</pre></code>
-
 ## Concrete Type Members:
 ### Id
 <pre><code class="language-scala" >final object <a href="./IdOps/Id$.md">Id</a></pre></code>

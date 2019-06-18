@@ -4,6 +4,3 @@ scala.annotation.internal
 <pre><code class="language-scala" >final class InlineParam extends Annotation</pre></code>
 An annotation produced by Namer to indicate an inline parameter
 
-## Constructors:
-<pre><code class="language-scala" >InlineParam()</pre></code>
-

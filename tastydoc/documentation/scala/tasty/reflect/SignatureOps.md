@@ -2,9 +2,6 @@ scala.tasty.reflect
 # trait SignatureOps
 
 <pre><code class="language-scala" >trait SignatureOps extends Core</pre></code>
-## Constructors:
-<pre><code class="language-scala" >SignatureOps()</pre></code>
-
 ## Concrete Type Members:
 ### Signature
 <pre><code class="language-scala" >final object <a href="./SignatureOps/Signature$.md">Signature</a></pre></code>

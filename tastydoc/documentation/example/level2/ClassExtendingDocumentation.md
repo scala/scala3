@@ -2,9 +2,6 @@ example.level2
 # class ClassExtendingDocumentation
 
 <pre><code class="language-scala" >sealed abstract class ClassExtendingDocumentation[T, A <: scala.Int, B >: scala.Predef.String, X, Y] extends Documentation[<a href="./ClassExtendingDocumentation.md#T">T</a>, <a href="./ClassExtendingDocumentation.md#A">A</a>, <a href="./ClassExtendingDocumentation.md#B">B</a>, <a href="./ClassExtendingDocumentation.md#X">X</a>, <a href="./ClassExtendingDocumentation.md#Y">Y</a>]</pre></code>
-## Constructors:
-<pre><code class="language-scala" >ClassExtendingDocumentation()</pre></code>
-
 ## Concrete Value Members:
 ### ++
 <pre><code class="language-scala" >def ++[B, That](that: GenTraversableOnce[B])(bf: CanBuildFrom[Repr, B, That]): That</pre></code>

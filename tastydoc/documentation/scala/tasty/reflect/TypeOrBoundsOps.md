@@ -2,9 +2,6 @@ scala.tasty.reflect
 # trait TypeOrBoundsOps
 
 <pre><code class="language-scala" >trait TypeOrBoundsOps extends Core</pre></code>
-## Constructors:
-<pre><code class="language-scala" >TypeOrBoundsOps()</pre></code>
-
 ## Concrete Type Members:
 ### IsType
 <pre><code class="language-scala" >final object <a href="./TypeOrBoundsOps/IsType$.md">IsType</a></pre></code>

@@ -2,9 +2,6 @@ scala.tasty.reflect.utils
 # trait TreeUtils
 
 <pre><code class="language-scala" >trait TreeUtils</pre></code>
-## Constructors:
-<pre><code class="language-scala" >TreeUtils()</pre></code>
-
 ## Concrete Value Members:
 ### let
 <pre><code class="language-scala" >def let(rhs: Term)(body: (Ident) => Term): Term</pre></code>

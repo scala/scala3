@@ -2,9 +2,6 @@ scala.tasty.reflect.Printers
 # class SourceCodePrinter
 
 <pre><code class="language-scala" >class SourceCodePrinter extends Printer</pre></code>
-## Constructors:
-<pre><code class="language-scala" >SourceCodePrinter()</pre></code>
-
 ## Concrete Type Members:
 ### PackageObject
 <pre><code class="language-scala" >final object <a href="./SourceCodePrinter/PackageObject$.md">PackageObject</a></pre></code>

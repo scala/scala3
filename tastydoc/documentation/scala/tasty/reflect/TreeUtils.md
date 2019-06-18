@@ -4,9 +4,6 @@ scala.tasty.reflect
 <pre><code class="language-scala" >trait TreeUtils extends Core with PatternOps with SymbolOps with TreeOps</pre></code>
 Tasty reflect case definition
 
-## Constructors:
-<pre><code class="language-scala" >TreeUtils()</pre></code>
-
 ## Abstract Type Members:
 ### TreeAccumulator
 <pre><code class="language-scala" >abstract class <a href="./TreeUtils/TreeAccumulator.md">TreeAccumulator</a></pre></code>

@@ -15,6 +15,3 @@ I.e. in the example above, it is guaranteed that the child annotation for `C`
 appears before the one for `B`.
 TODO: This should be `Child[T <: AnyKind]`
 
-## Constructors:
-<pre><code class="language-scala" >Child()</pre></code>
-

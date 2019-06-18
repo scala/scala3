@@ -6,9 +6,6 @@ scala.deriving$
 <pre><code class="language-scala" >sealed trait Mirror</pre></code>
 Mirrors allows typelevel access to enums, case classes and objects, and their sealed parents.
 
-## Constructors:
-<pre><code class="language-scala" >Mirror()</pre></code>
-
 ## Concrete Type Members:
 ### MirroredElemLabels
 <pre><code class="language-scala" >type MirroredElemLabels: Nothing <: Tuple</pre></code>

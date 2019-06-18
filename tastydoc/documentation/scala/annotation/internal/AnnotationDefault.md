@@ -4,6 +4,3 @@ scala.annotation.internal
 <pre><code class="language-scala" >class AnnotationDefault extends Annotation</pre></code>
 An annotation to tag Java annotation default values
 
-## Constructors:
-<pre><code class="language-scala" >AnnotationDefault()</pre></code>
-

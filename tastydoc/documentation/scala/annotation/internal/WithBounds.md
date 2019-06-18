@@ -5,6 +5,3 @@ scala.annotation.internal
 An annotation to indicate a pair of type bounds that comes with a type.
 Used to indicate optional bounds of an opaque type
 
-## Constructors:
-<pre><code class="language-scala" >WithBounds()</pre></code>
-

@@ -4,9 +4,6 @@ scala
 ## Companion object Product0
 
 <pre><code class="language-scala" >trait Product0 extends Any with Product</pre></code>
-## Constructors:
-<pre><code class="language-scala" >Product0()</pre></code>
-
 ## Concrete Value Members:
 ### canEqual
 <pre><code class="language-scala" >def canEqual(that: Any): Boolean</pre></code>

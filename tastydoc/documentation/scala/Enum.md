@@ -4,9 +4,6 @@ scala
 <pre><code class="language-scala" >trait Enum</pre></code>
 A base trait of all enum classes
 
-## Constructors:
-<pre><code class="language-scala" >Enum()</pre></code>
-
 ## Concrete Value Members:
 ### $ordinal
 <pre><code class="language-scala" >protected def $ordinal: Int</pre></code>

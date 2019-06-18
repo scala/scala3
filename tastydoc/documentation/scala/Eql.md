@@ -8,6 +8,3 @@ A marker trait indicating that values of type `L` can be compared to values of t
 
 ## Annotations:
 @implicitNotFound 
-## Constructors:
-<pre><code class="language-scala" >Eql()</pre></code>
-

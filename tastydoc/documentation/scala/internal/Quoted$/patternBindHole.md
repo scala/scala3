@@ -6,6 +6,3 @@ A splice of a name in a quoted pattern is desugared by wrapping getting this ann
 
 ## Annotations:
 @compileTimeOnly 
-## Constructors:
-<pre><code class="language-scala" >patternBindHole()</pre></code>
-

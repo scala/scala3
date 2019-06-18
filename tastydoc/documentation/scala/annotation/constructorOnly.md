@@ -11,6 +11,3 @@ where they are used.
 
 ## Annotations:
 @param 
-## Constructors:
-<pre><code class="language-scala" >constructorOnly()</pre></code>
-

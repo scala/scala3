@@ -210,7 +210,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
     }
 
     def formatConstructors(): String = {
-      if(representation.constructors.isEmpty || representation.isObject){
+      if(representation.constructors.isEmpty || representation.isObject || (representation.constructors.size == 1 && representation.constructors.head.paramLists.size == 1 && representation.constructors.head.paramLists.head.list == Nil)){
         ""
       }else{
         Md.header2("Constructors:") +

@@ -2,9 +2,6 @@ scala.deriving$.Mirror$
 # trait Singleton
 
 <pre><code class="language-scala" >trait Singleton extends Product</pre></code>
-## Constructors:
-<pre><code class="language-scala" >Singleton()</pre></code>
-
 ## Concrete Type Members:
 ### MirroredElemLabels
 <pre><code class="language-scala" >type MirroredElemLabels: Unit</pre></code>

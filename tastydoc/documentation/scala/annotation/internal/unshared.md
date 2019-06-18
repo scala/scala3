@@ -6,6 +6,3 @@ An annotation indicating to `-Ycheck:reentrant` that an object will not be acces
 
 ***see*** scala.annotation.internal.sharable
 
-## Constructors:
-<pre><code class="language-scala" >unshared()</pre></code>
-

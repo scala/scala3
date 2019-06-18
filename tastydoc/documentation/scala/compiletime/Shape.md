@@ -7,6 +7,3 @@ scala.compiletime
 The shape of an ADT.
 This is either a product (`Case`) or a sum (`Cases`) of products.
 
-## Constructors:
-<pre><code class="language-scala" >Shape()</pre></code>
-

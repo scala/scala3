@@ -2,9 +2,6 @@ scala.tasty.reflect
 # trait PatternOps
 
 <pre><code class="language-scala" >trait PatternOps extends Core</pre></code>
-## Constructors:
-<pre><code class="language-scala" >PatternOps()</pre></code>
-
 ## Concrete Type Members:
 ### Pattern
 <pre><code class="language-scala" >final object <a href="./PatternOps/Pattern$.md">Pattern</a></pre></code>

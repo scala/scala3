@@ -4,9 +4,6 @@ scala
 <pre><code class="language-scala" >trait Selectable extends Any</pre></code>
 ## Known subclasses:
 <a href="./reflect/Selectable.md">Selectable</a>
-## Constructors:
-<pre><code class="language-scala" >Selectable()</pre></code>
-
 ## Concrete Value Members:
 ### applyDynamic
 <pre><code class="language-scala" >def applyDynamic(name: String, paramClasses: Seq[<a href="./reflect/ClassTag.md">ClassTag</a>[Nothing <: Any]])(args: Seq[Any]): Any</pre></code>

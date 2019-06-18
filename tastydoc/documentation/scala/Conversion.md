@@ -18,9 +18,6 @@ from two to one.
 
 ## Annotations:
 @FunctionalInterface 
-## Constructors:
-<pre><code class="language-scala" >Conversion()</pre></code>
-
 ## Concrete Value Members:
 ### andThen
 <pre><code class="language-scala" >@unspecialized def andThen[A](g: (R) => A): (T1) => A</pre></code>

@@ -2,9 +2,6 @@ scala.tasty.reflect
 # trait ContextOps
 
 <pre><code class="language-scala" >trait ContextOps extends Core</pre></code>
-## Constructors:
-<pre><code class="language-scala" >ContextOps()</pre></code>
-
 ## Concrete Type Members:
 ### ContextAPI
 <pre><code class="language-scala" >class <a href="./ContextOps/ContextAPI.md">ContextAPI</a></pre></code>
