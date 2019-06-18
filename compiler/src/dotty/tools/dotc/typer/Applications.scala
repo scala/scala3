@@ -216,8 +216,11 @@ object Applications {
   /** A wrapper indicating that its argument is an application of an extension method.
    */
   class ExtMethodApply(app: Tree)(implicit @constructorOnly src: SourceFile)
-  extends IntegratedTypeArgs(app)
-
+  extends IntegratedTypeArgs(app) {
+    overwriteType(WildcardType)
+      // ExtMethodApply always has wildcard type in order not to prompt any further adaptations
+      // such as eta expansion before the method is fully applied.
+  }
 }
 
 trait Applications extends Compatibility { self: Typer with Dynamic =>
