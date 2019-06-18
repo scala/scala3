@@ -17,7 +17,7 @@ object Macro {
     (strCtxExpr, argsExpr) match {
       case ('{ StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
         val errors = List.newBuilder[Expr[(Boolean, Int, Int, Int, String)]]
-         // true if error, false if warning
+        // true if error, false if warning
         // 0 if part, 1 if arg, 2 if strCtx, 3 if args
         // index in the list if arg or part, -1 otherwise
         // offset, 0 if strCtx, args or arg
@@ -67,7 +67,7 @@ object Macro {
         errors.result().toExprOfList
     case ('{ new StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
         val errors = List.newBuilder[Expr[(Boolean, Int, Int, Int, String)]]
-         // true if error, false if warning
+        // true if error, false if warning
         // 0 if part, 1 if arg, 2 if strCtx, 3 if args
         // index in the list if arg or part, -1 otherwise
         // offset, 0 if strCtx, args or arg

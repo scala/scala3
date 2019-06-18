@@ -71,17 +71,9 @@ object StringContextMacro {
    */
   def getPartsExprs(strCtxExpr : Expr[scala.StringContext])(implicit reflect : Reflection): List[Expr[String]] = {
     import reflect._
-    strCtxExpr.unseal.underlyingArgument match {
-      case Apply(Select(Select(_, "StringContext") | Ident("StringContext"), "apply"), List(parts1)) =>
-        parts1.seal.cast[Seq[String]] match {
-          case ExprSeq(parts2) => parts2.toList
-          case _ => QuoteError("Expected statically known String Context", strCtxExpr)
-        }
-      case Apply(Select(New(TypeIdent("StringContext")), _), List(parts1)) =>
-        parts1.seal.cast[Seq[String]] match {
-          case ExprSeq(parts2) => parts2.toList
-          case _ => QuoteError("Expected statically known String Context", strCtxExpr)
-        }
+    strCtxExpr match {
+      case '{ StringContext(${ExprSeq(parts)}: _*) } => parts.toList
+      case '{ new StringContext(${ExprSeq(parts)}: _*) } => parts.toList
       case _ => QuoteError("Expected statically known String Context", strCtxExpr)
     }
   }
