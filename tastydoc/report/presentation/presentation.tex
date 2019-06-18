@@ -62,10 +62,9 @@
 
 \begin{frame}
   \frametitle{What is Tastydoc ?}
-  \pause
   \begin{itemize}
-    \item Documentation tool for Dotty \pause
-    \item Uses TASTy files \pause
+    \item Documentation tool for Dotty
+    \item Uses TASTy files
     \item Outputs Markdown
   \end{itemize}
 \end{frame}
@@ -74,43 +73,29 @@
 
 \begin{frame}
   \frametitle{Accessible information}
-  \pause
   \begin{itemize}
-    \item Annotations, modifiers (including scope modifiers), parameters, type parameters, and return types \pause
-    \item Members, parents, constructors, known subclasses and companion \pause
+    \item Annotations, modifiers (including scope modifiers), parameters, type parameters, and return types
+    \item Members, parents, constructors, known subclasses and companion
     \item User documentation (Wiki-style \& Markdown)
+    \item Reference for linking
   \end{itemize}
 \end{frame}
 
 \begin{frame}
   \frametitle{TASTy}
-  \pause
   \begin{itemize}
-    \item Extract information from them \pause
+    \item Extract information from them
     \item Independent from the compiler
   \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Linking}
-  \pause
-  \begin{itemize}
-    \item To types \pause
-    \item Companion \pause
-    \item Annotations \pause
-    \item Scope modifiers \pause
-    \item Parents
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
   \frametitle{Markdown}
-  \pause
   \begin{itemize}
-    \item Easy to edit by hand \& preview \pause
-    \item Easy to add own files \pause
-    \item Easy for the user to make links \pause
-    \item Git hosting services have built-in preview \pause
+    \item Easy to edit by hand \& preview 
+    \item Easy to add own files 
+    \item Easy for the user to make links 
+    \item Git hosting services have built-in preview 
     \item Easy to convert to another format (HTML, PDF, etc.)
   \end{itemize}
 \end{frame}
@@ -140,48 +125,13 @@
 \section{Architecture}
 
 \begin{frame}
-  \frametitle{Representation}
-  \pause
-  \begin{itemize}
-    \item Contain information about an entity \pause
-    \item Easy to use, no knowledge of TASTy required \pause
-    \item Code is easy to maintain \pause
-    \item Similar to Dottydoc Entity \textrightarrow can reuse Dottydoc code
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Reference}
-  \pause
-  \begin{itemize}
-    \item Contain information about types \pause
-    \item Necessary for linking \pause
-    \item Inspired by Dottydoc
-  \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{User documentation}
-  \pause
-  \begin{itemize}
-    \item Access to all @ except \texttt{@usecase} and \texttt{@define}\pause
-    \item Support Wiki-style and Markdown \pause
-    \item Uses Dottydoc code modified for:
-    \begin{itemize}
-      \item Markdown output
-      \item Small changes in structure 
-    \end{itemize}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
   \frametitle{Workflow}
-  \pause
+  
   \begin{center}
     \begin{tikzpicture}[node distance=2cm]
-        \node (parse) [process] {Parse command line arguments};\pause
+        \node (parse) [process] {Parse command line arguments};
         \node (convert) [process, below of=parse] {Convert TASTy files to Representations while keeping track of seen packages};
-        \draw [arrow] (parse) -- (convert);\pause
+        \draw [arrow] (parse) -- (convert);
         \node (output) [process, below of=convert] {Traverse Representations, parse user documentation, format output and write to files};
     
         \draw [arrow] (convert) -- (output);
@@ -189,37 +139,46 @@
   \end{center}
 \end{frame}
 
-\section{Dottydoc vs Tastydoc}
-
 \begin{frame}
-  \frametitle{General comparison}
-  \pause
+  \frametitle{Representation}
+  
   \begin{itemize}
-    \item Compiler internals \pause
-    \item Markdown vs HTML/CSS
+    \item Contain information about an entity 
+    \item Easy to use, no knowledge of TASTy required 
+    \item Code is easy to maintain 
+    \item Similar to Dottydoc Entity \textrightarrow can reuse Dottydoc code
   \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Extra features}
-  \pause
+  \frametitle{Reference}
   \begin{itemize}
-    \item Scope modifiers \pause
-    \item Known subclasses \pause
+    \item Contain information about types
+    \item Necessary for linking
+    \item Inspired by Dottydoc
+  \end{itemize}
+\end{frame}
+
+\section{Dottydoc vs Tastydoc}
+
+\begin{frame}
+  \frametitle{Extra features}
+  \begin{itemize}
+    \item Scope modifiers
+    \item Known subclasses
     \item Refined types
   \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]
   \frametitle{Bugs fixed}
-  \pause
   \begin{itemize}
     \item Buggy output
 \begin{lstlisting}
 final val BITS_PER_LAZY_VAL : [31m2L[0m
-\end{lstlisting}\pause
-    \item Wrong parents \pause
-    \item Annotations \pause
+\end{lstlisting}
+    \item Wrong parents
+    \item Annotations
     \item Compiler artifacts \pause
     \item potentially program breaking code
 \begin{lstlisting}[language=scala]
@@ -232,38 +191,37 @@ def parents: List[Entity] = this :: this.parents
 
 \begin{frame}
   \frametitle{Problems}
-  \pause
+  
   \begin{itemize}
-    \item Markdown escaping \pause
-    \item Linking inside code blocks \pause
-    \item Sections \pause
+    \item Markdown escaping 
+    \item Linking inside code blocks 
+    \item Sections 
     \item IDs for linking
   \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]
   \frametitle{Further work}
-  \pause
+  
   \begin{itemize}
-    \item Markdown escaping \pause
-    \item Type lambdas \pause
+    \item Markdown escaping 
+    \item Type lambdas
     \item Complex types
 \begin{lstlisting}[language=scala]
   class Graph {
       type Node = Int
   }
   def linkingGraph(g: Graph): g.Node = ???    
-\end{lstlisting}\pause
-    \item Default values \pause
-    \item Extra user-documentation parsing \pause
+\end{lstlisting}
+    \item Default values 
+    \item Extra user-documentation parsing 
     \item HTML/CSS
   \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Questions ?}
   \begin{center}
-    \Huge{?}
+    \Huge{Questions ?}
   \end{center}
 \end{frame}
 

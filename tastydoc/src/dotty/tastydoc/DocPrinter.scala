@@ -94,8 +94,9 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
     ")"
   )
 
-  private def formatModifiers(modifiers: List[String], privateWithin: Option[Reference], protectedWithin: Option[Reference], declarationPath: List[String]): String = {
-    val filteredModifiers = modifiers.filter(x => x != "private" && x != "protected")
+  private def formatModifiers(modifiers: List[String], privateWithin: Option[Reference], protectedWithin: Option[Reference], annotations: List[TypeReference], declarationPath: List[String]): String = {
+    val hasInlineAnnot = annotations.contains(TypeReference("forceInline", "/scala", Nil, true))
+    val filteredModifiers = modifiers.filter(x => x != "private" && x != "protected" && (!hasInlineAnnot || x != "inline"))
 
     (privateWithin match {
       case Some(r) => formatReferences(r, declarationPath).mkString("private[", "", "] ")
@@ -154,7 +155,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
     def formatSimplifiedSignature(): String = {
       htmlPreCode(
         formatAnnotations(representation.annotations, declarationPath) +
-        formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
+        formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, representation.annotations, declarationPath) +
         representation.kind +
         " " +
         makeLink(representation.name, representation.path.mkString("/", "/", ""), true, declarationPath)
@@ -179,7 +180,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
     }
 
     def formatSignature(): String = {
-      htmlPreCode(formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, representation.path) +
+      htmlPreCode(formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, representation.annotations, representation.path) +
         representation.kind +
         " " +
         (if(representation.isObject) representation.name.stripSuffix("$") else representation.name) +
@@ -339,7 +340,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
   private def formatDefRepresentation(representation: DefRepresentation, declarationPath: List[String]): String = {
     htmlPreCode(
       formatAnnotations(representation.annotations, declarationPath) +
-      formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
+      formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, representation.annotations, declarationPath) +
       "def " +
       representation.name +
       (if(representation.typeParams.nonEmpty) representation.typeParams.mkString("[", ", ", "]") else "") +
@@ -357,7 +358,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
   private def formatValRepresentation(representation: ValRepresentation, declarationPath: List[String]): String = {
     htmlPreCode(
       formatAnnotations(representation.annotations, declarationPath) +
-      formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
+      formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, representation.annotations, declarationPath) +
       (if(representation.isVar) "var " else "val ") +
       representation.name +
       ": " +
@@ -371,7 +372,7 @@ class DocPrinter(mutablePackagesMap: scala.collection.mutable.HashMap[String, Em
   private def formatTypeRepresentation(representation: TypeRepresentation, declarationPath: List[String]): String = {
     htmlPreCode(
       formatAnnotations(representation.annotations, declarationPath) +
-      formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, declarationPath) +
+      formatModifiers(representation.modifiers, representation.privateWithin, representation.protectedWithin, representation.annotations, declarationPath) +
       "type " +
       representation.name +
       (if(representation.isAbstract) "" else ": " + formatReferences(representation.alias.get, declarationPath))
