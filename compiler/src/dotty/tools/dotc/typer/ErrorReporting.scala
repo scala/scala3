@@ -4,13 +4,22 @@ package typer
 
 import ast._
 import core._
-import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
-import Implicits._, Flags._
+import Types._
+import ProtoTypes._
+import Contexts._
+import Decorators._
+import Denotations._
+import Symbols._
+import Implicits._
+import Flags._
 import util.Spans._
 import util.SourcePosition
 import java.util.regex.Matcher.quoteReplacement
+
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages._
+
+import scala.util.matching.Regex
 
 object ErrorReporting {
 
@@ -152,10 +161,14 @@ object ErrorReporting {
      */
     def userDefinedErrorString(raw: String, paramNames: List[String], args: List[Type]): String = {
       def translate(name: String): Option[String] = {
+        println("<" + name + ">")
         val idx = paramNames.indexOf(name)
-        if (idx >= 0) Some(quoteReplacement(ex"${args(idx)}")) else None
+        if (idx >= 0) Some(ex"${args(idx)}") else None
       }
-      """\$\{\w*\}""".r.replaceSomeIn(raw, m => translate(m.matched.drop(2).init))
+      println(raw)
+      """\$\{\s*([^}\s]+)\s*\}""".r.replaceAllIn(raw, (_: Regex.Match) match {
+        case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse(""))
+      })
     }
 
     def rewriteNotice: String =

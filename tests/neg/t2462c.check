@@ -1,0 +1,20 @@
+-- Error: tests/neg/t2462c.scala:24:8 ----------------------------------------------------------------------------------
+24 |  f[X$Y] // error
+   |        ^
+   |        No C of X$Y
+-- Error: tests/neg/t2462c.scala:30:13 ---------------------------------------------------------------------------------
+30 |  f[Foo[Int]] // error
+   |             ^
+   |             No C of Foo[Int]
+-- Error: tests/neg/t2462c.scala:33:13 ---------------------------------------------------------------------------------
+33 |  g[Foo[Int]] // error
+   |             ^
+   |             No C of Foo[Int]
+-- Error: tests/neg/t2462c.scala:36:13 ---------------------------------------------------------------------------------
+36 |  h[Foo[Int]] // error
+   |             ^
+   |             No C of Foo[Int]
+-- Error: tests/neg/t2462c.scala:40:19 ---------------------------------------------------------------------------------
+40 |  i.m[Option[Long]] // error
+   |                   ^
+   |                   no implicit argument of type Int was found for parameter i of method m in class I

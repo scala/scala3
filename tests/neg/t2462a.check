@@ -1,0 +1,9 @@
+-- Error: tests/neg/t2462a.scala:2:44 ----------------------------------------------------------------------------------
+2 |  List(1,2,3).map[Int, List[String]](x => 1) // error
+  |                                            ^
+  |Cannot construct a collection of type List[String] with elements of type Int based on a collection of type List[Int]..
+  |I found:
+  |
+  |    scala.collection.immutable.List.canBuildFrom[Nothing]
+  |
+  |But method canBuildFrom in object List does not match type scala.collection.generic.CanBuildFrom[List[Int], Int, List[String]].

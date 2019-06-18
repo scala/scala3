@@ -3,10 +3,10 @@ package dotc
 package typer
 
 import core._
-import ast.{Trees, TreeTypeMap, untpd, tpd}
+import ast.{TreeTypeMap, Trees, tpd, untpd}
 import util.Spans._
-import util.Stats.{track, record, monitored}
-import printing.{Showable, Printer}
+import util.Stats.{monitored, record, track}
+import printing.{Printer, Showable}
 import printing.Texts._
 import Contexts._
 import Types._
@@ -28,13 +28,15 @@ import reporting.diagnostic.Message
 import Inferencing.fullyDefinedType
 import Trees._
 import Hashable._
-import util.{Property, SourceFile, NoSource}
+import util.{NoSource, Property, SourceFile}
 import config.Config
 import config.Printers.{implicits, implicitsDetailed}
+import dotty.tools.dotc.core.Annotations.Annotation
+
 import collection.mutable
 import reporting.trace
-import annotation.tailrec
 
+import annotation.tailrec
 import scala.annotation.internal.sharable
 
 /** Implicit resolution */
@@ -859,11 +861,16 @@ trait Implicits { self: Typer =>
 
     def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
 
+    @tailrec def annotationOnType(cls: Symbol, tp: Type): Option[Annotation] = tp.widen match {
+      case AnnotatedType(tpe, ann) => if (ann matches cls) Some(ann) else annotationOnType(cls, tpe)
+      case _ => None
+    }
+
     /** Extract a user defined error message from a symbol `sym`
      *  with an annotation matching the given class symbol `cls`.
      */
     def userDefinedMsg(sym: Symbol, cls: Symbol) = for {
-      ann <- sym.getAnnotation(cls)
+      ann <- annotationOnType(cls, pt).orElse(sym.getAnnotation(cls))
       Trees.Literal(Constant(msg: String)) <- ann.argument(0)
     } yield msg
 
