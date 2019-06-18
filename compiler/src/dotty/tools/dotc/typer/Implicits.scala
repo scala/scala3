@@ -1348,7 +1348,10 @@ trait Implicits { self: Typer =>
       }
       else {
         val returned =
-          if (cand.isExtension) new Applications.ExtMethodApply(adapted).withType(adapted.tpe)
+          if (cand.isExtension)
+            new Applications.ExtMethodApply(adapted).withType(WildcardType)
+              // Use wildcard type in order not to prompt any further adaptations such as eta expansion
+              // before the method is fully applied.
           else adapted
         SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadt)
       }
