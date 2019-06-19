@@ -3,7 +3,7 @@ package typer
 
 import core._
 import Types._, Contexts._, Flags._, Symbols._, Annotations._
-import delegate Flags.FlagOps // DOTTY problem: this should not be needed as we should include prefixes of aliases in implicit scopes
+import delegate Flags.FlagOps // DOTTY problem: this line can be dropped in 0.17 once #6712 is in bootstrap.
 
 object Variances {
 

@@ -18,6 +18,10 @@ object Flags {
   }
   type FlagSet = opaques.FlagSet
   def FlagSet(bits: Long): FlagSet = opaques.FlagSet(bits)
+  // DOTTY problem: would like to replace previous 2 lines with
+  //   export opaques.FlagSet
+  // but this makes `def FlagSet` in `opaques` ill-typed.
+
 
   delegate FlagOps {
 
