@@ -17,6 +17,8 @@ import dotty.tools.dotc.util.SourceFile
 
 import scala.tasty.reflect.Kernel
 
+import delegate Flags.FlagOps // DOTTY problem: this should not be needed as we should include prefixes of aliases in implicit scopes
+
 class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.SourcePosition) extends Kernel {
 
   private implicit def ctx: core.Contexts.Context = rootContext

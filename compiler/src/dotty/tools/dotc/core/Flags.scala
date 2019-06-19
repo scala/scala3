@@ -19,7 +19,7 @@ object Flags {
   type FlagSet = opaques.FlagSet
   def FlagSet(bits: Long): FlagSet = opaques.FlagSet(bits)
 
-  implicit object FlagOps {
+  delegate FlagOps {
 
     def (xs: FlagSet) bits: Long = opaques.toBits(xs)
 
