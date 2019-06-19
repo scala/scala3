@@ -8,12 +8,12 @@ object Flags {
   object opaques {
 
     /** A FlagSet represents a set of flags. Flags are encoded as follows:
-    *  The first two bits indicate whether a flagset applies to terms,
+    *  The first two bits indicate whether a flag set applies to terms,
     *  to types, or to both.  Bits 2..63 are available for properties
     *  and can be doubly used for terms and types.
     */
     opaque type FlagSet = Long
-    def FlagSet(bits: Long): FlagSet = bits.asInstanceOf // !!!
+    def FlagSet(bits: Long): FlagSet = bits
     def toBits(fs: FlagSet): Long = fs
   }
   type FlagSet = opaques.FlagSet
