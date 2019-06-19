@@ -121,7 +121,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
   private def mightBeDropped(sym: Symbol)(implicit ctx: Context) =
     sym.is(Private, butNot = MethodOrLazy) && !sym.isAllOf(MutableParamAccessor)
 
-  private final val MutableParamAccessor = allOf(Mutable, ParamAccessor)
+  private final val MutableParamAccessor = Mutable | ParamAccessor
 
   override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = {
     val cls = ctx.owner.asClass

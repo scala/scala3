@@ -217,7 +217,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       else {
         if (ms.nonEmpty)
           for (m <- ms)
-            assert(flags.isAllOf(allOf(m.flags)) ||
+            assert(flags.isAllOf(m.flags) ||
                    m.isInstanceOf[Mod.Private] && !privateWithin.isEmpty,
                    s"unaccounted modifier: $m in $this when adding $ms")
         copy(mods = ms)

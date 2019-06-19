@@ -392,7 +392,7 @@ object Checking {
       if (sym.isOneOf(flag))
         fail(AbstractMemberMayNotHaveModifier(sym, flag))
     def checkNoConflict(flag1: FlagSet, flag2: FlagSet, msg: => String) =
-      if (sym.isAllOf(allOf(flag1, flag2))) fail(msg)
+      if (sym.isAllOf(flag1 | flag2)) fail(msg)
     def checkCombination(flag1: FlagSet, flag2: FlagSet) =
       checkNoConflict(flag1, flag2, i"illegal combination of modifiers: `$flag1` and `$flag2` for: $sym")
     def checkApplicable(flag: FlagSet, ok: Boolean) =

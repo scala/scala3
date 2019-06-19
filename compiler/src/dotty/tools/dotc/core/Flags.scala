@@ -64,7 +64,7 @@ object Flags {
     /** Does this flag set have all of the flags in given flag conjunction?
      *  Pre: The intersection of the typeflags of both sets must be non-empty.
      */
-    def isAllOf(flags: FlagConjunction): Boolean = {
+    def isAllOf(flags: FlagSet): Boolean = {
       val fs = bits & flags.bits
       ((fs & KINDFLAGS) != 0 || flags.bits == 0) &&
       (fs >>> TYPESHIFT) == (flags.bits >>> TYPESHIFT)
@@ -74,7 +74,7 @@ object Flags {
      *  and at the same time contain none of the flags in the `butNot` set?
      *  Pre: The intersection of the typeflags of both sets must be non-empty.
      */
-    def isAllOf(flags: FlagConjunction, butNot: FlagSet): Boolean = isAllOf(flags) && !is(butNot)
+    def isAllOf(flags: FlagSet, butNot: FlagSet): Boolean = isAllOf(flags) && !isOneOf(butNot)
 
     def isEmpty: Boolean = (bits & ~KINDFLAGS) == 0
 
@@ -189,21 +189,6 @@ object Flags {
     for (f <- flagss)
       flag |= f
     flag
-  }
-
-  def allOf(flags: FlagSet) = FlagConjunction(flags.bits)
-
-  /** The conjunction of all flags in given flag set */
-  def allOf(flags1: FlagSet, flags2: FlagSet): FlagConjunction = {
-    assert(flags1.numFlags == 1 && flags2.numFlags == 1, "Flags.allOf doesn't support flag " + (if (flags1.numFlags != 1) flags1 else flags2))
-    FlagConjunction((flags1 | flags2).bits)
-  }
-
-  /** The conjunction of all flags in given flag set */
-  def allOf(flags1: FlagSet, flags2: FlagSet, flags3: FlagSet, flagss: FlagSet*): FlagConjunction = {
-    val flags0 = allOf(flags1, flags2) | flags3
-    assert(flags3.numFlags == 1 && flagss.forall(_.numFlags == 1), "Flags.allOf doesn't support flag " + (if (flags3.numFlags != 1) flags3 else flagss.find(_.numFlags != 1)))
-    FlagConjunction((flags0 | union(flagss: _*)).bits)
   }
 
   def commonFlags(flagss: FlagSet*): FlagSet = union(flagss.map(_.toCommonFlags): _*)
@@ -604,28 +589,28 @@ object Flags {
   final val EffectivelyFinalFlags: FlagSet = Private | Final
 
   /** A private method */
-  final val PrivateMethod: FlagConjunction = allOf(Private, Method)
+  final val PrivateMethod: FlagConjunction = Private | Method
 
   /** A private accessor */
-  final val PrivateAccessor: FlagConjunction = allOf(Private, Accessor)
+  final val PrivateAccessor: FlagConjunction = Private | Accessor
 
   /** An inline method */
-  final val InlineMethod: FlagConjunction = allOf(Inline, Method)
+  final val InlineMethod: FlagConjunction = Inline | Method
 
   /** An inline by-name parameter proxy */
-  final val InlineByNameProxy: FlagConjunction = allOf(InlineProxy, Method)
+  final val InlineByNameProxy: FlagConjunction = InlineProxy | Method
 
   /** An inline parameter */
-  final val InlineParam: FlagConjunction = allOf(Inline, Param)
+  final val InlineParam: FlagConjunction = Inline | Param
 
   /** An extension method */
-  final val ExtensionMethod = allOf(Extension, Method)
+  final val ExtensionMethod = Extension | Method
 
   /** An implied method */
-  final val SyntheticImpliedMethod: FlagConjunction = allOf(Synthetic, Implied, Method)
+  final val SyntheticImpliedMethod: FlagConjunction = Synthetic | Implied | Method
 
   /** An enum case */
-  final val EnumCase: FlagConjunction = allOf(Enum, Case)
+  final val EnumCase: FlagConjunction = Enum | Case
 
   /** A term parameter or parameter accessor */
   final val TermParamOrAccessor: FlagSet = Param | ParamAccessor
@@ -652,10 +637,10 @@ object Flags {
   final val FinalOrSealed: FlagSet = Final | Sealed
 
   /** A covariant type parameter instance */
-  final val LocalCovariant: FlagConjunction = allOf(Local, Covariant)
+  final val LocalCovariant: FlagConjunction = Local | Covariant
 
   /** A contravariant type parameter instance */
-  final val LocalContravariant: FlagConjunction = allOf(Local, Contravariant)
+  final val LocalContravariant: FlagConjunction = Local | Contravariant
 
   /** Has defined or inherited default parameters */
   final val HasDefaultParamsFlags: FlagSet = DefaultParameterized | InheritedDefaultParams
@@ -664,74 +649,74 @@ object Flags {
   final val ValidForeverFlags: FlagSet = Package | Permanent | Scala2ExistentialCommon
 
   /** A type parameter of a class or trait */
-  final val ClassTypeParam: FlagConjunction = allOf(TypeParam, Private)
+  final val ClassTypeParam: FlagConjunction = TypeParam | Private
 
   /** Is a default parameter in Scala 2*/
-  final val DefaultParameter: FlagConjunction = allOf(Param, DefaultParameterized)
+  final val DefaultParameter: FlagConjunction = Param | DefaultParameterized
 
   /** A trait that does not need to be initialized */
-  final val NoInitsTrait: FlagConjunction = allOf(Trait, NoInits)
+  final val NoInitsTrait: FlagConjunction = Trait | NoInits
 
   /** A Java interface, potentially with default methods */
-  final val JavaTrait: FlagConjunction = allOf(JavaDefined, Trait, NoInits)
+  final val JavaTrait: FlagConjunction = JavaDefined | Trait | NoInits
 
     /** A Java interface */ // TODO when unpickling, reconstitute from context
-  final val JavaInterface: FlagConjunction = allOf(JavaDefined, Trait)
+  final val JavaInterface: FlagConjunction = JavaDefined | Trait
 
   /** A Java companion object */
-  final val JavaModule: FlagConjunction = allOf(JavaDefined, Module)
+  final val JavaModule: FlagConjunction = JavaDefined | Module
 
   /** A Java companion object */
-  final val JavaProtected: FlagConjunction = allOf(JavaDefined, Protected)
+  final val JavaProtected: FlagConjunction = JavaDefined | Protected
 
   /** A Java enum */
-  final val JavaEnum: FlagConjunction = allOf(JavaDefined, Enum)
+  final val JavaEnum: FlagConjunction = JavaDefined | Enum
 
   /** A Java enum trait */
-  final val JavaEnumTrait: FlagConjunction = allOf(JavaDefined, Enum)
+  final val JavaEnumTrait: FlagConjunction = JavaDefined | Enum
 
   /** A Java enum value */
-  final val JavaEnumValue: FlagConjunction = allOf(StableRealizable, JavaStatic, JavaDefined, Enum)
+  final val JavaEnumValue: FlagConjunction = StableRealizable | JavaStatic | JavaDefined | Enum
 
   /** An enum value */
-  final val EnumValue: FlagConjunction = allOf(StableRealizable, JavaStatic, Enum)
+  final val EnumValue: FlagConjunction = (StableRealizable | JavaStatic | Enum)
 
   /** Labeled private[this] */
-  final val PrivateLocal: FlagConjunction = allOf(Private, Local)
+  final val PrivateLocal: FlagConjunction = Private | Local
 
   /** A private[this] parameter accessor */
-  final val PrivateLocalParamAccessor: FlagConjunction = allOf(Private, Local, ParamAccessor)
+  final val PrivateLocalParamAccessor: FlagConjunction = Private | Local | ParamAccessor
 
   /** A parameter forwarder */
-  final val ParamForwarder: FlagConjunction = allOf(Method, StableRealizable, ParamAccessor)
+  final val ParamForwarder: FlagConjunction = Method | StableRealizable | ParamAccessor
 
   /** A private[this] parameter */
-  final val PrivateLocalParam: FlagConjunction = allOf(Private, Local, Param)
+  final val PrivateLocalParam: FlagConjunction = Private | Local | Param
 
   /** A private parameter accessor */
-  final val PrivateParamAccessor: FlagConjunction = allOf(Private, ParamAccessor)
+  final val PrivateParamAccessor: FlagConjunction = Private | ParamAccessor
 
   /** A local parameter */
-  final val ParamAndLocal: FlagConjunction = allOf(Param, Local)
+  final val ParamAndLocal: FlagConjunction = Param | Local
 
   /** Labeled protected[this] */
-  final val ProtectedLocal: FlagConjunction = allOf(Protected, Local)
+  final val ProtectedLocal: FlagConjunction = Protected | Local
 
-  final val LiftedMethod: FlagConjunction = allOf(Lifted, Method)
+  final val LiftedMethod: FlagConjunction = Lifted | Method
 
   /** Java symbol which is `protected` and `static` */
-  final val StaticProtected: FlagConjunction = allOf(JavaDefined, Protected, JavaStatic)
+  final val StaticProtected: FlagConjunction = JavaDefined | Protected | JavaStatic
 
-  final val Scala2Trait: FlagConjunction = allOf(Scala2x, Trait)
+  final val Scala2Trait: FlagConjunction = Scala2x | Trait
 
-  final val AbstractFinal: FlagConjunction = allOf(Abstract, Final)
-  final val AbstractSealed: FlagConjunction = allOf(Abstract, Sealed)
-  final val AbstractAndOverride: FlagConjunction = allOf(Abstract, Override)
+  final val AbstractFinal: FlagConjunction = Abstract | Final
+  final val AbstractSealed: FlagConjunction = Abstract | Sealed
+  final val AbstractAndOverride: FlagConjunction = Abstract | Override
 
-  final val SyntheticArtifact: FlagConjunction = allOf(Synthetic, Artifact)
-  final val SyntheticModule: FlagConjunction = allOf(Synthetic, Module)
-  final val SyntheticTermParam: FlagConjunction = allOf(Synthetic, TermParam)
-  final val SyntheticTypeParam: FlagConjunction = allOf(Synthetic, TypeParam)
-  final val SyntheticCase: FlagConjunction = allOf(Synthetic, Case)
-  final val SyntheticOpaque: FlagConjunction = allOf(Synthetic, Opaque)
+  final val SyntheticArtifact: FlagConjunction = Synthetic | Artifact
+  final val SyntheticModule: FlagConjunction = Synthetic | Module
+  final val SyntheticTermParam: FlagConjunction = Synthetic | TermParam
+  final val SyntheticTypeParam: FlagConjunction = Synthetic | TypeParam
+  final val SyntheticCase: FlagConjunction = Synthetic | Case
+  final val SyntheticOpaque: FlagConjunction = Synthetic | Opaque
 }

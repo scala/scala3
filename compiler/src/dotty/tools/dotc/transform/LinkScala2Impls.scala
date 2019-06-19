@@ -98,5 +98,5 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
     else throw new AssertionError(i"no impl method for $meth")
   }
 
-  private val Scala2xTrait = allOf(Scala2x, Trait)
+  private val Scala2xTrait = Scala2x | Trait
 }
