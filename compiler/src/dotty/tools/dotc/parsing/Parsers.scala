@@ -2763,7 +2763,7 @@ object Parsers {
     /** EnumCase = `case' (id ClassConstr [`extends' ConstrApps] | ids)
      */
     def enumCase(start: Offset, mods: Modifiers): DefTree = {
-      val mods1 = mods | EnumCase
+      val mods1 = mods | EnumCase.toFlags
       in.skipCASE()
 
       atSpan(start, nameStart) {

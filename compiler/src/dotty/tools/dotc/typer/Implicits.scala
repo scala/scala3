@@ -902,7 +902,7 @@ trait Implicits { self: Typer =>
             }
             else if (mirroredType.classSymbol.isGenericProduct) {
               val cls = mirroredType.classSymbol
-              val accessors = cls.caseAccessors.filterNot(_.is(PrivateLocal))
+              val accessors = cls.caseAccessors.filterNot(_.isAll(PrivateLocal))
               val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
               val (monoType, elemsType) = mirroredType match {
                 case mirroredType: HKTypeLambda =>

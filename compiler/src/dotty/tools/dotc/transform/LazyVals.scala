@@ -74,7 +74,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     else {
       val isField = sym.owner.isClass
       if (isField) {
-        if (sym.is(SyntheticModule))
+        if (sym.isAll(SyntheticModule))
           transformSyntheticModule(tree)
         else if (sym.isThreadUnsafe) {
           if (sym.is(Module)) {

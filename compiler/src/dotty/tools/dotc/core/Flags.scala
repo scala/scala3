@@ -611,9 +611,6 @@ object Flags {
   /** Labeled `private`, or `final` */
   final val EffectivelyFinalFlags: FlagSet = Private | Final
 
-  /** An enum case */
-  final val EnumCase: FlagSet = Enum | Case
-
   /** A private method */
   final val PrivateMethod: FlagConjunction = allOf(Private, Method)
 
@@ -637,7 +634,6 @@ object Flags {
 
   /** An enum case */
   final val EnumCase: FlagConjunction = allOf(Enum, Case)
-  final val EnumCaseVal: FlagConjunction = allOf(Enum, CaseVal)
 
   /** A term parameter or parameter accessor */
   final val TermParamOrAccessor: FlagSet = Param | ParamAccessor

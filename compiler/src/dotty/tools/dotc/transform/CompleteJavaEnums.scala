@@ -112,7 +112,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context): ValDef = {
     val sym = tree.symbol
-    if ((sym.is(EnumValue) || sym.name == nme.DOLLAR_VALUES) && sym.owner.linkedClass.derivesFromJavaEnum)
+    if ((sym.isAll(EnumValue) || sym.name == nme.DOLLAR_VALUES) && sym.owner.linkedClass.derivesFromJavaEnum)
       sym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
     tree
   }
@@ -147,7 +147,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
         body = params ++ addedDefs ++ rest)
     }
-    else if (cls.isAnonymousClass && cls.owner.is(EnumCase) && cls.owner.owner.linkedClass.derivesFromJavaEnum) {
+    else if (cls.isAnonymousClass && cls.owner.isAll(EnumCase) && cls.owner.owner.linkedClass.derivesFromJavaEnum) {
       def rhsOf(name: TermName) =
         templ.body.collect {
           case mdef: DefDef if mdef.name == name => mdef.rhs
