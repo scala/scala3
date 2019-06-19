@@ -5,121 +5,132 @@ import language.implicitConversions
 
 object Flags {
 
-  /** A FlagSet represents a set of flags. Flags are encoded as follows:
-   *  The first two bits indicate whether a flagset applies to terms,
-   *  to types, or to both.  Bits 2..63 are available for properties
-   *  and can be doubly used for terms and types.
-   */
-  case class FlagSet(val bits: Long) extends AnyVal {
+  object opaques {
 
-    /** The union of this flag set and the given flag set
+    /** A FlagSet represents a set of flags. Flags are encoded as follows:
+    *  The first two bits indicate whether a flagset applies to terms,
+    *  to types, or to both.  Bits 2..63 are available for properties
+    *  and can be doubly used for terms and types.
+    */
+    opaque type FlagSet = Long
+    def FlagSet(bits: Long): FlagSet = bits.asInstanceOf // !!!
+    def toBits(fs: FlagSet): Long = fs
+  }
+  type FlagSet = opaques.FlagSet
+  def FlagSet(bits: Long): FlagSet = opaques.FlagSet(bits)
+
+  implicit object FlagOps {
+
+    def (xs: FlagSet) bits: Long = opaques.toBits(xs)
+
+    /** The union of the given flag sets.
      *  Combining two FlagSets with `|` will give a FlagSet
      *  that has the intersection of the applicability to terms/types
      *  of the two flag sets. It is checked that the intersection is not empty.
      */
-    def | (that: FlagSet): FlagSet =
-      if (bits == 0) that
-      else if (that.bits == 0) this
+    def (x: FlagSet) | (that: FlagSet): FlagSet =
+      if (x.bits == 0) that
+      else if (that.bits == 0) x
       else {
-        val tbits = bits & that.bits & KINDFLAGS
+        val tbits = x.bits & that.bits & KINDFLAGS
         if (tbits == 0)
-          assert(false, s"illegal flagset combination: $this and $that")
-        FlagSet(tbits | ((this.bits | that.bits) & ~KINDFLAGS))
+          assert(false, s"illegal flagset combination: $x and $that")
+        FlagSet(tbits | ((x.bits | that.bits) & ~KINDFLAGS))
       }
 
-    /** The intersection of this flag set and the given flag set */
-    def & (that: FlagSet): FlagSet = FlagSet(bits & that.bits)
+    /** The intersection of the given flag sets */
+    def (x: FlagSet) & (that: FlagSet): FlagSet = FlagSet(x.bits & that.bits)
 
-    /** The intersection of this flag set with the complement of the given flag set */
-    def &~ (that: FlagSet): FlagSet = {
-      val tbits = bits & KINDFLAGS
-      if ((tbits & that.bits) == 0) this
-      else FlagSet(tbits | ((this.bits & ~that.bits) & ~KINDFLAGS))
+    /** The intersection of a flag set with the complement of another flag set */
+    def (x: FlagSet) &~ (that: FlagSet): FlagSet = {
+      val tbits = x.bits & KINDFLAGS
+      if ((tbits & that.bits) == 0) x
+      else FlagSet(tbits | ((x.bits & ~that.bits) & ~KINDFLAGS))
     }
 
-    def ^ (that: FlagSet) =
-      FlagSet((bits | that.bits) & KINDFLAGS | (bits ^ that.bits) & ~KINDFLAGS)
+    def (x: FlagSet) ^ (that: FlagSet) =
+      FlagSet((x.bits | that.bits) & KINDFLAGS | (x.bits ^ that.bits) & ~KINDFLAGS)
 
-    /** Does this flag set have a non-empty intersection with the given flag set?
+    /** Does a given flag set have a non-empty intersection with another flag set?
      *  This means that both the kind flags and the carrier bits have non-empty intersection.
      */
-    def is(flags: FlagSet): Boolean = {
+    def (x: FlagSet) is(flags: FlagSet): Boolean = {
       assert(flags.numFlags == 1)
-      val fs = bits & flags.bits
+      val fs = x.bits & flags.bits
       (fs & KINDFLAGS) != 0 && (fs & ~KINDFLAGS) != 0
     }
 
-   /** Does this flag set have a non-empty intersection with the given flag set,
+   /** Does a given flag set have a non-empty intersection with another flag set,
     *  and at the same time contain none of the flags in the `butNot` set?
     */
-    def is(flags: FlagSet, butNot: FlagSet): Boolean = is(flags) && !isOneOf(butNot)
+    def (x: FlagSet) is(flags: FlagSet, butNot: FlagSet): Boolean = x.is(flags) && !x.isOneOf(butNot)
 
-    def isOneOf(flags: FlagSet): Boolean = {
-      val fs = bits & flags.bits
+    def (x: FlagSet) isOneOf(flags: FlagSet): Boolean = {
+      val fs = x.bits & flags.bits
       (fs & KINDFLAGS) != 0 && (fs & ~KINDFLAGS) != 0
     }
 
-    def isOneOf(flags: FlagSet, butNot: FlagSet): Boolean = isOneOf(flags) && !isOneOf(butNot)
+    def (x: FlagSet) isOneOf(flags: FlagSet, butNot: FlagSet): Boolean = x.isOneOf(flags) && !x.isOneOf(butNot)
 
-    /** Does this flag set have all of the flags in given flag conjunction?
-     *  Pre: The intersection of the typeflags of both sets must be non-empty.
+    /** Does a given flag set have all of the flags of another flag set?
+     *  Pre: The intersection of the term/type flags of both sets must be non-empty.
      */
-    def isAllOf(flags: FlagSet): Boolean = {
-      val fs = bits & flags.bits
+    def (x: FlagSet) isAllOf(flags: FlagSet): Boolean = {
+      val fs = x.bits & flags.bits
       ((fs & KINDFLAGS) != 0 || flags.bits == 0) &&
       (fs >>> TYPESHIFT) == (flags.bits >>> TYPESHIFT)
     }
 
-    /** Does this flag set have all of the flags in given flag conjunction?
+    /** Does a given flag set have all of the flags in another flag set
      *  and at the same time contain none of the flags in the `butNot` set?
-     *  Pre: The intersection of the typeflags of both sets must be non-empty.
+     *  Pre: The intersection of the term/type flags of both sets must be non-empty.
      */
-    def isAllOf(flags: FlagSet, butNot: FlagSet): Boolean = isAllOf(flags) && !isOneOf(butNot)
+    def (x: FlagSet) isAllOf(flags: FlagSet, butNot: FlagSet): Boolean = x.isAllOf(flags) && !x.isOneOf(butNot)
 
-    def isEmpty: Boolean = (bits & ~KINDFLAGS) == 0
+    def (x: FlagSet) isEmpty: Boolean = (x.bits & ~KINDFLAGS) == 0
 
-    /** Is this flag set a subset of that one? */
-    def <= (that: FlagSet): Boolean = (bits & that.bits) == bits
+    /** Is a given flag set a subset of another flag set? */
+    def (x: FlagSet) <= (that: FlagSet): Boolean = (x.bits & that.bits) == x.bits
 
-    /** Does this flag set apply to terms? */
-    def isTermFlags: Boolean = (bits & TERMS) != 0
+    /** Does the given flag set apply to terms? */
+    def (x: FlagSet) isTermFlags: Boolean = (x.bits & TERMS) != 0
 
-    /** Does this flag set apply to terms? */
-    def isTypeFlags: Boolean = (bits & TYPES) != 0
+    /** Does the given flag set apply to terms? */
+    def (x: FlagSet) isTypeFlags: Boolean = (x.bits & TYPES) != 0
 
-    /** This flag set with all flags transposed to be type flags */
-    def toTypeFlags: FlagSet = if (bits == 0) this else FlagSet(bits & ~KINDFLAGS | TYPES)
+    /** The given flag set with all flags transposed to be type flags */
+    def (x: FlagSet) toTypeFlags: FlagSet = if (x.bits == 0) x else FlagSet(x.bits & ~KINDFLAGS | TYPES)
 
-    /** This flag set with all flags transposed to be term flags */
-    def toTermFlags: FlagSet = if (bits == 0) this else FlagSet(bits & ~KINDFLAGS | TERMS)
+    /** The given flag set with all flags transposed to be term flags */
+    def (x: FlagSet) toTermFlags: FlagSet = if (x.bits == 0) x else FlagSet(x.bits & ~KINDFLAGS | TERMS)
 
-    /** This flag set with all flags transposed to be common flags */
-    def toCommonFlags: FlagSet = if (bits == 0) this else FlagSet(bits | KINDFLAGS)
+    /** The given flag set with all flags transposed to be common flags */
+    def (x: FlagSet) toCommonFlags: FlagSet = if (x.bits == 0) x else FlagSet(x.bits | KINDFLAGS)
 
-    /** The number of non-kind flags in this set */
-    def numFlags: Int = java.lang.Long.bitCount(bits & ~KINDFLAGS)
+    /** The number of non-kind flags in the given flag set */
+    def (x: FlagSet) numFlags: Int = java.lang.Long.bitCount(x.bits & ~KINDFLAGS)
 
-    /** The lowest non-kind bit set in this flagset */
-    def firstBit: Int = java.lang.Long.numberOfTrailingZeros(bits & ~KINDFLAGS)
+    /** The lowest non-kind bit set in the given flag set */
+    def (x: FlagSet) firstBit: Int = java.lang.Long.numberOfTrailingZeros(x.bits & ~KINDFLAGS)
 
-    /** The  list of non-empty names of flags with given index idx that are set in this FlagSet */
-    private def flagString(idx: Int): List[String] =
-      if ((bits & (1L << idx)) == 0) Nil
+    /** The  list of non-empty names of flags with given index idx that are set in the given flag set */
+    private def (x: FlagSet) flagString(idx: Int): List[String] =
+      if ((x.bits & (1L << idx)) == 0) Nil
       else {
         def halfString(kind: Int) =
-          if ((bits & (1L << kind)) != 0) flagName(idx)(kind) else ""
+          if ((x.bits & (1L << kind)) != 0) flagName(idx)(kind) else ""
         val termFS = halfString(TERMindex)
         val typeFS = halfString(TYPEindex)
         val strs = termFS :: (if (termFS == typeFS) Nil else typeFS :: Nil)
         strs filter (_.nonEmpty)
       }
 
-    /** The list of non-empty names of flags that are set in this FlagSet */
-    def flagStrings(privateWithin: String): Seq[String] = {
-      var rawStrings = (2 to MaxFlag).flatMap(flagString)
-      if (!privateWithin.isEmpty && !this.is(Protected))
+    /** The list of non-empty names of flags that are set in teh given flag set */
+    def (x: FlagSet) flagStrings(privateWithin: String): Seq[String] = {
+      var rawStrings = (2 to MaxFlag).flatMap(x.flagString(_))  // !!!
+      if (!privateWithin.isEmpty && !x.is(Protected))
       	rawStrings = rawStrings :+ "private"
-      val scopeStr = if (this.is(Local)) "this" else privateWithin
+      val scopeStr = if (x.is(Local)) "this" else privateWithin
       if (scopeStr != "")
         rawStrings.filter(_ != "<local>").map {
           case "private" => s"private[$scopeStr]"
@@ -129,8 +140,8 @@ object Flags {
       else rawStrings
     }
 
-    /** The string representation of this flag set */
-    def flagsString: String = flagStrings("").mkString(" ")
+    /** The string representation of the given flag set */
+    def (x: FlagSet) flagsString: String = x.flagStrings("").mkString(" ")
   }
 
   def termFlagSet(x: Long) = FlagSet(TERMS | x)
@@ -148,7 +159,7 @@ object Flags {
 
   private val flagName = Array.fill(64, 2)("")
 
-  private def isDefinedAsFlag(idx: Int) = flagName(idx) exists (_.nonEmpty)
+  private def isDefinedAsFlag(idx: Int) = flagName(idx).exists(_.nonEmpty)
 
   /** The flag set containing all defined flags of either kind whose bits
    *  lie in the given range
@@ -565,11 +576,11 @@ object Flags {
   /** An inline method or inline argument proxy */
   final val InlineOrProxy: FlagSet = Inline | InlineProxy
 
-  final val ImplicitOrImplied = Implicit | Implied
-  final val ImplicitOrImpliedOrGiven = Implicit | Implied | Given
-  final val ImplicitOrGiven = Implicit | Given
+  final val ImplicitOrImplied: FlagSet = Implicit | Implied
+  final val ImplicitOrImpliedOrGiven: FlagSet = Implicit | Implied | Given
+  final val ImplicitOrGiven: FlagSet = Implicit | Given
 
-  final val ImpliedOrGiven = Implied | Given
+  final val ImpliedOrGiven: FlagSet = Implied | Given
 
   final val ImplicitOrImpliedOrGivenTerm = ImplicitOrImpliedOrGiven.toTermFlags
 
@@ -598,7 +609,7 @@ object Flags {
   final val InlineParam: FlagSet = Inline | Param
 
   /** An extension method */
-  final val ExtensionMethod = Extension | Method
+  final val ExtensionMethod: FlagSet = Extension | Method
 
   /** An implied method */
   final val SyntheticImpliedMethod: FlagSet = Synthetic | Implied | Method

@@ -70,9 +70,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override protected def recursionLimitExceeded(): Unit = {}
 
   protected def PrintableFlags(isType: Boolean): FlagSet = {
-    if (isType) TypeSourceModifierFlags | Module | Local
-    else TermSourceModifierFlags | Module | Local
-  }.toCommonFlags
+    val fs =
+      if (isType) TypeSourceModifierFlags | Module | Local  // DOTTY problem: cannot merge these two statements
+      else TermSourceModifierFlags | Module | Local
+    fs.toCommonFlags
+  }
 
   override def nameString(name: Name): String =
     if (ctx.settings.YdebugNames.value) name.debugString else NameTransformer.decodeIllegalChars(name.toString)
