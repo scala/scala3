@@ -1109,7 +1109,7 @@ object Denotations {
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
       if (denots.exists && denots.matches(this)) NoDenotation else this
     def filterWithFlags(required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
-      if (required.toFlags.isEmpty && excluded.isEmpty || compatibleWith(required, excluded)) this else NoDenotation
+      if (required.isEmpty && excluded.isEmpty || compatibleWith(required, excluded)) this else NoDenotation
 
     type AsSeenFromResult = SingleDenotation
     protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = {

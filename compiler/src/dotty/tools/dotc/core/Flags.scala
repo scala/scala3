@@ -135,16 +135,8 @@ object Flags {
 
   def termFlagSet(x: Long) = FlagSet(TERMS | x)
 
-  /** A class representing flag sets that should be tested
-   *  conjunctively. I.e. for a flag conjunction `fc`,
-   *  `x is fc` tests whether `x` contains all flags in `fc`.
-   */
-  case class FlagConjunction(bits: Long) {
-    def toFlags = FlagSet(bits)
-    def flagsString: String = toFlags.flagsString
-    def | (fs: FlagSet): FlagConjunction = FlagConjunction((toFlags | fs).bits)
-  }
-
+  type FlagConjunction = FlagSet
+  def FlagConjunction(bits: Long) = FlagSet(bits)
   def termFlagConjunction(x: Long) = FlagConjunction(TERMS | x)
 
   private final val TYPESHIFT = 2

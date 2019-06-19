@@ -296,11 +296,11 @@ trait Symbols { this: Context =>
   /** Create a new skolem symbol. This is not the same as SkolemType, even though the
    *  motivation (create a singleton referencing to a type) is similar.
    */
-  def newSkolem(tp: Type): TermSymbol = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact.toFlags | NonMember | Permanent, tp)
+  def newSkolem(tp: Type): TermSymbol = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
 
   def newErrorSymbol(owner: Symbol, name: Name, msg: => Message): Symbol = {
     val errType = ErrorType(msg)
-    newSymbol(owner, name, SyntheticArtifact.toFlags,
+    newSymbol(owner, name, SyntheticArtifact,
         if (name.isTypeName) TypeAlias(errType) else errType)
   }
 

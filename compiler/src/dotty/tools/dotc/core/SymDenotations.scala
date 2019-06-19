@@ -208,13 +208,13 @@ object SymDenotations {
 
     /** Has this denotation all of the flags in `fs` set? */
     final def isAllOf(fs: FlagConjunction)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs.toFlags)) myFlags else flags).isAllOf(fs)
+      (if (isCurrent(fs)) myFlags else flags).isAllOf(fs)
 
     /** Has this denotation all of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
     final def isAllOf(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs.toFlags) && isCurrent(butNot)) myFlags else flags).isAllOf(fs, butNot)
+      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).isAllOf(fs, butNot)
 
     /** The type info, or, if symbol is not yet completed, the completer */
     final def infoOrCompleter: Type = myInfo

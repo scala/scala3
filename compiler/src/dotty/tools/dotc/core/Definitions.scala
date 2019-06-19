@@ -325,7 +325,7 @@ class Definitions {
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
 
   @threadUnsafe lazy val AnyKindClass: ClassSymbol = {
-    val cls = ctx.newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal.toFlags | Permanent, Nil)
+    val cls = ctx.newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil)
     if (!ctx.settings.YnoKindPolymorphism.value) {
       // Enable kind-polymorphism by exposing scala.AnyKind
       cls.entered
@@ -348,11 +348,11 @@ class Definitions {
       MethodType(List(ThrowableType), NothingType))
 
   @threadUnsafe lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Nothing, AbstractFinal.toFlags, List(AnyClass.typeRef))
+    ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
   def NothingType: TypeRef = NothingClass.typeRef
   @threadUnsafe lazy val RuntimeNothingModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Nothing")
   @threadUnsafe lazy val NullClass: ClassSymbol = enterCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Null, AbstractFinal.toFlags, List(ObjectClass.typeRef))
+    ScalaPackageClass, tpnme.Null, AbstractFinal, List(ObjectClass.typeRef))
   def NullType: TypeRef = NullClass.typeRef
   @threadUnsafe lazy val RuntimeNullModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Null")
 

@@ -532,7 +532,7 @@ class Namer { typer: Typer =>
   def addEnumConstants(mdef: DefTree, sym: Symbol)(implicit ctx: Context): Unit = mdef match {
     case vdef: ValDef if (isEnumConstant(vdef)) =>
       val enumClass = sym.owner.linkedClass
-      if (!enumClass.is(Sealed)) enumClass.setFlag(Flags.AbstractSealed.toFlags)
+      if (!enumClass.is(Sealed)) enumClass.setFlag(Flags.AbstractSealed)
       addChild(enumClass, sym)
     case _ =>
   }

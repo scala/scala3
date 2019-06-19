@@ -258,7 +258,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     var inlineFlag = InlineProxy
     if (paramtp.hasAnnotation(defn.InlineParamAnnot)) inlineFlag |= Inline
     val (bindingFlags, bindingType) =
-      if (isByName) (InlineByNameProxy.toFlags.toTermFlags, ExprType(argtpe.widen))
+      if (isByName) (InlineByNameProxy.toTermFlags, ExprType(argtpe.widen))
       else (inlineFlag, argtpe.widen)
     val boundSym = newSym(name, bindingFlags, bindingType).asTerm
     val binding = {

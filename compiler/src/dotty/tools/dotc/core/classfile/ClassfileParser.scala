@@ -185,8 +185,8 @@ class ClassfileParser(
     if (isEnum) {
       instanceScope.toList.map(_.ensureCompleted())
       staticScope.toList.map(_.ensureCompleted())
-      classRoot.setFlag(Flags.JavaEnum.toFlags)
-      moduleRoot.setFlag(Flags.JavaEnum.toFlags)
+      classRoot.setFlag(Flags.JavaEnum)
+      moduleRoot.setFlag(Flags.JavaEnum)
     }
 
     result
@@ -276,7 +276,7 @@ class ClassfileParser(
           if (!enumClass.exists)
             ctx.warning(s"no linked class for java enum $sym in ${sym.owner}. A referencing class file might be missing an InnerClasses entry.")
           else {
-            if (!enumClass.is(Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed.toFlags)
+            if (!enumClass.is(Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
             enumClass.addAnnotation(Annotation.Child(sym))
           }
         }
@@ -555,7 +555,7 @@ class ClassfileParser(
           if (ctx.debug && ctx.verbose)
             println("" + sym + "; signature = " + sig + " type = " + newType)
         case tpnme.SyntheticATTR =>
-          sym.setFlag(Flags.SyntheticArtifact.toFlags)
+          sym.setFlag(Flags.SyntheticArtifact)
         case tpnme.BridgeATTR =>
           sym.setFlag(Flags.Bridge)
         case tpnme.DeprecatedATTR =>

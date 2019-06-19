@@ -182,7 +182,7 @@ object desugar {
 
   def makeImplicitParameters(tpts: List[Tree], implicitFlag: FlagSet, forPrimaryConstructor: Boolean = false)(implicit ctx: Context): List[ValDef] =
     for (tpt <- tpts) yield {
-       val paramFlags: FlagSet = if (forPrimaryConstructor) PrivateLocalParamAccessor.toFlags else Param
+       val paramFlags: FlagSet = if (forPrimaryConstructor) PrivateLocalParamAccessor else Param
        val epname = EvidenceParamName.fresh()
        ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | implicitFlag)
     }
@@ -403,7 +403,7 @@ object desugar {
         val tparamReferenced = typeParamIsReferenced(
             enumClass.typeParams, originalTparams, originalVparamss, parents)
         if (originalTparams.isEmpty && (parents.isEmpty || tparamReferenced))
-          derivedEnumParams.map(tdef => tdef.withFlags(tdef.mods.flags | PrivateLocal.toFlags))
+          derivedEnumParams.map(tdef => tdef.withFlags(tdef.mods.flags | PrivateLocal))
         else originalTparams
       }
       else originalTparams
@@ -974,7 +974,7 @@ object desugar {
         case _ =>
           val tmpName = UniqueName.fresh()
           val patMods =
-            mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal.toFlags else EmptyFlags)
+            mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
           val firstDef =
             ValDef(tmpName, TypeTree(), matchExpr)
               .withSpan(pat.span.union(rhs.span)).withMods(patMods)

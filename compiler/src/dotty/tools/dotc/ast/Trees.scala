@@ -866,7 +866,7 @@ object Trees {
   class EmptyValDef[T >: Untyped] extends ValDef[T](
     nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T])(NoSource) with WithoutTypeOrPos[T] {
     myTpe = NoType.asInstanceOf[T]
-    setMods(untpd.Modifiers(PrivateLocal.toFlags))
+    setMods(untpd.Modifiers(PrivateLocal))
     override def isEmpty: Boolean = true
     override def withSpan(span: Span) = throw new AssertionError("Cannot change span of EmptyValDef")
   }

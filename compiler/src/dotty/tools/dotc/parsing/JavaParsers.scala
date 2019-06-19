@@ -120,7 +120,7 @@ object JavaParsers {
       // This also avoids clashes between the constructor parameter names and member names.
       if (needsDummyConstr) {
         stats1 = constr1 :: stats1
-        constr1 = makeConstructor(List(scalaDot(tpnme.Unit)), tparams, Flags.JavaDefined | Flags.PrivateLocal.toFlags)
+        constr1 = makeConstructor(List(scalaDot(tpnme.Unit)), tparams, Flags.JavaDefined | Flags.PrivateLocal)
       }
       Template(constr1.asInstanceOf[DefDef], parents, Nil, EmptyValDef, stats1)
     }
@@ -401,7 +401,7 @@ object JavaParsers {
       throw new RuntimeException
     }
 
-    def typeParams(flags: FlagSet = Flags.JavaDefined | Flags.PrivateLocal.toFlags | Flags.Param): List[TypeDef] =
+    def typeParams(flags: FlagSet = Flags.JavaDefined | Flags.PrivateLocal | Flags.Param): List[TypeDef] =
       if (in.token == LT) {
         in.nextToken()
         val tparams = repsep(() => typeParam(flags), COMMA)
@@ -711,7 +711,7 @@ object JavaParsers {
       val iface = atSpan(start, nameOffset) {
         TypeDef(
           name,
-          makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.Trait | Flags.JavaInterface.toFlags | Flags.Abstract)
+          makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.Trait | Flags.JavaInterface | Flags.Abstract)
       }
       addCompanionObject(statics, iface)
     }
@@ -835,7 +835,7 @@ object JavaParsers {
         Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)), Nil)
       val enumclazz = atSpan(start, nameOffset) {
         TypeDef(name,
-          makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.JavaEnum.toFlags)
+          makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.JavaEnum)
       }
       addCompanionObject(consts ::: statics ::: predefs, enumclazz)
     }
@@ -854,7 +854,7 @@ object JavaParsers {
           skipAhead()
           accept(RBRACE)
         }
-        ValDef(name.toTermName, enumType, unimplementedExpr).withMods(Modifiers(Flags.JavaEnum.toFlags | Flags.StableRealizable | Flags.JavaDefined | Flags.JavaStatic))
+        ValDef(name.toTermName, enumType, unimplementedExpr).withMods(Modifiers(Flags.JavaEnum | Flags.StableRealizable | Flags.JavaDefined | Flags.JavaStatic))
       }
     }
 

@@ -415,7 +415,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     makeConstructor(Nil, Nil)
 
   def makeSelfDef(name: TermName, tpt: Tree)(implicit ctx: Context): ValDef =
-    ValDef(name, tpt, EmptyTree).withFlags(PrivateLocal.toFlags)
+    ValDef(name, tpt, EmptyTree).withFlags(PrivateLocal)
 
   def makeTupleOrParens(ts: List[Tree])(implicit ctx: Context): Tree = ts match {
     case t :: Nil => Parens(t)
@@ -437,7 +437,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     vdef.withMods(mods | Param)
   }
 
-  def makeSyntheticParameter(n: Int = 1, tpt: Tree = null, flags: FlagSet = SyntheticTermParam.toFlags)(implicit ctx: Context): ValDef =
+  def makeSyntheticParameter(n: Int = 1, tpt: Tree = null, flags: FlagSet = SyntheticTermParam)(implicit ctx: Context): ValDef =
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
       .withFlags(flags)
 
