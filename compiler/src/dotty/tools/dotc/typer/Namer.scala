@@ -45,7 +45,7 @@ trait NamerContextOps { this: Context =>
 
   /** The denotation with the given `name` and all `required` flags in current context
    */
-  def denotNamed(name: Name, required: FlagConjunction = EmptyFlagConjunction): Denotation =
+  def denotNamed(name: Name, required: FlagSet = EmptyFlags): Denotation =
     if (owner.isClass)
       if (outer.owner == owner) { // inner class scope; check whether we are referring to self
         if (scope.size == 1) {

@@ -122,7 +122,7 @@ class Typer extends Namer
    *   @param required   flags the result's symbol must have
    *   @param posd       indicates position to use for error reporting
    */
-  def findRef(name: Name, pt: Type, required: FlagConjunction, posd: Positioned)(implicit ctx: Context): Type = {
+  def findRef(name: Name, pt: Type, required: FlagSet, posd: Positioned)(implicit ctx: Context): Type = {
     val refctx = ctx
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
 
@@ -394,7 +394,7 @@ class Typer extends Namer
       unimported = Set.empty
       foundUnderScala2 = NoType
       try {
-        var found = findRef(name, pt, EmptyFlagConjunction, tree.posd)
+        var found = findRef(name, pt, EmptyFlags, tree.posd)
         if (foundUnderScala2.exists && !(foundUnderScala2 =:= found)) {
           ctx.migrationWarning(
             ex"""Name resolution will change.

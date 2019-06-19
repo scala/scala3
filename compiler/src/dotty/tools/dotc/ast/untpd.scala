@@ -187,7 +187,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def is(fs: FlagSet, butNot: FlagSet): Boolean = flags.is(fs, butNot = butNot)
     def isOneOf(fs: FlagSet): Boolean = flags.isOneOf(fs)
     def isOneOf(fs: FlagSet, butNot: FlagSet): Boolean = flags.isOneOf(fs, butNot = butNot)
-    def isAllOf(fc: FlagConjunction): Boolean = flags.isAllOf(fc)
+    def isAllOf(fc: FlagSet): Boolean = flags.isAllOf(fc)
 
     def | (fs: FlagSet): Modifiers = withFlags(flags | fs)
     def & (fs: FlagSet): Modifiers = withFlags(flags & fs)

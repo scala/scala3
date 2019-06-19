@@ -3,7 +3,7 @@ package dotty.tools.backend.jvm
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc
-import dotty.tools.dotc.core.Flags.{termFlagSet, termFlagConjunction}
+import dotty.tools.dotc.core.Flags.{termFlagSet}
 import dotty.tools.dotc.transform.{Erasure, GenericSignatures}
 import dotty.tools.dotc.transform.SymUtils._
 import java.io.{File => _}
@@ -881,7 +881,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def =:=(other: Type): Boolean = tp =:= other
 
     def membersBasedOnFlags(excludedFlags: Flags, requiredFlags: Flags): List[Symbol] =
-      tp.membersBasedOnFlags(termFlagConjunction(requiredFlags), termFlagSet(excludedFlags)).map(_.symbol).toList
+      tp.membersBasedOnFlags(termFlagSet(requiredFlags), termFlagSet(excludedFlags)).map(_.symbol).toList
 
     def resultType: Type = tp.resultType
 

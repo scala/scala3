@@ -53,7 +53,7 @@ trait TypeAssigner {
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
         parentType.findMember(decl.name, cls.thisType,
-          required = EmptyFlagConjunction, excluded = Private)
+          required = EmptyFlags, excluded = Private)
           .suchThat(decl.matches(_))
       val inheritedInfo = inherited.info
       val isPolyFunctionApply = decl.name == nme.apply && (parent <:< defn.PolyFunctionType)

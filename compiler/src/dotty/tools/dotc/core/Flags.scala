@@ -135,10 +135,6 @@ object Flags {
 
   def termFlagSet(x: Long) = FlagSet(TERMS | x)
 
-  type FlagConjunction = FlagSet
-  def FlagConjunction(bits: Long) = FlagSet(bits)
-  def termFlagConjunction(x: Long) = FlagConjunction(TERMS | x)
-
   private final val TYPESHIFT = 2
   private final val TERMindex = 0
   private final val TYPEindex = 1
@@ -195,8 +191,6 @@ object Flags {
 
   /** The empty flag set */
   final val EmptyFlags: FlagSet = FlagSet(0)
-
-  final val EmptyFlagConjunction = FlagConjunction(0)
 
   /** The undefined flag set */
   final val UndefinedFlags: FlagSet = FlagSet(~KINDFLAGS)
@@ -589,28 +583,28 @@ object Flags {
   final val EffectivelyFinalFlags: FlagSet = Private | Final
 
   /** A private method */
-  final val PrivateMethod: FlagConjunction = Private | Method
+  final val PrivateMethod: FlagSet = Private | Method
 
   /** A private accessor */
-  final val PrivateAccessor: FlagConjunction = Private | Accessor
+  final val PrivateAccessor: FlagSet = Private | Accessor
 
   /** An inline method */
-  final val InlineMethod: FlagConjunction = Inline | Method
+  final val InlineMethod: FlagSet = Inline | Method
 
   /** An inline by-name parameter proxy */
-  final val InlineByNameProxy: FlagConjunction = InlineProxy | Method
+  final val InlineByNameProxy: FlagSet = InlineProxy | Method
 
   /** An inline parameter */
-  final val InlineParam: FlagConjunction = Inline | Param
+  final val InlineParam: FlagSet = Inline | Param
 
   /** An extension method */
   final val ExtensionMethod = Extension | Method
 
   /** An implied method */
-  final val SyntheticImpliedMethod: FlagConjunction = Synthetic | Implied | Method
+  final val SyntheticImpliedMethod: FlagSet = Synthetic | Implied | Method
 
   /** An enum case */
-  final val EnumCase: FlagConjunction = Enum | Case
+  final val EnumCase: FlagSet = Enum | Case
 
   /** A term parameter or parameter accessor */
   final val TermParamOrAccessor: FlagSet = Param | ParamAccessor
@@ -637,10 +631,10 @@ object Flags {
   final val FinalOrSealed: FlagSet = Final | Sealed
 
   /** A covariant type parameter instance */
-  final val LocalCovariant: FlagConjunction = Local | Covariant
+  final val LocalCovariant: FlagSet = Local | Covariant
 
   /** A contravariant type parameter instance */
-  final val LocalContravariant: FlagConjunction = Local | Contravariant
+  final val LocalContravariant: FlagSet = Local | Contravariant
 
   /** Has defined or inherited default parameters */
   final val HasDefaultParamsFlags: FlagSet = DefaultParameterized | InheritedDefaultParams
@@ -649,74 +643,74 @@ object Flags {
   final val ValidForeverFlags: FlagSet = Package | Permanent | Scala2ExistentialCommon
 
   /** A type parameter of a class or trait */
-  final val ClassTypeParam: FlagConjunction = TypeParam | Private
+  final val ClassTypeParam: FlagSet = TypeParam | Private
 
   /** Is a default parameter in Scala 2*/
-  final val DefaultParameter: FlagConjunction = Param | DefaultParameterized
+  final val DefaultParameter: FlagSet = Param | DefaultParameterized
 
   /** A trait that does not need to be initialized */
-  final val NoInitsTrait: FlagConjunction = Trait | NoInits
+  final val NoInitsTrait: FlagSet = Trait | NoInits
 
   /** A Java interface, potentially with default methods */
-  final val JavaTrait: FlagConjunction = JavaDefined | Trait | NoInits
+  final val JavaTrait: FlagSet = JavaDefined | Trait | NoInits
 
     /** A Java interface */ // TODO when unpickling, reconstitute from context
-  final val JavaInterface: FlagConjunction = JavaDefined | Trait
+  final val JavaInterface: FlagSet = JavaDefined | Trait
 
   /** A Java companion object */
-  final val JavaModule: FlagConjunction = JavaDefined | Module
+  final val JavaModule: FlagSet = JavaDefined | Module
 
   /** A Java companion object */
-  final val JavaProtected: FlagConjunction = JavaDefined | Protected
+  final val JavaProtected: FlagSet = JavaDefined | Protected
 
   /** A Java enum */
-  final val JavaEnum: FlagConjunction = JavaDefined | Enum
+  final val JavaEnum: FlagSet = JavaDefined | Enum
 
   /** A Java enum trait */
-  final val JavaEnumTrait: FlagConjunction = JavaDefined | Enum
+  final val JavaEnumTrait: FlagSet = JavaDefined | Enum
 
   /** A Java enum value */
-  final val JavaEnumValue: FlagConjunction = StableRealizable | JavaStatic | JavaDefined | Enum
+  final val JavaEnumValue: FlagSet = StableRealizable | JavaStatic | JavaDefined | Enum
 
   /** An enum value */
-  final val EnumValue: FlagConjunction = (StableRealizable | JavaStatic | Enum)
+  final val EnumValue: FlagSet = StableRealizable | JavaStatic | Enum
 
   /** Labeled private[this] */
-  final val PrivateLocal: FlagConjunction = Private | Local
+  final val PrivateLocal: FlagSet = Private | Local
 
   /** A private[this] parameter accessor */
-  final val PrivateLocalParamAccessor: FlagConjunction = Private | Local | ParamAccessor
+  final val PrivateLocalParamAccessor: FlagSet = Private | Local | ParamAccessor
 
   /** A parameter forwarder */
-  final val ParamForwarder: FlagConjunction = Method | StableRealizable | ParamAccessor
+  final val ParamForwarder: FlagSet = Method | StableRealizable | ParamAccessor
 
   /** A private[this] parameter */
-  final val PrivateLocalParam: FlagConjunction = Private | Local | Param
+  final val PrivateLocalParam: FlagSet = Private | Local | Param
 
   /** A private parameter accessor */
-  final val PrivateParamAccessor: FlagConjunction = Private | ParamAccessor
+  final val PrivateParamAccessor: FlagSet = Private | ParamAccessor
 
   /** A local parameter */
-  final val ParamAndLocal: FlagConjunction = Param | Local
+  final val ParamAndLocal: FlagSet = Param | Local
 
   /** Labeled protected[this] */
-  final val ProtectedLocal: FlagConjunction = Protected | Local
+  final val ProtectedLocal: FlagSet = Protected | Local
 
-  final val LiftedMethod: FlagConjunction = Lifted | Method
+  final val LiftedMethod: FlagSet = Lifted | Method
 
   /** Java symbol which is `protected` and `static` */
-  final val StaticProtected: FlagConjunction = JavaDefined | Protected | JavaStatic
+  final val StaticProtected: FlagSet = JavaDefined | Protected | JavaStatic
 
-  final val Scala2Trait: FlagConjunction = Scala2x | Trait
+  final val Scala2Trait: FlagSet = Scala2x | Trait
 
-  final val AbstractFinal: FlagConjunction = Abstract | Final
-  final val AbstractSealed: FlagConjunction = Abstract | Sealed
-  final val AbstractAndOverride: FlagConjunction = Abstract | Override
+  final val AbstractFinal: FlagSet = Abstract | Final
+  final val AbstractSealed: FlagSet = Abstract | Sealed
+  final val AbstractAndOverride: FlagSet = Abstract | Override
 
-  final val SyntheticArtifact: FlagConjunction = Synthetic | Artifact
-  final val SyntheticModule: FlagConjunction = Synthetic | Module
-  final val SyntheticTermParam: FlagConjunction = Synthetic | TermParam
-  final val SyntheticTypeParam: FlagConjunction = Synthetic | TypeParam
-  final val SyntheticCase: FlagConjunction = Synthetic | Case
-  final val SyntheticOpaque: FlagConjunction = Synthetic | Opaque
+  final val SyntheticArtifact: FlagSet = Synthetic | Artifact
+  final val SyntheticModule: FlagSet = Synthetic | Module
+  final val SyntheticTermParam: FlagSet = Synthetic | TermParam
+  final val SyntheticTypeParam: FlagSet = Synthetic | TypeParam
+  final val SyntheticCase: FlagSet = Synthetic | Case
+  final val SyntheticOpaque: FlagSet = Synthetic | Opaque
 }

@@ -207,13 +207,13 @@ object SymDenotations {
       (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).isOneOf(fs, butNot)
 
     /** Has this denotation all of the flags in `fs` set? */
-    final def isAllOf(fs: FlagConjunction)(implicit ctx: Context): Boolean =
+    final def isAllOf(fs: FlagSet)(implicit ctx: Context): Boolean =
       (if (isCurrent(fs)) myFlags else flags).isAllOf(fs)
 
     /** Has this denotation all of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
-    final def isAllOf(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context): Boolean =
+    final def isAllOf(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean =
       (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).isAllOf(fs, butNot)
 
     /** The type info, or, if symbol is not yet completed, the completer */
@@ -1758,7 +1758,7 @@ object SymDenotations {
       else collect(ownDenots, classParents)
     }
 
-    override final def findMember(name: Name, pre: Type, required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Denotation = {
+    override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(implicit ctx: Context): Denotation = {
       val raw = if (excluded.is(Private)) nonPrivateMembersNamed(name) else membersNamed(name)
       raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre)
     }
