@@ -1726,31 +1726,36 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  @note  We do not admit singleton types in or-types as lubs.
    */
   def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false): Type = /*>|>*/ trace(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain)", subtyping, show = true) /*<|<*/ {
-    if (tp1 eq tp2) return tp1
-    if (!tp1.exists) return tp1
-    if (!tp2.exists) return tp2
-    if ((tp1 isRef AnyClass) || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) return tp1
-    if ((tp2 isRef AnyClass) || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) return tp2
-    val atoms1 = tp1.atoms
-    if (atoms1.nonEmpty && !widenInUnions) {
-      val atoms2 = tp2.atoms
-      if (atoms2.nonEmpty) {
-        if (atoms1.subsetOf(atoms2)) return tp2
-        if (atoms2.subsetOf(atoms1)) return tp1
-        if ((atoms1 & atoms2).isEmpty) return orType(tp1, tp2)
+    if (tp1 eq tp2) tp1
+    else if (!tp1.exists) tp1
+    else if (!tp2.exists) tp2
+    else if ((tp1 isRef AnyClass) || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) tp1
+    else if ((tp2 isRef AnyClass) || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) tp2
+    else {
+      def mergedLub: Type = {
+        val atoms1 = tp1.atoms
+        if (atoms1.nonEmpty && !widenInUnions) {
+          val atoms2 = tp2.atoms
+          if (atoms2.nonEmpty) {
+            if (atoms1.subsetOf(atoms2)) return tp2
+            if (atoms2.subsetOf(atoms1)) return tp1
+            if ((atoms1 & atoms2).isEmpty) return orType(tp1, tp2)
+          }
+        }
+        val t1 = mergeIfSuper(tp1, tp2, canConstrain)
+        if (t1.exists) return t1
+
+        val t2 = mergeIfSuper(tp2, tp1, canConstrain)
+        if (t2.exists) return t2
+
+        def widen(tp: Type) = if (widenInUnions) tp.widen else tp.widenIfUnstable
+        val tp1w = widen(tp1)
+        val tp2w = widen(tp2)
+        if ((tp1 ne tp1w) || (tp2 ne tp2w)) lub(tp1w, tp2w)
+        else orType(tp1w, tp2w) // no need to check subtypes again
       }
+      mergedLub
     }
-    val t1 = mergeIfSuper(tp1, tp2, canConstrain)
-    if (t1.exists) return t1
-
-    val t2 = mergeIfSuper(tp2, tp1, canConstrain)
-    if (t2.exists) return t2
-
-    def widen(tp: Type) = if (widenInUnions) tp.widen else tp.widenIfUnstable
-    val tp1w = widen(tp1)
-    val tp2w = widen(tp2)
-    if ((tp1 ne tp1w) || (tp2 ne tp2w)) lub(tp1w, tp2w)
-    else orType(tp1w, tp2w) // no need to check subtypes again
   }
 
   /** The least upper bound of a list of types */

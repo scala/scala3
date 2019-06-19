@@ -3021,9 +3021,7 @@ class Typer extends Namer
           val app = tryExtension(nestedCtx)
           if (!app.isEmpty && !nestedCtx.reporter.hasErrors) {
             nestedCtx.typerState.commit()
-            return new ExtMethodApply(app).withType(WildcardType)
-              // Use wildcard type in order not to prompt any further adaptations such as eta expansion
-              // before the method is fully applied.
+            return ExtMethodApply(app)
           }
         case _ =>
       }
