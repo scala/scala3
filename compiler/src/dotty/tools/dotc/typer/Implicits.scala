@@ -232,6 +232,7 @@ object Implicits {
    */
   class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
     assert(initctx.typer != null)
+    implicits.println(i"implicits of type $tp = ${companionRefs.toList}%, %")
     @threadUnsafe lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
       for (companion <- companionRefs) buf ++= companion.implicitMembers(ImplicitOrImpliedOrGiven)
@@ -492,12 +493,21 @@ trait ImplicitRunInfo { self: Run =>
       override implicit protected val ctx: Context = liftingCtx
       override def stopAtStatic = true
       def apply(tp: Type) = tp match {
-        case tp: TypeRef if !tp.symbol.isClass =>
-          val pre = tp.prefix
-          def joinClass(tp: Type, cls: ClassSymbol) =
-            AndType.make(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
-          val lead = if (pre eq NoPrefix) defn.AnyType else apply(pre)
-          (lead /: tp.classSymbols)(joinClass)
+        case tp: NamedType =>
+          tp.info match {
+            case TypeAlias(alias) =>
+              apply(alias)
+            case TypeBounds(_, hi) =>
+              if (tp.symbol.isOpaqueAlias) tp
+              else {
+                val pre = tp.prefix
+                def joinClass(tp: Type, cls: ClassSymbol) =
+                  AndType.make(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
+                val lead = if (pre eq NoPrefix) defn.AnyType else apply(pre)
+                (lead /: hi.classSymbols)(joinClass)
+              }
+            case _ => tp
+          }
         case tp: TypeVar =>
           apply(tp.underlying)
         case tp: AppliedType if !tp.tycon.typeSymbol.isClass =>
@@ -516,7 +526,7 @@ trait ImplicitRunInfo { self: Run =>
 
     // todo: compute implicits directly, without going via companionRefs?
     def collectCompanions(tp: Type): TermRefSet = track("computeImplicitScope") {
-      trace(i"collectCompanions($tp)", implicits) {
+      trace(i"collectCompanions($tp)", implicitsDetailed) {
 
         def iscopeRefs(t: Type): TermRefSet = implicitScopeCache.get(t) match {
           case Some(is) =>
@@ -575,8 +585,10 @@ trait ImplicitRunInfo { self: Run =>
       def computeIScope() = {
         val liftedTp = if (isLifted) tp else liftToClasses(tp)
         val refs =
-          if (liftedTp ne tp)
+          if (liftedTp ne tp) {
+	        implicitsDetailed.println(i"lifted of $tp = $liftedTp")
             iscope(liftedTp, isLifted = true).companionRefs
+          }
           else
             collectCompanions(tp)
         val result = new OfTypeImplicits(tp, refs)(ctx)
@@ -673,7 +685,7 @@ trait Implicits { self: Typer =>
     }
 
   /** Synthesize the tree for `'[T]` for an implicit `scala.quoted.Type[T]`.
-   *  `T` is deeply dealiassed to avoid references to local type aliases.
+   *  `T` is deeply dealiased to avoid references to local type aliases.
    */
   lazy val synthesizedTypeTag: SpecialHandler =
     (formal, span) => implicit ctx => {
