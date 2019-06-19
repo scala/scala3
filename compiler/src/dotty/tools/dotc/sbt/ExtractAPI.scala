@@ -567,9 +567,9 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     // but their `privateWithin` exists, see `Parsers#ParserCommon#normalize`.
     if (!sym.isOneOf(Protected | Private) && !sym.privateWithin.exists)
       Constants.public
-    else if (sym.isAll(PrivateLocal))
+    else if (sym.isAllOf(PrivateLocal))
       Constants.privateLocal
-    else if (sym.isAll(ProtectedLocal))
+    else if (sym.isAllOf(ProtectedLocal))
       Constants.protectedLocal
     else {
       val qualifier =

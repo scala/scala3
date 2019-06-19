@@ -207,14 +207,14 @@ object SymDenotations {
       (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).isOneOf(fs, butNot)
 
     /** Has this denotation all of the flags in `fs` set? */
-    final def isAll(fs: FlagConjunction)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs.toFlags)) myFlags else flags).isAll(fs)
+    final def isAllOf(fs: FlagConjunction)(implicit ctx: Context): Boolean =
+      (if (isCurrent(fs.toFlags)) myFlags else flags).isAllOf(fs)
 
     /** Has this denotation all of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
-    final def is(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs.toFlags) && isCurrent(butNot)) myFlags else flags).isAll(fs, butNot)
+    final def isAllOf(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context): Boolean =
+      (if (isCurrent(fs.toFlags) && isCurrent(butNot)) myFlags else flags).isAllOf(fs, butNot)
 
     /** The type info, or, if symbol is not yet completed, the completer */
     final def infoOrCompleter: Type = myInfo
@@ -848,7 +848,7 @@ object SymDenotations {
     def isSkolem: Boolean = name == nme.SKOLEM
 
     def isInlineMethod(implicit ctx: Context): Boolean =
-      is(InlineMethod, butNot = Accessor) &&
+      isAllOf(InlineMethod, butNot = Accessor) &&
       !name.isUnapplyName  // unapply methods do not count as inline methods
                            // we need an inline flag on them only do that
                            // reduceProjection gets access to their rhs
@@ -1245,7 +1245,7 @@ object SymDenotations {
     final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol = {
       val fs = flags
       if (fs.is(Private)) owner
-      else if (fs.isAll(StaticProtected)) defn.RootClass
+      else if (fs.isAllOf(StaticProtected)) defn.RootClass
       else if (privateWithin.exists && !ctx.phase.erasedTypes) privateWithin
       else if (fs.is(Protected)) base
       else defn.RootClass

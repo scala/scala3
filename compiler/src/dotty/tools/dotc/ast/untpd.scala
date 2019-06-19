@@ -187,7 +187,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def is(fs: FlagSet, butNot: FlagSet): Boolean = flags.is(fs, butNot = butNot)
     def isOneOf(fs: FlagSet): Boolean = flags.isOneOf(fs)
     def isOneOf(fs: FlagSet, butNot: FlagSet): Boolean = flags.isOneOf(fs, butNot = butNot)
-    def isAll(fc: FlagConjunction): Boolean = flags.isAll(fc)
+    def isAllOf(fc: FlagConjunction): Boolean = flags.isAllOf(fc)
 
     def | (fs: FlagSet): Modifiers = withFlags(flags | fs)
     def & (fs: FlagSet): Modifiers = withFlags(flags & fs)
@@ -217,7 +217,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       else {
         if (ms.nonEmpty)
           for (m <- ms)
-            assert(flags.isAll(allOf(m.flags)) ||
+            assert(flags.isAllOf(allOf(m.flags)) ||
                    m.isInstanceOf[Mod.Private] && !privateWithin.isEmpty,
                    s"unaccounted modifier: $m in $this when adding $ms")
         copy(mods = ms)

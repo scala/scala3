@@ -583,7 +583,7 @@ class ClassfileParser(
           parseExceptions(attrLen)
 
         case tpnme.CodeATTR =>
-          if (sym.owner.isAll(Flags.JavaTrait)) {
+          if (sym.owner.isAllOf(Flags.JavaTrait)) {
             sym.resetFlag(Flags.Deferred)
             sym.owner.resetFlag(Flags.PureInterface)
             ctx.log(s"$sym in ${sym.owner} is a java8+ default method.")

@@ -503,7 +503,7 @@ class Namer { typer: Typer =>
 
   /** Determines whether this field holds an enum constant. */
   def isEnumConstant(vd: ValDef)(implicit ctx: Context): Boolean =
-    vd.mods.isAll(JavaEnumValue)
+    vd.mods.isAllOf(JavaEnumValue)
 
   /** Add child annotation for `child` to annotations of `cls`. The annotation
    *  is added at the correct insertion point, so that Child annotations appear

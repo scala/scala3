@@ -28,7 +28,7 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
       sym.hasAnnotation(ctx.definitions.ScalaStaticAnnot)
     val isStaticRef = !sym.is(Package) && !sym.maybeOwner.is(Package) && isStaticMember
     val tree1 =
-      if (isStaticRef && !tree.qualifier.symbol.isAll(JavaModule) && !tree.qualifier.isType)
+      if (isStaticRef && !tree.qualifier.symbol.isAllOf(JavaModule) && !tree.qualifier.isType)
         Block(List(tree.qualifier), ref(sym))
       else tree
 

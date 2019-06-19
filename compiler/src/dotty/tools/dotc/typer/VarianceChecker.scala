@@ -87,7 +87,7 @@ class VarianceChecker()(implicit ctx: Context) {
     def ignoreVarianceIn(base: Symbol): Boolean = (
          base.isTerm
       || base.is(Package)
-      || base.isAll(PrivateLocal)
+      || base.isAllOf(PrivateLocal)
     )
 
     /** The variance of a symbol occurrence of `tvar` seen at the level of the definition of `base`.
@@ -175,7 +175,7 @@ class VarianceChecker()(implicit ctx: Context) {
       case Some(VarianceError(tvar, required)) =>
         def msg = i"${varianceString(tvar.flags)} $tvar occurs in ${varianceString(required)} position in type ${sym.info} of $sym"
         if (ctx.scala2Mode &&
-            (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAll(ProtectedLocal)))) {
+            (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAllOf(ProtectedLocal)))) {
           ctx.migrationWarning(
             s"According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance:\n$msg",
             pos)
@@ -193,7 +193,7 @@ class VarianceChecker()(implicit ctx: Context) {
       // No variance check for private/protected[this] methods/values.
       def skip =
         !sym.exists ||
-        sym.isAll(PrivateLocal) ||
+        sym.isAllOf(PrivateLocal) ||
         sym.name.is(InlineAccessorName) || // TODO: should we exclude all synthetic members?
         sym.is(TypeParam) && sym.owner.isClass // already taken care of in primary constructor of class
       try tree match {

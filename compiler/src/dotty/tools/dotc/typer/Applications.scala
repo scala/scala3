@@ -1370,7 +1370,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case pt: PolyType =>
         pt.derivedLambdaType(pt.paramNames, pt.paramInfos, widenImplied(pt.resultType, alt))
       case _ =>
-        if (alt.symbol.isAll(SyntheticImpliedMethod)) tp.widenToParents
+        if (alt.symbol.isAllOf(SyntheticImpliedMethod)) tp.widenToParents
         else tp
     }
 

@@ -316,7 +316,7 @@ object Splicer {
     protected final def interpretTree(tree: Tree)(implicit env: Env): Result = tree match {
       case Apply(TypeApply(fn, _), quoted :: Nil) if fn.symbol == defn.InternalQuoted_exprQuote =>
         val quoted1 = quoted match {
-          case quoted: Ident if quoted.symbol.isAll(InlineByNameProxy) =>
+          case quoted: Ident if quoted.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter
             quoted.symbol.defTree.asInstanceOf[DefDef].rhs
           case Inlined(EmptyTree, _, quoted) => quoted

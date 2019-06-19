@@ -1152,7 +1152,7 @@ object Denotations {
         case symd: SymDenotation => symd
         case _ => symbol.denot
       }
-      symd.isAll(required) && !symd.isOneOf(excluded)
+      symd.isAllOf(required) && !symd.isOneOf(excluded)
     }
   }
 

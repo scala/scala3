@@ -88,7 +88,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
   private def implMethod(meth: Symbol)(implicit ctx: Context): Symbol = {
     val implName = ImplMethName(meth.name.asTermName)
     val cls = meth.owner
-    if (cls.isAll(Scala2xTrait))
+    if (cls.isAllOf(Scala2xTrait))
       if (meth.isConstructor)
         cls.info.decl(nme.TRAIT_CONSTRUCTOR).symbol
       else

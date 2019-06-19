@@ -64,7 +64,7 @@ object Flags {
     /** Does this flag set have all of the flags in given flag conjunction?
      *  Pre: The intersection of the typeflags of both sets must be non-empty.
      */
-    def isAll(flags: FlagConjunction): Boolean = {
+    def isAllOf(flags: FlagConjunction): Boolean = {
       val fs = bits & flags.bits
       ((fs & KINDFLAGS) != 0 || flags.bits == 0) &&
       (fs >>> TYPESHIFT) == (flags.bits >>> TYPESHIFT)
@@ -74,7 +74,7 @@ object Flags {
      *  and at the same time contain none of the flags in the `butNot` set?
      *  Pre: The intersection of the typeflags of both sets must be non-empty.
      */
-    def isAll(flags: FlagConjunction, butNot: FlagSet): Boolean = isAll(flags) && !is(butNot)
+    def isAllOf(flags: FlagConjunction, butNot: FlagSet): Boolean = isAllOf(flags) && !is(butNot)
 
     def isEmpty: Boolean = (bits & ~KINDFLAGS) == 0
 

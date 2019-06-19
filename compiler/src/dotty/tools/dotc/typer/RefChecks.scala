@@ -335,7 +335,7 @@ object RefChecks {
         (member.flags & AccessFlags).isEmpty // member is public
         || // - or -
         (!other.is(Protected) || member.is(Protected)) && // if o is protected, so is m, and
-        (ob.isContainedIn(mb) || other.isAll(JavaProtected)) // m relaxes o's access boundary,
+        (ob.isContainedIn(mb) || other.isAllOf(JavaProtected)) // m relaxes o's access boundary,
         // or o is Java defined and protected (see #3946)
         )
       if (!isOverrideAccessOK) {
@@ -356,7 +356,7 @@ object RefChecks {
         // Also exclusion for implicit shortcut methods
         // Also excluded under Scala2 mode are overrides of default methods of Java traits.
         if (autoOverride(member) ||
-            other.owner.isAll(JavaTrait) &&
+            other.owner.isAllOf(JavaTrait) &&
             ctx.testScala2Mode("`override' modifier required when a Java 8 default method is re-implemented", member.sourcePos))
           member.setFlag(Override)
         else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))

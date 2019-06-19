@@ -1680,7 +1680,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   type Flags = core.Flags.FlagSet
 
   /** Is the given flag set a subset of this flag sets */
-  def Flags_is(self: Flags)(that: Flags): Boolean = self.isAll(allOf(that))
+  def Flags_is(self: Flags)(that: Flags): Boolean = self.isAllOf(allOf(that))
 
   /** Union of the two flag sets */
   def Flags_or(self: Flags)(that: Flags): Flags = self | that

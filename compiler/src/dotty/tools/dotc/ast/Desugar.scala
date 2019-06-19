@@ -159,7 +159,7 @@ object desugar {
     val vdef @ ValDef(name, tpt, rhs) = transformQuotedPatternName(vdef0)
     val mods = vdef.mods
     val setterNeeded =
-      mods.is(Mutable) && ctx.owner.isClass && (!mods.isAll(PrivateLocal) || ctx.owner.is(Trait))
+      mods.is(Mutable) && ctx.owner.isClass && (!mods.isAllOf(PrivateLocal) || ctx.owner.is(Trait))
     if (setterNeeded) {
       // TODO: copy of vdef as getter needed?
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
