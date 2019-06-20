@@ -2,6 +2,7 @@ package scala
 
 package quoted {
   import scala.internal.quoted.TaggedType
+  import scala.quoted.show.SyntaxHighlight
 
   sealed abstract class Type[T <: AnyKind] {
     type `$splice` = T
@@ -11,9 +12,13 @@ package quoted {
   object Type {
 
     implicit class TypeOps[T](tpe: Type[T]) {
-      /** Show a source code like representation of this expression */
-      def show(implicit qctx: QuoteContext): String = qctx.show(tpe, false)
-      def showFormatted(implicit qctx: QuoteContext): String = qctx.show(tpe, true)
+
+      /** Show a source code like representation of this type */
+      def show(implicit qctx: QuoteContext): String = qctx.show(tpe, SyntaxHighlight.plain)
+
+      /** Show a source code like representation of this type */
+      def show(syntaxHighlight: SyntaxHighlight)(implicit qctx: QuoteContext): String = qctx.show(tpe, syntaxHighlight)
+
     }
 
     implicit val UnitTag: Type[Unit] = new TaggedType[Unit]

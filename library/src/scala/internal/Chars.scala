@@ -1,4 +1,4 @@
-package scala.tasty.util
+package scala.internal
 
 import scala.annotation.switch
 import java.lang.{Character => JCharacter}
@@ -8,10 +8,7 @@ import java.lang.Character.OTHER_LETTER
 import java.lang.Character.TITLECASE_LETTER
 import java.lang.Character.UPPERCASE_LETTER
 
-import scala.annotation.switch
-
 /** Contains constants and classifier methods for characters */
-@deprecated("Use scala.internal.Chars", "0.17")
 object Chars {
 
   final val LF = '\u000A'

@@ -1,17 +1,17 @@
 package scala.quoted
 
+import scala.quoted.show.SyntaxHighlight
+
 class QuoteContext(reflection: tasty.Reflection) {
 
-  def show[T](expr: Expr[T], formatted: Boolean): String = {
+  def show[T](expr: Expr[T], syntaxHighlight: SyntaxHighlight): String = {
     import reflection._
-    if (formatted) expr.unseal.showFormatted
-    else expr.unseal.show
+    expr.unseal.show(syntaxHighlight)
   }
 
-  def show[T](tpe: Type[T], formatted: Boolean): String = {
+  def show[T](tpe: Type[T], syntaxHighlight: SyntaxHighlight): String = {
     import reflection._
-    if (formatted) tpe.unseal.showFormatted
-    else tpe.unseal.show
+    tpe.unseal.show(syntaxHighlight)
   }
 
 }

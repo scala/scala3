@@ -2,6 +2,8 @@ package scala
 
 package quoted {
 
+  import scala.quoted.show.SyntaxHighlight
+
   sealed abstract class Expr[+T] {
 
     /** Evaluate the contents of this expression and return the result.
@@ -18,9 +20,13 @@ package quoted {
     import scala.internal.quoted._
 
     implicit class ExprOps[T](expr: Expr[T]) {
+
       /** Show a source code like representation of this expression */
-      def show(implicit qctx: QuoteContext): String = qctx.show(expr, false)
-      def showFormatted(implicit qctx: QuoteContext): String = qctx.show(expr, true)
+      def show(implicit qctx: QuoteContext): String = qctx.show(expr, SyntaxHighlight.plain)
+
+      /** Show a source code like representation of this expression */
+      def show(syntaxHighlight: SyntaxHighlight)(implicit qctx: QuoteContext): String = qctx.show(expr, syntaxHighlight)
+
     }
 
     /** Converts a tuple `(T1, ..., Tn)` to `(Expr[T1], ..., Expr[Tn])` */

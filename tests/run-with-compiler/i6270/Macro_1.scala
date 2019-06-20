@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.show.SyntaxHighlight.ANSI
 import scala.tasty._
 
 object api {
@@ -15,6 +16,6 @@ object api {
 
   private def reflImplColor(x: Expr[String])(implicit refl: Reflection): Expr[String] = {
     import refl._
-    x.showFormatted.toExpr
+    x.show(ANSI).toExpr
   }
 }

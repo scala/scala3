@@ -4,7 +4,7 @@ package util
 
 import core.Names._
 import collection.mutable
-import scala.tasty.util.Chars
+import scala.internal.Chars
 
 import scala.annotation.internal.sharable
 
