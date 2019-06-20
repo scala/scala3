@@ -54,11 +54,6 @@ class QuoteCompiler extends Compiler {
             else PickledQuotes.quotedExprToTree(checkValidRunExpr(exprUnit.expr.apply(new QuoteContext(ReflectionImpl(ctx)))))
           val source = SourceFile.virtual("<quoted.Expr>", "")
           CompilationUnit(source, tree, forceTrees = true)
-        case typeUnit: TypeCompilationUnit =>
-          assert(!putInClass)
-          val tree = PickledQuotes.quotedTypeToTree(typeUnit.tpe)
-          val source = SourceFile.virtual("<quoted.Type>", "")
-          CompilationUnit(source, tree, forceTrees = true)
       }
     }
 
@@ -94,10 +89,6 @@ class QuoteCompiler extends Compiler {
   class ExprRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
     def compileExpr(expr:  scala.quoted.QuoteContext => Expr[_]): Unit = {
       val units = new ExprCompilationUnit(expr) :: Nil
-      compileUnits(units)
-    }
-    def compileType(tpe: Type[_]): Unit = {
-      val units = new TypeCompilationUnit(tpe) :: Nil
       compileUnits(units)
     }
   }

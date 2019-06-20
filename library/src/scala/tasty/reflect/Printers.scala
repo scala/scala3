@@ -1,8 +1,6 @@
 package scala.tasty
 package reflect
 
-import java.lang.Character.{LETTER_NUMBER, LOWERCASE_LETTER, OTHER_LETTER, TITLECASE_LETTER, UPPERCASE_LETTER}
-
 import scala.annotation.switch
 import scala.quoted.show.SyntaxHighlight
 
