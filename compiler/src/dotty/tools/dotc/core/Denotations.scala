@@ -1114,12 +1114,28 @@ object Denotations {
     type AsSeenFromResult = SingleDenotation
     protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = {
       val symbol = this.symbol
-      val owner = this match {
-        case thisd: SymDenotation => thisd.owner
-        case _ => if (symbol.exists) symbol.owner else NoSymbol
+      def derived = {
+        val owner = this match {
+          case thisd: SymDenotation => thisd.owner
+          case _ => if (symbol.exists) symbol.owner else NoSymbol
+        }
+        if (!owner.membersNeedAsSeenFrom(pre) || symbol.is(NonMember)) this
+        else derivedSingleDenotation(symbol, symbol.info.asSeenFrom(pre, owner))
       }
-      if (!owner.membersNeedAsSeenFrom(pre) || symbol.is(NonMember)) this
-      else derivedSingleDenotation(symbol, symbol.info.asSeenFrom(pre, owner))
+      pre match {
+        case pre: ThisType if symbol.isOpaqueAlias && pre.cls == symbol.owner =>
+          symbol.normalizeOpaque()
+          def findRefined(tp: Type, name: Name): SingleDenotation = tp match {
+            case RefinedType(parent, rname, rinfo) =>
+              if (rname == name) derivedSingleDenotation(symbol, rinfo)
+              else findRefined(parent, name)
+            case _ =>
+              derived
+          }
+          findRefined(pre.underlying, symbol.name)
+        case _ =>
+          derived
+      }
     }
 
     /** Does this denotation have all the `required` flags but none of the `excluded` flags?

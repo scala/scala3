@@ -2,7 +2,7 @@ object A {
 
   object opaques {
     opaque type FlagSet = Long
-    def FlagSet(bits: Long): FlagSet = bits.asInstanceOf // !!!
+    def FlagSet(bits: Long): FlagSet = bits
     def toBits(fs: FlagSet): Long = fs
   }
   val someFlag = FlagSet(1)
