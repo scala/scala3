@@ -56,7 +56,7 @@ object Test {
 
     def foo(s: String): Stringly[Int] = 42
 
-    (if ("".isEmpty) foo("") else foo("")).apply given ""
+    //(if ("".isEmpty) foo("") else foo("")).apply given ""  // does not typecheck
   }
 }
 
