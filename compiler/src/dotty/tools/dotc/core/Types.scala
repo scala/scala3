@@ -1430,7 +1430,7 @@ object Types {
     /** If this is an ignored proto type, its underlying type, otherwise the type itself */
     def revealIgnored: Type = this
 
-    /** If this is a proto type, the ignored version, otherwise the type itself */
+    /** If this is a proto type, WildcardType, otherwise the type itself */
     def dropIfProto: Type = this
 
 // ----- Substitutions -----------------------------------------------------
