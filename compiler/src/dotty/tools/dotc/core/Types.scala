@@ -440,7 +440,7 @@ object Types {
         NoSymbol
     }
 
-    /** The least (wrt <:<) set of symbols satisfying the `include` prediacte of which this type is a subtype
+    /** The least (wrt <:<) set of symbols satisfying the `include` predicate of which this type is a subtype
      */
     final def parentSymbols(include: Symbol => Boolean)(implicit ctx: Context): List[Symbol] = this match {
       case tp: ClassInfo =>
