@@ -1891,10 +1891,8 @@ object Types {
             finish(memberDenot(symd.initial.name, allowPrivate = false))
           else if (prefix.isArgPrefixOf(symd))
             finish(argDenot(sym.asType))
-          else if (infoDependsOnPrefix(symd, prefix)) {
-            if (!symd.isClass && symd.is(Opaque, butNot = Deferred)) symd.normalizeOpaque()
+          else if (infoDependsOnPrefix(symd, prefix))
             finish(memberDenot(symd.initial.name, allowPrivate = symd.is(Private)))
-          }
           else
             finish(symd.current)
       }
