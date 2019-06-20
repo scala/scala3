@@ -505,21 +505,6 @@ trait ImplicitRunInfo { self: Run =>
             def isLiftTarget(sym: Symbol) = sym.isClass || sym.isOpaqueAlias
             (lead /: tp.parentSymbols(isLiftTarget))(joinClass)
           }
-        case tp: NamedType =>
-          tp.info match {
-            case TypeAlias(alias) =>
-              apply(alias)
-            case TypeBounds(_, hi) =>
-              if (tp.symbol.isOpaqueAlias) tp
-              else {
-                val pre = tp.prefix
-                def joinClass(tp: Type, cls: ClassSymbol) =
-                  AndType.make(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
-                val lead = if (pre eq NoPrefix) defn.AnyType else apply(pre)
-                (lead /: hi.classSymbols)(joinClass)
-              }
-            case _ => tp
-          }
         case tp: TypeVar =>
           apply(tp.underlying)
         case tp: AppliedType if !tp.tycon.typeSymbol.isClass =>
@@ -598,7 +583,7 @@ trait ImplicitRunInfo { self: Run =>
         val liftedTp = if (isLifted) tp else liftToClasses(tp)
         val refs =
           if (liftedTp ne tp) {
-	        implicitsDetailed.println(i"lifted of $tp = $liftedTp")
+	          implicitsDetailed.println(i"lifted of $tp = $liftedTp")
             iscope(liftedTp, isLifted = true).companionRefs
           }
           else
