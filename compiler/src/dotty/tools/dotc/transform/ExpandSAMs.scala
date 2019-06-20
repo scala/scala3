@@ -107,8 +107,8 @@ class ExpandSAMs extends MiniPhase {
     anon.rhs match {
       case PartialFunctionRHS(pf) =>
         val anonSym = anon.symbol
-
-        val parents = List(defn.AbstractPartialFunctionType.appliedTo(tpe.argInfos), defn.SerializableType)
+        val anonTpe = anon.tpe.widen
+        val parents = List(defn.AbstractPartialFunctionType.appliedTo(anonTpe.firstParamTypes.head, anonTpe.resultType), defn.SerializableType)
         val pfSym = ctx.newNormalizedClassSymbol(anonSym.owner, tpnme.ANON_CLASS, Synthetic | Final, parents, coord = tree.span)
 
         def overrideSym(sym: Symbol) = sym.copy(
