@@ -492,7 +492,19 @@ trait ImplicitRunInfo { self: Run =>
     object liftToClasses extends TypeMap {
       override implicit protected val ctx: Context = liftingCtx
       override def stopAtStatic = true
+
       def apply(tp: Type) = tp match {
+        case tp: TypeRef =>
+          val sym = tp.symbol
+          if (sym.isClass || sym.isOpaqueAlias) tp
+          else {
+            val pre = tp.prefix
+            def joinClass(tp: Type, cls: Symbol) =
+              AndType.make(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
+            val lead = if (pre eq NoPrefix) defn.AnyType else apply(pre)
+            def isLiftTarget(sym: Symbol) = sym.isClass || sym.isOpaqueAlias
+            (lead /: tp.parentSymbols(isLiftTarget))(joinClass)
+          }
         case tp: NamedType =>
           tp.info match {
             case TypeAlias(alias) =>
