@@ -1249,9 +1249,6 @@ object Types {
       case _                  => if (isRepeatedParam) this.argTypesHi.head else this
     }
 
-    /** If this is a FunProto or PolyProto, WildcardType, otherwise this. */
-    def notApplied: Type = this
-
     // ----- Normalizing typerefs over refined types ----------------------------
 
     /** If this normalizes* to a refinement type that has a refinement for `name` (which might be followed
@@ -1432,6 +1429,9 @@ object Types {
 
     /** If this is an ignored proto type, its underlying type, otherwise the type itself */
     def revealIgnored: Type = this
+
+    /** If this is a proto type, WildcardType, otherwise the type itself */
+    def dropIfProto: Type = this
 
 // ----- Substitutions -----------------------------------------------------
 
@@ -1733,6 +1733,8 @@ object Types {
      *  captures the given context `ctx`.
      */
     def withContext(ctx: Context): ProtoType = this
+
+    override def dropIfProto = WildcardType
   }
 
   /** Implementations of this trait cache the results of `narrow`. */

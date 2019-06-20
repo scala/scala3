@@ -11,6 +11,7 @@ object A {
 
   delegate FlagOps {
     def (xs: FlagSet) bits: Long = opaques.toBits(xs)
+    def (xs: FlagSet) | (ys: FlagSet): FlagSet = FlagSet(xs.bits | ys.bits)
   }
 }
 
@@ -22,4 +23,8 @@ object B {
 
   val v: Variance = A.someFlag
   v.bits // OK, used to fail with: value bits is not a member of B.Variance
+
+  A.someFlag.bits  // OK
+  var x = 0
+  (if (x > 0) A.someFlag else A.someFlag).bits // OK, used to fail with: value bits is not a member of ?
 }

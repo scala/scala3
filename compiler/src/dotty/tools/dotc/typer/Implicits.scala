@@ -493,16 +493,16 @@ trait ImplicitRunInfo { self: Run =>
       override implicit protected val ctx: Context = liftingCtx
       override def stopAtStatic = true
 
+      private def isLiftTarget(sym: Symbol) = sym.isClass || sym.isOpaqueAlias
+
       def apply(tp: Type) = tp match {
         case tp: TypeRef =>
-          val sym = tp.symbol
-          if (sym.isClass || sym.isOpaqueAlias) tp
+          if (isLiftTarget(tp.symbol)) tp
           else {
             val pre = tp.prefix
             def joinClass(tp: Type, cls: Symbol) =
               AndType.make(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
             val lead = if (pre eq NoPrefix) defn.AnyType else apply(pre)
-            def isLiftTarget(sym: Symbol) = sym.isClass || sym.isOpaqueAlias
             (lead /: tp.parentSymbols(isLiftTarget))(joinClass)
           }
         case tp: TypeVar =>
@@ -583,7 +583,7 @@ trait ImplicitRunInfo { self: Run =>
         val liftedTp = if (isLifted) tp else liftToClasses(tp)
         val refs =
           if (liftedTp ne tp) {
-	          implicitsDetailed.println(i"lifted of $tp = $liftedTp")
+            implicitsDetailed.println(i"lifted of $tp = $liftedTp")
             iscope(liftedTp, isLifted = true).companionRefs
           }
           else

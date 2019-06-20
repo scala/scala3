@@ -1363,7 +1363,9 @@ object messages {
 
     val msg: String = {
       val more = if (tree.isInstanceOf[tpd.Apply]) " more" else ""
-      em"${methodSymbol.showLocated} does not take$more parameters"
+      val meth = methodSymbol
+      val methStr = if (meth.exists) methodSymbol.showLocated else "expression"
+      em"$methStr does not take$more parameters"
     }
 
     val explanation: String = {

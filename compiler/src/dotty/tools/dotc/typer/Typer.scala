@@ -712,7 +712,7 @@ class Typer extends Namer
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context): Tree = track("typedBlock") {
     val (exprCtx, stats1) = typedBlockStats(tree.stats)
-    val expr1 = typedExpr(tree.expr, pt.notApplied)(exprCtx)
+    val expr1 = typedExpr(tree.expr, pt.dropIfProto)(exprCtx)
     ensureNoLocalRefs(
       cpy.Block(tree)(stats1, expr1).withType(expr1.tpe), pt, localSyms(stats1))
   }
@@ -766,7 +766,7 @@ class Typer extends Namer
     }
     else {
       val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt)(
-        (tree.thenp :: tree.elsep :: Nil).map(typed(_, pt.notApplied)))
+        (tree.thenp :: tree.elsep :: Nil).map(typed(_, pt.dropIfProto)))
       assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
     }
   }
@@ -1068,7 +1068,7 @@ class Typer extends Namer
 
   // Overridden in InlineTyper for inline matches
   def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(implicit ctx: Context): Tree = {
-    val cases1 = harmonic(harmonize, pt)(typedCases(cases, wideSelType, pt.notApplied))
+    val cases1 = harmonic(harmonize, pt)(typedCases(cases, wideSelType, pt.dropIfProto))
       .asInstanceOf[List[CaseDef]]
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
   }
@@ -1193,8 +1193,8 @@ class Typer extends Namer
 
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = track("typedTry") {
     val expr2 :: cases2x = harmonic(harmonize, pt) {
-      val expr1 = typed(tree.expr, pt.notApplied)
-      val cases1 = typedCases(tree.cases, defn.ThrowableType, pt.notApplied)
+      val expr1 = typed(tree.expr, pt.dropIfProto)
+      val cases1 = typedCases(tree.cases, defn.ThrowableType, pt.dropIfProto)
       expr1 :: cases1
     }
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
