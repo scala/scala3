@@ -1016,9 +1016,9 @@ object desugar {
     case tree: MemberDef =>
       var tested: MemberDef = tree
       def fail(msg: String) = ctx.error(msg, tree.sourcePos)
-      def checkApplicable(flag: FlagSet, test: MemberDefTest): Unit =
+      def checkApplicable(flag: Flag, test: MemberDefTest): Unit =
         if (tested.mods.is(flag) && !test.applyOrElse(tree, (md: MemberDef) => false)) {
-          fail(i"modifier `$flag` is not allowed for this definition")
+          fail(i"modifier `${flag.flagsString}` is not allowed for this definition")
           tested = tested.withMods(tested.mods.withoutFlags(flag))
         }
       checkApplicable(Opaque, legalOpaque)

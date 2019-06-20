@@ -344,7 +344,7 @@ object JavaParsers {
     }
 
     def modifiers(inInterface: Boolean): Modifiers = {
-      var flags = Flags.JavaDefined
+      var flags: FlagSet = Flags.JavaDefined
       // assumed true unless we see public/private/protected
       var isPackageAccess = true
       var annots: List[Tree] = Nil

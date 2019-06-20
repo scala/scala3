@@ -659,7 +659,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isExpanded: Boolean = sym.name.is(ExpandedName)
     def isAnonymousFunction: Boolean = toDenot(sym).isAnonymousFunction
     def isMethod: Boolean = sym.is(Flags.Method)
-    def isPublic: Boolean = !sym.flags.is(Flags.Private | Flags.Protected)
+    def isPublic: Boolean = !sym.flags.isOneOf(Flags.Private | Flags.Protected)
     def isSynthetic: Boolean = sym.is(Flags.Synthetic)
     def isPackageClass: Boolean = sym.is(Flags.PackageClass)
     def isModuleClass: Boolean = sym.is(Flags.ModuleClass)

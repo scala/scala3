@@ -186,10 +186,10 @@ object SymDenotations {
     final def relevantFlagsFor(fs: FlagSet)(implicit ctx: Context) =
       if (isCurrent(fs)) myFlags else flags
 
-    /** Has this denotation one of the flags in `fs` set? */
-    final def is(fs: FlagSet)(implicit ctx: Context): Boolean = {
-      val toTest = if (isCurrent(fs)) myFlags else flags // TODO: combine these two lines once 0.17 is released and #6706 is in
-      toTest.is(fs)
+    /** Has this denotation one of given flag set? */
+    final def is(flag: Flag)(implicit ctx: Context): Boolean = {
+      val toTest = if (isCurrent(flag)) myFlags else flags // TODO: combine these two lines once 0.17 is released and #6706 is in
+      toTest.is(flag)
     }
 
     /** Has this denotation one of the flags in `fs` set? */
@@ -198,12 +198,12 @@ object SymDenotations {
       toTest.isOneOf(fs)
     }
 
-    /** Has this denotation one of the flags in `fs` set, whereas none of the flags
+    /** Has this denotation the given flag set, whereas none of the flags
      *  in `butNot` are set?
      */
-    final def is(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean = {
-      val toTest = if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags // TODO: combine these two lines once 0.17 is released and #6706 is in
-      toTest.is(fs, butNot)
+    final def is(flag: Flag, butNot: FlagSet)(implicit ctx: Context): Boolean = {
+      val toTest = if (isCurrent(flag) && isCurrent(butNot)) myFlags else flags // TODO: combine these two lines once 0.17 is released and #6706 is in
+      toTest.is(flag, butNot)
     }
 
     /** Has this denotation one of the flags in `fs` set, whereas none of the flags
