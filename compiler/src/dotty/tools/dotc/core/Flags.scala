@@ -519,149 +519,70 @@ object Flags {
 
 // ------- Other flag sets -------------------------------------
 
-  val NoInitsInterface: FlagSet = NoInits | PureInterface
-
-  val AbstractOrTrait: FlagSet = Abstract | Trait
-
-  val PrivateOrLocal: FlagSet = Local | Private  // Labelled `private` or `protected[local]`
-
-  val ModuleOrFinal: FlagSet = Final | ModuleClass // A module class or a final class
-
-  val MutableOrLazy: FlagSet = Lazy | Mutable
-
-  val MethodOrLazy: FlagSet = Lazy | Method
-
-  val MethodOrModule: FlagSet = Method | Module
-
-  val MethodOrLazyOrDeferred: FlagSet = Deferred | Lazy | Method
-
-
-  val InlineOrProxy: FlagSet = Inline | InlineProxy  // An inline method or inline argument proxy */
-
-  val DelegateOrGiven: FlagSet              = Delegate | Given
-  val DelegateOrGivenOrImplicit: FlagSet    = Delegate | Given | Implicit
-  val DelegateOrGivenOrImplicitVal: FlagSet = DelegateOrGivenOrImplicit.toTermFlags
-  val DelegateOrImplicit: FlagSet           = Delegate | Implicit
-  val GivenOrImplicit: FlagSet              = Given | Implicit
-
-  val StableOrErased: FlagSet = Erased | StableRealizable   // Assumed to be pure
-  val EffectivelyFinalFlags: FlagSet = Final | Private
-
-  val PrivateMethod: FlagSet = Method | Private
-
-  val PrivateAccessor: FlagSet = Accessor | Private
-
-  val InlineMethod: FlagSet = Inline | Method
-
-  val InlineByNameProxy: FlagSet = InlineProxy | Method
-
-  val InlineParam: FlagSet = Inline | Param
-
-  val ExtensionMethod: FlagSet = Extension | Method
-
-  val SyntheticDelegateMethod: FlagSet = Delegate | Method | Synthetic
-
-  val EnumCase: FlagSet = Case | Enum
-
-  val TermParamOrAccessor: FlagSet = Param | ParamAccessor
-
-  val LazyOrDeferred: FlagSet = Deferred | Lazy
-
-  val AccessorOrSynthetic: FlagSet = Accessor | Synthetic
-
-  val SyntheticOrPrivate: FlagSet = Private | Synthetic
-
-  val DeferredOrTermParamOrAccessor: FlagSet = Deferred | ParamAccessor | TermParam // term symbols without right-hand sides
-
-  val DeferredOrTypeParam: FlagSet = Deferred | TypeParam // type symbols without right-hand sides
-
-  /** value that's final or inline */
-  val FinalOrInline: FlagSet = Final | Inline
-
-  /** class that's final or sealed */
-  val FinalOrSealed: FlagSet = Final | Sealed
-
-  /** A covariant type parameter instance */
-  val LocalCovariant: FlagSet = Local | Covariant
-
-  /** A contravariant type parameter instance */
-  val LocalContravariant: FlagSet = Local | Contravariant
-
-  /** Has defined or inherited default parameters */
-  val HasDefaultParamsFlags: FlagSet = DefaultParameterized | InheritedDefaultParams
-
-  /** Is valid forever */
-  val ValidForeverFlags: FlagSet = Package | Permanent | Scala2ExistentialCommon
-
-  /** A type parameter of a class or trait */
-  val ClassTypeParam: FlagSet = TypeParam | Private
-
-  /** Is a default parameter in Scala 2*/
-  val DefaultParameter: FlagSet = Param | DefaultParameterized
-
-  /** A trait that does not need to be initialized */
-  val NoInitsTrait: FlagSet = Trait | NoInits
-
-  /** A Java interface, potentially with default methods */
-  val JavaTrait: FlagSet = JavaDefined | Trait | NoInits
-
-    /** A Java interface */ // TODO when unpickling, reconstitute from context
-  val JavaInterface: FlagSet = JavaDefined | Trait
-
-  /** A Java companion object */
-  val JavaModule: FlagSet = JavaDefined | Module
-
-  /** A Java companion object */
-  val JavaProtected: FlagSet = JavaDefined | Protected
-
-  /** A Java enum */
-  val JavaEnum: FlagSet = JavaDefined | Enum
-
-  /** A Java enum trait */
-  val JavaEnumTrait: FlagSet = JavaDefined | Enum
-
-  /** A Java enum value */
-  val JavaEnumValue: FlagSet = StableRealizable | JavaStatic | JavaDefined | Enum
-
-  /** An enum value */
-  val EnumValue: FlagSet = StableRealizable | JavaStatic | Enum
-
-  /** Labeled private[this] */
-  val PrivateLocal: FlagSet = Private | Local
-
-  /** A private[this] parameter accessor */
-  val PrivateLocalParamAccessor: FlagSet = Private | Local | ParamAccessor
-
-  /** A parameter forwarder */
-  val ParamForwarder: FlagSet = Method | StableRealizable | ParamAccessor
-
-  /** A private[this] parameter */
-  val PrivateLocalParam: FlagSet = Private | Local | Param
-
-  /** A private parameter accessor */
-  val PrivateParamAccessor: FlagSet = Private | ParamAccessor
-
-  /** A local parameter */
-  val ParamAndLocal: FlagSet = Param | Local
-
-  /** Labeled protected[this] */
-  val ProtectedLocal: FlagSet = Protected | Local
-
-  val LiftedMethod: FlagSet = Lifted | Method
-
-  /** Java symbol which is `protected` and `static` */
-  val StaticProtected: FlagSet = JavaDefined | Protected | JavaStatic
-
-  val Scala2Trait: FlagSet = Scala2x | Trait
-
-  val AbstractFinal: FlagSet = Abstract | Final
-  val AbstractSealed: FlagSet = Abstract | Sealed
-  val AbstractAndOverride: FlagSet = Abstract | Override
-
-  val SyntheticArtifact: FlagSet = Synthetic | Artifact
-  val SyntheticModule: FlagSet = Synthetic | Module
-  val SyntheticTermParam: FlagSet = Synthetic | TermParam
-  val SyntheticTypeParam: FlagSet = Synthetic | TypeParam
-  val SyntheticCase: FlagSet = Synthetic | Case
-  val SyntheticOpaque: FlagSet = Synthetic | Opaque
+  val AbstractFinal: FlagSet                 = Abstract | Final
+  val AbstractSealed: FlagSet                = Abstract | Sealed
+  val AbstractOverride: FlagSet              = Abstract | Override
+  val AbstractOrTrait: FlagSet               = Abstract | Trait
+  val PrivateAccessor: FlagSet               = Accessor | Private
+  val AccessorOrSynthetic: FlagSet           = Accessor | Synthetic
+  val EnumCase: FlagSet                      = Case | Enum
+  val LocalCovariant: FlagSet                = Covariant | Local                              // A covariant type parameter
+  val LocalContravariant: FlagSet            = Contravariant | Local                          // A contravariant type parameter
+  val HasDefaultParamsFlags: FlagSet         = DefaultParameterized | InheritedDefaultParams  // Has defined or inherited default parameters
+  val DefaultParameter: FlagSet              = DefaultParameterized | Param                   // A Scala 2x default parameter
+  val LazyOrDeferred: FlagSet                = Deferred | Lazy
+  val MethodOrLazyOrDeferred: FlagSet        = Deferred | Lazy | Method
+  val DeferredOrTermParamOrAccessor: FlagSet = Deferred | ParamAccessor | TermParam           // term symbols without right-hand sides
+  val DeferredOrTypeParam: FlagSet           = Deferred | TypeParam                           // type symbols without right-hand sides
+  val DelegateOrGiven: FlagSet               = Delegate | Given
+  val DelegateOrGivenOrImplicit: FlagSet     = Delegate | Given | Implicit
+  val DelegateOrGivenOrImplicitVal: FlagSet  = DelegateOrGivenOrImplicit.toTermFlags
+  val DelegateOrImplicit: FlagSet            = Delegate | Implicit
+  val EnumValue: FlagSet                     = Enum | JavaStatic | StableRealizable           // A Scala enum value
+  val StableOrErased: FlagSet                = Erased | StableRealizable                      // Assumed to be pure
+  val ExtensionMethod: FlagSet               = Extension | Method
+  val FinalOrInline: FlagSet                 = Final | Inline
+  val FinalOrSealed: FlagSet                 = Final | Sealed
+  val ModuleOrFinal: FlagSet                 = Final | ModuleClass                            // A module class or a final class
+  val EffectivelyFinalFlags: FlagSet         = Final | Private
+  val GivenOrImplicit: FlagSet               = Given | Implicit
+  val InlineOrProxy: FlagSet                 = Inline | InlineProxy                           // An inline method or inline argument proxy */
+  val InlineMethod: FlagSet                  = Inline | Method
+  val InlineParam: FlagSet                   = Inline | Param
+  val InlineByNameProxy: FlagSet             = InlineProxy | Method
+  val JavaEnum: FlagSet                      = JavaDefined | Enum                             // TODO: merge with JavaEnumTrait
+  val JavaEnumTrait: FlagSet                 = JavaDefined | Enum                             // A Java enum trait
+  val JavaEnumValue: FlagSet                 = JavaDefined | EnumValue                        // A Java enum value
+  val StaticProtected: FlagSet               = JavaDefined | JavaStatic | Protected           // Java symbol which is `protected` and `static`
+  val JavaModule: FlagSet                    = JavaDefined | Module                           // A Java companion object
+  val JavaTrait: FlagSet                     = JavaDefined | NoInits | Trait                  // A Java interface, potentially with default methods // TODO: merge with JavaInterface
+  val JavaProtected: FlagSet                 = JavaDefined | Protected
+  val JavaInterface: FlagSet                 = JavaDefined | Trait
+  val MethodOrLazy: FlagSet                  = Lazy | Method
+  val MutableOrLazy: FlagSet                 = Lazy | Mutable
+  val LiftedMethod: FlagSet                  = Lifted | Method
+  val ParamAndLocal: FlagSet                 = Local | Param                                  // TODO: merge with PrivateLocalParam?
+  val PrivateLocalParam: FlagSet             = Local | Param | Private
+  val PrivateLocalParamAccessor: FlagSet     = Local | ParamAccessor | Private
+  val PrivateOrLocal: FlagSet                = Local | Private                                // Labelled `private` or `protected[local]`
+  val PrivateLocal: FlagSet                  = Local | Private                                // private[this]
+  val ProtectedLocal: FlagSet                = Local | Protected
+  val MethodOrModule: FlagSet                = Method | Module
+  val ParamForwarder: FlagSet                = Method | ParamAccessor | StableRealizable      // A parameter forwarder
+  val PrivateMethod: FlagSet                 = Method | Private
+  val NoInitsInterface: FlagSet              = NoInits | PureInterface
+  val NoInitsTrait: FlagSet                  = NoInits | Trait                                // A trait that does not need to be initialized
+  val ValidForeverFlags: FlagSet             = Package | Permanent | Scala2ExistentialCommon
+  val TermParamOrAccessor: FlagSet           = Param | ParamAccessor
+  val PrivateParamAccessor: FlagSet          = ParamAccessor | Private
+  val SyntheticOrPrivate: FlagSet            = Private | Synthetic
+  val ClassTypeParam: FlagSet                = Private | TypeParam
+  val Scala2Trait: FlagSet                   = Scala2x | Trait
+  val SyntheticDelegateMethod: FlagSet       = Synthetic | Delegate | Method
+  val SyntheticArtifact: FlagSet             = Synthetic | Artifact
+  val SyntheticModule: FlagSet               = Synthetic | Module
+  val SyntheticTermParam: FlagSet            = Synthetic | TermParam
+  val SyntheticTypeParam: FlagSet            = Synthetic | TypeParam
+  val SyntheticCase: FlagSet                 = Synthetic | Case
+  val SyntheticOpaque: FlagSet               = Synthetic | Opaque
 }

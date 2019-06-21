@@ -2039,7 +2039,7 @@ object Parsers {
     private def normalize(mods: Modifiers): Modifiers =
       if (mods.is(Private) && mods.hasPrivateWithin)
         normalize(mods &~ Private)
-      else if (mods.isAllOf(AbstractAndOverride))
+      else if (mods.isAllOf(AbstractOverride))
         normalize(addFlag(mods &~ (Abstract | Override), AbsOverride))
       else
         mods
