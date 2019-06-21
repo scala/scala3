@@ -182,7 +182,7 @@ object desugar {
 
   def makeImplicitParameters(tpts: List[Tree], implicitFlag: FlagSet, forPrimaryConstructor: Boolean = false)(implicit ctx: Context): List[ValDef] =
     for (tpt <- tpts) yield {
-       val paramFlags: FlagSet = if (forPrimaryConstructor) PrivateLocalParamAccessor else Param
+       val paramFlags: FlagSet = if (forPrimaryConstructor) LocalParamAccessor else Param
        val epname = EvidenceParamName.fresh()
        ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | implicitFlag)
     }

@@ -1019,7 +1019,7 @@ object SymDenotations {
 
     /** A symbol is effectively final if it cannot be overridden in a subclass */
     final def isEffectivelyFinal(implicit ctx: Context): Boolean =
-      isOneOf(EffectivelyFinalFlags) || !owner.isClass || owner.isOneOf(ModuleOrFinal) || owner.isAnonymousClass
+      isOneOf(EffectivelyFinalFlags) || !owner.isClass || owner.isOneOf(FinalOrModuleClass) || owner.isAnonymousClass
 
     /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {

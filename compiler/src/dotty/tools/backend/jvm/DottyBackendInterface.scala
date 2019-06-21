@@ -256,7 +256,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       case t: TypeApply if (t.fun.symbol == Predef_classOf) =>
         av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
       case t: tpd.RefTree =>
-        if (t.symbol.denot.owner.isAllOf(Flags.JavaEnum)) {
+        if (t.symbol.denot.owner.isAllOf(Flags.JavaEnumTrait)) {
           val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
           val evalue = t.symbol.name.mangledString // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
@@ -689,13 +689,12 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isBottomClass: Boolean = (sym ne defn.NullClass) && (sym ne defn.NothingClass)
     def isBridge: Boolean = sym.is(Flags.Bridge)
     def isArtifact: Boolean = sym.is(Flags.Artifact)
-    def hasEnumFlag: Boolean = sym.isAllOf(Flags.JavaEnum)
+    def hasEnumFlag: Boolean = sym.isAllOf(Flags.JavaEnumTrait)
     def hasAccessBoundary: Boolean = sym.accessBoundary(defn.RootClass) ne defn.RootClass
     def isVarargsMethod: Boolean = sym.is(Flags.JavaVarargs)
     def isDeprecated: Boolean = false
     def isMutable: Boolean = sym.is(Flags.Mutable)
-    def hasAbstractFlag: Boolean =
-      (sym.is(Flags.Abstract)) || (sym.isAllOf(Flags.JavaInterface)) || (sym.is(Flags.Trait))
+    def hasAbstractFlag: Boolean = sym.isOneOf(Flags.AbstractOrTrait)
     def hasModuleFlag: Boolean = sym.is(Flags.Module)
     def isSynchronized: Boolean = sym.is(Flags.Synchronized)
     def isNonBottomSubClass(other: Symbol): Boolean = sym.derivesFrom(other)

@@ -677,7 +677,7 @@ class TreeUnpickler(reader: TastyReader,
           case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM =>
             val sym = symbolAtCurrent()
             skipTree()
-            if (sym.isTerm && !sym.isOneOf(MethodOrLazyOrDeferred))
+            if (sym.isTerm && !sym.isOneOf(DeferredOrLazyOrMethod))
               initsFlags = EmptyFlags
             else if (sym.isClass ||
               sym.is(Method, butNot = Deferred) && !sym.isConstructor)

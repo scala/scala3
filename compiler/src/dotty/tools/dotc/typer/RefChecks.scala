@@ -83,7 +83,7 @@ object RefChecks {
    *  (Forwarding tends to hide problems by binding parameter names).
    */
   private def upwardsThisType(cls: Symbol)(implicit ctx: Context) = cls.info match {
-    case ClassInfo(_, _, _, _, tp: Type) if (tp ne cls.typeRef) && !cls.isOneOf(ModuleOrFinal) =>
+    case ClassInfo(_, _, _, _, tp: Type) if (tp ne cls.typeRef) && !cls.isOneOf(FinalOrModuleClass) =>
       SkolemType(cls.appliedRef).withName(nme.this_)
     case _ =>
       cls.thisType
@@ -356,7 +356,7 @@ object RefChecks {
         // Also exclusion for implicit shortcut methods
         // Also excluded under Scala2 mode are overrides of default methods of Java traits.
         if (autoOverride(member) ||
-            other.owner.isAllOf(JavaTrait) &&
+            other.owner.isAllOf(JavaInterface) &&
             ctx.testScala2Mode("`override' modifier required when a Java 8 default method is re-implemented", member.sourcePos))
           member.setFlag(Override)
         else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))

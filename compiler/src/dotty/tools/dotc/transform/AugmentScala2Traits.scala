@@ -56,7 +56,7 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer { this
         info = MethodType(getter.info.resultType :: Nil, defn.UnitType))
 
     for (sym <- mixin.info.decls) {
-      if (sym.isGetter && !sym.isOneOf(LazyOrDeferred) && !sym.setter.exists &&
+      if (sym.isGetter && !sym.isOneOf(DeferredOrLazy) && !sym.setter.exists &&
           !sym.info.resultType.isInstanceOf[ConstantType])
         traitSetter(sym.asTerm).enteredAfter(thisPhase)
       if ((sym.isAllOf(PrivateAccessor) && !sym.name.is(ExpandedName) &&

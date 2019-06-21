@@ -494,7 +494,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         )
       case tp if tp.isRef(defn.UnitClass) =>
         Typ(ConstantType(Constant(())), true) :: Nil
-      case tp if tp.classSymbol.isAllOf(JavaEnum) =>
+      case tp if tp.classSymbol.isAllOf(JavaEnumTrait) =>
         children.map(sym => Typ(sym.termRef, true))
       case tp =>
         val parts = children.map { sym =>
@@ -681,7 +681,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           isCheckable(and.tp1) || isCheckable(and.tp2)
         }) ||
         tpw.isRef(defn.BooleanClass) ||
-        tpw.typeSymbol.isAllOf(JavaEnum) ||
+        tpw.typeSymbol.isAllOf(JavaEnumTrait) ||
         (defn.isTupleType(tpw) && tpw.argInfos.exists(isCheckable(_)))
       }
 

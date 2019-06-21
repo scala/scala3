@@ -99,7 +99,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
    */
   override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {
     def emptyRhsOK(sym: Symbol) =
-      sym.isOneOf(LazyOrDeferred) || sym.isConstructor && sym.owner.isAllOf(NoInitsTrait)
+      sym.isOneOf(DeferredOrLazy) || sym.isConstructor && sym.owner.isAllOf(NoInitsTrait)
     tree match {
       case tree: ValDef if tree.symbol.exists && tree.symbol.owner.isClass && !tree.symbol.is(Lazy) && !tree.symbol.hasAnnotation(defn.ScalaStaticAnnot) =>
         assert(tree.rhs.isEmpty, i"$tree: initializer should be moved to constructors")

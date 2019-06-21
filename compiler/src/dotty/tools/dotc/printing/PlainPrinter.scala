@@ -391,7 +391,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** String representation of symbol's definition keyword */
   protected def keyString(sym: Symbol): String = {
     val flags = sym.flagsUNSAFE
-    if (flags.isAllOf(JavaTrait)) "interface"
+    if (flags.isAllOf(JavaInterface)) "interface"
     else if (flags.is(Trait)) "trait"
     else if (flags.is(Module)) "object"
     else if (sym.isClass) "class"
