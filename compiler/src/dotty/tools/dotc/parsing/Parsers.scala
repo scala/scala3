@@ -864,6 +864,12 @@ object Parsers {
      */
     def toplevelTyp(): Tree = rejectWildcardType(typ())
 
+    private def isFunction(tree: Tree): Boolean = tree match {
+      case Parens(tree1) => isFunction(tree1)
+      case _: Function => true
+      case _ => false
+    }
+
     /** Type        ::=  FunType
      *                |  HkTypeParamClause ‘=>>’ Type
      *                |  MatchType
@@ -946,11 +952,11 @@ object Parsers {
             val arrowOffset = in.skipToken()
             val body = toplevelTyp()
             atSpan(start, arrowOffset) {
-              body match {
-                case _: Function => PolyFunction(tparams, body)
-                case _ =>
-                  syntaxError("Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
-                  Ident(nme.ERROR.toTypeName)
+              if (isFunction(body))
+                PolyFunction(tparams, body)
+              else {
+                syntaxError("Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
+                Ident(nme.ERROR.toTypeName)
               }
             }
           } else { accept(TLARROW); typ() }
@@ -1381,11 +1387,11 @@ object Parsers {
         val arrowOffset = accept(ARROW)
         val body = expr()
         atSpan(start, arrowOffset) {
-          body match {
-            case _: Function => PolyFunction(tparams, body)
-            case _ =>
-              syntaxError("Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
-              errorTermTree
+          if (isFunction(body))
+            PolyFunction(tparams, body)
+          else {
+            syntaxError("Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
+            errorTermTree
           }
         }
       case _ =>
