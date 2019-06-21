@@ -1114,27 +1114,34 @@ object Denotations {
     type AsSeenFromResult = SingleDenotation
     protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = {
       val symbol = this.symbol
-      def derived = {
-        val owner = this match {
-          case thisd: SymDenotation => thisd.owner
-          case _ => if (symbol.exists) symbol.owner else NoSymbol
-        }
-        if (!owner.membersNeedAsSeenFrom(pre) || symbol.is(NonMember)) this
-        else derivedSingleDenotation(symbol, symbol.info.asSeenFrom(pre, owner))
+      val owner = this match {
+        case thisd: SymDenotation => thisd.owner
+        case _ => if (symbol.exists) symbol.owner else NoSymbol
       }
+      def derived(info: Type) = derivedSingleDenotation(symbol, info.asSeenFrom(pre, owner))
       pre match {
         case pre: ThisType if symbol.isOpaqueAlias && pre.cls == symbol.owner =>
+          // This code is necessary to compensate for a "window of vulnerability" with
+          // opaque types. The problematic sequence is as follows.
+          //  1. Type a selection  `m.this.T` where `T` is an opaque type alias in `m`
+          //     and this is the first access
+          //  2. `T` will normalize to an abstract type on completion.
+          //  3. At that time, the default logic in the second case is wrong: `T`'s new info
+          //     is now an abstract type and running it through an asSeenFrom gives nothing.
+          //  We fix this as follows:
+          //  1. Force opaque normalization as first step
+          //  2. Read the info from the enclosing object's refinement
           symbol.normalizeOpaque()
-          def findRefined(tp: Type, name: Name): SingleDenotation = tp match {
+          def findRefined(tp: Type, name: Name): Type = tp match {
             case RefinedType(parent, rname, rinfo) =>
-              if (rname == name) derivedSingleDenotation(symbol, rinfo)
-              else findRefined(parent, name)
+              if (rname == name) rinfo else findRefined(parent, name)
             case _ =>
-              derived
+              symbol.info
           }
-          findRefined(pre.underlying, symbol.name)
+          derived(findRefined(pre.underlying, symbol.name))
         case _ =>
-          derived
+          if (!owner.membersNeedAsSeenFrom(pre) || symbol.is(NonMember)) this
+          else derived(symbol.info)
       }
     }
 
