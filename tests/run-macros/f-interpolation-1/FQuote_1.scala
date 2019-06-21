@@ -10,8 +10,8 @@ object FQuote {
     inline def ff(args: => Any*): String = ${impl('this, 'args)}
   }
 
-  /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(implicit reflect: Reflection): Expr[String] = {
-    import reflect._
+  /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]]) given (qctx: QuoteContext): Expr[String] = {
+    import qctx.tasty._
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {
       case x :: xs  =>

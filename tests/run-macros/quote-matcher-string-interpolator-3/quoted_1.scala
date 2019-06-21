@@ -7,7 +7,7 @@ object Macros {
 
   inline def (self: => StringContext) S(args: => String*): String = ${impl('self, 'args)}
 
-  private def impl(self: Expr[StringContext], args: Expr[Seq[String]]) given Reflection: Expr[String] = {
+  private def impl(self: Expr[StringContext], args: Expr[Seq[String]]) given QuoteContext: Expr[String] = {
     self match {
       case '{ StringContext(${ConstSeq(parts)}: _*) } =>
         val upprerParts: List[String] = parts.toList.map(_.toUpperCase)

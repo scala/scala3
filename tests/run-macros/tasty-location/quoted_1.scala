@@ -9,8 +9,8 @@ object Location {
 
   implicit inline def location: Location = ${impl}
 
-  def impl(implicit reflect: Reflection): Expr[Location] = {
-    import reflect._
+  def impl given (qctx: QuoteContext): Expr[Location] = {
+    import qctx.tasty._
 
     def listOwnerNames(sym: Symbol, acc: List[String]): List[String] =
       if (sym == definitions.RootClass || sym == definitions.EmptyPackageClass) acc

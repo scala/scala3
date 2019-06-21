@@ -8,8 +8,8 @@ object Asserts {
     ${ zeroLastArgsImpl('x) }
 
   /** Replaces last argument list by 0s */
-  def zeroLastArgsImpl(x: Expr[Int])(implicit reflect: Reflection): Expr[Int] = {
-    import reflect._
+  def zeroLastArgsImpl(x: Expr[Int]) given (qctx: QuoteContext): Expr[Int] = {
+    import qctx.tasty._
     // For simplicity assumes that all parameters are Int and parameter lists have no more than 3 elements
     x.unseal.underlyingArgument match {
       case Apply(fn, args) =>
@@ -30,8 +30,8 @@ object Asserts {
     ${ zeroAllArgsImpl('x) }
 
   /** Replaces all argument list by 0s */
-  def zeroAllArgsImpl(x: Expr[Int])(implicit reflect: Reflection): Expr[Int] = {
-    import reflect._
+  def zeroAllArgsImpl(x: Expr[Int]) given (qctx: QuoteContext): Expr[Int] = {
+    import qctx.tasty._
     // For simplicity assumes that all parameters are Int and parameter lists have no more than 3 elements
     def rec(term: Term): Term = term match {
       case Apply(fn, args) =>

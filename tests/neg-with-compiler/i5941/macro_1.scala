@@ -12,9 +12,9 @@ object Lens {
     def set(t: T, s: S): S = _set(t)(s)
   }
 
-  def impl[S: Type, T: Type](getter: Expr[S => T])(implicit refl: Reflection): Expr[Lens[S, T]] = {
+  def impl[S: Type, T: Type](getter: Expr[S => T]) given (qctx: QuoteContext): Expr[Lens[S, T]] = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(this.getClass.getClassLoader)
-    import refl._
+    import qctx.tasty._
     import util._
     // obj.copy(field = value)
     def setterBody(obj: Expr[S], value: Expr[T], field: String): Expr[S] =

@@ -7,10 +7,10 @@ object Macros {
 
   inline def matches[A, B](a: => A, b: => B): Unit = ${impl('a, 'b)}
 
-  private def impl[A, B](a: Expr[A], b: Expr[B])(implicit reflect: Reflection): Expr[Unit] = {
-    import reflect.{Bind => _, _}
+  private def impl[A, B](a: Expr[A], b: Expr[B]) given (qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty.{Bind => _, _}
 
-    val res = scala.internal.quoted.Matcher.unapply[Tuple](a)(b, reflect).map { tup =>
+    val res = scala.internal.quoted.Matcher.unapply[Tuple](a)(b, qctx).map { tup =>
       tup.toArray.toList.map {
         case r: Expr[_] =>
           s"Expr(${r.unseal.show})"

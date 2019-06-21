@@ -12,8 +12,7 @@ object Index {
 
   implicit inline def succ[K, H, T](implicit prev: => Index[K, T]): Index[K, (H, T)] = ${ succImpl[K, H, T]('prev) }
 
-  def succImpl[K, H, T](prev: Expr[Index[K, T]])(implicit k: Type[K], h: Type[H], t: Type[T], relection: Reflection): Expr[Index[K, (H, T)]] = {
-    import relection._
+  def succImpl[K: Type, H: Type, T: Type](prev: Expr[Index[K, T]]) given QuoteContext: Expr[Index[K, (H, T)]] = {
     val value = s"1 + {${prev.show}}"
     '{new Index(${value})}
   }

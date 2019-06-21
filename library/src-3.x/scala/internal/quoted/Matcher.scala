@@ -4,7 +4,6 @@ import scala.annotation.internal.sharable
 
 import scala.quoted._
 import scala.quoted.matching.Bind
-import scala.tasty._
 
 object Matcher {
 
@@ -27,12 +26,11 @@ object Matcher {
    *
    *  @param scrutineeExpr `Expr[_]` on which we are pattern matching
    *  @param patternExpr `Expr[_]` containing the pattern tree
-   *  @param reflection instance of the reflection API (implicitly provided by the macro)
+   *  @param qctx the current QuoteContext
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Expr[Ti]``
    */
-  def unapply[Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_], reflection: Reflection): Option[Tup] = {
-    // TODO improve performance
-    import reflection.{Bind => BindPattern, _}
+  def unapply[Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_], qctx: QuoteContext): Option[Tup] = {
+    import qctx.tasty.{Bind => BindPattern, _}
     import Matching._
 
     type Env = Set[(Symbol, Symbol)]

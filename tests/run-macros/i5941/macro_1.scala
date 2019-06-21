@@ -12,8 +12,8 @@ object Lens {
     def set(t: T, s: S): S = _set(t)(s)
   }
 
-  def impl[S: Type, T: Type](getter: Expr[S => T])(implicit refl: Reflection): Expr[Lens[S, T]] = {
-    import refl._
+  def impl[S: Type, T: Type](getter: Expr[S => T]) given (qctx: QuoteContext): Expr[Lens[S, T]] = {
+    import qctx.tasty._
     import util._
 
     // obj.copy(a = obj.a.copy(b = a.b.copy(c = v)))
@@ -90,8 +90,8 @@ object Iso {
     def to(s: S): A = _to(s)
   }
 
-  def impl[S: Type, A: Type](implicit refl: Reflection): Expr[Iso[S, A]] = {
-    import refl._
+  def impl[S: Type, A: Type] given (qctx: QuoteContext): Expr[Iso[S, A]] = {
+    import qctx.tasty._
     import util._
 
     val tpS = typeOf[S]
@@ -126,8 +126,8 @@ object Iso {
     }
   }
 
-  def implUnit[S: Type](implicit refl: Reflection): Expr[Iso[S, 1]] = {
-    import refl._
+  def implUnit[S: Type] given (qctx: QuoteContext): Expr[Iso[S, 1]] = {
+    import qctx.tasty._
     import util._
 
     val tpS = typeOf[S]
@@ -161,7 +161,7 @@ object Iso {
   }
 
   // TODO: require whitebox macro
-  def implFields[S: Type](implicit refl: Reflection): Expr[Iso[S, Any]] = ???
+  def implFields[S: Type] given (qctx: QuoteContext): Expr[Iso[S, Any]] = ???
 }
 
 object GenIso {
@@ -196,8 +196,8 @@ object Prism {
     def apply(a: A): S = app(a)
   }
 
-  def impl[S: Type, A <: S : Type](implicit refl: Reflection): Expr[Prism[S, A]] = {
-    import refl._
+  def impl[S: Type, A <: S : Type] given (qctx: QuoteContext): Expr[Prism[S, A]] = {
+    import qctx.tasty._
     import util._
 
     '{

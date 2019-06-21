@@ -125,7 +125,7 @@ object StagedTuple {
     }
   }
 
-  def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int])(implicit reflect: tasty.Reflection): Expr[Elem[Tup, N]] = {
+  def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int]) given (qctx: QuoteContext): Expr[Elem[Tup, N]] = {
     import reflect._
 
     if (!specialize) '{dynamicApply($tup, $n)}

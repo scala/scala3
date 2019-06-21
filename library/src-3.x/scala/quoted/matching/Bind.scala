@@ -1,8 +1,6 @@
 package scala.quoted
 package matching
 
-import scala.tasty.Reflection // TODO do not depend on reflection directly
-
 /** Bind of an Expr[T] used to know if some Expr[T] is a reference to the binding
  *
  *  @param name string name of this binding
@@ -21,8 +19,8 @@ class Bind[T <: AnyKind] private[scala](val name: String, private[Bind] val id: 
 
 object Bind {
 
-  def unapply[T](expr: Expr[T])(implicit reflect: Reflection): Option[Bind[T]] = {
-    import reflect.{Bind => BindPattern, _}
+  def unapply[T](expr: Expr[T]) given (qctx: QuoteContext): Option[Bind[T]] = {
+    import qctx.tasty.{Bind => BindPattern, _}
     expr.unseal match {
       case IsIdent(ref) =>
         val sym = ref.symbol

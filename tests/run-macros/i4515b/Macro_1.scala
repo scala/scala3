@@ -1,6 +1,6 @@
-import scala.tasty.Reflection
+import scala.quoted._
 
 object Macro {
   inline def foo: Unit = ${ fooImpl }
-  def fooImpl(implicit reflect: Reflection): quoted.Expr[Unit] = '{}
+  def fooImpl given QuoteContext: Expr[Unit] = '{}
 }

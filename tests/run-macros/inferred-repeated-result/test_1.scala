@@ -4,8 +4,8 @@ object Macros {
   import scala.tasty._
 
   inline def go[T](t: => T) = ${ impl('t) }
-  def impl[T](expr: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
-    import reflect._
+  def impl[T](expr: Expr[T]) given (qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty._
 
     val tree = expr.unseal
 

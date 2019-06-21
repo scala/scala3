@@ -8,7 +8,7 @@ object Macros {
 
   inline def testMacro: Unit = ${impl}
 
-  def impl(implicit reflect: Reflection): Expr[Unit] = {
+  def impl given QuoteContext: Expr[Unit] = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     // 2 is a lifted constant
     val show1 = withQuoteContext(power(2, 3.0).show)
@@ -44,7 +44,7 @@ object Macros {
     }
   }
 
-  def power(n: Expr[Int], x: Expr[Double])(implicit reflect: Reflection): Expr[Double] = {
+  def power(n: Expr[Int], x: Expr[Double]) given QuoteContext: Expr[Double] = {
     import quoted.matching.Const
     n match {
       case Const(n1) => powerCode(n1, x)

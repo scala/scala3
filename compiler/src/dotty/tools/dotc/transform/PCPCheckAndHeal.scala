@@ -166,6 +166,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       l == level ||
         level == -1 && (
           sym == defn.TastyReflection_macroContext ||
+          sym == defn.QuoteContext_macroContext ||
             // here we assume that Splicer.canBeSpliced was true before going to level -1,
             // this implies that all non-inline arguments are quoted and that the following two cases are checked
             // on inline parameters or type parameters.

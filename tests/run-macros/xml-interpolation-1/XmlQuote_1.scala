@@ -14,8 +14,8 @@ object XmlQuote {
   }
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
-          (implicit reflect: Reflection): Expr[Xml] = {
-    import reflect._
+           given (qctx: QuoteContext): Expr[Xml] = {
+    import qctx.tasty._
 
     def abort(msg: String): Nothing =
       QuoteError(msg)

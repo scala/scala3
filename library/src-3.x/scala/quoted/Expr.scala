@@ -48,8 +48,8 @@ package quoted {
      *  Given list of statements `s1 :: s2 :: ... :: Nil` and an expression `e` the resulting expression
      *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
      */
-    def block[T](statements: List[Expr[_]], expr: Expr[T])(implicit refl: tasty.Reflection): Expr[T] = {
-      import refl._
+    def block[T](statements: List[Expr[_]], expr: Expr[T])(implicit qctx: QuoteContext): Expr[T] = {
+      import qctx.tasty._
       Block(statements.map(_.unseal), expr.unseal).seal.asInstanceOf[Expr[T]]
     }
 

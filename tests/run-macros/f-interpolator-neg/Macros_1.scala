@@ -1,7 +1,6 @@
 import scala.quoted._
 import scala.quoted.autolift._
 import scala.quoted.matching._
-import scala.tasty.Reflection
 
 import scala.language.implicitConversions
 
@@ -13,7 +12,7 @@ object TestFooErrors { // Defined in tests
 
 object Macro {
 
-  def fooErrors(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]]) given (reflect: Reflection): Expr[List[(Boolean, Int, Int, Int, String)]] = {
+  def fooErrors(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]]) given QuoteContext: Expr[List[(Boolean, Int, Int, Int, String)]] = {
     (strCtxExpr, argsExpr) match {
       case ('{ StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
         fooErrorsImpl(parts, args, argsExpr)
@@ -22,7 +21,7 @@ object Macro {
     }
   }
 
-  def fooErrorsImpl(parts : Seq[Expr[String]], args: Seq[Expr[Any]], argsExpr: Expr[Seq[Any]]) given (reflect: Reflection)= {
+  def fooErrorsImpl(parts : Seq[Expr[String]], args: Seq[Expr[Any]], argsExpr: Expr[Seq[Any]]) given QuoteContext= {
     val errors = List.newBuilder[Expr[(Boolean, Int, Int, Int, String)]]
     // true if error, false if warning
     // 0 if part, 1 if arg, 2 if strCtx, 3 if args
