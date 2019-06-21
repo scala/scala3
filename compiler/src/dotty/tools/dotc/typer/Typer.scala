@@ -187,7 +187,7 @@ class Typer extends Namer
           val pre = imp.site
           var reqd = required
           var excl = EmptyFlags
-          if (imp.importImplied) reqd |= Implied else excl |= Implied
+          if (imp.importDelegate) reqd |= Delegate else excl |= Delegate
           var denot = pre.memberBasedOnFlags(name, reqd, excl).accessibleFrom(pre)(refctx)
           if (checkBounds && imp.impliedBound.exists)
             denot = denot.filterWithPredicate(mbr =>
@@ -234,7 +234,7 @@ class Typer extends Namer
        */
       def wildImportRef(imp: ImportInfo)(implicit ctx: Context): Type =
         if (imp.isWildcardImport && !imp.excluded.contains(name.toTermName) && name != nme.CONSTRUCTOR)
-          selection(imp, name, checkBounds = imp.importImplied)
+          selection(imp, name, checkBounds = imp.importDelegate)
         else NoType
 
       /** Is (some alternative of) the given predenotation `denot`
@@ -1431,7 +1431,7 @@ class Typer extends Namer
             if (body1.tpe.isInstanceOf[TermRef]) pt1
             else body1.tpe.underlyingIfRepeated(isJava = false)
           val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.span)
-          if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Implied)
+          if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Delegate)
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.sourcePos)
           assignType(cpy.Bind(tree)(tree.name, body1), sym)
@@ -1476,7 +1476,7 @@ class Typer extends Namer
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedValDef") {
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
-    if (sym.isOneOf(ImplicitOrImplied)) checkImplicitConversionDefOK(sym)
+    if (sym.isOneOf(DelegateOrImplicit)) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
@@ -1521,7 +1521,7 @@ class Typer extends Namer
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
     vparamss1.foreach(checkNoForwardDependencies)
-    if (sym.isOneOf(ImplicitOrImplied)) checkImplicitConversionDefOK(sym)
+    if (sym.isOneOf(DelegateOrImplicit)) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
 
     val rhsCtx = ctx.fresh
@@ -1789,7 +1789,7 @@ class Typer extends Namer
         untpd.cpy.TypeBoundsTree(sel)(sel.lo, untpd.TypedSplice(typedType(tpt)))
       case sel => sel
     }
-    assignType(cpy.Import(imp)(imp.importImplied, expr1, selectors1), sym)
+    assignType(cpy.Import(imp)(imp.importDelegate, expr1, selectors1), sym)
   }
 
   def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = track("typedPackageDef") {

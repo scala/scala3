@@ -344,7 +344,7 @@ object Flags {
   /** Symbol is a Java default method */
   val (_, DefaultMethod @ _, _) = newFlags(38, "<defaultmethod>")
 
-  val (Implied @ _, _, _) = newFlags(39, "delegate")
+  val (Delegate @ _, _, _) = newFlags(39, "delegate")
 
   /** Symbol is an enum class or enum case (if used with case) */
   val (Enum @ _, _, _) = newFlags(40, "<enum>")
@@ -427,7 +427,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Final, Case, Implicit, Implied, Given, Override, JavaStatic)
+    commonFlags(Private, Protected, Final, Case, Implicit, Delegate, Given, Override, JavaStatic)
 
   val TypeSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque
@@ -449,7 +449,7 @@ object Flags {
     HigherKinded, Param, ParamAccessor,
     Scala2ExistentialCommon, Mutable, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
-    Extension, NonMember, Implicit, Given, Implied, Permanent, Synthetic,
+    Extension, NonMember, Implicit, Given, Delegate, Permanent, Synthetic,
     SuperAccessorOrScala2x, Inline)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
@@ -508,14 +508,14 @@ object Flags {
 
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
-    Override | Final | Method | Implicit | Implied | Lazy |
+    Override | Final | Method | Implicit | Delegate | Lazy |
     Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased
 
   /** Flags that can apply to a module class */
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
 
   /** Flags retained in export forwarders */
-  val RetainedExportFlags = ImplicitOrImpliedOrGiven | Extension
+  val RetainedExportFlags = Delegate | Given | Implicit | Extension
 
 // ------- Other flag sets -------------------------------------
 
@@ -533,68 +533,47 @@ object Flags {
 
   val MethodOrModule: FlagSet = Method | Module
 
-  /** Either method or lazy or deferred */
   val MethodOrLazyOrDeferred: FlagSet = Deferred | Lazy | Method
 
-  /** An inline method or inline argument proxy */
-  val InlineOrProxy: FlagSet = Inline | InlineProxy
 
-  val ImplicitOrImplied: FlagSet = Implicit | Implied
-  val ImplicitOrImpliedOrGiven: FlagSet = Given | Implicit | Implied
-  val ImplicitOrGiven: FlagSet = Given | Implicit
+  val InlineOrProxy: FlagSet = Inline | InlineProxy  // An inline method or inline argument proxy */
 
-  val ImpliedOrGiven: FlagSet = Implied | Given
+  val DelegateOrGiven: FlagSet              = Delegate | Given
+  val DelegateOrGivenOrImplicit: FlagSet    = Delegate | Given | Implicit
+  val DelegateOrGivenOrImplicitVal: FlagSet = DelegateOrGivenOrImplicit.toTermFlags
+  val DelegateOrImplicit: FlagSet           = Delegate | Implicit
+  val GivenOrImplicit: FlagSet              = Given | Implicit
 
-  val ImplicitOrImpliedOrGivenTerm = ImplicitOrImpliedOrGiven.toTermFlags
+  val StableOrErased: FlagSet = Erased | StableRealizable   // Assumed to be pure
+  val EffectivelyFinalFlags: FlagSet = Final | Private
 
+  val PrivateMethod: FlagSet = Method | Private
 
-  /** Assumed to be pure */
-  val StableOrErased: FlagSet = StableRealizable | Erased
+  val PrivateAccessor: FlagSet = Accessor | Private
 
-  /** Labeled `private`, or `final` */
-  val EffectivelyFinalFlags: FlagSet = Private | Final
-
-  /** A private method */
-  val PrivateMethod: FlagSet = Private | Method
-
-  /** A private accessor */
-  val PrivateAccessor: FlagSet = Private | Accessor
-
-  /** An inline method */
   val InlineMethod: FlagSet = Inline | Method
 
-  /** An inline by-name parameter proxy */
   val InlineByNameProxy: FlagSet = InlineProxy | Method
 
-  /** An inline parameter */
   val InlineParam: FlagSet = Inline | Param
 
-  /** An extension method */
   val ExtensionMethod: FlagSet = Extension | Method
 
-  /** An implied method */
-  val SyntheticImpliedMethod: FlagSet = Synthetic | Implied | Method
+  val SyntheticDelegateMethod: FlagSet = Delegate | Method | Synthetic
 
-  /** An enum case */
-  val EnumCase: FlagSet = Enum | Case
+  val EnumCase: FlagSet = Case | Enum
 
-  /** A term parameter or parameter accessor */
   val TermParamOrAccessor: FlagSet = Param | ParamAccessor
 
-  /** A lazy or deferred value */
-  val LazyOrDeferred: FlagSet = Lazy | Deferred
+  val LazyOrDeferred: FlagSet = Deferred | Lazy
 
-  /** An accessor or a synthetic symbol */
   val AccessorOrSynthetic: FlagSet = Accessor | Synthetic
 
-  /** A synthetic or private definition */
-  val SyntheticOrPrivate: FlagSet = Synthetic | Private
+  val SyntheticOrPrivate: FlagSet = Private | Synthetic
 
-  /** A deferred term member or a parameter or parameter accessor (these don't have right hand sides) */
-  val DeferredOrTermParamOrAccessor: FlagSet = Deferred | TermParam | ParamAccessor
+  val DeferredOrTermParamOrAccessor: FlagSet = Deferred | ParamAccessor | TermParam // term symbols without right-hand sides
 
-  /** A deferred type member or parameter (these don't have right hand sides) */
-  val DeferredOrTypeParam: FlagSet = Deferred | TypeParam
+  val DeferredOrTypeParam: FlagSet = Deferred | TypeParam // type symbols without right-hand sides
 
   /** value that's final or inline */
   val FinalOrInline: FlagSet = Final | Inline

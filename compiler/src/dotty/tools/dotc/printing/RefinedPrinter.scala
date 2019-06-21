@@ -332,6 +332,18 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       (keywordText("delegate ") provided deleg) ~
       toTextLocal(expr) ~ "." ~ selectorsText
     }
+        def selectorText(sel: Tree): Text = sel match {
+          case Thicket(l :: r :: Nil) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
+          case _: Ident => toTextGlobal(sel)
+          case TypeBoundsTree(_, tpt) => "for " ~ toTextGlobal(tpt)
+        }
+        val selectorsText: Text = selectors match {
+          case id :: Nil => toText(id)
+          case _ => "{" ~ Text(selectors map selectorText, ", ") ~ "}"
+        }
+        keywordText("import ") ~ (keywordText("delegate ") provided importDelegate) ~
+        toTextLocal(expr) ~ "." ~ selectorsText
+
 
     tree match {
       case id: Trees.BackquotedIdent[_] if !homogenizedView =>
@@ -823,7 +835,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if (ctx.settings.YdebugFlags.value) AnyFlags
       else if (suppressKw) PrintableFlags(isType) &~ Private
       else PrintableFlags(isType)
-    if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= ImplicitOrImplied // drop implicit/delegate from classes
+    if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= DelegateOrImplicit // drop implicit/delegate from classes
     val rawFlags = if (sym.exists) sym.flags else mods.flags
     if (rawFlags.is(Param)) flagMask = flagMask &~ Given
     val flags = rawFlags & flagMask

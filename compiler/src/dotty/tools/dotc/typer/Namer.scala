@@ -125,7 +125,7 @@ trait NamerContextOps { this: Context =>
   /** if isConstructor, make sure it has one non-implicit parameter list */
   def normalizeIfConstructor(termParamss: List[List[Symbol]], isConstructor: Boolean): List[List[Symbol]] =
     if (isConstructor &&
-      (termParamss.isEmpty || termParamss.head.nonEmpty && termParamss.head.head.isOneOf(ImplicitOrGiven)))
+      (termParamss.isEmpty || termParamss.head.nonEmpty && termParamss.head.head.isOneOf(GivenOrImplicit)))
       Nil :: termParamss
     else
       termParamss
@@ -343,7 +343,7 @@ class Namer { typer: Typer =>
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         val name = checkNoConflict(tree.name).asTypeName
-        val flags = checkFlags(tree.mods.flags &~ ImplicitOrImplied)
+        val flags = checkFlags(tree.mods.flags &~ DelegateOrImplicit)
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
@@ -738,7 +738,7 @@ class Namer { typer: Typer =>
 
   def missingType(sym: Symbol, modifier: String)(implicit ctx: Context): Unit = {
     ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.sourcePos)
-    sym.resetFlag(ImplicitOrGiven)
+    sym.resetFlag(GivenOrImplicit)
   }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
@@ -940,7 +940,7 @@ class Namer { typer: Typer =>
 
         def whyNoForwarder(mbr: SingleDenotation): String = {
           val sym = mbr.symbol
-          if (sym.isOneOf(ImplicitOrImpliedOrGiven) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}a delegate"
+          if (sym.isOneOf(DelegateOrGivenOrImplicit) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}a delegate"
           else if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
           else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) SKIP
           else if (cls.derivesFrom(sym.owner) &&
@@ -1059,7 +1059,7 @@ class Namer { typer: Typer =>
               val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
               if (ptype.typeParams.isEmpty) ptype
               else {
-                if (denot.is(ModuleClass) && denot.sourceModule.isOneOf(ImplicitOrImplied))
+                if (denot.is(ModuleClass) && denot.sourceModule.isOneOf(DelegateOrImplicit))
                   missingType(denot.symbol, "parent ")(creationContext)
                 fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.span)
               }

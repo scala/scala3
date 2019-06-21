@@ -167,7 +167,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Inline()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Inline)
 
-    case class Implied()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implied)
+    case class Delegate()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Delegate)
   }
 
   /** Modifiers and annotations for definitions
@@ -345,7 +345,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Template(constr: DefDef, parents: List[Tree], derived: List[Tree], self: ValDef, body: LazyTreeList)(implicit src: SourceFile): Template =
     if (derived.isEmpty) new Template(constr, parents, self, body)
     else new DerivingTemplate(constr, parents ++ derived, self, body, derived.length)
-  def Import(importImplied: Boolean, expr: Tree, selectors: List[Tree])(implicit src: SourceFile): Import = new Import(importImplied, expr, selectors)
+  def Import(importDelegate: Boolean, expr: Tree, selectors: List[Tree])(implicit src: SourceFile): Import = new Import(importDelegate, expr, selectors)
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit src: SourceFile): PackageDef = new PackageDef(pid, stats)
   def Annotated(arg: Tree, annot: Tree)(implicit src: SourceFile): Annotated = new Annotated(arg, annot)
 

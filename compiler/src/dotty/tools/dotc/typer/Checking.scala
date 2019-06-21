@@ -405,7 +405,7 @@ object Checking {
           ))
       fail(ParamsNoInline(sym.owner))
 
-    if (sym.isOneOf(ImplicitOrImplied)) {
+    if (sym.isOneOf(DelegateOrImplicit)) {
       if (sym.owner.is(Package))
         fail(TopLevelCantBeImplicit(sym))
       if (sym.isType)
@@ -688,7 +688,7 @@ trait Checking {
     }
 
   /** If `sym` is an implicit conversion, check that implicit conversions are enabled.
-   *  @pre  sym.is(ImplicitOrGiven)
+   *  @pre  sym.is(GivenOrImplicit)
    */
   def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = {
     def check(): Unit = {
@@ -719,7 +719,7 @@ trait Checking {
   def checkImplicitConversionUseOK(sym: Symbol, posd: Positioned)(implicit ctx: Context): Unit =
     if (sym.exists) {
       val conv =
-        if (sym.isOneOf(ImplicitOrGiven)) sym
+        if (sym.isOneOf(GivenOrImplicit)) sym
         else {
           assert(sym.name == nme.apply)
           sym.owner
@@ -1137,7 +1137,7 @@ trait Checking {
         val cases =
           for (stat <- impl.body if isCase(stat))
           yield untpd.Ident(stat.symbol.name.toTermName)
-        val caseImport: Import = Import(importImplied = false, ref(cdef.symbol), cases)
+        val caseImport: Import = Import(importDelegate = false, ref(cdef.symbol), cases)
         val caseCtx = enumCtx.importContext(caseImport, caseImport.symbol)
         for (stat <- impl.body) checkCaseOrDefault(stat, caseCtx)
       case _ =>

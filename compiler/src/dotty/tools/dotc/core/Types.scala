@@ -792,12 +792,12 @@ object Types {
     }
 
     /** The set of implicit term members of this type
-     *  @param kind   A subset of {Implicit, Implied} that specifies what kind of implicit should
+     *  @param kind   A subset of {Implicit, Delegate} that specifies what kind of implicit should
      *                be returned
      */
     final def implicitMembers(kind: FlagSet)(implicit ctx: Context): List[TermRef] = track("implicitMembers") {
       memberDenots(implicitFilter,
-          (name, buf) => buf ++= member(name).altsWith(_.isOneOf(ImplicitOrImpliedOrGivenTerm & kind)))
+          (name, buf) => buf ++= member(name).altsWith(_.isOneOf(DelegateOrGivenOrImplicitVal & kind)))
         .toList.map(d => TermRef(this, d.symbol.asTerm))
     }
 

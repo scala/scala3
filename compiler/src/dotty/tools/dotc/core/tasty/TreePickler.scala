@@ -531,10 +531,10 @@ class TreePickler(pickler: TastyPickler) {
             }
             pickleStats(tree.constr :: rest)
           }
-        case Import(importImplied, expr, selectors) =>
+        case Import(importDelegate, expr, selectors) =>
           writeByte(IMPORT)
           withLength {
-            if (importImplied) writeByte(IMPLIED)
+            if (importDelegate) writeByte(IMPLIED)
             pickleTree(expr)
             pickleSelectors(selectors)
           }
@@ -651,7 +651,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags.is(Scala2x)) writeModTag(SCALA2X)
     if (isTerm) {
       if (flags.is(Implicit)) writeModTag(IMPLICIT)
-      if (flags.is(Implied)) writeModTag(IMPLIED)
+      if (flags.is(Delegate)) writeModTag(IMPLIED)
       if (flags.is(Erased)) writeModTag(ERASED)
       if (flags.is(Lazy, butNot = Module)) writeModTag(LAZY)
       if (flags.is(AbsOverride)) { writeModTag(ABSTRACT); writeModTag(OVERRIDE) }

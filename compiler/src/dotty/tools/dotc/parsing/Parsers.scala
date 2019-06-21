@@ -968,7 +968,7 @@ object Parsers {
         case MATCH => matchType(t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
-          if (imods.isOneOf(ImplicitOrGiven) && !t.isInstanceOf[FunctionWithMods])
+          if (imods.isOneOf(GivenOrImplicit) && !t.isInstanceOf[FunctionWithMods])
             syntaxError("Types with implicit keyword can only be function types `implicit (...) => ...`", implicitKwPos(start))
           if (imods.is(Erased) && !t.isInstanceOf[FunctionWithMods])
             syntaxError("Types with erased keyword can only be function types `erased (...) => ...`", implicitKwPos(start))
@@ -1483,7 +1483,7 @@ object Parsers {
         case _ =>
       }
       imods.mods match {
-        case (Mod.Implicit() | Mod.Implied()) :: mods => markFirstIllegal(mods)
+        case (Mod.Implicit() | Mod.Delegate()) :: mods => markFirstIllegal(mods)
         case mods => markFirstIllegal(mods)
       }
       val result @ Match(t, cases) =
@@ -2365,9 +2365,9 @@ object Parsers {
      */
     def importClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
-      val importImplied = in.token == IMPLIED
-      if (importImplied) in.nextToken()
-      commaSeparated(importExpr(importImplied, mkTree)) match {
+      val importDelegate = in.token == IMPLIED
+      if (importDelegate) in.nextToken()
+      commaSeparated(importExpr(importDelegate, mkTree)) match {
         case t :: rest =>
           // The first import should start at the start offset of the keyword.
           val firstPos =
@@ -2380,7 +2380,7 @@ object Parsers {
 
     /**  ImportExpr ::= StableId `.' (id | `_' | ImportSelectors)
      */
-    def importExpr(importImplied: Boolean, mkTree: ImportConstr): () => Tree = {
+    def importExpr(importDelegate: Boolean, mkTree: ImportConstr): () => Tree = {
 
       /** ImportSelectors ::= `{' {ImportSelector `,'} FinalSelector ‘}’
        *  FinalSelector   ::=  ImportSelector
@@ -2391,7 +2391,7 @@ object Parsers {
         case USCORE =>
           wildcardIdent() :: Nil
         case FOR =>
-          if (!importImplied)
+          if (!importDelegate)
               syntaxError(em"`for` qualifier only allowed in `import delegate`")
           atSpan(in.skipToken()) {
             var t = infixType()
@@ -2432,13 +2432,13 @@ object Parsers {
       }
 
       val handleImport: Tree => Tree = { tree: Tree =>
-        if (in.token == USCORE) mkTree(importImplied, tree, wildcardIdent() :: Nil)
-        else if (in.token == LBRACE) mkTree(importImplied, tree, inBraces(importSelectors()))
+        if (in.token == USCORE) mkTree(importDelegate, tree, wildcardIdent() :: Nil)
+        else if (in.token == LBRACE) mkTree(importDelegate, tree, inBraces(importSelectors()))
         else tree
       }
 
       def derived(impExp: Tree, qual: Tree, selectors: List[Tree]) =
-        mkTree(importImplied, qual, selectors).withSpan(impExp.span)
+        mkTree(importDelegate, qual, selectors).withSpan(impExp.span)
 
       () => {
         val p = path(thisOK = false, handleImport)
@@ -2446,10 +2446,10 @@ object Parsers {
           case _: Import | _: Export => p
           case sel @ Select(qual, name) =>
             val selector = atSpan(pointOffset(sel)) { Ident(name) }
-            mkTree(importImplied, qual, selector :: Nil).withSpan(sel.span)
+            mkTree(importDelegate, qual, selector :: Nil).withSpan(sel.span)
           case t =>
             accept(DOT)
-            mkTree(importImplied, t, Ident(nme.WILDCARD) :: Nil)
+            mkTree(importDelegate, t, Ident(nme.WILDCARD) :: Nil)
         }
       }
     }
@@ -2553,7 +2553,7 @@ object Parsers {
       if (in.token == THIS) {
         in.nextToken()
         val vparamss = paramClauses()
-        if (vparamss.isEmpty || vparamss.head.take(1).exists(_.mods.isOneOf(ImplicitOrGiven)))
+        if (vparamss.isEmpty || vparamss.head.take(1).exists(_.mods.isOneOf(GivenOrImplicit)))
           in.token match {
             case LBRACKET   => syntaxError("no type parameters allowed here")
             case EOF        => incompleteInputError(AuxConstructorNeedsNonImplicitParameter())
@@ -2706,7 +2706,7 @@ object Parsers {
         case ENUM =>
           enumDef(start, posMods(start, mods | Enum))
         case IMPLIED =>
-          instanceDef(start, mods, atSpan(in.skipToken()) { Mod.Implied() })
+          instanceDef(start, mods, atSpan(in.skipToken()) { Mod.Delegate() })
         case _ =>
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
           EmptyTree

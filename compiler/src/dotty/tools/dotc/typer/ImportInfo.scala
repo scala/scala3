@@ -15,11 +15,11 @@ import Decorators._
 
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
-  def rootImport(refFn: () => TermRef, importImplied: Boolean = false)(implicit ctx: Context): ImportInfo = {
+  def rootImport(refFn: () => TermRef, importDelegate: Boolean = false)(implicit ctx: Context): ImportInfo = {
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
     def expr(implicit ctx: Context) = tpd.Ident(refFn())
-    def imp(implicit ctx: Context) = tpd.Import(importImplied = importImplied, expr, selectors)
-    new ImportInfo(implicit ctx => imp.symbol, selectors, None, importImplied = importImplied, isRootImport = true)
+    def imp(implicit ctx: Context) = tpd.Import(importDelegate = importDelegate, expr, selectors)
+    new ImportInfo(implicit ctx => imp.symbol, selectors, None, importDelegate = importDelegate, isRootImport = true)
   }
 }
 
@@ -28,13 +28,13 @@ object ImportInfo {
  *  @param   selectors     The selector clauses
  *  @param   symNameOpt    Optionally, the name of the import symbol. None for root imports.
  *                         Defined for all explicit imports from ident or select nodes.
- *  @param   importImplied true if this is a delegate import
+ *  @param   importDelegate true if this is a delegate import
  *  @param   isRootImport  true if this is one of the implicit imports of scala, java.lang,
  *                         scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */
 class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
                  symNameOpt: Option[TermName],
-                 val importImplied: Boolean,
+                 val importDelegate: Boolean,
                  val isRootImport: Boolean = false) extends Showable {
 
   // Dotty deviation: we cannot use a lazy val here for the same reason
@@ -99,22 +99,22 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
     recur(selectors)
   }
 
-  private[this] var myImpliedBound: Type = null
+  private[this] var myDelegateBound: Type = null
 
   def impliedBound(implicit ctx: Context): Type = {
-    if (myImpliedBound == null)
-      myImpliedBound = selectors.lastOption match {
+    if (myDelegateBound == null)
+      myDelegateBound = selectors.lastOption match {
         case Some(TypeBoundsTree(_, untpd.TypedSplice(tpt))) => tpt.tpe
         case Some(TypeBoundsTree(_, tpt)) =>
-          myImpliedBound = NoType
+          myDelegateBound = NoType
           ctx.typer.typedAheadType(tpt).tpe
         case _ => NoType
       }
-    myImpliedBound
+    myDelegateBound
   }
 
   private def implicitFlags(implicit ctx: Context) =
-    if (importImplied || ctx.mode.is(Mode.FindHiddenImplicits)) ImplicitOrImpliedOrGiven
+    if (importDelegate || ctx.mode.is(Mode.FindHiddenImplicits)) DelegateOrGivenOrImplicit
     else Implicit
 
   /** The implicit references imported by this import clause */

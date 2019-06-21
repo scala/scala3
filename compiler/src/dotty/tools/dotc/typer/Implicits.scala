@@ -235,7 +235,7 @@ object Implicits {
     implicits.println(i"implicits of type $tp = ${companionRefs.toList}%, %")
     @threadUnsafe lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
-      for (companion <- companionRefs) buf ++= companion.implicitMembers(ImplicitOrImpliedOrGiven)
+      for (companion <- companionRefs) buf ++= companion.implicitMembers(DelegateOrGivenOrImplicit)
       buf.toList
     }
 

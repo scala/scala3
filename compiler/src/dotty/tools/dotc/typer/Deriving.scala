@@ -50,11 +50,11 @@ trait Deriving { this: Typer =>
       if (ctx.denotNamed(instanceName).exists)
         ctx.error(i"duplicate typeclass derivation for $clsName", pos)
       else {
-        // If we set the Synthetic flag here widenImplied will widen too far and the
+        // If we set the Synthetic flag here widenDelegate will widen too far and the
         // derived instance will have too low a priority to be selected over a freshly
         // derived instance at the summoning site.
         synthetics +=
-          ctx.newSymbol(ctx.owner, instanceName, Implied | Method, info, coord = pos.span)
+          ctx.newSymbol(ctx.owner, instanceName, Delegate | Method, info, coord = pos.span)
             .entered
       }
     }
