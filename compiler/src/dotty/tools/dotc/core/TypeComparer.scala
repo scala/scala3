@@ -1181,7 +1181,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
          *  If the original left-hand type `leftRoot` is a path `p.type`,
          *  and the current widened left type is an application with wildcard arguments
          *  such as `C[_]`, where `X` is `C`'s type parameter corresponding to the `_` argument,
-         *  compare with `C[p.X]` instead. Otherwise return `false`.
+         *  compare with `C[p.X]` instead. Otherwise approximate based on variance.
          *  Also do a capture conversion in either of the following cases:
          *
          *   - If we are after typer. We generally relax soundness requirements then.
@@ -1203,10 +1203,18 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
          *  paths is less intrusive than skolemization.
          */
         def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
-          case tparam: Symbol
-          if leftRoot.isStable || (ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext)) && leftRoot.member(tparam.name).exists =>
-            val captured = TypeRef(leftRoot, tparam)
-            isSubArg(captured, arg2)
+          case tparam: Symbol =>
+            if (leftRoot.isStable || (ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
+                && leftRoot.member(tparam.name).exists) {
+              val captured = TypeRef(leftRoot, tparam)
+              isSubArg(captured, arg2)
+            }
+            else if (v > 0)
+              isSubType(paramBounds(tparam).hi, arg2)
+            else if (v < 0)
+              isSubType(arg2, paramBounds(tparam).lo)
+            else
+              false
           case _ =>
             false
         }
