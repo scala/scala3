@@ -8,7 +8,7 @@ object Test {
     val f4: Expr[Int => Int] = '{
       inlineLambda
     }
-    println(f4(x).run)
+    println(run(f4(x)))
     println(f4(x).show)
   }
 

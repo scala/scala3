@@ -4,7 +4,9 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    val f = f1.run
+    val f = run {
+      f1
+    }
     println(f(42))
     println(f(43))
   }

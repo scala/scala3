@@ -799,7 +799,10 @@ object Parsers {
     private def interpolatedString(inPattern: Boolean = false): Tree = atSpan(in.offset) {
       val segmentBuf = new ListBuffer[Tree]
       val interpolator = in.name
-      val isTripleQuoted = in.buf(in.charOffset) == '"' && in.buf(in.charOffset + 1) == '"'
+      val isTripleQuoted =
+        in.charOffset + 1 < in.buf.length &&
+        in.buf(in.charOffset) == '"' &&
+        in.buf(in.charOffset + 1) == '"'
       in.nextToken()
       def nextSegment(literalOffset: Offset) =
         segmentBuf += Thicket(
@@ -1266,7 +1269,7 @@ object Parsers {
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  Expr2
      *                      |  [‘inline’] Expr2 `match' `{' CaseClauses `}'
-     *                      |  `implied' `match' `{' ImplicitCaseClauses `}'
+     *                      |  `delegate' `match' `{' ImplicitCaseClauses `}'
      *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
      *  Binding           ::=  (id | `_') [`:' Type]
      *  Expr2             ::=  PostfixExpr [Ascription]
@@ -1470,7 +1473,7 @@ object Parsers {
      */
     def impliedMatch(start: Int, imods: Modifiers) = {
       def markFirstIllegal(mods: List[Mod]) = mods match {
-        case mod :: _ => syntaxError(em"illegal modifier for implied match", mod.span)
+        case mod :: _ => syntaxError(em"illegal modifier for delegate match", mod.span)
         case _ =>
       }
       imods.mods match {
@@ -1485,7 +1488,7 @@ object Parsers {
           case pat => isVarPattern(pat)
         }
         if (!isImplicitPattern(pat))
-          syntaxError(em"not a legal pattern for an implied match", pat.span)
+          syntaxError(em"not a legal pattern for a delegate match", pat.span)
       }
       result
     }
@@ -2351,8 +2354,8 @@ object Parsers {
 
     type ImportConstr = (Boolean, Tree, List[Tree]) => Tree
 
-    /** Import  ::= import [implied] [ImportExpr {`,' ImportExpr}
-     *  Export  ::= export [implied] [ImportExpr {`,' ImportExpr}
+    /** Import  ::= import [delegate] [ImportExpr {`,' ImportExpr}
+     *  Export  ::= export [delegate] [ImportExpr {`,' ImportExpr}
      */
     def importClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
@@ -2383,7 +2386,7 @@ object Parsers {
           wildcardIdent() :: Nil
         case FOR =>
           if (!importImplied)
-              syntaxError(em"`for` qualifier only allowed in `import implied`")
+              syntaxError(em"`for` qualifier only allowed in `import delegate`")
           atSpan(in.skipToken()) {
             var t = infixType()
             while (in.token == COMMA) {

@@ -28,7 +28,7 @@ f[Map]
 f[[X] =>> String]
 ```
 
-We call type parameters and abstract types with an `AnyKind` upper bound _any-kinded types_`.
+We call type parameters and abstract types with an `AnyKind` upper bound _any-kinded types_.
 Since the actual kind of an any-kinded type is unknown, its usage must be heavily restricted: An any-kinded type
 can be neither the type of a value, nor can it be instantiated with type parameters. So about the only
 thing one can do with an any-kinded type is to pass it to another any-kinded type argument.

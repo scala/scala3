@@ -260,8 +260,6 @@ object ProtoTypes {
       if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
       else new FunProto(args, resultType)(typer, isGivenApply)
 
-    override def notApplied: Type = WildcardType
-
     /** @return True if all arguments have types.
      */
     def allArgTypesAreCurrent()(implicit ctx: Context): Boolean =
@@ -452,8 +450,6 @@ object ProtoTypes {
     def derivedPolyProto(targs: List[Tree], resultType: Type): PolyProto =
       if ((targs eq this.targs) && (resType eq this.resType)) this
       else PolyProto(targs, resType)
-
-    override def notApplied: Type = WildcardType
 
     def map(tm: TypeMap)(implicit ctx: Context): PolyProto =
       derivedPolyProto(targs, tm(resultType))

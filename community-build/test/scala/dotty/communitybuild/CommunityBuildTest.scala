@@ -171,6 +171,12 @@ class CommunityBuildTest {
     extraSbtArgs  = Seq("-Dscala.build.compileWithDotty=true")
   )
 
+  @Test def shapeless = test(
+    project       = "shapeless",
+    testCommand   = "test",
+    updateCommand = "update"
+  )
+
   // TODO @oderky? It got broken by #5458
   // @Test def pdbp = test(
   //   project       = "pdbp",

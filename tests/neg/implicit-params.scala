@@ -11,8 +11,8 @@ object Test {
 
   def h(x: Int) given () = x // error
 
-  implied C for C(11)
-  implied D for D(11)
+  delegate C for C(11)
+  delegate D for D(11)
 
   f(1)
   f(1) given C

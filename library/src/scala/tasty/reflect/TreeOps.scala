@@ -635,14 +635,14 @@ trait TreeOps extends Core {
   /** Scala implicit `match` term */
   object ImpliedMatch {
 
-    /** Creates a pattern match `implied match { <cases: List[CaseDef]> }` */
+    /** Creates a pattern match `delegate match { <cases: List[CaseDef]> }` */
     def apply(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch =
       kernel.ImplicitMatch_apply(cases)
 
     def copy(original: Tree)(cases: List[CaseDef])(implicit ctx: Context): ImpliedMatch =
       kernel.ImplicitMatch_copy(original)(cases)
 
-    /** Matches a pattern match `implied match { <cases: List[CaseDef]> }` */
+    /** Matches a pattern match `delegate match { <cases: List[CaseDef]> }` */
     def unapply(tree: Tree)(implicit ctx: Context): Option[List[CaseDef]] =
       kernel.matchImplicitMatch(tree).map(_.cases)
 

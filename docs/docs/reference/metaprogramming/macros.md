@@ -194,7 +194,7 @@ would be rewritten to
     def reflect[T: Type, U: Type](f: Expr[T] => Expr[U]): Expr[T => U] =
       '{ (x: ${ the[Type[T]] }) => ${ f('x) } }
 ```
-The `the` query succeeds because there is an implied value of
+The `the` query succeeds because there is a delegate of
 type `Type[T]` available (namely the given parameter corresponding
 to the context bound `: Type`), and the reference to that value is
 phase-correct. If that was not the case, the phase inconsistency for
@@ -224,7 +224,7 @@ Here’s a compiler that maps an expression given in the interpreted
 language to quoted Scala code of type `Expr[Int]`.
 The compiler takes an environment that maps variable names to Scala `Expr`s.
 ```scala
-    import implied scala.quoted._
+    import delegate scala.quoted._
 
     def compile(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
       case Num(n) =>
@@ -251,15 +251,14 @@ The `toExpr` extension method is defined in package `quoted`:
 ```scala
     package quoted
 
-    implied LiftingOps {
+    delegate LiftingOps {
       def (x: T) toExpr[T] given (ev: Liftable[T]): Expr[T] = ev.toExpr(x)
     }
 ```
 The extension says that values of types implementing the `Liftable` type class can be
-converted ("lifted") to `Expr` values using `toExpr`, provided an implied import
-of `scala.quoted._` is in scope.
+converted ("lifted") to `Expr` values using `toExpr`, provided a delegate import of `scala.quoted._` is in scope.
 
-Dotty comes with implied instance definitions of `Liftable` for
+Dotty comes with delegate definitions of `Liftable` for
 several types including `Boolean`, `String`, and all primitive number
 types. For example, `Int` values can be converted to `Expr[Int]`
 values by wrapping the value in a `Literal` tree node. This makes use
@@ -269,7 +268,7 @@ in the sense that they could all be defined in a user program without
 knowing anything about the representation of `Expr` trees. For
 instance, here is a possible instance of `Liftable[Boolean]`:
 ```scala
-    implied for Liftable[Boolean] {
+    delegate for Liftable[Boolean] {
       def toExpr(b: Boolean) = if (b) '{ true } else '{ false }
     }
 ```
@@ -277,10 +276,10 @@ Once we can lift bits, we can work our way up. For instance, here is a
 possible implementation of `Liftable[Int]` that does not use the underlying
 tree machinery:
 ```scala
-    implied for Liftable[Int] {
+    delegate for Liftable[Int] {
       def toExpr(n: Int): Expr[Int] = n match {
         case Int.MinValue    => '{ Int.MinValue }
-        case _ if n < 0      => '{ - ${ toExpr(n) } }
+        case _ if n < 0      => '{ - ${ toExpr(-n) } }
         case 0               => '{ 0 }
         case _ if n % 2 == 0 => '{ ${ toExpr(n / 2) } * 2 }
         case _               => '{ ${ toExpr(n / 2) } * 2 + 1 }
@@ -290,7 +289,7 @@ tree machinery:
 Since `Liftable` is a type class, its instances can be conditional. For example,
 a `List` is liftable if its element type is:
 ```scala
-    implied [T: Liftable] for Liftable[List[T]] {
+    delegate [T: Liftable] for Liftable[List[T]] {
       def toExpr(xs: List[T]): Expr[List[T]] = xs match {
         case head :: tail => '{ ${ toExpr(head) } :: ${ toExpr(tail) } }
         case Nil => '{ Nil: List[T] }
@@ -336,7 +335,7 @@ implicit search. For instance, to implement
     the[Type[List[T]]]
 ```
 where `T` is not defined in the current stage, we construct the type constructor
-of `List` applied to the splice of the result of searching for an implied instance for `Type[T]`:
+of `List` applied to the splice of the result of searching for a delegate for `Type[T]`:
 ```scala
     '[ List[ ${ the[Type[T]] } ] ]
 ```
@@ -585,15 +584,6 @@ def defaultOfImpl(str: String): Expr[Any] = str match {
 // in a separate file
 val a: Int = defaultOf("int")
 val b: String = defaultOf("string")
-```
-
-### Let
-
-`scala.tasty.reflect.utils.TreeUtils` offers a method `let` that allows us to
-bind the `rhs` to a `val` and use it in `body`. Its definition is shown below:
-
-```scala
-def let(rhs: Term)(body: Ident => Term): Term
 ```
 
 [More details](./macros-spec.html)

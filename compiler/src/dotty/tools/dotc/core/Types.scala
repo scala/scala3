@@ -440,23 +440,28 @@ object Types {
         NoSymbol
     }
 
-    /** The least (wrt <:<) set of class symbols of which this type is a subtype
+    /** The least (wrt <:<) set of symbols satisfying the `include` predicate of which this type is a subtype
      */
-    final def classSymbols(implicit ctx: Context): List[ClassSymbol] = this match {
+    final def parentSymbols(include: Symbol => Boolean)(implicit ctx: Context): List[Symbol] = this match {
       case tp: ClassInfo =>
         tp.cls :: Nil
       case tp: TypeRef =>
         val sym = tp.symbol
-        if (sym.isClass) sym.asClass :: Nil else tp.superType.classSymbols
+        if (include(sym)) sym :: Nil else tp.superType.parentSymbols(include)
       case tp: TypeProxy =>
-        tp.underlying.classSymbols
+        tp.underlying.parentSymbols(include)
       case AndType(l, r) =>
-        l.classSymbols | r.classSymbols
+        l.parentSymbols(include) | r.parentSymbols(include)
       case OrType(l, r) =>
-        l.classSymbols intersect r.classSymbols // TODO does not conform to spec
+        l.parentSymbols(include) intersect r.parentSymbols(include) // TODO does not conform to spec
       case _ =>
         Nil
     }
+
+    /** The least (wrt <:<) set of class symbols of which this type is a subtype
+     */
+    final def classSymbols(implicit ctx: Context): List[ClassSymbol] =
+      parentSymbols(_.isClass).asInstanceOf
 
     /** The term symbol associated with the type */
     @tailrec final def termSymbol(implicit ctx: Context): Symbol = this match {
@@ -1244,9 +1249,6 @@ object Types {
       case _                  => if (isRepeatedParam) this.argTypesHi.head else this
     }
 
-    /** If this is a FunProto or PolyProto, WildcardType, otherwise this. */
-    def notApplied: Type = this
-
     // ----- Normalizing typerefs over refined types ----------------------------
 
     /** If this normalizes* to a refinement type that has a refinement for `name` (which might be followed
@@ -1427,6 +1429,9 @@ object Types {
 
     /** If this is an ignored proto type, its underlying type, otherwise the type itself */
     def revealIgnored: Type = this
+
+    /** If this is a proto type, WildcardType, otherwise the type itself */
+    def dropIfProto: Type = this
 
 // ----- Substitutions -----------------------------------------------------
 
@@ -1728,6 +1733,8 @@ object Types {
      *  captures the given context `ctx`.
      */
     def withContext(ctx: Context): ProtoType = this
+
+    override def dropIfProto = WildcardType
   }
 
   /** Implementations of this trait cache the results of `narrow`. */

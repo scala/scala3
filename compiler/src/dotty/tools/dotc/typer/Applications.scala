@@ -216,8 +216,11 @@ object Applications {
   /** A wrapper indicating that its argument is an application of an extension method.
    */
   class ExtMethodApply(app: Tree)(implicit @constructorOnly src: SourceFile)
-  extends IntegratedTypeArgs(app)
-
+  extends IntegratedTypeArgs(app) {
+    overwriteType(WildcardType)
+      // ExtMethodApply always has wildcard type in order not to prompt any further adaptations
+      // such as eta expansion before the method is fully applied.
+  }
 }
 
 trait Applications extends Compatibility { self: Typer with Dynamic =>
@@ -1317,7 +1320,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *
      *     T => R  <:s  U => R
      *
-     *  Also: If a compared type refers to an implied object or its module class, use
+     *  Also: If a compared type refers to an delegate or its module class, use
      *  the intersection of its parent classes instead.
      */
     def isAsSpecificValueType(tp1: Type, tp2: Type)(implicit ctx: Context) =
@@ -1342,22 +1345,22 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         (prepare(tp1) relaxed_<:< prepare(tp2)) || viewExists(tp1, tp2)
       }
 
-    /** Widen the result type of synthetic implied methods from the implementation class to the
+    /** Widen the result type of synthetic delegate methods from the implementation class to the
      *  type that's implemented. Example
      *
-     *      implied I[X] for T { ... }
+     *      delegate I[X] for T { ... }
      *
      *  This desugars to
      *
      *      class I[X] extends T { ... }
-     *      implied def I[X]: I[X] = new I[X]
+     *      implicit def I[X]: I[X] = new I[X]
      *
      *  To compare specificity we should compare with `T`, not with its implementation `I[X]`.
-     *  No such widening is performed for implied aliases, which are not synthetic. E.g.
+     *  No such widening is performed for delegate aliases, which are not synthetic. E.g.
      *
-     *      implied J[X] for T = rhs
+     *      delegate J[X] for T = rhs
      *
-     *  already has the right result type `T`. Neither is widening performed for implied
+     *  already has the right result type `T`. Neither is widening performed for delegate
      *  objects, since these are anyway taken to be more specific than methods
      *  (by condition 3a above).
      */

@@ -2,32 +2,32 @@ case class Show[T](val i: Int)
 object Show {
   def apply[T](implicit st: Show[T]): Int = st.i
 
-  implied showInt for Show[Int] = new Show[Int](0)
-  implied fallback[T] for Show[T] = new Show[T](1)
+  delegate showInt for Show[Int] = new Show[Int](0)
+  delegate fallback[T] for Show[T] = new Show[T](1)
 }
 
 class Generic
 object Generic {
-  implied gen for Generic = new Generic
-  implied showGen[T] for Show[T] given Generic = new Show[T](2)
+  delegate gen for Generic = new Generic
+  delegate showGen[T] for Show[T] given Generic = new Show[T](2)
 }
 
 class Generic2
 object Generic2 {
   opaque type HiPriority = AnyRef
-  implied showGen[T] for (Show[T] & HiPriority) = new Show[T](2).asInstanceOf
+  delegate showGen[T] for (Show[T] & HiPriority) = new Show[T](2).asInstanceOf
 }
 
 class SubGen extends Generic
 object SubGen {
-  implied for SubGen
+  delegate for SubGen
 }
 object Contextual {
   trait Context
-  implied ctx for Context
-  implied showGen[T] for Show[T] given Generic = new Show[T](2)
-  implied showGen[T] for Show[T] given Generic, Context = new Show[T](3)
-  implied showGen[T] for Show[T] given SubGen = new Show[T](4)
+  delegate ctx for Context
+  delegate showGen[T] for Show[T] given Generic = new Show[T](2)
+  delegate showGen[T] for Show[T] given Generic, Context = new Show[T](3)
+  delegate showGen[T] for Show[T] given SubGen = new Show[T](4)
 }
 
 object Test extends App {

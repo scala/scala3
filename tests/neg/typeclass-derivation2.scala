@@ -213,7 +213,7 @@ object Show {
   import scala.compiletime.{erasedValue, error}
   import TypeLevel._
 
-  inline def tryShow[T](x: T): String = implied match {
+  inline def tryShow[T](x: T): String = delegate match {
     case s: Show[T] => s.show(x)
   }
 

@@ -8,8 +8,8 @@ object Test {
       println("foo")
       2 + a
     }
-    println(expr.run)
-    println(expr.run)
+    println(run(expr))
+    println(run(expr))
     println(expr.show)
   }
 }

@@ -7,19 +7,15 @@ A union type `A | B` has as values all values of type `A` and also all values of
 
 
 ```scala
-case class UserName(name: String) {
-  def lookup(admin: Admin): UserData
-}
-case class Password(hash: Hash) {
-  def lookup(admin: Admin): UserData
-}
+case class UserName(name: String)
+case class Password(hash: Hash)
 
 def help(id: UserName | Password) = {
   val user = id match {
     case UserName(name) => lookupName(name)
     case Password(hash) => lookupPassword(hash)
   }
-  // ...
+  ...
 }
 ```
 

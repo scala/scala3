@@ -2,6 +2,20 @@ package scala
 
 package object quoted {
 
+  /** Evaluate the contents of this expression and return the result.
+   *
+   *  Usage:
+   *  ```
+   *  val e: T = run {
+   *   expr
+   *  }
+   *  ```
+   *  where `expr: Expr[T]`
+    *
+   *  May throw a FreeVariableError on expressions that came from a macro.
+   */
+  def run[T](expr: Expr[T]) given (toolbox: Toolbox): T = toolbox.run(expr)
+
   object autolift {
     implicit def autoToExpr[T: Liftable](x: T): Expr[T] = x.toExpr
   }

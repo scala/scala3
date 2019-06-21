@@ -3,9 +3,9 @@ layout: doc-page
 title: "Implementing Typeclasses"
 ---
 
-Implied instances, extension methods and context bounds
+Delegates, extension methods and context bounds
 allow a concise and natural expression of _typeclasses_. Typeclasses are just traits
-with canonical implementations defined by implied instances. Here are some examples of standard typeclasses:
+with canonical implementations defined by delegates. Here are some examples of standard typeclasses:
 
 ### Semigroups and monoids:
 
@@ -20,12 +20,12 @@ object Monoid {
   def apply[T] given Monoid[T] = the[Monoid[T]]
 }
 
-implied for Monoid[String] {
+delegate for Monoid[String] {
   def (x: String) combine (y: String): String = x.concat(y)
   def unit: String = ""
 }
 
-implied for Monoid[Int] {
+delegate for Monoid[Int] {
   def (x: Int) combine (y: Int): Int = x + y
   def unit: Int = 0
 }
@@ -48,14 +48,14 @@ trait Monad[F[_]] extends Functor[F] {
   def pure[A](x: A): F[A]
 }
 
-implied ListMonad for Monad[List] {
+delegate ListMonad for Monad[List] {
   def (xs: List[A]) flatMap [A, B] (f: A => List[B]): List[B] =
     xs.flatMap(f)
   def pure[A](x: A): List[A] =
     List(x)
 }
 
-implied ReaderMonad[Ctx] for Monad[[X] =>> Ctx => X] {
+delegate ReaderMonad[Ctx] for Monad[[X] =>> Ctx => X] {
   def (r: Ctx => A) flatMap [A, B] (f: A => Ctx => B): Ctx => B =
     ctx => f(r(ctx))(ctx)
   def pure[A](x: A): Ctx => A =

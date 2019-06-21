@@ -79,11 +79,11 @@ In the `true` case the code will be rewritten to:
 def factorial(n: BigInt): BigInt = {
   val msg = s"factorial($n)"
   println(s"${"  " * indent}start $msg")
-  Logger.inline$indent += indentSetting
+  Logger.inline$indent_=(indent.+(indentSetting))
   val result =
     if (n == 0) 1
     else n * factorial(n - 1)
-  Logger.inline$indent -= indentSetting
+  Logger.inline$indent_=(indent.-(indentSetting))
   println(s"${"  " * indent}$msg = $result")
   result
 }
@@ -91,7 +91,8 @@ def factorial(n: BigInt): BigInt = {
 
 Note, that the by-value parameter is evaluated only once, per the usual Scala
 semantics, by binding the value and reusing the `msg` through the body of
-`factorial`.
+`factorial`. Also, note the special handling of setting to the private var
+`indent` by generating the setter method `def inline$indent_=`.
 
 ### Recursive Inline Methods
 
@@ -383,11 +384,27 @@ The `error` method is used to produce user-defined compile errors during inline 
 It has the following signature:
 
 ```scala
-inline def error(inline msg: String, objs: Any*): Nothing
+inline def error(inline msg: String): Nothing
 ```
 
 If an inline expansion results in a call `error(msgStr)` the compiler
 produces an error message containing the given `msgStr`.
+
+```scala
+inline def fail() = {
+  error("failed for a reason")
+}
+fail() // error: failed for a reason
+```
+
+or
+
+```scala
+inline def fail(p1: => Any) = {
+  error(code"failed on: $p1")
+}
+fail(indentity("foo")) // error: failed on: indentity("foo")
+```
 
 ## Implicit Matches
 

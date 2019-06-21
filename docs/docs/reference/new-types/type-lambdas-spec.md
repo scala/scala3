@@ -14,7 +14,7 @@ TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]
 
 ### Type Checking
 
-A type lambda such `[X] =>> F[X]` defines a function from types to types. The parameter(s) may carry bounds and variance annotations.
+A type lambda such as `[X] =>> F[X]` defines a function from types to types. The parameter(s) may carry bounds and variance annotations.
 If a parameter is is bounded, as in `[X >: L <: H] =>> F[X]` it is checked that arguments to the parameters conform to the bounds `L` and `H`.
 Only the upper bound `H` can be F-bounded, i.e. `X` can appear in it.
 
@@ -97,7 +97,7 @@ is treated as a shorthand for
 
 **Note**: The decision to treat `Nothing` as universal bottom type is provisional, and might be changed afer further discussion.
 
-**Note**: Scala 2 and 3 differ in that Scala 2 also treats `Any` as universal top-type. This is not done in Scala 3. See also the discussion on [kind polymorphism](./kind-polymorphism.html)
+**Note**: Scala 2 and 3 differ in that Scala 2 also treats `Any` as universal top-type. This is not done in Scala 3. See also the discussion on [kind polymorphism](../other-new-features/kind-polymorphism.html)
 
 ## Curried Type Parameters
 

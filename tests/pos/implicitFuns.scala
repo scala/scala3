@@ -24,7 +24,7 @@ class ConfManagement(papers: List[Paper], realScore: Map[Paper, Int]) extends Ap
   def viewRankings: Viewable[List[(String, Int)]] =
     papers.sortBy(-score(_)).map(p => (p.title, score(p)))
 
-  def delegate[T]: (Viewers => T) => Person => Viewable[T] =
+  def delegateTo[T]: (Viewers => T) => Person => Viewable[T] =
     query => p => query(new Viewers(viewers + p))
 }
 

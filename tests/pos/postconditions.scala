@@ -4,7 +4,7 @@ object PostConditions {
   def result[T] given (r: WrappedResult[T]): T = r
 
   def (x: T) ensuring [T](condition: given WrappedResult[T] => Boolean): T = {
-    implied for WrappedResult[T] = x
+    delegate for WrappedResult[T] = x
     assert(condition)
     x
   }

@@ -4,6 +4,6 @@ object Test {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     val u: Expr[Unit] = '{}
     println(u.show)
-    println(u.run)
+    println(run(u))
   }
 }

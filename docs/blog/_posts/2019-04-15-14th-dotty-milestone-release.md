@@ -124,7 +124,7 @@ For more information, please see the [documentation](http://dotty.epfl.ch/docs/r
 
 Some of the other changes include:
 
-- `infer` method renamed to `the`, the semantics of which is now the same as that of the `the` method of Shapeless. Namely, the implicits are resolved more precisely – see this [gist](https://gist.github.com/milessabin/8833a1dbf7e8245b30f8) for an example in Shapeless, and the Dotty [documentation](http://dotty.epfl.ch/docs/reference/contextual/inferable-params.html#querying-implied-instances) for more details.
+- `infer` method renamed to `the`, the semantics of which is now the same as that of the `the` method of Shapeless. Namely, the implicits are resolved more precisely – see this [gist](https://gist.github.com/milessabin/8833a1dbf7e8245b30f8) for an example in Shapeless, and the Dotty [documentation](http://dotty.epfl.ch/docs/reference/contextual/given-clauses.html#querying-implied-instances) for more details.
 - The syntax of quoting and splicing was changed. Now the quoting is expressed via `'{ ... }` and `'[...]` and splicing – via `${...}` and `$id`. Please see the [documentation](http://dotty.epfl.ch/docs/reference/other-new-features/principled-meta-programming.html) for more details on these features.
 
 # Let us know what you think!

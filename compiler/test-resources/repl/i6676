@@ -1,0 +1,25 @@
+scala> xml"
+1 | xml"
+  |    ^
+  |    unclosed string literal
+1 | xml"
+  |     ^
+  |     ';' expected, but eof found
+scala> xml""
+1 | xml""
+  |    ^
+  |value xml is not a member of StringContext - did you mean StringContext.s?
+scala> xml"""
+1 | xml"""
+  |    ^
+  |    unclosed multi-line string literal
+1 | xml"""
+  |       ^
+  |       unclosed multi-line string literal
+scala> s"
+1 | s"
+  |  ^
+  |  unclosed string literal
+1 | s"
+  |   ^
+  |   ';' expected, but eof found

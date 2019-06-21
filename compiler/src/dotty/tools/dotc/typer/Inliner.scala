@@ -472,7 +472,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     val expansion = inliner.transform(rhsToInline)
 
     def issueError() = callValueArgss match {
-      case (msgArg :: rest) :: Nil =>
+      case (msgArg :: Nil) :: Nil =>
         msgArg.tpe match {
           case ConstantType(Constant(msg: String)) =>
             // Usually `error` is called from within a rewrite method. In this
@@ -482,21 +482,47 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
             val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(_).nonEmpty).next
             def issueInCtx(implicit ctx: Context) = {
-              def decompose(arg: Tree): String = arg match {
-                case Typed(arg, _) => decompose(arg)
-                case SeqLiteral(elems, _) => elems.map(decompose).mkString(", ")
-                case arg =>
-                  arg.tpe.widenTermRefExpr match {
-                    case ConstantType(Constant(c)) => c.toString
-                    case _ => arg.show
-                  }
-              }
-              ctx.error(s"$msg${rest.map(decompose).mkString(", ")}", callToReport.sourcePos)
+              ctx.error(msg, callToReport.sourcePos)
             }
             issueInCtx(ctxToReport)
           case _ =>
         }
       case _ =>
+    }
+
+    def issueCode()(implicit ctx: Context): Literal = {
+      def decompose(arg: Tree): String = arg match {
+        case Typed(arg, _) => decompose(arg)
+        case SeqLiteral(elems, _) => elems.map(decompose).mkString(", ")
+        case Block(Nil, expr) => decompose(expr)
+        case Inlined(_, Nil, expr) => decompose(expr)
+        case arg =>
+          arg.tpe.widenTermRefExpr match {
+            case ConstantType(Constant(c)) => c.toString
+            case _ => arg.show
+          }
+      }
+
+     def malformedString(): String = {
+       ctx.error("Malformed part `code` string interpolator", call.sourcePos)
+       ""
+      }
+
+      callValueArgss match {
+        case List(List(Apply(_,List(Typed(SeqLiteral(Literal(headConst) :: parts,_),_)))), List(Typed(SeqLiteral(interpolatedParts,_),_)))
+            if parts.size == interpolatedParts.size =>
+          val constantParts = parts.map {
+            case Literal(const) => const.stringValue
+            case _ => malformedString()
+          }
+          val decomposedInterpolations = interpolatedParts.map(decompose)
+          val constantString = decomposedInterpolations.zip(constantParts)
+              .foldLeft(headConst.stringValue) { case (acc, (p1, p2)) => acc + p1 + p2 }
+
+          Literal(Constant(constantString)).withSpan(call.span)
+        case _ =>
+          Literal(Constant(malformedString()))
+      }
     }
 
     trace(i"inlining $call", inlining, show = true) {
@@ -522,9 +548,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
       if (inlinedMethod == defn.Compiletime_error) issueError()
 
-      // Take care that only argument bindings go into `bindings`, since positions are
-      // different for bindings from arguments and bindings from body.
-      tpd.Inlined(call, finalBindings, finalExpansion)
+      if (inlinedMethod == defn.Compiletime_code) {
+        issueCode()(ctx.fresh.setSetting(ctx.settings.color, "never"))
+      } else {
+        // Take care that only argument bindings go into `bindings`, since positions are
+        // different for bindings from arguments and bindings from body.
+        tpd.Inlined(call, finalBindings, finalExpansion)
+      }
     }
   }
 
@@ -720,9 +750,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     /** Reduce an inline match
      *   @param     mtch          the match tree
      *   @param     scrutinee     the scrutinee expression, assumed to be pure, or
-     *                            EmptyTree for an implied match
+     *                            EmptyTree for a delegate match
      *   @param     scrutType     its fully defined type, or
-     *                            ImplicitScrutineeTypeRef for an implied match
+     *                            ImplicitScrutineeTypeRef for a delegate match
      *   @param     typer         The current inline typer
      *   @return    optionally, if match can be reduced to a matching case: A pair of
      *              bindings for all pattern-bound variables and the RHS of the case.
@@ -1036,10 +1066,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"
             val msg =
               if (tree.selector.isEmpty)
-                em"""cannot reduce implied match with
+                em"""cannot reduce delegate match with
                    | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
               else
-                em"""cannot reduce inline match with
+                em"""cannot reduce delegate match with
                     | scrutinee:  $sel : ${selType}
                     | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
             errorTree(tree, msg)

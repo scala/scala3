@@ -59,7 +59,7 @@ object MyScalaJSPlugin extends AutoPlugin {
 
 object Build {
   val scalacVersion = "2.12.8"
-  val referenceVersion = "0.16.0-RC2"
+  val referenceVersion = "0.16.0-RC3"
 
   val baseVersion = "0.17.0"
   val baseSbtDottyVersion = "0.3.4"
@@ -368,6 +368,9 @@ object Build {
       // Used by sbt-dotty to resolve the latest nightly
       val majorVersion = baseVersion.take(baseVersion.lastIndexOf('.'))
       IO.write(file("./docs/_site/versions/latest-nightly-base"), majorVersion)
+
+      // This file is used by GitHub Pages when the page is available in a custom domain
+      IO.write(file("./docs/_site/CNAME"), "dotty.epfl.ch")
 
       val sources = unmanagedSources.in(mode match {
         case NonBootstrapped => `dotty-library`

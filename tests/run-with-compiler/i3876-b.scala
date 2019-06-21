@@ -9,7 +9,7 @@ object Test {
       def f(x: Int): Int = x + x
       f
     }
-    println(f2(x).run)
+    println(run(f2(x)))
     println(f2(x).show)
   }
 }

@@ -16,9 +16,9 @@ object Test {
       }
       new A
     }
-    println(classExpr.run)
-    println(classExpr.run.getClass == classExpr.run.getClass)
-    println(classExpr2.run)
-    println(classExpr2.run.getClass)
+    println(run(classExpr))
+    println(run(classExpr).getClass == run(classExpr).getClass)
+    println(run(classExpr2))
+    println(run(classExpr2).getClass)
   }
 }

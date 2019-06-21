@@ -5,7 +5,7 @@ object Instances {
   class C {
     def f() = {
       locally {
-        implied d[T] for D[T]
+        delegate d[T] for D[T]
         the[D[Int]]
         implicit val s: 3 = ???
         val a: 3 = the[3]
@@ -14,7 +14,7 @@ object Instances {
       }
 
       locally {
-        implied d[T] for D[T]
+        delegate d[T] for D[T]
         the2[D[Int]]
         implicit val s: 3 = ???
         val a: 3 = the2[3]

@@ -47,27 +47,27 @@ Existing Scala programmers by and large have gotten used to the status quo and s
 
 The following pages introduce a redesign of contextual abstractions in Scala. They introduce four fundamental changes:
 
- 1. [Implied Instances](./instance-defs.html) are a new way to define terms that can be synthesized.  They replace the `implicit` modifiers on definitions. The core principle is that, rather than mixing the `implicit` modifier with a large number of features, we have a single way to define terms that can be synthesized for types.
+ 1. [Delegates](./delegates.html) are a new way to define basic terms that can be synthesized.  They replace implicit definitions. The core principle of the proposal is that, rather than mixing the `implicit` modifier with a large number of features, we have a single way to define terms that can be synthesized for types.
 
- 2. [Given Clauses](./inferable-params.html) are a new syntax for implicit _parameters_ and their _arguments_. Both are introduced with the same keyword, `given`. This unambiguously aligns parameters and arguments, solving a number of language warts. It also allows us to have several implicit parameter sections, and to have implicit parameters followed by normal ones.
+ 2. [Given Clauses](./given-clauses.html) are a new syntax for implicit _parameters_ and their _arguments_. Both are introduced with the same keyword, `given`. This unambiguously aligns parameters and arguments, solving a number of language warts. It also allows us to have several implicit parameter sections, and to have implicit parameters followed by normal ones.
 
- 3. [Import Implied](./import-implied.html) is new form of import that specifically imports implicit definitions and nothing else. New-style implied instances _must be_ imported with  `import implied`, a plain import will no longer bring them into scope.
+ 3. [Delegate Imports](./import-delegate.html) are a new class of imports that specifically import delegates and nothing else. Delegates _must be_ imported with  `import delegate`, a plain import will no longer bring them into scope.
 
- 4. [Implicit Conversions](./conversions.html) are now expressed as implied instances of a standard `Conversion` class. All other forms of implicit conversions will be phased out.
+ 4. [Implicit Conversions](./conversions.html) are now expressed as delegates of a standard `Conversion` class. All other forms of implicit conversions will be phased out.
 
 This section also contains pages describing other language features that are related to context abstraction. These are:
 
  - [Context Bounds](./context-bounds.html), which carry over unchanged.
  - [Extension Methods](./extension-methods.html) replace implicit classes in a way that integrates better with typeclasses.
  - [Implementing Typeclasses](./typeclasses.html) demonstrates how some common typeclasses can be implemented using the new constructs.
- - [Typeclass Derivation](./derivation.html) introduces constructs to automatically derive implied typeclass instances for ADTs.
+ - [Typeclass Derivation](./derivation.html) introduces constructs to automatically derive typeclass delegates for ADTs.
  - [Multiversal Equality](./multiversal-equality.html) introduces a special typeclass
   to support type safe equality.
- - [Contextual Functions](./query-types.html) provide a way to abstract over given clauses.
- - [By-Name Context Parameters](./inferable-by-name-parameters.html) are an essential tool to define recursive synthesized values without looping.
- - [Relationship with Scala 2 Implicits](./relationship-implicits.html) discusses the relationship between old-style implicits and new-style implied instances and given clauses and how to migrate from one to the other.
+ - [Implicit Function Types](./implicit-function-types.html) provide a way to abstract over given clauses.
+ - [Implicit By-Name Parameters](./implicit-by-name-parameters.html) are an essential tool to define recursive synthesized values without looping.
+ - [Relationship with Scala 2 Implicits](./relationship-implicits.html) discusses the relationship between old-style implicits and new-style delegates and given clauses and how to migrate from one to the other.
 
-Overall, the new design achieves a better separation of term inference from the rest of the language: There is a single way to define implied instances instead of a multitude of forms all taking an `implicit` modifier. There is a single way to introduce implicit parameters and arguments instead of conflating implicit with normal arguments. There is a separate way to import implied instances that does not allow them to hide in a sea of normal imports. And there is a single way to define an implicit conversion which is clearly marked as such and does not require special syntax.
+Overall, the new design achieves a better separation of term inference from the rest of the language: There is a single way to define delegates instead of a multitude of forms all taking an `implicit` modifier. There is a single way to introduce implicit parameters and arguments instead of conflating implicit with normal arguments. There is a separate way to import delegates that does not allow them to hide in a sea of normal imports. And there is a single way to define an implicit conversion which is clearly marked as such and does not require special syntax.
 
 This design thus avoids feature interactions and makes the language more consistent and orthogonal. It will make implicits easier to learn and harder to abuse. It will greatly improve the clarity of the 95% of Scala programs that use implicits. It has thus the potential to fulfil the promise of term inference in a principled way that is also accessible and friendly.
 
@@ -78,3 +78,4 @@ Could we achieve the same goals by tweaking existing implicits? After having tri
  - Third, even if we would somehow succeed with migration, we still have the problem
  how to teach this. We cannot make existing tutorials go away. Almost all existing tutorials start with implicit conversions, which will go away; they use normal imports, which will go away, and they explain calls to methods with implicit parameters by expanding them to plain applications, which will also go away. This means that we'd have
  to add modifications and qualifications to all existing literature and courseware, likely causing more confusion with beginners instead of less. By contrast, with a new syntax there is a clear criterion: Any book or courseware that mentions `implicit` is outdated and should be updated.
+
