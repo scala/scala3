@@ -215,8 +215,6 @@ object Build {
   lazy val commonJavaSettings = commonSettings ++ Seq(
     version := dottyVersion,
     scalaVersion := referenceVersion,
-    // To be removed once we stop cross-compiling with Scala 2
-    crossScalaVersions := Seq(referenceVersion, scalacVersion),
     // Do not append Scala versions to the generated artifacts
     crossPaths := false,
     // Do not depend on the Scala library
@@ -234,8 +232,6 @@ object Build {
   lazy val commonNonBootstrappedSettings = commonDottySettings ++ Seq(
     version := dottyNonBootstrappedVersion,
     scalaVersion := referenceVersion,
-    // To be removed once we stop cross-compiling with Scala 2
-    crossScalaVersions := Seq(referenceVersion, scalacVersion),
     excludeFromIDE := true
   )
 
