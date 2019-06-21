@@ -416,6 +416,15 @@ object Flags {
 
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
+  /** All possible flags */
+  val AnyFlags: FlagSet = flagRange(FirstFlag, MaxFlag)
+
+  /** These flags are pickled */
+  val PickledFlags: FlagSet = flagRange(FirstFlag, FirstNotPickledFlag)
+
+  /** Flags representing access rights */
+  val AccessFlags: FlagSet = Local | Private | Protected
+
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
     commonFlags(Private, Protected, Final, Case, Implicit, Implied, Given, Override, JavaStatic)
@@ -432,11 +441,6 @@ object Flags {
     TermSourceModifierFlags.toCommonFlags |
     commonFlags(Module, Param, Synthetic, Package, Local, Mutable, Trait)
 
-  assert(ModifierFlags.isTermFlags && ModifierFlags.isTypeFlags)
-
-  /** Flags representing access rights */
-  val AccessFlags: FlagSet = Private | Protected | Local
-
   /** Flags that are not (re)set when completing the denotation
    *  TODO: Should check that FromStartFlags do not change in completion
    */
@@ -447,7 +451,6 @@ object Flags {
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
     Extension, NonMember, Implicit, Given, Implied, Permanent, Synthetic,
     SuperAccessorOrScala2x, Inline)
-
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
@@ -464,9 +467,7 @@ object Flags {
   /** Flags that express the variance of a type parameter. */
   val VarianceFlags: FlagSet = Covariant | Contravariant
 
-  /** Flags that are passed from a type parameter of a class to a refinement symbol
-    * that sets the type parameter */
-  val RetainedTypeArgFlags: FlagSet = VarianceFlags | Protected | Local
+// ----- Creation flag sets ----------------------------------
 
   /** Modules always have these flags set */
   val ModuleValCreationFlags: FlagSet = ModuleVal | Lazy | Final | StableRealizable
@@ -480,14 +481,22 @@ object Flags {
   /** Pure interfaces always have these flags */
   val PureInterfaceCreationFlags: FlagSet = Trait | NoInits | PureInterface
 
-  val NoInitsInterface: FlagSet = NoInits | PureInterface
-
   /** The flags of the self symbol */
   val SelfSymFlags: FlagSet = Private | Local | Deferred
 
   /** The flags of a class type parameter */
   val ClassTypeParamCreationFlags: FlagSet =
     TypeParam | Deferred | Private | Local
+
+  /** Packages and package classes always have these flags set */
+  val PackageCreationFlags: FlagSet =
+    Module | Package | Final | JavaDefined
+
+// ----- Retained flag sets ----------------------------------
+
+  /** Flags that are passed from a type parameter of a class to a refinement symbol
+    * that sets the type parameter */
+  val RetainedTypeArgFlags: FlagSet = VarianceFlags | Protected | Local
 
   /** Flags that can apply to both a module val and a module class, except those that
     *  are added at creation anyway
@@ -505,50 +514,39 @@ object Flags {
   /** Flags that can apply to a module class */
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
 
-  /** Packages and package classes always have these flags set */
-  val PackageCreationFlags: FlagSet =
-    Module | Package | Final | JavaDefined
+  /** Flags retained in export forwarders */
+  val RetainedExportFlags = ImplicitOrImpliedOrGiven | Extension
 
-  /** All possible flags */
-  val AnyFlags: FlagSet = flagRange(FirstFlag, MaxFlag)
+// ------- Other flag sets -------------------------------------
 
-  /** These flags are pickled */
-  val PickledFlags: FlagSet = flagRange(FirstFlag, FirstNotPickledFlag)
+  val NoInitsInterface: FlagSet = NoInits | PureInterface
 
-  /** An abstract class or a trait */
   val AbstractOrTrait: FlagSet = Abstract | Trait
 
-  /** Labeled `private` or `protected[local]` */
-  val PrivateOrLocal: FlagSet = Private | Local
+  val PrivateOrLocal: FlagSet = Local | Private  // Labelled `private` or `protected[local]`
 
-  /** Either a module or a final class */
-  val ModuleOrFinal: FlagSet = ModuleClass | Final
+  val ModuleOrFinal: FlagSet = Final | ModuleClass // A module class or a final class
 
-  /** Either mutable or lazy */
-  val MutableOrLazy: FlagSet = Mutable | Lazy
+  val MutableOrLazy: FlagSet = Lazy | Mutable
 
-  /** Either method or lazy */
-  val MethodOrLazy: FlagSet = Method | Lazy
+  val MethodOrLazy: FlagSet = Lazy | Method
 
-  /** Either method or module */
   val MethodOrModule: FlagSet = Method | Module
 
   /** Either method or lazy or deferred */
-  val MethodOrLazyOrDeferred: FlagSet = Method | Lazy | Deferred
+  val MethodOrLazyOrDeferred: FlagSet = Deferred | Lazy | Method
 
   /** An inline method or inline argument proxy */
   val InlineOrProxy: FlagSet = Inline | InlineProxy
 
   val ImplicitOrImplied: FlagSet = Implicit | Implied
-  val ImplicitOrImpliedOrGiven: FlagSet = Implicit | Implied | Given
-  val ImplicitOrGiven: FlagSet = Implicit | Given
+  val ImplicitOrImpliedOrGiven: FlagSet = Given | Implicit | Implied
+  val ImplicitOrGiven: FlagSet = Given | Implicit
 
   val ImpliedOrGiven: FlagSet = Implied | Given
 
   val ImplicitOrImpliedOrGivenTerm = ImplicitOrImpliedOrGiven.toTermFlags
 
-  /** Flags retained in export forwarders */
-  val RetainedExportFlags = ImplicitOrImpliedOrGiven | Extension
 
   /** Assumed to be pure */
   val StableOrErased: FlagSet = StableRealizable | Erased
