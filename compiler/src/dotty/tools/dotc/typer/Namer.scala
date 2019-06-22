@@ -976,12 +976,11 @@ class Namer { typer: Typer =>
                   fwdInfo(path.tpe.select(mbr.symbol), mbr.info),
                   coord = span)
               else {
-                val maybeStable = if (mbr.symbol.isStableMember) StableRealizable else EmptyFlags
-                ctx.newSymbol(
-                  cls, alias,
-                  Exported | Method | Final | maybeStable | mbr.symbol.flags & RetainedExportFlags,
-                  mbr.info.ensureMethodic,
-                  coord = span)
+                val (maybeStable, mbrInfo) =
+                  if (mbr.symbol.isStableMember) (StableRealizable, ExprType(path.tpe.select(mbr.symbol)))
+                  else (EmptyFlags, mbr.info.ensureMethodic)
+                val mbrFlags = Exported | Method | Final | maybeStable | mbr.symbol.flags & RetainedExportFlags
+                ctx.newSymbol(cls, alias, mbrFlags, mbrInfo, coord = span)
               }
             val forwarderDef =
               if (forwarder.isType) tpd.TypeDef(forwarder.asType)
@@ -1010,7 +1009,8 @@ class Namer { typer: Typer =>
         }
 
         def addForwardersExcept(seen: List[TermName], span: Span): Unit =
-          for (mbr <- path.tpe.allMembers) {
+          for (mbr <- path.tpe.membersBasedOnFlags(
+              required = EmptyFlags, excluded = PrivateOrSynthetic)) {
             val alias = mbr.name.toTermName
             if (!seen.contains(alias)) addForwarder(alias, mbr, span)
           }
