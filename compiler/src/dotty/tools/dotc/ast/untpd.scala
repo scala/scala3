@@ -123,12 +123,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   class XMLBlock(stats: List[Tree], expr: Tree)(implicit @constructorOnly src: SourceFile) extends Block(stats, expr)
 
   /** An enum to control checking or filtering of patterns in GenFrom trees */
-  class GenCheckMode(val x: Int) extends AnyVal
-  object GenCheckMode {
-    val Ignore = new GenCheckMode(0)  // neither filter nor check since filtering was done before
-    val Check = new GenCheckMode(1)   // check that pattern is irrefutable
-    val FilterNow = new GenCheckMode(2)  // filter out non-matching elements since we are not in -strict
-    val FilterAlways = new GenCheckMode(3) // filter out non-matching elements since pattern is prefixed by `case`
+  enum GenCheckMode {
+    case Ignore       // neither filter nor check since filtering was done before
+    case Check        // check that pattern is irrefutable
+    case FilterNow    //filter out non-matching elements since we are not in -strict
+    case FilterAlways // filter out non-matching elements since pattern is prefixed by `case`
   }
 
   // ----- Modifiers -----------------------------------------------------

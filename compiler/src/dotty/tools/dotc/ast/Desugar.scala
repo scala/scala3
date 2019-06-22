@@ -39,13 +39,9 @@ object desugar {
    */
   val CheckIrrefutable: Property.Key[MatchCheck] = new Property.StickyKey
 
-  /** What static check should be applied to a Match (none, irrefutable, exhaustive) */
-  class MatchCheck(val n: Int) extends AnyVal
-  object MatchCheck {
-    val None = new MatchCheck(0)
-    val Exhaustive = new MatchCheck(1)
-    val IrrefutablePatDef = new MatchCheck(2)
-    val IrrefutableGenFrom = new MatchCheck(3)
+  /** What static check should be applied to a Match? */
+  enum MatchCheck {
+    case None, Exhaustive, IrrefutablePatDef, IrrefutableGenFrom
   }
 
   /** Info of a variable in a pattern: The named tree and its type */
