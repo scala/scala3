@@ -185,10 +185,10 @@ object Names {
     def underlying: TermName = unsupported("underlying")
 
     @sharable // because of synchronized block in `and`
-    private[this] var derivedNames: AnyRef /* immutable.Map[NameInfo, DerivedName] | j.u.HashMap */ =
+    private[this] var derivedNames: immutable.Map[NameInfo, DerivedName] | HashMap[NameInfo, DerivedName] =
       immutable.Map.empty[NameInfo, DerivedName]
 
-    private def getDerived(info: NameInfo): DerivedName /* | Null */ = derivedNames match {
+    private def getDerived(info: NameInfo): DerivedName /* | Null */ = (derivedNames: @unchecked) match {
       case derivedNames: immutable.AbstractMap[NameInfo, DerivedName] @unchecked =>
         if (derivedNames.contains(info)) derivedNames(info) else null
       case derivedNames: HashMap[NameInfo, DerivedName] @unchecked =>
