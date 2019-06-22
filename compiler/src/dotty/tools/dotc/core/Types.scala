@@ -3940,7 +3940,7 @@ object Types {
 
   // ------ ClassInfo, Type Bounds --------------------------------------------------
 
-  type TypeOrSymbol = AnyRef /* should be: Type | Symbol */
+  type TypeOrSymbol = Type | Symbol
 
   /** Roughly: the info of a class during a period.
    *  @param prefix       The prefix on which parents, decls, and selfType need to be rebased.
@@ -4618,7 +4618,7 @@ object Types {
     override def mapClassInfo(tp: ClassInfo): ClassInfo = {
       val prefix1 = this(tp.prefix)
       val parents1 = tp.parents mapConserve this
-      val selfInfo1 = tp.selfInfo match {
+      val selfInfo1: TypeOrSymbol = tp.selfInfo match {
         case selfInfo: Type => this(selfInfo)
         case selfInfo => selfInfo
       }
