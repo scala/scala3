@@ -317,6 +317,20 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => tree
     }
 
+    def importText(deleg: Boolean, expr: Tree, selectors: List[Tree]) = {
+      def selectorText(sel: Tree): Text = sel match {
+        case Thicket(l :: r :: Nil) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
+        case _: Ident => toTextGlobal(sel)
+        case TypeBoundsTree(_, tpt) => "for " ~ toTextGlobal(tpt)
+      }
+      val selectorsText: Text = selectors match {
+        case id :: Nil => toText(id)
+        case _ => "{" ~ Text(selectors map selectorText, ", ") ~ "}"
+      }
+      (keywordText("delegate ") provided deleg) ~
+      toTextLocal(expr) ~ "." ~ selectorsText
+    }
+
     tree match {
       case id: Trees.BackquotedIdent[_] if !homogenizedView =>
         "`" ~ toText(id.name) ~ "`"
@@ -499,18 +513,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))
         }
         recur(rhs, "")
-      case Import(importImplied, expr, selectors) =>
-        def selectorText(sel: Tree): Text = sel match {
-          case Thicket(l :: r :: Nil) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
-          case _: Ident => toTextGlobal(sel)
-          case TypeBoundsTree(_, tpt) => "for " ~ toTextGlobal(tpt)
-        }
-        val selectorsText: Text = selectors match {
-          case id :: Nil => toText(id)
-          case _ => "{" ~ Text(selectors map selectorText, ", ") ~ "}"
-        }
-        keywordText("import ") ~ (keywordText("delegate ") provided importImplied) ~
-        toTextLocal(expr) ~ "." ~ selectorsText
+      case Import(deleg, expr, selectors) =>
+        keywordText("import ") ~ importText(deleg, expr, selectors)
+      case Export(deleg, expr, selectors) =>
+        keywordText("export ") ~ importText(deleg, expr, selectors)
       case packageDef: PackageDef =>
         packageDefText(packageDef)
       case tree: Template =>

@@ -1118,8 +1118,31 @@ object Denotations {
         case thisd: SymDenotation => thisd.owner
         case _ => if (symbol.exists) symbol.owner else NoSymbol
       }
-      if (!owner.membersNeedAsSeenFrom(pre) || symbol.is(NonMember)) this
-      else derivedSingleDenotation(symbol, symbol.info.asSeenFrom(pre, owner))
+      def derived(info: Type) = derivedSingleDenotation(symbol, info.asSeenFrom(pre, owner))
+      pre match {
+        case pre: ThisType if symbol.isOpaqueAlias && pre.cls == symbol.owner =>
+          // This code is necessary to compensate for a "window of vulnerability" with
+          // opaque types. The problematic sequence is as follows.
+          //  1. Type a selection  `m.this.T` where `T` is an opaque type alias in `m`
+          //     and this is the first access
+          //  2. `T` will normalize to an abstract type on completion.
+          //  3. At that time, the default logic in the second case is wrong: `T`'s new info
+          //     is now an abstract type and running it through an asSeenFrom gives nothing.
+          //  We fix this as follows:
+          //  1. Force opaque normalization as first step
+          //  2. Read the info from the enclosing object's refinement
+          symbol.normalizeOpaque()
+          def findRefined(tp: Type, name: Name): Type = tp match {
+            case RefinedType(parent, rname, rinfo) =>
+              if (rname == name) rinfo else findRefined(parent, name)
+            case _ =>
+              symbol.info
+          }
+          derived(findRefined(pre.underlying, symbol.name))
+        case _ =>
+          if (!owner.membersNeedAsSeenFrom(pre) || symbol.is(NonMember)) this
+          else derived(symbol.info)
+      }
     }
 
     /** Does this denotation have all the `required` flags but none of the `excluded` flags?
