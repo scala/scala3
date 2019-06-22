@@ -3,7 +3,7 @@ package dotty.tools.backend.jvm
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc
-import dotty.tools.dotc.core.Flags.{termFlagSet, termFlagConjunction}
+import dotty.tools.dotc.core.Flags.{termFlagSet}
 import dotty.tools.dotc.transform.{Erasure, GenericSignatures}
 import dotty.tools.dotc.transform.SymUtils._
 import java.io.{File => _}
@@ -256,12 +256,12 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       case t: TypeApply if (t.fun.symbol == Predef_classOf) =>
         av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
       case t: tpd.RefTree =>
-        if (t.symbol.denot.owner.is(Flags.JavaEnum)) {
+        if (t.symbol.denot.owner.isAllOf(Flags.JavaEnumTrait)) {
           val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
           val evalue = t.symbol.name.mangledString // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         } else {
-            // println(i"not an enum: ${t.symbol} / ${t.symbol.denot.owner} / ${t.symbol.denot.owner.isTerm} / ${t.symbol.denot.owner.flags}")
+            // println(i"not an enum: ${t.symbol} / ${t.symbol.denot.owner} / ${t.symbol.denot.owner.isTerm} / ${t.symbol.denot.owner.flagsString}")
             assert(toDenot(t.symbol).name.is(DefaultGetterName),
               s"${toDenot(t.symbol).name.debugString}") // this should be default getter. do not emit.
         }
@@ -477,7 +477,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     // unrelated change.
        ctx.base.settings.YnoGenericSig.value
     || sym.is(Flags.Artifact)
-    || sym.is(Flags.LiftedMethod)
+    || sym.isAllOf(Flags.LiftedMethod)
     || sym.is(Flags.Bridge)
   )
 
@@ -658,50 +658,49 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isConstructor: Boolean = toDenot(sym).isConstructor
     def isExpanded: Boolean = sym.name.is(ExpandedName)
     def isAnonymousFunction: Boolean = toDenot(sym).isAnonymousFunction
-    def isMethod: Boolean = sym is Flags.Method
-    def isPublic: Boolean =  sym.flags.is(Flags.EmptyFlags, Flags.Private | Flags.Protected)
-    def isSynthetic: Boolean = sym is Flags.Synthetic
-    def isPackageClass: Boolean = sym is Flags.PackageClass
-    def isModuleClass: Boolean = sym is Flags.ModuleClass
-    def isModule: Boolean = sym is Flags.Module
+    def isMethod: Boolean = sym.is(Flags.Method)
+    def isPublic: Boolean = !sym.flags.isOneOf(Flags.Private | Flags.Protected)
+    def isSynthetic: Boolean = sym.is(Flags.Synthetic)
+    def isPackageClass: Boolean = sym.is(Flags.PackageClass)
+    def isModuleClass: Boolean = sym.is(Flags.ModuleClass)
+    def isModule: Boolean = sym.is(Flags.Module)
     def isStrictFP: Boolean = false // todo: implement
-    def isLabel: Boolean = sym is Flags.Label
-    def hasPackageFlag: Boolean = sym is Flags.Package
-    def isInterface: Boolean = (sym is Flags.PureInterface) || (sym is Flags.Trait)
+    def isLabel: Boolean = sym.is(Flags.Label)
+    def hasPackageFlag: Boolean = sym.is(Flags.Package)
+    def isInterface: Boolean = (sym.is(Flags.PureInterface)) || (sym.is(Flags.Trait))
     def isGetter: Boolean = toDenot(sym).isGetter
     def isSetter: Boolean = toDenot(sym).isSetter
     def isGetClass: Boolean = sym eq defn.Any_getClass
-    def isJavaDefined: Boolean = sym is Flags.JavaDefined
-    def isJavaDefaultMethod: Boolean = !((sym is Flags.Deferred)  || toDenot(sym).isClassConstructor)
-    def isDeferred: Boolean = sym is Flags.Deferred
-    def isPrivate: Boolean = sym is Flags.Private
+    def isJavaDefined: Boolean = sym.is(Flags.JavaDefined)
+    def isJavaDefaultMethod: Boolean = !((sym.is(Flags.Deferred))  || toDenot(sym).isClassConstructor)
+    def isDeferred: Boolean = sym.is(Flags.Deferred)
+    def isPrivate: Boolean = sym.is(Flags.Private)
     def getsJavaFinalFlag: Boolean =
-      isFinal &&  !toDenot(sym).isClassConstructor && !(sym is Flags.Mutable) &&  !(sym.enclosingClass is Flags.Trait)
+      isFinal &&  !toDenot(sym).isClassConstructor && !(sym.is(Flags.Mutable)) &&  !(sym.enclosingClass.is(Flags.Trait))
 
     def getsJavaPrivateFlag: Boolean =
       isPrivate //|| (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
-    def isFinal: Boolean = sym is Flags.Final
+    def isFinal: Boolean = sym.is(Flags.Final)
     def isStaticMember: Boolean = (sym ne NoSymbol) &&
-      ((sym is Flags.JavaStatic) || toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot))
+      (sym.is(Flags.JavaStatic) || toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot))
       // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
     def isBottomClass: Boolean = (sym ne defn.NullClass) && (sym ne defn.NothingClass)
-    def isBridge: Boolean = sym is Flags.Bridge
-    def isArtifact: Boolean = sym is Flags.Artifact
-    def hasEnumFlag: Boolean = sym is Flags.JavaEnum
+    def isBridge: Boolean = sym.is(Flags.Bridge)
+    def isArtifact: Boolean = sym.is(Flags.Artifact)
+    def hasEnumFlag: Boolean = sym.isAllOf(Flags.JavaEnumTrait)
     def hasAccessBoundary: Boolean = sym.accessBoundary(defn.RootClass) ne defn.RootClass
-    def isVarargsMethod: Boolean = sym is Flags.JavaVarargs
+    def isVarargsMethod: Boolean = sym.is(Flags.JavaVarargs)
     def isDeprecated: Boolean = false
-    def isMutable: Boolean = sym is Flags.Mutable
-    def hasAbstractFlag: Boolean =
-      (sym is Flags.Abstract) || (sym is Flags.JavaInterface) || (sym is Flags.Trait)
-    def hasModuleFlag: Boolean = sym is Flags.Module
-    def isSynchronized: Boolean = sym is Flags.Synchronized
+    def isMutable: Boolean = sym.is(Flags.Mutable)
+    def hasAbstractFlag: Boolean = sym.isOneOf(Flags.AbstractOrTrait)
+    def hasModuleFlag: Boolean = sym.is(Flags.Module)
+    def isSynchronized: Boolean = sym.is(Flags.Synchronized)
     def isNonBottomSubClass(other: Symbol): Boolean = sym.derivesFrom(other)
     def hasAnnotation(ann: Symbol): Boolean = toDenot(sym).hasAnnotation(ann)
     def shouldEmitForwarders: Boolean =
-      (sym is Flags.Module) && sym.isStatic
+      (sym.is(Flags.Module)) && sym.isStatic
     def isJavaEntryPoint: Boolean = CollectEntryPoints.isJavaEntryPoint(sym)
     def isEnum = sym.is(Flags.Enum)
 
@@ -713,7 +712,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
      * for such objects will get a MODULE$ flag and a corresponding static initializer.
      */
     def isStaticModuleClass: Boolean =
-      (sym is Flags.Module) && {
+      (sym.is(Flags.Module)) && {
         // scalac uses atPickling here
         // this would not work if modules are created after pickling
         // for example by specialization
@@ -736,7 +735,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def superClass: Symbol =  {
       val t = toDenot(sym).asClass.superClass
       if (t.exists) t
-      else if (sym is Flags.ModuleClass) {
+      else if (sym.is(Flags.ModuleClass)) {
         // workaround #371
 
         println(s"Warning: mocking up superclass for $sym")
@@ -749,7 +748,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def linkedClass: Symbol = toDenot(sym)(ctx).linkedClass(ctx) //exitingPickler(sym.linkedClassOfClass)
     def companionClass: Symbol = toDenot(sym).companionClass
     def companionModule: Symbol = toDenot(sym).companionModule
-    def companionSymbol: Symbol = if (sym is Flags.Module) companionClass else companionModule
+    def companionSymbol: Symbol = if (sym.is(Flags.Module)) companionClass else companionModule
     def moduleClass: Symbol = toDenot(sym).moduleClass
     def enclosingClassSym: Symbol = {
       if (this.isClass) {
@@ -859,7 +858,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit def typeHelper(tp: Type): TypeHelper = new TypeHelper {
     def member(string: Name): Symbol = tp.member(string.toTermName).symbol
 
-    def isFinalType: Boolean = tp.typeSymbol is Flags.Final //in scalac checks for type parameters. Why? Aren't they gone by backend?
+    def isFinalType: Boolean = tp.typeSymbol.is(Flags.Final) //in scalac checks for type parameters. Why? Aren't they gone by backend?
 
     def underlying: Type = tp match {
       case t: TypeProxy => t.underlying
@@ -881,7 +880,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def =:=(other: Type): Boolean = tp =:= other
 
     def membersBasedOnFlags(excludedFlags: Flags, requiredFlags: Flags): List[Symbol] =
-      tp.membersBasedOnFlags(termFlagConjunction(requiredFlags), termFlagSet(excludedFlags)).map(_.symbol).toList
+      tp.membersBasedOnFlags(termFlagSet(requiredFlags), termFlagSet(excludedFlags)).map(_.symbol).toList
 
     def resultType: Type = tp.resultType
 

@@ -235,7 +235,7 @@ object Implicits {
     implicits.println(i"implicits of type $tp = ${companionRefs.toList}%, %")
     @threadUnsafe lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
-      for (companion <- companionRefs) buf ++= companion.implicitMembers(ImplicitOrImpliedOrGiven)
+      for (companion <- companionRefs) buf ++= companion.implicitMembers(DelegateOrGivenOrImplicit)
       buf.toList
     }
 
@@ -902,7 +902,7 @@ trait Implicits { self: Typer =>
             }
             else if (mirroredType.classSymbol.isGenericProduct) {
               val cls = mirroredType.classSymbol
-              val accessors = cls.caseAccessors.filterNot(_.is(PrivateLocal))
+              val accessors = cls.caseAccessors.filterNot(_.isAllOf(PrivateLocal))
               val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
               val (monoType, elemsType) = mirroredType match {
                 case mirroredType: HKTypeLambda =>

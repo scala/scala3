@@ -53,8 +53,8 @@ class Getters extends MiniPhase with SymTransformer {
 
   override def transformSym(d: SymDenotation)(implicit ctx: Context): SymDenotation = {
     def noGetterNeeded =
-      d.is(NoGetterNeeded) ||
-      d.is(PrivateLocal) && !d.owner.is(Trait) && !isDerivedValueClass(d.owner) && !d.is(Flags.Lazy) ||
+      d.isOneOf(NoGetterNeededFlags) ||
+      d.isAllOf(PrivateLocal) && !d.owner.is(Trait) && !isDerivedValueClass(d.owner) && !d.is(Lazy) ||
       d.is(Module) && d.isStatic ||
       d.hasAnnotation(defn.ScalaStaticAnnot) ||
       d.isSelfSym
@@ -79,13 +79,13 @@ class Getters extends MiniPhase with SymTransformer {
     }
     d1
   }
-  private val NoGetterNeeded = Method | Param | JavaDefined | JavaStatic
+  private val NoGetterNeededFlags = Method | Param | JavaDefined | JavaStatic
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
-    if (tree.symbol is Method) DefDef(tree.symbol.asTerm, tree.rhs).withSpan(tree.span) else tree
+    if (tree.symbol.is(Method)) DefDef(tree.symbol.asTerm, tree.rhs).withSpan(tree.span) else tree
 
   override def transformAssign(tree: Assign)(implicit ctx: Context): Tree =
-    if (tree.lhs.symbol is Method) tree.lhs.becomes(tree.rhs).withSpan(tree.span) else tree
+    if (tree.lhs.symbol.is(Method)) tree.lhs.becomes(tree.rhs).withSpan(tree.span) else tree
 }
 
 object Getters {

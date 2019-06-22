@@ -43,9 +43,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         ref1
     }
 
-  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym is Method
+  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.is(Method)
 
-  private def overridesJava(sym: Symbol)(implicit ctx: Context) = sym.allOverriddenSymbols.exists(_ is JavaDefined)
+  private def overridesJava(sym: Symbol)(implicit ctx: Context) = sym.allOverriddenSymbols.exists(_.is(JavaDefined))
 
   private def elimRepeated(tp: Type)(implicit ctx: Context): Type = tp.stripTypeVar match {
     case tp @ MethodTpe(paramNames, paramTypes, resultType) =>

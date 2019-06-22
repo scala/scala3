@@ -17,6 +17,8 @@ import dotty.tools.dotc.util.SourceFile
 
 import scala.tasty.reflect.Kernel
 
+import delegate Flags.FlagOps // DOTTY problem: this line can be dropped in 0.17 once #6712 is in bootstrap.
+
 class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.SourcePosition) extends Kernel {
 
   private implicit def ctx: core.Contexts.Context = rootContext
@@ -122,7 +124,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case _ => None
   }
 
-  def Import_implied(self: Import): Boolean = self.importImplied
+  def Import_implied(self: Import): Boolean = self.importDelegate
   def Import_expr(self: Import)(implicit ctx: Context): Tree = self.expr
   def Import_selectors(self: Import)(implicit ctx: Context): List[ImportSelector] = self.selectors
 
@@ -1680,7 +1682,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   type Flags = core.Flags.FlagSet
 
   /** Is the given flag set a subset of this flag sets */
-  def Flags_is(self: Flags)(that: Flags): Boolean = self.is(that)
+  def Flags_is(self: Flags)(that: Flags): Boolean = self.isAllOf(that)
 
   /** Union of the two flag sets */
   def Flags_or(self: Flags)(that: Flags): Flags = self | that
@@ -1697,7 +1699,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Flags_Case: Flags = core.Flags.Case
   def Flags_Implicit: Flags = core.Flags.Implicit
   def Flags_Given: Flags = core.Flags.Given
-  def Flags_Implied: Flags = core.Flags.Implied
+  def Flags_Implied: Flags = core.Flags.Delegate
   def Flags_Erased: Flags = core.Flags.Erased
   def Flags_Lazy: Flags = core.Flags.Lazy
   def Flags_Override: Flags = core.Flags.Override

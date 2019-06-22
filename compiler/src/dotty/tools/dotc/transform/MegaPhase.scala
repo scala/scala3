@@ -215,7 +215,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def transformTree(tree: Tree, start: Int)(implicit ctx: Context): Tree = {
     def localContext(implicit ctx: Context) = {
       val sym = tree.symbol
-      val owner = if (sym is PackageVal) sym.moduleClass else sym
+      val owner = if (sym.is(PackageVal)) sym.moduleClass else sym
       ctx.fresh.setOwner(owner)
     }
 

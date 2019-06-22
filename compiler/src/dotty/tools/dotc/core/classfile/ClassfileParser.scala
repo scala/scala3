@@ -75,7 +75,7 @@ class ClassfileParser(
   classRoot.info = (new NoCompleter).withDecls(instanceScope)
   moduleRoot.info = (new NoCompleter).withDecls(staticScope).withSourceModule(_ => staticModule)
 
-  private def currentIsTopLevel(implicit ctx: Context) = classRoot.owner is Flags.PackageClass
+  private def currentIsTopLevel(implicit ctx: Context) = classRoot.owner.is(Flags.PackageClass)
 
   private def mismatchError(className: SimpleName) =
     throw new IOException(s"class file '${in.file.canonicalPath}' has location not matching its contents: contains class $className")
@@ -185,8 +185,8 @@ class ClassfileParser(
     if (isEnum) {
       instanceScope.toList.map(_.ensureCompleted())
       staticScope.toList.map(_.ensureCompleted())
-      classRoot.setFlag(Flags.JavaEnum)
-      moduleRoot.setFlag(Flags.JavaEnum)
+      classRoot.setFlag(Flags.JavaEnumTrait)
+      moduleRoot.setFlag(Flags.JavaEnumTrait)
     }
 
     result
@@ -195,7 +195,7 @@ class ClassfileParser(
   /** Add type parameters of enclosing classes */
   def addEnclosingTParams()(implicit ctx: Context): Unit = {
     var sym = classRoot.owner
-    while (sym.isClass && !(sym is Flags.ModuleClass)) {
+    while (sym.isClass && !sym.is(Flags.ModuleClass)) {
       for (tparam <- sym.typeParams) {
         classTParams = classTParams.updated(tparam.name, tparam)
       }
@@ -210,7 +210,7 @@ class ClassfileParser(
       if (method) Flags.Method | methodTranslation.flags(jflags)
       else fieldTranslation.flags(jflags)
     val name = pool.getName(in.nextChar)
-    if (!(sflags is Flags.Private) || name == nme.CONSTRUCTOR) {
+    if (!sflags.is(Flags.Private) || name == nme.CONSTRUCTOR) {
       val member = ctx.newSymbol(
         getOwner(jflags), name, sflags, memberCompleter, coord = start)
       getScope(jflags).enter(member)
@@ -267,7 +267,7 @@ class ClassfileParser(
         denot.info = translateTempPoly(parseAttributes(sym, denot.info))
         if (isConstructor) normalizeConstructorInfo()
 
-        if ((denot is Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
+        if (denot.is(Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
           denot.info = arrayToRepeated(denot.info)
 
         // seal java enums
@@ -276,7 +276,7 @@ class ClassfileParser(
           if (!enumClass.exists)
             ctx.warning(s"no linked class for java enum $sym in ${sym.owner}. A referencing class file might be missing an InnerClasses entry.")
           else {
-            if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
+            if (!enumClass.is(Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
             enumClass.addAnnotation(Annotation.Child(sym))
           }
         }
@@ -318,7 +318,7 @@ class ClassfileParser(
         case BOOL_TAG   => defn.BooleanType
         case 'L' =>
           def processInner(tp: Type): Type = tp match {
-            case tp: TypeRef if !(tp.symbol.owner is Flags.ModuleClass) =>
+            case tp: TypeRef if !tp.symbol.owner.is(Flags.ModuleClass) =>
               TypeRef(processInner(tp.prefix.widen), tp.symbol.asType)
             case _ =>
               tp
@@ -583,7 +583,7 @@ class ClassfileParser(
           parseExceptions(attrLen)
 
         case tpnme.CodeATTR =>
-          if (sym.owner is Flags.JavaTrait) {
+          if (sym.owner.isAllOf(Flags.JavaInterface)) {
             sym.resetFlag(Flags.Deferred)
             sym.owner.resetFlag(Flags.PureInterface)
             ctx.log(s"$sym in ${sym.owner} is a java8+ default method.")
@@ -663,7 +663,7 @@ class ClassfileParser(
           ).entered
           for ((attr, i) <- attrs.zipWithIndex)
             if (attr.hasAnnotation(defn.AnnotationDefaultAnnot)) {
-              constr.setFlag(Flags.HasDefaultParams)
+              constr.setFlag(Flags.DefaultParameterized)
               addDefaultGetter(attr, i)
             }
         }

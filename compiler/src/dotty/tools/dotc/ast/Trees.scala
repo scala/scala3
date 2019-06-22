@@ -410,7 +410,7 @@ object Trees {
     // Denotation of a This tree is always the underlying class; needs correction for modules.
     override def denot(implicit ctx: Context): Denotation = {
       typeOpt match {
-        case tpe @ TermRef(pre, _) if tpe.symbol is Module =>
+        case tpe @ TermRef(pre, _) if tpe.symbol.is(Module) =>
           tpe.symbol.moduleClass.denot.asSeenFrom(pre)
         case _ =>
           super.denot
@@ -750,7 +750,7 @@ object Trees {
     def unforced: LazyTree = preRhs
     protected def force(x: AnyRef): Unit = preRhs = x
 
-    override def disableOverlapChecks = rawMods.is(Flags.Implied)
+    override def disableOverlapChecks = rawMods.is(Delegate)
       // disable order checks for implicit aliases since their given clause follows
       // their for clause, but the two appear swapped in the DefDef.
   }
@@ -801,7 +801,7 @@ object Trees {
    *  where a selector is either an untyped `Ident`, `name` or
    *  an untyped thicket consisting of `name` and `rename`.
    */
-  case class Import[-T >: Untyped] private[ast] (importImplied: Boolean, expr: Tree[T], selectors: List[Tree[Untyped]])(implicit @constructorOnly src: SourceFile)
+  case class Import[-T >: Untyped] private[ast] (importDelegate: Boolean, expr: Tree[T], selectors: List[Tree[Untyped]])(implicit @constructorOnly src: SourceFile)
     extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] = Import[T]
   }
@@ -1200,9 +1200,9 @@ object Trees {
         case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (derived eq tree.derived) && (self eq tree.self) && (body eq tree.unforcedBody) => tree
         case tree => finalize(tree, untpd.Template(constr, parents, derived, self, body)(sourceFile(tree)))
       }
-      def Import(tree: Tree)(importImplied: Boolean, expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import = tree match {
-        case tree: Import if (importImplied == tree.importImplied) && (expr eq tree.expr) && (selectors eq tree.selectors) => tree
-        case _ => finalize(tree, untpd.Import(importImplied, expr, selectors)(sourceFile(tree)))
+      def Import(tree: Tree)(importDelegate: Boolean, expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import = tree match {
+        case tree: Import if (importDelegate == tree.importDelegate) && (expr eq tree.expr) && (selectors eq tree.selectors) => tree
+        case _ => finalize(tree, untpd.Import(importDelegate, expr, selectors)(sourceFile(tree)))
       }
       def PackageDef(tree: Tree)(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef = tree match {
         case tree: PackageDef if (pid eq tree.pid) && (stats eq tree.stats) => tree
@@ -1343,8 +1343,8 @@ object Trees {
               cpy.TypeDef(tree)(name, transform(rhs))
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
               cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body))
-            case Import(importImplied, expr, selectors) =>
-              cpy.Import(tree)(importImplied, transform(expr), selectors)
+            case Import(importDelegate, expr, selectors) =>
+              cpy.Import(tree)(importDelegate, transform(expr), selectors)
             case PackageDef(pid, stats) =>
               cpy.PackageDef(tree)(transformSub(pid), transformStats(stats)(localCtx))
             case Annotated(arg, annot) =>

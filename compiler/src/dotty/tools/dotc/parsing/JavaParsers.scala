@@ -344,7 +344,7 @@ object JavaParsers {
     }
 
     def modifiers(inInterface: Boolean): Modifiers = {
-      var flags = Flags.JavaDefined
+      var flags: FlagSet = Flags.JavaDefined
       // assumed true unless we see public/private/protected
       var isPackageAccess = true
       var annots: List[Tree] = Nil
@@ -494,7 +494,7 @@ object JavaParsers {
         }
       } else {
         var mods1 = mods
-        if (mods is Flags.Abstract) mods1 = mods &~ Flags.Abstract
+        if (mods.is(Flags.Abstract)) mods1 = mods &~ Flags.Abstract
         nameOffset = in.offset
         val name = ident()
         if (in.token == LPAREN) {
@@ -502,7 +502,7 @@ object JavaParsers {
           val vparams = formalParams()
           if (!isVoid) rtpt = optArrayBrackets(rtpt)
           optThrows()
-          val bodyOk = !inInterface || (mods is Flags.DefaultMethod)
+          val bodyOk = !inInterface || (mods.is(Flags.DefaultMethod))
           val body =
             if (bodyOk && in.token == LBRACE) {
               methodBody()
@@ -580,9 +580,9 @@ object JavaParsers {
 
     def varDecl(mods: Modifiers, tpt: Tree, name: TermName): ValDef = {
       val tpt1 = optArrayBrackets(tpt)
-      if (in.token == EQUALS && !(mods is Flags.Param)) skipTo(COMMA, SEMI)
-      val mods1 = if (mods is Flags.Final) mods else mods | Flags.Mutable
-      ValDef(name, tpt1, if (mods is Flags.Param) EmptyTree else unimplementedExpr).withMods(mods1)
+      if (in.token == EQUALS && !mods.is(Flags.Param)) skipTo(COMMA, SEMI)
+      val mods1 = if (mods.is(Flags.Final)) mods else mods | Flags.Mutable
+      ValDef(name, tpt1, if (mods.is(Flags.Param)) EmptyTree else unimplementedExpr).withMods(mods1)
     }
 
     def memberDecl(start: Offset, mods: Modifiers, parentToken: Int, parentTParams: List[TypeDef]): List[Tree] = in.token match {
@@ -600,7 +600,7 @@ object JavaParsers {
       }
 
     def importCompanionObject(cdef: TypeDef): Tree =
-      Import(importImplied = false, Ident(cdef.name.toTermName).withSpan(NoSpan), Ident(nme.WILDCARD) :: Nil)
+      Import(importDelegate = false, Ident(cdef.name.toTermName).withSpan(NoSpan), Ident(nme.WILDCARD) :: Nil)
 
     // Importing the companion object members cannot be done uncritically: see
     // ticket #2377 wherein a class contains two static inner classes, each of which
@@ -662,7 +662,7 @@ object JavaParsers {
 //          case nme.WILDCARD => Pair(ident, Ident(null) withPos Span(-1))
 //          case _            => Pair(ident, ident)
 //        }
-        val imp = atSpan(start) { Import(importImplied = false, qual, List(ident)) }
+        val imp = atSpan(start) { Import(importDelegate = false, qual, List(ident)) }
         imp :: Nil
       }
     }
@@ -738,7 +738,7 @@ object JavaParsers {
         } else {
           if (in.token == ENUM || definesInterface(in.token)) mods |= Flags.JavaStatic
           val decls = memberDecl(start, mods, parentToken, parentTParams)
-          (if ((mods is Flags.JavaStatic) || inInterface && !(decls exists (_.isInstanceOf[DefDef])))
+          (if (mods.is(Flags.JavaStatic) || inInterface && !(decls exists (_.isInstanceOf[DefDef])))
             statics
           else
             members) ++= decls
@@ -835,7 +835,7 @@ object JavaParsers {
         Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)), Nil)
       val enumclazz = atSpan(start, nameOffset) {
         TypeDef(name,
-          makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.JavaEnum)
+          makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.JavaEnumTrait)
       }
       addCompanionObject(consts ::: statics ::: predefs, enumclazz)
     }
@@ -854,7 +854,7 @@ object JavaParsers {
           skipAhead()
           accept(RBRACE)
         }
-        ValDef(name.toTermName, enumType, unimplementedExpr).withMods(Modifiers(Flags.JavaEnum | Flags.StableRealizable | Flags.JavaDefined | Flags.JavaStatic))
+        ValDef(name.toTermName, enumType, unimplementedExpr).withMods(Modifiers(Flags.JavaEnumTrait | Flags.StableRealizable | Flags.JavaDefined | Flags.JavaStatic))
       }
     }
 

@@ -83,7 +83,7 @@ object RefChecks {
    *  (Forwarding tends to hide problems by binding parameter names).
    */
   private def upwardsThisType(cls: Symbol)(implicit ctx: Context) = cls.info match {
-    case ClassInfo(_, _, _, _, tp: Type) if (tp ne cls.typeRef) && !cls.is(ModuleOrFinal) =>
+    case ClassInfo(_, _, _, _, tp: Type) if (tp ne cls.typeRef) && !cls.isOneOf(FinalOrModuleClass) =>
       SkolemType(cls.appliedRef).withName(nme.this_)
     case _ =>
       cls.thisType
@@ -261,8 +261,8 @@ object RefChecks {
           sym.is(Module)) // synthetic companion
 
       def overrideAccessError() = {
-        ctx.log(i"member: ${member.showLocated} ${member.flags}") // DEBUG
-        ctx.log(i"other: ${other.showLocated} ${other.flags}") // DEBUG
+        ctx.log(i"member: ${member.showLocated} ${member.flagsString}") // DEBUG
+        ctx.log(i"other: ${other.showLocated} ${other.flagsString}") // DEBUG
         val otherAccess = (other.flags & AccessFlags).toString
         overrideError("has weaker access privileges; it should be " +
           (if (otherAccess == "") "public" else "at least " + otherAccess))
@@ -335,7 +335,7 @@ object RefChecks {
         (member.flags & AccessFlags).isEmpty // member is public
         || // - or -
         (!other.is(Protected) || member.is(Protected)) && // if o is protected, so is m, and
-        (ob.isContainedIn(mb) || other.is(JavaProtected)) // m relaxes o's access boundary,
+        (ob.isContainedIn(mb) || other.isAllOf(JavaProtected)) // m relaxes o's access boundary,
         // or o is Java defined and protected (see #3946)
         )
       if (!isOverrideAccessOK) {
@@ -356,7 +356,7 @@ object RefChecks {
         // Also exclusion for implicit shortcut methods
         // Also excluded under Scala2 mode are overrides of default methods of Java traits.
         if (autoOverride(member) ||
-            other.owner.is(JavaTrait) &&
+            other.owner.isAllOf(JavaInterface) &&
             ctx.testScala2Mode("`override' modifier required when a Java 8 default method is re-implemented", member.sourcePos))
           member.setFlag(Override)
         else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))
@@ -385,7 +385,7 @@ object RefChecks {
           "(this rule is designed to prevent ``accidental overrides'')")
       } else if (other.isStableMember && !member.isStableMember) { // (1.4)
         overrideError("needs to be a stable, immutable value")
-      } else if (member.is(ModuleVal) && !other.isRealMethod && !other.is(Deferred | Lazy)) {
+      } else if (member.is(ModuleVal) && !other.isRealMethod && !other.isOneOf(Deferred | Lazy)) {
         overrideError("may not override a concrete non-lazy value")
       } else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy) &&
                  !ctx.testScala2Mode(overrideErrorMsg("may not override a non-lazy value"), member.sourcePos)) {
@@ -394,7 +394,7 @@ object RefChecks {
         overrideError("must be declared lazy to override a lazy value")
       } else if (member.is(Erased) && !other.is(Erased)) { // (1.9.1)
         overrideError("is erased, cannot override non-erased member")
-      } else if (other.is(Erased) && !member.is(Erased | Inline)) { // (1.9.1)
+      } else if (other.is(Erased) && !member.isOneOf(Erased | Inline)) { // (1.9.1)
         overrideError("is not erased, cannot override erased member")
       } else if (member.is(Extension) && !other.is(Extension)) { // (1.9.2)
         overrideError("is an extension method, cannot override a normal method")
@@ -447,7 +447,7 @@ object RefChecks {
     printMixinOverrideErrors()
 
     // Verifying a concrete class has nothing unimplemented.
-    if (!clazz.is(AbstractOrTrait)) {
+    if (!clazz.isOneOf(AbstractOrTrait)) {
       val abstractErrors = new mutable.ListBuffer[String]
       def abstractErrorMessage =
         // a little formatting polish
@@ -638,12 +638,12 @@ object RefChecks {
           if (!seenClasses.contains(cls)) {
             seenClasses.addEntry(cls)
             for (mbr <- cls.info.decls)
-              if (mbr.isTerm && !mbr.is(Synthetic | Bridge) && mbr.memberCanMatchInheritedSymbols &&
+              if (mbr.isTerm && !mbr.isOneOf(Synthetic | Bridge) && mbr.memberCanMatchInheritedSymbols &&
                   !membersToCheck.contains(mbr.name))
                 membersToCheck.addEntry(mbr.name)
             cls.info.parents.map(_.classSymbol)
-              .filter(_.is(AbstractOrTrait))
-              .dropWhile(_.is(JavaDefined | Scala2x))
+              .filter(_.isOneOf(AbstractOrTrait))
+              .dropWhile(_.isOneOf(JavaDefined | Scala2x))
               .foreach(addDecls)
           }
         addDecls(clazz)

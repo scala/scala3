@@ -100,7 +100,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     private def transformAnnot(annot: Tree)(implicit ctx: Context): Tree = {
       val saved = inJavaAnnot
-      inJavaAnnot = annot.symbol is JavaDefined
+      inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
       try transform(annot)
       finally inJavaAnnot = saved

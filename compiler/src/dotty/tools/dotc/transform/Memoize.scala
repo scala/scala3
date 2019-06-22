@@ -80,7 +80,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       ctx.newSymbol(
         owner = ctx.owner,
         name  = sym.name.asTermName.fieldName,
-        flags = Private | (if (sym is StableRealizable) EmptyFlags else Mutable),
+        flags = Private | (if (sym.is(StableRealizable)) EmptyFlags else Mutable),
         info  = fieldType,
         coord = tree.span
       ).withAnnotationsCarrying(sym, defn.FieldMetaAnnot)

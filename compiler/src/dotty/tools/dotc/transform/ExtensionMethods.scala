@@ -53,7 +53,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
   override def changesMembers: Boolean = true // the phase adds extension methods
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
-    case moduleClassSym: ClassDenotation if moduleClassSym is ModuleClass =>
+    case moduleClassSym: ClassDenotation if moduleClassSym.is(ModuleClass) =>
       moduleClassSym.linkedClass match {
         case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
           val cinfo = moduleClassSym.classInfo
@@ -101,7 +101,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
         ref1 = ref.copySymDenotation()
         ref1.removeAnnotation(defn.TailrecAnnot)
       }
-      else if (ref.isConstructor && isDerivedValueClass(ref.owner) && ref.is(AccessFlags)) {
+      else if (ref.isConstructor && isDerivedValueClass(ref.owner) && ref.isOneOf(AccessFlags)) {
         ref1 = ref.copySymDenotation()
         ref1.resetFlag(AccessFlags)
       }

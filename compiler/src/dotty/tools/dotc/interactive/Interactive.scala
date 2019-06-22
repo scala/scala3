@@ -408,7 +408,7 @@ object Interactive {
     if (sym.isClass) {
       case td: TypeDef =>
         val treeSym = td.symbol
-        (treeSym != sym || !treeSym.is(AbstractOrTrait)) && treeSym.derivesFrom(sym)
+        (treeSym != sym || !treeSym.isOneOf(AbstractOrTrait)) && treeSym.derivesFrom(sym)
       case _ =>
         false
     } else {

@@ -50,7 +50,7 @@ object PrepareInlineable {
        */
       def needsAccessor(sym: Symbol)(implicit ctx: Context): Boolean =
         sym.isTerm &&
-        (sym.is(AccessFlags) || sym.privateWithin.exists) &&
+        (sym.isOneOf(AccessFlags) || sym.privateWithin.exists) &&
         !sym.isContainedIn(inlineSym) &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod

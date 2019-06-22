@@ -335,14 +335,14 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
   /** Traverse the tree of a source file and record the dependencies and used names which
    *  can be retrieved using `dependencies` and`usedNames`.
    */
-  override def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+  override def traverse(tree: Tree)(implicit ctx: Context): Unit = try {
     tree match {
       case Match(selector, _) =>
         addPatMatDependency(selector.tpe)
-      case Import(importImplied, expr, selectors) =>
+      case Import(importDelegate, expr, selectors) =>
         def lookupImported(name: Name) = {
           val sym = expr.tpe.member(name).symbol
-          if (sym.is(Implied) == importImplied) sym else NoSymbol
+          if (sym.is(Delegate) == importDelegate) sym else NoSymbol
         }
         def addImported(name: Name) = {
           // importing a name means importing both a term and a type (if they exist)
@@ -384,6 +384,10 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       case _ =>
         traverseChildren(tree)
     }
+  } catch {
+    case ex: AssertionError =>
+      println(i"asserted failed while traversing $tree")
+      throw ex
   }
 
   /** Traverse a used type and record all the dependencies we need to keep track

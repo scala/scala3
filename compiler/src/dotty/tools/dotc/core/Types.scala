@@ -235,7 +235,7 @@ object Types {
      *  from the ThisType of `symd`'s owner.
      */
     def isArgPrefixOf(symd: SymDenotation)(implicit ctx: Context): Boolean =
-      symd.is(ClassTypeParam) && {
+      symd.isAllOf(ClassTypeParam) && {
         this match {
           case tp: ThisType => tp.cls ne symd.owner
           case _ => true
@@ -519,7 +519,7 @@ object Types {
      */
     @tailrec final def findDecl(name: Name, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: ClassInfo =>
-        tp.decls.denotsNamed(name).filterWithFlags(EmptyFlagConjunction, excluded).toDenot(NoPrefix)
+        tp.decls.denotsNamed(name).filterWithFlags(EmptyFlags, excluded).toDenot(NoPrefix)
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, excluded)
       case err: ErrorType =>
@@ -530,16 +530,16 @@ object Types {
 
     /** The member of this type with the given name  */
     final def member(name: Name)(implicit ctx: Context): Denotation = /*>|>*/ track("member") /*<|<*/ {
-      memberBasedOnFlags(name, required = EmptyFlagConjunction, excluded = EmptyFlags)
+      memberBasedOnFlags(name, required = EmptyFlags, excluded = EmptyFlags)
     }
 
     /** The non-private member of this type with the given name. */
     final def nonPrivateMember(name: Name)(implicit ctx: Context): Denotation = track("nonPrivateMember") {
-      memberBasedOnFlags(name, required = EmptyFlagConjunction, excluded = Flags.Private)
+      memberBasedOnFlags(name, required = EmptyFlags, excluded = Flags.Private)
     }
 
     /** The member with given `name` and required and/or excluded flags */
-    final def memberBasedOnFlags(name: Name, required: FlagConjunction = EmptyFlagConjunction, excluded: FlagSet = EmptyFlags)(implicit ctx: Context): Denotation = {
+    final def memberBasedOnFlags(name: Name, required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(implicit ctx: Context): Denotation = {
       // We need a valid prefix for `asSeenFrom`
       val pre = this match {
         case tp: ClassInfo => tp.appliedRef
@@ -552,12 +552,12 @@ object Types {
      *  flags and no `excluded` flag and produce a denotation that contains
      *  the type of the member as seen from given prefix `pre`.
      */
-    final def findMember(name: Name, pre: Type, required: FlagConjunction = EmptyFlagConjunction, excluded: FlagSet = EmptyFlags)(implicit ctx: Context): Denotation = {
+    final def findMember(name: Name, pre: Type, required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(implicit ctx: Context): Denotation = {
       @tailrec def go(tp: Type): Denotation = tp match {
         case tp: TermRef =>
           go (tp.underlying match {
             case mt: MethodType
-            if mt.paramInfos.isEmpty && (tp.symbol is StableRealizable) => mt.resultType
+            if mt.paramInfos.isEmpty && tp.symbol.is(StableRealizable) => mt.resultType
             case tp1 => tp1
           })
         case tp: TypeRef =>
@@ -764,7 +764,7 @@ object Types {
     /** The set of abstract term members of this type. */
     final def abstractTermMembers(implicit ctx: Context): Seq[SingleDenotation] = track("abstractTermMembers") {
       memberDenots(abstractTermNameFilter,
-          (name, buf) => buf ++= nonPrivateMember(name).altsWith(_ is Deferred))
+          (name, buf) => buf ++= nonPrivateMember(name).altsWith(_.is(Deferred)))
     }
 
     /** The set of abstract type members of this type. */
@@ -792,12 +792,12 @@ object Types {
     }
 
     /** The set of implicit term members of this type
-     *  @param kind   A subset of {Implicit, Implied} that specifies what kind of implicit should
+     *  @param kind   A subset of {Implicit, Delegate} that specifies what kind of implicit should
      *                be returned
      */
     final def implicitMembers(kind: FlagSet)(implicit ctx: Context): List[TermRef] = track("implicitMembers") {
       memberDenots(implicitFilter,
-          (name, buf) => buf ++= member(name).altsWith(_.is(ImplicitOrImpliedOrGivenTerm & kind)))
+          (name, buf) => buf ++= member(name).altsWith(_.isOneOf(DelegateOrGivenOrImplicitVal & kind)))
         .toList.map(d => TermRef(this, d.symbol.asTerm))
     }
 
@@ -813,7 +813,7 @@ object Types {
     }
 
     /** The set of members of this type that have all of `required` flags but none of `excluded` flags set. */
-    final def membersBasedOnFlags(required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Seq[SingleDenotation] = track("membersBasedOnFlags") {
+    final def membersBasedOnFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): Seq[SingleDenotation] = track("membersBasedOnFlags") {
       memberDenots(takeAllFilter,
         (name, buf) => buf ++= memberBasedOnFlags(name, required, excluded).alternatives)
     }
@@ -2125,7 +2125,7 @@ object Types {
           }
           if (base.isAnd == variance >= 0) tp1 & tp2 else tp1 | tp2
         case _ =>
-          if (pre.termSymbol is Package) argForParam(pre.select(nme.PACKAGE))
+          if (pre.termSymbol.is(Package)) argForParam(pre.select(nme.PACKAGE))
           else if (pre.isBottomType) pre
           else NoType
       }
@@ -2149,7 +2149,7 @@ object Types {
       else {
         if (isType) {
           val res =
-            if (currentSymbol.is(ClassTypeParam)) argForParam(prefix)
+            if (currentSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
             else prefix.lookupRefined(name)
           if (res.exists) return res
           if (Config.splitProjections)
@@ -3972,7 +3972,7 @@ object Types {
         selfTypeCache = {
           val givenSelf = cls.givenSelfType
           if (!givenSelf.isValueType) appliedRef
-          else if (cls is Module) givenSelf
+          else if (cls.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
           else AndType(givenSelf, appliedRef)
         }
@@ -4325,7 +4325,7 @@ object Types {
           case et: ExprType => true
           case _ => false
         }
-        if ((tp.cls is Trait) || zeroParams(tp.cls.primaryConstructor.info)) tp // !!! needs to be adapted once traits have parameters
+        if (tp.cls.is(Trait) || zeroParams(tp.cls.primaryConstructor.info)) tp // !!! needs to be adapted once traits have parameters
         else NoType
       case tp: AppliedType =>
         zeroParamClass(tp.superType)
@@ -4375,7 +4375,7 @@ object Types {
               //    (x: String): Int
               val approxParams = new ApproximatingTypeMap {
                 def apply(tp: Type): Type = tp match {
-                  case tp: TypeRef if tp.symbol.is(ClassTypeParam) && tp.symbol.owner == cls =>
+                  case tp: TypeRef if tp.symbol.isAllOf(ClassTypeParam) && tp.symbol.owner == cls =>
                     tp.info match {
                       case info: AliasingBounds =>
                         mapOver(info.alias)
@@ -4717,7 +4717,7 @@ object Types {
       else pre match {
         case Range(preLo, preHi) =>
           val forwarded =
-            if (tp.symbol.is(ClassTypeParam)) expandParam(tp, preHi)
+            if (tp.symbol.isAllOf(ClassTypeParam)) expandParam(tp, preHi)
             else tryWiden(tp, preHi)
           forwarded.orElse(
             range(super.derivedSelect(tp, preLo).loBound, super.derivedSelect(tp, preHi).hiBound))
@@ -5121,7 +5121,7 @@ object Types {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
       name.isTypeName && {
         val mbr = pre.nonPrivateMember(name)
-        (mbr.symbol is Deferred) && mbr.info.isInstanceOf[RealTypeBounds]
+        mbr.symbol.is(Deferred) && mbr.info.isInstanceOf[RealTypeBounds]
       }
   }
 
@@ -5137,7 +5137,7 @@ object Types {
   /** A filter for names of deferred term definitions of a given type */
   object abstractTermNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
-      name.isTermName && pre.nonPrivateMember(name).hasAltWith(_.symbol is Deferred)
+      name.isTermName && pre.nonPrivateMember(name).hasAltWith(_.symbol.is(Deferred))
   }
 
   /** A filter for names of type aliases of a given type */

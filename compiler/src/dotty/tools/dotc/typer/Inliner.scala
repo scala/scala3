@@ -255,11 +255,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                               bindingsBuf: mutable.ListBuffer[ValOrDefDef])(implicit ctx: Context): ValOrDefDef = {
     val argtpe = arg.tpe.dealiasKeepAnnots
     val isByName = paramtp.dealias.isInstanceOf[ExprType]
-    var inlineFlag = InlineProxy
-    if (paramtp.hasAnnotation(defn.InlineParamAnnot)) inlineFlag |= Inline
+    var inlineFlags: FlagSet = InlineProxy
+    if (paramtp.hasAnnotation(defn.InlineParamAnnot)) inlineFlags |= Inline
     val (bindingFlags, bindingType) =
       if (isByName) (InlineByNameProxy.toTermFlags, ExprType(argtpe.widen))
-      else (inlineFlag, argtpe.widen)
+      else (inlineFlags, argtpe.widen)
     val boundSym = newSym(name, bindingFlags, bindingType).asTerm
     val binding = {
       if (isByName) DefDef(boundSym, arg.changeOwner(ctx.owner, boundSym))
@@ -1149,7 +1149,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           case Some(x) => x > 1 || x == 1 && !boundSym.is(Method)
           case none => true
         }
-      } && !(boundSym.is(InlineMethod) && boundSym.is(ImplicitOrImplied))
+      } && !(boundSym.isAllOf(InlineMethod) && boundSym.isOneOf(DelegateOrImplicit))
 
       val inlineBindings = new TreeMap {
         override def transform(t: Tree)(implicit ctx: Context) = t match {

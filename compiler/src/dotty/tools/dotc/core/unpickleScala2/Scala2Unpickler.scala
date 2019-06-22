@@ -102,7 +102,7 @@ object Scala2Unpickler {
       case cinfo => (Nil, cinfo)
     }
     val ost =
-      if ((selfInfo eq NoType) && (denot is ModuleClass) && denot.sourceModule.exists)
+      if ((selfInfo eq NoType) && denot.is(ModuleClass) && denot.sourceModule.exists)
         // it seems sometimes the source module does not exist for a module class.
         // An example is `scala.reflect.internal.Trees.Template$. Without the
         // `denot.sourceModule.exists` provision i859.scala crashes in the backend.
@@ -120,7 +120,7 @@ object Scala2Unpickler {
       if (tsym.exists) tsym.setFlag(TypeParam)
       else denot.enter(tparam, decls)
     }
-    if (!(denot.flagsUNSAFE is JavaModule)) ensureConstructor(denot.symbol.asClass, decls)
+    if (!denot.flagsUNSAFE.isAllOf(JavaModule)) ensureConstructor(denot.symbol.asClass, decls)
 
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
 
@@ -129,7 +129,7 @@ object Scala2Unpickler {
       claz.registerCompanion(module)
     }
 
-    if (denot.flagsUNSAFE is Module)
+    if (denot.flagsUNSAFE.is(Module))
       registerCompanionPair(denot.classSymbol, scalacCompanion)
     else
       registerCompanionPair(scalacCompanion, denot.classSymbol)
@@ -384,7 +384,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         //  return NoSymbol
 
         if (tag == EXTMODCLASSref) {
-          val module = owner.info.decl(name.toTermName).suchThat(_ is Module)
+          val module = owner.info.decl(name.toTermName).suchThat(_.is(Module))
           module.info // force it, as completer does not yet point to module class.
           module.symbol.moduleClass
 
@@ -436,33 +436,33 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val owner = readSymbolRef()
 
     var flags = unpickleScalaFlags(readLongNat(), name.isTypeName)
-    if (flags is DefaultParameter) {
+    if (flags.isAllOf(DefaultParameter)) {
       // DefaultParameterized flag now on method, not parameter
-      //assert(flags is Param, s"$name0 in $owner")
+      //assert(flags.is(Param), s"$name0 in $owner")
       flags = flags &~ DefaultParameterized
       owner.setFlag(DefaultParameterized)
     }
 
     name = name.adjustIfModuleClass(flags)
-    if (flags is Method) {
+    if (flags.is(Method)) {
       name =
         if (name == nme.TRAIT_CONSTRUCTOR) nme.CONSTRUCTOR
         else name.asTermName.unmangle(Scala2MethodNameKinds)
     }
-    if ((flags is Scala2ExpandedName)) {
+    if ((flags.is(Scala2ExpandedName))) {
       name = name.unmangle(ExpandedName)
       flags = flags &~ Scala2ExpandedName
     }
-    if (flags is Scala2SuperAccessor) {
+    if (flags.is(Scala2SuperAccessor)) {
       name = name.asTermName.unmangle(SuperAccessorName)
       flags = flags &~ Scala2SuperAccessor
     }
     name = name.mapLast(_.decode)
 
     def nameMatches(rootName: Name) = name == rootName
-    def isClassRoot = nameMatches(classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
-    def isModuleClassRoot = nameMatches(moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)
-    def isModuleRoot = nameMatches(moduleClassRoot.name.sourceModuleName) && (owner == moduleClassRoot.owner) && (flags is Module)
+    def isClassRoot = nameMatches(classRoot.name) && (owner == classRoot.owner) && !flags.is(ModuleClass)
+    def isModuleClassRoot = nameMatches(moduleClassRoot.name) && (owner == moduleClassRoot.owner) && flags.is(Module)
+    def isModuleRoot = nameMatches(moduleClassRoot.name.sourceModuleName) && (owner == moduleClassRoot.owner) && flags.is(Module)
 
     //if (isClassRoot) println(s"classRoot of $classRoot found at $readIndex, flags = $flags") // !!! DEBUG
     //if (isModuleRoot) println(s"moduleRoot of $moduleRoot found at $readIndex, flags = $flags") // !!! DEBUG
@@ -487,7 +487,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       if (sym.isClass) {
         sym.setFlag(Scala2x)
       }
-      if (!(isRefinementClass(sym) || isUnpickleRoot(sym) || (sym is Scala2Existential))) {
+      if (!(isRefinementClass(sym) || isUnpickleRoot(sym) || sym.is(Scala2Existential))) {
         val owner = sym.owner
         if (owner.isClass)
           owner.asClass.enter(sym, symScope(owner))
@@ -501,7 +501,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case TYPEsym | ALIASsym =>
         var name1 = name.asTypeName
         var flags1 = flags
-        if (flags is TypeParam) flags1 |= owner.typeParamCreationFlags
+        if (flags.is(TypeParam)) flags1 |= owner.typeParamCreationFlags
         ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
       case CLASSsym =>
         var infoRef = readNat()
@@ -518,10 +518,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         else {
           def completer(cls: Symbol) = {
             val unpickler = new ClassUnpickler(infoRef) withDecls symScope(cls)
-            if (flags is ModuleClass)
+            if (flags.is(ModuleClass))
               unpickler withSourceModule (implicit ctx =>
                 cls.owner.info.decls.lookup(cls.name.sourceModuleName)
-                  .suchThat(_ is Module).symbol)
+                  .suchThat(_.is(Module)).symbol)
             else unpickler
           }
           ctx.newClassSymbol(owner, name.asTypeName, flags, completer, coord = start)
@@ -535,7 +535,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         } else ctx.newSymbol(owner, name.asTermName, flags,
           new LocalUnpickler() withModuleClass(implicit ctx =>
             owner.info.decls.lookup(name.moduleClassName)
-              .suchThat(_ is Module).symbol)
+              .suchThat(_.is(Module)).symbol)
           , coord = start)
       case _ =>
         errorBadSignature("bad symbol tag: " + tag)
@@ -734,7 +734,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
                 pre = SuperType(thispre, base)
               }
             }
-          case NoPrefix if sym is TypeParam =>
+          case NoPrefix if sym.is(TypeParam) =>
             pre = sym.owner.thisType
           case _ =>
         }
@@ -1059,7 +1059,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           val to = untpd.Ident(toName)
           if (toName.isEmpty) from else untpd.Thicket(from, untpd.Ident(toName))
         })
-        Import(importImplied = false, expr, selectors)
+        Import(importDelegate = false, expr, selectors)
 
       case TEMPLATEtree =>
         setSym()

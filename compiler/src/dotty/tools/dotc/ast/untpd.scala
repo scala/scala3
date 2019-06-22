@@ -167,7 +167,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Inline()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Inline)
 
-    case class Implied()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implied)
+    case class Delegate()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Delegate)
   }
 
   /** Modifiers and annotations for definitions
@@ -183,9 +183,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     annotations: List[Tree] = Nil,
     mods: List[Mod] = Nil) {
 
-    def is(fs: FlagSet): Boolean = flags is fs
-    def is(fc: FlagConjunction): Boolean = flags is fc
-    def is(fc: FlagSet, butNot: FlagSet): Boolean = flags.is(fc, butNot = butNot)
+    def is(flag: Flag): Boolean = flags.is(flag)
+    def is(flag: Flag, butNot: FlagSet): Boolean = flags.is(flag, butNot = butNot)
+    def isOneOf(fs: FlagSet): Boolean = flags.isOneOf(fs)
+    def isOneOf(fs: FlagSet, butNot: FlagSet): Boolean = flags.isOneOf(fs, butNot = butNot)
+    def isAllOf(fc: FlagSet): Boolean = flags.isAllOf(fc)
 
     def | (fs: FlagSet): Modifiers = withFlags(flags | fs)
     def & (fs: FlagSet): Modifiers = withFlags(flags & fs)
@@ -199,8 +201,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       else copy(flags = flags)
 
     def withoutFlags(flags: FlagSet): Modifiers =
-      if (this.is(flags))
-        Modifiers(this.flags &~ flags, this.privateWithin, this.annotations, this.mods.filterNot(_.flags.is(flags)))
+      if (this.isOneOf(flags))
+        Modifiers(this.flags &~ flags, this.privateWithin, this.annotations, this.mods.filterNot(_.flags.isOneOf(flags)))
       else this
 
     def withAddedMod(mod: Mod): Modifiers =
@@ -215,7 +217,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       else {
         if (ms.nonEmpty)
           for (m <- ms)
-            assert(flags.is(m.flags) ||
+            assert(flags.isAllOf(m.flags) ||
                    m.isInstanceOf[Mod.Private] && !privateWithin.isEmpty,
                    s"unaccounted modifier: $m in $this when adding $ms")
         copy(mods = ms)
@@ -343,7 +345,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Template(constr: DefDef, parents: List[Tree], derived: List[Tree], self: ValDef, body: LazyTreeList)(implicit src: SourceFile): Template =
     if (derived.isEmpty) new Template(constr, parents, self, body)
     else new DerivingTemplate(constr, parents ++ derived, self, body, derived.length)
-  def Import(importImplied: Boolean, expr: Tree, selectors: List[Tree])(implicit src: SourceFile): Import = new Import(importImplied, expr, selectors)
+  def Import(importDelegate: Boolean, expr: Tree, selectors: List[Tree])(implicit src: SourceFile): Import = new Import(importDelegate, expr, selectors)
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit src: SourceFile): PackageDef = new PackageDef(pid, stats)
   def Annotated(arg: Tree, annot: Tree)(implicit src: SourceFile): Annotated = new Annotated(arg, annot)
 

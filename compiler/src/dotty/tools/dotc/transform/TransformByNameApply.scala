@@ -27,7 +27,7 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
 
   /** If denotation had an ExprType before, it now gets a function type */
   protected def exprBecomesFunction(symd: SymDenotation)(implicit ctx: Context): Boolean =
-    (symd is Param) || (symd is (ParamAccessor, butNot = Method))
+    symd.is(Param) || symd.is(ParamAccessor, butNot = Method)
 
   protected def isByNameRef(tree: Tree)(implicit ctx: Context): Boolean = {
     val origDenot = originalDenotation(tree)

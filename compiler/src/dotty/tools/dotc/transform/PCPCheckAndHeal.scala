@@ -93,7 +93,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     tree match {
       case Quoted(_) | Spliced(_)  =>
         tree
-      case tree: RefTree if tree.symbol.is(InlineParam) =>
+      case tree: RefTree if tree.symbol.isAllOf(InlineParam) =>
         tree
       case _: This =>
         assert(checkSymLevel(tree.symbol, tree.tpe, tree.sourcePos).isEmpty)

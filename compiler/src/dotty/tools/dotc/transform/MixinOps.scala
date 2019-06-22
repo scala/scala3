@@ -55,7 +55,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   def needsMixinForwarder(meth: Symbol): Boolean = {
     lazy val competingMethods = competingMethodsIterator(meth).toList
 
-    def needsDisambiguation = competingMethods.exists(x=> !(x is Deferred)) // multiple implementations are available
+    def needsDisambiguation = competingMethods.exists(x=> !x.is(Deferred)) // multiple implementations are available
     def hasNonInterfaceDefinition = competingMethods.exists(!_.owner.is(Trait)) // there is a definition originating from class
     !meth.isConstructor &&
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&

@@ -113,7 +113,7 @@ object Denotations {
     /** Keep only those denotations in this group that have all of the flags in `required`,
      *  but none of the flags in `excluded`.
      */
-    def filterWithFlags(required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): PreDenotation
+    def filterWithFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): PreDenotation
 
     private[this] var cachedPrefix: Type = _
     private[this] var cachedAsSeenFrom: AsSeenFromResult = _
@@ -260,7 +260,7 @@ object Denotations {
      *  flags and no `excluded` flag, and produce a denotation that contains the type of the member
      *  as seen from given prefix `pre`.
      */
-    def findMember(name: Name, pre: Type, required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Denotation =
+    def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(implicit ctx: Context): Denotation =
       info.findMember(name, pre, required, excluded)
 
     /** If this denotation is overloaded, filter with given predicate.
@@ -305,7 +305,7 @@ object Denotations {
 
     def requiredMethod(pname: PreName)(implicit ctx: Context): TermSymbol = {
       val name = pname.toTermName
-      info.member(name).requiredSymbol("method", name, this)(_ is Method).asTerm
+      info.member(name).requiredSymbol("method", name, this)(_.is(Method)).asTerm
     }
     def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
       requiredMethod(name).termRef
@@ -313,7 +313,7 @@ object Denotations {
     def requiredMethod(pname: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = {
       val name = pname.toTermName
       info.member(name).requiredSymbol(i"method", name, this, argTypes) { x =>
-        (x is Method) && {
+        x.is(Method) && {
           x.info.paramInfoss match {
             case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
             case _ => false
@@ -1108,7 +1108,7 @@ object Denotations {
       if (p(this)) this else NoDenotation
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
       if (denots.exists && denots.matches(this)) NoDenotation else this
-    def filterWithFlags(required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
+    def filterWithFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
       if (required.isEmpty && excluded.isEmpty || compatibleWith(required, excluded)) this else NoDenotation
 
     type AsSeenFromResult = SingleDenotation
@@ -1147,12 +1147,12 @@ object Denotations {
 
     /** Does this denotation have all the `required` flags but none of the `excluded` flags?
      */
-    private def compatibleWith(required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Boolean = {
+    private def compatibleWith(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): Boolean = {
       val symd: SymDenotation = this match {
         case symd: SymDenotation => symd
         case _ => symbol.denot
       }
-      symd.is(required) && !symd.is(excluded)
+      symd.isAllOf(required) && !symd.isOneOf(excluded)
     }
   }
 
@@ -1237,7 +1237,7 @@ object Denotations {
       derivedUnion(denot1 filterWithPredicate p, denot2 filterWithPredicate p)
     def filterDisjoint(denot: PreDenotation)(implicit ctx: Context): PreDenotation =
       derivedUnion(denot1 filterDisjoint denot, denot2 filterDisjoint denot)
-    def filterWithFlags(required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): PreDenotation =
+    def filterWithFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): PreDenotation =
       derivedUnion(denot1.filterWithFlags(required, excluded), denot2.filterWithFlags(required, excluded))
     protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =
       if ((denot1 eq this.denot1) && (denot2 eq this.denot2)) this
@@ -1370,7 +1370,7 @@ object Denotations {
      *  enter it.
      */
     def missingHook(owner: Symbol, name: Name)(implicit ctx: Context): Symbol =
-      if ((owner is Package) && name.isTermName)
+      if (owner.is(Package) && name.isTermName)
         ctx.newCompletePackageSymbol(owner, name.asTermName).entered
       else
         NoSymbol

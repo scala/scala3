@@ -221,7 +221,7 @@ trait Symbols { this: Context =>
    */
   def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
     def stubCompleter = new StubInfo()
-    val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
+    val normalizedOwner = if (owner.is(ModuleVal)) owner.moduleClass else owner
     typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
     typr.println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     //if (base.settings.debug.value) throw new Error()
@@ -359,7 +359,7 @@ trait Symbols { this: Context =>
 
   def requiredPackage(path: PreName): TermSymbol = {
     val name = path.toTermName
-    base.staticRef(name, isPackage = true).requiredSymbol("package", name)(_ is Package).asTerm
+    base.staticRef(name, isPackage = true).requiredSymbol("package", name)(_.is(Package)).asTerm
   }
 
   def requiredPackageRef(path: PreName): TermRef = requiredPackage(path).termRef
@@ -394,14 +394,14 @@ trait Symbols { this: Context =>
 
   def requiredModule(path: PreName): TermSymbol = {
     val name = path.toTermName
-    base.staticRef(name).requiredSymbol("object", name)(_ is Module).asTerm
+    base.staticRef(name).requiredSymbol("object", name)(_.is(Module)).asTerm
   }
 
   def requiredModuleRef(path: PreName): TermRef = requiredModule(path).termRef
 
   def requiredMethod(path: PreName): TermSymbol = {
     val name = path.toTermName
-    base.staticRef(name).requiredSymbol("method", name)(_ is Method).asTerm
+    base.staticRef(name).requiredSymbol("method", name)(_.is(Method)).asTerm
   }
 
   def requiredMethodRef(path: PreName): TermRef = requiredMethod(path).termRef
@@ -454,7 +454,7 @@ object Symbols {
     def retainsDefTree(implicit ctx: Context): Boolean =
       ctx.settings.YretainTrees.value ||
       denot.owner.isTerm ||        // no risk of leaking memory after a run for these
-      denot.is(InlineOrProxy)      // need to keep inline info
+      denot.isOneOf(InlineOrProxy)      // need to keep inline info
 
     /** The last denotation of this symbol */
     private[this] var lastDenot: SymDenotation = _
@@ -555,7 +555,7 @@ object Symbols {
     final def entered(implicit ctx: Context): this.type = {
       assert(this.owner.isClass, s"symbol ($this) entered the scope of non-class owner ${this.owner}") // !!! DEBUG
       this.owner.asClass.enter(this)
-      if (this is Module) this.owner.asClass.enter(this.moduleClass)
+      if (this.is(Module)) this.owner.asClass.enter(this.moduleClass)
       this
     }
 
@@ -569,7 +569,7 @@ object Symbols {
       else {
         if (this.owner.is(Package)) {
           denot.validFor |= InitialPeriod
-          if (this is Module) this.moduleClass.validFor |= InitialPeriod
+          if (this.is(Module)) this.moduleClass.validFor |= InitialPeriod
         }
         else this.owner.asClass.ensureFreshScopeAfter(phase)
         assert(isPrivate || phase.changesMembers, i"$this entered in ${this.owner} at undeclared phase $phase")
@@ -579,7 +579,7 @@ object Symbols {
     /** Remove symbol from scope of owning class */
     final def drop()(implicit ctx: Context): Unit = {
       this.owner.asClass.delete(this)
-      if (this is Module) this.owner.asClass.delete(this.moduleClass)
+      if (this.is(Module)) this.owner.asClass.delete(this.moduleClass)
     }
 
     /** Remove symbol from scope of owning class after given `phase`. Create a fresh
@@ -760,7 +760,7 @@ object Symbols {
 
     /** The source or class file from which this class was generated, null if not applicable. */
     override def associatedFile(implicit ctx: Context): AbstractFile =
-      if (assocFile != null || (this.owner is PackageClass) || this.isEffectiveRoot) assocFile
+      if (assocFile != null || this.owner.is(PackageClass) || this.isEffectiveRoot) assocFile
       else super.associatedFile
 
     private[this] var mySource: SourceFile = NoSource

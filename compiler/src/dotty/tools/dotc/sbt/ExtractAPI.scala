@@ -565,11 +565,11 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   def apiAccess(sym: Symbol): api.Access = {
     // Symbols which are private[foo] do not have the flag Private set,
     // but their `privateWithin` exists, see `Parsers#ParserCommon#normalize`.
-    if (!sym.is(Protected | Private) && !sym.privateWithin.exists)
+    if (!sym.isOneOf(Protected | Private) && !sym.privateWithin.exists)
       Constants.public
-    else if (sym.is(PrivateLocal))
+    else if (sym.isAllOf(PrivateLocal))
       Constants.privateLocal
-    else if (sym.is(ProtectedLocal))
+    else if (sym.isAllOf(ProtectedLocal))
       Constants.protectedLocal
     else {
       val qualifier =
@@ -589,7 +589,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     val abs = sym.is(Abstract) || sym.is(Deferred) || absOver
     val over = sym.is(Override) || absOver
     new api.Modifiers(abs, over, sym.is(Final), sym.is(Sealed),
-      sym.is(ImplicitOrImpliedOrGiven), sym.is(Lazy), sym.is(Macro), sym.isSuperAccessor)
+      sym.isOneOf(DelegateOrGivenOrImplicit), sym.is(Lazy), sym.is(Macro), sym.isSuperAccessor)
   }
 
   def apiAnnotations(s: Symbol): List[api.Annotation] = {

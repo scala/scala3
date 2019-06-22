@@ -424,7 +424,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
 
     def isSyntheticScala2Unapply(sym: Symbol) =
-      sym.is(SyntheticCase) && sym.owner.is(Scala2x)
+      sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)
 
     val mt @ MethodType(_) = unapp.widen
 
@@ -494,7 +494,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         )
       case tp if tp.isRef(defn.UnitClass) =>
         Typ(ConstantType(Constant(())), true) :: Nil
-      case tp if tp.classSymbol.is(JavaEnum) =>
+      case tp if tp.classSymbol.isAllOf(JavaEnumTrait) =>
         children.map(sym => Typ(sym.termRef, true))
       case tp =>
         val parts = children.map { sym =>
@@ -525,7 +525,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val dealiasedTp = tp.dealias
     val res =
       (tp.classSymbol.is(Sealed) &&
-        tp.classSymbol.is(AbstractOrTrait) &&
+        tp.classSymbol.isOneOf(AbstractOrTrait) &&
         !tp.classSymbol.hasAnonymousChild &&
         tp.classSymbol.children.nonEmpty ) ||
       dealiasedTp.isInstanceOf[OrType] ||
@@ -535,7 +535,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       }) ||
       tp.isRef(defn.BooleanClass) ||
       tp.isRef(defn.UnitClass) ||
-      tp.classSymbol.is(JavaEnumTrait)
+      tp.classSymbol.isAllOf(JavaEnumTrait)
 
     debug.println(s"decomposable: ${tp.show} = $res")
 
@@ -629,8 +629,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     /** does the companion object of the given symbol have custom unapply */
     def hasCustomUnapply(sym: Symbol): Boolean = {
       val companion = sym.companionModule
-      companion.findMember(nme.unapply, NoPrefix, required = EmptyFlagConjunction, excluded = Synthetic).exists ||
-        companion.findMember(nme.unapplySeq, NoPrefix, required = EmptyFlagConjunction, excluded = Synthetic).exists
+      companion.findMember(nme.unapply, NoPrefix, required = EmptyFlags, excluded = Synthetic).exists ||
+        companion.findMember(nme.unapplySeq, NoPrefix, required = EmptyFlags, excluded = Synthetic).exists
     }
 
     def doShow(s: Space, mergeList: Boolean = false): String = s match {
@@ -681,7 +681,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           isCheckable(and.tp1) || isCheckable(and.tp2)
         }) ||
         tpw.isRef(defn.BooleanClass) ||
-        tpw.typeSymbol.is(JavaEnum) ||
+        tpw.typeSymbol.isAllOf(JavaEnumTrait) ||
         (defn.isTupleType(tpw) && tpw.argInfos.exists(isCheckable(_)))
       }
 

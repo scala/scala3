@@ -41,7 +41,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
    *  The empty list if `self` is a trait.
    */
   def mixins(implicit ctx: Context): List[ClassSymbol] = {
-    if (self is Trait) Nil
+    if (self.is(Trait)) Nil
     else directlyInheritedTraits
   }
 
@@ -142,10 +142,10 @@ class SymUtils(val self: Symbol) extends AnyVal {
   }
 
   def accessorNamed(name: TermName)(implicit ctx: Context): Symbol =
-    self.owner.info.decl(name).suchThat(_ is Accessor).symbol
+    self.owner.info.decl(name).suchThat(_.is(Accessor)).symbol
 
   def caseAccessors(implicit ctx: Context): List[Symbol] =
-    self.info.decls.filter(_ is CaseAccessor)
+    self.info.decls.filter(_.is(CaseAccessor))
 
   def getter(implicit ctx: Context): Symbol =
     if (self.isGetter) self else accessorNamed(self.asTerm.name.getterName)

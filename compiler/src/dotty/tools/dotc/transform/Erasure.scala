@@ -76,7 +76,7 @@ class Erasure extends Phase with DenotTransformer {
         val oldFlags = ref.flags
         val newFlags =
           if (oldSymbol.is(Flags.TermParam) && isCompacted(oldSymbol.owner)) oldFlags &~ Flags.Param
-          else oldFlags &~ Flags.HasDefaultParams // HasDefaultParams needs to be dropped because overriding might become overloading
+          else oldFlags &~ Flags.HasDefaultParamsFlags // HasDefaultParamsFlags needs to be dropped because overriding might become overloading
 
         // TODO: define derivedSymDenotation?
         if ((oldSymbol eq newSymbol) && (oldOwner eq newOwner) && (oldName eq newName) && (oldInfo eq newInfo) && (oldFlags == newFlags))
@@ -461,7 +461,7 @@ object Erasure {
       def adaptIfSuper(qual: Tree): Tree = qual match {
         case Super(thisQual, untpd.EmptyTypeIdent) =>
           val SuperType(thisType, supType) = qual.tpe
-          if (sym.owner is Flags.Trait)
+          if (sym.owner.is(Flags.Trait))
             cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
               .withType(SuperType(thisType, sym.owner.typeRef))
           else
@@ -750,5 +750,5 @@ object Erasure {
   }
 
   private def takesBridges(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.isClass && !sym.is(Flags.Trait | Flags.Package)
+    sym.isClass && !sym.isOneOf(Flags.Trait | Flags.Package)
 }

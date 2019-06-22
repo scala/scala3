@@ -310,7 +310,7 @@ object PatternMatcher {
         lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
 
         def isSyntheticScala2Unapply(sym: Symbol) =
-          sym.is(SyntheticCase) && sym.owner.is(Scala2x)
+          sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)
 
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
           matchArgsPlan(caseAccessors.map(ref(scrutinee).select(_)), args, onSuccess)

@@ -451,12 +451,12 @@ class TreeUnpickler(reader: TastyReader,
     private def normalizeFlags(tag: Int, givenFlags: FlagSet, name: Name, isAbsType: Boolean, rhsIsEmpty: Boolean)(implicit ctx: Context): FlagSet = {
       val lacksDefinition =
         rhsIsEmpty &&
-          name.isTermName && !name.isConstructorName && !givenFlags.is(TermParamOrAccessor) ||
+          name.isTermName && !name.isConstructorName && !givenFlags.isOneOf(TermParamOrAccessor) ||
         isAbsType
       var flags = givenFlags
       if (lacksDefinition && tag != PARAM) flags |= Deferred
       if (tag == DEFDEF) flags |= Method
-      if (givenFlags is Module)
+      if (givenFlags.is(Module))
         flags = flags | (if (tag == VALDEF) ModuleValCreationFlags else ModuleClassCreationFlags)
       if (ctx.owner.isClass) {
         if (tag == TYPEPARAM) flags |= Param
@@ -538,7 +538,7 @@ class TreeUnpickler(reader: TastyReader,
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
-        if (flags is Module) ctx.adjustModuleCompleter(completer, name) else completer
+        if (flags.is(Module)) ctx.adjustModuleCompleter(completer, name) else completer
       val coord = coordAt(start)
       val sym =
         roots.find(root => (root.owner eq ctx.owner) && root.name == name) match {
@@ -607,7 +607,7 @@ class TreeUnpickler(reader: TastyReader,
           case SEALED => addFlag(Sealed)
           case CASE => addFlag(Case)
           case IMPLICIT => addFlag(Implicit)
-          case IMPLIED => addFlag(Implied)
+          case IMPLIED => addFlag(Delegate)
           case ERASED => addFlag(Erased)
           case LAZY => addFlag(Lazy)
           case OVERRIDE => addFlag(Override)
@@ -677,7 +677,7 @@ class TreeUnpickler(reader: TastyReader,
           case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM =>
             val sym = symbolAtCurrent()
             skipTree()
-            if (sym.isTerm && !sym.is(MethodOrLazyOrDeferred))
+            if (sym.isTerm && !sym.isOneOf(DeferredOrLazyOrMethod))
               initsFlags = EmptyFlags
             else if (sym.isClass ||
               sym.is(Method, butNot = Deferred) && !sym.isConstructor)
@@ -952,10 +952,10 @@ class TreeUnpickler(reader: TastyReader,
       assert(sourcePathAt(start).isEmpty)
       readByte()
       readEnd()
-      val importImplied = nextByte == IMPLIED
-      if (importImplied) readByte()
+      val importDelegate = nextByte == IMPLIED
+      if (importDelegate) readByte()
       val expr = readTerm()
-      setSpan(start, Import(importImplied, expr, readSelectors()))
+      setSpan(start, Import(importDelegate, expr, readSelectors()))
     }
 
     def readSelectors()(implicit ctx: Context): List[untpd.Tree] = nextByte match {

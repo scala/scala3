@@ -251,7 +251,7 @@ class ReplDriver(settings: Array[String],
       val info = symbol.info
       val defs =
         info.bounds.hi.finalResultType
-          .membersBasedOnFlags(required = allOf(Method), excluded = Accessor | ParamAccessor | Synthetic | Private)
+          .membersBasedOnFlags(required = Method, excluded = Accessor | ParamAccessor | Synthetic | Private)
           .filterNot { denot =>
             denot.symbol.owner == defn.AnyClass ||
             denot.symbol.owner == defn.ObjectClass ||
@@ -261,7 +261,7 @@ class ReplDriver(settings: Array[String],
 
       val vals =
         info.fields
-          .filterNot(_.symbol.is(ParamAccessor | Private | Synthetic | Module))
+          .filterNot(_.symbol.isOneOf(ParamAccessor | Private | Synthetic | Module))
           .filter(_.symbol.name.is(SimpleNameKind))
           .sortBy(_.name)
 

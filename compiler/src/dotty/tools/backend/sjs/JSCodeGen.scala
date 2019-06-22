@@ -447,7 +447,7 @@ class JSCodeGen()(implicit ctx: Context) {
         "genClassFields called with a ClassDef other than the current one")
 
     // Term members that are neither methods nor modules are fields
-    classSym.info.decls.filter(f => !f.is(Method | Module) && f.isTerm).map({ f =>
+    classSym.info.decls.filter(f => !f.isOneOf(Method | Module) && f.isTerm).map({ f =>
       implicit val pos = f.span
 
       val name =
@@ -540,7 +540,7 @@ class JSCodeGen()(implicit ctx: Context) {
       implicit pos: SourcePosition): Option[js.Tree] = {
     val ctors =
       if (sym.is(Abstract)) Nil
-      else sym.info.member(nme.CONSTRUCTOR).alternatives.map(_.symbol).filter(m => !m.is(Private | Protected))
+      else sym.info.member(nme.CONSTRUCTOR).alternatives.map(_.symbol).filter(m => !m.isOneOf(Private | Protected))
 
     if (ctors.isEmpty) {
       None

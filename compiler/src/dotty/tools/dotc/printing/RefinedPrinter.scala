@@ -70,9 +70,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override protected def recursionLimitExceeded(): Unit = {}
 
   protected def PrintableFlags(isType: Boolean): FlagSet = {
-    if (isType) TypeSourceModifierFlags | Module | Local
-    else TermSourceModifierFlags | Module | Local
-  }.toCommonFlags
+    val fs =
+      if (isType) TypeSourceModifierFlags | Module | Local  // DOTTY problem: cannot merge these two statements
+      else TermSourceModifierFlags | Module | Local
+    fs.toCommonFlags
+  }
 
   override def nameString(name: Name): String =
     if (ctx.settings.YdebugNames.value) name.debugString else NameTransformer.decodeIllegalChars(name.toString)
@@ -86,7 +88,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override protected def fullNameOwner(sym: Symbol): Symbol = {
     val owner = super.fullNameOwner(sym)
-    if (owner is ModuleClass) owner.sourceModule else owner
+    if (owner.is(ModuleClass)) owner.sourceModule else owner
   }
 
   override def toTextRef(tp: SingletonType): Text = controlled {
@@ -298,8 +300,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     def varianceText(mods: untpd.Modifiers) =
-      if (mods is Covariant) "+"
-      else if (mods is Contravariant) "-"
+      if (mods.is(Covariant)) "+"
+      else if (mods.is(Contravariant)) "-"
       else ""
 
     def argText(arg: Tree): Text = arg match {
@@ -344,7 +346,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case Ident(name) =>
         val txt = tree.typeOpt match {
           case tp: NamedType if name != nme.WILDCARD =>
-            val pre = if (tp.symbol is JavaStatic) tp.prefix.widen else tp.prefix
+            val pre = if (tp.symbol.is(JavaStatic)) tp.prefix.widen else tp.prefix
             toTextPrefix(pre) ~ withPos(selectionString(tp), tree.sourcePos)
           case _ =>
             toText(name)
@@ -549,9 +551,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         def argToText(arg: Tree) = arg match {
           case arg @ ValDef(name, tpt, _) =>
             val implicitText =
-              if ((arg.mods is Given)) { contextual = true; "" }
-              else if ((arg.mods is Erased)) { isErased = true; "" }
-              else if ((arg.mods is Implicit) && !implicitSeen) { implicitSeen = true; keywordStr("implicit ") }
+              if ((arg.mods.is(Given))) { contextual = true; "" }
+              else if ((arg.mods.is(Erased))) { isErased = true; "" }
+              else if ((arg.mods.is(Implicit)) && !implicitSeen) { implicitSeen = true; keywordStr("implicit ") }
               else ""
             implicitText ~ toText(name) ~ optAscription(tpt)
           case _ =>
@@ -734,7 +736,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def valDefToText[T >: Untyped](tree: ValDef[T]): Text = {
     import untpd.{modsDeco => _}
     dclTextOr(tree) {
-      modText(tree.mods, tree.symbol, keywordStr(if (tree.mods is Mutable) "var" else "val"), isType = false) ~~
+      modText(tree.mods, tree.symbol, keywordStr(if (tree.mods.is(Mutable)) "var" else "val"), isType = false) ~~
         valDefText(nameIdText(tree)) ~ optAscription(tree.tpt) ~
         withEnclosingDef(tree) { optText(tree.rhs)(" = " ~ _) }
     }
@@ -791,7 +793,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   protected def templateText(tree: TypeDef, impl: Template): Text = {
-    val decl = modText(tree.mods, tree.symbol, keywordStr(if ((tree).mods is Trait) "trait" else "class"), isType = true)
+    val decl = modText(tree.mods, tree.symbol, keywordStr(if (tree.mods.is(Trait)) "trait" else "class"), isType = true)
     ( decl ~~ typeText(nameIdText(tree)) ~ withEnclosingDef(tree) { toTextTemplate(impl) }
     // ~ (if (tree.hasType && printDebug) i"[decls = ${tree.symbol.info.decls}]" else "") // uncomment to enable
     )
@@ -816,12 +818,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def annotText(tree: untpd.Tree): Text = "@" ~ constrText(tree) // DD
 
   protected def modText(mods: untpd.Modifiers, sym: Symbol, kw: String, isType: Boolean): Text = { // DD
-    val suppressKw = if (enclDefIsClass) mods is ParamAndLocal else mods is Param
+    val suppressKw = if (enclDefIsClass) mods.isAllOf(LocalParam) else mods.is(Param)
     var flagMask =
       if (ctx.settings.YdebugFlags.value) AnyFlags
       else if (suppressKw) PrintableFlags(isType) &~ Private
       else PrintableFlags(isType)
-    if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= ImplicitOrImplied // drop implicit/delegate from classes
+    if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= DelegateOrImplicit // drop implicit/delegate from classes
     val rawFlags = if (sym.exists) sym.flags else mods.flags
     if (rawFlags.is(Param)) flagMask = flagMask &~ Given
     val flags = rawFlags & flagMask
@@ -844,11 +846,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override protected def ParamRefNameString(name: Name): String =
     name.invariantName.toString
 
-  override protected def treatAsTypeParam(sym: Symbol): Boolean = sym is TypeParam
+  override protected def treatAsTypeParam(sym: Symbol): Boolean = sym.is(TypeParam)
 
   override protected def treatAsTypeArg(sym: Symbol): Boolean =
-    sym.isType && (sym is ProtectedLocal) &&
-      (sym.allOverriddenSymbols exists (_ is TypeParam))
+    sym.isType && (sym.isAllOf(ProtectedLocal)) &&
+      (sym.allOverriddenSymbols exists (_.is(TypeParam)))
 
   override def toText(sym: Symbol): Text = {
     if (sym.isImport)
@@ -879,9 +881,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   /** String representation of symbol's kind. */
   override def kindString(sym: Symbol): String = {
     val flags = sym.flagsUNSAFE
-    if (flags is Package) "package"
+    if (flags.is(Package)) "package"
     else if (sym.isPackageObject) "package object"
-    else if (flags is Module) "object"
+    else if (flags.is(Module)) "object"
     else if (sym.isClassConstructor) "constructor"
     else super.kindString(sym)
   }
@@ -901,7 +903,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       super.toTextFlags(sym)
     else {
       var flags = sym.flagsUNSAFE
-      if (flags is TypeParam) flags = flags &~ Protected
+      if (flags.is(TypeParam)) flags = flags &~ Protected
       toTextFlags(sym, flags & PrintableFlags(sym.isType))
     }
 

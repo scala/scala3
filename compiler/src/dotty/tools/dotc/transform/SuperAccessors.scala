@@ -67,7 +67,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       val sym = sel.symbol
       val clazz = qual.symbol.asClass
       var superName = SuperAccessorName(name.asTermName)
-      if (clazz is Trait) superName = superName.expandedName(clazz)
+      if (clazz.is(Trait)) superName = superName.expandedName(clazz)
       val superInfo = sel.tpe.widenSingleton.ensureMethodic
 
       val accRange = sel.span.focus
@@ -75,14 +75,14 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         .suchThat(_.signature == superInfo.signature).symbol
         .orElse {
           ctx.debuglog(s"add super acc ${sym.showLocated} to $clazz")
-          val maybeDeferred = if (clazz is Trait) Deferred else EmptyFlags
+          val maybeDeferred = if (clazz.is(Trait)) Deferred else EmptyFlags
           val acc = ctx.newSymbol(
               clazz, superName, Artifact | Method | maybeDeferred,
               superInfo, coord = accRange).enteredAfter(thisPhase)
           // Diagnostic for SI-7091
           if (!accDefs.contains(clazz))
             ctx.error(
-              s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz is Package}. Accessor required for ${sel} (${sel.show})",
+              s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz.is(Package)}. Accessor required for ${sel} (${sel.show})",
               sel.sourcePos)
           else accDefs(clazz) += DefDef(acc, EmptyTree).withSpan(accRange)
           acc
@@ -100,16 +100,16 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       assert(sup.symbol.exists, s"missing symbol in $sel: ${sup.tpe}")
       val clazz = sup.symbol
 
-      if (sym.isTerm && !sym.is(Method, butNot = Accessor) && !ctx.owner.is(ParamForwarder))
+      if (sym.isTerm && !sym.is(Method, butNot = Accessor) && !ctx.owner.isAllOf(ParamForwarder))
         // ParamForwaders as installed ParamForwarding.scala do use super calls to vals
         ctx.error(s"super may be not be used on ${sym.underlyingSymbol}", sel.sourcePos)
       else if (isDisallowed(sym))
         ctx.error(s"super not allowed here: use this.${sel.name} instead", sel.sourcePos)
-      else if (sym is Deferred) {
+      else if (sym.is(Deferred)) {
         val member = sym.overridingSymbol(clazz.asClass)
         if (!mix.name.isEmpty ||
             !member.exists ||
-            !((member is AbsOverride) && member.isIncompleteIn(clazz)))
+            !(member.is(AbsOverride) && member.isIncompleteIn(clazz)))
           ctx.error(
               i"${sym.showLocated} is accessed from super. It may not be abstract unless it is overridden by a member declared `abstract' and `override'",
               sel.sourcePos)
@@ -122,7 +122,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
             // scala/bug#4989 Check if an intermediate class between `clazz` and `sym.owner` redeclares the method as abstract.
             for (intermediateClass <- clazz.info.baseClasses.tail.takeWhile(_ != sym.owner)) {
               val overriding = sym.overridingSymbol(intermediateClass)
-              if ((overriding is (Deferred, butNot = AbsOverride)) && !(overriding.owner is Trait))
+              if (overriding.is(Deferred, butNot = AbsOverride) && !overriding.owner.is(Trait))
                 ctx.error(
                   s"${sym.showLocated} cannot be directly accessed from ${clazz} because ${overriding.owner} redeclares it as abstract",
                   sel.sourcePos)
@@ -149,7 +149,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         }
       }
       if (name.isTermName && mix.name.isEmpty &&
-          ((clazz is Trait) || clazz != ctx.owner.enclosingClass || !validCurrentClass))
+          (clazz.is(Trait) || clazz != ctx.owner.enclosingClass || !validCurrentClass))
         superAccessorCall(sel)(ctx.withPhase(thisPhase.next))
       else sel
     }
@@ -205,7 +205,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       else {
         val (params, rest) = impl.body span {
           case td: TypeDef => !td.isClassDef
-          case vd: ValOrDefDef => vd.symbol.flags is ParamAccessor
+          case vd: ValOrDefDef => vd.symbol.flags.is(ParamAccessor)
           case _ => false
         }
         cpy.Template(impl)(body = params ++ accessors ++ rest)
