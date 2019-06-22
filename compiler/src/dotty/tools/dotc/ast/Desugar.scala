@@ -1410,7 +1410,9 @@ object desugar {
     }
 
     def makePolyFunction(targs: List[Tree], body: Tree): Tree = body match {
-      case  Function(vargs, res) =>
+      case Parens(body1) =>
+        makePolyFunction(targs, body1)
+      case Function(vargs, res) =>
         // TODO: Figure out if we need a `PolyFunctionWithMods` instead.
         val mods = body match {
           case body: FunctionWithMods => body.mods
