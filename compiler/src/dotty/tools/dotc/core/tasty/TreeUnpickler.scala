@@ -762,7 +762,7 @@ class TreeUnpickler(reader: TastyReader,
 
       val localCtx = localContext(sym)
 
-      def readRhs(implicit ctx: Context) =
+      def readRhs(implicit ctx: Context): LazyTree =
         if (nothingButMods(end))
           EmptyTree
         else if (sym.isInlineMethod)

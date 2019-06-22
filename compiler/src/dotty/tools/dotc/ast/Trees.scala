@@ -33,9 +33,6 @@ object Trees {
   /** Property key for trees with documentation strings attached */
   val DocComment: Property.StickyKey[Comments.Comment] = new Property.StickyKey
 
-  type LazyTree = AnyRef     /* really: Tree | Lazy[Tree] */
-  type LazyTreeList = AnyRef /* really: List[Tree] | Lazy[List[Tree]] */
-
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Type` or `Untyped`.
    *  Untyped trees have type `Tree[Untyped]`.
@@ -236,6 +233,9 @@ object Trees {
     override def getMessage: String = s"type of $tree is not assigned"
   }
 
+  type LazyTree[-T >: Untyped] = Tree[T] | Lazy[Tree[T]]
+  type LazyTreeList[-T >: Untyped] = List[Tree[T]] | Lazy[List[Tree[T]]]
+
   // ------ Categories of trees -----------------------------------
 
   /** Instances of this class are trees for which isType is definitely true.
@@ -361,7 +361,7 @@ object Trees {
     type ThisTree[-T >: Untyped] <: ValOrDefDef[T]
     def name: TermName
     def tpt: Tree[T]
-    def unforcedRhs: LazyTree = unforced
+    def unforcedRhs: LazyTree[T] = unforced
     def rhs(implicit ctx: Context): Tree[T] = forceIfLazy
 
     /** Is this a `BackquotedValDef` or `BackquotedDefDef` ? */
@@ -727,15 +727,15 @@ object Trees {
   }
 
   /** mods val name: tpt = rhs */
-  case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree)(implicit @constructorOnly src: SourceFile)
+  case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = ValDef[T]
     assert(isEmpty || tpt != genericEmptyTree)
-    def unforced: LazyTree = preRhs
-    protected def force(x: AnyRef): Unit = preRhs = x
+    def unforced: LazyTree[T] = preRhs
+    protected def force(x: Tree[T @uncheckedVariance]): Unit = preRhs = x
   }
 
-  class BackquotedValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], preRhs: LazyTree)(implicit @constructorOnly src: SourceFile)
+  class BackquotedValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
     extends ValDef[T](name, tpt, preRhs) {
     override def isBackquoted: Boolean = true
     override def productPrefix: String = "BackquotedValDef"
@@ -743,12 +743,12 @@ object Trees {
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
   case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
-      vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree)(implicit @constructorOnly src: SourceFile)
+      vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
     assert(tpt != genericEmptyTree)
-    def unforced: LazyTree = preRhs
-    protected def force(x: AnyRef): Unit = preRhs = x
+    def unforced: LazyTree[T] = preRhs
+    protected def force(x: Tree[T @uncheckedVariance]): Unit = preRhs = x
 
     override def disableOverlapChecks = rawMods.is(Delegate)
       // disable order checks for implicit aliases since their given clause follows
@@ -756,7 +756,7 @@ object Trees {
   }
 
   class BackquotedDefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
-      vparamss: List[List[ValDef[T]]], tpt: Tree[T], preRhs: LazyTree)(implicit @constructorOnly src: SourceFile)
+      vparamss: List[List[ValDef[T]]], tpt: Tree[T], preRhs: LazyTree[T])(implicit @constructorOnly src: SourceFile)
     extends DefDef[T](name, tparams, vparamss, tpt, preRhs) {
     override def isBackquoted: Boolean = true
     override def productPrefix: String = "BackquotedDefDef"
@@ -780,12 +780,12 @@ object Trees {
    *                            if this is of class untpd.DerivingTemplate.
    *                            Typed templates only have parents.
    */
-  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parentsOrDerived: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeList)(implicit @constructorOnly src: SourceFile)
+  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parentsOrDerived: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeList[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
     extends DefTree[T] with WithLazyField[List[Tree[T]]] {
     type ThisTree[-T >: Untyped] = Template[T]
-    def unforcedBody: LazyTreeList = unforced
-    def unforced: LazyTreeList = preBody
-    protected def force(x: AnyRef): Unit = preBody = x
+    def unforcedBody: LazyTreeList[T] = unforced
+    def unforced: LazyTreeList[T] = preBody
+    protected def force(x: List[Tree[T @uncheckedVariance]]): Unit = preBody = x
     def body(implicit ctx: Context): List[Tree[T]] = forceIfLazy
 
     def parents: List[Tree[T]] = parentsOrDerived // overridden by DerivingTemplate
@@ -905,12 +905,12 @@ object Trees {
 
   /** A tree that can have a lazy field
    *  The field is represented by some private `var` which is
-   *  proxied `unforced` and `force`. Forcing the field will
+   *  accessed by `unforced` and `force`. Forcing the field will
    *  set the `var` to the underlying value.
    */
   trait WithLazyField[+T <: AnyRef] {
-    def unforced: AnyRef
-    protected def force(x: AnyRef): Unit
+    def unforced: T | Lazy[T]
+    protected def force(x: T @uncheckedVariance): Unit
     def forceIfLazy(implicit ctx: Context): T = unforced match {
       case lzy: Lazy[T @unchecked] =>
         val x = lzy.complete
@@ -924,7 +924,7 @@ object Trees {
    *  These can be instantiated with Lazy instances which
    *  can delay tree construction until the field is first demanded.
    */
-  trait Lazy[T <: AnyRef] {
+  trait Lazy[+T <: AnyRef] {
     def complete(implicit ctx: Context): T
   }
 
@@ -943,6 +943,8 @@ object Trees {
     type DefTree = Trees.DefTree[T]
     type MemberDef = Trees.MemberDef[T]
     type ValOrDefDef = Trees.ValOrDefDef[T]
+    type LazyTree = Trees.LazyTree[T]
+    type LazyTreeList = Trees.LazyTreeList[T]
 
     type Ident = Trees.Ident[T]
     type BackquotedIdent = Trees.BackquotedIdent[T]
