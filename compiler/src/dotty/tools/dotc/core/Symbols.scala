@@ -704,7 +704,7 @@ object Symbols {
 
     type ThisName = TypeName
 
-    type TreeOrProvider = AnyRef /* tpd.TreeProvider | tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree | Null */
+    type TreeOrProvider = tpd.TreeProvider | tpd.Tree
 
     private[this] var myTree: TreeOrProvider = tpd.EmptyTree
 

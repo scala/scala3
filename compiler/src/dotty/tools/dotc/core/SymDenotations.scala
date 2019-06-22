@@ -939,7 +939,7 @@ object SymDenotations {
       if (this.is(ModuleClass))
         myInfo match {
           case ClassInfo(_, _, _, _, selfType) =>
-            def sourceOfSelf(tp: TypeOrSymbol): Symbol = tp match {
+            def sourceOfSelf(tp: TypeOrSymbol): Symbol = (tp: @unchecked) match {
               case tp: TermRef => tp.symbol
               case tp: Symbol => sourceOfSelf(tp.info)
               case tp: RefinedType => sourceOfSelf(tp.parent)
