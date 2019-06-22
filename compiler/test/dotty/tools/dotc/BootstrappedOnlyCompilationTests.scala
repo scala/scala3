@@ -113,6 +113,13 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     ).checkRuns()
   }
 
+  @Test def runBootstrappedOnly: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("runBootstrappedOnly")
+    aggregateTests(
+      compileFilesInDir("tests/run-bootstrapped", withCompilerOptions),
+    ).checkRuns()
+  }
+
   // Pickling Tests ------------------------------------------------------------
   //
   // Pickling tests are very memory intensive and as such need to be run with a
