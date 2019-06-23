@@ -26,18 +26,18 @@ object desugar {
   /** If a Select node carries this attachment, suppress the check
    *  that its type refers to an acessible symbol.
    */
-  val SuppressAccessCheck: Property.Key[Unit] = new Property.Key
+  val SuppressAccessCheck: Property.Key[Unit] = Property.Key()
 
   /** An attachment for companion modules of classes that have a `derives` clause.
    *  The position value indicates the start position of the template of the
    *  deriving class.
    */
-  val DerivingCompanion: Property.Key[SourcePosition] = new Property.Key
+  val DerivingCompanion: Property.Key[SourcePosition] = Property.Key()
 
   /** An attachment for match expressions generated from a PatDef or GenFrom.
    *  Value of key == one of IrrefutablePatDef, IrrefutableGenFrom
    */
-  val CheckIrrefutable: Property.Key[MatchCheck] = new Property.StickyKey
+  val CheckIrrefutable: Property.Key[MatchCheck] = Property.StickyKey()
 
   /** What static check should be applied to a Match? */
   enum MatchCheck {
@@ -132,17 +132,17 @@ object desugar {
   def derivedTypeParam(tdef: TypeDef, suffix: String = "")(implicit ctx: Context): TypeDef =
     cpy.TypeDef(tdef)(
       name = tdef.name ++ suffix,
-      rhs = new DerivedFromParamTree(suffix).withSpan(tdef.rhs.span).watching(tdef)
+      rhs = DerivedFromParamTree(suffix).withSpan(tdef.rhs.span).watching(tdef)
     )
 
   /** A derived type definition watching `sym` */
   def derivedTypeParam(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
-    TypeDef(sym.name, new DerivedFromParamTree("").watching(sym)).withFlags(TypeParam)
+    TypeDef(sym.name, DerivedFromParamTree("").watching(sym)).withFlags(TypeParam)
 
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
   def derivedTermParam(vdef: ValDef)(implicit ctx: Context): ValDef =
     cpy.ValDef(vdef)(
-      tpt = new DerivedFromParamTree("").withSpan(vdef.tpt.span).watching(vdef))
+      tpt = DerivedFromParamTree("").withSpan(vdef.tpt.span).watching(vdef))
 
 // ----- Desugar methods -------------------------------------------------
 
@@ -161,7 +161,7 @@ object desugar {
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
       // right now vdef maps via expandedTree to a thicket which concerns itself.
       // I don't see a problem with that but if there is one we can avoid it by making a copy here.
-      val setterParam = makeSyntheticParameter(tpt = (new SetterParamTree).watching(vdef))
+      val setterParam = makeSyntheticParameter(tpt = SetterParamTree().watching(vdef))
       // The rhs gets filled in later, when field is generated and getter has parameters (see Memoize miniphase)
       val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
       val setter = cpy.DefDef(vdef)(
@@ -213,7 +213,7 @@ object desugar {
     val meth @ DefDef(_, tparams, vparamss, tpt, rhs) = transformQuotedPatternName(meth0)
     val methName = normalizeName(meth, tpt).asTermName
     val mods = meth.mods
-    val epbuf = new ListBuffer[ValDef]
+    val epbuf = ListBuffer[ValDef]()
     def desugarContextBounds(rhs: Tree): Tree = rhs match {
       case ContextBounds(tbounds, cxbounds) =>
         epbuf ++= makeImplicitParameters(cxbounds, Implicit, forPrimaryConstructor = isPrimaryConstructor)
@@ -439,7 +439,7 @@ object desugar {
         val (enumCases, enumStats) = stats.partition(DesugarEnums.isEnumCase)
         if (enumCases.isEmpty)
           ctx.error("Enumerations must constain at least one case", namePos)
-        val enumCompanionRef = new TermRefTree()
+        val enumCompanionRef = TermRefTree()
         val enumImport = Import(importDelegate = false, enumCompanionRef, enumCases.flatMap(caseIds))
         (enumImport :: enumStats, enumCases, enumCompanionRef)
       }
@@ -452,7 +452,7 @@ object desugar {
     val derivedVparamss = constrVparamss.nestedMap(derivedTermParam(_))
     val arity = constrVparamss.head.length
 
-    val classTycon: Tree = new TypeRefTree // watching is set at end of method
+    val classTycon: Tree = TypeRefTree() // watching is set at end of method
 
     def appliedTypeTree(tycon: Tree, args: List[Tree]) =
       (if (args.isEmpty) tycon else AppliedTypeTree(tycon, args))
@@ -891,8 +891,8 @@ object desugar {
         }
       else x
   }
-  private val typeNameExtractor = new NameExtractor(followArgs = true)
-  private val argNameExtractor = new NameExtractor(followArgs = false)
+  private val typeNameExtractor = NameExtractor(followArgs = true)
+  private val argNameExtractor = NameExtractor(followArgs = false)
 
   private def inventTypeName(tree: Tree)(implicit ctx: Context): String = typeNameExtractor("", tree)
 
@@ -1203,7 +1203,7 @@ object desugar {
   def makeContextualFunction(formals: List[Type], body: Tree, isErased: Boolean)(implicit ctx: Context): Tree = {
     val mods = if (isErased) Given | Erased else Given
     val params = makeImplicitParameters(formals.map(TypeTree), mods)
-    new FunctionWithMods(params, body, Modifiers(mods))
+    FunctionWithMods(params, body, Modifiers(mods))
   }
 
   /** Add annotation to tree:
@@ -1415,7 +1415,7 @@ object desugar {
           val pdefs = (valeqs, defpats, rhss).zipped.map(makePatDef(_, Modifiers(), _, _))
           val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
           val allpats = gen.pat :: pats
-          val vfrom1 = new GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
+          val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
           makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
         case (gen: GenFrom) :: test :: rest =>
           val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen, test))
@@ -1590,7 +1590,7 @@ object desugar {
    *  without duplicates
    */
   private def getVariables(tree: Tree)(implicit ctx: Context): List[VarInfo] = {
-    val buf = new ListBuffer[VarInfo]
+    val buf = ListBuffer[VarInfo]()
     def seenName(name: Name) = buf exists (_._1.name == name)
     def add(named: NameTree, t: Tree): Unit =
       if (!seenName(named.name) && named.name.isTermName) buf += ((named, t))

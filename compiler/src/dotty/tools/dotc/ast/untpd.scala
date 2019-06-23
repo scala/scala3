@@ -246,7 +246,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def isEnumClass: Boolean = isEnum && !is(Case)
   }
 
-  @sharable val EmptyModifiers: Modifiers = new Modifiers()
+  @sharable val EmptyModifiers: Modifiers = Modifiers()
 
   // ----- TypeTrees that refer to other tree's symbols -------------------
 
@@ -284,16 +284,16 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  from the symbol in this type. These type trees have marker trees
    *  TypeRefOfSym or InfoOfSym as their originals.
    */
-  val References: Property.Key[List[DerivedTypeTree]] = new Property.Key
+  val References: Property.Key[List[DerivedTypeTree]] = Property.Key()
 
   /** Property key for TypeTrees marked with TypeRefOfSym or InfoOfSym
    *  which contains the symbol of the original tree from which this
    *  TypeTree is derived.
    */
-  val OriginalSymbol: Property.Key[Symbol] = new Property.Key
+  val OriginalSymbol: Property.Key[Symbol] = Property.Key()
 
   /** Property key for contextual Apply trees of the form `fn given arg` */
-  val ApplyGiven: Property.StickyKey[Unit] = new Property.StickyKey
+  val ApplyGiven: Property.StickyKey[Unit] = Property.StickyKey()
 
   // ------ Creation methods for untyped only -----------------
 
@@ -460,7 +460,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
 // --------- Copier/Transformer/Accumulator classes for untyped trees -----
 
-  override val cpy: UntypedTreeCopier = new UntypedTreeCopier
+  override val cpy: UntypedTreeCopier = UntypedTreeCopier()
 
   class UntypedTreeCopier extends TreeCopier {
 

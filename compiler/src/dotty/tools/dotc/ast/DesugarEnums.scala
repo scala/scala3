@@ -21,7 +21,7 @@ object DesugarEnums {
   }
 
   /** Attachment containing the number of enum cases and the smallest kind that was seen so far. */
-  val EnumCaseCount: Property.Key[(Int, DesugarEnums.CaseKind.Value)] = new Property.Key
+  val EnumCaseCount: Property.Key[(Int, DesugarEnums.CaseKind.Value)] = Property.Key()
 
   /** The enumeration class that belongs to an enum case. This works no matter
    *  whether the case is still in the enum class or it has been transferred to the
