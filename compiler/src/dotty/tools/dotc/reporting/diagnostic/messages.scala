@@ -315,10 +315,12 @@ object messages {
     val msg: String = {
       import core.Flags._
       val maxDist = 3
-      val decls = site.decls.toList.flatMap { sym =>
-        if (sym.flagsUNSAFE.isOneOf(Synthetic | PrivateLocal) || sym.isConstructor) Nil
-        else List((sym.name.show, sym))
-      }
+      val decls = site.decls.toList
+        .filter(_.isType == name.isTypeName)
+        .flatMap { sym =>
+          if (sym.flagsUNSAFE.isOneOf(Synthetic | PrivateLocal) || sym.isConstructor) Nil
+          else List((sym.name.show, sym))
+        }
 
       // Calculate Levenshtein distance
       def distance(n1: Iterable[_], n2: Iterable[_]) =
@@ -358,7 +360,8 @@ object messages {
       }
 
       val closeMember = closest match {
-        case (n, sym) :: Nil => s" - did you mean $siteName.$n?"
+        case (n, sym) :: Nil =>
+          s" - did you mean $siteName.$n?"
         case Nil => ""
         case _ => assert(
           false,
