@@ -7,7 +7,7 @@ import dotty.tools.dotc.tastyreflect.ReflectionImpl
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.reporting._
-import scala.quoted.{Expr, Type}
+import scala.quoted._
 import scala.quoted.Toolbox
 import java.net.URLClassLoader
 
@@ -20,7 +20,7 @@ class QuoteDriver(appClassloader: ClassLoader) extends Driver {
 
   private[this] val contextBase: ContextBase = new ContextBase
 
-  def run[T](expr: scala.quoted.QuoteContext => Expr[T], settings: Toolbox.Settings): T = {
+  def run[T](exprBuilder: QuoteContext => Expr[T], settings: Toolbox.Settings): T = {
     val outDir: AbstractFile = settings.outDir match {
       case Some(out) =>
         val dir = Directory(out)
@@ -34,7 +34,7 @@ class QuoteDriver(appClassloader: ClassLoader) extends Driver {
     val ctx = setToolboxSettings(ctx0.fresh.setSetting(ctx0.settings.outputDir, outDir), settings)
 
     val driver = new QuoteCompiler
-    driver.newRun(ctx).compileExpr(expr)
+    driver.newRun(ctx).compileExpr(exprBuilder)
 
     assert(!ctx.reporter.hasErrors)
 
