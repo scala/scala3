@@ -12,7 +12,7 @@ object Test {
         '{ y + $b }
       }
     }
-    println(show(x))
+    println(run(x.show.toExpr))
   }
 
 }

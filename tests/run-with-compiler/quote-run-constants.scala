@@ -7,7 +7,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     def runAndPrint[T](expr: Expr[T]): Unit = println(run(expr))
-    def showAndPrint[T](expr: Expr[T]): Unit = println(show(expr))
+    def show[T](expr: Expr[T]): Unit = println(run(expr.show.toExpr))
 
     runAndPrint(true)
     runAndPrint('a')
@@ -24,20 +24,20 @@ object Test {
 
     println("======")
 
-    showAndPrint(true)
-    showAndPrint('a')
-    showAndPrint('\n')
-    showAndPrint('"')
-    showAndPrint('\'')
-    showAndPrint('\\')
-    showAndPrint(1)
-    showAndPrint(2)
-    showAndPrint(3L)
-    showAndPrint(4.0f)
-    showAndPrint(5.0d)
-    showAndPrint("xyz")
-    showAndPrint("\n\\\"'")
-    showAndPrint("""abc
+    show(true)
+    show('a')
+    show('\n')
+    show('"')
+    show('\'')
+    show('\\')
+    show(1)
+    show(2)
+    show(3L)
+    show(4.0f)
+    show(5.0d)
+    show("xyz")
+    show("\n\\\"'")
+    show("""abc
          xyz""")
   }
 }

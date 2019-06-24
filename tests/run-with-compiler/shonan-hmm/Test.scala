@@ -19,7 +19,7 @@ object Test {
       import intExprComplex._
 
       val res = Complex('{1}, '{2}) * Complex('{4}, '{2})
-      println(s"Complex(${run(res.re)}, ${show(res.im)})")
+      println(s"Complex(${run(res.re.show.toExpr)}, ${run(res.im.show.toExpr)})")
     }
 
     // {
@@ -36,7 +36,7 @@ object Test {
     Vmults.vmult(out, arr1, arr2)
     println(out.toList)
 
-    println(show(Vmults.vmultCA))
+    println(run(Vmults.vmultCA.show.toExpr))
 
     val a = Array(
       Array( 5,  0,  0,  5,  0),
@@ -54,37 +54,37 @@ object Test {
     println()
     println()
 
-    println(show(MVmult.mvmult_c))
+    println(run(MVmult.mvmult_c.show.toExpr))
     println()
     println()
     println()
 
-    println(show(MVmult.mvmult_mc(3, 2)))
+    println(run(MVmult.mvmult_mc(3, 2).show.toExpr))
     println()
     println()
     println()
 
-    println(show(MVmult.mvmult_ac(a)))
+    println(run(MVmult.mvmult_ac(a).show.toExpr))
     println()
     println()
     println()
 
-    println(show(MVmult.mvmult_opt(a)))
+    println(run(MVmult.mvmult_opt(a).show.toExpr))
     println()
     println()
     println()
 
-    println(show(MVmult.mvmult_roll(a)))
+    println(run(MVmult.mvmult_roll(a).show.toExpr))
     println()
     println()
     println()
 
-    println(show(MVmult.mvmult_let1(a)))
+    println(run(MVmult.mvmult_let1(a).show.toExpr))
     println()
     println()
     println()
 
-    println(show(MVmult.mvmult_let(a)))
+    println(run(MVmult.mvmult_let(a).show.toExpr))
   }
 }
 

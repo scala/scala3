@@ -11,23 +11,17 @@ object Macros {
   def impl(implicit reflect: Reflection): Expr[Unit] = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     // 2 is a lifted constant
-    val show1 = show(power(2, 3.0))
-    val run1  = run {
-      power(2, 3.0)
-    }
+    val show1 = run(power(2, 3.0).show.toExpr)
+    val run1  = run(power(2, 3.0))
 
     // n is a lifted constant
     val n = 2
-    val show2 = show(power(n, 4.0))
-    val run2  = run {
-      power(n, 4.0)
-    }
+    val show2 = run(power(n, 4.0).show.toExpr)
+    val run2  = run(power(n, 4.0))
 
     // n is a constant in a quote
-    val show3 = show(power('{2}, 5.0))
-    val run3 =  run {
-      power('{2}, 5.0)
-    }
+    val show3 = run(power('{2}, 5.0).show.toExpr)
+    val run3 =  run(power('{2}, 5.0))
 
     // n2 is clearly not a constant
     // FIXME

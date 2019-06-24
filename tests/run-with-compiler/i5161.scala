@@ -26,6 +26,6 @@ object Test {
     val test = Add(Int2(1), Int2(1))
     val res = evalTest(test)
     println("run : " + run(res))
-    println("show : " + show(res))
+    println("show : " + run(res.show.toExpr))
   }
 }

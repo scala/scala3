@@ -14,6 +14,6 @@ object Test {
       x
     }
 
-    println(show(q))
+    println(run(q.show.toExpr))
   }
 }

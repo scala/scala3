@@ -9,7 +9,7 @@ object Test {
       inlineLambda
     }
     println(run(f4(x)))
-    println(show(f4(x)))
+    println(run(f4(x).show.toExpr))
   }
 
   inline def inlineLambda <: Int => Int = x => x + x

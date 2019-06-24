@@ -9,6 +9,6 @@ object Test {
       t
     }
 
-    println(show(q))
+    println(run(q.show.toExpr))
   }
 }

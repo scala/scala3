@@ -10,6 +10,6 @@ object Test {
     }
     println(run(expr))
     println(run(expr))
-    println(show(expr))
+    println(run(expr.show.toExpr))
   }
 }

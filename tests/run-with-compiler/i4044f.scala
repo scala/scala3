@@ -14,7 +14,7 @@ class Foo {
         foo('{e1 + $u}, '{f1})
       }
     }
-    println(show(q))
+    println(run(q.show.toExpr))
   }
 }
 

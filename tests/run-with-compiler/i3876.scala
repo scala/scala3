@@ -8,6 +8,6 @@ object Test {
     val f: Expr[Int => Int] = '{ (x: Int) => x + x }
 
     println(run(f(x)))
-    println(show(f(x)))
+    println(run(f(x).show.toExpr))
   }
 }

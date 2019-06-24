@@ -11,6 +11,6 @@ object Test {
     }
 
     println(run(f3(x)))
-    println(show(f3(x))) // TODO improve printer
+    println(run(f3(x).show.toExpr)) // TODO improve printer
   }
 }

@@ -10,7 +10,7 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     val p = peval1()
-    println(show(p))
+    println(run(p.show.toExpr))
   }
 
 }

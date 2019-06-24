@@ -34,7 +34,7 @@ object Test {
     val res1 = '{ (x: Int) => ${compile(exp, Map("x" -> 'x), false)} }
 
 
-    println(show(res1))
+    println(run(res1.show.toExpr))
 
     val fn = run {
       res1
@@ -46,13 +46,13 @@ object Test {
     println("---")
 
     val res2 = compile(letExp, Map(), false)
-    println(show(res2))
+    println(run(res2.show.toExpr))
     println(run(res2))
 
     println("---")
 
     val res3 = compile(letExp, Map(), true)
-    println(show(res3))
+    println(run(res3.show.toExpr))
     println(run(res3))
   }
 }
