@@ -4,5 +4,5 @@ enum Foo[T] {
 }
 
 object Main {
-  def f(foo: Foo.Baz): Foo[_] = foo
+  def f(foo: Foo.Baz): Foo[_] = foo // error
 }
