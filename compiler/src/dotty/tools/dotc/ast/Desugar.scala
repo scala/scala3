@@ -316,6 +316,42 @@ object desugar {
     } else tree
   }
 
+  /** Add an explicit ascription to the `expectedTpt` to every tail splice.
+   *
+   *  - `'{ x }` -> `'{ x }`
+   *  - `'{ $x }` -> `'{ $x: T }`
+   *  - `'{ if (...) $x else $y }` -> `'{ if (...) ($x: T) else ($y: T) }`
+   *
+   *  Note that the splice `$t: T` will be typed as `${t: Expr[T]}`
+   */
+  def quotedPattern(tree: untpd.Tree, expectedTpt: untpd.Tree)(implicit ctx: Context): untpd.Tree = {
+    def adaptToExpectedTpt(tree: untpd.Tree): untpd.Tree = tree match {
+      // Add the expected type as an ascription
+      case _: untpd.Splice =>
+        untpd.Typed(tree, expectedTpt).withSpan(tree.span)
+      case Typed(expr: untpd.Splice, tpt) =>
+        cpy.Typed(tree)(expr, untpd.makeAndType(tpt, expectedTpt).withSpan(tpt.span))
+
+      // Propagate down the expected type to the leafs of the expression
+      case Block(stats, expr) =>
+        cpy.Block(tree)(stats, adaptToExpectedTpt(expr))
+      case If(cond, thenp, elsep) =>
+        cpy.If(tree)(cond, adaptToExpectedTpt(thenp), adaptToExpectedTpt(elsep))
+      case untpd.Parens(expr) =>
+        cpy.Parens(tree)(adaptToExpectedTpt(expr))
+      case Match(selector, cases) =>
+        val newCases = cases.map(cdef => cpy.CaseDef(cdef)(body = adaptToExpectedTpt(cdef.body)))
+        cpy.Match(tree)(selector, newCases)
+      case untpd.ParsedTry(expr, handler, finalizer) =>
+        cpy.ParsedTry(tree)(adaptToExpectedTpt(expr), adaptToExpectedTpt(handler), finalizer)
+
+      // Tree does not need to be ascribed
+      case _ =>
+        tree
+    }
+    adaptToExpectedTpt(tree)
+  }
+
   // Add all evidence parameters in `params` as implicit parameters to `meth` */
   private def addEvidenceParams(meth: DefDef, params: List[ValDef])(implicit ctx: Context): DefDef =
     params match {

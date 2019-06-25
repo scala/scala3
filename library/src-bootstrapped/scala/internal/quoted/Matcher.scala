@@ -76,7 +76,7 @@ object Matcher {
      */
     def (scrutinee0: Tree) =#= (pattern0: Tree) given Context, Env: Matching = {
 
-      /** Normalieze the tree */
+      /** Normalize the tree */
       def normalize(tree: Tree): Tree = tree match {
         case Block(Nil, expr) => normalize(expr)
         case Block(stats1, Block(stats2, expr)) => normalize(Block(stats1 ::: stats2, expr))
