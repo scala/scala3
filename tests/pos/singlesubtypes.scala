@@ -9,4 +9,5 @@ object Test {
   val b: E.b.type = E.b
 
   val c: a.type | b.type = ???
+  val d: a.type | b.type = c
 }

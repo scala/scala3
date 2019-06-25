@@ -600,8 +600,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         compareTypeLambda
       case OrType(tp21, tp22) =>
         if (tp2.atoms.nonEmpty && canCompare(tp2.atoms))
-          return tp1.atoms.nonEmpty && tp1.atoms.subsetOf(tp2.atoms) ||
-            tp1.widen.isRef(NothingClass)
+          return tp1.atoms.nonEmpty && tp1.atoms.subsetOf(tp2.atoms) || isSubType(tp1, NothingType)
 
         // The next clause handles a situation like the one encountered in i2745.scala.
         // We have:

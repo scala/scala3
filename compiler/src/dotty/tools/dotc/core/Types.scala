@@ -1102,8 +1102,11 @@ object Types {
             }
           case _ => tp
         }
-        Set.empty + normalize(tp)
-      case tp: OrType => tp.atoms
+        val underlyingAtoms = tp.underlying.atoms
+        if (underlyingAtoms.isEmpty) Set.empty + normalize(tp)
+        else underlyingAtoms
+      case tp: ExprType => tp.resType.atoms
+      case tp: OrType => tp.atoms // `atoms` overridden in OrType
       case tp: AndType => tp.tp1.atoms & tp.tp2.atoms
       case _ => Set.empty
     }
