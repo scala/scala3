@@ -37,7 +37,7 @@ prints it again in an error message if it evaluates to `false`.
       ${ assertImpl('expr) }
 
     def assertImpl(expr: Expr[Boolean]) = '{
-      if !($expr) then
+      if (!$expr)
         throw new AssertionError(s"failed assertion: ${${ showExpr(expr) }}")
     }
 
