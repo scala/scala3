@@ -23,7 +23,7 @@ splicing of its string representation.
 
 Quotes and splices in this section allow us to treat code in a similar way,
 effectively supporting macros. The entry point for macros is an inline method
-with a top-level splice. We call it a top-level because it is the only occation
+with a top-level splice. We call it a top-level because it is the only occasion
 where we encounter a splice outside a quote (consider as a quote the
 compilation-unit at the call-site). For example, the code below presents an
 `inline` method `assert` which calls at compile-time a method `assertImpl` with
