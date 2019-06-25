@@ -177,6 +177,12 @@ class CommunityBuildTest {
     updateCommand = "update"
   )
 
+  @Test def xmlInterpolator = test(
+    project       = "xml-interpolator",
+    testCommand   = "test",
+    updateCommand = "update"
+  )
+
   // TODO @oderky? It got broken by #5458
   // @Test def pdbp = test(
   //   project       = "pdbp",

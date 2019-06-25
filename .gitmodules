@@ -44,3 +44,6 @@
 	path = community-build/community-projects/shapeless
 	url = https://github.com/milessabin/shapeless
 	branch = shapeless-3
+[submodule "community-build/community-projects/xml-interpolator"]
+	path = community-build/community-projects/xml-interpolator
+	url = https://github.com/lampepfl/xml-interpolator.git
