@@ -14,7 +14,7 @@ import util._, util.Spans._
  *
  * `tree` can be either an `Import` or a `NameTree`.
  */
-case class SourceTree(tree: tpd.Tree /** really: tpd.Import | tpd.NameTree */, source: SourceFile) {
+case class SourceTree(tree: tpd.Import | tpd.NameTree, source: SourceFile) {
 
   /** The position of `tree` */
   final def pos(implicit ctx: Context): SourcePosition = source.atSpan(tree.span)
