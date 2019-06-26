@@ -300,13 +300,9 @@ class Typer extends Namer
                 if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
                 else {
                   val effectiveOwner =
-                    if (curOwner.isTerm && defDenot.symbol.isType)
+                    if (curOwner.isTerm && defDenot.symbol.maybeOwner.isType)
                       // Don't mix NoPrefix and thisType prefixes, since type comparer
-                      // would not detect types to be compatible. Note: If we replace the
-                      // 2nd condition by `defDenot.symbol.maybeOwner.isType` we get lots
-                      // of failures in the `tastyBootstrap` test. Trying to compile these
-                      // files in isolation works though.
-                      // TODO: Investigate why that happens.
+                      // would not detect types to be compatible.
                       defDenot.symbol.owner
                     else
                       curOwner
