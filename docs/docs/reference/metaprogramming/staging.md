@@ -93,3 +93,9 @@ compilation we need make available the compiler to the runtime:
 ```shell
 sbt:dotty> dotr -classpath out -with-compiler Test
 ```
+
+Or, from SBT:
+
+```scala
+libraryDependencies += "ch.epfl.lamp" %% "dotty-compiler" % scalaVersion.value
+```
