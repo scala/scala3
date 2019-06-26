@@ -2437,7 +2437,7 @@ class Typer extends Namer
     }
 
     def isSyntheticApply(tree: Tree): Boolean = tree match {
-      case tree: Select => tree.getAttachment(InsertedApply).isDefined
+      case tree: Select => tree.hasAttachment(InsertedApply)
       case _ => false
     }
 
@@ -2459,7 +2459,7 @@ class Typer extends Namer
     else pt match {
       case pt @ FunProto(Nil, _)
       if tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) &&
-         tree.getAttachment(DroppedEmptyArgs).isEmpty =>
+         !tree.hasAttachment(DroppedEmptyArgs) =>
         tree.putAttachment(DroppedEmptyArgs, ())
         pt.markAsDropped()
         tree
