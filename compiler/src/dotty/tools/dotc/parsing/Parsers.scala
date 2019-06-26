@@ -628,9 +628,8 @@ object Parsers {
       makeIdent(in.token, in.offset, ident().toTypeName)
 
     private def makeIdent(tok: Token, offset: Offset, name: Name) = {
-      val tree =
-        if (tok == BACKQUOTED_IDENT) BackquotedIdent(name)
-        else Ident(name)
+      val tree = Ident(name)
+      if (tok == BACKQUOTED_IDENT) tree.pushAttachment(Backquoted, ())
 
       // Make sure that even trees with parsing errors have a offset that is within the offset
       val errorOffset = offset min (in.lastOffset - 1)
@@ -2526,10 +2525,11 @@ object Parsers {
           }
         } else EmptyTree
       lhs match {
-        case (id: BackquotedIdent) :: Nil if id.name.isTermName =>
-          finalizeDef(BackquotedValDef(id.name.asTermName, tpt, rhs), mods, start)
-        case Ident(name: TermName) :: Nil =>
-          finalizeDef(ValDef(name, tpt, rhs), mods, start)
+        case (id @ Ident(name: TermName)) :: Nil =>
+          if (id.isBackquoted)
+            finalizeDef(BackquotedValDef(id.name.asTermName, tpt, rhs), mods, start)
+          else
+            finalizeDef(ValDef(name, tpt, rhs), mods, start)
         case _ =>
           PatDef(mods, lhs, tpt, rhs)
       }

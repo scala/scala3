@@ -31,7 +31,10 @@ object Trees {
   @sharable var ntrees: Int = 0
 
   /** Property key for trees with documentation strings attached */
-  val DocComment: Property.StickyKey[Comments.Comment] = new Property.StickyKey
+  val DocComment: Property.StickyKey[Comments.Comment] = Property.StickyKey()
+
+  /** Property key for backquoted identifiers and definitions */
+  val Backquoted: Property.StickyKey[Unit] = Property.StickyKey()
 
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Type` or `Untyped`.
@@ -376,15 +379,7 @@ object Trees {
     type ThisTree[-T >: Untyped] = Ident[T]
     def qualifier: Tree[T] = genericEmptyTree
 
-    /** Is this a `BackquotedIdent` ? */
-    def isBackquoted: Boolean = false
-  }
-
-  class BackquotedIdent[-T >: Untyped]private[ast] (name: Name)(implicit @constructorOnly src: SourceFile)
-    extends Ident[T](name) {
-    override def isBackquoted: Boolean = true
-
-    override def toString: String = s"BackquotedIdent($name)"
+    def isBackquoted: Boolean = hasAttachment(Backquoted)
   }
 
   class SearchFailureIdent[-T >: Untyped] private[ast] (name: Name)(implicit @constructorOnly src: SourceFile)
@@ -947,7 +942,6 @@ object Trees {
     type LazyTreeList = Trees.LazyTreeList[T]
 
     type Ident = Trees.Ident[T]
-    type BackquotedIdent = Trees.BackquotedIdent[T]
     type SearchFailureIdent = Trees.SearchFailureIdent[T]
     type Select = Trees.Select[T]
     type SelectWithSig = Trees.SelectWithSig[T]
@@ -1036,9 +1030,6 @@ object Trees {
         postProcess(tree, copied.withSpan(tree.span).withAttachmentsFrom(tree))
 
       def Ident(tree: Tree)(name: Name)(implicit ctx: Context): Ident = tree match {
-        case tree: BackquotedIdent =>
-          if (name == tree.name) tree
-          else finalize(tree, new BackquotedIdent(name)(sourceFile(tree)))
         case tree: Ident if name == tree.name => tree
         case _ => finalize(tree, untpd.Ident(name)(sourceFile(tree)))
       }

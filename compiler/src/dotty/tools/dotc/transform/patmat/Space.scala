@@ -330,7 +330,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         Typ(c.value.asInstanceOf[Symbol].termRef, false)
       else
         Typ(ConstantType(c), false)
-    case _: BackquotedIdent => Typ(pat.tpe, false)
+    case pat: Ident if pat.isBackquoted => Typ(pat.tpe, false)
     case Ident(nme.WILDCARD) =>
       Or(Typ(pat.tpe.stripAnnots, false) :: nullSpace :: Nil)
     case Ident(_) | Select(_, _) =>
