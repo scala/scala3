@@ -2526,10 +2526,9 @@ object Parsers {
         } else EmptyTree
       lhs match {
         case (id @ Ident(name: TermName)) :: Nil =>
-          if (isBackquoted(id))
-            finalizeDef(BackquotedValDef(id.name.asTermName, tpt, rhs), mods, start)
-          else
-            finalizeDef(ValDef(name, tpt, rhs), mods, start)
+          val vdef = ValDef(name, tpt, rhs)
+          if (isBackquoted(id)) vdef.pushAttachment(Backquoted, ())
+          finalizeDef(vdef, mods, start)
         case _ =>
           PatDef(mods, lhs, tpt, rhs)
       }
@@ -2606,8 +2605,9 @@ object Parsers {
             expr()
           }
 
-        if (isBackquoted(ident)) finalizeDef(BackquotedDefDef(ident.name.asTermName, tparams, vparamss, tpt, rhs), mods1, start)
-        else finalizeDef(DefDef(ident.name.asTermName, tparams, vparamss, tpt, rhs), mods1, start)
+        val ddef = DefDef(ident.name.asTermName, tparams, vparamss, tpt, rhs)
+        if (isBackquoted(ident)) ddef.pushAttachment(Backquoted, ())
+        finalizeDef(ddef, mods1, start)
       }
     }
 
