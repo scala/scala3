@@ -33,18 +33,21 @@ class QuoteDriver(appClassloader: ClassLoader) extends Driver {
     val (_, ctx0: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
     val ctx = setToolboxSettings(ctx0.fresh.setSetting(ctx0.settings.outputDir, outDir), settings)
 
-    val driver = new QuoteCompiler
-    driver.newRun(ctx).compileExpr(exprBuilder)
+    new QuoteCompiler().newRun(ctx).compileExpr(exprBuilder) match {
+      case Right(value) =>
+        value.asInstanceOf[T]
 
-    assert(!ctx.reporter.hasErrors)
+      case Left(classname) =>
+        assert(!ctx.reporter.hasErrors)
 
-    val classLoader = new AbstractFileClassLoader(outDir, appClassloader)
+        val classLoader = new AbstractFileClassLoader(outDir, appClassloader)
 
-    val clazz = classLoader.loadClass(driver.outputClassName.toString)
-    val method = clazz.getMethod("apply")
-    val inst = clazz.getConstructor().newInstance()
+        val clazz = classLoader.loadClass(classname)
+        val method = clazz.getMethod("apply")
+        val inst = clazz.getConstructor().newInstance()
 
-    method.invoke(inst).asInstanceOf[T]
+        method.invoke(inst).asInstanceOf[T]
+    }
   }
 
   override def initCtx: Context = {

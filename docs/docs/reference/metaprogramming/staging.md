@@ -60,11 +60,15 @@ The framework as discussed so far allows code to be staged, i.e. be prepared
 to be executed at a later stage. To run that code, there is another method
 in class `Expr` called `run`. Note that `$` and `run` both map from `Expr[T]`
 to `T` but only `$` is subject to the PCP, whereas `run` is just a normal method.
+Run provides a `QuoteContext` that can be used to show the expression in the scope of `run`.
+On the other hand `withNewQuoteContext` provides a `QuoteContext` without evauating the expression.
 
 ```scala
 package scala.quoted
 
 def run[T](expr: given QuoteContext => Expr[T]) given (toolbox: Toolbox): T = ...
+
+def withNewQuoteContext[T](thunk: given QuoteContext => T) given (toolbox: Toolbox): T = ...
 ```
 
 ## Example
@@ -74,10 +78,7 @@ do not want to pass an array statically but generated code at run-time and pass
 the value, also at run-time. Note, how we make a future-stage function of type
 `Expr[Array[Int] => Int]` in line 4 below. Using `run { ... }` we can evaluate an 
 expression at runtime. Within the scope of `run` we can also invoke `show` on an expression
-to get
-
- Invoking the `.show` or `.run` we can
-either show the code or run it respectivelly.
+to get a source-like representation of the expression.
 
 ```scala
 // make available the necessary toolbox for runtime code generation

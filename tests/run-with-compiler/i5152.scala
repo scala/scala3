@@ -8,9 +8,9 @@ object Test {
     lazy val f: Int => Int = ${eval1('{(y: Int) => f(y)})}
   }
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit = withNewQuoteContext {
     val p = peval1()
-    println(run(p.show.toExpr))
+    println(p.show)
   }
 
 }

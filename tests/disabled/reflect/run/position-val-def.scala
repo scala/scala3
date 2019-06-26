@@ -10,7 +10,7 @@ object Test {
     def test(expr: String): Unit = {
       val t = toolbox.parse(expr)
       println(expr)
-      println(run(t, printPositions = true.show.toExpr))
+      println(show(t, printPositions = true))
       println()
     }
     val tests = """

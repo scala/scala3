@@ -146,7 +146,7 @@ object Test {
       vec1.map(_.toExpr),
       vec2.map(_.toExpr)
     )
-    println(run(resCode1.show.toExpr))
+    println(withNewQuoteContext(resCode1.show))
     println(run(resCode1))
     println()
 
@@ -161,7 +161,7 @@ object Test {
           )
         }
     }
-    println(run(resCode2.show.toExpr))
+    println(withNewQuoteContext(resCode2.show))
     println(run(resCode2).apply(arr1, arr2))
     println()
 
@@ -170,7 +170,7 @@ object Test {
       vec1.map(i => Dyn(i)),
       vec2.map(i => Sta(i))
     ).expr
-    println(run(resCode3.show.toExpr))
+    println(withNewQuoteContext(resCode3.show))
     println(run(resCode3))
     println()
 
@@ -186,7 +186,7 @@ object Test {
         }
 
     }
-    println(run(resCode4.show.toExpr))
+    println(withNewQuoteContext(resCode4.show))
     println(run(resCode4).apply(arr1))
     println()
 
@@ -203,7 +203,7 @@ object Test {
           '{Complex(${cpx.re.expr}, ${cpx.im.expr})}
         }
     }
-    println(run(resCode5.show.toExpr))
+    println(withNewQuoteContext(resCode5.show))
     println(run(resCode5).apply(cmpxArr1))
     println()
 
@@ -213,7 +213,7 @@ object Test {
     // will generate the code '{ ((arr: scala.Array[scala.Int]) => arr.apply(1).+(arr.apply(3))) }
     val staticVec = Vec[Int, PV[Int]](5, i => Sta((i % 2)))
     val code = '{(arr: Array[Int]) => ${dotIntOptExpr(Vec(5, i => Dyn('{arr(${i})})), staticVec).expr} }
-    println(run(code.show.toExpr))
+    println(withNewQuoteContext(code.show))
     println()
   }
 

@@ -9,7 +9,7 @@ object Test {
       inlineLambda
     }
     println(run(f4(x)))
-    println(run(f4(x).show.toExpr))
+    println(withNewQuoteContext(f4(x).show))
   }
 
   inline def inlineLambda <: Int => Int = x => x + x

@@ -1,9 +1,8 @@
 scala> implicit def toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
 def toolbox: quoted.Toolbox
-scala> import scala.quoted._
 scala> val v = '{ (if true then Some(1) else None).map(v => v+1) }
 val v: quoted.Expr[Option[Int]] = Expr(<pickled tasty>)
-scala> scala.quoted.run(v.show.toExpr)
+scala> scala.quoted.withNewQuoteContext(v.show)
 val res0: String = (if (true) scala.Some.apply[scala.Int](1) else scala.None).map[scala.Int](((v: scala.Int) => v.+(1)))
 scala> scala.quoted.run(v)
 val res1: Option[Int] = Some(2)

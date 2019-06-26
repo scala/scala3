@@ -11,7 +11,7 @@ object Test {
       println("foo")
       2 + a
     }
-    println(run(expr.show.toExpr))
+    println(withNewQuoteContext(expr.show))
     println(run(expr))
     println()
 

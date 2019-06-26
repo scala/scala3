@@ -1,8 +1,8 @@
 import scala.quoted._
 object Test {
-  def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  def main(args: Array[String]): Unit = withNewQuoteContext {
     val v = '{ (if true then Some(1) else None).map(v => v+1) }
-    println(run(v.show.toExpr))
+    println(v.show)
   }
 }

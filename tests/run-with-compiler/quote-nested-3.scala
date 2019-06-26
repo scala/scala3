@@ -14,6 +14,6 @@ object Test {
       x
     }
 
-    println(run(q.show.toExpr))
+    println(withNewQuoteContext(q.show))
   }
 }

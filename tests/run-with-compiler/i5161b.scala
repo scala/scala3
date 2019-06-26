@@ -9,9 +9,9 @@ object Test {
       if (x.isInstanceOf[Some[_]]) Option(1)
       else None
     }
-    println("show0 : " + run(res.show.toExpr))
+    println("show0 : " + withNewQuoteContext(res.show))
     println("run1 : " + run(res))
     println("run2 : " + run(res))
-    println("show3 : " + run(res.show.toExpr))
+    println("show3 : " + withNewQuoteContext(res.show))
   }
 }

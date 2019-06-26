@@ -14,7 +14,7 @@ class Foo {
         foo('{e1 + $u}, '{f1})
       }
     }
-    println(run(q.show.toExpr))
+    println(withNewQuoteContext(q.show))
   }
 }
 

@@ -5,7 +5,7 @@ object Test {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     val q = f
     println(run(q))
-    println(run(q.show.toExpr))
+    println(withNewQuoteContext(q.show))
   }
 
   def f: Expr[Int] = '{

@@ -6,9 +6,9 @@ class Foo[T: Type] {
 }
 
 object Test {
-  def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    println(run((new Foo[Object]).q.show.toExpr))
-    println(run((new Foo[String]).q.show.toExpr))
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  def main(args: Array[String]): Unit = withNewQuoteContext {
+    println((new Foo[Object]).q.show)
+    println((new Foo[String]).q.show)
   }
 }

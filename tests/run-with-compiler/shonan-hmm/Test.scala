@@ -4,8 +4,9 @@ import scala.quoted._
 
 object Test {
 
-  def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+
+  def main(args: Array[String]): Unit = withNewQuoteContext {
 
     {
       val intComplex = new RingComplex(RingInt)
@@ -19,7 +20,7 @@ object Test {
       import intExprComplex._
 
       val res = Complex('{1}, '{2}) * Complex('{4}, '{2})
-      println(s"Complex(${run(res.re.show.toExpr)}, ${run(res.im.show.toExpr)})")
+      println(s"Complex(${res.re.show}, ${res.im.show})")
     }
 
     // {
@@ -36,7 +37,7 @@ object Test {
     Vmults.vmult(out, arr1, arr2)
     println(out.toList)
 
-    println(run(Vmults.vmultCA.show.toExpr))
+    println(Vmults.vmultCA.show)
 
     val a = Array(
       Array( 5,  0,  0,  5,  0),
@@ -54,37 +55,37 @@ object Test {
     println()
     println()
 
-    println(run(MVmult.mvmult_c.show.toExpr))
+    println(MVmult.mvmult_c.show)
     println()
     println()
     println()
 
-    println(run(MVmult.mvmult_mc(3, 2).show.toExpr))
+    println(MVmult.mvmult_mc(3, 2).show)
     println()
     println()
     println()
 
-    println(run(MVmult.mvmult_ac(a).show.toExpr))
+    println(MVmult.mvmult_ac(a).show)
     println()
     println()
     println()
 
-    println(run(MVmult.mvmult_opt(a).show.toExpr))
+    println(MVmult.mvmult_opt(a).show)
     println()
     println()
     println()
 
-    println(run(MVmult.mvmult_roll(a).show.toExpr))
+    println(MVmult.mvmult_roll(a).show)
     println()
     println()
     println()
 
-    println(run(MVmult.mvmult_let1(a).show.toExpr))
+    println(MVmult.mvmult_let1(a).show)
     println()
     println()
     println()
 
-    println(run(MVmult.mvmult_let(a).show.toExpr))
+    println(MVmult.mvmult_let(a).show)
   }
 }
 

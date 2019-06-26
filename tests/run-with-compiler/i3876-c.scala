@@ -11,6 +11,6 @@ object Test {
     }
 
     println(run(f3(x)))
-    println(run(f3(x).show.toExpr)) // TODO improve printer
+    println(withNewQuoteContext(f3(x).show)) // TODO improve printer
   }
 }

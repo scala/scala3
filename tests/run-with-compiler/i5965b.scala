@@ -9,15 +9,15 @@ object Test {
 
     '[List]
     val list = bound('{List(1, 2, 3)})
-    println(run(list.show.toExpr))
+    println(withNewQuoteContext(list.show))
     println(run(list))
 
     val opt = bound('{Option(4)})
-    println(run(opt.show.toExpr))
+    println(withNewQuoteContext(opt.show))
     println(run(opt))
 
     val map = bound('{Map(4 -> 1)})
-    println(run(map.show.toExpr))
+    println(withNewQuoteContext(map.show))
     println(run(map))
   }
 
