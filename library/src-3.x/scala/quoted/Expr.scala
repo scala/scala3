@@ -37,6 +37,15 @@ package quoted {
         tg.untupled(args => new FunctionAppliedTo[R](f, args.toArray.map(_.asInstanceOf[Expr[_]])))
     }
 
+    /** Returns A expression containing a block with the given statements and ending with the expresion
+     *  Given list of statements `s1 :: s2 :: ... :: Nil` and an expression `e` the resulting expression
+     *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
+     */
+    def block[T](statements: List[Expr[_]], expr: Expr[T])(implicit refl: tasty.Reflection): Expr[T] = {
+      import refl._
+      Block(statements.map(_.unseal), expr.unseal).seal.asInstanceOf[Expr[T]]
+    }
+
   }
 
 }
