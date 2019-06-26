@@ -28,7 +28,7 @@ import scala.quoted.{Expr, Type, QuoteContext}
 class QuoteCompiler extends Compiler {
 
   override protected def frontendPhases: List[List[Phase]] =
-    List(List(new QuotedFrontend(putInClass = true)))
+    List(List(new QuotedFrontend))
 
   override protected def picklerPhases: List[List[Phase]] =
     List(List(new Staging))
@@ -41,7 +41,7 @@ class QuoteCompiler extends Compiler {
   def outputClassName: TypeName = "Generated$Code$From$Quoted".toTypeName
 
   /** Frontend that receives a scala.quoted.Expr or scala.quoted.Type as input */
-  class QuotedFrontend(putInClass: Boolean) extends Phase {
+  class QuotedFrontend extends Phase {
     import tpd._
 
     def phaseName: String = "quotedFrontend"
@@ -49,9 +49,7 @@ class QuoteCompiler extends Compiler {
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
       units.map {
         case exprUnit: ExprCompilationUnit =>
-          val tree =
-            if (putInClass) inClass(exprUnit.exprBuilder)
-            else PickledQuotes.quotedExprToTree(checkValidRunExpr(exprUnit.exprBuilder.apply(new QuoteContext(ReflectionImpl(ctx)))))
+          val tree = inClass(exprUnit.exprBuilder)
           val source = SourceFile.virtual("<quoted.Expr>", "")
           CompilationUnit(source, tree, forceTrees = true)
       }
