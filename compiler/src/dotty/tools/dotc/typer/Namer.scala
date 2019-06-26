@@ -523,7 +523,7 @@ class Namer { typer: Typer =>
             prefix ::: otherAnnot :: insertInto(rest)
           }
         case _ =>
-          Annotation.Child(child) :: annots
+          Annotation.Child(child, cls.span.startPos) :: annots
       }
     cls.annotations = insertInto(cls.annotations)
   }

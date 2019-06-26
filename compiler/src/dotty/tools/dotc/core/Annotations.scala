@@ -6,6 +6,7 @@ import config.ScalaVersion
 import StdNames._
 import dotty.tools.dotc.ast.tpd
 import scala.util.Try
+import util.Spans.Span
 
 object Annotations {
 
@@ -158,16 +159,17 @@ object Annotations {
     object Child {
 
       /** A deferred annotation to the result of a given child computation */
-      def apply(delayedSym: Context => Symbol)(implicit ctx: Context): Annotation = {
+      def apply(delayedSym: Context => Symbol, span: Span)(implicit ctx: Context): Annotation = {
         def makeChildLater(implicit ctx: Context) = {
           val sym = delayedSym(ctx)
           New(defn.ChildAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
+            .withSpan(span)
         }
         deferred(defn.ChildAnnot, implicit ctx => makeChildLater(ctx))
       }
 
       /** A regular, non-deferred Child annotation */
-      def apply(sym: Symbol)(implicit ctx: Context): Annotation = apply(_ => sym)
+      def apply(sym: Symbol, span: Span)(implicit ctx: Context): Annotation = apply(_ => sym, span)
 
       def unapply(ann: Annotation)(implicit ctx: Context): Option[Symbol] =
         if (ann.symbol == defn.ChildAnnot) {

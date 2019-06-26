@@ -835,7 +835,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       readNat() // skip reference for now
       target.addAnnotation(
           Annotation.Child(implicit ctx =>
-              atReadPos(start, () => readSymbolRef())))
+              atReadPos(start, () => readSymbolRef()), NoSpan))
     }
   }
 
