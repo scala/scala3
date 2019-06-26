@@ -62,10 +62,9 @@ in class `Expr` called `run`. Note that `$` and `run` both map from `Expr[T]`
 to `T` but only `$` is subject to the PCP, whereas `run` is just a normal method.
 
 ```scala
-sealed abstract class Expr[T] {
-  def run  given (toolbox: Toolbox): T       // run staged code
-  def show given (toolbox: Toolbox): String  // show staged code
-}
+package scala.quoted
+
+def run[T](expr: given QuoteContext => Expr[T]) given (toolbox: Toolbox): T = ...
 ```
 
 ## Example
@@ -73,18 +72,24 @@ sealed abstract class Expr[T] {
 Now take exactly the same example as in [Macros](./macros.html). Assume that we
 do not want to pass an array statically but generated code at run-time and pass
 the value, also at run-time. Note, how we make a future-stage function of type
-`Expr[Array[Int] => Int]` in line 4 below. Invoking the `.show` or `.run` we can
+`Expr[Array[Int] => Int]` in line 4 below. Using `run { ... }` we can evaluate an 
+expression at runtime. Within the scope of `run` we can also invoke `show` on an expression
+to get
+
+ Invoking the `.show` or `.run` we can
 either show the code or run it respectivelly.
 
 ```scala
 // make available the necessary toolbox for runtime code generation
 implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
 
-val stagedSum: Expr[Array[Int] => Int] = '{ (arr: Array[Int]) => ${sum('arr)}}
+val f: Array[Int] => Int = run {
+  val stagedSum: Expr[Array[Int] => Int] = '{ (arr: Array[Int]) => ${sum('arr)}}
+  println(stagedSum.show) // Prints "(arr: Array[Int]) => { var sum = 0; ... }"
+  stagedSum
+}
 
-println(stagedSum.show)
-
-stagedSum.run.apply(Array(1, 2, 3)) // Returns 6
+f.apply(Array(1, 2, 3)) // Returns 6
 ```
 
 Note that if we need to run the main (in an object called `Test`) after
