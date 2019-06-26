@@ -755,7 +755,7 @@ trait Checking {
       case id @ Ident(name: Name) =>
         name.toTermName match {
           case name: SimpleName
-          if !id.isBackquoted &&
+          if !untpd.isBackquoted(id) &&
              !name.exists(isOperatorPart) &&
              !isInfix(meth) &&
              !meth.maybeOwner.is(Scala2x) &&

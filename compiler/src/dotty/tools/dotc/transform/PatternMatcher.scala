@@ -188,7 +188,7 @@ object PatternMatcher {
         case Typed(_, tpt) if tpt.tpe.isRepeatedParam => true
         case Bind(nme.WILDCARD, WildcardPattern()) => true // don't skip when binding an interesting symbol!
         case t if isWildcardArg(t)                 => true
-        case x: Ident                              => x.name.isVariableName && !x.isBackquoted
+        case x: Ident                              => x.name.isVariableName && !isBackquoted(x)
         case Alternative(ps)                       => ps.forall(unapply)
         case EmptyTree                             => true
         case _                                     => false

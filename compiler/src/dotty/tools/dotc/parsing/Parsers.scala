@@ -408,9 +408,9 @@ object Parsers {
     */
     def convertToParam(tree: Tree, expected: String = "formal parameter"): ValDef = tree match {
       case id @ Ident(name) =>
-        makeParameter(name.asTermName, TypeTree(), isBackquoted = id.isBackquoted).withSpan(tree.span)
+        makeParameter(name.asTermName, TypeTree(), isBackquoted = isBackquoted(id)).withSpan(tree.span)
       case Typed(id @ Ident(name), tpt) =>
-        makeParameter(name.asTermName, tpt, isBackquoted = id.isBackquoted).withSpan(tree.span)
+        makeParameter(name.asTermName, tpt, isBackquoted = isBackquoted(id)).withSpan(tree.span)
       case Typed(Splice(Ident(name)), tpt) =>
         makeParameter(("$" + name).toTermName, tpt).withSpan(tree.span)
       case _ =>
@@ -2526,7 +2526,7 @@ object Parsers {
         } else EmptyTree
       lhs match {
         case (id @ Ident(name: TermName)) :: Nil =>
-          if (id.isBackquoted)
+          if (isBackquoted(id))
             finalizeDef(BackquotedValDef(id.name.asTermName, tpt, rhs), mods, start)
           else
             finalizeDef(ValDef(name, tpt, rhs), mods, start)
@@ -2606,7 +2606,7 @@ object Parsers {
             expr()
           }
 
-        if (ident.isBackquoted) finalizeDef(BackquotedDefDef(ident.name.asTermName, tparams, vparamss, tpt, rhs), mods1, start)
+        if (isBackquoted(ident)) finalizeDef(BackquotedDefDef(ident.name.asTermName, tparams, vparamss, tpt, rhs), mods1, start)
         else finalizeDef(DefDef(ident.name.asTermName, tparams, vparamss, tpt, rhs), mods1, start)
       }
     }

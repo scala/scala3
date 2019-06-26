@@ -349,7 +349,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ =>
             toText(name)
         }
-        if (tree.isBackquoted && !homogenizedView) "`" ~ toText(name) ~ "`"
+        if (isBackquoted(tree) && !homogenizedView) "`" ~ toText(name) ~ "`"
         else if (name.isTypeName) typeText(txt)
         else txt
       case tree @ Select(qual, name) =>
