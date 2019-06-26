@@ -351,7 +351,23 @@ object Trees {
       if (span.exists) {
         val point = span.point
         if (rawMods.is(Synthetic) || name.toTermName == nme.ERROR) Span(point)
-        else Span(point, point + name.stripModuleClassSuffix.lastPart.length, point)
+        else {
+          val realName = name.stripModuleClassSuffix.lastPart.toString
+          val nameStart =
+            if (point != span.start) point
+            else {
+              // Point might be too far away from start to be recorded. In this case we fall back to scanning
+              // forwards from the start offset for the name.
+              // Note: This might be inaccurate since scanning might hit accidentally the same
+              // name (e.g. in a comment) before finding the real definition.
+              // To make this behavior more robust we'd have to change the trees for definitions to contain
+              // a fully positioned Ident in place of a name.
+              val idx = source.content().indexOfSlice(realName, point)
+              if (idx >= 0) idx
+              else point // use `point` anyway. This is important if no source exists so scanning fails
+            }
+            Span(point, point + realName.length, point)
+        }
       }
       else span
   }
