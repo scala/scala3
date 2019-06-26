@@ -103,7 +103,7 @@ object Formatting {
     else nonSensicalStartTag + str + nonSensicalEndTag
   }
 
-  private type Recorded = AnyRef /*Symbol | ParamRef | SkolemType */
+  private type Recorded = Symbol | ParamRef | SkolemType
 
   private case class SeenKey(str: String, isType: Boolean)
   private class Seen extends mutable.HashMap[SeenKey, List[Recorded]] {
@@ -206,23 +206,23 @@ object Formatting {
   private def explanations(seen: Seen)(implicit ctx: Context): String = {
     def needsExplanation(entry: Recorded) = entry match {
       case param: TypeParamRef => ctx.typerState.constraint.contains(param)
-      case param: TermParamRef => false
+      case param: ParamRef     => false
       case skolem: SkolemType => true
       case sym: Symbol =>
         ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
-      case _ =>
-        assert(false, "unreachable")
-        false
     }
 
-    val toExplain: List[(String, Recorded)] = seen.toList.flatMap {
-      case (key, entry :: Nil) =>
-        if (needsExplanation(entry)) (key.str, entry) :: Nil else Nil
-      case (key, entries) =>
-        for (alt <- entries) yield {
-          val tickedString = seen.record(key.str, key.isType, alt)
-          (tickedString, alt)
-        }
+    val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
+      val res: List[(String, Recorded)] = kvs match {
+        case (key, entry :: Nil) =>
+          if (needsExplanation(entry)) (key.str, entry) :: Nil else Nil
+        case (key, entries) =>
+          for (alt <- entries) yield {
+            val tickedString = seen.record(key.str, key.isType, alt)
+            (tickedString, alt)
+          }
+      }
+      res // help the inferrencer out
     }.sortBy(_._1)
 
     def columnar(parts: List[(String, String)]): List[String] = {
