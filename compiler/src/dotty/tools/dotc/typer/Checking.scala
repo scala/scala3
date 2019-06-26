@@ -752,16 +752,15 @@ trait Checking {
         isInfix(sym.owner.linkedClass)
 
     tree.op match {
-      case _: untpd.BackquotedIdent =>
-        ()
-      case Ident(name: Name) =>
+      case id @ Ident(name: Name) =>
         name.toTermName match {
           case name: SimpleName
-          if !name.exists(isOperatorPart) &&
-            !isInfix(meth) &&
-            !meth.maybeOwner.is(Scala2x) &&
-            !infixOKSinceFollowedBy(tree.right) &&
-            ctx.settings.strict.value =>
+          if !untpd.isBackquoted(id) &&
+             !name.exists(isOperatorPart) &&
+             !isInfix(meth) &&
+             !meth.maybeOwner.is(Scala2x) &&
+             !infixOKSinceFollowedBy(tree.right) &&
+             ctx.settings.strict.value =>
             val (kind, alternative) =
               if (ctx.mode.is(Mode.Type))
                 ("type", (n: Name) => s"prefix syntax $n[...]")

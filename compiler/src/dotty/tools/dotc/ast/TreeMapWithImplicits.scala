@@ -9,9 +9,9 @@ import dotty.tools.dotc.core.TypeError
 import scala.annotation.tailrec
 
 /** A TreeMap that maintains the necessary infrastructure to support
- *  contxtual implicit searches (type-scope implicits are supported anyway).
+ *  contextual implicit searches (type-scope implicits are supported anyway).
  *
- *  This incudes impicits defined in scope as well as imported implicits.
+ *  This incudes implicits defined in scope as well as imported implicits.
  */
 class TreeMapWithImplicits extends tpd.TreeMap {
   import tpd._

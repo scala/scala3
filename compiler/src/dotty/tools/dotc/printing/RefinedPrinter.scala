@@ -334,8 +334,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     tree match {
-      case id: Trees.BackquotedIdent[_] if !homogenizedView =>
-        "`" ~ toText(id.name) ~ "`"
       case id: Trees.SearchFailureIdent[_] =>
         tree.typeOpt match {
           case reason: Implicits.SearchFailureType =>
@@ -343,7 +341,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ =>
             toText(id.name)
         }
-      case Ident(name) =>
+      case id @ Ident(name) =>
         val txt = tree.typeOpt match {
           case tp: NamedType if name != nme.WILDCARD =>
             val pre = if (tp.symbol.is(JavaStatic)) tp.prefix.widen else tp.prefix
@@ -351,7 +349,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ =>
             toText(name)
         }
-        if (name.isTypeName) typeText(txt)
+        if (isBackquoted(tree) && !homogenizedView) "`" ~ toText(name) ~ "`"
+        else if (name.isTypeName) typeText(txt)
         else txt
       case tree @ Select(qual, name) =>
         if (!printDebug && tree.hasType && tree.symbol == defn.QuotedType_splice) typeText("${") ~ toTextLocal(qual) ~ typeText("}")

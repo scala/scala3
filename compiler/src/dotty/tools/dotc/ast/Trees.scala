@@ -31,7 +31,10 @@ object Trees {
   @sharable var ntrees: Int = 0
 
   /** Property key for trees with documentation strings attached */
-  val DocComment: Property.StickyKey[Comments.Comment] = new Property.StickyKey
+  val DocComment: Property.StickyKey[Comments.Comment] = Property.StickyKey()
+
+  /** Property key for backquoted identifiers and definitions */
+  val Backquoted: Property.StickyKey[Unit] = Property.StickyKey()
 
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Type` or `Untyped`.
@@ -363,9 +366,6 @@ object Trees {
     def tpt: Tree[T]
     def unforcedRhs: LazyTree[T] = unforced
     def rhs(implicit ctx: Context): Tree[T] = forceIfLazy
-
-    /** Is this a `BackquotedValDef` or `BackquotedDefDef` ? */
-    def isBackquoted: Boolean = false
   }
 
   // ----------- Tree case classes ------------------------------------
@@ -376,15 +376,7 @@ object Trees {
     type ThisTree[-T >: Untyped] = Ident[T]
     def qualifier: Tree[T] = genericEmptyTree
 
-    /** Is this a `BackquotedIdent` ? */
-    def isBackquoted: Boolean = false
-  }
-
-  class BackquotedIdent[-T >: Untyped]private[ast] (name: Name)(implicit @constructorOnly src: SourceFile)
-    extends Ident[T](name) {
-    override def isBackquoted: Boolean = true
-
-    override def toString: String = s"BackquotedIdent($name)"
+    def isBackquoted: Boolean = hasAttachment(Backquoted)
   }
 
   class SearchFailureIdent[-T >: Untyped] private[ast] (name: Name)(implicit @constructorOnly src: SourceFile)
@@ -437,7 +429,7 @@ object Trees {
     extends GenericApply[T] {
     type ThisTree[-T >: Untyped] = Apply[T]
 
-    def isGivenApply = getAttachment(untpd.ApplyGiven).nonEmpty
+    def isGivenApply = hasAttachment(untpd.ApplyGiven)
     def setGivenApply() = { pushAttachment(untpd.ApplyGiven, ()); this }
   }
 
@@ -735,12 +727,6 @@ object Trees {
     protected def force(x: Tree[T @uncheckedVariance]): Unit = preRhs = x
   }
 
-  class BackquotedValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
-    extends ValDef[T](name, tpt, preRhs) {
-    override def isBackquoted: Boolean = true
-    override def productPrefix: String = "BackquotedValDef"
-  }
-
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
   case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
       vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
@@ -753,13 +739,6 @@ object Trees {
     override def disableOverlapChecks = rawMods.is(Delegate)
       // disable order checks for implicit aliases since their given clause follows
       // their for clause, but the two appear swapped in the DefDef.
-  }
-
-  class BackquotedDefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
-      vparamss: List[List[ValDef[T]]], tpt: Tree[T], preRhs: LazyTree[T])(implicit @constructorOnly src: SourceFile)
-    extends DefDef[T](name, tparams, vparamss, tpt, preRhs) {
-    override def isBackquoted: Boolean = true
-    override def productPrefix: String = "BackquotedDefDef"
   }
 
   /** mods class name template     or
@@ -947,7 +926,6 @@ object Trees {
     type LazyTreeList = Trees.LazyTreeList[T]
 
     type Ident = Trees.Ident[T]
-    type BackquotedIdent = Trees.BackquotedIdent[T]
     type SearchFailureIdent = Trees.SearchFailureIdent[T]
     type Select = Trees.Select[T]
     type SelectWithSig = Trees.SelectWithSig[T]
@@ -986,9 +964,7 @@ object Trees {
     type Alternative = Trees.Alternative[T]
     type UnApply = Trees.UnApply[T]
     type ValDef = Trees.ValDef[T]
-    type BackquotedValDef = Trees.BackquotedValDef[T]
     type DefDef = Trees.DefDef[T]
-    type BackquotedDefDef = Trees.BackquotedDefDef[T]
     type TypeDef = Trees.TypeDef[T]
     type Template = Trees.Template[T]
     type Import = Trees.Import[T]
@@ -1036,9 +1012,6 @@ object Trees {
         postProcess(tree, copied.withSpan(tree.span).withAttachmentsFrom(tree))
 
       def Ident(tree: Tree)(name: Name)(implicit ctx: Context): Ident = tree match {
-        case tree: BackquotedIdent =>
-          if (name == tree.name) tree
-          else finalize(tree, new BackquotedIdent(name)(sourceFile(tree)))
         case tree: Ident if name == tree.name => tree
         case _ => finalize(tree, untpd.Ident(name)(sourceFile(tree)))
       }
@@ -1181,16 +1154,10 @@ object Trees {
         case _ => finalize(tree, untpd.UnApply(fun, implicits, patterns)(sourceFile(tree)))
       }
       def ValDef(tree: Tree)(name: TermName, tpt: Tree, rhs: LazyTree)(implicit ctx: Context): ValDef = tree match {
-        case tree: BackquotedValDef =>
-          if ((name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs)) tree
-          else finalize(tree, untpd.BackquotedValDef(name, tpt, rhs)(sourceFile(tree)))
         case tree: ValDef if (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.ValDef(name, tpt, rhs)(sourceFile(tree)))
       }
       def DefDef(tree: Tree)(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree)(implicit ctx: Context): DefDef = tree match {
-        case tree: BackquotedDefDef =>
-          if ((name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs)) tree
-          else finalize(tree, untpd.BackquotedDefDef(name, tparams, vparamss, tpt, rhs)(sourceFile(tree)))
         case tree: DefDef if (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.DefDef(name, tparams, vparamss, tpt, rhs)(sourceFile(tree)))
       }

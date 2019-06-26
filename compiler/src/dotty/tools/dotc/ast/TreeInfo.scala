@@ -140,10 +140,12 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => false
   }
 
+  /** Is tree a backquoted identifier or definition */
+  def isBackquoted(tree: Tree): Boolean = tree.hasAttachment(Backquoted)
+
   /** Is tree a variable pattern? */
   def isVarPattern(pat: Tree): Boolean = unsplice(pat) match {
-    case x: BackquotedIdent => false
-    case x: Ident => x.name.isVariableName
+    case x: Ident => x.name.isVariableName && !isBackquoted(x)
     case _  => false
   }
 

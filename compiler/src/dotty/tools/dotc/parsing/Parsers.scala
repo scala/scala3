@@ -408,9 +408,9 @@ object Parsers {
     */
     def convertToParam(tree: Tree, expected: String = "formal parameter"): ValDef = tree match {
       case id @ Ident(name) =>
-        makeParameter(name.asTermName, TypeTree(), isBackquoted = id.isBackquoted).withSpan(tree.span)
+        makeParameter(name.asTermName, TypeTree(), isBackquoted = isBackquoted(id)).withSpan(tree.span)
       case Typed(id @ Ident(name), tpt) =>
-        makeParameter(name.asTermName, tpt, isBackquoted = id.isBackquoted).withSpan(tree.span)
+        makeParameter(name.asTermName, tpt, isBackquoted = isBackquoted(id)).withSpan(tree.span)
       case Typed(Splice(Ident(name)), tpt) =>
         makeParameter(("$" + name).toTermName, tpt).withSpan(tree.span)
       case _ =>
@@ -628,9 +628,8 @@ object Parsers {
       makeIdent(in.token, in.offset, ident().toTypeName)
 
     private def makeIdent(tok: Token, offset: Offset, name: Name) = {
-      val tree =
-        if (tok == BACKQUOTED_IDENT) BackquotedIdent(name)
-        else Ident(name)
+      val tree = Ident(name)
+      if (tok == BACKQUOTED_IDENT) tree.pushAttachment(Backquoted, ())
 
       // Make sure that even trees with parsing errors have a offset that is within the offset
       val errorOffset = offset min (in.lastOffset - 1)
@@ -2526,10 +2525,10 @@ object Parsers {
           }
         } else EmptyTree
       lhs match {
-        case (id: BackquotedIdent) :: Nil if id.name.isTermName =>
-          finalizeDef(BackquotedValDef(id.name.asTermName, tpt, rhs), mods, start)
-        case Ident(name: TermName) :: Nil =>
-          finalizeDef(ValDef(name, tpt, rhs), mods, start)
+        case (id @ Ident(name: TermName)) :: Nil =>
+          val vdef = ValDef(name, tpt, rhs)
+          if (isBackquoted(id)) vdef.pushAttachment(Backquoted, ())
+          finalizeDef(vdef, mods, start)
         case _ =>
           PatDef(mods, lhs, tpt, rhs)
       }
@@ -2606,8 +2605,9 @@ object Parsers {
             expr()
           }
 
-        if (ident.isBackquoted) finalizeDef(BackquotedDefDef(ident.name.asTermName, tparams, vparamss, tpt, rhs), mods1, start)
-        else finalizeDef(DefDef(ident.name.asTermName, tparams, vparamss, tpt, rhs), mods1, start)
+        val ddef = DefDef(ident.name.asTermName, tparams, vparamss, tpt, rhs)
+        if (isBackquoted(ident)) ddef.pushAttachment(Backquoted, ())
+        finalizeDef(ddef, mods1, start)
       }
     }
 

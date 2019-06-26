@@ -282,7 +282,7 @@ trait TypeAssigner {
    */
   def accessibleSelectionType(tree: untpd.RefTree, qual1: Tree)(implicit ctx: Context): Type = {
     val ownType = selectionType(tree, qual1)
-    if (tree.getAttachment(desugar.SuppressAccessCheck).isDefined) ownType
+    if (tree.hasAttachment(desugar.SuppressAccessCheck)) ownType
     else ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.sourcePos)
   }
 

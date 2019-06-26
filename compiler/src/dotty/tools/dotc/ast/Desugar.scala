@@ -310,7 +310,7 @@ object desugar {
    *  ```
    */
   def transformQuotedPatternName(tree: ValOrDefDef)(implicit ctx: Context): ValOrDefDef = {
-    if (ctx.mode.is(Mode.QuotedPattern) && !tree.isBackquoted && tree.name != nme.ANON_FUN && tree.name.startsWith("$")) {
+    if (ctx.mode.is(Mode.QuotedPattern) && !isBackquoted(tree) && tree.name != nme.ANON_FUN && tree.name.startsWith("$")) {
       val mods = tree.mods.withAddedAnnotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.span))
       tree.withMods(mods)
     } else tree
@@ -1478,7 +1478,7 @@ object desugar {
         // This is a deliberate departure from scalac, where StringContext is not rooted (See #4732)
         Apply(Select(Apply(scalaDot(nme.StringContext), strs), id), elems)
       case PostfixOp(t, op) =>
-        if ((ctx.mode is Mode.Type) && !op.isBackquoted && op.name == tpnme.raw.STAR) {
+        if ((ctx.mode is Mode.Type) && !isBackquoted(op) && op.name == tpnme.raw.STAR) {
           val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType
           Annotated(
             AppliedTypeTree(ref(seqType), t),
