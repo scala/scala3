@@ -13,7 +13,8 @@ package object quoted {
    *  ```
    *  where `expr: Expr[T]`
    *
-   *  This method shoul not be called in a context where there is already has a QuoteContext.
+   *  This method should not be called in a context where there is already has a `QuoteContext`
+   *  such as within a `run` or a `withQuoteContext`.
    *
    *  May throw a FreeVariableError on expressions that came from a macro.
    */
@@ -30,7 +31,8 @@ package object quoted {
    *  ```
    *  where `thunk: T`
    *
-   *  This method shoul not be called in a context where there is already has a QuoteContext.
+   *  This method should not be called in a context where there is already has a `QuoteContext`
+   *  such as within a `run` or a `withQuoteContext`.
    */
   def withQuoteContext[T](thunk: given QuoteContext => T) given (toolbox: Toolbox): T = {
     var result: T = NoResult.asInstanceOf[T]

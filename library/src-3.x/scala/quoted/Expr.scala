@@ -21,7 +21,7 @@ package quoted {
 
     implicit class ExprOps[T](expr: Expr[T]) {
 
-      /** Show a source code like representation of this expression */
+      /** Show a source code like representation of this expression without syntax highlight */
       def show(implicit qctx: QuoteContext): String = qctx.show(expr, SyntaxHighlight.plain)
 
       /** Show a source code like representation of this expression */

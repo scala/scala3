@@ -13,7 +13,7 @@ package quoted {
 
     implicit class TypeOps[T](tpe: Type[T]) {
 
-      /** Show a source code like representation of this type */
+      /** Show a source code like representation of this type without syntax highlight */
       def show(implicit qctx: QuoteContext): String = qctx.show(tpe, SyntaxHighlight.plain)
 
       /** Show a source code like representation of this type */
