@@ -1518,7 +1518,15 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     /** Replace each alternative by its apply members where necessary */
     def applyMembers(alt: TermRef): List[TermRef] =
-      if (tryApply(alt)) alt.member(nme.apply).alternatives.map(TermRef(alt, nme.apply, _))
+      if (tryApply(alt)) {
+        val qual = alt.widen match {
+          case pt: PolyType =>
+            wildApprox(pt.resultType)
+          case _ =>
+            alt
+        }
+        qual.member(nme.apply).alternatives.map(TermRef(alt, nme.apply, _))
+      }
       else alt :: Nil
 
     /** Fall back from an apply method to its original alternative */
