@@ -895,7 +895,7 @@ object desugar {
       pats map {
         case id: Ident =>
           expandSimpleEnumCase(id.name.asTermName, mods,
-            Span(pdef.span.start, id.span.end, id.span.start))
+            Span(id.span.start, id.span.end, id.span.start))
     }
     else {
       val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
