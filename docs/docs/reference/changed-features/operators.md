@@ -113,8 +113,8 @@ The purpose of the `@infix` annotation is to achieve consistency across a code b
       @infix def op[T](x: T)(y: S): R         // ok
       @infix def op[T](x: T, y: S): R         // error: two parameters
 
-      @infix def (x: A) op (y: B): R          // ok
-      @infix def (x: A) op (y1: B, y2: B): R  // error: two parameters
+      @infix def op(this: A)(y: B): R          // ok
+      @infix def op(this A)(y1: B, y2: B): R   // error: two parameters
       ```
 
  4. @infix annotations can also be given to type, trait or class definitions that have exactly two type parameters. An infix type like

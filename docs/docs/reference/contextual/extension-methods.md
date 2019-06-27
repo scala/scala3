@@ -8,7 +8,7 @@ Extension methods allow one to add methods to a type after the type is defined. 
 ```scala
 case class Circle(x: Double, y: Double, radius: Double)
 
-def (c: Circle) circumference: Double = c.radius * math.Pi * 2
+def circumference(this: Circle): Double = this.radius * math.Pi * 2
 ```
 
 Like regular methods, extension methods can be invoked with infix `.`:
@@ -20,13 +20,9 @@ Like regular methods, extension methods can be invoked with infix `.`:
 
 ### Translation of Extension Methods
 
-Extension methods are methods that have a parameter clause in front of the defined
-identifier. They translate to methods where the leading parameter section is moved
-to after the defined identifier. So, the definition of `circumference` above translates
-to the plain method, and can also be invoked as such:
+Extension methods are methods that have a `this` parameter as first parameter clause. They translate to
+normal methods, that can also be invoked as usual:
 ```scala
-def circumference(c: Circle): Double = c.radius * math.Pi * 2
-
 assert(circle.circumference == circumference(circle))
 ```
 
@@ -42,9 +38,9 @@ As an example, consider an extension method `longestStrings` on `String` defined
 
 ```scala
 trait StringSeqOps {
-  def (xs: Seq[String]) longestStrings = {
-    val maxLength = xs.map(_.length).max
-    xs.filter(_.length == maxLength)
+  def longestStrings(this: Seq[String]) = {
+    val maxLength = this.map(_.length).max
+    this.filter(_.length == maxLength)
   }
 }
 ```
@@ -84,19 +80,22 @@ Delegates that define extension methods can also be defined without a `for` clau
 
 ```scala
 delegate StringOps {
-  def (xs: Seq[String]) longestStrings: Seq[String] = {
-    val maxLength = xs.map(_.length).max
-    xs.filter(_.length == maxLength)
+  def longestStrings(this: Seq[String]) : Seq[String] = {
+    val maxLength = this.map(_.length).max
+    this.filter(_.length == maxLength)
   }
 }
 
 delegate {
-  def (xs: List[T]) second[T] = xs.tail.head
+  def second[T](this: List[T]) = this.tail.head
 }
 ```
 If such delegates are anonymous (as in the second clause), their name is synthesized from the name
 of the first defined extension method.
 
+### Meaning of This
+
+Inside an extension method, ... TODO: fill in
 ### Operators
 
 The extension method syntax also applies to the definition of operators.

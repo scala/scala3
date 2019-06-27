@@ -491,7 +491,7 @@ object Erasure {
       checkNotErased(recur(qual1))
     }
 
-    override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
+    override def typedThis(tree: untpd.This, pt: Type)(implicit ctx: Context): Tree =
       if (tree.symbol == ctx.owner.lexicallyEnclosingClass || tree.symbol.isStaticOwner) promote(tree)
       else {
         ctx.log(i"computing outer path from ${ctx.owner.ownersIterator.toList}%, % to ${tree.symbol}, encl class = ${ctx.owner.enclosingClass}")

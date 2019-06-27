@@ -195,7 +195,7 @@ class Typer extends Namer
 
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the
-          if (reallyExists(denot)) pre.select(name, denot) else NoType
+          if (qualifies(denot)) pre.select(name, denot) else NoType
         }
 
       /** The type representing a named import with enclosing name when imported
@@ -491,8 +491,11 @@ class Typer extends Namer
       typeSelectOnTerm(ctx)
   }
 
-  def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = track("typedThis") {
-    assignType(tree)
+  def typedThis(tree: untpd.This, pt: Type)(implicit ctx: Context): Tree = track("typedThis") {
+    def isExtensionThis(owner: Symbol): Boolean =
+      owner.is(Extension) || owner.isTerm && isExtensionThis(owner.owner)
+    if (isExtensionThis(ctx.owner) && tree.qual.isEmpty) typedIdent(cpy.Ident(tree)(nme.this_), pt)
+    else assignType(tree)
   }
 
   def typedSuper(tree: untpd.Super, pt: Type)(implicit ctx: Context): Tree = track("typedSuper") {
@@ -2145,7 +2148,7 @@ class Typer extends Namer
         def typedUnnamed(tree: untpd.Tree): Tree = tree match {
           case tree: untpd.Apply =>
             if (ctx.mode is Mode.Pattern) typedUnApply(tree, pt) else typedApply(tree, pt)
-          case tree: untpd.This => typedThis(tree)
+          case tree: untpd.This => typedThis(tree, pt)
           case tree: untpd.Literal => typedLiteral(tree)
           case tree: untpd.New => typedNew(tree, pt)
           case tree: untpd.Typed => typedTyped(tree, pt)

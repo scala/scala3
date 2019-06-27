@@ -143,6 +143,16 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   /** Is tree a backquoted identifier or definition */
   def isBackquoted(tree: Tree): Boolean = tree.hasAttachment(Backquoted)
 
+  /** Is param of the form `this: T` ? */
+  def isThisParam(param: ValDef): Boolean =
+    param.name == nme.this_ && !isBackquoted(param)
+
+  /** Is params of the form `(this: T)` ? */
+  def isThisParamClause(params: List[ValDef]): Boolean = params match {
+    case param :: Nil => isThisParam(param)
+    case _ => false
+  }
+
   /** Is tree a variable pattern? */
   def isVarPattern(pat: Tree): Boolean = unsplice(pat) match {
     case x: Ident => x.name.isVariableName && !isBackquoted(x)

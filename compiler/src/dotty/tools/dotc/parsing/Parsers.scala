@@ -2205,6 +2205,7 @@ object Parsers {
 
     /** ClsParamClause    ::=  [‘erased’] (‘(’ ClsParams ‘)’
      *  GivenClsParamClause::= ‘given’ [‘erased’] (‘(’ ClsParams ‘)’ | GivenTypes)
+     *  ThisParamClause   ::=  [nl] ‘(’ {Annotation} ThisParam ‘)’
      *  ClsParams         ::=  ClsParam {‘,’ ClsParam}
      *  ClsParam          ::=  {Annotation}
      *
@@ -2212,6 +2213,7 @@ object Parsers {
      *  GivenParamClause  ::=  ‘given’ [‘erased’] (‘(’ DefParams ‘)’ | GivenTypes)
      *  DefParams         ::=  DefParam {‘,’ DefParam}
      *  DefParam          ::=  {Annotation} [‘inline’] Param
+     *  ThisParam         ::=  {Annotation} [‘inline’] ‘this’ ‘:’ ParamType
      *
      *  Param             ::=  id `:' ParamType [`=' Expr]
      *
@@ -2221,10 +2223,11 @@ object Parsers {
                     ofCaseClass: Boolean = false,            // owner is a case class
                     prefix: Boolean = false,                 // clause precedes name of an extension method
                     firstClause: Boolean = false,            // clause is the first in regular list of clauses
+                    thisOK: Boolean = false,                 // can be a this param clause
                     initialMods: Modifiers = EmptyModifiers): List[ValDef] = {
       var impliedMods: Modifiers = initialMods
 
-      def param(): ValDef = {
+      def param(thisOK: Boolean): ValDef = {
         val start = in.offset
         var mods = impliedMods.withAnnotations(annotations())
         if (ofClass) {
@@ -2251,18 +2254,27 @@ object Parsers {
           mods |= Param
         }
         atSpan(start, nameStart) {
-          val name = ident()
+          val isBackquoted = in.token == BACKQUOTED_IDENT
+          val name =
+            if (thisOK && in.token == THIS) {
+              in.nextToken()
+              nme.this_
+            }
+            else ident()
           accept(COLON)
           if (in.token == ARROW && ofClass && !mods.is(Local))
             syntaxError(VarValParametersMayNotBeCallByName(name, mods.is(Mutable)))
           val tpt = paramType()
+          def isThisParam = name == nme.this_ && !isBackquoted
           val default =
-            if (in.token == EQUALS) { in.nextToken(); expr() }
+            if (in.token == EQUALS && !isThisParam) { in.nextToken(); expr() }
             else EmptyTree
           if (impliedMods.mods.nonEmpty) {
             impliedMods = impliedMods.withMods(Nil) // keep only flags, so that parameter positions don't overlap
           }
-          ValDef(name, tpt, default).withMods(mods)
+          val result = ValDef(name, tpt, default).withMods(mods)
+          if (isBackquoted) result.pushAttachment(Backquoted, ())
+          result
         }
       }
 
@@ -2284,9 +2296,19 @@ object Parsers {
         else {
           if (in.token == IMPLICIT && !impliedMods.isOneOf(Given | Erased))
             impliedMods = addMod(impliedMods, atSpan(accept(IMPLICIT)) { Mod.Implicit() })
-          val clause =
-            if (prefix) param() :: Nil
-            else commaSeparated(() => param())
+          val clause = {
+            val leading = param(thisOK)
+            if (prefix || isThisParam(leading))
+              leading :: Nil
+            else {
+              val ts = new ListBuffer[ValDef] += leading
+              while (in.token == COMMA) {
+                in.nextToken()
+                ts += param(thisOK = false)
+              }
+              ts.toList
+            }
+          }
           checkVarArgsRules(clause)
           clause
         }
@@ -2302,8 +2324,9 @@ object Parsers {
      */
     def paramClauses(ofClass: Boolean = false,
                      ofCaseClass: Boolean = false,
-                     ofInstance: Boolean = false): List[List[ValDef]] = {
-      def recur(firstClause: Boolean, nparams: Int, contextualOnly: Boolean): List[List[ValDef]] = {
+                     ofInstance: Boolean = false,
+                     thisOK: Boolean = false): List[List[ValDef]] = {
+      def recur(firstClause: Boolean, nparams: Int, givenOnly: Boolean): List[List[ValDef]] = {
         var initialMods = EmptyModifiers
         if (in.token == GIVEN) {
           in.nextToken()
@@ -2313,10 +2336,10 @@ object Parsers {
           in.nextToken()
           initialMods |= Erased
         }
-        val isContextual = initialMods.is(Given)
+        val isGiven = initialMods.is(Given)
         newLineOptWhenFollowedBy(LPAREN)
         def isParamClause: Boolean =
-          !isContextual || {
+          !isGiven || {
             val lookahead = in.lookaheadScanner
             lookahead.nextToken()
             paramIntroTokens.contains(lookahead.token) && {
@@ -2328,28 +2351,29 @@ object Parsers {
             }
           }
         if (in.token == LPAREN && isParamClause) {
-          if (contextualOnly && !isContextual)
+          if (givenOnly && !isGiven)
             if (ofInstance) syntaxError(em"parameters of instance definitions must come after `given'")
             else syntaxError(em"normal parameters cannot come after `given' clauses")
           val params = paramClause(
               ofClass = ofClass,
               ofCaseClass = ofCaseClass,
               firstClause = firstClause,
+              thisOK = thisOK && firstClause,
               initialMods = initialMods)
           val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
-          params :: (if (lastClause) Nil else recur(firstClause = false, nparams + params.length, isContextual))
+          params :: (if (lastClause) Nil else recur(firstClause = false, nparams + params.length, isGiven))
         }
-        else if (isContextual) {
+        else if (isGiven) {
           val tps = commaSeparated(() => annotType())
           var counter = nparams
           def nextIdx = { counter += 1; counter }
           val paramFlags = if (ofClass) Private | Local | ParamAccessor else Param
           val params = tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | Given))
-          params :: recur(firstClause = false, nparams + params.length, isContextual)
+          params :: recur(firstClause = false, nparams + params.length, isGiven)
         }
         else Nil
       }
-      recur(firstClause = true, 0, ofInstance)
+      recur(firstClause = true, nparams = 0, givenOnly = ofInstance)
     }
 
 /* -------- DEFS ------------------------------------------- */
@@ -2538,6 +2562,7 @@ object Parsers {
      *           | this ParamClause ParamClauses `=' ConstrExpr
      *  DefDcl ::= DefSig `:' Type
      *  DefSig ::= [‘(’ DefParam ‘)’ [nl]] id [DefTypeParamClause] ParamClauses
+     *           | id [DefTypeParamClause] [ThisParamClause] DefParamClauses
      */
     def defDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
       def scala2ProcedureSyntax(resultTypeStr: String) = {
@@ -2565,20 +2590,26 @@ object Parsers {
         }
         makeConstructor(Nil, vparamss, rhs).withMods(mods).setComment(in.getDocComment(start))
       } else {
-        val (leadingParamss, flags) =
+        val leadingParamss =
           if (in.token == LPAREN)
-            try (paramClause(prefix = true) :: Nil, Method | Extension)
+            try paramClause(prefix = true) :: Nil
             finally newLineOpt()
-          else
-            (Nil, Method)
-        val mods1 = addFlag(mods, flags)
+          else Nil
+        var mods1 = addFlag(mods, Method)
         val ident = termIdent()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val vparamss = paramClauses() match {
-          case rparams :: rparamss if leadingParamss.nonEmpty && !isLeftAssoc(ident.name) =>
-            rparams :: leadingParamss ::: rparamss
-          case rparamss =>
-            leadingParamss ::: rparamss
+        val vparamssAsGiven = leadingParamss ::: paramClauses(thisOK = leadingParamss.isEmpty)
+        vparamssAsGiven match {
+          case (vparam :: Nil) :: _ if leadingParamss.nonEmpty || isThisParam(vparam) =>
+            mods1 = addFlag(mods, Extension)
+          case _ =>
+        }
+        // swap first two parameter lists of right-associative extension operators
+        val vparamss = vparamssAsGiven match {
+          case rparams1 :: rparams2 :: rparamss if mods1.is(Extension) && !isLeftAssoc(ident.name) =>
+            rparams2 :: rparams1 :: rparamss
+          case _ =>
+            vparamssAsGiven
         }
         var tpt = fromWithinReturnType {
           if (in.token == SUBTYPE && mods.is(Inline)) {

@@ -209,19 +209,31 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
         check(tree.mods)
         check(tree.vparamss)
       case tree: DefDef if tree.mods.is(Extension) =>
-        tree.vparamss match {
-          case vparams1 :: vparams2 :: rest if !isLeftAssoc(tree.name) =>
-            check(vparams2)
-            check(tree.tparams)
-            check(vparams1)
-            check(rest)
-          case vparams1 :: rest =>
-            check(vparams1)
-            check(tree.tparams)
-            check(rest)
-          case _ =>
-            check(tree.tparams)
+        if (tree.vparamss.exists(untpd.isThisParamClause)) {
+          check(tree.tparams)
+          tree.vparamss match {
+            case vparams1 :: vparams2 :: rest if !isLeftAssoc(tree.name) =>
+              check(vparams2)
+              check(vparams1)
+              check(rest)
+            case _ =>
+              check(tree.vparamss)
+          }
         }
+        else
+          tree.vparamss match {
+            case vparams1 :: vparams2 :: rest if !isLeftAssoc(tree.name) =>
+              check(vparams2)
+              check(tree.tparams)
+              check(vparams1)
+              check(rest)
+            case vparams1 :: rest =>
+              check(vparams1)
+              check(tree.tparams)
+              check(rest)
+            case _ =>
+              check(tree.tparams)
+          }
         check(tree.tpt)
         check(tree.rhs)
       case _ =>

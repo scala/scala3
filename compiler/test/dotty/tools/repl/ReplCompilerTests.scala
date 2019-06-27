@@ -147,8 +147,8 @@ class ReplCompilerTests extends ReplTest {
       run("""
         |trait Ord[T] {
         |  def compare(x: T, y: T): Int
-        |  def (x: T) < (y: T) = compare(x, y) < 0
-        |  def (x: T) > (y: T) = compare(x, y) > 0
+        |  def < (this: T)(that: T) = compare(this, that) < 0
+        |  def > (this: T)(that: T) = compare(this, that) > 0
         |}
         |
         |delegate IntOrd for Ord[Int] {

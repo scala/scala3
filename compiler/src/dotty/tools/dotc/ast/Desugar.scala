@@ -212,6 +212,8 @@ object desugar {
    *      inline def f(x: Boolean): Any = if (x) 1 else ""
    *  ==>
    *      inline def f(x: Boolean): Any = (if (x) 1 else ""): Any
+   *
+   *  5. Wrap body of extension methods in { import this._ ; [] }
    */
   private def defDef(meth0: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val meth @ DefDef(_, tparams, vparamss, tpt, rhs) = transformQuotedPatternName(meth0)
@@ -287,12 +289,21 @@ object desugar {
         Nil
     }
 
+    val meth2 =
+      if (mods.is(Extension) && vparamss.exists(isThisParamClause(_)) && !meth1.rhs.isEmpty)
+        cpy.DefDef(meth1)(
+          rhs = Block(
+            Import(importDelegate = false, Ident(nme.this_), Ident(nme.WILDCARD) :: Nil) :: Nil,
+            meth1.rhs
+          ))
+      else meth1
+
     val defGetters = defaultGetters(vparamss, 0)
-    if (defGetters.isEmpty) meth1
+    if (defGetters.isEmpty) meth2
     else {
-      val meth2 = cpy.DefDef(meth1)(vparamss = normalizedVparamss)
+      val meth3 = cpy.DefDef(meth2)(vparamss = normalizedVparamss)
         .withMods(meth1.mods | DefaultParameterized)
-      Thicket(meth2 :: defGetters)
+      Thicket(meth3 :: defGetters)
     }
   }
 

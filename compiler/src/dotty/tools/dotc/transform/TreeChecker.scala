@@ -341,8 +341,8 @@ class TreeChecker extends Phase with SymTransformer {
       checkNotRepeated(super.typedSelect(tree, pt))
     }
 
-    override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = {
-      val res = super.typedThis(tree)
+    override def typedThis(tree: untpd.This, pt: Type)(implicit ctx: Context): Tree = {
+      val res = super.typedThis(tree, pt)
       val cls = res.symbol
       assert(cls.isStaticOwner || ctx.owner.isContainedIn(cls), i"error while typing $tree, ${ctx.owner} is not contained in $cls")
       res

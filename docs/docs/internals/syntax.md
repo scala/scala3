@@ -310,8 +310,10 @@ DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams
                     |  {DefParamClause} {GivenParamClause}
 DefParamClause    ::=  ‘(’ DefParams ‘)’
 GivenParamClause  ::=  ‘given’ (‘(’ DefParams ‘)’ | GivenTypes)
+ThisParamClause   ::=  ‘(’ ThisParam ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
+ThisParam         ::=  {Annotation} [‘inline’] ‘this’ ‘:’ ParamType
 GivenTypes        ::=  AnnotType {‘,’ AnnotType}
 ClosureMods       ::=  { ‘implicit’ | ‘given’}
 ```
@@ -357,8 +359,7 @@ Dcl               ::=  RefineDcl
 ValDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
-DefSig            ::=  [‘(’ DefParam ‘)’ [nl]] id
-                       [DefTypeParamClause] DefParamClauses
+DefSig            ::=  id [DefTypeParamClause] [ThisParamClause] DefParamClauses
 TypeDcl           ::=  id [TypeParamClause] SubtypeBounds [‘=’ Type]           TypeDefTree(_, name, tparams, bound
 
 Def               ::=  ‘val’ PatDef
