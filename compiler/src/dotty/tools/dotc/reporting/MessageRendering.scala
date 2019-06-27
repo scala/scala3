@@ -6,6 +6,7 @@ import java.lang.System.{lineSeparator => EOL}
 
 import core.Contexts.Context
 import core.Decorators._
+import dotty.tools.dotc.reporting.diagnostic.ErrorCategory
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
 import diagnostic.{ErrorMessageID, Message, MessageContainer}
@@ -123,7 +124,7 @@ trait MessageRendering {
           s"[E${"0" * (3 - errorNumber.toString.length) + errorNumber}] "
         } else ""
       val kind =
-        if (message.kind == "") diagnosticLevel
+        if (message.kind == ErrorCategory.NoKind) diagnosticLevel
         else s"${message.kind} $diagnosticLevel"
       val prefix = s"-- ${errId}${kind}: $file "
 
