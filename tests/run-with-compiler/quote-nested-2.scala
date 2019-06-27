@@ -9,6 +9,6 @@ object Test {
       '{${a}}
     }
 
-    println(withNewQuoteContext(q.show))
+    println(withQuoteContext(q.show))
   }
 }

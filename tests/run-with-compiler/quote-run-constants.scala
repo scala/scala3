@@ -23,7 +23,7 @@ object Test {
 
     println("======")
 
-    withNewQuoteContext {
+    withQuoteContext {
       def show[T](expr: Expr[T]): Unit = println(expr.show)
 
       show(true)

@@ -11,16 +11,16 @@ object Macros {
   def impl(implicit reflect: Reflection): Expr[Unit] = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     // 2 is a lifted constant
-    val show1 = withNewQuoteContext(power(2, 3.0).show)
+    val show1 = withQuoteContext(power(2, 3.0).show)
     val run1  = run(power(2, 3.0))
 
     // n is a lifted constant
     val n = 2
-    val show2 = withNewQuoteContext(power(n, 4.0).show)
+    val show2 = withQuoteContext(power(n, 4.0).show)
     val run2  = run(power(n, 4.0))
 
     // n is a constant in a quote
-    val show3 = withNewQuoteContext(power('{2}, 5.0).show)
+    val show3 = withQuoteContext(power('{2}, 5.0).show)
     val run3 =  run(power('{2}, 5.0))
 
     // n2 is clearly not a constant

@@ -3,7 +3,7 @@ import scala.quoted._
 
 object Test {
   implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withNewQuoteContext {
+  def main(args: Array[String]): Unit = withQuoteContext {
     def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
       if (n == 0) '{1.0}
       else if (n == 1) x

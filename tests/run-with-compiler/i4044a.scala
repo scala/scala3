@@ -5,7 +5,7 @@ class Foo {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     val e: Expr[Int] = '{3}
     val q = '{ ${ '{ $e } } }
-    println(withNewQuoteContext(q.show))
+    println(withQuoteContext(q.show))
   }
 }
 

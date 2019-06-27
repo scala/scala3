@@ -24,7 +24,7 @@ package object quoted {
    *
    *  Usage:
    *  ```
-   *  val e: T = withNewQuoteContext { // (given qctx: QuoteContext) =>
+   *  val e: T = withQuoteContext { // (given qctx: QuoteContext) =>
    *    thunk
    *  }
    *  ```
@@ -32,7 +32,7 @@ package object quoted {
    *
    *  This method shoul not be called in a context where there is already has a QuoteContext.
    */
-  def withNewQuoteContext[T](thunk: given QuoteContext => T) given (toolbox: Toolbox): T = {
+  def withQuoteContext[T](thunk: given QuoteContext => T) given (toolbox: Toolbox): T = {
     var result: T = NoResult.asInstanceOf[T]
     def dummyRun given QuoteContext: Expr[Unit] = {
       result = thunk

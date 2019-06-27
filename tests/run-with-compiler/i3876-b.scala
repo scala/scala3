@@ -11,6 +11,6 @@ object Test {
     }
 
     println(run(f2(x)))
-    println(withNewQuoteContext(f2(x).show))
+    println(withQuoteContext(f2(x).show))
   }
 }

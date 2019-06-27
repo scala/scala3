@@ -7,7 +7,7 @@ class Foo {
     val f: Expr[Int] = '{5}
     val t: Type[Int] = '[Int]
     val q = '{ ${ '{ ($e + $f).asInstanceOf[$t] } } }
-    println(withNewQuoteContext(q.show))
+    println(withQuoteContext(q.show))
   }
 }
 

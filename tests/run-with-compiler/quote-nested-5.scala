@@ -12,6 +12,6 @@ object Test {
 
     }
 
-    println(withNewQuoteContext(q.show))
+    println(withQuoteContext(q.show))
   }
 }

@@ -61,14 +61,14 @@ to be executed at a later stage. To run that code, there is another method
 in class `Expr` called `run`. Note that `$` and `run` both map from `Expr[T]`
 to `T` but only `$` is subject to the PCP, whereas `run` is just a normal method.
 Run provides a `QuoteContext` that can be used to show the expression in the scope of `run`.
-On the other hand `withNewQuoteContext` provides a `QuoteContext` without evauating the expression.
+On the other hand `withQuoteContext` provides a `QuoteContext` without evauating the expression.
 
 ```scala
 package scala.quoted
 
 def run[T](expr: given QuoteContext => Expr[T]) given (toolbox: Toolbox): T = ...
 
-def withNewQuoteContext[T](thunk: given QuoteContext => T) given (toolbox: Toolbox): T = ...
+def withQuoteContext[T](thunk: given QuoteContext => T) given (toolbox: Toolbox): T = ...
 ```
 
 ## Example
