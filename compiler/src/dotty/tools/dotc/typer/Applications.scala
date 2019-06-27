@@ -1521,7 +1521,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       if (tryApply(alt)) {
         val qual = alt.widen match {
           case pt: PolyType =>
-            pt.resultType
+            wildApprox(pt.resultType)
           case _ =>
             alt
         }
