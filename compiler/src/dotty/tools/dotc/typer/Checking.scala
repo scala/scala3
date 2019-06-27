@@ -594,18 +594,6 @@ trait Checking {
   def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, posd: Positioned)(implicit ctx: Context): Unit =
     Checking.checkNonCyclicInherited(joint, parents, decls, posd)
 
-  /** Check that Java statics and packages can only be used in selections.
-   */
-  def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = {
-    if (!proto.isInstanceOf[SelectionProto] && !proto.isInstanceOf[ApplyingProto]) {
-      val sym = tree.tpe.termSymbol
-      // The check is avoided inside Java compilation units because it always fails
-      // on the singleton type Module.type.
-      if ((sym is Package) || (sym.isAllOf(JavaModule) && !ctx.compilationUnit.isJava)) ctx.error(JavaSymbolIsNotAValue(sym), tree.sourcePos)
-    }
-    tree
-  }
-
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: SourcePosition)(implicit ctx: Context): Unit =
     if (!tp.isStable) ctx.error(ex"$tp is not stable", pos)
@@ -1171,7 +1159,6 @@ trait NoChecking extends ReChecking {
   import tpd._
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
   override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, posd: Positioned)(implicit ctx: Context): Unit = ()
-  override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
   override def checkStable(tp: Type, pos: SourcePosition)(implicit ctx: Context): Unit = ()
   override def checkClassType(tp: Type, pos: SourcePosition, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = ()
