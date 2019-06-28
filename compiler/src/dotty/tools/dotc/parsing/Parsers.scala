@@ -2648,9 +2648,9 @@ object Parsers {
         val tparams = typeParamClauseOpt(ParamOwner.Type)
         def makeTypeDef(rhs: Tree): Tree = {
           val rhs1 = lambdaAbstract(tparams, rhs)
-          val tdef =
-            if (nameIdent.isBackquoted) BackquotedTypeDef(nameIdent.name.toTypeName, rhs1)
-            else TypeDef(nameIdent.name.toTypeName, rhs1)
+          val tdef = TypeDef(nameIdent.name.toTypeName, rhs1)
+          if (nameIdent.isBackquoted)
+            tdef.pushAttachment(Backquoted, ())
           finalizeDef(tdef, mods, start)
         }
         in.token match {
