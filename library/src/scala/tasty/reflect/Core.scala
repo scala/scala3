@@ -26,7 +26,7 @@ package scala.tasty.reflect
  *           |                             +- Typed
  *           |                             +- Assign
  *           |                             +- Block
- *           |                             +- Lambda
+ *           |                             +- Closure
  *           |                             +- If
  *           |                             +- Match
  *           |                             +- ImpliedMatch
@@ -200,8 +200,19 @@ trait Core {
         /** Tree representing a block `{ ... }` in the source code */
         type Block = kernel.Block
 
-        /** Tree representing a lambda `(...) => ...` in the source code */
-        type Lambda = kernel.Lambda
+        /** A lambda `(...) => ...` in the source code is represented as
+         *  a local method and a closure:
+         *
+         *  {
+         *    def m(...) = ...
+         *    closure(m)
+         *  }
+         *
+         *  While a function literal is usually a block with the two parts,
+         *  in the Dotty compiler, the two parts may locate in a flattened
+         *  block and may not be consecutive.
+         */
+        type Closure = kernel.Closure
 
         /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
         type If = kernel.If

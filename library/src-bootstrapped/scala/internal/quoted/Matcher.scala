@@ -207,7 +207,7 @@ object Matcher {
           tpt1 =#= tpt2 &&
           withEnv(rhsEnv)(rhs1 =#= rhs2)
 
-        case (Lambda(_, tpt1), Lambda(_, tpt2)) =>
+        case (Closure(_, tpt1), Closure(_, tpt2)) =>
           // TODO match tpt1 with tpt2?
           matched
 

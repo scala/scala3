@@ -25,7 +25,7 @@ package scala.tasty.reflect
  *           |                             +- Typed
  *           |                             +- Assign
  *           |                             +- Block
- *           |                             +- Lambda
+ *           |                             +- Closure
  *           |                             +- If
  *           |                             +- Match
  *           |                             +- ImpliedMatch
@@ -436,16 +436,27 @@ trait Kernel {
   def Block_apply(stats: List[Statement], expr: Term)(implicit ctx: Context): Block
   def Block_copy(original: Tree)(stats: List[Statement], expr: Term)(implicit ctx: Context): Block
 
-  /** Tree representing a lambda `(...) => ...` in the source code */
-  type Lambda <: Term
+  /** A lambda `(...) => ...` in the source code is represented as
+   *  a local method and a closure:
+   *
+   *  {
+   *    def m(...) = ...
+   *    closure(m)
+   *  }
+   *
+   *  While a function literal is usually a block with the two parts,
+   *  in the Dotty compiler, the two parts may locate in a flattened
+   *  block and may not be consecutive.
+   */
+  type Closure <: Term
 
-  def matchLambda(tree: Tree)(implicit ctx: Context): Option[Lambda]
+  def matchClosure(tree: Tree)(implicit ctx: Context): Option[Closure]
 
-  def Lambda_meth(self: Lambda)(implicit ctx: Context): Term
-  def Lambda_tptOpt(self: Lambda)(implicit ctx: Context): Option[TypeTree]
+  def Closure_meth(self: Closure)(implicit ctx: Context): Term
+  def Closure_tpeOpt(self: Closure)(implicit ctx: Context): Option[Type]
 
-  def Lambda_apply(meth: Term, tpt: Option[TypeTree])(implicit ctx: Context): Lambda
-  def Lambda_copy(original: Tree)(meth: Tree, tpt: Option[TypeTree])(implicit ctx: Context): Lambda
+  def Closure_apply(meth: Term, tpe: Option[Type])(implicit ctx: Context): Closure
+  def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type])(implicit ctx: Context): Closure
 
   /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
   type If <: Term

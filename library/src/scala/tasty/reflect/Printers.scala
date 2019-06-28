@@ -201,8 +201,8 @@ trait Printers
           this += "Block(" ++= stats += ", " += expr += ")"
         case If(cond, thenp, elsep) =>
           this += "If(" += cond += ", " += thenp += ", " += elsep += ")"
-        case Lambda(meth, tpt) =>
-          this += "Lambda(" += meth += ", " += tpt += ")"
+        case Closure(meth, tpt) =>
+          this += "Closure(" += meth += ", " += tpt += ")"
         case Match(selector, cases) =>
           this += "Match(" += selector += ", " ++= cases += ")"
         case ImpliedMatch(cases) =>
@@ -406,6 +406,7 @@ trait Printers
 
       private implicit class TypeOps(buff: Buffer) {
         def +=(x: TypeOrBounds): Buffer = { visitType(x); buff }
+        def +=(x: Option[TypeOrBounds]): Buffer = { visitOption(x, visitType); buff }
         def ++=(x: List[TypeOrBounds]): Buffer = { visitList(x, visitType); buff }
       }
 
@@ -911,7 +912,7 @@ trait Printers
         case Inlined(_, bindings, expansion) =>
           printFlatBlock(bindings, expansion)
 
-        case Lambda(meth, tpt) =>
+        case Closure(meth, tpt) =>
           // Printed in by it's DefDef
           this
 
@@ -1019,11 +1020,12 @@ trait Printers
         val (stats1, expr1) = flatBlock(stats, expr)
         // Remove Lambda nodes, lambdas are printed by their definition
         val stats2 = stats1.filter {
-          case Lambda(_, _) => false
+          case Closure(_, _) => false
+          case IsTypeDef(tree) => !tree.symbol.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.quoteTypeTag")
           case _ => true
         }
         val (stats3, expr3) = expr1 match {
-          case Lambda(_, _) =>
+          case Closure(_, _) =>
             val init :+ last  = stats2
             (init, last)
           case _ => (stats2, expr1)
