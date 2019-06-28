@@ -1,0 +1,10 @@
+show0 : {
+  val x: scala.Option[scala.Int] = scala.Option.apply[scala.Int](3)
+  if (x.isInstanceOf[scala.Some[_ >: scala.Nothing <: scala.Any]]) scala.Option.apply[scala.Int](1) else scala.None
+}
+run1 : Some(1)
+run2 : Some(1)
+show3 : {
+  val x: scala.Option[scala.Int] = scala.Option.apply[scala.Int](3)
+  if (x.isInstanceOf[scala.Some[_ >: scala.Nothing <: scala.Any]]) scala.Option.apply[scala.Int](1) else scala.None
+}

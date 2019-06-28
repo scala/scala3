@@ -2,11 +2,11 @@
 import quoted._
 
 object Test {
-  def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  def main(args: Array[String]): Unit = run {
     val q = f(g(Type.IntTag))
-    println(run(q))
     println(q.show)
+    '{ println($q) }
   }
 
   def f(t: Type[List[Int]]): Expr[Int] = '{

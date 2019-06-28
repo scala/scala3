@@ -10,8 +10,8 @@ import liftable.Lists._
 import liftable.Exprs._
 
 object Test {
-  def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  def main(args: Array[String]): Unit = run {
     val liftedUnit: Expr[Unit] = '{}
 
     letVal('{1})(a => '{ $a + 1 }).show
@@ -36,6 +36,7 @@ object Test {
     list.unrolledForeach('{ (x: Int) => println(x) }).show
 
     println("quote lib ok")
+    '{}
   }
 }
 

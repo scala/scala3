@@ -140,16 +140,6 @@ trait Kernel {
   /** Returns the source file being compiled. The path is relative to the current working directory. */
   def Context_source(self: Context): java.nio.file.Path
 
-  /** Returns true if the generated strings are allowed to use colors */
-  def Context_printColors(self: Context): Boolean
-
-  /** Returns a new context where printColors is true */
-  def Context_withColors(self: Context): Context
-
-  /** Returns a new context where printColors is false */
-  def Context_withoutColors(self: Context): Context
-
-
   //
   // REPORTING
   //

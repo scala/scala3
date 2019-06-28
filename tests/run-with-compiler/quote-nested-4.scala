@@ -9,6 +9,6 @@ object Test {
       t
     }
 
-    println(q.show)
+    println(withQuoteContext(q.show))
   }
 }

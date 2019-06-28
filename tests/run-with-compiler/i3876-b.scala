@@ -9,7 +9,8 @@ object Test {
       def f(x: Int): Int = x + x
       f
     }
+
     println(run(f2(x)))
-    println(f2(x).show)
+    println(withQuoteContext(f2(x).show))
   }
 }

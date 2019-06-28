@@ -41,6 +41,12 @@ class Reflection(val kernel: Kernel)
   val util: reflect.utils.TreeUtils { val reflect: self.type } = new reflect.utils.TreeUtils {
     val reflect: self.type = self
   }
+
+  // TODO remove
+  // For backward compat with macros
+  implicit def reflectionToQuoteContext(implicit reflect: Reflection): scala.quoted.QuoteContext =
+    new scala.quoted.QuoteContext(reflect)
+
 }
 
 object Reflection {

@@ -19,6 +19,7 @@ import dotty.tools.dotc.ast.tpd
 import typer.Implicits.SearchFailureType
 
 import scala.collection.mutable
+import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._
@@ -115,9 +116,9 @@ class ReifyQuotes extends MacroTransform {
 
     /** Assuming <expr> contains types `${<tag1>}, ..., ${<tagN>}`, the expression
      *
-     *      { type <Type1> = ${<tag1>}
+     *      { @quoteTypeTag type <Type1> = ${<tag1>}
      *        ...
-     *        type <TypeN> = ${<tagN>}
+     *        @quoteTypeTag type <TypeN> = ${<tagN>}
      *        <expr>
      *      }
      *
@@ -137,7 +138,7 @@ class ReifyQuotes extends MacroTransform {
           flags = Synthetic,
           info = TypeAlias(splicedTree.tpe.select(tpnme.splice)),
           coord = spliced.termSymbol.coord).asType
-
+        local.addAnnotation(Annotation(defn.InternalQuoted_QuoteTypeTagAnnot))
         ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local)
       }
 

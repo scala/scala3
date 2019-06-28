@@ -11,20 +11,12 @@ trait QuotedOps extends Core { self: Printers =>
     /** Checked cast to a `quoted.Expr[U]` */
     def cast[U: scala.quoted.Type](implicit ctx: Context): scala.quoted.Expr[U] =
       kernel.QuotedExpr_cast[U](expr)
-
-    /** Show a source code like representation of this expression */
-    def show(implicit ctx: Context): String =
-      unseal.show
   }
 
   implicit class QuotedTypeAPI[T <: AnyKind](tpe: scala.quoted.Type[T]) {
     /** View this expression `quoted.Type[T]` as a `TypeTree` */
     def unseal(implicit ctx: Context): TypeTree =
       kernel.QuotedType_unseal(tpe)
-
-    /** Show a source code like representation of this type */
-    def show(implicit ctx: Context): String =
-      unseal.show
   }
 
   implicit class TermToQuotedAPI(term: Term) {

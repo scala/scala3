@@ -1,8 +1,8 @@
 import scala.quoted._
 
 object Test {
-  def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  def main(args: Array[String]): Unit = run {
     def asof[T: Type, U](x: Expr[T], t: Type[U]): Expr[U] =
       '{$x.asInstanceOf[$t]}
 
@@ -17,5 +17,6 @@ object Test {
     println(asof('{5d}, '[Double]).show)
 
     println(asof('{5d}, '[Boolean]).show) // Will clearly fail at runtime but the code can be generated
+    '{}
   }
 }

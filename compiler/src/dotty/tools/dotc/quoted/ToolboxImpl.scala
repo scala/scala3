@@ -1,13 +1,9 @@
 package dotty.tools.dotc.quoted
 
-import dotty.tools.dotc.ast.tpd
-
 import scala.quoted._
-import scala.internal.quoted.{LiftedExpr, TastyTreeExpr}
 
 /** Default runners for quoted expressions */
 object ToolboxImpl {
-  import tpd._
 
   /** Create a new instance of the toolbox using the the classloader of the application.
     *
@@ -19,18 +15,10 @@ object ToolboxImpl {
 
     private[this] val driver: QuoteDriver = new QuoteDriver(appClassloader)
 
-    def run[T](expr: Expr[T]): T = expr match {
-      case expr: LiftedExpr[T] =>
-        expr.value
-      case expr: TastyTreeExpr[Tree] @unchecked =>
-        throw new Exception("Cannot call `Expr.run` on an `Expr` that comes from a macro argument.")
-      case _ =>
-        synchronized(driver.run(expr, settings))
+    def run[T](exprBuilder: QuoteContext => Expr[T]): T = synchronized {
+      driver.run(exprBuilder, settings)
     }
 
-    def show[T](expr: Expr[T]): String = synchronized(driver.show(expr, settings))
-
-    def show[T](tpe: Type[T]): String = synchronized(driver.show(tpe, settings))
   }
 
 }

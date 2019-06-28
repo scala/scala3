@@ -13,8 +13,8 @@ object Arrays {
 }
 
 object Test {
-  def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(this.getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(this.getClass.getClassLoader)
+  def main(args: Array[String]): Unit = withQuoteContext {
     import Arrays._
     implicit val ct: Expr[ClassTag[Int]] = '{ClassTag.Int}
     val arr: Expr[Array[Int]] = Array[Int](1, 2, 3).toExpr

@@ -1,4 +1,4 @@
-package scala.tasty.util
+package scala.internal
 
 import scala.annotation.switch
 import java.lang.{Character => JCharacter}
@@ -9,7 +9,6 @@ import java.lang.Character.TITLECASE_LETTER
 import java.lang.Character.UPPERCASE_LETTER
 
 /** Contains constants and classifier methods for characters */
-@deprecated("Use scala.internal.Chars", "0.17")
 object Chars {
 
   final val LF = '\u000A'
@@ -18,15 +17,15 @@ object Chars {
   final val SU = '\u001A'
 
   /** Convert a character digit to an Int according to given base,
-   *  -1 if no success
-   */
+    *  -1 if no success
+    */
   def digit2int(ch: Char, base: Int): Int = {
     val num = (
       if (ch <= '9') ch - '0'
       else if ('a' <= ch && ch <= 'z') ch - 'a' + 10
       else if ('A' <= ch && ch <= 'Z') ch - 'A' + 10
       else -1
-    )
+      )
     if (0 <= num && num < base) num else -1
   }
   /** Buffer for creating '\ u XXXX' strings. */

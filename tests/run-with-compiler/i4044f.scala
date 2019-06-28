@@ -14,7 +14,7 @@ class Foo {
         foo('{e1 + $u}, '{f1})
       }
     }
-    println(q.show)
+    println(withQuoteContext(q.show))
   }
 }
 

@@ -4,6 +4,8 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.util.{SourcePosition, Spans}
 
+import scala.quoted.show.SyntaxHighlight
+
 object ReflectionImpl {
 
   def apply(rootContext: Contexts.Context): scala.tasty.Reflection =
@@ -16,7 +18,10 @@ object ReflectionImpl {
     val refl = new scala.tasty.Reflection(new KernelImpl(ctx, tree.sourcePos))
     val reflCtx = ctx.asInstanceOf[refl.Context]
     val reflTree = tree.asInstanceOf[refl.Tree]
-    new refl.SourceCodePrinter().showTree(reflTree)(reflCtx)
+    val syntaxHighlight =
+      if (ctx.settings.color.value == "always") SyntaxHighlight.ANSI
+      else SyntaxHighlight.plain
+    new refl.SourceCodePrinter(syntaxHighlight).showTree(reflTree)(reflCtx)
   }
 
 }
