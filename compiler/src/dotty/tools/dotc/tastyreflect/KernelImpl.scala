@@ -1444,8 +1444,6 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     if (x.tag == Constants.StringTag) Some(x.stringValue) else None
   def matchConstant_ClassTag(x: Constant): Option[Type] =
     if (x.tag == Constants.ClazzTag) Some(x.typeValue) else None
-  def matchConstant_Symbol(x: Constant): Option[scala.Symbol] =
-    if (x.tag == Constants.ScalaSymbolTag) Some(x.scalaSymbolValue) else None
 
   def Constant_Unit_apply(): Constant = Constants.Constant(())
   def Constant_Null_apply(): Constant = Constants.Constant(null)
@@ -1459,7 +1457,6 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Constant_Double_apply(x: Double): Constant = Constants.Constant(x)
   def Constant_String_apply(x: String): Constant = Constants.Constant(x)
   def Constant_ClassTag_apply(x: scala.reflect.ClassTag[_]): Constant = Constants.Constant(x)
-  def Constant_Symbol_apply(x: scala.Symbol): Constant = Constants.Constant(x)
 
   //
   // SYMBOLS

@@ -301,7 +301,6 @@ trait Printers
         case Constant.Double(value) => this += "Constant.Double(" += value += ")"
         case Constant.String(value) => this += "Constant.String(\"" += value += "\")"
         case Constant.ClassTag(value) => this += "Constant.ClassTag(" += value += ")"
-        case Constant.Symbol(value) => this += "Constant.Symbol('" += value.name += ")"
       }
 
       def visitType(x: TypeOrBounds): Buffer = x match {
@@ -1390,8 +1389,6 @@ trait Printers
         case Constant.ClassTag(v) =>
           this += "classOf"
           inSquare(printType(v))
-        case Constant.Symbol(v) =>
-          this += highlightLiteral("'" + v.name)
       }
 
       def printTypeOrBoundsTree(tpt: Tree)(implicit elideThis: Option[Symbol] = None): Buffer = tpt match {

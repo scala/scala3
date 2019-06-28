@@ -141,16 +141,5 @@ trait ConstantOps extends Core {
       def unapply(constant: Constant): Option[Type] =
         kernel.matchConstant_ClassTag(constant)
     }
-
-    /** Module of scala.Symbol literals */
-    object Symbol {
-      /** scala.Symbol literal */
-      def apply(x: scala.Symbol): Constant =
-        kernel.Constant_Symbol_apply(x)
-
-      /** Extractor for scala.Symbol literals */
-      def unapply(constant: Constant): Option[scala.Symbol] =
-        kernel.matchConstant_Symbol(constant)
-    }
   }
 }

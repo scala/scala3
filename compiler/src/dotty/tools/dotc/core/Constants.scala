@@ -22,7 +22,6 @@ object Constants {
   final val ClazzTag   = 12
   // For supporting java enumerations inside java annotations (see ClassfileParser)
   final val EnumTag    = 13
-  final val ScalaSymbolTag = 14
 
   class Constant(val value: Any, val tag: Int) extends printing.Showable with Product1[Any] {
     import java.lang.Double.doubleToRawLongBits
@@ -52,7 +51,6 @@ object Constants {
       case NullTag        => defn.NullType
       case ClazzTag       => defn.ClassType(typeValue)
       case EnumTag        => defn.EnumType(symbolValue)
-      case ScalaSymbolTag => defn.ScalaSymbolType
     }
 
     /** We need the equals method to take account of tags as well as values.
@@ -193,7 +191,6 @@ object Constants {
 
     def typeValue: Type     = value.asInstanceOf[Type]
     def symbolValue: Symbol = value.asInstanceOf[Symbol]
-    def scalaSymbolValue: scala.Symbol = value.asInstanceOf[scala.Symbol]
 
     /**
      * Consider two `NaN`s to be identical, despite non-equality
@@ -241,7 +238,6 @@ object Constants {
     def apply(x: Char): Constant         = new Constant(x, CharTag)
     def apply(x: Type): Constant         = new Constant(x, ClazzTag)
     def apply(x: Symbol): Constant       = new Constant(x, EnumTag)
-    def apply(x: scala.Symbol): Constant = new Constant(x, ScalaSymbolTag)
     def apply(value: Any): Constant      =
       new Constant(value,
         value match {
@@ -258,7 +254,6 @@ object Constants {
           case x: Char         => CharTag
           case x: Type         => ClazzTag
           case x: Symbol       => EnumTag
-          case x: scala.Symbol => ScalaSymbolTag
         }
       )
 

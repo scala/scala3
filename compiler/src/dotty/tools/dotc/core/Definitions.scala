@@ -694,9 +694,6 @@ class Definitions {
 
   @threadUnsafe lazy val ScalaSymbolType: TypeRef                    = ctx.requiredClassRef("scala.Symbol")
   def ScalaSymbolClass(implicit ctx: Context): ClassSymbol          = ScalaSymbolType.symbol.asClass
-  def ScalaSymbolModule(implicit ctx: Context): Symbol         = ScalaSymbolClass.companionModule
-    @threadUnsafe lazy val ScalaSymbolModule_applyR: TermRef                  = ScalaSymbolModule.requiredMethodRef(nme.apply, List(StringType))
-    def ScalaSymbolModule_apply(implicit ctx: Context): Symbol = ScalaSymbolModule_applyR.symbol
 
   @threadUnsafe lazy val DynamicType: TypeRef                 = ctx.requiredClassRef("scala.Dynamic")
   def DynamicClass(implicit ctx: Context): ClassSymbol = DynamicType.symbol.asClass

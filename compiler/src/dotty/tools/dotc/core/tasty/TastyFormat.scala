@@ -140,7 +140,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   NULLconst                                                        -- null
                   CLASSconst            Type                                       -- classOf[Type]
                   ENUMconst             Path                                       -- An enum constant
-                  SYMBOLconst           NameRef                                    -- A symbol literal (todo: drop?)
 
   Type          = Path                                                             -- Paths represent both types and terms
                   TYPEREFdirect         sym_ASTRef                                 -- A reference to a local symbol (without a prefix). Reference is to definition node of symbol.
@@ -250,7 +249,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 14
+  val MajorVersion: Int = 15
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names */
@@ -352,7 +351,6 @@ object TastyFormat {
   final val STRINGconst = 64
   final val IMPORTED = 65
   final val RENAMED = 66
-  final val SYMBOLconst = 67
 
   // Cat. 3:    tag AST
 
@@ -462,7 +460,7 @@ object TastyFormat {
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
     firstSimpleTreeTag <= tag && tag <= EXPORTED ||
-    firstNatTreeTag <= tag && tag <= SYMBOLconst ||
+    firstNatTreeTag <= tag && tag <= RENAMED ||
     firstASTTreeTag <= tag && tag <= BOUNDED ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
     firstLengthTreeTag <= tag && tag <= MATCHtpt ||
@@ -636,7 +634,6 @@ object TastyFormat {
     case SUPER => "SUPER"
     case CLASSconst => "CLASSconst"
     case ENUMconst => "ENUMconst"
-    case SYMBOLconst => "SYMBOLconst"
     case SINGLETONtpt => "SINGLETONtpt"
     case SUPERtype => "SUPERtype"
     case TERMREFin => "TERMREFin"
