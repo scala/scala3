@@ -2817,20 +2817,20 @@ class Typer extends Namer
         readaptSimplified(Inliner.inlineCall(tree))
       }
       else if (tree.symbol.isScala2Macro) {
-        if (ctx.settings.XignoreScala2Macros.value) {
-          ctx.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See http://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.sourcePos.startPos)
-          Throw(New(defn.MatchErrorType, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil))
-            .withType(tree.tpe)
-            .withSpan(tree.span)
-        } else if (tree.symbol eq defn.StringContext_f) {
+        if (tree.symbol eq defn.StringContext_f) {
           // As scala.StringContext.f is defined in the standard library which
-          // we currently do not bootstrap we cannot implement the macro the library.
+          // we currently do not bootstrap we cannot implement the macro in the library.
           // To overcome the current limitation we intercept the call and rewrite it into
           // a call to dotty.internal.StringContext.f which we can implement using the new macros.
           // As the macro is implemented in the bootstrapped library, it can only be used from the bootstrapped compiler.
           val Apply(TypeApply(Select(sc, _), _), args) = tree
           val newCall = ref(defn.InternalStringContextMacroModule_f).appliedTo(sc).appliedToArgs(args)
           readaptSimplified(Inliner.inlineCall(newCall))
+        } else if (ctx.settings.XignoreScala2Macros.value) {
+          ctx.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See http://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.sourcePos.startPos)
+          Throw(New(defn.MatchErrorType, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil))
+            .withType(tree.tpe)
+            .withSpan(tree.span)
         } else {
           ctx.error(
             """Scala 2 macro cannot be used in Dotty. See http://dotty.epfl.ch/docs/reference/dropped-features/macros.html\n"
