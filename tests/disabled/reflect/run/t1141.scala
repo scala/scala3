@@ -2,7 +2,7 @@
 
 import scala.language.reflectiveCalls
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val foo = new {
     def apply(args : String*) = args foreach println
   }

@@ -1,4 +1,4 @@
-  object Test extends dotty.runtime.LegacyApp {
+  object Test extends App {
   import scala.reflect.runtime.universe._
   import scala.reflect.runtime.{currentMirror => cm}
   import scala.tools.reflect.ToolBox

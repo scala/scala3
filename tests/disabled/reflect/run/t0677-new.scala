@@ -1,6 +1,6 @@
 import scala.reflect.{ClassTag, classTag}
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   class X[T: ClassTag] {
     val a = Array.ofDim[T](3, 4)
   }

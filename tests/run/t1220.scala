@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   class QSRichIterable[A](self: Iterable[A]) {
     def filterMap[R](f: PartialFunction[A,R]) =

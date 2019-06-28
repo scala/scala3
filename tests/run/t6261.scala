@@ -1,6 +1,6 @@
 import scala.collection.immutable._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   def test1(): Unit = {
     // test that a HashTrieMap with one leaf element is not created!

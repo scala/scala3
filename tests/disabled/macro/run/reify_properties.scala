@@ -1,7 +1,7 @@
 import scala.reflect.runtime.universe._
 import scala.tools.reflect.Eval
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   reify {
     /** A mutable property whose getter and setter may be customized. */
     case class Property[T](init: T) {

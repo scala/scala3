@@ -33,7 +33,7 @@ class C extends A with B {
   val i4 = new runtime.AbstractFunction0[String] { def apply() = C.this.n }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val c = new C
   println(c.f1())
   println(c.f2())

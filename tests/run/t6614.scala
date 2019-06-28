@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 	import scala.collection.mutable.ArrayStack
 
 	println((for (i <- 0 to 10) yield {

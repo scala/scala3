@@ -1,7 +1,7 @@
 /*
  * filter: inliner warnings; re-run with -Yinline-warnings for details
  */
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
 // 'b' / 'B' (category: general)
 // -----------------------------

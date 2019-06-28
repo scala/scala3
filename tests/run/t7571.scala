@@ -4,7 +4,7 @@ class Foo(val a: Int) extends AnyVal {
   def bar = (new {}).toString
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val x = new Foo(1).foo.apply(2)
   assert(x == 3, x)
   val s = new Foo(1).bar

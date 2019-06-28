@@ -4,7 +4,7 @@ abstract class Prova2 extends Dynamic {
   private def privateMethod() = println("private method")
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val prova= new Prova2 {
     def applyDynamic(m: String)() = println("applyDynamic")
   }

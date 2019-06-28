@@ -2,7 +2,7 @@ import scala.language.implicitConversions
 import scala.language.reflectiveCalls
 import scala.reflect.runtime.universe._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   class A[T]
   class B[T]
   implicit def foo[T: TypeTag](a: A[T])(implicit b: B[T]): AnyRef{def baz: reflect.runtime.universe.Type} = new { def baz = typeOf[T] }

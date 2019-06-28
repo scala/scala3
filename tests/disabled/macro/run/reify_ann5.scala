@@ -6,7 +6,7 @@ import scala.annotation._
 import scala.annotation.meta._
 import scala.beans._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   // test 1: reify
   val tree = reify{
     class C(@BeanProperty @(inline @beanGetter) val x: Int)

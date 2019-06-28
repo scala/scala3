@@ -1,7 +1,7 @@
 
 import scala.language.postfixOps
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
  import scala.util.matching.{ Regex, UnanchoredRegex }
 

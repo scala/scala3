@@ -1,5 +1,5 @@
 class Foo(val x: Int) extends AnyVal
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   println(manifest[Foo])
 }

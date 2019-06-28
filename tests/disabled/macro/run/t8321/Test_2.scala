@@ -1,3 +1,3 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   println(Macros.foo.x)
 }

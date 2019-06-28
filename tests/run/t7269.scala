@@ -1,7 +1,7 @@
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   def testMap(): Unit = {
     val mapJ = new java.util.HashMap[Int, String]

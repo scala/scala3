@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def check(expected: Any, actual: Any, msg: String = "") = {
     if (expected != actual)
       sys.error(s"($actual != $expected) $msg")

@@ -24,7 +24,7 @@ class E {
   override def toString = "an instance of class E"
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   import scala.reflect.runtime.universe._
   import scala.reflect.runtime.{currentMirror => cm}
   val im = cm.reflect(new D)

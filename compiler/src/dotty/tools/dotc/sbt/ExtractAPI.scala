@@ -237,8 +237,6 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     api.ClassLikeDef.of(name, acc, modifiers, anns, tparams, defType)
   }
 
-  private[this] val LegacyAppClass = ctx.requiredClass("dotty.runtime.LegacyApp")
-
   def apiClassStructure(csym: ClassSymbol): api.Structure = {
     val cinfo = csym.classInfo
 
@@ -274,9 +272,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     // TODO: We shouldn't have to compute inherited members. Instead, `Structure`
     // should have a lazy `parentStructures` field.
     val inherited = cinfo.baseClasses
-      // We cannot filter out `LegacyApp` because it contains the main method,
-      // see the comment about main class discovery in `computeType`.
-      .filter(bc => !bc.is(Scala2x) || bc.eq(LegacyAppClass))
+      .filter(bc => !bc.is(Scala2x))
       .flatMap(_.classInfo.decls.filter(s => !(s.is(Private) || declSet.contains(s))))
     // Inherited members need to be computed lazily because a class might contain
     // itself as an inherited member, like in `class A { class B extends A }`,

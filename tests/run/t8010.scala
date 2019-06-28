@@ -12,7 +12,7 @@ trait Derived extends Base {
   override def bt(n: Int) = 1 + super.bt(n)
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val d = new Derived {}
   // not the focus of thie bug, but let's just check the runtime behaviour while we're here.
   assert(d.t == 2)

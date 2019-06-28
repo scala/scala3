@@ -33,7 +33,7 @@ class C extends A {
 }
 
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val b = new B
   val c0 = new C
   val c = new C {

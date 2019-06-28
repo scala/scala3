@@ -1,7 +1,7 @@
 /*
  * filter: It would fail on the following input
  */
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   virtMatch()
   def virtMatch() = {
     List(1, 3, 4, 7) match {

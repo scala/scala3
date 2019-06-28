@@ -4,7 +4,7 @@
 import scala.collection._
 import scala.language.postfixOps
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   def orderedTraversableTest(empty: Traversable[Int]): Unit = {
     println("new test starting with "+empty)

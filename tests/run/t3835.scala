@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   // work around optimizer bug SI-5672  -- generates wrong bytecode for switches in arguments
   // virtpatmat happily emits a switch for a one-case switch
   // this is not the focus of this test, hence the temporary workaround

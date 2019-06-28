@@ -1,6 +1,6 @@
 import scala.reflect.{ClassTag, classTag}
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   println(classTag[Int])
   println(classTag[Array[Int]])
   println(classTag[Array[Array[Int]]])

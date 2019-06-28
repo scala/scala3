@@ -5,7 +5,7 @@ import scala.tools.reflect.ToolBox
 import scala.annotation._
 import scala.annotation.meta._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   // test 1: reify
   val tree = reify{
     class Tree[A, +B](@(inline @getter) final val key: A)

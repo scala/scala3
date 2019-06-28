@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   import Float.NaN
 
   // NaN must not equal NaN no matter what optimizations are applied

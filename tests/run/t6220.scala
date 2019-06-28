@@ -1,6 +1,6 @@
 import scala.collection.immutable._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   // finds an int x such that improved(x) differs in the first bit to improved(0),
   // which is the worst case for the HashTrieSet

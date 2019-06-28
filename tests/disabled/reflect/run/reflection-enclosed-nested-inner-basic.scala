@@ -13,7 +13,7 @@ object B {
   }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val b = cm.classSymbol(classTag[B.BB].runtimeClass)
   println(b)
   println(b.info.decls.toList)

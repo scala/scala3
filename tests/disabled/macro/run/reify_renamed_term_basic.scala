@@ -7,7 +7,7 @@ object A {
   }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   import A.{B => X}
   import A.B.{c => y}
   import X.{c => z}

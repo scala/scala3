@@ -4,7 +4,7 @@
 
 
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   val lstv = List(1, 2, 3).view
   val lstvr = lstv.reverse

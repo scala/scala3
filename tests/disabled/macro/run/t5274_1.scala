@@ -1,7 +1,7 @@
 import scala.reflect.runtime.universe._
 import scala.tools.reflect.Eval
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   reify {
     def factorial(n: BigInt): BigInt =
       if (n == 0) 1 else n * factorial(n-1)

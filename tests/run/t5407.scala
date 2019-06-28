@@ -1,6 +1,6 @@
 case class Foo(private val x: Int, y: Option[Int], z: Boolean)
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def foo(x: Foo) = x match {
     case Foo(x, Some(y), z) => y
     case Foo(x, y, z) => 0

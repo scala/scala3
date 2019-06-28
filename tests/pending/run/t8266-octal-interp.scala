@@ -11,6 +11,6 @@ trait X {
   )
 }
 
-object Test extends dotty.runtime.LegacyApp with X {
+object Test extends App with X {
   f foreach println
 }

@@ -9,7 +9,7 @@ package scala {
   }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def key(sym: Symbol) = {
     sym match {
       // initialize parameter symbols
