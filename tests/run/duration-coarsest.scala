@@ -1,7 +1,7 @@
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   List(
     (60 minutes,    1 hour),
     (2000 millis,   2 seconds),

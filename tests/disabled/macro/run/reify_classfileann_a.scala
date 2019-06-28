@@ -5,7 +5,7 @@ import scala.tools.reflect.ToolBox
 
 class ann(bar: String, quux: Array[String] = Array(), baz: ann = null) extends annotation.ClassfileAnnotation
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   // test 1: reify
   val tree = reify{
     @ann(bar="1", quux=Array("2", "3"), baz = new ann(bar = "4")) class C

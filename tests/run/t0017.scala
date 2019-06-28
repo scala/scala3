@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
 def transpose[A](arr: Array[Array[A]]) = {
   for (i <- Array.range(0, arr(0).length)) yield

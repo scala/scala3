@@ -1,7 +1,7 @@
 
 import scala.language.reflectiveCalls
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val str = "ABCDEFGHIJKLMABCDEFGHIJKLM"
   val surrogateStr = "an old Turkic letter: \uD803\uDC22"
 

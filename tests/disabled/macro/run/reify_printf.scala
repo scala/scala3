@@ -8,7 +8,7 @@ import scala.reflect.api.Trees
 import scala.reflect.internal.Types
 import scala.util.matching.Regex
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   //val output = new ByteArrayOutputStream()
   //Console.setOut(new PrintStream(output))
   val toolbox = cm.mkToolBox()

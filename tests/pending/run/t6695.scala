@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 	try {
 	  Array("a", "b", "c") match {
 	  	case Array("a", "x", "c") => println("x")

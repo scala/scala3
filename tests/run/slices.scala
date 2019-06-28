@@ -1,7 +1,7 @@
 
 import scala.language.postfixOps
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   // lists
   println(List(1, 2, 3, 4).slice(1, 2))

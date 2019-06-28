@@ -9,7 +9,7 @@ private object B4 { override def toString = "B4"; def foo = 4 }
 object B5 extends B1 { override def toString = "B5"; override def foo = 5 }
 private object B6 extends B2 { override def toString = "B6"; override def foo = 6 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def testMethodInvocation(instance: Any) = {
     val instanceMirror = cm.reflect(instance)
     val method = instanceMirror.symbol.info.decl(TermName("foo")).asMethod

@@ -5,7 +5,7 @@
  * that exposes Java reflection information dressed up in
  * a Scala symbol.
  */
-object Test extends dotty.runtime.LegacyApp with Outer {
+object Test extends App with Outer {
   import scala.reflect.{ClassTag, classTag}
   import scala.reflect.runtime.universe._
   import scala.reflect.runtime.{currentMirror => cm}

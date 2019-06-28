@@ -1,6 +1,6 @@
 import Macros._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def foo(x: Int, y: Int)(implicit loc: SourceLocation): Int = {
     println("hey, i've been called from %s".format(loc))
     if (x < y) foo(y, x)

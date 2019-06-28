@@ -6,7 +6,7 @@ class DD {
   def baz[A](c: C[A]) = ()
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   classOf[DD].getMethod("foo", classOf[String])
   classOf[DD].getMethod("bar", classOf[String])
   classOf[DD].getMethod("baz", classOf[Object])

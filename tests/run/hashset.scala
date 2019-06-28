@@ -4,7 +4,7 @@ import scala.collection.mutable.FlatHashTable
 import scala.collection.mutable.HashSet
 import scala.collection.parallel.mutable.ParHashSet
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   test(new Creator{
     def create[A] = new HashSet[A]
     def hashSetType = "HashSet"

@@ -1,5 +1,5 @@
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   import util.matching._
   import Regex._
 

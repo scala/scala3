@@ -1,7 +1,7 @@
 import scala.language.implicitConversions
 import scala.language.postfixOps
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   import scala.collection.{GenTraversableOnce,GenTraversableLike}
   import scala.collection.generic._
 

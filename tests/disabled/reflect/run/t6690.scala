@@ -2,7 +2,7 @@ import scala.collection.mutable
 
 import scala.language.{ reflectiveCalls }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def last0(ml: mutable.MutableList[Int]) =
     ml.asInstanceOf[{def last0: mutable.LinkedList[Int]}].last0
 

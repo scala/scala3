@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
  List(1, 2, 3) match {
    case Nil => println("FAIL")
    case x :: y :: xs if xs.length == 2 => println("FAIL")

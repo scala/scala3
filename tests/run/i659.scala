@@ -8,7 +8,7 @@ class VFoo(val a: Int) extends AnyVal {
   def foo = { {case x => x + a}: PartialFunction[Int, Int]}
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   def Foo(a: Int) = {
     class Bar { def result(x: Int) = x + a }

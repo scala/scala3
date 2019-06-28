@@ -1,7 +1,7 @@
 import scala.collection.mutable.HashSet
 
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val h = new HashSet[Int]
   h += 1
   println(s"remove 0 should be false, was ${h remove 0}")

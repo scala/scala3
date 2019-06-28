@@ -1,7 +1,7 @@
 
 import scala.language.{ existentials }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   {
     val (left, right) = Seq((1, "a"), (1, "a"), (1, "a"), (3, "c")).view.unzip
     println(left.isInstanceOf[scala.collection.SeqViewLike[_,_,_]])

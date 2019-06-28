@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   locally {
     val a = Array("1")
     val a2 = Array(a: _*)

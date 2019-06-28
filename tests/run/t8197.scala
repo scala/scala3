@@ -8,7 +8,7 @@ class Foo(val x: A = null) {
   }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   // both constructors of `Foo` are applicable. Overloading resolution
   // will eliminate the alternative that uses a default argument, therefore
   // the vararg constructor is chosen.

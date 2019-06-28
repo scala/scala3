@@ -3,7 +3,7 @@ import scala.reflect.runtime.universe._
 class C
 object C
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   type T = Int
   type Id[X] = X
   println(symbolOf[Int])

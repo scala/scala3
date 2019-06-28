@@ -4,7 +4,7 @@ import scala.reflect.runtime.{currentMirror => cm}
 class A
 trait B
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val mutant = new A with B
   val c = cm.classSymbol(mutant.getClass)
   println(c)

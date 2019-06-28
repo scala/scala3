@@ -56,6 +56,6 @@ class C {
   }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   new C()
 }

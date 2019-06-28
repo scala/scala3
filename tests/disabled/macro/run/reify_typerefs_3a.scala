@@ -9,7 +9,7 @@ object foo {
   }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val code = reify {
     List(new foo.Expression, new foo.Expression)
   };

@@ -1,7 +1,7 @@
 import scala.io.Source
 import java.io.ByteArrayInputStream
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val txt = "abcdef"
 
   val in = new ByteArrayInputStream(txt.getBytes());

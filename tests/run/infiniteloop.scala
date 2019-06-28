@@ -1,6 +1,6 @@
 /** Tests the optimiser (not to loop on 'reverse'). */
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def foo: Unit = {
     val s3 = Stream.range(1, 1000) //100000 (ticket #153: Stackoverflow)
 

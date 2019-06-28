@@ -45,7 +45,7 @@ class TestSet(s0: Set[Int], s1: Set[Int]) {
   }
   Console.println("succeeded for "+Iterations+" iterations.")
 }
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def t3954: Unit = {
     import scala.collection.mutable
     import scala.collection.immutable

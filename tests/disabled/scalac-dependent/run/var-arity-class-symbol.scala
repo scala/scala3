@@ -1,5 +1,5 @@
 import scala.reflect.runtime.universe._, definitions._
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   // Tuples
   assert(TupleClass.seq.size == 22)
   assert(TupleClass(0) == NoSymbol)

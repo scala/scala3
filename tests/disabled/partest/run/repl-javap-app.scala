@@ -1,7 +1,7 @@
 
 import scala.tools.partest.ReplTest
 
-object MyApp extends dotty.runtime.LegacyApp {
+object MyApp extends App {
   Console println "Hello, delayed world."
 }
 

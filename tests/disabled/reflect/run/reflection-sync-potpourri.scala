@@ -5,7 +5,7 @@ import scala.reflect.runtime.universe._
 // 2) symbols are correctly materialized into PackageScopes (no dupes)
 // 3) unpickling works okay even we unpickle the same symbol a lot of times
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def foo[T: TypeTag](x: T) = typeOf[T].toString
   val n = 1000
   val rng = new scala.util.Random()

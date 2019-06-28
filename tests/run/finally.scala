@@ -1,5 +1,5 @@
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
 
   // test that finally is not covered by any exception handlers.

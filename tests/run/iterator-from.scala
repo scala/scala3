@@ -6,7 +6,7 @@ import scala.util.{Random => R}
 import scala.collection._
 import scala.math.Ordered
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val maxLength = 25
   val maxKey = 50
   val maxValue = 50

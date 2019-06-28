@@ -1,7 +1,7 @@
 import scala.collection.immutable.ListSet
 import scala.collection.immutable.HashSet
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   def testCorrectness(): Unit = {
     // a key that has many hashCode collisions

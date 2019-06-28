@@ -1,7 +1,7 @@
 
 import scala.language.{ implicitConversions }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   case class Node(x: Int)
 
   implicit def sc2xml(sc: StringContext): XMLContext = new XMLContext(sc)
