@@ -3,23 +3,24 @@ package tools
 package dotc
 package transform
 
+import vulpix.FileDiff
 import vulpix.TestConfiguration
+import reporting.TestReporter
+
+import dotty.tools.io.Directory
 
 import java.io._
 import java.nio.file.{Path => JPath}
 
 import scala.io.Source._
-import dotty.tools.io.Directory
 import org.junit.Test
-import reporting.TestReporter
-import vulpix.TestConfiguration
 
 class PatmatExhaustivityTest {
   val testsDir = "tests/patmat"
   // stop-after: patmatexhaust-huge.scala crash compiler
   val options = List("-color:never", "-Ystop-after:crossCast", "-Ycheck-all-patmat", "-classpath", TestConfiguration.basicClasspath)
 
-  private def compileFile(path: JPath) = {
+  private def compileFile(path: JPath): Boolean = {
     val stringBuffer = new StringWriter()
     val reporter = TestReporter.simplifiedReporter(new PrintWriter(stringBuffer))
 
@@ -31,18 +32,18 @@ class PatmatExhaustivityTest {
         e.printStackTrace()
     }
 
-    val actual = stringBuffer.toString.trim.replaceAll("\\s+\n", "\n")
-    val checkFilePath = path.toAbsolutePath.toString.stripSuffix(".scala") + ".check"
-    val checkContent =
-      if (new File(checkFilePath).exists)
-        fromFile(checkFilePath).getLines().map(_.replaceAll("\\s+$", "")).mkString("\n").trim
-      else ""
+    val actualLines: Seq[String] = stringBuffer.toString.trim.replaceAll("\\s+\n", "\n") match {
+      case "" => Nil
+      case s  => s.split("\\r?\\n")
+    }
+    val baseFilePath = path.toString.stripSuffix(".scala")
+    val checkFilePath = baseFilePath + ".check"
 
-    (path, checkContent, actual)
+    FileDiff.checkAndDump(path.toString, actualLines, checkFilePath)
   }
 
   /** A single test with multiple files grouped in a folder */
-  private def compileDir(path: JPath) = {
+  private def compileDir(path: JPath): Boolean = {
     val stringBuffer = new StringWriter()
     val reporter = TestReporter.simplifiedReporter(new PrintWriter(stringBuffer))
 
@@ -58,14 +59,14 @@ class PatmatExhaustivityTest {
         e.printStackTrace()
     }
 
-    val actual = stringBuffer.toString.trim.replaceAll("\\s+\n", "\n")
-    val checkFilePath = path + File.separator + "expected.check"
-    val checkContent =
-      if (new File(checkFilePath).exists)
-        fromFile(checkFilePath).getLines().map(_.replaceAll("\\s+$", "")).mkString("\n").trim
-      else ""
+    val actualLines: Seq[String] = stringBuffer.toString.trim.replaceAll("\\s+\n", "\n") match {
+      case "" => Nil
+      case s  => s.split("\\r?\\n")
+    }
 
-    (path, checkContent, actual)
+    val checkFilePath = path + File.separator + "expected.check"
+
+    FileDiff.checkAndDump(path.toString, actualLines, checkFilePath)
   }
 
   @Test
@@ -79,14 +80,8 @@ class PatmatExhaustivityTest {
           compileFile(f.jpath)
       }
 
-    val failed = res.filter { case (_, expected, actual) => expected != actual }
+    val failed = res.filter(!_)
     val ignored = Directory(testsDir).list.toList.filter(_.extension == "ignore")
-
-    failed.foreach { case (file, expected, actual) =>
-      println(s"\n----------------- incorrect output for $file --------------\n" +
-        s"Expected:\n---------\n$expected\n\nActual:\n-------\n$actual\n"
-      )
-    }
 
     val msg = s"Total: ${res.length + ignored.length}, Failed: ${failed.length}, Ignored: ${ignored.length}"
 

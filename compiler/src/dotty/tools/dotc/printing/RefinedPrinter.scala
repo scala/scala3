@@ -783,7 +783,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       params ::: rest
     } else impl.body
 
-    val bodyText = " {" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
+    val bodyText = " {" ~~ selfText ~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
 
     prefix ~
     keywordText(" extends").provided(!ofNew && impl.parents.nonEmpty) ~~ parentsText ~
