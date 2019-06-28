@@ -1346,11 +1346,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def tupleTypeTree(elems: List[Tree])(implicit ctx: Context): Tree = {
     val arity = elems.length
     if (arity <= Definitions.MaxTupleArity && defn.TupleType(arity) != null) AppliedTypeTree(TypeTree(defn.TupleType(arity)), elems)
-    else nestedPairsType(elems)
+    else nestedPairsTypeTree(elems)
   }
 
   /** Creates the nested pairs type tree repesentation of the type trees in `ts` */
-  def nestedPairsType(ts: List[Tree])(implicit ctx: Context): Tree =
+  def nestedPairsTypeTree(ts: List[Tree])(implicit ctx: Context): Tree =
     ts.foldRight[Tree](TypeTree(defn.UnitType))((x, acc) => AppliedTypeTree(TypeTree(defn.PairType), x :: acc :: Nil))
 
   /** Replaces all positions in `tree` with zero-extent positions */
