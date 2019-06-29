@@ -419,8 +419,8 @@ class TreeChecker extends Phase with SymTransformer {
 
     override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context): Tree = {
       if (!ctx.phase.lambdaLifted) nestingBlock match {
-        case Block((meth : DefDef) :: Nil, closure: Closure) =>
-          assert(meth.symbol == closure.meth.symbol, "closure.meth symbol not equal to method symbol. Block: " + nestingBlock.show)
+        case block @ Block((meth : DefDef) :: Nil, closure: Closure) =>
+          assert(meth.symbol == closure.meth.symbol, "closure.meth symbol not equal to method symbol. Block: " + block.show)
 
         case block: untpd.Block =>
           assert(false, "function literal are not properly formed as a block of DefDef and Closure. Found: " + tree.show + " Nesting block: " + block.show)
