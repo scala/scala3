@@ -221,24 +221,24 @@ object StdNames {
     final val bridgeAnnot: N = "bridge"
 
     // Classfile Attributes
-    final val AnnotationDefaultATTR: N      = "AnnotationDefault"
-    final val BridgeATTR: N                 = "Bridge"
-    final val ClassfileAnnotationATTR: N    = "RuntimeInvisibleAnnotations" // RetentionPolicy.CLASS. Currently not used (Apr 2009).
-    final val CodeATTR: N                   = "Code"
-    final val ConstantValueATTR: N          = "ConstantValue"
-    final val DeprecatedATTR: N             = "Deprecated"
-    final val ExceptionsATTR: N             = "Exceptions"
-    final val InnerClassesATTR: N           = "InnerClasses"
-    final val LineNumberTableATTR: N        = "LineNumberTable"
-    final val LocalVariableTableATTR: N     = "LocalVariableTable"
-    final val RuntimeAnnotationATTR: N      = "RuntimeVisibleAnnotations"   // RetentionPolicy.RUNTIME
-    final val RuntimeParamAnnotationATTR: N = "RuntimeVisibleParameterAnnotations" // RetentionPolicy.RUNTIME (annotations on parameters)
-    final val ScalaATTR: N                  = "Scala"
-    final val ScalaSignatureATTR: N         = "ScalaSig"
-    final val TASTYATTR: N                  = "TASTY"
-    final val SignatureATTR: N              = "Signature"
-    final val SourceFileATTR: N             = "SourceFile"
-    final val SyntheticATTR: N              = "Synthetic"
+    final val AnnotationDefaultATTR: N            = "AnnotationDefault"
+    final val BridgeATTR: N                       = "Bridge"
+    final val CodeATTR: N                         = "Code"
+    final val ConstantValueATTR: N                = "ConstantValue"
+    final val DeprecatedATTR: N                   = "Deprecated"
+    final val ExceptionsATTR: N                   = "Exceptions"
+    final val InnerClassesATTR: N                 = "InnerClasses"
+    final val LineNumberTableATTR: N              = "LineNumberTable"
+    final val LocalVariableTableATTR: N           = "LocalVariableTable"
+    final val RuntimeVisibleAnnotationATTR: N     = "RuntimeVisibleAnnotations"   // RetentionPolicy.RUNTIME
+    final val RuntimeInvisibleAnnotationATTR: N   = "RuntimeInvisibleAnnotations" // RetentionPolicy.CLASS
+    final val RuntimeParamAnnotationATTR: N       = "RuntimeVisibleParameterAnnotations" // RetentionPolicy.RUNTIME (annotations on parameters)
+    final val ScalaATTR: N                        = "Scala"
+    final val ScalaSignatureATTR: N               = "ScalaSig"
+    final val TASTYATTR: N                        = "TASTY"
+    final val SignatureATTR: N                    = "Signature"
+    final val SourceFileATTR: N                   = "SourceFile"
+    final val SyntheticATTR: N                    = "Synthetic"
 
 
 // ----- Term names -----------------------------------------
