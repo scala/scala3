@@ -357,7 +357,7 @@ Dcl               ::=  RefineDcl
 ValDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
-DefSig            ::=  ‘(’ DefParam ‘)’ [nl] id
+DefSig            ::=  [‘(’ DefParam ‘)’ [nl]] id
                        [DefTypeParamClause] DefParamClauses
 TypeDcl           ::=  id [TypeParamClause] SubtypeBounds [‘=’ Type]           TypeDefTree(_, name, tparams, bound
 

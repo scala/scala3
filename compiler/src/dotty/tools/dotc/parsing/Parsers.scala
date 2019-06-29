@@ -2537,7 +2537,7 @@ object Parsers {
     /** DefDef ::= DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr
      *           | this ParamClause ParamClauses `=' ConstrExpr
      *  DefDcl ::= DefSig `:' Type
-     *  DefSig ::= ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] ParamClauses
+     *  DefSig ::= [‘(’ DefParam ‘)’ [nl]] id [DefTypeParamClause] ParamClauses
      */
     def defDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
       def scala2ProcedureSyntax(resultTypeStr: String) = {
@@ -2567,7 +2567,8 @@ object Parsers {
       } else {
         val (leadingParamss, flags) =
           if (in.token == LPAREN)
-            (paramClause(prefix = true) :: Nil, Method | Extension)
+            try (paramClause(prefix = true) :: Nil, Method | Extension)
+            finally newLineOpt()
           else
             (Nil, Method)
         val mods1 = addFlag(mods, flags)
