@@ -574,6 +574,25 @@ trait TreeOps extends Core {
     def tpeOpt(implicit ctx: Context): Option[Type] = kernel.Closure_tpeOpt(self)
   }
 
+  /** A lambda `(...) => ...` in the source code is represented as
+   *  a local method and a closure:
+   *
+   *  {
+   *    def m(...) = ...
+   *    closure(m)
+   *  }
+   *
+   */
+  object Lambda {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(List[ValDef], Term)] = tree match {
+      case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
+      if ddef.symbol == meth.symbol =>
+        Some(params, body)
+
+      case _ => None
+    }
+  }
+
   object IsIf {
     /** Matches any If and returns it */
     def unapply(tree: Tree)(implicit ctx: Context): Option[If] = kernel.matchIf(tree)
