@@ -1184,7 +1184,6 @@ trait Kernel {
   def matchConstant_Double(constant: Constant): Option[Double]
   def matchConstant_String(constant: Constant): Option[String]
   def matchConstant_ClassTag(constant: Constant): Option[Type]
-  def matchConstant_Symbol(constant: Constant): Option[scala.Symbol]
 
   def Constant_Unit_apply(): Constant
   def Constant_Null_apply(): Constant
@@ -1198,7 +1197,6 @@ trait Kernel {
   def Constant_Double_apply(x: Double): Constant
   def Constant_String_apply(x: String): Constant
   def Constant_ClassTag_apply(x: scala.reflect.ClassTag[_]): Constant
-  def Constant_Symbol_apply(x: scala.Symbol): Constant
 
   //
   // SYMBOLS

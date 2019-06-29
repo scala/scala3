@@ -1461,7 +1461,9 @@ object desugar {
       case PolyFunction(targs, body) =>
         makePolyFunction(targs, body) orElse tree
       case SymbolLit(str) =>
-        Literal(Constant(scala.Symbol(str)))
+        Apply(
+          ref(defn.ScalaSymbolClass.companionModule.termRef),
+          Literal(Constant(str)) :: Nil)
       case InterpolatedString(id, segments) =>
         val strs = segments map {
           case ts: Thicket => ts.trees.head

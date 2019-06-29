@@ -130,9 +130,6 @@ class TreePickler(pickler: TastyPickler) {
     case EnumTag =>
       writeByte(ENUMconst)
       pickleType(c.symbolValue.termRef)
-    case ScalaSymbolTag =>
-      writeByte(SYMBOLconst)
-      pickleName(c.scalaSymbolValue.name.toTermName)
   }
 
   def pickleType(tpe0: Type, richTypes: Boolean = false)(implicit ctx: Context): Unit = {

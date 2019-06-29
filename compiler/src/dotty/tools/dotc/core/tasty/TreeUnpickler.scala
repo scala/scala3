@@ -266,8 +266,6 @@ class TreeUnpickler(reader: TastyReader,
         Constant(readType())
       case ENUMconst =>
         Constant(readTermRef().termSymbol)
-      case SYMBOLconst =>
-        Constant(scala.Symbol(readName().toString))
     }
 
     /** Read a type */

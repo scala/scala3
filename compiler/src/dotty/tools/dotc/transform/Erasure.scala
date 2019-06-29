@@ -386,10 +386,6 @@ object Erasure {
         tree.withType(tree.typeOpt)
       else if (tree.const.tag == Constants.ClazzTag)
         Literal(Constant(erasure(tree.const.typeValue)))
-      else if (tree.const.tag == Constants.ScalaSymbolTag)
-        ref(defn.ScalaSymbolModule)
-          .select(defn.ScalaSymbolModule_apply)
-          .appliedTo(Literal(Constant(tree.const.scalaSymbolValue.name)))
       else
         super.typedLiteral(tree)
 
