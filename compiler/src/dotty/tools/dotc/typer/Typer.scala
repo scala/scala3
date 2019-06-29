@@ -730,7 +730,7 @@ class Typer extends Namer
    */
   protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(implicit ctx: Context): Tree = {
     def ascribeType(tree: Tree, pt: Type): Tree = tree match {
-      case block @ Block(stats, expr) =>
+      case block @ Block(stats, expr) if !expr.isInstanceOf[Closure] =>
         val expr1 = ascribeType(expr, pt)
         cpy.Block(block)(stats, expr1) withType expr1.tpe // no assignType here because avoid is redundant
       case _ =>
@@ -3081,7 +3081,7 @@ class Typer extends Namer
     }
 
     tree match {
-      case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[_] => tree
+      case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[_] | _: Closure => tree
       case _ => tree.tpe.widen match {
         case tp: FlexType =>
           ensureReported(tp)

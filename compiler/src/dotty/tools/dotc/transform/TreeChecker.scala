@@ -178,6 +178,16 @@ class TreeChecker extends Phase with SymTransformer {
       res
     }
 
+    // used to check invariant of lambda encoding
+    var nestingBlock: untpd.Block | Null = null
+    private def withBlock[T](block: untpd.Block)(op: => T): T = {
+      val outerBlock = nestingBlock
+      nestingBlock = block
+      val res = op
+      nestingBlock = outerBlock
+      res
+    }
+
     def assertDefined(tree: untpd.Tree)(implicit ctx: Context): Unit =
       if (tree.symbol.maybeOwner.isTerm)
         assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol} at line " + tree.sourcePos.line)
@@ -407,8 +417,22 @@ class TreeChecker extends Phase with SymTransformer {
       }
     }
 
+    override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context): Tree = {
+      if (!ctx.phase.lambdaLifted) nestingBlock match {
+        case Block((meth : DefDef) :: Nil, closure: Closure) =>
+          assert(meth.symbol == closure.meth.symbol, "closure.meth symbol not equal to method symbol. Block: " + nestingBlock.show)
+
+        case block: untpd.Block =>
+          assert(false, "function literal are not properly formed as a block of DefDef and Closure. Found: " + tree.show + " Nesting block: " + block.show)
+
+        case null =>
+          assert(false, "function literal are not properly formed as a block of DefDef and Closure. Found: " + tree.show + " Nesting block: null")
+      }
+      super.typedClosure(tree, pt)
+    }
+
     override def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context): Tree =
-      withDefinedSyms(tree.stats) { super.typedBlock(tree, pt) }
+      withBlock(tree) { withDefinedSyms(tree.stats) { super.typedBlock(tree, pt) } }
 
     override def typedInlined(tree: untpd.Inlined, pt: Type)(implicit ctx: Context): Tree =
       withDefinedSyms(tree.bindings) { super.typedInlined(tree, pt) }
