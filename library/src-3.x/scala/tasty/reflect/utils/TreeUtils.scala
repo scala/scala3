@@ -10,6 +10,7 @@ trait TreeUtils {
 
   /** Bind the `rhs` to a `val` and use it in `body` */
   def let(rhs: Term)(body: Ident => Term): Term = {
+    delegate for QuoteContext = new QuoteContext(reflect)
     type T // TODO probably it is better to use the Sealed contruct rather than let the user create their own existential type
     implicit val rhsTpe: quoted.Type[T] = rhs.tpe.seal.asInstanceOf[quoted.Type[T]]
     val rhsExpr = rhs.seal.cast[T]

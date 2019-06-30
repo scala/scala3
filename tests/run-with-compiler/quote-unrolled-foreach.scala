@@ -5,31 +5,31 @@ import scala.quoted.autolift._
 object Test {
   implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = run {
-    val code1 = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach1('arr, 'f) } }
+    def code1 given QuoteContext = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach1('arr, 'f) } }
     println(code1.show)
     println()
 
-    val code1Tpe = '{ (arr: Array[String], f: String => Unit) => ${ foreach1Tpe1('arr, 'f) } }
+    def code1Tpe given QuoteContext = '{ (arr: Array[String], f: String => Unit) => ${ foreach1Tpe1('arr, 'f) } }
     println(code1Tpe.show)
     println()
 
-    val code1Tpe2 = '{ (arr: Array[String], f: String => Unit) => ${ foreach1Tpe1('arr, 'f) } }
+    def code1Tpe2 given QuoteContext = '{ (arr: Array[String], f: String => Unit) => ${ foreach1Tpe1('arr, 'f) } }
     println(code1Tpe2.show)
     println()
 
-    val code2 = '{ (arr: Array[Int]) => ${ foreach1('arr, '{i => System.out.println(i)}) } }
+    def code2 given QuoteContext = '{ (arr: Array[Int]) => ${ foreach1('arr, '{i => System.out.println(i)}) } }
     println(code2.show)
     println()
 
-    val code3 = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach3('arr, 'f) } }
+    def code3 given QuoteContext = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach3('arr, 'f) } }
     println(code3.show)
     println()
 
-    val code4 = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach4('arr, 'f, 4) } }
+    def code4 given QuoteContext = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach4('arr, 'f, 4) } }
     println(code4.show)
     println()
 
-    val liftedArray: Expr[Array[Int]] = Array(1, 2, 3, 4)
+    def liftedArray given QuoteContext: Expr[Array[Int]] = Array(1, 2, 3, 4)
     println(liftedArray.show)
     println()
 
@@ -53,7 +53,7 @@ object Test {
     }
   }
 
-  def foreach1Tpe1[T](arrRef: Expr[Array[T]], f: Expr[T => Unit])(implicit t: Type[T], qxtx: QuoteContext): Expr[Unit] = '{
+  def foreach1Tpe1[T](arrRef: Expr[Array[T]], f: Expr[T => Unit])(implicit t: Type[T], qctx: QuoteContext): Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     while (i < size) {

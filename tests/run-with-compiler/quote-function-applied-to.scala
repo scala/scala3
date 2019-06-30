@@ -3,7 +3,7 @@ import scala.quoted._
 object Test {
   def main(args: Array[String]): Unit = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    def show(expr: Expr[_]): String = withQuoteContext(expr.show)
+    def show(expr: given QuoteContext => Expr[_]): String = withQuoteContext(expr.show)
     println(show(('{ () => x(0) }).apply()))
     println(show(('{ (x1: Int) => x1 }).apply('{x(1)})))
     println(show(('{ (x1: Int, x2: Int) => x1 + x2 }).apply('{x(1)}, '{x(2)})))

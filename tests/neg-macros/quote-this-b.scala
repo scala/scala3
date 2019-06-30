@@ -6,5 +6,5 @@ class Foo {
 }
 
 object Foo {
-  def impl[T](x: Any): Expr[Unit] = '{}
+  def impl[T](x: Any) given QuoteContext: Expr[Unit] = '{}
 }

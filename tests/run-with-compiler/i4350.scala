@@ -2,7 +2,7 @@
 import scala.quoted._
 
 class Foo[T: Type] {
-  def q = '{(null: Any).asInstanceOf[T]}
+  def q given QuoteContext = '{(null: Any).asInstanceOf[T]}
 }
 
 object Test {

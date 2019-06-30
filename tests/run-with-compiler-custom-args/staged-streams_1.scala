@@ -9,18 +9,18 @@ object Test {
 
   // TODO: remove as it exists in Quoted Lib
   sealed trait Var[T] {
-    def get: Expr[T]
-    def update(x: Expr[T]): Expr[Unit]
+    def get given QuoteContext: Expr[T]
+    def update(x: Expr[T]) given QuoteContext: Expr[Unit]
   }
 
   object Var {
-    def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U]): Expr[U] = '{
+    def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U]) given QuoteContext: Expr[U] = '{
       var x = $init
       ${
         body(
           new Var[T] {
-            def get: Expr[T] = 'x
-            def update(e: Expr[T]): Expr[Unit] = '{ x = $e }
+            def get given QuoteContext: Expr[T] = 'x
+            def update(e: Expr[T]) given QuoteContext: Expr[Unit] = '{ x = $e }
           }
         )
       }
@@ -69,14 +69,14 @@ object Test {
       * @param  k  the continuation that accepts each element and proceeds with the step-wise processing
       * @return expr value of unit per the CPS-encoding
       */
-    def step(st: St, k: (A => Expr[Unit])): Expr[Unit]
+    def step(st: St, k: (A => Expr[Unit])) given QuoteContext: Expr[Unit]
 
     /** The condition that checks for termination
       *
       * @param  st the state needed for this iteration check
       * @return the expression for a boolean
       */
-    def hasNext(st: St): Expr[Boolean]
+    def hasNext(st: St) given QuoteContext: Expr[Boolean]
   }
 
   trait Cardinality
@@ -170,11 +170,11 @@ object Test {
               producer.init(k)
             }
 
-            def step(st: St, k: (B => Expr[Unit])): Expr[Unit] = {
+            def step(st: St, k: (B => Expr[Unit])) given QuoteContext: Expr[Unit] = {
               producer.step(st, el => f(el)(k))
             }
 
-            def hasNext(st: St): Expr[Boolean] = {
+            def hasNext(st: St) given QuoteContext: Expr[Boolean] = {
               producer.hasNext(st)
             }
           }
@@ -222,7 +222,7 @@ object Test {
       * @return     a new stream consisting of all elements of the input stream that do satisfy the given
       *             predicate `pred`.
       */
-    def filter(pred: (Expr[A] => Expr[Boolean])): Stream[A] = {
+    def filter(pred: (Expr[A] => Expr[Boolean])) given QuoteContext: Stream[A] = {
       val filterStream = (a: Expr[A]) =>
         new Producer[Expr[A]] {
 
@@ -232,10 +232,10 @@ object Test {
           def init(k: St => Expr[Unit]) given QuoteContext: Expr[Unit] =
             k(a)
 
-          def step(st: St, k: (Expr[A] => Expr[Unit])): Expr[Unit] =
+          def step(st: St, k: (Expr[A] => Expr[Unit])) given QuoteContext: Expr[Unit] =
             k(st)
 
-          def hasNext(st: St): Expr[Boolean] =
+          def hasNext(st: St) given QuoteContext: Expr[Boolean] =
             pred(st)
         }
 
@@ -262,10 +262,10 @@ object Test {
                 def init(k: St => Expr[Unit]) given QuoteContext: Expr[Unit] =
                   producer.init(k)
 
-                def step(st: St, k: (A => Expr[Unit])): Expr[Unit] =
+                def step(st: St, k: (A => Expr[Unit])) given QuoteContext: Expr[Unit] =
                   producer.step(st, el => k(el))
 
-                def hasNext(st: St): Expr[Boolean] =
+                def hasNext(st: St) given QuoteContext: Expr[Boolean] =
                   f(producer.hasNext(st))
               }
             case AtMost1 => producer
@@ -300,14 +300,14 @@ object Test {
           })
         }
 
-        def step(st: St, k: (((Var[Int], A)) => Expr[Unit])): Expr[Unit] = {
+        def step(st: St, k: (((Var[Int], A)) => Expr[Unit])) given QuoteContext: Expr[Unit] = {
           val (counter, currentState) = st
           producer.step(currentState, el => '{
             ${k((counter, el))}
           })
         }
 
-        def hasNext(st: St): Expr[Boolean] = {
+        def hasNext(st: St) given QuoteContext: Expr[Boolean] = {
           val (counter, currentState) = st
           producer.card match {
             case Many => '{ ${counter.get} > 0 && ${producer.hasNext(currentState)} }
@@ -324,7 +324,7 @@ object Test {
       * @tparam A      the type of the producer's elements.
       * @return        a linear or nested stream aware of the variable reference to decrement.
       */
-    private def takeRaw[A: Type](n: Expr[Int], stream: StagedStream[A]): StagedStream[A] = {
+    private def takeRaw[A: Type](n: Expr[Int], stream: StagedStream[A]) given QuoteContext: StagedStream[A] = {
       stream match {
         case linear: Linear[A] => {
           val enhancedProducer: Producer[(Var[Int], A)] = addCounter[A](n, linear.producer)
@@ -353,9 +353,9 @@ object Test {
      }
 
     /** A stream containing the first `n` elements of this stream. */
-    def take(n: Expr[Int]): Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
+    def take(n: Expr[Int]) given QuoteContext: Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
 
-    private def zipRaw[A: Type, B: Type](stream1: StagedStream[Expr[A]], stream2: StagedStream[B]): StagedStream[(Expr[A], B)] = {
+    private def zipRaw[A: Type, B: Type](stream1: StagedStream[Expr[A]], stream2: StagedStream[B]) given QuoteContext: StagedStream[(Expr[A], B)] = {
       (stream1, stream2) match {
 
         case (Linear(producer1), Linear(producer2)) =>
@@ -423,7 +423,7 @@ object Test {
       * @tparam A
       * @return
       */
-    private def makeLinear[A: Type](stream: StagedStream[Expr[A]]): Producer[Expr[A]] = {
+    private def makeLinear[A: Type](stream: StagedStream[Expr[A]]) given QuoteContext: Producer[Expr[A]] = {
       stream match {
         case Linear(producer) => producer
         case Nested(producer, nestedf) => {
@@ -506,7 +506,7 @@ object Test {
                 }})
             }
 
-            def step(st: St, k: Expr[A] => Expr[Unit]): Expr[Unit] = {
+            def step(st: St, k: Expr[A] => Expr[Unit]) given QuoteContext: Expr[Unit] = {
               val (flag, current, nadv) = st
               '{
                 var el = ${current.get}
@@ -517,7 +517,7 @@ object Test {
 
             }
 
-            def hasNext(st: St): Expr[Boolean] = {
+            def hasNext(st: St) given QuoteContext: Expr[Boolean] = {
               val (flag, _, _) = st
               flag.get
             }
@@ -526,7 +526,7 @@ object Test {
       }
     }
 
-    private def pushLinear[A, B, C](producer: Producer[A], nestedProducer: Producer[B], nestedf: (B => StagedStream[C])): StagedStream[(A, C)] = {
+    private def pushLinear[A, B, C](producer: Producer[A], nestedProducer: Producer[B], nestedf: (B => StagedStream[C])) given QuoteContext: StagedStream[(A, C)] = {
       val newProducer = new Producer[(Var[Boolean], producer.St, B)] {
 
         type St = (Var[Boolean], producer.St, nestedProducer.St)
@@ -539,12 +539,12 @@ object Test {
             })}})
         }
 
-        def step(st: St, k: ((Var[Boolean], producer.St, B)) => Expr[Unit]): Expr[Unit] = {
+        def step(st: St, k: ((Var[Boolean], producer.St, B)) => Expr[Unit]) given QuoteContext: Expr[Unit] = {
           val (flag, s1, s2) = st
           nestedProducer.step(s2, b => '{ ${k((flag, s1, b))} })
         }
 
-        def hasNext(st: St): Expr[Boolean] = {
+        def hasNext(st: St) given QuoteContext: Expr[Boolean] = {
           val (flag, s1, s2) = st
           '{ ${flag.get} && ${nestedProducer.hasNext(s2)} }
         }
@@ -571,12 +571,12 @@ object Test {
           producer1.init(s1 => producer2.init(s2 => k((s1, s2)) ))
         }
 
-        def step(st: St, k: ((A, B)) => Expr[Unit]): Expr[Unit] = {
+        def step(st: St, k: ((A, B)) => Expr[Unit]) given QuoteContext: Expr[Unit] = {
           val (s1, s2) = st
           producer1.step(s1, el1 => producer2.step(s2, el2 => k((el1, el2)) ))
         }
 
-        def hasNext(st: St): Expr[Boolean] = {
+        def hasNext(st: St) given QuoteContext: Expr[Boolean] = {
           val (s1, s2) = st
           '{ ${producer1.hasNext(s1)} && ${producer2.hasNext(s2)} }
         }
@@ -584,14 +584,14 @@ object Test {
     }
 
     /** zip **/
-    def zip[B: Type, C: Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B]): Stream[C] = {
+    def zip[B: Type, C: Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B]) given QuoteContext: Stream[C] = {
       val Stream(stream_b) = stream2
       Stream(mapRaw[(Expr[A], Expr[B]), Expr[C]]((t => k => k(f(t._1)(t._2))), zipRaw[A, Expr[B]](stream, stream_b)))
     }
   }
 
   object Stream {
-    def of[A: Type](arr: Expr[Array[A]]): Stream[A] = {
+    def of[A: Type](arr: Expr[Array[A]]) given QuoteContext: Stream[A] = {
       val prod = new Producer[Expr[A]] {
         type St = (Var[Int], Var[Int], Expr[Array[A]])
 
@@ -605,7 +605,7 @@ object Test {
           }
         }
 
-        def step(st: St, k: (Expr[A] => Expr[Unit])): Expr[Unit] = {
+        def step(st: St, k: (Expr[A] => Expr[Unit])) given QuoteContext: Expr[Unit] = {
           val (i, _, arr) = st
           '{
               val el = ($arr).apply(${i.get})
@@ -614,7 +614,7 @@ object Test {
           }
         }
 
-        def hasNext(st: St): Expr[Boolean] =  {
+        def hasNext(st: St) given QuoteContext: Expr[Boolean] =  {
           val (i, n, _) = st
           '{
               (${i.get} < ${n.get})

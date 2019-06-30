@@ -11,7 +11,7 @@ import liftable.Exprs._
 
 object Test {
   implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = run {
+  def main(args: Array[String]): Unit = withQuoteContext {
     val liftedUnit: Expr[Unit] = '{}
 
     letVal('{1})(a => '{ $a + 1 }).show
@@ -36,7 +36,6 @@ object Test {
     list.unrolledForeach('{ (x: Int) => println(x) }).show
 
     println("quote lib ok")
-    '{}
   }
 }
 
@@ -59,17 +58,17 @@ package liftable {
   }
 
   object Lets {
-    def letVal[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T]): Expr[U] =
+    def letVal[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T], qctx: QuoteContext): Expr[U] =
       '{ val letVal: $t = $expr; ${ body('letVal) } }
-    def letLazyVal[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T]): Expr[U] =
+    def letLazyVal[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T], qctx: QuoteContext): Expr[U] =
       '{ lazy val letLazyVal: $t = $expr; ${ body('letLazyVal) } }
-    def letDef[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T]): Expr[U] =
+    def letDef[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T], qctx: QuoteContext): Expr[U] =
       '{ def letDef: $t = $expr; ${ body('letDef) } }
   }
 
   object Loops {
-    def liftedWhile(cond: Expr[Boolean])(body: Expr[Unit]): Expr[Unit] = '{ while ($cond) $body }
-    def liftedDoWhile(body: Expr[Unit])(cond: Expr[Boolean]): Expr[Unit] = '{ do $body while ($cond) }
+    def liftedWhile(cond: Expr[Boolean])(body: Expr[Unit]) given QuoteContext: Expr[Unit] = '{ while ($cond) $body }
+    def liftedDoWhile(body: Expr[Unit])(cond: Expr[Boolean]) given QuoteContext: Expr[Unit] = '{ do $body while ($cond) }
   }
 
   object Tuples {
@@ -110,9 +109,9 @@ package liftable {
     }
 
     implicit class LiftedOps[T: Liftable](list: Expr[List[T]])(implicit t: Type[T]) {
-      def foldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U]): Expr[U] =
+      def foldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U], qctx: QuoteContext): Expr[U] =
         '{ ($list).foldLeft[$u]($acc)($f) }
-      def foreach(f: Expr[T => Unit]): Expr[Unit] =
+      def foreach(f: Expr[T => Unit]) given QuoteContext: Expr[Unit] =
         '{ ($list).foreach($f) }
     }
 
