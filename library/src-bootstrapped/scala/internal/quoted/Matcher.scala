@@ -142,7 +142,7 @@ object Matcher {
           fn1 =#= fn2 && args1 =##= args2
 
         case (Block(stats1, expr1), Block(binding :: stats2, expr2)) if isTypeBinding(binding) =>
-          reflection.kernel.Context_GADT_addToConstraint(the[Context])(binding.symbol :: Nil)
+          qctx.tasty.kernel.Context_GADT_addToConstraint(the[Context])(binding.symbol :: Nil)
           matched(new SymBinding(binding.symbol)) && Block(stats1, expr1) =#= Block(stats2, expr2)
 
         case (Block(stat1 :: stats1, expr1), Block(stat2 :: stats2, expr2)) =>
@@ -152,7 +152,7 @@ object Matcher {
 
         case (scrutinee, Block(typeBindings, expr2)) if typeBindings.forall(isTypeBinding) =>
           val bindingSymbols = typeBindings.map(_.symbol)
-          reflection.kernel.Context_GADT_addToConstraint(the[Context])(bindingSymbols)
+          qctx.tasty.kernel.Context_GADT_addToConstraint(the[Context])(bindingSymbols)
           bindingSymbols.foldRight(scrutinee =#= expr2)((x, acc) => matched(new SymBinding(x)) && acc)
 
         case (If(cond1, thenp1, elsep1), If(cond2, thenp2, elsep2)) =>
@@ -336,7 +336,7 @@ object Matcher {
 
     val res = {
       if (hasTypeSplices) {
-        implicit val ctx: Context = reflection.kernel.Context_GADT_setFreshGADTBounds(rootContext)
+        implicit val ctx: Context = qctx.tasty.kernel.Context_GADT_setFreshGADTBounds(rootContext)
         val matchings = scrutineeExpr.unseal.underlyingArgument =#= patternExpr.unseal.underlyingArgument
         // After matching and doing all subtype check, we have to aproximate all the type bindings
         // that we have found and seal them in a quoted.Type

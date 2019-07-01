@@ -7,7 +7,7 @@ Optimized: ls2.filter(((x: scala.Char) => ((x: scala.Char) => x.<('c')).apply(x)
 Result: List(b)
 
 Original: ls.filter(((x: scala.Int) => x.<(3))).filter(((x: scala.Int) => x.>(1))).filter(((x: scala.Int) => x.==(2)))
-Optimized: ls.filter(((x: scala.Int) => x.<(3))).filter(((x: scala.Int) => ((x: scala.Int) => x.>(1)).apply(x).&&(((x: scala.Int) => x.==(2)).apply(x))))
+Optimized: ls.filter(((x: scala.Int) => ((x: scala.Int) => x.<(3)).apply(x).&&(((x: scala.Int) => ((x: scala.Int) => x.>(1)).apply(x).&&(((x: scala.Int) => x.==(2)).apply(x))).apply(x))))
 Result: List(2)
 
 1
