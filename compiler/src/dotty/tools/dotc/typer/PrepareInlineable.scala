@@ -251,7 +251,10 @@ object PrepareInlineable {
        */
       object InlineSplice {
         def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
-          case Spliced(code) if Splicer.canBeSpliced(code) => Some(code)
+          case Spliced(code) if Splicer.canBeSpliced(code) =>
+            if (code.symbol.flags.is(Inline))
+              ctx.error("Macro cannot be implemented with an `inline` method", code.sourcePos)
+            Some(code)
           case Block(List(stat), Literal(Constants.Constant(()))) => unapply(stat)
           case Block(Nil, expr) => unapply(expr)
           case Typed(expr, _) => unapply(expr)
