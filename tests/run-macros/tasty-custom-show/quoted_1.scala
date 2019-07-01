@@ -8,8 +8,8 @@ object Macros {
   implicit inline def printOwners[T](x: => T): Unit =
     ${ impl('x) }
 
-  def impl[T](x: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
-    import reflect._
+  def impl[T](x: Expr[T]) given (qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty._
 
     val buff = new StringBuilder
 
@@ -39,15 +39,15 @@ object Macros {
     '{print(${buff.result()})}
   }
 
-  def dummyShow(implicit reflect: Reflection): reflect.Printer = {
-    import reflect._
+  def dummyShow given (qctx: QuoteContext): qctx.tasty.Printer = {
+    import qctx.tasty._
     new Printer {
       def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
       def showPattern(pattern: Pattern)(implicit ctx: Context): String = "Pattern"
       def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = "TypeOrBounds"
       def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"
       def showSymbol(symbol: Symbol)(implicit ctx: Context): String = "Symbol"
-      def showFlags(flags: Flags)(implicit ctx: reflect.Context): String = "Flags"
+      def showFlags(flags: Flags)(implicit ctx: Context): String = "Flags"
     }
   }
 

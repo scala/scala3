@@ -707,6 +707,11 @@ trait Implicits { self: Typer =>
       if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.TastyReflection_macroContext)
       else EmptyTree
 
+  lazy val synthesizedQuoteContext: SpecialHandler =
+    (formal, span) => implicit ctx =>
+      if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.QuoteContext_macroContext)
+      else EmptyTree
+
   lazy val synthesizedTupleFunction: SpecialHandler =
     (formal, span) => implicit ctx => formal match {
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
@@ -1033,9 +1038,10 @@ trait Implicits { self: Typer =>
       mySpecialHandlers = List(
         defn.ClassTagClass        -> synthesizedClassTag,
         defn.QuotedTypeClass      -> synthesizedTypeTag,
+        defn.QuoteContextClass    -> synthesizedQuoteContext,
         defn.TastyReflectionClass -> synthesizedTastyContext,
         defn.EqlClass             -> synthesizedEq,
-        defn.TupledFunctionClass -> synthesizedTupleFunction,
+        defn.TupledFunctionClass  -> synthesizedTupleFunction,
         defn.ValueOfClass         -> synthesizedValueOf,
         defn.Mirror_ProductClass  -> synthesizedProductMirror,
         defn.Mirror_SumClass      -> synthesizedSumMirror,

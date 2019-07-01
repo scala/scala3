@@ -20,7 +20,7 @@ guarantees and may fail at macro expansion time, hence additional explicit
 checks must be done.
 
 To provide reflection capabilities in macros we need to add an implicit
-parameter of type `scala.tasty.Reflection` and import it in the scope where it
+parameter of type `scala.quoted.QuoteContext` and import `tasty._` from it in the scope where it
 is used.
 
 ```scala
@@ -29,23 +29,23 @@ import scala.tasty._
 
 inline def natConst(x: => Int): Int = ${natConstImpl('{x})}
 
-def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
-  import reflection._
+def natConstImpl(x: Expr[Int]) given (qctx: QuoteContext): Expr[Int] = {
+  import qctx.tasty._
   ...
 }
 ```
 
 ### Sealing and Unsealing
 
-`import reflection._` will provide an `unseal` extension method on `quoted.Expr`
-and `quoted.Type` which returns a `reflection.Term` that represents the tree of
-the expression and `reflection.TypeTree` that represents the tree of the type
+`import qctx.tasty._` will provide an `unseal` extension method on `quoted.Expr`
+and `quoted.Type` which returns a `qctx.tasty.Term` that represents the tree of
+the expression and `qctx.tasty.TypeTree` that represents the tree of the type
 respectively. It will also import all extractors and methods on TASTy Reflect
 trees. For example the `Literal(_)` extractor used below.
 
 ```scala
-def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
-  import reflection._
+def natConstImpl(x: Expr[Int]) given (qctx: QuoteContext): Expr[Int] = {
+  import qctx.tasty._
   val xTree: Term = x.unseal
   xTree match {
     case Term.Literal(Constant.Int(n)) =>
@@ -58,10 +58,10 @@ def natConstImpl(x: Expr[Int])(implicit reflection: Reflection): Expr[Int] = {
 }
 ```
 
-To easily know which extractors are needed, the `reflection.Term.show` method
+To easily know which extractors are needed, the `qctx.tasty.Term.show` method
 returns the string representation of the extractors.
 
-The method `reflection.Term.seal[T]` provides a way to go back to a
+The method `qctx.tasty.Term.seal[T]` provides a way to go back to a
 `quoted.Expr[Any]`. Note that the type is `Expr[Any]`. Consequently, the type
 must be set explicitly with a checked `cast` call. If the type does not conform
 to it an exception will be thrown. In the code above, we could have replaced
@@ -77,8 +77,8 @@ operation expression passed while calling the `macro` below.
 ```scala
 inline def macro(param: => Boolean): Unit = ${ macroImpl('param) }
 
-def macroImpl(param: Expr[Boolean])(implicit refl: Reflection): Expr[Unit] = {
-  import refl._
+def macroImpl(param: Expr[Boolean]) given (qctx: QuoteContext): Expr[Unit] = {
+  import qctx.tasty._
   import util._
 
   param.unseal.underlyingArgument match {
@@ -99,8 +99,8 @@ such as the start line, the end line or even the source code at the expansion
 point.
 
 ```scala
-def macroImpl()(reflect: Reflection): Expr[Unit] = {
-  import reflect.{Position => _, _}
+def macroImpl()(qctx: QuoteContext): Expr[Unit] = {
+  import qctx.tasty._
   val pos = rootPosition
 
   val path = pos.sourceFile.jpath.toString

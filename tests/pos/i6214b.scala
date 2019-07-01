@@ -1,5 +1,5 @@
 object Test {
-  def res(x: quoted.Expr[Int]) given tasty.Reflection: quoted.Expr[Int] = x match {
+  def res(x: quoted.Expr[Int]) given scala.quoted.QuoteContext: quoted.Expr[Int] = x match {
     case '{ val a: Int = ${ Foo('{ val b: Int = $y; b }) }; a } => y // owner of y is res
   }
   object Foo {

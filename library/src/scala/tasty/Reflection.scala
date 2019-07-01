@@ -26,6 +26,7 @@ class Reflection(val kernel: Kernel)
   def typeOf[T: scala.quoted.Type]: Type =
     implicitly[scala.quoted.Type[T]].unseal.tpe
 
+  // TODO move out of Reflection
   object typing {
    /** Whether the code type checks in the given context?
     *
@@ -38,18 +39,15 @@ class Reflection(val kernel: Kernel)
     def typeChecks(code: String)(implicit ctx: Context): Boolean = kernel.typeChecks(code)(ctx)
   }
 
+  // TODO integrate with TreeUtils
   val util: reflect.utils.TreeUtils { val reflect: self.type } = new reflect.utils.TreeUtils {
     val reflect: self.type = self
   }
-
-  // TODO remove
-  // For backward compat with macros
-  implicit def reflectionToQuoteContext(implicit reflect: Reflection): scala.quoted.QuoteContext =
-    new scala.quoted.QuoteContext(reflect)
 
 }
 
 object Reflection {
   /** Compiler tasty context available in a top level ~ of an inline macro */
+  @deprecated("Use scala.quoted.QuoteContext instead", "0.17")
   def macroContext: Reflection = throw new Exception("Not in inline macro.")
 }

@@ -1,8 +1,6 @@
 import scala.quoted._
 import scala.quoted.matching._
 
-import scala.tasty.Reflection
-
 object Macros {
 
   inline def liftString(a: => DSL): String = ${impl(StringNum, 'a)}
@@ -11,7 +9,7 @@ object Macros {
 
   inline def liftAST(a: => DSL): ASTNum = ${impl(ASTNum, 'a)}
 
-  private def impl[T: Type](sym: Symantics[T], a: Expr[DSL])(implicit reflect: Reflection): Expr[T] = {
+  private def impl[T: Type](sym: Symantics[T], a: Expr[DSL]) given (qctx: QuoteContext): Expr[T] = {
 
     def lift(e: Expr[DSL])(implicit env: Map[Bind[DSL], Expr[T]]): Expr[T] = e match {
 
@@ -28,7 +26,7 @@ object Macros {
       case Bind(b) if env.contains(b) => env(b)
 
       case _ =>
-        import reflect._
+        import qctx.tasty._
         error("Expected explicit DSL", e.unseal.pos)
         ???
     }
@@ -38,7 +36,7 @@ object Macros {
         sym.lam((y: Expr[T]) => lift(body)(env + (x -> y)))
 
       case _ =>
-        import reflect._
+        import qctx.tasty._
         error("Expected explicit DSL => DSL", e.unseal.pos)
         ???
     }

@@ -7,8 +7,8 @@ object Macros {
 
   inline def testDefinitions(): Unit = ${testDefinitionsImpl}
 
-  def testDefinitionsImpl(implicit reflect: Reflection): Expr[Unit] = {
-    import reflect._
+  def testDefinitionsImpl given (qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty._
 
     val buff = List.newBuilder[String]
     def printout(x: => String): Unit = {

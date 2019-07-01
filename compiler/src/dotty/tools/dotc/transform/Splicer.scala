@@ -114,6 +114,8 @@ object Splicer {
       args.toSeq
 
     protected def interpretTastyContext()(implicit env: Env): Object = ReflectionImpl(ctx, pos)
+    protected def interpretQuoteContext()(implicit env: Env): Object =
+      new scala.quoted.QuoteContext(ReflectionImpl(ctx, pos))
 
     protected def interpretStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: => List[Object])(implicit env: Env): Object = {
       val (inst, clazz) =
@@ -308,6 +310,7 @@ object Splicer {
     protected def interpretLiteral(value: Any)(implicit env: Env): Result
     protected def interpretVarargs(args: List[Result])(implicit env: Env): Result
     protected def interpretTastyContext()(implicit env: Env): Result
+    protected def interpretQuoteContext()(implicit env: Env): Result
     protected def interpretStaticMethodCall(module: Symbol, fn: Symbol, args: => List[Result])(implicit env: Env): Result
     protected def interpretModuleAccess(fn: Symbol)(implicit env: Env): Result
     protected def interpretNew(fn: Symbol, args: => List[Result])(implicit env: Env): Result
@@ -332,6 +335,9 @@ object Splicer {
 
       case _ if tree.symbol == defn.TastyReflection_macroContext =>
         interpretTastyContext()
+
+      case _ if tree.symbol == defn.QuoteContext_macroContext =>
+        interpretQuoteContext()
 
       case Call(fn, args) =>
         if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) {

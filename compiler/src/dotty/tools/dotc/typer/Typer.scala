@@ -1978,7 +1978,7 @@ class Typer extends Namer
             fun = ref(defn.InternalQuotedMatcher_unapplyR).appliedToType(patType),
             implicits =
               ref(defn.InternalQuoted_exprQuoteR).appliedToType(shape.tpe).appliedTo(shape) ::
-              implicitArgTree(defn.TastyReflectionType, tree.span) :: Nil,
+              implicitArgTree(defn.QuoteContextType, tree.span) :: Nil,
             patterns = splicePat :: Nil,
             proto = pt)
         }

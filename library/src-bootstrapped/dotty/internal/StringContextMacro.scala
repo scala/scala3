@@ -1,8 +1,9 @@
+// ALWAYS KEEP THIS FILE IN src-bootstrapped, DO NOT MOVE TO src
+
 package dotty.internal
 
 import scala.quoted._
 import scala.quoted.matching._
-import scala.tasty.Reflection
 import reflect._
 
 object StringContextMacro {
@@ -58,7 +59,7 @@ object StringContextMacro {
    *  @return the String contained in the given Expr
    *  quotes an error if the given Expr does not contain a String
    */
-  private def literalToString(expression : Expr[String])(implicit reflect: Reflection) : String = expression match {
+  private def literalToString(expression : Expr[String]) given (ctx: QuoteContext) : String = expression match {
     case Const(string : String) => string
     case _ => QuoteError("Expected statically known literal", expression)
   }
@@ -69,8 +70,7 @@ object StringContextMacro {
    *  @return a list of Expr containing Strings, each corresponding to one parts of the given StringContext
    *  quotes an error if the given Expr does not correspond to a StringContext
    */
-  def getPartsExprs(strCtxExpr : Expr[scala.StringContext])(implicit reflect : Reflection): List[Expr[String]] = {
-    import reflect._
+  def getPartsExprs(strCtxExpr : Expr[scala.StringContext]) given QuoteContext: List[Expr[String]] = {
     strCtxExpr match {
       case '{ StringContext(${ExprSeq(parts)}: _*) } => parts.toList
       case '{ new StringContext(${ExprSeq(parts)}: _*) } => parts.toList
@@ -84,8 +84,8 @@ object StringContextMacro {
    *  @return a list of Expr containing arguments
    *  quotes an error if the given Expr does not contain a list of arguments
    */
-  def getArgsExprs(argsExpr: Expr[Seq[Any]])(implicit reflect: Reflection): List[Expr[Any]] = {
-    import reflect._
+  def getArgsExprs(argsExpr: Expr[Seq[Any]]) given (qctx: QuoteContext): List[Expr[Any]] = {
+    import qctx.tasty._
     argsExpr.unseal.underlyingArgument match {
       case Typed(Repeated(args, _), _) => args.map(_.seal)
       case tree => QuoteError("Expected statically known argument list", argsExpr)
@@ -98,8 +98,8 @@ object StringContextMacro {
    *  @param args the Expr that holds the sequence of arguments to interpolate to the String in the correct format
    *  @return the Expr containing the formatted and interpolated String or an error/warning if the parameters are not correct
    */
-  private def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(implicit reflect: Reflection): Expr[String] = {
-    import reflect._
+  private def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]]) given (qctx: QuoteContext): Expr[String] = {
+    import qctx.tasty._
     val sourceFile = strCtxExpr.unseal.pos.sourceFile
 
     val partsExpr = getPartsExprs(strCtxExpr)
@@ -111,27 +111,27 @@ object StringContextMacro {
       def partError(message : String, index : Int, offset : Int) : Unit = {
         reported = true
         val positionStart = partsExpr(index).unseal.pos.start + offset
-        reflect.error(message, sourceFile, positionStart, positionStart)
+        error(message, sourceFile, positionStart, positionStart)
       }
       def partWarning(message : String, index : Int, offset : Int) : Unit = {
         reported = true
         val positionStart = partsExpr(index).unseal.pos.start + offset
-        reflect.warning(message, sourceFile, positionStart, positionStart)
+        warning(message, sourceFile, positionStart, positionStart)
       }
 
       def argError(message : String, index : Int) : Unit = {
         reported = true
-        reflect.error(message, args(index).unseal.pos)
+        error(message, args(index).unseal.pos)
       }
 
       def strCtxError(message : String) : Unit = {
         reported = true
         val positionStart = strCtxExpr.unseal.pos.start
-        reflect.error(message, sourceFile, positionStart, positionStart)
+        error(message, sourceFile, positionStart, positionStart)
       }
       def argsError(message : String) : Unit = {
         reported = true
-        reflect.error(message, argsExpr.unseal.pos)
+        error(message, argsExpr.unseal.pos)
       }
 
       def hasReported() : Boolean = {
@@ -158,8 +158,8 @@ object StringContextMacro {
    *  @param reporter the reporter to return any error/warning when a problem is encountered
    *  @return the Expr containing the formatted and interpolated String or an error/warning report if the parameters are not correct
    */
-  def interpolate(partsExpr : List[Expr[String]], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter)(implicit reflect: Reflection) : Expr[String] = {
-    import reflect._
+  def interpolate(partsExpr : List[Expr[String]], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter) given (qctx: QuoteContext) : Expr[String] = {
+    import qctx.tasty._
 
     /** Checks if the number of arguments are the same as the number of formatting strings
      *
