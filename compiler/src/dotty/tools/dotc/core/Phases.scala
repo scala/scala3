@@ -353,6 +353,7 @@ object Phases {
     private[this] var myErasedTypes = false
     private[this] var myFlatClasses = false
     private[this] var myRefChecked = false
+    private[this] var myLambdaLifted = false
 
     private[this] var mySameMembersStartId = NoPhaseId
     private[this] var mySameParentsStartId = NoPhaseId
@@ -371,6 +372,7 @@ object Phases {
     final def erasedTypes: Boolean = myErasedTypes   // Phase is after erasure
     final def flatClasses: Boolean = myFlatClasses   // Phase is after flatten
     final def refChecked: Boolean = myRefChecked     // Phase is after RefChecks
+    final def lambdaLifted: Boolean = myLambdaLifted     // Phase is after LambdaLift
 
     final def sameMembersStartId: Int = mySameMembersStartId
       // id of first phase where all symbols are guaranteed to have the same members as in this phase
@@ -385,9 +387,10 @@ object Phases {
       assert(start <= Periods.MaxPossiblePhaseId, s"Too many phases, Period bits overflow")
       myBase = base
       myPeriod = Period(NoRunId, start, end)
-      myErasedTypes  = prev.getClass == classOf[Erasure]   || prev.erasedTypes
-      myFlatClasses  = prev.getClass == classOf[Flatten]   || prev.flatClasses
-      myRefChecked   = prev.getClass == classOf[RefChecks] || prev.refChecked
+      myErasedTypes  = prev.getClass == classOf[Erasure]    || prev.erasedTypes
+      myFlatClasses  = prev.getClass == classOf[Flatten]    || prev.flatClasses
+      myRefChecked   = prev.getClass == classOf[RefChecks]  || prev.refChecked
+      myLambdaLifted = prev.getClass == classOf[LambdaLift] || prev.lambdaLifted
       mySameMembersStartId = if (changesMembers) id else prev.sameMembersStartId
       mySameParentsStartId = if (changesParents) id else prev.sameParentsStartId
       mySameBaseTypesStartId = if (changesBaseTypes) id else prev.sameBaseTypesStartId

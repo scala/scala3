@@ -20,10 +20,10 @@ object Test {
   }
 
   val eqSymmetric2: Forall[[x] =>> (y: Obj) => (EQ[x, y.type]) => (EQ[y.type, x])] = {
-    { x: Obj => { y: Obj => { xEqy: EQ[x.type, y.type] => xEqy.commute } } } // error // error
+    { x: Obj => { y: Obj => { xEqy: EQ[x.type, y.type] => xEqy.commute } } } // error
   }
 
   val eqSymmetric3: Forall[[x] =>> Forall[[y] =>> EQ[x, y] => EQ[y, x]]] = {
-    { x: Obj => { y: Obj => { xEqy: EQ[x.type, y.type] => xEqy.commute } } } // error // error
+    { x: Obj => { y: Obj => { xEqy: EQ[x.type, y.type] => xEqy.commute } } } // error
   }
 }
