@@ -1069,7 +1069,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                 em"""cannot reduce delegate match with
                    | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
               else
-                em"""cannot reduce delegate match with
+                em"""cannot reduce inline match with
                     | scrutinee:  $sel : ${selType}
                     | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
             errorTree(tree, msg)
