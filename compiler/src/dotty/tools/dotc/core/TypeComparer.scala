@@ -751,7 +751,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           case _ =>
             false
         }
-        isNewSubType(tp1.underlying.widenExpr) || comparePaths
+        recur(tp1.underlying.widenExpr, tp2) || comparePaths
       case tp1: RefinedType =>
         isNewSubType(tp1.parent)
       case tp1: RecType =>
@@ -786,8 +786,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           case _ =>
         }
         val tp1norm = simplifyAndTypeWithFallback(tp11, tp12, tp1)
-        if (tp1 ne tp1norm) recur(tp1norm, tp2)
-        else either(recur(tp11, tp2), recur(tp12, tp2))
+        if (tp1.ne(tp1norm) && recur(tp1norm, tp2)) return true
+        either(recur(tp11, tp2), recur(tp12, tp2))
       case tp1: MatchType =>
         def compareMatch = tp2 match {
           case tp2: MatchType =>
