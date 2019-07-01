@@ -2,6 +2,14 @@ package scala.quoted
 
 import scala.quoted.show.SyntaxHighlight
 
+/** Quotation context provided by a macro expansion or in the scope of `scala.quoted.run`.
+ *  Used to perform all operations on quoted `Expr` or `Type`.
+ *
+ *  It contains the low-level Typed AST API `tasty` meta-programming API.
+ *  This API does not have the static type guarantiees that `Expr` and `Type` provide.
+ *
+ *  @param tasty Typed AST API. Usage: `def f(qctx: QuoteContext) = { import qctx.tasty._; ... }`.
+ */
 class QuoteContext(val tasty: scala.tasty.Reflection) {
 
   def show[T](expr: Expr[T], syntaxHighlight: SyntaxHighlight): String = {
