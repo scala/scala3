@@ -384,9 +384,7 @@ trait Inferencing { this: Typer =>
     // `qualifying`.
 
     val ownedVars = state.ownedVars
-    if ((ownedVars ne locked) && !ownedVars.isEmpty &&
-        !tree.isInstanceOf[Applications.IntegratedTypeArgs] // suppress interpolation in the middle of an extension method application
-        ) {
+    if ((ownedVars ne locked) && !ownedVars.isEmpty) {
       val qualifying = ownedVars -- locked
       if (!qualifying.isEmpty) {
         typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
