@@ -2209,7 +2209,7 @@ class Typer extends Namer
     if (!tree.denot.isOverloaded &&
           // for overloaded trees: resolve overloading before simplifying
         !tree.isInstanceOf[Applications.IntegratedTypeArgs]
-          // don't interpolatie in the middle of an extension method application
+          // don't interpolate in the middle of an extension method application
        )
       if (!tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
           || tree.isDef)                             // ... unless tree is a definition
