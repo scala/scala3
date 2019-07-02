@@ -20,11 +20,7 @@ object Flags {
     opaque type Flag <: FlagSet = Long
     private[Flags] def Flag(bits: Long): Flag = bits
   }
-  type FlagSet = opaques.FlagSet
-  def FlagSet(bits: Long): FlagSet = opaques.FlagSet(bits)
-  // DOTTY TODO: replace previous 2 lines with
-  //   export opaques.FlagSet
-  // once 0.17 is released and #6721 is in the bootstrap
+  export opaques.FlagSet
 
   type Flag = opaques.Flag
 

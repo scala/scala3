@@ -17,8 +17,6 @@ import dotty.tools.dotc.util.SourceFile
 
 import scala.tasty.reflect.Kernel
 
-import delegate Flags.FlagOps // DOTTY problem: this line can be dropped in 0.17 once #6712 is in bootstrap.
-
 class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.SourcePosition) extends Kernel {
 
   private implicit def ctx: core.Contexts.Context = rootContext
