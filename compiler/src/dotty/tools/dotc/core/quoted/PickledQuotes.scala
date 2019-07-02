@@ -38,7 +38,9 @@ object PickledQuotes {
       /** Force unpickling of the tree, removes the spliced type `@quotedTypeTag type` definitions and dealiases references to `@quotedTypeTag type` */
       val forceAndCleanArtefacts = new TreeMap {
         override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-          case tree: TypeDef if tree.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) => Thicket()
+          case Block(stat :: rest, expr1) if stat.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) =>
+            assert(rest.forall { case tdef: TypeDef => tdef.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) })
+            transform(expr1)
           case tree => super.transform(tree).withType(dealiasTypeTags(tree.tpe))
         }
       }
