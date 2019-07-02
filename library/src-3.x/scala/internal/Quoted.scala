@@ -25,6 +25,15 @@ object Quoted {
   @compileTimeOnly("Illegal reference to `scala.internal.Quoted.patternBindHole`")
   class patternBindHole extends Annotation
 
-  /** Artifact of type splicing */
+  /** Artifact of pickled type splices
+   *
+   *  During quote reification a quote `'{ ... F[$t] ... }` will be transformed into
+   *  `'{ @quoteTypeTag type T$1 = $t ... F[T$1] ... }` to have a tree for `$t`.
+   *  This artifact is removed durring quote unpickling.
+   *
+   *  See ReifyQuotes.scala and PickledQuotes.scala
+   */
+  @compileTimeOnly("Illegal reference to `scala.internal.Quoted.patternBindHole`")
   class quoteTypeTag extends Annotation
+
 }
