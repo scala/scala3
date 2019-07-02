@@ -210,8 +210,8 @@ trait Symbols { this: Context =>
       Nil, decls)
 
   /** Define a new symbol associated with a Bind or pattern wildcard and, by default, make it gadt narrowable. */
-  def newPatternBoundSymbol(name: Name, info: Type, span: Span, addToGadt: Boolean = true): Symbol = {
-    val sym = newSymbol(owner, name, Case, info, coord = span)
+  def newPatternBoundSymbol(name: Name, info: Type, span: Span, addToGadt: Boolean = true, flags: FlagSet = EmptyFlags): Symbol = {
+    val sym = newSymbol(owner, name, Case | flags, info, coord = span)
     if (addToGadt && name.isTypeName) gadt.addToConstraint(sym)
     sym
   }

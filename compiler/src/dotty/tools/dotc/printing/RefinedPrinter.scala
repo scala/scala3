@@ -479,6 +479,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (lo eq hi) optText(lo)(" = " ~ _)
         else optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _)
       case Bind(name, body) =>
+        ("given ": Text).provided(tree.symbol.is(Implicit) && !homogenizedView) ~ // Used for scala.quoted.Type in quote patterns (not pickled)
         changePrec(InfixPrec) { toText(name) ~ " @ " ~ toText(body) }
       case Alternative(trees) =>
         changePrec(OrPrec) { toText(trees, " | ") }
@@ -609,6 +610,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (tree.isType) keywordStr("'[") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("]")
         else keywordStr("'{") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case Splice(tree) =>
+        keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
+      case TypSplice(tree) =>
         keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case tree: Applications.IntegratedTypeArgs =>
         toText(tree.app) ~ Str("(with integrated type args)").provided(printDebug)

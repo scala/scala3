@@ -768,6 +768,8 @@ object Trees {
 
     /** Is this a definition of a class? */
     def isClassDef: Boolean = rhs.isInstanceOf[Template[_]]
+
+    def isBackquoted: Boolean = hasAttachment(Backquoted)
   }
 
   /** extends parents { self => body }

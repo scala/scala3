@@ -35,6 +35,15 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def Context_source(self: Context): java.nio.file.Path = self.compilationUnit.source.file.jpath
 
+  def Context_GADT_setFreshGADTBounds(self: Context): Context =
+    self.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
+
+  def Context_GADT_addToConstraint(self: Context)(syms: List[Symbol]): Boolean =
+    self.gadt.addToConstraint(syms)
+
+  def Context_GADT_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type =
+    self.gadt.approximation(sym, fromBelow)
+
   //
   // REPORTING
   //

@@ -25,6 +25,9 @@ object Quoted {
   @compileTimeOnly("Illegal reference to `scala.internal.Quoted.patternBindHole`")
   class patternBindHole extends Annotation
 
+  /** A splice of a name in a quoted pattern is that marks the definition of a type splice */
+  class patternType extends Annotation
+
   /** Artifact of pickled type splices
    *
    *  During quote reification a quote `'{ ... F[$t] ... }` will be transformed into
