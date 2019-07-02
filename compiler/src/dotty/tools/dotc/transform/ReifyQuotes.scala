@@ -76,6 +76,9 @@ class ReifyQuotes extends MacroTransform {
       case tree: RefTree if !ctx.inInlineMethod =>
         assert(!tree.symbol.isQuote)
         assert(!tree.symbol.isSplice)
+      case _ : TypeDef =>
+        assert(!tree.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot),
+          s"${tree.symbol} should have been removed by PickledQuotes because it has a @quoteTypeTag")
       case _ =>
     }
   }

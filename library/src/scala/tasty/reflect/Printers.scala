@@ -1018,7 +1018,6 @@ trait Printers
         // Remove Lambda nodes, lambdas are printed by their definition
         val stats2 = stats1.filter {
           case Lambda(_, _) => false
-          case IsTypeDef(tree) => !tree.symbol.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.quoteTypeTag")
           case _ => true
         }
         val (stats3, expr3) = expr1 match {
@@ -1515,9 +1514,6 @@ trait Printers
         case Type.ConstantType(const) =>
           printConstant(const)
 
-        case Type.SymRef(sym, _) if sym.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.quoteTypeTag") =>
-          printType(tpe.dealias)
-
         case Type.SymRef(sym, prefix) if sym.isType =>
           prefix match {
             case Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
@@ -1575,7 +1571,7 @@ trait Printers
           printRefinement(tpe)
 
         case Type.AppliedType(tp, args) =>
-          normalize(tp) match {
+          tp match {
             case Type.IsTypeLambda(tp) =>
               printType(tpe.dealias)
             case Type.TypeRef("<repeated>", Types.ScalaPackage()) =>
@@ -1672,13 +1668,6 @@ trait Printers
 
         case _ =>
           throw new MatchError(tpe.showExtractors)
-      }
-
-      private def normalize(tpe: TypeOrBounds): TypeOrBounds = tpe match {
-        case Type.IsSymRef(tpe)
-            if tpe.typeSymbol.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.quoteTypeTag") =>
-          tpe.dealias
-        case _ => tpe
       }
 
       def printImportSelector(sel: ImportSelector): Buffer = sel match {

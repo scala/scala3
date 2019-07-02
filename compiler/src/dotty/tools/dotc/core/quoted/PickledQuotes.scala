@@ -35,11 +35,14 @@ object PickledQuotes {
   def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree = expr match {
     case expr: TastyExpr[_] =>
       val unpickled = unpickleExpr(expr)
-      val force = new TreeTraverser {
-        def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = traverseChildren(tree)
+      /** Force unpickling of the tree, removes the spliced type `@quotedTypeTag type` definitions and dealiases references to `@quotedTypeTag type` */
+      val forceAndCleanArtefacts = new TreeMap {
+        override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+          case tree: TypeDef if tree.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) => Thicket()
+          case tree => super.transform(tree).withType(dealiasTypeTags(tree.tpe))
+        }
       }
-      force.traverse(unpickled)
-      unpickled
+      forceAndCleanArtefacts.transform(unpickled)
     case expr: LiftedExpr[T] =>
       expr.value match {
         case value: Class[_] => ref(defn.Predef_classOf).appliedToType(classToType(value))
@@ -52,10 +55,26 @@ object PickledQuotes {
 
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree = expr match {
-    case expr: TastyType[_] => unpickleType(expr)
+    case expr: TastyType[_] =>
+      unpickleType(expr) match {
+        case Block(aliases, tpt) =>
+          // `@quoteTypeTag type` aliasses are not required after unpickling
+          tpt
+        case tpt => tpt
+      }
     case expr: TaggedType[_] => classTagToTypeTree(expr.ct)
     case expr: TreeType[Tree] @unchecked => healOwner(expr.typeTree)
   }
+
+  private def dealiasTypeTags(tp: Type)(implicit ctx: Context): Type = new TypeMap() {
+    override def apply(tp: Type): Type = {
+      val tp1 = tp match {
+        case tp: TypeRef if tp.typeSymbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) => tp.dealias
+        case _ => tp
+      }
+      mapOver(tp1)
+    }
+  }.apply(tp)
 
   /** Unpickle the tree contained in the TastyExpr */
   private def unpickleExpr(expr: TastyExpr[_])(implicit ctx: Context): Tree = {
