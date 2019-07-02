@@ -163,18 +163,34 @@ sidebar:
               url: docs/reference/dropped-features/nonlocal-returns.html
     - title: Contributing
       subsection:
+        - title: Contribute Knowledge
+          url: docs/contributing/contribute-knowledge.html
         - title: Getting Started
           url: docs/contributing/getting-started.html
         - title: Workflow
           url: docs/contributing/workflow.html
-        - title: Eclipse
-          url: docs/contributing/eclipse.html
-        - title: IntelliJ IDEA
-          url: docs/contributing/intellij-idea.html
         - title: Testing
           url: docs/contributing/testing.html
-        - title: Release Model
-          url: docs/contributing/release.html
+        - title: Debugging
+          url: docs/contributing/debugging.html
+        - title: IDEs and Tools
+          subsection:
+            - title: Eclipse
+              url: docs/contributing/tools/eclipse.html
+            - title: IntelliJ IDEA
+              url: docs/contributing/tools/intellij-idea.html
+            - title: Mill
+              url: docs/contributing/tools/mill.html
+            - title: Sbt
+              url: docs/contributing/tools/sbt.html
+            - title: Scalafix
+              url: docs/contributing/tools/scalafix.html
+        - title: Procedures
+          subsection:
+            - title: Release Model
+              url: docs/contributing/procedures/release.html
+            - title: Modifying the Test Framework
+              url: docs/contributing/procedures/vulpix.html
     - title: Internals
       subsection:
         - title: Backend
