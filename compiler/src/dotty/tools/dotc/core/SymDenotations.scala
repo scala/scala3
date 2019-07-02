@@ -1269,14 +1269,12 @@ object SymDenotations {
      *  as public.
      *  @param base  The access boundary to assume if this symbol is protected
      */
-    final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol = {
-      val fs = flags
-      if (fs.is(Private)) owner
-      else if (fs.isAllOf(StaticProtected)) defn.RootClass
+    final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol =
+      if (this.is(Private)) owner
+      else if (this.isAllOf(StaticProtected)) defn.RootClass
       else if (privateWithin.exists && !ctx.phase.erasedTypes) privateWithin
-      else if (fs.is(Protected)) base
+      else if (this.is(Protected)) base
       else defn.RootClass
-    }
 
     final def isPublic(implicit ctx: Context): Boolean =
       accessBoundary(owner) == defn.RootClass
