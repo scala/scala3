@@ -22,6 +22,14 @@ How to Contribute
 * [Awesome Error Messages](http://scala-lang.org/blog/2016/10/14/dotty-errors.html)
 * [Issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
 
+## Contribute Internals-related Knowledge
+If you know anything useful at all about Dotty, feel free to log this knowledge:
+
+- [📜Log the Knowledge](https://github.com/lampepfl/dotty-knowledge/issues/new)
+- [🎓More about Logging the Knowledge](https://github.com/lampepfl/dotty-knowledge/blob/master/README.md)
+
+In short, no need to make it pretty, particularly human-readable or give it a particular structure. Just dump the knowledge you have and we'll take it from there.
+
 License
 =======
 Dotty is licensed under the [3-Clause BSD License](https://github.com/lampepfl/dotty/blob/master/LICENSE.md)
