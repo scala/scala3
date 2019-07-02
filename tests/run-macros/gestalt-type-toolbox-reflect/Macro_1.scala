@@ -2,7 +2,6 @@
 // using staging reflection
 
 import scala.quoted._
-import scala.tasty._
 
 object TypeToolbox {
   /** are the two types equal? */
@@ -113,7 +112,7 @@ object TypeToolbox {
 
   // TODO add to the std lib
   private implicit def listIsLiftable[T: Type: Liftable]: Liftable[List[T]] = new Liftable {
-    def toExpr(list: List[T]): Expr[List[T]] = list match {
+    def toExpr(list: List[T]) given QuoteContext: Expr[List[T]] = list match {
       case x :: xs => '{${x.toExpr} :: ${toExpr(xs)}}
       case Nil => '{Nil}
     }

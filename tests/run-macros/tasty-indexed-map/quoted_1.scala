@@ -2,8 +2,6 @@
 import scala.quoted._
 import scala.quoted.autolift._
 
-import scala.tasty._
-
 class MyMap[Keys](private val underlying: Array[Int]) extends AnyVal {
   def get[K <: String](implicit i: Index[K, Keys]): Int = underlying(i.index)
   def set[K <: String](value: Int)(implicit i: Index[K, Keys]): Unit = underlying(i.index) = value

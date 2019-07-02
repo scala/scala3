@@ -1,7 +1,5 @@
 import scala.quoted._
 
-import scala.tasty._
-
 object Test {
 
   implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)

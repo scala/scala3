@@ -1,8 +1,6 @@
 import scala.quoted._
 import scala.quoted.matching._
 
-import scala.tasty.Reflection
-
 object Macros {
 
   inline def (self: => StringContext) xyz(args: => String*): String = ${impl('self, 'args)}

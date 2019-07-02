@@ -1,8 +1,6 @@
 import scala.quoted._
 import scala.quoted.autolift._
 
-import scala.tasty._
-
 case class Location(owners: List[String])
 
 object Location {
@@ -20,8 +18,10 @@ object Location {
     '{new Location(${list})}
   }
 
-  private implicit def ListIsLiftable[T : Liftable : Type]: Liftable[List[T]] = {
-    case x :: xs  => '{ ${x} :: ${xs} }
-    case Nil => '{ List.empty[T] }
+  private implicit def ListIsLiftable[T : Liftable : Type]: Liftable[List[T]] = new Liftable[List[T]] {
+    def toExpr(x: List[T]) given QuoteContext: Expr[List[T]] = x match {
+      case x :: xs  => '{ $x :: $xs }
+      case Nil => '{ List.empty[T] }
+    }
   }
 }

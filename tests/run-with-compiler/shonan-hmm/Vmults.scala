@@ -19,7 +19,7 @@ object Vmults {
     V.vmult(vout_, v1_, v2_)
   }
 
-  def vmultCA: Expr[(Array[Complex[Int]], Array[Complex[Int]], Array[Complex[Int]]) => Unit] = '{
+  def vmultCA given QuoteContext: Expr[(Array[Complex[Int]], Array[Complex[Int]], Array[Complex[Int]]) => Unit] = '{
     (vout, v1, v2) => {
       val n = vout.length
       ${

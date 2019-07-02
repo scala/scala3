@@ -1,7 +1,5 @@
 import scala.quoted._
 
-import scala.tasty._
-
 object Macros {
 
   inline def let[T](rhs: T)(body: => T => Unit): Unit =

@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.tasty._
 
 object scalatest {
   inline def assert(condition: => Boolean): Unit = ${assertImpl('condition)}

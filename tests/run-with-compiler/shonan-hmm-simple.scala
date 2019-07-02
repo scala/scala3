@@ -34,16 +34,16 @@ class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]] {
 }
 
 sealed trait PV[T] {
-  def expr(implicit l: Liftable[T]): Expr[T]
+  def expr given Liftable[T], QuoteContext: Expr[T]
 }
 case class Sta[T](x: T) extends PV[T] {
-  def expr(implicit l: Liftable[T]): Expr[T] = x
+  def expr given Liftable[T], QuoteContext: Expr[T] = x
 }
 case class Dyn[T](x: Expr[T]) extends PV[T] {
-  def expr(implicit l: Liftable[T]): Expr[T] = x
+  def expr given Liftable[T], QuoteContext: Expr[T] = x
 }
 
-class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]]) extends Ring[PV[U]] {
+class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]]) given QuoteContext extends Ring[PV[U]] {
   val zero: PV[U] = Sta(u.zero)
   val one: PV[U] = Sta(u.one)
   val add = (x: PV[U], y: PV[U]) => (x, y) match {
@@ -72,7 +72,7 @@ case class Complex[T](re: T, im: T)
 
 object Complex {
   implicit def isLiftable[T: Type: Liftable]: Liftable[Complex[T]] = new Liftable[Complex[T]] {
-    def toExpr(comp: Complex[T]): Expr[Complex[T]] = '{Complex(${comp.re}, ${comp.im})}
+    def toExpr(comp: Complex[T]) given QuoteContext: Expr[Complex[T]] = '{Complex(${comp.re}, ${comp.im})}
   }
 }
 
@@ -141,8 +141,8 @@ object Test {
     println(res2)
     println()
 
-    val blasStaticIntExpr = new Blas1(new RingIntExpr, new StaticVecOps)
-    val resCode1 = blasStaticIntExpr.dot(
+    def blasStaticIntExpr given QuoteContext = new Blas1(new RingIntExpr, new StaticVecOps)
+    def resCode1 given QuoteContext = blasStaticIntExpr.dot(
       vec1.map(_.toExpr),
       vec2.map(_.toExpr)
     )
@@ -165,8 +165,8 @@ object Test {
     println(run(resCode2).apply(arr1, arr2))
     println()
 
-    val blasStaticIntPVExpr = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
-    val resCode3 = blasStaticIntPVExpr.dot(
+    def blasStaticIntPVExpr given QuoteContext = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
+    def resCode3 given QuoteContext = blasStaticIntPVExpr.dot(
       vec1.map(i => Dyn(i)),
       vec2.map(i => Sta(i))
     ).expr
@@ -174,8 +174,8 @@ object Test {
     println(run(resCode3))
     println()
 
-    val blasExprIntPVExpr = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
-    val resCode4: Expr[Array[Int] => Int] = '{
+    def blasExprIntPVExpr given QuoteContext = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
+    def resCode4 given QuoteContext: Expr[Array[Int] => Int] = '{
       arr =>
         if (arr.length != ${vec2.size}) throw new Exception("...")
         ${
@@ -191,8 +191,8 @@ object Test {
     println()
 
     import Complex.isLiftable
-    val blasExprComplexPVInt = new Blas1[Int, Complex[PV[Int]]](new RingComplex(new RingPV[Int](new RingInt, new RingIntExpr)), new StaticVecOps)
-    val resCode5: Expr[Array[Complex[Int]] => Complex[Int]] = '{
+    def blasExprComplexPVInt given QuoteContext = new Blas1[Int, Complex[PV[Int]]](new RingComplex(new RingPV[Int](new RingInt, new RingIntExpr)), new StaticVecOps)
+    def resCode5 given QuoteContext: Expr[Array[Complex[Int]] => Complex[Int]] = '{
       arr =>
         if (arr.length != ${cmpxVec2.size}) throw new Exception("...")
         ${
@@ -207,12 +207,12 @@ object Test {
     println(run(resCode5).apply(cmpxArr1))
     println()
 
-    val RingPVInt = new RingPV[Int](new RingInt, new RingIntExpr)
+    def RingPVInt given QuoteContext = new RingPV[Int](new RingInt, new RingIntExpr)
     // Staged loop of dot product on vectors of Int or Expr[Int]
-    val dotIntOptExpr = new Blas1(RingPVInt, new StaticVecOps).dot
+    def dotIntOptExpr given QuoteContext = new Blas1(RingPVInt, new StaticVecOps).dot
     // will generate the code '{ ((arr: scala.Array[scala.Int]) => arr.apply(1).+(arr.apply(3))) }
     val staticVec = Vec[Int, PV[Int]](5, i => Sta((i % 2)))
-    val code = '{(arr: Array[Int]) => ${dotIntOptExpr(Vec(5, i => Dyn('{arr(${i})})), staticVec).expr} }
+    def code given QuoteContext = '{(arr: Array[Int]) => ${dotIntOptExpr(Vec(5, i => Dyn('{arr(${i})})), staticVec).expr} }
     println(withQuoteContext(code.show))
     println()
   }

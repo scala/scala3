@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.tasty._
 
 
 inline def isFunctionType[T:Type]: Boolean = ${ isFunctionTypeImpl('[T]) }

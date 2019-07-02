@@ -6,7 +6,7 @@ import scala.runtime.quoted.Unpickler.liftedExpr
  *  without going through an explicit `'{...}` operation.
  */
 abstract class Liftable[T] {
-  def toExpr(x: T): Expr[T]
+  def toExpr(x: T) given QuoteContext: Expr[T]
 }
 
 /** Some liftable base types. To be completed with at least all types
@@ -27,7 +27,7 @@ object Liftable {
   implicit def ClassIsLiftable[T]: Liftable[Class[T]] = new PrimitiveLiftable
 
   private class PrimitiveLiftable[T] extends Liftable[T] {
-    override def toExpr(x: T): Expr[T] = liftedExpr(x)
+    override def toExpr(x: T) given QuoteContext: Expr[T] = liftedExpr(x)
   }
 
 }

@@ -1,7 +1,5 @@
 package dotty.semanticdb
 
-import scala.tasty.Reflection
-
 import scala.meta.internal.{semanticdb => s}
 import scala.tasty.Reflection
 import scala.tasty.file.TastyConsumer

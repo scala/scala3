@@ -1,8 +1,6 @@
 import scala.quoted._
 import scala.quoted.autolift._
 
-import scala.tasty._
-
 object Macros {
 
   implicit inline def printOwners[T](x: => T): Unit =

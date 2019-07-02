@@ -1,6 +1,5 @@
 import scala.quoted._
 import scala.quoted.show.SyntaxHighlight.ANSI
-import scala.tasty._
 
 object api {
   inline def (x: => String) reflect : String =

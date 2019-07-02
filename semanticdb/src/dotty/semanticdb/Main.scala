@@ -1,6 +1,5 @@
 package dotty.semanticdb
 
-import scala.tasty.Reflection
 import scala.tasty.file._
 import scala.NotImplementedError
 

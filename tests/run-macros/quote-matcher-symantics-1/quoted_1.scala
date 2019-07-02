@@ -2,9 +2,6 @@
 import scala.quoted._
 import scala.quoted.matching._
 
-import scala.tasty.Reflection
-
-
 object Macros {
 
   inline def lift[T](sym: Symantics[T])(a: => DSL): T = ${impl[T]('sym, 'a)}

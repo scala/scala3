@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.tasty._
 
 object Macros {
 

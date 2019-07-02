@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.tasty.Reflection
 import scala.quoted.autolift._
 
 import scala.language.implicitConversions

@@ -73,7 +73,7 @@ object Test {
     }
   }
 
-  def foreach2(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{
+  def foreach2(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]) given QuoteContext: Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     while (i < size) {
@@ -107,7 +107,7 @@ object Test {
     }
   }
 
-  def foreach4(arrRef: Expr[Array[Int]], f: Expr[Int => Unit], unrollSize: Int): Expr[Unit] = '{
+  def foreach4(arrRef: Expr[Array[Int]], f: Expr[Int => Unit], unrollSize: Int) given QuoteContext: Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     if (size % ${unrollSize} != 0) throw new Exception("...") // for simplicity of the implementation
@@ -118,7 +118,7 @@ object Test {
   }
 
   implicit object ArrayIntIsLiftable extends Liftable[Array[Int]] {
-    override def toExpr(x: Array[Int]): Expr[Array[Int]] = '{
+    override def toExpr(x: Array[Int]) given QuoteContext: Expr[Array[Int]] = '{
       val array = new Array[Int](${x.length})
       ${ foreachInRange(0, x.length)(i => '{ array(${i}) = ${x(i)}}) }
       array

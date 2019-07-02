@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.tasty.Reflection
 
 object Foo {
 

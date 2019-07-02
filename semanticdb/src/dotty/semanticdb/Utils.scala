@@ -1,7 +1,6 @@
 package dotty.semanticdb
 
 
-import scala.tasty.Reflection
 import scala.tasty.file._
 import scala.collection.mutable.HashMap
 
@@ -11,7 +10,6 @@ import java.nio.file._
 import scala.meta.internal.{semanticdb => s}
 import scala.collection.JavaConverters._
 import java.io.File
-import scala.tasty.Reflection
 import scala.tasty.file.TastyConsumer
 import java.lang.reflect.InvocationTargetException
 

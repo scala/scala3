@@ -1,7 +1,6 @@
 import scala.quoted._
 import scala.quoted.autolift._
 
-import scala.tasty.Reflection
 
 object Macros {
 

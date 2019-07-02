@@ -1,7 +1,5 @@
 import scala.quoted._
 
-import scala.tasty._
-
 object Test {
 
   def main(args: Array[String]): Unit = {

@@ -4,7 +4,7 @@ import scala.reflect.ClassTag
 object Arrays {
   implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T], ct: Expr[ClassTag[T]]): Liftable[Array[T]] = {
     new Liftable[Array[T]] {
-      def toExpr(arr: Array[T]): Expr[Array[T]] = '{
+      def toExpr(arr: Array[T]) given QuoteContext: Expr[Array[T]] = '{
         new Array[$t](${arr.length.toExpr})($ct)
         // TODO add elements
       }

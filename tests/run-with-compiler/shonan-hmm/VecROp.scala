@@ -46,7 +46,7 @@ class VecRStaDim[T: Type](r: Ring[T]) extends VecROp[Int, T, Expr[Unit]]  {
   override def toString(): String = s"VecRStaDim($r)"
 }
 
-class VecRStaDyn[T : Type : Liftable](r: Ring[PV[T]]) extends VecROp[PV[Int], PV[T], Expr[Unit]] {
+class VecRStaDyn[T : Type : Liftable](r: Ring[PV[T]])  given QuoteContext extends VecROp[PV[Int], PV[T], Expr[Unit]] {
   val VSta: VecROp[Int, PV[T], Expr[Unit]] = new VecRStaDim(r)
   val VDyn = new VecRDyn
   val dyn = Dyns.dyn[T]
@@ -74,7 +74,7 @@ object VecRStaOptDynInt {
   val threshold = 3
 }
 
-class VecRStaOptDynInt(r: Ring[PV[Int]]) extends VecRStaDyn(r) {
+class VecRStaOptDynInt(r: Ring[PV[Int]])  given QuoteContext extends VecRStaDyn(r) {
   val M: VecROp[PV[Int], PV[Int], Expr[Unit]] = new VecRStaDyn(r)
 
   override def reduce: ((PV[Int], PV[Int]) => PV[Int], PV[Int], Vec[PV[Int], PV[Int]]) => PV[Int] = (plus, zero, vec) => vec match {

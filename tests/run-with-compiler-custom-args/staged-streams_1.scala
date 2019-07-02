@@ -61,7 +61,7 @@ object Test {
       * @param  k the continuation that is invoked after the new state is defined in the body of `init`
       * @return expr value of unit per the CPS-encoding
       */
-    def init(k: St => Expr[Unit]): Expr[Unit]
+    def init(k: St => Expr[Unit]) given QuoteContext: Expr[Unit]
 
     /** Step method that defines the transformation of data.
       *
@@ -98,7 +98,7 @@ object Test {
       * @tparam W  the type of the accumulator
       * @return
       */
-    def fold[W: Type](z: Expr[W], f: ((Expr[W], Expr[A]) => Expr[W])): Expr[W] = {
+    def fold[W: Type](z: Expr[W], f: ((Expr[W], Expr[A]) => Expr[W])) given QuoteContext: Expr[W] = {
       Var(z) { s: Var[W] => '{
           ${
             foldRaw[Expr[A]]((a: Expr[A]) => '{
@@ -110,7 +110,7 @@ object Test {
       }
     }
 
-     private def foldRaw[A](consumer: A => Expr[Unit], stream: StagedStream[A]): Expr[Unit] = {
+     private def foldRaw[A](consumer: A => Expr[Unit], stream: StagedStream[A]) given QuoteContext: Expr[Unit] = {
        stream match {
          case Linear(producer) => {
            producer.card match {
@@ -166,7 +166,7 @@ object Test {
             type St = producer.St
             val card = producer.card
 
-            def init(k: St => Expr[Unit]): Expr[Unit] = {
+            def init(k: St => Expr[Unit]) given QuoteContext: Expr[Unit] = {
               producer.init(k)
             }
 
@@ -229,7 +229,7 @@ object Test {
           type St = Expr[A]
           val card = AtMost1
 
-          def init(k: St => Expr[Unit]): Expr[Unit] =
+          def init(k: St => Expr[Unit]) given QuoteContext: Expr[Unit] =
             k(a)
 
           def step(st: St, k: (Expr[A] => Expr[Unit])): Expr[Unit] =
@@ -259,7 +259,7 @@ object Test {
                 type St = producer.St
                 val card = producer.card
 
-                def init(k: St => Expr[Unit]): Expr[Unit] =
+                def init(k: St => Expr[Unit]) given QuoteContext: Expr[Unit] =
                   producer.init(k)
 
                 def step(st: St, k: (A => Expr[Unit])): Expr[Unit] =
@@ -292,7 +292,7 @@ object Test {
         type St = (Var[Int], producer.St)
         val card = producer.card
 
-        def init(k: St => Expr[Unit]): Expr[Unit] = {
+        def init(k: St => Expr[Unit]) given QuoteContext: Expr[Unit] = {
           producer.init(st => {
             Var(n) { counter =>
               k(counter, st)
@@ -441,7 +441,7 @@ object Test {
             * @param  k              the continuation that consumes a variable.
             * @return the quote of the orchestrated code that will be executed as
             */
-          def makeAdvanceFunction[A](nadv: Var[Unit => Unit], k: A => Expr[Unit], stream: StagedStream[A]): Expr[Unit] = {
+          def makeAdvanceFunction[A](nadv: Var[Unit => Unit], k: A => Expr[Unit], stream: StagedStream[A]) given QuoteContext: Expr[Unit] = {
             stream match {
               case Linear(producer) =>
                 producer.card match {
@@ -482,7 +482,7 @@ object Test {
             type St = (Var[Boolean], Var[A], Var[Unit => Unit])
             val card: Cardinality = Many
 
-            def init(k: St => Expr[Unit]): Expr[Unit] = {
+            def init(k: St => Expr[Unit]) given QuoteContext: Expr[Unit] = {
               producer.init(st =>
                 Var('{ (_: Unit) => ()}){ nadv => {
                   Var('{ true }) { hasNext => {
@@ -532,7 +532,7 @@ object Test {
         type St = (Var[Boolean], producer.St, nestedProducer.St)
         val card: Cardinality = Many
 
-        def init(k: St => Expr[Unit]): Expr[Unit] = {
+        def init(k: St => Expr[Unit]) given QuoteContext: Expr[Unit] = {
           producer.init(s1 => '{ ${nestedProducer.init(s2 =>
             Var(producer.hasNext(s1)) { flag =>
               k((flag, s1, s2))
@@ -567,7 +567,7 @@ object Test {
         type St = (producer1.St, producer2.St)
         val card: Cardinality = Many
 
-        def init(k: St => Expr[Unit]): Expr[Unit] = {
+        def init(k: St => Expr[Unit]) given QuoteContext: Expr[Unit] = {
           producer1.init(s1 => producer2.init(s2 => k((s1, s2)) ))
         }
 
@@ -597,7 +597,7 @@ object Test {
 
         val card = Many
 
-        def init(k: St => Expr[Unit]): Expr[Unit] = {
+        def init(k: St => Expr[Unit]) given QuoteContext: Expr[Unit] = {
           Var('{($arr).length}) { n =>
             Var(0){ i =>
               k((i, n, arr))
@@ -626,52 +626,52 @@ object Test {
     }
   }
 
-  def test1() = Stream
+  def test1() given QuoteContext = Stream
     .of('{Array(1, 2, 3)})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test2() = Stream
+  def test2() given QuoteContext = Stream
     .of('{Array(1, 2, 3)})
     .map((a: Expr[Int]) => '{ $a * 2 })
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test3() = Stream
+  def test3() given QuoteContext = Stream
     .of('{Array(1, 2, 3)})
     .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d * $dp }))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test4() = Stream
+  def test4() given QuoteContext = Stream
     .of('{Array(1, 2, 3)})
     .filter((d: Expr[Int]) => '{ $d % 2 == 0 })
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test5() = Stream
+  def test5() given QuoteContext = Stream
     .of('{Array(1, 2, 3)})
     .take('{2})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test6() = Stream
+  def test6() given QuoteContext = Stream
     .of('{Array(1, 1, 1)})
     .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).take('{2}))
     .take('{5})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test7() = Stream
+  def test7() given QuoteContext = Stream
     .of('{Array(1, 2, 3)})
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test8() = Stream
+  def test8() given QuoteContext = Stream
     .of('{Array(1, 2, 3)})
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test9() = Stream
+  def test9() given QuoteContext = Stream
     .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}) )
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test10() = Stream
+  def test10() given QuoteContext = Stream
     .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })) )
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
@@ -699,6 +699,3 @@ object Test {
     println(run(test10()))
   }
 }
-
-
-

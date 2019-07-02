@@ -1,7 +1,6 @@
 import scala.quoted._
 import scala.quoted.autolift._
 
-import scala.tasty._
 import scala.tasty.util._
 
 object Macros {
