@@ -2082,7 +2082,7 @@ class Typer extends Namer
   }
 
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(implicit ctx: Context): Unit = {
-    if (level == 0 && !ctx.owner.isInlineMethod)
+    if (level == 0 && !ctx.owner.ownersIterator.exists(_.is(Inline)))
       ctx.error("Splice ${...} outside quotes '{...} or inline method", tree.sourcePos)
     else if (level < 0)
       ctx.error(
