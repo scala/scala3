@@ -54,7 +54,10 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  - If inside of a macro definition, check the validity of the macro.
    */
   protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree = {
-    if (level >= 1) {
+    if (level < 0) {
+      ctx.error(s"Splice at level $level is not allowed", splice.sourcePos)
+      splice
+    } else {
       val body1 = transform(body)(spliceContext)
       splice match {
         case Apply(fun: TypeApply, _) if splice.isTerm =>
@@ -63,20 +66,6 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           val tp = checkType(splice.sourcePos).apply(splice.tpe.widenTermRefExpr)
           cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), body1 :: Nil)
         case splice: Select => cpy.Select(splice)(body1, splice.name)
-      }
-    }
-    else {
-      assert(enclosingInlineds.isEmpty, "unexpanded macro")
-      assert(ctx.owner.isInlineMethod)
-      if (Splicer.canBeSpliced(body)) { // level 0 inside an inline definition
-        transform(body)(spliceContext) // Just check PCP
-        splice
-      }
-      else { // level 0 inside an inline definition
-        ctx.error(
-          "Malformed macro call. The contents of the splice ${...} must call a static method and arguments must be quoted or inline.",
-          splice.sourcePos)
-        splice
       }
     }
   }
