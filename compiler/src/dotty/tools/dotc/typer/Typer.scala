@@ -2263,7 +2263,7 @@ class Typer extends Namer
       ctx.error("Splice ${...} outside quotes '{...} or inline method", tree.sourcePos)
     else if (level < 0)
       ctx.error(
-        """Splice ${...} at level -1.
+        s"""Splice $${...} at level $level.
           |
           |Inline method may contain a splice at level 0 but the contents of this splice cannot have a splice.
           |""".stripMargin, tree.sourcePos
