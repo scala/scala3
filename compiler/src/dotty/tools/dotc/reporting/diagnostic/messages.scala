@@ -1504,7 +1504,7 @@ object messages {
   case class AbstractMemberMayNotHaveModifier(sym: Symbol, flag: FlagSet)(
     implicit ctx: Context)
     extends Message(AbstractMemberMayNotHaveModifierID) {
-    val msg: String = em"""${hl("abstract")} $sym may not have `$flag' modifier"""
+    val msg: String = em"""${hl("abstract")} $sym may not have `${flag.flagsString}' modifier"""
     val kind: String = "Syntax"
     val explanation: String = ""
   }
