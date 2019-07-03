@@ -42,7 +42,7 @@ object XmlQuote {
         ctx1 match {
           case Apply(fun, List(Typed(Repeated(values, _), _))) if isStringContextApply(fun) =>
             values.iterator.map {
-              case Literal(Constant.String(value)) => value
+              case Literal(Constant(value: String)) => value
               case _ => QuoteError("Expected statically known String")
             }.toList
           case _ => QuoteError("Expected statically known StringContext")
