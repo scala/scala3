@@ -1842,6 +1842,7 @@ final class SearchRoot extends SearchHistory {
           val pruned = prune(List(tree), implicitDictionary.map(_._2).toList, Nil)
           implicitDictionary0 = null
           if (pruned.isEmpty) result
+          else if (pruned.exists(_._2 == EmptyTree)) NoMatchingImplicitsFailure
           else {
             // If there are any dictionary entries remaining after pruning, construct a dictionary
             // class of the form,
