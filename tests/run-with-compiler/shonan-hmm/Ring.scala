@@ -24,7 +24,7 @@ object RingInt extends Ring[Int] {
   override def toString(): String = "RingInt"
 }
 
-object RingIntExpr extends Ring[Expr[Int]] {
+class RingIntExpr given QuoteContext extends Ring[Expr[Int]] {
   val zero = '{0}
   val one  = '{1}
   val add  = (x, y) => '{$x + $y}
@@ -66,7 +66,7 @@ case class RingPV[U: Liftable](staRing: Ring[U], dynRing: Ring[Expr[U]]) given Q
   }
 }
 
-class RingIntPExpr given QuoteContext extends RingPV(RingInt, RingIntExpr)
+class RingIntPExpr given QuoteContext extends RingPV(RingInt, new RingIntExpr)
 
 class RingIntOPExpr given QuoteContext extends RingIntPExpr {
   override def add = (x: PV[Int], y: PV[Int]) => (x, y) match {

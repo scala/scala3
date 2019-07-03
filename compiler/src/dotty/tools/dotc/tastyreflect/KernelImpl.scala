@@ -1055,6 +1055,29 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case _ => Some(x)
   }
 
+  def Type_apply(clazz: Class[_])(implicit ctx: Context): Type = {
+    if (clazz.isPrimitive) {
+      if (clazz == classOf[Boolean]) defn.BooleanType
+      else if (clazz == classOf[Byte]) defn.ByteType
+      else if (clazz == classOf[Char]) defn.CharType
+      else if (clazz == classOf[Short]) defn.ShortType
+      else if (clazz == classOf[Int]) defn.IntType
+      else if (clazz == classOf[Long]) defn.LongType
+      else if (clazz == classOf[Float]) defn.FloatType
+      else if (clazz == classOf[Double]) defn.DoubleType
+      else defn.UnitType
+    } else if (clazz.isArray) {
+      defn.ArrayType.appliedTo(Type_apply(clazz.getComponentType))
+    } else if (clazz.isMemberClass) {
+      val name = clazz.getSimpleName.toTypeName
+      val enclosing = Type_apply(clazz.getEnclosingClass)
+      if (enclosing.member(name).exists) enclosing.select(name)
+      else {
+        enclosing.classSymbol.companionModule.termRef.select(name)
+      }
+    } else ctx.getClassIfDefined(clazz.getCanonicalName).typeRef
+  }
+
   def `Type_=:=`(self: Type)(that: Type)(implicit ctx: Context): Boolean = self =:= that
 
   def `Type_<:<`(self: Type)(that: Type)(implicit ctx: Context): Boolean = self <:< that
@@ -1431,6 +1454,9 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def Constant_value(const: Constant): Any = const.value
 
+  def matchConstant(constant: Constant): Option[Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type] =
+    Some(constant.asInstanceOf[Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type])
+
   def matchConstant_Unit(x: Constant): Boolean = x.tag == Constants.UnitTag
   def matchConstant_Null(x: Constant): Boolean = x.tag == Constants.NullTag
   def matchConstant_Boolean(x: Constant): Option[Boolean] =
@@ -1453,6 +1479,9 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     if (x.tag == Constants.StringTag) Some(x.stringValue) else None
   def matchConstant_ClassTag(x: Constant): Option[Type] =
     if (x.tag == Constants.ClazzTag) Some(x.typeValue) else None
+
+  def Constant_apply(x: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type): Constant =
+    Constants.Constant(x)
 
   def Constant_Unit_apply(): Constant = Constants.Constant(())
   def Constant_Null_apply(): Constant = Constants.Constant(null)
@@ -1809,6 +1838,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Definitions_ClassClass: Symbol = defn.ClassClass
   def Definitions_ArrayClass: Symbol = defn.ArrayClass
   def Definitions_PredefModule: Symbol = defn.ScalaPredefModule.asTerm
+  def Definitions_Predef_classOf: Symbol = defn.Predef_classOf.asTerm
 
   def Definitions_JavaLangPackage: Symbol = defn.JavaLangPackageVal
 

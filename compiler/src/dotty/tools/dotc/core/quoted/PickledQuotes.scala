@@ -45,11 +45,6 @@ object PickledQuotes {
         }
       }
       forceAndCleanArtefacts.transform(unpickled)
-    case expr: LiftedExpr[T] =>
-      expr.value match {
-        case value: Class[_] => ref(defn.Predef_classOf).appliedToType(classToType(value))
-        case value => Literal(Constant(value))
-      }
     case expr: TastyTreeExpr[Tree] @unchecked => healOwner(expr.tree)
     case expr: FunctionAppliedTo[_] =>
       functionAppliedTo(quotedExprToTree(expr.f), expr.args.map(arg => quotedExprToTree(arg)).toList)
@@ -172,29 +167,6 @@ object PickledQuotes {
         fn.select(nme.apply).appliedToArgs(argRefs).withSpan(fn.span)
     }
     seq(argVals.flatten, rec(fn))
-  }
-
-  private def classToType(clazz: Class[_])(implicit ctx: Context): Type = {
-    if (clazz.isPrimitive) {
-      if (clazz == classOf[Boolean]) defn.BooleanType
-      else if (clazz == classOf[Byte]) defn.ByteType
-      else if (clazz == classOf[Char]) defn.CharType
-      else if (clazz == classOf[Short]) defn.ShortType
-      else if (clazz == classOf[Int]) defn.IntType
-      else if (clazz == classOf[Long]) defn.LongType
-      else if (clazz == classOf[Float]) defn.FloatType
-      else if (clazz == classOf[Double]) defn.DoubleType
-      else defn.UnitType
-    } else if (clazz.isArray) {
-      defn.ArrayType.appliedTo(classToType(clazz.getComponentType))
-    } else if (clazz.isMemberClass) {
-      val name = clazz.getSimpleName.toTypeName
-      val enclosing = classToType(clazz.getEnclosingClass)
-      if (enclosing.member(name).exists) enclosing.select(name)
-      else {
-        enclosing.classSymbol.companionModule.termRef.select(name)
-      }
-    } else ctx.getClassIfDefined(clazz.getCanonicalName).typeRef
   }
 
   /** Make sure that the owner of this tree is `ctx.owner` */

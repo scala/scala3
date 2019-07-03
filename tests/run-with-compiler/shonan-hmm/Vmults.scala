@@ -27,7 +27,7 @@ object Vmults {
         val v1_ = Vec ('n, i => Complex.of_complex_expr('{v1($i)}))
         val v2_ = Vec ('n, i => Complex.of_complex_expr('{v2($i)}))
 
-        val V = new Vmult[Expr[Int], Complex[Expr[Int]], Expr[Unit]](RingComplex(RingIntExpr), new VecDyn)
+        val V = new Vmult[Expr[Int], Complex[Expr[Int]], Expr[Unit]](RingComplex(new RingIntExpr), new VecDyn)
         V.vmult(vout_, v1_, v2_)
       }
     }

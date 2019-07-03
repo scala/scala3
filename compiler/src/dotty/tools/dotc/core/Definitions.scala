@@ -758,12 +758,15 @@ class Definitions {
 
   @threadUnsafe lazy val QuotedExprType: TypeRef = ctx.requiredClassRef("scala.quoted.Expr")
   def QuotedExprClass(implicit ctx: Context): ClassSymbol = QuotedExprType.symbol.asClass
+  def QuotedExprModule(implicit ctx: Context): Symbol = QuotedExprClass.companionModule
 
   @threadUnsafe lazy val QuoteContextType: TypeRef = ctx.requiredClassRef("scala.quoted.QuoteContext")
   def QuoteContextClass(implicit ctx: Context): ClassSymbol = QuoteContextType.symbol.asClass
 
   @threadUnsafe lazy val QuoteContextModule: TermSymbol = ctx.requiredModule("scala.quoted.QuoteContext")
     @threadUnsafe lazy val QuoteContext_macroContext: TermSymbol = QuoteContextModule.requiredMethod("macroContext")
+
+  @threadUnsafe lazy val LiftableModule: TermSymbol = ctx.requiredModule("scala.quoted.Liftable")
 
   @threadUnsafe lazy val InternalQuotedModuleRef: TermRef = ctx.requiredModuleRef("scala.internal.Quoted")
   def InternalQuotedModule: Symbol = InternalQuotedModuleRef.symbol
@@ -797,7 +800,6 @@ class Definitions {
   def QuotedMatchingBindingClass(implicit ctx: Context): ClassSymbol = QuotedMatchingBindingType.symbol.asClass
 
   def Unpickler_unpickleExpr: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
-  def Unpickler_liftedExpr: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.liftedExpr")
   def Unpickler_unpickleType: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
 
   @threadUnsafe lazy val TastyReflectionType: TypeRef = ctx.requiredClassRef("scala.tasty.Reflection")

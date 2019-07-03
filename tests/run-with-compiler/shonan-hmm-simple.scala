@@ -17,7 +17,7 @@ class RingInt extends Ring[Int] {
   val mul  = (x, y) => x * y
 }
 
-class RingIntExpr extends Ring[Expr[Int]] {
+class RingIntExpr given QuoteContext extends Ring[Expr[Int]] {
   val zero = '{0}
   val one  = '{1}
   val add  = (x, y) => '{$x + $y}
@@ -150,8 +150,8 @@ object Test {
     println(run(resCode1))
     println()
 
-    val blasExprIntExpr = new Blas1(new RingIntExpr, new ExprVecOps)
-    val resCode2: Expr[(Array[Int], Array[Int]) => Int] = '{
+    def blasExprIntExpr given QuoteContext = new Blas1(new RingIntExpr, new ExprVecOps)
+    def resCode2 given QuoteContext: Expr[(Array[Int], Array[Int]) => Int] = '{
       (arr1, arr2) =>
         if (arr1.length != arr2.length) throw new Exception("...")
         ${

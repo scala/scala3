@@ -43,7 +43,7 @@ object Test {
     '{}
   }
 
-  def foreach1(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{
+  def foreach1(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]) given QuoteContext: Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     while (i < size) {
@@ -53,7 +53,7 @@ object Test {
     }
   }
 
-  def foreach1Tpe1[T](arrRef: Expr[Array[T]], f: Expr[T => Unit])(implicit t: Type[T]): Expr[Unit] = '{
+  def foreach1Tpe1[T](arrRef: Expr[Array[T]], f: Expr[T => Unit])(implicit t: Type[T], qxtx: QuoteContext): Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     while (i < size) {
@@ -63,7 +63,7 @@ object Test {
     }
   }
 
-  def foreach1Tpe2[T: Type](arrRef: Expr[Array[T]], f: Expr[T => Unit]): Expr[Unit] = '{
+  def foreach1Tpe2[T: Type](arrRef: Expr[Array[T]], f: Expr[T => Unit]) given QuoteContext: Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     while (i < size) {
@@ -83,7 +83,7 @@ object Test {
     }
   }
 
-  def foreach3(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{
+  def foreach3(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]) given QuoteContext: Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     if (size % 3 != 0) throw new Exception("...")// for simplicity of the implementation
@@ -95,7 +95,7 @@ object Test {
     }
   }
 
-  def foreach3_2(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{
+  def foreach3_2(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]) given QuoteContext: Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     if (size % 3 != 0) throw new Exception("...")// for simplicity of the implementation
@@ -125,7 +125,7 @@ object Test {
     }
   }
 
-  def foreachInRange(start: Int, end: Int)(f: Int => Expr[Unit]): Expr[Unit] = {
+  def foreachInRange(start: Int, end: Int)(f: Int => Expr[Unit]) given QuoteContext: Expr[Unit] = {
     @tailrec def unroll(i: Int, acc: Expr[Unit]): Expr[Unit] =
       if (i < end) unroll(i + 1, '{ $acc; ${f(i)} }) else acc
     if (start < end) unroll(start + 1, f(start)) else '{}

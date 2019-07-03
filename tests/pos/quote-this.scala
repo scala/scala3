@@ -1,19 +1,19 @@
 import scala.quoted._
 
 class Foo {
-  def a: Expr[Int] = '{1}
-  def b: Expr[Int] = '{
+  def a given QuoteContext: Expr[Int] = '{1}
+  def b given QuoteContext: Expr[Int] = '{
     ${ this.a }
   }
 
-  def d: Expr[Expr[Int]] = '{ '{1} }
-  def e: Expr[Expr[Int]] = '{
+  def d given QuoteContext: Expr[Expr[Int]] = '{ '{1} }
+  def e given QuoteContext: Expr[Expr[Int]] = '{
     '{${${this.d}}}
   }
 
   def foo[T](x: T): T = x
 
-  def f = '{
+  def f given QuoteContext = '{
     ${ foo[this.type](this).a }
   }
 
@@ -24,5 +24,5 @@ class Foo {
 }
 
 object Foo {
-  def impl[T](x: Any): Expr[Unit] = '{}
+  def impl[T](x: Any) given QuoteContext: Expr[Unit] = '{}
 }

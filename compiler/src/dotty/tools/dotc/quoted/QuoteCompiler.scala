@@ -49,7 +49,6 @@ class QuoteCompiler extends Compiler {
   class QuotedFrontend extends Phase {
     import tpd._
 
-
     def phaseName: String = "quotedFrontend"
 
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
@@ -65,7 +64,7 @@ class QuoteCompiler extends Compiler {
           cls.enter(ctx.newDefaultConstructor(cls), EmptyScope)
           val meth = ctx.newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
 
-          val quoted = PickledQuotes.quotedExprToTree(checkValidRunExpr(exprUnit.exprBuilder.apply(new QuoteContext(ReflectionImpl(ctx)))))(ctx.withOwner(meth))
+          val quoted = PickledQuotes.quotedExprToTree(exprUnit.exprBuilder.apply(new QuoteContext(ReflectionImpl(ctx))))(ctx.withOwner(meth))
 
           getLiteral(quoted) match {
             case Some(value) =>
@@ -80,12 +79,6 @@ class QuoteCompiler extends Compiler {
               Some(CompilationUnit(source, tree, forceTrees = true))
           }
       }
-    }
-
-    private def checkValidRunExpr(expr: Expr[_]): Expr[_] = expr match {
-      case expr: scala.internal.quoted.TastyTreeExpr[Tree] @unchecked =>
-        throw new Exception("Cannot call `Expr.run` on an `Expr` that comes from a macro argument.")
-      case _ => expr
     }
 
     /** Get the literal value if this tree only contains a literal tree */

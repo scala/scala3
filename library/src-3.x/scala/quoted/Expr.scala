@@ -44,7 +44,19 @@ package quoted {
         tg.untupled(args => new FunctionAppliedTo[R](f, args.toArray.map(_.asInstanceOf[Expr[_]])))
     }
 
-    /** Returns A expression containing a block with the given statements and ending with the expresion
+    /** Returns a null expresssion equivalent to `'{null}` */
+    def nullExpr given (qctx: QuoteContext): Expr[Null] = {
+      import qctx.tasty._
+      Literal(Constant(null)).seal.asInstanceOf[Expr[Null]]
+    }
+
+    /** Returns a unit expresssion equivalent to `'{}` or `'{()}` */
+    def unitExpr given (qctx: QuoteContext): Expr[Unit] = {
+      import qctx.tasty._
+      Literal(Constant(())).seal.asInstanceOf[Expr[Unit]]
+    }
+
+    /** Returns an expression containing a block with the given statements and ending with the expresion
      *  Given list of statements `s1 :: s2 :: ... :: Nil` and an expression `e` the resulting expression
      *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
      */
@@ -65,13 +77,6 @@ package internal {
     /** An Expr backed by a pickled TASTY tree */
     final class TastyExpr[+T](val tasty: scala.runtime.quoted.Unpickler.Pickled, val args: Seq[Any]) extends Expr[T] {
       override def toString: String = s"Expr(<pickled tasty>)"
-    }
-
-    /** An Expr backed by a lifted value.
-     *  Values can only be of type Boolean, Byte, Short, Char, Int, Long, Float, Double, Unit, String or Null.
-     */
-    final class LiftedExpr[+T](val value: T) extends Expr[T] {
-      override def toString: String = s"Expr($value)"
     }
 
     /** An Expr backed by a tree. Only the current compiler trees are allowed.
