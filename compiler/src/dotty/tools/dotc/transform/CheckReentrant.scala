@@ -43,7 +43,10 @@ class CheckReentrant extends MiniPhase {
 
   def isIgnored(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
-    sym.hasAnnotation(unsharedAnnot())
+    sym.hasAnnotation(unsharedAnnot()) ||
+    sym.owner == defn.EnumValuesClass
+      // enum values are initialized eagerly before use
+      // in the long run, we should make them vals
 
   def scanning(sym: Symbol)(op: => Unit)(implicit ctx: Context): Unit = {
     ctx.log(i"${"  " * indent}scanning $sym")
