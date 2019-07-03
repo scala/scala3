@@ -464,9 +464,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def isModuleClassRoot = nameMatches(moduleClassRoot.name) && (owner == moduleClassRoot.owner) && flags.is(Module)
     def isModuleRoot = nameMatches(moduleClassRoot.name.sourceModuleName) && (owner == moduleClassRoot.owner) && flags.is(Module)
 
-    //if (isClassRoot) println(s"classRoot of $classRoot found at $readIndex, flags = $flags") // !!! DEBUG
-    //if (isModuleRoot) println(s"moduleRoot of $moduleRoot found at $readIndex, flags = $flags") // !!! DEBUG
-    //if (isModuleClassRoot) println(s"moduleClassRoot of $moduleClassRoot found at $readIndex, flags = $flags") // !!! DEBUG
+    //if (isClassRoot) println(s"classRoot of $classRoot found at $readIndex, flags = ${flags.flagsString}") // !!! DEBUG
+    //if (isModuleRoot) println(s"moduleRoot of $moduleRoot found at $readIndex, flags = ${flags.flagsString}") // !!! DEBUG
+    //if (isModuleClassRoot) println(s"moduleClassRoot of $moduleClassRoot found at $readIndex, flags = ${flags.flagsString}") // !!! DEBUG
 
     def completeRoot(denot: ClassDenotation, completer: LazyType): Symbol = {
       denot.setFlag(flags)

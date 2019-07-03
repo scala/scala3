@@ -1504,7 +1504,7 @@ object messages {
   case class AbstractMemberMayNotHaveModifier(sym: Symbol, flag: FlagSet)(
     implicit ctx: Context)
     extends Message(AbstractMemberMayNotHaveModifierID) {
-    val msg: String = em"""${hl("abstract")} $sym may not have `$flag' modifier"""
+    val msg: String = em"""${hl("abstract")} $sym may not have `${flag.flagsString}` modifier"""
     val kind: String = "Syntax"
     val explanation: String = ""
   }
@@ -1697,7 +1697,7 @@ object messages {
   case class ModifiersNotAllowed(flags: FlagSet, printableType: Option[String])(implicit ctx: Context)
     extends Message(ModifiersNotAllowedID) {
     val kind: String = "Syntax"
-    val msg: String = em"Modifier(s) $flags not allowed for ${printableType.getOrElse("combination")}"
+    val msg: String = em"Modifier(s) `${flags.flagsString}` not allowed for ${printableType.getOrElse("combination")}"
     val explanation: String = {
       val first = "sealed def y: Int = 1"
       val second = "sealed lazy class z"
