@@ -251,9 +251,14 @@ object PrepareInlineable {
        */
       object InlineSplice {
         def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
-          case Spliced(code) if Splicer.canBeSpliced(code) =>
-            if (code.symbol.flags.is(Inline))
+          case Spliced(code) =>
+            if (!Splicer.canBeSpliced(code)) {
+              ctx.error(
+                "Malformed macro call. The contents of the splice ${...} must call a static method and arguments must be quoted or inline.",
+                tree.sourcePos)
+            } else if (code.symbol.flags.is(Inline)) {
               ctx.error("Macro cannot be implemented with an `inline` method", code.sourcePos)
+            }
             Some(code)
           case Block(List(stat), Literal(Constants.Constant(()))) => unapply(stat)
           case Block(Nil, expr) => unapply(expr)
