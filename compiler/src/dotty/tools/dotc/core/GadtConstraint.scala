@@ -123,9 +123,8 @@ final class ProperGadtConstraint private(
     }
 
     // The replaced symbols are picked up here.
-    addToConstraint(poly1, tvars).reporting({ _ =>
-      i"added to constraint: $params%, %\n$debugBoundsDescription"
-    }, gadts)
+    addToConstraint(poly1, tvars)
+      .reporting(i"added to constraint: $params%, %\n$debugBoundsDescription", gadts)
   }
 
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(implicit ctx: Context): Boolean = {
@@ -159,7 +158,7 @@ final class ProperGadtConstraint private(
           val oldUpperBound = bounds(symTvar.origin)
           // If we have bounds:
           //     F >: [t] => List[t] <: [t] => Any
-          // and we want to record that: 
+          // and we want to record that:
           //     F <: [+A] => List[A]
           // we need to adapt the variance and instead record that:
           //     F <: [A] => List[A]
@@ -177,10 +176,10 @@ final class ProperGadtConstraint private(
           if (isUpper) addUpperBound(symTvar.origin, bound1)
           else addLowerBound(symTvar.origin, bound1)
       }
-    ).reporting({ res =>
+    ).reporting({
       val descr = if (isUpper) "upper" else "lower"
       val op = if (isUpper) "<:" else ">:"
-      i"adding $descr bound $sym $op $bound = $res"
+      i"adding $descr bound $sym $op $bound = $result"
     }, gadts)
   }
 
@@ -206,7 +205,7 @@ final class ProperGadtConstraint private(
             case tb => tb
           }
         retrieveBounds
-          //.reporting({ res => i"gadt bounds $sym: $res" }, gadts)
+          //.reporting(i"gadt bounds $sym: $result", gadts)
           //.ensuring(containsNoInternalTypes(_))
     }
   }

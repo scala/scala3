@@ -23,4 +23,12 @@ package object tools {
   /** Throws an `UnsupportedOperationException` with the given method name. */
   def unsupported(methodName: String): Nothing =
     throw new UnsupportedOperationException(methodName)
+
+  object WrappedResult {
+    opaque type Type[T] = T
+    def unwrap[T](x: Type[T]): T = x
+    def apply[T](x: T): Type[T] = x
+  }
+  type WrappedResult[T] = WrappedResult.Type[T]
+  def result[T] given (x: WrappedResult[T]): T = WrappedResult.unwrap(x)
 }

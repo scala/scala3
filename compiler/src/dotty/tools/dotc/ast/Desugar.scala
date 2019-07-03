@@ -766,7 +766,7 @@ object desugar {
     }
 
     flatTree(cdef1 :: companions ::: implicitWrappers)
-  }.reporting(res => i"desugared: $res", Printers.desugar)
+  }.reporting(i"desugared: $result", Printers.desugar)
 
   /** Expand
    *
