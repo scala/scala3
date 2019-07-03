@@ -3,7 +3,6 @@ import scala.quoted.autolift._
 
 import scala.quoted.matching._
 
-import scala.tasty._
 import scala.tasty.util._
 
 object Macros {

@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.tasty._
 
 object scalatest {
   def f(x: Int): Int = x

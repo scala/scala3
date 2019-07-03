@@ -1,7 +1,6 @@
 import scala.quoted._
 import scala.quoted.autolift._
 
-import scala.tasty.Reflection
 
 class Index[K, Keys](val index: String) extends AnyVal {
   override def toString: String = index

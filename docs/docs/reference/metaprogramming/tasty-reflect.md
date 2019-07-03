@@ -25,7 +25,6 @@ is used.
 
 ```scala
 import scala.quoted._
-import scala.tasty._
 
 inline def natConst(x: => Int): Int = ${natConstImpl('{x})}
 

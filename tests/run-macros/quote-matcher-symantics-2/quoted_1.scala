@@ -61,7 +61,7 @@ case class LitDSL(x: Int) extends DSL
 //
 
 trait Symantics[Num] {
-  def value(x: Int): Expr[Num]
+  def value(x: Int) given QuoteContext: Expr[Num]
   def plus(x: Expr[Num], y: Expr[Num]): Expr[Num]
   def times(x: Expr[Num], y: Expr[Num]): Expr[Num]
   def app(f: Expr[Num => Num], x: Expr[Num]): Expr[Num]
@@ -69,7 +69,7 @@ trait Symantics[Num] {
 }
 
 object StringNum extends Symantics[String] {
-  def value(x: Int): Expr[String] = x.toString.toExpr
+  def value(x: Int) given QuoteContext: Expr[String] = x.toString.toExpr
   def plus(x: Expr[String], y: Expr[String]): Expr[String] = '{ s"${$x} + ${$y}" } // '{ x + " + " + y }
   def times(x: Expr[String], y: Expr[String]): Expr[String] = '{ s"${$x} * ${$y}" }
   def app(f: Expr[String => String], x: Expr[String]): Expr[String] = f(x) // functions are beta reduced
@@ -77,7 +77,7 @@ object StringNum extends Symantics[String] {
 }
 
 object ComputeNum extends Symantics[Int] {
-  def value(x: Int): Expr[Int] = x.toExpr
+  def value(x: Int) given QuoteContext: Expr[Int] = x.toExpr
   def plus(x: Expr[Int], y: Expr[Int]): Expr[Int] = '{ $x + $y }
   def times(x: Expr[Int], y: Expr[Int]): Expr[Int] = '{ $x * $y }
   def app(f: Expr[Int => Int], x: Expr[Int]): Expr[Int] = '{ $f($x) }
@@ -85,7 +85,7 @@ object ComputeNum extends Symantics[Int] {
 }
 
 object ASTNum extends Symantics[ASTNum] {
-  def value(x: Int): Expr[ASTNum] = '{ LitAST(${x.toExpr}) }
+  def value(x: Int) given QuoteContext: Expr[ASTNum] = '{ LitAST(${x.toExpr}) }
   def plus(x: Expr[ASTNum], y: Expr[ASTNum]): Expr[ASTNum] = '{ PlusAST($x, $y) }
   def times(x: Expr[ASTNum], y: Expr[ASTNum]): Expr[ASTNum] = '{ TimesAST($x, $y) }
   def app(f: Expr[ASTNum => ASTNum], x: Expr[ASTNum]): Expr[ASTNum] = '{ AppAST($f, $x) }

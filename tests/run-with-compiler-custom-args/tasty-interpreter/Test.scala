@@ -9,7 +9,6 @@ import dotty.tools.io.Path
 import scala.io.Source
 import scala.tasty.file._
 import scala.tasty.interpreter.TastyInterpreter
-import scala.tasty.Reflection
 
 object Test {
   def main(args: Array[String]): Unit = {

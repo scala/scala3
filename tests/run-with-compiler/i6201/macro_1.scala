@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.tasty._
 
 inline def (inline x: String) strip: String =
   ${ stripImpl(x) }

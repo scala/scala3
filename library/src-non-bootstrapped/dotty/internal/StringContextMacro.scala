@@ -4,7 +4,6 @@ package dotty.internal
 
 import scala.quoted._
 import scala.quoted.matching._
-import scala.tasty.Reflection
 import reflect._
 
 object StringContextMacro {

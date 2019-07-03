@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.tasty._
 import scala.quoted.autolift._
 
 object Foo {

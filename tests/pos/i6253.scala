@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.tasty.Reflection
 object Macros {
   def impl(self: Expr[StringContext]) given QuoteContext: Expr[String] = self match {
     case '{ StringContext() } => '{""}

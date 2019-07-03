@@ -251,8 +251,9 @@ The `toExpr` extension method is defined in package `quoted`:
 ```scala
     package quoted
 
-    delegate LiftingOps {
-      def (x: T) toExpr[T] given (ev: Liftable[T]): Expr[T] = ev.toExpr(x)
+    delegate ExprOps {
+      def (x: T) toExpr[T: Liftable] given QuoteContext: Expr[T] = the[Liftable[T]].toExpr(x)
+      ...
     }
 ```
 The extension says that values of types implementing the `Liftable` type class can be
@@ -269,7 +270,8 @@ knowing anything about the representation of `Expr` trees. For
 instance, here is a possible instance of `Liftable[Boolean]`:
 ```scala
     delegate for Liftable[Boolean] {
-      def toExpr(b: Boolean) = if (b) '{ true } else '{ false }
+      def toExpr(b: Boolean) given QuoteContext: Expr[Boolean] =
+        if (b) '{ true } else '{ false }
     }
 ```
 Once we can lift bits, we can work our way up. For instance, here is a
@@ -277,7 +279,7 @@ possible implementation of `Liftable[Int]` that does not use the underlying
 tree machinery:
 ```scala
     delegate for Liftable[Int] {
-      def toExpr(n: Int): Expr[Int] = n match {
+      def toExpr(n: Int) given QuoteContext: Expr[Int] = n match {
         case Int.MinValue    => '{ Int.MinValue }
         case _ if n < 0      => '{ - ${ toExpr(-n) } }
         case 0               => '{ 0 }
@@ -290,7 +292,7 @@ Since `Liftable` is a type class, its instances can be conditional. For example,
 a `List` is liftable if its element type is:
 ```scala
     delegate [T: Liftable] for Liftable[List[T]] {
-      def toExpr(xs: List[T]): Expr[List[T]] = xs match {
+      def toExpr(xs: List[T]) given QuoteContext: Expr[List[T]] = xs match {
         case head :: tail => '{ ${ toExpr(head) } :: ${ toExpr(tail) } }
         case Nil => '{ Nil: List[T] }
       }

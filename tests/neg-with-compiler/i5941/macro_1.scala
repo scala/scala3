@@ -4,7 +4,6 @@ abstract class Lens[S, T] {
 }
 
 import scala.quoted._
-import scala.tasty._
 
 object Lens {
   def apply[S, T](_get: S => T)(_set: T => S => S): Lens[S, T] = new Lens {

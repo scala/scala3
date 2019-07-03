@@ -1,7 +1,5 @@
 import scala.quoted._
 
-import scala.tasty._
-
 object Macros {
 
   inline def fun(x: Any): Unit = ${ impl('x) }
@@ -31,6 +29,7 @@ object Macros {
   }
 
   def posStr(qctx: QuoteContext)(pos: qctx.tasty.Position): Expr[String] = {
+    delegate for QuoteContext = qctx
     import qctx.tasty._
     s"${pos.sourceFile.jpath.getFileName.toString}:[${pos.start}..${pos.end}]".toExpr
   }

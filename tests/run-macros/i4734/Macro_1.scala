@@ -6,7 +6,7 @@ object Macros {
   inline def unrolledForeach(seq: IndexedSeq[Int], f: => Int => Unit, inline unrollSize: Int): Unit = // or f: Int => Unit
     ${ unrolledForeachImpl('seq, 'f, unrollSize) }
 
-  def unrolledForeachImpl(seq: Expr[IndexedSeq[Int]], f: Expr[Int => Unit], unrollSize: Int): Expr[Unit] = '{
+  def unrolledForeachImpl(seq: Expr[IndexedSeq[Int]], f: Expr[Int => Unit], unrollSize: Int) given QuoteContext: Expr[Unit] = '{
     val size = ($seq).length
     assert(size % (${unrollSize}) == 0) // for simplicity of the implementation
     var i = 0

@@ -1,9 +1,8 @@
 
 import scala.quoted._
-import scala.quoted.autolift._
 
 object Macros {
-  def impl(foo: Any): Expr[String] = foo.getClass.getCanonicalName
+  def impl(foo: Any) given QuoteContext: Expr[String] = foo.getClass.getCanonicalName.toExpr
 }
 
 case object Bar {

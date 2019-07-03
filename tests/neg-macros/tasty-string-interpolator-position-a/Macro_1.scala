@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.tasty.Reflection
 import scala.language.implicitConversions
 
 object Macro {
