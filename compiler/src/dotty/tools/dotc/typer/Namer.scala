@@ -284,7 +284,7 @@ class Namer { typer: Typer =>
           case _ => (flags.isTermFlags, flags.toTermFlags, "value")
         }
         if (!ok)
-          ctx.error(i"modifier(s) `$flags' incompatible with $kind definition", tree.sourcePos)
+          ctx.error(i"modifier(s) `${flags.flagsString}' incompatible with $kind definition", tree.sourcePos)
         adapted
       }
 
