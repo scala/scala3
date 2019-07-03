@@ -626,15 +626,27 @@ object Symbols {
     final def symbol(implicit ev: DontUseSymbolOnSymbol): Nothing = unsupported("symbol")
     type DontUseSymbolOnSymbol
 
-    final def source(implicit ctx: Context): SourceFile =
-      if (!defTree.isEmpty && !ctx.erasedTypes) defTree.source
-      else this match {
-        case cls: ClassSymbol => cls.sourceOfClass
-        case _ =>
-          if (denot.is(Module)) denot.moduleClass.source
-          else if (denot.exists) denot.owner.source
-          else NoSource
-      }
+    final def source(implicit ctx: Context): SourceFile = {
+      def valid(src: SourceFile): SourceFile =
+        if (src.exists && src.file.extension != "class") src
+        else NoSource
+
+      if (!denot.exists) NoSource
+      else
+        valid(defTree.source) match {
+          case NoSource =>
+            valid(denot.owner.source) match {
+              case NoSource =>
+                this match {
+                  case cls: ClassSymbol      => valid(cls.sourceOfClass)
+                  case _ if denot.is(Module) => valid(denot.moduleClass.source)
+                  case _ => NoSource
+                }
+              case src => src
+            }
+          case src => src
+        }
+    }
 
     /** A symbol related to `sym` that is defined in source code.
      *
