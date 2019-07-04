@@ -891,6 +891,13 @@ trait Printers
           this += " = "
           printTree(rhs)
 
+        case Lambda(params, body) =>  // must come before `Block`
+          inParens {
+            printArgsDefs(params)
+            this += " => "
+            printTree(body)
+          }
+
         case Block(stats0, expr) =>
           val stats = stats0.filter {
             case IsValDef(tree) => !tree.symbol.flags.is(Flags.Object)
@@ -900,14 +907,6 @@ trait Printers
 
         case Inlined(_, bindings, expansion) =>
           printFlatBlock(bindings, expansion)
-
-        case Lambda(params, body) =>
-          inParens {
-            printArgsDefs(params)
-            this += " => "
-            printTree(body)
-          }
-
 
         case If(cond, thenp, elsep) =>
           this += highlightKeyword("if ")

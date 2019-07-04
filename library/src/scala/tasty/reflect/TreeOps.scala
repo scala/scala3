@@ -582,6 +582,9 @@ trait TreeOps extends Core {
    *    closure(m)
    *  }
    *
+   *  @note Due to the encoding, in pattern matches the case for `Lambda`
+   *        should come before the case for `Block` to avoid mishandling
+   *        of `Lambda`.
    */
   object Lambda {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(List[ValDef], Term)] = tree match {
