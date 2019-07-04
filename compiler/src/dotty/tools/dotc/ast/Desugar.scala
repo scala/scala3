@@ -844,7 +844,7 @@ object desugar {
    */
   def normalizeName(mdef: MemberDef, impl: Tree)(implicit ctx: Context): Name = {
     var name = mdef.name
-    if (name.isEmpty) name = name.likeSpaced(s"${inventName(impl)}_instance".toTermName)
+    if (name.isEmpty) name = name.likeSpaced(s"${inventName(impl)}_given".toTermName)
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
       def kind = if (name.isTypeName) "class" else "object"
       ctx.error(em"illegal redefinition of standard $kind $name", mdef.sourcePos)

@@ -32,12 +32,12 @@ class Common {
 
 object Instances extends Common {
 
-  delegate IntOrd for Ord[Int] {
+  given IntOrd as Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  delegate ListOrd[T] for Ord[List[T]] given Ord[T] {
+  given ListOrd[T] as Ord[List[T]] given Ord[T] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -48,25 +48,25 @@ object Instances extends Common {
     }
   }
 
-  delegate StringOps {
+  given StringOps {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  delegate ListOps {
+  given ListOps {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  delegate ListMonad for Monad[List] {
+  given ListMonad as Monad[List] {
     def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  delegate ReaderMonad[Ctx] for Monad[[X] =>> Ctx => X] {
+  given ReaderMonad[Ctx] as Monad[[X] =>> Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -105,7 +105,7 @@ object Instances extends Common {
       def (sym: Symbol) name: String
     }
     def symDeco: SymDeco
-    delegate for SymDeco = symDeco
+    given as SymDeco = symDeco
   }
   object TastyImpl extends TastyAPI {
     type Symbol = String
@@ -119,20 +119,20 @@ object Instances extends Common {
   class C given (ctx: Context) {
     def f() = {
       locally {
-        delegate for Context = this.ctx
+        given as Context = this.ctx
         println(the[Context].value)
       }
       locally {
         lazy val ctx1 = this.ctx
-        delegate for Context = ctx1
+        given as Context = ctx1
         println(the[Context].value)
       }
       locally {
-        delegate d[T] for D[T]
+        given d[T] as D[T]
         println(the[D[Int]])
       }
       locally {
-        delegate for D[Int] given Context
+        given as D[Int] given Context
         println(the[D[Int]])
       }
     }
@@ -141,7 +141,7 @@ object Instances extends Common {
   class Token(str: String)
 
   object Token {
-    delegate StringToToken for Conversion[String, Token] {
+    given StringToToken as Conversion[String, Token] {
       def apply(str: String): Token = new Token(str)
     }
   }
@@ -152,14 +152,14 @@ object Instances extends Common {
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  private delegate WrappedResult {
+  private given WrappedResult {
     def apply[T](x: T): WrappedResult[T] = x
     def (x: WrappedResult[T]) unwrap[T]: T = x
   }
 
   def result[T] given (wrapped: WrappedResult[T]): T = wrapped.unwrap
 
-  delegate {
+  given {
     def (x: T) ensuring[T] (condition: given WrappedResult[T] => Boolean): T = {
       assert(condition given WrappedResult(x))
       x
@@ -168,12 +168,12 @@ object PostConditions {
 }
 
 object AnonymousInstances extends Common {
-  delegate for Ord[Int] {
+  given as Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  delegate [T: Ord] for Ord[List[T]] {
+  given [T: Ord] as Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -184,22 +184,22 @@ object AnonymousInstances extends Common {
     }
   }
 
-  delegate {
+  given {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  delegate {
+  given {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  delegate [From, To] for Convertible[List[From], List[To]] given (c: Convertible[From, To]) {
+  given [From, To] as Convertible[List[From], List[To]] given (c: Convertible[From, To]) {
     def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
 
-  delegate for Monoid[String] {
+  given as Monoid[String] {
     def (x: String) combine (y: String): String = x.concat(y)
     def unit: String = ""
   }
@@ -226,13 +226,13 @@ object Implicits extends Common {
   }
   implicit def ListOrd[T: Ord]: Ord[List[T]] = new ListOrd[T]
 
-  class Convertible_List_List_instance[From, To](implicit c: Convertible[From, To])
+  class Convertible_List_List_given[From, To](implicit c: Convertible[From, To])
   extends Convertible[List[From], List[To]] {
     def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
-  implicit def Convertible_List_List_instance[From, To](implicit c: Convertible[From, To])
+  implicit def Convertible_List_List_given[From, To](implicit c: Convertible[From, To])
     : Convertible[List[From], List[To]] =
-    new Convertible_List_List_instance[From, To]
+    new Convertible_List_List_given[From, To]
 
   def maximum[T](xs: List[T])
                 (implicit cmp: Ord[T]): T =
@@ -249,7 +249,7 @@ object Implicits extends Common {
 object Test extends App {
   Instances.test()
   import PostConditions.result
-  import delegate PostConditions._
+  import given PostConditions._
   val s = List(1, 2, 3).sum
   s.ensuring(result == 6)
 }
@@ -274,9 +274,9 @@ object Completions {
     //
     //   CompletionArg.from(statusCode)
 
-    delegate fromString for Conversion[String, CompletionArg] = Error(_)
-    delegate fromFuture for Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    delegate fromStatusCode for Conversion[Future[StatusCode], CompletionArg] = Status(_)
+    given fromString as Conversion[String, CompletionArg] = Error(_)
+    given fromFuture as Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    given fromStatusCode as Conversion[Future[StatusCode], CompletionArg] = Status(_)
   }
   import CompletionArg._
 

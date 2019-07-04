@@ -1,9 +1,9 @@
 ---
 layout: doc-page
-title: "Delegates"
+title: "Given Instances"
 ---
 
-Delegates define "canonical" values of certain types
+Given instances (or, simply, "givens") define "canonical" values of certain types
 that serve for synthesizing arguments to [given clauses](./given-clauses.html). Example:
 
 ```scala
@@ -13,12 +13,13 @@ trait Ord[T] {
   def (x: T) > (y: T) = compare(x, y) > 0
 }
 
-delegate IntOrd for Ord[Int] {
+given IntOrd as Ord[Int] {
   def compare(x: Int, y: Int) =
     if (x < y) -1 else if (x > y) +1 else 0
 }
 
-delegate ListOrd[T] for Ord[List[T]] given (ord: Ord[T]) {
+given ListOrd[T] as Ord[List[T]] given (ord: Ord[T]) {
+
   def compare(xs: List[T], ys: List[T]): Int = (xs, ys) match {
     case (Nil, Nil) => 0
     case (Nil, _) => -1
@@ -29,63 +30,62 @@ delegate ListOrd[T] for Ord[List[T]] given (ord: Ord[T]) {
   }
 }
 ```
-This code defines a trait `Ord` with two delegate definitions. `IntOrd` defines
-a delegate for the type `Ord[Int]` whereas `ListOrd[T]` defines delegates
-for `Ord[List[T]]` for all types `T` that come with a delegate for `Ord[T]` themselves.
-The `given` clause in `ListOrd` defines an implicit parameter.
+This code defines a trait `Ord` with two given instances. `IntOrd` defines
+a given for the type `Ord[Int]` whereas `ListOrd[T]` defines givens
+for `Ord[List[T]]` for all types `T` that come with a given instance for `Ord[T]` themselves.
+The `given (ord: Ord[T])` clause in `ListOrd` defines an implicit parameter.
 Given clauses are further explained in the [next section](./given-clauses.html).
 
-## Anonymous Delegates
+## Anonymous Given Instances
 
-The name of a delegate can be left out. So the delegate definitions
+The name of a given instance can be left out. So the definitions
 of the last section can also be expressed like this:
 ```scala
-delegate for Ord[Int] { ... }
-delegate [T] for Ord[List[T]] given (ord: Ord[T]) { ... }
+given as Ord[Int] { ... }
+given [T] as Ord[List[T]] given Ord[T] { ... }
 ```
-If the name of a delegate is missing, the compiler will synthesize a name from
-the type(s) in the `for` clause.
+If the name of a given is missing, the compiler will synthesize a name from
+the type(s) in the `as` clause.
 
-## Alias Delegates
+## Alias Givens
 
-An alias can be used to define a delegate that is equal to some expression. E.g.:
+An alias can be used to define a given instance that is equal to some expression. E.g.:
 ```scala
-delegate global for ExecutionContext = new ForkJoinPool()
+given global as ExecutionContext = new ForkJoinPool()
 ```
-This creates a delegate `global` of type `ExecutionContext` that resolves to the right hand side `new ForkJoinPool()`.
+This creates a given `global` of type `ExecutionContext` that resolves to the right
+hand side `new ForkJoinPool()`.
 The first time `global` is accessed, a new `ForkJoinPool` is created, which is then
 returned for this and all subsequent accesses to `global`.
 
-Alias delegates can be anonymous, e.g.
+Alias givens can be anonymous, e.g.
 ```scala
-delegate for Position = enclosingTree.position
-delegate for Context given (outer: Context) =
-  outer.withOwner(currentOwner)
+given as Position = enclosingTree.position
+given as Context given (outer: Context) = outer.withOwner(currentOwner)
 ```
-An alias delegate can have type parameters and given clauses just like any other delegate, but it can only implement a single type.
+An alias given can have type parameters and given clauses just like any other given instance, but it can only implement a single type.
 
-## Delegate Instantiation
+## Given Instance Initialization
 
-A delegate without type parameters or given clause is instantiated on-demand, the first
+A given instance without type parameters or given clause is initialized on-demand, the first
 time it is accessed. It is not required to ensure safe publication, which means that
-different threads might create different delegates for the same `delegate` clause.
-If a `delegate` clause has type parameters or a given clause, a fresh delegate is
-created for each reference.
+different threads might create different instances for the same `given` definition.
+If a `given` definition has type parameters or a given clause, a fresh instance is created for each reference.
 
 ## Syntax
 
-Here is the new syntax of delegate clauses, seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).
+Here is the new syntax of given instances, seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).
 ```
 TmplDef          ::=  ...
-                  |   ‘delegate’ DelegateDef
-DelegateDef      ::=  [id] [DefTypeParamClause] DelegateBody
-DelegateBody     ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
-                   |  ‘for’ Type {GivenParamClause} ‘=’ Expr
+                  |   ‘given’ GivenDef
+GivenDef         ::=  [id] [DefTypeParamClause] GivenBody
+GivenBody        ::=  [‘as’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
+                   |  ‘as’ Type {GivenParamClause} ‘=’ Expr
 ConstrApp        ::=  SimpleConstrApp
                    |  ‘(’ SimpleConstrApp {‘given’ (PrefixExpr | ParArgumentExprs)} ‘)’
 SimpleConstrApp  ::=  AnnotType {ArgumentExprs}
 GivenParamClause ::=  ‘given’ (‘(’ [DefParams] ‘)’ | GivenTypes)
 GivenTypes       ::=  AnnotType {‘,’ AnnotType}
 ```
-The identifier `id` can be omitted only if either the `for` part or the template body is present.
-If the `for` part is missing, the template body must define at least one extension method.
+The identifier `id` can be omitted only if either the `as` part or the template body is present.
+If the `as` part is missing, the template body must define at least one extension method.
