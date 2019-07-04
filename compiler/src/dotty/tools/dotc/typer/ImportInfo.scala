@@ -91,7 +91,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
             myForwardMapping = myForwardMapping.updated(name, name)
             myReverseMapping = myReverseMapping.updated(name, name)
           case TypeBoundsTree(_, tpt) =>
-            myWildcardImport = true // details are handled separately in impliedBounds
+            myWildcardImport = true // details are handled separately in wildcardBounds
         }
         recur(sels1)
       case nil =>
@@ -99,18 +99,18 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
     recur(selectors)
   }
 
-  private[this] var myDelegateBound: Type = null
+  private[this] var myWildcardBound: Type = null
 
-  def impliedBound(implicit ctx: Context): Type = {
-    if (myDelegateBound == null)
-      myDelegateBound = selectors.lastOption match {
+  def wildcardBound(implicit ctx: Context): Type = {
+    if (myWildcardBound == null)
+      myWildcardBound = selectors.lastOption match {
         case Some(TypeBoundsTree(_, untpd.TypedSplice(tpt))) => tpt.tpe
         case Some(TypeBoundsTree(_, tpt)) =>
-          myDelegateBound = NoType
+          myWildcardBound = NoType
           ctx.typer.typedAheadType(tpt).tpe
         case _ => NoType
       }
-    myDelegateBound
+    myWildcardBound
   }
 
   private def implicitFlags(implicit ctx: Context) =
@@ -128,8 +128,8 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
           val renamed = forwardMapping(ref.name)
           if (renamed == ref.name) ref :: Nil
           else if (renamed != null) new RenamedImplicitRef(ref, renamed) :: Nil
-          else if (!impliedBound.exists ||
-                   normalizedCompatible(ref, impliedBound, keepConstraint = false)) ref :: Nil
+          else if (!wildcardBound.exists ||
+                   normalizedCompatible(ref, wildcardBound, keepConstraint = false)) ref :: Nil
           else Nil
         }
       }

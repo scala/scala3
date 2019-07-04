@@ -36,7 +36,7 @@ When is an extension method applicable? There are two possibilities.
 
  - An extension method is applicable if it is visible under a simple name, by being defined
    or inherited or imported in a scope enclosing the application.
- - An extension method is applicable if it is a member of some delegate that's eligible at the point of the application.
+ - An extension method is applicable if it is a member of some given instance at the point of the application.
 
 As an example, consider an extension method `longestStrings` on `String` defined in a trait `StringSeqOps`.
 
@@ -48,15 +48,15 @@ trait StringSeqOps {
   }
 }
 ```
-We can make the extension method available by defining a delegate for `StringSeqOps`, like this:
+We can make the extension method available by defining a given `StringSeqOps` instance, like this:
 ```scala
-delegate ops1 for StringSeqOps
+given ops1 as StringSeqOps
 ```
 Then
 ```scala
 List("here", "is", "a", "list").longestStrings
 ```
-is legal everywhere `ops1` is available as a delegate. Alternatively, we can define `longestStrings` as a member of a normal object. But then the method has to be brought into scope to be usable as an extension method.
+is legal everywhere `ops1` is available. Alternatively, we can define `longestStrings` as a member of a normal object. But then the method has to be brought into scope to be usable as an extension method.
 
 ```scala
 object ops2 extends StringSeqOps
@@ -69,32 +69,32 @@ Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type ar
 and where `T` is the expected type. The following two rewritings are tried in order:
 
  1. The selection is rewritten to `m[Ts](e)`.
- 2. If the first rewriting does not typecheck with expected type `T`, and there is a delegate `d`
-    in either the current scope or in the implicit scope of `T`, and `d` defines an extension
-    method named `m`, then selection is expanded to `d.m[Ts](e)`.
+ 2. If the first rewriting does not typecheck with expected type `T`, and there is a given instance `i`
+    in either the current scope or in the implicit scope of `T`, and `i` defines an extension
+    method named `m`, then selection is expanded to `i.m[Ts](e)`.
     This second rewriting is attempted at the time where the compiler also tries an implicit conversion
     from `T` to a type containing `m`. If there is more than one way of rewriting, an ambiguity error results.
 
 So `circle.circumference` translates to `CircleOps.circumference(circle)`, provided
-`circle` has type `Circle` and `CircleOps` is an eligible delegate (i.e. it is visible at the point of call or it is defined in the companion object of `Circle`).
+`circle` has type `Circle` and `CircleOps` is given  (i.e. it is visible at the point of call or it is defined in the companion object of `Circle`).
 
-### Delegates for Extension Methods
+### Given Instances for Extension Methods
 
-Delegates that define extension methods can also be defined without a `for` clause. E.g.,
+Given instances that define extension methods can also be defined without a `for` clause. E.g.,
 
 ```scala
-delegate StringOps {
+given StringOps {
   def (xs: Seq[String]) longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
 
-delegate {
+given {
   def (xs: List[T]) second[T] = xs.tail.head
 }
 ```
-If such delegates are anonymous (as in the second clause), their name is synthesized from the name
+If such given instances are anonymous (as in the second clause), their name is synthesized from the name
 of the first defined extension method.
 
 ### Operators

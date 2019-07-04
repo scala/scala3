@@ -189,9 +189,9 @@ class Typer extends Namer
           var excl = EmptyFlags
           if (imp.importDelegate) reqd |= Delegate else excl |= Delegate
           var denot = pre.memberBasedOnFlags(name, reqd, excl).accessibleFrom(pre)(refctx)
-          if (checkBounds && imp.impliedBound.exists)
+          if (checkBounds && imp.wildcardBound.exists)
             denot = denot.filterWithPredicate(mbr =>
-              NoViewsAllowed.normalizedCompatible(mbr.info, imp.impliedBound, keepConstraint = false))
+              NoViewsAllowed.normalizedCompatible(mbr.info, imp.wildcardBound, keepConstraint = false))
 
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the
@@ -234,7 +234,7 @@ class Typer extends Namer
        */
       def wildImportRef(imp: ImportInfo)(implicit ctx: Context): Type =
         if (imp.isWildcardImport && !imp.excluded.contains(name.toTermName) && name != nme.CONSTRUCTOR)
-          selection(imp, name, checkBounds = imp.importDelegate)
+          selection(imp, name, checkBounds = true)
         else NoType
 
       /** Is (some alternative of) the given predenotation `denot`

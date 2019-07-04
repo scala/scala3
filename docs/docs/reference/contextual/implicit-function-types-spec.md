@@ -29,7 +29,7 @@ Implicit function types erase to normal function types, so these classes are
 generated on the fly for typechecking, but not realized in actual code.
 
 Implicit function literals `given (x1: T1, ..., xn: Tn) => e` map
-implicit parameters `xi` of types `Ti` to the result of evaluating expression `e`.
+implicit parameters `xi` of types `Ti` to the result of evaluating the expression `e`.
 The scope of each implicit parameter `xi` is `e`. The parameters must have pairwise distinct names.
 
 If the expected type of the implicit function literal is of the form
@@ -42,7 +42,7 @@ type of `e`. `T` must be equivalent to a type which does not refer to any of
 the implicit parameters `xi`.
 
 The implicit function literal is evaluated as the instance creation
-expression:
+expression
 ```scala
 new scala.ImplicitFunctionN[T1, ..., Tn, T] {
   def apply given (x1: T1, ..., xn: Tn): T = e

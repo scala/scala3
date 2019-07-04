@@ -92,12 +92,12 @@ semi             ::=  ‘;’ |  nl {nl}
 ### Regular keywords
 
 ```
-abstract  case      catch     class     def       delegate  do        else
-enum      export    extends   false     final     finally   for       given
-if        implicit  import    lazy      match     new       null      object
-package   private   protected override  return    super     sealed    then
-throw     trait     true      try       type      val       var       while
-with      yield
+abstract  case      catch     class     def       do        else      enum
+export    extends   false     final     finally   for       given     if
+implicit  import    lazy      match     new       null      object    package
+private   protected override  return    super     sealed    then      throw
+trait     true      try       type      val       var       while     with
+yield
 :         =         <-        =>        <:        :>        #         @
 =>>
 ```
@@ -105,7 +105,7 @@ with      yield
 ### Soft keywords
 
 ```
-derives   inline    opaque
+as        derives   inline    opaque
 ~         *         |         &         +         -
 ```
 
@@ -203,7 +203,7 @@ Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl}
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
                     |  Expr2
                     |  [‘inline’] Expr2 ‘match’ ‘{’ CaseClauses ‘}’             Match(expr, cases) -- point on match
-                    |  ‘implicit’ ‘match’ ‘{’ ImplicitCaseClauses ‘}’
+                    |  ‘given’ ‘match’ ‘{’ ImplicitCaseClauses ‘}’
 Expr2             ::=  PostfixExpr [Ascription]
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
@@ -336,14 +336,13 @@ AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
 
 Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                        Apply(tpe, args)
 
-Import            ::=  ‘import’ [‘delegate’] ImportExpr {‘,’ ImportExpr}
+Import            ::=  ‘import’ [‘given’] ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  StableId ‘.’ (id | ‘_’ | ImportSelectors)                Import(expr, sels)
 ImportSelectors   ::=  ‘{’ {ImportSelector ‘,’} FinalSelector ‘}’
 FinalSelector     ::=  ImportSelector                                           Ident(name)
-                    |  ‘_’                                                      Pair(id, id)
-                    |  ‘for’ InfixType {‘,’ InfixType}                          TypeBoundsTree(EmptyTree, tpt)
+                    |  ‘_’ [‘:’ Type]                                           TypeBoundsTree(EmptyTree, tpt)
 ImportSelector    ::=  id [‘=>’ id | ‘=>’ ‘_’]
-Export            ::=  ‘export’ [‘delegate’] ImportExpr {‘,’ ImportExpr}
+Export            ::=  ‘export’ [‘given’] ImportExpr {‘,’ ImportExpr}
 ```
 
 ### Declarations and Definitions
@@ -379,16 +378,16 @@ DefDef            ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr          
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
-                    |  ‘delegate’ DelegateDef
+                    |  ‘given’ GivenDef
                     |  Export
 ClassDef          ::=  id ClassConstr [Template]                                ClassDef(mods, name, tparams, templ)
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
-DelegateDef       ::=  [id] [DefTypeParamClause] DelegateBody
-DelegateBody      ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
-                    |  ‘for’ Type {GivenParamClause} ‘=’ Expr
+GivenDef          ::=  [id] [DefTypeParamClause] GivenBody
+GivenBody         ::=  [‘as ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
+                    |  ‘as’ Type {GivenParamClause} ‘=’ Expr
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}

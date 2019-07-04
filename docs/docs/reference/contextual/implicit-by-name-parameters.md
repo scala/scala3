@@ -10,9 +10,9 @@ trait Codec[T] {
   def write(x: T): Unit
 }
 
-delegate intCodec for Codec[Int] = ???
+given intCodec as Codec[Int] = ???
 
-delegate optionCodec[T] for Codec[Option[T]] given (ev: => Codec[T]) {
+given optionCodec[T] as Codec[Option[T]] given (ev: => Codec[T]) {
   def write(xo: Option[T]) = xo match {
     case Some(x) => ev.write(x)
     case None =>
@@ -33,20 +33,20 @@ if this is necessary to prevent an otherwise diverging expansion.
 
 The precise steps for synthesizing an argument for an implicit by-name parameter of type `=> T` are as follows.
 
- 1. Create a new delegate for type `T`:
+ 1. Create a new given instance of type `T`:
 
     ```scala
-    delegate lv for T = ???
+    given lv as T = ???
     ```
     where `lv` is an arbitrary fresh name.
 
- 1. This delegate is not immediately available as candidate for argument inference (making it immediately available could result in a loop in the synthesized computation). But it becomes available in all nested contexts that look again for an argument to an implicit by-name parameter.
+ 1. This given instance is not immediately available as candidate for argument inference (making it immediately available could result in a loop in the synthesized computation). But it becomes available in all nested contexts that look again for an argument to an implicit by-name parameter.
 
- 1. If this search succeeds with expression `E`, and `E` contains references to the delegate `lv`, replace `E` by
+ 1. If this search succeeds with expression `E`, and `E` contains references to `lv`, replace `E` by
 
 
     ```scala
-    { delegate lv for T = E; lv }
+    { given lv as T = E; lv }
     ```
 
     Otherwise, return `E` unchanged.
@@ -55,10 +55,11 @@ In the example above, the definition of `s` would be expanded as follows.
 
 ```scala
 val s = the[Test.Codec[Option[Int]]](
-  optionCodec[Int](intCodec))
+  optionCodec[Int](intCodec)
+)
 ```
 
-No local delegate was generated because the synthesized argument is not recursive.
+No local given instance was generated because the synthesized argument is not recursive.
 
 ### Reference
 

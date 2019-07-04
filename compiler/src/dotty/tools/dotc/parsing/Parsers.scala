@@ -194,12 +194,16 @@ object Parsers {
     /** Is current token a hard or soft modifier (in modifier position or not)? */
     def isModifier: Boolean = modifierTokens.contains(in.token) || in.isSoftModifier
 
-    def isBindingIntro: Boolean =
-      canStartBindingTokens.contains(in.token) &&
-      !in.isSoftModifierInModifierPosition
+    def isBindingIntro: Boolean = {
+      in.token match {
+        case USCORE | LPAREN => true
+        case IDENTIFIER | BACKQUOTED_IDENT => in.lookaheadIn(BitSet(COLON, ARROW))
+        case _ => false
+      }
+    } && !in.isSoftModifierInModifierPosition
 
     def isExprIntro: Boolean =
-      if (in.token == IMPLIED) in.lookaheadIn(BitSet(MATCH))
+      if (in.token == IMPLIED || in.token == GIVEN) in.lookaheadIn(BitSet(MATCH))
       else (canStartExpressionTokens.contains(in.token) && !in.isSoftModifierInModifierPosition)
 
     def isDefIntro(allowedMods: BitSet, excludedSoftModifiers: Set[TermName] = Set.empty): Boolean =
@@ -1274,7 +1278,7 @@ object Parsers {
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  Expr2
      *                      |  [‘inline’] Expr2 `match' `{' CaseClauses `}'
-     *                      |  `delegate' `match' `{' ImplicitCaseClauses `}'
+     *                      |  `given' `match' `{' ImplicitCaseClauses `}'
      *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
      *  Binding           ::=  (id | `_') [`:' Type]
      *  Expr2             ::=  PostfixExpr [Ascription]
@@ -1293,7 +1297,7 @@ object Parsers {
         if (in.token == MATCH) impliedMatch(start, imods)
         else implicitClosure(start, location, imods)
       }
-      else if(in.token == IMPLIED) {
+      else if (in.token == IMPLIED || in.token == GIVEN) {
         in.nextToken()
         if (in.token == MATCH)
           impliedMatch(start, EmptyModifiers)
@@ -1478,7 +1482,7 @@ object Parsers {
      */
     def impliedMatch(start: Int, imods: Modifiers) = {
       def markFirstIllegal(mods: List[Mod]) = mods match {
-        case mod :: _ => syntaxError(em"illegal modifier for delegate match", mod.span)
+        case mod :: _ => syntaxError(em"illegal modifier for given match", mod.span)
         case _ =>
       }
       imods.mods match {
@@ -1493,7 +1497,7 @@ object Parsers {
           case pat => isVarPattern(pat)
         }
         if (!isImplicitPattern(pat))
-          syntaxError(em"not a legal pattern for a delegate match", pat.span)
+          syntaxError(em"not a legal pattern for a given match", pat.span)
       }
       result
     }
@@ -2303,9 +2307,59 @@ object Parsers {
     def paramClauses(ofClass: Boolean = false,
                      ofCaseClass: Boolean = false,
                      ofInstance: Boolean = false): List[List[ValDef]] = {
+
+     def followingIsParamClause: Boolean = {
+        val lookahead = in.lookaheadScanner
+        lookahead.nextToken()
+        paramIntroTokens.contains(lookahead.token) && {
+          lookahead.token != IDENTIFIER ||
+          lookahead.name == nme.inline || {
+            lookahead.nextToken()
+            lookahead.token == COLON
+          }
+        }
+      }
+
+      /** For given instance definitions we have a disambiguation problem:
+       *    given A as B
+       *    given C ...
+       *  Is the second line a parameter `given C` for the first `given` definition, or is it
+       *  a second `given` definition? We only know if we find a `for` or `as` in `...`
+       *  The same problem arises for
+       *    class A
+       *    given C ...
+       *  For method definitions we do not have this problem since a parameter clause
+       *  in a method definition is always followed by something else. So in
+       *    def m(...)
+       *    given C ...
+       *  we know that `given` must start a parameter list. It cannot be a new given` definition.
+       */
+      def followingIsInstanceDef =
+        (ofClass || ofInstance) && {
+          val lookahead = in.lookaheadScanner // skips newline on startup
+          lookahead.nextToken()  // skip the `given`
+          if (lookahead.token == IDENTIFIER || lookahead.token == BACKQUOTED_IDENT) {
+            lookahead.nextToken()
+            if (lookahead.token == LBRACKET) {
+              lookahead.nextToken()
+              var openBrackets = 1
+              while (openBrackets > 0 && lookahead.token != EOF) {
+                if (lookahead.token == LBRACKET) openBrackets += 1
+                else if (lookahead.token == RBRACKET) openBrackets -= 1
+                lookahead.nextToken()
+              }
+            }
+          }
+          lookahead.token == FOR ||
+          lookahead.token == IDENTIFIER && lookahead.name == nme.as
+        }
+
       def recur(firstClause: Boolean, nparams: Int, contextualOnly: Boolean): List[List[ValDef]] = {
         var initialMods = EmptyModifiers
+        val isNewLine = in.token == NEWLINE
         newLineOptWhenFollowedBy(LPAREN)
+        if (in.token == NEWLINE && in.next.token == GIVEN && !followingIsInstanceDef)
+          in.nextToken()
         if (in.token == GIVEN) {
           in.nextToken()
           initialMods |= Given
@@ -2314,22 +2368,10 @@ object Parsers {
           in.nextToken()
           initialMods |= Erased
         }
-        val isContextual = initialMods.is(Given)
+        val isGiven = initialMods.is(Given)
         newLineOptWhenFollowedBy(LPAREN)
-        def isParamClause: Boolean =
-          !isContextual || {
-            val lookahead = in.lookaheadScanner
-            lookahead.nextToken()
-            paramIntroTokens.contains(lookahead.token) && {
-              lookahead.token != IDENTIFIER ||
-              lookahead.name == nme.inline || {
-                lookahead.nextToken()
-                lookahead.token == COLON
-              }
-            }
-          }
-        if (in.token == LPAREN && isParamClause) {
-          if (contextualOnly && !isContextual)
+        if (in.token == LPAREN && (!isGiven || followingIsParamClause)) {
+          if (contextualOnly && !isGiven)
             if (ofInstance) syntaxError(em"parameters of instance definitions must come after `given'")
             else syntaxError(em"normal parameters cannot come after `given' clauses")
           val params = paramClause(
@@ -2338,15 +2380,15 @@ object Parsers {
               firstClause = firstClause,
               initialMods = initialMods)
           val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
-          params :: (if (lastClause) Nil else recur(firstClause = false, nparams + params.length, isContextual))
+          params :: (if (lastClause) Nil else recur(firstClause = false, nparams + params.length, isGiven))
         }
-        else if (isContextual) {
+        else if (isGiven) {
           val tps = commaSeparated(() => annotType())
           var counter = nparams
           def nextIdx = { counter += 1; counter }
           val paramFlags = if (ofClass) Private | Local | ParamAccessor else Param
           val params = tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | Given))
-          params :: recur(firstClause = false, nparams + params.length, isContextual)
+          params :: recur(firstClause = false, nparams + params.length, isGiven)
         }
         else Nil
       }
@@ -2360,12 +2402,12 @@ object Parsers {
 
     type ImportConstr = (Boolean, Tree, List[Tree]) => Tree
 
-    /** Import  ::= import [delegate] [ImportExpr {`,' ImportExpr}
-     *  Export  ::= export [delegate] [ImportExpr {`,' ImportExpr}
+    /** Import  ::= `import' [`given'] [ImportExpr {`,' ImportExpr}
+     *  Export  ::= `export' [`given'] [ImportExpr {`,' ImportExpr}
      */
     def importClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
-      val importDelegate = in.token == IMPLIED
+      val importDelegate = in.token == IMPLIED || in.token == GIVEN
       if (importDelegate) in.nextToken()
       commaSeparated(importExpr(importDelegate, mkTree)) match {
         case t :: rest =>
@@ -2384,15 +2426,21 @@ object Parsers {
 
       /** ImportSelectors ::= `{' {ImportSelector `,'} FinalSelector ‘}’
        *  FinalSelector   ::=  ImportSelector
-       *                    |  ‘_’
-       *                    |  ‘for’ InfixType {‘,’ InfixType}
+       *                    |  ‘_’ [‘:’ Type]
        */
       def importSelectors(): List[Tree] = in.token match {
         case USCORE =>
-          wildcardIdent() :: Nil
+          atSpan(in.skipToken()) {
+            val id = Ident(nme.WILDCARD)
+            if (in.token == COLON) {
+              in.nextToken()
+              TypeBoundsTree(EmptyTree, typ())
+            }
+            else id
+          } :: Nil
         case FOR =>
           if (!importDelegate)
-              syntaxError(em"`for` qualifier only allowed in `import delegate`")
+              syntaxError(em"`for` qualifier only allowed in `import given`")
           atSpan(in.skipToken()) {
             var t = infixType()
             while (in.token == COMMA) {
@@ -2696,7 +2744,7 @@ object Parsers {
     /** TmplDef ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
      *            |  [‘case’] ‘object’ ObjectDef
      *            |  ‘enum’ EnumDef
-     *            |  ‘instance’ InstanceDef
+     *            |  ‘given’ GivenDef
      */
     def tmplDef(start: Int, mods: Modifiers): Tree = {
       in.token match {
@@ -2712,8 +2760,8 @@ object Parsers {
           objectDef(start, posMods(start, mods | Case | Module))
         case ENUM =>
           enumDef(start, posMods(start, mods | Enum))
-        case IMPLIED =>
-          instanceDef(start, mods, atSpan(in.skipToken()) { Mod.Delegate() })
+        case IMPLIED | GIVEN =>
+          instanceDef(in.token == GIVEN, start, mods, atSpan(in.skipToken()) { Mod.Delegate() })
         case _ =>
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
           EmptyTree
@@ -2805,17 +2853,16 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
-    /** InstanceDef    ::=  [id] [DefTypeParamClause] InstanceBody
-     *  InstanceParams ::=  [DefTypeParamClause] {GivenParamClause}
-     *  InstanceBody   ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
-     *                   |  ‘for’ Type {GivenParamClause} ‘=’ Expr
+    /** GivenDef          ::=  [id] [DefTypeParamClause] GivenBody
+     *  GivenBody         ::=  [‘as ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
+     *                      |  ‘as’ Type {GivenParamClause} ‘=’ Expr
      */
-    def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
+    def instanceDef(newStyle: Boolean, start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
-      val name = if (isIdent) ident() else EmptyTermName
+      val name = if (isIdent && (!newStyle || in.name != nme.as)) ident() else EmptyTermName
       val tparams = typeParamClauseOpt(ParamOwner.Def)
       val parents =
-        if (in.token == FOR) {
+        if (!newStyle && in.token == FOR || isIdent(nme.as)) { // for the moment, accept both `given for` and `given as`
           in.nextToken()
           tokenSeparated(COMMA, constrApp)
         }
@@ -3122,8 +3169,16 @@ object Parsers {
         setLastStatOffset()
         if (in.token == IMPORT)
           stats ++= importClause(IMPORT, Import)
-        else if (in.token == GIVEN)
-          stats += implicitClosure(in.offset, Location.InBlock, modifiers(closureMods))
+        else if (in.token == GIVEN) {
+          val start = in.offset
+          val mods = modifiers(closureMods)
+          mods.mods match {
+            case givenMod :: Nil if !isBindingIntro =>
+              stats += instanceDef(true, start, EmptyModifiers, Mod.Delegate().withSpan(givenMod.span))
+            case _ =>
+              stats += implicitClosure(in.offset, Location.InBlock, mods)
+          }
+        }
         else if (isExprIntro)
           stats += expr(Location.InBlock)
         else if (isDefIntro(localModifierTokens, excludedSoftModifiers = Set(nme.`opaque`)))
