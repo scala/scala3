@@ -57,6 +57,15 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
         ),
         withCompilerOptions
       ),
+      compileList(
+        "testIssue6603",
+        List(
+          "compiler/src/dotty/tools/dotc/ast/Desugar.scala",
+          "compiler/src/dotty/tools/dotc/ast/Trees.scala",
+          "compiler/src/dotty/tools/dotc/core/Types.scala"
+        ),
+        withCompilerOptions
+      ),
     ).checkCompile()
   }
 

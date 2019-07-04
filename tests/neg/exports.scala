@@ -42,8 +42,8 @@ class Foo {
 }
 
 class Baz {
-  val bar: Bar = new Bar // error: cyclic reference
-  export bar._
+  val bar: Bar = new Bar
+  export bar._  // error: double definition
 }
 class Bar {
   val baz: Baz = new Baz

@@ -159,9 +159,9 @@ class ClassfileParser(
 
       val privateWithin = getPrivateWithin(jflags)
 
-      classRoot.privateWithin = privateWithin
-      moduleRoot.privateWithin = privateWithin
-      moduleRoot.sourceModule.privateWithin = privateWithin
+      classRoot.setPrivateWithin(privateWithin)
+      moduleRoot.setPrivateWithin(privateWithin)
+      moduleRoot.sourceModule.setPrivateWithin(privateWithin)
 
       for (i <- 0 until in.nextChar) parseMember(method = false)
       for (i <- 0 until in.nextChar) parseMember(method = true)

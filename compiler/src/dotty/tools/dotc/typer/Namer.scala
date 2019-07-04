@@ -332,7 +332,7 @@ class Namer { typer: Typer =>
         if (prev.exists) {
           prev.flags = flags1
           prev.info = infoFn(prev.asInstanceOf[S])
-          prev.privateWithin = privateWithin
+          prev.setPrivateWithin(privateWithin)
           prev
         }
         else symFn(flags1, infoFn, privateWithin)

@@ -479,7 +479,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       if (owner == defn.ScalaPackageClass && ((name eq tpnme.Serializable) || (name eq tpnme.Product)))
         denot.setFlag(NoInits)
 
-      denot.privateWithin = privateWithin
+      denot.setPrivateWithin(privateWithin)
       denot.info = completer
       denot.symbol
     }
