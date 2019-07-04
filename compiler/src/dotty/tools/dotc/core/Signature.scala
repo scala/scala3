@@ -107,10 +107,10 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
 
 object Signature {
 
-  type MatchDegree = Int
-  val NoMatch: Int = 0
-  val ParamMatch: Int = 1
-  val FullMatch: Int = 2
+  enum MatchDegree {
+    case NoMatch, ParamMatch, FullMatch
+  }
+  export MatchDegree._
 
   /** The signature of everything that's not a method, i.e. that has
    *  a type different from PolyType, MethodType, or ExprType.

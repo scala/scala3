@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import annotation.tailrec
@@ -168,11 +169,16 @@ object Decorators {
       }
   }
 
-  implicit class genericDeco[T](val x: T) extends AnyVal {
-    def reporting(op: T => String, printer: config.Printers.Printer = config.Printers.default): T = {
-      printer.println(op(x))
+  implicit object reportDeco {
+    def (x: T) reporting[T](
+        op: given WrappedResult[T] => String,
+        printer: config.Printers.Printer = config.Printers.default): T = {
+      printer.println(op given WrappedResult(x))
       x
     }
+  }
+
+  implicit class genericDeco[T](val x: T) extends AnyVal {
     def assertingErrorsReported(implicit ctx: Context): T = {
       assert(ctx.reporter.errorsReported)
       x

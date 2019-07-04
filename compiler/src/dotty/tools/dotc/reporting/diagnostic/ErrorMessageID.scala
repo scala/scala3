@@ -1,10 +1,10 @@
-package dotty.tools.dotc.reporting.diagnostic;
+package dotty.tools.dotc.reporting.diagnostic
 
 /** Unique IDs identifying the messages */
-public enum ErrorMessageID {
+enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
 
-    // IMPORTANT: Add new IDs only at the end and never remove IDs
-
+  // IMPORTANT: Add new IDs only at the end and never remove IDs
+  case
     LazyErrorId, // // errorNumber: -2
     NoExplanationID, // errorNumber: -1
 
@@ -146,10 +146,6 @@ public enum ErrorMessageID {
     StableIdentPatternID,
     StaticFieldsShouldPrecedeNonStaticID,
     IllegalSuperAccessorID
-    ;
 
-    public int errorNumber() {
-        return ordinal() - 2;
-    }
-
+  def errorNumber = ordinal - 2
 }

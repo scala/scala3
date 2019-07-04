@@ -187,46 +187,34 @@ object SymDenotations {
       if (isCurrent(fs)) myFlags else flags
 
     /** Has this denotation one of given flag set? */
-    final def is(flag: Flag)(implicit ctx: Context): Boolean = {
-      val toTest = if (isCurrent(flag)) myFlags else flags // TODO: combine these two lines once 0.17 is released and #6706 is in
-      toTest.is(flag)
-    }
+    final def is(flag: Flag)(implicit ctx: Context): Boolean =
+      (if (isCurrent(flag)) myFlags else flags).is(flag)
 
     /** Has this denotation one of the flags in `fs` set? */
-    final def isOneOf(fs: FlagSet)(implicit ctx: Context): Boolean = {
-      val toTest = if (isCurrent(fs)) myFlags else flags // TODO: combine these two lines once 0.17 is released and #6706 is in
-      toTest.isOneOf(fs)
-    }
+    final def isOneOf(fs: FlagSet)(implicit ctx: Context): Boolean =
+      (if (isCurrent(fs)) myFlags else flags).isOneOf(fs)
 
     /** Has this denotation the given flag set, whereas none of the flags
      *  in `butNot` are set?
      */
-    final def is(flag: Flag, butNot: FlagSet)(implicit ctx: Context): Boolean = {
-      val toTest = if (isCurrent(flag) && isCurrent(butNot)) myFlags else flags // TODO: combine these two lines once 0.17 is released and #6706 is in
-      toTest.is(flag, butNot)
-    }
+    final def is(flag: Flag, butNot: FlagSet)(implicit ctx: Context): Boolean =
+      (if (isCurrent(flag) && isCurrent(butNot)) myFlags else flags).is(flag, butNot)
 
     /** Has this denotation one of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
-    final def isOneOf(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean = {
-      val toTest = if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags // TODO: combine these two lines once 0.17 is released and #6706 is in
-      toTest.isOneOf(fs, butNot)
-    }
+    final def isOneOf(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean =
+      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).isOneOf(fs, butNot)
 
     /** Has this denotation all of the flags in `fs` set? */
-    final def isAllOf(fs: FlagSet)(implicit ctx: Context): Boolean = {
-      val toTest = if (isCurrent(fs)) myFlags else flags // TODO: combine these two lines once 0.17 is released and #6706 is in
-      toTest.isAllOf(fs)
-    }
+    final def isAllOf(fs: FlagSet)(implicit ctx: Context): Boolean =
+      (if (isCurrent(fs)) myFlags else flags).isAllOf(fs)
 
     /** Has this denotation all of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
-    final def isAllOf(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean = {
-      val toTest = if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags // TODO: combine these two lines once 0.17 is released and #6706 is in
-      toTest.isAllOf(fs, butNot)
-    }
+    final def isAllOf(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean =
+      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).isAllOf(fs, butNot)
 
     /** The type info, or, if symbol is not yet completed, the completer */
     final def infoOrCompleter: Type = myInfo

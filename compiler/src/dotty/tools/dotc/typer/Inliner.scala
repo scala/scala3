@@ -629,7 +629,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           if (idx >= 0 && idx < args.length) {
             def finish(arg: Tree) =
               new TreeTypeMap().transform(arg) // make sure local bindings in argument have fresh symbols
-                .reporting(res => i"projecting $tree -> $res", inlining)
+                .reporting(i"projecting $tree -> $result", inlining)
             val arg = args(idx)
             if (precomputed)
               if (isPureExpr(arg)) finish(arg)

@@ -757,8 +757,8 @@ object Denotations {
 
     def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): SingleDenotation = {
       val situated = if (site == NoPrefix) this else asSeenFrom(site)
-      val matches = sig.matchDegree(situated.signature) >=
-        (if (relaxed) Signature.ParamMatch else Signature.FullMatch)
+      val matches = sig.matchDegree(situated.signature).ordinal >=
+        (if (relaxed) Signature.ParamMatch else Signature.FullMatch).ordinal
       if (matches) this else NoDenotation
     }
 
@@ -1096,7 +1096,7 @@ object Denotations {
        d == Signature.FullMatch &&
        !infoOrCompleter.isInstanceOf[PolyType] && !other.infoOrCompleter.isInstanceOf[PolyType]
        ||
-       d >= Signature.ParamMatch && info.matches(other.info))
+       d != Signature.NoMatch && info.matches(other.info))
     }
 
     def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): SingleDenotation =

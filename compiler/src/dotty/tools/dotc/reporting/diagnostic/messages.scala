@@ -2154,11 +2154,13 @@ object messages {
       val details = if (decl.isRealMethod && previousDecl.isRealMethod) {
         // compare the signatures when both symbols represent methods
         decl.signature.matchDegree(previousDecl.signature) match {
-          case Signature.NoMatch =>
+          case Signature.MatchDegree.NoMatch =>
+            // DOTTY problem: Need to qualify MatchDegree enum vals since otherwise exhaustivity fails.
+            // To fix this, we need to export vals under singleton types.
             "" // shouldn't be reachable
-          case Signature.ParamMatch =>
+          case Signature.MatchDegree.ParamMatch =>
             "have matching parameter types."
-          case Signature.FullMatch =>
+          case Signature.MatchDegree.FullMatch =>
             i"have the same$nameAnd type after erasure."
         }
       } else ""
