@@ -976,6 +976,8 @@ trait Printers
       def flatBlock(stats: List[Statement], expr: Term): (List[Statement], Term) = {
         val flatStats = List.newBuilder[Statement]
         def extractFlatStats(stat: Statement): Unit = stat match {
+          case Lambda(_, _) =>   // must come before `Block`
+            flatStats += stat
           case Block(stats1, expr1) =>
             val it = stats1.iterator
             while (it.hasNext)
@@ -990,6 +992,8 @@ trait Printers
           case stat => flatStats += stat
         }
         def extractFlatExpr(term: Term): Term = term match {
+          case Lambda(_, _) =>   // must come before `Block`
+            term
           case Block(stats1, expr1) =>
             val it = stats1.iterator
             while (it.hasNext)
