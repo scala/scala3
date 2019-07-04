@@ -11,7 +11,6 @@ import dotty.tools.dotc.transform.MegaPhase
 import ast.tpd._
 import scala.language.implicitConversions
 import printing.Formatting._
-import dotty.util.WrappedResult
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {

@@ -24,5 +24,12 @@ package object tools {
   def unsupported(methodName: String): Nothing =
     throw new UnsupportedOperationException(methodName)
 
-  export util.WrappedResult.{WrappedResult, result}
+  object resultWrapper {
+    opaque type WrappedResult[T] = T
+    private[tools] def unwrap[T](x: WrappedResult[T]): T = x
+    private[tools] def wrap[T](x: T): WrappedResult[T] = x
+  }
+  type WrappedResult[T] = resultWrapper.WrappedResult[T]
+  def WrappedResult[T](x: T) = resultWrapper.wrap(x)
+  def result[T] given (x: WrappedResult[T]): T = resultWrapper.unwrap(x)
 }
