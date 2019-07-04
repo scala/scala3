@@ -208,9 +208,6 @@ trait Core {
          *    closure(m)
          *  }
          *
-         *  While a function literal is usually a block with the two parts,
-         *  in the Dotty compiler, the two parts may locate in a flattened
-         *  block and may not be consecutive.
          */
         type Closure = kernel.Closure
 
