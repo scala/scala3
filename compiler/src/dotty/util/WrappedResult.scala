@@ -1,4 +1,4 @@
-package dotty.tools
+package dotty.util
 
 object WrappedResult {
   opaque type WrappedResult[T] = T

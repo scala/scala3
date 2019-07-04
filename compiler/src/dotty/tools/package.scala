@@ -24,10 +24,5 @@ package object tools {
   def unsupported(methodName: String): Nothing =
     throw new UnsupportedOperationException(methodName)
 
-  export WrappedResult.{WrappedResult, result}
-    // Equivalent to:
-    //  type WrappedResult[T] = WrappedResult.WrappedResult[T]
-    //  def result[T] given WrappedResult[T] = WrappedResult.result[T]
-    // The export gave a CyclicReference error in some situations
-    // Investigate if this happens again.
+  export util.WrappedResult.{WrappedResult, result}
 }
