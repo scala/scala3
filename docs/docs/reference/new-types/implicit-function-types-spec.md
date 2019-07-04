@@ -72,7 +72,7 @@ insertion of `scala.Function0` around expression in by-name argument position.
 
 Implicit functions generalize to `N > 22` in the same way that functions do,
 see [the corresponding
-documentation](https://dotty.epfl.ch/docs/reference/dropped-features/limit22.html).
+documentation](../dropped-features/limit22.md).
 
 ## Examples
 

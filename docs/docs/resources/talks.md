@@ -17,7 +17,7 @@ transformations and more.
 
 Deep Dive with Dotty
 --------------------
-- (Mar 21, 2017) [Dotty Internals 1: Trees & Symbols](https://www.youtube.com/watch?v=yYd-zuDd3S8) by [Dmitry Petrashko](http://twitter.com/darkdimius) [\[meeting notes\]](http://dotty.epfl.ch/docs/internals/dotty-internals-1-notes.html). 
+- (Mar 21, 2017) [Dotty Internals 1: Trees & Symbols](https://www.youtube.com/watch?v=yYd-zuDd3S8) by [Dmitry Petrashko](http://twitter.com/darkdimius) [\[meeting notes\]](../internals/dotty-internals-1-notes.md). 
 This is a recorded meeting between EPFL and Waterloo, where we introduce first notions inside Dotty: Trees and Symbols.
 
 - (Mar 21, 2017) [Dotty Internals 2: Types](https://www.youtube.com/watch?v=3gmLIYlGbKc) by [Martin Odersky](http://twitter.com/odersky) and [Dmitry Petrashko](http://twitter.com/darkdimius).

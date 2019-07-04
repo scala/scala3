@@ -64,4 +64,4 @@ class C extends A with B {
 ```
 
 
-[More details](./intersection-types-spec.html)
+[More details](./intersection-types-spec.md)

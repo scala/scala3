@@ -557,7 +557,7 @@ Rewrite methods are a safer alternative to the whitebox macros in Scala 2. Both 
 
 By contrast, Scala 2 macros mean that user-defined code is invoked to process program fragments as data. The result of this computation is then embedded instead of the macro call. Macros are thus a lot more powerful than rewrite methods, but also a lot less safe.
 
-Functionality analogous to blackbox macros in Scala-2 is available in Scala-3 through its [principled meta programming](https://dotty.epfl.ch/docs/reference/other-new-features/principled-meta-programming.html) system: Code can be turned into data using quotes `(')`. Code-returning computations can be inserted into quotes using splices `(~)`. A splice outside quotes means that the spliced computation is _run_, which is the analogue of
+Functionality analogous to blackbox macros in Scala-2 is available in Scala-3 through its [principled meta programming](reference/metaprogramming/toc.md) system: Code can be turned into data using quotes `(')`. Code-returning computations can be inserted into quotes using splices `(~)`. A splice outside quotes means that the spliced computation is _run_, which is the analogue of
 invoking a macro. Quoted code can be inspected using reflection on Tasty trees.
 
 To compare: here's the scheme used in Scala-2 to define a macro:

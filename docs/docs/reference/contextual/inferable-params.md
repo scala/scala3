@@ -1,1 +1,1 @@
-The contents of this page have [moved](./given-clauses.html).
+The contents of this page have [moved](./given-clauses.md).

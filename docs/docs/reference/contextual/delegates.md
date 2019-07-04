@@ -4,7 +4,7 @@ title: "Given Instances"
 ---
 
 Given instances (or, simply, "givens") define "canonical" values of certain types
-that serve for synthesizing arguments to [given clauses](./given-clauses.html). Example:
+that serve for synthesizing arguments to [given clauses](./given-clauses.md). Example:
 
 ```scala
 trait Ord[T] {
@@ -34,7 +34,7 @@ This code defines a trait `Ord` with two given instances. `IntOrd` defines
 a given for the type `Ord[Int]` whereas `ListOrd[T]` defines givens
 for `Ord[List[T]]` for all types `T` that come with a given instance for `Ord[T]` themselves.
 The `given (ord: Ord[T])` clause in `ListOrd` defines an implicit parameter.
-Given clauses are further explained in the [next section](./given-clauses.html).
+Given clauses are further explained in the [next section](./given-clauses.md).
 
 ## Anonymous Given Instances
 
@@ -74,7 +74,7 @@ If a `given` definition has type parameters or a given clause, a fresh instance 
 
 ## Syntax
 
-Here is the new syntax of given instances, seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).
+Here is the new syntax of given instances, seen as a delta from the [standard context free syntax of Scala 3](../../internals/syntax.md).
 ```
 TmplDef          ::=  ...
                   |   ‘given’ GivenDef

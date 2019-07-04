@@ -98,7 +98,7 @@ def the[T] given (x: T): x.type = x
 
 ## Syntax
 
-Here is the new syntax of parameters and arguments seen as a delta from the [standard context free syntax of Scala 3](http://dotty.epfl.ch/docs/internals/syntax.html).
+Here is the new syntax of parameters and arguments seen as a delta from the [standard context free syntax of Scala 3](../../internals/syntax.md).
 ```
 ClsParamClauses     ::=  ...
                       |  {ClsParamClause} {GivenClsParamClause}

@@ -97,7 +97,7 @@ enum Color(val rgb: Int) {
 ### Syntax of Enums
 
 Changes to the syntax fall in two categories: enum definitions and cases inside enums.
-The changes are specified below as deltas with respect to the Scala syntax given [here](http://dotty.epfl.ch/docs/internals/syntax.html)
+The changes are specified below as deltas with respect to the Scala syntax given [here](../../internals/syntax.md)
 
  1. Enum definitions are defined as follows:
 

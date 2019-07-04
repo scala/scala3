@@ -15,7 +15,7 @@ The only supported client for the Worksheet mode is [Visual Studio
 Code](https://code.visualstudio.com/).
 
 To use the worksheets, start Dotty IDE by [following the
-instruction](ide-support.html) and create a new file `MyWorksheet.sc` and
+instruction](ide-support.md) and create a new file `MyWorksheet.sc` and
 write some code:
 
 ```scala
@@ -47,4 +47,4 @@ Implementation details
 
 The implementation details of the worksheet mode and the information necessary to add support for
 other clients are available in [Worksheet mode - Implementation
-details](worksheet-mode-implementation-details.html).
+details](worksheet-mode-implementation-details.md).

@@ -65,7 +65,7 @@ itself a implicit function literal. This is analogous to the automatic
 insertion of `scala.Function0` around expressions in by-name argument position.
 
 Implicit function types generalize to `N > 22` in the same way that function types do, see [the corresponding
-documentation](https://dotty.epfl.ch/docs/reference/dropped-features/limit22.html).
+documentation](../dropped-features/limit22.md).
 
 ## Examples
 

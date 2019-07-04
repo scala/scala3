@@ -1,1 +1,1 @@
-The contents of this page have [moved](./delegate-match.html).
+The contents of this page have [moved](./delegate-match.md).

@@ -73,7 +73,7 @@ def withQuoteContext[T](thunk: given QuoteContext => T) given (toolbox: Toolbox)
 
 ## Example
 
-Now take exactly the same example as in [Macros](./macros.html). Assume that we
+Now take exactly the same example as in [Macros](./macros.md). Assume that we
 do not want to pass an array statically but generated code at run-time and pass
 the value, also at run-time. Note, how we make a future-stage function of type
 `Expr[Array[Int] => Int]` in line 4 below. Using `run { ... }` we can evaluate an 

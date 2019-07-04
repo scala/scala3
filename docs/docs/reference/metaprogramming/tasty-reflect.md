@@ -5,16 +5,16 @@ title: "TASTy Reflect"
 
 TASTy Reflect enables inspection and construction of Typed Abstract Syntax Trees
 (Typed-AST). It may be used on quoted expressions (`quoted.Expr`) and quoted
-types (`quoted.Type`) from [Macros](./macros.html) or on full TASTy files.
+types (`quoted.Type`) from [Macros](./macros.md) or on full TASTy files.
 
-If you are writing macros, please first read [Macros](./macros.html).
+If you are writing macros, please first read [Macros](./macros.md).
 You may find all you need without using TASTy Reflect.
 
 
 ## API: From quotes and splices to TASTy reflect trees and back
 
 With `quoted.Expr` and `quoted.Type` we can compute code but also analyze code
-by inspecting the ASTs. [Macros](./macros.html) provides the guarantee that the
+by inspecting the ASTs. [Macros](./macros.md) provides the guarantee that the
 generation of code will be type-correct. Using TASTy Reflect will break these
 guarantees and may fail at macro expansion time, hence additional explicit
 checks must be done.
