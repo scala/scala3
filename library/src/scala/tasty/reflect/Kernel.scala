@@ -829,6 +829,8 @@ trait Kernel {
 
   def matchType(x: TypeOrBounds)(implicit ctx: Context): Option[Type]
 
+  def Type_apply(clazz: Class[_])(implicit ctx: Context): Type
+
   def `Type_=:=`(self: Type)(that: Type)(implicit ctx: Context): Boolean
   def `Type_<:<`(self: Type)(that: Type)(implicit ctx: Context): Boolean
 
@@ -1176,6 +1178,7 @@ trait Kernel {
 
   def Constant_value(const: Constant): Any
 
+  def matchConstant(constant: Constant): Option[Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type]
   def matchConstant_Unit(constant: Constant): Boolean
   def matchConstant_Null(constant: Constant): Boolean
   def matchConstant_Boolean(constant: Constant): Option[Boolean]
@@ -1189,6 +1192,7 @@ trait Kernel {
   def matchConstant_String(constant: Constant): Option[String]
   def matchConstant_ClassTag(constant: Constant): Option[Type]
 
+  def Constant_apply(x: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type): Constant
   def Constant_Unit_apply(): Constant
   def Constant_Null_apply(): Constant
   def Constant_Boolean_apply(x: Boolean): Constant
@@ -1470,6 +1474,7 @@ trait Kernel {
   def Definitions_ClassClass: Symbol
   def Definitions_ArrayClass: Symbol
   def Definitions_PredefModule: Symbol
+  def Definitions_Predef_classOf: Symbol
 
   def Definitions_JavaLangPackage: Symbol
 

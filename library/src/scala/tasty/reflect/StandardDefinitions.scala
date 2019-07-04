@@ -85,6 +85,9 @@ trait StandardDefinitions extends Core {
     /** The module symbol of module `scala.Predef`. */
     def PredefModule: Symbol = kernel.Definitions_PredefModule
 
+    /** The method symbol of method `scala.Predef.classOf`. */
+    def Predef_classOf: Symbol = kernel.Definitions_Predef_classOf
+
     /** The module symbol of package `java.lang`. */
     def JavaLangPackage: Symbol = kernel.Definitions_JavaLangPackage
 

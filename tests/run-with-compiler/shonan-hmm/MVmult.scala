@@ -31,14 +31,14 @@ object MVmult {
         val a_ = Vec('n, (i: Expr[Int]) => Vec('m, (j: Expr[Int]) => '{ a($i)($j) } ))
         val v_ = Vec('m, (i: Expr[Int]) => '{v($i)})
 
-        val MV = new MVmult[Expr[Int], Expr[Int], Expr[Unit]](RingIntExpr, new VecRDyn)
+        val MV = new MVmult[Expr[Int], Expr[Int], Expr[Unit]](new RingIntExpr, new VecRDyn)
         MV.mvmult(vout_, a_, v_)
       }
     }
   }
 
   def mvmult_mc(n: Int, m: Int) given QuoteContext: Expr[(Array[Int], Array[Array[Int]], Array[Int]) => Unit] = {
-    val MV = new MVmult[Int, Expr[Int], Expr[Unit]](RingIntExpr, new VecRStaDim(RingIntExpr))
+    val MV = new MVmult[Int, Expr[Int], Expr[Unit]](new RingIntExpr, new VecRStaDim(new RingIntExpr))
     '{
       (vout, a, v) => {
         if (${n} != vout.length) throw new IndexOutOfBoundsException(${n.toString})

@@ -10,6 +10,14 @@ trait ConstantOps extends Core {
   /** Module of Constant literals */
   object Constant {
 
+    def apply(x: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type): Constant =
+      kernel.Constant_apply(x)
+
+    def unapply(constant: Constant): Option[Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type] =
+      kernel.matchConstant(constant)
+
+    // TODO remove all extractors bellow and use only use the two above
+
     /** Module of Null literals */
     object Unit {
       /** Unit `()` literal */

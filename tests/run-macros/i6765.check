@@ -1,8 +1,8 @@
 {
-  val x$1: java.lang.String = "One"
-  scala.Nil.::[java.lang.String](x$1)
+  val x$3: java.lang.String = "One"
+  scala.Nil.::[java.lang.String](x$3)
 }
 {
-  val x$1: java.lang.String = "One"
-  scala.Nil.::[java.lang.String](x$1)
+  val x$3: java.lang.String = "One"
+  scala.Nil.::[java.lang.String](x$3)
 }

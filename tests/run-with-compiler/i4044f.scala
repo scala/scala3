@@ -1,8 +1,8 @@
 import scala.quoted._
 
 class Foo {
-  def foo: Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  def foo: Unit = withQuoteContext {
     val e: Expr[Int] = '{3}
     val f: Expr[Int] = '{5}
     def foo(x: Expr[Int], y: Expr[Int]): Expr[Int] = '{ $x + $y }
@@ -14,7 +14,7 @@ class Foo {
         foo('{e1 + $u}, '{f1})
       }
     }
-    println(withQuoteContext(q.show))
+    println(q.show)
   }
 }
 

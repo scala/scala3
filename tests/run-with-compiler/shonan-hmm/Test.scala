@@ -16,7 +16,7 @@ object Test {
     }
 
     {
-      val intExprComplex = new RingComplex(RingIntExpr)
+      val intExprComplex = new RingComplex(new RingIntExpr)
       import intExprComplex._
 
       val res = Complex('{1}, '{2}) * Complex('{4}, '{2})

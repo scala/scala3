@@ -1,11 +1,11 @@
 import scala.quoted._
 
 class Foo {
-  def foo: Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  def foo: Unit = withQuoteContext {
     val e: Expr[Int] = '{3}
     val q = '{ ${ '{ $e } } }
-    println(withQuoteContext(q.show))
+    println(q.show)
   }
 }
 

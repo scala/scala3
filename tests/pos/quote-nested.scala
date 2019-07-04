@@ -5,7 +5,7 @@ object Macro {
 
   inline def foo: Unit = ${ nested() }
 
-  private def nested(): Expr[Unit] = '{
+  private def nested() given QuoteContext: Expr[Unit] = '{
     var i = 0
     ${
       val x: Expr[Double] = '{

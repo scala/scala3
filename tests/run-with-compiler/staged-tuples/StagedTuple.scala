@@ -34,7 +34,7 @@ object StagedTuple {
     }
   }
 
-  def fromArrayStaged[T <: Tuple : Type](xs: Expr[Array[Object]], size: Option[Int]): Expr[T] = {
+  def fromArrayStaged[T <: Tuple : Type](xs: Expr[Array[Object]], size: Option[Int]) given QuoteContext: Expr[T] = {
     if (!specialize) '{dynamicFromArray[T]($xs)}
     else xs.bind { xs =>
       val tup: Expr[Any] = size match {
@@ -78,7 +78,7 @@ object StagedTuple {
     res.as[Res]
   }
 
-  def headStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int]): Expr[Head[Tup]] = {
+  def headStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int]) given QuoteContext: Expr[Head[Tup]] = {
     if (!specialize) '{dynamicApply($tup, 0)}
     else {
       val resVal = size match {
@@ -256,9 +256,9 @@ object StagedTuple {
 
   private implicit class ExprOps[U: Type](expr: Expr[U]) {
 
-    def as[T: Type]: Expr[T] = '{ $expr.asInstanceOf[T] }
+    def as[T: Type] given QuoteContext: Expr[T] = '{ $expr.asInstanceOf[T] }
 
-    def bind[T: Type](in: Expr[U] => Expr[T]): Expr[T] = '{
+    def bind[T: Type](in: Expr[U] => Expr[T]) given QuoteContext: Expr[T] = '{
       val t: U = $expr
       ${in('t)}
     }

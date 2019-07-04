@@ -64,6 +64,8 @@ trait TypeOrBoundsOps extends Core {
 
   object Type {
 
+    def apply(clazz: Class[_])(implicit ctx: Context): Type = kernel.Type_apply(clazz)
+
     object IsConstantType {
       /** Matches any ConstantType and returns it */
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Option[ConstantType] =

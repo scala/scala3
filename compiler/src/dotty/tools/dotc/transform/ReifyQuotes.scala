@@ -20,6 +20,7 @@ import typer.Implicits.SearchFailureType
 
 import scala.collection.mutable
 import dotty.tools.dotc.core.Annotations.Annotation
+import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._
@@ -70,6 +71,8 @@ class ReifyQuotes extends MacroTransform {
   import tpd._
 
   override def phaseName: String = ReifyQuotes.name
+
+  override def allowsImplicitSearch: Boolean = true
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
@@ -199,8 +202,29 @@ class ReifyQuotes extends MacroTransform {
     }
 
     private def pickledQuote(body: Tree, splices: List[Tree], originalTp: Type, isType: Boolean)(implicit ctx: Context) = {
-      def pickleAsValue[T](value: T) =
-        ref(defn.Unpickler_liftedExpr).appliedToType(originalTp.widen).appliedTo(Literal(Constant(value)))
+
+      def liftedValue[T](value: T, name: TermName, qctx: Tree) =
+        ref(defn.LiftableModule).select(name).select("toExpr".toTermName).appliedTo(Literal(Constant(value))).appliedTo(qctx)
+
+      def pickleAsValue[T](value: T) = {
+        val qctx = ctx.typer.inferImplicitArg(defn.QuoteContextType, body.span)
+        if (qctx.tpe.isInstanceOf[SearchFailureType])
+          ctx.error(ctx.typer.missingArgMsg(qctx, defn.QuoteContextType, ""), ctx.source.atSpan(body.span))
+        value match {
+          case null => ref(defn.QuotedExprModule).select("nullExpr".toTermName).appliedTo(qctx)
+          case _: Unit => ref(defn.QuotedExprModule).select("unitExpr".toTermName).appliedTo(qctx)
+          case _: Boolean => liftedValue(value, "Liftable_Boolean_delegate".toTermName, qctx)
+          case _: Byte => liftedValue(value, "Liftable_Byte_delegate".toTermName, qctx)
+          case _: Short => liftedValue(value, "Liftable_Short_delegate".toTermName, qctx)
+          case _: Int => liftedValue(value, "Liftable_Int_delegate".toTermName, qctx)
+          case _: Long => liftedValue(value, "Liftable_Long_delegate".toTermName, qctx)
+          case _: Float => liftedValue(value, "Liftable_Float_delegate".toTermName, qctx)
+          case _: Double => liftedValue(value, "Liftable_Double_delegate".toTermName, qctx)
+          case _: Char => liftedValue(value, "Liftable_Char_delegate".toTermName, qctx)
+          case _: String => liftedValue(value, "Liftable_String_delegate".toTermName, qctx)
+        }
+      }
+
       def pickleAsTasty() = {
         val meth =
           if (isType) ref(defn.Unpickler_unpickleType).appliedToType(originalTp)
