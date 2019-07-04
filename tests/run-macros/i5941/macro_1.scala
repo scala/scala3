@@ -40,13 +40,7 @@ object Lens {
 
     object Function {
       def unapply(t: Term): Option[(List[ValDef], Term)] = t match {
-        case Inlined(
-          None, Nil,
-          Block(
-            (ddef @ DefDef(_, Nil, params :: Nil, _, Some(body))) :: Nil,
-            Lambda(meth, _)
-          )
-        ) if meth.symbol == ddef.symbol => Some((params, body))
+        case Inlined(None, Nil, Lambda(params, body)) => Some((params, body))
         case _ => None
       }
     }

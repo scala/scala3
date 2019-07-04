@@ -1033,6 +1033,7 @@ trait Printers
         def printSeparator(next: Tree): Unit = {
           // Avoid accidental application of opening `{` on next line with a double break
           def rec(next: Tree): Unit = next match {
+            case Lambda(_, _) => this += lineBreak()
             case Block(stats, _) if stats.nonEmpty => this += doubleLineBreak()
             case Inlined(_, bindings, _) if bindings.nonEmpty => this += doubleLineBreak()
             case Select(qual, _) => rec(qual)
