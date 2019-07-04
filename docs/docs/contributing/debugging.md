@@ -28,7 +28,7 @@ object Playground {
 
 Then, you can debug Dotty by compiling this file via `dotc ../issues/Playground.scala` (from the SBT console) and collecting various debug output in process. This section documents techniques you can use to collect the debug info.
 
-[This](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2231) is the entry point to the Typer. The job of the Typer is to take an untyped tree, compute its type and turn it into a typed tree by attaching the type information to that tree (in an immutable way of course). We will use this entry point to practice debugging techniques. E.g.:
+[This](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2231) is the entry point to the Typer. The job of the Typer is to take an untyped tree, compute its type and turn it into a typed tree by attaching the type information to that tree. We will use this entry point to practice debugging techniques. E.g.:
 
 ```scala
   def typed(tree: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree =
@@ -167,7 +167,7 @@ package <empty>@<Playground.scala:1> {
 
 ## Figuring out an object creation site
 ### Via ID
-Every [Positioned](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Positioned.scala) (a trait of a `Tree`) object has `uniqueId` field. It is an integer that is unique for that tree and doesn't change from compile run to compile run. You can output these IDs from the printers (= from `show` and `-Xprint`) framework via `-Yshow-tree-ids` flag, e.g.:
+Every [Positioned](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Positioned.scala) (a parent class of `Tree`) object has a `uniqueId` field. It is an integer that is unique for that tree and doesn't change from compile run to compile run. You can output these IDs from any printer (such as the ones used by `.show` and `-Xprint`) via `-Yshow-tree-ids` flag, e.g.:
 
 ```
 dotc -Xprint:frontend -Yshow-tree-ids  ../issues/Playground.scala
@@ -198,7 +198,7 @@ You can then use these IDs to locate the creation site of a given tree using tha
 dotc -Ydebug-tree-with-id 1049 ../issues/Playground.scala
 ```
 
-When requested what you want to do:
+When the tree with the correspond id is allocated, the following prompt will appear:
 
 ```
 Debug tree (id=1049) creation
@@ -208,7 +208,7 @@ Ident(Playground$)
 a)bort, s)tack, r)esume
 ```
 
-Input `s` for stack trace. You will get:
+If you input `s`, you will get a stack trace like this:
 
 ```
 java.lang.Throwable
@@ -294,7 +294,7 @@ if (tree.show == """println("Hello World")""") {
 ```
 
 ## Built-in Logging Architecture
-Dotty has a lot of debug calls scattered throughout the code, vast majority of them disabled. At least three (possibly intertwined) architectures for logging are used for that:
+Dotty has a lot of debug calls scattered throughout the code, most of which are disabled by default. At least three (possibly intertwined) architectures for logging are used for that:
 
 - Printer
 - Tracing

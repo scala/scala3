@@ -7,8 +7,8 @@ The following issues encountered when compiling Scala 2 code as-is under Dotty:
 - There are no `'Symbol`s in Scala 3, you must construct symbols via `new Symbol("foo")` instead of old `'foo`
 
 ## Trivial
-- Scala 2.13 libraries cannot be used from Dotty, because the type signatures have Scala version `5.3` but `5.0` is expected.
-- To use Scala 2.12 dependencies from SBT with Dotty, explicitly suffix their names with `_2.12`.
+- Scala 2.13 libraries cannot be used from Dotty because the dotty-library is compiled against the 2.12 standard library which is not binary-compatible with the 2.13 one. We can't be compatible with both at the same time.
+- To use Scala 2.12 dependencies from SBT with Dotty, use `withDottyCompat` as documented [here](https://github.com/lampepfl/dotty-example-project#getting-your-project-to-compile-with-dotty).
 - Feature warnings about implicits `scala.language.implicitConversions` are output by default, unlike in Scala 2. This creates noise. Unclear how to turn off.
 
 Implicit conversions must be applied explicitly:
