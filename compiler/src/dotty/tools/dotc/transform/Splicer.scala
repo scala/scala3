@@ -72,9 +72,9 @@ object Splicer {
     *
     *  See: `Staging`
     */
-  def canBeSpliced(tree: Tree)(implicit ctx: Context): Boolean = tree match {
-    case Quoted(_) => true
-    case _ => (new CanBeInterpreted).apply(tree)
+  def checkValidMacroBody(tree: Tree)(implicit ctx: Context): Unit = tree match {
+    case Quoted(_) => // ok
+    case _ => (new CheckValidMacroBody).apply(tree)
   }
 
   /** Tree interpreter that evaluates the tree */
@@ -276,27 +276,37 @@ object Splicer {
   }
 
   /** Tree interpreter that tests if tree can be interpreted */
-  private class CanBeInterpreted(implicit ctx: Context) extends AbstractInterpreter {
+  private class CheckValidMacroBody(implicit ctx: Context) extends AbstractInterpreter {
 
-    type Result = Boolean
+    type Result = Unit
 
-    def apply(tree: Tree): Boolean = interpretTree(tree)(Map.empty)
+    def apply(tree: Tree): Unit = interpretTree(tree)(Map.empty)
 
-    protected def interpretQuote(tree: tpd.Tree)(implicit env: Env): Boolean = true
-    protected def interpretTypeQuote(tree: tpd.Tree)(implicit env: Env): Boolean = true
-    protected def interpretLiteral(value: Any)(implicit env: Env): Boolean = true
-    protected def interpretVarargs(args: List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
-    protected def interpretTastyContext()(implicit env: Env): Boolean = true
-    protected def interpretQuoteContext()(implicit env: Env): Boolean = true
-    protected def interpretStaticMethodCall(module: Symbol, fn: Symbol, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
-    protected def interpretModuleAccess(fn: Symbol)(implicit env: Env): Boolean = true
-    protected def interpretNew(fn: Symbol, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
+    protected def interpretQuote(tree: tpd.Tree)(implicit env: Env): Unit = ()
+    protected def interpretTypeQuote(tree: tpd.Tree)(implicit env: Env): Unit = ()
+    protected def interpretLiteral(value: Any)(implicit env: Env): Unit = ()
+    protected def interpretVarargs(args: List[Unit])(implicit env: Env): Unit = ()
+    protected def interpretTastyContext()(implicit env: Env): Unit = ()
+    protected def interpretQuoteContext()(implicit env: Env): Unit = ()
+    protected def interpretStaticMethodCall(module: Symbol, fn: Symbol, args: => List[Unit])(implicit env: Env): Unit = args.foreach(identity)
+    protected def interpretModuleAccess(fn: Symbol)(implicit env: Env): Unit = ()
+    protected def interpretNew(fn: Symbol, args: => List[Unit])(implicit env: Env): Unit = args.foreach(identity)
 
-    def unexpectedTree(tree: tpd.Tree)(implicit env: Env): Boolean = {
+    def unexpectedTree(tree: tpd.Tree)(implicit env: Env): Unit = {
       // Assuming that top-level splices can only be in inline methods
       // and splices are expanded at inline site, references to inline values
       // will be known literal constant trees.
-      tree.symbol.is(Inline)
+      if (!tree.symbol.is(Inline))
+        ctx.error(
+          """Malformed macro.
+            |
+            |Expected the splice ${...} to contain a single call to a static method.
+            |
+            |Where parameters may be:
+            | * Quoted paramers or fields
+            | * References to inline parameters
+            | * Literal values of primitive types
+          """.stripMargin, tree.sourcePos)
     }
   }
 

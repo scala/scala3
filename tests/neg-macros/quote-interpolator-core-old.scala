@@ -6,9 +6,9 @@ import scala.quoted.autolift._
 object FInterpolation {
 
   implicit class FInterpolatorHelper(val sc: StringContext) extends AnyVal {
-    inline def ff(arg1: Any): String = ${fInterpolation(sc, Seq('arg1))} // error: Inline macro method must be a static method
-    inline def ff(arg1: Any, arg2: Any): String = ${fInterpolation(sc, Seq('arg1, 'arg2))} // error: Inline macro method must be a static method
-    inline def ff(arg1: Any, arg2: Any, arg3: Any): String = ${fInterpolation(sc, Seq('arg1, 'arg2, 'arg3))} // error: Inline macro method must be a static method
+    inline def ff(arg1: Any): String = ${fInterpolation(sc, Seq('arg1))} // error // error
+    inline def ff(arg1: Any, arg2: Any): String = ${fInterpolation(sc, Seq('arg1, 'arg2))} // error // error
+    inline def ff(arg1: Any, arg2: Any, arg3: Any): String = ${fInterpolation(sc, Seq('arg1, 'arg2, 'arg3))} // error // error
     // ...
   }
 
