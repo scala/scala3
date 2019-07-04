@@ -23,10 +23,10 @@ object Macros {
       e.unseal.tpe match {
         case Type.SymRef(IsValDefSymbol(sym), pre) =>
           sym.tree.tpt.tpe match {
-            case Type.ConstantType(Constant.Int(i)) => Some(i)
+            case Type.ConstantType(Constant(i: Int)) => Some(i)
             case _ => None
           }
-        case Type.ConstantType(Constant.Int(i)) => Some(i)
+        case Type.ConstantType(Constant(i: Int)) => Some(i)
         case _ => None
       }
     }

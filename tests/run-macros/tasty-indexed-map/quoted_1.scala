@@ -29,7 +29,7 @@ object Index {
     import qctx.tasty._
 
     def name(tp: TypeOrBounds): String = tp match {
-      case Type.ConstantType(Constant.String(str)) => str
+      case Type.ConstantType(Constant(str: String)) => str
     }
 
     def names(tp: TypeOrBounds): List[String] = tp match {

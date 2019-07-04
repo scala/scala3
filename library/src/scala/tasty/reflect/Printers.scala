@@ -289,18 +289,20 @@ trait Printers
       }
 
       def visitConstant(x: Constant): Buffer = x match {
-        case Constant.Unit() => this += "Constant.Unit()"
-        case Constant.Null() => this += "Constant.Null()"
-        case Constant.Boolean(value) => this += "Constant.Boolean(" += value += ")"
-        case Constant.Byte(value) => this += "Constant.Byte(" += value += ")"
-        case Constant.Short(value) => this += "Constant.Short(" += value += ")"
-        case Constant.Char(value) => this += "Constant.Char(" += value += ")"
-        case Constant.Int(value) => this += "Constant.Int(" += value.toString += ")"
-        case Constant.Long(value) => this += "Constant.Long(" += value += ")"
-        case Constant.Float(value) => this += "Constant.Float(" += value += ")"
-        case Constant.Double(value) => this += "Constant.Double(" += value += ")"
-        case Constant.String(value) => this += "Constant.String(\"" += value += "\")"
-        case Constant.ClassTag(value) => this += "Constant.ClassTag(" += value += ")"
+        case Constant(()) => this += "Constant(())"
+        case Constant(null) => this += "Constant(null)"
+        case Constant(value: Boolean) => this += "Constant(" += value += ")"
+        case Constant(value: Byte) => this += "Constant(" += value += ": Byte)"
+        case Constant(value: Short) => this += "Constant(" += value += ": Short)"
+        case Constant(value: Char) => this += "Constant('" += value += "')"
+        case Constant(value: Int) => this += "Constant(" += value.toString += ")"
+        case Constant(value: Long) => this += "Constant(" += value += "L)"
+        case Constant(value: Float) => this += "Constant(" += value += "f)"
+        case Constant(value: Double) => this += "Constant(" += value += "d)"
+        case Constant(value: String) => this += "Constant(\"" += value += "\")"
+        case Constant.ClassTag(value) =>
+          this += "Constant.ClassTag("
+          visitType(value) += ")"
       }
 
       def visitType(x: TypeOrBounds): Buffer = x match {
@@ -728,7 +730,7 @@ trait Printers
 
         case While(cond, body) =>
           (cond, body) match {
-            case (Block(Block(Nil, body1) :: Nil, Block(Nil, cond1)), Literal(Constant.Unit())) =>
+            case (Block(Block(Nil, body1) :: Nil, Block(Nil, cond1)), Literal(Constant(()))) =>
               this += highlightKeyword("do ")
               printTree(body1) += highlightKeyword(" while ")
               inParens(printTree(cond1))
@@ -990,7 +992,7 @@ trait Printers
             while (it.hasNext)
               extractFlatStats(it.next())
             extractFlatStats(expansion)
-          case Literal(Constant.Unit()) => // ignore
+          case Literal(Constant(())) => // ignore
           case stat => flatStats += stat
         }
         def extractFlatExpr(term: Term): Term = term match {
@@ -1374,17 +1376,17 @@ trait Printers
       }
 
       def printConstant(const: Constant): Buffer = const match {
-        case Constant.Unit() => this += highlightLiteral("()")
-        case Constant.Null() => this += highlightLiteral("null")
-        case Constant.Boolean(v) => this += highlightLiteral(v.toString)
-        case Constant.Byte(v) => this += highlightLiteral(v.toString)
-        case Constant.Short(v) => this += highlightLiteral(v.toString)
-        case Constant.Int(v) => this += highlightLiteral(v.toString)
-        case Constant.Long(v) => this += highlightLiteral(v.toString + "L")
-        case Constant.Float(v) => this += highlightLiteral(v.toString + "f")
-        case Constant.Double(v) => this += highlightLiteral(v.toString)
-        case Constant.Char(v) => this += highlightString('\'' + escapedChar(v) + '\'')
-        case Constant.String(v) => this += highlightString('"' + escapedString(v) + '"')
+        case Constant(()) => this += highlightLiteral("()")
+        case Constant(null) => this += highlightLiteral("null")
+        case Constant(v: Boolean) => this += highlightLiteral(v.toString)
+        case Constant(v: Byte) => this += highlightLiteral(v.toString)
+        case Constant(v: Short) => this += highlightLiteral(v.toString)
+        case Constant(v: Int) => this += highlightLiteral(v.toString)
+        case Constant(v: Long) => this += highlightLiteral(v.toString + "L")
+        case Constant(v: Float) => this += highlightLiteral(v.toString + "f")
+        case Constant(v: Double) => this += highlightLiteral(v.toString)
+        case Constant(v: Char) => this += highlightString('\'' + escapedChar(v) + '\'')
+        case Constant(v: String) => this += highlightString('"' + escapedString(v) + '"')
         case Constant.ClassTag(v) =>
           this += "classOf"
           inSquare(printType(v))

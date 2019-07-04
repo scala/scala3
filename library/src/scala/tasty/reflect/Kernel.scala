@@ -1179,32 +1179,10 @@ trait Kernel {
   def Constant_value(const: Constant): Any
 
   def matchConstant(constant: Constant): Option[Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type]
-  def matchConstant_Unit(constant: Constant): Boolean
-  def matchConstant_Null(constant: Constant): Boolean
-  def matchConstant_Boolean(constant: Constant): Option[Boolean]
-  def matchConstant_Byte(constant: Constant): Option[Byte]
-  def matchConstant_Short(constant: Constant): Option[Short]
-  def matchConstant_Char(constant: Constant): Option[Char]
-  def matchConstant_Int(constant: Constant): Option[Int]
-  def matchConstant_Long(constant: Constant): Option[Long]
-  def matchConstant_Float(constant: Constant): Option[Float]
-  def matchConstant_Double(constant: Constant): Option[Double]
-  def matchConstant_String(constant: Constant): Option[String]
   def matchConstant_ClassTag(constant: Constant): Option[Type]
 
   def Constant_apply(x: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type): Constant
-  def Constant_Unit_apply(): Constant
-  def Constant_Null_apply(): Constant
-  def Constant_Boolean_apply(x: Boolean): Constant
-  def Constant_Byte_apply(x: Byte): Constant
-  def Constant_Short_apply(x: Short): Constant
-  def Constant_Char_apply(x: Char): Constant
-  def Constant_Int_apply(x: Int): Constant
-  def Constant_Long_apply(x: Long): Constant
-  def Constant_Float_apply(x: Float): Constant
-  def Constant_Double_apply(x: Double): Constant
-  def Constant_String_apply(x: String): Constant
-  def Constant_ClassTag_apply(x: scala.reflect.ClassTag[_]): Constant
+  def Constant_ClassTag_apply(x: Type): Constant
 
   //
   // SYMBOLS

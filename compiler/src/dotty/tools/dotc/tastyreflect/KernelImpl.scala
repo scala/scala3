@@ -1455,46 +1455,15 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Constant_value(const: Constant): Any = const.value
 
   def matchConstant(constant: Constant): Option[Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type] =
-    Some(constant.asInstanceOf[Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type])
+    Some(constant.value.asInstanceOf[Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type])
 
-  def matchConstant_Unit(x: Constant): Boolean = x.tag == Constants.UnitTag
-  def matchConstant_Null(x: Constant): Boolean = x.tag == Constants.NullTag
-  def matchConstant_Boolean(x: Constant): Option[Boolean] =
-    if (x.tag == Constants.BooleanTag) Some(x.booleanValue) else None
-  def matchConstant_Byte(x: Constant): Option[Byte] =
-    if (x.tag == Constants.ByteTag) Some(x.byteValue) else None
-  def matchConstant_Short(x: Constant): Option[Short] =
-    if (x.tag == Constants.ShortTag) Some(x.shortValue) else None
-  def matchConstant_Char(x: Constant): Option[Char] =
-    if (x.tag == Constants.CharTag) Some(x.charValue) else None
-  def matchConstant_Int(x: Constant): Option[Int] =
-    if (x.tag == Constants.IntTag) Some(x.intValue) else None
-  def matchConstant_Long(x: Constant): Option[Long] =
-    if (x.tag == Constants.LongTag) Some(x.longValue) else None
-  def matchConstant_Float(x: Constant): Option[Float] =
-    if (x.tag == Constants.FloatTag) Some(x.floatValue) else None
-  def matchConstant_Double(x: Constant): Option[Double] =
-    if (x.tag == Constants.DoubleTag) Some(x.doubleValue) else None
-  def matchConstant_String(x: Constant): Option[String] =
-    if (x.tag == Constants.StringTag) Some(x.stringValue) else None
   def matchConstant_ClassTag(x: Constant): Option[Type] =
     if (x.tag == Constants.ClazzTag) Some(x.typeValue) else None
 
   def Constant_apply(x: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type): Constant =
     Constants.Constant(x)
 
-  def Constant_Unit_apply(): Constant = Constants.Constant(())
-  def Constant_Null_apply(): Constant = Constants.Constant(null)
-  def Constant_Boolean_apply(x: Boolean): Constant = Constants.Constant(x)
-  def Constant_Byte_apply(x: Byte): Constant = Constants.Constant(x)
-  def Constant_Short_apply(x: Short): Constant = Constants.Constant(x)
-  def Constant_Char_apply(x: Char): Constant = Constants.Constant(x)
-  def Constant_Int_apply(x: Int): Constant = Constants.Constant(x)
-  def Constant_Long_apply(x: Long): Constant = Constants.Constant(x)
-  def Constant_Float_apply(x: Float): Constant = Constants.Constant(x)
-  def Constant_Double_apply(x: Double): Constant = Constants.Constant(x)
-  def Constant_String_apply(x: String): Constant = Constants.Constant(x)
-  def Constant_ClassTag_apply(x: scala.reflect.ClassTag[_]): Constant = Constants.Constant(x)
+  def Constant_ClassTag_apply(x: Type): Constant = Constants.Constant(x)
 
   //
   // SYMBOLS
