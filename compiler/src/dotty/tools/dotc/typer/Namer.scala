@@ -311,32 +311,31 @@ class Namer { typer: Typer =>
         else name
     }
 
-    /** If effective owner is a package `p`, widen `private` to `private[p]` */
-    def widenToplevelPrivate(sym: Symbol): Unit = {
-      var owner = sym.effectiveOwner
-      if (owner.is(Package)) {
-        sym.resetFlag(Private)
-        sym.privateWithin = owner
-      }
-    }
-
     /** Create new symbol or redefine existing symbol under lateCompile. */
     def createOrRefine[S <: Symbol](
-        tree: MemberDef, name: Name, flags: FlagSet, infoFn: S => Type,
+        tree: MemberDef, name: Name, flags: FlagSet, owner: Symbol, infoFn: S => Type,
         symFn: (FlagSet, S => Type, Symbol) => S): Symbol = {
       val prev =
         if (lateCompile && ctx.owner.is(Package)) ctx.effectiveScope.lookup(name)
         else NoSymbol
+
+      var flags1 = flags
+      var privateWithin = privateWithinClass(tree.mods)
+      val effectiveOwner = owner.skipWeakOwner
+      if (flags.is(Private) && effectiveOwner.is(Package)) {
+        // If effective owner is a package p, widen private to private[p]
+        flags1 = flags1 &~ Private
+        privateWithin = effectiveOwner
+      }
+
       val sym =
         if (prev.exists) {
-          prev.flags = flags
+          prev.flags = flags1
           prev.info = infoFn(prev.asInstanceOf[S])
-          prev.privateWithin = privateWithinClass(tree.mods)
+          prev.privateWithin = privateWithin
           prev
         }
-        else symFn(flags, infoFn, privateWithinClass(tree.mods))
-      if (sym.is(Private))
-        widenToplevelPrivate(sym)
+        else symFn(flags1, infoFn, privateWithin)
       recordSym(sym, tree)
     }
 
@@ -345,7 +344,7 @@ class Namer { typer: Typer =>
         val name = checkNoConflict(tree.name).asTypeName
         val flags = checkFlags(tree.mods.flags &~ DelegateOrImplicit)
         val cls =
-          createOrRefine[ClassSymbol](tree, name, flags,
+          createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
             ctx.newClassSymbol(ctx.owner, name, _, _, _, tree.nameSpan, ctx.source.file))
         cls.completer.asInstanceOf[ClassCompleter].init()
@@ -381,7 +380,7 @@ class Namer { typer: Typer =>
         }
         val info = adjustIfModule(completer, tree)
         createOrRefine[Symbol](tree, name, flags | deferred | method | higherKinded,
-          _ => info,
+          ctx.owner, _ => info,
           (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.nameSpan))
       case tree: Import =>
         recordSym(ctx.newImportSymbol(ctx.owner, new Completer(tree), tree.span), tree)
