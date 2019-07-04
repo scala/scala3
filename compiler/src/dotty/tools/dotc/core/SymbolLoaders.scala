@@ -200,6 +200,7 @@ object SymbolLoaders {
    */
   class PackageLoader(_sourceModule: TermSymbol, classPath: ClassPath)
       extends SymbolLoader {
+    override def sourceFileOrNull: AbstractFile = null
     override def sourceModule(implicit ctx: Context): TermSymbol = _sourceModule
     def description(implicit ctx: Context): String = "package loader " + sourceModule.fullName
 
@@ -302,17 +303,24 @@ object SymbolLoaders {
 /** A lazy type that completes itself by calling parameter doComplete.
  *  Any linked modules/classes or module classes are also initialized.
  */
-abstract class SymbolLoader extends LazyType {
-
+abstract class SymbolLoader extends LazyType { self =>
   /** Load source or class file for `root`, return */
   def doComplete(root: SymDenotation)(implicit ctx: Context): Unit
 
-  def sourceFileOrNull: AbstractFile = null
+  def sourceFileOrNull: AbstractFile
 
   /** Description of the resource (ClassPath, AbstractFile)
    *  being processed by this loader
    */
   def description(implicit ctx: Context): String
+
+  /** A proxy to this loader that keeps the doComplete operation
+   *  but provides fresh slots for scope/sourceModule/moduleClass
+   */
+  def proxy: SymbolLoader = new SymbolLoader {
+    export self.{doComplete, sourceFileOrNull}
+    def description(implicit ctx: Context): String = "proxy to ${self.description}"
+  }
 
   override def complete(root: SymDenotation)(implicit ctx: Context): Unit = {
     def signalError(ex: Exception): Unit = {

@@ -2155,13 +2155,6 @@ object SymDenotations {
     private[this] var mySourceModuleFn: Context => Symbol = NoSymbolFn
     private[this] var myModuleClassFn: Context => Symbol = NoSymbolFn
 
-    /** A proxy to this lazy type that keeps the complete operation
-     *  but provides fresh slots for scope/sourceModule/moduleClass
-     */
-    def proxy: LazyType = new LazyType {
-      override def complete(denot: SymDenotation)(implicit ctx: Context) = self.complete(denot)
-    }
-
     /** The type parameters computed by the completer before completion has finished */
     def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeParamInfo] =
       if (sym.is(Touched)) Nil // return `Nil` instead of throwing a cyclic reference
