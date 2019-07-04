@@ -30,17 +30,17 @@ object Main {
     assert(Math.pow(3, 4) == toTheFourth(3))
   }
 
-  def stagedPower(n: Int): Double => Double = {
+  def stagedPower(n: Int): Double => Double = run {
     // Code representing the labmda where the recursion is unrolled based on the value of n
     val code = '{ (x: Double) => ${powerCode(n, '{x})}}
 
     code.show
 
     // Evaluate the contents of the code and return it's value
-    code.run
+    code
   }
 
-  def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
+  def powerCode(n: Int, x: Expr[Double]) given QuoteContext: Expr[Double] =
     if (n == 0) '{1.0}
     else if (n == 1) x
     else if (n < 0) throw new Exception("Negative powers not implemented. Left as a small exercise. Dont be shy, try it out.")
