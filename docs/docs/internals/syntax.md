@@ -298,7 +298,7 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
                     |  {ClsParamClause} {GivenClsParamClause}
-ClsParamClause    ::=  ‘(’ ClsParams ‘)’
+ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
 GivenClsParamClause::= ‘given’ (‘(’ ClsParams ‘)’ | GivenTypes)
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
@@ -308,7 +308,7 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
                     |  {DefParamClause} {GivenParamClause}
-DefParamClause    ::=  ‘(’ DefParams ‘)’
+DefParamClause    ::=  [nl] ‘(’ DefParams ‘)’
 GivenParamClause  ::=  ‘given’ (‘(’ DefParams ‘)’ | GivenTypes)
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
@@ -356,7 +356,7 @@ Dcl               ::=  RefineDcl
                     |  ‘var’ VarDcl
 ValDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
-DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
+DefDcl            ::=  DefSig ‘:’ Type                                          DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  [‘(’ DefParam ‘)’ [nl]] id
                        [DefTypeParamClause] DefParamClauses
 TypeDcl           ::=  id [TypeParamClause] SubtypeBounds [‘=’ Type]           TypeDefTree(_, name, tparams, bound

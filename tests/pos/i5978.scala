@@ -9,6 +9,9 @@ package p1 {
   object TextParser {
     delegate TP for TokenParser[Char, Position[CharSequence]] {}
 
+    def f given
+      TokenParser[Char, Position[CharSequence]] = ???
+
     delegate FromCharToken for Conversion[Char, Position[CharSequence]]
       given (T: TokenParser[Char, Position[CharSequence]])= ???
   }

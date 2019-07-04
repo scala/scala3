@@ -2305,6 +2305,7 @@ object Parsers {
                      ofInstance: Boolean = false): List[List[ValDef]] = {
       def recur(firstClause: Boolean, nparams: Int, contextualOnly: Boolean): List[List[ValDef]] = {
         var initialMods = EmptyModifiers
+        newLineOptWhenFollowedBy(LPAREN)
         if (in.token == GIVEN) {
           in.nextToken()
           initialMods |= Given

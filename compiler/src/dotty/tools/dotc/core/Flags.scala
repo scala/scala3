@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package core
 
-import language.implicitConversions
-
 object Flags {
 
   object opaques {
