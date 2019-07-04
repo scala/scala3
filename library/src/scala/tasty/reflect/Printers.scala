@@ -741,17 +741,6 @@ trait Printers
               printTree(body)
           }
 
-        case IsDefDef(ddef @ DefDef(name, targs, argss, _, rhsOpt)) if name.startsWith("$anonfun") =>
-          // Decompile lambda definition
-          assert(targs.isEmpty)
-          val args :: Nil = argss
-          val Some(rhs) = rhsOpt
-          inParens {
-            printArgsDefs(args)
-            this += " => "
-            printTree(rhs)
-          }
-
         case IsDefDef(ddef @ DefDef(name, targs, argss, tpt, rhs)) =>
           printDefAnnotations(ddef)
 
@@ -912,9 +901,13 @@ trait Printers
         case Inlined(_, bindings, expansion) =>
           printFlatBlock(bindings, expansion)
 
-        case Closure(meth, tpt) =>
-          // Printed in by it's DefDef
-          this
+        case Lambda(params, body) =>
+          inParens {
+            printArgsDefs(params)
+            this += " => "
+            printTree(body)
+          }
+
 
         case If(cond, thenp, elsep) =>
           this += highlightKeyword("if ")
@@ -1018,24 +1011,16 @@ trait Printers
 
       def printFlatBlock(stats: List[Statement], expr: Term)(implicit elideThis: Option[Symbol]): Buffer = {
         val (stats1, expr1) = flatBlock(stats, expr)
-        // Remove Lambda nodes, lambdas are printed by their definition
         val stats2 = stats1.filter {
-          case Closure(_, _) => false
           case IsTypeDef(tree) => !tree.symbol.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.quoteTypeTag")
           case _ => true
         }
-        val (stats3, expr3) = expr1 match {
-          case Closure(_, _) =>
-            val init :+ last  = stats2
-            (init, last)
-          case _ => (stats2, expr1)
-        }
-        if (stats3.isEmpty) {
-          printTree(expr3)
+        if (stats2.isEmpty) {
+          printTree(expr1)
         } else {
           this += "{"
           indented {
-            printStats(stats3, expr3)
+            printStats(stats2, expr1)
           }
           this += lineBreak() += "}"
         }
