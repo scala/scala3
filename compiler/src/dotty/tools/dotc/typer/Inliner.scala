@@ -1027,7 +1027,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
       constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
-        case res: Apply if res.symbol == defn.InternalQuoted_exprSplice && level == 0 =>
+        case res: Apply if res.symbol == defn.InternalQuoted_exprSplice && level == 0 && call.symbol.is(Macro) =>
           expandMacro(res.args.head, tree.span)
         case res => res
       }
