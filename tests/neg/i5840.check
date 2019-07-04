@@ -1,0 +1,6 @@
+-- Error: tests/neg/i5840.scala:8:28 -----------------------------------------------------------------------------------
+8 |  inline def i5_2[T](n: T): Contextual[T] = ${ foo('n) } // error: Macros using `given X => Y` return types are not yet supported
+  |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                            Macros using a return type of the form `foo(): given X => Y` are not yet supported.
+  |                            
+  |                            Place the implicit as an argument (`foo() given X: Y`) to overcome this limitation.

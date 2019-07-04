@@ -7,6 +7,7 @@ import Trees._
 import core._
 import Flags._
 import Symbols._
+import Flags._
 import Types._
 import Decorators._
 import NameKinds._
@@ -245,28 +246,6 @@ object PrepareInlineable {
 
   def checkInlineMacro(sym: Symbol, rhs: Tree, pos: SourcePosition)(implicit ctx: Context) = {
     if (!ctx.isAfterTyper) {
-
-      /** InlineSplice is used to detect cases where the expansion
-       *  consists of a (possibly multiple & nested) block or a sole expression.
-       */
-      object InlineSplice {
-        def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
-          case Spliced(code) =>
-            if (!Splicer.canBeSpliced(code)) {
-              ctx.error(
-                "Malformed macro call. The contents of the splice ${...} must call a static method and arguments must be quoted or inline.",
-                tree.sourcePos)
-            } else if (code.symbol.flags.is(Inline)) {
-              ctx.error("Macro cannot be implemented with an `inline` method", code.sourcePos)
-            }
-            Some(code)
-          case Block(List(stat), Literal(Constants.Constant(()))) => unapply(stat)
-          case Block(Nil, expr) => unapply(expr)
-          case Typed(expr, _) => unapply(expr)
-          case _ => None
-        }
-      }
-
       var isMacro = false
       new TreeMapWithStages(freshStagingContext) {
         override protected def transformSplice(body: tpd.Tree, splice: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
@@ -279,10 +258,24 @@ object PrepareInlineable {
 
       if (isMacro) {
         sym.setFlag(Macro)
-        if (level == 0)
-          rhs match {
-            case InlineSplice(_) =>
+        if (level == 0) {
+          def isValidMacro(tree: Tree)(implicit ctx: Context): Unit = tree match {
+            case Spliced(code) =>
+              if (code.symbol.flags.is(Inline))
+                ctx.error("Macro cannot be implemented with an `inline` method", code.sourcePos)
+              Splicer.checkValidMacroBody(code)
               new PCPCheckAndHeal(freshStagingContext).transform(rhs) // Ignore output, only check PCP
+
+            case Block(List(stat), Literal(Constants.Constant(()))) => isValidMacro(stat)
+            case Block(Nil, expr) => isValidMacro(expr)
+            case Typed(expr, _) => isValidMacro(expr)
+            case Block(DefDef(nme.ANON_FUN, _, _, _, _) :: Nil, Closure(_, fn, _)) if fn.symbol.info.isImplicitMethod =>
+              // TODO Suppot this pattern
+              ctx.error(
+                """Macros using a return type of the form `foo(): given X => Y` are not yet supported.
+                  |
+                  |Place the implicit as an argument (`foo() given X: Y`) to overcome this limitation.
+                  |""".stripMargin, tree.sourcePos)
             case _ =>
               ctx.error(
                 """Malformed macro.
@@ -294,6 +287,8 @@ object PrepareInlineable {
                   | * All arguments must be quoted or inline
                 """.stripMargin, pos)
           }
+          isValidMacro(rhs)
+        }
       }
     }
   }
