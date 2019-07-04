@@ -468,7 +468,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     //if (isModuleRoot) println(s"moduleRoot of $moduleRoot found at $readIndex, flags = ${flags.flagsString}") // !!! DEBUG
     //if (isModuleClassRoot) println(s"moduleClassRoot of $moduleClassRoot found at $readIndex, flags = ${flags.flagsString}") // !!! DEBUG
 
-    def completeRoot(denot: ClassDenotation, completer: LazyType): Symbol = {
+    def completeRoot(denot: ClassDenotation, completer: LazyType, privateWithin: Symbol): Symbol = {
       denot.setFlag(flags)
       denot.resetFlag(Touched) // allow one more completion
 
@@ -479,6 +479,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       if (owner == defn.ScalaPackageClass && ((name eq tpnme.Serializable) || (name eq tpnme.Product)))
         denot.setFlag(NoInits)
 
+      denot.privateWithin = privateWithin
       denot.info = completer
       denot.symbol
     }
@@ -497,24 +498,32 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       sym
     }
 
+    val (privateWithin, infoRef) = {
+      val ref = readNat()
+      if (!isSymbolRef(ref))
+        (NoSymbol, ref)
+      else {
+        val pw = at(ref, () => readSymbol())
+        (pw, readNat())
+      }
+    }
+
     finishSym(tag match {
       case TYPEsym | ALIASsym =>
         var name1 = name.asTypeName
         var flags1 = flags
         if (flags.is(TypeParam)) flags1 |= owner.typeParamCreationFlags
-        ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
+        ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, privateWithin, coord = start)
       case CLASSsym =>
-        var infoRef = readNat()
-        if (isSymbolRef(infoRef)) infoRef = readNat()
         if (isClassRoot)
           completeRoot(
-            classRoot, rootClassUnpickler(start, classRoot.symbol, NoSymbol, infoRef))
+            classRoot, rootClassUnpickler(start, classRoot.symbol, NoSymbol, infoRef), privateWithin)
         else if (isModuleClassRoot)
           completeRoot(
-            moduleClassRoot, rootClassUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule, infoRef))
+            moduleClassRoot, rootClassUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule, infoRef), privateWithin)
         else if (name == tpnme.REFINE_CLASS)
           // create a type alias instead
-          ctx.newSymbol(owner, name, flags, localMemberUnpickler, coord = start)
+          ctx.newSymbol(owner, name, flags, localMemberUnpickler, privateWithin, coord = start)
         else {
           def completer(cls: Symbol) = {
             val unpickler = new ClassUnpickler(infoRef) withDecls symScope(cls)
@@ -524,10 +533,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
                   .suchThat(_.is(Module)).symbol)
             else unpickler
           }
-          ctx.newClassSymbol(owner, name.asTypeName, flags, completer, coord = start)
+          ctx.newClassSymbol(owner, name.asTypeName, flags, completer, privateWithin, coord = start)
         }
       case VALsym =>
-        ctx.newSymbol(owner, name.asTermName, flags, localMemberUnpickler, coord = start)
+        ctx.newSymbol(owner, name.asTermName, flags, localMemberUnpickler, privateWithin, coord = start)
       case MODULEsym =>
         if (isModuleRoot) {
           moduleRoot setFlag flags
@@ -536,7 +545,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           new LocalUnpickler() withModuleClass(implicit ctx =>
             owner.info.decls.lookup(name.moduleClassName)
               .suchThat(_.is(Module)).symbol)
-          , coord = start)
+          , privateWithin, coord = start)
       case _ =>
         errorBadSignature("bad symbol tag: " + tag)
     })
@@ -552,16 +561,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val unusedNameref = readNat()
         val unusedOwnerref = readNat()
         val unusedFlags = readLongNat()
+
         var inforef = readNat()
-        denot.privateWithin =
-          if (!isSymbolRef(inforef)) NoSymbol
-          else {
-            val pw = at(inforef, () => readSymbol())
-            inforef = readNat()
-            pw
-          }
+        if (isSymbolRef(inforef)) inforef = readNat()
+
         // println("reading type for " + denot) // !!! DEBUG
         val tp = at(inforef, () => readType()(ctx))
+
         denot match {
           case denot: ClassDenotation =>
             val selfInfo = if (atEnd) NoType else readTypeRef()
