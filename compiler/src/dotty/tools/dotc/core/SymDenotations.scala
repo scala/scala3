@@ -2174,6 +2174,8 @@ object SymDenotations {
     def withDecls(decls: Scope): this.type = { myDecls = decls; this }
     def withSourceModule(sourceModuleFn: Context => Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
     def withModuleClass(moduleClassFn: Context => Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
+
+    override def toString: String = getClass.toString
   }
 
   /** A subtrait of LazyTypes where completerTypeParams yields a List[TypeSymbol], which
