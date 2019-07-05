@@ -2021,7 +2021,10 @@ class Typer extends Namer
    */
   private def typedQuotePattern(quoted: untpd.Tree, pt: Type, quoteSpan: Span)(implicit ctx: Context): Tree = {
     val exprPt = pt.baseType(defn.QuotedExprClass)
-    val quotedPt = if (exprPt.exists) exprPt.argTypesHi.head else defn.AnyType
+    val quotedPt = exprPt.argInfos.headOption match {
+      case Some(argPt: ValueType) => argPt // excludes TypeBounds
+      case _ => defn.AnyType
+    }
     val quoted0 = desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt)))
     val quoted1 = typedExpr(quoted0, WildcardType)(quoteContext.addMode(Mode.QuotedPattern))
 
