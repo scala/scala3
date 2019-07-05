@@ -158,10 +158,8 @@ object Splicer {
         // nested object in an object
         val className = {
           val pack = sym.topLevelClass.owner
-          val prefix =
-            if (pack == defn.RootPackage || pack == defn.EmptyPackageClass) ""
-            else pack.showFullName + "."
-          prefix + sym.fullNameSeparated(FlatName)
+          if (pack == defn.RootPackage || pack == defn.EmptyPackageClass) sym.flatName.toString
+          else pack.showFullName + "." + sym.flatName
         }
         val clazz = loadClass(className)
         clazz.getConstructor().newInstance().asInstanceOf[Object]
