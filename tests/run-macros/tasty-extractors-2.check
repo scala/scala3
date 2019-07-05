@@ -1,7 +1,7 @@
 Inlined(None, Nil, Block(List(ValDef("x", Inferred(), Some(Literal(Constant(1))))), Assign(Ident("x"), Literal(Constant(2)))))
 Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
-Inlined(None, Nil, Block(List(DefDef("$anonfun", Nil, List(List(ValDef("x", TypeIdent("Int"), None))), Inferred(), Some(Ident("x")))), Lambda(Ident("$anonfun"), None)))
+Inlined(None, Nil, Block(List(DefDef("$anonfun", Nil, List(List(ValDef("x", TypeIdent("Int"), None))), Inferred(), Some(Ident("x")))), Closure(Ident("$anonfun"), None)))
 Type.AppliedType(Type.SymRef(IsClassDefSymbol(<scala.Function1>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix()))), List(Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.SymRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<root>>), NoPrefix())))), Type.SymRef(IsClassDefSymbol(<scala.Int>), Type.SymRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))))
 
 Inlined(None, Nil, Ident("???"))
@@ -100,6 +100,6 @@ Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageD
 Inlined(None, Nil, Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(TypeDef("X", TypeBoundsTree(Inferred(), Inferred())))), DefDef("f", Nil, List(List(ValDef("a", Refined(TypeIdent("Foo"), List(TypeDef("X", TypeIdent("Int")))), None))), TypeSelect(Ident("a"), "X"), Some(Ident("???")))), Literal(Constant(()))))
 Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
-Inlined(None, Nil, Block(List(ValDef("lambda", Applied(Inferred(), List(TypeIdent("Int"), TypeIdent("Int"))), Some(Block(List(DefDef("$anonfun", Nil, List(List(ValDef("x", Inferred(), None))), Inferred(), Some(Ident("x")))), Lambda(Ident("$anonfun"), None))))), Literal(Constant(()))))
+Inlined(None, Nil, Block(List(ValDef("lambda", Applied(Inferred(), List(TypeIdent("Int"), TypeIdent("Int"))), Some(Block(List(DefDef("$anonfun", Nil, List(List(ValDef("x", Inferred(), None))), Inferred(), Some(Ident("x")))), Closure(Ident("$anonfun"), None))))), Literal(Constant(()))))
 Type.SymRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.SymRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
