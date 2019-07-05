@@ -235,6 +235,7 @@ object Types {
      *  from the ThisType of `symd`'s owner.
      */
     def isArgPrefixOf(symd: SymDenotation)(implicit ctx: Context): Boolean =
+      symd.exists && !symd.owner.is(Package) && // Early exit if possible because the next check would force SymbolLoaders
       symd.isAllOf(ClassTypeParam) && {
         this match {
           case tp: ThisType => tp.cls ne symd.owner

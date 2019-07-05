@@ -72,8 +72,8 @@ class ClassfileParser(
 
   private[this] var Scala2UnpicklingMode = Mode.Scala2Unpickling
 
-  classRoot.info = (new NoCompleter).withDecls(instanceScope)
-  moduleRoot.info = (new NoCompleter).withDecls(staticScope).withSourceModule(_ => staticModule)
+  classRoot.info = NoLoader().withDecls(instanceScope)
+  moduleRoot.info = NoLoader().withDecls(staticScope).withSourceModule(_ => staticModule)
 
   private def currentIsTopLevel(implicit ctx: Context) = classRoot.owner.is(Flags.PackageClass)
 

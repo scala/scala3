@@ -375,7 +375,7 @@ abstract class SymbolLoader extends LazyType { self =>
         else
           ctx.newModuleSymbol(
             rootDenot.owner, rootDenot.name.toTermName, Synthetic, Synthetic,
-            (module, _) => new NoCompleter() withDecls newScope withSourceModule (_ => module))
+            (module, _) => NoLoader().withDecls(newScope).withSourceModule(_ => module))
             .moduleClass.denot.asClass
     }
     if (rootDenot.is(ModuleClass)) (linkedDenot, rootDenot)
@@ -415,4 +415,14 @@ class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
   override def sourceFileOrNull: AbstractFile = srcfile
   def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
     ctx.run.lateCompile(srcfile, typeCheck = ctx.settings.YretainTrees.value)
+}
+
+/** A NoCompleter which is also a SymbolLoader. */
+class NoLoader extends SymbolLoader with NoCompleter {
+  def description(implicit ctx: Context): String = "NoLoader"
+  override def sourceFileOrNull: AbstractFile = null
+  override def complete(root: SymDenotation)(implicit ctx: Context): Unit =
+    super[NoCompleter].complete(root)
+  def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
+    unsupported("doComplete")
 }

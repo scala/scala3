@@ -2180,11 +2180,11 @@ object SymDenotations {
   }
 
   /** A missing completer */
-  @sharable class NoCompleter extends LazyType {
+  trait NoCompleter extends LazyType {
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = unsupported("complete")
   }
 
-  object NoCompleter extends NoCompleter
+  @sharable object NoCompleter extends NoCompleter
 
   /** A lazy type for modules that points to the module class.
    *  Needed so that `moduleClass` works before completion.
