@@ -74,4 +74,4 @@ differences.
   `ClassTag` indicating the method's formal parameter types. `Dynamic`
   comes with `updateDynamic`.
 
-[More details](structural-types-spec.html)
+[More details](structural-types-spec.md)

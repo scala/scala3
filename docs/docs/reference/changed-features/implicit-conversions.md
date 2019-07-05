@@ -61,4 +61,4 @@ implicitly[Ordering[A]] // Ok, will use the implicit conversion from
                         // `A` to `Int` and the `Ordering` for `Int`.
 ```
 
-[More details](implicit-conversions-spec.html)
+[More details](implicit-conversions-spec.md)

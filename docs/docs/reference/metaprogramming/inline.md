@@ -5,7 +5,7 @@ title: Inline
 
 ## Inline Definitions
 
-`inline` is a new [soft modifier](../soft-modifier.html) that guarantees that a
+`inline` is a new [soft modifier](../soft-modifier.md) that guarantees that a
 definition will be inlined at the point of use. Example:
 
 ```scala

@@ -139,7 +139,7 @@ As usual, type parameters of the extension method follow the defined method name
 ### Syntax
 
 The required syntax extension just adds one clause for extension methods relative
-to the [current syntax](https://github.com/lampepfl/dotty/blob/master/docs/docs/internals/syntax.md).
+to the [current syntax](../../internals/syntax.md).
 ```
 DefSig            ::=  ...
                     |  ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] DefParamClauses

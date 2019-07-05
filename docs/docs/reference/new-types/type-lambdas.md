@@ -21,4 +21,4 @@ right-hand side:
 
     type T = [X] =>> (X, X)
 
-[More details](./type-lambdas-spec.html)
+[More details](./type-lambdas-spec.md)

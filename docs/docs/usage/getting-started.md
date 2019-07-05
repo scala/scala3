@@ -35,12 +35,12 @@ For more information, see the [Dotty Example Project](https://github.com/lampepf
 
 ### IDE support
 Start using the Dotty IDE in any Dotty project by following the
-[IDE guide](http://dotty.epfl.ch/docs/usage/ide-support.html).
+[IDE guide](./ide-support.md).
 
 ### Standalone installation
 Releases are available for download on the [Releases Section](https://github.com/lampepfl/dotty/releases)
 of the Dotty repository. Releases include three executables: `dotc` the Dotty compiler,
-`dotd` the [Dotty Documentation tool](http://dotty.epfl.ch/docs/usage/dottydoc.html) and `dotr` the Dotty REPL.
+`dotd` the [Dotty Documentation tool](./dottydoc.md) and `dotr` the Dotty REPL.
 
 ```
 .

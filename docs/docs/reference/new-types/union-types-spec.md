@@ -6,7 +6,7 @@ title: "Union Types - More Details"
 ## Syntax
 
 Syntactically, unions follow the same rules as intersections, but have a lower precedence, see
-[Intersection Types - More Details](http://lampepfl.github.io/dotty/docs/reference/new-types/intersection-types-spec.html).
+[Intersection Types - More Details](./intersection-types-spec.md).
 
 ### Interaction with pattern matching syntax
 `|` is also used in pattern matching to separate pattern alternatives and has

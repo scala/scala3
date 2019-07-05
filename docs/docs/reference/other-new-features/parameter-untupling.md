@@ -31,5 +31,5 @@ function type of the form `((T_1, ..., T_n)) => U`.
 ### Reference
 
 For more info see:
-* [More details](./parameter-untupling-spec.html)
+* [More details](./parameter-untupling-spec.md)
 * [Issue #897](https://github.com/lampepfl/dotty/issues/897).

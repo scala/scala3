@@ -466,7 +466,7 @@ and allow for undefined compiler behavior if they are not. This is analogous to
 the status of pattern guards in Scala, which are also required, but not
 verified, to be pure.
 
-[Multi-Stage Programming](./staging.html) introduces one additional methods where
+[Multi-Stage Programming](./staging.md) introduces one additional methods where
 you can expand code at runtime with a method `run`. There is also a problem with
 that invokation of `run` in splices. Consider the following expression:
 
@@ -571,7 +571,7 @@ sum
 
 ### Relationship with Whitebox Inline
 
-[Inline](./inline.html) documents inlining. The code below introduces a whitebox
+[Inline](./inline.md) documents inlining. The code below introduces a whitebox
 inline method that can calculate either a value of type `Int` or a value of type
 `String`.
 
@@ -588,4 +588,4 @@ val a: Int = defaultOf("int")
 val b: String = defaultOf("string")
 ```
 
-[More details](./macros-spec.html)
+[More details](./macros-spec.md)
