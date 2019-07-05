@@ -1317,23 +1317,24 @@ object messages {
            |"""
   }
 
-  case class AmbiguousImport(name: Name, newPrec: Int, prevPrec: Int, prevCtx: Context)(implicit ctx: Context)
-    extends Message(AmbiguousImportID) {
+  import typer.Typer.BindingPrec
 
-    import typer.Typer.BindingPrec
+  case class AmbiguousImport(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec, prevCtx: Context)(implicit ctx: Context)
+    extends Message(AmbiguousImportID) {
 
     /** A string which explains how something was bound; Depending on `prec` this is either
       *      imported by <tree>
       *  or  defined in <symbol>
       */
-    private def bindingString(prec: Int, whereFound: Context, qualifier: String = "") = {
+    private def bindingString(prec: BindingPrec, whereFound: Context, qualifier: String = "") = {
       val howVisible = prec match {
-        case BindingPrec.definition => "defined"
-        case BindingPrec.namedImport => "imported by name"
-        case BindingPrec.wildImport => "imported"
-        case BindingPrec.packageClause => "found"
+        case BindingPrec.Definition => "defined"
+        case BindingPrec.NamedImport => "imported by name"
+        case BindingPrec.WildImport => "imported"
+        case BindingPrec.PackageClause => "found"
+        case BindingPrec.NothingBound => assert(false)
       }
-      if (BindingPrec.isImportPrec(prec)) {
+      if (prec.isImportPrec) {
         ex"""$howVisible$qualifier by ${em"${whereFound.importInfo}"}"""
       } else
         ex"""$howVisible$qualifier in ${em"${whereFound.owner}"}"""
@@ -2154,11 +2155,13 @@ object messages {
       val details = if (decl.isRealMethod && previousDecl.isRealMethod) {
         // compare the signatures when both symbols represent methods
         decl.signature.matchDegree(previousDecl.signature) match {
-          case Signature.NoMatch =>
+          case Signature.MatchDegree.NoMatch =>
+            // DOTTY problem: Need to qualify MatchDegree enum vals since otherwise exhaustivity fails.
+            // To fix this, we need to export vals under singleton types.
             "" // shouldn't be reachable
-          case Signature.ParamMatch =>
+          case Signature.MatchDegree.ParamMatch =>
             "have matching parameter types."
-          case Signature.FullMatch =>
+          case Signature.MatchDegree.FullMatch =>
             i"have the same$nameAnd type after erasure."
         }
       } else ""

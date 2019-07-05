@@ -10,7 +10,7 @@ object XmlQuote {
       ${XmlQuote.impl('ctx, 'args, '{implicitly[Scope]})}
   }
 
-  private def impl(receiver: Expr[StringContext], args: Expr[Seq[given Scope => Any]], scope: Expr[Scope]): Expr[String] = '{
+  private def impl(receiver: Expr[StringContext], args: Expr[Seq[given Scope => Any]], scope: Expr[Scope]) given QuoteContext: Expr[String] = '{
     $receiver.s($args.map(_ given $scope.inner): _*)
   }
 }

@@ -83,7 +83,7 @@ object Trees {
      */
     final def tpe: T @uncheckedVariance = {
       if (myTpe == null)
-        throw new UnAssignedTypeException(this)
+        throw UnAssignedTypeException(this)
       myTpe
     }
 
@@ -857,7 +857,7 @@ object Trees {
 
   class EmptyTree[T >: Untyped] extends Thicket(Nil)(NoSource) {
     // assert(uniqueId != 1492)
-    override def withSpan(span: Span) = throw new AssertionError("Cannot change span of EmptyTree")
+    override def withSpan(span: Span) = throw AssertionError("Cannot change span of EmptyTree")
   }
 
   class EmptyValDef[T >: Untyped] extends ValDef[T](
@@ -865,11 +865,11 @@ object Trees {
     myTpe = NoType.asInstanceOf[T]
     setMods(untpd.Modifiers(PrivateLocal))
     override def isEmpty: Boolean = true
-    override def withSpan(span: Span) = throw new AssertionError("Cannot change span of EmptyValDef")
+    override def withSpan(span: Span) = throw AssertionError("Cannot change span of EmptyValDef")
   }
 
-  @sharable val theEmptyTree: EmptyTree[Type] = new EmptyTree[Type]
-  @sharable val theEmptyValDef: EmptyValDef[Type] = new EmptyValDef[Type]
+  @sharable val theEmptyTree = new EmptyTree[Type]()
+  @sharable val theEmptyValDef = new EmptyValDef[Type]()
 
   def genericEmptyValDef[T >: Untyped]: ValDef[T]       = theEmptyValDef.asInstanceOf[ValDef[T]]
   def genericEmptyTree[T >: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
@@ -992,11 +992,10 @@ object Trees {
 
     @sharable val EmptyTree: Thicket = genericEmptyTree
     @sharable val EmptyValDef: ValDef = genericEmptyValDef
-    @sharable val ContextualEmptyTree: Thicket = new EmptyTree // an empty tree marking a contextual closure
+    @sharable val ContextualEmptyTree: Thicket = EmptyTree() // an empty tree marking a contextual closure
 
     // ----- Auxiliary creation methods ------------------
 
-    def Thicket(trees: List[Tree])(implicit src: SourceFile): Thicket = new Thicket(trees)
     def Thicket(): Thicket = EmptyTree
     def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = Thicket(x1 :: x2 :: Nil)
     def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = Thicket(x1 :: x2 :: x3 :: Nil)
@@ -1036,7 +1035,7 @@ object Trees {
       def Select(tree: Tree)(qualifier: Tree, name: Name)(implicit ctx: Context): Select = tree match {
         case tree: SelectWithSig =>
           if ((qualifier eq tree.qualifier) && (name == tree.name)) tree
-          else finalize(tree, new SelectWithSig(qualifier, name, tree.sig)(sourceFile(tree)))
+          else finalize(tree, SelectWithSig(qualifier, name, tree.sig)(sourceFile(tree)))
         case tree: Select if (qualifier eq tree.qualifier) && (name == tree.name) => tree
         case _ => finalize(tree, untpd.Select(qualifier, name)(sourceFile(tree)))
       }

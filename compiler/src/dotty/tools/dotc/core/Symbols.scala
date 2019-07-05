@@ -794,7 +794,7 @@ object Symbols {
               }
             sourceFromTopLevel(ctx.withPhaseNoLater(ctx.flattenPhase))
           }
-        }//.reporting(res => i"source of $this # $id in ${denot.owner} = $res")
+        }//.reporting(i"source of $this # $id in ${denot.owner} = $result")
       mySource
     }
 

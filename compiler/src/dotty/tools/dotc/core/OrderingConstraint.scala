@@ -548,7 +548,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         merge(this.boundsMap, that.boundsMap, mergeEntries),
         merge(this.lowerMap, that.lowerMap, mergeParams),
         merge(this.upperMap, that.upperMap, mergeParams))
-  }.reporting(res => i"constraint merge $this with $other = $res", constr)
+  }.reporting(i"constraint merge $this with $other = $result", constr)
 
   def rename(tl: TypeLambda)(implicit ctx: Context): OrderingConstraint = {
     assert(contains(tl))

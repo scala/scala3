@@ -154,7 +154,7 @@ object MVmult {
     i => '{ ($arr).apply($i) }
   }
 
-  def copy_row_let: Array[Int] => (Expr[Int] => Expr[Int]) = v => {
+  def copy_row_let given QuoteContext: Array[Int] => (Expr[Int] => Expr[Int]) = v => {
     import Lifters._
     val arr: Expr[Array[Int]] = ??? // FIXME used genlet v
     i => '{ ($arr).apply($i) }

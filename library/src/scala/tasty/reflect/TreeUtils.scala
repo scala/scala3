@@ -48,9 +48,8 @@ trait TreeUtils
           foldTree(foldTree(foldTree(x, cond), thenp), elsep)
         case While(cond, body) =>
           foldTree(foldTree(x, cond), body)
-        case Lambda(meth, tpt) =>
-          val a = foldTree(x, meth)
-          tpt.fold(a)(b => foldTree(a, b))
+        case Closure(meth, tpt) =>
+          foldTree(x, meth)
         case Match(selector, cases) =>
           foldTrees(foldTree(x, selector), cases)
         case Return(expr) =>
@@ -193,8 +192,8 @@ trait TreeUtils
           Block.copy(tree)(transformStats(stats), transformTerm(expr))
         case If(cond, thenp, elsep) =>
           If.copy(tree)(transformTerm(cond), transformTerm(thenp), transformTerm(elsep))
-        case Lambda(meth, tpt) =>
-          Lambda.copy(tree)(transformTerm(meth), tpt.map(x => transformTypeTree(x)))
+        case Closure(meth, tpt) =>
+          Closure.copy(tree)(transformTerm(meth), tpt)
         case Match(selector, cases) =>
           Match.copy(tree)(transformTerm(selector), transformCaseDefs(cases))
         case Return(expr) =>

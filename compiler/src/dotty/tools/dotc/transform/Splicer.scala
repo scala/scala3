@@ -80,6 +80,8 @@ object Splicer {
   /** Tree interpreter that evaluates the tree */
   private class Interpreter(pos: SourcePosition, classLoader: ClassLoader)(implicit ctx: Context) extends AbstractInterpreter {
 
+    def checking: Boolean = false
+
     type Result = Object
 
     /** Returns the interpreted result of interpreting the code a call to the symbol with default arguments.
@@ -141,7 +143,7 @@ object Splicer {
       loadModule(fn.moduleClass)
 
     protected def interpretNew(fn: Symbol, args: => List[Result])(implicit env: Env): Object = {
-      val clazz = loadClass(fn.owner.fullName)
+      val clazz = loadClass(fn.owner.fullName.toString)
       val constr = clazz.getConstructor(paramsSig(fn): _*)
       constr.newInstance(args: _*).asInstanceOf[Object]
     }
@@ -152,11 +154,16 @@ object Splicer {
     private def loadModule(sym: Symbol): Object = {
       if (sym.owner.is(Package)) {
         // is top level object
-        val moduleClass = loadClass(sym.fullName)
+        val moduleClass = loadClass(sym.fullName.toString)
         moduleClass.getField(str.MODULE_INSTANCE_FIELD).get(null)
       } else {
         // nested object in an object
-        val clazz = loadClass(sym.fullNameSeparated(FlatName))
+        val className = {
+          val pack = sym.topLevelClass.owner
+          if (pack == defn.RootPackage || pack == defn.EmptyPackageClass) sym.flatName.toString
+          else pack.showFullName + "." + sym.flatName
+        }
+        val clazz = loadClass(className)
         clazz.getConstructor().newInstance().asInstanceOf[Object]
       }
     }
@@ -166,8 +173,8 @@ object Splicer {
       lineClassloader.loadClass(moduleClass.name.firstPart.toString)
     }
 
-    private def loadClass(name: Name): Class[_] = {
-      try classLoader.loadClass(name.toString)
+    private def loadClass(name: String): Class[_] = {
+      try classLoader.loadClass(name)
       catch {
         case _: ClassNotFoundException =>
           val msg = s"Could not find class $name in classpath$extraMsg"
@@ -277,6 +284,7 @@ object Splicer {
 
   /** Tree interpreter that tests if tree can be interpreted */
   private class CheckValidMacroBody(implicit ctx: Context) extends AbstractInterpreter {
+    def checking: Boolean = true
 
     type Result = Unit
 
@@ -312,6 +320,9 @@ object Splicer {
 
   /** Abstract Tree interpreter that can interpret calls to static methods with quoted or inline arguments */
   private abstract class AbstractInterpreter(implicit ctx: Context) {
+
+    def checking: Boolean
+
     type Env = Map[Name, Result]
     type Result
 
@@ -370,20 +381,10 @@ object Splicer {
 
       // Interpret `foo(j = x, i = y)` which it is expanded to
       // `val j$1 = x; val i$1 = y; foo(i = y, j = x)`
-      case Block(stats, expr) =>
-        var unexpected: Option[Result] = None
-        val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
-          case stat: ValDef if stat.symbol.is(Synthetic) =>
-            accEnv.updated(stat.name, interpretTree(stat.rhs)(accEnv))
-          case stat =>
-            if (unexpected.isEmpty)
-              unexpected = Some(unexpectedTree(stat))
-            accEnv
-        })
-        unexpected.getOrElse(interpretTree(expr)(newEnv))
+      case Block(stats, expr) => interpretBlock(stats, expr)
       case NamedArg(_, arg) => interpretTree(arg)
 
-      case Inlined(_, Nil, expansion) => interpretTree(expansion)
+      case Inlined(_, bindings, expansion) => interpretBlock(bindings, expansion)
 
       case Typed(expr, _) =>
         interpretTree(expr)
@@ -393,6 +394,19 @@ object Splicer {
 
       case _ =>
         unexpectedTree(tree)
+    }
+
+    private def interpretBlock(stats: List[Tree], expr: Tree)(implicit env: Env) = {
+      var unexpected: Option[Result] = None
+      val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
+        case stat: ValDef if stat.symbol.is(Synthetic) || !checking =>
+          accEnv.updated(stat.name, interpretTree(stat.rhs)(accEnv))
+        case stat =>
+          if (unexpected.isEmpty)
+            unexpected = Some(unexpectedTree(stat))
+          accEnv
+      })
+      unexpected.getOrElse(interpretTree(expr)(newEnv))
     }
 
     object Call {

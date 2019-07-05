@@ -123,12 +123,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   class XMLBlock(stats: List[Tree], expr: Tree)(implicit @constructorOnly src: SourceFile) extends Block(stats, expr)
 
   /** An enum to control checking or filtering of patterns in GenFrom trees */
-  class GenCheckMode(val x: Int) extends AnyVal
-  object GenCheckMode {
-    val Ignore = new GenCheckMode(0)  // neither filter nor check since filtering was done before
-    val Check = new GenCheckMode(1)   // check that pattern is irrefutable
-    val FilterNow = new GenCheckMode(2)  // filter out non-matching elements since we are not in -strict
-    val FilterAlways = new GenCheckMode(3) // filter out non-matching elements since pattern is prefixed by `case`
+  enum GenCheckMode {
+    case Ignore       // neither filter nor check since filtering was done before
+    case Check        // check that pattern is irrefutable
+    case FilterNow    //filter out non-matching elements since we are not in -strict
+    case FilterAlways // filter out non-matching elements since pattern is prefixed by `case`
   }
 
   // ----- Modifiers -----------------------------------------------------
@@ -247,7 +246,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def isEnumClass: Boolean = isEnum && !is(Case)
   }
 
-  @sharable val EmptyModifiers: Modifiers = new Modifiers()
+  @sharable val EmptyModifiers: Modifiers = Modifiers()
 
   // ----- TypeTrees that refer to other tree's symbols -------------------
 
@@ -285,16 +284,16 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  from the symbol in this type. These type trees have marker trees
    *  TypeRefOfSym or InfoOfSym as their originals.
    */
-  val References: Property.Key[List[DerivedTypeTree]] = new Property.Key
+  val References: Property.Key[List[DerivedTypeTree]] = Property.Key()
 
   /** Property key for TypeTrees marked with TypeRefOfSym or InfoOfSym
    *  which contains the symbol of the original tree from which this
    *  TypeTree is derived.
    */
-  val OriginalSymbol: Property.Key[Symbol] = new Property.Key
+  val OriginalSymbol: Property.Key[Symbol] = Property.Key()
 
   /** Property key for contextual Apply trees of the form `fn given arg` */
-  val ApplyGiven: Property.StickyKey[Unit] = new Property.StickyKey
+  val ApplyGiven: Property.StickyKey[Unit] = Property.StickyKey()
 
   // ------ Creation methods for untyped only -----------------
 
@@ -461,7 +460,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
 // --------- Copier/Transformer/Accumulator classes for untyped trees -----
 
-  override val cpy: UntypedTreeCopier = new UntypedTreeCopier
+  override val cpy: UntypedTreeCopier = UntypedTreeCopier()
 
   class UntypedTreeCopier extends TreeCopier {
 

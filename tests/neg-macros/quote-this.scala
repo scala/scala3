@@ -2,7 +2,7 @@ import scala.quoted._
 
 class Foo {
 
-  def f: Unit = '{
+  def f given QuoteContext: Unit = '{
     def bar[T](x: T): T = x
     bar[
       this.type  // error
@@ -22,5 +22,5 @@ class Foo {
 }
 
 object Foo {
-  def impl[T](x: Any): Expr[Unit] = '{}
+  def impl[T](x: Any) given QuoteContext: Expr[Unit] = '{}
 }

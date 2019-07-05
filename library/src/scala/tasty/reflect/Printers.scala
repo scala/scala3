@@ -201,8 +201,8 @@ trait Printers
           this += "Block(" ++= stats += ", " += expr += ")"
         case If(cond, thenp, elsep) =>
           this += "If(" += cond += ", " += thenp += ", " += elsep += ")"
-        case Lambda(meth, tpt) =>
-          this += "Lambda(" += meth += ", " += tpt += ")"
+        case Closure(meth, tpt) =>
+          this += "Closure(" += meth += ", " += tpt += ")"
         case Match(selector, cases) =>
           this += "Match(" += selector += ", " ++= cases += ")"
         case ImpliedMatch(cases) =>
@@ -406,6 +406,7 @@ trait Printers
 
       private implicit class TypeOps(buff: Buffer) {
         def +=(x: TypeOrBounds): Buffer = { visitType(x); buff }
+        def +=(x: Option[TypeOrBounds]): Buffer = { visitOption(x, visitType); buff }
         def ++=(x: List[TypeOrBounds]): Buffer = { visitList(x, visitType); buff }
       }
 
@@ -740,17 +741,6 @@ trait Printers
               printTree(body)
           }
 
-        case IsDefDef(ddef @ DefDef(name, targs, argss, _, rhsOpt)) if name.startsWith("$anonfun") =>
-          // Decompile lambda definition
-          assert(targs.isEmpty)
-          val args :: Nil = argss
-          val Some(rhs) = rhsOpt
-          inParens {
-            printArgsDefs(args)
-            this += " => "
-            printTree(rhs)
-          }
-
         case IsDefDef(ddef @ DefDef(name, targs, argss, tpt, rhs)) =>
           printDefAnnotations(ddef)
 
@@ -901,6 +891,13 @@ trait Printers
           this += " = "
           printTree(rhs)
 
+        case Lambda(params, body) =>  // must come before `Block`
+          inParens {
+            printArgsDefs(params)
+            this += " => "
+            printTree(body)
+          }
+
         case Block(stats0, expr) =>
           val stats = stats0.filter {
             case IsValDef(tree) => !tree.symbol.flags.is(Flags.Object)
@@ -910,10 +907,6 @@ trait Printers
 
         case Inlined(_, bindings, expansion) =>
           printFlatBlock(bindings, expansion)
-
-        case Lambda(meth, tpt) =>
-          // Printed in by it's DefDef
-          this
 
         case If(cond, thenp, elsep) =>
           this += highlightKeyword("if ")
@@ -982,6 +975,8 @@ trait Printers
       def flatBlock(stats: List[Statement], expr: Term): (List[Statement], Term) = {
         val flatStats = List.newBuilder[Statement]
         def extractFlatStats(stat: Statement): Unit = stat match {
+          case Lambda(_, _) =>   // must come before `Block`
+            flatStats += stat
           case Block(stats1, expr1) =>
             val it = stats1.iterator
             while (it.hasNext)
@@ -996,6 +991,8 @@ trait Printers
           case stat => flatStats += stat
         }
         def extractFlatExpr(term: Term): Term = term match {
+          case Lambda(_, _) =>   // must come before `Block`
+            term
           case Block(stats1, expr1) =>
             val it = stats1.iterator
             while (it.hasNext)
@@ -1017,23 +1014,16 @@ trait Printers
 
       def printFlatBlock(stats: List[Statement], expr: Term)(implicit elideThis: Option[Symbol]): Buffer = {
         val (stats1, expr1) = flatBlock(stats, expr)
-        // Remove Lambda nodes, lambdas are printed by their definition
         val stats2 = stats1.filter {
-          case Lambda(_, _) => false
+          case IsTypeDef(tree) => !tree.symbol.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.quoteTypeTag")
           case _ => true
         }
-        val (stats3, expr3) = expr1 match {
-          case Lambda(_, _) =>
-            val init :+ last  = stats2
-            (init, last)
-          case _ => (stats2, expr1)
-        }
-        if (stats3.isEmpty) {
-          printTree(expr3)
+        if (stats2.isEmpty) {
+          printTree(expr1)
         } else {
           this += "{"
           indented {
-            printStats(stats3, expr3)
+            printStats(stats2, expr1)
           }
           this += lineBreak() += "}"
         }
@@ -1043,6 +1033,7 @@ trait Printers
         def printSeparator(next: Tree): Unit = {
           // Avoid accidental application of opening `{` on next line with a double break
           def rec(next: Tree): Unit = next match {
+            case Lambda(_, _) => this += lineBreak()
             case Block(stats, _) if stats.nonEmpty => this += doubleLineBreak()
             case Inlined(_, bindings, _) if bindings.nonEmpty => this += doubleLineBreak()
             case Select(qual, _) => rec(qual)

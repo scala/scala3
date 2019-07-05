@@ -7,7 +7,9 @@ object Test {
     val x = '{
       val y = 1
       ${
-        inline def a(z: Int): Int = ${ impl('z) }
+        // FIXME remove context when $ will provide one
+        // Currently we would accidentally capture the one from withQuoteContext
+        inline def a(z: Int): Int = ${ impl('z) given QuoteContext.macroContext }
         val b = a(7).toExpr
         '{ y + $b }
       }

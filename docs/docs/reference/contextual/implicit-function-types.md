@@ -5,13 +5,14 @@ title: "Implicit Function Types"
 
 _Implicit functions_ are functions with (only) implicit parameters.
 Their types are _implicit function types_. Here is an example of an implicit function type:
+
 ```scala
 type Executable[T] = given ExecutionContext => T
 ```
 An implicit function is applied to synthesized arguments, in
 the same way a method with a given clause is applied. For instance:
 ```scala
-  delegate ec for ExecutionContext = ...
+  given ec as ExecutionContext = ...
 
   def f(x: Int): Executable[Int] = ...
 
@@ -26,7 +27,7 @@ implicit function literal, `E` is converted to an implicit function literal by r
 ```
 where the names `x_1`, ..., `x_n` are arbitrary. This expansion is performed
 before the expression `E` is typechecked, which means that `x_1`, ..., `x_n`
-are available as delegates in `E`.
+are available as givens in `E`.
 
 Like their types, implicit function literals are written with a `given` prefix. They differ from normal function literals in two ways:
 
@@ -39,7 +40,7 @@ For example, continuing with the previous definitions,
 
   g(22)      // is expanded to g(given ev => 22)
 
-  g(f(2))    // is expanded to g(given ev => f(2) given ev)
+  g(f(2))    // is expanded to g(given ev => (f(2) given ev))
 
   g(given ctx => f(22) given ctx) // is left as it is
 ```
@@ -82,13 +83,13 @@ with implicit function types as parameters to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
   def table(init: given Table => Unit) = {
-    delegate t for Table
+    given t as Table
     init
     t
   }
 
   def row(init: given Row => Unit) given (t: Table) = {
-    delegate r for Row
+    given r as Row
     init
     t.add(r)
   }
@@ -111,7 +112,7 @@ With that setup, the table construction code above compiles and expands to:
 ```
 ### Example: Postconditions
 
-As a larger example, here is a way to define constructs for checking arbitrary postconditions using an extension method `ensuring`so that the checked result can be referred to simply by `result`. The example combines opaque aliases, implicit function types, and extension methods to provide a zero-overhead abstraction.
+As a larger example, here is a way to define constructs for checking arbitrary postconditions using an extension method `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque aliases, implicit function types, and extension methods to provide a zero-overhead abstraction.
 
 ```scala
 object PostConditions {
@@ -119,7 +120,8 @@ object PostConditions {
 
   def result[T] given (r: WrappedResult[T]): T = r
 
-  def (x: T) ensuring [T] (condition: given WrappedResult[T] => Boolean): T =
+  def (x: T)
+      ensuring[T](condition: given WrappedResult[T] => Boolean): T =
     assert(condition) given x
 }
 import PostConditions.{ensuring, result}
@@ -128,9 +130,9 @@ val s = List(1, 2, 3).sum.ensuring(result == 6)
 ```
 **Explanations**: We use an implicit function type `given WrappedResult[T] => Boolean`
 as the type of the condition of `ensuring`. An argument to `ensuring` such as
-`(result == 6)` will therefore have a delegate for type `WrappedResult[T]` in
+`(result == 6)` will therefore have a given instance of type `WrappedResult[T]` in
 scope to pass along to the `result` method. `WrappedResult` is a fresh type, to make sure
-that we do not get unwanted delegates in scope (this is good practice in all cases
+that we do not get unwanted givens in scope (this is good practice in all cases
 where implicit parameters are involved). Since `WrappedResult` is an opaque type alias, its
 values need not be boxed, and since `ensuring` is added as an extension method, its argument
 does not need boxing either. Hence, the implementation of `ensuring` is as about as efficient

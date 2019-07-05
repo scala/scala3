@@ -3,19 +3,19 @@ import quoted._
 object Test {
   def main(args: Array[String]): Unit = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    val q = f
+    def q given QuoteContext = f
     println(run(q))
     println(withQuoteContext(q.show))
   }
 
-  def f: Expr[Int] = '{
+  def f given QuoteContext: Expr[Int] = '{
     def ff: Int = {
       $g
     }
     ff
   }
 
-  def g: Expr[Int] = '{
+  def g given QuoteContext: Expr[Int] = '{
     val a = 9
     a + 0
   }

@@ -552,26 +552,48 @@ trait TreeOps extends Core {
     def expr(implicit ctx: Context): Term = kernel.Block_expr(self)
   }
 
-  object IsLambda {
-    /** Matches any Lambda and returns it */
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Lambda] = kernel.matchLambda(tree)
+  object IsClosure {
+    /** Matches any Closure and returns it */
+    def unapply(tree: Tree)(implicit ctx: Context): Option[Closure] = kernel.matchClosure(tree)
   }
 
+  object Closure {
+
+    def apply(meth: Term, tpt: Option[Type])(implicit ctx: Context): Closure =
+      kernel.Closure_apply(meth, tpt)
+
+    def copy(original: Tree)(meth: Tree, tpt: Option[Type])(implicit ctx: Context): Closure =
+      kernel.Closure_copy(original)(meth, tpt)
+
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[Type])] =
+      kernel.matchClosure(tree).map(x => (x.meth, x.tpeOpt))
+  }
+
+  implicit class ClosureAPI(self: Closure) {
+    def meth(implicit ctx: Context): Term = kernel.Closure_meth(self)
+    def tpeOpt(implicit ctx: Context): Option[Type] = kernel.Closure_tpeOpt(self)
+  }
+
+  /** A lambda `(...) => ...` in the source code is represented as
+   *  a local method and a closure:
+   *
+   *  {
+   *    def m(...) = ...
+   *    closure(m)
+   *  }
+   *
+   *  @note Due to the encoding, in pattern matches the case for `Lambda`
+   *        should come before the case for `Block` to avoid mishandling
+   *        of `Lambda`.
+   */
   object Lambda {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(List[ValDef], Term)] = tree match {
+      case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
+      if ddef.symbol == meth.symbol =>
+        Some(params, body)
 
-    def apply(meth: Term, tpt: Option[TypeTree])(implicit ctx: Context): Lambda =
-      kernel.Lambda_apply(meth, tpt)
-
-    def copy(original: Tree)(meth: Tree, tpt: Option[TypeTree])(implicit ctx: Context): Lambda =
-      kernel.Lambda_copy(original)(meth, tpt)
-
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Option[TypeTree])] =
-      kernel.matchLambda(tree).map(x => (x.meth, x.tptOpt))
-  }
-
-  implicit class LambdaAPI(self: Lambda) {
-    def meth(implicit ctx: Context): Term = kernel.Lambda_meth(self)
-    def tptOpt(implicit ctx: Context): Option[TypeTree] = kernel.Lambda_tptOpt(self)
+      case _ => None
+    }
   }
 
   object IsIf {

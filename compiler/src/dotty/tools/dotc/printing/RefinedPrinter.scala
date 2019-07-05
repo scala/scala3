@@ -319,7 +319,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => tree
     }
 
-    def importText(deleg: Boolean, expr: Tree, selectors: List[Tree]) = {
+    def importText(givenOnly: Boolean, expr: Tree, selectors: List[Tree]) = {
       def selectorText(sel: Tree): Text = sel match {
         case Thicket(l :: r :: Nil) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
         case _: Ident => toTextGlobal(sel)
@@ -329,7 +329,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         case id :: Nil => toText(id)
         case _ => "{" ~ Text(selectors map selectorText, ", ") ~ "}"
       }
-      (keywordText("delegate ") provided deleg) ~
+      (keywordText("given ") provided givenOnly) ~
       toTextLocal(expr) ~ "." ~ selectorsText
     }
 

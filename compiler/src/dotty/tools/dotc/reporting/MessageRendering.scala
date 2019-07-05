@@ -119,7 +119,7 @@ trait MessageRendering {
         else s"${pos.source.file.toString}: offset ${pos.start} (missing source file)"
       val errId =
         if (message.errorId ne ErrorMessageID.NoExplanationID) {
-          val errorNumber = message.errorId.errorNumber()
+          val errorNumber = message.errorId.errorNumber
           s"[E${"0" * (3 - errorNumber.toString.length) + errorNumber}] "
         } else ""
       val kind =

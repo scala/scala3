@@ -4,7 +4,7 @@ object Test {
   implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = {
-    val res = '{
+    def res given QuoteContext = '{
       val x: Option[Int] = Option(3)
       if (x.isInstanceOf[Some[_]]) Option(1)
       else None

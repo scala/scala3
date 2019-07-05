@@ -153,7 +153,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.SeqLiteral(elems, elemtpt), elems, elemtpt)
 
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit ctx: Context): JavaSeqLiteral =
-    ta.assignType(new untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt).asInstanceOf[JavaSeqLiteral]
+    ta.assignType(untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt).asInstanceOf[JavaSeqLiteral]
 
   def Inlined(call: Tree, bindings: List[MemberDef], expansion: Tree)(implicit ctx: Context): Inlined =
     ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
@@ -231,7 +231,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def valueParamss(tp: Type): (List[List[TermSymbol]], Type) = tp match {
       case tp: MethodType =>
         val isParamDependent = tp.isParamDependent
-        val previousParamRefs = if (isParamDependent) new mutable.ListBuffer[TermRef]() else null
+        val previousParamRefs = if (isParamDependent) mutable.ListBuffer[TermRef]() else null
 
         def valueParam(name: TermName, origInfo: Type): TermSymbol = {
           val maybeImplicit =
@@ -294,7 +294,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val newTypeParams =
       for (tparam <- cls.typeParams if !(bodyTypeParams contains tparam))
       yield TypeDef(tparam)
-    val findLocalDummy = new FindLocalDummyAccumulator(cls)
+    val findLocalDummy = FindLocalDummyAccumulator(cls)
     val localDummy = ((NoSymbol: Symbol) /: body)(findLocalDummy.apply)
       .orElse(ctx.newLocalDummy(cls))
     val impl = untpd.Template(constr, parents, Nil, selfType, newTypeParams ++ body)
@@ -391,7 +391,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   private def followOuterLinks(t: Tree)(implicit ctx: Context) = t match {
     case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
       // after erasure outer paths should be respected
-      new ExplicitOuter.OuterOps(ctx).path(toCls = t.tpe.widen.classSymbol)
+      ExplicitOuter.OuterOps(ctx).path(toCls = t.tpe.widen.classSymbol)
     case t =>
       t
   }
@@ -538,9 +538,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   override val cpy: TypedTreeCopier = // Type ascription needed to pick up any new members in TreeCopier (currently there are none)
-    new TypedTreeCopier
+    TypedTreeCopier()
 
-  val cpyBetweenPhases: TimeTravellingTreeCopier = new TimeTravellingTreeCopier
+  val cpyBetweenPhases: TimeTravellingTreeCopier = TimeTravellingTreeCopier()
 
   class TypedTreeCopier extends TreeCopier {
     def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[Type] =
@@ -746,16 +746,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     def shallowFold[T](z: T)(op: (T, tpd.Tree) => T)(implicit ctx: Context): T =
-      new ShallowFolder(op).apply(z, tree)
+      ShallowFolder(op).apply(z, tree)
 
     def deepFold[T](z: T)(op: (T, tpd.Tree) => T)(implicit ctx: Context): T =
-      new DeepFolder(op).apply(z, tree)
+      DeepFolder(op).apply(z, tree)
 
     def find[T](pred: (tpd.Tree) => Boolean)(implicit ctx: Context): Option[tpd.Tree] =
       shallowFold[Option[tpd.Tree]](None)((accum, tree) => if (pred(tree)) Some(tree) else accum)
 
     def subst(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): ThisTree =
-      new TreeTypeMap(substFrom = from, substTo = to).apply(tree)
+      TreeTypeMap(substFrom = from, substTo = to).apply(tree)
 
     /** Change owner from `from` to `to`. If `from` is a weak owner, also change its
      *  owner to `to`, and continue until a non-weak owner is reached.
@@ -766,7 +766,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           loop(from.owner, from :: froms, to :: tos)
         else {
           //println(i"change owner ${from :: froms}%, % ==> $tos of $tree")
-          new TreeTypeMap(oldOwners = from :: froms, newOwners = tos).apply(tree)
+          TreeTypeMap(oldOwners = from :: froms, newOwners = tos).apply(tree)
         }
       }
       if (from == to) tree else loop(from, Nil, to :: Nil)
@@ -788,7 +788,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
       val owners = ownerAcc(immutable.Set.empty[Symbol], tree).toList
       val newOwners = List.fill(owners.size)(newOwner)
-      new TreeTypeMap(oldOwners = owners, newOwners = newOwners).apply(tree)
+      TreeTypeMap(oldOwners = owners, newOwners = newOwners).apply(tree)
     }
 
     /** After phase `trans`, set the owner of every definition in this tree that was formerly
@@ -1008,7 +1008,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     /** Replace Ident nodes references to the underlying tree that defined them */
-    def underlying(implicit ctx: Context): Tree = new MapToUnderlying().transform(tree)
+    def underlying(implicit ctx: Context): Tree = MapToUnderlying().transform(tree)
 
     // --- Higher order traversal methods -------------------------------
 
@@ -1030,7 +1030,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** All subtrees of this tree that satisfy predicate `p`. */
     def filterSubTrees(f: Tree => Boolean)(implicit ctx: Context): List[Tree] = {
-      val buf = new mutable.ListBuffer[Tree]
+      val buf = mutable.ListBuffer[Tree]()
       foreachSubTree { tree => if (f(tree)) buf += tree }
       buf.toList
     }
@@ -1137,7 +1137,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type],
                       expectedType: Type, isContextual: Boolean = false)(implicit ctx: Context): Tree = {
     val typer = ctx.typer
-    val proto = new FunProtoTyped(args, expectedType)(typer, isContextual)
+    val proto = FunProtoTyped(args, expectedType)(typer, isContextual)
     val denot = receiver.tpe.member(method)
     assert(denot.exists, i"no member $receiver . $method, members = ${receiver.tpe.decls}")
     val selected =
@@ -1162,7 +1162,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val fun = receiver.select(selected).appliedToTypes(targs)
 
     val apply = untpd.Apply(fun, args)
-    new typer.ApplyToTyped(apply, fun, selected, args, expectedType).result.asInstanceOf[Tree] // needed to handle varargs
+    typer.ApplyToTyped(apply, fun, selected, args, expectedType).result.asInstanceOf[Tree] // needed to handle varargs
   }
 
   @tailrec
@@ -1221,7 +1221,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** A key to be used in a context property that tracks enclosing inlined calls */
-  private val InlinedCalls = new Property.Key[List[Tree]]
+  private val InlinedCalls = Property.Key[List[Tree]]()
 
   /** Record an enclosing inlined call.
    *  EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.

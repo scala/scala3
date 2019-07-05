@@ -4,13 +4,13 @@ import scala.quoted._
 object Test {
   def main(args: Array[String]): Unit = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    val classExpr = '{
+    def classExpr given QuoteContext = '{
       class A {
         override def toString: String = "Foo"
       }
       new A
     }
-    val classExpr2 = '{
+    def classExpr2 given QuoteContext = '{
       class A {
         override def toString: String = "Bar"
       }

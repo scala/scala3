@@ -1,5 +1,6 @@
+import scala.quoted._
 class Foo {
-  '{
+  def test given QuoteContext = '{
     ${3} // error
     ${new Object} // error
     ${"abc"} // error
@@ -7,5 +8,5 @@ class Foo {
     ${new Foo} // error
   }
 
-  def unary_~ : Int = 9
+  def unary_$ : Int = 9
 }

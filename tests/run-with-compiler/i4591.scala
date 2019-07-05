@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Test {
 
-  def foo[T: Type](init: Expr[T]): Expr[Unit] = '{
+  def foo[T: Type](init: Expr[T]) given QuoteContext: Expr[Unit] = '{
     var x = $init
     println(x)
   }

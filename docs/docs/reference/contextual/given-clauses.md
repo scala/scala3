@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Given Clauses"
+title: "Given Parameters"
 ---
 
 Functional programming tends to express most dependencies as simple function parameterization.
@@ -9,7 +9,7 @@ call trees where the same value is passed over and over again in long call chain
 functions. Given clauses can help here since they enable the compiler to synthesize
 repetitive arguments instead of the programmer having to write them explicitly.
 
-For example, given the [delegates](./delegates.md) defined previously,
+For example, with the [given instances](./delegates.md) defined previously,
 a maximum function that works for any arguments for which an ordering exists can be defined as follows:
 ```scala
 def max[T](x: T, y: T) given (ord: Ord[T]): T =
@@ -73,8 +73,8 @@ def f given (u: Universe) given (x: u.Context) = ...
 However, all `given` clauses in a definition must come after any normal parameter clauses.
 Multiple given clauses are matched left-to-right in applications. Example:
 ```scala
-delegate global for Universe { type Context = ... }
-delegate ctx for global.Context { ... }
+given global as Universe { type Context = ... }
+given ctx as global.Context { ... }
 ```
 Then the following calls are all valid (and normalize to the last one)
 ```scala
@@ -84,10 +84,10 @@ f
 ```
 But `f given ctx` would give a type error.
 
-## Summoning Delegates
+## Summoning Instances
 
-A method `the` in `Predef` returns the delegate for a given type. For example,
-the delegate for `Ord[List[Int]]` is produced by
+A method `the` in `Predef` returns the given instance of a specific type. For example,
+the given instance for `Ord[List[Int]]` is produced by
 ```scala
 the[Ord[List[Int]]]  // reduces to ListOrd given IntOrd
 ```

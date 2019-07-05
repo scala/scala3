@@ -1,8 +1,8 @@
 import quoted._
 
 object Test {
-  def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  def main(args: Array[String]): Unit = withQuoteContext {
 
     val q = '{
       val a = '{4}
@@ -12,6 +12,6 @@ object Test {
 
     }
 
-    println(withQuoteContext(q.show))
+    println(q.show)
   }
 }

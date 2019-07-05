@@ -17,8 +17,6 @@ import dotty.tools.dotc.util.SourceFile
 
 import scala.tasty.reflect.Kernel
 
-import delegate Flags.FlagOps // DOTTY problem: this line can be dropped in 0.17 once #6712 is in bootstrap.
-
 class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.SourcePosition) extends Kernel {
 
   private implicit def ctx: core.Contexts.Context = rootContext
@@ -506,21 +504,21 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Inlined_copy(original: Tree)(call: Option[Term | TypeTree], bindings: List[Definition], expansion: Term)(implicit ctx: Context): Inlined =
     tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
 
-  type Lambda = tpd.Closure
+  type Closure = tpd.Closure
 
-  def matchLambda(x: Term)(implicit ctx: Context): Option[Lambda] = x match {
+  def matchClosure(x: Term)(implicit ctx: Context): Option[Closure] = x match {
     case x: tpd.Closure => Some(x)
     case _ => None
   }
 
-  def Lambda_meth(self: Lambda)(implicit ctx: Context): Term = self.meth
-  def Lambda_tptOpt(self: Lambda)(implicit ctx: Context): Option[TypeTree] = optional(self.tpt)
+  def Closure_meth(self: Closure)(implicit ctx: Context): Term = self.meth
+  def Closure_tpeOpt(self: Closure)(implicit ctx: Context): Option[Type] = optional(self.tpt).map(_.tpe)
 
-  def Lambda_apply(meth: Term, tpt: Option[TypeTree])(implicit ctx: Context): Lambda =
-    withDefaultPos(ctx => tpd.Closure(Nil, meth, tpt.getOrElse(tpd.EmptyTree))(ctx))
+  def Closure_apply(meth: Term, tpe: Option[Type])(implicit ctx: Context): Closure =
+    withDefaultPos(ctx => tpd.Closure(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))(ctx))
 
-  def Lambda_copy(original: Tree)(meth: Tree, tpt: Option[TypeTree])(implicit ctx: Context): Lambda =
-    tpd.cpy.Closure(original)(Nil, meth, tpt.getOrElse(tpd.EmptyTree))
+  def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type])(implicit ctx: Context): Closure =
+    tpd.cpy.Closure(original)(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
 
   type If = tpd.If
 

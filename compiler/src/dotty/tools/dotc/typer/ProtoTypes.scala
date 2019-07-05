@@ -401,7 +401,7 @@ object ProtoTypes {
         resType match {
           case SelectionProto(name: TermName, mbrType, _, _) =>
             ctx.typer.hasExtensionMethod(tp, name, argType, mbrType)
-              //.reporting(res => i"has ext $tp $name $argType $mbrType: $res")
+              //.reporting(i"has ext $tp $name $argType $mbrType: $result")
           case _ =>
             false
         }

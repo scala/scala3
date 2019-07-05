@@ -54,7 +54,7 @@ package object quoted {
   implicit object ExprOps {
     def (x: T) toExpr[T: Liftable] given QuoteContext: Expr[T] = the[Liftable[T]].toExpr(x)
 
-    def (list: List[Expr[T]]) toExprOfList[T] given Type[T]: Expr[List[T]] = list match {
+    def (list: List[Expr[T]]) toExprOfList[T: Type] given QuoteContext: Expr[List[T]] = list match {
       case x :: xs  => '{ $x :: ${xs.toExprOfList} }
       case Nil => '{ Nil }
     }

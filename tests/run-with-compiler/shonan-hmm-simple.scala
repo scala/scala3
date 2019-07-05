@@ -98,7 +98,7 @@ class StaticVecOps[T] extends VecOps[Int, T] {
   }
 }
 
-class ExprVecOps[T: Type] extends VecOps[Expr[Int], Expr[T]] {
+class ExprVecOps[T: Type] given QuoteContext extends VecOps[Expr[Int], Expr[T]] {
   val reduce: ((Expr[T], Expr[T]) => Expr[T], Expr[T], Vec[Expr[Int], Expr[T]]) => Expr[T] = (plus, zero, vec) => '{
     var sum = $zero
     var i = 0
@@ -211,7 +211,7 @@ object Test {
     // Staged loop of dot product on vectors of Int or Expr[Int]
     def dotIntOptExpr given QuoteContext = new Blas1(RingPVInt, new StaticVecOps).dot
     // will generate the code '{ ((arr: scala.Array[scala.Int]) => arr.apply(1).+(arr.apply(3))) }
-    val staticVec = Vec[Int, PV[Int]](5, i => Sta((i % 2)))
+    def staticVec given QuoteContext = Vec[Int, PV[Int]](5, i => Sta((i % 2)))
     def code given QuoteContext = '{(arr: Array[Int]) => ${dotIntOptExpr(Vec(5, i => Dyn('{arr(${i})})), staticVec).expr} }
     println(withQuoteContext(code.show))
     println()

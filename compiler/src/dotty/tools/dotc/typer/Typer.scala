@@ -47,13 +47,10 @@ object Typer {
   /** The precedence of bindings which determines which of several bindings will be
    *  accessed by an Ident.
    */
-  object BindingPrec {
-    val definition: Int = 4
-    val namedImport: Int = 3
-    val wildImport: Int = 2
-    val packageClause: Int = 1
-    val nothingBound: Int = 0
-    def isImportPrec(prec: Int): Boolean = prec == namedImport || prec == wildImport
+  enum BindingPrec {
+    case NothingBound, PackageClause, WildImport, NamedImport, Definition
+    
+    def isImportPrec = this == NamedImport || this == WildImport
   }
 
   /** Assert tree has a position, unless it is empty or a typed splice */
@@ -149,7 +146,7 @@ class Typer extends Namer
      *  @param prevCtx     The context of the previous denotation,
      *                     or else `NoContext` if nothing was found yet.
      */
-    def findRefRecur(previous: Type, prevPrec: Int, prevCtx: Context)(implicit ctx: Context): Type = {
+    def findRefRecur(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(implicit ctx: Context): Type = {
       import BindingPrec._
 
       /** Check that any previously found result from an inner context
@@ -161,11 +158,11 @@ class Typer extends Namer
        *                   previous and new contexts do not have the same scope, we select
        *                   the previous (inner) definition. This models what scalac does.
        */
-      def checkNewOrShadowed(found: Type, newPrec: Int, scala2pkg: Boolean = false)(implicit ctx: Context): Type =
+      def checkNewOrShadowed(found: Type, newPrec: BindingPrec, scala2pkg: Boolean = false)(implicit ctx: Context): Type =
         if (!previous.exists || ctx.typeComparer.isSameRef(previous, found)) found
         else if ((prevCtx.scope eq ctx.scope) &&
-                 (newPrec == definition ||
-                  newPrec == namedImport && prevPrec == wildImport)) {
+                 (newPrec == Definition ||
+                  newPrec == NamedImport && prevPrec == WildImport)) {
           // special cases: definitions beat imports, and named imports beat
           // wildcard imports, provided both are in contexts with same scope
           found
@@ -189,9 +186,9 @@ class Typer extends Namer
           var excl = EmptyFlags
           if (imp.importDelegate) reqd |= Delegate else excl |= Delegate
           var denot = pre.memberBasedOnFlags(name, reqd, excl).accessibleFrom(pre)(refctx)
-          if (checkBounds && imp.impliedBound.exists)
+          if (checkBounds && imp.wildcardBound.exists)
             denot = denot.filterWithPredicate(mbr =>
-              NoViewsAllowed.normalizedCompatible(mbr.info, imp.impliedBound, keepConstraint = false))
+              NoViewsAllowed.normalizedCompatible(mbr.info, imp.wildcardBound, keepConstraint = false))
 
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the
@@ -234,7 +231,7 @@ class Typer extends Namer
        */
       def wildImportRef(imp: ImportInfo)(implicit ctx: Context): Type =
         if (imp.isWildcardImport && !imp.excluded.contains(name.toTermName) && name != nme.CONSTRUCTOR)
-          selection(imp, name, checkBounds = imp.importDelegate)
+          selection(imp, name, checkBounds = true)
         else NoType
 
       /** Is (some alternative of) the given predenotation `denot`
@@ -252,9 +249,9 @@ class Typer extends Namer
       }
 
       /** Would import of kind `prec` be not shadowed by a nested higher-precedence definition? */
-      def isPossibleImport(prec: Int)(implicit ctx: Context) =
+      def isPossibleImport(prec: BindingPrec)(implicit ctx: Context) =
         !noImports &&
-        (prevPrec < prec || prevPrec == prec && (prevCtx.scope eq ctx.scope))
+        (prevPrec.ordinal < prec.ordinal || prevPrec == prec && (prevCtx.scope eq ctx.scope))
 
       @tailrec def loop(lastCtx: Context)(implicit ctx: Context): Type = {
         if (ctx.scope == null) previous
@@ -309,14 +306,14 @@ class Typer extends Namer
                   effectiveOwner.thisType.select(name, defDenot)
                 }
               if (!curOwner.is(Package) || isDefinedInCurrentUnit(defDenot))
-                result = checkNewOrShadowed(found, definition) // no need to go further out, we found highest prec entry
+                result = checkNewOrShadowed(found, Definition) // no need to go further out, we found highest prec entry
               else {
                 if (ctx.scala2Mode && !foundUnderScala2.exists)
-                  foundUnderScala2 = checkNewOrShadowed(found, definition, scala2pkg = true)
+                  foundUnderScala2 = checkNewOrShadowed(found, Definition, scala2pkg = true)
                 if (defDenot.symbol.is(Package))
-                  result = checkNewOrShadowed(previous orElse found, packageClause)
-                else if (prevPrec < packageClause)
-                  result = findRefRecur(found, packageClause, ctx)(ctx.outer)
+                  result = checkNewOrShadowed(previous orElse found, PackageClause)
+                else if (prevPrec.ordinal < PackageClause.ordinal)
+                  result = findRefRecur(found, PackageClause, ctx)(ctx.outer)
               }
             }
           }
@@ -329,14 +326,14 @@ class Typer extends Namer
               if (curImport.unimported.exists) unimported += curImport.unimported
             if (ctx.owner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
               previous // no more conflicts possible in this case
-            else if (isPossibleImport(namedImport) && (curImport ne outer.importInfo)) {
+            else if (isPossibleImport(NamedImport) && (curImport ne outer.importInfo)) {
               val namedImp = namedImportRef(curImport)
               if (namedImp.exists)
-                findRefRecur(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
-              else if (isPossibleImport(wildImport) && !curImport.sym.isCompleting) {
+                findRefRecur(checkNewOrShadowed(namedImp, NamedImport), NamedImport, ctx)(outer)
+              else if (isPossibleImport(WildImport) && !curImport.sym.isCompleting) {
                 val wildImp = wildImportRef(curImport)
                 if (wildImp.exists)
-                  findRefRecur(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
+                  findRefRecur(checkNewOrShadowed(wildImp, WildImport), WildImport, ctx)(outer)
                 else {
                   updateUnimported()
                   loop(ctx)(outer)
@@ -356,7 +353,7 @@ class Typer extends Namer
       loop(NoContext)(ctx)
     }
 
-    findRefRecur(NoType, BindingPrec.nothingBound, NoContext)
+    findRefRecur(NoType, BindingPrec.NothingBound, NoContext)
   }
 
   /** Attribute an identifier consisting of a simple name or wildcard
@@ -1962,15 +1959,18 @@ class Typer extends Namer
       case untpd.TypSplice(innerType) if tree.isType =>
         ctx.warning("Canceled splice directly inside a quote. '[ ${ XYZ } ] is equivalent to XYZ.", tree.sourcePos)
         typed(innerType, pt)
-      case quoted if quoted.isType =>
-        ctx.compilationUnit.needsStaging = true
-        typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), quoted :: Nil), pt)(quoteContext).withSpan(tree.span)
       case quoted =>
         ctx.compilationUnit.needsStaging = true
-        if (ctx.mode.is(Mode.Pattern) && level == 0)
-          typedQuotePattern(quoted, pt, tree.span)
-        else
-          typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuoteR), quoted), pt)(quoteContext).withSpan(tree.span)
+
+        val qctx = inferImplicitArg(defn.QuoteContextType, tree.span)
+        if (level == 0 && qctx.tpe.isInstanceOf[SearchFailureType])
+          ctx.error(missingArgMsg(qctx, defn.QuoteContextType, ""), ctx.source.atSpan(tree.span))
+
+        val tree1 =
+          if (quoted.isType) typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), quoted :: Nil), pt)(quoteContext)
+          else if (ctx.mode.is(Mode.Pattern) && level == 0) typedQuotePattern(quoted, pt, qctx)
+          else typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuoteR), quoted), pt)(quoteContext)
+        tree1.withSpan(tree.span)
     }
   }
 
@@ -2019,7 +2019,7 @@ class Typer extends Namer
    *        ) => ...
    *  ```
    */
-  private def typedQuotePattern(quoted: untpd.Tree, pt: Type, quoteSpan: Span)(implicit ctx: Context): Tree = {
+  private def typedQuotePattern(quoted: untpd.Tree, pt: Type, qctx: tpd.Tree)(implicit ctx: Context): Tree = {
     val exprPt = pt.baseType(defn.QuotedExprClass)
     val quotedPt = if (exprPt.exists) exprPt.argTypesHi.head else defn.AnyType
     val quoted1 = typedExpr(quoted, quotedPt)(quoteContext.addMode(Mode.QuotedPattern))
@@ -2068,7 +2068,7 @@ class Typer extends Namer
       implicits =
         ref(defn.InternalQuoted_exprQuoteR).appliedToType(shape.tpe).appliedTo(shape) ::
           Literal(Constant(typeBindings.nonEmpty)) ::
-          implicitArgTree(defn.QuoteContextType, quoteSpan) :: Nil,
+          qctx :: Nil,
       patterns = splicePat :: Nil,
       proto = pt)
   }
@@ -2565,7 +2565,7 @@ class Typer extends Namer
               typed(untpd.Select(untpd.New(untpd.TypedSplice(tpt)), nme.CONSTRUCTOR), pt)
           }
           recur(tycon, pt)
-            .reporting(res => i"try new $tree -> $res", typr)
+            .reporting(i"try new $tree -> $result", typr)
         }
       } { (nu, nuState) =>
         if (nu.isEmpty) fallBack
