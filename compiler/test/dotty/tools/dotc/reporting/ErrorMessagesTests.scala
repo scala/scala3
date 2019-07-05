@@ -500,8 +500,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertMessageCount(1, messages)
       val AmbiguousImport(name, newPrec, prevPrec, prevCtx) :: Nil = messages
       assertEquals("ToBeImported", name.show)
-      assertEquals(namedImport, newPrec)
-      assertEquals(namedImport, prevPrec)
+      assertEquals(NamedImport, newPrec)
+      assertEquals(NamedImport, prevPrec)
     }
 
   @Test def methodDoesNotTakeParameters =
