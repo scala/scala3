@@ -932,7 +932,7 @@ class ClassfileParser(
             staticScope.lookup(name)
           else {
             var module = sym.companionModule
-            if (!module.exists && sym.isAbsent)
+            if (!module.exists && sym.isAbsent())
               module = sym.scalacLinkedClass
             module.info.member(name).symbol
           }
