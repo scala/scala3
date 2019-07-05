@@ -7,7 +7,7 @@ object Macros {
 
   inline def testMacro: Unit = ${impl}
 
-  def impl given QuoteContext: Expr[Unit] = {
+  def impl: Expr[Unit] = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     // 2 is a lifted constant
     val show1 = withQuoteContext(power(2, 3.0).show)
@@ -22,25 +22,26 @@ object Macros {
     val show3 = withQuoteContext(power('{2}, 5.0).show)
     val run3 =  run(power('{2}, 5.0))
 
-    // n2 is clearly not a constant
-    // FIXME
-//    val n2 = '{ println("foo"); 2 }
-//    val show4 = (power(n2, 6.0).show)
-//    val run4  = (power(n2, 6.0).run)
+    // n2 is not a constant
+    def n2 given QuoteContext = '{ println("foo"); 2 }
+    val show4 = withQuoteContext(power(n2, 6.0).show)
+    val run4  = run(power(n2, 6.0))
 
-    '{
-      println(${show1})
-      println(${run1})
-      println()
-      println(${show2})
-      println(${run2})
-      println()
-      println(${show3})
-      println(${run3})
-//      println()
-//      println(${show4})
-//      println(${run4})
-    }
+    withQuoteContext(
+      '{
+        println(${show1})
+        println(${run1})
+        println()
+        println(${show2})
+        println(${run2})
+        println()
+        println(${show3})
+        println(${run3})
+        println()
+        println(${show4})
+        println(${run4})
+      }
+    )
   }
 
   def power(n: Expr[Int], x: Expr[Double]) given QuoteContext: Expr[Double] = {

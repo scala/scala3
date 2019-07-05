@@ -1962,15 +1962,18 @@ class Typer extends Namer
       case untpd.TypSplice(innerType) if tree.isType =>
         ctx.warning("Canceled splice directly inside a quote. '[ ${ XYZ } ] is equivalent to XYZ.", tree.sourcePos)
         typed(innerType, pt)
-      case quoted if quoted.isType =>
-        ctx.compilationUnit.needsStaging = true
-        typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), quoted :: Nil), pt)(quoteContext).withSpan(tree.span)
       case quoted =>
         ctx.compilationUnit.needsStaging = true
-        if (ctx.mode.is(Mode.Pattern) && level == 0)
-          typedQuotePattern(quoted, pt, tree.span)
-        else
-          typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuoteR), quoted), pt)(quoteContext).withSpan(tree.span)
+
+        val qctx = inferImplicitArg(defn.QuoteContextType, tree.span)
+        if (level == 0 && qctx.tpe.isInstanceOf[SearchFailureType])
+          ctx.error(missingArgMsg(qctx, defn.QuoteContextType, ""), ctx.source.atSpan(tree.span))
+
+        val tree1 =
+          if (quoted.isType) typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), quoted :: Nil), pt)(quoteContext)
+          else if (ctx.mode.is(Mode.Pattern) && level == 0) typedQuotePattern(quoted, pt, qctx)
+          else typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuoteR), quoted), pt)(quoteContext)
+        tree1.withSpan(tree.span)
     }
   }
 
@@ -2019,7 +2022,7 @@ class Typer extends Namer
    *        ) => ...
    *  ```
    */
-  private def typedQuotePattern(quoted: untpd.Tree, pt: Type, quoteSpan: Span)(implicit ctx: Context): Tree = {
+  private def typedQuotePattern(quoted: untpd.Tree, pt: Type, qctx: tpd.Tree)(implicit ctx: Context): Tree = {
     val exprPt = pt.baseType(defn.QuotedExprClass)
     val quotedPt = if (exprPt.exists) exprPt.argTypesHi.head else defn.AnyType
     val quoted1 = typedExpr(quoted, quotedPt)(quoteContext.addMode(Mode.QuotedPattern))
@@ -2068,7 +2071,7 @@ class Typer extends Namer
       implicits =
         ref(defn.InternalQuoted_exprQuoteR).appliedToType(shape.tpe).appliedTo(shape) ::
           Literal(Constant(typeBindings.nonEmpty)) ::
-          implicitArgTree(defn.QuoteContextType, quoteSpan) :: Nil,
+          qctx :: Nil,
       patterns = splicePat :: Nil,
       proto = pt)
   }

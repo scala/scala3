@@ -8,10 +8,9 @@ object Test {
     def f(x: Int): Int = ${eval1('f)}
   }
 
-  def main(args: Array[String]): Unit = run {
+  def main(args: Array[String]): Unit = withQuoteContext {
     val p = peval1()
     println(p.show)
-    '{}
   }
 
 }

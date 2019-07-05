@@ -11,7 +11,7 @@ object Test {
     println(ack3(4))
   }
 
-  def ackermann(m: Int): Expr[Int => Int] = {
+  def ackermann(m: Int) given QuoteContext: Expr[Int => Int] = {
     if (m == 0) '{ n => n + 1 }
     else '{ n =>
       def `ackermann(m-1)`(n: Int): Int = ${ackermann(m - 1)('n)} // Expr[Int => Int] applied to Expr[Int]

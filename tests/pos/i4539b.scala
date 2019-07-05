@@ -1,4 +1,5 @@
-object Foo {
+import scala.quoted._
+def test given QuoteContext = {
   def f = {
     {
       '[String]

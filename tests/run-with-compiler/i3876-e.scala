@@ -3,9 +3,9 @@ object Test {
   def main(args: Array[String]): Unit = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
 
-    val x: Expr[Int] = '{ println(); 3 }
+    def x given QuoteContext: Expr[Int] = '{ println(); 3 }
 
-    val f4: Expr[Int => Int] = '{
+    def f4 given QuoteContext: Expr[Int => Int] = '{
       inlineLambda
     }
     println(run(f4(x)))

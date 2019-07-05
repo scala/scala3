@@ -9,8 +9,6 @@ object Test {
       2 + a
     }
     for (i <- 0 to 200)
-      run {
-        expr(i)
-      }
+      run(expr(i))
   }
 }

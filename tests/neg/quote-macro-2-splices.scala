@@ -7,5 +7,5 @@ object Macro {
     else ${ bar(false) }
   }
 
-  def bar(b: Boolean): Expr[Int] = if (b) '{1} else '{0}
+  def bar(b: Boolean) given QuoteContext: Expr[Int] = if (b) '{1} else '{0}
 }

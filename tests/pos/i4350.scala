@@ -1,5 +1,5 @@
-import scala.quoted.Type
+import scala.quoted._
 
-class Foo[T: Type] {
+class Foo[T: Type] given QuoteContext {
   '{null.asInstanceOf[T]}
 }

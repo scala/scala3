@@ -1,6 +1,6 @@
 import scala.quoted._
 
-object Test {
+def test given QuoteContext = {
 
   delegate for QuoteContext = ???
 

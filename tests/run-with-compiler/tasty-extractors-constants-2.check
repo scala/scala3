@@ -15,3 +15,9 @@
   y
 }
 25.0
+
+Macros.dynamicPower({
+  scala.Predef.println("foo")
+  2
+}, 6.0)
+36.0

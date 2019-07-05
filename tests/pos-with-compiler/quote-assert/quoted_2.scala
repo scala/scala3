@@ -8,7 +8,7 @@ object Test {
     ${ assertImpl('expr) }
 
 
-  val program = '{
+  def program given QuoteContext = '{
     val x = 1
     assert(x != 0)
 
@@ -16,5 +16,5 @@ object Test {
   }
 
   implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-  program.run
+  run(program)
 }
