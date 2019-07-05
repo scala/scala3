@@ -143,7 +143,7 @@ object Splicer {
       loadModule(fn.moduleClass)
 
     protected def interpretNew(fn: Symbol, args: => List[Result])(implicit env: Env): Object = {
-      val clazz = loadClass(fn.owner.fullName)
+      val clazz = loadClass(fn.owner.fullName.toString)
       val constr = clazz.getConstructor(paramsSig(fn): _*)
       constr.newInstance(args: _*).asInstanceOf[Object]
     }
@@ -154,11 +154,16 @@ object Splicer {
     private def loadModule(sym: Symbol): Object = {
       if (sym.owner.is(Package)) {
         // is top level object
-        val moduleClass = loadClass(sym.fullName)
+        val moduleClass = loadClass(sym.fullName.toString)
         moduleClass.getField(str.MODULE_INSTANCE_FIELD).get(null)
       } else {
         // nested object in an object
-        val clazz = loadClass(sym.fullNameSeparated(FlatName))
+        val className = {
+          val pack = sym.topLevelClass.owner
+          if (pack == defn.RootPackage || pack == defn.EmptyPackageClass) sym.flatName.toString
+          else pack.showFullName + "." + sym.flatName
+        }
+        val clazz = loadClass(className)
         clazz.getConstructor().newInstance().asInstanceOf[Object]
       }
     }
@@ -168,8 +173,8 @@ object Splicer {
       lineClassloader.loadClass(moduleClass.name.firstPart.toString)
     }
 
-    private def loadClass(name: Name): Class[_] = {
-      try classLoader.loadClass(name.toString)
+    private def loadClass(name: String): Class[_] = {
+      try classLoader.loadClass(name)
       catch {
         case _: ClassNotFoundException =>
           val msg = s"Could not find class $name in classpath$extraMsg"
