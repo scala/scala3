@@ -873,7 +873,7 @@ class Namer { typer: Typer =>
       denot.info = typeSig(sym)
       invalidateIfClashingSynthetic(denot)
       Checking.checkWellFormed(sym)
-      denot.info = avoidPrivateLeaks(sym, sym.sourcePos)
+      denot.info = avoidPrivateLeaks(sym)
     }
   }
 
@@ -982,6 +982,7 @@ class Namer { typer: Typer =>
                 val mbrFlags = Exported | Method | Final | maybeStable | mbr.symbol.flags & RetainedExportFlags
                 ctx.newSymbol(cls, alias, mbrFlags, mbrInfo, coord = span)
               }
+            forwarder.info = avoidPrivateLeaks(forwarder)
             val forwarderDef =
               if (forwarder.isType) tpd.TypeDef(forwarder.asType)
               else {
@@ -1146,7 +1147,7 @@ class Namer { typer: Typer =>
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
-      cls.info = avoidPrivateLeaks(cls, cls.sourcePos)
+      cls.info = avoidPrivateLeaks(cls)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.setNoInitsFlags(parentsKind(parents), bodyKind(rest))
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)
