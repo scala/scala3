@@ -267,8 +267,8 @@ object desugar {
         def defaultGetter: DefDef =
           DefDef(
             name = DefaultGetterName(methName, n),
-            tparams = meth.tparams.map(tparam => dropContextBounds(toDefParam(tparam))),
-            vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam), n),
+            tparams = meth.tparams.map(tparam => dropContextBounds(toDefParam(tparam, keepAnnotations = true))),
+            vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam(_, keepAnnotations = true)), n),
             tpt = TypeTree(),
             rhs = vparam.rhs
           )
@@ -372,10 +372,16 @@ object desugar {
 
   @sharable private val synthetic = Modifiers(Synthetic)
 
-  private def toDefParam(tparam: TypeDef): TypeDef =
-    tparam.withMods(tparam.rawMods & EmptyFlags | Param)
-  private def toDefParam(vparam: ValDef): ValDef =
-    vparam.withMods(vparam.rawMods & (GivenOrImplicit | Erased) | Param)
+  private def toDefParam(tparam: TypeDef, keepAnnotations: Boolean): TypeDef = {
+    var mods = tparam.rawMods
+    if (!keepAnnotations) mods = mods.withAnnotations(Nil)
+    tparam.withMods(mods & EmptyFlags | Param)
+  }
+  private def toDefParam(vparam: ValDef, keepAnnotations: Boolean): ValDef = {
+    var mods = vparam.rawMods
+    if (!keepAnnotations) mods = mods.withAnnotations(Nil)
+    vparam.withMods(mods & (GivenOrImplicit | Erased) | Param)
+  }
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
@@ -437,7 +443,7 @@ object desugar {
         else originalTparams
       }
       else originalTparams
-    val constrTparams = impliedTparams.map(toDefParam)
+    val constrTparams = impliedTparams.map(toDefParam(_, keepAnnotations = false))
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass && originalTparams.isEmpty)
@@ -447,7 +453,7 @@ object desugar {
           ctx.error("Case classes should have a non-implicit parameter list", namePos)
         ListOfNil
       }
-      else originalVparamss.nestedMap(toDefParam)
+      else originalVparamss.nestedMap(toDefParam(_, keepAnnotations = false))
     val constr = cpy.DefDef(constr1)(tparams = constrTparams, vparamss = constrVparamss)
 
     val (normalizedBody, enumCases, enumCompanionRef) = {
@@ -459,7 +465,7 @@ object desugar {
             defDef(
               addEvidenceParams(
                 cpy.DefDef(ddef)(tparams = constrTparams),
-                evidenceParams(constr1).map(toDefParam))))
+                evidenceParams(constr1).map(toDefParam(_, keepAnnotations = false)))))
         case stat =>
           stat
       }
@@ -482,8 +488,19 @@ object desugar {
 
     def anyRef = ref(defn.AnyRefAlias.typeRef)
 
-    val derivedTparams = constrTparams.map(derivedTypeParam(_))
-    val derivedVparamss = constrVparamss.nestedMap(derivedTermParam(_))
+    // Annotations are dropped from the constructor parameters but should be
+    // preserved in all derived parameters.
+    val derivedTparams = {
+      val impliedTparamsIt = impliedTparams.toIterator
+      constrTparams.map(tparam => derivedTypeParam(tparam)
+        .withAnnotations(impliedTparamsIt.next().mods.annotations))
+    }
+    val derivedVparamss = {
+      val constrVparamsIt = constrVparamss.toIterator.flatten
+      constrVparamss.nestedMap(vparam => derivedTermParam(vparam)
+        .withAnnotations(constrVparamsIt.next().mods.annotations))
+    }
+
     val arity = constrVparamss.head.length
 
     val classTycon: Tree = TypeRefTree() // watching is set at end of method
@@ -772,16 +789,20 @@ object desugar {
     }
 
     val cdef1 = addEnumFlags {
-      val originalTparamsIt = impliedTparams.toIterator
-      val originalVparamsIt = originalVparamss.toIterator.flatten
-      val tparamAccessors = derivedTparams.map(_.withMods(originalTparamsIt.next().mods))
+      val tparamAccessors = {
+        val impliedTparamsIt = impliedTparams.toIterator
+        derivedTparams.map(_.withMods(impliedTparamsIt.next().mods))
+      }
       val caseAccessor = if (isCaseClass) CaseAccessor else EmptyFlags
-      val vparamAccessors = derivedVparamss match {
-        case first :: rest =>
-          first.map(_.withMods(originalVparamsIt.next().mods | caseAccessor)) ++
-          rest.flatten.map(_.withMods(originalVparamsIt.next().mods))
-        case _ =>
-          Nil
+      val vparamAccessors = {
+        val originalVparamsIt = originalVparamss.toIterator.flatten
+        derivedVparamss match {
+          case first :: rest =>
+            first.map(_.withMods(originalVparamsIt.next().mods | caseAccessor)) ++
+            rest.flatten.map(_.withMods(originalVparamsIt.next().mods))
+          case _ =>
+            Nil
+        }
       }
       cpy.TypeDef(cdef: TypeDef)(
         name = className,

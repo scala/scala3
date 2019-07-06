@@ -327,6 +327,8 @@ object Trees {
 
     def rawComment: Option[Comment] = getAttachment(DocComment)
 
+    def withAnnotations(annots: List[untpd.Tree]): ThisTree[Untyped] = withMods(rawMods.withAnnotations(annots))
+
     def withMods(mods: untpd.Modifiers): ThisTree[Untyped] = {
       val tree = if (myMods == null || (myMods == mods)) this else cloneIn(source)
       tree.setMods(mods)
