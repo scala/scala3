@@ -258,7 +258,7 @@ object Checking {
             if (locked.contains(tp) || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter])
               throw CyclicReference(tp.symbol)
             locked += tp
-            try checkInfo(tp.info)
+            try if (!tp.symbol.isClass) checkInfo(tp.info)
             finally locked -= tp
             tp.withPrefix(pre1)
           }
