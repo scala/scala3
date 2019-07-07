@@ -792,10 +792,14 @@ class Namer { typer: Typer =>
         lazy val annotCtx = annotContext(original, sym)
         for (annotTree <- untpd.modsDeco(original).mods.annotations) {
           val cls = typedAheadAnnotationClass(annotTree)(annotCtx)
-          val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
-          sym.addAnnotation(ann)
-          if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
-            sym.setFlag(Inline)
+          if (cls eq sym)
+            ctx.error("An annotation class cannot be annotated with iself", annotTree.sourcePos)
+          else {
+            val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
+            sym.addAnnotation(ann)
+            if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
+              sym.setFlag(Inline)
+          }
         }
       case _ =>
     }
