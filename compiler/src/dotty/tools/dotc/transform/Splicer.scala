@@ -45,16 +45,6 @@ object Splicer {
         interpretedExpr.fold(tree)(x => PickledQuotes.quotedExprToTree(x))
       }
       catch {
-        case ex: scala.quoted.QuoteError =>
-          val pos1 = ex.from match {
-            case None => pos
-            case Some(expr) =>
-              val reflect: scala.tasty.Reflection = ReflectionImpl(ctx)
-              import reflect._
-              expr.unseal.underlyingArgument.pos.asInstanceOf[SourcePosition]
-          }
-          ctx.error(ex.getMessage, pos1)
-          EmptyTree
         case NonFatal(ex) =>
           val msg =
             s"""Failed to evaluate macro.
@@ -205,19 +195,13 @@ object Splicer {
           sw.write("\n")
           throw new StopInterpretation(sw.toString, pos)
         case ex: InvocationTargetException =>
-          ex.getCause match {
-            case cause: scala.quoted.QuoteError =>
-              throw cause
-            case _ =>
-              val sw = new StringWriter()
-              sw.write("An exception occurred while executing macro expansion\n")
-              sw.write(ex.getTargetException.getMessage)
-              sw.write("\n")
-              ex.getTargetException.printStackTrace(new PrintWriter(sw))
-              sw.write("\n")
-              throw new StopInterpretation(sw.toString, pos)
-          }
-
+          val sw = new StringWriter()
+          sw.write("An exception occurred while executing macro expansion\n")
+          sw.write(ex.getTargetException.getMessage)
+          sw.write("\n")
+          ex.getTargetException.printStackTrace(new PrintWriter(sw))
+          sw.write("\n")
+          throw new StopInterpretation(sw.toString, pos)
       }
     }
 

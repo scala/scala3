@@ -16,9 +16,6 @@ object XmlQuote {
            given (qctx: QuoteContext): Expr[Xml] = {
     import qctx.tasty._
 
-    def abort(msg: String): Nothing =
-      QuoteError(msg)
-
     // for debugging purpose
     def pp(tree: Tree): Unit = {
       println(tree.showExtractors)
@@ -52,7 +49,8 @@ object XmlQuote {
              values.forall(isStringConstant) =>
         values.collect { case Literal(Constant(value: String)) => value }
       case tree =>
-        abort(s"String literal expected, but ${tree.showExtractors} found")
+        qctx.error(s"String literal expected, but ${tree.showExtractors} found")
+        return '{ ??? }
     }
 
     // [a0, ...]: Any*

@@ -53,28 +53,25 @@ object StringContextMacro {
     def restoreReported() : Unit
   }
 
-  /** Retrieves a String from an Expr containing it
-   *
-   *  @param expression the Expr containing the String
-   *  @return the String contained in the given Expr
-   *  quotes an error if the given Expr does not contain a String
-   */
-  private def literalToString(expression : Expr[String]) given (ctx: QuoteContext) : String = expression match {
-    case Const(string : String) => string
-    case _ => QuoteError("Expected statically known literal", expression)
-  }
-
   /** Retrieves the parts from a StringContext, given inside an Expr, and returns them as a list of Expr of String
    *
    *  @param strCtxExpr the Expr containing the StringContext
    *  @return a list of Expr containing Strings, each corresponding to one parts of the given StringContext
    *  quotes an error if the given Expr does not correspond to a StringContext
    */
-  def getPartsExprs(strCtxExpr : Expr[scala.StringContext]) given QuoteContext: List[Expr[String]] = {
+  def getPartsExprs(strCtxExpr : Expr[scala.StringContext]) given (qctx: QuoteContext): Option[(List[Expr[String]], List[String])] = {
+    def notStatic = {
+      qctx.error("Expected statically known String Context", strCtxExpr)
+      None
+    }
+    def splitParts(seq: Expr[Seq[String]]) = (seq, seq) match {
+      case (ExprSeq(p1), ConstSeq(p2)) => Some((p1.toList, p2.toList))
+      case _ => notStatic
+    }
     strCtxExpr match {
-      case '{ StringContext(${ExprSeq(parts)}: _*) } => parts.toList
-      case '{ new StringContext(${ExprSeq(parts)}: _*) } => parts.toList
-      case _ => QuoteError("Expected statically known String Context", strCtxExpr)
+      case '{ StringContext($parts: _*) } => splitParts(parts)
+      case '{ new StringContext($parts: _*) } => splitParts(parts)
+      case _ => notStatic
     }
   }
 
@@ -84,11 +81,14 @@ object StringContextMacro {
    *  @return a list of Expr containing arguments
    *  quotes an error if the given Expr does not contain a list of arguments
    */
-  def getArgsExprs(argsExpr: Expr[Seq[Any]]) given (qctx: QuoteContext): List[Expr[Any]] = {
+  def getArgsExprs(argsExpr: Expr[Seq[Any]]) given (qctx: QuoteContext): Option[List[Expr[Any]]] = {
     import qctx.tasty._
     argsExpr.unseal.underlyingArgument match {
-      case Typed(Repeated(args, _), _) => args.map(_.seal)
-      case tree => QuoteError("Expected statically known argument list", argsExpr)
+      case Typed(Repeated(args, _), _) =>
+        Some(args.map(_.seal))
+      case tree =>
+        qctx.error("Expected statically known argument list", argsExpr)
+        None
     }
   }
 
@@ -102,8 +102,14 @@ object StringContextMacro {
     import qctx.tasty._
     val sourceFile = strCtxExpr.unseal.pos.sourceFile
 
-    val partsExpr = getPartsExprs(strCtxExpr)
-    val args = getArgsExprs(argsExpr)
+    val (partsExpr, parts) = getPartsExprs(strCtxExpr) match {
+      case Some(x) => x
+      case None => return '{""}
+    }
+    val args = getArgsExprs(argsExpr) match {
+      case Some(args) => args
+      case None => return '{""}
+    }
 
     val reporter = new Reporter{
       private[this] var reported = false
@@ -148,7 +154,7 @@ object StringContextMacro {
       }
     }
 
-    interpolate(partsExpr, args, argsExpr, reporter)
+    interpolate(parts, args, argsExpr, reporter)
   }
 
   /** Helper function for the interpolate function above
@@ -158,7 +164,7 @@ object StringContextMacro {
    *  @param reporter the reporter to return any error/warning when a problem is encountered
    *  @return the Expr containing the formatted and interpolated String or an error/warning report if the parameters are not correct
    */
-  def interpolate(partsExpr : List[Expr[String]], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter) given (qctx: QuoteContext) : Expr[String] = {
+  def interpolate(parts0 : List[String], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter) given (qctx: QuoteContext) : Expr[String] = {
     import qctx.tasty._
 
     /** Checks if the number of arguments are the same as the number of formatting strings
@@ -721,10 +727,10 @@ object StringContextMacro {
     val argument = args.size
 
     // check validity of formatting
-    checkSizes(partsExpr.size - 1, argument)
+    checkSizes(parts0.size - 1, argument)
 
     // add default format
-    val parts = addDefaultFormat(partsExpr.map(literalToString))
+    val parts = addDefaultFormat(parts0)
 
     if (!parts.isEmpty && !reporter.hasReported()) {
       if (parts.size == 1 && args.size == 0 && parts.head.size != 0){

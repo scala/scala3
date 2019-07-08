@@ -43,12 +43,17 @@ object XmlQuote {
           case Apply(fun, List(Typed(Repeated(values, _), _))) if isStringContextApply(fun) =>
             values.iterator.map {
               case Literal(Constant(value: String)) => value
-              case _ => QuoteError("Expected statically known String")
+              case _ =>
+                qctx.error("Expected statically known String")
+                return '{???}
             }.toList
-          case _ => QuoteError("Expected statically known StringContext")
+          case _ =>
+            qctx.error("Expected statically known StringContext")
+            return '{???}
         }
       case _ =>
-        QuoteError("Expected statically known SCOps")
+        qctx.error("Expected statically known SCOps")
+        return '{???}
     }
 
     // [a0, ...]: Any*

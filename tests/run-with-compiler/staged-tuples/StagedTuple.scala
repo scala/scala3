@@ -131,7 +131,9 @@ object StagedTuple {
     if (!specialize) '{dynamicApply($tup, $n)}
     else {
       def fallbackApply(): Expr[Elem[Tup, N]] = nValue match {
-        case Some(n) => QuoteError("index out of bounds: " + n, tup)
+        case Some(n) =>
+          qctx.error("index out of bounds: " + n, tup)
+          '{ throw new IndexOutOfBoundsException(${n.toString.toExpr}) }
         case None => '{dynamicApply($tup, $n)}
       }
       val res = size match {
