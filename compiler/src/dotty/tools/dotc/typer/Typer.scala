@@ -1952,6 +1952,10 @@ class Typer extends Namer
    *  while tracking the quotation level in the context.
    */
   def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
+    val qctx = inferImplicitArg(defn.QuoteContextType, tree.span)
+    if (level == 0 && qctx.tpe.isInstanceOf[SearchFailureType])
+      ctx.error(missingArgMsg(qctx, defn.QuoteContextType, ""), ctx.source.atSpan(tree.span))
+
     tree.quoted match {
       case untpd.Splice(innerExpr) if tree.isTerm =>
         ctx.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.sourcePos)
@@ -1961,11 +1965,6 @@ class Typer extends Namer
         typed(innerType, pt)
       case quoted =>
         ctx.compilationUnit.needsStaging = true
-
-        val qctx = inferImplicitArg(defn.QuoteContextType, tree.span)
-        if (level == 0 && qctx.tpe.isInstanceOf[SearchFailureType])
-          ctx.error(missingArgMsg(qctx, defn.QuoteContextType, ""), ctx.source.atSpan(tree.span))
-
         val tree1 =
           if (quoted.isType) typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), quoted :: Nil), pt)(quoteContext)
           else if (ctx.mode.is(Mode.Pattern) && level == 0) typedQuotePattern(quoted, pt, qctx)
