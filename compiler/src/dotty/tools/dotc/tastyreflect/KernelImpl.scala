@@ -4,7 +4,7 @@ package tastyreflect
 import dotty.tools.dotc.ast.Trees.SeqLiteral
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import dotty.tools.dotc.ast.tpd.TreeOps
-import dotty.tools.dotc.typer.Typer
+import dotty.tools.dotc.typer.{Implicits, Typer}
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames.nme
@@ -13,6 +13,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
 import dotty.tools.dotc.parsing.Parsers.Parser
+import dotty.tools.dotc.typer.Implicits.{AmbiguousImplicits, DivergingImplicit, NoMatchingImplicits, SearchFailure, SearchFailureType}
 import dotty.tools.dotc.util.SourceFile
 
 import scala.tasty.reflect.Kernel
@@ -1848,6 +1849,48 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Definitions_NothingType: Type = defn.NothingType
   def Definitions_NullType: Type = defn.NullType
   def Definitions_StringType: Type = defn.StringType
+
+  //
+  // IMPLICITS
+  //
+
+  type ImplicitSearchResult = Tree
+
+  def searchImplicit(tpe: Type)(implicit ctx: Context): ImplicitSearchResult =
+    ctx.typer.inferImplicitArg(tpe, rootPosition.span)
+
+  type ImplicitSearchSuccess = Tree
+  def matchImplicitSearchSuccess(isr: ImplicitSearchResult)(implicit ctx: Context): Option[ImplicitSearchSuccess] = isr.tpe match {
+    case _: SearchFailureType => None
+    case _ => Some(isr)
+  }
+  def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess)(implicit ctx: Context): Term = self
+
+  type ImplicitSearchFailure = Tree
+  def matchImplicitSearchFailure(isr: ImplicitSearchResult)(implicit ctx: Context): Option[ImplicitSearchFailure] = isr.tpe match {
+    case _: SearchFailureType => Some(isr)
+    case _ => None
+  }
+  def ImplicitSearchFailure_explanation(self: ImplicitSearchFailure)(implicit ctx: Context): String =
+    self.tpe.asInstanceOf[SearchFailureType].explanation
+
+  type DivergingImplicit = Tree
+  def matchDivergingImplicit(isr: ImplicitSearchResult)(implicit ctx: Context): Option[DivergingImplicit] = isr.tpe match {
+    case _: Implicits.DivergingImplicit => Some(isr)
+    case _ => None
+  }
+
+  type NoMatchingImplicits = Tree
+  def matchNoMatchingImplicits(isr: ImplicitSearchResult)(implicit ctx: Context): Option[NoMatchingImplicits] = isr.tpe match {
+    case _: Implicits.NoMatchingImplicits => Some(isr)
+    case _ => None
+  }
+
+  type AmbiguousImplicits = Tree
+  def matchAmbiguousImplicits(isr: ImplicitSearchResult)(implicit ctx: Context): Option[AmbiguousImplicits] = isr.tpe match {
+    case _: Implicits.AmbiguousImplicits => Some(isr)
+    case _ => None
+  }
 
   //
   // HELPERS

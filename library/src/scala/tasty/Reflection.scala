@@ -9,6 +9,7 @@ class Reflection(val kernel: Kernel)
     with CommentOps
     with FlagsOps
     with IdOps
+    with ImplicitsOps
     with ImportSelectorOps
     with QuotedOps
     with PatternOps

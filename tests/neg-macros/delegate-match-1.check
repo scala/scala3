@@ -1,0 +1,7 @@
+
+-- Error: tests/neg-macros/delegate-match-1/Test_2.scala:6:2 -----------------------------------------------------------
+6 |  f // error
+  |  ^
+  |  AmbiguousImplicits
+  |  both value a1 in class Test1 and value a2 in class Test1 match type A
+  | This location is in code that was inlined at Test_2.scala:6
