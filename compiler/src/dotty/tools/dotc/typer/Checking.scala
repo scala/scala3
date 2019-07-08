@@ -358,10 +358,14 @@ object Checking {
   }
 
   /** Check type members inherited from different `parents` of `joint` type for cycles,
-   *  unless a type with the same name aleadry appears in `decls`.
+   *  unless a type with the same name already appears in `decls`.
    *  @return    true iff no cycles were detected
    */
   def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, posd: Positioned)(implicit ctx: Context): Unit = {
+    // If we don't have more than one parent, then there's nothing to check
+    if (parents.lengthCompare(1) <= 0)
+      return
+
     def qualifies(sym: Symbol) = sym.name.isTypeName && !sym.is(Private)
     val abstractTypeNames =
       for (parent <- parents; mbr <- parent.abstractTypeMembers if qualifies(mbr.symbol))
