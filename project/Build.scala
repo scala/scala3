@@ -708,28 +708,15 @@ object Build {
     // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
     scalacOptions in Compile ++= Seq("-sourcepath", (scalaSource in Compile).value.getAbsolutePath),
 
-    // To be removed once we stop cross-compiling with Scala 2
-    unmanagedSourceDirectories in Compile += {
-      val baseDir = baseDirectory.value
-      if (!isDotty.value)
-        baseDir / "src-2.x"
-      else
-        baseDir / "src-3.x"
-    },
-
     // Add version-specific source directories:
     // - files in src-non-bootstrapped will only be compiled by the reference compiler
     // - files in src-bootstrapped will only be compiled by the current dotty compiler (non-bootstrapped and bootstrapped)
     unmanagedSourceDirectories in Compile ++= {
       val baseDir = baseDirectory.value
-      if (isDotty.value) {
-        if (scalaVersion.value == referenceVersion)
-          Seq(baseDir / "src-non-bootstrapped")
-        else
-          Seq(baseDir / "src-bootstrapped")
-      }
+      if (scalaVersion.value == referenceVersion)
+        Seq(baseDir / "src-non-bootstrapped")
       else
-        Seq()
+        Seq(baseDir / "src-bootstrapped")
     }
   )
 
