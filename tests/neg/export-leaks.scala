@@ -12,3 +12,4 @@ object Signature {
     private[Signature] val foo: T = ???
   }
   export O2._ // error: non-private method foo refers to private type T
+}
