@@ -2021,8 +2021,12 @@ class Typer extends Namer
    */
   private def typedQuotePattern(quoted: untpd.Tree, pt: Type, qctx: tpd.Tree)(implicit ctx: Context): Tree = {
     val exprPt = pt.baseType(defn.QuotedExprClass)
-    val quotedPt = if (exprPt.exists) exprPt.argTypesHi.head else defn.AnyType
-    val quoted1 = typedExpr(quoted, quotedPt)(quoteContext.addMode(Mode.QuotedPattern))
+    val quotedPt = exprPt.argInfos.headOption match {
+      case Some(argPt: ValueType) => argPt // excludes TypeBounds
+      case _ => defn.AnyType
+    }
+    val quoted0 = desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt)))
+    val quoted1 = typedExpr(quoted0, WildcardType)(quoteContext.addMode(Mode.QuotedPattern))
 
     val (typeBindings, shape, splices) = splitQuotePattern(quoted1)
 
@@ -2070,7 +2074,7 @@ class Typer extends Namer
           Literal(Constant(typeBindings.nonEmpty)) ::
           qctx :: Nil,
       patterns = splicePat :: Nil,
-      proto = pt)
+      proto = defn.QuotedExprType.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))
   }
 
   /** Split a typed quoted pattern is split into its type bindings, pattern expression and inner patterns.
