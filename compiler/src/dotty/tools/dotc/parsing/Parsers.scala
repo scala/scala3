@@ -2574,7 +2574,7 @@ object Parsers {
           }
         } else EmptyTree
       lhs match {
-        case (id @ Ident(name: TermName)) :: Nil =>
+        case (id @ Ident(name: TermName)) :: Nil if name != nme.WILDCARD =>
           val vdef = ValDef(name, tpt, rhs)
           if (isBackquoted(id)) vdef.pushAttachment(Backquoted, ())
           finalizeDef(vdef, mods, start)
