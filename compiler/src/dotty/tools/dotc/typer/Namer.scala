@@ -977,8 +977,10 @@ class Namer { typer: Typer =>
                   coord = span)
               else {
                 val (maybeStable, mbrInfo) =
-                  if (mbr.symbol.isStableMember) (StableRealizable, ExprType(path.tpe.select(mbr.symbol)))
-                  else (EmptyFlags, mbr.info.ensureMethodic)
+                  if (mbr.symbol.isStableMember && mbr.symbol.isPublic)
+                    (StableRealizable, ExprType(path.tpe.select(mbr.symbol)))
+                  else
+                    (EmptyFlags, mbr.info.ensureMethodic)
                 val mbrFlags = Exported | Method | Final | maybeStable | mbr.symbol.flags & RetainedExportFlags
                 ctx.newSymbol(cls, alias, mbrFlags, mbrInfo, coord = span)
               }

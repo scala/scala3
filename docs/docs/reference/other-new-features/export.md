@@ -75,8 +75,7 @@ Export aliases are always `final`. Aliases of delegates are again defines as del
    not marked `override`.
  - However, export aliases can implement deferred members of base classes.
 
-Export aliases for value definitions are marked by the compiler as "stable" and their result types are the singleton types of the aliased definitions. This means
-that they can be used as parts of stable identifier paths, even though they are technically methods. For instance, the following is OK:
+Export aliases for public value definitions are marked by the compiler as "stable" and their result types are the singleton types of the aliased definitions. This means that they can be used as parts of stable identifier paths, even though they are technically methods. For instance, the following is OK:
 ```scala
   class C { type T }
   object O { val c: C = ... }
