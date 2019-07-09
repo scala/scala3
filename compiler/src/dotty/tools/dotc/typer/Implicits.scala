@@ -1067,7 +1067,7 @@ trait Implicits { self: Typer =>
             }
             val base = baseWithRefinements(formal)
             val result =
-              if (base <:< formal) {
+              if (base <:< formal.widenExpr) {
                 // With the subtype test we enforce that the searched type `formal` is of the right form
                 handler(base, span)(ctx)
               }
