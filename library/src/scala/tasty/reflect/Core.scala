@@ -456,4 +456,17 @@ trait Core {
 
   /** FlagSet of a Symbol */
   type Flags = kernel.Flags
+
+  type ImplicitSearchResult = kernel.ImplicitSearchResult
+
+  type ImplicitSearchSuccess = kernel.ImplicitSearchSuccess
+
+  type ImplicitSearchFailure = kernel.ImplicitSearchFailure
+
+  type DivergingImplicit = kernel.DivergingImplicit
+
+  type NoMatchingImplicits = kernel.NoMatchingImplicits
+
+  type AmbiguousImplicits = kernel.AmbiguousImplicits
+
 }

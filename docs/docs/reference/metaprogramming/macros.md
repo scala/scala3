@@ -569,6 +569,22 @@ while (i < arr.length) {
 sum
 ```
 
+### Find implicits within a macro
+
+Similarly to the `implicit match` construct, it is possible to make implicit search available
+in a quote context. For this we simply provide `scala.quoted.matching.searchImplicitExpr:
+
+```scala
+inline def setFor[T]: Set[T] = ${ setForExpr[T] }
+
+def setForExpr[T: Type] given QuoteContext: Expr[Set[T]] = {
+  searchImplicitExpr[Ordering[T]] match {
+    case Some(ord) => '{ new TreeSet[T]()($ord) }
+    case _ => '{ new HashSet[T] }
+  }
+}
+```
+
 ### Relationship with Whitebox Inline
 
 [Inline](./inline.md) documents inlining. The code below introduces a whitebox

@@ -1,5 +1,7 @@
 package scala.tasty.reflect
 
+import scala.quoted.QuoteContext
+
 /** Tasty reflect abstract types
  *
  *  ```none
@@ -1505,5 +1507,36 @@ trait Kernel {
   def Definitions_NothingType: Type
   def Definitions_NullType: Type
   def Definitions_StringType: Type
+
+  //
+  // IMPLICITS
+  //
+
+  type ImplicitSearchResult <: AnyRef
+
+  type ImplicitSearchSuccess <: ImplicitSearchResult
+  def matchImplicitSearchSuccess(isr: ImplicitSearchResult)(implicit ctx: Context): Option[ImplicitSearchSuccess]
+  def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess)(implicit ctx: Context): Term
+
+  type ImplicitSearchFailure <: ImplicitSearchResult
+  def matchImplicitSearchFailure(isr: ImplicitSearchResult)(implicit ctx: Context): Option[ImplicitSearchFailure]
+  def ImplicitSearchFailure_explanation(self: ImplicitSearchFailure)(implicit ctx: Context): String
+
+  type DivergingImplicit <: ImplicitSearchFailure
+  def matchDivergingImplicit(isr: ImplicitSearchResult)(implicit ctx: Context): Option[DivergingImplicit]
+
+  type NoMatchingImplicits <: ImplicitSearchFailure
+  def matchNoMatchingImplicits(isr: ImplicitSearchResult)(implicit ctx: Context): Option[NoMatchingImplicits]
+
+  type AmbiguousImplicits <: ImplicitSearchFailure
+  def matchAmbiguousImplicits(isr: ImplicitSearchResult)(implicit ctx: Context): Option[AmbiguousImplicits]
+
+  /** Find an implicit of type `T` in the current scope given by `ctx`.
+   *  Return an `ImplicitSearchResult`.
+   *
+   *  @param tpe type of the implicit parameter
+   *  @param ctx current context
+   */
+  def searchImplicit(tpe: Type)(implicit ctx: Context): ImplicitSearchResult
 
 }
