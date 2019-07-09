@@ -470,7 +470,7 @@ object Checking {
    *
    *  @return The `info` of `sym`, with problematic aliases expanded away.
    */
-  def checkNoPrivateLeaks(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): Type = {
+  def checkNoPrivateLeaks(sym: Symbol)(implicit ctx: Context): Type = {
     class NotPrivate extends TypeMap {
       var errors: List[() => String] = Nil
 
@@ -499,11 +499,12 @@ object Checking {
           var tp1 =
             if (isLeaked(tp.symbol)) {
               errors =
-                (() => em"non-private $sym refers to private ${tp.symbol}\nin its type signature ${sym.info}") :: errors
+                (() => em"non-private ${sym.showLocated} refers to private ${tp.symbol}\nin its type signature ${sym.info}") ::
+                errors
               tp
             }
             else mapOver(tp)
-          if ((errors ne prevErrors) && !sym.isType && tp.info.isTypeAlias) {
+          if ((errors ne prevErrors) && tp.info.isTypeAlias) {
             // try to dealias to avoid a leak error
             val savedErrors = errors
             errors = prevErrors
@@ -531,7 +532,7 @@ object Checking {
     }
     val notPrivate = new NotPrivate
     val info = notPrivate(sym.info)
-    notPrivate.errors.foreach(error => ctx.errorOrMigrationWarning(error(), pos))
+    notPrivate.errors.foreach(error => ctx.errorOrMigrationWarning(error(), sym.sourcePos))
     info
   }
 

@@ -873,7 +873,7 @@ class Namer { typer: Typer =>
       denot.info = typeSig(sym)
       invalidateIfClashingSynthetic(denot)
       Checking.checkWellFormed(sym)
-      denot.info = avoidPrivateLeaks(sym, sym.sourcePos)
+      denot.info = avoidPrivateLeaks(sym)
     }
   }
 
@@ -976,13 +976,15 @@ class Namer { typer: Typer =>
                   fwdInfo(path.tpe.select(mbr.symbol), mbr.info),
                   coord = span)
               else {
-                val maybeStable = if (mbr.symbol.isStableMember) StableRealizable else EmptyFlags
-                ctx.newSymbol(
-                  cls, alias,
-                  Exported | Method | Final | maybeStable | mbr.symbol.flags & RetainedExportFlags,
-                  mbr.info.ensureMethodic,
-                  coord = span)
+                val (maybeStable, mbrInfo) =
+                  if (mbr.symbol.isStableMember && mbr.symbol.isPublic)
+                    (StableRealizable, ExprType(path.tpe.select(mbr.symbol)))
+                  else
+                    (EmptyFlags, mbr.info.ensureMethodic)
+                val mbrFlags = Exported | Method | Final | maybeStable | mbr.symbol.flags & RetainedExportFlags
+                ctx.newSymbol(cls, alias, mbrFlags, mbrInfo, coord = span)
               }
+            forwarder.info = avoidPrivateLeaks(forwarder)
             val forwarderDef =
               if (forwarder.isType) tpd.TypeDef(forwarder.asType)
               else {
@@ -1010,7 +1012,8 @@ class Namer { typer: Typer =>
         }
 
         def addForwardersExcept(seen: List[TermName], span: Span): Unit =
-          for (mbr <- path.tpe.allMembers) {
+          for (mbr <- path.tpe.membersBasedOnFlags(
+              required = EmptyFlags, excluded = PrivateOrSynthetic)) {
             val alias = mbr.name.toTermName
             if (!seen.contains(alias)) addForwarder(alias, mbr, span)
           }
@@ -1146,7 +1149,7 @@ class Namer { typer: Typer =>
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
-      cls.info = avoidPrivateLeaks(cls, cls.sourcePos)
+      cls.info = avoidPrivateLeaks(cls)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.setNoInitsFlags(parentsKind(parents), bodyKind(rest))
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)

@@ -844,7 +844,7 @@ class TreeUnpickler(reader: TastyReader,
       goto(end)
       setSpan(start, tree)
       if (!sym.isType) { // Only terms might have leaky aliases, see the documentation of `checkNoPrivateLeaks`
-        sym.info = ta.avoidPrivateLeaks(sym, tree.sourcePos)
+        sym.info = ta.avoidPrivateLeaks(sym)
       }
 
       if (ctx.mode.is(Mode.ReadComments)) {

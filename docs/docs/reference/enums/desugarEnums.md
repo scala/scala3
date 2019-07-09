@@ -157,7 +157,7 @@ map into case classes or vals.
 
 Non-generic enums `E` that define one or more singleton cases
 are called _enumerations_. Companion objects of enumerations define
-the following additional members.
+the following additional synthetic members.
 
    - A method `valueOf(name: String): E`. It returns the singleton case value whose
      `toString` representation is `name`.

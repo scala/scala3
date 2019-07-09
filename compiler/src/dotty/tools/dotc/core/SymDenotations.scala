@@ -1251,6 +1251,9 @@ object SymDenotations {
       else defn.RootClass
     }
 
+    final def isPublic(implicit ctx: Context): Boolean =
+      accessBoundary(owner) == defn.RootClass
+
     /** The primary constructor of a class or trait, NoSymbol if not applicable. */
     def primaryConstructor(implicit ctx: Context): Symbol = NoSymbol
 
