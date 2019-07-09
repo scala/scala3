@@ -41,15 +41,15 @@ class ArrayApply extends MiniPhase {
   }
 
   /** Only optimize when classtag if it is one of
-   *  - `ClassTag.apply(classOf[X])`
-   *  - `ClassTag.apply(java.lang.XYZ.Type)`
-   *  - `ClassTag.{Byte, Boolean, ...}`
+   *  - `ClassTag.apply(classOf[XYZ])`
+   *  - `ClassTag.apply(java.lang.XYZ.Type)` for boxed primitives `XYZ``
+   *  - `ClassTag.XYZ` for primitive types
    */
   private def elideClassTag(ct: Tree)(implicit ctx: Context): Boolean = ct match {
     case Apply(_, rc :: Nil) if ct.symbol == defn.ClassTagModule_apply =>
       rc match {
-        case _: Literal => true // classOf[X]
-        case rc: RefTree if rc.name == nme.TYPE_ =>
+        case _: Literal => true // ClassTag.apply(classOf[XYZ])
+        case rc: RefTree if rc.name == nme.TYPE_ => // ClassTag.apply(java.lang.XYZ.Type)
           val owner = rc.symbol.maybeOwner.companionModule
           owner == defn.BoxedBooleanModule || owner == defn.BoxedByteModule ||
           owner == defn.BoxedShortModule || owner == defn.BoxedCharModule ||
@@ -59,6 +59,7 @@ class ArrayApply extends MiniPhase {
         case _ => false
       }
     case Apply(ctm: RefTree, _) if ctm.symbol.maybeOwner.companionModule == defn.ClassTagModule =>
+      // ClassTag.XYZ
       nme.ScalaValueNames.contains(ctm.name)
     case _ => false
   }
