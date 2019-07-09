@@ -9,7 +9,7 @@ object Test {
     assert(args( 0 /* ignore */).reflect == "args( 0 /* ignore */)")
     assert(f.reflect == "f")
     assert((f).reflect == "f")
-    assert( { f }.reflect == "f")
-    assert( { f; f }.reflect == "f")
+    assert( { f }.reflect == "{ f }")
+    assert( { f; f }.reflect == "{ f; f }")
   }
 }
