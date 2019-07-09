@@ -321,6 +321,28 @@ object Splicer {
     protected def interpretNew(fn: Symbol, args: => List[Result])(implicit env: Env): Result
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Result
 
+    private final def removeEraisedArguments(args: List[Tree], fnTpe: Type): List[Tree] = {
+      var result = args
+      var index = 0
+      def loop(tp: Type): Unit = tp match {
+        case tp: TermRef  => loop(tp.underlying)
+        case tp: PolyType => loop(tp.resType)
+        case tp: MethodType if tp.isErasedMethod =>
+          tp.paramInfos.foreach { _ =>
+            result = result.updated(index, null)
+            index += 1
+          }
+          loop(tp.resType)
+        case tp: MethodType =>
+          index += tp.paramInfos.size
+          loop(tp.resType)
+        case _ => ()
+      }
+      loop(fnTpe)
+      assert(index == args.size)
+      result.filterNot(null.eq)
+    }
+
     protected final def interpretTree(tree: Tree)(implicit env: Env): Result = tree match {
       case Apply(TypeApply(fn, _), quoted :: Nil) if fn.symbol == defn.InternalQuoted_exprQuote =>
         val quoted1 = quoted match {
@@ -351,10 +373,12 @@ object Splicer {
           interpretModuleAccess(fn.symbol)
         } else if (fn.symbol.isStatic) {
           val module = fn.symbol.owner
-          interpretStaticMethodCall(module, fn.symbol, args.map(arg => interpretTree(arg)))
+          def interpretedArgs = removeEraisedArguments(args, fn.tpe).map(arg => interpretTree(arg))
+          interpretStaticMethodCall(module, fn.symbol, interpretedArgs)
         } else if (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic) {
           val module = fn.qualifier.symbol.moduleClass
-          interpretStaticMethodCall(module, fn.symbol, args.map(arg => interpretTree(arg)))
+          def interpretedArgs = removeEraisedArguments(args, fn.tpe).map(arg => interpretTree(arg))
+          interpretStaticMethodCall(module, fn.symbol, interpretedArgs)
         } else if (env.contains(fn.name)) {
           env(fn.name)
         } else if (tree.symbol.is(InlineProxy)) {
