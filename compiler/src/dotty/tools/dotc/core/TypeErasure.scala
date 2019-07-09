@@ -608,7 +608,19 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       case tp: TermRef =>
         sigName(tp.widen)
       case ExprType(rt) =>
-        sigName(defn.FunctionOf(Nil, rt))
+        // Before erasure the signature will be `=>X` and after erasure it will be `Function0`.
+        // This is to support overriding inline methods with by-name parameters we slghtly modify the signature before erasure.
+        // By-name arguments are necesarry in all inline methods that may want to elide the evaluation of the arguments.
+        // Without this signature modification, the following two inline methods would have the same signature.
+        //   `inline def foo(x: => Int): Unit = ???`
+        //   `inline def foo(x: => Long): Unit = ???`
+        // Note that the decalrataions of `inline` method do not reach passed erasure.
+        //
+        // It would not be possible to make this change only to `inline` methods because then overriding would be affected.
+        // This would make merge error logic is quite complex to hadle as is signature based for performance.
+        // It was deemed to tricky to get right.
+        if (ctx.phase.erasedTypes) sigName(defn.FunctionOf(Nil, rt))
+        else tpnme.ARROWkw ++ sigName(rt)
       case tp: TypeVar =>
         val inst = tp.instanceOpt
         if (inst.exists) sigName(inst) else tpnme.Uninstantiated
