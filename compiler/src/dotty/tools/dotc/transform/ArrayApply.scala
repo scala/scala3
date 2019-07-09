@@ -10,6 +10,8 @@ import StdNames._
 import ast.Trees._
 import dotty.tools.dotc.ast.tpd
 
+import scala.reflect.ClassTag
+
 
 /** This phase rewrites calls to `Array.apply` to primitive array instantion.
  *
@@ -38,9 +40,27 @@ class ArrayApply extends MiniPhase {
     } else tree
   }
 
-  // Only optimize when classtag is `ClassTag.apply` or `ClassTag.{Byte, Boolean, ...}`
-  private def elideClassTag(ct: Tree)(implicit ctx: Context): Boolean = {
-    ct.symbol.maybeOwner.companionModule == defn.ClassTagModule
+  /** Only optimize when classtag if it is one of
+   *  - `ClassTag.apply(classOf[X])`
+   *  - `ClassTag.apply(java.lang.XYZ.Type)`
+   *  - `ClassTag.{Byte, Boolean, ...}`
+   */
+  private def elideClassTag(ct: Tree)(implicit ctx: Context): Boolean = ct match {
+    case Apply(_, rc :: Nil) if ct.symbol == defn.ClassTagModule_apply =>
+      rc match {
+        case _: Literal => true // classOf[X]
+        case rc: RefTree if rc.name == nme.TYPE_ =>
+          val owner = rc.symbol.maybeOwner.companionModule
+          owner == defn.BoxedBooleanModule || owner == defn.BoxedByteModule ||
+          owner == defn.BoxedShortModule || owner == defn.BoxedCharModule ||
+          owner == defn.BoxedIntModule || owner == defn.BoxedLongModule ||
+          owner == defn.BoxedFloatModule || owner == defn.BoxedDoubleModule ||
+          owner == defn.BoxedUnitModule
+        case _ => false
+      }
+    case Apply(ctm: RefTree, _) if ctm.symbol.maybeOwner.companionModule == defn.ClassTagModule =>
+      nme.ScalaValueNames.contains(ctm.name)
+    case _ => false
   }
 
   object CleanTree {

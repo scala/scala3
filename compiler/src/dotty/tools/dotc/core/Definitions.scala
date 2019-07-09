@@ -755,6 +755,8 @@ class Definitions {
   @threadUnsafe lazy val ClassTagType: TypeRef = ctx.requiredClassRef("scala.reflect.ClassTag")
   def ClassTagClass(implicit ctx: Context): ClassSymbol = ClassTagType.symbol.asClass
   def ClassTagModule(implicit ctx: Context): Symbol = ClassTagClass.companionModule
+    @threadUnsafe lazy val ClassTagModule_applyR: TermRef = ClassTagModule.requiredMethodRef(nme.apply)
+    def ClassTagModule_apply(implicit ctx: Context): Symbol = ClassTagModule_applyR.symbol
 
   @threadUnsafe lazy val QuotedExprType: TypeRef = ctx.requiredClassRef("scala.quoted.Expr")
   def QuotedExprClass(implicit ctx: Context): ClassSymbol = QuotedExprType.symbol.asClass

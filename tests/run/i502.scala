@@ -11,4 +11,6 @@ object Test extends App {
   }
 
   Array[Int](1, 2)({println("foo"); the[ClassTag[Int]]})
+
+  Array[Int](1, 2)(ClassTag.apply({ println("bar"); classOf[Int]}))
 }
