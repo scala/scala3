@@ -39,7 +39,8 @@ object FQuote {
              values.forall(isStringConstant) =>
         values.collect { case Literal(Constant(value: String)) => value }
       case tree =>
-        QuoteError(s"String literal expected, but ${tree.showExtractors} found")
+        qctx.error(s"String literal expected, but ${tree.showExtractors} found")
+        return '{???}
     }
 
     // [a0, ...]: Any*

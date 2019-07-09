@@ -9,11 +9,15 @@ object Macros {
     val xTree: Term = x.unseal
     xTree match {
       case Inlined(_, _, Literal(Constant(n: Int))) =>
-        if (n <= 0)
-          QuoteError("Parameter must be natural number")
-        xTree.seal.cast[Int]
+        if (n <= 0) {
+          qctx.error("Parameter must be natural number")
+          '{0}
+        } else {
+          xTree.seal.cast[Int]
+        }
       case _ =>
-        QuoteError("Parameter must be a known constant")
+        qctx.error("Parameter must be a known constant")
+        '{0}
     }
   }
 

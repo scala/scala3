@@ -31,18 +31,21 @@ object FooIntepolator extends MacroStringInterpolator[String] {
 // TODO put this class in the stdlib or separate project?
 abstract class MacroStringInterpolator[T] {
 
-  final def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]]) given QuoteContext: Expr[T] = {
+  final def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]]) given (qctx: QuoteContext): Expr[T] = {
     try interpolate(strCtxExpr, argsExpr)
     catch {
       case ex: NotStaticlyKnownError =>
         // TODO use ex.expr to recover the position
-        QuoteError(ex.getMessage)
+        qctx.error(ex.getMessage)
+        '{???}
       case ex: StringContextError =>
         // TODO use ex.idx to recover the position
-        QuoteError(ex.getMessage)
+        qctx.error(ex.getMessage)
+        '{???}
       case ex: ArgumentError =>
         // TODO use ex.idx to recover the position
-        QuoteError(ex.getMessage)
+        qctx.error(ex.getMessage)
+        '{???}
     }
   }
 

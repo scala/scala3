@@ -5,8 +5,8 @@ object Macro_1 {
   def fooImpl(b: Boolean) given QuoteContext: Expr[Unit] =
     '{println(${msg(b)})}
 
-  def msg(b: Boolean) given QuoteContext: Expr[String] =
+  def msg(b: Boolean) given (qctx: QuoteContext): Expr[String] =
     if (b) '{"foo(true)"}
-    else QuoteError("foo cannot be called with false")
+    else { qctx.error("foo cannot be called with false"); '{ ??? } }
 
 }

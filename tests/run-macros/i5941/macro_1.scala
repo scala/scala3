@@ -53,7 +53,8 @@ object Lens {
           apply($getter)(setter)
         }
       case _ =>
-        QuoteError("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
+        qctx.error("Unsupported syntax. Example: `GenLens[Address](_.streetNumber)`")
+        '{???}
     }
   }
 }
@@ -93,8 +94,10 @@ object Iso {
     // 1. S must be a case class
     // 2. A must be a tuple
     // 3. The parameters of S must match A
-    if (tpS.classSymbol.flatMap(cls => if (cls.flags.is(Flags.Case)) Some(true) else None).isEmpty)
-      QuoteError("Only support generation for case classes")
+    if (tpS.classSymbol.flatMap(cls => if (cls.flags.is(Flags.Case)) Some(true) else None).isEmpty) {
+      qctx.error("Only support generation for case classes")
+      return '{???}
+    }
 
     val cls = tpS.classSymbol.get
 
@@ -103,14 +106,16 @@ object Iso {
       case Type.TypeRef(name, prefix) => Type.TermRef(prefix, name)
     }
 
-    if (cls.caseFields.size != 1)
-      QuoteError("Use GenIso.fields for case classes more than one parameter")
+    if (cls.caseFields.size != 1) {
+      qctx.error("Use GenIso.fields for case classes more than one parameter")
+      return '{???}
+    }
 
     val fieldTp = tpS.memberType(cls.caseFields.head)
-    if (!(fieldTp =:= tpA))
-      QuoteError(s"The type of case class field $fieldTp does not match $tpA")
-
-    '{
+    if (!(fieldTp =:= tpA)) {
+      qctx.error(s"The type of case class field $fieldTp does not match $tpA")
+      '{???}
+    } else '{
       // (p: S) => p._1
       val to = (p: S) =>  ${ Select.unique(('p).unseal, "_1").seal.cast[A] }
       // (p: A) => S(p)
@@ -134,8 +139,10 @@ object Iso {
     else if (tpS.classSymbol.flatMap(cls => if (cls.flags.is(Flags.Case)) Some(true) else None).nonEmpty) {
       val cls = tpS.classSymbol.get
 
-      if (cls.caseFields.size != 0)
-        QuoteError("Use GenIso.fields for case classes more than one parameter")
+      if (cls.caseFields.size != 0) {
+        qctx.error("Use GenIso.fields for case classes more than one parameter")
+        return '{???}
+      }
 
       val companion = tpS match {
         case Type.SymRef(sym, prefix)   => Type.TermRef(prefix, sym.name)
@@ -149,7 +156,8 @@ object Iso {
       }
     }
     else {
-      QuoteError("Only support generation for case classes or singleton types")
+      qctx.error("Only support generation for case classes or singleton types")
+      '{???}
     }
   }
 

@@ -21,7 +21,7 @@ object Macro {
     }
   }
 
-  def fooErrorsImpl(parts : Seq[Expr[String]], args: Seq[Expr[Any]], argsExpr: Expr[Seq[Any]]) given QuoteContext= {
+  def fooErrorsImpl(parts0: Seq[Expr[String]], args: Seq[Expr[Any]], argsExpr: Expr[Seq[Any]]) given QuoteContext= {
     val errors = List.newBuilder[Expr[(Boolean, Int, Int, Int, String)]]
     // true if error, false if warning
     // 0 if part, 1 if arg, 2 if strCtx, 3 if args
@@ -67,6 +67,7 @@ object Macro {
         reported = oldReported
       }
     }
+    val parts = parts0.map { case Const(s) => s }
     dotty.internal.StringContextMacro.interpolate(parts.toList, args.toList, argsExpr, reporter) // Discard result
     errors.result().toExprOfList
   }

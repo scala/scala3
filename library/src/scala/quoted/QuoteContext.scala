@@ -22,6 +22,30 @@ class QuoteContext(val tasty: scala.tasty.Reflection) {
     tpe.unseal.show(syntaxHighlight)
   }
 
+  /** Report an error */
+  def error(msg: => String): Unit = {
+    import tasty._
+    tasty.error(msg, rootPosition) given rootContext
+  }
+
+  /** Report an error at the on the position of `expr` */
+  def error(msg: => String, expr: Expr[_]): Unit = {
+    import tasty._
+    tasty.error(msg, expr.unseal.pos) given rootContext
+  }
+
+  /** Report a warning */
+  def warning(msg: => String): Unit = {
+    import tasty._
+    tasty.warning(msg, rootPosition) given rootContext
+  }
+
+  /** Report a warning at the on the position of `expr` */
+  def warning(msg: => String, expr: Expr[_]): Unit = {
+    import tasty._
+    tasty.warning(msg, expr.unseal.pos) given rootContext
+  }
+
 }
 
 object QuoteContext {
