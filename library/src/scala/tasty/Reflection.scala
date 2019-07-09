@@ -46,9 +46,3 @@ class Reflection(val kernel: Kernel)
   }
 
 }
-
-object Reflection {
-  /** Compiler tasty context available in a top level ~ of an inline macro */
-  @deprecated("Use scala.quoted.QuoteContext instead", "0.17")
-  def macroContext: Reflection = throw new Exception("Not in inline macro.")
-}

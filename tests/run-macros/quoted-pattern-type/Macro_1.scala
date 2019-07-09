@@ -1,11 +1,10 @@
 import scala.quoted._
-import scala.tasty.Reflection
 
 object Lib {
 
   inline def foo[T](arg: => T): T = ${ impl('arg) }
 
-  private def impl[T: Type](arg: Expr[T])(implicit refl: Reflection): Expr[T] = {
+  private def impl[T: Type](arg: Expr[T]) given QuoteContext: Expr[T] = {
     arg match {
       case e @ '{ $x: Boolean } => '{ println("Boolean: " + $e); $e }
       case e @ '{ $x: Int } => '{ println("Int: " + $x); $x }
