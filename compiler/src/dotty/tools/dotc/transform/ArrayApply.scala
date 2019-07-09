@@ -25,11 +25,11 @@ class ArrayApply extends MiniPhase {
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
     if (tree.symbol.name == nme.apply && tree.symbol.owner == defn.ArrayModule) { // Is `Array.apply`
       tree.args match {
-        case CleanTree(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: ct :: Nil
+        case StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: ct :: Nil
             if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) && elideClassTag(ct) =>
           seqLit
 
-        case elem0 :: CleanTree(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: Nil
+        case elem0 :: StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: Nil
             if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) =>
           tpd.JavaSeqLiteral(elem0 :: seqLit.elems, seqLit.elemtpt)
 
@@ -63,9 +63,8 @@ class ArrayApply extends MiniPhase {
     case _ => false
   }
 
-  object CleanTree {
+  object StripAscription {
     def unapply(tree: Tree)(implicit ctx: Context): Some[Tree] = tree match {
-      case Block(Nil, expr) => unapply(expr)
       case Typed(expr, _) => unapply(expr)
       case _ => Some(tree)
     }
