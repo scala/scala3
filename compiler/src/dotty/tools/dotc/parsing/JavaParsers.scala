@@ -137,9 +137,9 @@ object JavaParsers {
     // ------------- general parsing ---------------------------
 
     /** skip parent or brace enclosed sequence of things */
-    def skipAhead(): Unit = {
-      var nparens = 0
-      var nbraces = 0
+    def skipAhead(initnparens: Int, initnbraces: Int): Unit = {
+      var nparens = initnparens
+      var nbraces = initnbraces
       while ({
         in.token match {
           case LPAREN =>
@@ -160,6 +160,8 @@ object JavaParsers {
       })
       ()
     }
+
+    def skipAhead(): Unit = skipAhead(0,0)
 
     def skipTo(tokens: Int*): Unit =
       while (!(tokens contains in.token) && in.token != EOF)
@@ -329,20 +331,42 @@ object JavaParsers {
     }
 
     def annotations(): List[Tree] = {
-      //var annots = new ListBuffer[Tree]
+      var annots = new ListBuffer[Tree]
       while (in.token == AT) {
         in.nextToken()
-        annotation()
+        annotation() match {
+          case Some(anno) => annots += anno
+          case _ =>
+        }
       }
-      List() // don't pass on annotations for now
+      annots.toList
     }
 
     /** Annotation ::= TypeName [`(` AnnotationArgument {`,` AnnotationArgument} `)`]
       */
-    def annotation(): Unit = {
-      qualId()
-      if (in.token == LPAREN) { skipAhead(); accept(RPAREN) }
-      else if (in.token == LBRACE) { skipAhead(); accept(RBRACE) }
+    def annotation(): Option[Tree] = {
+      val id = convertToTypeId(qualId())
+      var skipAnno = false
+
+      // only parse annotations without arguments
+      if (in.token == LPAREN) {
+        in.nextToken()
+        if (in.token != RPAREN) {
+          skipAnno = true
+          skipAhead(1, 0)
+        }
+        accept(RPAREN)
+      } else if (in.token == LBRACE) {
+        in.nextToken()
+        if (in.token != RBRACE) {
+          skipAnno = true
+          skipAhead(0, 1)
+        }
+        accept(RBRACE)
+      }
+
+      if (skipAnno) None
+      else Some(ensureApplied(Select(New(id), nme.CONSTRUCTOR)))
     }
 
     def modifiers(inInterface: Boolean): Modifiers = {
@@ -360,7 +384,10 @@ object JavaParsers {
         in.token match {
           case AT if (in.lookaheadToken != INTERFACE) =>
             in.nextToken()
-            annotation()
+            annotation() match {
+              case Some(anno) => annots :+= anno
+              case _ =>
+            }
           case PUBLIC =>
             isPackageAccess = false
             in.nextToken()
