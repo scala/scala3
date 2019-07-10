@@ -49,13 +49,9 @@ class ArrayApply extends MiniPhase {
     case Apply(_, rc :: Nil) if ct.symbol == defn.ClassTagModule_apply =>
       rc match {
         case _: Literal => true // ClassTag.apply(classOf[XYZ])
-        case rc: RefTree if rc.name == nme.TYPE_ => // ClassTag.apply(java.lang.XYZ.Type)
-          val owner = rc.symbol.maybeOwner.companionModule
-          owner == defn.BoxedBooleanModule || owner == defn.BoxedByteModule ||
-          owner == defn.BoxedShortModule || owner == defn.BoxedCharModule ||
-          owner == defn.BoxedIntModule || owner == defn.BoxedLongModule ||
-          owner == defn.BoxedFloatModule || owner == defn.BoxedDoubleModule ||
-          owner == defn.BoxedUnitModule
+        case rc: RefTree if rc.name == nme.TYPE_ =>
+          // ClassTag.apply(java.lang.XYZ.Type)
+          defn.ScalaBoxedClasses().contains(rc.symbol.maybeOwner.companionClass)
         case _ => false
       }
     case Apply(ctm: RefTree, _) if ctm.symbol.maybeOwner.companionModule == defn.ClassTagModule =>
