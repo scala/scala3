@@ -13,7 +13,7 @@ import dotty.tools.dotc.ast.tpd
 import scala.reflect.ClassTag
 
 
-/** This phase rewrites calls to `Array.apply` to primitive array instantion.
+/** This phase rewrites calls to `Array.apply` to a direct instantiation of the array in the bytecode.
  *
  *  Transforms `scala.Array.apply([....])` and `scala.Array.apply(..., [....])` into `[...]`
  */
