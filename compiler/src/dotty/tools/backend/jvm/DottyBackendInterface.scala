@@ -679,7 +679,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       isFinal &&  !toDenot(sym).isClassConstructor && !(sym.is(Flags.Mutable)) &&  !(sym.enclosingClass.is(Flags.Trait))
 
     def getsJavaPrivateFlag: Boolean =
-      isPrivate //|| (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
+      isPrivate || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
     def isFinal: Boolean = sym.is(Flags.Final)
     def isStaticMember: Boolean = (sym ne NoSymbol) &&
