@@ -805,9 +805,6 @@ class Definitions {
   @threadUnsafe lazy val TastyReflectionType: TypeRef = ctx.requiredClassRef("scala.tasty.Reflection")
   def TastyReflectionClass(implicit ctx: Context): ClassSymbol = TastyReflectionType.symbol.asClass
 
-  @threadUnsafe lazy val TastyReflectionModule: TermSymbol = ctx.requiredModule("scala.tasty.Reflection")
-    @threadUnsafe lazy val TastyReflection_macroContext: TermSymbol = TastyReflectionModule.requiredMethod("macroContext")
-
   @threadUnsafe lazy val EqlType: TypeRef = ctx.requiredClassRef("scala.Eql")
   def EqlClass(implicit ctx: Context): ClassSymbol = EqlType.symbol.asClass
   def EqlModule(implicit ctx: Context): Symbol = EqlClass.companionModule

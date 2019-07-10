@@ -105,7 +105,6 @@ object Splicer {
     protected def interpretVarargs(args: List[Object])(implicit env: Env): Object =
       args.toSeq
 
-    protected def interpretTastyContext()(implicit env: Env): Object = ReflectionImpl(ctx, pos)
     protected def interpretQuoteContext()(implicit env: Env): Object =
       new scala.quoted.QuoteContext(ReflectionImpl(ctx, pos))
 
@@ -278,7 +277,6 @@ object Splicer {
     protected def interpretTypeQuote(tree: tpd.Tree)(implicit env: Env): Unit = ()
     protected def interpretLiteral(value: Any)(implicit env: Env): Unit = ()
     protected def interpretVarargs(args: List[Unit])(implicit env: Env): Unit = ()
-    protected def interpretTastyContext()(implicit env: Env): Unit = ()
     protected def interpretQuoteContext()(implicit env: Env): Unit = ()
     protected def interpretStaticMethodCall(module: Symbol, fn: Symbol, args: => List[Unit])(implicit env: Env): Unit = args.foreach(identity)
     protected def interpretModuleAccess(fn: Symbol)(implicit env: Env): Unit = ()
@@ -314,7 +312,6 @@ object Splicer {
     protected def interpretTypeQuote(tree: Tree)(implicit env: Env): Result
     protected def interpretLiteral(value: Any)(implicit env: Env): Result
     protected def interpretVarargs(args: List[Result])(implicit env: Env): Result
-    protected def interpretTastyContext()(implicit env: Env): Result
     protected def interpretQuoteContext()(implicit env: Env): Result
     protected def interpretStaticMethodCall(module: Symbol, fn: Symbol, args: => List[Result])(implicit env: Env): Result
     protected def interpretModuleAccess(fn: Symbol)(implicit env: Env): Result
@@ -337,9 +334,6 @@ object Splicer {
 
       case Literal(Constant(value)) =>
         interpretLiteral(value)
-
-      case _ if tree.symbol == defn.TastyReflection_macroContext =>
-        interpretTastyContext()
 
       case _ if tree.symbol == defn.QuoteContext_macroContext =>
         interpretQuoteContext()

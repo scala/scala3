@@ -702,11 +702,6 @@ trait Implicits { self: Typer =>
       }
     }
 
-  lazy val synthesizedTastyContext: SpecialHandler =
-    (formal, span) => implicit ctx =>
-      if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.TastyReflection_macroContext)
-      else EmptyTree
-
   lazy val synthesizedQuoteContext: SpecialHandler =
     (formal, span) => implicit ctx =>
       if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.QuoteContext_macroContext)
@@ -1039,7 +1034,6 @@ trait Implicits { self: Typer =>
         defn.ClassTagClass        -> synthesizedClassTag,
         defn.QuotedTypeClass      -> synthesizedTypeTag,
         defn.QuoteContextClass    -> synthesizedQuoteContext,
-        defn.TastyReflectionClass -> synthesizedTastyContext,
         defn.EqlClass             -> synthesizedEq,
         defn.TupledFunctionClass  -> synthesizedTupleFunction,
         defn.ValueOfClass         -> synthesizedValueOf,
