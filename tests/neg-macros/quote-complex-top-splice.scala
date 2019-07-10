@@ -6,18 +6,22 @@ object Test {
 
   inline def foo1: Unit = ${
     val x = 1 // error
-    impl(x)
+    impl(x) // error
   }
 
-  inline def foo2: Unit = ${ impl({
-    val x = 1 // error
-    x
-  }) }
+  inline def foo2: Unit = ${ impl(
+    { // error
+      val x = 1
+      x
+    }
+  ) }
 
-  inline def foo3: Unit = ${ impl({
-    println("foo3") // error
-    3
-  }) }
+  inline def foo3: Unit = ${ impl(
+    { // error
+      println("foo3")
+      3
+    }
+  ) }
 
   inline def foo4: Unit = ${
     println("foo4") // error
