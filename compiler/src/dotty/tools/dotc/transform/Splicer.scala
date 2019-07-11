@@ -187,11 +187,11 @@ object Splicer {
         } else if (fn.symbol.is(Module)) {
           interpretModuleAccess(fn.symbol)
         } else if (fn.symbol.isStatic) {
-          val module = fn.symbol.owner
-          interpretStaticMethodCall(module, fn.symbol, args.flatten.map(interpretTree))
+          val staticMethodCall = interpretedStaticMethodCall(fn.symbol.owner, fn.symbol)
+          staticMethodCall(args.flatten.map(interpretTree))
         } else if (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic) {
-          val module = fn.qualifier.symbol.moduleClass
-          interpretStaticMethodCall(module, fn.symbol, args.flatten.map(interpretTree))
+          val staticMethodCall = interpretedStaticMethodCall(fn.qualifier.symbol.moduleClass, fn.symbol)
+          staticMethodCall(args.flatten.map(interpretTree))
         } else if (env.contains(fn.name)) {
           env(fn.name)
         } else if (tree.symbol.is(InlineProxy)) {
@@ -245,7 +245,7 @@ object Splicer {
     private def interpretQuoteContext()(implicit env: Env): Object =
       new scala.quoted.QuoteContext(ReflectionImpl(ctx, pos))
 
-    private def interpretStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: => List[Object])(implicit env: Env): Object = {
+    private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol)(implicit env: Env): List[Object] => Object = {
       val (inst, clazz) =
         if (moduleClass.name.startsWith(str.REPL_SESSION_LINE)) {
           (null, loadReplLineClass(moduleClass))
@@ -262,7 +262,8 @@ object Splicer {
 
       val name = getDirectName(fn.info.finalResultType, fn.name.asTermName)
       val method = getMethod(clazz, name, paramsSig(fn))
-      stopIfRuntimeException(method.invoke(inst, args: _*))
+
+      (args: List[Object]) => stopIfRuntimeException(method.invoke(inst, args: _*))
     }
 
     private def interpretModuleAccess(fn: Symbol)(implicit env: Env): Object =
