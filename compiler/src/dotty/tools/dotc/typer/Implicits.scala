@@ -471,7 +471,22 @@ trait ImplicitRunInfo { self: Run =>
 
   private val EmptyTermRefSet = new TermRefSet()(NoContext)
 
-  /** The implicit scope of a type `tp`
+  /** The implicit scope of a type `tp`, defined as follows:
+   *
+   *  The implicit scope of a type `tp` is the smallest set S of object references (i.e. TermRefs
+   *  with Module symbol) such that
+   *
+   *  - If `tp` is a class reference, S contains a reference to the companion object of the class,
+   *    if it exists, as well as the implicit scopes of all of `tp`'s parent class references.
+   *  - If `tp` is an opaque type alias `p.A` of type `tp'`, S contains a reference to an object `A` defined in the
+   *    same scope as the opaque type, if it exists, as well as the implicit scope of `tp'`.
+   *  - If `tp` is a reference `p.T` to a class or opaque type alias, S also contains all object references
+   *    on the prefix path `p`. Under Scala-2 mode, package objects of package references on `p` also
+   *    count towards the implicit scope.
+   *  - If `tp` is an alias of `tp'`, S contains the implicit scope of `tp'`.
+   *  - If `tp` is some other type, its implicit scope is the union of the implicit scopes of
+   *    its parts (parts defined as in the spec).
+   *
    *  @param liftingCtx   A context to be used when computing the class symbols of
    *                      a type. Types may contain type variables with their instances
    *                      recorded in the current context. To find out the instance of
@@ -545,8 +560,6 @@ trait ImplicitRunInfo { self: Run =>
         val comps = new TermRefSet
         def addCompanion(pre: Type, companion: Symbol) =
           if (companion.exists && !companion.isAbsent) comps += TermRef(pre, companion)
-        def addCompanionNamed(pre: Type, name: TermName) =
-          addCompanion(pre, pre.member(name).suchThat(_.is(Module)).symbol)
 
         def addPath(pre: Type): Unit = pre.dealias match {
           case pre: ThisType if pre.cls.is(Module) && pre.cls.isStaticOwner =>
@@ -554,7 +567,7 @@ trait ImplicitRunInfo { self: Run =>
           case pre: TermRef =>
             if (pre.symbol.is(Package)) {
               if (ctx.scala2Mode) {
-                addCompanionNamed(pre, nme.PACKAGE)
+                addCompanion(pre, pre.member(nme.PACKAGE).symbol)
                 addPath(pre.prefix)
               }
             }
@@ -564,21 +577,21 @@ trait ImplicitRunInfo { self: Run =>
             }
           case _ =>
         }
-        tp match {
-          case tp: TermRef =>
-            addPath(tp.prefix)
+        tp.dealias match {
           case tp: TypeRef =>
             val sym = tp.symbol
             if (isAnchor(sym)) {
               val pre = tp.prefix
               addPath(pre)
-              if (sym.is(Module)) addCompanion(pre, sym.sourceModule)
-              else if (sym.isClass) addCompanion(pre, sym.companionModule)
-              else addCompanionNamed(pre, sym.name.stripModuleClassSuffix.toTermName)
+              if (sym.isClass) addCompanion(pre, sym.companionModule)
+              else addCompanion(pre,
+                pre.member(sym.name.toTermName)
+                  .suchThat(companion => companion.is(Module) && companion.owner == sym.owner)
+                  .symbol)
             }
             val superAnchors = if (sym.isClass) tp.parents else anchors(tp.superType)
             for (anchor <- superAnchors) comps ++= iscopeRefs(anchor)
-          case _ =>
+          case tp =>
             for (part <- tp.namedPartsWith(_.isType)) comps ++= iscopeRefs(part)
         }
         comps
