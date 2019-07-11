@@ -7,7 +7,7 @@ import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags
 import Symbols._, StdNames._, Trees._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
-import typer.FrontEnd
+import typer.{FrontEnd, Namer}
 import util.{Property, SourceFile, SourcePosition}
 import util.NameTransformer.avoidIllegalChars
 import collection.mutable.ListBuffer
@@ -75,21 +75,27 @@ object desugar {
   }
 
   /** A type tree that computes its type from an existing parameter. */
-  class DerivedFromParamTree(implicit @constructorOnly src: SourceFile) extends DerivedTypeTree {
+  class DerivedFromParamTree()(implicit @constructorOnly src: SourceFile) extends DerivedTypeTree {
 
-    /** Make sure that for all enclosing module classes their companion classes
-     *  are completed. Reason: We need the constructor of such companion classes to
-     *  be completed so that OriginalSymbol attachments are pushed to DerivedTypeTrees
-     *  in apply/unapply methods.
+    /** Complete the appropriate constructors so that OriginalSymbol attachments are
+     *  pushed to DerivedTypeTrees.
      */
-    override def ensureCompletions(implicit ctx: Context): Unit =
+    override def ensureCompletions(implicit ctx: Context): Unit = {
+      def completeConstructor(sym: Symbol) =
+        sym.infoOrCompleter match {
+          case completer: Namer#ClassCompleter =>
+            completer.completeConstructor(sym)
+          case _ =>
+        }
+
       if (!ctx.owner.is(Package))
         if (ctx.owner.isClass) {
-          ctx.owner.ensureCompleted()
+          completeConstructor(ctx.owner)
           if (ctx.owner.is(ModuleClass))
-            ctx.owner.linkedClass.ensureCompleted()
+            completeConstructor(ctx.owner.linkedClass)
         }
         else ensureCompletions(ctx.outer)
+    }
 
     /** Return info of original symbol, where all references to siblings of the
      *  original symbol (i.e. sibling and original symbol have the same owner)

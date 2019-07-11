@@ -913,6 +913,10 @@ class Namer { typer: Typer =>
 
     protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
 
+    private[this] var localCtx: Context = _
+    /** info to be used temporarily while completing the class, to avoid cyclic references. */
+    private[this] var tempInfo: TempClassInfo = _
+
     val TypeDef(name, impl @ Template(constr, _, self, _)) = original
 
     private val (params, rest): (List[Tree], List[Tree]) = impl.body.span {
@@ -1040,6 +1044,42 @@ class Namer { typer: Typer =>
       forwarderss.foreach(_.foreach(fwdr => fwdr.symbol.entered))
     }
 
+    /** Ensure constructor is completed so that any parameter accessors
+     *  which have type trees deriving from its parameters can be
+     *  completed in turn. Note that parent types access such parameter
+     *  accessors, that's why the constructor needs to be completed before
+     *  the parent types are elaborated.
+     */
+    def completeConstructor(denot: SymDenotation): Unit = {
+      if (tempInfo != null) // Constructor has been completed already
+        return
+
+      addAnnotations(denot.symbol)
+
+      val selfInfo: TypeOrSymbol =
+        if (self.isEmpty) NoType
+        else if (cls.is(Module)) {
+          val moduleType = cls.owner.thisType select sourceModule
+          if (self.name == nme.WILDCARD) moduleType
+          else recordSym(
+            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.span),
+            self)
+        }
+        else createSymbol(self)
+
+      val savedInfo = denot.infoOrCompleter
+      tempInfo = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
+      denot.info = tempInfo
+
+      localCtx = ctx.inClassContext(selfInfo)
+
+      index(constr)
+      index(rest)(localCtx)
+      symbolOfTree(constr).ensureCompleted()
+
+      denot.info = savedInfo
+    }
+
     /** The type signature of a ClassDef with given symbol */
     override def completeInCreationContext(denot: SymDenotation): Unit = {
       val parents = impl.parents
@@ -1102,33 +1142,10 @@ class Namer { typer: Typer =>
         }
       }
 
-      addAnnotations(denot.symbol)
+      if (tempInfo == null) // Constructor has not been completed yet
+        completeConstructor(denot)
 
-      val selfInfo: TypeOrSymbol =
-        if (self.isEmpty) NoType
-        else if (cls.is(Module)) {
-          val moduleType = cls.owner.thisType select sourceModule
-          if (self.name == nme.WILDCARD) moduleType
-          else recordSym(
-            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.span),
-            self)
-        }
-        else createSymbol(self)
-
-      // pre-set info, so that parent types can refer to type params
-      val tempInfo = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
       denot.info = tempInfo
-
-      val localCtx = ctx.inClassContext(selfInfo)
-
-      // Ensure constructor is completed so that any parameter accessors
-      // which have type trees deriving from its parameters can be
-      // completed in turn. Note that parent types access such parameter
-      // accessors, that's why the constructor needs to be completed before
-      // the parent types are elaborated.
-      index(constr)
-      index(rest)(localCtx)
-      symbolOfTree(constr).ensureCompleted()
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
         ensureFirstIsClass(parents.map(checkedParentType(_)), cls.span))
@@ -1145,6 +1162,8 @@ class Namer { typer: Typer =>
       }
 
       tempInfo.finalize(denot, parentTypes)
+      // The temporary info can now be garbage-collected
+      tempInfo = null
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
