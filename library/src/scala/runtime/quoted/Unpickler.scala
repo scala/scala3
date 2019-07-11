@@ -14,10 +14,10 @@ object Unpickler {
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleExpr[T](repr: Pickled, args: Seq[Any]): Expr[T] = new TastyExpr[T](repr, args)
+  def unpickleExpr[T](repr: Pickled, args: Seq[Seq[Any] => (Expr[Any] | Type[_])]): Expr[T] = new TastyExpr[T](repr, args)
 
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleType[T](repr: Pickled, args: Seq[Any]): Type[T] = new TastyType[T](repr, args)
+  def unpickleType[T](repr: Pickled, args: Seq[Seq[Any] => Type[_]]): Type[T] = new TastyType[T](repr, args)
 }

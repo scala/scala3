@@ -229,9 +229,12 @@ class ReifyQuotes extends MacroTransform {
         val meth =
           if (isType) ref(defn.Unpickler_unpickleType).appliedToType(originalTp)
           else ref(defn.Unpickler_unpickleExpr).appliedToType(originalTp.widen)
+        val spliceResType =
+          if(isType) defn.QuotedTypeType.appliedTo(WildcardType)
+          else defn.QuotedExprType.appliedTo(defn.AnyType) | defn.QuotedTypeType.appliedTo(WildcardType)
         meth.appliedTo(
           liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType),
-          liftList(splices, defn.AnyType))
+          liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), spliceResType)))
       }
       if (splices.nonEmpty) pickleAsTasty()
       else if (isType) {
