@@ -103,11 +103,11 @@ class CommunityBuildTest {
     updateCommand = "jvm/test:update"
   )
 
-  @Test def scalatest = test(
-    project       = "scalatest",
-    testCommand   = ";scalacticDotty/clean;scalacticTestDotty/test;scalatestTestDotty/test",
-    updateCommand = "scalatest/update"
-  )
+  // @Test def scalatest = test(
+  //   project       = "scalatest",
+  //   testCommand   = ";scalacticDotty/clean;scalacticTestDotty/test;scalatestTestDotty/test",
+  //   updateCommand = "scalatest/update"
+  // )
 
   @Test def scalaXml = test(
     project       = "scala-xml",
