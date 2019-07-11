@@ -134,7 +134,7 @@ object Scala2Unpickler {
     else
       registerCompanionPair(scalacCompanion, denot.classSymbol)
 
-    tempInfo.finalize(denot, normalizedParents, ost) // install final info, except possibly for typeparams ordering
+    tempInfo.finalize(denot, normalizedParents) // install final info, except possibly for typeparams ordering
     denot.ensureTypeParamsInCorrectOrder()
   }
 }
