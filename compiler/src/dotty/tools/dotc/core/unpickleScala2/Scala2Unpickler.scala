@@ -691,7 +691,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   }
 
   /** Read type ref, mapping a TypeRef to a package to the package's ThisType
-   *  Packae references should be TermRefs or ThisTypes but it was observed that
+   *  Package references should be TermRefs or ThisTypes but it was observed that
    *  nsc sometimes pickles them as TypeRefs instead.
    */
   private def readPrefix()(implicit ctx: Context): Type = readTypeRef() match {
