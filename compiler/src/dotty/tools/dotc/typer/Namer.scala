@@ -1323,15 +1323,8 @@ class Namer { typer: Typer =>
       def cookedRhsType = deskolemize(dealiasIfUnit(widenRhs(rhsType)))
       def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
       //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
-      if (inherited.exists) {
-        if (sym.is(Final, butNot = Method)) {
-          val tp = lhsType
-          if (tp.isInstanceOf[ConstantType])
-            tp // keep constant types that fill in for a non-constant (to be revised when inline has landed).
-          else inherited
-        }
-        else inherited
-      }
+      if (inherited.exists)
+        if (isInlineVal) lhsType else inherited
       else {
         if (sym.is(Implicit))
           mdef match {

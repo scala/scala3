@@ -690,6 +690,15 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     } else tp1
   }
 
+  /** Read type ref, mapping a TypeRef to a package to the package's ThisType
+   *  Package references should be TermRefs or ThisTypes but it was observed that
+   *  nsc sometimes pickles them as TypeRefs instead.
+   */
+  private def readPrefix()(implicit ctx: Context): Type = readTypeRef() match {
+    case pre: TypeRef if pre.symbol.is(Package) => pre.symbol.thisType
+    case pre => pre
+  }
+
   /** Read a type
    *
    *  @param forceProperType is used to ease the transition to NullaryMethodTypes (commentmarker: NMT_TRANSITION)
@@ -707,7 +716,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case THIStpe =>
         readSymbolRef().thisType
       case SINGLEtpe =>
-        val pre = readTypeRef()
+        val pre = readPrefix()
         val sym = readDisambiguatedSymbolRef(_.info.isParameterless)
         pre.select(sym)
       case SUPERtpe =>
@@ -717,7 +726,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case CONSTANTtpe =>
         ConstantType(readConstantRef())
       case TYPEREFtpe =>
-        var pre = readTypeRef()
+        var pre = readPrefix()
         val sym = readSymbolRef()
         pre match {
           case thispre: ThisType =>
