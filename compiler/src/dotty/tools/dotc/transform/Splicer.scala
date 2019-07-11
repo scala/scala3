@@ -318,20 +318,6 @@ object Splicer {
     protected def interpretNew(fn: Symbol, args: => List[Result])(implicit env: Env): Result
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Result
 
-    private final def removeErasedArguments(args: List[List[Tree]], fnTpe: Type): List[List[Tree]] =
-      fnTpe match {
-        case tp: TermRef  => removeErasedArguments(args, tp.underlying)
-        case tp: PolyType => removeErasedArguments(args, tp.resType)
-        case tp: ExprType => removeErasedArguments(args, tp.resType)
-        case tp: MethodType =>
-          val tail = removeErasedArguments(args.tail, tp.resType)
-          if (tp.isErasedMethod) tail else args.head :: tail
-        case tp: AppliedType if defn.isImplicitFunctionType(tp) =>
-          val tail = removeErasedArguments(args.tail, tp.args.last)
-          if (defn.isErasedFunctionType(tp)) tail else args.head :: tail
-        case tp => assert(args.isEmpty, tp); Nil
-      }
-
     protected final def interpretTree(tree: Tree)(implicit env: Env): Result = tree match {
       case Apply(TypeApply(fn, _), quoted :: Nil) if fn.symbol == defn.InternalQuoted_exprQuote =>
         val quoted1 = quoted match {
@@ -359,11 +345,11 @@ object Splicer {
           interpretModuleAccess(fn.symbol)
         } else if (fn.symbol.isStatic) {
           val module = fn.symbol.owner
-          def interpretedArgs = removeErasedArguments(args, fn.tpe).flatten.map(interpretTree)
+          def interpretedArgs = args.flatten.map(interpretTree)
           interpretStaticMethodCall(module, fn.symbol, interpretedArgs)
         } else if (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic) {
           val module = fn.qualifier.symbol.moduleClass
-          def interpretedArgs = removeErasedArguments(args, fn.tpe).flatten.map(interpretTree)
+          def interpretedArgs = args.flatten.map(interpretTree)
           interpretStaticMethodCall(module, fn.symbol, interpretedArgs)
         } else if (env.contains(fn.name)) {
           env(fn.name)
@@ -407,12 +393,14 @@ object Splicer {
       def unapply(arg: Tree): Option[(RefTree, List[List[Tree]])] =
         Call0.unapply(arg).map((fn, args) => (fn, args.reverse))
 
-      object Call0 {
+      private object Call0 {
         def unapply(arg: Tree): Option[(RefTree, List[List[Tree]])] = arg match {
           case Select(Call0(fn, args), nme.apply) if defn.isImplicitFunctionType(fn.tpe.widenDealias.finalResultType) =>
             Some((fn, args))
           case fn: RefTree => Some((fn, Nil))
-          case Apply(Call0(fn, args1), args2) => Some((fn, args2 :: args1))
+          case Apply(f @ Call0(fn, args1), args2) =>
+            if (f.tpe.widenDealias.isErasedMethod) Some((fn, args1))
+            else Some((fn, args2 :: args1))
           case TypeApply(Call0(fn, args), _) => Some((fn, args))
           case _ => None
         }
