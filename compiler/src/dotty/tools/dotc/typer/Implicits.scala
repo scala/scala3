@@ -1161,7 +1161,7 @@ trait Implicits { self: Typer =>
           err.userDefinedErrorString(
             raw,
             pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
-            pt.argInfos))
+            pt.widenExpr.argInfos))
 
         def hiddenImplicitsAddendum: String = arg.tpe match {
           case fail: SearchFailureType =>
