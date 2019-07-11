@@ -74,11 +74,8 @@ object desugar {
     def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.Tree = tpd.ref(sym)
   }
 
-  /** A type tree that computes its type from an existing parameter.
-   *  @param suffix  String difference between existing parameter (call it `P`) and parameter owning the
-   *                 DerivedTypeTree (call it `O`). We have: `O.name == P.name + suffix`.
-   */
-  class DerivedFromParamTree(suffix: String)(implicit @constructorOnly src: SourceFile) extends DerivedTypeTree {
+  /** A type tree that computes its type from an existing parameter. */
+  class DerivedFromParamTree(implicit @constructorOnly src: SourceFile) extends DerivedTypeTree {
 
     /** Make sure that for all enclosing module classes their companion classes
      *  are completed. Reason: We need the constructor of such companion classes to
@@ -96,16 +93,12 @@ object desugar {
 
     /** Return info of original symbol, where all references to siblings of the
      *  original symbol (i.e. sibling and original symbol have the same owner)
-     *  are rewired to like-named* parameters or accessors in the scope enclosing
+     *  are rewired to same-named parameters or accessors in the scope enclosing
      *  the current scope. The current scope is the scope owned by the defined symbol
      *  itself, that's why we have to look one scope further out. If the resulting
      *  type is an alias type, dealias it. This is necessary because the
      *  accessor of a type parameter is a private type alias that cannot be accessed
      *  from subclasses.
-     *
-     *  (*) like-named means:
-     *
-     *       parameter name  ==  reference name ++ suffix
      */
     def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = {
       val relocate = new TypeMap {
@@ -113,7 +106,7 @@ object desugar {
         def apply(tp: Type) = tp match {
           case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>
             val defctx = ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next()
-            var local = defctx.denotNamed(tp.name ++ suffix).suchThat(_.isParamOrAccessor).symbol
+            var local = defctx.denotNamed(tp.name).suchThat(_.isParamOrAccessor).symbol
             if (local.exists) (defctx.owner.thisType select local).dealiasKeepAnnots
             else {
               def msg =
@@ -129,20 +122,19 @@ object desugar {
   }
 
   /** A type definition copied from `tdef` with a rhs typetree derived from it */
-  def derivedTypeParam(tdef: TypeDef, suffix: String = "")(implicit ctx: Context): TypeDef =
+  def derivedTypeParam(tdef: TypeDef)(implicit ctx: Context): TypeDef =
     cpy.TypeDef(tdef)(
-      name = tdef.name ++ suffix,
-      rhs = DerivedFromParamTree(suffix).withSpan(tdef.rhs.span).watching(tdef)
+      rhs = DerivedFromParamTree().withSpan(tdef.rhs.span).watching(tdef)
     )
 
   /** A derived type definition watching `sym` */
   def derivedTypeParam(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
-    TypeDef(sym.name, DerivedFromParamTree("").watching(sym)).withFlags(TypeParam)
+    TypeDef(sym.name, DerivedFromParamTree().watching(sym)).withFlags(TypeParam)
 
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
   def derivedTermParam(vdef: ValDef)(implicit ctx: Context): ValDef =
     cpy.ValDef(vdef)(
-      tpt = DerivedFromParamTree("").withSpan(vdef.tpt.span).watching(vdef))
+      tpt = DerivedFromParamTree().withSpan(vdef.tpt.span).watching(vdef))
 
 // ----- Desugar methods -------------------------------------------------
 
