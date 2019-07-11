@@ -483,7 +483,8 @@ trait ImplicitRunInfo { self: Run =>
    *  - If `tp` is a reference `p.T` to a class or opaque type alias, S also contains all object references
    *    on the prefix path `p`. Under Scala-2 mode, package objects of package references on `p` also
    *    count towards the implicit scope.
-   *  - If `tp` is an alias of `tp'`, S contains the implicit scope of `tp'`.
+   *  - If `tp` is a (non-opaque)  alias of `tp'`, S contains the implicit scope of `tp'`.
+   *  - If `tp` is a singleton type, S contains the implicit scope of its underlying type.
    *  - If `tp` is some other type, its implicit scope is the union of the implicit scopes of
    *    its parts (parts defined as in the spec).
    *
@@ -520,7 +521,7 @@ trait ImplicitRunInfo { self: Run =>
       override implicit protected val ctx: Context = liftingCtx
       override def stopAtStatic = true
 
-      def apply(tp: Type) = tp match {
+      def apply(tp: Type) = tp.widenDealias match {
         case tp: TypeRef =>
           ((defn.AnyType: Type) /: anchors(tp))(AndType.make(_, _))
         case tp: TypeVar =>
@@ -577,7 +578,7 @@ trait ImplicitRunInfo { self: Run =>
             }
           case _ =>
         }
-        tp.dealias match {
+        tp.widenDealias match {
           case tp: TypeRef =>
             val sym = tp.symbol
             if (isAnchor(sym)) {
