@@ -68,7 +68,7 @@ object Splicer {
       def checkValidStat(tree: Tree): Unit = tree match {
         case tree: ValDef if tree.symbol.is(Synthetic) =>
           // Check val from `foo(j = x, i = y)` which it is expanded to
-          // `val j$1 = x; val i$1 = y; foo(i = y, j = x)`
+          // `val j$1 = x; val i$1 = y; foo(i = i$1, j = j$1)`
           checkIfValidArgument(tree.rhs)
         case _ =>
           ctx.error("Macro should not have statements", tree.sourcePos)
@@ -119,12 +119,15 @@ object Splicer {
           stats.foreach(checkValidStat)
           checkIfValidStaticCall(expr)
 
-        case Typed(expr, _) => checkIfValidStaticCall(expr)
+        case Typed(expr, _) =>
+          checkIfValidStaticCall(expr)
+
         case Call(fn, args)
             if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) ||
                fn.symbol.is(Module) || fn.symbol.isStatic ||
                (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic) =>
           args.flatten.foreach(checkIfValidArgument)
+
         case _ =>
           ctx.error(
             """Malformed macro.
@@ -201,7 +204,7 @@ object Splicer {
         }
 
       // Interpret `foo(j = x, i = y)` which it is expanded to
-      // `val j$1 = x; val i$1 = y; foo(i = y, j = x)`
+      // `val j$1 = x; val i$1 = y; foo(i = i$1, j = j$1)`
       case Block(stats, expr) => interpretBlock(stats, expr)
       case NamedArg(_, arg) => interpretTree(arg)
 
@@ -404,6 +407,9 @@ object Splicer {
   }
 
   object Call {
+    /** Matches an expression that is either a field access or an application
+     *  It retruns a TermRef containing field accessed or a method reference and the arguments passed to it.
+     */
     def unapply(arg: Tree)(implicit ctx: Context): Option[(RefTree, List[List[Tree]])] =
       Call0.unapply(arg).map((fn, args) => (fn, args.reverse))
 
