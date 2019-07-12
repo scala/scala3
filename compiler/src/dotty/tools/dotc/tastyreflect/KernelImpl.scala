@@ -1670,7 +1670,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   type NoSymbol = core.Symbols.NoSymbol.type
 
-  def matchNoSymbol(symbol: Symbol)(implicit ctx: Context): Boolean = symbol ne core.Symbols.NoSymbol
+  def matchNoSymbol(symbol: Symbol)(implicit ctx: Context): Boolean = symbol eq core.Symbols.NoSymbol
 
   //
   // FLAGS
