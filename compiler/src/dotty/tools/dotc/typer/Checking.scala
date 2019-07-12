@@ -644,7 +644,7 @@ trait Checking {
             recur(pat1, pt)
           case UnApply(fn, _, pats) =>
             check(pat, pt) &&
-            (isIrrefutableUnapply(fn) || fail(pat, pt)) && {
+            (isIrrefutableUnapply(fn, pats.length) || fail(pat, pt)) && {
               val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.sourcePos)
               pats.corresponds(argPts)(recur)
             }

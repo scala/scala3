@@ -275,12 +275,15 @@ object SpaceEngine {
   /** Is the unapply irrefutable?
    *  @param  unapp   The unapply function reference
    */
-  def isIrrefutableUnapply(unapp: tpd.Tree)(implicit ctx: Context): Boolean = {
+  def isIrrefutableUnapply(unapp: tpd.Tree, patSize: Int)(implicit ctx: Context): Boolean = {
     val unappResult = unapp.tpe.widen.finalResultType
     unappResult.isRef(defn.SomeClass) ||
-    unappResult =:= ConstantType(Constant(true)) ||
-    (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||
-    productArity(unappResult) > 0
+    unappResult <:< ConstantType(Constant(true)) ||
+    (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||  // scala2 compatibility
+    (patSize != -1 && productArity(unappResult) == patSize) || {
+      val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, unapp.sourcePos)
+      isEmptyTp <:< ConstantType(Constant(true))
+    }
   }
 }
 
@@ -348,16 +351,15 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         else {
           val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.sourcePos)
           if (elemTp.exists)
-            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, isIrrefutableUnapply(fun))
+            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, isIrrefutableUnapply(fun, -1))
           else
-            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)),isIrrefutableUnapply(fun))
+            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)), full = true)
         }
       else
-        Prod(erase(pat.tpe.stripAnnots), erase(fun.tpe), fun.symbol, pats.map(project), isIrrefutableUnapply(fun))
-    case Typed(expr @ Ident(nme.WILDCARD), tpt) =>
+        Prod(erase(pat.tpe.stripAnnots), erase(fun.tpe), fun.symbol, pats.map(project), isIrrefutableUnapply(fun, pats.length))
+    case Typed(pat @ UnApply(_, _, _), _) => project(pat)
+    case Typed(expr, _) =>
       Typ(erase(expr.tpe.stripAnnots), true)
-    case Typed(pat, _) =>
-      project(pat)
     case This(_) =>
       Typ(pat.tpe.stripAnnots, false)
     case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala

@@ -715,7 +715,8 @@ object desugar {
           val methName = if (hasRepeatedParam) nme.unapplySeq else nme.unapply
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
-          DefDef(methName, derivedTparams, (unapplyParam :: Nil) :: Nil, TypeTree(), unapplyRHS)
+          val unapplyResTp = if (arity == 0) Literal(Constant(true)) else TypeTree()
+          DefDef(methName, derivedTparams, (unapplyParam :: Nil) :: Nil, unapplyResTp, unapplyRHS)
             .withMods(synthetic)
         }
         companionDefs(companionParent, applyMeths ::: unapplyMeth :: companionMembers)

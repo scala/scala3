@@ -71,7 +71,7 @@ object Applications {
    *  parameterless `isEmpty` member of result type `Boolean`.
    */
   def isGetMatch(tp: Type, errorPos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Boolean =
-    extractorMemberType(tp, nme.isEmpty, errorPos).isRef(defn.BooleanClass) &&
+    extractorMemberType(tp, nme.isEmpty, errorPos).widenSingleton.isRef(defn.BooleanClass) &&
     extractorMemberType(tp, nme.get, errorPos).exists
 
   /** If `getType` is of the form:
