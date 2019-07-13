@@ -312,12 +312,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     var lastSelf: Symbol = NoSymbol
     var lastLevel: Int = 0
     for ((level, selfSym) <- sortedProxies) {
-      lazy val rhsClsSym = selfSym.info.widenDealias.classSymbol
+      def widenSelfInfo(tp: Type): Type = tp.widenDealias match {
+        case RefinedType(parent, _, _) => widenSelfInfo(parent)
+        case tpw => tpw
+      }
+      val rhsClsSym = widenSelfInfo(selfSym.info).classSymbol
       val rhs =
-        if (lastSelf.exists)
-          ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
-        else if (rhsClsSym.is(Module) && rhsClsSym.isStatic)
+        if (rhsClsSym.is(Module) && rhsClsSym.isStatic)
           ref(rhsClsSym.sourceModule)
+        else if (lastSelf.exists)
+          ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
         else
           inlineCallPrefix
       val binding = ValDef(selfSym.asTerm, rhs.ensureConforms(selfSym.info)).withSpan(selfSym.span).setDefTree
@@ -328,10 +332,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
   }
 
-  private def canElideThis(tpe: ThisType): Boolean =
-    inlineCallPrefix.tpe == tpe && ctx.owner.isContainedIn(tpe.cls) ||
-    tpe.cls.isContainedIn(inlinedMethod) ||
-    !tpe.cls.membersNeedAsSeenFrom(inlineCallPrefix.tpe)
+  private def canElideThis(tpe: ThisType): Boolean = {
+    val cls = tpe.cls
+    inlineCallPrefix.tpe == tpe && ctx.owner.isContainedIn(cls) ||
+    cls.isContainedIn(inlinedMethod) ||
+    cls.isStaticOwner && !cls.seesOpaques
+  }
 
   /** Populate `thisProxy` and `paramProxy` as follows:
    *
@@ -354,7 +360,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case _ => adaptToPrefix(tpe).widenIfUnstable
       }
       thisProxy(tpe.cls) = newSym(proxyName, InlineProxy, proxyType).termRef
-      if (tpe.cls.membersNeedAsSeenFrom(proxyType))
+      if (!tpe.cls.isStaticOwner)
         registerType(inlinedMethod.owner.thisType) // make sure we have a base from which to outer-select
       for (param <- tpe.cls.typeParams)
         paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
