@@ -201,7 +201,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
   private val (methPart, callTypeArgs, callValueArgss) = decomposeCall(call)
   private val inlinedMethod = methPart.symbol
-  private val inlineCallPrefix = qualifier(methPart)
+  private val inlineCallPrefix =
+     qualifier(methPart).orElse(This(inlinedMethod.enclosingClass.asClass))
 
   // Make sure all type arguments to the call are fully determined
   for (targ <- callTypeArgs) fullyDefinedType(targ.tpe, "inlined type argument", targ.span)
