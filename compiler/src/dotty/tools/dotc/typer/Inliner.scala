@@ -331,7 +331,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private def canElideThis(tpe: ThisType): Boolean =
     inlineCallPrefix.tpe == tpe && ctx.owner.isContainedIn(tpe.cls) ||
     tpe.cls.isContainedIn(inlinedMethod) ||
-    tpe.cls.is(Package)
+    !tpe.cls.membersNeedAsSeenFrom(inlineCallPrefix.tpe)
 
   /** Populate `thisProxy` and `paramProxy` as follows:
    *
@@ -354,7 +354,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case _ => adaptToPrefix(tpe).widenIfUnstable
       }
       thisProxy(tpe.cls) = newSym(proxyName, InlineProxy, proxyType).termRef
-      if (!tpe.cls.isStaticOwner)
+      if (tpe.cls.membersNeedAsSeenFrom(proxyType))
         registerType(inlinedMethod.owner.thisType) // make sure we have a base from which to outer-select
       for (param <- tpe.cls.typeParams)
         paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
@@ -367,7 +367,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** Register type of leaf node */
   private def registerLeaf(tree: Tree): Unit = tree match {
     case _: This | _: Ident | _: TypeTree =>
-      tree.tpe.foreachPart(registerType, stopAtStatic = true)
+      tree.tpe.foreachPart(registerType)
     case _ =>
   }
 
@@ -427,9 +427,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     val inliner = new TreeTypeMap(
       typeMap =
         new TypeMap {
+          override val stopAtStatic = false
           def apply(t: Type) = t match {
             case t: ThisType => thisProxy.getOrElse(t.cls, t)
             case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
+            case t: TermRef if t.symbol.is(Package) => t
             case t: SingletonType => paramProxy.getOrElse(t, mapOver(t))
             case t => mapOver(t)
           }
