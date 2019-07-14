@@ -49,7 +49,7 @@ object Typer {
    */
   enum BindingPrec {
     case NothingBound, PackageClause, WildImport, NamedImport, Definition
-    
+
     def isImportPrec = this == NamedImport || this == WildImport
   }
 

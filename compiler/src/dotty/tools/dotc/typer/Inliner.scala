@@ -244,6 +244,75 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private def newSym(name: Name, flags: FlagSet, info: Type)(implicit ctx: Context): Symbol =
     ctx.newSymbol(ctx.owner, name, flags, info, coord = call.span)
 
+  /** A this-proxy for `tpe` is not needed if
+   *   - `tpe` is the type of the inline call receiver and the inline goes to the same class.
+   *     Example:
+   *
+   *        class C {
+   *          inline def f()
+   *          this.f()
+   *        }
+   *
+   *   - The class referenced by `tpe` is inside the inline method
+   *   - The class referenced by `tpe` is a static object that does not have opaque types
+   *     in its scope or environment
+   */
+  private def canElideThis(tpe: ThisType): Boolean = {
+    val cls = tpe.cls
+    inlineCallPrefix.tpe == tpe && ctx.owner.isContainedIn(cls) ||
+    cls.isContainedIn(inlinedMethod) ||
+    cls.isStaticOwner && !cls.seesOpaques
+  }
+
+  /** Populate `thisProxy` and some parts of `paramProxy` as follows:
+   *
+   *  1. If given type refers to a this type of a class that cannot be elided,
+   *     create a proxy symbol and bind the thistype to refer to the proxy.
+   *     The proxy is not yet entered in `bindingsBuf`; that will come later.
+   *  2. If this type goes to a class or non-static module, also create a this proxy
+   *     for the this type of the owner of the inline method, so that we have a root
+   *     to compute the initializers of this-proxies.
+   *  3. If the class referenced by a this type has type parameters, create parameter
+   *     proxies for them.
+   */
+  private def registerThisProxies(tpe: Type): Unit = tpe match {
+    case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) =>
+      def adaptToPrefix(tp: Type) = tp.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner)
+      val proxyName = s"${tpe.cls.name}_this".toTermName
+      val proxyType = inlineCallPrefix.tpe.dealias.tryNormalize match {
+        case typeMatchResult if typeMatchResult.exists => typeMatchResult
+        case _ => adaptToPrefix(tpe).widenIfUnstable
+      }
+      thisProxy(tpe.cls) = newSym(proxyName, InlineProxy, proxyType).termRef
+      if (!tpe.cls.isStaticOwner)
+        registerThisProxies(inlinedMethod.owner.thisType) // make sure we have a base from which to outer-select
+      for (param <- tpe.cls.typeParams)
+        paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
+    case _ =>
+  }
+
+  /** Populate the rest of `paramProxy` as follows:
+   *
+   *  If the given type refers to a parameter, make `paramProxy` refer to the entry stored
+   *  in `paramNames` under the parameter's name. This roundabout way to bind parameter
+   *  references to proxies is done because  we don't know a priori what the parameter
+   *  references of a method are (we only know the method's type, but that contains TypeParamRefs
+   *  and MethodParams, not TypeRefs or TermRefs.
+   */
+  private def registerParamProxies(tpe: Type): Unit = tpe match {
+    case tpe: NamedType
+    if tpe.symbol.is(Param) && tpe.symbol.owner == inlinedMethod && !paramProxy.contains(tpe) =>
+      paramProxy(tpe) = paramBinding(tpe.name)
+    case _ =>
+  }
+
+  /** Perform `op` for each leaf tree (of type This, Ident, or TypeTree) of rhsToInline` */
+  private def foreachRHSLeaf(op: Type => Unit): Unit =
+    rhsToInline.foreachSubTree {
+      case tree: (This | Ident | TypeTree) => tree.tpe.foreachPart(op)
+      case _ =>
+    }
+
   /** A binding for the parameter of an inline method. This is a `val` def for
    *  by-value parameters and a `def` def for by-name parameters. `val` defs inherit
    *  inline annotations from their parameters. The generated `def` is appended
@@ -333,51 +402,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
   }
 
-  private def canElideThis(tpe: ThisType): Boolean = {
-    val cls = tpe.cls
-    inlineCallPrefix.tpe == tpe && ctx.owner.isContainedIn(cls) ||
-    cls.isContainedIn(inlinedMethod) ||
-    cls.isStaticOwner && !cls.seesOpaques
-  }
-
-  /** Populate `thisProxy` and `paramProxy` as follows:
-   *
-   *  1a. If given type refers to a static this, thisProxy binds it to corresponding global reference,
-   *  1b. If given type refers to an instance this to a class that is not contained in the
-   *      inline method, create a proxy symbol and bind the thistype to refer to the proxy.
-   *      The proxy is not yet entered in `bindingsBuf`; that will come later.
-   *  2.  If given type refers to a parameter, make `paramProxy` refer to the entry stored
-   *      in `paramNames` under the parameter's name. This roundabout way to bind parameter
-   *      references to proxies is done because  we don't know a priori what the parameter
-   *      references of a method are (we only know the method's type, but that contains TypeParamRefs
-   *      and MethodParams, not TypeRefs or TermRefs.
-   */
-  private def registerType(tpe: Type): Unit = tpe match {
-    case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) =>
-      val proxyName = s"${tpe.cls.name}_this".toTermName
-      def adaptToPrefix(tp: Type) = tp.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner)
-      val proxyType = inlineCallPrefix.tpe.dealias.tryNormalize match {
-        case typeMatchResult if typeMatchResult.exists => typeMatchResult
-        case _ => adaptToPrefix(tpe).widenIfUnstable
-      }
-      thisProxy(tpe.cls) = newSym(proxyName, InlineProxy, proxyType).termRef
-      if (!tpe.cls.isStaticOwner)
-        registerType(inlinedMethod.owner.thisType) // make sure we have a base from which to outer-select
-      for (param <- tpe.cls.typeParams)
-        paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
-    case tpe: NamedType
-    if tpe.symbol.is(Param) && tpe.symbol.owner == inlinedMethod && !paramProxy.contains(tpe) =>
-      paramProxy(tpe) = paramBinding(tpe.name)
-    case _ =>
-  }
-
-  /** Register type of leaf node */
-  private def registerLeaf(tree: Tree): Unit = tree match {
-    case _: This | _: Ident | _: TypeTree =>
-      tree.tpe.foreachPart(registerType)
-    case _ =>
-  }
-
   /** Make `tree` part of inlined expansion. This means its owner has to be changed
    *  from its `originalOwner`, and, if it comes from outside the inlined method
    *  itself, it has to be marked as an inlined argument.
@@ -408,14 +432,18 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         )
       }
 
+    // make sure prefix is executed if it is impure
+    if (!isIdempotentExpr(inlineCallPrefix))
+      registerThisProxies(inlinedMethod.owner.thisType)
+
+    // Compute this proxies for all leaves of the inlined body
+    foreachRHSLeaf(registerThisProxies)
+
     // Compute bindings for all parameters, appending them to bindingsBuf
     computeParamBindings(inlinedMethod.info, callTypeArgs, callValueArgss)
 
-    // make sure prefix is executed if it is impure
-    if (!isIdempotentExpr(inlineCallPrefix)) registerType(inlinedMethod.owner.thisType)
-
     // Register types of all leaves of inlined body so that the `paramProxy` and `thisProxy` maps are defined.
-    rhsToInline.foreachSubTree(registerLeaf)
+    foreachRHSLeaf(registerParamProxies)
 
     // Compute bindings for all this-proxies, appending them to bindingsBuf
     computeThisBindings()
