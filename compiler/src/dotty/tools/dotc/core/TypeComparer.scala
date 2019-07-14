@@ -2463,9 +2463,9 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     if (skipped) op
     else {
       indent += 2
-      b append "\n" append (" " * indent) append "==> " append str
+      b.append("\n").append(" " * indent).append("==> ").append(str)
       val res = op
-      b append "\n" append (" " * indent) append "<== " append str append " = " append show(res)
+      b.append("\n").append(" " * indent).append("<== ").append(str).append(" = ").append(show(res))
       indent -= 2
       res
     }

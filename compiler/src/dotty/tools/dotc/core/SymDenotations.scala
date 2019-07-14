@@ -592,7 +592,7 @@ object SymDenotations {
 
     def seesOpaques(implicit ctx: Context): Boolean =
       containsOpaques ||
-      is(Module, butNot = Package) && owner.containsOpaques
+      is(Module, butNot = Package) && owner.seesOpaques
 
     /** Is this the denotation of a self symbol of some class?
      *  This is the case if one of two conditions holds:
