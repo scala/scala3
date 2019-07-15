@@ -429,7 +429,6 @@ class Typer extends Namer
     }
 
     checkStableIdentPattern(tree1, pt)
-    checkValue(tree1, pt)
   }
 
   /** Check that a stable identifier pattern is indeed stable (SLS 8.1.5)
@@ -453,7 +452,7 @@ class Typer extends Namer
       }
     case qual =>
       if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos)
-      val select = checkValue(assignType(cpy.Select(tree)(qual, tree.name), qual), pt)
+      val select = assignType(cpy.Select(tree)(qual, tree.name), qual)
       if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
       else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
       else typedDynamicSelect(tree, Nil, pt)
@@ -2419,7 +2418,7 @@ class Typer extends Namer
         try adapt(typedUnadapted(tree, pt, locked), pt, locked)
         catch {
           case ex: TypeError =>
-            errorTree(tree, ex.toMessage, tree.sourcePos.focus, sticky = true)
+            errorTree(tree, ex, tree.sourcePos.focus)
             // This uses tree.span.focus instead of the default tree.span, because:
             // - since tree can be a top-level definition, tree.span can point to the whole definition
             // - that would in turn hide all other type errors inside tree.
@@ -3195,7 +3194,7 @@ class Typer extends Namer
               }
             }
             catch {
-              case ex: TypeError => errorTree(tree, ex.toMessage, tree.sourcePos, sticky = true)
+              case ex: TypeError => errorTree(tree, ex, tree.sourcePos)
             }
           val nestedCtx = ctx.fresh.setNewTyperState()
           val app = tryExtension(nestedCtx)

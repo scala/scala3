@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types.WildcardType
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.reporting.diagnostic.messages._
-import dotty.tools.dotc.transform.{CheckStatic, PostTyper, TailRec}
+import dotty.tools.dotc.transform.{CheckStatic, Erasure, PostTyper, TailRec}
 import dotty.tools.dotc.typer.{FrontEnd, RefChecks}
 import org.junit.Assert._
 import org.junit.Test
@@ -1473,22 +1473,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val PolymorphicMethodMissingTypeInParent(rsym, parentSym) = messages.head
       assertEquals("method get", rsym.show)
       assertEquals("class Object", parentSym.show)
-    }
-
-  @Test def javaSymbolIsNotAValue =
-    checkMessagesAfter(CheckStatic.name) {
-      """
-        |package p
-        |object O {
-        |  val v = p
-        |}
-      """.stripMargin
-    }.expect { (itcx, messages) =>
-      implicit val ctx: Context = itcx
-
-      assertMessageCount(1, messages)
-      val JavaSymbolIsNotAValue(symbol) = messages.head
-      assertEquals(symbol.show, "package p")
     }
 
   @Test def i3187 =

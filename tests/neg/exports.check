@@ -41,9 +41,9 @@
    |             ^^^
    |             no eligible member foo at this.foo
    |             this.foo.foo cannot be exported because it is already a member of class Foo
--- [E046] Cyclic Error: tests/neg/exports.scala:45:11 ------------------------------------------------------------------
-45 |  val bar: Bar = new Bar // error: cyclic reference
-   |           ^
-   |           Cyclic reference involving value bar
-
-longer explanation available when compiling with `-explain`
+-- [E120] Duplicate Symbol Error: tests/neg/exports.scala:46:13 --------------------------------------------------------
+46 |  export bar._  // error: double definition
+   |             ^
+   |             Double definition:
+   |             val bar: Bar in class Baz at line 45 and
+   |             final def bar: => => Bar(Baz.this.bar.baz.bar)(Baz.this.bar.bar) in class Baz at line 46

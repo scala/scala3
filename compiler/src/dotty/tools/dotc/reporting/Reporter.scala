@@ -5,6 +5,7 @@ package reporting
 import scala.annotation.internal.sharable
 
 import core.Contexts._
+import core.TypeError
 import util.{SourcePosition, NoSourcePosition}
 import core.Decorators.PhaseListDecorator
 import collection.mutable
@@ -134,6 +135,12 @@ trait Reporting { this: Context =>
   def error(msg: => Message, pos: SourcePosition = NoSourcePosition, sticky: Boolean = false): Unit = {
     val fullPos = addInlineds(pos)
     reporter.report(if (sticky) new StickyError(msg, fullPos) else new Error(msg, fullPos))
+  }
+
+  def error(ex: TypeError, pos: SourcePosition): Unit = {
+    error(ex.toMessage, pos, sticky = true)
+    if (ctx.settings.YdebugTypeError.value)
+      ex.printStackTrace
   }
 
   def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =

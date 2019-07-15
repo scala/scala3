@@ -636,16 +636,21 @@ object Build {
       else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
       else "dotty.tools.dotc.Main"
 
-    var extraClasspath = s"$scalaLib${File.pathSeparator}$dottyLib"
-    if ((decompile || printTasty) && !args.contains("-classpath")) extraClasspath += s"${File.pathSeparator}."
+    var extraClasspath = Seq(scalaLib, dottyLib)
+
+    if ((decompile || printTasty) && !args.contains("-classpath"))
+      extraClasspath ++= Seq(".")
+
     if (args0.contains("-with-compiler")) {
       if (scalaVersion.value == referenceVersion) {
         log.error("-with-compiler should only be used with a bootstrapped compiler")
       }
-      extraClasspath += s"${File.pathSeparator}$dottyCompiler"
+      val dottyInterfaces = jars("dotty-interfaces")
+      val asm = findLib(attList, "scala-asm")
+      extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm)
     }
 
-    val fullArgs = main :: insertClasspathInArgs(args, extraClasspath)
+    val fullArgs = main :: insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
 
     (runMain in Compile).toTask(fullArgs.mkString(" ", " ", ""))
   }

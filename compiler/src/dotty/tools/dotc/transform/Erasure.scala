@@ -328,6 +328,18 @@ object Erasure {
       case _ => tree.symbol.isEffectivelyErased
     }
 
+    /** Check that Java statics and packages can only be used in selections.
+      */
+    private def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = {
+      if (!proto.isInstanceOf[SelectionProto] && !proto.isInstanceOf[ApplyingProto]) {
+        val sym = tree.tpe.termSymbol
+        // The check is avoided inside Java compilation units because it always fails
+        // on the singleton type Module.type.
+        if ((sym is Flags.Package) || (sym.isAllOf(Flags.JavaModule) && !ctx.compilationUnit.isJava)) ctx.error(reporting.diagnostic.messages.JavaSymbolIsNotAValue(sym), tree.sourcePos)
+      }
+      tree
+    }
+
     private def checkNotErased(tree: Tree)(implicit ctx: Context): tree.type = {
       if (!ctx.mode.is(Mode.Type)) {
         if (isErased(tree))
@@ -390,7 +402,7 @@ object Erasure {
         super.typedLiteral(tree)
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
-      checkNotErased(super.typedIdent(tree, pt))
+      checkValue(checkNotErased(super.typedIdent(tree, pt)), pt)
     }
 
     /** Type check select nodes, applying the following rewritings exhaustively
@@ -484,7 +496,7 @@ object Erasure {
         }
       }
 
-      checkNotErased(recur(qual1))
+      checkValue(checkNotErased(recur(qual1)), pt)
     }
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =

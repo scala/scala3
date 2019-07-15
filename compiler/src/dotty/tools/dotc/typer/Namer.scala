@@ -311,32 +311,31 @@ class Namer { typer: Typer =>
         else name
     }
 
-    /** If effective owner is a package `p`, widen `private` to `private[p]` */
-    def widenToplevelPrivate(sym: Symbol): Unit = {
-      var owner = sym.effectiveOwner
-      if (owner.is(Package)) {
-        sym.resetFlag(Private)
-        sym.privateWithin = owner
-      }
-    }
-
     /** Create new symbol or redefine existing symbol under lateCompile. */
     def createOrRefine[S <: Symbol](
-        tree: MemberDef, name: Name, flags: FlagSet, infoFn: S => Type,
+        tree: MemberDef, name: Name, flags: FlagSet, owner: Symbol, infoFn: S => Type,
         symFn: (FlagSet, S => Type, Symbol) => S): Symbol = {
       val prev =
         if (lateCompile && ctx.owner.is(Package)) ctx.effectiveScope.lookup(name)
         else NoSymbol
+
+      var flags1 = flags
+      var privateWithin = privateWithinClass(tree.mods)
+      val effectiveOwner = owner.skipWeakOwner
+      if (flags.is(Private) && effectiveOwner.is(Package)) {
+        // If effective owner is a package p, widen private to private[p]
+        flags1 = flags1 &~ Private
+        privateWithin = effectiveOwner
+      }
+
       val sym =
         if (prev.exists) {
-          prev.flags = flags
+          prev.flags = flags1
           prev.info = infoFn(prev.asInstanceOf[S])
-          prev.privateWithin = privateWithinClass(tree.mods)
+          prev.setPrivateWithin(privateWithin)
           prev
         }
-        else symFn(flags, infoFn, privateWithinClass(tree.mods))
-      if (sym.is(Private))
-        widenToplevelPrivate(sym)
+        else symFn(flags1, infoFn, privateWithin)
       recordSym(sym, tree)
     }
 
@@ -345,7 +344,7 @@ class Namer { typer: Typer =>
         val name = checkNoConflict(tree.name).asTypeName
         val flags = checkFlags(tree.mods.flags &~ DelegateOrImplicit)
         val cls =
-          createOrRefine[ClassSymbol](tree, name, flags,
+          createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
             ctx.newClassSymbol(ctx.owner, name, _, _, _, tree.nameSpan, ctx.source.file))
         cls.completer.asInstanceOf[ClassCompleter].init()
@@ -381,7 +380,7 @@ class Namer { typer: Typer =>
         }
         val info = adjustIfModule(completer, tree)
         createOrRefine[Symbol](tree, name, flags | deferred | method | higherKinded,
-          _ => info,
+          ctx.owner, _ => info,
           (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.nameSpan))
       case tree: Import =>
         recordSym(ctx.newImportSymbol(ctx.owner, new Completer(tree), tree.span), tree)
@@ -459,7 +458,7 @@ class Namer { typer: Typer =>
     def invalidate(name: TypeName) =
       if (!(definedNames contains name)) {
         val member = pkg.info.decl(name).asSymDenotation
-        if (member.isClass && !member.is(Package)) member.info = NoType
+        if (member.isClass && !(member.is(Package))) member.markAbsent()
       }
     xstats foreach {
       case stat: TypeDef if stat.isClassDef =>
@@ -793,10 +792,14 @@ class Namer { typer: Typer =>
         lazy val annotCtx = annotContext(original, sym)
         for (annotTree <- untpd.modsDeco(original).mods.annotations) {
           val cls = typedAheadAnnotationClass(annotTree)(annotCtx)
-          val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
-          sym.addAnnotation(ann)
-          if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
-            sym.setFlag(Inline)
+          if (cls eq sym)
+            ctx.error("An annotation class cannot be annotated with iself", annotTree.sourcePos)
+          else {
+            val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
+            sym.addAnnotation(ann)
+            if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
+              sym.setFlag(Inline)
+          }
         }
       case _ =>
     }
@@ -830,7 +833,7 @@ class Namer { typer: Typer =>
           alt != denot.symbol && alt.info.matchesLoosely(denot.info))
       if (isClashingSynthetic) {
         typr.println(i"invalidating clashing $denot in ${denot.owner}")
-        denot.info = NoType
+        denot.markAbsent()
       }
     }
 
@@ -915,6 +918,10 @@ class Namer { typer: Typer =>
     withDecls(newScope)
 
     protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
+
+    private[this] var localCtx: Context = _
+    /** info to be used temporarily while completing the class, to avoid cyclic references. */
+    private[this] var tempInfo: TempClassInfo = _
 
     val TypeDef(name, impl @ Template(constr, _, self, _)) = original
 
@@ -1043,6 +1050,42 @@ class Namer { typer: Typer =>
       forwarderss.foreach(_.foreach(fwdr => fwdr.symbol.entered))
     }
 
+    /** Ensure constructor is completed so that any parameter accessors
+     *  which have type trees deriving from its parameters can be
+     *  completed in turn. Note that parent types access such parameter
+     *  accessors, that's why the constructor needs to be completed before
+     *  the parent types are elaborated.
+     */
+    def completeConstructor(denot: SymDenotation): Unit = {
+      if (tempInfo != null) // Constructor has been completed already
+        return
+
+      addAnnotations(denot.symbol)
+
+      val selfInfo: TypeOrSymbol =
+        if (self.isEmpty) NoType
+        else if (cls.is(Module)) {
+          val moduleType = cls.owner.thisType select sourceModule
+          if (self.name == nme.WILDCARD) moduleType
+          else recordSym(
+            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.span),
+            self)
+        }
+        else createSymbol(self)
+
+      val savedInfo = denot.infoOrCompleter
+      tempInfo = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
+      denot.info = tempInfo
+
+      localCtx = ctx.inClassContext(selfInfo)
+
+      index(constr)
+      index(rest)(localCtx)
+      symbolOfTree(constr).ensureCompleted()
+
+      denot.info = savedInfo
+    }
+
     /** The type signature of a ClassDef with given symbol */
     override def completeInCreationContext(denot: SymDenotation): Unit = {
       val parents = impl.parents
@@ -1105,33 +1148,10 @@ class Namer { typer: Typer =>
         }
       }
 
-      addAnnotations(denot.symbol)
+      if (tempInfo == null) // Constructor has not been completed yet
+        completeConstructor(denot)
 
-      val selfInfo: TypeOrSymbol =
-        if (self.isEmpty) NoType
-        else if (cls.is(Module)) {
-          val moduleType = cls.owner.thisType select sourceModule
-          if (self.name == nme.WILDCARD) moduleType
-          else recordSym(
-            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.span),
-            self)
-        }
-        else createSymbol(self)
-
-      // pre-set info, so that parent types can refer to type params
-      val tempInfo = new TempClassInfo(cls.owner.thisType, cls, decls, selfInfo)
       denot.info = tempInfo
-
-      val localCtx = ctx.inClassContext(selfInfo)
-
-      // Ensure constructor is completed so that any parameter accessors
-      // which have type trees deriving from its parameters can be
-      // completed in turn. Note that parent types access such parameter
-      // accessors, that's why the constructor needs to be completed before
-      // the parent types are elaborated.
-      index(constr)
-      index(rest)(localCtx)
-      symbolOfTree(constr).ensureCompleted()
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
         ensureFirstIsClass(parents.map(checkedParentType(_)), cls.span))
@@ -1147,7 +1167,9 @@ class Namer { typer: Typer =>
         original.putAttachment(Deriver, deriver)
       }
 
-      tempInfo.finalize(denot, parentTypes, selfInfo)
+      tempInfo.finalize(denot, parentTypes)
+      // The temporary info can now be garbage-collected
+      tempInfo = null
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)

@@ -214,7 +214,7 @@ class VarianceChecker()(implicit ctx: Context) {
         case _ =>
       }
       catch {
-        case ex: TypeError => ctx.error(ex.toMessage, tree.sourcePos.focus)
+        case ex: TypeError => ctx.error(ex, tree.sourcePos.focus)
       }
     }
   }

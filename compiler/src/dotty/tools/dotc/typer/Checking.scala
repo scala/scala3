@@ -258,7 +258,7 @@ object Checking {
             if (locked.contains(tp) || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter])
               throw CyclicReference(tp.symbol)
             locked += tp
-            try checkInfo(tp.info)
+            try if (!tp.symbol.isClass) checkInfo(tp.info)
             finally locked -= tp
             tp.withPrefix(pre1)
           }
@@ -358,10 +358,14 @@ object Checking {
   }
 
   /** Check type members inherited from different `parents` of `joint` type for cycles,
-   *  unless a type with the same name aleadry appears in `decls`.
+   *  unless a type with the same name already appears in `decls`.
    *  @return    true iff no cycles were detected
    */
   def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, posd: Positioned)(implicit ctx: Context): Unit = {
+    // If we don't have more than one parent, then there's nothing to check
+    if (parents.lengthCompare(1) <= 0)
+      return
+
     def qualifies(sym: Symbol) = sym.name.isTypeName && !sym.is(Private)
     val abstractTypeNames =
       for (parent <- parents; mbr <- parent.abstractTypeMembers if qualifies(mbr.symbol))
@@ -593,18 +597,6 @@ trait Checking {
 
   def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, posd: Positioned)(implicit ctx: Context): Unit =
     Checking.checkNonCyclicInherited(joint, parents, decls, posd)
-
-  /** Check that Java statics and packages can only be used in selections.
-   */
-  def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = {
-    if (!proto.isInstanceOf[SelectionProto] && !proto.isInstanceOf[ApplyingProto]) {
-      val sym = tree.tpe.termSymbol
-      // The check is avoided inside Java compilation units because it always fails
-      // on the singleton type Module.type.
-      if ((sym is Package) || (sym.isAllOf(JavaModule) && !ctx.compilationUnit.isJava)) ctx.error(JavaSymbolIsNotAValue(sym), tree.sourcePos)
-    }
-    tree
-  }
 
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: SourcePosition)(implicit ctx: Context): Unit =
@@ -872,7 +864,7 @@ trait Checking {
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit = {
-      for (other <- seen(decl.name) if (!decl.isAbsent && !other.isAbsent)) {
+      for (other <- seen(decl.name) if (!decl.isAbsent() && !other.isAbsent())) {
         typr.println(i"conflict? $decl $other")
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
@@ -1171,7 +1163,6 @@ trait NoChecking extends ReChecking {
   import tpd._
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
   override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, posd: Positioned)(implicit ctx: Context): Unit = ()
-  override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
   override def checkStable(tp: Type, pos: SourcePosition)(implicit ctx: Context): Unit = ()
   override def checkClassType(tp: Type, pos: SourcePosition, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = ()

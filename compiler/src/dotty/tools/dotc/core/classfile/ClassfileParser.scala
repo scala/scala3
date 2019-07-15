@@ -72,8 +72,8 @@ class ClassfileParser(
 
   private[this] var Scala2UnpicklingMode = Mode.Scala2Unpickling
 
-  classRoot.info = (new NoCompleter).withDecls(instanceScope)
-  moduleRoot.info = (new NoCompleter).withDecls(staticScope).withSourceModule(_ => staticModule)
+  classRoot.info = NoLoader().withDecls(instanceScope)
+  moduleRoot.info = NoLoader().withDecls(staticScope).withSourceModule(_ => staticModule)
 
   private def currentIsTopLevel(implicit ctx: Context) = classRoot.owner.is(Flags.PackageClass)
 
@@ -156,9 +156,12 @@ class ClassfileParser(
 
       classRoot.setFlag(sflags)
       moduleRoot.setFlag(Flags.JavaDefined | Flags.ModuleClassCreationFlags)
-      setPrivateWithin(classRoot, jflags)
-      setPrivateWithin(moduleRoot, jflags)
-      setPrivateWithin(moduleRoot.sourceModule, jflags)
+
+      val privateWithin = getPrivateWithin(jflags)
+
+      classRoot.setPrivateWithin(privateWithin)
+      moduleRoot.setPrivateWithin(privateWithin)
+      moduleRoot.sourceModule.setPrivateWithin(privateWithin)
 
       for (i <- 0 until in.nextChar) parseMember(method = false)
       for (i <- 0 until in.nextChar) parseMember(method = true)
@@ -212,7 +215,8 @@ class ClassfileParser(
     val name = pool.getName(in.nextChar)
     if (!sflags.is(Flags.Private) || name == nme.CONSTRUCTOR) {
       val member = ctx.newSymbol(
-        getOwner(jflags), name, sflags, memberCompleter, coord = start)
+        getOwner(jflags), name, sflags, memberCompleter,
+        getPrivateWithin(jflags), coord = start)
       getScope(jflags).enter(member)
     }
     // skip rest of member for now
@@ -263,7 +267,6 @@ class ClassfileParser(
         denot.info = pool.getType(in.nextChar)
         if (isEnum) denot.info = ConstantType(Constant(sym))
         if (isConstructor) normalizeConstructorParams()
-        setPrivateWithin(denot, jflags)
         denot.info = translateTempPoly(parseAttributes(sym, denot.info))
         if (isConstructor) normalizeConstructorInfo()
 
@@ -932,7 +935,7 @@ class ClassfileParser(
             staticScope.lookup(name)
           else {
             var module = sym.companionModule
-            if (!module.exists && sym.isAbsent)
+            if (!module.exists && sym.isAbsent())
               module = sym.scalacLinkedClass
             module.info.member(name).symbol
           }
@@ -983,10 +986,11 @@ class ClassfileParser(
   protected def getScope(flags: Int): MutableScope =
     if (isStatic(flags)) staticScope else instanceScope
 
-  private def setPrivateWithin(denot: SymDenotation, jflags: Int)(implicit ctx: Context): Unit = {
+  private def getPrivateWithin(jflags: Int)(implicit ctx: Context): Symbol =
     if ((jflags & (JAVA_ACC_PRIVATE | JAVA_ACC_PUBLIC)) == 0)
-      denot.privateWithin = denot.enclosingPackageClass
-  }
+      classRoot.enclosingPackageClass
+    else
+      NoSymbol
 
   private def isPrivate(flags: Int)     = (flags & JAVA_ACC_PRIVATE) != 0
   private def isStatic(flags: Int)      = (flags & JAVA_ACC_STATIC) != 0

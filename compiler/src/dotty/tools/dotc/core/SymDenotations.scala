@@ -277,11 +277,31 @@ object SymDenotations {
 
     /** The privateWithin boundary, NoSymbol if no boundary is given.
      */
-    final def privateWithin(implicit ctx: Context): Symbol = { ensureCompleted(); myPrivateWithin }
+    @tailrec
+    final def privateWithin(implicit ctx: Context): Symbol = myInfo match {
+      case myInfo: ModuleCompleter =>
+        // Instead of completing the ModuleCompleter, we can get `privateWithin`
+        // directly from the module class, which might require less completions.
+        myInfo.moduleClass.privateWithin
+      case _: SymbolLoader =>
+         // Completing a SymbolLoader might call `setPrivateWithin()`
+        completeOnce()
+        privateWithin
+      case _ =>
+        // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
+        myPrivateWithin
+    }
 
-    /** Set privateWithin. */
-    protected[dotc] final def privateWithin_=(sym: Symbol): Unit =
-      myPrivateWithin = sym
+    /** Set privateWithin, prefer setting it at symbol-creation time instead if
+     *  possible.
+     *  @pre `isCompleting` is false, or this is a ModuleCompleter or SymbolLoader
+     */
+    protected[dotc] final def setPrivateWithin(pw: Symbol)(implicit ctx: Context): Unit = {
+      if (isCompleting)
+        assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
+          s"Illegal call to `setPrivateWithin($pw)` while completing $this using completer $myInfo")
+      myPrivateWithin = pw
+    }
 
     /** The annotations of this denotation */
     final def annotations(implicit ctx: Context): List[Annotation] = {
@@ -353,7 +373,21 @@ object SymDenotations {
     /** The completer of this denotation. @pre: Denotation is not yet completed */
     final def completer: LazyType = myInfo.asInstanceOf[LazyType]
 
-    /** Make sure this denotation is completed */
+    /** If this denotation is not completed, run the completer.
+     *  The resulting info might be another completer.
+     *
+     *  @see ensureCompleted
+     */
+    final def completeOnce()(implicit ctx: Context): Unit = myInfo match {
+      case myInfo: LazyType =>
+        completeFrom(myInfo)
+      case _ =>
+    }
+
+    /** Make sure this denotation is fully completed.
+     *
+     *  @see completeOnce
+     */
     final def ensureCompleted()(implicit ctx: Context): Unit = info
 
     /** The symbols defined in this class or object.
@@ -370,7 +404,7 @@ object SymDenotations {
       case cinfo: LazyType =>
         val knownDecls = cinfo.decls
         if (knownDecls ne EmptyScope) knownDecls
-        else { completeFrom(cinfo); unforcedDecls } // complete-once
+        else { completeOnce(); unforcedDecls }
       case _ => info.decls
     }
 
@@ -505,20 +539,33 @@ object SymDenotations {
     /** is this symbol the result of an erroneous definition? */
     def isError: Boolean = false
 
-    /** Make denotation not exist */
-    final def markAbsent(): Unit =
+    /** Make denotation not exist.
+     *  @pre `isCompleting` is false, or this is a ModuleCompleter or SymbolLoader
+     */
+    final def markAbsent()(implicit ctx: Context): Unit = {
+      if (isCompleting)
+        assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
+          s"Illegal call to `markAbsent()` while completing $this using completer $myInfo")
       myInfo = NoType
+    }
 
-    /** Is symbol known to not exist, or potentially not completed yet? */
-    final def unforcedIsAbsent(implicit ctx: Context): Boolean =
-      myInfo == NoType ||
-      (this.is(ModuleVal, butNot = Package)) && moduleClass.unforcedIsAbsent
-
-    /** Is symbol known to not exist? */
-    final def isAbsent(implicit ctx: Context): Boolean = {
-      ensureCompleted()
-      (myInfo `eq` NoType) ||
-      (this.is(ModuleVal, butNot = Package)) && moduleClass.isAbsent
+    /** Is symbol known to not exist?
+     *  @param canForce  If this is true, the info may be forced to avoid a false-negative result
+     */
+    @tailrec
+    final def isAbsent(canForce: Boolean = true)(implicit ctx: Context): Boolean = myInfo match {
+      case myInfo: ModuleCompleter =>
+        // Instead of completing the ModuleCompleter, we can check whether
+        // the module class is absent, which might require less completions.
+        myInfo.moduleClass.isAbsent(canForce)
+      case _: SymbolLoader if canForce =>
+         // Completing a SymbolLoader might call `markAbsent()`
+        completeOnce()
+        isAbsent(canForce)
+      case _ =>
+        // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
+        (myInfo `eq` NoType) ||
+        is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
     }
 
     /** Is this symbol the root class or its companion object? */
@@ -639,7 +686,7 @@ object SymDenotations {
     final def isCoDefinedWith(other: Symbol)(implicit ctx: Context): Boolean =
       (this.effectiveOwner == other.effectiveOwner) &&
       (  !this.effectiveOwner.is(PackageClass)
-        || this.unforcedIsAbsent || other.unforcedIsAbsent
+        || this.isAbsent(canForce = false) || other.isAbsent(canForce = false)
         || { // check if they are defined in the same file(or a jar)
            val thisFile = this.symbol.associatedFile
            val thatFile = other.associatedFile
@@ -792,7 +839,7 @@ object SymDenotations {
       }
 
       if (pre eq NoPrefix) true
-      else if (info eq NoType) false
+      else if (isAbsent()) false
       else {
         val boundary = accessBoundary(owner)
 
@@ -1242,14 +1289,12 @@ object SymDenotations {
      *  as public.
      *  @param base  The access boundary to assume if this symbol is protected
      */
-    final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol = {
-      val fs = flags
-      if (fs.is(Private)) owner
-      else if (fs.isAllOf(StaticProtected)) defn.RootClass
+    final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol =
+      if (this.is(Private)) owner
+      else if (this.isAllOf(StaticProtected)) defn.RootClass
       else if (privateWithin.exists && !ctx.phase.erasedTypes) privateWithin
-      else if (fs.is(Protected)) base
+      else if (this.is(Protected)) base
       else defn.RootClass
-    }
 
     final def isPublic(implicit ctx: Context): Boolean =
       accessBoundary(owner) == defn.RootClass
@@ -1611,7 +1656,7 @@ object SymDenotations {
     }
 
     final override def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean =
-      !isAbsent &&
+      !isAbsent() &&
       base.isClass &&
       (  (symbol eq base)
       || (baseClassSet contains base)
@@ -1990,7 +2035,7 @@ object SymDenotations {
 
     /** Register companion class */
     override def registerCompanion(companion: Symbol)(implicit ctx: Context) =
-      if (companion.isClass && !unforcedIsAbsent && !companion.unforcedIsAbsent)
+      if (companion.isClass && !isAbsent(canForce = false) && !companion.isAbsent(canForce = false))
         myCompanion = companion
 
     override def registeredCompanion(implicit ctx: Context) = { ensureCompleted(); myCompanion }
@@ -2072,7 +2117,7 @@ object SymDenotations {
           }
         case nil =>
           val directMembers = super.computeNPMembersNamed(name)
-          if (acc.exists) acc.union(directMembers.filterWithPredicate(!_.symbol.isAbsent))
+          if (acc.exists) acc.union(directMembers.filterWithPredicate(!_.symbol.isAbsent()))
           else directMembers
       }
       if (symbol `eq` defn.ScalaPackageClass) {
@@ -2155,13 +2200,6 @@ object SymDenotations {
     private[this] var mySourceModuleFn: Context => Symbol = NoSymbolFn
     private[this] var myModuleClassFn: Context => Symbol = NoSymbolFn
 
-    /** A proxy to this lazy type that keeps the complete operation
-     *  but provides fresh slots for scope/sourceModule/moduleClass
-     */
-    def proxy: LazyType = new LazyType {
-      override def complete(denot: SymDenotation)(implicit ctx: Context) = self.complete(denot)
-    }
-
     /** The type parameters computed by the completer before completion has finished */
     def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeParamInfo] =
       if (sym.is(Touched)) Nil // return `Nil` instead of throwing a cyclic reference
@@ -2174,6 +2212,8 @@ object SymDenotations {
     def withDecls(decls: Scope): this.type = { myDecls = decls; this }
     def withSourceModule(sourceModuleFn: Context => Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
     def withModuleClass(moduleClassFn: Context => Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
+
+    override def toString: String = getClass.toString
   }
 
   /** A subtrait of LazyTypes where completerTypeParams yields a List[TypeSymbol], which
@@ -2185,11 +2225,11 @@ object SymDenotations {
   }
 
   /** A missing completer */
-  @sharable class NoCompleter extends LazyType {
+  trait NoCompleter extends LazyType {
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = unsupported("complete")
   }
 
-  object NoCompleter extends NoCompleter
+  @sharable object NoCompleter extends NoCompleter
 
   /** A lazy type for modules that points to the module class.
    *  Needed so that `moduleClass` works before completion.
@@ -2207,7 +2247,7 @@ object SymDenotations {
         // is to have the module class completer set the annotations of both the
         // class and the module.
       denot.info = moduleClass.typeRef
-      denot.privateWithin = from.privateWithin
+      denot.setPrivateWithin(from.privateWithin)
     }
   }
 
@@ -2221,7 +2261,7 @@ object SymDenotations {
         case _ =>
           ErrorType(errMsg)
       }
-      denot.privateWithin = NoSymbol
+      denot.setPrivateWithin(NoSymbol)
     }
 
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {

@@ -7,7 +7,7 @@ import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags
 import Symbols._, StdNames._, Trees._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
-import typer.FrontEnd
+import typer.{FrontEnd, Namer}
 import util.{Property, SourceFile, SourcePosition}
 import util.NameTransformer.avoidIllegalChars
 import collection.mutable.ListBuffer
@@ -74,38 +74,37 @@ object desugar {
     def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.Tree = tpd.ref(sym)
   }
 
-  /** A type tree that computes its type from an existing parameter.
-   *  @param suffix  String difference between existing parameter (call it `P`) and parameter owning the
-   *                 DerivedTypeTree (call it `O`). We have: `O.name == P.name + suffix`.
-   */
-  class DerivedFromParamTree(suffix: String)(implicit @constructorOnly src: SourceFile) extends DerivedTypeTree {
+  /** A type tree that computes its type from an existing parameter. */
+  class DerivedFromParamTree()(implicit @constructorOnly src: SourceFile) extends DerivedTypeTree {
 
-    /** Make sure that for all enclosing module classes their companion classes
-     *  are completed. Reason: We need the constructor of such companion classes to
-     *  be completed so that OriginalSymbol attachments are pushed to DerivedTypeTrees
-     *  in apply/unapply methods.
+    /** Complete the appropriate constructors so that OriginalSymbol attachments are
+     *  pushed to DerivedTypeTrees.
      */
-    override def ensureCompletions(implicit ctx: Context): Unit =
+    override def ensureCompletions(implicit ctx: Context): Unit = {
+      def completeConstructor(sym: Symbol) =
+        sym.infoOrCompleter match {
+          case completer: Namer#ClassCompleter =>
+            completer.completeConstructor(sym)
+          case _ =>
+        }
+
       if (!ctx.owner.is(Package))
         if (ctx.owner.isClass) {
-          ctx.owner.ensureCompleted()
+          completeConstructor(ctx.owner)
           if (ctx.owner.is(ModuleClass))
-            ctx.owner.linkedClass.ensureCompleted()
+            completeConstructor(ctx.owner.linkedClass)
         }
         else ensureCompletions(ctx.outer)
+    }
 
     /** Return info of original symbol, where all references to siblings of the
      *  original symbol (i.e. sibling and original symbol have the same owner)
-     *  are rewired to like-named* parameters or accessors in the scope enclosing
+     *  are rewired to same-named parameters or accessors in the scope enclosing
      *  the current scope. The current scope is the scope owned by the defined symbol
      *  itself, that's why we have to look one scope further out. If the resulting
      *  type is an alias type, dealias it. This is necessary because the
      *  accessor of a type parameter is a private type alias that cannot be accessed
      *  from subclasses.
-     *
-     *  (*) like-named means:
-     *
-     *       parameter name  ==  reference name ++ suffix
      */
     def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = {
       val relocate = new TypeMap {
@@ -113,7 +112,7 @@ object desugar {
         def apply(tp: Type) = tp match {
           case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>
             val defctx = ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next()
-            var local = defctx.denotNamed(tp.name ++ suffix).suchThat(_.isParamOrAccessor).symbol
+            var local = defctx.denotNamed(tp.name).suchThat(_.isParamOrAccessor).symbol
             if (local.exists) (defctx.owner.thisType select local).dealiasKeepAnnots
             else {
               def msg =
@@ -129,20 +128,19 @@ object desugar {
   }
 
   /** A type definition copied from `tdef` with a rhs typetree derived from it */
-  def derivedTypeParam(tdef: TypeDef, suffix: String = "")(implicit ctx: Context): TypeDef =
+  def derivedTypeParam(tdef: TypeDef)(implicit ctx: Context): TypeDef =
     cpy.TypeDef(tdef)(
-      name = tdef.name ++ suffix,
-      rhs = DerivedFromParamTree(suffix).withSpan(tdef.rhs.span).watching(tdef)
+      rhs = DerivedFromParamTree().withSpan(tdef.rhs.span).watching(tdef)
     )
 
   /** A derived type definition watching `sym` */
   def derivedTypeParam(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
-    TypeDef(sym.name, DerivedFromParamTree("").watching(sym)).withFlags(TypeParam)
+    TypeDef(sym.name, DerivedFromParamTree().watching(sym)).withFlags(TypeParam)
 
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
   def derivedTermParam(vdef: ValDef)(implicit ctx: Context): ValDef =
     cpy.ValDef(vdef)(
-      tpt = DerivedFromParamTree("").withSpan(vdef.tpt.span).watching(vdef))
+      tpt = DerivedFromParamTree().withSpan(vdef.tpt.span).watching(vdef))
 
 // ----- Desugar methods -------------------------------------------------
 
@@ -269,8 +267,8 @@ object desugar {
         def defaultGetter: DefDef =
           DefDef(
             name = DefaultGetterName(methName, n),
-            tparams = meth.tparams.map(tparam => dropContextBounds(toDefParam(tparam))),
-            vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam), n),
+            tparams = meth.tparams.map(tparam => dropContextBounds(toDefParam(tparam, keepAnnotations = true))),
+            vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam(_, keepAnnotations = true)), n),
             tpt = TypeTree(),
             rhs = vparam.rhs
           )
@@ -374,10 +372,16 @@ object desugar {
 
   @sharable private val synthetic = Modifiers(Synthetic)
 
-  private def toDefParam(tparam: TypeDef): TypeDef =
-    tparam.withMods(tparam.rawMods & EmptyFlags | Param)
-  private def toDefParam(vparam: ValDef): ValDef =
-    vparam.withMods(vparam.rawMods & (GivenOrImplicit | Erased) | Param)
+  private def toDefParam(tparam: TypeDef, keepAnnotations: Boolean): TypeDef = {
+    var mods = tparam.rawMods
+    if (!keepAnnotations) mods = mods.withAnnotations(Nil)
+    tparam.withMods(mods & EmptyFlags | Param)
+  }
+  private def toDefParam(vparam: ValDef, keepAnnotations: Boolean): ValDef = {
+    var mods = vparam.rawMods
+    if (!keepAnnotations) mods = mods.withAnnotations(Nil)
+    vparam.withMods(mods & (GivenOrImplicit | Erased) | Param)
+  }
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
@@ -439,7 +443,7 @@ object desugar {
         else originalTparams
       }
       else originalTparams
-    val constrTparams = impliedTparams.map(toDefParam)
+    val constrTparams = impliedTparams.map(toDefParam(_, keepAnnotations = false))
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass && originalTparams.isEmpty)
@@ -449,7 +453,7 @@ object desugar {
           ctx.error("Case classes should have a non-implicit parameter list", namePos)
         ListOfNil
       }
-      else originalVparamss.nestedMap(toDefParam)
+      else originalVparamss.nestedMap(toDefParam(_, keepAnnotations = false))
     val constr = cpy.DefDef(constr1)(tparams = constrTparams, vparamss = constrVparamss)
 
     val (normalizedBody, enumCases, enumCompanionRef) = {
@@ -461,7 +465,7 @@ object desugar {
             defDef(
               addEvidenceParams(
                 cpy.DefDef(ddef)(tparams = constrTparams),
-                evidenceParams(constr1).map(toDefParam))))
+                evidenceParams(constr1).map(toDefParam(_, keepAnnotations = false)))))
         case stat =>
           stat
       }
@@ -484,8 +488,19 @@ object desugar {
 
     def anyRef = ref(defn.AnyRefAlias.typeRef)
 
-    val derivedTparams = constrTparams.map(derivedTypeParam(_))
-    val derivedVparamss = constrVparamss.nestedMap(derivedTermParam(_))
+    // Annotations are dropped from the constructor parameters but should be
+    // preserved in all derived parameters.
+    val derivedTparams = {
+      val impliedTparamsIt = impliedTparams.toIterator
+      constrTparams.map(tparam => derivedTypeParam(tparam)
+        .withAnnotations(impliedTparamsIt.next().mods.annotations))
+    }
+    val derivedVparamss = {
+      val constrVparamsIt = constrVparamss.toIterator.flatten
+      constrVparamss.nestedMap(vparam => derivedTermParam(vparam)
+        .withAnnotations(constrVparamsIt.next().mods.annotations))
+    }
+
     val arity = constrVparamss.head.length
 
     val classTycon: Tree = TypeRefTree() // watching is set at end of method
@@ -774,16 +789,20 @@ object desugar {
     }
 
     val cdef1 = addEnumFlags {
-      val originalTparamsIt = impliedTparams.toIterator
-      val originalVparamsIt = originalVparamss.toIterator.flatten
-      val tparamAccessors = derivedTparams.map(_.withMods(originalTparamsIt.next().mods))
+      val tparamAccessors = {
+        val impliedTparamsIt = impliedTparams.toIterator
+        derivedTparams.map(_.withMods(impliedTparamsIt.next().mods))
+      }
       val caseAccessor = if (isCaseClass) CaseAccessor else EmptyFlags
-      val vparamAccessors = derivedVparamss match {
-        case first :: rest =>
-          first.map(_.withMods(originalVparamsIt.next().mods | caseAccessor)) ++
-          rest.flatten.map(_.withMods(originalVparamsIt.next().mods))
-        case _ =>
-          Nil
+      val vparamAccessors = {
+        val originalVparamsIt = originalVparamss.toIterator.flatten
+        derivedVparamss match {
+          case first :: rest =>
+            first.map(_.withMods(originalVparamsIt.next().mods | caseAccessor)) ++
+            rest.flatten.map(_.withMods(originalVparamsIt.next().mods))
+          case _ =>
+            Nil
+        }
       }
       cpy.TypeDef(cdef: TypeDef)(
         name = className,

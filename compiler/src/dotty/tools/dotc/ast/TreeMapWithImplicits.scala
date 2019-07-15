@@ -119,7 +119,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     }
     catch {
       case ex: TypeError =>
-        ctx.error(ex.toMessage, tree.sourcePos)
+        ctx.error(ex, tree.sourcePos)
         tree
     }
   }

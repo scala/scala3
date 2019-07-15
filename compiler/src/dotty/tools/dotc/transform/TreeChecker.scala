@@ -68,7 +68,7 @@ class TreeChecker extends Phase with SymTransformer {
   def transformSym(symd: SymDenotation)(implicit ctx: Context): SymDenotation = {
     val sym = symd.symbol
 
-    if (sym.isClass && !sym.isAbsent) {
+    if (sym.isClass && !sym.isAbsent()) {
       val validSuperclass = sym.isPrimitiveValueClass || defn.syntheticCoreClasses.contains(sym) ||
         (sym eq defn.ObjectClass) || sym.isOneOf(NoSuperClassFlags) || (sym.asClass.superClass.exists) ||
         sym.isRefinementClass
@@ -263,7 +263,10 @@ class TreeChecker extends Phase with SymTransformer {
 
     override def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
       val tpdTree = super.typed(tree, pt)
-      checkIdentNotJavaClass(tpdTree)
+      if (ctx.erasedTypes)
+        // Can't be checked in earlier phases since `checkValue` is only run in
+        // Erasure (because running it in Typer would force too much)
+        checkIdentNotJavaClass(tpdTree)
       tpdTree
     }
 

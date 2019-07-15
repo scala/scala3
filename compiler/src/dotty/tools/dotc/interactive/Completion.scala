@@ -251,7 +251,7 @@ object Completion {
      */
     private def include(sym: Symbol, nameInScope: Name)(implicit ctx: Context): Boolean =
       nameInScope.startsWith(prefix) &&
-      !sym.isAbsent &&
+      !sym.isAbsent() &&
       !sym.isPrimaryConstructor &&
       sym.sourceSymbol.exists &&
       (!sym.is(Package) || sym.is(ModuleClass)) &&

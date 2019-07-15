@@ -189,7 +189,7 @@ class Definitions {
 
   private def completeClass(cls: ClassSymbol, ensureCtor: Boolean = true): ClassSymbol = {
     if (ensureCtor) ensureConstructor(cls, EmptyScope)
-    if (cls.linkedClass.exists) cls.linkedClass.info = NoType
+    if (cls.linkedClass.exists) cls.linkedClass.markAbsent()
     cls
   }
 
@@ -296,12 +296,13 @@ class Definitions {
     cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
     cls.setFlag(NoInits)
 
-    // The companion object doesn't really exist, `NoType` is the general
-    // technique to do that. Here we need to set it before completing
-    // attempt to load Object's classfile, which causes issue #1648.
+    // The companion object doesn't really exist, so it needs to be marked as
+    // absent. Here we need to set it before completing attempt to load Object's
+    // classfile, which causes issue #1648.
     val companion = JavaLangPackageVal.info.decl(nme.Object).symbol
-    companion.moduleClass.info = NoType // to indicate that it does not really exist
-    companion.info = NoType // to indicate that it does not really exist
+    companion.moduleClass.markAbsent()
+    companion.markAbsent()
+
     completeClass(cls)
   }
   def ObjectType: TypeRef = ObjectClass.typeRef
