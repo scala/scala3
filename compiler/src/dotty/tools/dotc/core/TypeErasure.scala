@@ -244,7 +244,10 @@ object TypeErasure {
       !classify(tp).derivesFrom(defn.ObjectClass) &&
       !tp.binder.resultType.isJavaMethod
     case tp: TypeAlias => isUnboundedGeneric(tp.alias)
-    case tp: TypeBounds => !classify(tp.hi).derivesFrom(defn.ObjectClass)
+    case tp: TypeBounds =>
+      val upper = classify(tp.hi)
+      !upper.derivesFrom(defn.ObjectClass) &&
+      !upper.isPrimitiveValueType
     case tp: TypeProxy => isUnboundedGeneric(tp.translucentSuperType)
     case tp: AndType => isUnboundedGeneric(tp.tp1) && isUnboundedGeneric(tp.tp2)
     case tp: OrType => isUnboundedGeneric(tp.tp1) || isUnboundedGeneric(tp.tp2)
