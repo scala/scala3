@@ -15,12 +15,28 @@ implicit object arrayOps {
     *  @param n   the index of the element to select
     *  @return    the element of the array at the given index
     */
-  inline def (arr: IArray[T]) apply[T] (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
+  def (arr: IArray[Byte]) apply (n: Int): Byte = arr.asInstanceOf[Array[Byte]].apply(n)
+  def (arr: IArray[Short]) apply (n: Int): Short = arr.asInstanceOf[Array[Short]].apply(n)
+  def (arr: IArray[Char]) apply (n: Int): Char = arr.asInstanceOf[Array[Char]].apply(n)
+  def (arr: IArray[Int]) apply (n: Int): Int = arr.asInstanceOf[Array[Int]].apply(n)
+  def (arr: IArray[Long]) apply (n: Int): Long = arr.asInstanceOf[Array[Long]].apply(n)
+  def (arr: IArray[Float]) apply (n: Int): Float = arr.asInstanceOf[Array[Float]].apply(n)
+  def (arr: IArray[Double]) apply (n: Int): Double = arr.asInstanceOf[Array[Double]].apply(n)
+  def (arr: IArray[T]) apply[T <: Object] (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
+  def (arr: IArray[T]) apply[T] (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
 
   /** The number of elements in an immutable array
     *  @param arr  the immutable array
     */
-  inline def (arr: IArray[T]) length[T] : Int = arr.asInstanceOf[Array[T]].length
+  def (arr: IArray[Byte]) length: Int = arr.asInstanceOf[Array[Byte]].length
+  def (arr: IArray[Short]) length: Int = arr.asInstanceOf[Array[Short]].length
+  def (arr: IArray[Char]) length: Int = arr.asInstanceOf[Array[Char]].length
+  def (arr: IArray[Int]) length: Int = arr.asInstanceOf[Array[Int]].length
+  def (arr: IArray[Long]) length: Int = arr.asInstanceOf[Array[Long]].length
+  def (arr: IArray[Float]) length: Int = arr.asInstanceOf[Array[Float]].length
+  def (arr: IArray[Double]) length: Int = arr.asInstanceOf[Array[Double]].length
+  def (arr: IArray[Object]) length: Int = arr.asInstanceOf[Array[Object]].length
+  def (arr: IArray[T]) length[T] : Int = arr.asInstanceOf[Array[T]].length
 }
 
 object IArray {
