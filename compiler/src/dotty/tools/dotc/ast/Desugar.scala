@@ -1153,17 +1153,21 @@ object desugar {
    *   - all pattern, value and method definitions
    *   - non-class type definitions
    *   - implicit classes and objects
-   *   - companion objects of opaque types
+   *   - "companion objects" of wrapped type definitions
+   *     (i.e. objects having the same name as a wrapped type)
    */
   def packageDef(pdef: PackageDef)(implicit ctx: Context): PackageDef = {
-    val opaqueNames = pdef.stats.collect {
-      case stat: TypeDef if stat.mods.is(Opaque) => stat.name
+    def isWrappedType(stat: TypeDef): Boolean =
+      !stat.isClassDef || stat.mods.isOneOf(DelegateOrImplicit)
+    val wrappedTypeNames = pdef.stats.collect {
+      case stat: TypeDef if isWrappedType(stat) => stat.name
     }
     def needsObject(stat: Tree) = stat match {
       case _: ValDef | _: PatDef | _: DefDef | _: Export => true
       case stat: ModuleDef =>
-        stat.mods.isOneOf(DelegateOrImplicit) || opaqueNames.contains(stat.name.stripModuleClassSuffix.toTypeName)
-      case stat: TypeDef => !stat.isClassDef || stat.mods.isOneOf(DelegateOrImplicit)
+        stat.mods.isOneOf(DelegateOrImplicit) ||
+        wrappedTypeNames.contains(stat.name.stripModuleClassSuffix.toTypeName)
+      case stat: TypeDef => isWrappedType(stat)
       case _ => false
     }
     val (nestedStats, topStats) = pdef.stats.partition(needsObject)
