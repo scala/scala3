@@ -104,9 +104,9 @@ object Left extends Mirror.Product {
   def _fromProduct(p: Product): Left[_] = Left(productElement[Any](p, 0))
   implicit def mirror[L]: Mirror.Product {
     type _MonoType = Left[L]
-    type ElemTypes = L *: Unit
+    type ElemTypes = L *: EmptyTuple
     type CaseLabel = "Left"
-    type ElemLabels = "x" *: Unit
+    type ElemLabels = "x" *: EmptyTuple
   } = this.asInstanceOf
 }
 
@@ -115,9 +115,9 @@ object Right extends Mirror.Product {
   def _fromProduct(p: Product): Right[_] = Right(productElement[Any](p, 0))
   implicit def mirror[R]: Mirror.Product {
     type _MonoType = Right[R]
-    type ElemTypes = R *: Unit
+    type ElemTypes = R *: EmptyTuple
     type CaseLabel = "Right"
-    type ElemLabels = "x" *: Unit
+    type ElemLabels = "x" *: EmptyTuple
   } = this.asInstanceOf
 }
 
