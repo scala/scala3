@@ -1,6 +1,9 @@
 import scala.collection.mutable
 import scala.annotation.tailrec
 
+import scala.quoted._
+import scala.quoted.matching.searchImplicitExpr
+
 // Simulation of an alternative typeclass derivation scheme
 
 // -- Classes and Objects of the Derivation Framework ----------------------------------
@@ -81,8 +84,16 @@ trait Eq[T] {
 object Eq {
   import scala.compiletime.erasedValue
 
-  inline def tryEql[T](x: T, y: T) = delegate match {
-    case eq: Eq[T] => eq.eql(x, y)
+  inline def tryEql[T](x: T, y: T) =
+    ${ tryEqlExpr('x, 'y) }
+
+  private def tryEqlExpr[T: Type](x: Expr[T], y: Expr[T]) given (qctx: QuoteContext): Expr[Boolean] = {
+    searchImplicitExpr[Eq[T]] match {
+      case Some(eq) => '{ $eq.eql($x, $y) }
+      case None =>
+        qctx.error(s"Could not find delegate for Eq[${the[Type[T]].show}]")
+        '{ false }
+    }
   }
 
   inline def eqlElems[Elems <: Tuple](n: Int)(x: Any, y: Any): Boolean =
@@ -137,8 +148,16 @@ object Pickler {
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
-  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = delegate match {
-    case pkl: Pickler[T] => pkl.pickle(buf, x)
+  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit =
+    ${ tryPickleExpr('buf, 'x) }
+
+  private def tryPickleExpr[T: Type](buf: Expr[mutable.ListBuffer[Int]], x: Expr[T]) given (qctx: QuoteContext): Expr[Unit] = {
+    searchImplicitExpr[Pickler[T]] match {
+      case Some(pkl) => '{ $pkl.pickle($buf, $x) }
+      case None =>
+        qctx.error(s"Could not find delegate for Pickler[${the[Type[T]].show}]")
+        '{}
+    }
   }
 
   inline def pickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], x: Any): Unit =
@@ -163,6 +182,17 @@ object Pickler {
   inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = delegate match {
     case pkl: Pickler[T] => pkl.unpickle(buf)
   }
+  // inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T =
+  //   ${ tryUnpickleExpr('buf) }
+
+  // private def tryUnpickleExpr[T: Type](buf: Expr[mutable.ListBuffer[Int]]) given (qctx: QuoteContext): Expr[T] = {
+  //   searchImplicitExpr[Pickler[T]] match {
+  //     case Some(pkl) => '{ $pkl.unpickle($buf) }
+  //     case None =>
+  //       qctx.error(s"Could not find delegate for Pickler[${the[Type[T]].show}]")
+  //       '{ ??? }
+  //   }
+  // }
 
   inline def unpickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], elems: ArrayProduct): Unit =
     inline erasedValue[Elems] match {
@@ -230,8 +260,16 @@ trait Show[T] {
 object Show {
   import scala.compiletime.{erasedValue, constValue}
 
-  inline def tryShow[T](x: T): String = delegate match {
-    case s: Show[T] => s.show(x)
+  inline def tryShow[T](x: T): String =
+    ${ tryShowExpr('x) }
+
+  private def tryShowExpr[T: Type](x: Expr[T]) given (qctx: QuoteContext): Expr[String] = {
+    searchImplicitExpr[Show[T]] match {
+      case Some(s) => '{ $s.show($x) }
+      case None =>
+        qctx.error(s"Could not find delegate for Show[${the[Type[T]].show}]")
+        '{ "" }
+    }
   }
 
   inline def showElems[Elems <: Tuple, Labels <: Tuple](n: Int)(x: Any): List[String] =
