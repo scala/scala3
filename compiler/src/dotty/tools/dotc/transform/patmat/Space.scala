@@ -282,7 +282,7 @@ object SpaceEngine {
     (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||  // scala2 compatibility
     (patSize != -1 && productArity(unappResult) == patSize) || {
       val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, unapp.sourcePos)
-      isEmptyTp <:< ConstantType(Constant(true))
+      isEmptyTp <:< ConstantType(Constant(false))
     }
   }
 
@@ -297,7 +297,7 @@ object SpaceEngine {
     isProductSeqMatch(unappResult, patSize) ||
     {
       val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, unapp.sourcePos)
-      isEmptyTp <:< ConstantType(Constant(true))
+      isEmptyTp <:< ConstantType(Constant(false))
     }
   }
 }

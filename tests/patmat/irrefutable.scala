@@ -36,7 +36,7 @@ object ExProduct {
 // isEmpty/get
 
 trait Res {
-  def isEmpty: true = true
+  def isEmpty: false = false
   def get: Int
 }
 
