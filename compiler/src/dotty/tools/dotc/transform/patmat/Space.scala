@@ -285,6 +285,21 @@ object SpaceEngine {
       isEmptyTp <:< ConstantType(Constant(true))
     }
   }
+
+  /** Is the unapplySeq irrefutable?
+   *  @param  unapp   The unapplySeq function reference
+   */
+  def isIrrefutableUnapplySeq(unapp: tpd.Tree, patSize: Int)(implicit ctx: Context): Boolean = {
+    val unappResult = unapp.tpe.widen.finalResultType
+    unappResult.isRef(defn.SomeClass) ||
+    (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||  // scala2 compatibility
+    unapplySeqTypeElemTp(unappResult).exists ||
+    isProductSeqMatch(unappResult, patSize) ||
+    {
+      val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, unapp.sourcePos)
+      isEmptyTp <:< ConstantType(Constant(true))
+    }
+  }
 }
 
 /** Scala implementation of space logic */
@@ -351,9 +366,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         else {
           val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.sourcePos)
           if (elemTp.exists)
-            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, isIrrefutableUnapply(fun, -1))
+            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, isIrrefutableUnapplySeq(fun, pats.size))
           else
-            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)), full = true)
+            Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)), isIrrefutableUnapplySeq(fun, pats.size))
         }
       else
         Prod(erase(pat.tpe.stripAnnots), erase(fun.tpe), fun.symbol, pats.map(project), isIrrefutableUnapply(fun, pats.length))
