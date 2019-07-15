@@ -24,3 +24,4 @@ macros-in-same-project1
 i5257.scala
 i7868.scala
 enum-java
+zero-arity-case-class.scala
