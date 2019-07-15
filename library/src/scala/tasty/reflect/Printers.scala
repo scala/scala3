@@ -826,9 +826,16 @@ trait Printers
           printTypeTree(args.head)
           this += "]"
 
+        case Apply(fn, arg :: Nil) if fn.symbol.fullName == "scala.internal.Quoted$.exprSplice" =>
+          this += "${"
+          printTree(arg)
+          this += "}"
+
         case Apply(fn, args) =>
           fn match {
             case Select(This(_), "<init>") => this += "this" // call to constructor inside a constructor
+            case Select(qual, "apply") if qual.tpe.isImplicitFunctionType =>
+              printTree(qual) += " given "
             case _ => printQualTree(fn)
           }
           val args1 = args match {

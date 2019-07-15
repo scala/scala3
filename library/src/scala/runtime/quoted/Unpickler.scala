@@ -1,7 +1,7 @@
 package scala.runtime.quoted
 
 import scala.internal.quoted.{TastyExpr, TastyType}
-import scala.quoted.{Expr, Type}
+import scala.quoted.{Expr, QuoteContext, Type}
 
 /** Provides methods to unpickle `Expr` and `Type` trees. */
 object Unpickler {
@@ -14,7 +14,7 @@ object Unpickler {
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleExpr[T](repr: Pickled, args: Seq[Seq[Any] => (Expr[Any] | Type[_])]): Expr[T] = new TastyExpr[T](repr, args)
+  def unpickleExpr[T](repr: Pickled, args: Seq[Seq[Any] => ((given QuoteContext => Expr[Any]) | Type[_])]): given QuoteContext => Expr[T] = new TastyExpr[T](repr, args)
 
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `args`

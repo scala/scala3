@@ -41,15 +41,18 @@ object Splicer {
       val interpreter = new Interpreter(pos, classLoader)
       try {
         // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
-        val interpretedExpr = interpreter.interpret[scala.quoted.Expr[Any]](tree)
-        interpretedExpr.fold(tree)(x => PickledQuotes.quotedExprToTree(x))
+        val interpretedExpr = interpreter.interpret[scala.quoted.QuoteContext => scala.quoted.Expr[Any]](tree)
+        interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(new scala.quoted.QuoteContext(ReflectionImpl(ctx)))))
       }
       catch {
+        case ex: StopInterpretation =>
+          ctx.error(ex.msg, ex.pos)
+          EmptyTree
         case NonFatal(ex) =>
           val msg =
             s"""Failed to evaluate macro.
                |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
-               |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").init.mkString("\n    ")}
+               |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").drop(1).mkString("\n    ")}
              """.stripMargin
           ctx.error(msg, pos)
           EmptyTree
@@ -65,19 +68,24 @@ object Splicer {
   def checkValidMacroBody(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case Quoted(_) => // ok
     case _ =>
-      def checkValidStat(tree: Tree): Unit = tree match {
+      type Env = Set[Symbol]
+
+      def checkValidStat(tree: Tree) given Env: Env = tree match {
         case tree: ValDef if tree.symbol.is(Synthetic) =>
           // Check val from `foo(j = x, i = y)` which it is expanded to
           // `val j$1 = x; val i$1 = y; foo(i = i$1, j = j$1)`
           checkIfValidArgument(tree.rhs)
+          the[Env] + tree.symbol
         case _ =>
           ctx.error("Macro should not have statements", tree.sourcePos)
+          the[Env]
       }
-      def checkIfValidArgument(tree: Tree): Unit = tree match {
+
+      def checkIfValidArgument(tree: Tree) given Env: Unit = tree match {
         case Block(Nil, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
-        case Apply(TypeApply(fn, _), quoted :: Nil) if fn.symbol == defn.InternalQuoted_exprQuote =>
+        case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
           // OK
 
         case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.InternalQuoted_typeQuote =>
@@ -101,7 +109,7 @@ object Splicer {
         case SeqLiteral(elems, _) =>
           elems.foreach(checkIfValidArgument)
 
-        case tree: Ident if tree.symbol.is(Inline) || tree.symbol.is(Synthetic) =>
+        case tree: Ident if tree.symbol.is(Inline) || the[Env].contains(tree.symbol) =>
           // OK
 
         case _ =>
@@ -114,10 +122,14 @@ object Splicer {
               | * Literal values of primitive types
               |""".stripMargin, tree.sourcePos)
       }
-      def checkIfValidStaticCall(tree: Tree): Unit = tree match {
+
+      def checkIfValidStaticCall(tree: Tree) given Env: Unit = tree match {
+        case closureDef(ddef @ DefDef(_, Nil, (ev :: Nil) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
+          checkIfValidStaticCall(ddef.rhs) given (the[Env] + ev.symbol)
+
         case Block(stats, expr) =>
-          stats.foreach(checkValidStat)
-          checkIfValidStaticCall(expr)
+          val newEnv = stats.foldLeft(the[Env])((env, stat) => checkValidStat(stat) given env)
+          checkIfValidStaticCall(expr) given newEnv
 
         case Typed(expr, _) =>
           checkIfValidStaticCall(expr)
@@ -126,6 +138,8 @@ object Splicer {
             if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) ||
                fn.symbol.is(Module) || fn.symbol.isStatic ||
                (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic) =>
+          if (fn.symbol.flags.is(Inline))
+            ctx.error("Macro cannot be implemented with an `inline` method", fn.sourcePos)
           args.flatten.foreach(checkIfValidArgument)
 
         case _ =>
@@ -136,35 +150,29 @@ object Splicer {
               |""".stripMargin, tree.sourcePos)
       }
 
-      checkIfValidStaticCall(tree)
+      checkIfValidStaticCall(tree) given Set.empty
   }
 
   /** Tree interpreter that evaluates the tree */
   private class Interpreter(pos: SourcePosition, classLoader: ClassLoader)(implicit ctx: Context) {
 
-    type Env = Map[Name, Object]
+    type Env = Map[Symbol, Object]
 
     /** Returns the interpreted result of interpreting the code a call to the symbol with default arguments.
      *  Return Some of the result or None if some error happen during the interpretation.
      */
     def interpret[T](tree: Tree)(implicit ct: ClassTag[T]): Option[T] = {
-      try {
-        interpretTree(tree)(Map.empty) match {
-          case obj: T => Some(obj)
-          case obj =>
-            // TODO upgrade to a full type tag check or something similar
-            ctx.error(s"Interpreted tree returned a result of an unexpected type. Expected ${ct.runtimeClass} but was ${obj.getClass}", pos)
-            None
-        }
-      } catch {
-        case ex: StopInterpretation =>
-          ctx.error(ex.msg, ex.pos)
+      interpretTree(tree)(Map.empty) match {
+        case obj: T => Some(obj)
+        case obj =>
+          // TODO upgrade to a full type tag check or something similar
+          ctx.error(s"Interpreted tree returned a result of an unexpected type. Expected ${ct.runtimeClass} but was ${obj.getClass}", pos)
           None
       }
     }
 
     def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
-      case Apply(TypeApply(fn, _), quoted :: Nil) if fn.symbol == defn.InternalQuoted_exprQuote =>
+      case Apply(Select(Apply(TypeApply(fn, _), quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
         val quoted1 = quoted match {
           case quoted: Ident if quoted.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter
@@ -199,13 +207,16 @@ object Splicer {
             val staticMethodCall = interpretedStaticMethodCall(fn.qualifier.symbol.moduleClass, fn.symbol)
             staticMethodCall(args.flatten.map(interpretTree))
           }
-        } else if (env.contains(fn.name)) {
-          env(fn.name)
+        } else if (env.contains(fn.symbol)) {
+          env(fn.symbol)
         } else if (tree.symbol.is(InlineProxy)) {
           interpretTree(tree.symbol.defTree.asInstanceOf[ValOrDefDef].rhs)
         } else {
           unexpectedTree(tree)
         }
+
+      case closureDef((ddef @ DefDef(_, _, (arg :: Nil) :: Nil, _, _))) =>
+        (obj: AnyRef) => interpretTree(ddef.rhs) given env.updated(arg.symbol, obj)
 
       // Interpret `foo(j = x, i = y)` which it is expanded to
       // `val j$1 = x; val i$1 = y; foo(i = i$1, j = j$1)`
@@ -228,7 +239,7 @@ object Splicer {
       var unexpected: Option[Object] = None
       val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
         case stat: ValDef =>
-          accEnv.updated(stat.name, interpretTree(stat.rhs)(accEnv))
+          accEnv.updated(stat.symbol, interpretTree(stat.rhs)(accEnv))
         case stat =>
           if (unexpected.isEmpty)
             unexpected = Some(unexpectedTree(stat))
@@ -250,7 +261,7 @@ object Splicer {
       args.toSeq
 
     private def interpretQuoteContext()(implicit env: Env): Object =
-      new scala.quoted.QuoteContext(ReflectionImpl(ctx, pos))
+      new scala.quoted.QuoteContext(ReflectionImpl(ctx))
 
     private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol)(implicit env: Env): List[Object] => Object = {
       val (inst, clazz) =
@@ -339,10 +350,13 @@ object Splicer {
           throw new StopInterpretation(sw.toString, pos)
         case ex: InvocationTargetException =>
           val sw = new StringWriter()
-          sw.write("An exception occurred while executing macro expansion\n")
+          sw.write("An exception occurred while executing macro expansion: ")
           sw.write(ex.getTargetException.getMessage)
           sw.write("\n")
-          ex.getTargetException.printStackTrace(new PrintWriter(sw))
+          for (stack <- ex.getTargetException.getStackTrace.iterator.takeWhile(_.getClassName != this.getClass.getName).drop(1)) {
+            sw.write(stack.toString)
+            sw.write("\n")
+          }
           sw.write("\n")
           throw new StopInterpretation(sw.toString, pos)
       }
@@ -404,10 +418,11 @@ object Splicer {
       allParams.map(paramClass)
     }
 
-    /** Exception that stops interpretation if some issue is found */
-    private class StopInterpretation(val msg: String, val pos: SourcePosition) extends Exception
 
   }
+
+  /** Exception that stops interpretation if some issue is found */
+  private class StopInterpretation(val msg: String, val pos: SourcePosition) extends Exception
 
   object Call {
     /** Matches an expression that is either a field access or an application

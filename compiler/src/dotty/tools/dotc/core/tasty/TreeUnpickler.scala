@@ -1273,14 +1273,15 @@ class TreeUnpickler(reader: TastyReader,
       val args = until(end)(readTerm())
       val splice = splices(idx)
       def wrap(arg: Tree) =
-        if (arg.isTerm) new TastyTreeExpr(arg)
+        if (arg.isTerm) given (qctx: scala.quoted.QuoteContext) => new TastyTreeExpr(arg)
         else new TreeType(arg)
       val reifiedArgs = args.map(wrap)
       val filled = if (isType) {
         val quotedType = splice.asInstanceOf[Seq[Any] => quoted.Type[_]](reifiedArgs)
         PickledQuotes.quotedTypeToTree(quotedType)
       } else {
-        val quotedExpr = splice.asInstanceOf[Seq[Any] => quoted.Expr[_]](reifiedArgs)
+        val splice1 = splice.asInstanceOf[Seq[Any] => given scala.quoted.QuoteContext => quoted.Expr[_]]
+        val quotedExpr = splice1(reifiedArgs) given new scala.quoted.QuoteContext(tastyreflect.ReflectionImpl(ctx))
         PickledQuotes.quotedExprToTree(quotedExpr)
       }
       // We need to make sure a hole is created with the source file of the surrounding context, even if

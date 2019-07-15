@@ -1,1 +1,1 @@
-'{3}
+((qctx: scala.quoted.QuoteContext) => '{3} given (qctx))

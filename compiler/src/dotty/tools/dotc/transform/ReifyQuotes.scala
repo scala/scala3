@@ -177,7 +177,6 @@ class ReifyQuotes extends MacroTransform {
      */
     override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
       val isType = quote.symbol eq defn.InternalQuoted_typeQuote
-      assert(!(body.symbol.isSplice && (body.isInstanceOf[GenericApply[_]] || body.isInstanceOf[Select])))
       if (level > 0) {
         val body1 = nested(isQuote = true).transform(body)(quoteContext)
         super.transformQuotation(body1, quote)
@@ -209,35 +208,37 @@ class ReifyQuotes extends MacroTransform {
         qctx
       }
 
-      def liftedValue[T](value: T, name: TermName, qctx: Tree) =
-        ref(defn.LiftableModule).select(name).select("toExpr".toTermName).appliedTo(Literal(Constant(value))).select(nme.apply).appliedTo(qctx)
+      def liftedValue[T](value: T, name: TermName) =
+        ref(defn.LiftableModule).select(name).select("toExpr".toTermName).appliedTo(Literal(Constant(value)))
 
-      def pickleAsValue[T](value: T) = value match {
-        case null => ref(defn.QuotedExprModule).select("nullExpr".toTermName).appliedTo(qctx)
-        case _: Unit => ref(defn.QuotedExprModule).select("unitExpr".toTermName).appliedTo(qctx)
-        case _: Boolean => liftedValue(value, "Liftable_Boolean_delegate".toTermName, qctx)
-        case _: Byte => liftedValue(value, "Liftable_Byte_delegate".toTermName, qctx)
-        case _: Short => liftedValue(value, "Liftable_Short_delegate".toTermName, qctx)
-        case _: Int => liftedValue(value, "Liftable_Int_delegate".toTermName, qctx)
-        case _: Long => liftedValue(value, "Liftable_Long_delegate".toTermName, qctx)
-        case _: Float => liftedValue(value, "Liftable_Float_delegate".toTermName, qctx)
-        case _: Double => liftedValue(value, "Liftable_Double_delegate".toTermName, qctx)
-        case _: Char => liftedValue(value, "Liftable_Char_delegate".toTermName, qctx)
-        case _: String => liftedValue(value, "Liftable_String_delegate".toTermName, qctx)
+      def pickleAsValue[T](value: T) = {
+        value match {
+          case null => ref(defn.QuotedExprModule).select("nullExpr".toTermName)
+          case _: Unit => ref(defn.QuotedExprModule).select("unitExpr".toTermName)
+          case _: Boolean => liftedValue(value, "Liftable_Boolean_delegate".toTermName)
+          case _: Byte => liftedValue(value, "Liftable_Byte_delegate".toTermName)
+          case _: Short => liftedValue(value, "Liftable_Short_delegate".toTermName)
+          case _: Int => liftedValue(value, "Liftable_Int_delegate".toTermName)
+          case _: Long => liftedValue(value, "Liftable_Long_delegate".toTermName)
+          case _: Float => liftedValue(value, "Liftable_Float_delegate".toTermName)
+          case _: Double => liftedValue(value, "Liftable_Double_delegate".toTermName)
+          case _: Char => liftedValue(value, "Liftable_Char_delegate".toTermName)
+          case _: String => liftedValue(value, "Liftable_String_delegate".toTermName)
+        }
       }
 
       def pickleAsTasty() = {
         val meth =
           if (isType) ref(defn.Unpickler_unpickleType).appliedToType(originalTp)
           else ref(defn.Unpickler_unpickleExpr).appliedToType(originalTp.widen)
-        def wildcardQuotedType = defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
         val spliceResType =
-          if (isType) wildcardQuotedType
-          else defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType) | wildcardQuotedType
-        meth.appliedTo(
-          liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType),
-          liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), spliceResType)))
+          if (isType) defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
+          else defn.FunctionType(1, isContextual = true).appliedTo(defn.QuoteContextClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)) | defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
+        val pickledQuoteStrings = liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType)
+        val splicesList = liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), spliceResType))
+        meth.appliedTo(pickledQuoteStrings, splicesList)
       }
+
       if (splices.nonEmpty) pickleAsTasty()
       else if (isType) {
         def tag(tagName: String) = ref(defn.QuotedTypeModule).select(tagName.toTermName).appliedTo(qctx)
@@ -316,7 +317,7 @@ class ReifyQuotes extends MacroTransform {
                 assert(tpw.isInstanceOf[ValueType])
                 val argTpe =
                   if (tree.isType) defn.QuotedTypeClass.typeRef.appliedTo(tpw)
-                  else defn.QuotedExprClass.typeRef.appliedTo(tpw)
+                  else defn.FunctionType(1, isContextual = true).appliedTo(defn.QuoteContextClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(tpw))
                 val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).cast(argTpe)
                 val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)
                 i += 1
@@ -357,7 +358,9 @@ class ReifyQuotes extends MacroTransform {
       val tree2 = transform(tree)
       capturers --= outer.localSymbols
 
-      seq(captured.result().valuesIterator.toList, tree2)
+      val captures = captured.result().valuesIterator.toList
+      if (captures.isEmpty) tree2
+      else Block(captures, tree2)
     }
 
     /** Returns true if this tree will be captured by `makeLambda`. Checks phase consistency and presence of capturer. */
