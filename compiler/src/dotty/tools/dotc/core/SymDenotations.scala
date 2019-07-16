@@ -444,7 +444,7 @@ object SymDenotations {
             enclClassInfo.selfInfo match {
               case self: Type =>
                 owner.info = enclClassInfo.derivedClassInfo(
-                  selfInfo = refineSelfType(enclClassInfo.selfType))
+                  selfInfo = refineSelfType(self.orElse(defn.AnyType)))
               case self: Symbol =>
                 self.info = refineSelfType(self.info)
             }
