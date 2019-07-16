@@ -560,7 +560,7 @@ trait ImplicitRunInfo { self: Run =>
 
         val comps = new TermRefSet
         def addCompanion(pre: Type, companion: Symbol) =
-          if (companion.exists && !companion.isAbsent) comps += TermRef(pre, companion)
+          if (companion.exists && !companion.isAbsent()) comps += TermRef(pre, companion)
 
         def addPath(pre: Type): Unit = pre.dealias match {
           case pre: ThisType if pre.cls.is(Module) && pre.cls.isStaticOwner =>
