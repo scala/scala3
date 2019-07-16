@@ -788,7 +788,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  Fallback if this fails: try to convert `E` to `new E`.
    */
   def typedFunPart(fn: untpd.Tree, pt: Type)(implicit ctx: Context): Tree =
-    tryEither { implicit ctx =>
+    tryEither {
       typedExpr(fn, pt)
     } { (result, tstate) =>
       def fallBack = {
@@ -852,7 +852,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         else
           tryInsertImplicitOnQualifier(fun1, proto, ctx.typerState.ownedVars) flatMap { fun2 =>
             tryEither {
-              implicit ctx => Some(simpleApply(fun2, proto)): Option[Tree]
+              Some(simpleApply(fun2, proto)): Option[Tree]
             } {
               (_, _) => None
             }
@@ -865,7 +865,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           if (originalProto.isDropped) fun1
           else
             tryEither {
-              implicit ctx => simpleApply(fun1, proto)
+              simpleApply(fun1, proto)
             } {
               (failedVal, failedState) =>
                 def fail = { failedState.commit(); failedVal }
@@ -901,10 +901,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val app1 =
       if (untpd.isOpAssign(tree))
         tryEither {
-          implicit ctx => realApply
+          realApply
         } { (failedVal, failedState) =>
           tryEither {
-            implicit ctx => typedOpAssign
+            typedOpAssign
           } { (_, _) =>
             failedState.commit()
             failedVal
@@ -1045,11 +1045,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           	// Reject in this case.
         }
         tryEither {
-          implicit ctx => tryWithProto(selType)
+          tryWithProto(selType)
         } {
           (sel, _) =>
             tryEither {
-              implicit ctx => tryWithProto(WildcardType)
+              tryWithProto(WildcardType)
             } {
               (_, _) => fallBack(sel)
             }
