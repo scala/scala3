@@ -170,13 +170,13 @@ class CommunityBuildTest {
     updateCommand = "library/update",
     extraSbtArgs  = Seq("-Dscala.build.compileWithDotty=true")
   )
-
+/* temporarily disabled
   @Test def shapeless = test(
     project       = "shapeless",
     testCommand   = "test",
     updateCommand = "update"
   )
-
+*/
   @Test def xmlInterpolator = test(
     project       = "xml-interpolator",
     testCommand   = "test",

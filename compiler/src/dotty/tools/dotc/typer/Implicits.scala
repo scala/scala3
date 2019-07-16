@@ -471,7 +471,23 @@ trait ImplicitRunInfo { self: Run =>
 
   private val EmptyTermRefSet = new TermRefSet()(NoContext)
 
-  /** The implicit scope of a type `tp`
+  /** The implicit scope of a type `tp`, defined as follows:
+   *
+   *  The implicit scope of a type `tp` is the smallest set S of object references (i.e. TermRefs
+   *  with Module symbol) such that
+   *
+   *  - If `tp` is a class reference, S contains a reference to the companion object of the class,
+   *    if it exists, as well as the implicit scopes of all of `tp`'s parent class references.
+   *  - If `tp` is an opaque type alias `p.A` of type `tp'`, S contains a reference to an object `A` defined in the
+   *    same scope as the opaque type, if it exists, as well as the implicit scope of `tp'`.
+   *  - If `tp` is a reference `p.T` to a class or opaque type alias, S also contains all object references
+   *    on the prefix path `p`. Under Scala-2 mode, package objects of package references on `p` also
+   *    count towards the implicit scope.
+   *  - If `tp` is a (non-opaque)  alias of `tp'`, S contains the implicit scope of `tp'`.
+   *  - If `tp` is a singleton type, S contains the implicit scope of its underlying type.
+   *  - If `tp` is some other type, its implicit scope is the union of the implicit scopes of
+   *    its parts (parts defined as in the spec).
+   *
    *  @param liftingCtx   A context to be used when computing the class symbols of
    *                      a type. Types may contain type variables with their instances
    *                      recorded in the current context. To find out the instance of
@@ -483,28 +499,31 @@ trait ImplicitRunInfo { self: Run =>
     val seen: mutable.Set[Type] = mutable.Set()
     val incomplete: mutable.Set[Type] = mutable.Set()
 
-    /** Replace every typeref that does not refer to a class by a conjunction of class types
+    /** Is `sym` an anchor type for which givens may exist? Anchor types are classes,
+     *  opaque type aliases, and abstract types, but not type parameters
+     */
+    def isAnchor(sym: Symbol) = sym.isClass && !sym.is(Package) || sym.isOpaqueAlias
+
+    def anchors(tp: Type): List[Type] = tp match {
+      case tp: NamedType if isAnchor(tp.symbol) => tp :: Nil
+      case tp: TypeProxy => anchors(tp.superType)
+      case tp: AndOrType => anchors(tp.tp1) ++ anchors(tp.tp2)
+      case _ => Nil
+    }
+
+    /** Replace every typeref that does not refer to a class by a conjunction of anchor types
      *  that has the same implicit scope as the original typeref. The motivation for applying
      *  this map is that it reduces the total number of types for which we need to
      *  compute and cache the implicit scope; all variations wrt type parameters or
      *  abstract types are eliminated.
      */
-    object liftToClasses extends TypeMap {
+    object liftToAnchors extends TypeMap {
       override implicit protected val ctx: Context = liftingCtx
       override def stopAtStatic = true
 
-      private def isLiftTarget(sym: Symbol) = sym.isClass || sym.isOpaqueAlias
-
-      def apply(tp: Type) = tp match {
+      def apply(tp: Type) = tp.widenDealias match {
         case tp: TypeRef =>
-          if (isLiftTarget(tp.symbol)) tp
-          else {
-            val pre = tp.prefix
-            def joinClass(tp: Type, cls: Symbol) =
-              AndType.make(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
-            val lead = if (pre eq NoPrefix) defn.AnyType else apply(pre)
-            (lead /: tp.parentSymbols(isLiftTarget))(joinClass)
-          }
+          ((defn.AnyType: Type) /: anchors(tp))(AndType.make(_, _))
         case tp: TypeVar =>
           apply(tp.underlying)
         case tp: AppliedType if !tp.tycon.typeSymbol.isClass =>
@@ -521,7 +540,6 @@ trait ImplicitRunInfo { self: Run =>
       }
     }
 
-    // todo: compute implicits directly, without going via companionRefs?
     def collectCompanions(tp: Type): TermRefSet = track("computeImplicitScope") {
       trace(i"collectCompanions($tp)", implicitsDetailed) {
 
@@ -541,33 +559,40 @@ trait ImplicitRunInfo { self: Run =>
         }
 
         val comps = new TermRefSet
-        tp match {
-          case tp: NamedType =>
-            if (!tp.symbol.is(Package) || ctx.scala2Mode) {
-              // Don't consider implicits in package prefixes unless under -language:Scala2
-              val pre = tp.prefix
-              comps ++= iscopeRefs(pre)
-              def addRef(companion: TermRef): Unit = {
-                val compSym = companion.symbol
-                if (compSym is Package) {
-                  assert(ctx.scala2Mode)
-                  addRef(companion.select(nme.PACKAGE))
-                }
-                else if (compSym.exists)
-                  comps += companion.asSeenFrom(pre, compSym.owner).asInstanceOf[TermRef]
+        def addCompanion(pre: Type, companion: Symbol) =
+          if (companion.exists && !companion.isAbsent()) comps += TermRef(pre, companion)
+
+        def addPath(pre: Type): Unit = pre.dealias match {
+          case pre: ThisType if pre.cls.is(Module) && pre.cls.isStaticOwner =>
+            addPath(pre.cls.sourceModule.termRef)
+          case pre: TermRef =>
+            if (pre.symbol.is(Package)) {
+              if (ctx.scala2Mode) {
+                addCompanion(pre, pre.member(nme.PACKAGE).symbol)
+                addPath(pre.prefix)
               }
-              def addCompanionOf(sym: Symbol) = {
-                val companion = sym.companionModule
-                if (companion.exists) addRef(companion.termRef)
-              }
-              def addClassScope(cls: ClassSymbol): Unit = {
-                addCompanionOf(cls)
-                for (parent <- cls.classParents; ref <- iscopeRefs(tp.baseType(parent.classSymbol)))
-                  addRef(ref)
-              }
-              tp.classSymbols(liftingCtx).foreach(addClassScope)
+            }
+            else {
+              comps += pre
+              addPath(pre.prefix)
             }
           case _ =>
+        }
+        tp.widenDealias match {
+          case tp: TypeRef =>
+            val sym = tp.symbol
+            if (isAnchor(sym)) {
+              val pre = tp.prefix
+              addPath(pre)
+              if (sym.isClass) addCompanion(pre, sym.companionModule)
+              else addCompanion(pre,
+                pre.member(sym.name.toTermName)
+                  .suchThat(companion => companion.is(Module) && companion.owner == sym.owner)
+                  .symbol)
+            }
+            val superAnchors = if (sym.isClass) tp.parents else anchors(tp.superType)
+            for (anchor <- superAnchors) comps ++= iscopeRefs(anchor)
+          case tp =>
             for (part <- tp.namedPartsWith(_.isType)) comps ++= iscopeRefs(part)
         }
         comps
@@ -575,12 +600,12 @@ trait ImplicitRunInfo { self: Run =>
     }
 
    /** The implicit scope of type `tp`
-     *  @param isLifted    Type `tp` is the result of a `liftToClasses` application
+     *  @param isLifted    Type `tp` is the result of a `liftToAnchors` application
      */
     def iscope(tp: Type, isLifted: Boolean = false): OfTypeImplicits = {
       val canCache = Config.cacheImplicitScopes && tp.hash != NotCached && !tp.isProvisional
       def computeIScope() = {
-        val liftedTp = if (isLifted) tp else liftToClasses(tp)
+        val liftedTp = if (isLifted) tp else liftToAnchors(tp)
         val refs =
           if (liftedTp ne tp) {
             implicitsDetailed.println(i"lifted of $tp = $liftedTp")
