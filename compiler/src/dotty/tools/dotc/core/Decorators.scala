@@ -204,7 +204,7 @@ object Decorators {
      *  give more info about type variables and to disambiguate where needed.
      */
     def ex(args: Any*)(implicit ctx: Context): String =
-      explained(implicit ctx => em(args: _*))
+      explained(em(args: _*))
   }
 
   implicit class ArrayInterpolator[T <: AnyRef](val arr: Array[T]) extends AnyVal {
