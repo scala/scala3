@@ -291,8 +291,7 @@ class ReplDriver(settings: Array[String],
       }
 
 
-    ctx.atPhase(ctx.typerPhase.next) { implicit ctx =>
-
+    ctx.atPhase(ctx.typerPhase.next) {
       // Display members of wrapped module:
       tree.symbol.info.memberClasses
         .find(_.symbol.name == newestWrapper.moduleClassName)

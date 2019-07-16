@@ -207,7 +207,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     }
 
     def wasOneOf(sym: Symbol, flags: FlagSet) =
-      ctx.atPhase(thisPhase) { implicit ctx => sym.isOneOf(flags) }
+      ctx.atPhase(thisPhase) { sym.isOneOf(flags) }
 
     def traitInits(mixin: ClassSymbol): List[Tree] = {
       var argNum = 0

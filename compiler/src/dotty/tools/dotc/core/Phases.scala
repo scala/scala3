@@ -31,13 +31,13 @@ trait Phases {
     }
 
   /** Execute `op` at given phase */
-  def atPhase[T](phase: Phase)(op: Context => T): T =
+  def atPhase[T](phase: Phase)(op: given Context => T): T =
     atPhase(phase.id)(op)
 
-  def atNextPhase[T](op: Context => T): T = atPhase(phase.next)(op)
+  def atNextPhase[T](op: given Context => T): T = atPhase(phase.next)(op)
 
-  def atPhaseNotLaterThan[T](limit: Phase)(op: Context => T): T =
-    if (!limit.exists || phase <= limit) op(this) else atPhase(limit)(op)
+  def atPhaseNotLaterThan[T](limit: Phase)(op: given Context => T): T =
+    if (!limit.exists || phase <= limit) op given this else atPhase(limit)(op)
 
   def isAfterTyper: Boolean = base.isAfterTyper(phase)
 }

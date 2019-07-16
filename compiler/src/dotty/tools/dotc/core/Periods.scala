@@ -21,8 +21,8 @@ abstract class Periods { self: Context =>
     op(ctx.fresh.setPeriod(pd))
 
   /** Execute `op` at given phase id */
-  def atPhase[T](pid: PhaseId)(op: Context => T): T =
-    op(ctx.withPhase(pid))
+  def atPhase[T](pid: PhaseId)(op: given Context => T): T =
+    op given ctx.withPhase(pid)
 
   /** The period containing the current period where denotations do not change.
    *  We compute this by taking as first phase the first phase less or equal to

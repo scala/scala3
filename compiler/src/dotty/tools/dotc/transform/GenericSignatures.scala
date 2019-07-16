@@ -119,7 +119,7 @@ object GenericSignatures {
     // a type parameter or similar) must go through here or the signature is
     // likely to end up with Foo<T>.Empty where it needs Foo<T>.Empty$.
     def fullNameInSig(sym: Symbol): Unit = {
-      val name = ctx.atPhase(ctx.genBCodePhase) { implicit ctx => sanitizeName(sym.fullName).replace('.', '/') }
+      val name = ctx.atPhase(ctx.genBCodePhase) { sanitizeName(sym.fullName).replace('.', '/') }
       builder.append('L').append(name)
     }
 

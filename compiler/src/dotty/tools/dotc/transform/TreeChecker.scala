@@ -57,7 +57,7 @@ class TreeChecker extends Phase with SymTransformer {
 
   def checkCompanion(symd: SymDenotation)(implicit ctx: Context): Unit = {
     val cur = symd.linkedClass
-    val prev = ctx.atPhase(ctx.phase.prev) { implicit ctx =>
+    val prev = ctx.atPhase(ctx.phase.prev) {
       symd.symbol.linkedClass
     }
 

@@ -112,7 +112,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *  Also transform trees inside method annotation
    */
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree =
-    ctx.atPhase(thisPhase) { implicit ctx =>
+    ctx.atPhase(thisPhase) {
       if (tree.symbol.info.isVarArgsMethod && overridesJava(tree.symbol))
         addVarArgsBridge(tree)
       else
