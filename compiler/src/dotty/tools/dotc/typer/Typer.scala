@@ -49,7 +49,7 @@ object Typer {
    */
   enum BindingPrec {
     case NothingBound, PackageClause, WildImport, NamedImport, Definition
-    
+
     def isImportPrec = this == NamedImport || this == WildImport
   }
 
@@ -655,7 +655,7 @@ class Typer extends Namer
       case lhs =>
         val locked = ctx.typerState.ownedVars
         val lhsCore = typedUnadapted(lhs, AssignProto, locked)
-        def lhs1 = typed(untpd.TypedSplice(lhsCore), WildcardType, locked)
+        def lhs1 = adapt(lhsCore, AssignProto, locked)
 
         def reassignmentToVal =
           errorTree(cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)),
@@ -2983,6 +2983,7 @@ class Typer extends Namer
       if (isImplicitFunctionRef(wtp) &&
           !untpd.isContextualClosure(tree) &&
           !isApplyProto(pt) &&
+          pt != AssignProto &&
           !ctx.mode.is(Mode.Pattern) &&
           !ctx.isAfterTyper) {
         typr.println(i"insert apply on implicit $tree")
