@@ -443,7 +443,8 @@ object SymDenotations {
             val enclClassInfo = owner.asClass.classInfo
             enclClassInfo.selfInfo match {
               case self: Type =>
-                owner.info = enclClassInfo.derivedClassInfo(selfInfo = refineSelfType(self))
+                owner.info = enclClassInfo.derivedClassInfo(
+                  selfInfo = refineSelfType(self.orElse(defn.AnyType)))
               case self: Symbol =>
                 self.info = refineSelfType(self.info)
             }
@@ -1177,7 +1178,7 @@ object SymDenotations {
         case _ =>
           NoType
       }
-      recur(owner.asClass.classInfo.selfType)
+      recur(owner.asClass.givenSelfType)
     }
 
     /** The non-private symbol whose name and type matches the type of this symbol
