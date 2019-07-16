@@ -195,7 +195,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         //}
         assert(!ctx.settings.YnoDeepSubtypes.value)
         if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
-          ctx.log(TypeComparer.explained(implicit ctx => ctx.typeComparer.isSubType(tp1, tp2, approx)))
+          ctx.log(TypeComparer.explained(the[Context].typeComparer.isSubType(tp1, tp2, approx)))
       }
       // Eliminate LazyRefs before checking whether we have seen a type before
       val normalize = new TypeMap {
@@ -2307,15 +2307,15 @@ object TypeComparer {
    */
   val FreshApprox: ApproxState = new ApproxState(4)
 
-  /** Show trace of comparison operations when performing `op` as result string */
-  def explaining[T](say: String => Unit)(op: Context => T)(implicit ctx: Context): T = {
+  /** Show trace of comparison operations when performing `op` */
+  def explaining[T](say: String => Unit)(op: given Context => T)(implicit ctx: Context): T = {
     val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(_))
-    val res = try { op(nestedCtx) } finally { say(nestedCtx.typeComparer.lastTrace()) }
+    val res = try { op given nestedCtx } finally { say(nestedCtx.typeComparer.lastTrace()) }
     res
   }
 
   /** Like [[explaining]], but returns the trace instead */
-  def explained[T](op: Context => T)(implicit ctx: Context): String = {
+  def explained[T](op: given Context => T)(implicit ctx: Context): String = {
     var trace: String = null
     try { explaining(trace = _)(op) } catch { case ex: Throwable => ex.printStackTrace }
     trace

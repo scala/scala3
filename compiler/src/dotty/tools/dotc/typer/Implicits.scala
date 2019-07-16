@@ -648,7 +648,7 @@ trait Implicits { self: Typer =>
         case ex: AssertionError =>
           implicits.println(s"view $from ==> $to")
           implicits.println(ctx.typerState.constraint.show)
-          implicits.println(TypeComparer.explained(implicit ctx => from.tpe <:< to))
+          implicits.println(TypeComparer.explained(from.tpe <:< to))
           throw ex
       }
     }
