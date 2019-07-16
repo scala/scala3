@@ -255,8 +255,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    *  @param arg         the argument corresponding to the parameter
    *  @param bindingsBuf the buffer to which the definition should be appended
    */
-  private def paramBindingDef(name: Name, paramtp: Type, arg: Tree,
+  private def paramBindingDef(name: Name, paramtp: Type, arg0: Tree,
                               bindingsBuf: mutable.ListBuffer[ValOrDefDef])(implicit ctx: Context): ValOrDefDef = {
+    val arg = arg0 match {
+      case Typed(arg1, tpt) if tpt.tpe.isRepeatedParam && arg1.tpe.derivesFrom(defn.ArrayClass) =>
+        wrapArray(arg1, arg0.tpe.elemType)
+      case _ => arg0
+    }
     val argtpe = arg.tpe.dealiasKeepAnnots
     val isByName = paramtp.dealias.isInstanceOf[ExprType]
     var inlineFlags: FlagSet = InlineProxy
