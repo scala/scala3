@@ -379,16 +379,16 @@ object Interactive {
    */
   def localize(symbol: Symbol, sourceDriver: InteractiveDriver, targetDriver: InteractiveDriver): Symbol = {
 
-    def in[T](driver: InteractiveDriver)(fn: Context => T): T =
-      fn(driver.currentCtx)
+    def in[T](driver: InteractiveDriver)(fn: given Context => T): T =
+      fn given driver.currentCtx
 
     if (sourceDriver == targetDriver) symbol
     else {
-      val owners = in(sourceDriver) { implicit ctx =>
+      val owners = in(sourceDriver) {
         symbol.ownersIterator.toList.reverse.map(_.name)
       }
-      in(targetDriver) { implicit ctx =>
-        val base: Symbol = ctx.definitions.RootClass
+      in(targetDriver) {
+        val base: Symbol = defn.RootClass
         owners.tail.foldLeft(base) { (prefix, symbolName) =>
           if (prefix.exists) prefix.info.member(symbolName).symbol
           else NoSymbol
