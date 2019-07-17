@@ -183,6 +183,12 @@ class CommunityBuildTest {
     updateCommand = "update"
   )
 
+  @Test def semanticdb = test(
+    project       = "semanticdb",
+    testCommand   = "test:compile",
+    updateCommand = "update"
+  )
+
   // TODO @oderky? It got broken by #5458
   // @Test def pdbp = test(
   //   project       = "pdbp",
