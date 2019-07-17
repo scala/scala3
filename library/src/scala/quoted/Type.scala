@@ -17,15 +17,15 @@ package quoted {
 
   /** Some basic type tags, currently incomplete */
   object Type {
-    implicit val UnitTag: Type[Unit] = new TaggedType[Unit]
-    implicit val BooleanTag: Type[Boolean] = new TaggedType[Boolean]
-    implicit val ByteTag: Type[Byte] = new TaggedType[Byte]
-    implicit val CharTag: Type[Char] = new TaggedType[Char]
-    implicit val ShortTag: Type[Short] = new TaggedType[Short]
-    implicit val IntTag: Type[Int] = new TaggedType[Int]
-    implicit val LongTag: Type[Long] = new TaggedType[Long]
-    implicit val FloatTag: Type[Float] = new TaggedType[Float]
-    implicit val DoubleTag: Type[Double] = new TaggedType[Double]
+    delegate UnitTag for Type[Unit] = new TaggedType[Unit]
+    delegate BooleanTag for Type[Boolean] = new TaggedType[Boolean]
+    delegate ByteTag for Type[Byte] = new TaggedType[Byte]
+    delegate CharTag for Type[Char] = new TaggedType[Char]
+    delegate ShortTag for Type[Short] = new TaggedType[Short]
+    delegate IntTag for Type[Int] = new TaggedType[Int]
+    delegate LongTag for Type[Long] = new TaggedType[Long]
+    delegate FloatTag for Type[Float] = new TaggedType[Float]
+    delegate DoubleTag for Type[Double] = new TaggedType[Double]
   }
 
 }
