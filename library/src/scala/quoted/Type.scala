@@ -4,7 +4,7 @@ package quoted {
   import scala.internal.quoted.TaggedType
   import scala.quoted.show.SyntaxHighlight
 
-  sealed abstract class Type[T <: AnyKind] {
+  sealed trait Type[T <: AnyKind] {
     type `$splice` = T
 
     /** Show a source code like representation of this type without syntax highlight */

@@ -4,7 +4,7 @@ package quoted {
 
   import scala.quoted.show.SyntaxHighlight
 
-  sealed abstract class Expr[+T] {
+  sealed trait Expr[+T] {
 
     /** Evaluate the contents of this expression and return the result.
      *
