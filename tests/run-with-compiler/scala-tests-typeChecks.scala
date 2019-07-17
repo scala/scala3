@@ -1,4 +1,4 @@
-import scala.testing._
+import scala.compiletime.testing._
 
 object Test {
 
