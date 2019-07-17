@@ -884,14 +884,38 @@ trait Implicits { self: Typer =>
    *
    *     <parent> {
    *       MirroredMonoType = <monoType>
-   *       MirroredTypeConstrictor = <tycon>
-   *       MirroredLabel = <label> }
+   *       MirroredType = <mirroredType>
+   *       MirroredLabel = <label>
+   *       Scope = <scope> // if scope ne NoType
+   *     }
    */
-  private def mirrorCore(parentClass: ClassSymbol, monoType: Type, mirroredType: Type, label: Name)(implicit ctx: Context) = {
-    parentClass.typeRef
+  private def mirrorCore(parentClass: ClassSymbol, monoType: Type, mirroredType: Type, label: Name, extras: List[(Name, Type)])(implicit ctx: Context) = {
+    val m = parentClass.typeRef
       .refinedWith(tpnme.MirroredMonoType, TypeAlias(monoType))
       .refinedWith(tpnme.MirroredType, TypeAlias(mirroredType))
       .refinedWith(tpnme.MirroredLabel, TypeAlias(ConstantType(Constant(label.toString))))
+
+    extras.foldLeft(m) { case (m, (tpnme, tpe)) => m.refinedWith(tpnme, tpe) }
+  }
+
+  private def extraRefinements(formal: Type)(implicit ctx: Context): List[(Name, Type)] = {
+    def isMirrorMember(nme: Name): Boolean =
+      nme == tpnme.MirroredType ||
+      nme == tpnme.MirroredMonoType ||
+      nme == tpnme.MirroredLabel ||
+      nme == tpnme.MirroredElemTypes ||
+      nme == tpnme.MirroredElemLabels
+
+    @tailrec
+    def loop(tp: Type, acc: List[(Name, Type)]): List[(Name, Type)] = tp match {
+      case RefinedType(parent, nme, rhs) if !isMirrorMember(nme) =>
+        loop(parent, (nme, rhs) :: acc)
+      case RefinedType(parent, nme, rhs) =>
+        loop(parent, acc)
+      case other =>
+        acc
+    }
+    loop(formal, Nil)
   }
 
   /** A path referencing the companion of class type `clsType` */
@@ -916,12 +940,12 @@ trait Implicits { self: Typer =>
               val module = mirroredType.termSymbol
               val modulePath = pathFor(mirroredType).withSpan(span)
               if (module.info.classSymbol.is(Scala2x)) {
-                val mirrorType = mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, module.name)
+                val mirrorType = mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, module.name, extraRefinements(formal))
                 val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, modulePath :: Nil)
                 mirrorRef.cast(mirrorType)
               }
               else {
-                val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, module.name)
+                val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, module.name, extraRefinements(formal))
                 modulePath.cast(mirrorType)
               }
             }
@@ -943,7 +967,7 @@ trait Implicits { self: Typer =>
                   (mirroredType, elems)
               }
               val mirrorType =
-                mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name)
+                mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name, extraRefinements(formal))
                   .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
                   .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
               val mirrorRef =
@@ -1024,7 +1048,7 @@ trait Implicits { self: Typer =>
             }
 
             val mirrorType =
-               mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name)
+               mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name, extraRefinements(formal))
                 .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
                 .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
             val mirrorRef =
