@@ -19,6 +19,7 @@ import Inferencing._
 import ProtoTypes._
 import transform.SymUtils._
 import reporting.diagnostic.messages._
+import reporting.trace
 import config.Printers.{exhaustivity => debug}
 import util.SourcePosition
 
@@ -110,7 +111,7 @@ trait SpaceLogic {
    *
    *                    This reduces noise in counterexamples.
    */
-  def simplify(space: Space, aggressive: Boolean = false): Space = space match {
+  def simplify(space: Space, aggressive: Boolean = false)(implicit ctx: Context): Space = trace(s"simplify ${show(space)}, aggressive = $aggressive --> ", debug, x => show(x.asInstanceOf[Space]))(space match {
     case Prod(tp, fun, sym, spaces, full) =>
       val sp = Prod(tp, fun, sym, spaces.map(simplify(_)), full)
       if (sp.params.contains(Empty)) Empty
@@ -137,10 +138,10 @@ trait SpaceLogic {
       if (canDecompose(tp) && decompose(tp).isEmpty) Empty
       else space
     case _ => space
-  }
+  })
 
   /** Flatten space to get rid of `Or` for pretty print */
-  def flatten(space: Space): List[Space] = space match {
+  def flatten(space: Space)(implicit ctx: Context): List[Space] = space match {
     case Prod(tp, fun, sym, spaces, full) =>
       spaces.map(flatten) match {
         case Nil => Prod(tp, fun, sym, Nil, full) :: Nil
@@ -156,11 +157,11 @@ trait SpaceLogic {
   }
 
   /** Is `a` a subspace of `b`? Equivalent to `a - b == Empty`, but faster */
-  def isSubspace(a: Space, b: Space): Boolean = {
+  def isSubspace(a: Space, b: Space)(implicit ctx: Context): Boolean = trace(s"${show(a)} < ${show(b)}", debug) {
     def tryDecompose1(tp: Type) = canDecompose(tp) && isSubspace(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = canDecompose(tp) && isSubspace(a, Or(decompose(tp)))
 
-    val res = (simplify(a), b) match {
+    (simplify(a), b) match {
       case (Empty, _) => true
       case (_, Empty) => false
       case (Or(ss), _) =>
@@ -179,18 +180,14 @@ trait SpaceLogic {
       case (Prod(_, fun1, sym1, ss1, _), Prod(_, fun2, sym2, ss2, _)) =>
         sym1 == sym2 && isEqualType(fun1, fun2) && ss1.zip(ss2).forall((isSubspace _).tupled)
     }
-
-    debug.println(s"${show(a)} < ${show(b)} = $res")
-
-    res
   }
 
   /** Intersection of two spaces  */
-  def intersect(a: Space, b: Space): Space = {
+  def intersect(a: Space, b: Space)(implicit ctx: Context): Space = trace(s"${show(a)} & ${show(b)}", debug, x => show(x.asInstanceOf[Space])) {
     def tryDecompose1(tp: Type) = intersect(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = intersect(a, Or(decompose(tp)))
 
-    val res: Space = (a, b) match {
+    (a, b) match {
       case (Empty, _) | (_, Empty) => Empty
       case (_, Or(ss)) => Or(ss.map(intersect(a, _)).filterConserve(_ ne Empty))
       case (Or(ss), _) => Or(ss.map(intersect(_, b)).filterConserve(_ ne Empty))
@@ -223,18 +220,14 @@ trait SpaceLogic {
         else if (ss1.zip(ss2).exists(p => simplify(intersect(p._1, p._2)) == Empty)) Empty
         else Prod(tp1, fun1, sym1, ss1.zip(ss2).map((intersect _).tupled), full)
     }
-
-    debug.println(s"${show(a)} & ${show(b)} = ${show(res)}")
-
-    res
   }
 
   /** The space of a not covered by b */
-  def minus(a: Space, b: Space): Space = {
+  def minus(a: Space, b: Space)(implicit ctx: Context): Space = trace(s"${show(a)} - ${show(b)}", debug, x => show(x.asInstanceOf[Space])) {
     def tryDecompose1(tp: Type) = minus(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = minus(a, Or(decompose(tp)))
 
-    val res = (a, b) match {
+    (a, b) match {
       case (Empty, _) => Empty
       case (_, Empty) => a
       case (Typ(tp1, _), Typ(tp2, _)) =>
@@ -273,10 +266,6 @@ trait SpaceLogic {
           })
 
     }
-
-    debug.println(s"${show(a)} - ${show(b)} = ${show(res)}")
-
-    res
   }
 }
 
@@ -307,20 +296,19 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   private val nullType             = ConstantType(Constant(null))
   private val nullSpace            = Typ(nullType)
 
-  override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type): Space = {
+  override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type): Space = trace(s"atomic intersection: ${AndType(tp1, tp2).show}", debug) {
     // Precondition: !isSubType(tp1, tp2) && !isSubType(tp2, tp1)
-    if (tp1 == nullType || tp2 == nullType) {
-      // Since projections of types don't include null, intersection with null is empty.
-      return Empty
+
+    // Since projections of types don't include null, intersection with null is empty.
+    if (tp1 == nullType || tp2 == nullType) Empty
+    else {
+      val res = ctx.typeComparer.disjoint(tp1, tp2)
+
+      if (res) Empty
+      else if (tp1.isSingleton) Typ(tp1, true)
+      else if (tp2.isSingleton) Typ(tp2, true)
+      else Typ(AndType(tp1, tp2), true)
     }
-    val res = ctx.typeComparer.disjoint(tp1, tp2)
-
-    debug.println(s"atomic intersection: ${AndType(tp1, tp2).show} = ${!res}")
-
-    if (res) Empty
-    else if (tp1.isSingleton) Typ(tp1, true)
-    else if (tp2.isSingleton) Typ(tp2, true)
-    else Typ(AndType(tp1, tp2), true)
   }
 
   /** Return the space that represents the pattern `pat` */
@@ -635,7 +623,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     def doShow(s: Space, mergeList: Boolean = false): String = s match {
       case Empty => ""
-      case Typ(c: ConstantType, _) => c.value.value.toString
+      case Typ(c: ConstantType, _) => "" + c.value.value
       case Typ(tp: TermRef, _) => tp.symbol.showName
       case Typ(tp, decomposed) =>
         val sym = tp.widen.classSymbol
