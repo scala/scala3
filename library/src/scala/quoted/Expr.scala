@@ -4,7 +4,7 @@ package quoted {
 
   import scala.quoted.show.SyntaxHighlight
 
-  sealed abstract class Expr[+T] {
+  sealed trait Expr[+T] {
 
     /** Evaluate the contents of this expression and return the result.
      *
@@ -13,21 +13,17 @@ package quoted {
     @deprecated("Use scala.quoted.run", "")
     final def run(implicit toolbox: Toolbox): T = toolbox.run(_ => this)
 
+    /** Show a source code like representation of this expression without syntax highlight */
+    def show(implicit qctx: QuoteContext): String = qctx.show(this, SyntaxHighlight.plain)
+
+    /** Show a source code like representation of this expression */
+    def show(syntaxHighlight: SyntaxHighlight)(implicit qctx: QuoteContext): String = qctx.show(this, syntaxHighlight)
+
   }
 
   object Expr {
 
     import scala.internal.quoted._
-
-    implicit class ExprOps[T](expr: Expr[T]) {
-
-      /** Show a source code like representation of this expression without syntax highlight */
-      def show(implicit qctx: QuoteContext): String = qctx.show(expr, SyntaxHighlight.plain)
-
-      /** Show a source code like representation of this expression */
-      def show(syntaxHighlight: SyntaxHighlight)(implicit qctx: QuoteContext): String = qctx.show(expr, syntaxHighlight)
-
-    }
 
     /** Converts a tuple `(T1, ..., Tn)` to `(Expr[T1], ..., Expr[Tn])` */
     type TupleOfExpr[Tup <: Tuple] = Tuple.Map[Tup, Expr]

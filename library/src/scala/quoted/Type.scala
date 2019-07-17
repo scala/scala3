@@ -4,32 +4,28 @@ package quoted {
   import scala.internal.quoted.TaggedType
   import scala.quoted.show.SyntaxHighlight
 
-  sealed abstract class Type[T <: AnyKind] {
+  sealed trait Type[T <: AnyKind] {
     type `$splice` = T
+
+    /** Show a source code like representation of this type without syntax highlight */
+    def show(implicit qctx: QuoteContext): String = qctx.show(this, SyntaxHighlight.plain)
+
+    /** Show a source code like representation of this type */
+    def show(syntaxHighlight: SyntaxHighlight)(implicit qctx: QuoteContext): String = qctx.show(this, syntaxHighlight)
+
   }
 
   /** Some basic type tags, currently incomplete */
   object Type {
-
-    implicit class TypeOps[T](tpe: Type[T]) {
-
-      /** Show a source code like representation of this type without syntax highlight */
-      def show(implicit qctx: QuoteContext): String = qctx.show(tpe, SyntaxHighlight.plain)
-
-      /** Show a source code like representation of this type */
-      def show(syntaxHighlight: SyntaxHighlight)(implicit qctx: QuoteContext): String = qctx.show(tpe, syntaxHighlight)
-
-    }
-
-    implicit val UnitTag: Type[Unit] = new TaggedType[Unit]
-    implicit val BooleanTag: Type[Boolean] = new TaggedType[Boolean]
-    implicit val ByteTag: Type[Byte] = new TaggedType[Byte]
-    implicit val CharTag: Type[Char] = new TaggedType[Char]
-    implicit val ShortTag: Type[Short] = new TaggedType[Short]
-    implicit val IntTag: Type[Int] = new TaggedType[Int]
-    implicit val LongTag: Type[Long] = new TaggedType[Long]
-    implicit val FloatTag: Type[Float] = new TaggedType[Float]
-    implicit val DoubleTag: Type[Double] = new TaggedType[Double]
+    delegate UnitTag for Type[Unit] = new TaggedType[Unit]
+    delegate BooleanTag for Type[Boolean] = new TaggedType[Boolean]
+    delegate ByteTag for Type[Byte] = new TaggedType[Byte]
+    delegate CharTag for Type[Char] = new TaggedType[Char]
+    delegate ShortTag for Type[Short] = new TaggedType[Short]
+    delegate IntTag for Type[Int] = new TaggedType[Int]
+    delegate LongTag for Type[Long] = new TaggedType[Long]
+    delegate FloatTag for Type[Float] = new TaggedType[Float]
+    delegate DoubleTag for Type[Double] = new TaggedType[Double]
   }
 
 }
