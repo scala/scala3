@@ -28,6 +28,13 @@ object Definitions {
    *  else without affecting the set of programs that can be compiled.
    */
   val MaxImplementedFunctionArity: Int = MaxTupleArity
+
+  type SymbolPerRun = given Context => Symbol
+
+  def perRun(tp: NamedType): given Context => Symbol =
+    tp.symbol
+
+  def perRunClass(tp: TypeRef): given Context => ClassSymbol = tp.symbol.asClass
 }
 
 /** A class defining symbols and types of standard definitions
@@ -444,19 +451,14 @@ class Definitions {
   @threadUnsafe lazy val SeqType: TypeRef =
     if (isNewCollections) ctx.requiredClassRef("scala.collection.immutable.Seq")
     else ctx.requiredClassRef("scala.collection.Seq")
-  def SeqClass(implicit ctx: Context): ClassSymbol = SeqType.symbol.asClass
-    @threadUnsafe lazy val Seq_applyR: TermRef = SeqClass.requiredMethodRef(nme.apply)
-    def Seq_apply(implicit ctx: Context): Symbol = Seq_applyR.symbol
-    @threadUnsafe lazy val Seq_headR: TermRef = SeqClass.requiredMethodRef(nme.head)
-    def Seq_head(implicit ctx: Context): Symbol = Seq_headR.symbol
-    @threadUnsafe lazy val Seq_dropR: TermRef = SeqClass.requiredMethodRef(nme.drop)
-    def Seq_drop(implicit ctx: Context): Symbol = Seq_dropR.symbol
-    @threadUnsafe lazy val Seq_lengthCompareR: TermRef = SeqClass.requiredMethodRef(nme.lengthCompare, List(IntType))
-    def Seq_lengthCompare(implicit ctx: Context): Symbol = Seq_lengthCompareR.symbol
-    @threadUnsafe lazy val Seq_lengthR: TermRef = SeqClass.requiredMethodRef(nme.length)
-    def Seq_length(implicit ctx: Context): Symbol = Seq_lengthR.symbol
-    @threadUnsafe lazy val Seq_toSeqR: TermRef = SeqClass.requiredMethodRef(nme.toSeq)
-    def Seq_toSeq(implicit ctx: Context): Symbol = Seq_toSeqR.symbol
+  def SeqClass: ClassSymbol = perRunClass(SeqType)
+
+    @threadUnsafe lazy val Seq_apply: SymbolPerRun = perRun(SeqClass.requiredMethodRef(nme.apply))
+    @threadUnsafe lazy val Seq_head: SymbolPerRun = perRun(SeqClass.requiredMethodRef(nme.head))
+    @threadUnsafe lazy val Seq_drop: SymbolPerRun = perRun(SeqClass.requiredMethodRef(nme.drop))
+    @threadUnsafe lazy val Seq_lengthCompare: SymbolPerRun = perRun(SeqClass.requiredMethodRef(nme.lengthCompare, List(IntType)))
+    @threadUnsafe lazy val Seq_length: SymbolPerRun = perRun(SeqClass.requiredMethodRef(nme.length))
+    @threadUnsafe lazy val Seq_toSeq: SymbolPerRun = perRun(SeqClass.requiredMethodRef(nme.toSeq))
 
   @threadUnsafe lazy val ArrayType: TypeRef = ctx.requiredClassRef("scala.Array")
   def ArrayClass(implicit ctx: Context): ClassSymbol = ArrayType.symbol.asClass
