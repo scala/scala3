@@ -6,21 +6,17 @@ package quoted {
 
   sealed abstract class Type[T <: AnyKind] {
     type `$splice` = T
+
+    /** Show a source code like representation of this type without syntax highlight */
+    def show(implicit qctx: QuoteContext): String = qctx.show(this, SyntaxHighlight.plain)
+
+    /** Show a source code like representation of this type */
+    def show(syntaxHighlight: SyntaxHighlight)(implicit qctx: QuoteContext): String = qctx.show(this, syntaxHighlight)
+
   }
 
   /** Some basic type tags, currently incomplete */
   object Type {
-
-    implicit class TypeOps[T](tpe: Type[T]) {
-
-      /** Show a source code like representation of this type without syntax highlight */
-      def show(implicit qctx: QuoteContext): String = qctx.show(tpe, SyntaxHighlight.plain)
-
-      /** Show a source code like representation of this type */
-      def show(syntaxHighlight: SyntaxHighlight)(implicit qctx: QuoteContext): String = qctx.show(tpe, syntaxHighlight)
-
-    }
-
     implicit val UnitTag: Type[Unit] = new TaggedType[Unit]
     implicit val BooleanTag: Type[Boolean] = new TaggedType[Boolean]
     implicit val ByteTag: Type[Byte] = new TaggedType[Byte]

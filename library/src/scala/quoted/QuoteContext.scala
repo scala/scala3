@@ -12,12 +12,12 @@ import scala.quoted.show.SyntaxHighlight
  */
 class QuoteContext(val tasty: scala.tasty.Reflection) {
 
-  def show[T](expr: Expr[T], syntaxHighlight: SyntaxHighlight): String = {
+  def show(expr: Expr[_], syntaxHighlight: SyntaxHighlight): String = {
     import tasty._
     expr.unseal.show(syntaxHighlight)
   }
 
-  def show[T](tpe: Type[T], syntaxHighlight: SyntaxHighlight): String = {
+  def show(tpe: Type[_], syntaxHighlight: SyntaxHighlight): String = {
     import tasty._
     tpe.unseal.show(syntaxHighlight)
   }
