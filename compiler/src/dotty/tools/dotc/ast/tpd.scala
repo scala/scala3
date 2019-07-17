@@ -966,7 +966,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val sym = tree.symbol
       if (sym.is(Method)) {
         val setter = sym.setter.orElse {
-          assert(sym.name.isSetterName && sym.info.firstParamTypes.nonEmpty)
+          assert(sym.name.isSetterName && sym.info.firstParamTypes.nonEmpty, sym)
           sym
         }
         val qual = tree match {

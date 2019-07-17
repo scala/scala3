@@ -75,6 +75,7 @@ object Annotations {
   }
 
   case class LazyBodyAnnotation(private var bodyExpr: Context => Tree) extends BodyAnnotation {
+    // TODO: Make `bodyExpr` an IFT once #6865 os in bootstrap
     private[this] var evaluated = false
     private[this] var myBody: Tree = _
     def tree(implicit ctx: Context): Tree = {
@@ -159,9 +160,9 @@ object Annotations {
     object Child {
 
       /** A deferred annotation to the result of a given child computation */
-      def apply(delayedSym: Context => Symbol, span: Span)(implicit ctx: Context): Annotation = {
+      def later(delayedSym: given Context => Symbol, span: Span)(implicit ctx: Context): Annotation = {
         def makeChildLater(implicit ctx: Context) = {
-          val sym = delayedSym(ctx)
+          val sym = delayedSym
           New(defn.ChildAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
             .withSpan(span)
         }
@@ -169,7 +170,7 @@ object Annotations {
       }
 
       /** A regular, non-deferred Child annotation */
-      def apply(sym: Symbol, span: Span)(implicit ctx: Context): Annotation = apply(_ => sym, span)
+      def apply(sym: Symbol, span: Span)(implicit ctx: Context): Annotation = later(given _ => sym, span)
 
       def unapply(ann: Annotation)(implicit ctx: Context): Option[Symbol] =
         if (ann.symbol == defn.ChildAnnot) {
