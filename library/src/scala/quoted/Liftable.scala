@@ -17,15 +17,15 @@ trait Liftable[T] {
  */
 object Liftable {
 
-  implicit val Liftable_Boolean_delegate: Liftable[Boolean] = new PrimitiveLiftable
-  implicit val Liftable_Byte_delegate: Liftable[Byte] = new PrimitiveLiftable
-  implicit val Liftable_Short_delegate: Liftable[Short] = new PrimitiveLiftable
-  implicit val Liftable_Int_delegate: Liftable[Int] = new PrimitiveLiftable
-  implicit val Liftable_Long_delegate: Liftable[Long] = new PrimitiveLiftable
-  implicit val Liftable_Float_delegate: Liftable[Float] = new PrimitiveLiftable
-  implicit val Liftable_Double_delegate: Liftable[Double] = new PrimitiveLiftable
-  implicit val Liftable_Char_delegate: Liftable[Char] = new PrimitiveLiftable
-  implicit val Liftable_String_delegate: Liftable[String] = new PrimitiveLiftable
+  delegate Liftable_Boolean_delegate for Liftable[Boolean] = new PrimitiveLiftable
+  delegate Liftable_Byte_delegate for Liftable[Byte] = new PrimitiveLiftable
+  delegate Liftable_Short_delegate for Liftable[Short] = new PrimitiveLiftable
+  delegate Liftable_Int_delegate for Liftable[Int] = new PrimitiveLiftable
+  delegate Liftable_Long_delegate for Liftable[Long] = new PrimitiveLiftable
+  delegate Liftable_Float_delegate for Liftable[Float] = new PrimitiveLiftable
+  delegate Liftable_Double_delegate for Liftable[Double] = new PrimitiveLiftable
+  delegate Liftable_Char_delegate for Liftable[Char] = new PrimitiveLiftable
+  delegate Liftable_String_delegate for Liftable[String] = new PrimitiveLiftable
 
   private class PrimitiveLiftable[T <: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends Liftable[T] {
     /** Lift a primitive value `n` into `'{ n }` */
