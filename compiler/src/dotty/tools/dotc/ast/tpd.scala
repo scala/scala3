@@ -1253,15 +1253,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def desugarIdent(tree: Ident)(implicit ctx: Context): Tree = {
     val qual = desugarIdentPrefix(tree)
     if (qual.isEmpty) tree
-    else qual.select(tree.symbol)
+    else qual.select(tree.symbol).withSpan(tree.span)
   }
 
   /** Recover identifier prefix (e.g. this) if it exists */
   def desugarIdentPrefix(tree: Ident)(implicit ctx: Context): Tree = tree.tpe match {
     case TermRef(prefix: TermRef, _) =>
-      ref(prefix)
+      ref(prefix).withSpan(tree.span)
     case TermRef(prefix: ThisType, _) =>
-      This(prefix.cls)
+      This(prefix.cls).withSpan(tree.span)
     case _ =>
       EmptyTree
   }
