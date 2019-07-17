@@ -125,8 +125,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
    *  They are either aliased in scala.Predef or in the scala package object.
    */
   private[this] lazy val printWithoutPrefix: Set[Symbol] =
-    (defn.ScalaPredefModuleRef.typeAliasMembers
-      ++ defn.ScalaPackageObjectRef.typeAliasMembers).map(_.info.classSymbol).toSet
+    (defn.ScalaPredefModule.termRef.typeAliasMembers
+      ++ defn.ScalaPackageObject.termRef.typeAliasMembers).map(_.info.classSymbol).toSet
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {

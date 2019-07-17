@@ -49,9 +49,9 @@ trait QuotesAndSplices { self: Typer =>
       case quoted =>
         ctx.compilationUnit.needsStaging = true
         val tree1 =
-          if (quoted.isType) typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuoteR), quoted :: Nil), pt)(quoteContext)
+          if (quoted.isType) typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuote.termRef), quoted :: Nil), pt)(quoteContext)
           else if (ctx.mode.is(Mode.Pattern) && level == 0) typedQuotePattern(quoted, pt, qctx)
-          else typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuoteR), quoted), pt)(quoteContext)
+          else typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), quoted), pt)(quoteContext)
         tree1.withSpan(tree.span)
     }
   }
@@ -86,7 +86,7 @@ trait QuotesAndSplices { self: Typer =>
               else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
             markAsMacro(ctx)
           }
-          typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSpliceR), tree.expr), pt)(spliceContext).withSpan(tree.span)
+          typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), tree.expr), pt)(spliceContext).withSpan(tree.span)
         }
     }
   }
@@ -178,7 +178,7 @@ trait QuotesAndSplices { self: Typer =>
           val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprType), tpt1 :: Nil)
           transform(Splice(Typed(pat, exprTpt)))
         case Splice(pat) =>
-          try ref(defn.InternalQuoted_patternHoleR).appliedToType(tree.tpe).withSpan(tree.span)
+          try ref(defn.InternalQuoted_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
           finally {
             val patType = pat.tpe.widen
             val patType1 = patType.underlyingIfRepeated(isJava = false)
@@ -347,9 +347,9 @@ trait QuotesAndSplices { self: Typer =>
     val splicePat = typed(untpd.Tuple(splices.map(x => untpd.TypedSplice(replaceBindingsInTree.transform(x)))).withSpan(quoted.span), patType)
 
     UnApply(
-      fun = ref(defn.InternalQuotedMatcher_unapplyR).appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
+      fun = ref(defn.InternalQuotedMatcher_unapply.termRef).appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
       implicits =
-        ref(defn.InternalQuoted_exprQuoteR).appliedToType(shape.tpe).appliedTo(shape) ::
+        ref(defn.InternalQuoted_exprQuote.termRef).appliedToType(shape.tpe).appliedTo(shape) ::
           Literal(Constant(typeBindings.nonEmpty)) ::
           qctx :: Nil,
       patterns = splicePat :: Nil,

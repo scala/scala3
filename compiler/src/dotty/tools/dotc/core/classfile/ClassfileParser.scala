@@ -176,7 +176,7 @@ class ClassfileParser(
     } else if (result == Some(NoEmbedded)) {
       for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
         classRoot.owner.asClass.delete(sym)
-        if (classRoot.owner == defn.ScalaShadowingPackageClass) {
+        if (classRoot.owner == defn.ScalaShadowingPackage.moduleClass) {
           // Symbols in scalaShadowing are also added to scala
           defn.ScalaPackageClass.delete(sym)
         }

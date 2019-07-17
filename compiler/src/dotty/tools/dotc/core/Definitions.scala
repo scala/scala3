@@ -223,21 +223,21 @@ class Definitions {
         else NoSymbol)
     cls
   }
-  @threadUnsafe lazy val ScalaPackageObjectRef: TermRef = ctx.requiredModuleRef("scala.package")
+  @threadUnsafe lazy val ScalaPackageObject: SymbolPerRun = perRun(ctx.requiredModuleRef("scala.package"))
   @threadUnsafe lazy val JavaPackageVal: TermSymbol = ctx.requiredPackage(nme.java)
   @threadUnsafe lazy val JavaLangPackageVal: TermSymbol = ctx.requiredPackage(jnme.JavaLang)
+
   // fundamental modules
-  @threadUnsafe lazy val SysPackage: TermSymbol = ctx.requiredModule("scala.sys.package")
+  @threadUnsafe lazy val SysPackage : SymbolPerRun = perRun(ctx.requiredModuleRef("scala.sys.package"))
     @threadUnsafe lazy val Sys_error: SymbolPerRun = perRun(SysPackage.moduleClass.requiredMethodRef(nme.error))
 
   @threadUnsafe lazy val ScalaXmlPackageClass: Symbol = ctx.getPackageClassIfDefined("scala.xml")
 
-  @threadUnsafe lazy val CompiletimePackageObjectRef: TermRef = ctx.requiredModuleRef("scala.compiletime.package")
-  @threadUnsafe lazy val CompiletimePackageObject: Symbol = CompiletimePackageObjectRef.symbol.moduleClass
-    @threadUnsafe lazy val Compiletime_error        : SymbolPerRun = perRun(CompiletimePackageObjectRef.symbol.requiredMethodRef(nme.error))
-    @threadUnsafe lazy val Compiletime_constValue   : SymbolPerRun = perRun(CompiletimePackageObjectRef.symbol.requiredMethodRef("constValue"))
-    @threadUnsafe lazy val Compiletime_constValueOpt: SymbolPerRun = perRun(CompiletimePackageObjectRef.symbol.requiredMethodRef("constValueOpt"))
-    @threadUnsafe lazy val Compiletime_code         : SymbolPerRun = perRun(CompiletimePackageObjectRef.symbol.requiredMethodRef("code"))
+  @threadUnsafe lazy val CompiletimePackageObject: SymbolPerRun = perRun(ctx.requiredModuleRef("scala.compiletime.package"))
+    @threadUnsafe lazy val Compiletime_error        : SymbolPerRun = perRun(CompiletimePackageObject.requiredMethodRef(nme.error))
+    @threadUnsafe lazy val Compiletime_constValue   : SymbolPerRun = perRun(CompiletimePackageObject.requiredMethodRef("constValue"))
+    @threadUnsafe lazy val Compiletime_constValueOpt: SymbolPerRun = perRun(CompiletimePackageObject.requiredMethodRef("constValueOpt"))
+    @threadUnsafe lazy val Compiletime_code         : SymbolPerRun = perRun(CompiletimePackageObject.requiredMethodRef("code"))
 
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will
@@ -246,8 +246,7 @@ class Definitions {
    *  in `scalaShadowing` so they don't clash with the same-named `scala`
    *  members at runtime.
    */
-  @threadUnsafe lazy val ScalaShadowingPackageVal: TermSymbol = ctx.requiredPackage(nme.scalaShadowing)
-  def ScalaShadowingPackageClass(implicit ctx: Context): ClassSymbol = ScalaShadowingPackageVal.moduleClass.asClass
+  @threadUnsafe lazy val ScalaShadowingPackage: TermSymbol = ctx.requiredPackage(nme.scalaShadowing)
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
@@ -364,8 +363,7 @@ class Definitions {
   def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
 
 
-  @threadUnsafe lazy val ScalaPredefModuleRef: TermRef = ctx.requiredModuleRef("scala.Predef")
-  def ScalaPredefModule(implicit ctx: Context): Symbol = ScalaPredefModuleRef.symbol
+  @threadUnsafe lazy val ScalaPredefModule: SymbolPerRun = perRun(ctx.requiredModuleRef("scala.Predef"))
     @threadUnsafe lazy val Predef_conforms : SymbolPerRun = perRun(ScalaPredefModule.requiredMethodRef(nme.conforms_))
     @threadUnsafe lazy val Predef_classOf  : SymbolPerRun = perRun(ScalaPredefModule.requiredMethodRef(nme.classOf))
     @threadUnsafe lazy val Predef_undefined: SymbolPerRun = perRun(ScalaPredefModule.requiredMethodRef(nme.???))
@@ -382,13 +380,11 @@ class Definitions {
     else
       ScalaPredefModule.requiredClass("DummyImplicit")
 
-  @threadUnsafe lazy val ScalaRuntimeModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
-  def ScalaRuntimeModule(implicit ctx: Context): Symbol = ScalaRuntimeModuleRef.symbol
+  @threadUnsafe lazy val ScalaRuntimeModule: SymbolPerRun = perRun(ctx.requiredModuleRef("scala.runtime.ScalaRunTime"))
   def ScalaRuntimeClass(implicit ctx: Context): ClassSymbol = ScalaRuntimeModule.moduleClass.asClass
 
     def runtimeMethodRef(name: PreName): TermRef = ScalaRuntimeModule.requiredMethodRef(name)
-    def ScalaRuntime_dropR(implicit ctx: Context): TermRef = runtimeMethodRef(nme.drop)
-    def ScalaRuntime_drop(implicit ctx: Context): Symbol = ScalaRuntime_dropR.symbol
+    def ScalaRuntime_drop: SymbolPerRun = perRun(runtimeMethodRef(nme.drop))
 
   @threadUnsafe lazy val BoxesRunTimeModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.BoxesRunTime")
   def BoxesRunTimeModule(implicit ctx: Context): Symbol = BoxesRunTimeModuleRef.symbol
@@ -1031,7 +1027,7 @@ class Definitions {
   }
 
   final def isCompiletime_S(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.name == tpnme.S && sym.owner == CompiletimePackageObject
+    sym.name == tpnme.S && sym.owner == CompiletimePackageObject.moduleClass
 
   // ----- Symbol sets ---------------------------------------------------
 
@@ -1191,8 +1187,8 @@ class Definitions {
   )
 
   val PredefImportFns: List[() => TermRef] = List[() => TermRef](
-    () => ScalaPredefModuleRef,
-    () => DottyPredefModuleRef
+    () => ScalaPredefModule.termRef,
+    () => DottyPredefModule.termRef
   )
 
   @threadUnsafe lazy val RootImportFns: List[() => TermRef] =
@@ -1469,7 +1465,7 @@ class Definitions {
     this.ctx = ctx
     if (!isInitialized) {
       // Enter all symbols from the scalaShadowing package in the scala package
-      for (m <- ScalaShadowingPackageClass.info.decls)
+      for (m <- ScalaShadowingPackage.info.decls)
         ScalaPackageClass.enter(m)
 
       // force initialization of every symbol that is synthesized or hijacked by the compiler
