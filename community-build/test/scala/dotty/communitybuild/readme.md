@@ -13,4 +13,5 @@ To add your project to the community build you can follow these steps:
 
 2. Open a PR against this repo that:
      - Adds your project as a new git submodule
+       - `git submodule add https://github.com/lampepfl/XYZ.git community-build/community-projects/XYZ`
      - Adds a test in [CommunityBuildTest.scala](https://github.com/lampepfl/dotty/blob/master/src/test/scala/dotty/community-build/src/test/scala/dotty/communitybuild/CommunityBuildTest.scala)

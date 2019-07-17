@@ -47,3 +47,6 @@
 [submodule "community-build/community-projects/xml-interpolator"]
 	path = community-build/community-projects/xml-interpolator
 	url = https://github.com/lampepfl/xml-interpolator.git
+[submodule "community-build/community-projects/semanticdb"]
+	path = community-build/community-projects/semanticdb
+	url = https://github.com/lampepfl/dotty-semanticdb.git
