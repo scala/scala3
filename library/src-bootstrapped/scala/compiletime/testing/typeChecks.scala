@@ -1,4 +1,4 @@
-package scala.testing
+package scala.compiletime.testing
 
 import scala.quoted._
 
