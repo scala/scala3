@@ -518,7 +518,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
    * @see https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.4
    */
   def getGenericSignature(sym: Symbol, owner: Symbol): String = {
-    ctx.atPhase(ctx.erasurePhase) { implicit ctx =>
+    ctx.atPhase(ctx.erasurePhase) {
       val memberTpe =
         if (sym.is(Flags.Method)) sym.denot.info
         else owner.denot.thisType.memberInfo(sym)
@@ -533,7 +533,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     // But for now, just like we did in mixin, we just avoid writing a wrong generic signature
     // (one that doesn't erase to the actual signature). See run/t3452b for a test case.
 
-    val memberTpe = ctx.atPhase(ctx.erasurePhase) { implicit ctx => moduleClass.denot.thisType.memberInfo(sym) }
+    val memberTpe = ctx.atPhase(ctx.erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
     val erasedMemberType = TypeErasure.erasure(memberTpe)
     if (erasedMemberType =:= sym.denot.info)
       getGenericSignature(sym, moduleClass, memberTpe).orNull
@@ -782,7 +782,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     private def definedClasses(phase: Phase) =
       if (sym.isDefinedInCurrentRun)
-        ctx.atPhase(phase) { implicit ctx =>
+        ctx.atPhase(phase) {
           toDenot(sym).info.decls.filter(_.isClass)
         }
       else Nil
@@ -835,13 +835,13 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
      * such objects.
      */
     def isTopLevelModuleClass: Boolean = sym.isModuleClass &&
-      ctx.atPhase(ctx.flattenPhase) { implicit ctx =>
+      ctx.atPhase(ctx.flattenPhase) {
         toDenot(sym).owner.is(Flags.PackageClass)
       }
 
     def addRemoteRemoteExceptionAnnotation: Unit = ()
 
-    def samMethod(): Symbol = ctx.atPhase(ctx.erasurePhase) { implicit ctx =>
+    def samMethod(): Symbol = ctx.atPhase(ctx.erasurePhase) {
       toDenot(sym).info.abstractTermMembers.toList match {
         case x :: Nil => x.symbol
         case Nil => abort(s"${sym.show} is not a functional interface. It doesn't have abstract methods")

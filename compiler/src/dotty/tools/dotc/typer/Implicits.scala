@@ -102,7 +102,7 @@ object Implicits {
             else if (mt.paramInfos.lengthCompare(1) == 0 && {
                   var formal = widenSingleton(mt.paramInfos.head)
                   if (approx) formal = wildApprox(formal)
-                  ctx.test(implicit ctx => argType relaxed_<:< formal.widenExpr)
+                  ctx.test(argType relaxed_<:< formal.widenExpr)
                 })
               Candidate.Conversion
             else
@@ -216,7 +216,7 @@ object Implicits {
         val nestedCtx = ctx.fresh.addMode(Mode.TypevarsMissContext)
 
         def matchingCandidate(ref: ImplicitRef): Option[Candidate] =
-          nestedCtx.test(implicit ctx => candidateKind(ref.underlyingRef)) match {
+          nestedCtx.test(candidateKind(ref.underlyingRef)) match {
             case Candidate.None => None
             case ckind => Some(new Candidate(ref, ckind, level))
           }
@@ -673,7 +673,7 @@ trait Implicits { self: Typer =>
         case ex: AssertionError =>
           implicits.println(s"view $from ==> $to")
           implicits.println(ctx.typerState.constraint.show)
-          implicits.println(TypeComparer.explained(implicit ctx => from.tpe <:< to))
+          implicits.println(TypeComparer.explained(from.tpe <:< to))
           throw ex
       }
     }
@@ -833,7 +833,7 @@ trait Implicits { self: Typer =>
           if (canComparePredefined(arg1, arg2)
               ||
               !strictEquality &&
-              ctx.test(implicit ctx => validEqAnyArgs(arg1, arg2)))
+              ctx.test(validEqAnyArgs(arg1, arg2)))
             ref(defn.Eql_eqlAny).appliedToTypes(args).withSpan(span)
           else EmptyTree
         case _ =>
@@ -1416,7 +1416,7 @@ trait Implicits { self: Typer =>
       def compareCandidate(prev: SearchSuccess, ref: TermRef, level: Int): Int =
         if (prev.ref eq ref) 0
         else if (prev.level != level) prev.level - level
-        else nestedContext().test(implicit ctx => compare(prev.ref, ref))
+        else nestedContext().test(compare(prev.ref, ref))
 
       /** If `alt1` is also a search success, try to disambiguate as follows:
        *    - If alt2 is preferred over alt1, pick alt2, otherwise return an

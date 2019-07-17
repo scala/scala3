@@ -162,8 +162,8 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
             val (cl1, cl2) =
               if (classSymbol.effectiveName.toString < dupClassSym.effectiveName.toString) (classSymbol, dupClassSym)
               else (dupClassSym, classSymbol)
-            ctx.atPhase(ctx.typerPhase) { implicit ctx =>
-              ctx.warning(s"${cl1.show} differs only in case from ${cl2.showLocated}. " +
+            ctx.atPhase(ctx.typerPhase) {
+              the[Context].warning(s"${cl1.show} differs only in case from ${cl2.showLocated}. " +
                 "Such classes will overwrite one another on case-insensitive filesystems.", cl1.sourcePos)
             }
         }
@@ -263,7 +263,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
         // ----------- compiler and sbt's callbacks
 
-        val (fullClassName, isLocal) = ctx.atPhase(ctx.sbtExtractDependenciesPhase) { implicit ctx =>
+        val (fullClassName, isLocal) = ctx.atPhase(ctx.sbtExtractDependenciesPhase) {
           (ExtractDependencies.classNameAsString(claszSymbol), claszSymbol.isLocal)
         }
 

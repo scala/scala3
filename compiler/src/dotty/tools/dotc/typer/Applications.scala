@@ -788,7 +788,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  Fallback if this fails: try to convert `E` to `new E`.
    */
   def typedFunPart(fn: untpd.Tree, pt: Type)(implicit ctx: Context): Tree =
-    tryEither { implicit ctx =>
+    tryEither {
       typedExpr(fn, pt)
     } { (result, tstate) =>
       def fallBack = {
@@ -852,7 +852,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         else
           tryInsertImplicitOnQualifier(fun1, proto, ctx.typerState.ownedVars) flatMap { fun2 =>
             tryEither {
-              implicit ctx => Some(simpleApply(fun2, proto)): Option[Tree]
+              Some(simpleApply(fun2, proto)): Option[Tree]
             } {
               (_, _) => None
             }
@@ -865,7 +865,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           if (originalProto.isDropped) fun1
           else
             tryEither {
-              implicit ctx => simpleApply(fun1, proto)
+              simpleApply(fun1, proto)
             } {
               (failedVal, failedState) =>
                 def fail = { failedState.commit(); failedVal }
@@ -901,10 +901,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val app1 =
       if (untpd.isOpAssign(tree))
         tryEither {
-          implicit ctx => realApply
+          realApply
         } { (failedVal, failedState) =>
           tryEither {
-            implicit ctx => typedOpAssign
+            typedOpAssign
           } { (_, _) =>
             failedState.commit()
             failedVal
@@ -1045,11 +1045,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           	// Reject in this case.
         }
         tryEither {
-          implicit ctx => tryWithProto(selType)
+          tryWithProto(selType)
         } {
           (sel, _) =>
             tryEither {
-              implicit ctx => tryWithProto(WildcardType)
+              tryWithProto(WildcardType)
             } {
               (_, _) => fallBack(sel)
             }
@@ -1153,20 +1153,20 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def isApplicableMethodRef(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean = {
     def isApp(implicit ctx: Context): Boolean =
       new ApplicableToTrees(methRef, targs, args, resultType).success
-    if (keepConstraint) isApp else ctx.test(implicit ctx => isApp)
+    if (keepConstraint) isApp else ctx.test(isApp)
   }
 
   /** Is given method reference applicable to type arguments `targs` and argument trees `args` without inferring views?
     *  @param  resultType   The expected result type of the application
     */
   def isDirectlyApplicableMethodRef(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
-    ctx.test(implicit ctx => new ApplicableToTreesDirectly(methRef, targs, args, resultType).success)
+    ctx.test(new ApplicableToTreesDirectly(methRef, targs, args, resultType).success)
 
   /** Is given method reference applicable to argument types `args`?
    *  @param  resultType   The expected result type of the application
    */
   def isApplicableMethodRef(methRef: TermRef, args: List[Type], resultType: Type)(implicit ctx: Context): Boolean =
-    ctx.test(implicit ctx => new ApplicableToTypes(methRef, args, resultType).success)
+    ctx.test(new ApplicableToTypes(methRef, args, resultType).success)
 
   /** Is given type applicable to type arguments `targs` and argument trees `args`,
    *  possibly after inserting an `apply`?
@@ -1287,7 +1287,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case tp2: MethodType => true // (3a)
           case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3a)
           case tp2: PolyType => // (3b)
-            ctx.test(implicit ctx => isAsSpecificValueType(tp1, constrained(tp2).resultType))
+            ctx.test(isAsSpecificValueType(tp1, constrained(tp2).resultType))
           case _ => // (3b)
             isAsSpecificValueType(tp1, tp2)
         }
@@ -1481,9 +1481,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  do they prune much, on average.
      */
     def adaptByResult(chosen: TermRef, alts: List[TermRef]) = pt match {
-      case pt: FunProto if !ctx.test(implicit ctx => resultConforms(chosen.symbol, chosen, pt.resultType)) =>
+      case pt: FunProto if !ctx.test(resultConforms(chosen.symbol, chosen, pt.resultType)) =>
         val conformingAlts = alts.filter(alt =>
-          (alt ne chosen) && ctx.test(implicit ctx => resultConforms(alt.symbol, alt, pt.resultType)))
+          (alt ne chosen) && ctx.test(resultConforms(alt.symbol, alt, pt.resultType)))
         conformingAlts match {
           case Nil => chosen
           case alt2 :: Nil => alt2

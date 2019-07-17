@@ -16,7 +16,7 @@ object JSInterop {
   /** Is this symbol a JavaScript type? */
   def isJSType(sym: Symbol)(implicit ctx: Context): Boolean = {
     //sym.hasAnnotation(jsdefn.RawJSTypeAnnot)
-    ctx.atPhase(ctx.erasurePhase) { implicit ctx =>
+    ctx.atPhase(ctx.erasurePhase) {
       sym.derivesFrom(jsdefn.JSAnyClass)
     }
   }
@@ -32,7 +32,7 @@ object JSInterop {
    *  much as *accessor* methods created for `val`s and `var`s.
    */
   def isJSGetter(sym: Symbol)(implicit ctx: Context): Boolean = {
-    sym.info.firstParamTypes.isEmpty && ctx.atPhase(ctx.erasurePhase) { implicit ctx =>
+    sym.info.firstParamTypes.isEmpty && ctx.atPhase(ctx.erasurePhase) {
       sym.info.isParameterless
     }
   }

@@ -252,9 +252,9 @@ object Formatting {
     * ex"disambiguate $tpe1 and $tpe2"
     * ```
     */
-  def explained(op: Context => String)(implicit ctx: Context): String = {
+  def explained(op: given Context => String)(implicit ctx: Context): String = {
     val seen = new Seen
-    val msg = op(explainCtx(seen))
+    val msg = op given explainCtx(seen)
     val addendum = explanations(seen)
     if (addendum.isEmpty) msg else msg ++ "\n\n" ++ addendum
   }

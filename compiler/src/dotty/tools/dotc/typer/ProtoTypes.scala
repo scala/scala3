@@ -56,7 +56,7 @@ object ProtoTypes {
             normalizedCompatible(tp, pt, keepConstraint = false)
           case _ => testCompat
         }
-      else ctx.test(implicit ctx => testCompat)
+      else ctx.test(testCompat)
     }
 
     private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {

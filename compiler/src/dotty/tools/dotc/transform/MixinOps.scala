@@ -43,7 +43,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
    *  The test is performed at phase `thisPhase`.
    */
   def isCurrent(sym: Symbol): Boolean =
-    ctx.atPhase(thisPhase) { implicit ctx =>
+    ctx.atPhase(thisPhase) {
       cls.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
     }
 

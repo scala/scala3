@@ -466,7 +466,7 @@ object RefChecks {
 
       def hasJavaErasedOverriding(sym: Symbol): Boolean =
         !ctx.erasurePhase.exists || // can't do the test, assume the best
-          ctx.atPhase(ctx.erasurePhase.next) { implicit ctx =>
+          ctx.atPhase(ctx.erasurePhase.next) {
             clazz.info.nonPrivateMember(sym.name).hasAltWith { alt =>
               alt.symbol.is(JavaDefined, butNot = Deferred) &&
                 !sym.owner.derivesFrom(alt.symbol.owner) &&

@@ -472,8 +472,8 @@ class Typer extends Namer
       case _                  => errorTree(tree, "cannot convert to type selection") // will never be printed due to fallback
     }
 
-    def selectWithFallback(fallBack: Context => Tree) =
-      tryAlternatively(typeSelectOnTerm(_))(fallBack)
+    def selectWithFallback(fallBack: given Context => Tree) =
+      tryAlternatively(typeSelectOnTerm)(fallBack)
 
     if (tree.qualifier.isType) {
       val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt, this))
@@ -482,7 +482,7 @@ class Typer extends Namer
     else if (ctx.compilationUnit.isJava && tree.name.isTypeName)
       // SI-3120 Java uses the same syntax, A.B, to express selection from the
       // value A and from the type A. We have to try both.
-      selectWithFallback(tryJavaSelectOnType(_)) // !!! possibly exponential bcs of qualifier retyping
+      selectWithFallback(tryJavaSelectOnType) // !!! possibly exponential bcs of qualifier retyping
     else
       typeSelectOnTerm(ctx)
   }
@@ -2511,9 +2511,9 @@ class Typer extends Namer
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, selType)(ctx addMode Mode.Pattern)
 
-  def tryEither[T](op: Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context): T = {
+  def tryEither[T](op: given Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context): T = {
     val nestedCtx = ctx.fresh.setNewTyperState()
-    val result = op(nestedCtx)
+    val result = op given nestedCtx
     if (nestedCtx.reporter.hasErrors && !nestedCtx.reporter.hasStickyErrors) {
       record("tryEither.fallBack")
       fallBack(result, nestedCtx.typerState)
@@ -2528,7 +2528,7 @@ class Typer extends Namer
   /** Try `op1`, if there are errors, try `op2`, if `op2` also causes errors, fall back
    *  to errors and result of `op1`.
    */
-  def tryAlternatively[T](op1: Context => T)(op2: Context => T)(implicit ctx: Context): T =
+  def tryAlternatively[T](op1: given Context => T)(op2: given Context => T)(implicit ctx: Context): T =
     tryEither(op1) { (failedVal, failedState) =>
       tryEither(op2) { (_, _) =>
         failedState.commit()
@@ -2553,9 +2553,9 @@ class Typer extends Namer
     (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: => Tree)(implicit ctx: Context): Tree = {
 
     def tryWithType(tpt: untpd.Tree): Tree =
-      tryEither { implicit ctx =>
+      tryEither {
         val tycon = typed(tpt)
-        if (ctx.reporter.hasErrors)
+        if (the[Context].reporter.hasErrors)
           EmptyTree // signal that we should return the error in fallBack
         else {
           def recur(tpt: Tree, pt: Type): Tree = pt.revealIgnored match {
@@ -2648,7 +2648,7 @@ class Typer extends Namer
         tree
       case _ =>
         if (isApplyProto(pt) || isMethod(tree) || isSyntheticApply(tree)) tryImplicit(fallBack)
-        else tryEither(tryApply(_)) { (app, appState) =>
+        else tryEither(tryApply) { (app, appState) =>
           tryImplicit {
             if (tree.tpe.member(nme.apply).exists) {
               // issue the error about the apply, since it is likely more informative than the fallback
@@ -2668,9 +2668,9 @@ class Typer extends Namer
     tree match {
       case Select(qual, name) if name != nme.CONSTRUCTOR =>
         val qualProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
-        tryEither { implicit ctx =>
+        tryEither {
           val qual1 = adapt(qual, qualProto, locked)
-          if ((qual eq qual1) || ctx.reporter.hasErrors) None
+          if ((qual eq qual1) || the[Context].reporter.hasErrors) None
           else Some(typed(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt, locked))
         } { (_, _) => None
         }
@@ -2887,7 +2887,7 @@ class Typer extends Namer
             val namedArgs = (wtp.paramNames, args).zipped.flatMap { (pname, arg) =>
               if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
-            tryEither { implicit ctx =>
+            tryEither {
               val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
               if (wtp.isContextualMethod) app.setGivenApply()
               typr.println(i"try with default implicit args $app")
@@ -3038,7 +3038,7 @@ class Typer extends Namer
         case wtp: MethodType => missingArgs(wtp)
         case _ =>
           typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
-          //typr.println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
+          //typr.println(TypeComparer.explained(tree.tpe <:< pt))
           adaptToSubType(wtp)
       }
     }

@@ -124,32 +124,32 @@ object Annotations {
     }
 
     /** Create an annotation where the tree is computed lazily. */
-    def deferred(sym: Symbol, treeFn: Context => Tree)(implicit ctx: Context): Annotation =
+    def deferred(sym: Symbol)(treeFn: given Context => Tree)(implicit ctx: Context): Annotation =
       new LazyAnnotation {
         override def symbol(implicit ctx: Context): Symbol = sym
-        def complete(implicit ctx: Context) = treeFn(ctx)
+        def complete(implicit ctx: Context) = treeFn given ctx
       }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
-    def deferredSymAndTree(symf: Context => Symbol, treeFn: Context => Tree)(implicit ctx: Context): Annotation =
+    def deferredSymAndTree(symf: given Context => Symbol)(treeFn: given Context => Tree)(implicit ctx: Context): Annotation =
       new LazyAnnotation {
         private[this] var mySym: Symbol = _
 
         override def symbol(implicit ctx: Context): Symbol = {
           if (mySym == null || mySym.defRunId != ctx.runId) {
-            mySym = symf(ctx)
+            mySym = symf given ctx
             assert(mySym != null)
           }
           mySym
         }
-        def complete(implicit ctx: Context) = treeFn(ctx)
+        def complete(implicit ctx: Context) = treeFn given ctx
       }
 
     def deferred(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
-      deferred(atp.classSymbol, implicit ctx => New(atp, args))
+      deferred(atp.classSymbol)(New(atp, args))
 
     def deferredResolve(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
-      deferred(atp.classSymbol, implicit ctx => resolveConstructor(atp, args))
+      deferred(atp.classSymbol)(resolveConstructor(atp, args))
 
     def makeAlias(sym: TermSymbol)(implicit ctx: Context): Annotation =
       apply(defn.AliasAnnot, List(
@@ -165,7 +165,7 @@ object Annotations {
           New(defn.ChildAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
             .withSpan(span)
         }
-        deferred(defn.ChildAnnot, implicit ctx => makeChildLater(ctx))
+        deferred(defn.ChildAnnot)(makeChildLater(ctx))
       }
 
       /** A regular, non-deferred Child annotation */

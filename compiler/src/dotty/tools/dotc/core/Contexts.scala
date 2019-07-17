@@ -315,7 +315,7 @@ object Contexts {
     /** Run `op` as if it was run in a fresh explore typer state, but possibly
      *  optimized to re-use the current typer state.
      */
-    final def test[T](op: Context => T): T = typerState.test(op)(this)
+    final def test[T](op: given Context => T): T = typerState.test(op)(this)
 
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =
@@ -404,7 +404,7 @@ object Contexts {
         case _               => None
       }
       ctx.fresh.setImportInfo(
-        new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt, imp.importDelegate))
+        ImportInfo(sym, imp.selectors, impNameOpt, imp.importDelegate))
     }
 
     /** Does current phase use an erased types interpretation? */
