@@ -102,8 +102,12 @@ trait SymDenotations { this: Context =>
     }
   }
 
-  /** Configurable: Accept stale symbol with warning if in IDE */
-  def staleOK: Boolean = Config.ignoreStaleInIDE && mode.is(Mode.Interactive)
+  /** Configurable: Accept stale symbol with warning if in IDE
+   *  Always accept stale symbols when testing pickling.
+   */
+  def staleOK: Boolean =
+    Config.ignoreStaleInIDE && mode.is(Mode.Interactive) ||
+    settings.YtestPickler.value
 
   /** Possibly accept stale symbol with warning if in IDE */
   def acceptStale(denot: SingleDenotation): Boolean =
