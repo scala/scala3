@@ -431,12 +431,8 @@ object Types {
         if (lsym isSubClass rsym) lsym
         else if (rsym isSubClass lsym) rsym
         else NoSymbol
-      case OrType(l, r) => // TODO does not conform to spec
-        val lsym = l.classSymbol
-        val rsym = r.classSymbol
-        if (lsym isSubClass rsym) rsym
-        else if (rsym isSubClass lsym) lsym
-        else NoSymbol
+      case tp: OrType =>
+        tp.join.classSymbol
       case _ =>
         NoSymbol
     }
