@@ -176,7 +176,7 @@ object Erasure {
      */
     private def safelyRemovableUnboxArg(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case Apply(fn, arg :: Nil)
-      if isUnbox(fn.symbol) && defn.ScalaBoxedClasses().contains(arg.tpe.widen.typeSymbol) =>
+      if isUnbox(fn.symbol) && defn.ScalaBoxedClasses.contains(arg.tpe.widen.typeSymbol) =>
         arg
       case _ =>
         EmptyTree

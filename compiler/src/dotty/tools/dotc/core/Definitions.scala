@@ -883,7 +883,7 @@ class Definitions {
   @threadUnsafe lazy val FunctionClass: Array[Symbol] =
     mkArityArray("scala.Function", MaxImplementedFunctionArity, 0).map(_.symbol.asClass)
 
-  val LazyHolder: PerRun[Map[Symbol, Symbol]] = new PerRun({ implicit ctx =>
+  @threadUnsafe lazy val LazyHolder: Map[Symbol, Symbol] = {
     def holderImpl(holderType: String) = ctx.requiredClass("scala.runtime." + holderType)
     Map[Symbol, Symbol](
       IntClass     -> holderImpl("LazyInt"),
@@ -896,7 +896,7 @@ class Definitions {
       ShortClass   -> holderImpl("LazyShort")
     )
     .withDefaultValue(holderImpl("LazyRef"))
-  })
+  }
 
   @threadUnsafe lazy val TupleType: Array[TypeRef] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
@@ -1108,39 +1108,28 @@ class Definitions {
     isNonRefinedFunction(tp.dropDependentRefinement)
 
   // Specialized type parameters defined for scala.Function{0,1,2}.
-  @threadUnsafe lazy val Function1SpecializedParamTypes: collection.Set[TypeRef] =
-    Set(IntType, LongType, FloatType, DoubleType)
-  @threadUnsafe lazy val Function2SpecializedParamTypes: collection.Set[TypeRef] =
-    Set(IntType, LongType, DoubleType)
-  @threadUnsafe lazy val Function0SpecializedReturnTypes: collection.Set[TypeRef] =
-    ScalaNumericValueTypeList.toSet + UnitType + BooleanType
-  @threadUnsafe lazy val Function1SpecializedReturnTypes: collection.Set[TypeRef] =
-    Set(UnitType, BooleanType, IntType, FloatType, LongType, DoubleType)
-  @threadUnsafe lazy val Function2SpecializedReturnTypes: collection.Set[TypeRef] =
-    Function1SpecializedReturnTypes
-
-  @threadUnsafe lazy val Function1SpecializedParamClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(implicit ctx => Function1SpecializedParamTypes.map(_.symbol))
-  @threadUnsafe lazy val Function2SpecializedParamClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(implicit ctx => Function2SpecializedParamTypes.map(_.symbol))
-  @threadUnsafe lazy val Function0SpecializedReturnClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(implicit ctx => Function0SpecializedReturnTypes.map(_.symbol))
-  @threadUnsafe lazy val Function1SpecializedReturnClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(implicit ctx => Function1SpecializedReturnTypes.map(_.symbol))
-  @threadUnsafe lazy val Function2SpecializedReturnClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(implicit ctx => Function2SpecializedReturnTypes.map(_.symbol))
+  @threadUnsafe lazy val Function1SpecializedParamClasses: collection.Set[Symbol] =
+    Set(IntType, LongType, FloatType, DoubleType).map(_.symbol)
+  @threadUnsafe lazy val Function2SpecializedParamClasses: collection.Set[Symbol] =
+    Set(IntType, LongType, DoubleType).map(_.symbol)
+  @threadUnsafe lazy val Function0SpecializedReturnClasses: collection.Set[Symbol] =
+    (ScalaNumericValueTypeList.toSet + UnitType + BooleanType).map(_.symbol)
+  @threadUnsafe lazy val Function1SpecializedReturnClasses: collection.Set[Symbol] =
+    Set(UnitType, BooleanType, IntType, FloatType, LongType, DoubleType).map(_.symbol)
+  @threadUnsafe lazy val Function2SpecializedReturnClasses: collection.Set[Symbol] =
+    Function1SpecializedReturnClasses
 
   def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(implicit ctx: Context): Boolean =
     paramTypes.length <= 2 && cls.derivesFrom(FunctionClass(paramTypes.length)) && (paramTypes match {
       case Nil =>
-        Function0SpecializedReturnClasses().contains(retType.typeSymbol)
+        Function0SpecializedReturnClasses.contains(retType.typeSymbol)
       case List(paramType0) =>
-        Function1SpecializedParamClasses().contains(paramType0.typeSymbol) &&
-        Function1SpecializedReturnClasses().contains(retType.typeSymbol)
+        Function1SpecializedParamClasses.contains(paramType0.typeSymbol) &&
+        Function1SpecializedReturnClasses.contains(retType.typeSymbol)
       case List(paramType0, paramType1) =>
-        Function2SpecializedParamClasses().contains(paramType0.typeSymbol) &&
-        Function2SpecializedParamClasses().contains(paramType1.typeSymbol) &&
-        Function2SpecializedReturnClasses().contains(retType.typeSymbol)
+        Function2SpecializedParamClasses.contains(paramType0.typeSymbol) &&
+        Function2SpecializedParamClasses.contains(paramType1.typeSymbol) &&
+        Function2SpecializedReturnClasses.contains(retType.typeSymbol)
       case _ =>
         false
     })
@@ -1188,31 +1177,17 @@ class Definitions {
 
   // ----- primitive value class machinery ------------------------------------------
 
-  /** This class would also be obviated by the implicit function type design */
-  class PerRun[T](generate: Context => T) {
-    private[this] var current: RunId = NoRunId
-    private[this] var cached: T = _
-    def apply()(implicit ctx: Context): T = {
-      if (current != ctx.runId) {
-        cached = generate(ctx)
-        current = ctx.runId
-      }
-      cached
-    }
-  }
-
   @threadUnsafe lazy val ScalaNumericValueTypeList: List[TypeRef] = List(
     ByteType, ShortType, CharType, IntType, LongType, FloatType, DoubleType)
 
   @threadUnsafe private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
   @threadUnsafe private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitType + BooleanType
 
-  val ScalaNumericValueClasses: PerRun[collection.Set[Symbol]] = new PerRun(implicit ctx => ScalaNumericValueTypes.map(_.symbol))
-  val ScalaValueClasses: PerRun[collection.Set[Symbol]]        = new PerRun(implicit ctx => ScalaValueTypes.map(_.symbol))
+  @threadUnsafe lazy val ScalaNumericValueClasses: collection.Set[Symbol] = ScalaNumericValueTypes.map(_.symbol)
+  @threadUnsafe lazy val ScalaValueClasses: collection.Set[Symbol]        = ScalaValueTypes.map(_.symbol)
 
-  val ScalaBoxedClasses: PerRun[collection.Set[Symbol]] = new PerRun(implicit ctx =>
+  @threadUnsafe lazy val ScalaBoxedClasses: collection.Set[Symbol] =
     Set(BoxedByteClass, BoxedShortClass, BoxedCharClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass, BoxedUnitClass, BoxedBooleanClass)
-  )
 
   private val valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()
   private val typeTags = mutable.Map[TypeName, Name]().withDefaultValue(nme.specializedTypeNames.Object)
@@ -1314,7 +1289,7 @@ class Definitions {
         ScalaPackageClass.enter(m)
 
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass
+      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses :+ JavaEnumClass
 
       isInitialized = true
     }

@@ -146,7 +146,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
     // val x$lzy = new scala.runtime.LazyInt()
     val holderName = LazyLocalName.fresh(xname)
-    val holderImpl = defn.LazyHolder()(ctx)(tpe.typeSymbol)
+    val holderImpl = defn.LazyHolder(tpe.typeSymbol)
     val holderSymbol = ctx.newSymbol(x.symbol.owner, holderName, containerFlags, holderImpl.typeRef, coord = x.span)
     val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, Nil))
 

@@ -600,11 +600,11 @@ object SymDenotations {
 
     /** Is symbol a primitive value class? */
     def isPrimitiveValueClass(implicit ctx: Context): Boolean =
-      maybeOwner == defn.ScalaPackageClass && defn.ScalaValueClasses().contains(symbol)
+      maybeOwner == defn.ScalaPackageClass && defn.ScalaValueClasses.contains(symbol)
 
     /** Is symbol a primitive numeric value class? */
     def isNumericValueClass(implicit ctx: Context): Boolean =
-      maybeOwner == defn.ScalaPackageClass && defn.ScalaNumericValueClasses().contains(symbol)
+      maybeOwner == defn.ScalaPackageClass && defn.ScalaNumericValueClasses.contains(symbol)
 
     /** Is symbol a class for which no runtime representation exists? */
     def isNotRuntimeClass(implicit ctx: Context): Boolean = defn.NotRuntimeClasses contains symbol

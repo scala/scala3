@@ -91,7 +91,7 @@ class InterceptedMethods extends MiniPhase {
               List(qual, typer.resolveClassTag(tree.pos, qual.tpe.widen))))
           }*/
          */
-      case t if t.name == nme.getClass_ && defn.ScalaValueClasses().contains(t.owner) =>
+      case t if t.name == nme.getClass_ && defn.ScalaValueClasses.contains(t.owner) =>
           // if we got here then we're trying to send a primitive getClass method to either
           // a) an Any, in which cage Object_getClass works because Any erases to object. Or
           //

@@ -2696,7 +2696,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
   private object WrapArray {
     lazy val isWrapArray: Set[Symbol] = {
-      val names0 = defn.ScalaValueClasses().map(sym => nme.wrapXArray(sym.name))
+      val names0 = defn.ScalaValueClasses.map(sym => nme.wrapXArray(sym.name))
       val names1 = names0 ++ Set(nme.wrapRefArray, nme.genericWrapArray)
       val names2 = names1.map(defn.ScalaPredefModule.requiredMethod(_))
       names2.toSet

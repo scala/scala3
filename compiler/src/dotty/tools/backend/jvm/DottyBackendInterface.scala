@@ -154,11 +154,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   @threadUnsafe lazy val AnnotationRetentionRuntimeAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
   @threadUnsafe lazy val JavaAnnotationClass: ClassSymbol = ctx.requiredClass("java.lang.annotation.Annotation")
 
-  def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses().map{x => // @darkdimius Are you sure this should be a def?
+  def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses.map{x => // @darkdimius Are you sure this should be a def?
     (x, Erasure.Boxing.boxMethod(x.asClass))
   }.toMap
   def unboxMethods: Map[Symbol, Symbol] =
-    defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
+    defn.ScalaValueClasses.map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
 
   override def isSyntheticArrayConstructor(s: Symbol): Boolean = {
     s eq defn.newArrayMethod

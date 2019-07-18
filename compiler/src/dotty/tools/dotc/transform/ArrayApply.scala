@@ -51,7 +51,7 @@ class ArrayApply extends MiniPhase {
         case _: Literal => true // ClassTag.apply(classOf[XYZ])
         case rc: RefTree if rc.name == nme.TYPE_ =>
           // ClassTag.apply(java.lang.XYZ.Type)
-          defn.ScalaBoxedClasses().contains(rc.symbol.maybeOwner.companionClass)
+          defn.ScalaBoxedClasses.contains(rc.symbol.maybeOwner.companionClass)
         case _ => false
       }
     case Apply(ctm: RefTree, _) if ctm.symbol.maybeOwner.companionModule == defn.ClassTagModule =>
