@@ -365,23 +365,25 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   /* Erase pattern bound types with WildcardType */
-  def erase(tp: Type): Type = trace(i"$tp erased to", debug) {
+  private def erase(tp: Type, inArray: Boolean = false): Type = trace(i"$tp erased to", debug) {
     def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
 
-    val map = new TypeMap {
-      def apply(tp: Type) = tp match {
-        case tp @ AppliedType(tycon, args) if (tycon.isRef(defn.ArrayClass)) =>
-          // cannot use WildcardType for Array[_], due to that
-          //   Array[WildcardType] <: Array[Array[WildcardType]]
-          // see tests/patmat/t2425.scala
-          tp
-        case tref: TypeRef if isPatternTypeSymbol(tref.typeSymbol) =>
-          WildcardType(tref.underlying.bounds)
-        case _ => mapOver(tp)
-      }
+    tp match {
+      case tp @ AppliedType(tycon, args) =>
+        if (tycon.isRef(defn.ArrayClass)) tp.derivedAppliedType(tycon, args.map(arg => erase(arg, inArray = true)))
+        else tp.derivedAppliedType(tycon, args.map(arg => erase(arg, inArray = false)))
+      case OrType(tp1, tp2) =>
+        OrType(erase(tp1, inArray), erase(tp2, inArray))
+      case AndType(tp1, tp2) =>
+        AndType(erase(tp1, inArray), erase(tp2, inArray))
+      case tp @ RefinedType(parent, _, _) =>
+        erase(parent)
+      case tref: TypeRef if isPatternTypeSymbol(tref.typeSymbol) =>
+        if (inArray) tref.underlying else WildcardType(tref.underlying.bounds)
+      case mt: MethodType =>
+        mt.derivedLambdaType(mt.paramNames, mt.paramInfos.map(info => erase(info)), erase(mt.resType))
+      case _ => tp
     }
-
-    map(tp)
   }
 
   /** Space of the pattern: unapplySeq(a, b, c: _*)
