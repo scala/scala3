@@ -213,6 +213,9 @@ object NameKinds {
       safePrefix + info.num
     }
 
+    def currentCount(prefix: TermName = EmptyTermName) given (ctx: Context): Int =
+      ctx.freshNames.currentCount(prefix, this)
+
     /** Generate fresh unique term name of this kind with given prefix name */
     def fresh(prefix: TermName = EmptyTermName)(implicit ctx: Context): TermName =
       ctx.freshNames.newName(prefix, this)
@@ -296,6 +299,7 @@ object NameKinds {
   val UniqueInlineName: UniqueNameKind       = new UniqueNameKind("$i")
   val InlineScrutineeName: UniqueNameKind    = new UniqueNameKind("$scrutinee")
   val InlineBinderName: UniqueNameKind       = new UniqueNameKind("$elem")
+  val MemoCacheName: UniqueNameKind          = new UniqueNameKind("memo$")
 
   /** A kind of unique extension methods; Unlike other unique names, these can be
    *  unmangled.

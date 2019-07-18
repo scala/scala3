@@ -2122,6 +2122,7 @@ class Typer extends Namer
           case Some(xtree) =>
             traverse(xtree :: rest)
           case none =>
+            val memoCacheCount = MemoCacheName.currentCount()
             typed(mdef) match {
               case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
                 buf += inlineExpansion(mdef1)
@@ -2132,6 +2133,8 @@ class Typer extends Namer
                 mdef match {
                   case mdef: untpd.TypeDef if mdef.mods.isEnumClass =>
                     enumContexts(mdef1.symbol) = ctx
+                  case _: untpd.DefDef if MemoCacheName.currentCount() != memoCacheCount =>
+                    buf ++= Inliner.memoCacheDefs(mdef1)
                   case _ =>
                 }
                 if (!mdef1.isEmpty) // clashing synthetic case methods are converted to empty trees

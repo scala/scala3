@@ -237,6 +237,7 @@ class Definitions {
     @threadUnsafe lazy val Compiletime_constValue   : SymbolPerRun = perRunSym(CompiletimePackageObject.requiredMethodRef("constValue"))
     @threadUnsafe lazy val Compiletime_constValueOpt: SymbolPerRun = perRunSym(CompiletimePackageObject.requiredMethodRef("constValueOpt"))
     @threadUnsafe lazy val Compiletime_code         : SymbolPerRun = perRunSym(CompiletimePackageObject.requiredMethodRef("code"))
+    @threadUnsafe lazy val Compiletime_memo         : SymbolPerRun = perRunSym(CompiletimePackageObject.requiredMethodRef("memo"))
 
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will
