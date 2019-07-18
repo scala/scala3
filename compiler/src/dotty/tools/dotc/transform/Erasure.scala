@@ -260,7 +260,7 @@ object Erasure {
         case (JavaArrayType(treeElem), JavaArrayType(ptElem))
         if treeElem.widen.isPrimitiveValueType && !ptElem.isPrimitiveValueType =>
           // See SI-2386 for one example of when this might be necessary.
-          cast(ref(defn.runtimeMethodRef(nme.toObjectArray)).appliedTo(tree), pt)
+          cast(ref(defn.runtimeMethod(nme.toObjectArray)).appliedTo(tree), pt)
 
         // When casting between two EVTs, we need to check which one underlies the other to determine
         // whether u2evt or evt2u should be used.
@@ -507,9 +507,9 @@ object Erasure {
       }
 
     private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {
-      val meth = defn.runtimeMethodRef(name)
-      val followingParams = meth.symbol.info.firstParamTypes.drop(args.length)
-      val followingArgs = protoArgs(pt, meth.widen).zipWithConserve(followingParams)(typedExpr).asInstanceOf[List[tpd.Tree]]
+      val meth = defn.runtimeMethod(name)
+      val followingParams = meth.info.firstParamTypes.drop(args.length)
+      val followingArgs = protoArgs(pt, meth.info).zipWithConserve(followingParams)(typedExpr).asInstanceOf[List[tpd.Tree]]
       ref(meth).appliedToArgs(args.toList ++ followingArgs)
     }
 

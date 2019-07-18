@@ -21,3 +21,6 @@ matchtype.scala
 
 # Opaque type
 i5720.scala
+
+# Redefines types in the Scala package
+seqtype-cycle

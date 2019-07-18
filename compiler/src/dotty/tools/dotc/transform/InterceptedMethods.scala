@@ -53,7 +53,7 @@ class InterceptedMethods extends MiniPhase {
     val s = tree.tpe.widen.typeSymbol
 
     def staticsCall(methodName: TermName): Tree =
-      ref(defn.staticsMethodRef(methodName)).appliedTo(tree)
+      ref(defn.staticsMethod(methodName)).appliedTo(tree)
 
     if (s == defn.NullClass) Literal(Constant(0))
     else if (s == defn.DoubleClass) staticsCall(nme.doubleHash)

@@ -208,7 +208,7 @@ object GenericSignatures {
           else if (sym == defn.NothingClass)
             jsig(defn.RuntimeNothingModuleRef)
           else if (sym == defn.NullClass)
-            jsig(defn.RuntimeNullModuleRef)
+            jsig(defn.RuntimeNullModule.termRef)
           else if (sym.isPrimitiveValueClass) {
             if (!primitiveOK) jsig(defn.ObjectType)
             else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)

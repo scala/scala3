@@ -28,12 +28,6 @@ object Definitions {
    *  else without affecting the set of programs that can be compiled.
    */
   val MaxImplementedFunctionArity: Int = MaxTupleArity
-
-  type SymbolPerRun = given Context => Symbol
-  type ClassSymbolPerRun = given Context => ClassSymbol
-
-  def perRunSym(tp: NamedType): SymbolPerRun = tp.symbol
-  def perRunClass(tp: TypeRef): ClassSymbolPerRun = tp.symbol.asClass
 }
 
 /** A class defining symbols and types of standard definitions
@@ -44,7 +38,7 @@ object Definitions {
  *  Context to Symbol, and possibly also the corresponding type. This cuts down on all
  *  the duplication encountered here.
  *
- *  wip-definitions tries to do the same with an implicit conversion from a SymbolPerRun
+ *  wip-definitions tries to do the same with an implicit conversion from a Symbol
  *  type to a symbol type. The problem with that is universal equality. Comparisons will
  *  not trigger the conversion and will therefore likely return false results.
  *
@@ -222,21 +216,21 @@ class Definitions {
         else NoSymbol)
     cls
   }
-  @threadUnsafe lazy val ScalaPackageObject: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.package"))
+  @threadUnsafe lazy val ScalaPackageObject: Symbol = ctx.requiredModule("scala.package")
   @threadUnsafe lazy val JavaPackageVal: TermSymbol = ctx.requiredPackage(nme.java)
   @threadUnsafe lazy val JavaLangPackageVal: TermSymbol = ctx.requiredPackage(jnme.JavaLang)
 
   // fundamental modules
-  @threadUnsafe lazy val SysPackage : SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.sys.package"))
-    @threadUnsafe lazy val Sys_error: SymbolPerRun = perRunSym(SysPackage.moduleClass.requiredMethodRef(nme.error))
+  @threadUnsafe lazy val SysPackage : Symbol = ctx.requiredModule("scala.sys.package")
+    @threadUnsafe lazy val Sys_error: Symbol = SysPackage.moduleClass.requiredMethod(nme.error)
 
   @threadUnsafe lazy val ScalaXmlPackageClass: Symbol = ctx.getPackageClassIfDefined("scala.xml")
 
-  @threadUnsafe lazy val CompiletimePackageObject: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.compiletime.package"))
-    @threadUnsafe lazy val Compiletime_error        : SymbolPerRun = perRunSym(CompiletimePackageObject.requiredMethodRef(nme.error))
-    @threadUnsafe lazy val Compiletime_constValue   : SymbolPerRun = perRunSym(CompiletimePackageObject.requiredMethodRef("constValue"))
-    @threadUnsafe lazy val Compiletime_constValueOpt: SymbolPerRun = perRunSym(CompiletimePackageObject.requiredMethodRef("constValueOpt"))
-    @threadUnsafe lazy val Compiletime_code         : SymbolPerRun = perRunSym(CompiletimePackageObject.requiredMethodRef("code"))
+  @threadUnsafe lazy val CompiletimePackageObject: Symbol = ctx.requiredModule("scala.compiletime.package")
+    @threadUnsafe lazy val Compiletime_error        : Symbol = CompiletimePackageObject.requiredMethod(nme.error)
+    @threadUnsafe lazy val Compiletime_constValue   : Symbol = CompiletimePackageObject.requiredMethod("constValue")
+    @threadUnsafe lazy val Compiletime_constValueOpt: Symbol = CompiletimePackageObject.requiredMethod("constValueOpt")
+    @threadUnsafe lazy val Compiletime_code         : Symbol = CompiletimePackageObject.requiredMethod("code")
 
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will
@@ -355,51 +349,47 @@ class Definitions {
   @threadUnsafe lazy val NullClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Null, AbstractFinal, List(ObjectClass.typeRef))
   def NullType: TypeRef = NullClass.typeRef
-  @threadUnsafe lazy val RuntimeNullModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Null")
+  @threadUnsafe lazy val RuntimeNothingModule: Symbol = ctx.requiredModule("scala.runtime.Nothing")
+  @threadUnsafe lazy val RuntimeNullModule: Symbol = ctx.requiredModule("scala.runtime.Null")
 
   @threadUnsafe lazy val ImplicitScrutineeTypeSym =
     newSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
   def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
 
 
-  @threadUnsafe lazy val ScalaPredefModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.Predef"))
-    @threadUnsafe lazy val Predef_conforms : SymbolPerRun = perRunSym(ScalaPredefModule.requiredMethodRef(nme.conforms_))
-    @threadUnsafe lazy val Predef_classOf  : SymbolPerRun = perRunSym(ScalaPredefModule.requiredMethodRef(nme.classOf))
-    @threadUnsafe lazy val Predef_undefined: SymbolPerRun = perRunSym(ScalaPredefModule.requiredMethodRef(nme.???))
+  @threadUnsafe lazy val ScalaPredefModule: Symbol = ctx.requiredModule("scala.Predef")
+    @threadUnsafe lazy val Predef_conforms : Symbol = ScalaPredefModule.requiredMethod(nme.conforms_)
+    @threadUnsafe lazy val Predef_classOf  : Symbol = ScalaPredefModule.requiredMethod(nme.classOf)
+    @threadUnsafe lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
 
-  def SubTypeClass(implicit ctx: Context): ClassSymbol =
-    if (isNewCollections)
-      ctx.requiredClass("scala.<:<")
-    else
-      ScalaPredefModule.requiredClass("<:<")
+  def SubTypeClass(implicit ctx: Context): Symbol =
+    if (isNewCollections) ctx.requiredClass("scala.<:<")
+    else ScalaPredefModule.requiredClass("<:<")
 
-  def DummyImplicitClass(implicit ctx: Context): ClassSymbol =
-    if (isNewCollections)
-      ctx.requiredClass("scala.DummyImplicit")
-    else
-      ScalaPredefModule.requiredClass("DummyImplicit")
+  def DummyImplicitClass(implicit ctx: Context): Symbol =
+   if (isNewCollections) ctx.requiredClass("scala.DummyImplicit")
+    else ScalaPredefModule.requiredClass("DummyImplicit")
 
-  @threadUnsafe lazy val ScalaRuntimeModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.runtime.ScalaRunTime"))
-    def runtimeMethodRef(name: PreName): TermRef = ScalaRuntimeModule.requiredMethodRef(name)
-    def ScalaRuntime_drop: SymbolPerRun = perRunSym(runtimeMethodRef(nme.drop))
+  @threadUnsafe lazy val ScalaRuntimeModule: Symbol = ctx.requiredModule("scala.runtime.ScalaRunTime")
+    def runtimeMethod(name: PreName): Symbol = ScalaRuntimeModule.requiredMethod(name)
+    def ScalaRuntime_drop: Symbol = runtimeMethod(nme.drop)
 
-  @threadUnsafe lazy val BoxesRunTimeModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.runtime.BoxesRunTime"))
-  @threadUnsafe lazy val ScalaStaticsModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.runtime.Statics"))
-    def staticsMethodRef(name: PreName): TermRef = ScalaStaticsModule.requiredMethodRef(name)
+  @threadUnsafe lazy val BoxesRunTimeModule: Symbol = ctx.requiredModule("scala.runtime.BoxesRunTime")
+  @threadUnsafe lazy val ScalaStaticsModule: Symbol = ctx.requiredModule("scala.runtime.Statics")
     def staticsMethod(name: PreName): TermSymbol = ScalaStaticsModule.requiredMethod(name)
 
   // Dotty deviation: we cannot use a @threadUnsafe lazy val here because @threadUnsafe lazy vals in dotty
   // will return "null" when called recursively, see #1856.
-  def DottyPredefModule: SymbolPerRun = perRunSym {
-    if (myDottyPredefModuleRef == null) {
-      myDottyPredefModuleRef = ctx.requiredModuleRef("dotty.DottyPredef")
-      assert(myDottyPredefModuleRef != null)
+  def DottyPredefModule: Symbol = {
+    if (myDottyPredefModule == null) {
+      myDottyPredefModule = ctx.requiredModule("dotty.DottyPredef")
+      assert(myDottyPredefModule != null)
     }
-    myDottyPredefModuleRef
+    myDottyPredefModule
   }
-  private[this] var myDottyPredefModuleRef: TermRef = _
+  private[this] var myDottyPredefModule: Symbol = _
 
-  @threadUnsafe lazy val DottyArraysModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("dotty.runtime.Arrays"))
+  @threadUnsafe lazy val DottyArraysModule: Symbol = ctx.requiredModule("dotty.runtime.Arrays")
     def newGenericArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
     def newArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
@@ -411,10 +401,10 @@ class Definitions {
   // The set of all wrap{X, Ref}Array methods, where X is a value type
   val WrapArrayMethods: PerRun[collection.Set[Symbol]] = new PerRun({ implicit ctx =>
     val methodNames = ScalaValueTypes.map(ast.tpd.wrapArrayMethodName) + nme.wrapRefArray
-    methodNames.map(getWrapVarargsArrayModule.requiredMethodRef(_).symbol)
+    methodNames.map(getWrapVarargsArrayModule.requiredMethod(_))
   })
 
-  @threadUnsafe lazy val NilModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.collection.immutable.Nil"))
+  @threadUnsafe lazy val NilModule: Symbol = ctx.requiredModule("scala.collection.immutable.Nil")
 
   @threadUnsafe lazy val SingletonClass: ClassSymbol =
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
@@ -428,41 +418,41 @@ class Definitions {
     if (isNewCollections) ctx.requiredClassRef("scala.collection.immutable.Seq")
     else ctx.requiredClassRef("scala.collection.Seq")
   def SeqClass given Context: ClassSymbol = SeqType.symbol.asClass
-    @threadUnsafe lazy val Seq_apply        : SymbolPerRun = perRunSym(SeqClass.requiredMethodRef(nme.apply))
-    @threadUnsafe lazy val Seq_head         : SymbolPerRun = perRunSym(SeqClass.requiredMethodRef(nme.head))
-    @threadUnsafe lazy val Seq_drop         : SymbolPerRun = perRunSym(SeqClass.requiredMethodRef(nme.drop))
-    @threadUnsafe lazy val Seq_lengthCompare: SymbolPerRun = perRunSym(SeqClass.requiredMethodRef(nme.lengthCompare, List(IntType)))
-    @threadUnsafe lazy val Seq_length       : SymbolPerRun = perRunSym(SeqClass.requiredMethodRef(nme.length))
-    @threadUnsafe lazy val Seq_toSeq        : SymbolPerRun = perRunSym(SeqClass.requiredMethodRef(nme.toSeq))
+    @threadUnsafe lazy val Seq_apply        : Symbol = SeqClass.requiredMethod(nme.apply)
+    @threadUnsafe lazy val Seq_head         : Symbol = SeqClass.requiredMethod(nme.head)
+    @threadUnsafe lazy val Seq_drop         : Symbol = SeqClass.requiredMethod(nme.drop)
+    @threadUnsafe lazy val Seq_lengthCompare: Symbol = SeqClass.requiredMethod(nme.lengthCompare, List(IntType))
+    @threadUnsafe lazy val Seq_length       : Symbol = SeqClass.requiredMethod(nme.length)
+    @threadUnsafe lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
 
   @threadUnsafe lazy val ArrayType: TypeRef = ctx.requiredClassRef("scala.Array")
   def ArrayClass given Context: ClassSymbol = ArrayType.symbol.asClass
-    @threadUnsafe lazy val Array_apply     : SymbolPerRun = perRunSym(ArrayClass.requiredMethodRef(nme.apply))
-    @threadUnsafe lazy val Array_update    : SymbolPerRun = perRunSym(ArrayClass.requiredMethodRef(nme.update))
-    @threadUnsafe lazy val Array_length    : SymbolPerRun = perRunSym(ArrayClass.requiredMethodRef(nme.length))
-    @threadUnsafe lazy val Array_clone     : SymbolPerRun = perRunSym(ArrayClass.requiredMethodRef(nme.clone_))
-    @threadUnsafe lazy val ArrayConstructor: SymbolPerRun = perRunSym(ArrayClass.requiredMethodRef(nme.CONSTRUCTOR))
+    @threadUnsafe lazy val Array_apply     : Symbol = ArrayClass.requiredMethod(nme.apply)
+    @threadUnsafe lazy val Array_update    : Symbol = ArrayClass.requiredMethod(nme.update)
+    @threadUnsafe lazy val Array_length    : Symbol = ArrayClass.requiredMethod(nme.length)
+    @threadUnsafe lazy val Array_clone     : Symbol = ArrayClass.requiredMethod(nme.clone_)
+    @threadUnsafe lazy val ArrayConstructor: Symbol = ArrayClass.requiredMethod(nme.CONSTRUCTOR)
 
-  @threadUnsafe lazy val ArrayModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.Array"))
+  @threadUnsafe lazy val ArrayModule: Symbol = ctx.requiredModule("scala.Array")
 
   @threadUnsafe lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", java.lang.Void.TYPE, UnitEnc, nme.specializedTypeNames.Void)
   def UnitClass given Context: ClassSymbol = UnitType.symbol.asClass
   def UnitModuleClass given Context: Symbol = UnitType.symbol.asClass.linkedClass
   @threadUnsafe lazy val BooleanType: TypeRef = valueTypeRef("scala.Boolean", java.lang.Boolean.TYPE, BooleanEnc, nme.specializedTypeNames.Boolean)
   def BooleanClass given Context: ClassSymbol = BooleanType.symbol.asClass
-    @threadUnsafe lazy val Boolean_!  : SymbolPerRun = perRunSym(BooleanClass.requiredMethodRef(nme.UNARY_!))
-    @threadUnsafe lazy val Boolean_&& : SymbolPerRun = perRunSym(BooleanClass.requiredMethodRef(nme.ZAND)) // ### harmonize required... calls
-    @threadUnsafe lazy val Boolean_|| : SymbolPerRun = perRunSym(BooleanClass.requiredMethodRef(nme.ZOR))
-    @threadUnsafe lazy val Boolean_== : SymbolPerRun = perRunSym(
+    @threadUnsafe lazy val Boolean_!  : Symbol = BooleanClass.requiredMethod(nme.UNARY_!)
+    @threadUnsafe lazy val Boolean_&& : Symbol = BooleanClass.requiredMethod(nme.ZAND) // ### harmonize required... calls
+    @threadUnsafe lazy val Boolean_|| : Symbol = BooleanClass.requiredMethod(nme.ZOR)
+    @threadUnsafe lazy val Boolean_== : Symbol =
       BooleanClass.info.member(nme.EQ).suchThat(_.info.firstParamTypes match {
         case List(pt) => (pt isRef BooleanClass)
         case _ => false
-      }).symbol.termRef)
-    @threadUnsafe lazy val Boolean_!= : SymbolPerRun = perRunSym(
+      }).symbol
+    @threadUnsafe lazy val Boolean_!= : Symbol =
       BooleanClass.info.member(nme.NE).suchThat(_.info.firstParamTypes match {
         case List(pt) => (pt isRef BooleanClass)
         case _ => false
-      }).symbol.termRef)
+      }).symbol
 
   @threadUnsafe lazy val ByteType: TypeRef = valueTypeRef("scala.Byte", java.lang.Byte.TYPE, ByteEnc, nme.specializedTypeNames.Byte)
   def ByteClass given Context: ClassSymbol = ByteType.symbol.asClass
@@ -472,35 +462,35 @@ class Definitions {
   def CharClass given Context: ClassSymbol = CharType.symbol.asClass
   @threadUnsafe lazy val IntType: TypeRef = valueTypeRef("scala.Int", java.lang.Integer.TYPE, IntEnc, nme.specializedTypeNames.Int)
   def IntClass given Context: ClassSymbol = IntType.symbol.asClass
-    @threadUnsafe lazy val Int_-  : SymbolPerRun = perRunSym(IntClass.requiredMethodRef(nme.MINUS, List(IntType)))
-    @threadUnsafe lazy val Int_+  : SymbolPerRun = perRunSym(IntClass.requiredMethodRef(nme.PLUS, List(IntType)))
-    @threadUnsafe lazy val Int_/  : SymbolPerRun = perRunSym(IntClass.requiredMethodRef(nme.DIV, List(IntType)))
-    @threadUnsafe lazy val Int_*  : SymbolPerRun = perRunSym(IntClass.requiredMethodRef(nme.MUL, List(IntType)))
-    @threadUnsafe lazy val Int_== : SymbolPerRun = perRunSym(IntClass.requiredMethodRef(nme.EQ, List(IntType)))
-    @threadUnsafe lazy val Int_>= : SymbolPerRun = perRunSym(IntClass.requiredMethodRef(nme.GE, List(IntType)))
-    @threadUnsafe lazy val Int_<= : SymbolPerRun = perRunSym(IntClass.requiredMethodRef(nme.LE, List(IntType)))
+    @threadUnsafe lazy val Int_-  : Symbol = IntClass.requiredMethod(nme.MINUS, List(IntType))
+    @threadUnsafe lazy val Int_+  : Symbol = IntClass.requiredMethod(nme.PLUS, List(IntType))
+    @threadUnsafe lazy val Int_/  : Symbol = IntClass.requiredMethod(nme.DIV, List(IntType))
+    @threadUnsafe lazy val Int_*  : Symbol = IntClass.requiredMethod(nme.MUL, List(IntType))
+    @threadUnsafe lazy val Int_== : Symbol = IntClass.requiredMethod(nme.EQ, List(IntType))
+    @threadUnsafe lazy val Int_>= : Symbol = IntClass.requiredMethod(nme.GE, List(IntType))
+    @threadUnsafe lazy val Int_<= : Symbol = IntClass.requiredMethod(nme.LE, List(IntType))
   @threadUnsafe lazy val LongType: TypeRef = valueTypeRef("scala.Long", java.lang.Long.TYPE, LongEnc, nme.specializedTypeNames.Long)
   def LongClass given Context: ClassSymbol = LongType.symbol.asClass
-    @threadUnsafe lazy val Long_+ : SymbolPerRun = perRunSym(LongClass.requiredMethodRef(nme.PLUS, List(LongType)))
-    @threadUnsafe lazy val Long_* : SymbolPerRun = perRunSym(LongClass.requiredMethodRef(nme.MUL, List(LongType)))
-    @threadUnsafe lazy val Long_/ : SymbolPerRun = perRunSym(LongClass.requiredMethodRef(nme.DIV, List(LongType)))
+    @threadUnsafe lazy val Long_+ : Symbol = LongClass.requiredMethod(nme.PLUS, List(LongType))
+    @threadUnsafe lazy val Long_* : Symbol = LongClass.requiredMethod(nme.MUL, List(LongType))
+    @threadUnsafe lazy val Long_/ : Symbol = LongClass.requiredMethod(nme.DIV, List(LongType))
 
   @threadUnsafe lazy val FloatType: TypeRef = valueTypeRef("scala.Float", java.lang.Float.TYPE, FloatEnc, nme.specializedTypeNames.Float)
   def FloatClass given Context: ClassSymbol = FloatType.symbol.asClass
   @threadUnsafe lazy val DoubleType: TypeRef = valueTypeRef("scala.Double", java.lang.Double.TYPE, DoubleEnc, nme.specializedTypeNames.Double)
   def DoubleClass given Context: ClassSymbol = DoubleType.symbol.asClass
 
-  @threadUnsafe lazy val BoxedUnitClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.runtime.BoxedUnit"))
+  @threadUnsafe lazy val BoxedUnitClass: ClassSymbol = ctx.requiredClass("scala.runtime.BoxedUnit")
     def BoxedUnit_UNIT given Context: TermSymbol = BoxedUnitClass.linkedClass.requiredValue("UNIT")
 
-  @threadUnsafe lazy val BoxedBooleanClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("java.lang.Boolean"))
-  @threadUnsafe lazy val BoxedByteClass   : ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("java.lang.Byte"))
-  @threadUnsafe lazy val BoxedShortClass  : ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("java.lang.Short"))
-  @threadUnsafe lazy val BoxedCharClass   : ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("java.lang.Character"))
-  @threadUnsafe lazy val BoxedIntClass    : ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("java.lang.Integer"))
-  @threadUnsafe lazy val BoxedLongClass   : ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("java.lang.Long"))
-  @threadUnsafe lazy val BoxedFloatClass  : ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("java.lang.Float"))
-  @threadUnsafe lazy val BoxedDoubleClass : ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("java.lang.Double"))
+  @threadUnsafe lazy val BoxedBooleanClass: ClassSymbol = ctx.requiredClass("java.lang.Boolean")
+  @threadUnsafe lazy val BoxedByteClass   : ClassSymbol = ctx.requiredClass("java.lang.Byte")
+  @threadUnsafe lazy val BoxedShortClass  : ClassSymbol = ctx.requiredClass("java.lang.Short")
+  @threadUnsafe lazy val BoxedCharClass   : ClassSymbol = ctx.requiredClass("java.lang.Character")
+  @threadUnsafe lazy val BoxedIntClass    : ClassSymbol = ctx.requiredClass("java.lang.Integer")
+  @threadUnsafe lazy val BoxedLongClass   : ClassSymbol = ctx.requiredClass("java.lang.Long")
+  @threadUnsafe lazy val BoxedFloatClass  : ClassSymbol = ctx.requiredClass("java.lang.Float")
+  @threadUnsafe lazy val BoxedDoubleClass : ClassSymbol = ctx.requiredClass("java.lang.Double")
 
   @threadUnsafe lazy val BoxedBooleanModule: TermSymbol = ctx.requiredModule("java.lang.Boolean")
   @threadUnsafe lazy val BoxedByteModule   : TermSymbol = ctx.requiredModule("java.lang.Byte")
@@ -591,123 +581,122 @@ class Definitions {
   }
   def JavaEnumType = JavaEnumClass.typeRef
 
-  @threadUnsafe lazy val StringBuilderClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.collection.mutable.StringBuilder"))
-  @threadUnsafe lazy val MatchErrorClass   : ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.MatchError"))
-  @threadUnsafe lazy val ConversionClass   : ClassSymbolPerRun = perRunClass(ctx.requiredClass("scala.Conversion").typeRef)
+  @threadUnsafe lazy val StringBuilderClass: ClassSymbol = ctx.requiredClass("scala.collection.mutable.StringBuilder")
+  @threadUnsafe lazy val MatchErrorClass   : ClassSymbol = ctx.requiredClass("scala.MatchError")
+  @threadUnsafe lazy val ConversionClass   : ClassSymbol = ctx.requiredClass("scala.Conversion")
 
-  @threadUnsafe lazy val StringAddClass    : ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.runtime.StringAdd"))
-    @threadUnsafe lazy val StringAdd_+ : SymbolPerRun = perRunSym(StringAddClass.requiredMethodRef(nme.raw.PLUS))
+  @threadUnsafe lazy val StringAddClass    : ClassSymbol = ctx.requiredClass("scala.runtime.StringAdd")
+    @threadUnsafe lazy val StringAdd_+ : Symbol = StringAddClass.requiredMethod(nme.raw.PLUS)
 
-  @threadUnsafe lazy val StringContextClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.StringContext"))
-    @threadUnsafe lazy val StringContextS  : SymbolPerRun = perRunSym(StringContextClass.requiredMethodRef(nme.s))
-    @threadUnsafe lazy val StringContextRaw: SymbolPerRun = perRunSym(StringContextClass.requiredMethodRef(nme.raw_))
-    @threadUnsafe lazy val StringContext_f : SymbolPerRun = perRunSym(StringContextClass.requiredMethodRef(nme.f))
-  @threadUnsafe lazy val StringContextModule: SymbolPerRun = StringContextClass.companionModule
-    @threadUnsafe lazy val StringContextModule_apply: SymbolPerRun = perRunSym(StringContextModule.requiredMethodRef(nme.apply))
+  @threadUnsafe lazy val StringContextClass: ClassSymbol = ctx.requiredClass("scala.StringContext")
+    @threadUnsafe lazy val StringContextS  : Symbol = StringContextClass.requiredMethod(nme.s)
+    @threadUnsafe lazy val StringContextRaw: Symbol = StringContextClass.requiredMethod(nme.raw_)
+    @threadUnsafe lazy val StringContext_f : Symbol = StringContextClass.requiredMethod(nme.f)
+  @threadUnsafe lazy val StringContextModule: Symbol = StringContextClass.companionModule
+    @threadUnsafe lazy val StringContextModule_apply: Symbol = StringContextModule.requiredMethod(nme.apply)
 
-  @threadUnsafe lazy val InternalStringContextMacroModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("dotty.internal.StringContextMacro"))
-    @threadUnsafe lazy val InternalStringContextMacroModule_f: SymbolPerRun = perRunSym(InternalStringContextMacroModule.requiredMethodRef(nme.f))
+  @threadUnsafe lazy val InternalStringContextMacroModule: Symbol = ctx.requiredModule("dotty.internal.StringContextMacro")
+    @threadUnsafe lazy val InternalStringContextMacroModule_f: Symbol = InternalStringContextMacroModule.requiredMethod(nme.f)
 
-  @threadUnsafe lazy val PartialFunctionClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.PartialFunction"))
-    @threadUnsafe lazy val PartialFunction_isDefinedAt: SymbolPerRun = perRunSym(PartialFunctionClass.requiredMethodRef(nme.isDefinedAt))
-    @threadUnsafe lazy val PartialFunction_applyOrElse: SymbolPerRun = perRunSym(PartialFunctionClass.requiredMethodRef(nme.applyOrElse))
+  @threadUnsafe lazy val PartialFunctionClass: ClassSymbol = ctx.requiredClass("scala.PartialFunction")
+    @threadUnsafe lazy val PartialFunction_isDefinedAt: Symbol = PartialFunctionClass.requiredMethod(nme.isDefinedAt)
+    @threadUnsafe lazy val PartialFunction_applyOrElse: Symbol = PartialFunctionClass.requiredMethod(nme.applyOrElse)
 
-  @threadUnsafe lazy val AbstractPartialFunctionClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.runtime.AbstractPartialFunction"))
-  @threadUnsafe lazy val FunctionXXLClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.FunctionXXL"))
-  @threadUnsafe lazy val ScalaSymbolClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.Symbol"))
-  @threadUnsafe lazy val DynamicClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.Dynamic"))
-  @threadUnsafe lazy val OptionClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.Option"))
-  @threadUnsafe lazy val SomeClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.Some"))
-  @threadUnsafe lazy val NoneModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.None"))
+  @threadUnsafe lazy val AbstractPartialFunctionClass: ClassSymbol = ctx.requiredClass("scala.runtime.AbstractPartialFunction")
+  @threadUnsafe lazy val FunctionXXLClass: ClassSymbol = ctx.requiredClass("scala.FunctionXXL")
+  @threadUnsafe lazy val ScalaSymbolClass: ClassSymbol = ctx.requiredClass("scala.Symbol")
+  @threadUnsafe lazy val DynamicClass: ClassSymbol = ctx.requiredClass("scala.Dynamic")
+  @threadUnsafe lazy val OptionClass: ClassSymbol = ctx.requiredClass("scala.Option")
+  @threadUnsafe lazy val SomeClass: ClassSymbol = ctx.requiredClass("scala.Some")
+  @threadUnsafe lazy val NoneModule: Symbol = ctx.requiredModule("scala.None")
 
-  @threadUnsafe lazy val EnumClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.Enum"))
-    @threadUnsafe lazy val Enum_ordinal: SymbolPerRun = perRunSym(EnumClass.requiredMethodRef(nme.ordinal))
+  @threadUnsafe lazy val EnumClass: ClassSymbol = ctx.requiredClass("scala.Enum")
+    @threadUnsafe lazy val Enum_ordinal: Symbol = EnumClass.requiredMethod(nme.ordinal)
 
-  @threadUnsafe lazy val EnumValuesClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.runtime.EnumValues"))
-  @threadUnsafe lazy val ProductClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.Product"))
-    @threadUnsafe lazy val Product_canEqual      : SymbolPerRun = perRunSym(ProductClass.requiredMethodRef(nme.canEqual_))
-    @threadUnsafe lazy val Product_productArity  : SymbolPerRun = perRunSym(ProductClass.requiredMethodRef(nme.productArity))
-    @threadUnsafe lazy val Product_productElement: SymbolPerRun = perRunSym(ProductClass.requiredMethodRef(nme.productElement))
-    @threadUnsafe lazy val Product_productPrefix : SymbolPerRun = perRunSym(ProductClass.requiredMethodRef(nme.productPrefix))
+  @threadUnsafe lazy val EnumValuesClass: ClassSymbol = ctx.requiredClass("scala.runtime.EnumValues")
+  @threadUnsafe lazy val ProductClass: ClassSymbol = ctx.requiredClass("scala.Product")
+    @threadUnsafe lazy val Product_canEqual      : Symbol = ProductClass.requiredMethod(nme.canEqual_)
+    @threadUnsafe lazy val Product_productArity  : Symbol = ProductClass.requiredMethod(nme.productArity)
+    @threadUnsafe lazy val Product_productElement: Symbol = ProductClass.requiredMethod(nme.productElement)
+    @threadUnsafe lazy val Product_productPrefix : Symbol = ProductClass.requiredMethod(nme.productPrefix)
 
-  @threadUnsafe lazy val IteratorClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.collection.Iterator"))
+  @threadUnsafe lazy val IteratorClass: ClassSymbol = ctx.requiredClass("scala.collection.Iterator")
   def IteratorModule(implicit ctx: Context): Symbol = IteratorClass.companionModule
 
-  @threadUnsafe lazy val ModuleSerializationProxyClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.runtime.ModuleSerializationProxy"))
+  @threadUnsafe lazy val ModuleSerializationProxyClass: ClassSymbol = ctx.requiredClass("scala.runtime.ModuleSerializationProxy")
     @threadUnsafe lazy val ModuleSerializationProxyConstructor: TermSymbol =
       ModuleSerializationProxyClass.requiredMethod(nme.CONSTRUCTOR, List(ClassType(TypeBounds.empty)))
 
-  @threadUnsafe lazy val MirrorClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.deriving.Mirror"))
-  @threadUnsafe lazy val Mirror_ProductClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.deriving.Mirror.Product"))
-    @threadUnsafe lazy val Mirror_Product_fromProduct: SymbolPerRun = perRunSym(Mirror_ProductClass.requiredMethodRef(nme.fromProduct))
-  @threadUnsafe lazy val Mirror_SumClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.deriving.Mirror.Sum"))
-  @threadUnsafe lazy val Mirror_SingletonClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.deriving.Mirror.Singleton"))
-  @threadUnsafe lazy val Mirror_SingletonProxyClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.deriving.Mirror.SingletonProxy"))
+  @threadUnsafe lazy val MirrorClass: ClassSymbol = ctx.requiredClass("scala.deriving.Mirror")
+  @threadUnsafe lazy val Mirror_ProductClass: ClassSymbol = ctx.requiredClass("scala.deriving.Mirror.Product")
+    @threadUnsafe lazy val Mirror_Product_fromProduct: Symbol = Mirror_ProductClass.requiredMethod(nme.fromProduct)
+  @threadUnsafe lazy val Mirror_SumClass: ClassSymbol = ctx.requiredClass("scala.deriving.Mirror.Sum")
+  @threadUnsafe lazy val Mirror_SingletonClass: ClassSymbol = ctx.requiredClass("scala.deriving.Mirror.Singleton")
+  @threadUnsafe lazy val Mirror_SingletonProxyClass: ClassSymbol = ctx.requiredClass("scala.deriving.Mirror.SingletonProxy")
 
-  @threadUnsafe lazy val LanguageModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.language"))
-  @threadUnsafe lazy val NonLocalReturnControlClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.runtime.NonLocalReturnControl"))
-  @threadUnsafe lazy val SelectableClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.Selectable"))
+  @threadUnsafe lazy val LanguageModule: Symbol = ctx.requiredModule("scala.language")
+  @threadUnsafe lazy val NonLocalReturnControlClass: ClassSymbol = ctx.requiredClass("scala.runtime.NonLocalReturnControl")
+  @threadUnsafe lazy val SelectableClass: ClassSymbol = ctx.requiredClass("scala.Selectable")
 
-  @threadUnsafe lazy val ClassTagClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.reflect.ClassTag"))
-  @threadUnsafe lazy val ClassTagModule: SymbolPerRun = ClassTagClass.companionModule
-    @threadUnsafe lazy val ClassTagModule_apply: SymbolPerRun = perRunSym(ClassTagModule.requiredMethodRef(nme.apply))
+  @threadUnsafe lazy val ClassTagClass: ClassSymbol = ctx.requiredClass("scala.reflect.ClassTag")
+  @threadUnsafe lazy val ClassTagModule: Symbol = ClassTagClass.companionModule
+    @threadUnsafe lazy val ClassTagModule_apply: Symbol = ClassTagModule.requiredMethod(nme.apply)
 
-  @threadUnsafe lazy val QuotedExprClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.quoted.Expr"))
-  @threadUnsafe lazy val QuotedExprModule: SymbolPerRun = QuotedExprClass.companionModule
+  @threadUnsafe lazy val QuotedExprClass: ClassSymbol = ctx.requiredClass("scala.quoted.Expr")
+  @threadUnsafe lazy val QuotedExprModule: Symbol = QuotedExprClass.companionModule
 
-  @threadUnsafe lazy val QuoteContextClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.quoted.QuoteContext"))
-  @threadUnsafe lazy val QuoteContextModule: SymbolPerRun = QuoteContextClass.companionModule
-    @threadUnsafe lazy val QuoteContext_macroContext: SymbolPerRun = perRunSym(QuoteContextModule.requiredMethodRef("macroContext"))
+  @threadUnsafe lazy val QuoteContextClass: ClassSymbol = ctx.requiredClass("scala.quoted.QuoteContext")
+  @threadUnsafe lazy val QuoteContextModule: Symbol = QuoteContextClass.companionModule
+    @threadUnsafe lazy val QuoteContext_macroContext: Symbol = QuoteContextModule.requiredMethod("macroContext")
 
-  @threadUnsafe lazy val LiftableModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.quoted.Liftable"))
+  @threadUnsafe lazy val LiftableModule: Symbol = ctx.requiredModule("scala.quoted.Liftable")
 
-  @threadUnsafe lazy val InternalQuotedModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.internal.Quoted"))
-    @threadUnsafe lazy val InternalQuoted_exprQuote  : SymbolPerRun = perRunSym(InternalQuotedModule.requiredMethodRef("exprQuote"))
-    @threadUnsafe lazy val InternalQuoted_exprSplice : SymbolPerRun = perRunSym(InternalQuotedModule.requiredMethodRef("exprSplice"))
-    @threadUnsafe lazy val InternalQuoted_typeQuote  : SymbolPerRun = perRunSym(InternalQuotedModule.requiredMethodRef("typeQuote"))
-    @threadUnsafe lazy val InternalQuoted_patternHole: SymbolPerRun = perRunSym(InternalQuotedModule.requiredMethodRef("patternHole"))
+  @threadUnsafe lazy val InternalQuotedModule: Symbol = ctx.requiredModule("scala.internal.Quoted")
+    @threadUnsafe lazy val InternalQuoted_exprQuote  : Symbol = InternalQuotedModule.requiredMethod("exprQuote")
+    @threadUnsafe lazy val InternalQuoted_exprSplice : Symbol = InternalQuotedModule.requiredMethod("exprSplice")
+    @threadUnsafe lazy val InternalQuoted_typeQuote  : Symbol = InternalQuotedModule.requiredMethod("typeQuote")
+    @threadUnsafe lazy val InternalQuoted_patternHole: Symbol = InternalQuotedModule.requiredMethod("patternHole")
     @threadUnsafe lazy val InternalQuoted_patternBindHoleAnnot: ClassSymbol = InternalQuotedModule.requiredClass("patternBindHole")
-    @threadUnsafe lazy val InternalQuoted_QuoteTypeTagAnnot: ClassSymbol = InternalQuotedModule.requiredClass("quoteTypeTag")
+    @threadUnsafe lazy val InternalQuoted_QuoteTypeTagAnnot   : ClassSymbol = InternalQuotedModule.requiredClass("quoteTypeTag")
 
-  @threadUnsafe lazy val InternalQuotedMatcherModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.internal.quoted.Matcher"))
-    @threadUnsafe lazy val InternalQuotedMatcher_unapply: SymbolPerRun = perRunSym(InternalQuotedMatcherModule.requiredMethodRef(nme.unapply))
+  @threadUnsafe lazy val InternalQuotedMatcherModule: Symbol = ctx.requiredModule("scala.internal.quoted.Matcher")
+    @threadUnsafe lazy val InternalQuotedMatcher_unapply: Symbol = InternalQuotedMatcherModule.requiredMethod(nme.unapply)
 
-  @threadUnsafe lazy val QuotedTypeClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.quoted.Type"))
+  @threadUnsafe lazy val QuotedTypeClass: ClassSymbol = ctx.requiredClass("scala.quoted.Type")
     @threadUnsafe lazy val QuotedType_splice: Symbol = QuotedTypeClass.requiredType(tpnme.splice)
+  @threadUnsafe lazy val QuotedTypeModule: Symbol = QuotedTypeClass.companionModule
 
-  @threadUnsafe lazy val QuotedTypeModule: SymbolPerRun = QuotedTypeClass.companionModule
+  @threadUnsafe lazy val QuotedMatchingBindingClass: ClassSymbol = ctx.requiredClass("scala.quoted.matching.Bind")
+  @threadUnsafe lazy val TastyReflectionClass: ClassSymbol = ctx.requiredClass("scala.tasty.TastyReflection")
 
-  @threadUnsafe lazy val QuotedMatchingBindingClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.quoted.matching.Bind"))
-  @threadUnsafe lazy val TastyReflectionClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.tasty.Reflection"))
+  @threadUnsafe lazy val Unpickler_unpickleExpr: Symbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
+  @threadUnsafe lazy val Unpickler_unpickleType: Symbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
 
-  @threadUnsafe lazy val Unpickler_unpickleExpr: SymbolPerRun = perRunSym(ctx.requiredMethodRef("scala.runtime.quoted.Unpickler.unpickleExpr"))
-  @threadUnsafe lazy val Unpickler_unpickleType: SymbolPerRun = perRunSym(ctx.requiredMethodRef("scala.runtime.quoted.Unpickler.unpickleType"))
-
-  @threadUnsafe lazy val EqlClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.Eql"))
+  @threadUnsafe lazy val EqlClass: ClassSymbol = ctx.requiredClass("scala.Eql")
     def Eql_eqlAny(implicit ctx: Context): TermSymbol = EqlClass.companionModule.requiredMethod(nme.eqlAny)
 
-  @threadUnsafe lazy val TypeBoxClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.internal.TypeBox"))
+  @threadUnsafe lazy val TypeBoxClass: ClassSymbol = ctx.requiredClass("scala.internal.TypeBox")
     @threadUnsafe lazy val TypeBox_CAP: TypeSymbol = TypeBoxClass.requiredType(tpnme.CAP)
 
-  @threadUnsafe lazy val MatchCaseClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.internal.MatchCase"))
-  @threadUnsafe lazy val NotClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.implicits.Not"))
-    @threadUnsafe lazy val Not_value: SymbolPerRun = perRunSym(NotClass.companionModule.requiredMethodRef(nme.value))
+  @threadUnsafe lazy val MatchCaseClass: ClassSymbol = ctx.requiredClass("scala.internal.MatchCase")
+  @threadUnsafe lazy val NotClass: ClassSymbol = ctx.requiredClass("scala.implicits.Not")
+    @threadUnsafe lazy val Not_value: Symbol = NotClass.companionModule.requiredMethod(nme.value)
 
-  @threadUnsafe lazy val ValueOfClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.ValueOf"))
-  @threadUnsafe lazy val StatsModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("dotty.tools.dotc.util.Stats"))
-    @threadUnsafe lazy val  Stats_doRecord: SymbolPerRun = perRunSym(StatsModule.requiredMethodRef("doRecord"))
+  @threadUnsafe lazy val ValueOfClass: ClassSymbol = ctx.requiredClass("scala.ValueOf")
+  @threadUnsafe lazy val StatsModule: Symbol = ctx.requiredModule("dotty.tools.dotc.util.Stats")
+    @threadUnsafe lazy val  Stats_doRecord: Symbol = StatsModule.requiredMethod("doRecord")
 
-  @threadUnsafe lazy val XMLTopScopeModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.xml.TopScope"))
+  @threadUnsafe lazy val XMLTopScopeModule: Symbol = ctx.requiredModule("scala.xml.TopScope")
 
   @threadUnsafe lazy val TupleTypeRef: TypeRef = ctx.requiredClassRef("scala.Tuple")
   def TupleClass(implicit ctx: Context): ClassSymbol = TupleTypeRef.symbol.asClass
-    @threadUnsafe lazy val Tuple_cons: SymbolPerRun = perRunSym(TupleClass.requiredMethodRef("*:"))
+    @threadUnsafe lazy val Tuple_cons: Symbol = TupleClass.requiredMethod("*:")
   @threadUnsafe lazy val NonEmptyTupleTypeRef: TypeRef = ctx.requiredClassRef("scala.NonEmptyTuple")
   def NonEmptyTupleClass(implicit ctx: Context): ClassSymbol = NonEmptyTupleTypeRef.symbol.asClass
-    lazy val NonEmptyTuple_tail: SymbolPerRun = perRunSym(NonEmptyTupleClass.requiredMethodRef("tail"))
+    lazy val NonEmptyTuple_tail: Symbol = NonEmptyTupleClass.requiredMethod("tail")
 
-  @threadUnsafe lazy val PairClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.*:"))
-  @threadUnsafe lazy val TupleXXLClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.TupleXXL"))
+  @threadUnsafe lazy val PairClass: ClassSymbol = ctx.requiredClass("scala.*:")
+  @threadUnsafe lazy val TupleXXLClass: ClassSymbol = ctx.requiredClass("scala.TupleXXL")
   def TupleXXLModule(implicit ctx: Context): Symbol = TupleXXLClass.companionModule
 
     def TupleXXL_apply(implicit ctx: Context): Symbol =
@@ -734,54 +723,54 @@ class Definitions {
   def InternalTupleFunctionModule(implicit ctx: Context): Symbol = ctx.requiredModule("scala.internal.TupledFunction")
 
   // Annotation base classes
-  @threadUnsafe lazy val AnnotationClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.Annotation"))
-  @threadUnsafe lazy val ClassfileAnnotationClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.ClassfileAnnotation"))
-  @threadUnsafe lazy val StaticAnnotationClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.StaticAnnotation"))
-  @threadUnsafe lazy val RefiningAnnotationClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.RefiningAnnotation"))
+  @threadUnsafe lazy val AnnotationClass: ClassSymbol = ctx.requiredClass("scala.annotation.Annotation")
+  @threadUnsafe lazy val ClassfileAnnotationClass: ClassSymbol = ctx.requiredClass("scala.annotation.ClassfileAnnotation")
+  @threadUnsafe lazy val StaticAnnotationClass: ClassSymbol = ctx.requiredClass("scala.annotation.StaticAnnotation")
+  @threadUnsafe lazy val RefiningAnnotationClass: ClassSymbol = ctx.requiredClass("scala.annotation.RefiningAnnotation")
 
   // Annotation classes
-  @threadUnsafe lazy val AliasAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.Alias"))
-  @threadUnsafe lazy val AnnotationDefaultAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.AnnotationDefault"))
-  @threadUnsafe lazy val BodyAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.Body"))
-  @threadUnsafe lazy val ChildAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.Child"))
-  @threadUnsafe lazy val WithBoundsAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.WithBounds"))
-  @threadUnsafe lazy val CovariantBetweenAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.CovariantBetween"))
-  @threadUnsafe lazy val ContravariantBetweenAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.ContravariantBetween"))
-  @threadUnsafe lazy val DeprecatedAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.deprecated"))
-  @threadUnsafe lazy val ImplicitAmbiguousAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.implicitAmbiguous"))
-  @threadUnsafe lazy val ImplicitNotFoundAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.implicitNotFound"))
-  @threadUnsafe lazy val ForceInlineAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.forceInline"))
-  @threadUnsafe lazy val InlineParamAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.InlineParam"))
-  @threadUnsafe lazy val InvariantBetweenAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.InvariantBetween"))
-  @threadUnsafe lazy val MigrationAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.migration"))
-  @threadUnsafe lazy val NativeAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.native"))
-  @threadUnsafe lazy val RepeatedAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.Repeated"))
-  @threadUnsafe lazy val SourceFileAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.SourceFile"))
-  @threadUnsafe lazy val ScalaSignatureAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.reflect.ScalaSignature"))
-  @threadUnsafe lazy val ScalaLongSignatureAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.reflect.ScalaLongSignature"))
-  @threadUnsafe lazy val ScalaStrictFPAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.strictfp"))
-  @threadUnsafe lazy val ScalaStaticAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.static"))
-  @threadUnsafe lazy val SerialVersionUIDAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.SerialVersionUID"))
-  @threadUnsafe lazy val TASTYSignatureAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.TASTYSignature"))
-  @threadUnsafe lazy val TASTYLongSignatureAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.TASTYLongSignature"))
-  @threadUnsafe lazy val TailrecAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.tailrec"))
-  @threadUnsafe lazy val ThreadUnsafeAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.threadUnsafe"))
-  @threadUnsafe lazy val TransientParamAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.constructorOnly"))
-  @threadUnsafe lazy val CompileTimeOnlyAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.compileTimeOnly"))
-  @threadUnsafe lazy val SwitchAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.switch"))
-  @threadUnsafe lazy val ThrowsAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.throws"))
-  @threadUnsafe lazy val TransientAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.transient"))
-  @threadUnsafe lazy val UncheckedAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.unchecked"))
-  @threadUnsafe lazy val UncheckedStableAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.unchecked.uncheckedStable"))
-  @threadUnsafe lazy val UncheckedVarianceAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.unchecked.uncheckedVariance"))
-  @threadUnsafe lazy val VolatileAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.volatile"))
-  @threadUnsafe lazy val FieldMetaAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.meta.field"))
-  @threadUnsafe lazy val GetterMetaAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.meta.getter"))
-  @threadUnsafe lazy val SetterMetaAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.meta.setter"))
-  @threadUnsafe lazy val ShowAsInfixAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.showAsInfix"))
-  @threadUnsafe lazy val FunctionalInterfaceAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("java.lang.FunctionalInterface"))
-  @threadUnsafe lazy val InfixAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.infix"))
-  @threadUnsafe lazy val AlphaAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.alpha"))
+  @threadUnsafe lazy val AliasAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.Alias")
+  @threadUnsafe lazy val AnnotationDefaultAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.AnnotationDefault")
+  @threadUnsafe lazy val BodyAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.Body")
+  @threadUnsafe lazy val ChildAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.Child")
+  @threadUnsafe lazy val WithBoundsAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.WithBounds")
+  @threadUnsafe lazy val CovariantBetweenAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.CovariantBetween")
+  @threadUnsafe lazy val ContravariantBetweenAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.ContravariantBetween")
+  @threadUnsafe lazy val DeprecatedAnnot: ClassSymbol = ctx.requiredClass("scala.deprecated")
+  @threadUnsafe lazy val ImplicitAmbiguousAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.implicitAmbiguous")
+  @threadUnsafe lazy val ImplicitNotFoundAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.implicitNotFound")
+  @threadUnsafe lazy val ForceInlineAnnot: ClassSymbol = ctx.requiredClass("scala.forceInline")
+  @threadUnsafe lazy val InlineParamAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.InlineParam")
+  @threadUnsafe lazy val InvariantBetweenAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.InvariantBetween")
+  @threadUnsafe lazy val MigrationAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.migration")
+  @threadUnsafe lazy val NativeAnnot: ClassSymbol = ctx.requiredClass("scala.native")
+  @threadUnsafe lazy val RepeatedAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.Repeated")
+  @threadUnsafe lazy val SourceFileAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.SourceFile")
+  @threadUnsafe lazy val ScalaSignatureAnnot: ClassSymbol = ctx.requiredClass("scala.reflect.ScalaSignature")
+  @threadUnsafe lazy val ScalaLongSignatureAnnot: ClassSymbol = ctx.requiredClass("scala.reflect.ScalaLongSignature")
+  @threadUnsafe lazy val ScalaStrictFPAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.strictfp")
+  @threadUnsafe lazy val ScalaStaticAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.static")
+  @threadUnsafe lazy val SerialVersionUIDAnnot: ClassSymbol = ctx.requiredClass("scala.SerialVersionUID")
+  @threadUnsafe lazy val TASTYSignatureAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.TASTYSignature")
+  @threadUnsafe lazy val TASTYLongSignatureAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.TASTYLongSignature")
+  @threadUnsafe lazy val TailrecAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.tailrec")
+  @threadUnsafe lazy val ThreadUnsafeAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.threadUnsafe")
+  @threadUnsafe lazy val TransientParamAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.constructorOnly")
+  @threadUnsafe lazy val CompileTimeOnlyAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.compileTimeOnly")
+  @threadUnsafe lazy val SwitchAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.switch")
+  @threadUnsafe lazy val ThrowsAnnot: ClassSymbol = ctx.requiredClass("scala.throws")
+  @threadUnsafe lazy val TransientAnnot: ClassSymbol = ctx.requiredClass("scala.transient")
+  @threadUnsafe lazy val UncheckedAnnot: ClassSymbol = ctx.requiredClass("scala.unchecked")
+  @threadUnsafe lazy val UncheckedStableAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.unchecked.uncheckedStable")
+  @threadUnsafe lazy val UncheckedVarianceAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.unchecked.uncheckedVariance")
+  @threadUnsafe lazy val VolatileAnnot: ClassSymbol = ctx.requiredClass("scala.volatile")
+  @threadUnsafe lazy val FieldMetaAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.meta.field")
+  @threadUnsafe lazy val GetterMetaAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.meta.getter")
+  @threadUnsafe lazy val SetterMetaAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.meta.setter")
+  @threadUnsafe lazy val ShowAsInfixAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.showAsInfix")
+  @threadUnsafe lazy val FunctionalInterfaceAnnot: ClassSymbol = ctx.requiredClass("java.lang.FunctionalInterface")
+  @threadUnsafe lazy val InfixAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.infix")
+  @threadUnsafe lazy val AlphaAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.alpha")
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
@@ -924,7 +913,7 @@ class Definitions {
     else
       ctx.requiredClass("scala.Function" + n.toString)
 
-    @threadUnsafe lazy val Function0_apply: SymbolPerRun = perRunSym(ImplementedFunctionType(0).symbol.requiredMethodRef(nme.apply))
+    @threadUnsafe lazy val Function0_apply: Symbol = ImplementedFunctionType(0).symbol.requiredMethod(nme.apply)
 
   def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): TypeRef =
     if (n <= MaxImplementedFunctionArity && (!isContextual || ctx.erasedTypes) && !isErased) ImplementedFunctionType(n)
