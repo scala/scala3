@@ -374,7 +374,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           // cannot use WildcardType for Array[_], due to that
           //   Array[WildcardType] <: Array[Array[WildcardType]]
           // see tests/patmat/t2425.scala
-          TypeErasure.erasure(tp)
+          tp
         case tref: TypeRef if isPatternTypeSymbol(tref.typeSymbol) =>
           WildcardType(tref.underlying.bounds)
         case _ => mapOver(tp)
