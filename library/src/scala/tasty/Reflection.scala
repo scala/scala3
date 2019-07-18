@@ -40,9 +40,4 @@ class Reflection(val kernel: Kernel)
     def typeChecks(code: String)(implicit ctx: Context): Boolean = kernel.typeChecks(code)(ctx)
   }
 
-  // TODO integrate with TreeUtils
-  val util: reflect.utils.TreeUtils { val reflect: self.type } = new reflect.utils.TreeUtils {
-    val reflect: self.type = self
-  }
-
 }

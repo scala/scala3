@@ -10,7 +10,7 @@ object Macros {
 
     val rhsTerm = rhs.unseal
 
-    import qctx.tasty.util.{let => letTerm}
+    import qctx.tasty.{let => letTerm}
     letTerm(rhsTerm) { rhsId =>
       body(rhsId.seal.asInstanceOf[Expr[T]]).unseal // Dangerous uncheked cast!
     }.seal.cast[Unit]
