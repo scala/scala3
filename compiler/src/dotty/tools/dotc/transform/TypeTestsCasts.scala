@@ -312,7 +312,10 @@ object TypeTestsCasts {
     }
     val expr = tree.fun match {
       case Select(expr, _) => expr
-      case i: Ident => desugarIdentPrefix(i)
+      case i: Ident =>
+        val expr = desugarIdentPrefix(i)
+        if (expr.isEmpty) expr
+        else expr.withSpan(i.span)
       case _ => EmptyTree
     }
     interceptWith(expr)
