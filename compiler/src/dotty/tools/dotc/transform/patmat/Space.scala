@@ -322,7 +322,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case Ident(nme.WILDCARD) =>
       Or(Typ(pat.tpe.stripAnnots, false) :: nullSpace :: Nil)
     case Ident(_) | Select(_, _) =>
-      Typ(pat.tpe.stripAnnots, false)
+      Typ(erase(pat.tpe.stripAnnots), false)
     case Alternative(trees) => Or(trees.map(project(_)))
     case Bind(_, pat) => project(pat)
     case SeqLiteral(pats, _) => projectSeq(pats)
@@ -338,8 +338,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
             Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)),isIrrefutableUnapply(fun))
         }
       else
-        Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.map(project), isIrrefutableUnapply(fun))
-    case Typed(pat @ UnApply(_, _, _), _) => project(pat)
+        Prod(erase(pat.tpe.stripAnnots), erase(fun.tpe), fun.symbol, pats.map(project), isIrrefutableUnapply(fun))
+    case Typed(pat: UnApply, _) =>
+      project(pat)
     case Typed(expr, tpt) =>
       Typ(erase(expr.tpe.stripAnnots), true)
     case This(_) =>
@@ -347,7 +348,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala
       Typ(WildcardType, false)
     case _ =>
-      debug.println(s"unknown pattern: $pat")
+      ctx.error(s"unknown pattern: $pat", pat.sourcePos)
       Empty
   }
 
@@ -364,13 +365,18 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   /* Erase pattern bound types with WildcardType */
-  def erase(tp: Type): Type = {
+  def erase(tp: Type): Type = trace(i"$tp erased to", debug) {
     def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
 
     val map = new TypeMap {
       def apply(tp: Type) = tp match {
+        case tp @ AppliedType(tycon, args) if (tycon.isRef(defn.ArrayClass)) =>
+          // cannot use WildcardType for Array[_], due to that
+          //   Array[WildcardType] <: Array[Array[WildcardType]]
+          // see tests/patmat/t2425.scala
+          TypeErasure.erasure(tp)
         case tref: TypeRef if isPatternTypeSymbol(tref.typeSymbol) =>
-          tref.underlying.bounds
+          WildcardType(tref.underlying.bounds)
         case _ => mapOver(tp)
       }
     }
