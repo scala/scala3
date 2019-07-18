@@ -15,7 +15,7 @@ import StdNames._
 import transform.SymUtils._
 import Contexts.Context
 import Names.{Name, TermName}
-import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName}
+import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName, MemoCacheName}
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
 import Inferencing.fullyDefinedType
@@ -187,6 +187,19 @@ object Inliner {
     assert(ctx.source == pos.source)
     if (callSym.is(Macro)) ref(callSym.topLevelClass.owner).select(callSym.topLevelClass.name).withSpan(pos.span)
     else Ident(callSym.topLevelClass.typeRef).withSpan(pos.span)
+  }
+
+  /** For every occurrence of a memo cache symbol `memo$N` of type `T_N` in `tree`,
+   *  an assignment `val memo$N: T_N = null`
+   */
+  def memoCacheDefs(tree: Tree) given Context: Set[ValDef] = {
+    val memoCacheSyms = tree.deepFold[Set[TermSymbol]](Set.empty) {
+      (syms, t) => t match {
+        case Assign(lhs, _) if lhs.symbol.name.is(MemoCacheName) => syms + lhs.symbol.asTerm
+        case _ => syms
+      }
+    }
+    memoCacheSyms.map(ValDef(_, Literal(Constant(null))))
   }
 }
 
@@ -392,6 +405,36 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       case _ => EmptyTree
     }
 
+  /** The expansion of `memo(op)` where `op: T` is:
+   *
+   *    { if (memo$N == null) memo$N = op; $memo.asInstanceOf[T] }
+   *
+   *  This creates as a side effect a memo cache symbol $memo$N` of type `T | Null`.
+   *  TODO: Restrict this to non-null types, once nullability checking is in.
+   */
+  def memoized: Tree = {
+    val currentOwner = ctx.owner.skipWeakOwner
+    if (currentOwner.isRealMethod) {
+      val cacheOwner = ctx.owner.effectiveOwner
+      val argType = callTypeArgs.head.tpe
+      val memoVar = ctx.newSymbol(
+        owner = cacheOwner,
+        name = MemoCacheName.fresh(),
+        flags =
+          if (cacheOwner.isTerm) Synthetic | Mutable
+          else Synthetic | Mutable | Private | Local,
+        info = OrType(argType, defn.NullType),
+        coord = call.span)
+      val cond = If(
+        ref(memoVar).select(defn.Any_==).appliedTo(Literal(Constant(null))),
+        ref(memoVar).becomes(callValueArgss.head.head),
+        Literal(Constant(())))
+      val expr = ref(memoVar).cast(argType)
+      Block(cond :: Nil, expr)
+    }
+    else errorTree(call, em"""memo(...) outside method""")
+  }
+
   /** The Inlined node representing the inlined call */
   def inlined(sourcePos: SourcePosition): Tree = {
 
@@ -408,6 +451,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), constVal :: Nil)
         )
       }
+      else if (inlinedMethod == defn.Compiletime_memo)
+        return memoized
 
     // Compute bindings for all parameters, appending them to bindingsBuf
     computeParamBindings(inlinedMethod.info, callTypeArgs, callValueArgss)

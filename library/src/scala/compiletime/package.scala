@@ -38,4 +38,6 @@ package object compiletime {
   inline def constValue[T]: T = ???
 
   type S[X <: Int] <: Int
+
+  inline def memo[T](op: => T): T = ???
 }
