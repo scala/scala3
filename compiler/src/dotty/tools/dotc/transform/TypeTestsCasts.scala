@@ -156,10 +156,8 @@ object TypeTestsCasts {
   }
 
   def interceptTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = trace(s"transforming ${tree.show}", show = true) {
-    /** Intercept `expr.xyz[XYZ]` */
-    def interceptWith(expr: Tree): Tree = {
-      if (expr.isEmpty) tree
-      else {
+    tree.fun match {
+      case fun @ Select(expr, selector) =>
         val sym = tree.symbol
 
         def isPrimitive(tp: Type) = tp.classSymbol.isPrimitiveValueClass
@@ -174,7 +172,7 @@ object TypeTestsCasts {
         def foundCls = effectiveClass(expr.tpe.widen)
 
         def inMatch =
-          tree.fun.symbol == defn.Any_typeTest ||  // new scheme
+          fun.symbol == defn.Any_typeTest ||  // new scheme
           expr.symbol.is(Case)                // old scheme
 
         def transformIsInstanceOf(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = {
@@ -308,13 +306,9 @@ object TypeTestsCasts {
         else if (sym.isTypeCast)
           transformAsInstanceOf(erasure(tree.args.head.tpe))
         else tree
-      }
+
+      case _ =>
+        tree
     }
-    val expr = tree.fun match {
-      case Select(expr, _) => expr
-      case i: Ident => desugarIdentPrefix(i)
-      case _ => EmptyTree
-    }
-    interceptWith(expr)
   }
 }
