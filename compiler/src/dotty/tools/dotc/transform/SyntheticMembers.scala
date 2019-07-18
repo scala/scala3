@@ -312,7 +312,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
       List(
         DefDef(writeReplace,
-          _ => New(defn.ModuleSerializationProxyType,
+          _ => New(defn.ModuleSerializationProxyClass.typeRef,
                    defn.ModuleSerializationProxyConstructor,
                    List(Literal(Constant(clazz.sourceModule.termRef)))))
           .withSpan(ctx.owner.span.focus))
@@ -436,14 +436,14 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       }
     }
     def makeSingletonMirror() =
-      addParent(defn.Mirror_SingletonType)
+      addParent(defn.Mirror_SingletonClass.typeRef)
     def makeProductMirror(cls: Symbol) = {
-      addParent(defn.Mirror_ProductType)
-      addMethod(nme.fromProduct, MethodType(defn.ProductType :: Nil, monoType.typeRef), cls,
+      addParent(defn.Mirror_ProductClass.typeRef)
+      addMethod(nme.fromProduct, MethodType(defn.ProductClass.typeRef :: Nil, monoType.typeRef), cls,
         fromProductBody(_, _)(_).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
     }
     def makeSumMirror(cls: Symbol) = {
-      addParent(defn.Mirror_SumType)
+      addParent(defn.Mirror_SumClass.typeRef)
       addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType), cls,
         ordinalBody(_, _)(_))
     }

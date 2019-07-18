@@ -139,7 +139,7 @@ trait Dynamic { self: Typer with Applications =>
     val (fun @ Select(qual, name), targs, vargss) = decomposeCall(tree)
 
     def structuralCall(selectorName: TermName, ctags: List[Tree]) = {
-      val selectable = adapt(qual, defn.SelectableType)
+      val selectable = adapt(qual, defn.SelectableClass.typeRef)
 
       // ($qual: Selectable).$selectorName("$name", ..$ctags)
       val base =
@@ -175,7 +175,7 @@ trait Dynamic { self: Typer with Applications =>
           fail(name, i"has a method type with inter-parameter dependencies")
         else {
           val ctags = tpe.paramInfoss.flatten.map(pt =>
-            implicitArgTree(defn.ClassTagType.appliedTo(pt.widenDealias :: Nil), fun.span.endPos))
+            implicitArgTree(defn.ClassTagClass.typeRef.appliedTo(pt.widenDealias :: Nil), fun.span.endPos))
           structuralCall(nme.applyDynamic, ctags).cast(tpe.finalResultType)
         }
 

@@ -1200,7 +1200,7 @@ class Namer { typer: Typer =>
     typedAhead(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrTypeBits))
 
   def typedAheadAnnotation(tree: Tree)(implicit ctx: Context): tpd.Tree =
-    typedAheadExpr(tree, defn.AnnotationType)
+    typedAheadExpr(tree, defn.AnnotationClass.typeRef)
 
   def typedAheadAnnotationClass(tree: Tree)(implicit ctx: Context): Symbol = tree match {
     case Apply(fn, _) => typedAheadAnnotationClass(fn)

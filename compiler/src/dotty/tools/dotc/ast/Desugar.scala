@@ -641,7 +641,7 @@ object desugar {
     else if (isObject)
       parents1 = parents1 :+ scalaDot(nme.Serializable.toTypeName)
     if (isEnum)
-      parents1 = parents1 :+ ref(defn.EnumType)
+      parents1 = parents1 :+ ref(defn.EnumClass.typeRef)
 
     // derived type classes of non-module classes go to their companions
     val (clsDerived, companionDerived) =
@@ -984,7 +984,7 @@ object desugar {
   def makeSelector(sel: Tree, checkMode: MatchCheck)(implicit ctx: Context): Tree =
     if (checkMode == MatchCheck.Exhaustive) sel
     else {
-      val sel1 = Annotated(sel, New(ref(defn.UncheckedAnnotType)))
+      val sel1 = Annotated(sel, New(ref(defn.UncheckedAnnot.typeRef)))
       if (checkMode != MatchCheck.None) sel1.pushAttachment(CheckIrrefutable, checkMode)
       sel1
     }
@@ -1560,7 +1560,7 @@ object desugar {
           val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType
           Annotated(
             AppliedTypeTree(ref(seqType), t),
-            New(ref(defn.RepeatedAnnotType), Nil :: Nil))
+            New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
         } else {
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)

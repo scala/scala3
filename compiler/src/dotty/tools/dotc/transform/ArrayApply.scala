@@ -23,7 +23,7 @@ class ArrayApply extends MiniPhase {
   override def phaseName: String = "arrayApply"
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
-    if (tree.symbol.name == nme.apply && tree.symbol.owner == defn.ArrayModule) { // Is `Array.apply`
+    if (tree.symbol.name == nme.apply && tree.symbol.owner == defn.ArrayModule.moduleClass) { // Is `Array.apply`
       tree.args match {
         case StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: ct :: Nil
             if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) && elideClassTag(ct) =>

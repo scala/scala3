@@ -108,7 +108,9 @@ class ExpandSAMs extends MiniPhase {
       case PartialFunctionRHS(pf) =>
         val anonSym = anon.symbol
         val anonTpe = anon.tpe.widen
-        val parents = List(defn.AbstractPartialFunctionType.appliedTo(anonTpe.firstParamTypes.head, anonTpe.resultType), defn.SerializableType)
+        val parents = List(
+          defn.AbstractPartialFunctionClass.typeRef.appliedTo(anonTpe.firstParamTypes.head, anonTpe.resultType),
+          defn.SerializableType)
         val pfSym = ctx.newNormalizedClassSymbol(anonSym.owner, tpnme.ANON_CLASS, Synthetic | Final, parents, coord = tree.span)
 
         def overrideSym(sym: Symbol) = sym.copy(
@@ -128,7 +130,7 @@ class ExpandSAMs extends MiniPhase {
               Bind(defaultSym, Underscore(selectorTpe)),
               EmptyTree,
               defaultValue)
-          val unchecked = selector.annotated(New(ref(defn.UncheckedAnnotType)))
+          val unchecked = selector.annotated(New(ref(defn.UncheckedAnnot.typeRef)))
           cpy.Match(tree)(unchecked, cases :+ defaultCase)
             .subst(param.symbol :: Nil, pfParam :: Nil)
               // Needed because  a partial function can be written as:

@@ -899,7 +899,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     // array elements are trees representing instances of scala.annotation.Annotation
     SeqLiteral(
       until(end, () => readClassfileAnnotArg(readNat())),
-      TypeTree(defn.AnnotationType))
+      TypeTree(defn.AnnotationClass.typeRef))
   }
 
   private def readAnnotInfoArg()(implicit ctx: Context): Tree = {

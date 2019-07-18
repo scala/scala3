@@ -409,7 +409,7 @@ class Typer extends Namer
       else if (name == nme._scope) {
         // gross hack to support current xml literals.
         // awaiting a better implicits based solution for library-supported xml
-        return ref(defn.XMLTopScopeModuleRef)
+        return ref(defn.XMLTopScopeModule.termRef)
       }
       else if (name.toTermName == nme.ERROR)
         UnspecifiedErrorType
@@ -625,7 +625,7 @@ class Typer extends Namer
   def tryWithClassTag(tree: Typed, pt: Type)(implicit ctx: Context): Tree = tree.tpt.tpe.dealias match {
     case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper =>
       require(ctx.mode.is(Mode.Pattern))
-      inferImplicit(defn.ClassTagType.appliedTo(tref),
+      inferImplicit(defn.ClassTagClass.typeRef.appliedTo(tref),
                     EmptyTree, tree.tpt.span)(ctx.retractMode(Mode.Pattern)) match {
         case SearchSuccess(clsTag, _, _) =>
           typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt)
@@ -1462,7 +1462,7 @@ class Typer extends Namer
   }
 
   def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree = track("typedAnnotation") {
-    typed(annot, defn.AnnotationType)
+    typed(annot, defn.AnnotationClass.typeRef)
   }
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedValDef") {
@@ -1800,7 +1800,7 @@ class Typer extends Namer
   }
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = track("typedAnnotated") {
-    val annot1 = typedExpr(tree.annot, defn.AnnotationType)
+    val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
       val result = assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
@@ -1929,13 +1929,13 @@ class Typer extends Namer
       val elems = (tree.trees, pts).zipped.map(typed(_, _))
       if (ctx.mode.is(Mode.Type))
         (elems :\ (TypeTree(defn.UnitType): Tree))((elemTpt, elemTpts) =>
-          AppliedTypeTree(TypeTree(defn.PairType), List(elemTpt, elemTpts)))
+          AppliedTypeTree(TypeTree(defn.PairClass.typeRef), List(elemTpt, elemTpts)))
           .withSpan(tree.span)
       else {
         val tupleXXLobj = untpd.ref(defn.TupleXXLModule.termRef)
         val app = untpd.cpy.Apply(tree)(tupleXXLobj, elems.map(untpd.TypedSplice(_)))
           .withSpan(tree.span)
-        val app1 = typed(app, defn.TupleXXLType)
+        val app1 = typed(app, defn.TupleXXLClass.typeRef)
         if (ctx.mode.is(Mode.Pattern)) app1
         else {
           val elemTpes = (elems, pts).zipped.map((elem, pt) =>
@@ -2687,7 +2687,7 @@ class Typer extends Namer
           readaptSimplified(Inliner.inlineCall(newCall))
         } else if (ctx.settings.XignoreScala2Macros.value) {
           ctx.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See http://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.sourcePos.startPos)
-          Throw(New(defn.MatchErrorType, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil))
+          Throw(New(defn.MatchErrorClass.typeRef, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil))
             .withType(tree.tpe)
             .withSpan(tree.span)
         } else {
@@ -2809,7 +2809,7 @@ class Typer extends Namer
             val args1 = args.zipWithConserve(boundss) { (arg, bounds) =>
               arg match {
                 case TypeBounds(lo, hi) =>
-                  val skolem = SkolemType(defn.TypeBoxType.appliedTo(lo | bounds.loBound, hi & bounds.hiBound))
+                  val skolem = SkolemType(defn.TypeBoxClass.typeRef.appliedTo(lo | bounds.loBound, hi & bounds.hiBound))
                   TypeRef(skolem, defn.TypeBox_CAP)
                 case arg => arg
               }

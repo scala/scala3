@@ -84,7 +84,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           // val it = this.asInstanceOf[Product].productIterator
           // it.next()
           // TupleN-1(it.next(), ..., it.next())
-          evalOnce(tup.asInstance(defn.ProductType).select(nme.productIterator)) { it =>
+          evalOnce(tup.asInstance(defn.ProductClass.typeRef).select(nme.productIterator)) { it =>
             Block(
               it.select(nme.next).ensureApplied :: Nil,
               knownTupleFromIterator(size - 1, it).asInstance(tree.tpe)
@@ -92,7 +92,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           }
         } else {
           // tup.asInstanceOf[TupleXXL].tailXXL
-          tup.asInstance(defn.TupleXXLType).select("tailXXL".toTermName)
+          tup.asInstance(defn.TupleXXLClass.typeRef).select("tailXXL".toTermName)
         }
       case None =>
         // No optimization, keep:
@@ -159,7 +159,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           Typed(tup, TypeTree(defn.tupleType(tpes))).select(nme.selectorName(n))
         } else {
           // tup.asInstanceOf[TupleXXL].productElement(n)
-          tup.asInstance(defn.TupleXXLType).select(nme.productElement).appliedTo(Literal(nTpe.value))
+          tup.asInstance(defn.TupleXXLClass.typeRef).select(nme.productElement).appliedTo(Literal(nTpe.value))
         }
       case (None, nTpe: ConstantType) if nTpe.value.intValue < 0 =>
         ctx.error("index out of bounds: " + nTpe.value.intValue, nTree.sourcePos)
@@ -178,13 +178,13 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         val size = tpes.size
         if (size == 0) {
           // Array.emptyObjectArray
-          ref(defn.ArrayModule.companionModule).select("emptyObjectArray".toTermName).ensureApplied
+          ref(defn.ArrayModule).select("emptyObjectArray".toTermName).ensureApplied
         } else if (size <= MaxTupleArity) {
           // DynamicTuple.productToArray(tup.asInstanceOf[Product])
-          ref(defn.DynamicTuple_productToArray).appliedTo(tup.asInstance(defn.ProductType))
+          ref(defn.DynamicTuple_productToArray).appliedTo(tup.asInstance(defn.ProductClass.typeRef))
         } else {
           // tup.asInstanceOf[TupleXXL].elems.clone()
-          tup.asInstance(defn.TupleXXLType).select(nme.toArray)
+          tup.asInstance(defn.TupleXXLClass.typeRef).select(nme.toArray)
         }
       case None =>
         // No optimization, keep:

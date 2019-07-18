@@ -207,9 +207,9 @@ class ReifyQuotes extends MacroTransform {
         ref(defn.LiftableModule).select(name).select("toExpr".toTermName).appliedTo(Literal(Constant(value))).appliedTo(qctx)
 
       def pickleAsValue[T](value: T) = {
-        val qctx = ctx.typer.inferImplicitArg(defn.QuoteContextType, body.span)
+        val qctx = ctx.typer.inferImplicitArg(defn.QuoteContextClass.typeRef, body.span)
         if (qctx.tpe.isInstanceOf[SearchFailureType])
-          ctx.error(ctx.typer.missingArgMsg(qctx, defn.QuoteContextType, ""), ctx.source.atSpan(body.span))
+          ctx.error(ctx.typer.missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(body.span))
         value match {
           case null => ref(defn.QuotedExprModule).select("nullExpr".toTermName).appliedTo(qctx)
           case _: Unit => ref(defn.QuotedExprModule).select("unitExpr".toTermName).appliedTo(qctx)
@@ -229,9 +229,10 @@ class ReifyQuotes extends MacroTransform {
         val meth =
           if (isType) ref(defn.Unpickler_unpickleType).appliedToType(originalTp)
           else ref(defn.Unpickler_unpickleExpr).appliedToType(originalTp.widen)
+        def wildcardQuotedType = defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
         val spliceResType =
-          if(isType) defn.QuotedTypeType.appliedTo(WildcardType)
-          else defn.QuotedExprType.appliedTo(defn.AnyType) | defn.QuotedTypeType.appliedTo(WildcardType)
+          if (isType) wildcardQuotedType
+          else defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType) | wildcardQuotedType
         meth.appliedTo(
           liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType),
           liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), spliceResType)))
@@ -313,8 +314,8 @@ class ReifyQuotes extends MacroTransform {
                 }
                 assert(tpw.isInstanceOf[ValueType])
                 val argTpe =
-                  if (tree.isType) defn.QuotedTypeType.appliedTo(tpw)
-                  else defn.QuotedExprType.appliedTo(tpw)
+                  if (tree.isType) defn.QuotedTypeClass.typeRef.appliedTo(tpw)
+                  else defn.QuotedExprClass.typeRef.appliedTo(tpw)
                 val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).cast(argTpe)
                 val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)
                 i += 1

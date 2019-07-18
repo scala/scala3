@@ -98,7 +98,7 @@ object DesugarEnums {
         .withFlags(Synthetic)
     val privateValuesDef =
       ValDef(nme.DOLLAR_VALUES, TypeTree(),
-        New(TypeTree(defn.EnumValuesType.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
+        New(TypeTree(defn.EnumValuesClass.typeRef.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
         .withFlags(Private)
 
     val valuesOfExnMessage = Apply(

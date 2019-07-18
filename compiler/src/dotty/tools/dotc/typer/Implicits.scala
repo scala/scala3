@@ -688,7 +688,7 @@ trait Implicits { self: Typer =>
       case arg :: Nil =>
         fullyDefinedType(arg, "ClassTag argument", span) match {
           case defn.ArrayOf(elemTp) =>
-            val etag = inferImplicitArg(defn.ClassTagType.appliedTo(elemTp), span)
+            val etag = inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
             if (etag.tpe.isError) EmptyTree else etag.select(nme.wrap)
           case tp if hasStableErasure(tp) && !defn.isBottomClass(tp.typeSymbol) =>
             val sym = tp.typeSymbol
@@ -784,7 +784,7 @@ trait Implicits { self: Typer =>
 
       /** Is there an `Eql[T, T]` instance, assuming -strictEquality? */
       def hasEq(tp: Type)(implicit ctx: Context): Boolean = {
-        val inst = inferImplicitArg(defn.EqlType.appliedTo(tp, tp), span)
+        val inst = inferImplicitArg(defn.EqlClass.typeRef.appliedTo(tp, tp), span)
         !inst.isEmpty && !inst.tpe.isError
       }
 
@@ -887,8 +887,8 @@ trait Implicits { self: Typer =>
    *       MirroredTypeConstrictor = <tycon>
    *       MirroredLabel = <label> }
    */
-  private def mirrorCore(parent: Type, monoType: Type, mirroredType: Type, label: Name)(implicit ctx: Context) = {
-    parent
+  private def mirrorCore(parentClass: ClassSymbol, monoType: Type, mirroredType: Type, label: Name)(implicit ctx: Context) = {
+    parentClass.typeRef
       .refinedWith(tpnme.MirroredMonoType, TypeAlias(monoType))
       .refinedWith(tpnme.MirroredType, TypeAlias(mirroredType))
       .refinedWith(tpnme.MirroredLabel, TypeAlias(ConstantType(Constant(label.toString))))
@@ -916,12 +916,12 @@ trait Implicits { self: Typer =>
               val module = mirroredType.termSymbol
               val modulePath = pathFor(mirroredType).withSpan(span)
               if (module.info.classSymbol.is(Scala2x)) {
-                val mirrorType = mirrorCore(defn.Mirror_SingletonProxyType, mirroredType, mirroredType, module.name)
-                val mirrorRef = New(defn.Mirror_SingletonProxyType, modulePath :: Nil)
+                val mirrorType = mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, module.name)
+                val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, modulePath :: Nil)
                 mirrorRef.cast(mirrorType)
               }
               else {
-                val mirrorType = mirrorCore(defn.Mirror_SingletonType, mirroredType, mirroredType, module.name)
+                val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, module.name)
                 modulePath.cast(mirrorType)
               }
             }
@@ -943,7 +943,7 @@ trait Implicits { self: Typer =>
                   (mirroredType, elems)
               }
               val mirrorType =
-                mirrorCore(defn.Mirror_ProductType, monoType, mirroredType, cls.name)
+                mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name)
                   .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
                   .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
               val mirrorRef =
@@ -1024,7 +1024,7 @@ trait Implicits { self: Typer =>
             }
 
             val mirrorType =
-               mirrorCore(defn.Mirror_SumType, monoType, mirroredType, cls.name)
+               mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name)
                 .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
                 .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
             val mirrorRef =
@@ -1263,7 +1263,7 @@ trait Implicits { self: Typer =>
   /** Check that equality tests between types `ltp` and `rtp` make sense */
   def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit =
     if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
-      val res = implicitArgTree(defn.EqlType.appliedTo(ltp, rtp), span)
+      val res = implicitArgTree(defn.EqlClass.typeRef.appliedTo(ltp, rtp), span)
       implicits.println(i"Eql witness found for $ltp / $rtp: $res: ${res.tpe}")
     }
 

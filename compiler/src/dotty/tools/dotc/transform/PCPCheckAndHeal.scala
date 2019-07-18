@@ -187,7 +187,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           assert(ctx.inInlineMethod)
           None
         } else {
-          val reqType = defn.QuotedTypeType.appliedTo(tp)
+          val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
           val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
           tag.tpe match {
             case _: TermRef =>

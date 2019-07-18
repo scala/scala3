@@ -163,7 +163,7 @@ object Annotations {
       def later(delayedSym: given Context => Symbol, span: Span)(implicit ctx: Context): Annotation = {
         def makeChildLater(implicit ctx: Context) = {
           val sym = delayedSym
-          New(defn.ChildAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
+          New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
             .withSpan(span)
         }
         deferred(defn.ChildAnnot)(makeChildLater(ctx))
@@ -202,7 +202,7 @@ object Annotations {
 
   def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context): Annotation = {
     val tref = cls.typeRef
-    Annotation(defn.ThrowsAnnotType.appliedTo(tref), Ident(tref))
+    Annotation(defn.ThrowsAnnot.typeRef.appliedTo(tref), Ident(tref))
   }
 
   /** A decorator that provides queries for specific annotations

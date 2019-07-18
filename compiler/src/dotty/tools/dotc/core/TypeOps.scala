@@ -480,7 +480,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    */
   def featureEnabled(feature: TermName, owner: Symbol = NoSymbol): Boolean = {
     def hasImport = {
-      val owner1 = if (!owner.exists) defn.LanguageModuleClass else owner
+      val owner1 = if (!owner.exists) defn.LanguageModule.moduleClass else owner
       ctx.importInfo != null &&
       ctx.importInfo.featureImported(feature, owner1)(ctx.withPhase(ctx.typerPhase))
     }
@@ -673,5 +673,5 @@ object TypeOps {
   // TODO: Move other typeops here. It's a bit weird that they are a part of `ctx`
 
   def nestedPairs(ts: List[Type])(implicit ctx: Context): Type =
-    (ts :\ (defn.UnitType: Type))(defn.PairType.appliedTo(_, _))
+    (ts :\ (defn.UnitType: Type))(defn.PairClass.typeRef.appliedTo(_, _))
 }
