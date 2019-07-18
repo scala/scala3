@@ -37,7 +37,7 @@ class Reflection(val kernel: Kernel)
     *
     *  The code should be a sequence of expressions or statements that may appear in a block.
     */
-    def typeChecks(code: String)(implicit ctx: Context): Boolean = kernel.typeChecks(code)(ctx)
+    def typeChecks(code: String)(implicit ctx: Context): Boolean = kernel.typeChecks(code)
   }
 
   // TODO integrate with TreeUtils

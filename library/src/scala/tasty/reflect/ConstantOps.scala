@@ -19,7 +19,7 @@ trait ConstantOps extends Core {
     /** Module of ClassTag literals */
     object ClassTag {
       /** scala.reflect.ClassTag literal */
-      def apply[T](implicit x: Type): Constant =
+      def apply[T] given (x: Type): Constant =
         kernel.Constant_ClassTag_apply(x)
 
       /** Extractor for ClassTag literals */
