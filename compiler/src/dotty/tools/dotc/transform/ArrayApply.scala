@@ -26,11 +26,11 @@ class ArrayApply extends MiniPhase {
     if (tree.symbol.name == nme.apply && tree.symbol.owner == defn.ArrayModule.moduleClass) { // Is `Array.apply`
       tree.args match {
         case StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: ct :: Nil
-            if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) && elideClassTag(ct) =>
+            if defn.WrapArrayMethods.contains(wrapRefArrayMeth.symbol) && elideClassTag(ct) =>
           seqLit
 
         case elem0 :: StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: Nil
-            if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) =>
+            if defn.WrapArrayMethods.contains(wrapRefArrayMeth.symbol) =>
           tpd.JavaSeqLiteral(elem0 :: seqLit.elems, seqLit.elemtpt)
 
         case _ =>

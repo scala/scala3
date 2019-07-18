@@ -822,7 +822,7 @@ trait Checking {
             checkInlineConformant(expr, isFinal, what)
           case SeqLiteral(elems, _) =>
             elems.foreach(elem => checkInlineConformant(elem, isFinal, what))
-          case Apply(fn, List(arg)) if defn.WrapArrayMethods().contains(fn.symbol) =>
+          case Apply(fn, List(arg)) if defn.WrapArrayMethods.contains(fn.symbol) =>
             checkInlineConformant(arg, isFinal, what)
           case _ =>
             def isCaseClassApply(sym: Symbol): Boolean =

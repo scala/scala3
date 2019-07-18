@@ -399,10 +399,10 @@ class Definitions {
   def getWrapVarargsArrayModule: Symbol = if (isNewCollections) ScalaRuntimeModule else ScalaPredefModule
 
   // The set of all wrap{X, Ref}Array methods, where X is a value type
-  val WrapArrayMethods: PerRun[collection.Set[Symbol]] = new PerRun({ implicit ctx =>
+  @threadUnsafe lazy val WrapArrayMethods: collection.Set[Symbol] = {
     val methodNames = ScalaValueTypes.map(ast.tpd.wrapArrayMethodName) + nme.wrapRefArray
     methodNames.map(getWrapVarargsArrayModule.requiredMethod(_))
-  })
+  }
 
   @threadUnsafe lazy val NilModule: Symbol = ctx.requiredModule("scala.collection.immutable.Nil")
 
@@ -878,11 +878,10 @@ class Definitions {
 
   // ----- Symbol sets ---------------------------------------------------
 
-  @threadUnsafe lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0)
-  val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(implicit ctx => AbstractFunctionType.map(_.symbol.asClass))
-  def AbstractFunctionClass(n: Int)(implicit ctx: Context): Symbol = AbstractFunctionClassPerRun()(ctx)(n)
-  @threadUnsafe private lazy val ImplementedFunctionType = mkArityArray("scala.Function", MaxImplementedFunctionArity, 0)
-  def FunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(implicit ctx => ImplementedFunctionType.map(_.symbol.asClass))
+  @threadUnsafe lazy val AbstractFunctionClass: Array[Symbol] =
+    mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).map(_.symbol.asClass)
+  @threadUnsafe lazy val FunctionClass: Array[Symbol] =
+    mkArityArray("scala.Function", MaxImplementedFunctionArity, 0).map(_.symbol.asClass)
 
   val LazyHolder: PerRun[Map[Symbol, Symbol]] = new PerRun({ implicit ctx =>
     def holderImpl(holderType: String) = ctx.requiredClass("scala.runtime." + holderType)
@@ -909,15 +908,15 @@ class Definitions {
     else if (isErased)
       ctx.requiredClass("scala.ErasedFunction" + n.toString)
     else if (n <= MaxImplementedFunctionArity)
-      FunctionClassPerRun()(ctx)(n)
+      FunctionClass(n)
     else
       ctx.requiredClass("scala.Function" + n.toString)
 
-    @threadUnsafe lazy val Function0_apply: Symbol = ImplementedFunctionType(0).symbol.requiredMethod(nme.apply)
+    @threadUnsafe lazy val Function0_apply: Symbol = FunctionClass(0).requiredMethod(nme.apply)
 
   def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): TypeRef =
-    if (n <= MaxImplementedFunctionArity && (!isContextual || ctx.erasedTypes) && !isErased) ImplementedFunctionType(n)
-    else FunctionClass(n, isContextual, isErased).typeRef
+    if (n <= MaxImplementedFunctionArity && (!isContextual || ctx.erasedTypes) && !isErased) FunctionClass(n).typeRef
+    else FunctionClass(n, isContextual, isErased).typeRef // !!!align with FunctionClass?
 
   lazy val PolyFunctionClass = ctx.requiredClass("scala.PolyFunction")
   def PolyFunctionType = PolyFunctionClass.typeRef
