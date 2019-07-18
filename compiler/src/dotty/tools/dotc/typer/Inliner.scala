@@ -404,7 +404,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       else if (inlinedMethod == defn.Compiletime_constValueOpt) {
         val constVal = tryConstValue
         return (
-          if (constVal.isEmpty) ref(defn.NoneModuleRef)
+          if (constVal.isEmpty) ref(defn.NoneModule.termRef)
           else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), constVal :: Nil)
         )
       }

@@ -107,7 +107,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     if (meth.hasAnnotation(defn.NativeAnnot)) {
       meth.resetFlag(Deferred)
       polyDefDef(meth,
-        _ => _ => ref(defn.Sys_errorR).withSpan(ddef.span)
+        _ => _ => ref(defn.Sys_error.termRef).withSpan(ddef.span)
           .appliedTo(Literal(Constant(s"native method stub"))))
 
     }

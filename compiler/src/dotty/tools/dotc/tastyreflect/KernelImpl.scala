@@ -1820,7 +1820,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Definitions_RepeatedParamClass: ClassDefSymbol = defn.RepeatedParamClass
 
   def Definitions_OptionClass: Symbol = defn.OptionClass
-  def Definitions_NoneModule: Symbol = defn.NoneClass.companionModule.asTerm
+  def Definitions_NoneModule: Symbol = defn.NoneModule
   def Definitions_SomeModule: Symbol = defn.SomeClass.companionModule.asTerm
 
   def Definitions_ProductClass: Symbol = defn.ProductClass

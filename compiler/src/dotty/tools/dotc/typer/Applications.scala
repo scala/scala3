@@ -1556,7 +1556,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case untpd.Function(args, body) =>
         defn.FunctionOf(args map Function.const(defn.AnyType), typeShape(body))
       case Match(EmptyTree, _) =>
-        defn.PartialFunctionType.appliedTo(defn.AnyType :: defn.NothingType :: Nil)
+        defn.PartialFunctionClass.typeRef.appliedTo(defn.AnyType :: defn.NothingType :: Nil)
       case _ =>
         defn.NothingType
     }

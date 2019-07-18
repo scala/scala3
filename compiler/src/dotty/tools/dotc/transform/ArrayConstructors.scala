@@ -31,7 +31,7 @@ class ArrayConstructors extends MiniPhase {
     if (tree.fun.symbol eq defn.ArrayConstructor) {
       val TypeApply(tycon, targ :: Nil) = tree.fun
       expand(targ.tpe, tree.args)
-    } else if ((tree.fun.symbol.maybeOwner eq defn.ArrayModule) && (tree.fun.symbol.name eq nme.ofDim) && !tree.tpe.isInstanceOf[MethodicType]) {
+    } else if ((tree.fun.symbol.maybeOwner eq defn.ArrayModule.moduleClass) && (tree.fun.symbol.name eq nme.ofDim) && !tree.tpe.isInstanceOf[MethodicType]) {
       val Apply(Apply(TypeApply(_, List(tp)), _), _) = tree
       val cs = tp.tpe.widen.classSymbol
       tree.fun match {

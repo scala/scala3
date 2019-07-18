@@ -75,6 +75,7 @@ object Annotations {
   }
 
   case class LazyBodyAnnotation(private var bodyExpr: Context => Tree) extends BodyAnnotation {
+    // TODO: Make `bodyExpr` an IFT once #6865 os in bootstrap
     private[this] var evaluated = false
     private[this] var myBody: Tree = _
     def tree(implicit ctx: Context): Tree = {
@@ -159,17 +160,17 @@ object Annotations {
     object Child {
 
       /** A deferred annotation to the result of a given child computation */
-      def apply(delayedSym: Context => Symbol, span: Span)(implicit ctx: Context): Annotation = {
+      def later(delayedSym: given Context => Symbol, span: Span)(implicit ctx: Context): Annotation = {
         def makeChildLater(implicit ctx: Context) = {
-          val sym = delayedSym(ctx)
-          New(defn.ChildAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
+          val sym = delayedSym
+          New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
             .withSpan(span)
         }
         deferred(defn.ChildAnnot)(makeChildLater(ctx))
       }
 
       /** A regular, non-deferred Child annotation */
-      def apply(sym: Symbol, span: Span)(implicit ctx: Context): Annotation = apply(_ => sym, span)
+      def apply(sym: Symbol, span: Span)(implicit ctx: Context): Annotation = later(given _ => sym, span)
 
       def unapply(ann: Annotation)(implicit ctx: Context): Option[Symbol] =
         if (ann.symbol == defn.ChildAnnot) {
@@ -201,7 +202,7 @@ object Annotations {
 
   def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context): Annotation = {
     val tref = cls.typeRef
-    Annotation(defn.ThrowsAnnotType.appliedTo(tref), Ident(tref))
+    Annotation(defn.ThrowsAnnot.typeRef.appliedTo(tref), Ident(tref))
   }
 
   /** A decorator that provides queries for specific annotations

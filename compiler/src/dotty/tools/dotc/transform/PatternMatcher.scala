@@ -414,7 +414,7 @@ object PatternMatcher {
 
     private def matchPlan(tree: Match): Plan = {
       letAbstract(tree.selector) { scrutinee =>
-        val matchError: Plan = ResultPlan(Throw(New(defn.MatchErrorType, ref(scrutinee) :: Nil)))
+        val matchError: Plan = ResultPlan(Throw(New(defn.MatchErrorClass.typeRef, ref(scrutinee) :: Nil)))
         tree.cases.foldRight(matchError) { (cdef, next) =>
           SeqPlan(caseDefPlan(scrutinee, cdef), next)
         }

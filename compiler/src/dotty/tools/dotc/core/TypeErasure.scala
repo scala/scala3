@@ -193,7 +193,7 @@ object TypeErasure {
     else erase.eraseInfo(tp, sym)(erasureCtx) match {
       case einfo: MethodType =>
         if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))
-          MethodType(Nil, defn.BoxedUnitType)
+          MethodType(Nil, defn.BoxedUnitClass.typeRef)
         else if (sym.isAnonymousFunction && einfo.paramInfos.length > MaxImplementedFunctionArity)
           MethodType(nme.ALLARGS :: Nil, JavaArrayType(defn.ObjectType) :: Nil, einfo.resultType)
         else if (sym.name == nme.apply && sym.owner.derivesFrom(defn.PolyFunctionClass)) {
@@ -512,9 +512,9 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
 
   private def erasePair(tp: Type)(implicit ctx: Context): Type = {
     val arity = tp.tupleArity
-    if (arity < 0) defn.ProductType
+    if (arity < 0) defn.ProductClass.typeRef
     else if (arity <= Definitions.MaxTupleArity) defn.TupleType(arity)
-    else defn.TupleXXLType
+    else defn.TupleXXLClass.typeRef
   }
 
   /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s and

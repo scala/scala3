@@ -1636,7 +1636,7 @@ class JSCodeGen()(implicit ctx: Context) {
   private lazy val externalEqualsNumObject: Symbol =
     defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
   private lazy val externalEquals: Symbol =
-    defn.BoxesRunTimeClass.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
+    defn.BoxesRunTimeModule.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
 
   /** Gen JS code for a call to Any.== */
   private def genEqEqPrimitive(ltpe: Type, rtpe: Type, lsrc: js.Tree, rsrc: js.Tree)(

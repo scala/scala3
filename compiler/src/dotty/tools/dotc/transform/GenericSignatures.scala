@@ -196,7 +196,7 @@ object GenericSignatures {
             }
           }
           else if (sym == defn.PairClass && tp.tupleArity > Definitions.MaxTupleArity)
-            jsig(defn.TupleXXLType)
+            jsig(defn.TupleXXLClass.typeRef)
           else if (isTypeParameterInSig(sym, sym0)) {
             assert(!sym.isAliasType, "Unexpected alias type: " + sym)
             typeParamSig(sym.name.lastPart)
@@ -204,14 +204,14 @@ object GenericSignatures {
           else if (defn.specialErasure.contains(sym))
             jsig(defn.specialErasure(sym).typeRef)
           else if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
-            jsig(defn.BoxedUnitType)
+            jsig(defn.BoxedUnitClass.typeRef)
           else if (sym == defn.NothingClass)
             jsig(defn.RuntimeNothingModuleRef)
           else if (sym == defn.NullClass)
             jsig(defn.RuntimeNullModuleRef)
           else if (sym.isPrimitiveValueClass) {
             if (!primitiveOK) jsig(defn.ObjectType)
-            else if (sym == defn.UnitClass) jsig(defn.BoxedUnitType)
+            else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
             else builder.append(defn.typeTag(sym.info))
           }
           else if (ValueClasses.isDerivedValueClass(sym)) {
