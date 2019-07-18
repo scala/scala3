@@ -199,7 +199,7 @@ object Inliner {
         case _ => syms
       }
     }
-    memoCacheSyms.map(ValDef(_, Literal(Constant(null))))
+    memoCacheSyms.map(sym => ValDef(sym, Literal(Constant(null))).withSpan(sym.span))
   }
 }
 
@@ -425,11 +425,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           else Synthetic | Mutable | Private | Local,
         info = OrType(argType, defn.NullType),
         coord = call.span)
+      val memoRef = ref(memoVar).withSpan(call.span)
       val cond = If(
-        ref(memoVar).select(defn.Any_==).appliedTo(Literal(Constant(null))),
-        ref(memoVar).becomes(callValueArgss.head.head),
+        memoRef.select(defn.Any_==).appliedTo(Literal(Constant(null))),
+        memoRef.becomes(callValueArgss.head.head),
         Literal(Constant(())))
-      val expr = ref(memoVar).cast(argType)
+      val expr = memoRef.cast(argType)
       Block(cond :: Nil, expr)
     }
     else errorTree(call, em"""memo(...) outside method""")
