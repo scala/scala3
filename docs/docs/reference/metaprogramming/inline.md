@@ -406,6 +406,72 @@ inline def fail(p1: => Any) = {
 fail(indentity("foo")) // error: failed on: indentity("foo")
 ```
 
+#### `memo`
+
+The `memo` method is used to avoid repeated evaluation of subcomputations.
+Example:
+```
+class C(x: T) {
+  def costly(x: T): Int = ???
+  def f(y: Int) = memo(costly(x)) * y
+}
+```
+Let's assume that `costly` is a pure function that is expensive to compute. If `f` was defined
+like this:
+```
+  def f(y: Int) = costly(x) * y
+```
+the `costly(x)` subexpression would be recomputed each time `f` was called, even though
+its result is the same each time. With the addition of `memo(...)` the subexpression
+in the parentheses is computed only the first time and is cached for subsequent recalculuations.
+The memoized program expands to the following code:
+```
+class C(x: T) {
+  def costly(x: T): Int = ???
+  private[this] var memo$1: T | Null = null
+  def f(y: Int) = {
+    if (memo$1 == null) memo$1 = costly(x)
+    memo$1.asInstanceOf[T]
+  } * y
+}
+```
+The fine-print behind this expansion is:
+
+ - The caching variable is placed next to the enclosing method (`f` in this case).
+ - Its type is the union of the type of the cached expression and `Null`.
+ - Its inital value is `null`.
+ - A `memo(op)` call is expanded to code that tests whether the cached variable is
+   null, in which case it reassignes the variable with the result of evaluating `op`.
+   The value of `memo(op)` is the value of the cached variable after this conditional assignment.
+
+In simple scenarios the call to `memo` is equivalent to using `lazy val`. For instance
+the example program above could be simulated like this:
+```
+class C(x: T) {
+  def costly(x: T): Int = ???
+  @threadunsafe private[this] lazy val cached = costly(x)
+  def f(y: Int) = cached * y
+}
+```
+The advantage of using `memo` over lazy vals is that it's more concise. But `memo` could also be
+used in scenarios where lazy vals are not suitable. For instance, let's assume
+that the methods in class `C` above also need a given `Context` parameter.
+```
+class C(x: T) {
+  def costly(x: T) given Context: Int = ???
+  def f(y: Int) given (c: Context) = memo(costly(x) given c) * y
+}
+```
+Now, we cannot simply pull out the computation `costly(x) given c` into a lazy val since
+it depends on the parameter `c` which is only available inside `f`. On the other hand,
+it's much harder to  argue that  the `memo` solution is correct. One possible scenario
+is that we fully intend to capture and reuse only the first computation of `costly(x)`.
+Another possible scenario is that we do want `memo` to be semantically invisible, used
+for optimization only, but that we convince ourselves that `costly(x) given c` would return
+the same value no matter what context `c` is passed to `f`. That's a much harder argument
+to make, but sometimes we can derive this from the global architecture of the system we are
+dealing with.
+
 ## Implicit Matches
 
 It is foreseen that many areas of typelevel programming can be done with rewrite
