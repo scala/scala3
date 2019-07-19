@@ -364,7 +364,35 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     (arity, elemTp, resultTp)
   }
 
-  /* Erase pattern bound types with WildcardType */
+  /** Erase pattern bound types with WildcardType
+   *
+   *  For example, the type `C[T$1]` should match any `C[_]`, thus
+   *  `v` should be `WildcardType` instead of `T$1`:
+   *
+   *     sealed trait B
+   *     case class C[T](v: T) extends B
+   *     (b: B) match {
+   *        case C(v) =>      //    case C.unapply[T$1 @ T$1](v @ _):C[T$1]
+   *     }
+   *
+   *  However, we cannot use WildcardType for Array[_], due to that
+   *  `Array[WildcardType] <: Array[Array[WildcardType]]`, which may
+   *  cause false unreachable warnings. See tests/patmat/t2425.scala
+   *
+   *  We cannot use type erasure here, as it would lose the constraints
+   *  invovling GADTs. For example, in the following code, type
+   *  erasure would loose the constraint that `x` and `y` must be
+   *  the same type, resulting in false inexhaustive warnings:
+   *
+   *     sealed trait Expr[T]
+   *     case class IntExpr(x: Int) extends Expr[Int]
+   *     case class BooleanExpr(b: Boolean) extends Expr[Boolean]
+   *
+   *     def foo[T](x: Expr[T], y: Expr[T]) = (x, y) match {
+   *       case (IntExpr(_), IntExpr(_)) =>
+   *       case (BooleanExpr(_), BooleanExpr(_)) =>
+   *     }
+   */
   private def erase(tp: Type, inArray: Boolean = false): Type = trace(i"$tp erased to", debug) {
     def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
 
