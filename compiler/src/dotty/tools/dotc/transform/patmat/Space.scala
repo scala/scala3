@@ -380,7 +380,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *  cause false unreachable warnings. See tests/patmat/t2425.scala
    *
    *  We cannot use type erasure here, as it would lose the constraints
-   *  invovling GADTs. For example, in the following code, type
+   *  involving GADTs. For example, in the following code, type
    *  erasure would loose the constraint that `x` and `y` must be
    *  the same type, resulting in false inexhaustive warnings:
    *
