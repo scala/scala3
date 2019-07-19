@@ -1020,6 +1020,12 @@ object Types {
       case _ => this
     }
 
+    /** Widen singleton type modulo constant types */
+    final def widenNonConstant(implicit ctx: Context): Type = this match {
+      case _: ConstantType => this
+      case _ => widen
+    }
+
     /** Widen type if it is unstable (i.e. an ExprType, or TermRef to unstable symbol */
     final def widenIfUnstable(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ExprType => tp.resultType.widenIfUnstable

@@ -725,7 +725,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   def checkExhaustivity(_match: Match): Unit = {
     val Match(sel, cases) = _match
-    val selTyp = sel.tpe.widen.dealias
+    val selTyp = sel.tpe.widenNonConstant.dealias
 
     if (!exhaustivityCheckable(sel)) return
 
@@ -756,7 +756,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   def checkRedundancy(_match: Match): Unit = {
     val Match(sel, cases) = _match
-    val selTyp = sel.tpe.widen.dealias
+    val selTyp = sel.tpe.widenNonConstant.dealias
 
     if (!redundancyCheckable(sel)) return
 
