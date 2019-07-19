@@ -9,7 +9,7 @@ object FileDiff {
       s"""Test output dumped in: $actualFile
           |  See diff of the checkfile (`brew install icdiff` for colored diff)
           |    > diff $expectFile $actualFile
-          |  Replace checkfile with current output output
+          |  Replace checkfile with current output
           |    > mv $actualFile $expectFile
       """.stripMargin
 
