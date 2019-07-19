@@ -5,7 +5,7 @@ trait SignatureOps extends Core {
   /** Erased (JVM) signatures. */
   object Signature {
     /** Matches the erased (JVM) signature and returns its parameters and result type. */
-    def unapply(sig: Signature)(implicit ctx: Context): Option[(List[String], String)] =
+    def unapply(sig: Signature) given (ctx: Context): Option[(List[String], String)] =
       Some((sig.paramSigs, sig.resultSig))
   }
 

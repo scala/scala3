@@ -21,7 +21,7 @@ object ReflectionImpl {
     val syntaxHighlight =
       if (ctx.settings.color.value == "always") SyntaxHighlight.ANSI
       else SyntaxHighlight.plain
-    new refl.SourceCodePrinter(syntaxHighlight).showTree(reflTree)(reflCtx)
+    new refl.SourceCodePrinter(syntaxHighlight).showTree(reflTree) given reflCtx
   }
 
 }
