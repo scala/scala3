@@ -901,6 +901,16 @@ trait Implicits { self: Typer =>
     ref.withSpan(span)
   }
 
+  private def checkFormal(formal: Type)(implicit ctx: Context): Boolean = {
+    @tailrec
+    def loop(tp: Type): Boolean = tp match {
+      case RefinedType(_, _, _: MethodicType) => false
+      case RefinedType(parent, _, _) => loop(parent)
+      case _ => true
+    }
+    loop(formal)
+  }
+
   /** An implied instance for a type of the form `Mirror.Product { type MirroredType = T }`
    *  where `T` is a generic product type or a case object or an enum case.
    */
@@ -955,10 +965,12 @@ trait Implicits { self: Typer =>
         }
       }
 
-      formal.member(tpnme.MirroredType).info match {
-        case TypeBounds(mirroredType, _) => mirrorFor(mirroredType)
-        case other => EmptyTree
-      }
+      if (!checkFormal(formal)) EmptyTree
+      else
+        formal.member(tpnme.MirroredType).info match {
+          case TypeBounds(mirroredType, _) if checkFormal(formal) => mirrorFor(mirroredType)
+          case other => EmptyTree
+        }
     }
 
   /** An implied instance for a type of the form `Mirror.Sum { type MirroredType = T }`
@@ -966,74 +978,76 @@ trait Implicits { self: Typer =>
    */
   lazy val synthesizedSumMirror: SpecialHandler =
     (formal, span) => implicit ctx => {
-      formal.member(tpnme.MirroredType).info match {
-        case TypeBounds(mirroredType0, _) =>
-          val mirroredType = mirroredType0.stripTypeVar
-          if (mirroredType.classSymbol.isGenericSum) {
-            val cls = mirroredType.classSymbol
-            val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
+      if (!checkFormal(formal)) EmptyTree
+      else
+        formal.member(tpnme.MirroredType).info match {
+          case TypeBounds(mirroredType0, _) =>
+            val mirroredType = mirroredType0.stripTypeVar
+            if (mirroredType.classSymbol.isGenericSum) {
+              val cls = mirroredType.classSymbol
+              val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
-            def solve(sym: Symbol): Type = sym match {
-              case caseClass: ClassSymbol =>
-                assert(caseClass.is(Case))
-                if (caseClass.is(Module))
-                  caseClass.sourceModule.termRef
-                else {
-                  caseClass.primaryConstructor.info match {
-                    case info: PolyType =>
-                      // Compute the the full child type by solving the subtype constraint
-                      // `C[X1, ..., Xn] <: P`, where
-                      //
-                      //   - P is the current `mirroredType`
-                      //   - C is the child class, with type parameters X1, ..., Xn
-                      //
-                      // Contravariant type parameters are minimized, all other type parameters are maximized.
-                      def instantiate(implicit ctx: Context) = {
-                        val poly = constrained(info, untpd.EmptyTree)._1
-                        val resType = poly.finalResultType
-                        val target = mirroredType match {
-                          case tp: HKTypeLambda => tp.resultType
-                          case tp => tp
+              def solve(sym: Symbol): Type = sym match {
+                case caseClass: ClassSymbol =>
+                  assert(caseClass.is(Case))
+                  if (caseClass.is(Module))
+                    caseClass.sourceModule.termRef
+                  else {
+                    caseClass.primaryConstructor.info match {
+                      case info: PolyType =>
+                        // Compute the the full child type by solving the subtype constraint
+                        // `C[X1, ..., Xn] <: P`, where
+                        //
+                        //   - P is the current `mirroredType`
+                        //   - C is the child class, with type parameters X1, ..., Xn
+                        //
+                        // Contravariant type parameters are minimized, all other type parameters are maximized.
+                        def instantiate(implicit ctx: Context) = {
+                          val poly = constrained(info, untpd.EmptyTree)._1
+                          val resType = poly.finalResultType
+                          val target = mirroredType match {
+                            case tp: HKTypeLambda => tp.resultType
+                            case tp => tp
+                          }
+                          resType <:< target
+                          val tparams = poly.paramRefs
+                          val variances = caseClass.typeParams.map(_.paramVariance)
+                          val instanceTypes = (tparams, variances).zipped.map((tparam, variance) =>
+                            ctx.typeComparer.instanceType(tparam, fromBelow = variance < 0))
+                          resType.substParams(poly, instanceTypes)
                         }
-                        resType <:< target
-                        val tparams = poly.paramRefs
-                        val variances = caseClass.typeParams.map(_.paramVariance)
-                        val instanceTypes = (tparams, variances).zipped.map((tparam, variance) =>
-                          ctx.typeComparer.instanceType(tparam, fromBelow = variance < 0))
-                        resType.substParams(poly, instanceTypes)
-                      }
-                      instantiate(ctx.fresh.setExploreTyperState().setOwner(caseClass))
-                    case _ =>
-                      caseClass.typeRef
+                        instantiate(ctx.fresh.setExploreTyperState().setOwner(caseClass))
+                      case _ =>
+                        caseClass.typeRef
+                    }
                   }
-                }
-              case child => child.termRef
-            }
+                case child => child.termRef
+              }
 
-            val (monoType, elemsType) = mirroredType match {
-              case mirroredType: HKTypeLambda =>
-                val elems = mirroredType.derivedLambdaType(
-                  resType = TypeOps.nestedPairs(cls.children.map(solve))
-                )
-                val AppliedType(tycon, _) = mirroredType.resultType
-                val monoType = AppliedType(tycon, mirroredType.paramInfos)
-                (monoType, elems)
-              case _ =>
-                val elems = TypeOps.nestedPairs(cls.children.map(solve))
-                (mirroredType, elems)
-            }
+              val (monoType, elemsType) = mirroredType match {
+                case mirroredType: HKTypeLambda =>
+                  val elems = mirroredType.derivedLambdaType(
+                    resType = TypeOps.nestedPairs(cls.children.map(solve))
+                  )
+                  val AppliedType(tycon, _) = mirroredType.resultType
+                  val monoType = AppliedType(tycon, mirroredType.paramInfos)
+                  (monoType, elems)
+                case _ =>
+                  val elems = TypeOps.nestedPairs(cls.children.map(solve))
+                  (mirroredType, elems)
+              }
 
-            val mirrorType =
-               mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name, formal)
-                .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
-                .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
-            val mirrorRef =
-              if (cls.linkedClass.exists && !cls.is(Scala2x)) companionPath(mirroredType, span)
-              else anonymousMirror(monoType, ExtendsSumMirror, span)
-            mirrorRef.cast(mirrorType)
-          } else EmptyTree
-        case _ => EmptyTree
-      }
+              val mirrorType =
+                 mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name, formal)
+                  .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
+                  .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
+              val mirrorRef =
+                if (cls.linkedClass.exists && !cls.is(Scala2x)) companionPath(mirroredType, span)
+                else anonymousMirror(monoType, ExtendsSumMirror, span)
+              mirrorRef.cast(mirrorType)
+            } else EmptyTree
+          case _ => EmptyTree
+        }
     }
 
   /** An implied instance for a type of the form `Mirror { type MirroredType = T }`
