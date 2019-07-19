@@ -885,8 +885,7 @@ trait Implicits { self: Typer =>
    *     <parent> {
    *       MirroredMonoType = <monoType>
    *       MirroredType = <mirroredType>
-   *       MirroredLabel = <label>
-   *       Scope = <scope> // if scope ne NoType
+   *       MirroredLabel = <label> }
    *     }
    */
   private def mirrorCore(parentClass: ClassSymbol, monoType: Type, mirroredType: Type, label: Name, formal: Type)(implicit ctx: Context) =
