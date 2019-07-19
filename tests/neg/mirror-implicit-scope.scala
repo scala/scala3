@@ -11,4 +11,5 @@ object Test {
   val v3 = the[Mirror.Product { type MirroredType = ISB ; def foo: Int }] // error
   val v4 = the[Mirror.Product { type MirroredType = ISB ; def foo(i: Int): Int }] // error
   val v5 = the[Mirror.Product { type MirroredType = ISB ; def foo[T](t: T): T }] // error // error
+  val v6 = the[Mirror.Product { type MirroredType = ISB ; val foo: Int }] // error
 }

@@ -904,8 +904,8 @@ trait Implicits { self: Typer =>
   private def checkFormal(formal: Type)(implicit ctx: Context): Boolean = {
     @tailrec
     def loop(tp: Type): Boolean = tp match {
-      case RefinedType(_, _, _: MethodicType) => false
-      case RefinedType(parent, _, _) => loop(parent)
+      case RefinedType(parent, _, _: TypeBounds) => loop(parent)
+      case RefinedType(_, _, _) => false
       case _ => true
     }
     loop(formal)
