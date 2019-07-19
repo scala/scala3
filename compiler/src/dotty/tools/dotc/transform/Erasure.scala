@@ -614,10 +614,7 @@ object Erasure {
           if (sym.isConstructor) defn.UnitType
           else sym.info.resultType
         var vparamss1 = (outer.paramDefs(sym) ::: ddef.vparamss.flatten) :: Nil
-        var rhs1 = ddef.rhs match {
-          case id @ Ident(nme.WILDCARD) => untpd.TypedSplice(id.withType(restpe))
-          case _ => ddef.rhs
-        }
+        var rhs1 = ddef.rhs
         if (sym.isAnonymousFunction && vparamss1.head.length > MaxImplementedFunctionArity) {
           val bunchedParam = ctx.newSymbol(sym, nme.ALLARGS, Flags.TermParam, JavaArrayType(defn.ObjectType))
           def selector(n: Int) = ref(bunchedParam)
