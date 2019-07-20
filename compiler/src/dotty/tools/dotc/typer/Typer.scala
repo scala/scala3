@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import ast.{tpd, _}
+import ast._
 import Trees._
 import Constants._
 import StdNames._
@@ -1793,7 +1793,9 @@ class Typer extends Namer
       case pid1: RefTree if pkg.exists =>
         if (!pkg.is(Package)) ctx.error(PackageNameAlreadyDefined(pkg), tree.sourcePos)
         val packageCtx = ctx.packageContext(tree, pkg)
-        val stats1 = typedStats(tree.stats, pkg.moduleClass)(packageCtx)
+        var stats1 = typedStats(tree.stats, pkg.moduleClass)(packageCtx)
+        if (!ctx.isAfterTyper)
+          stats1 = stats1 ++ typedBlockStats(MainProxies.mainProxies(stats1))(packageCtx)._2
         cpy.PackageDef(tree)(pid1, stats1).withType(pkg.termRef)
       case _ =>
         // Package will not exist if a duplicate type has already been entered, see `tests/neg/1708.scala`

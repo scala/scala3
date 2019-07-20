@@ -695,9 +695,15 @@ class Definitions {
 
   @threadUnsafe lazy val ValueOfClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.ValueOf"))
   @threadUnsafe lazy val StatsModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("dotty.tools.dotc.util.Stats"))
-    @threadUnsafe lazy val  Stats_doRecord: SymbolPerRun = perRunSym(StatsModule.requiredMethodRef("doRecord"))
+    @threadUnsafe lazy val Stats_doRecord: SymbolPerRun = perRunSym(StatsModule.requiredMethodRef("doRecord"))
 
   @threadUnsafe lazy val XMLTopScopeModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.xml.TopScope"))
+
+  @threadUnsafe lazy val CommandLineParserModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.util.CommandLineParser"))
+    @threadUnsafe lazy val CLP_ParseError: ClassSymbolPerRun = perRunClass(CommandLineParserModule.requiredClass("ParseError").typeRef)
+    @threadUnsafe lazy val CLP_parseArgument: SymbolPerRun = perRunSym(CommandLineParserModule.requiredMethodRef("parseArgument"))
+    @threadUnsafe lazy val CLP_parseRemainingArguments: SymbolPerRun = perRunSym(CommandLineParserModule.requiredMethodRef("parseRemainingArguments"))
+    @threadUnsafe lazy val CLP_showError: SymbolPerRun = perRunSym(CommandLineParserModule.requiredMethodRef("showError"))
 
   @threadUnsafe lazy val TupleTypeRef: TypeRef = ctx.requiredClassRef("scala.Tuple")
   def TupleClass(implicit ctx: Context): ClassSymbol = TupleTypeRef.symbol.asClass
@@ -712,8 +718,8 @@ class Definitions {
 
     def TupleXXL_fromIterator(implicit ctx: Context): Symbol = TupleXXLModule.requiredMethod("fromIterator")
 
-  lazy val DynamicTupleModule: Symbol = ctx.requiredModule("scala.runtime.DynamicTuple")
-  lazy val DynamicTupleModuleClass: Symbol = DynamicTupleModule.moduleClass
+  @threadUnsafe lazy val DynamicTupleModule: Symbol = ctx.requiredModule("scala.runtime.DynamicTuple")
+  @threadUnsafe lazy val DynamicTupleModuleClass: Symbol = DynamicTupleModule.moduleClass
     lazy val DynamicTuple_consIterator: Symbol = DynamicTupleModule.requiredMethod("consIterator")
     lazy val DynamicTuple_concatIterator: Symbol = DynamicTupleModule.requiredMethod("concatIterator")
     lazy val DynamicTuple_dynamicApply: Symbol = DynamicTupleModule.requiredMethod("dynamicApply")
@@ -724,10 +730,10 @@ class Definitions {
     lazy val DynamicTuple_dynamicToArray: Symbol = DynamicTupleModule.requiredMethod("dynamicToArray")
     lazy val DynamicTuple_productToArray: Symbol = DynamicTupleModule.requiredMethod("productToArray")
 
-  lazy val TupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.TupledFunction")
+  @threadUnsafe lazy val TupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.TupledFunction")
   def TupledFunctionClass(implicit ctx: Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass
 
-  lazy val InternalTupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.internal.TupledFunction")
+  @threadUnsafe lazy val InternalTupledFunctionTypeRef: TypeRef = ctx.requiredClassRef("scala.internal.TupledFunction")
   def InternalTupleFunctionClass(implicit ctx: Context): ClassSymbol = InternalTupledFunctionTypeRef.symbol.asClass
   def InternalTupleFunctionModule(implicit ctx: Context): Symbol = ctx.requiredModule("scala.internal.TupledFunction")
 
@@ -751,6 +757,7 @@ class Definitions {
   @threadUnsafe lazy val ForceInlineAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.forceInline"))
   @threadUnsafe lazy val InlineParamAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.InlineParam"))
   @threadUnsafe lazy val InvariantBetweenAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.InvariantBetween"))
+  @threadUnsafe lazy val MainAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.main"))
   @threadUnsafe lazy val MigrationAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.migration"))
   @threadUnsafe lazy val NativeAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.native"))
   @threadUnsafe lazy val RepeatedAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.internal.Repeated"))
