@@ -4,7 +4,7 @@ title: "Main Methods"
 ---
 
 Scala 3 offers a new way to define programs that can be invoked from the command line:
-A @main annotation on a method turns this method into an executable program.
+A `@main` annotation on a method turns this method into an executable program.
 Example:
 ```scala
     @main def happyBirthday(age: Int, name: String, others: String*) = {
@@ -55,7 +55,7 @@ The Scala compiler generates a program from a `@main` method `f` as follows:
 
 For instance, the `happyBirthDay` method above would generate additional code equivalent to the following class:
 ```scala
-  class happyBirthday {
+  final class happyBirthday {
     import scala.util.{CommndLineParser => CLP}
     <static> def main(args: Array[String]): Unit =
       try
@@ -79,4 +79,4 @@ as a static method of class `happyBirthDay`. It is not available for user progra
   }
 ```
 The previous functionality of `App`, which relied on the "magic" `DelayedInit` trait, is no longer available. `App` still exists in limited form for now, but it does not support command line arguments and will be deprecated in the future. If programs need to cross-build
-between Scala 2 and Scala 3, it is recommende to use an explicit `main` method with an `Array[String] argument instead.
+between Scala 2 and Scala 3, it is recommended to use an explicit `main` method with an `Array[String]` argument instead.

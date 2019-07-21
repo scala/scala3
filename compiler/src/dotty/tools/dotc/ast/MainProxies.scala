@@ -93,6 +93,7 @@ object MainProxies {
         .withFlags(JavaStatic)
       val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)
       val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)
+        .withFlags(Final)
       if (!ctx.reporter.hasErrors) result = mainCls.withSpan(mainAnnotSpan) :: Nil
     }
     result
