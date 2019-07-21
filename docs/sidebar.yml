@@ -131,6 +131,8 @@ sidebar:
               url: docs/reference/changed-features/compiler-plugins.html
             - title: Lazy Vals initialization
               url: docs/reference/changed-features/lazy-vals-init.html
+            - title: Main Functions
+              url: docs/reference/changed-features/main-functions.html
         - title: Dropped Features
           subsection:
             - title: DelayedInit
