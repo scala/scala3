@@ -1486,7 +1486,7 @@ object Parsers {
         case _ =>
       }
       imods.mods match {
-        case (Mod.Implicit() | Mod.Delegate()) :: mods => markFirstIllegal(mods)
+        case (Mod.Implicit() | Mod.Given()) :: mods => markFirstIllegal(mods)
         case mods => markFirstIllegal(mods)
       }
       val result @ Match(t, cases) =
@@ -2761,7 +2761,7 @@ object Parsers {
         case ENUM =>
           enumDef(start, posMods(start, mods | Enum))
         case IMPLIED | GIVEN =>
-          instanceDef(in.token == GIVEN, start, mods, atSpan(in.skipToken()) { Mod.Delegate() })
+          instanceDef(in.token == GIVEN, start, mods, atSpan(in.skipToken()) { Mod.Given() })
         case _ =>
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
           EmptyTree
@@ -3174,7 +3174,7 @@ object Parsers {
           val mods = modifiers(closureMods)
           mods.mods match {
             case givenMod :: Nil if !isBindingIntro =>
-              stats += instanceDef(true, start, EmptyModifiers, Mod.Delegate().withSpan(givenMod.span))
+              stats += instanceDef(true, start, EmptyModifiers, Mod.Given().withSpan(givenMod.span))
             case _ =>
               stats += implicitClosure(in.offset, Location.InBlock, mods)
           }

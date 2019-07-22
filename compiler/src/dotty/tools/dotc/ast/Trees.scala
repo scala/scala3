@@ -754,7 +754,7 @@ object Trees {
     def unforced: LazyTree[T] = preRhs
     protected def force(x: Tree[T @uncheckedVariance]): Unit = preRhs = x
 
-    override def disableOverlapChecks = rawMods.is(Delegate)
+    override def disableOverlapChecks = rawMods.is(Given)
       // disable order checks for implicit aliases since their given clause follows
       // their for clause, but the two appear swapped in the DefDef.
   }

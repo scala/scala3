@@ -794,7 +794,7 @@ object Types {
      */
     final def implicitMembers(kind: FlagSet)(implicit ctx: Context): List[TermRef] = track("implicitMembers") {
       memberDenots(implicitFilter,
-          (name, buf) => buf ++= member(name).altsWith(_.isOneOf(DelegateOrGivenOrImplicitVal & kind)))
+          (name, buf) => buf ++= member(name).altsWith(_.isOneOf(GivenOrImplicitVal & kind)))
         .toList.map(d => TermRef(this, d.symbol.asTerm))
     }
 

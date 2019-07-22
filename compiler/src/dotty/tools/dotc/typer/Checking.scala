@@ -409,7 +409,7 @@ object Checking {
           ))
       fail(ParamsNoInline(sym.owner))
 
-    if (sym.isOneOf(DelegateOrImplicit)) {
+    if (sym.isOneOf(GivenOrImplicit)) {
       if (sym.owner.is(Package))
         fail(TopLevelCantBeImplicit(sym))
       if (sym.isType)

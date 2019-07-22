@@ -1696,7 +1696,6 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Flags_Case: Flags = core.Flags.Case
   def Flags_Implicit: Flags = core.Flags.Implicit
   def Flags_Given: Flags = core.Flags.Given
-  def Flags_Implied: Flags = core.Flags.Delegate
   def Flags_Erased: Flags = core.Flags.Erased
   def Flags_Lazy: Flags = core.Flags.Lazy
   def Flags_Override: Flags = core.Flags.Override

@@ -54,7 +54,7 @@ trait Deriving { this: Typer =>
         // derived instance will have too low a priority to be selected over a freshly
         // derived instance at the summoning site.
         synthetics +=
-          ctx.newSymbol(ctx.owner, instanceName, Delegate | Method, info, coord = pos.span)
+          ctx.newSymbol(ctx.owner, instanceName, Given | Method, info, coord = pos.span)
             .entered
       }
     }

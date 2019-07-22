@@ -114,7 +114,7 @@ class ImportInfo(symf: given Context => Symbol, val selectors: List[untpd.Tree],
   }
 
   private def implicitFlags(implicit ctx: Context) =
-    if (importDelegate || ctx.mode.is(Mode.FindHiddenImplicits)) DelegateOrGivenOrImplicit
+    if (importDelegate || ctx.mode.is(Mode.FindHiddenImplicits)) GivenOrImplicit
     else Implicit
 
   /** The implicit references imported by this import clause */

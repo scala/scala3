@@ -165,8 +165,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Lazy()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Lazy)
 
     case class Inline()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Inline)
-
-    case class Delegate()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Delegate)
   }
 
   /** Modifiers and annotations for definitions

@@ -342,7 +342,7 @@ class Namer { typer: Typer =>
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         val name = checkNoConflict(tree.name).asTypeName
-        val flags = checkFlags(tree.mods.flags &~ DelegateOrImplicit)
+        val flags = checkFlags(tree.mods.flags &~ GivenOrImplicit)
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
@@ -949,7 +949,7 @@ class Namer { typer: Typer =>
 
         def whyNoForwarder(mbr: SingleDenotation): String = {
           val sym = mbr.symbol
-          if (sym.isOneOf(DelegateOrGivenOrImplicit) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}a delegate"
+          if (sym.isOneOf(GivenOrImplicit) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}a delegate"
           else if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
           else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) SKIP
           else if (cls.derivesFrom(sym.owner) &&
@@ -1107,7 +1107,7 @@ class Namer { typer: Typer =>
               val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
               if (ptype.typeParams.isEmpty) ptype
               else {
-                if (denot.is(ModuleClass) && denot.sourceModule.isOneOf(DelegateOrImplicit))
+                if (denot.is(ModuleClass) && denot.sourceModule.isOneOf(GivenOrImplicit))
                   missingType(denot.symbol, "parent ")(creationContext)
                 fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.span)
               }

@@ -750,7 +750,7 @@ object desugar {
     //     synthetic implicit C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, ..., pMN: TMN): C[Ts] =
     //       new C[Ts](p11, ..., p1N) ... (pM1, ..., pMN) =
     val implicitWrappers =
-      if (!mods.isOneOf(DelegateOrImplicit))
+      if (!mods.isOneOf(GivenOrImplicit))
         Nil
       else if (ctx.owner.is(Package)) {
         ctx.error(TopLevelImplicitClass(cdef), cdef.sourcePos)
@@ -764,7 +764,7 @@ object desugar {
         ctx.error(ImplicitCaseClass(cdef), cdef.sourcePos)
         Nil
       }
-      else if (arity != 1 && !mods.is(Delegate)) {
+      else if (arity != 1 && !mods.is(Given)) {
         ctx.error(ImplicitClassPrimaryConstructorArity(), cdef.sourcePos)
         Nil
       }
@@ -778,7 +778,7 @@ object desugar {
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(className.toTermName, constrTparams, defParamss, classTypeRef, creatorExpr)
-          .withMods(companionMods | mods.flags.toTermFlags & DelegateOrImplicit | Synthetic | Final)
+          .withMods(companionMods | mods.flags.toTermFlags & GivenOrImplicit | Synthetic | Final)
           .withSpan(cdef.span) :: Nil
       }
 
@@ -1177,14 +1177,14 @@ object desugar {
    */
   def packageDef(pdef: PackageDef)(implicit ctx: Context): PackageDef = {
     def isWrappedType(stat: TypeDef): Boolean =
-      !stat.isClassDef || stat.mods.isOneOf(DelegateOrImplicit)
+      !stat.isClassDef || stat.mods.isOneOf(GivenOrImplicit)
     val wrappedTypeNames = pdef.stats.collect {
       case stat: TypeDef if isWrappedType(stat) => stat.name
     }
     def needsObject(stat: Tree) = stat match {
       case _: ValDef | _: PatDef | _: DefDef | _: Export => true
       case stat: ModuleDef =>
-        stat.mods.isOneOf(DelegateOrImplicit) ||
+        stat.mods.isOneOf(GivenOrImplicit) ||
         wrappedTypeNames.contains(stat.name.stripModuleClassSuffix.toTypeName)
       case stat: TypeDef => isWrappedType(stat)
       case _ => false

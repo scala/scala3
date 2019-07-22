@@ -1320,7 +1320,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *
      *     T => R  <:s  U => R
      *
-     *  Also: If a compared type refers to an delegate or its module class, use
+     *  Also: If a compared type refers to a given or its module class, use
      *  the intersection of its parent classes instead.
      */
     def isAsSpecificValueType(tp1: Type, tp2: Type)(implicit ctx: Context) =
@@ -1338,17 +1338,17 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
         }
         def prepare(tp: Type) = tp.stripTypeVar match {
-          case tp: NamedType if tp.symbol.is(Module) && tp.symbol.sourceModule.is(Delegate) =>
+          case tp: NamedType if tp.symbol.is(Module) && tp.symbol.sourceModule.is(Given) =>
             flip(tp.widen.widenToParents)
           case _ => flip(tp)
         }
         (prepare(tp1) relaxed_<:< prepare(tp2)) || viewExists(tp1, tp2)
       }
 
-    /** Widen the result type of synthetic delegate methods from the implementation class to the
+    /** Widen the result type of synthetic given methods from the implementation class to the
      *  type that's implemented. Example
      *
-     *      delegate I[X] for T { ... }
+     *      given I[X] as T { ... }
      *
      *  This desugars to
      *
@@ -1356,11 +1356,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *      implicit def I[X]: I[X] = new I[X]
      *
      *  To compare specificity we should compare with `T`, not with its implementation `I[X]`.
-     *  No such widening is performed for delegate aliases, which are not synthetic. E.g.
+     *  No such widening is performed for given aliases, which are not synthetic. E.g.
      *
-     *      delegate J[X] for T = rhs
+     *      given J[X] as T = rhs
      *
-     *  already has the right result type `T`. Neither is widening performed for delegate
+     *  already has the right result type `T`. Neither is widening performed for given
      *  objects, since these are anyway taken to be more specific than methods
      *  (by condition 3a above).
      */
@@ -1370,7 +1370,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case pt: PolyType =>
         pt.derivedLambdaType(pt.paramNames, pt.paramInfos, widenDelegate(pt.resultType, alt))
       case _ =>
-        if (alt.symbol.isAllOf(SyntheticDelegateMethod)) tp.widenToParents
+        if (alt.symbol.isAllOf(SyntheticGivenMethod)) tp.widenToParents
         else tp
     }
 

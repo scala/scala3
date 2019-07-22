@@ -342,7 +342,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       case Import(importDelegate, expr, selectors) =>
         def lookupImported(name: Name) = {
           val sym = expr.tpe.member(name).symbol
-          if (sym.is(Delegate) == importDelegate) sym else NoSymbol
+          if (sym.is(Given) == importDelegate) sym else NoSymbol
         }
         def addImported(name: Name) = {
           // importing a name means importing both a term and a type (if they exist)

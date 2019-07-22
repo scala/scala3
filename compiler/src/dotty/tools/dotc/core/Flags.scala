@@ -338,8 +338,6 @@ object Flags {
   /** Symbol is a Java default method */
   val (_, DefaultMethod @ _, _) = newFlags(38, "<defaultmethod>")
 
-  val (Delegate @ _, _, _) = newFlags(39, "delegate")
-
   /** Symbol is an enum class or enum case (if used with case) */
   val (Enum @ _, _, _) = newFlags(40, "<enum>")
 
@@ -421,7 +419,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Final, Case, Implicit, Delegate, Given, Override, JavaStatic)
+    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic)
 
   val TypeSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque
@@ -443,7 +441,7 @@ object Flags {
     HigherKinded, Param, ParamAccessor,
     Scala2ExistentialCommon, Mutable, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
-    Extension, NonMember, Implicit, Given, Delegate, Permanent, Synthetic,
+    Extension, NonMember, Implicit, Given, Permanent, Synthetic,
     SuperAccessorOrScala2x, Inline)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
@@ -502,14 +500,14 @@ object Flags {
 
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
-    Override | Final | Method | Implicit | Delegate | Lazy |
+    Override | Final | Method | Implicit | Given | Lazy |
     Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased
 
   /** Flags that can apply to a module class */
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
 
   /** Flags retained in export forwarders */
-  val RetainedExportFlags = Delegate | Given | Implicit | Extension
+  val RetainedExportFlags = Given | Implicit | Extension
 
 // ------- Other flag sets -------------------------------------
 
@@ -528,10 +526,6 @@ object Flags {
   val DeferredOrLazyOrMethod: FlagSet        = Deferred | Lazy | Method
   val DeferredOrTermParamOrAccessor: FlagSet = Deferred | ParamAccessor | TermParam           // term symbols without right-hand sides
   val DeferredOrTypeParam: FlagSet           = Deferred | TypeParam                           // type symbols without right-hand sides
-  val DelegateOrGiven: FlagSet               = Delegate | Given
-  val DelegateOrGivenOrImplicit: FlagSet     = Delegate | Given | Implicit
-  val DelegateOrGivenOrImplicitVal: FlagSet  = DelegateOrGivenOrImplicit.toTermFlags
-  val DelegateOrImplicit: FlagSet            = Delegate | Implicit
   val EnumValue: FlagSet                     = Enum | JavaStatic | StableRealizable           // A Scala enum value
   val StableOrErased: FlagSet                = Erased | StableRealizable                      // Assumed to be pure
   val ExtensionMethod: FlagSet               = Extension | Method
@@ -540,6 +534,7 @@ object Flags {
   val EffectivelyFinalFlags: FlagSet         = Final | Private
   val FinalOrSealed: FlagSet                 = Final | Sealed
   val GivenOrImplicit: FlagSet               = Given | Implicit
+  val GivenOrImplicitVal: FlagSet            = GivenOrImplicit.toTermFlags
   val InlineOrProxy: FlagSet                 = Inline | InlineProxy                           // An inline method or inline argument proxy */
   val InlineMethod: FlagSet                  = Inline | Method
   val InlineParam: FlagSet                   = Inline | Param
@@ -570,7 +565,7 @@ object Flags {
   val Scala2Trait: FlagSet                   = Scala2x | Trait
   val SyntheticArtifact: FlagSet             = Synthetic | Artifact
   val SyntheticCase: FlagSet                 = Synthetic | Case
-  val SyntheticDelegateMethod: FlagSet       = Synthetic | Delegate | Method
+  val SyntheticGivenMethod: FlagSet          = Synthetic | Given | Method
   val SyntheticModule: FlagSet               = Synthetic | Module
   val SyntheticOpaque: FlagSet               = Synthetic | Opaque
   val SyntheticTermParam: FlagSet            = Synthetic | TermParam
