@@ -8,6 +8,6 @@ The previous, experimental macro system has been dropped. Instead, there is a cl
 In this setting, a definition marked as inlined containing a `${ ... }` is a macro, the code inside the `${ ... }` is executed at compile-time and produces code in the form of `'{ ... }`.
 Additionally, the contents of code can be inspected and created with a more complex reflection API (TASTy Reflect) as an extension of `'{ ... }`/`${ ... }` framework.
 
-* `inline` has been [implemented](../other-new-features/inline.md) in Dotty.
-* Quotes `'{ ... }` and splices `${ ... }` has been [implemented](../other-new-features/principled-meta-programming.md) in Dotty.
-  * [TASTy reflect](../other-new-features/tasty-reflect.md) provides more complex tree based APIs to inspect or create quoted code.
+* `inline` has been [implemented](../metaprogramming/inline.md) in Dotty.
+* Quotes `'{ ... }` and splices `${ ... }` has been [implemented](../metaprogramming/macros.md) in Dotty.
+  * [TASTy reflect](../metaprogramming/tasty-reflect.md) provides more complex tree based APIs to inspect or create quoted code.
