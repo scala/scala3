@@ -9,7 +9,7 @@ import ast.Trees._
 /** Generate proxy classes for @main functions.
  *  A function like
  *
- *     @main f(x: S, ys: T*) = ...
+ *     @main def f(x: S, ys: T*) = ...
  *
  *  would be translated to something like
  *
