@@ -2048,7 +2048,8 @@ class Typer extends Namer
             xtree.isTerm &&
             !untpd.isContextualClosure(xtree) &&
             !ctx.mode.is(Mode.Pattern) &&
-            !ctx.isAfterTyper)
+            !ctx.isAfterTyper &&
+            !ctx.isInlineContext)
           makeContextualFunction(xtree, ifpt)
         else xtree match {
           case xtree: untpd.NameTree => typedNamed(xtree, pt)
@@ -2660,7 +2661,8 @@ class Typer extends Namer
           !isApplyProto(pt) &&
           pt != AssignProto &&
           !ctx.mode.is(Mode.Pattern) &&
-          !ctx.isAfterTyper) {
+          !ctx.isAfterTyper &&
+          !ctx.isInlineContext) {
         typr.println(i"insert apply on implicit $tree")
         typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt, locked)
       }
