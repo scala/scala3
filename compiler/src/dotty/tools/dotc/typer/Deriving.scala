@@ -53,8 +53,14 @@ trait Deriving { this: Typer =>
         // If we set the Synthetic flag here widenDelegate will widen too far and the
         // derived instance will have too low a priority to be selected over a freshly
         // derived instance at the summoning site.
+
+        val (lazyOrMethod, rhsType) = info match {
+          case ExprType(rhsType) => (Lazy, rhsType)
+          case _ => (Method, info)
+        }
+
         synthetics +=
-          ctx.newSymbol(ctx.owner, instanceName, Delegate | Method, info, coord = pos.span)
+          ctx.newSymbol(ctx.owner, instanceName, Delegate | lazyOrMethod, rhsType, coord = pos.span)
             .entered
       }
     }
@@ -154,7 +160,7 @@ trait Deriving { this: Typer =>
       import tpd._
 
       /** The type class instance definition with symbol `sym` */
-      def typeclassInstance(sym: Symbol)(implicit ctx: Context): List[Type] => (List[List[tpd.Tree]] => tpd.Tree) =
+      def typeclassDefInstance(sym: Symbol)(implicit ctx: Context): List[Type] => (List[List[tpd.Tree]] => tpd.Tree) =
         (tparamRefs: List[Type]) => (paramRefss: List[List[tpd.Tree]]) => {
           val tparams = tparamRefs.map(_.typeSymbol.asType)
           val params = if (paramRefss.isEmpty) Nil else paramRefss.head.map(_.symbol.asTerm)
@@ -165,20 +171,35 @@ trait Deriving { this: Typer =>
             case info: MethodType => info.instantiate(params.map(_.termRef))
             case info => info.widenExpr
           }
-          def companionRef(tp: Type): TermRef = tp match {
-            case tp @ TypeRef(prefix, _) if tp.symbol.isClass =>
-              prefix.select(tp.symbol.companionModule).asInstanceOf[TermRef]
-            case tp: TypeProxy =>
-              companionRef(tp.underlying)
-          }
           val resultType = instantiated(sym.info)
           val module = untpd.ref(companionRef(resultType)).withSpan(sym.span)
           val rhs = untpd.Select(module, nme.derived)
           typed(rhs, resultType)
         }
 
-      def syntheticDef(sym: Symbol): Tree =
-        tpd.polyDefDef(sym.asTerm, typeclassInstance(sym)(ctx.fresh.setOwner(sym).setNewScope))
+      def typeclassValInstance(sym: Symbol): Tree = {
+        val rhsType = sym.info
+        val module = untpd.ref(companionRef(rhsType)).withSpan(sym.span)
+        val rhs = untpd.Select(module, nme.derived)
+        val typedRhs = typed(rhs, rhsType)
+        tpd.ValDef(sym.asTerm, typedRhs)
+      }
+
+      def companionRef(tp: Type): TermRef = tp match {
+        case tp @ TypeRef(prefix, _) if tp.symbol.isClass =>
+          prefix.select(tp.symbol.companionModule).asInstanceOf[TermRef]
+        case tp: TypeProxy =>
+          companionRef(tp.underlying)
+      }
+
+      def syntheticDef(sym: Symbol): Tree = {
+        sym.info match {
+          case _: MethodicType =>
+            tpd.polyDefDef(sym.asTerm, typeclassDefInstance(sym)(ctx.fresh.setOwner(sym).setNewScope))
+          case _ =>
+            typeclassValInstance(sym)
+        }
+      }
 
       synthetics.map(syntheticDef).toList
     }
