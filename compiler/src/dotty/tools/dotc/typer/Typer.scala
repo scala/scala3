@@ -184,7 +184,7 @@ class Typer extends Namer
           val pre = imp.site
           var reqd = required
           var excl = EmptyFlags
-          if (imp.importDelegate) reqd |= Given else excl |= Given
+          if (imp.importGiven) reqd |= Given else excl |= Given
           var denot = pre.memberBasedOnFlags(name, reqd, excl).accessibleFrom(pre)(refctx)
           if (checkBounds && imp.wildcardBound.exists)
             denot = denot.filterWithPredicate(mbr =>
@@ -1781,7 +1781,7 @@ class Typer extends Namer
         untpd.cpy.TypeBoundsTree(sel)(sel.lo, untpd.TypedSplice(typedType(tpt)))
       case sel => sel
     }
-    assignType(cpy.Import(imp)(imp.importDelegate, expr1, selectors1), sym)
+    assignType(cpy.Import(imp)(imp.importGiven, expr1, selectors1), sym)
   }
 
   def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = track("typedPackageDef") {

@@ -480,7 +480,7 @@ object desugar {
         if (enumCases.isEmpty)
           ctx.error("Enumerations must constain at least one case", namePos)
         val enumCompanionRef = TermRefTree()
-        val enumImport = Import(importDelegate = false, enumCompanionRef, enumCases.flatMap(caseIds))
+        val enumImport = Import(importGiven = false, enumCompanionRef, enumCases.flatMap(caseIds))
         (enumImport :: enumStats, enumCases, enumCompanionRef)
       }
       else (stats, Nil, EmptyTree)

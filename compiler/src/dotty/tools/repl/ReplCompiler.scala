@@ -48,9 +48,9 @@ class ReplCompiler extends Compiler {
       def importPreviousRun(id: Int)(implicit ctx: Context) = {
         // we first import the wrapper object id
         val path = nme.EMPTY_PACKAGE ++ "." ++ objectNames(id)
-        def importWrapper(c: Context, importDelegate: Boolean) = {
+        def importWrapper(c: Context, importGiven: Boolean) = {
           val importInfo = ImportInfo.rootImport(() =>
-            c.requiredModuleRef(path), importDelegate)
+            c.requiredModuleRef(path), importGiven)
           c.fresh.setNewScope.setImportInfo(importInfo)
         }
         val ctx0 = importWrapper(importWrapper(ctx, false), true)

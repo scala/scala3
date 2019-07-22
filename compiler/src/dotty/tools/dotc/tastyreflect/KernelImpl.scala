@@ -126,7 +126,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case _ => None
   }
 
-  def Import_implied(self: Import): Boolean = self.importDelegate
+  def Import_implied(self: Import): Boolean = self.importGiven
   def Import_expr(self: Import)(implicit ctx: Context): Tree = self.expr
   def Import_selectors(self: Import)(implicit ctx: Context): List[ImportSelector] = self.selectors
 

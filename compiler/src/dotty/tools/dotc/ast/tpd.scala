@@ -333,8 +333,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Block(cdef :: Nil, New(cls.typeRef, Nil))
   }
 
-  def Import(importDelegate: Boolean, expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
-    ta.assignType(untpd.Import(importDelegate, expr, selectors), ctx.newImportSymbol(ctx.owner, expr))
+  def Import(importGiven: Boolean, expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
+    ta.assignType(untpd.Import(importGiven, expr, selectors), ctx.newImportSymbol(ctx.owner, expr))
 
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef =
     ta.assignType(untpd.PackageDef(pid, stats), pid)

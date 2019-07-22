@@ -947,10 +947,10 @@ class TreeUnpickler(reader: TastyReader,
       assert(sourcePathAt(start).isEmpty)
       readByte()
       readEnd()
-      val importDelegate = nextByte == GIVEN
-      if (importDelegate) readByte()
+      val importGiven = nextByte == GIVEN
+      if (importGiven) readByte()
       val expr = readTerm()
-      setSpan(start, Import(importDelegate, expr, readSelectors()))
+      setSpan(start, Import(importGiven, expr, readSelectors()))
     }
 
     def readSelectors()(implicit ctx: Context): List[untpd.Tree] = nextByte match {
