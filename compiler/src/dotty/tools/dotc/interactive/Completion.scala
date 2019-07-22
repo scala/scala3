@@ -121,7 +121,7 @@ object Completion {
     if (buffer.mode != Mode.None) {
       path match {
         case Select(qual, _) :: _                    => buffer.addMemberCompletions(qual)
-        case Import(_, expr, _) :: _                 => buffer.addMemberCompletions(expr) // TODO: distinguish delegate from non-delegate
+        case Import(_, expr, _) :: _                 => buffer.addMemberCompletions(expr) // TODO: distinguish given from plain imports
         case (_: Thicket) :: Import(_, expr, _) :: _ => buffer.addMemberCompletions(expr)
         case _                                       => buffer.addScopeCompletions
       }

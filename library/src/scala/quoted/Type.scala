@@ -17,15 +17,15 @@ package quoted {
 
   /** Some basic type tags, currently incomplete */
   object Type {
-    delegate UnitTag for Type[Unit] = new TaggedType[Unit]
-    delegate BooleanTag for Type[Boolean] = new TaggedType[Boolean]
-    delegate ByteTag for Type[Byte] = new TaggedType[Byte]
-    delegate CharTag for Type[Char] = new TaggedType[Char]
-    delegate ShortTag for Type[Short] = new TaggedType[Short]
-    delegate IntTag for Type[Int] = new TaggedType[Int]
-    delegate LongTag for Type[Long] = new TaggedType[Long]
-    delegate FloatTag for Type[Float] = new TaggedType[Float]
-    delegate DoubleTag for Type[Double] = new TaggedType[Double]
+    given UnitTag as Type[Unit] = new TaggedType[Unit]
+    given BooleanTag as Type[Boolean] = new TaggedType[Boolean]
+    given ByteTag as Type[Byte] = new TaggedType[Byte]
+    given CharTag as Type[Char] = new TaggedType[Char]
+    given ShortTag as Type[Short] = new TaggedType[Short]
+    given IntTag as Type[Int] = new TaggedType[Int]
+    given LongTag as Type[Long] = new TaggedType[Long]
+    given FloatTag as Type[Float] = new TaggedType[Float]
+    given DoubleTag as Type[Double] = new TaggedType[Double]
   }
 
 }

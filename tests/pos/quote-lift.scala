@@ -1,7 +1,7 @@
 import scala.quoted._
 
 object Test {
-   delegate for QuoteContext = ???
+   given as QuoteContext = ???
 
   '{ ${implicitly[Liftable[Int]].toExpr(1)} }
 

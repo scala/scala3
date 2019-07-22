@@ -4,10 +4,10 @@ trait T {
 
 object Test0 {
   trait A[T]
-  delegate a[T] for A[T]
+  given a[T] as A[T]
 
   class B[T]
-  delegate b[T] for B[T]
+  given b[T] as B[T]
 }
 
 class C extends T

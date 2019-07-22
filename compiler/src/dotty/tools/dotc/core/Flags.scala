@@ -22,7 +22,7 @@ object Flags {
 
   type Flag = opaques.Flag
 
-  delegate FlagOps {
+  given FlagOps {
 
     def (x: FlagSet) bits: Long = opaques.toBits(x)
 

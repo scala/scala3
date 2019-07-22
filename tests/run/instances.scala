@@ -8,7 +8,7 @@ object Test extends App {
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  delegate CircleOps {
+  given CircleOps {
     def (c: Circle) circumference: Double = c.radius * math.Pi * 2
   }
 
@@ -16,7 +16,7 @@ object Test extends App {
 
   assert(circle.circumference == CircleOps.circumference(circle))
 
-  delegate StringOps {
+  given StringOps {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
@@ -25,18 +25,18 @@ object Test extends App {
   val names = List("hi", "hello", "world")
   assert(names.longestStrings == List("hello", "world"))
 
-  delegate SeqOps {
+  given SeqOps {
     def (xs: Seq[T]) second[T] = xs.tail.head
   }
 
   assert(names.longestStrings.second == "world")
 
-  delegate ListListOps {
+  given ListListOps {
     def (xs: List[List[T]]) flattened[T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
   }
 
   // A right associative op
-  delegate Prepend {
+  given Prepend {
     def (x: T) ::[T] (xs: Seq[T]) = x +: xs
   }
   val ss: Seq[Int] = List(1, 2, 3)
@@ -53,7 +53,7 @@ object Test extends App {
     def unit: T
   }
 
-  delegate StringMonoid for Monoid[String] {
+  given StringMonoid as Monoid[String] {
     def (x: String) combine (y: String): String = x.concat(y)
     def unit: String = ""
   }
@@ -71,13 +71,13 @@ object Test extends App {
     val minimum: T
   }
 
-  delegate for Ord[Int] {
+  given as Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
   }
 
-  delegate ListOrd[T: Ord] for Ord[List[T]] {
+  given ListOrd[T: Ord] as Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -109,14 +109,14 @@ object Test extends App {
     def pure[A](x: A): F[A]
   }
 
-  delegate ListMonad for Monad[List] {
+  given ListMonad as Monad[List] {
     def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  delegate ReaderMonad[Ctx] for Monad[[X] =>> Ctx => X] {
+  given ReaderMonad[Ctx] as Monad[[X] =>> Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =

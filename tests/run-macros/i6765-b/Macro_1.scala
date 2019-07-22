@@ -1,5 +1,5 @@
 import scala.quoted._
-import delegate scala.quoted._
+import given scala.quoted._
 
 inline def foo = ${fooImpl}
 

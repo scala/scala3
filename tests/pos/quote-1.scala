@@ -1,7 +1,7 @@
 import scala.quoted._
 
 object Test {
-  delegate for QuoteContext = ???
+  given as QuoteContext = ???
 
   def f[T](x: Expr[T])(implicit t: Type[T]) = '{
     val y: $t = $x
