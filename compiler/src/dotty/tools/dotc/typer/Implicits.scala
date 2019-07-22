@@ -968,7 +968,7 @@ trait Implicits { self: Typer =>
       if (!checkFormal(formal)) EmptyTree
       else
         formal.member(tpnme.MirroredType).info match {
-          case TypeBounds(mirroredType, _) if checkFormal(formal) => mirrorFor(mirroredType)
+          case TypeBounds(mirroredType, _) => mirrorFor(mirroredType)
           case other => EmptyTree
         }
     }
