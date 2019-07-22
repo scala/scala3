@@ -1364,11 +1364,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  objects, since these are anyway taken to be more specific than methods
      *  (by condition 3a above).
      */
-    def widenDelegate(tp: Type, alt: TermRef): Type = tp match {
+    def widenGiven(tp: Type, alt: TermRef): Type = tp match {
       case mt: MethodType if mt.isImplicitMethod =>
-        mt.derivedLambdaType(mt.paramNames, mt.paramInfos, widenDelegate(mt.resultType, alt))
+        mt.derivedLambdaType(mt.paramNames, mt.paramInfos, widenGiven(mt.resultType, alt))
       case pt: PolyType =>
-        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, widenDelegate(pt.resultType, alt))
+        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, widenGiven(pt.resultType, alt))
       case _ =>
         if (alt.symbol.isAllOf(SyntheticGivenMethod)) tp.widenToParents
         else tp
@@ -1400,8 +1400,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         if (winsType2) -1 else 0
     }
 
-    val fullType1 = widenDelegate(alt1.widen, alt1)
-    val fullType2 = widenDelegate(alt2.widen, alt2)
+    val fullType1 = widenGiven(alt1.widen, alt1)
+    val fullType2 = widenGiven(alt2.widen, alt2)
     val strippedType1 = stripImplicit(fullType1)
     val strippedType2 = stripImplicit(fullType2)
 
