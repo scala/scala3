@@ -1837,13 +1837,23 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *   <methodRef>(<receiver>)    or
    *   <methodRef>[<type-args>](<receiver>)
    *
-   *  where <type-args> comes from `pt` if it is a PolyProto.
+   *  where <type-args> comes from `pt` if it is a (possibly ignored) PolyProto.
    */
   def extMethodApply(methodRef: untpd.Tree, receiver: Tree, pt: Type)(implicit ctx: Context) = {
-    val (core, pt1) = pt.revealIgnored match {
-      case PolyProto(targs, restpe) => (untpd.TypeApply(methodRef, targs.map(untpd.TypedSplice(_))), restpe)
-      case _ => (methodRef, pt)
+    /** Integrate the type arguments from `currentPt` into `methodRef`, and produce
+     *  a matching expected type.
+     *  If `currentPt` is ignored, the new expected type will be ignored too.
+     */
+    def integrateTypeArgs(currentPt: Type, wasIgnored: Boolean = false): (untpd.Tree, Type) = currentPt match {
+      case IgnoredProto(ignored) =>
+        integrateTypeArgs(ignored, wasIgnored = true)
+      case PolyProto(targs, restpe) =>
+        val core = untpd.TypeApply(methodRef, targs.map(untpd.TypedSplice(_)))
+        (core, if (wasIgnored) IgnoredProto(restpe) else restpe)
+      case _ =>
+        (methodRef, pt)
     }
+    val (core, pt1) = integrateTypeArgs(pt)
     val app =
       typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)(
         ctx.addMode(Mode.SynthesizeExtMethodReceiver))
