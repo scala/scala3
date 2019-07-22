@@ -2338,7 +2338,8 @@ object Parsers {
         (ofClass || ofInstance) && {
           val lookahead = in.lookaheadScanner // skips newline on startup
           lookahead.nextToken()  // skip the `given`
-          if (lookahead.token == IDENTIFIER || lookahead.token == BACKQUOTED_IDENT) {
+          if (lookahead.token == IDENTIFIER && lookahead.name != nme.as ||
+              lookahead.token == BACKQUOTED_IDENT) {
             lookahead.nextToken()
             if (lookahead.token == LBRACKET) {
               lookahead.nextToken()
