@@ -43,13 +43,13 @@ sidebar:
           subsection:
             - title: Overview
               url: docs/reference/contextual/motivation.html
-            - title: Delegates
+            - title: Given Instances
               url: docs/reference/contextual/delegates.html
             - title: Given Clauses
               url: docs/reference/contextual/given-clauses.html
             - title: Context Bounds
               url: docs/reference/contextual/context-bounds.html
-            - title: Delegate Imports
+            - title: Given Imports
               url: docs/reference/contextual/import-delegate.html
             - title: Extension Methods
               url: docs/reference/contextual/extension-methods.html

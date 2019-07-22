@@ -194,7 +194,7 @@ would be rewritten to
     def reflect[T: Type, U: Type](f: Expr[T] => Expr[U]): Expr[T => U] =
       '{ (x: ${ the[Type[T]] }) => ${ f('x) } }
 ```
-The `the` query succeeds because there is a delegate of
+The `the` query succeeds because there is a given instance of
 type `Type[T]` available (namely the given parameter corresponding
 to the context bound `: Type`), and the reference to that value is
 phase-correct. If that was not the case, the phase inconsistency for
@@ -224,7 +224,7 @@ Here’s a compiler that maps an expression given in the interpreted
 language to quoted Scala code of type `Expr[Int]`.
 The compiler takes an environment that maps variable names to Scala `Expr`s.
 ```scala
-    import delegate scala.quoted._
+    import given scala.quoted._
 
     def compile(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
       case Num(n) =>
@@ -251,15 +251,15 @@ The `toExpr` extension method is defined in package `quoted`:
 ```scala
     package quoted
 
-    delegate ExprOps {
+    given ExprOps {
       def (x: T) toExpr[T: Liftable] given QuoteContext: Expr[T] = the[Liftable[T]].toExpr(x)
       ...
     }
 ```
 The extension says that values of types implementing the `Liftable` type class can be
-converted ("lifted") to `Expr` values using `toExpr`, provided a delegate import of `scala.quoted._` is in scope.
+converted ("lifted") to `Expr` values using `toExpr`, provided a given import of `scala.quoted._` is in scope.
 
-Dotty comes with delegate definitions of `Liftable` for
+Dotty comes with given instances of `Liftable` for
 several types including `Boolean`, `String`, and all primitive number
 types. For example, `Int` values can be converted to `Expr[Int]`
 values by wrapping the value in a `Literal` tree node. This makes use
@@ -269,8 +269,8 @@ in the sense that they could all be defined in a user program without
 knowing anything about the representation of `Expr` trees. For
 instance, here is a possible instance of `Liftable[Boolean]`:
 ```scala
-    delegate for Liftable[Boolean] {
-      def toExpr(b: Boolean) =
+    given as Liftable[Boolean] {
+      def toExpr(b: Boolean) given QuoteContext: Expr[Boolean] =
         if (b) '{ true } else '{ false }
     }
 ```
@@ -278,8 +278,8 @@ Once we can lift bits, we can work our way up. For instance, here is a
 possible implementation of `Liftable[Int]` that does not use the underlying
 tree machinery:
 ```scala
-    delegate for Liftable[Int] {
-      def toExpr(n: Int) = n match {
+    given as Liftable[Int] {
+      def toExpr(n: Int) given QuoteContext: Expr[Int] = n match {
         case Int.MinValue    => '{ Int.MinValue }
         case _ if n < 0      => '{ - ${ toExpr(-n) } }
         case 0               => '{ 0 }
@@ -291,8 +291,8 @@ tree machinery:
 Since `Liftable` is a type class, its instances can be conditional. For example,
 a `List` is liftable if its element type is:
 ```scala
-    delegate [T: Liftable] for Liftable[List[T]] {
-      def toExpr(xs: List[T]) = xs match {
+    given [T: Liftable] as Liftable[List[T]] {
+      def toExpr(xs: List[T]) given QuoteContext: Expr[List[T]] = xs match {
         case head :: tail => '{ ${ toExpr(head) } :: ${ toExpr(tail) } }
         case Nil => '{ Nil: List[T] }
       }
@@ -337,7 +337,7 @@ implicit search. For instance, to implement
     the[Type[List[T]]]
 ```
 where `T` is not defined in the current stage, we construct the type constructor
-of `List` applied to the splice of the result of searching for a delegate for `Type[T]`:
+of `List` applied to the splice of the result of searching for a given instance for `Type[T]`:
 ```scala
     '[ List[ ${ the[Type[T]] } ] ]
 ```

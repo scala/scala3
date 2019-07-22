@@ -33,7 +33,7 @@ These new constructs directly model core features of DOT, higher-kinded types, a
 These constructs replace existing constructs with the aim of making the language safer and simpler to use, and to promote uniformity in code style.
 
  - [Trait Parameters](other-new-features/trait-parameters.md) replace [early initializers](dropped-features/early-initializers.md) with a more generally useful construct.
- - [Delegates](contextual/delegates.md)
+ - [Given Instances](contextual/delegates.md)
    replace implicit objects and defs, focussing on intent over mechanism.
  - [Given Clauses](contextual/given-clauses.md) replace implicit parameters, avoiding their ambiguities.
  - [Extension Methods](contextual/extension-methods.md) replace implicit classes with a clearer and simpler mechanism.
@@ -58,7 +58,7 @@ e a special case. There are currently no deprecation plans for value classes, si
 These constructs are restricted to make the language safer.
 
  - [Implicit Conversions](contextual/conversions.md): there is only one way to define implicit conversions instead of many, and potentially surprising implicit conversions require a language import.
- - [Delegate Imports](contextual/import-delegate.md): implicits now require a special form of import, to make the import clearly visible.
+ - [Given Imports](contextual/import-delegate.md): implicits now require a special form of import, to make the import clearly visible.
  - [Type Projection](dropped-features/type-projection.md): only classes can be used as prefix `C` of a type projection `C#A`. Type projection on abstract types is no longer supported since it is unsound.
  - [Multiversal Equality](contextual/multiversal-equality.md) implements an "opt-in" scheme to rule out nonsensical comparisons with `==` and `!=`.
  - [@infix and @alpha](https://github.com/lampepfl/dotty/pull/5975)
