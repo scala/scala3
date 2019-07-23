@@ -18,7 +18,8 @@ LIST='- [ ] Publish artifacts to Maven via CI
   - [ ] On `<rc-branch>`, set `baseVersion` to `<rc-version>` and `git tag` it as `<rc-version>`. This will publish artefacts to Sonatype and GitHub Release.
   - [ ] On `master`, set `baseVersion` to `<next-version>`
 - [ ] Update `scalaVersion` (and, if applicable, the `sbt-dotty` version) in the Dotty ecosystem projects
-  - [ ] https://github.com/lampepfl/dotty-example-project
+  - [ ] https://github.com/lampepfl/dotty-example-project [![Build Status](https://travis-ci.org/lampepfl/dotty-example-project.svg?branch=master)](https://travis-ci.org/lampepfl/dotty-example-project)
+    - [ ] Committed to `master`
   - [ ] https://github.com/lampepfl/dotty-example-project/tree/mill
   - [ ] https://github.com/lampepfl/dotty.g8 [![Build Status](https://travis-ci.org/lampepfl/dotty.g8.svg?branch=master)](https://travis-ci.org/lampepfl/dotty.g8/)
     - [ ] Committed to `master`
@@ -29,6 +30,9 @@ LIST='- [ ] Publish artifacts to Maven via CI
     - SHA256 sum for the artifact: `wget -q -O- https://github.com/lampepfl/dotty/releases/download/<rc-version>/sha256sum.txt | grep ".tar.gz"`
   - [ ] https://github.com/lampepfl/packtest [![Build Status](https://travis-ci.org/lampepfl/packtest.svg?branch=master)](https://travis-ci.org/lampepfl/packtest)
     - [ ] Committed to `master`
+  - [ ] https://github.com/lampepfl/xml-interpolator [![Build Status](https://travis-ci.org/lampepfl/xml-interpolator.svg?branch=master)](https://travis-ci.org/lampepfl/xml-interpolator)
+    - [ ] PR submitted
+    - [ ] PR merged
   - [ ] https://github.com/scalacenter/scastie
     - [ ] PR submitted
     - [ ] PR merged
