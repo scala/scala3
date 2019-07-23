@@ -48,7 +48,9 @@ package object quoted {
   private object NoResult
 
   object autolift {
-    implicit def autoToExpr[T: Liftable](x: T) given QuoteContext: Expr[T] = x.toExpr
+    given autoToExpr[T: Liftable] as Conversion[T, Expr[T]] given QuoteContext {
+      def apply(x: T): Expr[T] = x.toExpr
+    }
   }
 
   implicit object ExprOps {
