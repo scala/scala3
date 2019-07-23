@@ -1,11 +1,13 @@
 public @interface MyJava_1 {
 
-    public MyClassTypeA typeA() default MyClassTypeA.A;
+    public String value() default "MyJava";
 
-    public MyClassTypeB typeB();
+    public MyClassTypeA typeA();
+
+    public MyClassTypeB typeB() default @MyClassTypeB;
 
     public enum MyClassTypeA {
-	A
+	A, B
     }
 
     public @interface MyClassTypeB {}
