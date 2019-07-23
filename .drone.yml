@@ -62,7 +62,7 @@ steps:
   when:
     event:
     - tag
-    - deployment
+    - promote
 
 - name: test_java11
   pull: default
@@ -76,7 +76,7 @@ steps:
     event:
     - push
     - tag
-    - deployment
+    - promote
 
 - name: documentation
   pull: default
@@ -120,7 +120,7 @@ steps:
       from_secret: sonatype_user
   when:
     event:
-    - deployment
+    - promote
     target:
     - nightly
 
@@ -190,7 +190,7 @@ steps:
       from_secret: sonatype_user
   when:
     event:
-    - deployment
+    - promote
     target:
     - sbt_release
 
@@ -206,7 +206,7 @@ steps:
     event:
     - push
     - tag
-    - deployment
+    - promote
     status:
     - failure
 
