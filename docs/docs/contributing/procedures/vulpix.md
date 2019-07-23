@@ -1,3 +1,8 @@
+---
+layout: doc-page
+title: Test Vulpix Framework
+---
+
 # Test Vulpix Framework
 If you are modifying the Vulpix framework and need a playground with dummy tests to try out your modifications, do the following.
 

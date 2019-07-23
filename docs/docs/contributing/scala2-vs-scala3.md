@@ -1,3 +1,8 @@
+---
+layout: doc-page
+title: Divergences between Scala 2 and Dotty
+---
+
 # Divergences between Scala 2 and Dotty
 The following issues encountered when compiling Scala 2 code as-is under Dotty:
 
