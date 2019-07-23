@@ -1,8 +1,8 @@
 import scala.deriving._
 
 object Test extends App {
-  case class Mono(i: Int) derives Foo, Bar
-  case class Poly[T](t: T) derives Foo, Bar, Baz
+  case class Mono(i: Int) derives Foo, Bar, Inline
+  case class Poly[T](t: T) derives Foo, Bar, Baz, Inline
 
   trait Quux[T]
   object Quux {
@@ -26,13 +26,21 @@ object Test extends App {
     def derived[F[_]] given (m: Mirror { type MirroredType = F }): Baz[F] = new Baz[F] {}
   }
 
+  trait Inline[T]
+  object Inline {
+    given as Inline[Int] {}
+    inline def derived[T] given (m: Mirror.Of[T]): Inline[T] = new Inline[T] {}
+  }
+
   // Unfortunately these tests doesn't distinguish a lazy val
   // from a cached def
   assert(the[Foo[Mono]] eq the[Foo[Mono]])
   assert(the[Bar[Mono]] eq the[Bar[Mono]])
   assert(the[Baz[Poly]] eq the[Baz[Poly]])
+  assert(the[Inline[Mono]] eq the[Inline[Mono]])
 
   // These have term arguments so should be distinct
   assert(the[Foo[Poly[Int]]] ne the[Foo[Poly[Int]]])
   assert(the[Bar[Poly[Int]]] ne the[Bar[Poly[Int]]])
+  assert(the[Inline[Poly[Int]]] ne the[Inline[Poly[Int]]])
 }

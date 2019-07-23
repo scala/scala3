@@ -55,7 +55,7 @@ trait Deriving { this: Typer =>
         // derived instance at the summoning site.
 
         val (lazyOrMethod, rhsType) = info match {
-          case ExprType(rhsType) => (Lazy, rhsType)
+          case ExprType(rhsType) => (Final | Lazy | StableRealizable, rhsType)
           case _ => (Method, info)
         }
 
@@ -177,7 +177,7 @@ trait Deriving { this: Typer =>
           typed(rhs, resultType)
         }
 
-      def typeclassValInstance(sym: Symbol): Tree = {
+      def typeclassValInstance(sym: Symbol)(implicit ctx: Context): Tree = {
         val rhsType = sym.info
         val module = untpd.ref(companionRef(rhsType)).withSpan(sym.span)
         val rhs = untpd.Select(module, nme.derived)
@@ -193,11 +193,12 @@ trait Deriving { this: Typer =>
       }
 
       def syntheticDef(sym: Symbol): Tree = {
+        val localCtx = ctx.fresh.setOwner(sym).setNewScope
         sym.info match {
           case _: MethodicType =>
-            tpd.polyDefDef(sym.asTerm, typeclassDefInstance(sym)(ctx.fresh.setOwner(sym).setNewScope))
+            tpd.polyDefDef(sym.asTerm, typeclassDefInstance(sym)(localCtx))
           case _ =>
-            typeclassValInstance(sym)
+            typeclassValInstance(sym)(localCtx)
         }
       }
 
