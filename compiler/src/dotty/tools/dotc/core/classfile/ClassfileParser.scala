@@ -166,13 +166,14 @@ class ClassfileParser(
       for (i <- 0 until in.nextChar) parseMember(method = false)
       for (i <- 0 until in.nextChar) parseMember(method = true)
       classInfo = parseAttributes(classRoot.symbol, classInfo)
-      if (isAnnotation) addAnnotationConstructor(classInfo)
 
       classRoot.registerCompanion(moduleRoot.symbol)
       moduleRoot.registerCompanion(classRoot.symbol)
 
-      setClassInfo(classRoot, classInfo, fromScala2 = false)
-      setClassInfo(moduleRoot, staticInfo, fromScala2 = false)
+      setClassInfo(classRoot, classInfo, fromScala2 = false, isAnnotation = isAnnotation)
+      setClassInfo(moduleRoot, staticInfo, fromScala2 = false, isAnnotation = isAnnotation)
+
+      if (isAnnotation) addAnnotationConstructor(classInfo)
     } else if (result == Some(NoEmbedded)) {
       for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
         classRoot.owner.asClass.delete(sym)

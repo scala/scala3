@@ -95,7 +95,7 @@ object Scala2Unpickler {
       cls.enter(constr, scope)
     }
 
-  def setClassInfo(denot: ClassDenotation, info: Type, fromScala2: Boolean, selfInfo: Type = NoType)(implicit ctx: Context): Unit = {
+  def setClassInfo(denot: ClassDenotation, info: Type, fromScala2: Boolean, selfInfo: Type = NoType, isAnnotation: Boolean = false)(implicit ctx: Context): Unit = {
     val cls = denot.classSymbol
     val (tparams, TempClassInfoType(parents, decls, clazz)) = info match {
       case TempPolyType(tps, cinfo) => (tps, cinfo)
@@ -120,7 +120,8 @@ object Scala2Unpickler {
       if (tsym.exists) tsym.setFlag(TypeParam)
       else denot.enter(tparam, decls)
     }
-    if (!denot.flagsUNSAFE.isAllOf(JavaModule)) ensureConstructor(denot.symbol.asClass, decls)
+    if (!denot.flagsUNSAFE.isAllOf(JavaModule) && !isAnnotation)
+      ensureConstructor(denot.symbol.asClass, decls)
 
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
 
