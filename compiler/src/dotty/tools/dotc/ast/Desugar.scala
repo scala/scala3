@@ -1500,8 +1500,9 @@ object desugar {
           // Desugar [T_1, ..., T_M] -> (P_1, ..., P_N) => R
           // Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
 
-          val applyVParams = vargs.zipWithIndex.map { case (p, n) =>
-            makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags)
+          val applyVParams = vargs.zipWithIndex.map {
+            case (p: ValDef, _) => p.withAddedFlags(mods.flags)
+            case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags)
           }
           RefinedTypeTree(polyFunctionTpt, List(
             DefDef(nme.apply, applyTParams, List(applyVParams), res, EmptyTree)
