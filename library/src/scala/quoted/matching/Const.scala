@@ -19,6 +19,7 @@ object Const {
     def rec(tree: Term): Option[T] = tree match {
       case Literal(c) => Some(c.value.asInstanceOf[T])
       case Block(Nil, e) => rec(e)
+      case Typed(e, _) => rec(e)
       case Inlined(_, Nil, e) => rec(e)
       case _  => None
     }

@@ -19,6 +19,13 @@ package quoted {
     /** Show a source code like representation of this expression */
     def show(syntaxHighlight: SyntaxHighlight)(implicit qctx: QuoteContext): String = qctx.show(this, syntaxHighlight)
 
+    /** Return the value of this expression.
+     *
+     *  Returns `None` if the expression does not contain a value or contains side effects.
+     *  Otherwise returns the `Some` of the value.
+     */
+    final def getValue[U >: T] given (qctx: QuoteContext, valueOf: ValueOfExpr[U]): Option[U] = valueOf(this)
+
   }
 
   object Expr {

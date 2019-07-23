@@ -1,0 +1,10 @@
+Some(0)
+Some(1)
+None
+Some(true)
+Some(false)
+None
+Some(List())
+Some(List(a, b, c))
+Some(None)
+Some(Some(abc))
