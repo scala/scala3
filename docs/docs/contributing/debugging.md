@@ -1,3 +1,8 @@
+---
+layout: doc-page
+title: Debugging Techniques
+---
+
 # Debugging Techniques
 - [Setting up the playground](#setting-up-the-playground)
 - [Show for human readable output](#show-for-human-readable-output)

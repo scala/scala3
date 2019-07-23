@@ -1,3 +1,8 @@
+---
+layout: doc-page
+title: Working with Scalafix
+---
+
 # Working with Scalafix
 
 First, create a new rule as follows (command from https://scalacenter.github.io/scalafix/docs/developers/setup.html):

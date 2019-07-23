@@ -1,3 +1,8 @@
+---
+layout: doc-page
+title: Basic Operations with Mill
+---
+
 Here's an example of how to test a project that uses mill:
 
 ```bash

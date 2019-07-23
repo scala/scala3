@@ -1,3 +1,8 @@
+---
+layout: doc-page
+title: Contributing Knowledge
+---
+
 # Contribute Internals-related Knowledge
 If you know anything useful at all about Dotty, feel free to log this knowledge:
 
