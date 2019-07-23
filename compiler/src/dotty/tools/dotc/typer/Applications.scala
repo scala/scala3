@@ -758,23 +758,27 @@ trait Applications extends Compatibility {
             // lift arguments in the definition order
             val argDefBuf = mutable.ListBuffer.empty[Tree]
             typedArgs = lifter.liftArgs(argDefBuf, methType, typedArgs)
-
             // Lifted arguments ordered based on the original order of typedArgBuf and
             // with all non-explicit default parameters at the end in declaration order.
             val orderedArgDefs = {
-              // List of original arguments that are lifted by liftArgs
-              val impureArgs = typedArgBuf.filterNot(lifter.noLift)
-              // Assuming stable sorting all non-explicit default parameters will remain in the end with the same order
-              val defaultParamIndex = args.size
-              // Mapping of index of each `liftable` into original args ordering
-              val indices = impureArgs.map { arg =>
-                val idx = args.indexOf(arg)
-                if (idx >= 0) idx // original index skipping pure arguments
-                else defaultParamIndex
+              // Indices of original typed arguments that are lifted by liftArgs
+              val impureArgIndices = typedArgBuf.zipWithIndex.collect {
+                case (arg, idx) if !lifter.noLift(arg) => idx
               }
-              scala.util.Sorting.stableSort[(Tree, Int), Int](argDefBuf zip indices, x => x._2).map(_._1)
+              def position(arg: Trees.Tree[T]) = {
+                val i = args.indexOf(arg)
+                if (i >= 0) i else orderedArgs.length
+              }
+              // The original indices of all ordered arguments, as an array
+              val originalIndices = orderedArgs.map(position).toArray
+              // Assuming stable sorting all non-explicit default parameters will remain in the end with the same order
+              val defaultParamIndex = typedArgs.size
+              // A map from lifted argument index to the corresponding position in the original argument list
+              def originalIndex(n: Int) =
+                if (n < originalIndices.length) originalIndices(n) else orderedArgs.length
+              scala.util.Sorting.stableSort[(Tree, Int), Int](
+                argDefBuf.zip(impureArgIndices), (arg, idx) => originalIndex(idx)).map(_._1)
             }
-
             liftedDefs ++= orderedArgDefs
           }
           if (sameSeq(typedArgs, args)) // trick to cut down on tree copying
