@@ -66,4 +66,11 @@ object Liftable {
     }
   }
 
+  given [L: Type: Liftable, R: Type: Liftable] as Liftable[Either[L, R]] = new Liftable[Either[L, R]] {
+    def toExpr(x: Either[L, R]): given QuoteContext => Expr[Either[L, R]] = x match {
+      case Left(x) => '{ Left[L, R](${x.toExpr}) }
+      case Right(x) => '{ Right[L, R](${x.toExpr}) }
+    }
+  }
+
 }

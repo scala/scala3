@@ -43,6 +43,11 @@ object Test {
     val liftedSome: Expr[Option[Int]] = some
     val liftedNone: Expr[Option[Int]] = none
 
+    val left: Either[Int, Long] = Left(1)
+    val right: Either[Int, Long] = Right(2L)
+    left.toExpr
+    right.toExpr
+
     println("quote lib ok")
   }
 }
