@@ -47,14 +47,14 @@ object Liftable {
 
   given [T: Type: Liftable: ClassTag] as Liftable[IArray[T]] = new Liftable[IArray[T]] {
     def toExpr(iarray: IArray[T]): given QuoteContext => Expr[IArray[T]] = '{
-      val array = new Array[T](${Liftable_Int_delegate.toExpr(iarray.length)})(ClassTag(${ClassIsLiftable.toExpr(the[ClassTag[T]].runtimeClass)}))
-      ${ Expr.block(List.tabulate(iarray.length)(i => '{ array(${Liftable_Int_delegate.toExpr(i)}) = ${the[Liftable[T]].toExpr(iarray(i))} }), '{ array.asInstanceOf[IArray[T]] }) }
+      val array = new Array[T](${iarray.length.toExpr})(ClassTag(${the[ClassTag[T]].runtimeClass.toExpr}))
+      ${ Expr.block(List.tabulate(iarray.length)(i => '{ array(${i.toExpr}) = ${iarray(i).toExpr} }), '{ array.asInstanceOf[IArray[T]] }) }
     }
   }
 
   given [T: Type: Liftable] as Liftable[List[T]] = new Liftable[List[T]] {
     def toExpr(x: List[T]): given QuoteContext => Expr[List[T]] = x match {
-      case x :: xs  => '{ (${this.toExpr(xs)}).::[T](${the[Liftable[T]].toExpr(x)}) }
+      case x :: xs  => '{ (${xs.toExpr}).::[T](${x.toExpr}) }
       case Nil => '{ Nil: List[T] }
     }
   }
