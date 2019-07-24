@@ -43,4 +43,11 @@ object Liftable {
     }
   }
 
+  given [T: Type: Liftable] as Liftable[List[T]] = new Liftable[List[T]] {
+    def toExpr(x: List[T]): given QuoteContext => Expr[List[T]] = x match {
+      case x :: xs  => '{ (${this.toExpr(xs)}).::[T](${the[Liftable[T]].toExpr(x)}) }
+      case Nil => '{ Nil: List[T] }
+    }
+  }
+
 }

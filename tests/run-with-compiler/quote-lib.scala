@@ -101,12 +101,6 @@ package liftable {
 
 
   object Lists {
-    implicit def ListIsLiftable[T: Liftable](implicit t: Type[T]): Liftable[List[T]] = new Liftable[List[T]] {
-      def toExpr(x: List[T]): given QuoteContext => Expr[List[T]] = x match {
-        case x :: xs  => '{ (${xs}).::[$t](${x}) }
-        case Nil => '{ Nil: List[$t] }
-      }
-    }
 
     implicit class LiftedOps[T: Liftable](list: Expr[List[T]])(implicit t: Type[T]) {
       def foldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U], qctx: QuoteContext): Expr[U] =

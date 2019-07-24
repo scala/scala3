@@ -77,16 +77,7 @@ abstract class MacroStringInterpolator[T] {
   }
 
   protected implicit def StringContextIsLiftable: Liftable[StringContext] = new Liftable[StringContext] {
-    def toExpr(strCtx: StringContext) = {
-      // TODO define in stdlib?
-      implicit def ListIsLiftable: Liftable[List[String]] = new Liftable[List[String]] {
-        override def toExpr(list: List[String]) = list match {
-          case x :: xs => '{${x.toExpr} :: ${toExpr(xs)}}
-          case Nil => '{Nil}
-        }
-      }
-      '{StringContext(${strCtx.parts.toList}: _*)}
-    }
+    def toExpr(strCtx: StringContext) = '{StringContext(${strCtx.parts.toList}: _*)}
   }
 
   protected class NotStaticlyKnownError(msg: String, expr: Expr[Any]) extends Exception(msg)
