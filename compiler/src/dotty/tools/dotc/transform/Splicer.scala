@@ -193,8 +193,12 @@ object Splicer {
           val staticMethodCall = interpretedStaticMethodCall(fn.symbol.owner, fn.symbol)
           staticMethodCall(args.flatten.map(interpretTree))
         } else if (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic) {
-          val staticMethodCall = interpretedStaticMethodCall(fn.qualifier.symbol.moduleClass, fn.symbol)
-          staticMethodCall(args.flatten.map(interpretTree))
+          if (fn.name == nme.asInstanceOfPM) {
+            interpretModuleAccess(fn.qualifier.symbol)
+          } else {
+            val staticMethodCall = interpretedStaticMethodCall(fn.qualifier.symbol.moduleClass, fn.symbol)
+            staticMethodCall(args.flatten.map(interpretTree))
+          }
         } else if (env.contains(fn.name)) {
           env(fn.name)
         } else if (tree.symbol.is(InlineProxy)) {
@@ -265,7 +269,6 @@ object Splicer {
 
       val name = getDirectName(fn.info.finalResultType, fn.name.asTermName)
       val method = getMethod(clazz, name, paramsSig(fn))
-
       (args: List[Object]) => stopIfRuntimeException(method.invoke(inst, args: _*))
     }
 
