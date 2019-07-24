@@ -710,8 +710,6 @@ class Definitions {
   @threadUnsafe lazy val TupleXXLClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.TupleXXL"))
   def TupleXXLModule(implicit ctx: Context): Symbol = TupleXXLClass.companionModule
 
-    def TupleXXL_apply(implicit ctx: Context): Symbol =
-      TupleXXLModule.info.member(nme.apply).requiredSymbol("method", nme.apply, TupleXXLModule)(_.info.isVarArgsMethod)
     def TupleXXL_fromIterator(implicit ctx: Context): Symbol = TupleXXLModule.requiredMethod("fromIterator")
 
   lazy val DynamicTupleModule: Symbol = ctx.requiredModule("scala.runtime.DynamicTuple")

@@ -13,6 +13,10 @@ sealed trait Tuple extends Any {
   inline def toArray: Array[Object] =
     DynamicTuple.dynamicToArray(this)
 
+  /** Create a copy this tuple as an IArray */
+  inline def toIArray: IArray[Object] =
+    DynamicTuple.dynamicToIArray(this)
+
   /** Return a new tuple by prepending the element to `this` tuple.
    *  This opteration is O(this.size)
    */
@@ -77,6 +81,17 @@ object Tuple {
       case xs => xs.map(_.asInstanceOf[Object])
     }
     DynamicTuple.dynamicFromArray[Tuple](xs2)
+  }
+
+  /** Convert an immutable array into a tuple of unknown arity and types */
+  def fromIArray[T](xs: IArray[T]): Tuple = {
+    val xs2: IArray[Object] = xs match {
+      case xs: IArray[Object] => xs
+      case xs =>
+        // TODO suport IArray.map
+        xs.asInstanceOf[Array[T]].map(_.asInstanceOf[Object]).asInstanceOf[IArray[Object]]
+    }
+    DynamicTuple.dynamicFromIArray[Tuple](xs2)
   }
 
   /** Convert a Product into a tuple of unknown arity and types */

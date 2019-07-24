@@ -169,7 +169,7 @@ package internal {
     def tupledFunctionXXL[F, G]: TupledFunction[F, G] = new TupledFunction {
       def tupled(f: F): G = ((args: TupleXXL) => f.asInstanceOf[FunctionXXL].apply(args.elems)).asInstanceOf[G]
       def untupled(g: G): F = new FunctionXXL {
-        override def apply(xs: Array[Object]): AnyRef = g.asInstanceOf[TupleXXL => AnyRef].apply(TupleXXL(xs))
+        override def apply(xs: IArray[Object]): AnyRef = g.asInstanceOf[TupleXXL => AnyRef].apply(TupleXXL.fromIArray(xs))
       }.asInstanceOf[F]
     }
 
