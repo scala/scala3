@@ -77,10 +77,10 @@ abstract class MacroStringInterpolator[T] {
   }
 
   protected implicit def StringContextIsLiftable: Liftable[StringContext] = new Liftable[StringContext] {
-    def toExpr(strCtx: StringContext) given QuoteContext: Expr[StringContext] = {
+    def toExpr(strCtx: StringContext) = {
       // TODO define in stdlib?
       implicit def ListIsLiftable: Liftable[List[String]] = new Liftable[List[String]] {
-        override def toExpr(list: List[String]) given QuoteContext: Expr[List[String]] = list match {
+        override def toExpr(list: List[String]) = list match {
           case x :: xs => '{${x.toExpr} :: ${toExpr(xs)}}
           case Nil => '{Nil}
         }

@@ -204,7 +204,7 @@ class ReifyQuotes extends MacroTransform {
     private def pickledQuote(body: Tree, splices: List[Tree], originalTp: Type, isType: Boolean)(implicit ctx: Context) = {
 
       def liftedValue[T](value: T, name: TermName, qctx: Tree) =
-        ref(defn.LiftableModule).select(name).select("toExpr".toTermName).appliedTo(Literal(Constant(value))).appliedTo(qctx)
+        ref(defn.LiftableModule).select(name).select("toExpr".toTermName).appliedTo(Literal(Constant(value))).select(nme.apply).appliedTo(qctx)
 
       def pickleAsValue[T](value: T) = {
         val qctx = ctx.typer.inferImplicitArg(defn.QuoteContextClass.typeRef, body.span)

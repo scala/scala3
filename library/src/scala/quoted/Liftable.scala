@@ -6,7 +6,7 @@ package scala.quoted
 trait Liftable[T] {
 
   /** Lift a value into an expression containing the construction of that value */
-  def toExpr(x: T) given QuoteContext: Expr[T]
+  def toExpr(x: T): given QuoteContext => Expr[T]
 
 }
 
@@ -29,7 +29,7 @@ object Liftable {
 
   private class PrimitiveLiftable[T <: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends Liftable[T] {
     /** Lift a primitive value `n` into `'{ n }` */
-    def toExpr(x: T) given (qctx: QuoteContext): Expr[T] = {
+    def toExpr(x: T) = given qctx => {
       import qctx.tasty._
       Literal(Constant(x)).seal.asInstanceOf[Expr[T]]
     }
@@ -37,7 +37,7 @@ object Liftable {
 
   implicit def ClassIsLiftable[T]: Liftable[Class[T]] = new Liftable[Class[T]] {
     /** Lift a `Class[T]` into `'{ classOf[T] }` */
-    def toExpr(x: Class[T]) given (qctx: QuoteContext): Expr[Class[T]] = {
+    def toExpr(x: Class[T]) = given qctx => {
       import qctx.tasty._
       Ref(definitions.Predef_classOf).appliedToType(Type(x)).seal.asInstanceOf[Expr[Class[T]]]
     }

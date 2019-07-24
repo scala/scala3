@@ -11,14 +11,14 @@ object Lifters {
   }
 
   implicit def ArrayIsLiftable[T : Type: ClassTag](implicit l: Liftable[T]): Liftable[Array[T]] = new Liftable[Array[T]] {
-    def toExpr(x: Array[T]) given QuoteContext: Expr[Array[T]] = '{
+    def toExpr(x: Array[T]) = '{
       val array = new Array[T](${x.length})(${implicitly[Expr[ClassTag[T]]]})
       ${initArray(x, 'array)}
     }
   }
 
   implicit def IntArrayIsLiftable: Liftable[Array[Int]] = new Liftable[Array[Int]] {
-    def toExpr(x: Array[Int]) given QuoteContext: Expr[Array[Int]] = '{
+    def toExpr(x: Array[Int]) = '{
       val array = new Array[Int](${x.length})
       ${initArray(x, 'array)}
     }

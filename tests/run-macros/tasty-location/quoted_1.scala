@@ -19,7 +19,7 @@ object Location {
   }
 
   private implicit def ListIsLiftable[T : Liftable : Type]: Liftable[List[T]] = new Liftable[List[T]] {
-    def toExpr(x: List[T]) given QuoteContext: Expr[List[T]] = x match {
+    def toExpr(x: List[T]) = x match {
       case x :: xs  => '{ $x :: $xs }
       case Nil => '{ List.empty[T] }
     }
