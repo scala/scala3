@@ -72,7 +72,7 @@ case class Complex[T](re: T, im: T)
 
 object Complex {
   implicit def isLiftable[T: Type: Liftable]: Liftable[Complex[T]] = new Liftable[Complex[T]] {
-    def toExpr(comp: Complex[T]) given QuoteContext: Expr[Complex[T]] = '{Complex(${comp.re}, ${comp.im})}
+    def toExpr(comp: Complex[T]) = '{Complex(${comp.re}, ${comp.im})}
   }
 }
 
