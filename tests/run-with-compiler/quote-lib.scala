@@ -38,6 +38,11 @@ object Test {
     val iarray: IArray[Int] = IArray(1, 2, 3)
     val liftedIArray: Expr[IArray[Int]] = iarray
 
+    val some: Option[Int] = Some(2)
+    val none: Option[Int] = Some(2)
+    val liftedSome: Expr[Option[Int]] = some
+    val liftedNone: Expr[Option[Int]] = none
+
     println("quote lib ok")
   }
 }

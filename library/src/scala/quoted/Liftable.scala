@@ -59,4 +59,11 @@ object Liftable {
     }
   }
 
+  given [T: Type: Liftable] as Liftable[Option[T]] = new Liftable[Option[T]] {
+    def toExpr(x: Option[T]): given QuoteContext => Expr[Option[T]] = x match {
+      case Some(x) => '{ Some[T](${x.toExpr}) }
+      case None => '{ None: Option[T] }
+    }
+  }
+
 }
