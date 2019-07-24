@@ -1,6 +1,6 @@
 package dotty.tools.dotc
 
-import scala.tasty.util.Chars._
+import scala.internal.Chars._
 import core.Names.Name
 import core.StdNames.nme
 import core.NameOps._

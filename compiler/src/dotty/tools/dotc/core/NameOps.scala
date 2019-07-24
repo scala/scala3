@@ -4,7 +4,7 @@ package core
 import java.security.MessageDigest
 import scala.io.Codec
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
-import scala.tasty.util.Chars
+import scala.internal.Chars
 import Chars.isOperatorPart
 import Definitions._
 

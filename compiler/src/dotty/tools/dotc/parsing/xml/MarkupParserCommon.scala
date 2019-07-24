@@ -10,7 +10,7 @@ package parsing
 package xml
 
 import Utility._
-import scala.tasty.util.Chars.SU
+import scala.internal.Chars.SU
 
 
 
