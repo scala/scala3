@@ -35,6 +35,9 @@ object Test {
     list.unrolledFoldLeft[Int](0)('{ (acc: Int, x: Int) => acc + x }).show
     list.unrolledForeach('{ (x: Int) => println(x) }).show
 
+    val iarray: IArray[Int] = IArray(1, 2, 3)
+    val liftedIArray: Expr[IArray[Int]] = iarray
+
     println("quote lib ok")
   }
 }
@@ -118,12 +121,6 @@ package liftable {
          case x :: xs => '{ ($f).apply(${x}); ${ xs.unrolledForeach(f) } }
          case Nil => '{}
        }
-    }
-
-    object Arrays {
-      implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T], ct: Expr[ClassTag[T]]): Liftable[Array[T]] = new Liftable[Array[T]] {
-        def toExpr(arr: Array[T]) = '{ new Array[$t](${arr.length})($ct) }
-      }
     }
 
   }

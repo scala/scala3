@@ -1,5 +1,7 @@
 package scala.quoted
 
+import scala.reflect.ClassTag
+
 /** A typeclass for types that can be turned to `quoted.Expr[T]`
  *  without going through an explicit `'{...}` operation.
  */
@@ -40,6 +42,13 @@ object Liftable {
     def toExpr(x: Class[T]) = given qctx => {
       import qctx.tasty._
       Ref(definitions.Predef_classOf).appliedToType(Type(x)).seal.asInstanceOf[Expr[Class[T]]]
+    }
+  }
+
+  given [T: Type: Liftable: ClassTag] as Liftable[IArray[T]] = new Liftable[IArray[T]] {
+    def toExpr(iarray: IArray[T]): given QuoteContext => Expr[IArray[T]] = '{
+      val array = new Array[T](${Liftable_Int_delegate.toExpr(iarray.length)})(ClassTag(${ClassIsLiftable.toExpr(the[ClassTag[T]].runtimeClass)}))
+      ${ Expr.block(List.tabulate(iarray.length)(i => '{ array(${Liftable_Int_delegate.toExpr(i)}) = ${the[Liftable[T]].toExpr(iarray(i))} }), '{ array.asInstanceOf[IArray[T]] }) }
     }
   }
 
