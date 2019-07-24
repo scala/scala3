@@ -6,7 +6,7 @@ import scala.collection.mutable.ArrayBuffer
 import dotty.tools.io._
 import java.util.regex.Pattern
 import java.io.IOException
-import scala.tasty.util.Chars._
+import scala.internal.Chars._
 import Spans._
 import scala.io.Codec
 import core.Names.TermName

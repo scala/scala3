@@ -18,7 +18,7 @@ import typer.ErrorReporting._
 import reporting.ThrowingReporter
 import ast.Trees._
 import ast.{tpd, untpd}
-import scala.tasty.util.Chars._
+import scala.internal.Chars._
 import collection.mutable
 import ProtoTypes._
 

@@ -22,7 +22,7 @@ import Constants._
 import Symbols.defn
 import ScriptParsers._
 import Decorators._
-import scala.tasty.util.Chars.isIdentifierStart
+import scala.internal.Chars.isIdentifierStart
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.patch
 

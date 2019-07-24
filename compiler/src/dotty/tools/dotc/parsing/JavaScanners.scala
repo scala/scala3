@@ -8,7 +8,7 @@ import Scanners._
 import util.SourceFile
 import JavaTokens._
 import scala.annotation.{ switch, tailrec }
-import scala.tasty.util.Chars._
+import scala.internal.Chars._
 
 object JavaScanners {
 

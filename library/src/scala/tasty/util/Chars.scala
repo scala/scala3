@@ -12,14 +12,19 @@ import java.lang.Character.UPPERCASE_LETTER
 @deprecated("Use scala.internal.Chars", "0.17")
 object Chars {
 
+  @deprecated("Use scala.internal.Chars", "0.18")
   final val LF = '\u000A'
+  @deprecated("Use scala.internal.Chars", "0.18")
   final val FF = '\u000C'
+  @deprecated("Use scala.internal.Chars", "0.18")
   final val CR = '\u000D'
+  @deprecated("Use scala.internal.Chars", "0.18")
   final val SU = '\u001A'
 
   /** Convert a character digit to an Int according to given base,
    *  -1 if no success
    */
+  @deprecated("Use scala.internal.Chars", "0.18")
   def digit2int(ch: Char, base: Int): Int = {
     val num = (
       if (ch <= '9') ch - '0'
@@ -33,6 +38,7 @@ object Chars {
   private[this] val char2uescapeArray = Array[Char]('\\', 'u', 0, 0, 0, 0)
 
   /** Convert a character to a backslash-u escape */
+  @deprecated("Use scala.internal.Chars", "0.18")
   def char2uescape(c: Char): String = {
     @forceInline def hexChar(ch: Int): Char =
       (( if (ch < 10) '0' else 'A' - 10 ) + ch).toChar
@@ -46,36 +52,44 @@ object Chars {
   }
 
   /** Is character a line break? */
+  @deprecated("Use scala.internal.Chars", "0.18")
   def isLineBreakChar(c: Char): Boolean = (c: @switch) match {
     case LF|FF|CR|SU  => true
     case _            => false
   }
 
   /** Is character a whitespace character (but not a new line)? */
+  @deprecated("Use scala.internal.Chars", "0.18")
   def isWhitespace(c: Char): Boolean =
     c == ' ' || c == '\t' || c == CR
 
   /** Can character form part of a doc comment variable $xxx? */
+  @deprecated("Use scala.internal.Chars", "0.18")
   def isVarPart(c: Char): Boolean =
     '0' <= c && c <= '9' || 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z'
 
   /** Can character start an alphanumeric Scala identifier? */
+  @deprecated("Use scala.internal.Chars", "0.18")
   def isIdentifierStart(c: Char): Boolean =
     (c == '_') || (c == '$') || JCharacter.isUnicodeIdentifierStart(c)
 
   /** Can character form part of an alphanumeric Scala identifier? */
+  @deprecated("Use scala.internal.Chars", "0.18")
   def isIdentifierPart(c: Char): Boolean =
     (c == '$') || JCharacter.isUnicodeIdentifierPart(c)
 
   /** Is character a math or other symbol in Unicode?  */
+  @deprecated("Use scala.internal.Chars", "0.18")
   def isSpecial(c: Char): Boolean = {
     val chtp = JCharacter.getType(c)
     chtp == JCharacter.MATH_SYMBOL.toInt || chtp == JCharacter.OTHER_SYMBOL.toInt
   }
 
+  @deprecated("Use scala.internal.Chars", "0.18")
   def isValidJVMChar(c: Char): Boolean =
     !(c == '.' || c == ';' || c =='[' || c == '/')
 
+  @deprecated("Use scala.internal.Chars", "0.18")
   def isValidJVMMethodChar(c: Char): Boolean =
     !(c == '.' || c == ';' || c =='[' || c == '/' || c == '<' || c == '>')
 
@@ -84,9 +98,11 @@ object Chars {
     import JCharacter._
     Set[Byte](LOWERCASE_LETTER, UPPERCASE_LETTER, OTHER_LETTER, TITLECASE_LETTER, LETTER_NUMBER)
   }
+  @deprecated("Use scala.internal.Chars", "0.18")
   def isScalaLetter(ch: Char): Boolean = letterGroups(JCharacter.getType(ch).toByte) || otherLetters(ch)
 
   /** Can character form part of a Scala operator name? */
+  @deprecated("Use scala.internal.Chars", "0.18")
   def isOperatorPart(c : Char) : Boolean = (c: @switch) match {
     case '~' | '!' | '@' | '#' | '%' |
          '^' | '*' | '+' | '-' | '<' |

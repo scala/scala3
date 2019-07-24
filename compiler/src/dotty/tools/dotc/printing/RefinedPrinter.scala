@@ -20,7 +20,7 @@ import typer.ProtoTypes._
 import Trees._
 import TypeApplications._
 import Decorators._
-import scala.tasty.util.Chars.isOperatorPart
+import scala.internal.Chars.isOperatorPart
 import transform.TypeUtils._
 
 import language.implicitConversions

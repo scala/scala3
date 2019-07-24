@@ -37,7 +37,7 @@ import transform.patmat.SpaceEngine.isIrrefutableUnapply
 import collection.mutable
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages._
-import scala.tasty.util.Chars.isOperatorPart
+import scala.internal.Chars.isOperatorPart
 
 object Checking {
   import tpd._
