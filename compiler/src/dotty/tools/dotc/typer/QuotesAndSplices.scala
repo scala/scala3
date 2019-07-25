@@ -249,7 +249,7 @@ trait QuotesAndSplices { self: Typer =>
   }
 
   /** Type a quote pattern `case '{ <quoted> } =>` qiven the a current prototype. Typing the pattern
-   *  will also transform it into a call to `scala.internal.quoted.Matcher.unapply`.
+   *  will also transform it into a call to `scala.internal.quoted.Expr.unapply`.
    *
    *  Code directly inside the quote is typed as an expression using Mode.QuotedPattern. Splices
    *  within the quotes become patterns again and typed acordingly.
@@ -276,7 +276,7 @@ trait QuotesAndSplices { self: Typer =>
    *  and the patterns in the splices. All these are recombined into a call to `Matcher.unapply`.
    *
    *  ```
-   *  case scala.internal.quoted.Matcher.unapply[
+   *  case scala.internal.quoted.Expr.unapply[
    *          Tuple1[$t @ _], // Type binging definition
    *          Tuple2[Type[$t], Expr[List[$t]]] // Typing the result of the pattern match
    *        ](
@@ -347,7 +347,7 @@ trait QuotesAndSplices { self: Typer =>
     val splicePat = typed(untpd.Tuple(splices.map(x => untpd.TypedSplice(replaceBindingsInTree.transform(x)))).withSpan(quoted.span), patType)
 
     UnApply(
-      fun = ref(defn.InternalQuotedMatcher_unapply.termRef).appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
+      fun = ref(defn.InternalQuotedExpr_unapply.termRef).appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
       implicits =
           ref(defn.InternalQuoted_exprQuote.termRef).appliedToType(defn.AnyType).appliedTo(shape).select(nme.apply).appliedTo(qctx) ::
           Literal(Constant(typeBindings.nonEmpty)) ::
