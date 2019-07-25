@@ -411,6 +411,7 @@ fail(indentity("foo")) // error: failed on: indentity("foo")
 The `memo` method is used to avoid repeated evaluation of subcomputations.
 Example:
 ```
+type T = ...
 class C(x: T) {
   def costly(x: T): Int = ???
   def f(y: Int) = memo(costly(x)) * y
