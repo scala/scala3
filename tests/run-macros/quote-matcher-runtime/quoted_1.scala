@@ -9,7 +9,7 @@ object Macros {
   private def impl[A, B](a: Expr[A], b: Expr[B]) given (qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty.{Bind => _, _}
 
-    val res = scala.internal.quoted.Matcher.unapply[Tuple, Tuple](a)(b, true, qctx).map { tup =>
+    val res = scala.internal.quoted.Expr.unapply[Tuple, Tuple](a)(b, true, qctx).map { tup =>
       tup.toArray.toList.map {
         case r: Expr[_] =>
           s"Expr(${r.unseal.show})"
