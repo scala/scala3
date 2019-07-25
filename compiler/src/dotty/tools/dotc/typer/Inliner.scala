@@ -16,6 +16,7 @@ import transform.SymUtils._
 import Contexts.Context
 import Names.{Name, TermName}
 import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName, MemoCacheName}
+import NameOps._
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
 import Inferencing.fullyDefinedType
@@ -407,7 +408,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
   /** The expansion of `memo(op)` where `op: T` is:
    *
-   *    { if (memo$N == null) memo$N = op; $memo.asInstanceOf[T] }
+   *    { if (memo$N == null) memo$N_=(op); $memo.asInstanceOf[T] }
    *
    *  This creates as a side effect a memo cache symbol $memo$N` of type `T | Null`.
    *  TODO: Restrict this to non-null types, once nullability checking is in.
@@ -425,10 +426,17 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           else Synthetic | Mutable | Private | Local,
         info = OrType(argType, defn.NullType),
         coord = call.span)
+      val memoSetter = ctx.newSymbol(
+        owner = cacheOwner,
+        name = memoVar.name.setterName,
+        flags = memoVar.flags | Method | Accessor,
+        info = MethodType(argType :: Nil, defn.UnitType),
+        coord = call.span
+      )
       val memoRef = ref(memoVar).withSpan(call.span)
       val cond = If(
         memoRef.select(defn.Any_==).appliedTo(Literal(Constant(null))),
-        memoRef.becomes(callValueArgss.head.head),
+        ref(memoSetter).withSpan(call.span).becomes(callValueArgss.head.head),
         Literal(Constant(())))
       val expr = memoRef.cast(argType)
       Block(cond :: Nil, expr)
