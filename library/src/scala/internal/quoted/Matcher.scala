@@ -41,7 +41,7 @@ private[quoted] object Matcher {
     }
 
     // TODO factor out common logic with `termMatch`
-    def typeTreeMatch(scrutineeTypeTree: Term, patternTypeTree: Term, hasTypeSplices: Boolean): Option[Tuple] = {
+    def typeTreeMatch(scrutineeTypeTree: TypeTree, patternTypeTree: TypeTree, hasTypeSplices: Boolean): Option[Tuple] = {
       implicit val env: Env = Set.empty
       if (hasTypeSplices) {
         implicit val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
