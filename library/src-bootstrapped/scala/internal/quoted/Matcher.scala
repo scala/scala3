@@ -33,7 +33,7 @@ object Matcher {
   def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_],
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
     import qctx.tasty._
-    new QuoteMatcher[qctx.type].matches(scrutineeExpr.unseal, patternExpr.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
+    new QuoteMatcher[qctx.type].termMatch(scrutineeExpr.unseal, patternExpr.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
   }
 
   private class QuoteMatcher[QCtx <: QuoteContext & Singleton] given (val qctx: QCtx) {
@@ -48,7 +48,7 @@ object Matcher {
 
     class SymBinding(val sym: Symbol)
 
-    def matches(scrutineeTerm: Term, patternTerm: Term, hasTypeSplices: Boolean): Option[Tuple] = {
+    def termMatch(scrutineeTerm: Term, patternTerm: Term, hasTypeSplices: Boolean): Option[Tuple] = {
       implicit val env: Env = Set.empty
       if (hasTypeSplices) {
         implicit val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
@@ -64,6 +64,26 @@ object Matcher {
       }
       else {
         scrutineeTerm.underlyingArgument =#= patternTerm.underlyingArgument
+      }
+    }
+
+    // TODO factor out common logic with `termMatch`
+    def typeTreeMatch(scrutineeTypeTree: Term, patternTypeTree: Term, hasTypeSplices: Boolean): Option[Tuple] = {
+      implicit val env: Env = Set.empty
+      if (hasTypeSplices) {
+        implicit val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
+        val matchings = scrutineeTypeTree =#= patternTypeTree
+        // After matching and doing all subtype check, we have to aproximate all the type bindings
+        // that we have found and seal them in a quoted.Type
+        matchings.asOptionOfTuple.map { tup =>
+          Tuple.fromArray(tup.toArray.map { // TODO improve performace
+            case x: SymBinding => internal.Context_GADT_approximation(the[Context])(x.sym, true).seal
+            case x => x
+          })
+        }
+      }
+      else {
+        scrutineeTypeTree =#= patternTypeTree
       }
     }
 
