@@ -71,6 +71,11 @@ object Liftable {
       '{ Set(${set.toSeq.toExpr}: _*) }
   }
 
+  given [T: Type: Liftable, U: Type: Liftable] as Liftable[Map[T, U]] = new Liftable[Map[T, U]] {
+    def toExpr(map: Map[T, U]): given QuoteContext => Expr[Map[T, U]] =
+    '{ Map(${map.toSeq.toExpr}: _*) }
+  }
+
   given [T: Type: Liftable] as Liftable[Option[T]] = new Liftable[Option[T]] {
     def toExpr(x: Option[T]): given QuoteContext => Expr[Option[T]] = x match {
       case Some(x) => '{ Some[T](${x.toExpr}) }

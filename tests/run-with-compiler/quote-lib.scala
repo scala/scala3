@@ -56,6 +56,9 @@ object Test {
     val set: Set[Int] = Set(1, 2, 3)
     val liftedSet: Expr[Set[Int]] = set
 
+    val map: Map[Int, Char] = Map(1 -> 'a', 2 -> 'b', 3 -> 'c')
+    val liftedMap: Expr[Map[Int, Char]] = map
+
     liftedList.foldLeft[Int](0)('{ (acc: Int, x: Int) => acc + x }).show
     liftedList.foreach('{ (x: Int) => println(x) }).show
 
