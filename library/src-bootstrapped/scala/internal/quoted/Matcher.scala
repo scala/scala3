@@ -9,7 +9,7 @@ object Matcher {
 
   private final val debug = false
 
-  /** Pattern matches an the scrutineeExpr aquainsnt the patternExpr and returns a tuple
+  /** Pattern matches an the scrutineeExpr against the patternExpr and returns a tuple
    *  with the matched holes if successful.
    *
    *  Examples:
@@ -32,49 +32,73 @@ object Matcher {
    */
   def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_],
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
+    import qctx.tasty._
+    new QuoteMatcher[qctx.type].matches(scrutineeExpr.unseal, patternExpr.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
+  }
 
+  private class QuoteMatcher[QCtx <: QuoteContext & Singleton] given (val qctx: QCtx) {
     // TODO improve performance
+
     import qctx.tasty.{Bind => BindPattern, _}
     import Matching._
 
-    type Env = Set[(Symbol, Symbol)]
+    private type Env = Set[(Symbol, Symbol)]
+
+    inline private def withEnv[T](env: Env)(body: => given Env => T): T = body given env
 
     class SymBinding(val sym: Symbol)
 
-    inline def withEnv[T](env: Env)(body: => given Env => T): T = body given env
+    def matches(scrutineeTerm: Term, patternTerm: Term, hasTypeSplices: Boolean): Option[Tuple] = {
+      implicit val env: Env = Set.empty
+      if (hasTypeSplices) {
+        implicit val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
+        val matchings = scrutineeTerm.underlyingArgument =#= patternTerm.underlyingArgument
+        // After matching and doing all subtype check, we have to aproximate all the type bindings
+        // that we have found and seal them in a quoted.Type
+        matchings.asOptionOfTuple.map { tup =>
+          Tuple.fromArray(tup.toArray.map { // TODO improve performace
+            case x: SymBinding => internal.Context_GADT_approximation(the[Context])(x.sym, true).seal
+            case x => x
+          })
+        }
+      }
+      else {
+        scrutineeTerm.underlyingArgument =#= patternTerm.underlyingArgument
+      }
+    }
 
-    def hasBindTypeAnnotation(tpt: TypeTree): Boolean = tpt match {
+    private def hasBindTypeAnnotation(tpt: TypeTree): Boolean = tpt match {
       case Annotated(tpt2, annot) => isBindAnnotation(annot) || hasBindTypeAnnotation(tpt2)
       case _ => false
     }
 
-    def hasBindAnnotation(sym: Symbol) = sym.annots.exists(isBindAnnotation)
+    private def hasBindAnnotation(sym: Symbol) = sym.annots.exists(isBindAnnotation)
 
-    def isBindAnnotation(tree: Tree): Boolean = tree match {
+    private def isBindAnnotation(tree: Tree): Boolean = tree match {
       case New(tpt) => tpt.symbol == internal.Definitions_InternalQuoted_patternBindHoleAnnot
       case annot => annot.symbol.owner == internal.Definitions_InternalQuoted_patternBindHoleAnnot
     }
 
     /** Check that all trees match with `mtch` and concatenate the results with && */
-    def matchLists[T](l1: List[T], l2: List[T])(mtch: (T, T) => Matching): Matching = (l1, l2) match {
+    private def matchLists[T](l1: List[T], l2: List[T])(mtch: (T, T) => Matching): Matching = (l1, l2) match {
       case (x :: xs, y :: ys) => mtch(x, y) && matchLists(xs, ys)(mtch)
       case (Nil, Nil) => matched
       case _ => notMatched
     }
 
     /** Check that all trees match with =#= and concatenate the results with && */
-    def (scrutinees: List[Tree]) =##= (patterns: List[Tree]) given Context, Env: Matching =
+    private def (scrutinees: List[Tree]) =##= (patterns: List[Tree]) given Context, Env: Matching =
       matchLists(scrutinees, patterns)(_ =#= _)
 
     /** Check that the trees match and return the contents from the pattern holes.
      *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
      *
-     * @param scrutinee The tree beeing matched
-     * @param pattern The pattern tree that the scrutinee should match. Contains `patternHole` holes.
-     * @param `the[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
-     * @return `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
+     *  @param scrutinee The tree beeing matched
+     *  @param pattern The pattern tree that the scrutinee should match. Contains `patternHole` holes.
+     *  @param `the[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
+     *  @return `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
      */
-    def (scrutinee0: Tree) =#= (pattern0: Tree) given Context, Env: Matching = {
+    private def (scrutinee0: Tree) =#= (pattern0: Tree) given Context, Env: Matching = {
 
       /** Normalize the tree */
       def normalize(tree: Tree): Tree = tree match {
@@ -202,10 +226,10 @@ object Matcher {
               paramss1.flatten.zip(paramss2.flatten).map((param1, param2) => param1.symbol -> param2.symbol)
 
           bindMatch &&
-          typeParams1 =##= typeParams2 &&
-          matchLists(paramss1, paramss2)(_ =##= _) &&
-          tpt1 =#= tpt2 &&
-          withEnv(rhsEnv)(rhs1 =#= rhs2)
+            typeParams1 =##= typeParams2 &&
+            matchLists(paramss1, paramss2)(_ =##= _) &&
+            tpt1 =#= tpt2 &&
+            withEnv(rhsEnv)(rhs1 =#= rhs2)
 
         case (Closure(_, tpt1), Closure(_, tpt2)) =>
           // TODO match tpt1 with tpt2?
@@ -246,7 +270,7 @@ object Matcher {
       }
     }
 
-    def treeOptMatches(scrutinee: Option[Tree], pattern: Option[Tree]) given Context, Env: Matching = {
+    private def treeOptMatches(scrutinee: Option[Tree], pattern: Option[Tree]) given Context, Env: Matching = {
       (scrutinee, pattern) match {
         case (Some(x), Some(y)) => x =#= y
         case (None, None) => matched
@@ -254,12 +278,12 @@ object Matcher {
       }
     }
 
-    def caseMatches(scrutinee: CaseDef, pattern: CaseDef) given Context, Env: Matching = {
+    private def caseMatches(scrutinee: CaseDef, pattern: CaseDef) given Context, Env: Matching = {
       val (caseEnv, patternMatch) = scrutinee.pattern =%= pattern.pattern
       withEnv(caseEnv) {
         patternMatch &&
-        treeOptMatches(scrutinee.guard, pattern.guard) &&
-        scrutinee.rhs =#= pattern.rhs
+          treeOptMatches(scrutinee.guard, pattern.guard) &&
+          scrutinee.rhs =#= pattern.rhs
       }
     }
 
@@ -267,15 +291,15 @@ object Matcher {
      *  Return a tuple with the new environment containing the bindings defined in this pattern and a matching.
      *  The matching is None if the pattern trees do not match otherwise return Some of a tuple containing all the contents in the holes.
      *
-     * @param scrutinee The pattern tree beeing matched
-     * @param pattern The pattern tree that the scrutinee should match. Contains `patternHole` holes.
-     * @param `the[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
-     * @return The new environment containing the bindings defined in this pattern tuppled with
-     *         `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
+     *  @param scrutinee The pattern tree beeing matched
+     *  @param pattern The pattern tree that the scrutinee should match. Contains `patternHole` holes.
+     *  @param `the[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
+     *  @return The new environment containing the bindings defined in this pattern tuppled with
+     *          `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
      */
-    def (scrutinee: Pattern) =%= (pattern: Pattern) given Context, Env: (Env, Matching) = (scrutinee, pattern) match {
+    private def (scrutinee: Pattern) =%= (pattern: Pattern) given Context, Env: (Env, Matching) = (scrutinee, pattern) match {
       case (Pattern.Value(v1), Pattern.Unapply(TypeApply(Select(patternHole @ Ident("patternHole"), "unapply"), List(tpt)), Nil, Nil))
-          if patternHole.symbol.owner.fullName == "scala.runtime.quoted.Matcher$" =>
+        if patternHole.symbol.owner.fullName == "scala.runtime.quoted.Matcher$" =>
         (the[Env], matched(v1.seal))
 
       case (Pattern.Value(v1), Pattern.Value(v2)) =>
@@ -319,7 +343,7 @@ object Matcher {
         (the[Env], notMatched)
     }
 
-    def foldPatterns(patterns1: List[Pattern], patterns2: List[Pattern]) given Context, Env: (Env, Matching) = {
+    private def foldPatterns(patterns1: List[Pattern], patterns2: List[Pattern]) given Context, Env: (Env, Matching) = {
       if (patterns1.size != patterns2.size) (the[Env], notMatched)
       else patterns1.zip(patterns2).foldLeft((the[Env], matched)) { (acc, x) =>
         val (env, res) = (x._1 =%= x._2) given (the[Context], acc._1)
@@ -327,31 +351,10 @@ object Matcher {
       }
     }
 
-    def isTypeBinding(tree: Tree): Boolean = tree match {
+    private def isTypeBinding(tree: Tree): Boolean = tree match {
       case IsTypeDef(tree) => hasBindAnnotation(tree.symbol)
       case _ => false
     }
-
-    implicit val env: Env = Set.empty
-
-    val res = {
-      if (hasTypeSplices) {
-        implicit val ctx: Context = qctx.tasty.internal.Context_GADT_setFreshGADTBounds(rootContext)
-        val matchings = scrutineeExpr.unseal.underlyingArgument =#= patternExpr.unseal.underlyingArgument
-        // After matching and doing all subtype check, we have to aproximate all the type bindings
-        // that we have found and seal them in a quoted.Type
-        matchings.asOptionOfTuple.map { tup =>
-          Tuple.fromArray(tup.toArray.map { // TODO improve performace
-            case x: SymBinding => internal.Context_GADT_approximation(the[Context])(x.sym, true).seal
-            case x => x
-          })
-        }
-      }
-      else {
-        scrutineeExpr.unseal.underlyingArgument =#= patternExpr.unseal.underlyingArgument
-      }
-    }
-    res.asInstanceOf[Option[Tup]]
   }
 
   /** Result of matching a part of an expression */
@@ -366,7 +369,7 @@ object Matcher {
     def (self: Matching) asOptionOfTuple: Option[Tuple] = self
 
     /** Concatenates the contents of two sucessful matchings or return a `notMatched` */
-    // FIXME inline to avoid alocation of by name closure (see #6395)
+    // FIXME inline to avoid allocation of by name closure (see #6395)
     /*inline*/ def (self: Matching) && (that: => Matching): Matching = self match {
       case Some(x) =>
         that match {
