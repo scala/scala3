@@ -369,8 +369,7 @@ object Matcher {
     def (self: Matching) asOptionOfTuple: Option[Tuple] = self
 
     /** Concatenates the contents of two sucessful matchings or return a `notMatched` */
-    // FIXME inline to avoid allocation of by name closure (see #6395)
-    /*inline*/ def (self: Matching) && (that: => Matching): Matching = self match {
+    def (self: Matching) && (that: => Matching): Matching = self match {
       case Some(x) =>
         that match {
           case Some(y) => Some(x ++ y)
