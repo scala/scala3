@@ -46,8 +46,8 @@ trait QuotesAndSplices {
       case _ =>
     }
     val tree1 =
-      if (tree.quoted.isType) typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuote.termRef), tree.quoted :: Nil), pt)(quoteContext)
-      else if (ctx.mode.is(Mode.Pattern) && level == 0) typedQuotePattern(tree, pt)
+      if (ctx.mode.is(Mode.Pattern) && level == 0) typedQuotePattern(tree, pt)
+      else if (tree.quoted.isType) typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuote.termRef), tree.quoted :: Nil), pt)(quoteContext)
       else typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), tree.quoted), pt)(quoteContext)
     tree1.withSpan(tree.span)
   }
