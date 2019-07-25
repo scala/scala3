@@ -81,7 +81,9 @@ object PickledQuotes {
     val tpt = unpickled match {
       case Block(aliases, tpt) =>
         // `@quoteTypeTag type` aliasses are not required after unpickling
-        tpt
+        // `@quoteTypeTag type` aliasses are not required after unpickling
+        val aliases1 = aliases.filter(!_.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot))
+        seq(aliases1, tpt)
       case tpt => tpt
     }
     tpt.withType(dealiasTypeTags(tpt.tpe))
