@@ -29,6 +29,9 @@ object Test {
     val list: List[Int] = List(1, 2, 3)
     val liftedList: Expr[List[Int]] = list
 
+    val seq: Seq[Int] = Seq(1, 2, 3)
+    val liftedSeq: Expr[Seq[Int]] = seq
+
     liftedList.foldLeft[Int](0)('{ (acc: Int, x: Int) => acc + x }).show
     liftedList.foreach('{ (x: Int) => println(x) }).show
 

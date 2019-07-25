@@ -52,6 +52,13 @@ object Liftable {
     }
   }
 
+  given [T: Type: Liftable] as Liftable[Seq[T]] = new Liftable[Seq[T]] {
+    def toExpr(seq: Seq[T]): given QuoteContext => Expr[Seq[T]] = given qctx => {
+      import qctx.tasty._
+      Repeated(seq.map(x => the[Liftable[T]].toExpr(x).unseal).toList, the[quoted.Type[T]].unseal).seal.asInstanceOf[Expr[Seq[T]]]
+    }
+  }
+
   given [T: Type: Liftable] as Liftable[List[T]] = new Liftable[List[T]] {
     def toExpr(x: List[T]): given QuoteContext => Expr[List[T]] = x match {
       case x :: xs  => '{ (${xs.toExpr}).::[T](${x.toExpr}) }
