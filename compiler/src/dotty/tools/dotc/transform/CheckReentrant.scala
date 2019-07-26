@@ -7,6 +7,7 @@ import Flags._
 import Contexts.Context
 import Symbols._
 import Decorators._
+import NameKinds.MemoCacheName
 
 
 /** A no-op transform that checks whether the compiled sources are re-entrant.
@@ -44,6 +45,7 @@ class CheckReentrant extends MiniPhase {
   def isIgnored(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
     sym.hasAnnotation(unsharedAnnot()) ||
+    sym.name.is(MemoCacheName) ||
     sym.owner == defn.EnumValuesClass
       // enum values are initialized eagerly before use
       // in the long run, we should make them vals
