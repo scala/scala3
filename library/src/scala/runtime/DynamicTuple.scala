@@ -173,7 +173,7 @@ object DynamicTuple {
     case _ =>
       xs match {
         case xs: TupleXXL => xs
-        case xs => TupleXXL.fromIArray(xs.productIterator.map(_.asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]])
+        case xs => TupleXXL.fromIArray(xs.productIterator.map(_.asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use Iterator.toIArray
       }
   }).asInstanceOf[T]
 

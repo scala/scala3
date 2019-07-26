@@ -22,14 +22,14 @@ final class TupleXXL private (es: IArray[Object]) extends Product {
 
   def tailXXL: TupleXXL = {
     assert(es.length > 23)
-    new TupleXXL(es.asInstanceOf[Array[Object]].tail.asInstanceOf[IArray[Object]])
+    new TupleXXL(es.asInstanceOf[Array[Object]].tail.asInstanceOf[IArray[Object]]) // TODO use IArray.tail
   }
 
-  def toArray: Array[Object] = es.asInstanceOf[Array[Object]].clone
+  def toArray: Array[Object] = es.asInstanceOf[Array[Object]].clone // TODO use IArray.toArray
 }
 object TupleXXL {
-  def fromIterator(elems: Iterator[Any]) = new TupleXXL(elems.map(_.asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]])
+  def fromIterator(elems: Iterator[Any]) = new TupleXXL(elems.map(_.asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use Iterator.toIArray
   def fromIArray(elems: IArray[Object]) = new TupleXXL(elems)
-  def apply(elems: Any*) = new TupleXXL(elems.asInstanceOf[Seq[Object]].toArray.asInstanceOf[IArray[Object]])
-  def unapplySeq(x: TupleXXL): Option[Seq[Any]] = Some(x.elems.asInstanceOf[Array[Object]].toSeq)
+  def apply(elems: Any*) = new TupleXXL(IArray(elems.asInstanceOf[Seq[AnyRef]]: _*))
+  def unapplySeq(x: TupleXXL): Option[Seq[Any]] = Some(x.elems.asInstanceOf[Array[Object]].toSeq) // TODO use IArray.toSeq
 }
