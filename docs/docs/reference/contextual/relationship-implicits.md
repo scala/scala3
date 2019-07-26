@@ -28,18 +28,12 @@ Given instances can be mapped to combinations of implicit objects, classes and i
       class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
       final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
     ```
- 3. Alias givens map to implicit methods. If an alias has neither type parameters nor a given clause, its right-hand side is cached in a variable. There are two cases that can be optimized:
-
-  - If the right hand side is a simple reference, we can
-    use a forwarder to that reference without caching it.
-  - If the right hand side is more complex, but still known to be pure, we can
-    create a `val` that computes it ahead of time.
+ 3. Alias givens map to implicit methods. If an alias has neither type parameters nor a given clause, its right-hand side is cached in a variable, unless the right hand side is a simple reference in which case we can use a forwarder to that reference without caching it.
 
  Examples:
 
     ```scala
       given global as ExecutionContext = new ForkJoinContext()
-      given config as Config = default.config
 
       val ctx: Context
       given as Context = ctx
@@ -51,8 +45,6 @@ Given instances can be mapped to combinations of implicit objects, classes and i
         if (global$cache == null) global$cache = new ForkJoinContext()
         global$cache
       }
-
-      final implicit val config: Config = default.config
 
       final implicit def Context_given = ctx
     ```
