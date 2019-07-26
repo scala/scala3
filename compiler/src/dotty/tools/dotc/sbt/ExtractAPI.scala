@@ -230,7 +230,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
     allNonLocalClassesInSrc += cl
 
-    if (sym.isStatic && defType == DefinitionType.Module && ctx.platform.hasMainMethod(sym)) {
+    if (sym.isStatic && ctx.platform.hasMainMethod(sym)) {
       _mainClasses += name
     }
 
