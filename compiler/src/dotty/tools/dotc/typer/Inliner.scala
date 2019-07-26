@@ -424,7 +424,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   def memoized: Tree = {
     val currentOwner = ctx.owner.skipWeakOwner
     if (currentOwner.isRealMethod) {
-      val cacheOwner = ctx.owner.effectiveOwner
+      val cacheOwner = currentOwner.owner
       val argType = callTypeArgs.head.tpe
       val memoVar = ctx.newSymbol(
         owner = cacheOwner,
