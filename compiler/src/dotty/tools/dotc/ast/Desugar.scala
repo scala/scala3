@@ -144,6 +144,9 @@ object desugar {
 
 // ----- Desugar methods -------------------------------------------------
 
+  def setterNeeded(flags: FlagSet, owner: Symbol) given Context =
+    flags.is(Mutable) && owner.isClass && (!flags.isAllOf(PrivateLocal) || owner.is(Trait))
+
   /**   var x: Int = expr
    *  ==>
    *    def x: Int = expr
@@ -151,14 +154,7 @@ object desugar {
    */
   def valDef(vdef0: ValDef)(implicit ctx: Context): Tree = {
     val vdef @ ValDef(name, tpt, rhs) = transformQuotedPatternName(vdef0)
-    val mods = vdef.mods
-    val setterNeeded =
-      mods.is(Mutable) && ctx.owner.isClass && (!mods.isAllOf(PrivateLocal) || ctx.owner.is(Trait))
-    if (setterNeeded) {
-      // TODO: copy of vdef as getter needed?
-      // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
-      // right now vdef maps via expandedTree to a thicket which concerns itself.
-      // I don't see a problem with that but if there is one we can avoid it by making a copy here.
+    if (setterNeeded(vdef.mods.flags, ctx.owner)) {
       val setterParam = makeSyntheticParameter(tpt = SetterParamTree().watching(vdef))
       // The rhs gets filled in later, when field is generated and getter has parameters (see Memoize miniphase)
       val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
@@ -168,7 +164,7 @@ object desugar {
         vparamss = (setterParam :: Nil) :: Nil,
         tpt      = TypeTree(defn.UnitType),
         rhs      = setterRhs
-      ).withMods((mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
+      ).withMods((vdef.mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
       Thicket(vdef, setter)
     }
     else vdef

@@ -553,9 +553,10 @@ object Symbols {
 
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(implicit ctx: Context): this.type = {
-      assert(this.owner.isClass, s"symbol ($this) entered the scope of non-class owner ${this.owner}") // !!! DEBUG
-      this.owner.asClass.enter(this)
-      if (this.is(Module)) this.owner.asClass.enter(this.moduleClass)
+      if (this.owner.isClass) {
+        this.owner.asClass.enter(this)
+        if (this.is(Module)) this.owner.asClass.enter(this.moduleClass)
+      }
       this
     }
 
