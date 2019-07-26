@@ -193,14 +193,22 @@ object Inliner {
   /** For every occurrence of a memo cache symbol `memo$N` of type `T_N` in `tree`,
    *  an assignment `val memo$N: T_N = null`
    */
-  def memoCacheDefs(tree: Tree) given Context: Set[ValDef] = {
-    val memoCacheSyms = tree.deepFold[Set[TermSymbol]](Set.empty) {
-      (syms, t) => t match {
-        case Assign(lhs, _) if lhs.symbol.name.is(MemoCacheName) => syms + lhs.symbol.asTerm
-        case _ => syms
+  def memoCacheDefs(tree: Tree) given Context: List[ValOrDefDef] = {
+    object memoRefs extends TreeTraverser {
+      val syms = new mutable.LinkedHashSet[TermSymbol]
+      def traverse(tree: Tree) given Context = tree match {
+        case tree: RefTree if tree.symbol.name.is(MemoCacheName) =>
+          syms += tree.symbol.asTerm
+        case _: DefDef =>
+          // don't traverse deeper; nested memo caches go next to nested method
+        case _ =>
+          traverseChildren(tree)
       }
     }
-    memoCacheSyms.map(sym => ValDef(sym, Literal(Constant(null))).withSpan(sym.span))
+    memoRefs.traverse(tree)
+    for sym <- memoRefs.syms.toList yield
+      (if (sym.isSetter) DefDef(sym, _ => Literal(Constant(())))
+       else ValDef(sym, Literal(Constant(null)))).withSpan(sym.span)
   }
 }
 
@@ -420,19 +428,22 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       val argType = callTypeArgs.head.tpe
       val memoVar = ctx.newSymbol(
         owner = cacheOwner,
-        name = MemoCacheName.fresh(),
+        name = MemoCacheName.fresh(nme.memo),
         flags =
           if (cacheOwner.isTerm) Synthetic | Mutable
           else Synthetic | Mutable | Private | Local,
         info = OrType(argType, defn.NullType),
-        coord = call.span)
-      val memoSetter = ctx.newSymbol(
-        owner = cacheOwner,
-        name = memoVar.name.setterName,
-        flags = memoVar.flags | Method | Accessor,
-        info = MethodType(argType :: Nil, defn.UnitType),
-        coord = call.span
-      )
+        coord = call.span).entered
+      val memoSetter =
+        if (desugar.setterNeeded(memoVar.flags, cacheOwner))
+          ctx.newSymbol(
+            owner = cacheOwner,
+            name = memoVar.name.setterName,
+            flags = memoVar.flags | Method | Accessor,
+            info = MethodType(argType :: Nil, defn.UnitType),
+            coord = call.span
+          ).entered
+        else memoVar
       val memoRef = ref(memoVar).withSpan(call.span)
       val cond = If(
         memoRef.select(defn.Any_==).appliedTo(Literal(Constant(null))),

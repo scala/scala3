@@ -13,6 +13,22 @@ object Test extends App {
   assert(foo(1) + foo(2) == 4)
   assert(bar(1) + bar(2) == 4)
 
+  trait T {
+    def x: Int
+    def y: Int = memo {
+      def inner = memo {
+        println("computing inner");
+        x * x
+      }
+      inner + inner
+    }
+  }
+  val t = new T {
+    def x = 3
+    assert(y == 18)
+  }
+  assert(t.y == 18)
+
   class Context(val n: Int)
   def f(c: Context): Context = {
     println("computing f")
