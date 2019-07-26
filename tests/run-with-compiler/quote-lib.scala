@@ -5,7 +5,6 @@ import scala.quoted.autolift._
 import liftable.Units._
 import liftable.Lets._
 import liftable.Loops._
-import liftable.Tuples._
 import liftable.Lists._
 import liftable.Exprs._
 
@@ -25,15 +24,59 @@ object Test {
     val t2: Expr[(Int, Int)] = (2, 3)
     val t3: Expr[(Int, Int, Int)] = (2, 3, 4)
     val t4: Expr[(Int, Int, Int, Int)] = (2, 3, 4, 5)
+    (1, 2, 3, 4).toExpr
+    (1, 2, 3, 4, 5).toExpr
+    (1, 2, 3, 4, 5, 6).toExpr
+    (1, 2, 3, 4, 5, 6, 7).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21).toExpr
+    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22).toExpr
+//    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23).toExpr
+//    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24).toExpr
+//    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25).toExpr
 
     val list: List[Int] = List(1, 2, 3)
     val liftedList: Expr[List[Int]] = list
+
+    val seq: Seq[Int] = Seq(1, 2, 3)
+    val liftedSeq: Expr[Seq[Int]] = seq
+
+    val set: Set[Int] = Set(1, 2, 3)
+    val liftedSet: Expr[Set[Int]] = set
+
+    val map: Map[Int, Char] = Map(1 -> 'a', 2 -> 'b', 3 -> 'c')
+    val liftedMap: Expr[Map[Int, Char]] = map
 
     liftedList.foldLeft[Int](0)('{ (acc: Int, x: Int) => acc + x }).show
     liftedList.foreach('{ (x: Int) => println(x) }).show
 
     list.unrolledFoldLeft[Int](0)('{ (acc: Int, x: Int) => acc + x }).show
     list.unrolledForeach('{ (x: Int) => println(x) }).show
+
+    val iarray: IArray[Int] = IArray(1, 2, 3)
+    val liftedIArray: Expr[IArray[Int]] = iarray
+
+    val some: Option[Int] = Some(2)
+    val none: Option[Int] = Some(2)
+    val liftedSome: Expr[Option[Int]] = some
+    val liftedNone: Expr[Option[Int]] = none
+
+    val left: Either[Int, Long] = Left(1)
+    val right: Either[Int, Long] = Right(2L)
+    left.toExpr
+    right.toExpr
 
     println("quote lib ok")
   }
@@ -71,42 +114,8 @@ package liftable {
     def liftedDoWhile(body: Expr[Unit])(cond: Expr[Boolean]) given QuoteContext: Expr[Unit] = '{ do $body while ($cond) }
   }
 
-  object Tuples {
-
-    implicit def Tuple1IsLiftable[T1: Liftable](implicit t1: Type[T1]): Liftable[Tuple1[T1]] = new Liftable[Tuple1[T1]] {
-      def toExpr(x: Tuple1[T1]) =
-        '{ Tuple1[$t1](${ x._1}) }
-    }
-
-    implicit def Tuple2IsLiftable[T1: Liftable, T2: Liftable](implicit t1: Type[T1], t2: Type[T2]): Liftable[(T1, T2)] = new Liftable[(T1, T2)] {
-      def toExpr(x: (T1, T2)) =
-        '{ Tuple2[$t1, $t2](${x._1}, ${x._2}) }
-
-    }
-
-    implicit def Tuple3IsLiftable[T1: Liftable, T2: Liftable, T3: Liftable](implicit t1: Type[T1], t2: Type[T2], t3: Type[T3]): Liftable[(T1, T2, T3)] = new Liftable[(T1, T2, T3)] {
-      def toExpr(x: (T1, T2, T3)) =
-        '{ Tuple3[$t1, $t2, $t3](${x._1}, ${x._2}, ${x._3}) }
-
-    }
-
-    implicit def Tuple4IsLiftable[T1: Liftable, T2: Liftable, T3: Liftable, T4: Liftable](implicit t1: Type[T1], t2: Type[T2], t3: Type[T3], t4: Type[T4]): Liftable[(T1, T2, T3, T4)] = new Liftable[(T1, T2, T3, T4)] {
-      def toExpr(x: (T1, T2, T3, T4)) =
-        '{ Tuple4[$t1, $t2, $t3, $t4](${x._1}, ${x._2}, ${x._3}, ${x._4}) }
-    }
-
-    // TODO more tuples
-
-  }
-
 
   object Lists {
-    implicit def ListIsLiftable[T: Liftable](implicit t: Type[T]): Liftable[List[T]] = new Liftable[List[T]] {
-      def toExpr(x: List[T]): given QuoteContext => Expr[List[T]] = x match {
-        case x :: xs  => '{ (${xs}).::[$t](${x}) }
-        case Nil => '{ Nil: List[$t] }
-      }
-    }
 
     implicit class LiftedOps[T: Liftable](list: Expr[List[T]])(implicit t: Type[T]) {
       def foldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U], qctx: QuoteContext): Expr[U] =
@@ -124,12 +133,6 @@ package liftable {
          case x :: xs => '{ ($f).apply(${x}); ${ xs.unrolledForeach(f) } }
          case Nil => '{}
        }
-    }
-
-    object Arrays {
-      implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T], ct: Expr[ClassTag[T]]): Liftable[Array[T]] = new Liftable[Array[T]] {
-        def toExpr(arr: Array[T]) = '{ new Array[$t](${arr.length})($ct) }
-      }
     }
 
   }

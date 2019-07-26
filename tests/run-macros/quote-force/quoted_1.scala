@@ -12,10 +12,4 @@ object Location {
     '{new Location(${list})}
   }
 
-  private implicit def ListIsLiftable[T : Liftable : Type]: Liftable[List[T]] = new Liftable[List[T]] {
-    def toExpr(x: List[T]) = x match {
-      case x :: xs  => '{ ${x} :: ${xs} }
-      case Nil => '{ List.empty[T] }
-    }
-  }
 }

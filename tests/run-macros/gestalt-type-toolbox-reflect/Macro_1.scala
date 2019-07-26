@@ -110,11 +110,4 @@ object TypeToolbox {
     companionClassOpt.map(_.fullName).getOrElse("").toExpr
   }
 
-  // TODO add to the std lib
-  private implicit def listIsLiftable[T: Type: Liftable]: Liftable[List[T]] = new Liftable {
-    def toExpr(list: List[T]) = list match {
-      case x :: xs => '{${x.toExpr} :: ${toExpr(xs)}}
-      case Nil => '{Nil}
-    }
-  }
 }
