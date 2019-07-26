@@ -185,7 +185,7 @@ object DynamicTuple {
   }
 
   def dynamicToIArray(self: Tuple): IArray[Object] = (self: Any) match {
-    case self: Unit => Array.emptyObjectArray.asInstanceOf[IArray[Object]]
+    case self: Unit => Array.emptyObjectArray.asInstanceOf[IArray[Object]] // TODO use IArray.emptyObjectIArray
     case self: TupleXXL => self.elems
     case self: Product => productToArray(self).asInstanceOf[IArray[Object]]
   }

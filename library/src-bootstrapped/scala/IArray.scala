@@ -48,6 +48,16 @@ object IArray {
    */
   def empty[T: ClassTag]: IArray[T] = new Array[T](0).asInstanceOf
 
+  def emptyBooleanIArray = Array.emptyBooleanArray.asInstanceOf[IArray[Boolean]]
+  def emptyByteIArray    = Array.emptyByteArray.asInstanceOf[IArray[Byte]]
+  def emptyCharIArray    = Array.emptyCharArray.asInstanceOf[IArray[Char]]
+  def emptyDoubleIArray  = Array.emptyDoubleArray.asInstanceOf[IArray[Double]]
+  def emptyFloatIArray   = Array.emptyFloatArray.asInstanceOf[IArray[Float]]
+  def emptyIntIArray     = Array.emptyIntArray.asInstanceOf[IArray[Int]]
+  def emptyLongIArray    = Array.emptyLongArray.asInstanceOf[IArray[Long]]
+  def emptyShortIArray   = Array.emptyShortArray.asInstanceOf[IArray[Short]]
+  def emptyObjectIArray  = Array.emptyObjectArray.asInstanceOf[IArray[Object]]
+
   /** An immutable array with given elements.
    */
   def apply[T: ClassTag](xs: T*): IArray[T] = Array(xs: _*).asInstanceOf
