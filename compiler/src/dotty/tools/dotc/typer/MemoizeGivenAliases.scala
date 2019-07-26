@@ -42,13 +42,13 @@ trait MemoizeGivenAliases { this: Typer =>
           pre match {
             case NoPrefix => false
             case pre: ThisType => pre.cls != meth.owner.enclosingClass
+            case _ => true
           }
         case _ => true
       }
       if (needsMemo) {
-        val memoized =
-          untpd.Apply(untpd.ref(defn.Compiletime_memo.termRef), untpd.TypedSplice(rhs) :: Nil)
-        typed(memoized, rhsType)
+        val memoized = ref(defn.Compiletime_memo).appliedToType(rhsType).appliedTo(rhs)
+        adapt(memoized, rhsType)
       }
       else rhs
     case _ => rhs
