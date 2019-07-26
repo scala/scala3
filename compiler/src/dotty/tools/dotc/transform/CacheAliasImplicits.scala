@@ -82,7 +82,7 @@ class CacheAliasImplicits extends MiniPhase with IdentityDenotTransformer { this
           val cacheFlags = if (ctx.owner.isClass) Private | Local | Mutable else Mutable
           val cacheSym =
             ctx.newSymbol(ctx.owner, CacheName(tree.name), cacheFlags, rhsType, coord = sym.coord)
-          if (ctx.owner.isClass) cacheSym.enteredAfter(thisPhase)
+              .enteredAfter(thisPhase)
           val cacheDef = ValDef(cacheSym, tpd.defaultValue(rhsType))
           val cachingDef = cpy.DefDef(tree)(rhs =
             Block(
