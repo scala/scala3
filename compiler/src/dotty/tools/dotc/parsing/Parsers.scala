@@ -2338,21 +2338,24 @@ object Parsers {
         (ofClass || ofInstance) && {
           val lookahead = in.lookaheadScanner // skips newline on startup
           lookahead.nextToken()  // skip the `given`
-          if (lookahead.token == IDENTIFIER && lookahead.name != nme.as ||
-              lookahead.token == BACKQUOTED_IDENT) {
-            lookahead.nextToken()
-            if (lookahead.token == LBRACKET) {
+          if (lookahead.token == LBRACKET) true
+          else {
+            if (lookahead.token == IDENTIFIER && lookahead.name != nme.as ||
+                   lookahead.token == BACKQUOTED_IDENT) {
               lookahead.nextToken()
-              var openBrackets = 1
-              while (openBrackets > 0 && lookahead.token != EOF) {
-                if (lookahead.token == LBRACKET) openBrackets += 1
-                else if (lookahead.token == RBRACKET) openBrackets -= 1
+              if (lookahead.token == LBRACKET) {
                 lookahead.nextToken()
+                var openBrackets = 1
+                while (openBrackets > 0 && lookahead.token != EOF) {
+                  if (lookahead.token == LBRACKET) openBrackets += 1
+                  else if (lookahead.token == RBRACKET) openBrackets -= 1
+                  lookahead.nextToken()
+                }
               }
             }
+            lookahead.token == FOR ||
+            lookahead.token == IDENTIFIER && lookahead.name == nme.as
           }
-          lookahead.token == FOR ||
-          lookahead.token == IDENTIFIER && lookahead.name == nme.as
         }
 
       def recur(firstClause: Boolean, nparams: Int, contextualOnly: Boolean): List[List[ValDef]] = {
