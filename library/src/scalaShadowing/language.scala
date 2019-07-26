@@ -107,7 +107,7 @@ object language {
    *  }}}
    *
    *  Implicit values of other types are not affected, and neither are implicit
-   *  classes. In particular, delegates of the scala.Conversion class can be
+   *  classes. In particular, given instances of the scala.Conversion class can be
    *  defined without having to import the language feature.
    *
    *  The language import is also required to enable _uses_ of implicit conversions
@@ -119,13 +119,13 @@ object language {
    *      class A
    *      class B
    *      object B {
-   *        delegate a2b for Conversion[A, B] { ... }
+   *        given a2b as Conversion[A, B] { ... }
    *      }
    *      object C {
-   *        delegate b2a for Conversion[B, A] { ... }
+   *        given b2a as Conversion[B, A] { ... }
    *      }
-   *      import delegate B._
-   *      import delegate C._
+   *      import given B._
+   *      import given C._
    *      val x: A = new B     // language import required
    *      val x: B = new A     // no import necessary since a2b is co-defined with B
    *  }}}

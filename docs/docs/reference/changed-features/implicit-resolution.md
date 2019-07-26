@@ -43,10 +43,10 @@ affect implicits on the language level.
     Example:
 
         package p
-        delegate a for A
+        given a as A
 
         object o {
-          delegate b for B
+          given b as B
           type C
         }
 

@@ -1,7 +1,7 @@
 import scala.quoted._
-import delegate scala.quoted._
+import given scala.quoted._
 
-delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+given as Toolbox = Toolbox.make(getClass.getClassLoader)
 
 inline def foo = ${fooImpl}
 

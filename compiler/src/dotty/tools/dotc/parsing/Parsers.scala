@@ -1486,7 +1486,7 @@ object Parsers {
         case _ =>
       }
       imods.mods match {
-        case (Mod.Implicit() | Mod.Delegate()) :: mods => markFirstIllegal(mods)
+        case (Mod.Implicit() | Mod.Given()) :: mods => markFirstIllegal(mods)
         case mods => markFirstIllegal(mods)
       }
       val result @ Match(t, cases) =
@@ -2407,9 +2407,9 @@ object Parsers {
      */
     def importClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
-      val importDelegate = in.token == IMPLIED || in.token == GIVEN
-      if (importDelegate) in.nextToken()
-      commaSeparated(importExpr(importDelegate, mkTree)) match {
+      val importGiven = in.token == IMPLIED || in.token == GIVEN
+      if (importGiven) in.nextToken()
+      commaSeparated(importExpr(importGiven, mkTree)) match {
         case t :: rest =>
           // The first import should start at the start offset of the keyword.
           val firstPos =
@@ -2422,7 +2422,7 @@ object Parsers {
 
     /**  ImportExpr ::= StableId `.' (id | `_' | ImportSelectors)
      */
-    def importExpr(importDelegate: Boolean, mkTree: ImportConstr): () => Tree = {
+    def importExpr(importGiven: Boolean, mkTree: ImportConstr): () => Tree = {
 
       /** ImportSelectors ::= `{' {ImportSelector `,'} FinalSelector ‘}’
        *  FinalSelector   ::=  ImportSelector
@@ -2439,7 +2439,7 @@ object Parsers {
             else id
           } :: Nil
         case FOR =>
-          if (!importDelegate)
+          if (!importGiven)
               syntaxError(em"`for` qualifier only allowed in `import given`")
           atSpan(in.skipToken()) {
             var t = infixType()
@@ -2480,13 +2480,13 @@ object Parsers {
       }
 
       val handleImport: Tree => Tree = { tree: Tree =>
-        if (in.token == USCORE) mkTree(importDelegate, tree, wildcardIdent() :: Nil)
-        else if (in.token == LBRACE) mkTree(importDelegate, tree, inBraces(importSelectors()))
+        if (in.token == USCORE) mkTree(importGiven, tree, wildcardIdent() :: Nil)
+        else if (in.token == LBRACE) mkTree(importGiven, tree, inBraces(importSelectors()))
         else tree
       }
 
       def derived(impExp: Tree, qual: Tree, selectors: List[Tree]) =
-        mkTree(importDelegate, qual, selectors).withSpan(impExp.span)
+        mkTree(importGiven, qual, selectors).withSpan(impExp.span)
 
       () => {
         val p = path(thisOK = false, handleImport)
@@ -2494,10 +2494,10 @@ object Parsers {
           case _: Import | _: Export => p
           case sel @ Select(qual, name) =>
             val selector = atSpan(pointOffset(sel)) { Ident(name) }
-            mkTree(importDelegate, qual, selector :: Nil).withSpan(sel.span)
+            mkTree(importGiven, qual, selector :: Nil).withSpan(sel.span)
           case t =>
             accept(DOT)
-            mkTree(importDelegate, t, Ident(nme.WILDCARD) :: Nil)
+            mkTree(importGiven, t, Ident(nme.WILDCARD) :: Nil)
         }
       }
     }
@@ -2761,7 +2761,7 @@ object Parsers {
         case ENUM =>
           enumDef(start, posMods(start, mods | Enum))
         case IMPLIED | GIVEN =>
-          instanceDef(in.token == GIVEN, start, mods, atSpan(in.skipToken()) { Mod.Delegate() })
+          instanceDef(in.token == GIVEN, start, mods, atSpan(in.skipToken()) { Mod.Given() })
         case _ =>
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
           EmptyTree
@@ -3174,7 +3174,7 @@ object Parsers {
           val mods = modifiers(closureMods)
           mods.mods match {
             case givenMod :: Nil if !isBindingIntro =>
-              stats += instanceDef(true, start, EmptyModifiers, Mod.Delegate().withSpan(givenMod.span))
+              stats += instanceDef(true, start, EmptyModifiers, Mod.Given().withSpan(givenMod.span))
             case _ =>
               stats += implicitClosure(in.offset, Location.InBlock, mods)
           }

@@ -1158,7 +1158,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           case Some(x) => x > 1 || x == 1 && !boundSym.is(Method)
           case none => true
         }
-      } && !(boundSym.isAllOf(InlineMethod) && boundSym.isOneOf(DelegateOrImplicit))
+      } && !(boundSym.isAllOf(InlineMethod) && boundSym.isOneOf(GivenOrImplicit))
 
       val inlineBindings = new TreeMap {
         override def transform(t: Tree)(implicit ctx: Context) = t match {

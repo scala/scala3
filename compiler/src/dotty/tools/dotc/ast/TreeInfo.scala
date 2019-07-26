@@ -874,7 +874,7 @@ object TreeInfo {
   /** The expression has no side effects */
   val Pure: PurityLevel = new PurityLevel(3)
 
-  /** Running the expression a second time has no side effects. Delegate by `Pure`. */
+  /** Running the expression a second time has no side effects. Implied by `Pure`. */
   val Idempotent: PurityLevel = new PurityLevel(1)
 
   val Impure: PurityLevel = new PurityLevel(0)

@@ -3,13 +3,13 @@ class B extends T
 class C extends T
 
 object A {
-  delegate b for B
-  delegate c for C
+  given b as B
+  given c as C
 }
 
 object Test extends App {
   import A._
-  import delegate A.{for B}
+  import given A.{for B}
 
   val x: B = b // OK
   println(c) // error: not found

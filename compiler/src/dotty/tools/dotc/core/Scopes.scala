@@ -409,7 +409,7 @@ object Scopes {
       var irefs = new mutable.ListBuffer[TermRef]
       var e = lastEntry
       while (e ne null) {
-        if (e.sym.isOneOf(DelegateOrGivenOrImplicit)) {
+        if (e.sym.isOneOf(GivenOrImplicit)) {
           val d = e.sym.denot
           irefs += TermRef(NoPrefix, d.symbol.asTerm).withDenot(d)
         }

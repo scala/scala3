@@ -605,7 +605,6 @@ class TreeUnpickler(reader: TastyReader,
           case SEALED => addFlag(Sealed)
           case CASE => addFlag(Case)
           case IMPLICIT => addFlag(Implicit)
-          case IMPLIED => addFlag(Delegate)
           case ERASED => addFlag(Erased)
           case LAZY => addFlag(Lazy)
           case OVERRIDE => addFlag(Override)
@@ -948,10 +947,10 @@ class TreeUnpickler(reader: TastyReader,
       assert(sourcePathAt(start).isEmpty)
       readByte()
       readEnd()
-      val importDelegate = nextByte == IMPLIED
-      if (importDelegate) readByte()
+      val importGiven = nextByte == GIVEN
+      if (importGiven) readByte()
       val expr = readTerm()
-      setSpan(start, Import(importDelegate, expr, readSelectors()))
+      setSpan(start, Import(importGiven, expr, readSelectors()))
     }
 
     def readSelectors()(implicit ctx: Context): List[untpd.Tree] = nextByte match {

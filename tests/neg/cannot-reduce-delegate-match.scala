@@ -6,7 +6,7 @@ object Test {
     }
 
   {
-    delegate for Int = 9
+    given as Int = 9
     bar()
   }
 

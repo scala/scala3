@@ -17,7 +17,7 @@ object B {
 case class One() derives A, B
 case class Two() derives A, B
 
-delegate for B[One, Two] {
+given as B[One, Two] {
   println("derived: B[One, Two]")
 }
 
@@ -30,7 +30,7 @@ case class Triple[S, T, U] derives A, B
 
 object Test1 {
   import Lst._
-  import delegate Lst._
+  import given Lst._
   implicitly[A]
 }
 

@@ -15,11 +15,11 @@ import Decorators._
 
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
-  def rootImport(refFn: () => TermRef, importDelegate: Boolean = false)(implicit ctx: Context): ImportInfo = {
+  def rootImport(refFn: () => TermRef, importGiven: Boolean = false)(implicit ctx: Context): ImportInfo = {
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
     def expr(implicit ctx: Context) = tpd.Ident(refFn())
-    def imp(implicit ctx: Context) = tpd.Import(importDelegate = importDelegate, expr, selectors)
-    new ImportInfo(imp.symbol, selectors, None, importDelegate = importDelegate, isRootImport = true)
+    def imp(implicit ctx: Context) = tpd.Import(importGiven = importGiven, expr, selectors)
+    new ImportInfo(imp.symbol, selectors, None, importGiven = importGiven, isRootImport = true)
   }
 }
 
@@ -28,13 +28,13 @@ object ImportInfo {
  *  @param   selectors     The selector clauses
  *  @param   symNameOpt    Optionally, the name of the import symbol. None for root imports.
  *                         Defined for all explicit imports from ident or select nodes.
- *  @param   importDelegate true if this is a delegate import
+ *  @param   importGiven   true if this is a given import
  *  @param   isRootImport  true if this is one of the implicit imports of scala, java.lang,
  *                         scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */
 class ImportInfo(symf: given Context => Symbol, val selectors: List[untpd.Tree],
                  symNameOpt: Option[TermName],
-                 val importDelegate: Boolean,
+                 val importGiven: Boolean,
                  val isRootImport: Boolean = false) extends Showable {
 
   // Dotty deviation: we cannot use a lazy val here for the same reason
@@ -114,7 +114,7 @@ class ImportInfo(symf: given Context => Symbol, val selectors: List[untpd.Tree],
   }
 
   private def implicitFlags(implicit ctx: Context) =
-    if (importDelegate || ctx.mode.is(Mode.FindHiddenImplicits)) DelegateOrGivenOrImplicit
+    if (importGiven || ctx.mode.is(Mode.FindHiddenImplicits)) GivenOrImplicit
     else Implicit
 
   /** The implicit references imported by this import clause */

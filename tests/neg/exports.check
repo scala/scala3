@@ -11,12 +11,12 @@
 25 |    export printUnit.bitmap         // error: no eligible member
    |                     ^^^^^^
    |                     no eligible member bitmap at this.printUnit
-   |                     this.printUnit.bitmap cannot be exported because it is a delegate
--- Error: tests/neg/exports.scala:26:30 --------------------------------------------------------------------------------
-26 |    export delegate printUnit.status // error: no eligible member
-   |                              ^^^^^^
-   |                              no eligible member status at this.printUnit
-   |                              this.printUnit.status cannot be exported because it is not a delegate
+   |                     this.printUnit.bitmap cannot be exported because it is a given instance
+-- Error: tests/neg/exports.scala:26:27 --------------------------------------------------------------------------------
+26 |    export given printUnit.status   // error: no eligible member
+   |                           ^^^^^^
+   |                           no eligible member status at this.printUnit
+   |                           this.printUnit.status cannot be exported because it is not a given instance
 -- [E120] Duplicate Symbol Error: tests/neg/exports.scala:23:33 --------------------------------------------------------
 23 |    export printUnit.{stat => _, _} // error: double definition
    |                                 ^

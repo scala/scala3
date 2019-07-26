@@ -7,7 +7,7 @@ object Test extends App {
   class Printer {
     def print() = println("printing")
     object cfg extends Config
-    delegate config for Config
+    given config as Config
   }
 
   class Scanner {
@@ -19,7 +19,7 @@ object Test extends App {
   object Copier {
     val printer = new Printer
     export printer._
-    export delegate printer._
+    export given printer._
     export Scanner.{scan => scanIt, _}
 
     val config2 = the[Config]

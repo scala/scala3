@@ -57,7 +57,7 @@ Standard-Section: "ASTs" TopLevelStat*
   Stat          = Term
                   ValOrDefDef
                   TYPEDEF        Length NameRef (type_Term | Template) Modifier*   -- modifiers type name (= type | bounds)  |  moifiers class name template
-                  IMPORT         Length [IMPLIED] qual_Term Selector*              -- import implied? qual selectors
+                  IMPORT         Length [GIVEN] qual_Term Selector*                -- import given? qual selectors
   ValOrDefDef   = VALDEF         Length NameRef type_Term rhs_Term? Modifier*      -- modifiers val name : type (= rhs)?
                   DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
                                         Modifier*                                  -- modifiers def name [typeparams] paramss : returnType (= rhs)?
@@ -182,7 +182,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SEALED                                                           -- sealed
                   CASE                                                             -- case  (for classes or objects)
                   IMPLICIT                                                         -- implicit
-                  IMPLIED                                                          -- implied
+                  GIVEN                                                            -- given
                   ERASED                                                           -- erased
                   LAZY                                                             -- lazy
                   OVERRIDE                                                         -- override
@@ -206,7 +206,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   DEFAULTparameterized                                             -- Method with default parameters (default arguments are separate methods with DEFAULTGETTER names)
                   STABLE                                                           -- Method that is assumed to be stable, i.e. its applications are legal paths
                   EXTENSION                                                        -- An extension method
-                  GIVEN                                                            -- A new style implicit parameter, introduced with `given`
                   PARAMsetter                                                      -- The setter part `x_=` of a var parameter `x` which itself is pickled as a PARAM
                   EXPORTED                                                         -- An export forwarder
                   Annotation
@@ -249,7 +248,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 15
+  val MajorVersion: Int = 16
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names */
@@ -328,9 +327,8 @@ object TastyFormat {
   final val OPAQUE = 35
   final val EXTENSION = 36
   final val GIVEN = 37
-  final val IMPLIED = 38
-  final val PARAMsetter = 39
-  final val EXPORTED = 40
+  final val PARAMsetter = 38
+  final val EXPORTED = 39
 
   // Cat. 2:    tag Nat
 
@@ -477,7 +475,7 @@ object TastyFormat {
        | SEALED
        | CASE
        | IMPLICIT
-       | IMPLIED
+       | GIVEN
        | ERASED
        | LAZY
        | OVERRIDE
@@ -538,7 +536,6 @@ object TastyFormat {
     case SEALED => "SEALED"
     case CASE => "CASE"
     case IMPLICIT => "IMPLICIT"
-    case IMPLIED => "IMPLIED"
     case ERASED => "ERASED"
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"

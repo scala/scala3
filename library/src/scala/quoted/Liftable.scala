@@ -17,15 +17,15 @@ trait Liftable[T] {
  */
 object Liftable {
 
-  delegate Liftable_Boolean_delegate for Liftable[Boolean] = new PrimitiveLiftable
-  delegate Liftable_Byte_delegate for Liftable[Byte] = new PrimitiveLiftable
-  delegate Liftable_Short_delegate for Liftable[Short] = new PrimitiveLiftable
-  delegate Liftable_Int_delegate for Liftable[Int] = new PrimitiveLiftable
-  delegate Liftable_Long_delegate for Liftable[Long] = new PrimitiveLiftable
-  delegate Liftable_Float_delegate for Liftable[Float] = new PrimitiveLiftable
-  delegate Liftable_Double_delegate for Liftable[Double] = new PrimitiveLiftable
-  delegate Liftable_Char_delegate for Liftable[Char] = new PrimitiveLiftable
-  delegate Liftable_String_delegate for Liftable[String] = new PrimitiveLiftable
+  given Liftable_Boolean_delegate as Liftable[Boolean] = new PrimitiveLiftable
+  given Liftable_Byte_delegate as Liftable[Byte] = new PrimitiveLiftable
+  given Liftable_Short_delegate as Liftable[Short] = new PrimitiveLiftable
+  given Liftable_Int_delegate as Liftable[Int] = new PrimitiveLiftable
+  given Liftable_Long_delegate as Liftable[Long] = new PrimitiveLiftable
+  given Liftable_Float_delegate as Liftable[Float] = new PrimitiveLiftable
+  given Liftable_Double_delegate as Liftable[Double] = new PrimitiveLiftable
+  given Liftable_Char_delegate as Liftable[Char] = new PrimitiveLiftable
+  given Liftable_String_delegate as Liftable[String] = new PrimitiveLiftable
 
   private class PrimitiveLiftable[T <: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends Liftable[T] {
     /** Lift a primitive value `n` into `'{ n }` */

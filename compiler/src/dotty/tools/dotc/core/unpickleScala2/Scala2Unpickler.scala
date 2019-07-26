@@ -1072,7 +1072,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           val to = untpd.Ident(toName)
           if (toName.isEmpty) from else untpd.Thicket(from, untpd.Ident(toName))
         })
-        Import(importDelegate = false, expr, selectors)
+        Import(importGiven = false, expr, selectors)
 
       case TEMPLATEtree =>
         setSym()

@@ -409,7 +409,7 @@ object Checking {
           ))
       fail(ParamsNoInline(sym.owner))
 
-    if (sym.isOneOf(DelegateOrImplicit)) {
+    if (sym.isOneOf(GivenOrImplicit)) {
       if (sym.owner.is(Package))
         fail(TopLevelCantBeImplicit(sym))
       if (sym.isType)
@@ -1129,7 +1129,7 @@ trait Checking {
         val cases =
           for (stat <- impl.body if isCase(stat))
           yield untpd.Ident(stat.symbol.name.toTermName)
-        val caseImport: Import = Import(importDelegate = false, ref(cdef.symbol), cases)
+        val caseImport: Import = Import(importGiven = false, ref(cdef.symbol), cases)
         val caseCtx = enumCtx.importContext(caseImport, caseImport.symbol)
         for (stat <- impl.body) checkCaseOrDefault(stat, caseCtx)
       case _ =>

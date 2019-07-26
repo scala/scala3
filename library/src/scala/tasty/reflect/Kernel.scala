@@ -1383,7 +1383,6 @@ trait Kernel {
   def Flags_Case: Flags
   def Flags_Implicit: Flags
   def Flags_Given: Flags
-  def Flags_Implied: Flags
   def Flags_Erased: Flags
   def Flags_Lazy: Flags
   def Flags_Override: Flags

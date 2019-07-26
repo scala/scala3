@@ -9,12 +9,12 @@ class C extends A {
 }
 object M {
   def f given B, C : String = {
-    delegate a for A = the[B]
+    given a as A = the[B]
     the[A].show
   }
 }
 object Test extends App {
-  delegate b for B
-  delegate c for C
+  given b as B
+  given c as C
   println(M.f)
 }

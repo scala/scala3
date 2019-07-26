@@ -1,6 +1,6 @@
 class TC
 object A {
-  delegate tc for TC
+  given tc as TC
   def foo given TC = ()
 }
 object B {
@@ -11,19 +11,19 @@ object B {
 }
 object C {
   import A._
-  import delegate A.tc
+  import given A.tc
   foo            // ok
   foo given tc   // ok
 }
 object D {
   import A.foo
-  import delegate A._
+  import given A._
   foo            // ok
   foo given tc   // ok
 }
 object E {
   import A._
-  import delegate A._
+  import given A._
   foo            // ok
   foo given tc   // ok
 }

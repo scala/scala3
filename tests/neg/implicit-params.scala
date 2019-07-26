@@ -11,8 +11,8 @@ object Test {
 
   def h(x: Int) given () = x // error
 
-  delegate C for C(11)
-  delegate D for D(11)
+  given C as C(11)
+  given D as D(11)
 
   f(1)
   f(1) given C
