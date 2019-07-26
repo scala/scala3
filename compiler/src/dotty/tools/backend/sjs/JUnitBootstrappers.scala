@@ -229,8 +229,7 @@ class JUnitBootstrappers extends MiniPhase {
         val testAnnot = test.getAnnotation(junitdefn.TestAnnotClass).get
         if (testAnnot.arguments.nonEmpty)
           ctx.error("@Test annotations with arguments are not yet supported in Scala.js for dotty", testAnnot.tree.sourcePos)
-        val noArgConstr = junitdefn.TestAnnotType.member(nme.CONSTRUCTOR).suchThat(_.info.paramInfoss.head.isEmpty).symbol.asTerm
-        val reifiedAnnot = New(junitdefn.TestAnnotType, noArgConstr, Nil)
+        val reifiedAnnot = resolveConstructor(junitdefn.TestAnnotType, Nil)
         New(junitdefn.TestMetadataType, List(name, ignored, reifiedAnnot))
       }
       JavaSeqLiteral(metadata, TypeTree(junitdefn.TestMetadataType))
@@ -250,11 +249,7 @@ class JUnitBootstrappers extends MiniPhase {
         ValDef(castInstanceSym, instanceParamRef.cast(testClass.typeRef)) :: Nil,
         tests.foldRight[Tree] {
           val tp = junitdefn.NoSuchMethodExceptionType
-          val constr = tp.member(nme.CONSTRUCTOR).suchThat { c =>
-            c.info.paramInfoss.head.size == 1 &&
-            c.info.paramInfoss.head.head.isRef(defn.StringClass)
-          }.symbol.asTerm
-          Throw(New(tp, constr, nameParamRef :: Nil))
+          Throw(resolveConstructor(tp, nameParamRef :: Nil))
         } { (test, next) =>
           If(Literal(Constant(test.name.toString)).select(defn.Any_equals).appliedTo(nameParamRef),
             genTestInvocation(testClass, test, ref(castInstanceSym)),

@@ -115,11 +115,6 @@ object Annotations {
     def apply(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
       apply(New(atp, args))
 
-    private def resolveConstructor(atp: Type, args:List[Tree])(implicit ctx: Context): Tree = {
-      val targs = atp.argTypes
-      tpd.applyOverloaded(New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp)
-    }
-
     /** Create an annotation where the tree is computed lazily. */
     def deferred(sym: Symbol)(treeFn: given Context => Tree)(implicit ctx: Context): Annotation =
       new LazyAnnotation {
