@@ -28,7 +28,7 @@ object StagedTuple {
       case Some(n) if n <= MaxSpecialized =>
         '{to$Array($tup, ${ n.toExpr })}
       case Some(n) =>
-        '{${ tup.as[TupleXXL] }.elems}
+        '{ ${tup.as[TupleXXL]}.toArray }
       case None =>
         '{dynamicToArray($tup)}
     }

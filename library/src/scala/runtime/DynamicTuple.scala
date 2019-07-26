@@ -52,8 +52,12 @@ object DynamicTuple {
     case 20 => Tuple20(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19)).asInstanceOf[T]
     case 21 => Tuple21(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20)).asInstanceOf[T]
     case 22 => Tuple22(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20), xs(21)).asInstanceOf[T]
-    case _ => TupleXXL(xs).asInstanceOf[T]
+    case _ => TupleXXL.fromIArray(xs.clone().asInstanceOf[IArray[Object]]).asInstanceOf[T]
   }
+
+  def dynamicFromIArray[T <: Tuple](xs: IArray[Object]): T =
+    if (xs.length <= 22) dynamicFromArray(xs.asInstanceOf[Array[Object]])
+    else TupleXXL.fromIArray(xs).asInstanceOf[T]
 
   def dynamicFromProduct[T <: Tuple](xs: Product): T = (xs.productArity match {
     case 1 =>
@@ -169,7 +173,7 @@ object DynamicTuple {
     case _ =>
       xs match {
         case xs: TupleXXL => xs
-        case xs => TupleXXL(xs.productIterator.map(_.asInstanceOf[Object]).toArray)
+        case xs => TupleXXL.fromIArray(xs.productIterator.map(_.asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use Iterator.toIArray
       }
   }).asInstanceOf[T]
 
@@ -178,6 +182,12 @@ object DynamicTuple {
     case self: Unit => Array.emptyObjectArray
     case self: TupleXXL => self.toArray
     case self: Product => productToArray(self)
+  }
+
+  def dynamicToIArray(self: Tuple): IArray[Object] = (self: Any) match {
+    case self: Unit => Array.emptyObjectArray.asInstanceOf[IArray[Object]] // TODO use IArray.emptyObjectIArray
+    case self: TupleXXL => self.elems
+    case self: Product => productToArray(self).asInstanceOf[IArray[Object]]
   }
 
   def productToArray(self: Product): Array[Object] = {
