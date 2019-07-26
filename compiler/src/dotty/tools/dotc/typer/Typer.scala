@@ -2128,16 +2128,15 @@ class Typer extends Namer
                 buf += inlineExpansion(mdef1)
                   // replace body with expansion, because it will be used as inlined body
                   // from separately compiled files - the original BodyAnnotation is not kept.
+              case mdef1: DefDef if MemoCacheName.currentCount(nme.memo) != memoCacheCount =>
+                buf ++= Inliner.memoCacheDefs(mdef1.rhs) += mdef1
+              case mdef1: TypeDef if mdef1.symbol.is(Enum, butNot = Case) =>
+                enumContexts(mdef1.symbol) = ctx
+                buf += mdef1
+              case EmptyTree =>
+                // clashing synthetic case methods are converted to empty trees, drop them here
               case mdef1 =>
-                mdef1 match {
-                  case mdef1: TypeDef if mdef1.symbol.flags.is(Enum, butNot = Case) =>
-                    enumContexts(mdef1.symbol) = ctx
-                  case mdef1: DefDef if MemoCacheName.currentCount(nme.memo) != memoCacheCount =>
-                    buf ++= Inliner.memoCacheDefs(mdef1.rhs)
-                  case _ =>
-                }
-                if (!mdef1.isEmpty) // clashing synthetic case methods are converted to empty trees
-                  buf += mdef1
+                buf += mdef1
             }
             traverse(rest)
         }
