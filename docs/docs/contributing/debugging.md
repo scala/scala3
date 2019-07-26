@@ -9,6 +9,7 @@ title: Debugging Techniques
 - [How to disable color](#how-to-disable-color)
 - [Reporting as a non-intrusive println](#reporting-as-a-non-intrusive-println)
 - [Printing out trees after phases](#printing-out-trees-after-phases)
+- [Printing out stack traces of compile time errors](#printing-out-stack-traces-of-compile-time-errors)
 - [Configuring the printer output](#configuring-the-printer-output)
 - [Figuring out an object creation site](#figuring-out-an-object-creation-site)
   * [Via ID](#via-id)
@@ -109,6 +110,34 @@ dotc -Xprint:all ../issues/Playground.scala
 ```
 
 To find out the list of all the phases and their names, check out [this](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/Compiler.scala#L34) line in `Compiler.scala`. Each `Phase` object has `phaseName` defined on it, this is the phase name.
+
+## Printing out stack traces of compile time errors
+You can use the flag `-Ydebug-error` to get the stack trace of all the compile-time errors. Consider the following file:
+
+```scala
+object Foo
+object Foo
+```
+
+Clearly we cannot define an object `Foo` twice. Now compile it as follows: `dotc -Ydebug-error ../issues/Playground.scala` (use whatever path you saved it under). The result will be as follows:
+
+```scala
+-- Error: ../issues/Playground.scala:2:0 ---------------------------------------
+2 |object Foo
+  |^
+  |object Foo has already been compiled once during this run
+java.lang.Thread.getStackTrace(Thread.java:1552)
+dotty.tools.dotc.reporting.Reporting.error(Reporter.scala:139)
+dotty.tools.dotc.core.Contexts$Context.error(Contexts.scala:71)
+dotty.tools.dotc.typer.Namer.errorName$2(Namer.scala:300)
+dotty.tools.dotc.typer.Namer.checkNoConflict$1(Namer.scala:306)
+dotty.tools.dotc.typer.Namer.createSymbol(Namer.scala:353)
+dotty.tools.dotc.typer.Namer.recur$1(Namer.scala:490)
+dotty.tools.dotc.typer.Namer.recur$3$$anonfun$2(Namer.scala:495)
+...
+```
+
+So, the error happened in the Namer's `checkNoConflict` method (after which all the stack frames represent the mechanics of issuing an error, not an intent that produced the error in the first place).
 
 ## Configuring the printer output
 Printing from the `show` and `-Xprint` is done from the Printers framework (discussed in more details below). The following settings influence the output of the printers:
