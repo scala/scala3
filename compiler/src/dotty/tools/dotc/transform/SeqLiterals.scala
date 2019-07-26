@@ -31,6 +31,6 @@ class SeqLiterals extends MiniPhase {
       val arr = JavaSeqLiteral(tree.elems, tree.elemtpt)
       //println(i"trans seq $tree, arr = $arr: ${arr.tpe} ${arr.tpe.elemType}")
       val elemtp = tree.elemtpt.tpe
-      wrapArray(arr, elemtp)
+      wrapArray(arr, elemtp).withSpan(tree.span)
   }
 }

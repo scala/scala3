@@ -54,10 +54,34 @@ package object quoted {
   implicit object ExprOps {
     def (x: T) toExpr[T: Liftable] given QuoteContext: Expr[T] = the[Liftable[T]].toExpr(x)
 
-    def (list: List[Expr[T]]) toExprOfList[T: Type] given QuoteContext: Expr[List[T]] = list match {
-      case x :: xs  => '{ $x :: ${xs.toExprOfList} }
-      case Nil => '{ Nil }
+   /** Lifts this sequence of expressions into an expression of a sequence
+    *
+    *  Transforms a list of expression
+    *    `Seq(e1, e2, ...)` where `ei: Expr[T]`
+    *  to an expression equivalent to
+    *    `'{ Seq($e1, $e2, ...) }` typed as an `Expr[Seq[T]]`
+    *
+    *  Usage:
+    *  ```scala
+    *  '{ List(${List(1, 2, 3).toExprOfSeq}: _*) } // equvalent to '{ List(1, 2, 3) }
+    *  ```
+    */
+    def (seq: Seq[Expr[T]]) toExprOfSeq[T] given (tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = {
+      import qctx.tasty._
+      Repeated(seq.map(_.unseal).toList, tp.unseal).seal.asInstanceOf[Expr[Seq[T]]]
     }
+
+    /** Lifts this list of expressions into an expression of a list
+     *
+     *  Transforms a list of expression
+     *    `List(e1, e2, ...)` where `ei: Expr[T]`
+     *  to an expression equivalent to
+     *    `'{ List($e1, $e2, ...) }` typed as an `Expr[List[T]]`
+     */
+    def (list: List[Expr[T]]) toExprOfList[T] given Type[T], QuoteContext: Expr[List[T]] =
+      if (list.isEmpty) '{ Nil } else '{ List(${list.toExprOfSeq}: _*) }
+
+
   }
 
 }
