@@ -2334,7 +2334,7 @@ object Parsers {
        *    given C ...
        *  we know that `given` must start a parameter list. It cannot be a new given` definition.
        */
-      def followingIsInstanceDef =
+      def followingIsGivenDef =
         (ofClass || ofInstance) && {
           val lookahead = in.lookaheadScanner // skips newline on startup
           lookahead.nextToken()  // skip the `given`
@@ -2362,7 +2362,7 @@ object Parsers {
         var initialMods = EmptyModifiers
         val isNewLine = in.token == NEWLINE
         newLineOptWhenFollowedBy(LPAREN)
-        if (in.token == NEWLINE && in.next.token == GIVEN && !followingIsInstanceDef)
+        if (in.token == NEWLINE && in.next.token == GIVEN && !followingIsGivenDef)
           in.nextToken()
         if (in.token == GIVEN) {
           in.nextToken()
@@ -2765,7 +2765,7 @@ object Parsers {
         case ENUM =>
           enumDef(start, posMods(start, mods | Enum))
         case IMPLIED | GIVEN =>
-          instanceDef(in.token == GIVEN, start, mods, atSpan(in.skipToken()) { Mod.Given() })
+          givenDef(in.token == GIVEN, start, mods, atSpan(in.skipToken()) { Mod.Given() })
         case _ =>
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
           EmptyTree
@@ -2861,7 +2861,7 @@ object Parsers {
      *  GivenBody         ::=  [‘as ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
      *                      |  ‘as’ Type {GivenParamClause} ‘=’ Expr
      */
-    def instanceDef(newStyle: Boolean, start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
+    def givenDef(newStyle: Boolean, start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
       val name = if (isIdent && (!newStyle || in.name != nme.as)) ident() else EmptyTermName
       val tparams = typeParamClauseOpt(ParamOwner.Def)
@@ -3178,7 +3178,7 @@ object Parsers {
           val mods = modifiers(closureMods)
           mods.mods match {
             case givenMod :: Nil if !isBindingIntro =>
-              stats += instanceDef(true, start, EmptyModifiers, Mod.Given().withSpan(givenMod.span))
+              stats += givenDef(true, start, EmptyModifiers, Mod.Given().withSpan(givenMod.span))
             case _ =>
               stats += implicitClosure(in.offset, Location.InBlock, mods)
           }

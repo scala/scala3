@@ -887,7 +887,7 @@ object desugar {
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
    *      If it does redefine, issue an error and return a mangled name instead of the original one.
-   *   2. If the name is missing (this can be the case for instance definitions), invent one instead.
+   *   2. If the name is missing (this can be the case for given instance definitions), invent one instead.
    */
   def normalizeName(mdef: MemberDef, impl: Tree)(implicit ctx: Context): Name = {
     var name = mdef.name
@@ -900,7 +900,7 @@ object desugar {
     name
   }
 
-  /** Invent a name for an anonymous instance with template `impl`.
+  /** Invent a name for an anonymous given instance with template `impl`.
    */
   private def inventName(impl: Tree)(implicit ctx: Context): String = impl match {
     case impl: Template =>
@@ -912,7 +912,7 @@ object desugar {
           case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
             s"${name}_of_${inventTypeName(vparam.tpt)}"
           case _ =>
-            ctx.error(i"anonymous instance must have `for` part or must define at least one extension method", impl.sourcePos)
+            ctx.error(i"anonymous given must have `as` part or must define at least one extension method", impl.sourcePos)
             nme.ERROR.toString
         }
       else

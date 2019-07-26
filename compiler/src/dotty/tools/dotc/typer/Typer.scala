@@ -88,6 +88,7 @@ class Typer extends Namer
                with Dynamic
                with Checking
                with QuotesAndSplices
+               with MemoizeGivenAliases
                with Deriving {
 
   import Typer._
@@ -1538,7 +1539,8 @@ class Typer extends Namer
     }
 
     if (sym.isInlineMethod) rhsCtx.addMode(Mode.InlineableBody)
-    val rhs1 = typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(rhsCtx)
+    val rhs0 = typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(rhsCtx)
+    val rhs1 = memoizeGivenAlias(rhs0, sym)
 
     if (sym.isInlineMethod) {
       PrepareInlineable.checkInlineMacro(sym, rhs1, ddef.sourcePos)
