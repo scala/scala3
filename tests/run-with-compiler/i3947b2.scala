@@ -3,9 +3,10 @@ import scala.quoted._
 
 object Test {
 
-  def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    def test[T: Type](clazz: java.lang.Class[T]): Unit = run {
+  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+
+  def main(args: Array[String]): Unit = run {
+    def test[T: Type](clazz: given QuoteContext => java.lang.Class[T]) = {
       val lclazz = clazz.toExpr
       val name = '{ ($lclazz).getCanonicalName }
       println()
@@ -14,9 +15,11 @@ object Test {
     }
 
     // primitives
-    test(classOf[Short])
-    test(classOf[Int])
-    test(classOf[Long])
+    '{
+      ${test(classOf[Short])}
+      ${test(classOf[Int])}
+      ${test(classOf[Long])}
+    }
   }
 
 }

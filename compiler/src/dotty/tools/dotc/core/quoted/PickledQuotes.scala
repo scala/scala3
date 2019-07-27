@@ -59,7 +59,6 @@ object PickledQuotes {
           tpt
         case tpt => tpt
       }
-    case expr: TaggedType[_] => classTagToTypeTree(expr.ct)
     case expr: TreeType[Tree] @unchecked => healOwner(expr.typeTree)
   }
 
@@ -125,21 +124,6 @@ object PickledQuotes {
       println(i"**** unpickle quote ${tree.show}")
 
     tree
-  }
-
-  private def classTagToTypeTree(ct: ClassTag[_])(implicit ctx: Context): TypeTree = {
-    val tpe = ct match {
-      case ClassTag.Unit => defn.UnitType
-      case ClassTag.Boolean => defn.BooleanType
-      case ClassTag.Byte => defn.ByteType
-      case ClassTag.Char => defn.CharType
-      case ClassTag.Short => defn.ShortType
-      case ClassTag.Int => defn.IntType
-      case ClassTag.Long => defn.LongType
-      case ClassTag.Float => defn.FloatType
-      case ClassTag.Double => defn.DoubleType
-    }
-    TypeTree(tpe)
   }
 
   private def functionAppliedTo(fn: Tree, args: List[Tree])(implicit ctx: Context): Tree = {

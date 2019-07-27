@@ -1,7 +1,6 @@
 package scala
 
 package quoted {
-  import scala.internal.quoted.TaggedType
   import scala.quoted.show.SyntaxHighlight
 
   sealed trait Type[T <: AnyKind] {
@@ -17,15 +16,52 @@ package quoted {
 
   /** Some basic type tags, currently incomplete */
   object Type {
-    given UnitTag as Type[Unit] = new TaggedType[Unit]
-    given BooleanTag as Type[Boolean] = new TaggedType[Boolean]
-    given ByteTag as Type[Byte] = new TaggedType[Byte]
-    given CharTag as Type[Char] = new TaggedType[Char]
-    given ShortTag as Type[Short] = new TaggedType[Short]
-    given IntTag as Type[Int] = new TaggedType[Int]
-    given LongTag as Type[Long] = new TaggedType[Long]
-    given FloatTag as Type[Float] = new TaggedType[Float]
-    given DoubleTag as Type[Double] = new TaggedType[Double]
+
+    given UnitTag as Type[Unit] given (qctx: QuoteContext) = {
+      import qctx.tasty._
+      definitions.UnitType.seal.asInstanceOf[quoted.Type[Unit]]
+    }
+
+    given BooleanTag as Type[Boolean] given (qctx: QuoteContext) = {
+      import qctx.tasty._
+      definitions.BooleanType.seal.asInstanceOf[quoted.Type[Boolean]]
+    }
+
+    given ByteTag as Type[Byte] given (qctx: QuoteContext) = {
+      import qctx.tasty._
+      definitions.ByteType.seal.asInstanceOf[quoted.Type[Byte]]
+    }
+
+    given CharTag as Type[Char] given (qctx: QuoteContext) = {
+      import qctx.tasty._
+      definitions.CharType.seal.asInstanceOf[quoted.Type[Char]]
+    }
+
+    given ShortTag as Type[Short] given (qctx: QuoteContext) = {
+      import qctx.tasty._
+      definitions.ShortType.seal.asInstanceOf[quoted.Type[Short]]
+    }
+
+    given IntTag as Type[Int] given (qctx: QuoteContext) = {
+      import qctx.tasty._
+      definitions.IntType.seal.asInstanceOf[quoted.Type[Int]]
+    }
+
+    given LongTag as Type[Long] given (qctx: QuoteContext) = {
+      import qctx.tasty._
+      definitions.LongType.seal.asInstanceOf[quoted.Type[Long]]
+    }
+
+    given FloatTag as Type[Float] given (qctx: QuoteContext) = {
+      import qctx.tasty._
+      definitions.FloatType.seal.asInstanceOf[quoted.Type[Float]]
+    }
+
+    given DoubleTag as Type[Double] given (qctx: QuoteContext) = {
+      import qctx.tasty._
+      definitions.DoubleType.seal.asInstanceOf[quoted.Type[Double]]
+    }
+
   }
 
 }
@@ -33,17 +69,11 @@ package quoted {
 package internal {
   package quoted {
     import scala.quoted.Type
-    import scala.reflect.ClassTag
     import scala.runtime.quoted.Unpickler.Pickled
 
     /** A Type backed by a pickled TASTY tree */
     final class TastyType[T](val tasty: Pickled, val args: Seq[Any]) extends Type[T] {
       override def toString(): String = s"Type(<pickled tasty>)"
-    }
-
-    /** An Type backed by a value */
-    final class TaggedType[T](implicit val ct: ClassTag[T]) extends Type[T] {
-      override def toString: String = s"Type($ct)"
     }
 
     /** An Type backed by a tree */

@@ -1,9 +1,9 @@
 
 scala.Predef.classOf[scala.Boolean].getCanonicalName()
-boolean
 
 scala.Predef.classOf[scala.Byte].getCanonicalName()
-byte
 
 scala.Predef.classOf[scala.Char].getCanonicalName()
+boolean
+byte
 char
