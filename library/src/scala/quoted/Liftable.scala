@@ -241,7 +241,7 @@ object Liftable {
 
   given as Liftable[BigInt] = new Liftable[BigInt] {
     def toExpr(x: BigInt): given QuoteContext => Expr[BigInt] =
-      '{ BigInt(${x.toString(Character.MAX_RADIX).toExpr}, ${Character.MAX_RADIX.toExpr}) }
+      '{ BigInt(${x.toByteArray.toExpr}) }
   }
 
   /** Lift a BigDecimal using the default MathContext */
