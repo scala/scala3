@@ -13,35 +13,35 @@ trait FromString[T] {
 
 object FromString {
 
-  delegate for FromString[String] {
+  given as FromString[String] {
     def fromString(s: String) = s
   }
 
-  delegate for FromString[Boolean] {
+  given as FromString[Boolean] {
     def fromString(s: String) = s.toBoolean
   }
 
-  delegate for FromString[Byte] {
+  given as FromString[Byte] {
     def fromString(s: String) = s.toByte
   }
 
-  delegate for FromString[Short] {
+  given as FromString[Short] {
     def fromString(s: String) = s.toShort
   }
 
-  delegate for FromString[Int] {
+  given as FromString[Int] {
     def fromString(s: String) = s.toInt
   }
 
-  delegate for FromString[Long] {
+  given as FromString[Long] {
     def fromString(s: String) = s.toLong
   }
 
-  delegate for FromString[Float] {
+  given as FromString[Float] {
     def fromString(s: String) = s.toFloat
   }
 
-  delegate for FromString[Double] {
+  given as FromString[Double] {
     def fromString(s: String) = s.toDouble
   }
 }
