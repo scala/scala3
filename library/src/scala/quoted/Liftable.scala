@@ -232,4 +232,12 @@ object Liftable {
     }
   }
 
+  given as Liftable[BigInt] = new Liftable[BigInt] {
+    def toExpr(x: BigInt): given QuoteContext => Expr[BigInt] = {
+      lazy val xInt: Int = x.intValue()
+      if (x.isValidInt && -1024 <= xInt && xInt < 1024) '{ BigInt(${xInt.toExpr}) } // Cached BigInt
+      else '{ BigInt(${x.toString(Character.MAX_RADIX).toExpr}, ${Character.MAX_RADIX.toExpr}) } // Compact string BigInt
+    }
+  }
+
 }
