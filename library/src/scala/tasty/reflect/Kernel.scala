@@ -1538,4 +1538,6 @@ trait Kernel {
    */
   def searchImplicit(tpe: Type) given (ctx: Context): ImplicitSearchResult
 
+  def betaReduce(f: Term, args: List[Term]) given (ctx: Context): Term
+
 }
