@@ -240,4 +240,13 @@ object Liftable {
     }
   }
 
+  /** Lift a BigDecimal using the default MathContext */
+  given as Liftable[BigDecimal] = new Liftable[BigDecimal] {
+    def toExpr(x: BigDecimal): given QuoteContext => Expr[BigDecimal] = {
+      lazy val xInt: Int = x.intValue()
+      if (x.isValidInt && -512 <= xInt && xInt < 512) '{ BigDecimal(${xInt.toExpr}) } // Cached BigDecimal
+      else '{ BigDecimal(${x.toString.toExpr}) }
+    }
+  }
+
 }
