@@ -45,7 +45,14 @@ object Liftable {
     }
   }
 
-  given [T: Type: Liftable: ClassTag] as Liftable[IArray[T]] = new Liftable[IArray[T]] {
+  given ArrayIsLiftable[T: Type: Liftable: ClassTag] as Liftable[Array[T]] = new Liftable[Array[T]] {
+    def toExpr(arr: Array[T]): given QuoteContext => Expr[Array[T]] = '{
+      val array = new Array[T](${arr.length.toExpr})(ClassTag(${the[ClassTag[T]].runtimeClass.toExpr}))
+      ${ Expr.block(List.tabulate(arr.length)(i => '{ array(${i.toExpr}) = ${arr(i).toExpr} }), '{ array }) }
+    }
+  }
+
+  given IArrayIsLiftable[T: Type: Liftable: ClassTag] as Liftable[IArray[T]] = new Liftable[IArray[T]] {
     def toExpr(iarray: IArray[T]): given QuoteContext => Expr[IArray[T]] = '{
       val array = new Array[T](${iarray.length.toExpr})(ClassTag(${the[ClassTag[T]].runtimeClass.toExpr}))
       ${ Expr.block(List.tabulate(iarray.length)(i => '{ array(${i.toExpr}) = ${iarray(i).toExpr} }), '{ array.asInstanceOf[IArray[T]] }) }
@@ -230,6 +237,17 @@ object Liftable {
       val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22) = tup
       '{ (${x1.toExpr}, ${x2.toExpr}, ${x3.toExpr}, ${x4.toExpr}, ${x5.toExpr}, ${x6.toExpr}, ${x7.toExpr}, ${x8.toExpr}, ${x9.toExpr}, ${x10.toExpr}, ${x11.toExpr}, ${x12.toExpr}, ${x13.toExpr}, ${x14.toExpr}, ${x15.toExpr}, ${x16.toExpr}, ${x17.toExpr}, ${x18.toExpr}, ${x19.toExpr}, ${x20.toExpr}, ${x21.toExpr}, ${x22.toExpr}) }
     }
+  }
+
+  given as Liftable[BigInt] = new Liftable[BigInt] {
+    def toExpr(x: BigInt): given QuoteContext => Expr[BigInt] =
+      '{ BigInt(${x.toByteArray.toExpr}) }
+  }
+
+  /** Lift a BigDecimal using the default MathContext */
+  given as Liftable[BigDecimal] = new Liftable[BigDecimal] {
+    def toExpr(x: BigDecimal): given QuoteContext => Expr[BigDecimal] =
+      '{ BigDecimal(${x.toString.toExpr}) }
   }
 
 }

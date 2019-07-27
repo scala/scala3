@@ -68,6 +68,9 @@ object Test {
     val iarray: IArray[Int] = IArray(1, 2, 3)
     val liftedIArray: Expr[IArray[Int]] = iarray
 
+    val array: Array[Int] = Array(1, 2, 3)
+    val liftedArray: Expr[Array[Int]] = array
+
     val some: Option[Int] = Some(2)
     val none: Option[Int] = Some(2)
     val liftedSome: Expr[Option[Int]] = some
