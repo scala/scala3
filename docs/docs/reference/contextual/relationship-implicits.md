@@ -28,7 +28,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
       class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
       final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
     ```
- 3. Alias givens map to implicit methods. If an alias has neither type parameters nor a given clause, its right-hand side is cached in a variable, unless the right hand side is a simple reference in which case we can use a forwarder to that reference without caching it.
+ 3. Alias givens map to implicit methods. If an alias is not a macro, and has neither type parameters nor a given clause, its right-hand side is cached in a variable, unless the right hand side is a simple reference in which case we can use a forwarder to that reference without caching it.
 
  Examples:
 

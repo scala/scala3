@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import core._
-import Flags._, Trees._, Types._, Contexts._
+import Flags._, Trees._, Types._, Contexts._, Constants.Constant
 import Names._, StdNames._, NameOps._, Symbols._
 import typer.ConstFold
 import reporting.trace
@@ -854,6 +854,16 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case tree: tpd.Apply if tree.symbol.isSplice => Some(tree.args.head)
       case tree: tpd.Select if tree.symbol.isSplice => Some(tree.qualifier)
       case _ => None
+    }
+  }
+
+  object SplicedRHS {
+    /** Extracts splices, possibly wrapped in blocks or type ascriptions */
+    def unapply(tree: tpd.Tree)(implicit ctx: Context): Option[tpd.Tree] = tree match {
+      case Block(stat :: Nil, Literal(Constant(()))) => unapply(stat)
+      case Block(Nil, expr) => unapply(expr)
+      case Typed(expr, _) => unapply(expr)
+      case _ => Spliced.unapply(tree)
     }
   }
 }
