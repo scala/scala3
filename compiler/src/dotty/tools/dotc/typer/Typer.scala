@@ -1460,7 +1460,8 @@ class Typer extends Namer
     sym.annotations.foreach(_.ensureCompleted)
     lazy val annotCtx = annotContext(mdef, sym)
     // necessary in order to mark the typed ahead annotations as definitely typed:
-    untpd.modsDeco(mdef).mods.annotations.foreach(typedAnnotation(_)(annotCtx))
+    for annot <- untpd.modsDeco(mdef).mods.annotations do
+      checkAnnotApplicable(typedAnnotation(annot)(annotCtx), sym)
   }
 
   def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree = {
