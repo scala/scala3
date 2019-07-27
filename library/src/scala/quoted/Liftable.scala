@@ -45,7 +45,14 @@ object Liftable {
     }
   }
 
-  given [T: Type: Liftable: ClassTag] as Liftable[IArray[T]] = new Liftable[IArray[T]] {
+  given ArrayIsLiftable[T: Type: Liftable: ClassTag] as Liftable[Array[T]] = new Liftable[Array[T]] {
+    def toExpr(arr: Array[T]): given QuoteContext => Expr[Array[T]] = '{
+      val array = new Array[T](${arr.length.toExpr})(ClassTag(${the[ClassTag[T]].runtimeClass.toExpr}))
+      ${ Expr.block(List.tabulate(arr.length)(i => '{ array(${i.toExpr}) = ${arr(i).toExpr} }), '{ array }) }
+    }
+  }
+
+  given IArrayIsLiftable[T: Type: Liftable: ClassTag] as Liftable[IArray[T]] = new Liftable[IArray[T]] {
     def toExpr(iarray: IArray[T]): given QuoteContext => Expr[IArray[T]] = '{
       val array = new Array[T](${iarray.length.toExpr})(ClassTag(${the[ClassTag[T]].runtimeClass.toExpr}))
       ${ Expr.block(List.tabulate(iarray.length)(i => '{ array(${i.toExpr}) = ${iarray(i).toExpr} }), '{ array.asInstanceOf[IArray[T]] }) }
