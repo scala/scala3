@@ -68,8 +68,31 @@ object Test {
     val iarray: IArray[Int] = IArray(1, 2, 3)
     val liftedIArray: Expr[IArray[Int]] = iarray
 
+    val iarray2: IArray[String] = IArray("a", "b", "c")
+    iarray2.toExpr
+
+    IArray(false).toExpr
+    IArray(1: Byte).toExpr
+    IArray(1: Short).toExpr
+    IArray(1).toExpr
+    IArray(1L).toExpr
+    IArray(1.1f).toExpr
+    IArray(1.1d).toExpr
+    IArray('a').toExpr
+    IArray((1, 3)).toExpr
+
     val array: Array[Int] = Array(1, 2, 3)
     val liftedArray: Expr[Array[Int]] = array
+
+    Array(false).toExpr
+    Array(1: Byte).toExpr
+    Array(1: Short).toExpr
+    Array(1).toExpr
+    Array(1L).toExpr
+    Array(1.1f).toExpr
+    Array(1.1d).toExpr
+    Array('a').toExpr
+    Array((1, 3)).toExpr
 
     val some: Option[Int] = Some(2)
     val none: Option[Int] = Some(2)
