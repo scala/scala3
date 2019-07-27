@@ -10,12 +10,14 @@ import util.Spans.Span
 
 object Annotations {
 
+  def annotClass(tree: Tree) given Context =
+    if (tree.symbol.isConstructor) tree.symbol.owner
+    else tree.tpe.typeSymbol
+
   abstract class Annotation {
     def tree(implicit ctx: Context): Tree
 
-    def symbol(implicit ctx: Context): Symbol =
-      if (tree.symbol.isConstructor) tree.symbol.owner
-      else tree.tpe.typeSymbol
+    def symbol(implicit ctx: Context): Symbol = annotClass(tree)
 
     def matches(cls: Symbol)(implicit ctx: Context): Boolean = symbol.derivesFrom(cls)
 

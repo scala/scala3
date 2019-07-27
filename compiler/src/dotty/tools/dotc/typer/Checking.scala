@@ -1139,8 +1139,9 @@ trait Checking {
   /** check that annotation `annot` is applicable to symbol `sym` */
   def checkAnnotApplicable(annot: Tree, sym: Symbol) given (ctx: Context): Boolean =
     !ctx.reporter.reportsErrorsFor { implicit ctx =>
+      val annotCls = Annotations.annotClass(annot)
       val pos = annot.sourcePos
-      if (annot.symbol == defn.MainAnnot) {
+      if (annotCls == defn.MainAnnot) {
         if (!sym.isRealMethod)
           ctx.error(em"@main annotation cannot be applied to $sym", pos)
         if (!sym.owner.is(Module) || !sym.owner.isStatic)
