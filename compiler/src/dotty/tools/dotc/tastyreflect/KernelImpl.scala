@@ -107,7 +107,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def PackageClause_stats(self: PackageClause) given (ctx: Context): List[Tree] = self.stats
 
   def PackageClause_apply(pid: Ref, stats: List[Tree]) given (ctx: Context): PackageClause =
-    withDefaultPos(ctx => tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats)(ctx))
+    withDefaultPos(tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats))
 
   def PackageClause_copy(original: PackageClause)(pid: Ref, stats: List[Tree]) given (ctx: Context): PackageClause =
     tpd.cpy.PackageDef(original)(pid, stats)
@@ -131,7 +131,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Import_selectors(self: Import) given (ctx: Context): List[ImportSelector] = self.selectors
 
   def Import_apply(importImplied: Boolean, expr: Term, selectors: List[ImportSelector]) given (ctx: Context): Import =
-    withDefaultPos(ctx => tpd.Import(importImplied, expr, selectors)(ctx))
+    withDefaultPos(tpd.Import(importImplied, expr, selectors))
 
   def Import_copy(original: Import)(importImplied: Boolean, expr: Term, selectors: List[ImportSelector]) given (ctx: Context): Import =
     tpd.cpy.Import(original)(importImplied, expr, selectors)
@@ -195,7 +195,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def TypeDef_rhs(self: TypeDef) given (ctx: Context): TypeTree | TypeBoundsTree = self.rhs
   def TypeDef_symbol(self: TypeDef) given (ctx: Context): TypeDefSymbol = self.symbol.asType
 
-  def TypeDef_apply(symbol: TypeDefSymbol) given (ctx: Context): TypeDef = withDefaultPos(ctx => tpd.TypeDef(symbol)(ctx))
+  def TypeDef_apply(symbol: TypeDefSymbol) given (ctx: Context): TypeDef = withDefaultPos(tpd.TypeDef(symbol))
   def TypeDef_copy(original: TypeDef)(name: String, rhs: TypeTree | TypeBoundsTree) given (ctx: Context): TypeDef =
     tpd.cpy.TypeDef(original)(name.toTypeName, rhs)
 
@@ -213,7 +213,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def DefDef_symbol(self: DefDef) given (ctx: Context): DefDefSymbol = self.symbol.asTerm
 
   def DefDef_apply(symbol: DefDefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term]) given (ctx: Context): DefDef =
-    withDefaultPos(ctx => tpd.polyDefDef(symbol, tparams => vparamss => rhsFn(tparams)(vparamss).getOrElse(tpd.EmptyTree))(ctx))
+    withDefaultPos(tpd.polyDefDef(symbol, tparams => vparamss => rhsFn(tparams)(vparamss).getOrElse(tpd.EmptyTree)))
 
   def DefDef_copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]) given (ctx: Context): DefDef =
     tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, rhs.getOrElse(tpd.EmptyTree))
@@ -256,7 +256,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   }
 
   def Ref_apply(sym: Symbol) given (ctx: Context): Ref =
-    withDefaultPos(ctx => tpd.ref(sym)(ctx).asInstanceOf[tpd.RefTree])
+    withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.RefTree])
 
   type Ident = tpd.Ident
 
@@ -268,7 +268,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Ident_name(self: Ident) given (ctx: Context): String = self.name.show
 
   def Ident_apply(tmref: TermRef) given (ctx: Context): Term =
-    withDefaultPos(implicit ctx => tpd.ref(tmref).asInstanceOf[Term])
+    withDefaultPos(tpd.ref(tmref).asInstanceOf[Term])
 
   def Ident_copy(original: Tree)(name: String) given (ctx: Context): Ident =
     tpd.cpy.Ident(original)(name.toTermName)
@@ -287,17 +287,17 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     else Some(self.symbol.signature)
 
   def Select_apply(qualifier: Term, symbol: Symbol) given (ctx: Context): Select =
-    withDefaultPos(implicit ctx => tpd.Select(qualifier, Types.TermRef(qualifier.tpe, symbol)))
+    withDefaultPos(tpd.Select(qualifier, Types.TermRef(qualifier.tpe, symbol)))
 
   def Select_unique(qualifier: Term, name: String) given (ctx: Context): Select = {
     val denot = qualifier.tpe.member(name.toTermName)
     assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
-    withDefaultPos(implicit ctx => tpd.Select(qualifier, name.toTermName))
+    withDefaultPos(tpd.Select(qualifier, name.toTermName))
   }
 
   // TODO rename, this returns an Apply and not a Select
   def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]) given (ctx: Context): Apply =
-    withDefaultPos(implicit ctx => tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Apply])
+    withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Apply])
 
   def Select_copy(original: Tree)(qualifier: Term, name: String) given (ctx: Context): Select =
     tpd.cpy.Select(original)(qualifier, name.toTermName)
@@ -312,7 +312,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Literal_constant(self: Literal) given (ctx: Context): Constant = self.const
 
   def Literal_apply(constant: Constant) given (ctx: Context): Literal =
-    withDefaultPos(ctx => tpd.Literal(constant)(ctx))
+    withDefaultPos(tpd.Literal(constant))
 
   def Literal_copy(original: Tree)(constant: Constant) given (ctx: Context): Literal =
     tpd.cpy.Literal(original)(constant)
@@ -327,7 +327,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def This_id(self: This) given (ctx: Context): Option[Id] = optional(self.qual)
 
   def This_apply(cls: ClassDefSymbol) given (ctx: Context): This =
-    withDefaultPos(ctx => tpd.This(cls)(ctx))
+    withDefaultPos(tpd.This(cls))
 
   def This_copy(original: Tree)(qual: Option[Id]) given (ctx: Context): This =
     tpd.cpy.This(original)(qual.getOrElse(untpd.EmptyTypeIdent))
@@ -341,7 +341,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
   def New_tpt(self: New) given (ctx: Context): TypeTree = self.tpt
 
-  def New_apply(tpt: TypeTree) given (ctx: Context): New = withDefaultPos(ctx => tpd.New(tpt)(ctx))
+  def New_apply(tpt: TypeTree) given (ctx: Context): New = withDefaultPos(tpd.New(tpt))
 
   def New_copy(original: Tree)(tpt: TypeTree) given (ctx: Context): New =
     tpd.cpy.New(original)(tpt)
@@ -357,7 +357,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def NamedArg_value(self: NamedArg) given (ctx: Context): Term = self.arg
 
   def NamedArg_apply(name: String, arg: Term) given (ctx: Context): NamedArg =
-    withDefaultPos(ctx => tpd.NamedArg(name.toTermName, arg)(ctx))
+    withDefaultPos(tpd.NamedArg(name.toTermName, arg))
 
   def NamedArg_copy(tree: NamedArg)(name: String, arg: Term) given (ctx: Context): NamedArg =
     tpd.cpy.NamedArg(tree)(name.toTermName, arg)
@@ -374,7 +374,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
 
 
   def Apply_apply(fn: Term, args: List[Term]) given (ctx: Context): Apply =
-    withDefaultPos(ctx => tpd.Apply(fn, args)(ctx))
+    withDefaultPos(tpd.Apply(fn, args))
 
   def Apply_copy(original: Tree)(fun: Term, args: List[Term]) given (ctx: Context): Apply =
     tpd.cpy.Apply(original)(fun, args)
@@ -390,7 +390,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def TypeApply_args(self: TypeApply) given (ctx: Context): List[TypeTree] = self.args
 
   def TypeApply_apply(fn: Term, args: List[TypeTree]) given (ctx: Context): TypeApply =
-    withDefaultPos(ctx => tpd.TypeApply(fn, args)(ctx))
+    withDefaultPos(tpd.TypeApply(fn, args))
 
   def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree]) given (ctx: Context): TypeApply =
     tpd.cpy.TypeApply(original)(fun, args)
@@ -406,7 +406,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Super_id(self: Super) given (ctx: Context): Option[Id] = optional(self.mix)
 
   def Super_apply(qual: Term, mix: Option[Id]) given (ctx: Context): Super =
-    withDefaultPos(ctx => tpd.Super(qual, mix.getOrElse(untpd.EmptyTypeIdent), false, NoSymbol)(ctx))
+    withDefaultPos(tpd.Super(qual, mix.getOrElse(untpd.EmptyTypeIdent), false, NoSymbol))
 
   def Super_copy(original: Tree)(qual: Term, mix: Option[Id]) given (ctx: Context): Super =
     tpd.cpy.Super(original)(qual, mix.getOrElse(untpd.EmptyTypeIdent))
@@ -422,7 +422,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Typed_tpt(self: Typed) given (ctx: Context): TypeTree = self.tpt
 
   def Typed_apply(expr: Term, tpt: TypeTree) given (ctx: Context): Typed =
-    withDefaultPos(ctx => tpd.Typed(expr, tpt)(ctx))
+    withDefaultPos(tpd.Typed(expr, tpt))
 
   def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree) given (ctx: Context): Typed =
     tpd.cpy.Typed(original)(expr, tpt)
@@ -438,7 +438,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Assign_rhs(self: Assign) given (ctx: Context): Term = self.rhs
 
   def Assign_apply(lhs: Term, rhs: Term) given (ctx: Context): Assign =
-    withDefaultPos(ctx => tpd.Assign(lhs, rhs)(ctx))
+    withDefaultPos(tpd.Assign(lhs, rhs))
 
   def Assign_copy(original: Tree)(lhs: Term, rhs: Term) given (ctx: Context): Assign =
     tpd.cpy.Assign(original)(lhs, rhs)
@@ -483,7 +483,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Block_expr(self: Block) given (ctx: Context): Term = self.expr
 
   def Block_apply(stats: List[Statement], expr: Term) given (ctx: Context): Block =
-    withDefaultPos(ctx => tpd.Block(stats, expr)(ctx))
+    withDefaultPos(tpd.Block(stats, expr))
 
   def Block_copy(original: Tree)(stats: List[Statement], expr: Term) given (ctx: Context): Block =
     tpd.cpy.Block(original)(stats, expr)
@@ -500,7 +500,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Inlined_body(self: Inlined) given (ctx: Context): Term = self.expansion
 
   def Inlined_apply(call: Option[Term | TypeTree], bindings: List[Definition], expansion: Term) given (ctx: Context): Inlined =
-    withDefaultPos(ctx => tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion)(ctx))
+    withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion))
 
   def Inlined_copy(original: Tree)(call: Option[Term | TypeTree], bindings: List[Definition], expansion: Term) given (ctx: Context): Inlined =
     tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
@@ -516,7 +516,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Closure_tpeOpt(self: Closure) given (ctx: Context): Option[Type] = optional(self.tpt).map(_.tpe)
 
   def Closure_apply(meth: Term, tpe: Option[Type]) given (ctx: Context): Closure =
-    withDefaultPos(ctx => tpd.Closure(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))(ctx))
+    withDefaultPos(tpd.Closure(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
 
   def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type]) given (ctx: Context): Closure =
     tpd.cpy.Closure(original)(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
@@ -533,7 +533,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def If_elsep(self: If) given (ctx: Context): Term = self.elsep
 
   def If_apply(cond: Term, thenp: Term, elsep: Term) given (ctx: Context): If =
-    withDefaultPos(ctx => tpd.If(cond, thenp, elsep)(ctx))
+    withDefaultPos(tpd.If(cond, thenp, elsep))
 
   def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term) given (ctx: Context): If =
     tpd.cpy.If(original)(cond, thenp, elsep)
@@ -549,7 +549,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Match_cases(self: Match) given (ctx: Context): List[CaseDef] = self.cases
 
   def Match_apply(selector: Term, cases: List[CaseDef]) given (ctx: Context): Match =
-    withDefaultPos(ctx => tpd.Match(selector, cases)(ctx))
+    withDefaultPos(tpd.Match(selector, cases))
 
   def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef]) given (ctx: Context): Match =
     tpd.cpy.Match(original)(selector, cases)
@@ -564,7 +564,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def ImplicitMatch_cases(self: Match) given (ctx: Context): List[CaseDef] = self.cases
 
   def ImplicitMatch_apply(cases: List[CaseDef]) given (ctx: Context): ImpliedMatch =
-    withDefaultPos(ctx => tpd.Match(tpd.EmptyTree, cases)(ctx))
+    withDefaultPos(tpd.Match(tpd.EmptyTree, cases))
 
   def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef]) given (ctx: Context): ImpliedMatch =
     tpd.cpy.Match(original)(tpd.EmptyTree, cases)
@@ -581,7 +581,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Try_finalizer(self: Try) given (ctx: Context): Option[Term] = optional(self.finalizer)
 
   def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]) given (ctx: Context): Try =
-    withDefaultPos(ctx => tpd.Try(expr, cases, finalizer.getOrElse(tpd.EmptyTree))(ctx))
+    withDefaultPos(tpd.Try(expr, cases, finalizer.getOrElse(tpd.EmptyTree)))
 
   def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]) given (ctx: Context): Try =
     tpd.cpy.Try(original)(expr, cases, finalizer.getOrElse(tpd.EmptyTree))
@@ -596,7 +596,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Return_expr(self: Return) given (ctx: Context): Term = self.expr
 
   def Return_apply(expr: Term) given (ctx: Context): Return =
-    withDefaultPos(ctx => tpd.Return(expr, ctx.owner)(ctx))
+    withDefaultPos(tpd.Return(expr, ctx.owner))
 
   def Return_copy(original: Tree)(expr: Term) given (ctx: Context): Return =
     tpd.cpy.Return(original)(expr, tpd.ref(ctx.owner))
@@ -612,7 +612,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Repeated_elemtpt(self: Repeated) given (ctx: Context): TypeTree = self.elemtpt
 
   def Repeated_apply(elems: List[Term], elemtpt: TypeTree) given (ctx: Context): Repeated =
-    withDefaultPos(ctx => tpd.SeqLiteral(elems, elemtpt)(ctx))
+    withDefaultPos(tpd.SeqLiteral(elems, elemtpt))
 
   def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree) given (ctx: Context): Repeated =
     tpd.cpy.SeqLiteral(original)(elems, elemtpt)
@@ -636,7 +636,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def SelectOuter_tpe(self: SelectOuter) given (ctx: Context): Type = self.tpe.stripTypeVar
 
   def SelectOuter_apply(qualifier: Term, name: String, levels: Int) given (ctx: Context): SelectOuter =
-    withDefaultPos(ctx => tpd.Select(qualifier, NameKinds.OuterSelectName(name.toTermName, levels))(ctx))
+    withDefaultPos(tpd.Select(qualifier, NameKinds.OuterSelectName(name.toTermName, levels)))
 
   def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int) given (ctx: Context): SelectOuter =
     tpd.cpy.Select(original)(qualifier, NameKinds.OuterSelectName(name.toTermName, levels))
@@ -652,7 +652,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def While_body(self: While) given (ctx: Context): Term = self.body
 
   def While_apply(cond: Term, body: Term) given (ctx: Context): While =
-    withDefaultPos(ctx => tpd.WhileDo(cond, body)(ctx))
+    withDefaultPos(tpd.WhileDo(cond, body))
 
   def While_copy(original: Tree)(cond: Term, body: Term) given (ctx: Context): While =
     tpd.cpy.WhileDo(original)(cond, body)
@@ -675,7 +675,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
     case _ => None
   }
 
-  def Inferred_apply(tpe: Type) given (ctx: Context): Inferred = withDefaultPos(ctx => tpd.TypeTree(tpe)(ctx))
+  def Inferred_apply(tpe: Type) given (ctx: Context): Inferred = withDefaultPos(tpd.TypeTree(tpe))
 
   type TypeIdent = tpd.Ident
 
@@ -700,7 +700,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def TypeSelect_name(self: TypeSelect) given (ctx: Context): String = self.name.toString
 
   def TypeSelect_apply(qualifier: Term, name: String) given (ctx: Context): TypeSelect =
-    withDefaultPos(ctx => tpd.Select(qualifier, name.toTypeName)(ctx))
+    withDefaultPos(tpd.Select(qualifier, name.toTypeName))
 
   def TypeSelect_copy(original: TypeSelect)(qualifier: Term, name: String) given (ctx: Context): TypeSelect =
     tpd.cpy.Select(original)(qualifier, name.toTypeName)
@@ -729,7 +729,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Singleton_ref(self: Singleton) given (ctx: Context): Term = self.ref
 
   def Singleton_apply(ref: Term) given (ctx: Context): Singleton =
-    withDefaultPos(ctx => tpd.SingletonTypeTree(ref)(ctx))
+    withDefaultPos(tpd.SingletonTypeTree(ref))
 
   def Singleton_copy(original: Singleton)(ref: Term) given (ctx: Context): Singleton =
     tpd.cpy.SingletonTypeTree(original)(ref)
@@ -758,7 +758,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Applied_args(self: Applied) given (ctx: Context): List[TypeTree | TypeBoundsTree] = self.args
 
   def Applied_apply(tpt: TypeTree, args: List[TypeTree | TypeBoundsTree]) given (ctx: Context): Applied =
-    withDefaultPos(ctx => tpd.AppliedTypeTree(tpt, args)(ctx))
+    withDefaultPos(tpd.AppliedTypeTree(tpt, args))
 
   def Applied_copy(original: Applied)(tpt: TypeTree, args: List[TypeTree | TypeBoundsTree]) given (ctx: Context): Applied =
     tpd.cpy.AppliedTypeTree(original)(tpt, args)
@@ -774,7 +774,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Annotated_annotation(self: Annotated) given (ctx: Context): Term = self.annot
 
   def Annotated_apply(arg: TypeTree, annotation: Term) given (ctx: Context): Annotated =
-    withDefaultPos(ctx => tpd.Annotated(arg, annotation)(ctx))
+    withDefaultPos(tpd.Annotated(arg, annotation))
 
   def Annotated_copy(original: Annotated)(arg: TypeTree, annotation: Term) given (ctx: Context): Annotated =
     tpd.cpy.Annotated(original)(arg, annotation)
@@ -791,7 +791,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def MatchTypeTree_cases(self: MatchTypeTree) given (ctx: Context): List[CaseDef] = self.cases
 
   def MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]) given (ctx: Context): MatchTypeTree =
-    withDefaultPos(ctx => tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases)(ctx))
+    withDefaultPos(tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases))
 
   def MatchTypeTree_copy(original: MatchTypeTree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]) given (ctx: Context): MatchTypeTree =
     tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
@@ -806,7 +806,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def ByName_result(self: ByName) given (ctx: Context): TypeTree = self.result
 
   def ByName_apply(result: TypeTree) given (ctx: Context): ByName =
-    withDefaultPos(ctx => tpd.ByNameTypeTree(result)(ctx))
+    withDefaultPos(tpd.ByNameTypeTree(result))
 
   def ByName_copy(original: ByName)(result: TypeTree) given (ctx: Context): ByName =
     tpd.cpy.ByNameTypeTree(original)(result)
@@ -822,7 +822,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Lambdabody(self: LambdaTypeTree) given (ctx: Context): TypeTree | TypeBoundsTree = self.body
 
   def Lambdaapply(tparams: List[TypeDef], body: TypeTree | TypeBoundsTree) given (ctx: Context): LambdaTypeTree =
-    withDefaultPos(ctx => tpd.LambdaTypeTree(tparams, body)(ctx))
+    withDefaultPos(tpd.LambdaTypeTree(tparams, body))
 
   def Lambdacopy(original: LambdaTypeTree)(tparams: List[TypeDef], body: TypeTree | TypeBoundsTree) given (ctx: Context): LambdaTypeTree =
     tpd.cpy.LambdaTypeTree(original)(tparams, body)
@@ -851,7 +851,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def TypeBlock_tpt(self: TypeBlock) given (ctx: Context): TypeTree = self.expr
 
   def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree) given (ctx: Context): TypeBlock =
-    withDefaultPos(ctx => tpd.Block(aliases, tpt)(ctx))
+    withDefaultPos(tpd.Block(aliases, tpt))
 
   def TypeBlock_copy(original: TypeBlock)(aliases: List[TypeDef], tpt: TypeTree) given (ctx: Context): TypeBlock =
     tpd.cpy.Block(original)(aliases, tpt)
@@ -960,7 +960,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Pattern_Bind_pattern(self: Bind) given (ctx: Context): Pattern = self.body
 
   def Pattern_Bind_module_copy(original: Bind)(name: String, pattern: Pattern) given (ctx: Context): Bind =
-    withDefaultPos(ctx => tpd.cpy.Bind(original)(name.toTermName, pattern)(ctx))
+    withDefaultPos(tpd.cpy.Bind(original)(name.toTermName, pattern))
 
   type Unapply = tpd.UnApply
 
@@ -975,7 +975,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Pattern_Unapply_patterns(self: Unapply) given (ctx: Context): List[Pattern] = effectivePatterns(self.patterns)
 
   def Pattern_Unapply_module_copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Pattern]) given (ctx: Context): Unapply =
-    withDefaultPos(ctx => tpd.cpy.UnApply(original)(fun, implicits, patterns)(ctx))
+    withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits, patterns))
 
   private def effectivePatterns(patterns: List[Pattern]): List[Pattern] = patterns match {
     case patterns0 :+ Trees.SeqLiteral(elems, _) => patterns0 ::: elems
@@ -992,7 +992,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Pattern_Alternatives_patterns(self: Alternatives) given (ctx: Context): List[Pattern] = self.trees
 
   def Pattern_Alternatives_module_apply(patterns: List[Pattern]) given (ctx: Context): Alternatives =
-    withDefaultPos(ctx => tpd.Alternative(patterns)(ctx))
+    withDefaultPos(tpd.Alternative(patterns))
 
   def Pattern_Alternatives_module_copy(original: Alternatives)(patterns: List[Pattern]) given (ctx: Context): Alternatives =
     tpd.cpy.Alternative(original)(patterns)
@@ -1008,7 +1008,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   def Pattern_TypeTest_tpt(self: TypeTest) given (ctx: Context): TypeTree = self.tpt
 
   def Pattern_TypeTest_module_apply(tpt: TypeTree) given (ctx: Context): TypeTest =
-    withDefaultPos(ctx => tpd.Typed(untpd.Ident(nme.WILDCARD)(ctx.source).withType(tpt.tpe)(ctx), tpt)(ctx))
+    withDefaultPos(tpd.Typed(untpd.Ident(nme.WILDCARD)(ctx.source).withType(tpt.tpe), tpt))
 
   def Pattern_TypeTest_module_copy(original: TypeTest)(tpt: TypeTree) given (ctx: Context): TypeTest =
     tpd.cpy.Typed(original)(untpd.Ident(nme.WILDCARD).withSpan(original.span).withType(tpt.tpe), tpt)
@@ -1898,7 +1898,7 @@ class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.
   private def optional[T <: Trees.Tree[_]](tree: T): Option[tree.type] =
     if (tree.isEmpty) None else Some(tree)
 
-  private def withDefaultPos[T <: Tree](fn: Context => T) given (ctx: Context): T = {
-    fn(ctx.withSource(rootPosition.source)).withSpan(rootPosition.span)
-  }
+  private def withDefaultPos[T <: Tree](fn: given Context => T) given (ctx: Context): T =
+    (fn given ctx.withSource(rootPosition.source)).withSpan(rootPosition.span)
+
 }
