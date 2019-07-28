@@ -544,7 +544,8 @@ object ProtoTypes {
    * of toString method. The problem is solved by dereferencing nullary method types if the corresponding
    * function type is not compatible with the prototype.
    */
-  def normalize(tp: Type, pt: Type)(implicit ctx: Context): Type = Stats.track("normalize") {
+  def normalize(tp: Type, pt: Type)(implicit ctx: Context): Type = {
+    Stats.record("normalize")
     tp.widenSingleton match {
       case poly: PolyType =>
         normalize(constrained(poly).resultType, pt)

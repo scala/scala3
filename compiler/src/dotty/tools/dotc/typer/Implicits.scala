@@ -5,7 +5,7 @@ package typer
 import core._
 import ast.{Trees, TreeTypeMap, untpd, tpd, DesugarEnums}
 import util.Spans._
-import util.Stats.{track, record, monitored}
+import util.Stats.{record, monitored}
 import printing.{Showable, Printer}
 import printing.Texts._
 import Contexts._
@@ -90,7 +90,8 @@ object Implicits {
     }
 
     /** Return those references in `refs` that are compatible with type `pt`. */
-    protected def filterMatching(pt: Type)(implicit ctx: Context): List[Candidate] = track("filterMatching") {
+    protected def filterMatching(pt: Type)(implicit ctx: Context): List[Candidate] = {
+      record("filterMatching")
 
       def candidateKind(ref: TermRef)(implicit ctx: Context): Candidate.Kind = /*trace(i"candidateKind $ref $pt")*/ {
 
@@ -241,11 +242,9 @@ object Implicits {
 
     /** The candidates that are eligible for expected type `tp` */
     @threadUnsafe lazy val eligible: List[Candidate] =
-      /*>|>*/ track("eligible in tpe") /*<|<*/ {
-        /*>|>*/ trace(i"eligible($tp), companions = ${companionRefs.toList}%, %", implicitsDetailed, show = true) /*<|<*/ {
-          if (refs.nonEmpty && monitored) record(s"check eligible refs in tpe", refs.length)
-          filterMatching(tp)
-        }
+      trace(i"eligible($tp), companions = ${companionRefs.toList}%, %", implicitsDetailed, show = true) {
+        if (refs.nonEmpty && monitored) record(s"check eligible refs in tpe", refs.length)
+        filterMatching(tp)
       }
 
     override def toString: String =
@@ -283,7 +282,7 @@ object Implicits {
     }
 
     /** The implicit references that are eligible for type `tp`. */
-    def eligible(tp: Type): List[Candidate] = /*>|>*/ track(s"eligible in ctx") /*<|<*/ {
+    def eligible(tp: Type): List[Candidate] = {
       if (tp.hash == NotCached) computeEligible(tp)
       else {
         val eligibles = eligibleCache.get(tp)
@@ -540,8 +539,9 @@ trait ImplicitRunInfo { self: Run =>
       }
     }
 
-    def collectCompanions(tp: Type): TermRefSet = track("computeImplicitScope") {
+    def collectCompanions(tp: Type): TermRefSet =
       trace(i"collectCompanions($tp)", implicitsDetailed) {
+        record("collectCompanions")
 
         def iscopeRefs(t: Type): TermRefSet = implicitScopeCache.get(t) match {
           case Some(is) =>
@@ -597,7 +597,6 @@ trait ImplicitRunInfo { self: Run =>
         }
         comps
       }
-    }
 
    /** The implicit scope of type `tp`
      *  @param isLifted    Type `tp` is the result of a `liftToAnchors` application
@@ -653,7 +652,8 @@ trait Implicits { self: Typer =>
   /** Find an implicit conversion to apply to given tree `from` so that the
    *  result is compatible with type `to`.
    */
-  def inferView(from: Tree, to: Type)(implicit ctx: Context): SearchResult = track("inferView") {
+  def inferView(from: Tree, to: Type)(implicit ctx: Context): SearchResult = {
+    record("inferView")
     if (   (to isRef defn.AnyClass)
         || (to isRef defn.ObjectClass)
         || (to isRef defn.UnitClass)
@@ -1287,11 +1287,12 @@ trait Implicits { self: Typer =>
    *                         it should be applied, EmptyTree otherwise.
    *  @param span            The position where errors should be reported.
    */
-  def inferImplicit(pt: Type, argument: Tree, span: Span)(implicit ctx: Context): SearchResult = track("inferImplicit") {
-    assert(ctx.phase.allowsImplicitSearch,
-      if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
-      else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
+  def inferImplicit(pt: Type, argument: Tree, span: Span)(implicit ctx: Context): SearchResult =
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
+      record("inferImplicit")
+      assert(ctx.phase.allowsImplicitSearch,
+        if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
+        else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
       val result0 =
         try {
           new ImplicitSearch(pt, argument, span).bestImplicit(contextual = true)
@@ -1332,7 +1333,6 @@ trait Implicits { self: Typer =>
       // If we are at the outermost implicit search then emit the implicit dictionary, if any.
       ctx.searchHistory.emitDictionary(span, result)
     }
-  }
 
   /** An implicit search; parameters as in `inferImplicit` */
   class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(implicit ctx: Context) {
@@ -1359,48 +1359,50 @@ trait Implicits { self: Typer =>
       //println(i"search implicits $pt / ${eligible.map(_.ref)}")
 
     /** Try to typecheck an implicit reference */
-    def typedImplicit(cand: Candidate, contextual: Boolean)(implicit ctx: Context): SearchResult = track("typedImplicit") { trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
-      val ref = cand.ref
-      val generated: Tree = tpd.ref(ref).withSpan(span.startPos)
-      val locked = ctx.typerState.ownedVars
-      val adapted =
-        if (argument.isEmpty)
-          adapt(generated, pt.widenExpr, locked)
-        else {
-          val untpdGenerated = untpd.TypedSplice(generated)
-          def tryConversion(implicit ctx: Context) =
-            typed(
-              untpd.Apply(untpdGenerated, untpd.TypedSplice(argument) :: Nil),
-              pt, locked)
-          if (cand.isExtension) {
-            val SelectionProto(name: TermName, mbrType, _, _) = pt
-            val result = extMethodApply(untpd.Select(untpdGenerated, name), argument, mbrType)
-            if (!ctx.reporter.hasErrors && cand.isConversion) {
-              val testCtx = ctx.fresh.setExploreTyperState()
-              tryConversion(testCtx)
-              if (testCtx.reporter.hasErrors)
-                ctx.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
+    def typedImplicit(cand: Candidate, contextual: Boolean)(implicit ctx: Context): SearchResult =
+      trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
+        record("typedImplicit")
+        val ref = cand.ref
+        val generated: Tree = tpd.ref(ref).withSpan(span.startPos)
+        val locked = ctx.typerState.ownedVars
+        val adapted =
+          if (argument.isEmpty)
+            adapt(generated, pt.widenExpr, locked)
+          else {
+            val untpdGenerated = untpd.TypedSplice(generated)
+            def tryConversion(implicit ctx: Context) =
+              typed(
+                untpd.Apply(untpdGenerated, untpd.TypedSplice(argument) :: Nil),
+                pt, locked)
+            if (cand.isExtension) {
+              val SelectionProto(name: TermName, mbrType, _, _) = pt
+              val result = extMethodApply(untpd.Select(untpdGenerated, name), argument, mbrType)
+              if (!ctx.reporter.hasErrors && cand.isConversion) {
+                val testCtx = ctx.fresh.setExploreTyperState()
+                tryConversion(testCtx)
+                if (testCtx.reporter.hasErrors)
+                  ctx.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
+              }
+              result
             }
-            result
+            else tryConversion
           }
-          else tryConversion
+        if (ctx.reporter.hasErrors) {
+          ctx.reporter.removeBufferedMessages
+          SearchFailure {
+            adapted.tpe match {
+              case _: SearchFailureType => adapted
+              case _ => adapted.withType(new MismatchedImplicit(ref, pt, argument))
+            }
+          }
         }
-      if (ctx.reporter.hasErrors) {
-        ctx.reporter.removeBufferedMessages
-        SearchFailure {
-          adapted.tpe match {
-            case _: SearchFailureType => adapted
-            case _ => adapted.withType(new MismatchedImplicit(ref, pt, argument))
-          }
+        else {
+          val returned =
+            if (cand.isExtension) Applications.ExtMethodApply(adapted)
+            else adapted
+          SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadt)
         }
       }
-      else {
-        val returned =
-          if (cand.isExtension) Applications.ExtMethodApply(adapted)
-          else adapted
-        SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadt)
-      }
-    }}
 
     /** Try to type-check implicit reference, after checking that this is not
       * a diverging search
