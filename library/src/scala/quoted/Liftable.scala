@@ -239,6 +239,11 @@ object Liftable {
     }
   }
 
+  given [H: Type: Liftable, T <: Tuple: Type: Liftable] as Liftable[H *: T] = new {
+    def toExpr(tup: H *: T): given QuoteContext => Expr[H *: T] =
+      '{ ${tup.head.toExpr} *: ${tup.tail.toExpr} }
+  }
+
   given as Liftable[BigInt] = new Liftable[BigInt] {
     def toExpr(x: BigInt): given QuoteContext => Expr[BigInt] =
       '{ BigInt(${x.toByteArray.toExpr}) }
