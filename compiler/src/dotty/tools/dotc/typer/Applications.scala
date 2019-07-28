@@ -5,7 +5,7 @@ package typer
 import core._
 import ast.{Trees, tpd, untpd}
 import util.Spans._
-import util.Stats.{track, record}
+import util.Stats.record
 import util.{SourcePosition, NoSourcePosition, SourceFile}
 import Trees.Untyped
 import Contexts._
@@ -805,7 +805,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    */
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
-    def realApply(implicit ctx: Context): Tree = track("realApply") {
+    def realApply(implicit ctx: Context): Tree = {
       val originalProto = new FunProto(tree.args, IgnoredProto(pt))(this, tree.isGivenApply)(argCtx(tree))
       record("typedApply")
       val fun1 = typedFunPart(tree.fun, originalProto)
@@ -888,7 +888,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *
      *     { val xs = es; e' = e' + args }
      */
-    def typedOpAssign(implicit ctx: Context): Tree = track("typedOpAssign") {
+    def typedOpAssign(implicit ctx: Context): Tree = {
       val Apply(Select(lhs, name), rhss) = tree
       val lhs1 = typedExpr(lhs)
       val liftedDefs = new mutable.ListBuffer[Tree]
@@ -939,7 +939,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       cpy.NamedArg(arg)(id, argtpt1).withType(argtpt1.tpe)
     }
 
-  def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
+  def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = {
     if (ctx.mode.is(Mode.Pattern)) {
       return errorTree(tree, "invalid pattern")
     }
@@ -992,7 +992,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       tree
   }
 
-  def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
+  def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = {
+    record("typedUnApply")
     val Apply(qual, args) = tree
 
     def notAnExtractor(tree: Tree) =
@@ -1239,8 +1240,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  an alternative that takes more implicit parameters wins over one
    *  that takes fewer.
    */
-  def compare(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Int = track("compare") { trace(i"compare($alt1, $alt2)", overload) {
-
+  def compare(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Int = trace(i"compare($alt1, $alt2)", overload) {
+    record("compare")
     assert(alt1 ne alt2)
 
     /** Is alternative `alt1` with type `tp1` as specific as alternative
@@ -1412,9 +1413,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       else 1                                    // prefer 1st alternative with no implicits
     else if (strippedType2 eq fullType2) -1     // prefer 2nd alternative with no implicits
     else compareWithTypes(fullType1, fullType2) // continue by comparing implicits parameters
-  }}
+  }
 
-  def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
+  def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = {
+    record("narrowMostSpecific")
     alts match {
       case Nil => alts
       case _ :: Nil => alts
@@ -1451,7 +1453,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  Two trials: First, without implicits or SAM conversions enabled. Then,
    *  if the first finds no eligible candidates, with implicits and SAM conversions enabled.
    */
-  def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
+  def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = {
+    record("resolveOverloaded")
 
     /** Is `alt` a method or polytype whose result type after the first value parameter
      *  section conforms to the expected type `resultType`? If `resultType`
@@ -1547,7 +1550,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  called twice from the public `resolveOverloaded` method, once with
    *  implicits and SAM conversions enabled, and once without.
    */
-  private def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type])(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
+  private def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type])(implicit ctx: Context): List[TermRef] = {
+    record("resolveOverloaded/2")
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 

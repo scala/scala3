@@ -1783,7 +1783,7 @@ object SymDenotations {
       } else computeNPMembersNamed(name)
     }
 
-    private[core] def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = /*>|>*/ Stats.track("computeNPMembersNamed") /*<|<*/ {
+    private[core] def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
       Stats.record("computeNPMembersNamed after fingerprint")
       ensureCompleted()
       val ownDenots = info.decls.denotsNamed(name, selectNonPrivate)

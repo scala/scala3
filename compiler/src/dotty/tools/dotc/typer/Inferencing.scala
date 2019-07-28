@@ -258,7 +258,8 @@ object Inferencing {
    *  @return   The list of type symbols that were created
    *            to instantiate undetermined type variables that occur non-variantly
    */
-  def maximizeType(tp: Type, span: Span, fromScala2x: Boolean)(implicit ctx: Context): List[Symbol] = Stats.track("maximizeType") {
+  def maximizeType(tp: Type, span: Span, fromScala2x: Boolean)(implicit ctx: Context): List[Symbol] = {
+    Stats.record("maximizeType")
     val vs = variances(tp)
     val patternBound = new mutable.ListBuffer[Symbol]
     vs foreachBinding { (tvar, v) =>
@@ -301,7 +302,8 @@ object Inferencing {
    *
    *  we want to instantiate U to x.type right away. No need to wait further.
    */
-  private def variances(tp: Type)(implicit ctx: Context): VarianceMap = Stats.track("variances") {
+  private def variances(tp: Type)(implicit ctx: Context): VarianceMap = {
+    Stats.record("variances")
     val constraint = ctx.typerState.constraint
 
     object accu extends TypeAccumulator[VarianceMap] {

@@ -18,7 +18,7 @@ import dotty.tools.dotc.reporting._
 import dotty.tools.dotc.typer.Implicits._
 import dotty.tools.dotc.typer.Inferencing._
 import dotty.tools.dotc.util.Spans._
-import dotty.tools.dotc.util.Stats.track
+import dotty.tools.dotc.util.Stats.record
 
 import scala.collection.mutable
 
@@ -34,7 +34,8 @@ trait QuotesAndSplices { self: Typer =>
   /** Translate `'{ t }` into `scala.quoted.Expr.apply(t)` and `'[T]` into `scala.quoted.Type.apply[T]`
    *  while tracking the quotation level in the context.
    */
-  def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
+  def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = {
+    record("typedQuote")
     val qctx = inferImplicitArg(defn.QuoteContextClass.typeRef, tree.span)
     if (level == 0 && qctx.tpe.isInstanceOf[SearchFailureType])
       ctx.error(missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(tree.span))
@@ -57,7 +58,8 @@ trait QuotesAndSplices { self: Typer =>
   }
 
   /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
-  def typedSplice(tree: untpd.Splice, pt: Type)(implicit ctx: Context): Tree = track("typedSplice") {
+  def typedSplice(tree: untpd.Splice, pt: Type)(implicit ctx: Context): Tree = {
+    record("typedSplice")
     checkSpliceOutsideQuote(tree)
     tree.expr match {
       case untpd.Quote(innerExpr) if innerExpr.isTerm =>
@@ -92,7 +94,8 @@ trait QuotesAndSplices { self: Typer =>
   }
 
   /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */
-  def typedTypSplice(tree: untpd.TypSplice, pt: Type)(implicit ctx: Context): Tree = track("typedTypSplice") {
+  def typedTypSplice(tree: untpd.TypSplice, pt: Type)(implicit ctx: Context): Tree = {
+    record("typedTypSplice")
     ctx.compilationUnit.needsStaging = true
     checkSpliceOutsideQuote(tree)
     tree.expr match {
