@@ -222,7 +222,9 @@ object ProtoTypes {
   class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType, NoViewsAllowed, true)
 
   trait ApplyingProto extends ProtoType   // common trait of ViewProto and FunProto
-  trait FunOrPolyProto extends ProtoType  // common trait of PolyProto and FunProto
+  trait FunOrPolyProto extends ProtoType { // common trait of PolyProto and FunProto
+    def isGivenApply: Boolean = false
+  }
 
   class FunProtoState {
 
@@ -244,7 +246,7 @@ object ProtoTypes {
    *  [](args): resultType
    */
   case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer,
-    val isGivenApply: Boolean, state: FunProtoState = new FunProtoState)(implicit val ctx: Context)
+    override val isGivenApply: Boolean, state: FunProtoState = new FunProtoState)(implicit val ctx: Context)
   extends UncachedGroundType with ApplyingProto with FunOrPolyProto {
     override def resultType(implicit ctx: Context): Type = resType
 
