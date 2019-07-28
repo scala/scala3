@@ -14,7 +14,7 @@ object Test extends App {
 
     case class Mono(i: Int) derives Show
     case class Poly[A](a: A) derives Show
-    //case class Poly11[F[_]](fi: F[Int]) derives Show
+    case class Poly11[F[_]](fi: F[Int]) derives Show // error
     case class Poly2[A, B](a: A, b: B) derives Show
     case class Poly3[A, B, C](a: A, b: B, c: C) derives Show
   }
@@ -32,7 +32,7 @@ object Test extends App {
 
     case class Mono(i: Int) derives Functor
     case class Poly[A](a: A) derives Functor
-    //case class Poly11[F[_]](fi: F[Int]) derives Functor
+    case class Poly11[F[_]](fi: F[Int]) derives Functor // error
     case class Poly2[A, B](a: A, b: B) derives Functor
     case class Poly3[A, B, C](a: A, b: B, c: C) derives Functor
   }
@@ -47,10 +47,10 @@ object Test extends App {
     }
 
     case class Mono(i: Int) derives FunctorK
-    //case class Poly[A](a: A) derives FunctorK
+    case class Poly[A](a: A) derives FunctorK // error
     case class Poly11[F[_]](fi: F[Int]) derives FunctorK
-    //case class Poly2[A, B](a: A, b: B) derives FunctorK
-    //case class Poly3[A, B, C](a: A, b: B, c: C) derives FunctorK
+    case class Poly2[A, B](a: A, b: B) derives FunctorK // error
+    case class Poly3[A, B, C](a: A, b: B, c: C) derives FunctorK // error
   }
 
   {
@@ -66,8 +66,9 @@ object Test extends App {
 
     case class Mono(i: Int) derives Bifunctor
     case class Poly[A](a: A) derives Bifunctor
-    //case class Poly11[F[_]](fi: F[Int]) derives Bifunctor
+    case class Poly11[F[_]](fi: F[Int]) derives Bifunctor // error
     case class Poly2[A, B](a: A, b: B) derives Bifunctor
     case class Poly3[A, B, C](a: A, b: B, c: C) derives Bifunctor
   }
 }
+
