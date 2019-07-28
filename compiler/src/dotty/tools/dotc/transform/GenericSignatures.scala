@@ -222,8 +222,10 @@ object GenericSignatures {
             else
               jsig(unboxedSeen, toplevel, primitiveOK)
           }
-          else if (defn.isXXLFunctionClass(sym))
-            classSig(defn.FunctionXXLClass)
+          else if (defn.isSyntheticFunctionClass(sym)) {
+            val erasedSym = defn.erasedFunctionClass(sym)
+            classSig(erasedSym, pre, if (erasedSym.typeParams.isEmpty) Nil else args)
+          }
           else if (sym.isClass)
             classSig(sym, pre, args)
           else
