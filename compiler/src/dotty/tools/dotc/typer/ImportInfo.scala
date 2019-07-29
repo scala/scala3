@@ -12,14 +12,19 @@ import Implicits.RenamedImplicitRef
 import printing.Texts.Text
 import ProtoTypes.NoViewsAllowed.normalizedCompatible
 import Decorators._
+import annotation.threadUnsafe
 
 object ImportInfo {
-  /** The import info for a root import from given symbol `sym` */
-  def rootImport(refFn: () => TermRef, importGiven: Boolean = false)(implicit ctx: Context): ImportInfo = {
+  /** The import info for a root import
+   *  @param  refFn   A function that returns a pair of
+   *                    - the term ref of the symbol to import
+   *                    - whether or not it's an import given
+   */
+  def rootImport(refFn: () => (TermRef, Boolean))(implicit ctx: Context): ImportInfo = {
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
-    def expr(implicit ctx: Context) = tpd.Ident(refFn())
-    def imp(implicit ctx: Context) = tpd.Import(importGiven = importGiven, expr, selectors)
-    new ImportInfo(imp.symbol, selectors, None, importGiven = importGiven, isRootImport = true)
+    def expr(implicit ctx: Context) = tpd.Ident(refFn()._1)
+    def impSym(implicit ctx: Context) = ctx.newImportSymbol(ctx.owner, expr)
+    new ImportInfo(impSym, selectors, None, importGivenFn = refFn()._2, isRootImport = true)
   }
 }
 
@@ -34,8 +39,10 @@ object ImportInfo {
  */
 class ImportInfo(symf: given Context => Symbol, val selectors: List[untpd.Tree],
                  symNameOpt: Option[TermName],
-                 val importGiven: Boolean,
+                 importGivenFn: => Boolean,
                  val isRootImport: Boolean = false) extends Showable {
+
+  @threadUnsafe lazy val importGiven = importGivenFn
 
   // Dotty deviation: we cannot use a lazy val here for the same reason
   // that we cannot use one for `DottyPredefModuleRef`.

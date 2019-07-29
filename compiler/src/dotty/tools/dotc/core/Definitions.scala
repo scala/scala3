@@ -1037,23 +1037,26 @@ class Definitions {
   def isPredefClass(cls: Symbol): Boolean =
     (cls.owner eq ScalaPackageClass) && predefClassNames.contains(cls.name)
 
-  val StaticRootImportFns: List[() => TermRef] = List[() => TermRef](
-    () => JavaLangPackageVal.termRef,
-    () => ScalaPackageVal.termRef
+  /** The root imports, represented as a ref to the imported symbol, and a Boolean
+   *  indicating whether it's a given import.
+   */
+  val StaticRootImportFns: List[() => (TermRef, Boolean)] = List(
+    () => (JavaLangPackageVal.termRef, false),
+    () => (ScalaPackageVal.termRef, false)
   )
 
-  val PredefImportFns: List[() => TermRef] = List[() => TermRef](
-    () => ScalaPredefModule.termRef,
-    () => DottyPredefModule.termRef
+  val PredefImportFns: List[() => (TermRef, Boolean)] = List(
+    () => (ScalaPredefModule.termRef, false),
+    () => (DottyPredefModule.termRef, false)
   )
 
-  @threadUnsafe lazy val RootImportFns: List[() => TermRef] =
-    if (ctx.settings.YnoImports.value) List.empty[() => TermRef]
+  @threadUnsafe lazy val RootImportFns: List[() => (TermRef, Boolean)] =
+    if (ctx.settings.YnoImports.value) Nil
     else if (ctx.settings.YnoPredef.value) StaticRootImportFns
     else StaticRootImportFns ++ PredefImportFns
 
   @threadUnsafe lazy val ShadowableImportNames: Set[TermName] = Set("Predef", "DottyPredef").map(_.toTermName)
-  @threadUnsafe lazy val RootImportTypes: List[TermRef] = RootImportFns.map(_())
+  @threadUnsafe lazy val RootImportTypes: List[TermRef] = RootImportFns.map(_()._1)
 
   /** Modules whose members are in the default namespace and their module classes */
   @threadUnsafe lazy val UnqualifiedOwnerTypes: Set[NamedType] =
