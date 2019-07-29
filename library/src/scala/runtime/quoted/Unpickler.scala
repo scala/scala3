@@ -19,5 +19,6 @@ object Unpickler {
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleType[T](repr: Pickled, args: Seq[Seq[Any] => Type[_]]): Type[T] = new TastyType[T](repr, args)
+  def unpickleType[T](repr: Pickled, args: Seq[Seq[Any] => Type[_]]): given QuoteContext => Type[T] = new TastyType[T](repr, args)
+
 }
