@@ -42,44 +42,50 @@ object MainProxies {
   import untpd._
   def mainProxy(mainFun: Symbol) given (ctx: Context): List[TypeDef] = {
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
-
+    def pos = mainFun.sourcePos
     val argsRef = Ident(nme.args)
 
-    def addArgs(call: untpd.Tree, formals: List[Type], restpe: Type, idx: Int): untpd.Tree = {
-      val args = formals.zipWithIndex map {
-        (formal, n) =>
-          val (parserSym, formalElem) =
-            if (formal.isRepeatedParam) (defn.CLP_parseRemainingArguments, formal.argTypes.head)
-            else (defn.CLP_parseArgument, formal)
-          val arg = Apply(
-            TypeApply(ref(parserSym.termRef), TypeTree(formalElem) :: Nil),
-            argsRef :: Literal(Constant(idx + n)) :: Nil)
-          if (formal.isRepeatedParam) repeated(arg) else arg
+    def addArgs(call: untpd.Tree, mt: MethodType, idx: Int): untpd.Tree = {
+      if (mt.isImplicitMethod) {
+        ctx.error(s"@main method cannot have implicit parameters", pos)
+        call
       }
-      val call1 = Apply(call, args)
-      restpe match {
-        case restpe: MethodType if !restpe.isImplicitMethod =>
-          if (formals.lastOption.getOrElse(NoType).isRepeatedParam)
-            ctx.error(s"varargs parameter of @main method must come last", mainFun.sourcePos)
-          addArgs(call1, restpe.paramInfos, restpe.resType, idx + args.length)
-        case _ =>
-          call1
+      else {
+        val args = mt.paramInfos.zipWithIndex map {
+          (formal, n) =>
+            val (parserSym, formalElem) =
+              if (formal.isRepeatedParam) (defn.CLP_parseRemainingArguments, formal.argTypes.head)
+              else (defn.CLP_parseArgument, formal)
+            val arg = Apply(
+              TypeApply(ref(parserSym.termRef), TypeTree(formalElem) :: Nil),
+              argsRef :: Literal(Constant(idx + n)) :: Nil)
+            if (formal.isRepeatedParam) repeated(arg) else arg
+        }
+        val call1 = Apply(call, args)
+        mt.resType match {
+          case restpe: MethodType =>
+            if (mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam)
+              ctx.error(s"varargs parameter of @main method must come last", pos)
+            addArgs(call1, restpe, idx + args.length)
+          case _ =>
+            call1
+        }
       }
     }
 
     var result: List[TypeDef] = Nil
     if (!mainFun.owner.isStaticOwner)
-      ctx.error(s"@main method is not statically accessible", mainFun.sourcePos)
+      ctx.error(s"@main method is not statically accessible", pos)
     else {
       var call = ref(mainFun.termRef)
       mainFun.info match {
         case _: ExprType =>
         case mt: MethodType =>
-          if (!mt.isImplicitMethod) call = addArgs(call, mt.paramInfos, mt.resultType, 0)
+          call = addArgs(call, mt, 0)
         case _: PolyType =>
-          ctx.error(s"@main method cannot have type parameters", mainFun.sourcePos)
+          ctx.error(s"@main method cannot have type parameters", pos)
         case _ =>
-          ctx.error(s"@main can only annotate a method", mainFun.sourcePos)
+          ctx.error(s"@main can only annotate a method", pos)
       }
       val errVar = Ident(nme.error)
       val handler = CaseDef(
