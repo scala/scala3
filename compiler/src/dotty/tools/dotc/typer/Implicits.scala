@@ -688,7 +688,7 @@ trait Implicits { self: Typer =>
       case arg :: Nil =>
         fullyDefinedType(arg, "ClassTag argument", span) match {
           case defn.ArrayOf(elemTp) =>
-            val etag = inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
+            val etag = inferImplicitArg(defn.ClassTagType.appliedTo(elemTp), span)
             if (etag.tpe.isError) EmptyTree else etag.select(nme.wrap)
           case tp if hasStableErasure(tp) && !defn.isBottomClass(tp.typeSymbol) =>
             val sym = tp.typeSymbol
@@ -784,7 +784,7 @@ trait Implicits { self: Typer =>
 
       /** Is there an `Eql[T, T]` instance, assuming -strictEquality? */
       def hasEq(tp: Type)(implicit ctx: Context): Boolean = {
-        val inst = inferImplicitArg(defn.EqlClass.typeRef.appliedTo(tp, tp), span)
+        val inst = inferImplicitArg(defn.EqlType.appliedTo(tp, tp), span)
         !inst.isEmpty && !inst.tpe.isError
       }
 
@@ -1277,7 +1277,7 @@ trait Implicits { self: Typer =>
   /** Check that equality tests between types `ltp` and `rtp` make sense */
   def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit =
     if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
-      val res = implicitArgTree(defn.EqlClass.typeRef.appliedTo(ltp, rtp), span)
+      val res = implicitArgTree(defn.EqlType.appliedTo(ltp, rtp), span)
       implicits.println(i"Eql witness found for $ltp / $rtp: $res: ${res.tpe}")
     }
 

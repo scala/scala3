@@ -71,7 +71,7 @@ trait QuotesAndSplices { self: Typer =>
           if (isFullyDefined(pt, ForceDegree.all)) {
             def spliceOwner(ctx: Context): Symbol =
               if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
-            val pat = typedPattern(expr, defn.QuotedExprClass.typeRef.appliedTo(pt))(
+            val pat = typedPattern(expr, defn.QuotedExprType.appliedTo(pt))(
               spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
             Splice(pat)
           } else {
@@ -118,7 +118,7 @@ trait QuotesAndSplices { self: Typer =>
             }
             val typeSym = ctx.newSymbol(spliceOwner(ctx), name, EmptyFlags, TypeBounds.empty, NoSymbol, expr.span)
             typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(expr.span)))
-            val pat = typedPattern(expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
+            val pat = typedPattern(expr, defn.QuotedTypeType.appliedTo(typeSym.typeRef))(
                 spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
             pat.select(tpnme.splice)
           }
@@ -178,7 +178,7 @@ trait QuotesAndSplices { self: Typer =>
       override def transform(tree: Tree)(implicit ctx: Context) = tree match {
         case Typed(Splice(pat), tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           val tpt1 = transform(tpt) // Transform type bindings
-          val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), tpt1 :: Nil)
+          val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprType), tpt1 :: Nil)
           transform(Splice(Typed(pat, exprTpt)))
         case Splice(pat) =>
           try ref(defn.InternalQuoted_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
@@ -205,7 +205,7 @@ trait QuotesAndSplices { self: Typer =>
                     x => t.resType.subst(t, x).toFunctionType())
               case t => t
             }
-            val bindingExprTpe = AppliedType(defn.QuotedMatchingBindingClass.typeRef, bindingType :: Nil)
+            val bindingExprTpe = AppliedType(defn.QuotedMatchingBindingType, bindingType :: Nil)
             assert(ddef.name.startsWith("$"))
             val bindName = ddef.name.toString.stripPrefix("$").toTermName
             val sym = ctx0.newPatternBoundSymbol(bindName, bindingExprTpe, ddef.span)
@@ -220,7 +220,7 @@ trait QuotesAndSplices { self: Typer =>
 
       def transformTypeBindingTypeDef(tdef: TypeDef, buff: mutable.Builder[Tree, List[Tree]]): Tree = {
         val bindingType = getBinding(tdef.symbol).symbol.typeRef
-        val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)
+        val bindingTypeTpe = AppliedType(defn.QuotedTypeType, bindingType :: Nil)
         assert(tdef.name.startsWith("$"))
         val bindName = tdef.name.toString.stripPrefix("$").toTermName
         val sym = ctx0.newPatternBoundSymbol(bindName, bindingTypeTpe, tdef.span, flags = ImplicitTerm)
@@ -356,7 +356,7 @@ trait QuotesAndSplices { self: Typer =>
           Literal(Constant(typeBindings.nonEmpty)) ::
           qctx :: Nil,
       patterns = splicePat :: Nil,
-      proto = defn.QuotedExprClass.typeRef.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))
+      proto = defn.QuotedExprType.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))
   }
 
 }

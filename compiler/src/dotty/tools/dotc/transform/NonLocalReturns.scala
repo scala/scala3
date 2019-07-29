@@ -26,11 +26,9 @@ class NonLocalReturns extends MiniPhase {
     if (tree.tpe <:< pt) tree
     else Erasure.Boxing.adaptToType(tree, pt)
 
-  private def nonLocalReturnControl given Context = defn.NonLocalReturnControlClass.typeRef
-
   /** The type of a non-local return expression with given argument type */
   private def nonLocalReturnExceptionType(argtype: Type)(implicit ctx: Context) =
-    nonLocalReturnControl.appliedTo(argtype)
+    defn.NonLocalReturnControlType.appliedTo(argtype)
 
   /** A hashmap from method symbols to non-local return keys */
   private val nonLocalReturnKeys = newMutableSymbolMap[TermSymbol]
@@ -51,7 +49,7 @@ class NonLocalReturns extends MiniPhase {
   private def nonLocalReturnThrow(expr: Tree, meth: Symbol)(implicit ctx: Context) =
     Throw(
       New(
-        nonLocalReturnControl,
+        defn.NonLocalReturnControlType,
         ref(nonLocalReturnKey(meth)) :: expr.ensureConforms(defn.ObjectType) :: Nil))
 
   /** Transform (body, key) to:
@@ -69,6 +67,7 @@ class NonLocalReturns extends MiniPhase {
    */
   private def nonLocalReturnTry(body: Tree, key: TermSymbol, meth: Symbol)(implicit ctx: Context) = {
     val keyDef = ValDef(key, New(defn.ObjectType, Nil))
+    val nonLocalReturnControl = defn.NonLocalReturnControlType
     val ex = ctx.newSymbol(meth, nme.ex, EmptyFlags, nonLocalReturnControl, coord = body.span)
     val pat = BindTyped(ex, nonLocalReturnControl)
     val rhs = If(

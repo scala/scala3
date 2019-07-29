@@ -2726,7 +2726,7 @@ object Parsers {
                 case _ =>
                   if (mods.is(Opaque)) {
                     val annotType = AppliedTypeTree(
-                      TypeTree(defn.WithBoundsAnnot.typeRef),
+                      TypeTree(defn.WithBoundsAnnotType),
                         bounds.lo.orElse(TypeTree(defn.NothingType)) ::
                         bounds.hi.orElse(TypeTree(defn.AnyType)) :: Nil)
                     rhs = Annotated(rhs, ensureApplied(wrapNew(annotType)))

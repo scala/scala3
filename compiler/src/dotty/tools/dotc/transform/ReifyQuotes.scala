@@ -230,10 +230,9 @@ class ReifyQuotes extends MacroTransform {
         val meth =
           if (isType) ref(defn.Unpickler_unpickleType).appliedToType(originalTp)
           else ref(defn.Unpickler_unpickleExpr).appliedToType(originalTp.widen)
-        def wildcardQuotedType = defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
         val spliceResType =
-          if (isType) wildcardQuotedType
-          else defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType) | wildcardQuotedType
+          if(isType) defn.QuotedTypeType.appliedTo(WildcardType)
+          else defn.QuotedExprType.appliedTo(defn.AnyType) | defn.QuotedTypeType.appliedTo(WildcardType)
         meth.appliedTo(
           liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType),
           liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), spliceResType)))
@@ -315,8 +314,8 @@ class ReifyQuotes extends MacroTransform {
                 }
                 assert(tpw.isInstanceOf[ValueType])
                 val argTpe =
-                  if (tree.isType) defn.QuotedTypeClass.typeRef.appliedTo(tpw)
-                  else defn.QuotedExprClass.typeRef.appliedTo(tpw)
+                  if (tree.isType) defn.QuotedTypeType.appliedTo(tpw)
+                  else defn.QuotedExprType.appliedTo(tpw)
                 val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).cast(argTpe)
                 val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)
                 i += 1
