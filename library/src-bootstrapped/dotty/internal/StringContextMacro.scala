@@ -66,7 +66,7 @@ object StringContextMacro {
     }
     def splitParts(seq: Expr[Seq[String]]) = (seq, seq) match {
       case (ExprSeq(p1), ConstSeq(p2)) => Some((p1.toList, p2.toList))
-      case _ => notStatic
+      case (_, _) => notStatic
     }
     strCtxExpr match {
       case '{ StringContext($parts: _*) } => splitParts(parts)

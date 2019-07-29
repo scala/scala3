@@ -1,5 +1,6 @@
 package scala.tasty
 
+import scala.quoted.QuoteContext
 import scala.tasty.reflect._
 
 class Reflection(private[scala] val internal: CompilerInterface)

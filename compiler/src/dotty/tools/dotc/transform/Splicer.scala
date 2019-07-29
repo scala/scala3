@@ -25,6 +25,8 @@ import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.reflect.ClassTag
 
+import dotty.tools.dotc.quoted.QuoteContext
+
 /** Utility class to splice quoted expressions */
 object Splicer {
   import tpd._
@@ -42,7 +44,7 @@ object Splicer {
       try {
         // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
         val interpretedExpr = interpreter.interpret[scala.quoted.QuoteContext => scala.quoted.Expr[Any]](tree)
-        interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(new scala.quoted.QuoteContext(ReflectionImpl(ctx)))))
+        interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContext())))
       }
       catch {
         case ex: StopInterpretation =>
@@ -261,7 +263,7 @@ object Splicer {
       args.toSeq
 
     private def interpretQuoteContext()(implicit env: Env): Object =
-      new scala.quoted.QuoteContext(ReflectionImpl(ctx))
+      QuoteContext()
 
     private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol)(implicit env: Env): List[Object] => Object = {
       val (inst, clazz) =

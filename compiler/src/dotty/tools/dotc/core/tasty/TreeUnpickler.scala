@@ -1281,7 +1281,7 @@ class TreeUnpickler(reader: TastyReader,
         PickledQuotes.quotedTypeToTree(quotedType)
       } else {
         val splice1 = splice.asInstanceOf[Seq[Any] => given scala.quoted.QuoteContext => quoted.Expr[_]]
-        val quotedExpr = splice1(reifiedArgs) given new scala.quoted.QuoteContext(tastyreflect.ReflectionImpl(ctx))
+        val quotedExpr = splice1(reifiedArgs) given dotty.tools.dotc.quoted.QuoteContext()
         PickledQuotes.quotedExprToTree(quotedExpr)
       }
       // We need to make sure a hole is created with the source file of the surrounding context, even if

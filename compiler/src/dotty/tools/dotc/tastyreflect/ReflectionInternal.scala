@@ -16,6 +16,7 @@ import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.typer.Implicits.{AmbiguousImplicits, DivergingImplicit, NoMatchingImplicits, SearchFailure, SearchFailureType}
 import dotty.tools.dotc.util.{SourceFile, SourcePosition, Spans}
 
+import scala.runtime.quoted.Unpickler
 import scala.tasty.reflect.CompilerInterface
 
 class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extends CompilerInterface {
@@ -27,6 +28,16 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def rootPosition: util.SourcePosition =
     tastyreflect.MacroExpansion.position.getOrElse(SourcePosition(rootContext.source, Spans.NoSpan))
+
+  //
+  // QUOTE UNPICKLING
+  //
+
+  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): scala.quoted.Expr[_] =
+    new scala.internal.quoted.TastyTreeExpr(PickledQuotes.unpickleExpr(repr, args))
+
+  def unpickleType[T](repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[_] =
+    new scala.internal.quoted.TreeType(PickledQuotes.unpickleType(repr, args))
 
   //
   // CONTEXT

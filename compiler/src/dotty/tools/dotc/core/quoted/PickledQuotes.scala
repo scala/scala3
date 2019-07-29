@@ -19,11 +19,13 @@ import dotty.tools.dotc.tastyreflect.ReflectionImpl
 import scala.internal.quoted._
 import scala.reflect.ClassTag
 
+import scala.runtime.quoted.Unpickler._
+
 object PickledQuotes {
   import tpd._
 
   /** Pickle the tree of the quote into strings */
-  def pickleQuote(tree: Tree)(implicit ctx: Context): scala.runtime.quoted.Unpickler.Pickled = {
+  def pickleQuote(tree: Tree)(implicit ctx: Context): PickledQuote = {
     if (ctx.reporter.hasErrors) Nil
     else {
       assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'{$x}` which should be optimized to `x`
@@ -33,33 +35,12 @@ object PickledQuotes {
   }
 
   /** Transform the expression into its fully spliced Tree */
-  def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree = expr match {
-    case expr: TastyExpr[_] =>
-      val unpickled = unpickleExpr(expr)
-      /** Force unpickling of the tree, removes the spliced type `@quotedTypeTag type` definitions and dealiases references to `@quotedTypeTag type` */
-      val forceAndCleanArtefacts = new TreeMap {
-        override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-          case Block(stat :: rest, expr1) if stat.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) =>
-            assert(rest.forall { case tdef: TypeDef => tdef.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) })
-            transform(expr1)
-          case tree => super.transform(tree).withType(dealiasTypeTags(tree.tpe))
-        }
-      }
-      forceAndCleanArtefacts.transform(unpickled)
-    case expr: TastyTreeExpr[Tree] @unchecked => healOwner(expr.tree)
-  }
+  def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree =
+    healOwner(expr.asInstanceOf[TastyTreeExpr[Tree]].tree)
 
   /** Transform the expression into its fully spliced TypeTree */
-  def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree = expr match {
-    case expr: TastyType[_] =>
-      unpickleType(expr) match {
-        case Block(aliases, tpt) =>
-          // `@quoteTypeTag type` aliasses are not required after unpickling
-          tpt
-        case tpt => tpt
-      }
-    case expr: TreeType[Tree] @unchecked => healOwner(expr.typeTree)
-  }
+  def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree =
+    healOwner(expr.asInstanceOf[TreeType[Tree]].typeTree)
 
   private def dealiasTypeTags(tp: Type)(implicit ctx: Context): Type = new TypeMap() {
     override def apply(tp: Type): Type = {
@@ -72,15 +53,31 @@ object PickledQuotes {
   }.apply(tp)
 
   /** Unpickle the tree contained in the TastyExpr */
-  private def unpickleExpr(expr: TastyExpr[_])(implicit ctx: Context): Tree = {
-    val tastyBytes = TastyString.unpickle(expr.tasty)
-    unpickle(tastyBytes, expr.args, isType = false)(ctx.addMode(Mode.ReadPositions))
+  def unpickleExpr(tasty: PickledQuote, args: PickledExprArgs)(implicit ctx: Context): Tree = {
+    val tastyBytes = TastyString.unpickle(tasty)
+    val unpickled = unpickle(tastyBytes, args, isType = false)(ctx.addMode(Mode.ReadPositions))
+    /** Force unpickling of the tree, removes the spliced type `@quotedTypeTag type` definitions and dealiases references to `@quotedTypeTag type` */
+    val forceAndCleanArtefacts = new TreeMap {
+      override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+        case Block(stat :: rest, expr1) if stat.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) =>
+          assert(rest.forall { case tdef: TypeDef => tdef.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) })
+          transform(expr1)
+        case tree => super.transform(tree).withType(dealiasTypeTags(tree.tpe))
+      }
+    }
+    forceAndCleanArtefacts.transform(unpickled)
   }
 
   /** Unpickle the tree contained in the TastyType */
-  private def unpickleType(ttpe: TastyType[_])(implicit ctx: Context): Tree = {
-    val tastyBytes = TastyString.unpickle(ttpe.tasty)
-    unpickle(tastyBytes, ttpe.args, isType = true)(ctx.addMode(Mode.ReadPositions))
+  def unpickleType(tasty: PickledQuote, args: PickledTypeArgs)(implicit ctx: Context): Tree = {
+    val tastyBytes = TastyString.unpickle(tasty)
+    val unpickled = unpickle(tastyBytes, args, isType = true)(ctx.addMode(Mode.ReadPositions))
+    unpickled match {
+      case Block(aliases, tpt) =>
+        // `@quoteTypeTag type` aliasses are not required after unpickling
+        tpt
+      case tpt => tpt
+    }
   }
 
   // TASTY picklingtests/pos/quoteTest.scala
