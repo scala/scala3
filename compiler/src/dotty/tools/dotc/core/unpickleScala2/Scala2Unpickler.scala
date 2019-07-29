@@ -934,11 +934,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       }
       t.toList
     }
-    // println(atp)
-    val targs = atp.argTypes
-
-    tpd.applyOverloaded(tpd.New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp)
-}
+    resolveConstructor(atp, args)
+  }
 
   /** Read an annotation and as a side effect store it into
    *  the symbol it requests. Called at top-level, for all
