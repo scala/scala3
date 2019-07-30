@@ -60,16 +60,16 @@ object IArray {
 
   /** An immutable array with given elements.
    */
-  def apply[T: ClassTag](xs: T*): IArray[T] = Array(xs: _*).asInstanceOf
-  def apply(x: Boolean, xs: Boolean*): IArray[Boolean] = Array(x, xs: _*).asInstanceOf
-  def apply(x: Byte, xs: Byte*): IArray[Byte] = Array(x, xs: _*).asInstanceOf
-  def apply(x: Short, xs: Short*): IArray[Short] = Array(x, xs: _*).asInstanceOf
-  def apply(x: Char, xs: Char*): IArray[Char] = Array(x, xs: _*).asInstanceOf
-  def apply(x: Int, xs: Int*): IArray[Int] = Array(x, xs: _*).asInstanceOf
-  def apply(x: Long, xs: Long*): IArray[Long] = Array(x, xs: _*).asInstanceOf
-  def apply(x: Float, xs: Float*): IArray[Float] = Array(x, xs: _*).asInstanceOf
-  def apply(x: Double, xs: Double*): IArray[Double] = Array(x, xs: _*).asInstanceOf
-  def apply(x: Unit, xs: Unit*): IArray[Unit] = Array(x, xs: _*).asInstanceOf
+  inline def apply[T](xs: =>T*) given (ct: =>ClassTag[T]): IArray[T] = Array(xs: _*).asInstanceOf
+  inline def apply(x: Boolean, xs: =>Boolean*): IArray[Boolean] = Array(x, xs: _*).asInstanceOf
+  inline def apply(x: Byte, xs: =>Byte*): IArray[Byte] = Array(x, xs: _*).asInstanceOf
+  inline def apply(x: Short, xs: =>Short*): IArray[Short] = Array(x, xs: _*).asInstanceOf
+  inline def apply(x: Char, xs: =>Char*): IArray[Char] = Array(x, xs: _*).asInstanceOf
+  inline def apply(x: Int, xs: =>Int*): IArray[Int] = Array(x, xs: _*).asInstanceOf
+  inline def apply(x: Long, xs: =>Long*): IArray[Long] = Array(x, xs: _*).asInstanceOf
+  inline def apply(x: Float, xs: =>Float*): IArray[Float] = Array(x, xs: _*).asInstanceOf
+  inline def apply(x: Double, xs: =>Double*): IArray[Double] = Array(x, xs: _*).asInstanceOf
+  inline def apply(x: Unit, xs: =>Unit*): IArray[Unit] = Array(x, xs: _*).asInstanceOf
 
   /** Concatenates all arrays into a single immutable array.
    *
