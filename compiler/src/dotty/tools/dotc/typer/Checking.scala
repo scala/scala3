@@ -1136,6 +1136,20 @@ trait Checking {
     }
   }
 
+  /** check that annotation `annot` is applicable to symbol `sym` */
+  def checkAnnotApplicable(annot: Tree, sym: Symbol) given (ctx: Context): Boolean =
+    !ctx.reporter.reportsErrorsFor { implicit ctx =>
+      val annotCls = Annotations.annotClass(annot)
+      val pos = annot.sourcePos
+      if (annotCls == defn.MainAnnot) {
+        if (!sym.isRealMethod)
+          ctx.error(em"@main annotation cannot be applied to $sym", pos)
+        if (!sym.owner.is(Module) || !sym.owner.isStatic)
+          ctx.error(em"$sym cannot be a @main method since it cannot be accessed statically", pos)
+      }
+      // TODO: Add more checks here
+    }
+
   /** Check that symbol's external name does not clash with symbols defined in the same scope */
   def checkNoAlphaConflict(stats: List[Tree])(implicit ctx: Context): Unit = {
     var seen = Set[Name]()
@@ -1157,6 +1171,7 @@ trait ReChecking extends Checking {
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(implicit ctx: Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(implicit ctx: Context): Unit = ()
   override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = ()
+  override def checkAnnotApplicable(annot: Tree, sym: Symbol) given (ctx: Context): Boolean = true
 }
 
 trait NoChecking extends ReChecking {

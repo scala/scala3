@@ -250,6 +250,14 @@ abstract class Reporter extends interfaces.ReporterResult {
    */
   def errorsReported: Boolean = hasErrors
 
+  /** Run `op` and return `true` if errors were reported by this reporter.
+   */
+  def reportsErrorsFor(op: Context => Unit) given (ctx: Context): Boolean = {
+    val initial = errorCount
+    op(ctx)
+    errorCount > initial
+  }
+
   private[this] var reportedFeaturesUseSites = Set[Symbol]()
 
   def isReportedFeatureUseSite(featureTrait: Symbol): Boolean =

@@ -162,9 +162,14 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
             val (cl1, cl2) =
               if (classSymbol.effectiveName.toString < dupClassSym.effectiveName.toString) (classSymbol, dupClassSym)
               else (dupClassSym, classSymbol)
+            val same = classSymbol.effectiveName.toString == dupClassSym.effectiveName.toString
             ctx.atPhase(ctx.typerPhase) {
-              the[Context].warning(s"${cl1.show} differs only in case from ${cl2.showLocated}. " +
-                "Such classes will overwrite one another on case-insensitive filesystems.", cl1.sourcePos)
+              if (same)
+                the[Context].warning( // FIXME: This should really be an error, but then FromTasty tests fail
+                  s"${cl1.show} and ${cl2.showLocated} produce classes that overwrite one another", cl1.sourcePos)
+              else
+                the[Context].warning(s"${cl1.show} differs only in case from ${cl2.showLocated}. " +
+                  "Such classes will overwrite one another on case-insensitive filesystems.", cl1.sourcePos)
             }
         }
       }
