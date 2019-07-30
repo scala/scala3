@@ -38,7 +38,7 @@ package object quoted {
     var result: T = NoResult.asInstanceOf[T]
     def dummyRun given QuoteContext: Expr[Unit] = {
       result = thunk
-      '{}
+      Expr.unitExpr
     }
     toolbox.run(dummyRun given _)
     assert(result != NoResult) // toolbox.run should have thrown an exception
