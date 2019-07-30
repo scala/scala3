@@ -109,7 +109,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val YemitTastyInClass: Setting[Boolean] = BooleanSetting("-Yemit-tasty-in-class", "Generate tasty in the .class file and add an empty *.hasTasty file.")
   val YlogClasspath: Setting[Boolean] = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
   val YdisableFlatCpCaching: Setting[Boolean] = BooleanSetting("-YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
-  val Yscala3ImplicitScopes: Setting[Boolean] = BooleanSetting("-Yscala3ImplicitScopes", "Use Scala 3 implicit scopes rules under -language:Scala2")
 
   val Yscala2Unpickler: Setting[String] = StringSetting("-Yscala2-unpickler", "", "Control where we may get Scala 2 symbols from. This is either \"always\", \"never\", or a classpath.", "always")
   // TODO: Remove once we drop support for 2.12 standard library

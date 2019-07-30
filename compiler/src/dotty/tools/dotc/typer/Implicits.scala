@@ -267,7 +267,7 @@ object Implicits {
      */
     override val level: Int =
       if (outerImplicits == null) 1
-      else if ((ctx.scala2Mode && !ctx.settings.Yscala3ImplicitScopes.value) ||
+      else if (ctx.scala2Mode ||
                (ctx.owner eq outerImplicits.ctx.owner) &&
                (ctx.scope eq outerImplicits.ctx.scope) &&
                !refs.head.implicitName.is(LazyImplicitName)) outerImplicits.level
