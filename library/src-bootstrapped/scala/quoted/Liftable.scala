@@ -45,11 +45,14 @@ object Liftable {
     }
   }
 
+  given ClassTagIsLiftable[T: Type] as Liftable[ClassTag[T]] = new Liftable[ClassTag[T]] {
+    def toExpr(ct: ClassTag[T]): given QuoteContext => Expr[ClassTag[T]] =
+      '{ ClassTag[T](${ct.runtimeClass.toExpr}) }
+  }
+
   given ArrayIsLiftable[T: Type: Liftable: ClassTag] as Liftable[Array[T]] = new Liftable[Array[T]] {
-    def toExpr(arr: Array[T]): given QuoteContext => Expr[Array[T]] = '{
-      val array = new Array[T](${arr.length.toExpr})(ClassTag(${the[ClassTag[T]].runtimeClass.toExpr}))
-      ${ Expr.block(List.tabulate(arr.length)(i => '{ array(${i.toExpr}) = ${arr(i).toExpr} }), '{ array }) }
-    }
+    def toExpr(arr: Array[T]): given QuoteContext => Expr[Array[T]] =
+      '{ Array[T](${arr.toSeq.toExpr}: _*)(${the[ClassTag[T]].toExpr}) }
   }
 
   given ArrayOfBooleanIsLiftable as Liftable[Array[Boolean]] = new Liftable[Array[Boolean]] {
