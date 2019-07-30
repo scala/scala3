@@ -1526,6 +1526,7 @@ class KernelImpl(val rootContext: core.Contexts.Context) extends Kernel {
   def Symbol_isAnonymousFunction(self: Symbol) given Context: Boolean = self.isAnonymousFunction
   def Symbol_isAbstractType(self: Symbol) given Context: Boolean = self.isAbstractType
   def Symbol_isClassConstructor(self: Symbol) given Context: Boolean = self.isClassConstructor
+  def Symbol_isMethod(self: Symbol) given Context: Boolean = isMethod(self)
 
   type PackageDefSymbol = core.Symbols.Symbol
 

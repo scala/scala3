@@ -1223,6 +1223,8 @@ trait Kernel {
 
   def Symbol_isClassConstructor(self: Symbol) given (ctx: Context): Boolean
 
+  def Symbol_isMethod(self: Symbol) given (ctx: Context): Boolean
+
   /** This symbol is private within the resulting type. */
   def Symbol_privateWithin(self: Symbol) given (ctx: Context): Option[Type]
 

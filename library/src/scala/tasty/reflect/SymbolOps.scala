@@ -75,13 +75,14 @@ trait SymbolOps extends Core {
 
     def isDefinedInCurrentRun given (ctx: Context): Boolean = kernel.Symbol_isDefinedInCurrentRun(self)
 
-    def isLocalDummy given (ctx: Context): Boolean = kernel.Symbol_isLocalDummy(self)
-    def isRefinementClass given (ctx: Context): Boolean = kernel.Symbol_isRefinementClass(self)
-    def isAliasType given (ctx: Context): Boolean = kernel.Symbol_isAliasType(self)
-    def isAnonymousClass given (ctx: Context): Boolean = kernel.Symbol_isAnonymousClass(self)
-    def isAnonymousFunction given (ctx: Context): Boolean = kernel.Symbol_isAnonymousFunction(self)
-    def isAbstractType given (ctx: Context): Boolean = kernel.Symbol_isAbstractType(self)
-    def isClassConstructor given (ctx: Context): Boolean = kernel.Symbol_isClassConstructor(self)
+    def isLocalDummy given Context: Boolean = kernel.Symbol_isLocalDummy(self)
+    def isRefinementClass given Context: Boolean = kernel.Symbol_isRefinementClass(self)
+    def isAliasType given Context: Boolean = kernel.Symbol_isAliasType(self)
+    def isAnonymousClass given Context: Boolean = kernel.Symbol_isAnonymousClass(self)
+    def isAnonymousFunction given Context: Boolean = kernel.Symbol_isAnonymousFunction(self)
+    def isAbstractType given Context: Boolean = kernel.Symbol_isAbstractType(self)
+    def isClassConstructor given Context: Boolean = kernel.Symbol_isClassConstructor(self)
+    def isMethod given Context = kernel.Symbol_isMethod(self)
 
     def isType given (ctx: Context): Boolean = kernel.matchTypeSymbol(self).isDefined
     def isTerm given (ctx: Context): Boolean = kernel.matchTermSymbol(self).isDefined
