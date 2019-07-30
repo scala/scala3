@@ -36,60 +36,53 @@ trait QuotesAndSplices { self: Typer =>
    */
   def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = {
     record("typedQuote")
-    val qctx = inferImplicitArg(defn.QuoteContextClass.typeRef, tree.span)
-    if (level == 0 && qctx.tpe.isInstanceOf[SearchFailureType])
-      ctx.error(missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(tree.span))
-
+    ctx.compilationUnit.needsStaging = true
     tree.quoted match {
       case untpd.Splice(innerExpr) if tree.isTerm =>
         ctx.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.sourcePos)
-        typed(innerExpr, pt)
       case untpd.TypSplice(innerType) if tree.isType =>
         ctx.warning("Canceled splice directly inside a quote. '[ ${ XYZ } ] is equivalent to XYZ.", tree.sourcePos)
-        typed(innerType, pt)
-      case quoted =>
-        ctx.compilationUnit.needsStaging = true
-        val tree1 =
-          if (quoted.isType) typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuote.termRef), quoted :: Nil), pt)(quoteContext)
-          else if (ctx.mode.is(Mode.Pattern) && level == 0) typedQuotePattern(quoted, pt, qctx)
-          else typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), quoted), pt)(quoteContext)
-        tree1.withSpan(tree.span)
+      case _ =>
     }
+    val tree1 =
+      if (tree.quoted.isType) typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuote.termRef), tree.quoted :: Nil), pt)(quoteContext)
+      else if (ctx.mode.is(Mode.Pattern) && level == 0) typedQuotePattern(tree, pt)
+      else typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), tree.quoted), pt)(quoteContext)
+    tree1.withSpan(tree.span)
   }
 
   /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
   def typedSplice(tree: untpd.Splice, pt: Type)(implicit ctx: Context): Tree = {
     record("typedSplice")
+    ctx.compilationUnit.needsStaging = true
     checkSpliceOutsideQuote(tree)
     tree.expr match {
       case untpd.Quote(innerExpr) if innerExpr.isTerm =>
         ctx.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.sourcePos)
-        typed(innerExpr, pt)
-      case expr =>
-        ctx.compilationUnit.needsStaging = true
-        if (ctx.mode.is(Mode.QuotedPattern) && level == 1) {
-          if (isFullyDefined(pt, ForceDegree.all)) {
-            def spliceOwner(ctx: Context): Symbol =
-              if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
-            val pat = typedPattern(expr, defn.QuotedExprClass.typeRef.appliedTo(pt))(
-              spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
-            Splice(pat)
-          } else {
-            ctx.error(i"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", expr.sourcePos)
-            tree.withType(UnspecifiedErrorType)
-          }
-        }
-        else {
-          if (StagingContext.level == 0) {
-            // Mark the first inline method from the context as a macro
-            def markAsMacro(c: Context): Unit =
-              if (c.owner eq c.outer.owner) markAsMacro(c.outer)
-              else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
-              else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
-            markAsMacro(ctx)
-          }
-          typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), tree.expr), pt)(spliceContext).withSpan(tree.span)
-        }
+      case _ =>
+    }
+    if (ctx.mode.is(Mode.QuotedPattern) && level == 1) {
+      if (isFullyDefined(pt, ForceDegree.all)) {
+        def spliceOwner(ctx: Context): Symbol =
+          if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
+        val pat = typedPattern(tree.expr, defn.QuotedExprClass.typeRef.appliedTo(pt))(
+          spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
+        Splice(pat)
+      } else {
+        ctx.error(i"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.sourcePos)
+        tree.withType(UnspecifiedErrorType)
+      }
+    }
+    else {
+      if (StagingContext.level == 0) {
+        // Mark the first inline method from the context as a macro
+        def markAsMacro(c: Context): Unit =
+          if (c.owner eq c.outer.owner) markAsMacro(c.outer)
+          else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
+          else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
+        markAsMacro(ctx)
+      }
+      typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), tree.expr), pt)(spliceContext).withSpan(tree.span)
     }
   }
 
@@ -101,30 +94,29 @@ trait QuotesAndSplices { self: Typer =>
     tree.expr match {
       case untpd.Quote(innerType) if innerType.isType =>
         ctx.warning("Canceled quote directly inside a splice. ${ '[ XYZ ] } is equivalent to XYZ.", tree.sourcePos)
-        typed(innerType, pt)
-      case expr =>
-        if (ctx.mode.is(Mode.QuotedPattern) && level == 1) {
-          if (isFullyDefined(pt, ForceDegree.all)) {
-            ctx.error(i"Spliced type pattern must not be fully defined. Consider using $pt directly", tree.expr.sourcePos)
-            tree.withType(UnspecifiedErrorType)
-          } else {
-            def spliceOwner(ctx: Context): Symbol =
-              if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
-            val name = expr match {
-              case Ident(name) => ("$" + name).toTypeName
-              case Typed(Ident(name), _) => ("$" + name).toTypeName
-              case Bind(name, _) => ("$" + name).toTypeName
-              case _ => NameKinds.UniqueName.fresh("$".toTypeName)
-            }
-            val typeSym = ctx.newSymbol(spliceOwner(ctx), name, EmptyFlags, TypeBounds.empty, NoSymbol, expr.span)
-            typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(expr.span)))
-            val pat = typedPattern(expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
-                spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
-            pat.select(tpnme.splice)
-          }
-        } else {
-          typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(spliceContext).withSpan(tree.span)
+      case _ =>
+    }
+    if (ctx.mode.is(Mode.QuotedPattern) && level == 1) {
+      if (isFullyDefined(pt, ForceDegree.all)) {
+        ctx.error(i"Spliced type pattern must not be fully defined. Consider using $pt directly", tree.expr.sourcePos)
+        tree.withType(UnspecifiedErrorType)
+      } else {
+        def spliceOwner(ctx: Context): Symbol =
+          if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
+        val name = tree.expr match {
+          case Ident(name) => ("$" + name).toTypeName
+          case Typed(Ident(name), _) => ("$" + name).toTypeName
+          case Bind(name, _) => ("$" + name).toTypeName
+          case _ => NameKinds.UniqueName.fresh("$".toTypeName)
         }
+        val typeSym = ctx.newSymbol(spliceOwner(ctx), name, EmptyFlags, TypeBounds.empty, NoSymbol, tree.expr.span)
+        typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.expr.span)))
+        val pat = typedPattern(tree.expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
+            spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
+        pat.select(tpnme.splice)
+      }
+    } else {
+      typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(spliceContext).withSpan(tree.span)
     }
   }
 
@@ -256,7 +248,7 @@ trait QuotesAndSplices { self: Typer =>
     (typeBindings.toMap, shape2, patterns)
   }
 
-   /** Type a quote pattern `case '{ <quoted> } =>` qiven the a current prototype. Typing the pattern
+  /** Type a quote pattern `case '{ <quoted> } =>` qiven the a current prototype. Typing the pattern
    *  will also transform it into a call to `scala.internal.quoted.Matcher.unapply`.
    *
    *  Code directly inside the quote is typed as an expression using Mode.QuotedPattern. Splices
@@ -301,7 +293,12 @@ trait QuotesAndSplices { self: Typer =>
    *        ) => ...
    *  ```
    */
-  private def typedQuotePattern(quoted: untpd.Tree, pt: Type, qctx: tpd.Tree)(implicit ctx: Context): Tree = {
+  private def typedQuotePattern(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = {
+    val qctx = inferImplicitArg(defn.QuoteContextClass.typeRef, tree.span)
+    if (level == 0 && qctx.tpe.isInstanceOf[SearchFailureType])
+      ctx.error(missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(tree.span))
+
+    val quoted = tree.quoted
     val exprPt = pt.baseType(defn.QuotedExprClass)
     val quotedPt = exprPt.argInfos.headOption match {
       case Some(argPt: ValueType) => argPt // excludes TypeBounds
@@ -352,7 +349,7 @@ trait QuotesAndSplices { self: Typer =>
     UnApply(
       fun = ref(defn.InternalQuotedMatcher_unapply.termRef).appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
       implicits =
-        ref(defn.InternalQuoted_exprQuote.termRef).appliedToType(shape.tpe).appliedTo(shape) ::
+          ref(defn.InternalQuoted_exprQuote.termRef).appliedToType(defn.AnyType).appliedTo(shape).select(nme.apply).appliedTo(qctx) ::
           Literal(Constant(typeBindings.nonEmpty)) ::
           qctx :: Nil,
       patterns = splicePat :: Nil,

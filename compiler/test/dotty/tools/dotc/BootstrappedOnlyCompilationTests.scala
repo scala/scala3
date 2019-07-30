@@ -110,7 +110,10 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
-    compileFilesInDir("tests/run-macros", defaultOptions)
+    aggregateTests(
+      compileFilesInDir("tests/run-macros", defaultOptions),
+      compileFilesInDir("tests/run-custom-args/Yretain-trees", defaultOptions and "-Yretain-trees"),
+    )
   }.checkRuns()
 
   @Test def runWithCompiler: Unit = {

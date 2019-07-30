@@ -21,6 +21,7 @@ import SymDenotations.SymDenotation
 import Inferencing.fullyDefinedType
 import config.Printers.inlining
 import ErrorReporting.errorTree
+import dotty.tools.dotc.tastyreflect.ReflectionImpl
 import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, SourceFile, SourcePosition}
 
 import collection.mutable
@@ -1196,7 +1197,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private def expandMacro(body: Tree, span: Span)(implicit ctx: Context) = {
     assert(level == 0)
     val inlinedFrom = enclosingInlineds.last
-    val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)(ctx.withSource(inlinedFrom.source))
+    val ctx1 = tastyreflect.MacroExpansion.context(inlinedFrom)
+    val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)(ctx1)
 
     val inlinedNormailizer = new TreeMap {
       override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {

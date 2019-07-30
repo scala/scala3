@@ -14,15 +14,18 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
 import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.typer.Implicits.{AmbiguousImplicits, DivergingImplicit, NoMatchingImplicits, SearchFailure, SearchFailureType}
-import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.util.{SourceFile, SourcePosition, Spans}
 
 import scala.tasty.reflect.Kernel
 
-class KernelImpl(val rootContext: core.Contexts.Context, val rootPosition: util.SourcePosition) extends Kernel {
+class KernelImpl(val rootContext: core.Contexts.Context) extends Kernel {
 
   private implicit def ctx: core.Contexts.Context = rootContext
 
   def settings: Settings = rootContext.settings
+
+  def rootPosition: util.SourcePosition =
+    tastyreflect.MacroExpansion.position.getOrElse(SourcePosition(rootContext.source, Spans.NoSpan))
 
   //
   // CONTEXT

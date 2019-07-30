@@ -248,8 +248,6 @@ object PrepareInlineable {
     if (sym.is(Macro) && !ctx.isAfterTyper) {
       def isValidMacro(tree: Tree)(implicit ctx: Context): Unit = tree match {
         case Spliced(code) =>
-          if (code.symbol.flags.is(Inline))
-            ctx.error("Macro cannot be implemented with an `inline` method", code.sourcePos)
           Splicer.checkValidMacroBody(code)
           new PCPCheckAndHeal(freshStagingContext).transform(rhs) // Ignore output, only check PCP
 

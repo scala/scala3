@@ -14,6 +14,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.{PositionPickler, TastyPickler, TastyPrinter, TastyString}
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
+import dotty.tools.dotc.tastyreflect.ReflectionImpl
 
 import scala.internal.quoted._
 import scala.reflect.ClassTag
@@ -47,7 +48,7 @@ object PickledQuotes {
       forceAndCleanArtefacts.transform(unpickled)
     case expr: TastyTreeExpr[Tree] @unchecked => healOwner(expr.tree)
     case expr: FunctionAppliedTo[_] =>
-      functionAppliedTo(quotedExprToTree(expr.f), expr.args.map(arg => quotedExprToTree(arg)).toList)
+      functionAppliedTo(quotedExprToTree(expr.f), expr.args.map(arg => quotedExprToTree(arg(new scala.quoted.QuoteContext(ReflectionImpl(ctx))))).toList)
   }
 
   /** Transform the expression into its fully spliced TypeTree */

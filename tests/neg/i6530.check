@@ -3,3 +3,11 @@
   |                          ^^^^^^^^
   |                          Found:    quoted.Type[Int]
   |                          Required: quoted.Expr[Int]
+-- Error: tests/neg/i6530.scala:3:20 -----------------------------------------------------------------------------------
+3 |  val x : Int = 1 + q // error
+  |                    ^
+  |Failed to evaluate macro.
+  |  Caused by class java.lang.ClassCastException: scala.internal.quoted.TreeType cannot be cast to scala.quoted.Expr
+  |    
+  |             
+  | This location is in code that was inlined at i6530.scala:3
