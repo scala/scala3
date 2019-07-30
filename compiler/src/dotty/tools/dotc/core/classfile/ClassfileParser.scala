@@ -166,7 +166,10 @@ class ClassfileParser(
       for (i <- 0 until in.nextChar) parseMember(method = false)
       for (i <- 0 until in.nextChar) parseMember(method = true)
       classInfo = parseAttributes(classRoot.symbol, classInfo)
-      if (isAnnotation) addAnnotationConstructor(classInfo)
+      if (isAnnotation)
+        // classInfo must be a TempClassInfoType and not a TempPolyType,
+        // because Java annotations cannot have type parameters.
+        addAnnotationConstructor(classInfo.asInstanceOf[TempClassInfoType])
 
       classRoot.registerCompanion(moduleRoot.symbol)
       moduleRoot.registerCompanion(classRoot.symbol)
@@ -639,7 +642,7 @@ class ClassfileParser(
    *  Note that default getters have type Nothing. That's OK because we need
    *  them only to signal that the corresponding parameter is optional.
    */
-  def addAnnotationConstructor(classInfo: Type, tparams: List[TypeSymbol] = Nil)(implicit ctx: Context): Unit = {
+  def addAnnotationConstructor(classInfo: TempClassInfoType)(implicit ctx: Context): Unit = {
     def addDefaultGetter(attr: Symbol, n: Int) =
       ctx.newSymbol(
         owner = moduleRoot.symbol,
@@ -647,53 +650,46 @@ class ClassfileParser(
         flags = attr.flags & Flags.AccessFlags,
         info = defn.NothingType).entered
 
-    classInfo match {
-      case classInfo @ TempPolyType(tparams, restpe) if tparams.isEmpty =>
-        addAnnotationConstructor(restpe, tparams)
-      case classInfo: TempClassInfoType =>
-        val attrs = classInfo.decls.toList.filter(_.isTerm)
-        val targs = tparams.map(_.typeRef)
-        val paramNames = attrs.map(_.name.asTermName)
-        val paramTypes = attrs.map(_.info.resultType)
+    val attrs = classInfo.decls.toList.filter(_.isTerm)
+    val paramNames = attrs.map(_.name.asTermName)
+    val paramTypes = attrs.map(_.info.resultType)
 
-        def addConstr(ptypes: List[Type]) = {
-          val mtype = MethodType(paramNames, ptypes, classRoot.typeRef.appliedTo(targs))
-          val constrType = if (tparams.isEmpty) mtype else TempPolyType(tparams, mtype)
-          val constr = ctx.newSymbol(
-            owner = classRoot.symbol,
-            name = nme.CONSTRUCTOR,
-            flags = Flags.Synthetic | Flags.JavaDefined | Flags.Method,
-            info = constrType
-          ).entered
-          for ((attr, i) <- attrs.zipWithIndex)
-            if (attr.hasAnnotation(defn.AnnotationDefaultAnnot)) {
-              constr.setFlag(Flags.DefaultParameterized)
-              addDefaultGetter(attr, i)
-            }
+    def addConstr(ptypes: List[Type]) = {
+      val mtype = MethodType(paramNames, ptypes, classRoot.typeRef)
+      val constr = ctx.newSymbol(
+        owner = classRoot.symbol,
+        name = nme.CONSTRUCTOR,
+        flags = Flags.Synthetic | Flags.JavaDefined | Flags.Method,
+        info = mtype
+      ).entered
+      for ((attr, i) <- attrs.zipWithIndex)
+        if (attr.hasAnnotation(defn.AnnotationDefaultAnnot)) {
+          constr.setFlag(Flags.DefaultParameterized)
+          addDefaultGetter(attr, i)
         }
-
-        addConstr(paramTypes)
-
-        // The code below added an extra constructor to annotations where the
-        // last parameter of the constructor is an Array[X] for some X, the
-        // array was replaced by a vararg argument. Unfortunately this breaks
-        // inference when doing:
-        //   @Annot(Array())
-        // The constructor is overloaded so the expected type of `Array()` is
-        // WildcardType, and the type parameter of the Array apply method gets
-        // instantiated to `Nothing` instead of `X`.
-        // I'm leaving this commented out in case we improve inference to make this work.
-        // Note that if this is reenabled then JavaParser will also need to be modified
-        // to add the extra constructor (this was not implemented before).
-        /*
-        if (paramTypes.nonEmpty)
-          paramTypes.last match {
-            case defn.ArrayOf(elemtp) =>
-              addConstr(paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp))
-            case _ =>
-        }
-        */
     }
+
+    addConstr(paramTypes)
+
+    // The code below added an extra constructor to annotations where the
+    // last parameter of the constructor is an Array[X] for some X, the
+    // array was replaced by a vararg argument. Unfortunately this breaks
+    // inference when doing:
+    //   @Annot(Array())
+    // The constructor is overloaded so the expected type of `Array()` is
+    // WildcardType, and the type parameter of the Array apply method gets
+    // instantiated to `Nothing` instead of `X`.
+    // I'm leaving this commented out in case we improve inference to make this work.
+    // Note that if this is reenabled then JavaParser will also need to be modified
+    // to add the extra constructor (this was not implemented before).
+    /*
+    if (paramTypes.nonEmpty)
+      paramTypes.last match {
+        case defn.ArrayOf(elemtp) =>
+          addConstr(paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp))
+        case _ =>
+    }
+    */
   }
 
   /** Enter own inner classes in the right scope. It needs the scopes to be set up,
