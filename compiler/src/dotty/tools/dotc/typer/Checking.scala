@@ -1147,7 +1147,20 @@ trait Checking {
         if (!sym.owner.is(Module) || !sym.owner.isStatic)
           ctx.error(em"$sym cannot be a @main method since it cannot be accessed statically", pos)
       }
-      // TODO: Add more checks here
+      else if (annotCls == defn.CachedAnnot) {
+        if (!sym.isRealMethod)
+          ctx.error(em"@cached annotation cannot be applied to $sym", pos)
+        def checkCachedInfo(tp: Type): Unit = tp match {
+          case _: PolyType =>
+            ctx.error(em"@cached method cannot have type parameters", pos)
+          case mt: MethodType =>
+            if (!mt.isImplicitMethod)
+              ctx.error(em"@cached method cannot have regular parameters", pos)
+            checkCachedInfo(mt.resultType)
+          case _ =>
+        }
+        checkCachedInfo(sym.info)
+      }
     }
 
   /** Check that symbol's external name does not clash with symbols defined in the same scope */
