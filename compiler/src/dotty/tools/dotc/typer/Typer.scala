@@ -2132,15 +2132,13 @@ class Typer extends Namer
                 buf += inlineExpansion(mdef1)
                   // replace body with expansion, because it will be used as inlined body
                   // from separately compiled files - the original BodyAnnotation is not kept.
+              case mdef1: TypeDef if mdef1.symbol.is(Enum, butNot = Case) =>
+                enumContexts(mdef1.symbol) = ctx
+                buf += mdef1
+              case EmptyTree =>
+                // clashing synthetic case methods are converted to empty trees, drop them here
               case mdef1 =>
-                import untpd.modsDeco
-                mdef match {
-                  case mdef: untpd.TypeDef if mdef.mods.isEnumClass =>
-                    enumContexts(mdef1.symbol) = ctx
-                  case _ =>
-                }
-                if (!mdef1.isEmpty) // clashing synthetic case methods are converted to empty trees
-                  buf += mdef1
+                buf += mdef1
             }
             traverse(rest)
         }
