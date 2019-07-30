@@ -787,6 +787,7 @@ class Definitions {
   @threadUnsafe lazy val FunctionalInterfaceAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("java.lang.FunctionalInterface"))
   @threadUnsafe lazy val InfixAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.infix"))
   @threadUnsafe lazy val AlphaAnnot: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.annotation.alpha"))
+  @threadUnsafe lazy val CachedAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.meta.cached")
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
