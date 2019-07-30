@@ -37,7 +37,7 @@ object Liftable {
     }
   }
 
-  implicit def ClassIsLiftable[T]: Liftable[Class[T]] = new Liftable[Class[T]] {
+  given ClassIsLiftable[T] as Liftable[Class[T]] = new Liftable[Class[T]] {
     /** Lift a `Class[T]` into `'{ classOf[T] }` */
     def toExpr(x: Class[T]) = given qctx => {
       import qctx.tasty._
