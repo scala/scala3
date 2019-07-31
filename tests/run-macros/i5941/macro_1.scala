@@ -102,8 +102,8 @@ object Iso {
     val cls = tpS.classSymbol.get
 
     val companion = tpS match {
-      case Type.SymRef(sym, prefix)   => Type.TermRef(prefix, sym.name)
-      case Type.TypeRef(name, prefix) => Type.TermRef(prefix, name)
+      case Type.TypeRef(sym, prefix) => Type.NamedTermRef(prefix, sym.name)
+      case Type.NamedTypeRef(name, prefix) => Type.NamedTermRef(prefix, name)
     }
 
     if (cls.caseFields.size != 1) {
@@ -131,7 +131,7 @@ object Iso {
     val tpS = typeOf[S]
 
     if (tpS.isSingleton) {
-      val ident = Ident(tpS.asInstanceOf[TermRef]).seal.cast[S]
+      val ident = Ident(tpS.asInstanceOf[NamedTermRef]).seal.cast[S]
       '{
         Iso[S, 1](Function.const($ident))(Function.const(1))
       }
@@ -145,8 +145,8 @@ object Iso {
       }
 
       val companion = tpS match {
-        case Type.SymRef(sym, prefix)   => Type.TermRef(prefix, sym.name)
-        case Type.TypeRef(name, prefix) => Type.TermRef(prefix, name)
+        case Type.TypeRef(sym, prefix) => Type.NamedTermRef(prefix, sym.name)
+        case Type.NamedTypeRef(name, prefix) => Type.NamedTermRef(prefix, name)
       }
 
       val obj = Select.overloaded(Ident(companion), "apply", Nil, Nil).seal.cast[S]

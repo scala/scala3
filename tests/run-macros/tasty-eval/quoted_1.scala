@@ -21,7 +21,7 @@ object Macros {
       import qctx.tasty._
 
       e.unseal.tpe match {
-        case Type.SymRef(IsValDefSymbol(sym), pre) =>
+        case Type.TermRef(IsValDefSymbol(sym), pre) =>
           sym.tree.tpt.tpe match {
             case Type.ConstantType(Constant(i: Int)) => Some(i)
             case _ => None
