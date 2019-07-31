@@ -119,7 +119,7 @@ import scala.quoted.QuoteContext
  *
  *  ```
  */
-trait Kernel {
+trait Internal {
 
   /** Context of the macro expansion */
   def rootContext: Context

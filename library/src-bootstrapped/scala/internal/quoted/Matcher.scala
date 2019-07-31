@@ -51,8 +51,8 @@ object Matcher {
     def hasBindAnnotation(sym: Symbol) = sym.annots.exists(isBindAnnotation)
 
     def isBindAnnotation(tree: Tree): Boolean = tree match {
-      case New(tpt) => tpt.symbol == kernel.Definitions_InternalQuoted_patternBindHoleAnnot
-      case annot => annot.symbol.owner == kernel.Definitions_InternalQuoted_patternBindHoleAnnot
+      case New(tpt) => tpt.symbol == internal.Definitions_InternalQuoted_patternBindHoleAnnot
+      case annot => annot.symbol.owner == internal.Definitions_InternalQuoted_patternBindHoleAnnot
     }
 
     /** Check that all trees match with `mtch` and concatenate the results with && */
@@ -102,14 +102,14 @@ object Matcher {
 
         // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
         case (IsTerm(scrutinee @ Typed(s, tpt1)), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
-            if patternHole.symbol == kernel.Definitions_InternalQuoted_patternHole &&
+            if patternHole.symbol == internal.Definitions_InternalQuoted_patternHole &&
                s.tpe <:< tpt.tpe &&
                tpt2.tpe.derivesFrom(definitions.RepeatedParamClass) =>
           matched(scrutinee.seal)
 
         // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
         case (IsTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
-            if patternHole.symbol == kernel.Definitions_InternalQuoted_patternHole &&
+            if patternHole.symbol == internal.Definitions_InternalQuoted_patternHole &&
                scrutinee.tpe <:< tpt.tpe =>
           matched(scrutinee.seal)
 
@@ -142,7 +142,7 @@ object Matcher {
           fn1 =#= fn2 && args1 =##= args2
 
         case (Block(stats1, expr1), Block(binding :: stats2, expr2)) if isTypeBinding(binding) =>
-          qctx.tasty.kernel.Context_GADT_addToConstraint(the[Context])(binding.symbol :: Nil)
+          qctx.tasty.internal.Context_GADT_addToConstraint(the[Context])(binding.symbol :: Nil)
           matched(new SymBinding(binding.symbol)) && Block(stats1, expr1) =#= Block(stats2, expr2)
 
         case (Block(stat1 :: stats1, expr1), Block(stat2 :: stats2, expr2)) =>
@@ -152,7 +152,7 @@ object Matcher {
 
         case (scrutinee, Block(typeBindings, expr2)) if typeBindings.forall(isTypeBinding) =>
           val bindingSymbols = typeBindings.map(_.symbol)
-          qctx.tasty.kernel.Context_GADT_addToConstraint(the[Context])(bindingSymbols)
+          qctx.tasty.internal.Context_GADT_addToConstraint(the[Context])(bindingSymbols)
           bindingSymbols.foldRight(scrutinee =#= expr2)((x, acc) => matched(new SymBinding(x)) && acc)
 
         case (If(cond1, thenp1, elsep1), If(cond2, thenp2, elsep2)) =>
@@ -336,13 +336,13 @@ object Matcher {
 
     val res = {
       if (hasTypeSplices) {
-        implicit val ctx: Context = qctx.tasty.kernel.Context_GADT_setFreshGADTBounds(rootContext)
+        implicit val ctx: Context = qctx.tasty.internal.Context_GADT_setFreshGADTBounds(rootContext)
         val matchings = scrutineeExpr.unseal.underlyingArgument =#= patternExpr.unseal.underlyingArgument
         // After matching and doing all subtype check, we have to aproximate all the type bindings
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performace
-            case x: SymBinding => kernel.Context_GADT_approximation(the[Context])(x.sym, true).seal
+            case x: SymBinding => internal.Context_GADT_approximation(the[Context])(x.sym, true).seal
             case x => x
           })
         }

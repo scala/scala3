@@ -12,10 +12,10 @@ trait SignatureOps extends Core {
   implicit class SignatureAPI(sig: Signature) {
 
     /** The (JVM) erased signatures of the parameters */
-    def paramSigs: List[String]= kernel.Signature_paramSigs(sig)
+    def paramSigs: List[String]= internal.Signature_paramSigs(sig)
 
     /** The (JVM) erased result type */
-    def resultSig: String = kernel.Signature_resultSig(sig)
+    def resultSig: String = internal.Signature_resultSig(sig)
 
   }
 
