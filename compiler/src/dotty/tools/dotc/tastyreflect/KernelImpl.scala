@@ -1,9 +1,8 @@
 package dotty.tools.dotc
 package tastyreflect
 
-import dotty.tools.dotc.ast.Trees.SeqLiteral
-import dotty.tools.dotc.ast.{Trees, tpd, untpd}
-import dotty.tools.dotc.ast.tpd.TreeOps
+import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.{TreeTypeMap, Trees, tpd, untpd}
 import dotty.tools.dotc.typer.{Implicits, Typer}
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.Flags._
@@ -11,6 +10,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Types.SingletonType
 import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
 import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.typer.Implicits.{AmbiguousImplicits, DivergingImplicit, NoMatchingImplicits, SearchFailure, SearchFailureType}
@@ -19,6 +19,7 @@ import dotty.tools.dotc.util.{SourceFile, SourcePosition, Spans}
 import scala.tasty.reflect.Kernel
 
 class KernelImpl(val rootContext: core.Contexts.Context) extends Kernel {
+  import tpd._
 
   private implicit def ctx: core.Contexts.Context = rootContext
 
@@ -1892,6 +1893,35 @@ class KernelImpl(val rootContext: core.Contexts.Context) extends Kernel {
   def matchAmbiguousImplicits(isr: ImplicitSearchResult) given Context: Option[AmbiguousImplicits] = isr.tpe match {
     case _: Implicits.AmbiguousImplicits => Some(isr)
     case _ => None
+  }
+
+  def betaReduce(fn: Term, args: List[Term]) given (ctx: Context): Term = {
+    val (argVals0, argRefs0) = args.foldLeft((List.empty[ValDef], List.empty[Tree])) { case ((acc1, acc2), arg) => arg.tpe match {
+      case tpe: SingletonType if isIdempotentExpr(arg) => (acc1, arg :: acc2)
+      case _ =>
+        val argVal = SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), arg).withSpan(arg.span)
+        (argVal :: acc1, ref(argVal.symbol) :: acc2)
+    }}
+    val argVals = argVals0.reverse
+    val argRefs = argRefs0.reverse
+    def rec(fn: Tree): Tree = fn match {
+      case Inlined(call, bindings, expansion) =>
+        // this case must go before closureDef to avoid dropping the inline node
+        cpy.Inlined(fn)(call, bindings, rec(expansion))
+      case closureDef(ddef) =>
+        val paramSyms = ddef.vparamss.head.map(param => param.symbol)
+        val paramToVals = paramSyms.zip(argRefs).toMap
+        new TreeTypeMap(
+          oldOwners = ddef.symbol :: Nil,
+          newOwners = ctx.owner :: Nil,
+          treeMap = tree => paramToVals.get(tree.symbol).map(_.withSpan(tree.span)).getOrElse(tree)
+        ).transform(ddef.rhs)
+      case Block(stats, expr) =>
+        seq(stats, rec(expr)).withSpan(fn.span)
+      case _ =>
+        fn.select(nme.apply).appliedToArgs(argRefs).withSpan(fn.span)
+    }
+    seq(argVals, rec(fn))
   }
 
   //

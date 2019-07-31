@@ -1538,4 +1538,9 @@ trait Kernel {
    */
   def searchImplicit(tpe: Type) given (ctx: Context): ImplicitSearchResult
 
+  /** Inline fn if it is an explicit closure possibly nested inside the expression of a block.
+   *  Otherwise apply the arguments to the closure.
+   */
+  def betaReduce(f: Term, args: List[Term]) given (ctx: Context): Term
+
 }

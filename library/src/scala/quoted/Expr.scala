@@ -35,16 +35,20 @@ package quoted {
     /** Converts a tuple `(T1, ..., Tn)` to `(Expr[T1], ..., Expr[Tn])` */
     type TupleOfExpr[Tup <: Tuple] = Tuple.Map[Tup, [X] =>> given QuoteContext => Expr[X]]
 
-    implicit class AsFunction[F, Args <: Tuple, R](f: Expr[F]) given (tf: TupledFunction[F, Args => R]) {
+    implicit class AsFunction[F, Args <: Tuple, R](f: Expr[F]) given (tf: TupledFunction[F, Args => R], qctx: QuoteContext) {
       /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
-      def apply[G] given (tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]]): G =
-        tg.untupled(args => new FunctionAppliedTo[R](f, args.toArray.map(_.asInstanceOf[QuoteContext => Expr[_]])))
+      def apply[G] given (tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]]): G = {
+        import qctx.tasty._
+        tg.untupled(args => qctx.tasty.kernel.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
+      }
     }
 
-    implicit class AsContextualFunction[F, Args <: Tuple, R](f: Expr[F]) given (tf: TupledFunction[F, given Args => R]) {
+    implicit class AsContextualFunction[F, Args <: Tuple, R](f: Expr[F]) given (tf: TupledFunction[F, given Args => R], qctx: QuoteContext) {
       /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
-      def apply[G] given (tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]]): G =
-        tg.untupled(args => new FunctionAppliedTo[R](f, args.toArray.map(_.asInstanceOf[QuoteContext => Expr[_]])))
+      def apply[G] given (tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]]): G = {
+        import qctx.tasty._
+        tg.untupled(args => qctx.tasty.kernel.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
+      }
     }
 
     /** Returns a null expresssion equivalent to `'{null}` */
@@ -91,14 +95,6 @@ package internal {
      */
     final class TastyTreeExpr[Tree](val tree: Tree) extends Expr[Any] {
       override def toString: String = s"Expr(<tasty tree>)"
-    }
-
-    // TODO Use a List in FunctionAppliedTo(val f: Expr[_], val args: List[Expr[_]])
-    // FIXME: Having the List in the code above trigers an assertion error while testing dotty.tools.dotc.reporting.ErrorMessagesTests.i3187
-    //        This test does redefine `scala.collection`. Further investigation is needed.
-    /** An Expr representing `'{($f).apply($x1, ..., $xn)}` but it is beta-reduced when the closure is known */
-    final class FunctionAppliedTo[+R](val f: Expr[_], val args: Array[QuoteContext => Expr[_]]) extends Expr[R] {
-      override def toString: String = s"Expr($f <applied to> ${args.toList})"
     }
 
   }

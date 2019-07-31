@@ -47,8 +47,6 @@ object PickledQuotes {
       }
       forceAndCleanArtefacts.transform(unpickled)
     case expr: TastyTreeExpr[Tree] @unchecked => healOwner(expr.tree)
-    case expr: FunctionAppliedTo[_] =>
-      functionAppliedTo(quotedExprToTree(expr.f), expr.args.map(arg => quotedExprToTree(arg(new scala.quoted.QuoteContext(ReflectionImpl(ctx))))).toList)
   }
 
   /** Transform the expression into its fully spliced TypeTree */
@@ -125,33 +123,6 @@ object PickledQuotes {
       println(i"**** unpickle quote ${tree.show}")
 
     tree
-  }
-
-  private def functionAppliedTo(fn: Tree, args: List[Tree])(implicit ctx: Context): Tree = {
-    val (argVals, argRefs) = args.map(arg => arg.tpe match {
-      case tpe: SingletonType if isIdempotentExpr(arg) => (Nil, arg)
-      case _ =>
-        val argVal = SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), arg).withSpan(arg.span)
-        (argVal :: Nil, ref(argVal.symbol))
-    }).unzip
-    def rec(fn: Tree): Tree = fn match {
-      case Inlined(call, bindings, expansion) =>
-        // this case must go before closureDef to avoid dropping the inline node
-        cpy.Inlined(fn)(call, bindings, rec(expansion))
-      case closureDef(ddef) =>
-        val paramSyms = ddef.vparamss.head.map(param => param.symbol)
-        val paramToVals = paramSyms.zip(argRefs).toMap
-        new TreeTypeMap(
-          oldOwners = ddef.symbol :: Nil,
-          newOwners = ctx.owner :: Nil,
-          treeMap = tree => paramToVals.get(tree.symbol).map(_.withSpan(tree.span)).getOrElse(tree)
-        ).transform(ddef.rhs)
-      case Block(stats, expr) =>
-        seq(stats, rec(expr)).withSpan(fn.span)
-      case _ =>
-        fn.select(nme.apply).appliedToArgs(argRefs).withSpan(fn.span)
-    }
-    seq(argVals.flatten, rec(fn))
   }
 
   /** Make sure that the owner of this tree is `ctx.owner` */
