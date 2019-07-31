@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift._
+import given scala.quoted.autolift._
 
 object Lib {
   inline def sum(inline args: Int*): Int = ${ impl(args: _*) }

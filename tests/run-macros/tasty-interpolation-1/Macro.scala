@@ -1,7 +1,7 @@
 
 import scala.quoted._
 import scala.language.implicitConversions
-import scala.quoted.autolift._
+import given scala.quoted.autolift._
 
 object Macro {
 
@@ -77,7 +77,7 @@ abstract class MacroStringInterpolator[T] {
   }
 
   protected implicit def StringContextIsLiftable: Liftable[StringContext] = new Liftable[StringContext] {
-    def toExpr(strCtx: StringContext) = '{StringContext(${strCtx.parts.toList}: _*)}
+    def toExpr(strCtx: StringContext) = '{StringContext(${strCtx.parts.toSeq}: _*)}
   }
 
   protected class NotStaticlyKnownError(msg: String, expr: Expr[Any]) extends Exception(msg)

@@ -1,6 +1,6 @@
 
 import scala.quoted._
-import scala.quoted.autolift._
+import given scala.quoted.autolift._
 
 class MyMap[Keys](private val underlying: Array[Int]) extends AnyVal {
   def get[K <: String](implicit i: Index[K, Keys]): Int = underlying(i.index)
