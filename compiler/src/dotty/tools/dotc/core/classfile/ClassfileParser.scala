@@ -635,21 +635,10 @@ class ClassfileParser(
     cook.apply(newType)
   }
 
-  /** Add synthetic constructor(s) and potentially also default getters which
-   *  reflects the fields of the annotation with given `classInfo`.
-   *  Annotations in Scala are assumed to get all their arguments as constructor
+  /** Annotations in Scala are assumed to get all their arguments as constructor
    *  parameters. For Java annotations we need to fake it by making up the constructor.
-   *  Note that default getters have type Nothing. That's OK because we need
-   *  them only to signal that the corresponding parameter is optional.
    */
   def addAnnotationConstructor(classInfo: TempClassInfoType)(implicit ctx: Context): Unit = {
-    def addDefaultGetter(attr: Symbol, n: Int) =
-      ctx.newSymbol(
-        owner = moduleRoot.symbol,
-        name = DefaultGetterName(nme.CONSTRUCTOR, n),
-        flags = attr.flags & Flags.AccessFlags,
-        info = defn.NothingType).entered
-
     val attrs = classInfo.decls.toList.filter(_.isTerm)
     val paramNames = attrs.map(_.name.asTermName)
     val paramTypes = attrs.map(_.info.resultType)
@@ -662,11 +651,6 @@ class ClassfileParser(
         flags = Flags.Synthetic | Flags.JavaDefined | Flags.Method,
         info = mtype
       ).entered
-      for ((attr, i) <- attrs.zipWithIndex)
-        if (attr.hasAnnotation(defn.AnnotationDefaultAnnot)) {
-          constr.setFlag(Flags.DefaultParameterized)
-          addDefaultGetter(attr, i)
-        }
     }
 
     addConstr(paramTypes)

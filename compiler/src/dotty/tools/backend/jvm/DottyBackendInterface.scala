@@ -255,16 +255,15 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         }
       case t: TypeApply if (t.fun.symbol == Predef_classOf) =>
         av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
+      case Ident(nme.WILDCARD) =>
+        // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
       case t: tpd.RefTree =>
-        if (t.symbol.denot.owner.isAllOf(Flags.JavaEnumTrait)) {
-          val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
-          val evalue = t.symbol.name.mangledString // value the actual enumeration value.
-          av.visitEnum(name, edesc, evalue)
-        } else {
-            // println(i"not an enum: ${t.symbol} / ${t.symbol.denot.owner} / ${t.symbol.denot.owner.isTerm} / ${t.symbol.denot.owner.flagsString}")
-            assert(toDenot(t.symbol).name.is(DefaultGetterName),
-              s"${toDenot(t.symbol).name.debugString}") // this should be default getter. do not emit.
-        }
+        assert(t.symbol.denot.owner.isAllOf(Flags.JavaEnumTrait),
+          i"not an enum: $t / ${t.symbol} / ${t.symbol.denot.owner} / ${t.symbol.denot.owner.isTerm} / ${t.symbol.denot.owner.flagsString}")
+
+        val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
+        val evalue = t.symbol.name.mangledString // value the actual enumeration value.
+        av.visitEnum(name, edesc, evalue)
       case t: SeqLiteral =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)
         for (arg <- t.elems) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }

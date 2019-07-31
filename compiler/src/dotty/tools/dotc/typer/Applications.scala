@@ -543,17 +543,39 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
-            val getter =
-              // `methRef.symbol` doesn't exist for structural calls
-              if (methRef.symbol.exists) findDefaultGetter(n + numArgs(normalizedFun))
-              else EmptyTree
-            if (getter.isEmpty) missingArg(n)
-            else {
-              val substParam = addTyped(
-                  treeToArg(spliceMeth(getter.withSpan(normalizedFun.span), normalizedFun)),
-                  formal)
+            val sym = methRef.symbol
+
+            val defaultExpr =
+              if (isJavaAnnotConstr(sym)) {
+                val cinfo = sym.owner.asClass.classInfo
+                val pname = methodType.paramNames(n)
+                val hasDefault = cinfo.member(pname)
+                  .suchThat(d => d.is(Method) && d.hasAnnotation(defn.AnnotationDefaultAnnot)).exists
+
+                // Use `_` as a placeholder for the default value of an
+                // annotation parameter, this will be recognized by the backend.
+                if (hasDefault)
+                  tpd.Underscore(formal)
+                else
+                  EmptyTree
+              } else {
+                val getter =
+                  if (sym.exists) // `sym` doesn't exist for structural calls
+                    findDefaultGetter(n + numArgs(normalizedFun))
+                  else
+                    EmptyTree
+
+                if (!getter.isEmpty)
+                  spliceMeth(getter.withSpan(normalizedFun.span), normalizedFun)
+                else
+                  EmptyTree
+              }
+
+            if (!defaultExpr.isEmpty) {
+              val substParam = addTyped(treeToArg(defaultExpr), formal)
               matchArgs(args1, formals1.mapconserve(substParam), n + 1)
-            }
+            } else
+              missingArg(n)
           }
 
           if (formal.isRepeatedParam)
