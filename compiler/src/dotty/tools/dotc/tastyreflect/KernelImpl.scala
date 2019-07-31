@@ -1896,12 +1896,14 @@ class KernelImpl(val rootContext: core.Contexts.Context) extends Kernel {
   }
 
   def betaReduce(fn: Term, args: List[Term]) given (ctx: Context): Term = {
-    val (argVals, argRefs) = args.map(arg => arg.tpe match {
-      case tpe: SingletonType if isIdempotentExpr(arg) => (Nil, arg)
+    val (argVals0, argRefs0) = args.foldLeft((List.empty[ValDef], List.empty[Tree])) { case ((acc1, acc2), arg) => arg.tpe match {
+      case tpe: SingletonType if isIdempotentExpr(arg) => (acc1, arg :: acc2)
       case _ =>
         val argVal = SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), arg).withSpan(arg.span)
-        (argVal :: Nil, ref(argVal.symbol))
-    }).unzip
+        (argVal :: acc1, ref(argVal.symbol) :: acc2)
+    }}
+    val argVals = argVals0.reverse
+    val argRefs = argRefs0.reverse
     def rec(fn: Tree): Tree = fn match {
       case Inlined(call, bindings, expansion) =>
         // this case must go before closureDef to avoid dropping the inline node
@@ -1919,7 +1921,7 @@ class KernelImpl(val rootContext: core.Contexts.Context) extends Kernel {
       case _ =>
         fn.select(nme.apply).appliedToArgs(argRefs).withSpan(fn.span)
     }
-    seq(argVals.flatten, rec(fn))
+    seq(argVals, rec(fn))
   }
 
   //
