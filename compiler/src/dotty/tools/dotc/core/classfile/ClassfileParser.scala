@@ -638,42 +638,21 @@ class ClassfileParser(
   /** Annotations in Scala are assumed to get all their arguments as constructor
    *  parameters. For Java annotations we need to fake it by making up the constructor.
    */
-  def addAnnotationConstructor(classInfo: TempClassInfoType)(implicit ctx: Context): Unit = {
-    val attrs = classInfo.decls.toList.filter(_.isTerm)
-    val paramNames = attrs.map(_.name.asTermName)
-    val paramTypes = attrs.map(_.info.resultType)
+  def addAnnotationConstructor(classInfo: TempClassInfoType)(implicit ctx: Context): Unit =
+    ctx.newSymbol(
+      owner = classRoot.symbol,
+      name = nme.CONSTRUCTOR,
+      flags = Flags.Synthetic | Flags.JavaDefined | Flags.Method,
+      info = new AnnotConstructorCompleter(classInfo)
+    ).entered
 
-    def addConstr(ptypes: List[Type]) = {
-      val mtype = MethodType(paramNames, ptypes, classRoot.typeRef)
-      val constr = ctx.newSymbol(
-        owner = classRoot.symbol,
-        name = nme.CONSTRUCTOR,
-        flags = Flags.Synthetic | Flags.JavaDefined | Flags.Method,
-        info = mtype
-      ).entered
+  class AnnotConstructorCompleter(classInfo: TempClassInfoType) extends LazyType {
+    def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+      val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol)
+      val paramNames = attrs.map(_.name.asTermName)
+      val paramTypes = attrs.map(_.info.resultType)
+      denot.info = MethodType(paramNames, paramTypes, classRoot.typeRef)
     }
-
-    addConstr(paramTypes)
-
-    // The code below added an extra constructor to annotations where the
-    // last parameter of the constructor is an Array[X] for some X, the
-    // array was replaced by a vararg argument. Unfortunately this breaks
-    // inference when doing:
-    //   @Annot(Array())
-    // The constructor is overloaded so the expected type of `Array()` is
-    // WildcardType, and the type parameter of the Array apply method gets
-    // instantiated to `Nothing` instead of `X`.
-    // I'm leaving this commented out in case we improve inference to make this work.
-    // Note that if this is reenabled then JavaParser will also need to be modified
-    // to add the extra constructor (this was not implemented before).
-    /*
-    if (paramTypes.nonEmpty)
-      paramTypes.last match {
-        case defn.ArrayOf(elemtp) =>
-          addConstr(paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp))
-        case _ =>
-    }
-    */
   }
 
   /** Enter own inner classes in the right scope. It needs the scopes to be set up,
