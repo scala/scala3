@@ -2422,7 +2422,7 @@ class Typer extends Namer
           readaptSimplified(tree.withType(alt))
         case Nil =>
           // If alternative matches, there are still two ways to recover:
-          //  1. If context is an application, try to insert and apply or implicit
+          //  1. If context is an application, try to insert an apply or implicit
           //  2. If context is not an application, pick a alternative that does
           //     not take parameters.
           def noMatches =
