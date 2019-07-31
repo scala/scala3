@@ -1359,31 +1359,40 @@ trait Implicits { self: Typer =>
       //println(i"search implicits $pt / ${eligible.map(_.ref)}")
 
     /** Try to typecheck an implicit reference */
-    def typedImplicit(cand: Candidate, contextual: Boolean)(implicit ctx: Context): SearchResult =
-      trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
-        record("typedImplicit")
-        val ref = cand.ref
-        val generated: Tree = tpd.ref(ref).withSpan(span.startPos)
-        val locked = ctx.typerState.ownedVars
-        val adapted =
-          if (argument.isEmpty)
-            adapt(generated, pt.widenExpr, locked)
-          else {
-            val untpdGenerated = untpd.TypedSplice(generated)
-            def tryConversion(implicit ctx: Context) =
-              typed(
-                untpd.Apply(untpdGenerated, untpd.TypedSplice(argument) :: Nil),
-                pt, locked)
-            if (cand.isExtension) {
-              val SelectionProto(name: TermName, mbrType, _, _) = pt
-              val result = extMethodApply(untpd.Select(untpdGenerated, name), argument, mbrType)
-              if (!ctx.reporter.hasErrors && cand.isConversion) {
-                val testCtx = ctx.fresh.setExploreTyperState()
-                tryConversion(testCtx)
-                if (testCtx.reporter.hasErrors)
-                  ctx.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
-              }
-              result
+    def typedImplicit(cand: Candidate, contextual: Boolean)(implicit ctx: Context): SearchResult = trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
+      record("typedImplicit")
+      val ref = cand.ref
+      val generated: Tree = tpd.ref(ref).withSpan(span.startPos)
+      val locked = ctx.typerState.ownedVars
+      val adapted =
+        if (argument.isEmpty)
+          adapt(generated, pt.widenExpr, locked)
+        else {
+          def untpdGenerated = untpd.TypedSplice(generated)
+          def tryConversion(implicit ctx: Context) = {
+            val untpdConv =
+              if (ref.symbol.is(Given))
+                untpd.Select(
+                  untpd.TypedSplice(
+                    adapt(generated,
+                      defn.ConversionClass.typeRef.appliedTo(argument.tpe.widen, pt),
+                      locked)),
+                  nme.apply)
+              else untpdGenerated
+            typed(
+              untpd.Apply(untpdConv, untpd.TypedSplice(argument) :: Nil),
+              pt, locked)
+          }
+          if (cand.isExtension) {
+            val SelectionProto(name: TermName, mbrType, _, _) = pt
+            val result = extMethodApply(untpd.Select(untpdGenerated, name), argument, mbrType)
+            if (!ctx.reporter.hasErrors && cand.isConversion) {
+              val testCtx = ctx.fresh.setExploreTyperState()
+              tryConversion(testCtx)
+              if (testCtx.reporter.hasErrors)
+                ctx.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
+            }
+            result
             }
             else tryConversion
           }
