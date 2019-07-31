@@ -59,10 +59,10 @@ steps:
   commands:
   - cp -R . /tmp/4/ && cd /tmp/4/
   - ./project/scripts/sbt sbt-dotty/scripted
-  # when:
-  #   event:
-  #   - tag
-  #   - promote
+  when:
+    event:
+    - tag
+    - promote
 
 - name: test_java11
   pull: default
