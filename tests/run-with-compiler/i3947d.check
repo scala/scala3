@@ -1,9 +1,6 @@
-
 scala.Predef.classOf[Foo].getCanonicalName()
-Foo
-
 scala.Predef.classOf[Foo#Bar].getCanonicalName()
-Foo.Bar
-
 scala.Predef.classOf[Foo.Baz].getCanonicalName()
+Foo
+Foo.Bar
 Foo.Baz

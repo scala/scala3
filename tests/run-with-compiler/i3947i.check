@@ -1,12 +1,8 @@
-
 scala.Predef.classOf[scala.Array[scala.Int]].getCanonicalName()
-int[]
-
 scala.Predef.classOf[scala.Array[scala.Long]].getCanonicalName()
-long[]
-
 scala.Predef.classOf[scala.Array[scala.Float]].getCanonicalName()
-float[]
-
 scala.Predef.classOf[scala.Array[scala.Double]].getCanonicalName()
+int[]
+long[]
+float[]
 double[]

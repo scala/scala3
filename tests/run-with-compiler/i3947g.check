@@ -1,12 +1,8 @@
-
 scala.Predef.classOf[scala.Array[scala.Boolean]].getCanonicalName()
-boolean[]
-
 scala.Predef.classOf[scala.Array[scala.Byte]].getCanonicalName()
-byte[]
-
 scala.Predef.classOf[scala.Array[scala.Char]].getCanonicalName()
-char[]
-
 scala.Predef.classOf[scala.Array[scala.Short]].getCanonicalName()
+boolean[]
+byte[]
+char[]
 short[]
