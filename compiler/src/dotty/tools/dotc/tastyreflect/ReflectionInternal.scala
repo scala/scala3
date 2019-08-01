@@ -16,9 +16,9 @@ import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.typer.Implicits.{AmbiguousImplicits, DivergingImplicit, NoMatchingImplicits, SearchFailure, SearchFailureType}
 import dotty.tools.dotc.util.{SourceFile, SourcePosition, Spans}
 
-import scala.tasty.reflect.Internal
+import scala.tasty.reflect.CompilerInterface
 
-class ReflectionInternal(val rootContext: core.Contexts.Context) extends Internal {
+class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extends CompilerInterface {
   import tpd._
 
   private implicit def ctx: core.Contexts.Context = rootContext

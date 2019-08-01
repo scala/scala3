@@ -120,7 +120,7 @@ package scala.tasty.reflect
  */
 trait Core {
 
-  private[scala] val internal: Internal
+  private[scala] val internal: CompilerInterface
 
   /** Compilation context */
   type Context = internal.Context

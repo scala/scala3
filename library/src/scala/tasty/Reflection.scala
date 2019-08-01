@@ -2,7 +2,7 @@ package scala.tasty
 
 import scala.tasty.reflect._
 
-class Reflection(private[scala] val internal: Internal)
+class Reflection(private[scala] val internal: CompilerInterface)
     extends Core
     with ConstantOps
     with ContextOps
