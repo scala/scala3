@@ -25,26 +25,6 @@
  *
  *  private var _x: AnyRef = null
  *  def x: A =
- *      while !_x.isInstanceOf[A] do
- *          _x match
- *          case null =>
- *              if CAS(_x, null, Evaluating) then
- *                  var result = rhs
- *  //              if result == null then result == NULL
- *                  if !CAS(x, Evaluating, result) then
- *                      val lock = _x.asInstanceOf[Waiting]
- *                      _x = result
- *                      lock.release(result)
- *  //      case NULL =>
- *  //          return null
- *          case current: Waiting =>
- *              _x = current.awaitRelease()
- *          case _ =>
- *              CAS(x, Evaluating, new Waiting)
- *      // end while
- *      current.asInstanceOf[A]
- *
- *  def x: A =
  *      _x match
  *      case current: A =>
  *          current
@@ -95,12 +75,12 @@
  *      whether cache has updated
  *    - no synchronization operations on reads after the first one
  *    - If there is contention, we see in addition
- *       - for the initializing thread: a volatile write and a synchronized notifyAll
+ *       - for the initializing thread: a synchronized notifyAll
  *       - for a reading thread: 0 or 1 CAS and a synchronized wait
  *
  *  Code sizes for getter:
  *
- *   this scheme, if nulls are excluded in type: 72   bytes
+ *   this scheme, if nulls are excluded in type: 72 bytes
  *   current Dotty scheme: 131 bytes
  *   Scala 2 scheme: 39 bytes + 1 exception handler
  *
@@ -111,7 +91,7 @@
  *     and normal code
  *   - no deadlocks (other than those inherent in user code)
  *   - synchronized code is executed only if there is contention
- *   - simpler that current Dotty scheme
+ *   - simpler than current Dotty scheme
  *
  *  Disadvantages:
  *
