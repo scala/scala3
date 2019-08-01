@@ -2,7 +2,7 @@ package scala.tasty
 
 import scala.tasty.reflect._
 
-class Reflection(val kernel: Kernel)
+class Reflection(private[scala] val internal: CompilerInterface)
     extends Core
     with ConstantOps
     with ContextOps
@@ -37,7 +37,7 @@ class Reflection(val kernel: Kernel)
     *
     *  The code should be a sequence of expressions or statements that may appear in a block.
     */
-    def typeChecks(code: String)(implicit ctx: Context): Boolean = kernel.typeChecks(code)
+    def typeChecks(code: String)(implicit ctx: Context): Boolean = internal.typeChecks(code)
   }
 
 }

@@ -120,85 +120,85 @@ package scala.tasty.reflect
  */
 trait Core {
 
-  val kernel: Kernel
+  private[scala] val internal: CompilerInterface
 
   /** Compilation context */
-  type Context = kernel.Context
+  type Context = internal.Context
 
   /** Settings */
-  type Settings = kernel.Settings
+  type Settings = internal.Settings
 
   /** Tree representing code written in the source */
-  type Tree = kernel.Tree
+  type Tree = internal.Tree
 
     /** Tree representing a pacakage clause in the source code */
-    type PackageClause = kernel.PackageClause
+    type PackageClause = internal.PackageClause
 
     /** Tree representing a statement in the source code */
-    type Statement = kernel.Statement
+    type Statement = internal.Statement
 
       /** Tree representing an import in the source code */
-      type Import = kernel.Import
+      type Import = internal.Import
 
       /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
-      type Definition = kernel.Definition
+      type Definition = internal.Definition
 
         /** Tree representing a package definition. This includes definitions in all source files */
-        type PackageDef = kernel.PackageDef
+        type PackageDef = internal.PackageDef
 
         /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
-        type ClassDef = kernel.ClassDef
+        type ClassDef = internal.ClassDef
 
         /** Tree representing a type (paramter or member) definition in the source code */
-        type TypeDef = kernel.TypeDef
+        type TypeDef = internal.TypeDef
 
         /** Tree representing a method definition in the source code */
-        type DefDef = kernel.DefDef
+        type DefDef = internal.DefDef
 
         /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
-        type ValDef = kernel.ValDef
+        type ValDef = internal.ValDef
 
       /** Tree representing an expression in the source code */
-      type Term = kernel.Term
+      type Term = internal.Term
 
         /** Tree representing a reference to definition */
-        type Ref = kernel.Ref
+        type Ref = internal.Ref
 
           /** Tree representing a reference to definition with a given name */
-          type Ident = kernel.Ident
+          type Ident = internal.Ident
 
           /** Tree representing a selection of definition with a given name on a given prefix */
-          type Select = kernel.Select
+          type Select = internal.Select
 
         /** Tree representing a literal value in the source code */
-        type Literal = kernel.Literal
+        type Literal = internal.Literal
 
         /** Tree representing `this` in the source code */
-        type This = kernel.This
+        type This = internal.This
 
         /** Tree representing `new` in the source code */
-        type New = kernel.New
+        type New = internal.New
 
         /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
-        type NamedArg = kernel.NamedArg
+        type NamedArg = internal.NamedArg
 
         /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s  */
-        type Apply = kernel.Apply
+        type Apply = internal.Apply
 
         /** Tree an application of type arguments */
-        type TypeApply = kernel.TypeApply
+        type TypeApply = internal.TypeApply
 
         /** Tree representing `super` in the source code */
-        type Super = kernel.Super
+        type Super = internal.Super
 
         /** Tree representing a type ascription `x: T` in the source code */
-        type Typed = kernel.Typed
+        type Typed = internal.Typed
 
         /** Tree representing an assignment `x = y` in the source code */
-        type Assign = kernel.Assign
+        type Assign = internal.Assign
 
         /** Tree representing a block `{ ... }` in the source code */
-        type Block = kernel.Block
+        type Block = internal.Block
 
         /** A lambda `(...) => ...` in the source code is represented as
          *  a local method and a closure:
@@ -209,186 +209,186 @@ trait Core {
          *  }
          *
          */
-        type Closure = kernel.Closure
+        type Closure = internal.Closure
 
         /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
-        type If = kernel.If
+        type If = internal.If
 
         /** Tree representing a pattern match `x match  { ... }` in the source code */
-        type Match = kernel.Match
+        type Match = internal.Match
 
         /** Tree representing a pattern match `delegate match { ... }` in the source code */
-        type ImpliedMatch = kernel.ImpliedMatch
+        type ImpliedMatch = internal.ImpliedMatch
 
         /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */
-        type Try = kernel.Try
+        type Try = internal.Try
 
         /** Tree representing a `return` in the source code */
-        type Return = kernel.Return
+        type Return = internal.Return
 
         /** Tree representing a variable argument list in the source code */
-        type Repeated = kernel.Repeated
+        type Repeated = internal.Repeated
 
         /** Tree representing the scope of an inlined tree */
-        type Inlined = kernel.Inlined
+        type Inlined = internal.Inlined
 
         /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
-        type SelectOuter = kernel.SelectOuter
+        type SelectOuter = internal.SelectOuter
 
         /** Tree representing a while loop */
-        type While = kernel.While
+        type While = internal.While
 
       /** Type tree representing a type written in the source */
-      type TypeTree = kernel.TypeTree
+      type TypeTree = internal.TypeTree
 
         /** Type tree representing an inferred type */
-        type Inferred = kernel.Inferred
+        type Inferred = internal.Inferred
 
         /** Type tree representing a reference to definition with a given name */
-        type TypeIdent = kernel.TypeIdent
+        type TypeIdent = internal.TypeIdent
 
         /** Type tree representing a selection of definition with a given name on a given term prefix */
-        type TypeSelect = kernel.TypeSelect
+        type TypeSelect = internal.TypeSelect
 
         /** Type tree representing a selection of definition with a given name on a given type prefix */
-        type Projection = kernel.Projection
+        type Projection = internal.Projection
 
         /** Type tree representing a singleton type */
-        type Singleton = kernel.Singleton
+        type Singleton = internal.Singleton
 
         /** Type tree representing a type refinement */
-        type Refined = kernel.Refined
+        type Refined = internal.Refined
 
         /** Type tree representing a type application */
-        type Applied = kernel.Applied
+        type Applied = internal.Applied
 
         /** Type tree representing an annotated type */
-        type Annotated = kernel.Annotated
+        type Annotated = internal.Annotated
 
         /** Type tree representing a type match */
-        type MatchTypeTree = kernel.MatchTypeTree
+        type MatchTypeTree = internal.MatchTypeTree
 
         /** Type tree representing a by name parameter */
-        type ByName = kernel.ByName
+        type ByName = internal.ByName
 
         /** Type tree representing a lambda abstraction type */
-        type LambdaTypeTree = kernel.LambdaTypeTree
+        type LambdaTypeTree = internal.LambdaTypeTree
 
         /** Type tree representing a type binding */
-        type TypeBind = kernel.TypeBind
+        type TypeBind = internal.TypeBind
 
         /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
-        type TypeBlock = kernel.TypeBlock
+        type TypeBlock = internal.TypeBlock
 
       /** Type tree representing a type bound written in the source */
-      type TypeBoundsTree = kernel.TypeBoundsTree
+      type TypeBoundsTree = internal.TypeBoundsTree
 
       /** Type tree representing wildcard type bounds written in the source.
        *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
        *  represents a type but has `TypeBound`a inside.
        */
-      type WildcardTypeTree = kernel.WildcardTypeTree
+      type WildcardTypeTree = internal.WildcardTypeTree
 
   /** Branch of a pattern match or catch clause */
-  type CaseDef = kernel.CaseDef
+  type CaseDef = internal.CaseDef
 
   /** Branch of a type pattern match */
-  type TypeCaseDef = kernel.TypeCaseDef
+  type TypeCaseDef = internal.TypeCaseDef
 
   /** Pattern tree of the pattern part of a CaseDef */
-  type Pattern = kernel.Pattern
+  type Pattern = internal.Pattern
 
     /** Pattern representing a value. This includes `1`, ```x``` and `_` */
-    type Value = kernel.Value
+    type Value = internal.Value
 
     /** Pattern representing a `_ @ _` binding. */
-    type Bind = kernel.Bind
+    type Bind = internal.Bind
 
     /** Pattern representing a `Xyz(...)` unapply. */
-    type Unapply = kernel.Unapply
+    type Unapply = internal.Unapply
 
     /** Pattern representing `X | Y | ...` alternatives. */
-    type Alternatives = kernel.Alternatives
+    type Alternatives = internal.Alternatives
 
     /** Pattern representing a `x: Y` type test. */
-    type TypeTest = kernel.TypeTest
+    type TypeTest = internal.TypeTest
 
     /** Pattern representing a `_` pattern */
-    type WildcardPattern = kernel.WildcardPattern
+    type WildcardPattern = internal.WildcardPattern
 
   /** Type or bounds */
-  type TypeOrBounds = kernel.TypeOrBounds
+  type TypeOrBounds = internal.TypeOrBounds
 
     /** NoPrefix for a type selection */
-    type NoPrefix = kernel.NoPrefix
+    type NoPrefix = internal.NoPrefix
 
     /** Type bounds */
-    type TypeBounds = kernel.TypeBounds
+    type TypeBounds = internal.TypeBounds
 
     /** A type */
-    type Type = kernel.Type
+    type Type = internal.Type
 
       /** A singleton type representing a known constant value */
-      type ConstantType = kernel.ConstantType
+      type ConstantType = internal.ConstantType
 
       /** Type of a reference to a symbol */
-      type SymRef = kernel.SymRef
+      type SymRef = internal.SymRef
 
       /** Type of a reference to a term */
-      type TermRef = kernel.TermRef
+      type TermRef = internal.TermRef
 
       /** Type of a reference to a type */
-      type TypeRef = kernel.TypeRef
+      type TypeRef = internal.TypeRef
 
       /** Type of a `super` refernce */
-      type SuperType = kernel.SuperType
+      type SuperType = internal.SuperType
 
       /** A type with a type refinement `T { type U }` */
-      type Refinement = kernel.Refinement
+      type Refinement = internal.Refinement
 
       /** A higher kinded type applied to some types `T[U]` */
-      type AppliedType = kernel.AppliedType
+      type AppliedType = internal.AppliedType
 
       /** A type with an anottation `T @foo` */
-      type AnnotatedType = kernel.AnnotatedType
+      type AnnotatedType = internal.AnnotatedType
 
       /** Intersection type `T & U` */
-      type AndType = kernel.AndType
+      type AndType = internal.AndType
 
       /** Union type `T | U` */
-      type OrType = kernel.OrType
+      type OrType = internal.OrType
 
       /** Type match `T match { case U => ... }` */
-      type MatchType = kernel.MatchType
+      type MatchType = internal.MatchType
 
       /** Type of a by by name parameter */
-      type ByNameType = kernel.ByNameType
+      type ByNameType = internal.ByNameType
 
       /** Type of a parameter reference */
-      type ParamRef = kernel.ParamRef
+      type ParamRef = internal.ParamRef
 
       /** Type of `this` */
-      type ThisType = kernel.ThisType
+      type ThisType = internal.ThisType
 
       /** A type that is recursively defined `this` */
-      type RecursiveThis = kernel.RecursiveThis
+      type RecursiveThis = internal.RecursiveThis
 
       /** A type that is recursively defined */
-      type RecursiveType = kernel.RecursiveType
+      type RecursiveType = internal.RecursiveType
 
       // TODO can we add the bound back without an cake?
       // TODO is LambdaType really needed? ParamRefExtractor could be split into more precise extractors
       /** Common abstraction for lambda types (MethodType, PolyType and TypeLambda). */
-      type LambdaType[ParamInfo /*<: TypeOrBounds*/] = kernel.LambdaType[ParamInfo]
+      type LambdaType[ParamInfo /*<: TypeOrBounds*/] = internal.LambdaType[ParamInfo]
 
         /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
-        type MethodType = kernel.MethodType
+        type MethodType = internal.MethodType
 
         /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
-        type PolyType = kernel.PolyType
+        type PolyType = internal.PolyType
 
         /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
-        type TypeLambda = kernel.TypeLambda
+        type TypeLambda = internal.TypeLambda
 
 
   /** Import selectors:
@@ -396,77 +396,77 @@ trait Core {
    *   * RenameSelector: `.{bar => baz}` in `import foo.{bar => baz}`
    *   * OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
    */
-  type ImportSelector = kernel.ImportSelector
-  type SimpleSelector = kernel.SimpleSelector
-  type RenameSelector = kernel.RenameSelector
-  type OmitSelector = kernel.OmitSelector
+  type ImportSelector = internal.ImportSelector
+  type SimpleSelector = internal.SimpleSelector
+  type RenameSelector = internal.RenameSelector
+  type OmitSelector = internal.OmitSelector
 
   /** Untyped identifier */
-  type Id = kernel.Id
+  type Id = internal.Id
 
   /** JVM signature of a method */
-  type Signature = kernel.Signature
+  type Signature = internal.Signature
 
   /** Position in a source file */
-  type Position = kernel.Position
+  type Position = internal.Position
 
   /** Scala source file */
-  type SourceFile = kernel.SourceFile
+  type SourceFile = internal.SourceFile
 
   /** Comment */
-  type Comment = kernel.Comment
+  type Comment = internal.Comment
 
   /** Constant value represented as the constant itself */
-  type Constant = kernel.Constant
+  type Constant = internal.Constant
 
   /** Symbol of a definition.
    *  Then can be compared with == to know if the definition is the same.
    */
-  type Symbol = kernel.Symbol
+  type Symbol = internal.Symbol
 
     /** Symbol of a package definition */
-    type PackageDefSymbol = kernel.PackageDefSymbol
+    type PackageDefSymbol = internal.PackageDefSymbol
 
     /** Symbol representing a type definition. */
-    type TypeSymbol = kernel.TypeSymbol
+    type TypeSymbol = internal.TypeSymbol
 
       /** Symbol of a class definition. This includes anonymous class definitions and the class of a module object. */
-      type ClassDefSymbol = kernel.ClassDefSymbol
+      type ClassDefSymbol = internal.ClassDefSymbol
 
       /** Symbol of a type (parameter or member) definition. */
-      type TypeDefSymbol = kernel.TypeDefSymbol
+      type TypeDefSymbol = internal.TypeDefSymbol
 
       /** Symbol representing a type bind definition. */
-      type TypeBindSymbol = kernel.TypeBindSymbol
+      type TypeBindSymbol = internal.TypeBindSymbol
 
     /** Symbol representing a term definition. */
-    type TermSymbol = kernel.TermSymbol
+    type TermSymbol = internal.TermSymbol
 
       /** Symbol representing a method definition. */
-      type DefDefSymbol = kernel.DefDefSymbol
+      type DefDefSymbol = internal.DefDefSymbol
 
       /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
-      type ValDefSymbol = kernel.ValDefSymbol
+      type ValDefSymbol = internal.ValDefSymbol
 
       /** Symbol representing a bind definition. */
-      type BindSymbol = kernel.BindSymbol
+      type BindSymbol = internal.BindSymbol
 
     /** No symbol available. */
-    type NoSymbol = kernel.NoSymbol
+    type NoSymbol = internal.NoSymbol
 
   /** FlagSet of a Symbol */
-  type Flags = kernel.Flags
+  type Flags = internal.Flags
 
-  type ImplicitSearchResult = kernel.ImplicitSearchResult
+  type ImplicitSearchResult = internal.ImplicitSearchResult
 
-  type ImplicitSearchSuccess = kernel.ImplicitSearchSuccess
+  type ImplicitSearchSuccess = internal.ImplicitSearchSuccess
 
-  type ImplicitSearchFailure = kernel.ImplicitSearchFailure
+  type ImplicitSearchFailure = internal.ImplicitSearchFailure
 
-  type DivergingImplicit = kernel.DivergingImplicit
+  type DivergingImplicit = internal.DivergingImplicit
 
-  type NoMatchingImplicits = kernel.NoMatchingImplicits
+  type NoMatchingImplicits = internal.NoMatchingImplicits
 
-  type AmbiguousImplicits = kernel.AmbiguousImplicits
+  type AmbiguousImplicits = internal.AmbiguousImplicits
 
 }

@@ -9,10 +9,10 @@ import scala.quoted.show.SyntaxHighlight
 object ReflectionImpl {
 
   def apply(rootContext: Contexts.Context): scala.tasty.Reflection =
-    new scala.tasty.Reflection(new KernelImpl(rootContext))
+    new scala.tasty.Reflection(new ReflectionCompilerInterface(rootContext))
 
   def showTree(tree: tpd.Tree)(implicit ctx: Contexts.Context): String = {
-    val refl = new scala.tasty.Reflection(new KernelImpl(MacroExpansion.context(tree)))
+    val refl = new scala.tasty.Reflection(new ReflectionCompilerInterface(MacroExpansion.context(tree)))
     val reflCtx = ctx.asInstanceOf[refl.Context]
     val reflTree = tree.asInstanceOf[refl.Tree]
     val syntaxHighlight =

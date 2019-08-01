@@ -7,178 +7,178 @@ trait TreeOps extends Core {
 
   implicit class TreeAPI(self: Tree) {
     /** Position in the source code */
-    def pos given (ctx: Context): Position = kernel.Tree_pos(self)
+    def pos given (ctx: Context): Position = internal.Tree_pos(self)
 
-    def symbol given (ctx: Context): Symbol = kernel.Tree_symbol(self)
+    def symbol given (ctx: Context): Symbol = internal.Tree_symbol(self)
   }
 
   object IsPackageClause {
     def unapply(tree: Tree) given (ctx: Context): Option[PackageClause] =
-      kernel.matchPackageClause(tree)
+      internal.matchPackageClause(tree)
   }
 
   object PackageClause {
     def apply(pid: Ref, stats: List[Tree]) given (ctx: Context): PackageClause =
-      kernel.PackageClause_apply(pid, stats)
+      internal.PackageClause_apply(pid, stats)
     def copy(original: PackageClause)(pid: Ref, stats: List[Tree]) given (ctx: Context): PackageClause =
-      kernel.PackageClause_copy(original)(pid, stats)
+      internal.PackageClause_copy(original)(pid, stats)
     def unapply(tree: Tree) given (ctx: Context): Option[(Ref, List[Tree])] =
-      kernel.matchPackageClause(tree).map(x => (x.pid, x.stats))
+      internal.matchPackageClause(tree).map(x => (x.pid, x.stats))
   }
 
   implicit class PackageClauseAPI(self: PackageClause) {
-    def pid given (ctx: Context): Ref = kernel.PackageClause_pid(self)
-    def stats given (ctx: Context): List[Tree] = kernel.PackageClause_stats(self)
+    def pid given (ctx: Context): Ref = internal.PackageClause_pid(self)
+    def stats given (ctx: Context): List[Tree] = internal.PackageClause_stats(self)
   }
 
   object IsImport {
     def unapply(tree: Tree) given (ctx: Context): Option[Import] =
-      kernel.matchImport(tree)
+      internal.matchImport(tree)
   }
 
   object Import {
     def apply(importImplied: Boolean, expr: Term, selectors: List[ImportSelector]) given (ctx: Context): Import =
-      kernel.Import_apply(importImplied, expr, selectors)
+      internal.Import_apply(importImplied, expr, selectors)
     def copy(original: Import)(importImplied: Boolean, expr: Term, selectors: List[ImportSelector]) given (ctx: Context): Import =
-      kernel.Import_copy(original)(importImplied, expr, selectors)
+      internal.Import_copy(original)(importImplied, expr, selectors)
     def unapply(tree: Tree) given (ctx: Context): Option[(Boolean, Term, List[ImportSelector])] =
-      kernel.matchImport(tree).map(x => (x.importImplied, x.expr, x.selectors))
+      internal.matchImport(tree).map(x => (x.importImplied, x.expr, x.selectors))
   }
 
   implicit class ImportAPI(self: Import)  {
-    def importImplied: Boolean = kernel.Import_implied(self)
-    def expr given (ctx: Context): Term = kernel.Import_expr(self)
+    def importImplied: Boolean = internal.Import_implied(self)
+    def expr given (ctx: Context): Term = internal.Import_expr(self)
     def selectors given (ctx: Context): List[ImportSelector] =
-      kernel.Import_selectors(self)
+      internal.Import_selectors(self)
   }
 
   object IsStatement {
     /** Matches any Statement and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Statement] = kernel.matchStatement(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Statement] = internal.matchStatement(tree)
   }
 
   // ----- Definitions ----------------------------------------------
 
   object IsDefinition {
-    def unapply(tree: Tree) given (ctx: Context): Option[Definition] = kernel.matchDefinition(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Definition] = internal.matchDefinition(tree)
   }
 
   implicit class DefinitionAPI(self: Definition) {
-    def name given (ctx: Context): String = kernel.Definition_name(self)
+    def name given (ctx: Context): String = internal.Definition_name(self)
   }
 
   // ClassDef
 
   object IsClassDef {
-    def unapply(tree: Tree) given (ctx: Context): Option[ClassDef] = kernel.matchClassDef(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[ClassDef] = internal.matchClassDef(tree)
   }
 
   object ClassDef {
     // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement]) given (ctx: Context): ClassDef
     def copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]) given (ctx: Context): ClassDef =
-      kernel.ClassDef_copy(original)(name, constr, parents, derived, selfOpt, body)
+      internal.ClassDef_copy(original)(name, constr, parents, derived, selfOpt, body)
     def unapply(tree: Tree) given (ctx: Context): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
-      kernel.matchClassDef(tree).map(x => (x.name, x.constructor, x.parents, x.derived, x.self, x.body))
+      internal.matchClassDef(tree).map(x => (x.name, x.constructor, x.parents, x.derived, x.self, x.body))
   }
 
   implicit class ClassDefAPI(self: ClassDef) {
-    def constructor given (ctx: Context): DefDef = kernel.ClassDef_constructor(self)
-    def parents given (ctx: Context): List[Tree /* Term | TypeTree */] = kernel.ClassDef_parents(self)
-    def derived given (ctx: Context): List[TypeTree] = kernel.ClassDef_derived(self)
-    def self given (ctx: Context): Option[ValDef] = kernel.ClassDef_self(self)
-    def body given (ctx: Context): List[Statement] = kernel.ClassDef_body(self)
-    def symbol given (ctx: Context): ClassDefSymbol = kernel.ClassDef_symbol(self)
+    def constructor given (ctx: Context): DefDef = internal.ClassDef_constructor(self)
+    def parents given (ctx: Context): List[Tree /* Term | TypeTree */] = internal.ClassDef_parents(self)
+    def derived given (ctx: Context): List[TypeTree] = internal.ClassDef_derived(self)
+    def self given (ctx: Context): Option[ValDef] = internal.ClassDef_self(self)
+    def body given (ctx: Context): List[Statement] = internal.ClassDef_body(self)
+    def symbol given (ctx: Context): ClassDefSymbol = internal.ClassDef_symbol(self)
   }
 
   // DefDef
 
   object IsDefDef {
-    def unapply(tree: Tree) given (ctx: Context): Option[DefDef] = kernel.matchDefDef(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[DefDef] = internal.matchDefDef(tree)
   }
 
   object DefDef {
     def apply(symbol: DefDefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term]) given (ctx: Context): DefDef =
-      kernel.DefDef_apply(symbol, rhsFn)
+      internal.DefDef_apply(symbol, rhsFn)
     def copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]) given (ctx: Context): DefDef =
-      kernel.DefDef_copy(original)(name, typeParams, paramss, tpt, rhs)
+      internal.DefDef_copy(original)(name, typeParams, paramss, tpt, rhs)
     def unapply(tree: Tree) given (ctx: Context): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
-      kernel.matchDefDef(tree).map(x => (x.name, x.typeParams, x.paramss, x.returnTpt, x.rhs))
+      internal.matchDefDef(tree).map(x => (x.name, x.typeParams, x.paramss, x.returnTpt, x.rhs))
   }
 
   implicit class DefDefAPI(self: DefDef) {
-    def typeParams given (ctx: Context): List[TypeDef] = kernel.DefDef_typeParams(self)
-    def paramss given (ctx: Context): List[List[ValDef]] = kernel.DefDef_paramss(self)
-    def returnTpt given (ctx: Context): TypeTree = kernel.DefDef_returnTpt(self) // TODO rename to tpt
-    def rhs given (ctx: Context): Option[Term] = kernel.DefDef_rhs(self)
-    def symbol given (ctx: Context): DefDefSymbol = kernel.DefDef_symbol(self)
+    def typeParams given (ctx: Context): List[TypeDef] = internal.DefDef_typeParams(self)
+    def paramss given (ctx: Context): List[List[ValDef]] = internal.DefDef_paramss(self)
+    def returnTpt given (ctx: Context): TypeTree = internal.DefDef_returnTpt(self) // TODO rename to tpt
+    def rhs given (ctx: Context): Option[Term] = internal.DefDef_rhs(self)
+    def symbol given (ctx: Context): DefDefSymbol = internal.DefDef_symbol(self)
   }
 
   // ValDef
 
   object IsValDef {
-    def unapply(tree: Tree) given (ctx: Context): Option[ValDef] = kernel.matchValDef(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[ValDef] = internal.matchValDef(tree)
   }
 
   object ValDef {
     def apply(symbol: ValDefSymbol, rhs: Option[Term]) given (ctx: Context): ValDef =
-      kernel.ValDef_apply(symbol, rhs)
+      internal.ValDef_apply(symbol, rhs)
     def copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term]) given (ctx: Context): ValDef =
-      kernel.ValDef_copy(original)(name, tpt, rhs)
+      internal.ValDef_copy(original)(name, tpt, rhs)
     def unapply(tree: Tree) given (ctx: Context): Option[(String, TypeTree, Option[Term])] =
-      kernel.matchValDef(tree).map(x => (x.name, x.tpt, x.rhs))
+      internal.matchValDef(tree).map(x => (x.name, x.tpt, x.rhs))
   }
 
   implicit class ValDefAPI(self: ValDef) {
-    def tpt given (ctx: Context): TypeTree = kernel.ValDef_tpt(self)
-    def rhs given (ctx: Context): Option[Term] = kernel.ValDef_rhs(self)
-    def symbol given (ctx: Context): ValDefSymbol = kernel.ValDef_symbol(self)
+    def tpt given (ctx: Context): TypeTree = internal.ValDef_tpt(self)
+    def rhs given (ctx: Context): Option[Term] = internal.ValDef_rhs(self)
+    def symbol given (ctx: Context): ValDefSymbol = internal.ValDef_symbol(self)
   }
 
   // TypeDef
 
   object IsTypeDef {
-    def unapply(tree: Tree) given (ctx: Context): Option[TypeDef] = kernel.matchTypeDef(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[TypeDef] = internal.matchTypeDef(tree)
   }
 
   object TypeDef {
     def apply(symbol: TypeDefSymbol) given (ctx: Context): TypeDef =
-      kernel.TypeDef_apply(symbol)
+      internal.TypeDef_apply(symbol)
     def copy(original: TypeDef)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/) given (ctx: Context): TypeDef =
-      kernel.TypeDef_copy(original)(name, rhs)
+      internal.TypeDef_copy(original)(name, rhs)
     def unapply(tree: Tree) given (ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)] =
-      kernel.matchTypeDef(tree).map(x => (x.name, x.rhs))
+      internal.matchTypeDef(tree).map(x => (x.name, x.rhs))
   }
 
   implicit class TypeDefAPI(self: TypeDef) {
-    def rhs given (ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.TypeDef_rhs(self)
-    def symbol given (ctx: Context): TypeDefSymbol = kernel.TypeDef_symbol(self)
+    def rhs given (ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeDef_rhs(self)
+    def symbol given (ctx: Context): TypeDefSymbol = internal.TypeDef_symbol(self)
   }
 
   // PackageDef
 
   object IsPackageDef {
     def unapply(tree: Tree) given (ctx: Context): Option[PackageDef] =
-      kernel.matchPackageDef(tree)
+      internal.matchPackageDef(tree)
   }
 
   implicit class PackageDefAPI(self: PackageDef) {
-    def owner given (ctx: Context): PackageDef = kernel.PackageDef_owner(self)
-    def members given (ctx: Context): List[Statement] = kernel.PackageDef_members(self)
-    def symbol given (ctx: Context): PackageDefSymbol = kernel.PackageDef_symbol(self)
+    def owner given (ctx: Context): PackageDef = internal.PackageDef_owner(self)
+    def members given (ctx: Context): List[Statement] = internal.PackageDef_members(self)
+    def symbol given (ctx: Context): PackageDefSymbol = internal.PackageDef_symbol(self)
   }
 
   object PackageDef {
     def unapply(tree: Tree) given (ctx: Context): Option[(String, PackageDef)] =
-      kernel.matchPackageDef(tree).map(x => (x.name, x.owner))
+      internal.matchPackageDef(tree).map(x => (x.name, x.owner))
   }
 
   // ----- Terms ----------------------------------------------------
 
   implicit class TermAPI(self: Term) {
-    def tpe given (ctx: Context): Type = kernel.Term_tpe(self)
-    def pos given (ctx: Context): Position = kernel.Term_pos(self)
-    def underlyingArgument given (ctx: Context): Term = kernel.Term_underlyingArgument(self)
-    def underlying given (ctx: Context): Term = kernel.Term_underlying(self)
+    def tpe given (ctx: Context): Type = internal.Term_tpe(self)
+    def pos given (ctx: Context): Position = internal.Term_pos(self)
+    def underlyingArgument given (ctx: Context): Term = internal.Term_underlyingArgument(self)
+    def underlying given (ctx: Context): Term = internal.Term_underlying(self)
 
     /** A unary apply node with given argument: `tree(arg)` */
     def appliedTo(arg: Term) given (ctx: Context): Term =
@@ -221,19 +221,19 @@ trait TreeOps extends Core {
   object IsTerm {
     /** Matches any term */
     def unapply(tree: Tree) given (ctx: Context): Option[Term] =
-      kernel.matchTerm(tree)
+      internal.matchTerm(tree)
   }
 
   object IsRef {
     /** Matches any Ref and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Ref] = kernel.matchRef(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Ref] = internal.matchRef(tree)
   }
 
   object Ref {
 
     /** Create a reference tree */
     def apply(sym: Symbol) given (ctx: Context): Ref =
-      kernel.Ref_apply(sym)
+      internal.Ref_apply(sym)
 
     // TODO def copy(original: Tree)(name: String) given (ctx: Context): Ref
 
@@ -241,36 +241,36 @@ trait TreeOps extends Core {
 
   object IsIdent {
     /** Matches any Ident and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Ident] = kernel.matchIdent(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Ident] = internal.matchIdent(tree)
   }
 
   implicit class IdentAPI(self: Ident) {
-    def name given (ctx: Context): String = kernel.Ident_name(self)
+    def name given (ctx: Context): String = internal.Ident_name(self)
   }
 
   /** Scala term identifier */
   object Ident {
     def apply(tmref: TermRef) given (ctx: Context): Term =
-      kernel.Ident_apply(tmref)
+      internal.Ident_apply(tmref)
 
     def copy(original: Tree)(name: String) given (ctx: Context): Ident =
-      kernel.Ident_copy(original)(name)
+      internal.Ident_copy(original)(name)
 
     /** Matches a term identifier and returns its name */
     def unapply(tree: Tree) given (ctx: Context): Option[String] =
-      kernel.matchIdent(tree).map(_.name)
+      internal.matchIdent(tree).map(_.name)
   }
 
   object IsSelect {
     /** Matches any Select and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Select] = kernel.matchSelect(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Select] = internal.matchSelect(tree)
   }
 
   /** Scala term selection */
   object Select {
     /** Select a term member by symbol */
     def apply(qualifier: Term, symbol: Symbol) given (ctx: Context): Select =
-      kernel.Select_apply(qualifier, symbol)
+      internal.Select_apply(qualifier, symbol)
 
     /** Select a field or a non-overloaded method by name
      *
@@ -279,30 +279,30 @@ trait TreeOps extends Core {
      *        in that case.
      */
     def unique(qualifier: Term, name: String) given (ctx: Context): Select =
-      kernel.Select_unique(qualifier, name)
+      internal.Select_unique(qualifier, name)
 
     // TODO rename, this returns an Apply and not a Select
     /** Call an overloaded method with the given type and term parameters */
     def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]) given (ctx: Context): Apply =
-      kernel.Select_overloaded(qualifier, name, targs, args)
+      internal.Select_overloaded(qualifier, name, targs, args)
 
     def copy(original: Tree)(qualifier: Term, name: String) given (ctx: Context): Select =
-      kernel.Select_copy(original)(qualifier, name)
+      internal.Select_copy(original)(qualifier, name)
 
     /** Matches `<qualifier: Term>.<name: String>` */
     def unapply(tree: Tree) given (ctx: Context): Option[(Term, String)] =
-      kernel.matchSelect(tree).map(x => (x.qualifier, x.name))
+      internal.matchSelect(tree).map(x => (x.qualifier, x.name))
   }
 
   implicit class SelectAPI(self: Select) {
-    def qualifier given (ctx: Context): Term = kernel.Select_qualifier(self)
-    def name given (ctx: Context): String = kernel.Select_name(self)
-    def signature given (ctx: Context): Option[Signature] = kernel.Select_signature(self)
+    def qualifier given (ctx: Context): Term = internal.Select_qualifier(self)
+    def name given (ctx: Context): String = internal.Select_name(self)
+    def signature given (ctx: Context): Option[Signature] = internal.Select_signature(self)
   }
 
   object IsLiteral {
     /** Matches any Literal and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Literal] = kernel.matchLiteral(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Literal] = internal.matchLiteral(tree)
   }
 
   /** Scala literal constant */
@@ -310,23 +310,23 @@ trait TreeOps extends Core {
 
     /** Create a literal constant */
     def apply(constant: Constant) given (ctx: Context): Literal =
-      kernel.Literal_apply(constant)
+      internal.Literal_apply(constant)
 
     def copy(original: Tree)(constant: Constant) given (ctx: Context): Literal =
-      kernel.Literal_copy(original)(constant)
+      internal.Literal_copy(original)(constant)
 
     /** Matches a literal constant */
     def unapply(tree: Tree) given (ctx: Context): Option[Constant] =
-      kernel.matchLiteral(tree).map(_.constant)
+      internal.matchLiteral(tree).map(_.constant)
   }
 
   implicit class LiteralAPI(self:  Literal) {
-    def constant given (ctx: Context): Constant = kernel.Literal_constant(self)
+    def constant given (ctx: Context): Constant = internal.Literal_constant(self)
   }
 
   object IsThis {
     /** Matches any This and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[This] = kernel.matchThis(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[This] = internal.matchThis(tree)
   }
 
   /** Scala `this` or `this[id]` */
@@ -334,24 +334,24 @@ trait TreeOps extends Core {
 
     /** Create a `this[<id: Id]>` */
     def apply(cls: ClassDefSymbol) given (ctx: Context): This =
-      kernel.This_apply(cls)
+      internal.This_apply(cls)
 
     def copy(original: Tree)(qual: Option[Id]) given (ctx: Context): This =
-      kernel.This_copy(original)(qual)
+      internal.This_copy(original)(qual)
 
     /** Matches `this[<id: Option[Id]>` */
     def unapply(tree: Tree) given (ctx: Context): Option[Option[Id]] =
-      kernel.matchThis(tree).map(_.id)
+      internal.matchThis(tree).map(_.id)
 
   }
 
   implicit class ThisAPI(self:  This) {
-    def id given (ctx: Context): Option[Id] = kernel.This_id(self)
+    def id given (ctx: Context): Option[Id] = internal.This_id(self)
   }
 
   object IsNew {
     /** Matches any New and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[New] = kernel.matchNew(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[New] = internal.matchNew(tree)
   }
 
   /** Scala `new` */
@@ -359,23 +359,23 @@ trait TreeOps extends Core {
 
     /** Create a `new <tpt: TypeTree>` */
     def apply(tpt: TypeTree) given (ctx: Context): New =
-      kernel.New_apply(tpt)
+      internal.New_apply(tpt)
 
     def copy(original: Tree)(tpt: TypeTree) given (ctx: Context): New =
-      kernel.New_copy(original)(tpt)
+      internal.New_copy(original)(tpt)
 
     /** Matches a `new <tpt: TypeTree>` */
     def unapply(tree: Tree) given (ctx: Context): Option[TypeTree] =
-      kernel.matchNew(tree).map(_.tpt)
+      internal.matchNew(tree).map(_.tpt)
   }
 
   implicit class NewAPI(self: New) {
-    def tpt given (ctx: Context): TypeTree = kernel.New_tpt(self)
+    def tpt given (ctx: Context): TypeTree = internal.New_tpt(self)
   }
 
   object IsNamedArg {
     /** Matches any NamedArg and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[NamedArg] = kernel.matchNamedArg(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[NamedArg] = internal.matchNamedArg(tree)
   }
 
   /** Scala named argument `x = y` in argument position */
@@ -383,25 +383,25 @@ trait TreeOps extends Core {
 
     /** Create a named argument `<name: String> = <value: Term>` */
     def apply(name: String, arg: Term) given (ctx: Context): NamedArg =
-      kernel.NamedArg_apply(name, arg)
+      internal.NamedArg_apply(name, arg)
 
     def copy(original: NamedArg)(name: String, arg: Term) given (ctx: Context): NamedArg =
-      kernel.NamedArg_copy(original)(name, arg)
+      internal.NamedArg_copy(original)(name, arg)
 
     /** Matches a named argument `<name: String> = <value: Term>` */
     def unapply(tree: Tree) given (ctx: Context): Option[(String, Term)] =
-      kernel.matchNamedArg(tree).map(x => (x.name, x.value))
+      internal.matchNamedArg(tree).map(x => (x.name, x.value))
 
   }
 
   implicit class NamedArgAPI(self: NamedArg) {
-    def name given (ctx: Context): String = kernel.NamedArg_name(self)
-    def value given (ctx: Context): Term = kernel.NamedArg_value(self)
+    def name given (ctx: Context): String = internal.NamedArg_name(self)
+    def value given (ctx: Context): Term = internal.NamedArg_value(self)
   }
 
   object IsApply {
     /** Matches any Apply and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Apply] = kernel.matchApply(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Apply] = internal.matchApply(tree)
   }
 
   /** Scala parameter application */
@@ -409,25 +409,25 @@ trait TreeOps extends Core {
 
     /** Create a function application `<fun: Term>(<args: List[Term]>)` */
     def apply(fun: Term, args: List[Term]) given (ctx: Context): Apply =
-      kernel.Apply_apply(fun, args)
+      internal.Apply_apply(fun, args)
 
     def copy(original: Tree)(fun: Term, args: List[Term]) given (ctx: Context): Apply =
-      kernel.Apply_copy(original)(fun, args)
+      internal.Apply_copy(original)(fun, args)
 
     /** Matches a function application `<fun: Term>(<args: List[Term]>)` */
     def unapply(tree: Tree) given (ctx: Context): Option[(Term, List[Term])] =
-      kernel.matchApply(tree).map(x => (x.fun, x.args))
+      internal.matchApply(tree).map(x => (x.fun, x.args))
   }
 
   implicit class ApplyAPI(self: Apply) {
-    def fun given (ctx: Context): Term = kernel.Apply_fun(self)
-    def args given (ctx: Context): List[Term] = kernel.Apply_args(self)
+    def fun given (ctx: Context): Term = internal.Apply_fun(self)
+    def args given (ctx: Context): List[Term] = internal.Apply_args(self)
   }
 
   object IsTypeApply {
     /** Matches any TypeApply and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[TypeApply] =
-      kernel.matchTypeApply(tree)
+      internal.matchTypeApply(tree)
   }
 
   /** Scala type parameter application */
@@ -435,25 +435,25 @@ trait TreeOps extends Core {
 
     /** Create a function type application `<fun: Term>[<args: List[TypeTree]>]` */
     def apply(fun: Term, args: List[TypeTree]) given (ctx: Context): TypeApply =
-      kernel.TypeApply_apply(fun, args)
+      internal.TypeApply_apply(fun, args)
 
     def copy(original: Tree)(fun: Term, args: List[TypeTree]) given (ctx: Context): TypeApply =
-      kernel.TypeApply_copy(original)(fun, args)
+      internal.TypeApply_copy(original)(fun, args)
 
     /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]` */
     def unapply(tree: Tree) given (ctx: Context): Option[(Term, List[TypeTree])] =
-      kernel.matchTypeApply(tree).map(x => (x.fun, x.args))
+      internal.matchTypeApply(tree).map(x => (x.fun, x.args))
 
   }
 
   implicit class TypeApplyAPI(self: TypeApply) {
-    def fun given (ctx: Context): Term = kernel.TypeApply_fun(self)
-    def args given (ctx: Context): List[TypeTree] = kernel.TypeApply_args(self)
+    def fun given (ctx: Context): Term = internal.TypeApply_fun(self)
+    def args given (ctx: Context): List[TypeTree] = internal.TypeApply_args(self)
   }
 
   object IsSuper {
     /** Matches any Super and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Super] = kernel.matchSuper(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Super] = internal.matchSuper(tree)
   }
 
   /** Scala `x.super` or `x.super[id]` */
@@ -461,24 +461,24 @@ trait TreeOps extends Core {
 
     /** Creates a `<qualifier: Term>.super[<id: Option[Id]>` */
     def apply(qual: Term, mix: Option[Id]) given (ctx: Context): Super =
-      kernel.Super_apply(qual, mix)
+      internal.Super_apply(qual, mix)
 
     def copy(original: Tree)(qual: Term, mix: Option[Id]) given (ctx: Context): Super =
-      kernel.Super_copy(original)(qual, mix)
+      internal.Super_copy(original)(qual, mix)
 
     /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
     def unapply(tree: Tree) given (ctx: Context): Option[(Term, Option[Id])] =
-      kernel.matchSuper(tree).map(x => (x.qualifier, x.id))
+      internal.matchSuper(tree).map(x => (x.qualifier, x.id))
   }
 
   implicit class SuperAPI(self: Super) {
-    def qualifier given (ctx: Context): Term = kernel.Super_qualifier(self)
-    def id given (ctx: Context): Option[Id] = kernel.Super_id(self)
+    def qualifier given (ctx: Context): Term = internal.Super_qualifier(self)
+    def id given (ctx: Context): Option[Id] = internal.Super_id(self)
   }
 
   object IsTyped {
     /** Matches any Typed and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Typed] = kernel.matchTyped(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Typed] = internal.matchTyped(tree)
   }
 
   /** Scala ascription `x: T` */
@@ -486,25 +486,25 @@ trait TreeOps extends Core {
 
     /** Create a type ascription `<x: Term>: <tpt: TypeTree>` */
     def apply(expr: Term, tpt: TypeTree) given (ctx: Context): Typed =
-      kernel.Typed_apply(expr, tpt)
+      internal.Typed_apply(expr, tpt)
 
     def copy(original: Tree)(expr: Term, tpt: TypeTree) given (ctx: Context): Typed =
-      kernel.Typed_copy(original)(expr, tpt)
+      internal.Typed_copy(original)(expr, tpt)
 
     /** Matches `<expr: Term>: <tpt: TypeTree>` */
     def unapply(tree: Tree) given (ctx: Context): Option[(Term, TypeTree)] =
-      kernel.matchTyped(tree).map(x => (x.expr, x.tpt))
+      internal.matchTyped(tree).map(x => (x.expr, x.tpt))
 
   }
 
   implicit class TypedAPI(self: Typed) {
-    def expr given (ctx: Context): Term = kernel.Typed_expr(self)
-    def tpt given (ctx: Context): TypeTree = kernel.Typed_tpt(self)
+    def expr given (ctx: Context): Term = internal.Typed_expr(self)
+    def tpt given (ctx: Context): TypeTree = internal.Typed_tpt(self)
   }
 
   object IsAssign {
     /** Matches any Assign and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Assign] = kernel.matchAssign(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Assign] = internal.matchAssign(tree)
   }
 
   /** Scala assign `x = y` */
@@ -512,24 +512,24 @@ trait TreeOps extends Core {
 
     /** Create an assignment `<lhs: Term> = <rhs: Term>` */
     def apply(lhs: Term, rhs: Term) given (ctx: Context): Assign =
-      kernel.Assign_apply(lhs, rhs)
+      internal.Assign_apply(lhs, rhs)
 
     def copy(original: Tree)(lhs: Term, rhs: Term) given (ctx: Context): Assign =
-      kernel.Assign_copy(original)(lhs, rhs)
+      internal.Assign_copy(original)(lhs, rhs)
 
     /** Matches an assignment `<lhs: Term> = <rhs: Term>` */
     def unapply(tree: Tree) given (ctx: Context): Option[(Term, Term)] =
-      kernel.matchAssign(tree).map(x => (x.lhs, x.rhs))
+      internal.matchAssign(tree).map(x => (x.lhs, x.rhs))
   }
 
   implicit class AssignAPI(self: Assign) {
-    def lhs given (ctx: Context): Term = kernel.Assign_lhs(self)
-    def rhs given (ctx: Context): Term = kernel.Assign_rhs(self)
+    def lhs given (ctx: Context): Term = internal.Assign_lhs(self)
+    def rhs given (ctx: Context): Term = internal.Assign_rhs(self)
   }
 
   object IsBlock {
     /** Matches any Block and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Block] = kernel.matchBlock(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Block] = internal.matchBlock(tree)
   }
 
   /** Scala code block `{ stat0; ...; statN; expr }` term */
@@ -537,41 +537,41 @@ trait TreeOps extends Core {
 
     /** Creates a block `{ <statements: List[Statement]>; <expr: Term> }` */
     def apply(stats: List[Statement], expr: Term) given (ctx: Context): Block =
-      kernel.Block_apply(stats, expr)
+      internal.Block_apply(stats, expr)
 
     def copy(original: Tree)(stats: List[Statement], expr: Term) given (ctx: Context): Block =
-      kernel.Block_copy(original)(stats, expr)
+      internal.Block_copy(original)(stats, expr)
 
     /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }` */
     def unapply(tree: Tree) given (ctx: Context): Option[(List[Statement], Term)] =
-      kernel.matchBlock(tree).map(x => (x.statements, x.expr))
+      internal.matchBlock(tree).map(x => (x.statements, x.expr))
   }
 
   implicit class BlockAPI(self: Block) {
-    def statements given (ctx: Context): List[Statement] = kernel.Block_statements(self)
-    def expr given (ctx: Context): Term = kernel.Block_expr(self)
+    def statements given (ctx: Context): List[Statement] = internal.Block_statements(self)
+    def expr given (ctx: Context): Term = internal.Block_expr(self)
   }
 
   object IsClosure {
     /** Matches any Closure and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Closure] = kernel.matchClosure(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Closure] = internal.matchClosure(tree)
   }
 
   object Closure {
 
     def apply(meth: Term, tpt: Option[Type]) given (ctx: Context): Closure =
-      kernel.Closure_apply(meth, tpt)
+      internal.Closure_apply(meth, tpt)
 
     def copy(original: Tree)(meth: Tree, tpt: Option[Type]) given (ctx: Context): Closure =
-      kernel.Closure_copy(original)(meth, tpt)
+      internal.Closure_copy(original)(meth, tpt)
 
     def unapply(tree: Tree) given (ctx: Context): Option[(Term, Option[Type])] =
-      kernel.matchClosure(tree).map(x => (x.meth, x.tpeOpt))
+      internal.matchClosure(tree).map(x => (x.meth, x.tpeOpt))
   }
 
   implicit class ClosureAPI(self: Closure) {
-    def meth given (ctx: Context): Term = kernel.Closure_meth(self)
-    def tpeOpt given (ctx: Context): Option[Type] = kernel.Closure_tpeOpt(self)
+    def meth given (ctx: Context): Term = internal.Closure_meth(self)
+    def tpeOpt given (ctx: Context): Option[Type] = internal.Closure_tpeOpt(self)
   }
 
   /** A lambda `(...) => ...` in the source code is represented as
@@ -598,7 +598,7 @@ trait TreeOps extends Core {
 
   object IsIf {
     /** Matches any If and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[If] = kernel.matchIf(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[If] = internal.matchIf(tree)
   }
 
   /** Scala `if`/`else` term */
@@ -606,26 +606,26 @@ trait TreeOps extends Core {
 
     /** Create an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
     def apply(cond: Term, thenp: Term, elsep: Term) given (ctx: Context): If =
-      kernel.If_apply(cond, thenp, elsep)
+      internal.If_apply(cond, thenp, elsep)
 
     def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term) given (ctx: Context): If =
-      kernel.If_copy(original)(cond, thenp, elsep)
+      internal.If_copy(original)(cond, thenp, elsep)
 
     /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
     def unapply(tree: Tree) given (ctx: Context): Option[(Term, Term, Term)] =
-      kernel.matchIf(tree).map(x => (x.cond, x.thenp, x.elsep))
+      internal.matchIf(tree).map(x => (x.cond, x.thenp, x.elsep))
 
   }
 
   implicit class IfAPI(self: If) {
-    def cond given (ctx: Context): Term = kernel.If_cond(self)
-    def thenp given (ctx: Context): Term = kernel.If_thenp(self)
-    def elsep given (ctx: Context): Term = kernel.If_elsep(self)
+    def cond given (ctx: Context): Term = internal.If_cond(self)
+    def thenp given (ctx: Context): Term = internal.If_thenp(self)
+    def elsep given (ctx: Context): Term = internal.If_elsep(self)
   }
 
   object IsMatch {
     /** Matches any Match and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Match] = kernel.matchMatch(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Match] = internal.matchMatch(tree)
   }
 
   /** Scala `match` term */
@@ -633,25 +633,25 @@ trait TreeOps extends Core {
 
     /** Creates a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
     def apply(selector: Term, cases: List[CaseDef]) given (ctx: Context): Match =
-      kernel.Match_apply(selector, cases)
+      internal.Match_apply(selector, cases)
 
     def copy(original: Tree)(selector: Term, cases: List[CaseDef]) given (ctx: Context): Match =
-      kernel.Match_copy(original)(selector, cases)
+      internal.Match_copy(original)(selector, cases)
 
     /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
     def unapply(tree: Tree) given (ctx: Context): Option[(Term, List[CaseDef])] =
-      kernel.matchMatch(tree).map(x => (x.scrutinee, x.cases))
+      internal.matchMatch(tree).map(x => (x.scrutinee, x.cases))
 
   }
 
   implicit class MatchAPI(self: Match) {
-    def scrutinee given (ctx: Context): Term = kernel.Match_scrutinee(self)
-    def cases given (ctx: Context): List[CaseDef] = kernel.Match_cases(self)
+    def scrutinee given (ctx: Context): Term = internal.Match_scrutinee(self)
+    def cases given (ctx: Context): List[CaseDef] = internal.Match_cases(self)
   }
 
   object IsImplicitMatch {
     /** Matches any ImpliedMatch and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[ImpliedMatch] = kernel.matchImplicitMatch(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[ImpliedMatch] = internal.matchImplicitMatch(tree)
   }
 
   /** Scala implicit `match` term */
@@ -659,24 +659,24 @@ trait TreeOps extends Core {
 
     /** Creates a pattern match `delegate match { <cases: List[CaseDef]> }` */
     def apply(cases: List[CaseDef]) given (ctx: Context): ImpliedMatch =
-      kernel.ImplicitMatch_apply(cases)
+      internal.ImplicitMatch_apply(cases)
 
     def copy(original: Tree)(cases: List[CaseDef]) given (ctx: Context): ImpliedMatch =
-      kernel.ImplicitMatch_copy(original)(cases)
+      internal.ImplicitMatch_copy(original)(cases)
 
     /** Matches a pattern match `delegate match { <cases: List[CaseDef]> }` */
     def unapply(tree: Tree) given (ctx: Context): Option[List[CaseDef]] =
-      kernel.matchImplicitMatch(tree).map(_.cases)
+      internal.matchImplicitMatch(tree).map(_.cases)
 
   }
 
   implicit class ImplicitMatchAPI(self: ImpliedMatch) {
-    def cases given (ctx: Context): List[CaseDef] = kernel.ImplicitMatch_cases(self)
+    def cases given (ctx: Context): List[CaseDef] = internal.ImplicitMatch_cases(self)
   }
 
   object IsTry {
     /** Matches any Try and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Try] = kernel.matchTry(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Try] = internal.matchTry(tree)
   }
 
   /** Scala `try`/`catch`/`finally` term */
@@ -684,26 +684,26 @@ trait TreeOps extends Core {
 
     /** Create a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
     def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]) given (ctx: Context): Try =
-      kernel.Try_apply(expr, cases, finalizer)
+      internal.Try_apply(expr, cases, finalizer)
 
     def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]) given (ctx: Context): Try =
-      kernel.Try_copy(original)(expr, cases, finalizer)
+      internal.Try_copy(original)(expr, cases, finalizer)
 
     /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
     def unapply(tree: Tree) given (ctx: Context): Option[(Term, List[CaseDef], Option[Term])] =
-      kernel.matchTry(tree).map(x => (x.body, x.cases, x.finalizer))
+      internal.matchTry(tree).map(x => (x.body, x.cases, x.finalizer))
 
   }
 
   implicit class TryAPI(self: Try) {
-    def body given (ctx: Context): Term = kernel.Try_body(self)
-    def cases given (ctx: Context): List[CaseDef] = kernel.Try_cases(self)
-    def finalizer given (ctx: Context): Option[Term] = kernel.Try_finalizer(self)
+    def body given (ctx: Context): Term = internal.Try_body(self)
+    def cases given (ctx: Context): List[CaseDef] = internal.Try_cases(self)
+    def finalizer given (ctx: Context): Option[Term] = internal.Try_finalizer(self)
   }
 
   object IsReturn {
     /** Matches any Return and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Return] = kernel.matchReturn(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Return] = internal.matchReturn(tree)
   }
 
   /** Scala local `return` */
@@ -711,460 +711,460 @@ trait TreeOps extends Core {
 
     /** Creates `return <expr: Term>` */
     def apply(expr: Term) given (ctx: Context): Return =
-      kernel.Return_apply(expr)
+      internal.Return_apply(expr)
 
     def copy(original: Tree)(expr: Term) given (ctx: Context): Return =
-      kernel.Return_copy(original)(expr)
+      internal.Return_copy(original)(expr)
 
     /** Matches `return <expr: Term>` */
     def unapply(tree: Tree) given (ctx: Context): Option[Term] =
-      kernel.matchReturn(tree).map(_.expr)
+      internal.matchReturn(tree).map(_.expr)
 
   }
 
   implicit class ReturnAPI(self: Return) {
-    def expr given (ctx: Context): Term = kernel.Return_expr(self)
+    def expr given (ctx: Context): Term = internal.Return_expr(self)
   }
 
   object IsRepeated {
     /** Matches any Repeated and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Repeated] = kernel.matchRepeated(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Repeated] = internal.matchRepeated(tree)
   }
 
   object Repeated {
 
     def apply(elems: List[Term], tpt: TypeTree) given (ctx: Context): Repeated =
-      kernel.Repeated_apply(elems, tpt)
+      internal.Repeated_apply(elems, tpt)
 
     def copy(original: Tree)(elems: List[Term], tpt: TypeTree) given (ctx: Context): Repeated =
-      kernel.Repeated_copy(original)(elems, tpt)
+      internal.Repeated_copy(original)(elems, tpt)
 
     def unapply(tree: Tree) given (ctx: Context): Option[(List[Term], TypeTree)] =
-      kernel.matchRepeated(tree).map(x => (x.elems, x.elemtpt))
+      internal.matchRepeated(tree).map(x => (x.elems, x.elemtpt))
 
   }
 
   implicit class RepeatedAPI(self: Repeated) {
-    def elems given (ctx: Context): List[Term] = kernel.Repeated_elems(self)
-    def elemtpt given (ctx: Context): TypeTree = kernel.Repeated_elemtpt(self)
+    def elems given (ctx: Context): List[Term] = internal.Repeated_elems(self)
+    def elemtpt given (ctx: Context): TypeTree = internal.Repeated_elemtpt(self)
   }
 
   object IsInlined {
     /** Matches any Inlined and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[Inlined] = kernel.matchInlined(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[Inlined] = internal.matchInlined(tree)
   }
 
   object Inlined {
 
     def apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term) given (ctx: Context): Inlined =
-      kernel.Inlined_apply(call, bindings, expansion)
+      internal.Inlined_apply(call, bindings, expansion)
 
     def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term) given (ctx: Context): Inlined =
-      kernel.Inlined_copy(original)(call, bindings, expansion)
+      internal.Inlined_copy(original)(call, bindings, expansion)
 
     def unapply(tree: Tree) given (ctx: Context): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
-      kernel.matchInlined(tree).map(x => (x.call, x.bindings, x.body))
+      internal.matchInlined(tree).map(x => (x.call, x.bindings, x.body))
 
   }
 
   implicit class InlinedAPI(self: Inlined) {
-    def call given (ctx: Context): Option[Tree /* Term | TypeTree */] = kernel.Inlined_call(self)
-    def bindings given (ctx: Context): List[Definition] = kernel.Inlined_bindings(self)
-    def body given (ctx: Context): Term = kernel.Inlined_body(self)
+    def call given (ctx: Context): Option[Tree /* Term | TypeTree */] = internal.Inlined_call(self)
+    def bindings given (ctx: Context): List[Definition] = internal.Inlined_bindings(self)
+    def body given (ctx: Context): Term = internal.Inlined_body(self)
   }
 
   object IsSelectOuter {
     /** Matches any SelectOuter and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[SelectOuter] = kernel.matchSelectOuter(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[SelectOuter] = internal.matchSelectOuter(tree)
   }
 
   object SelectOuter {
 
     def apply(qualifier: Term, name: String, levels: Int) given (ctx: Context): SelectOuter =
-      kernel.SelectOuter_apply(qualifier, name, levels)
+      internal.SelectOuter_apply(qualifier, name, levels)
 
     def copy(original: Tree)(qualifier: Term, name: String, levels: Int) given (ctx: Context): SelectOuter =
-      kernel.SelectOuter_copy(original)(qualifier, name, levels)
+      internal.SelectOuter_copy(original)(qualifier, name, levels)
 
     def unapply(tree: Tree) given (ctx: Context): Option[(Term, Int, Type)] = // TODO homogenize order of parameters
-      kernel.matchSelectOuter(tree).map(x => (x.qualifier, x.level, x.tpe))
+      internal.matchSelectOuter(tree).map(x => (x.qualifier, x.level, x.tpe))
 
   }
 
   implicit class SelectOuterAPI(self: SelectOuter) {
-    def qualifier given (ctx: Context): Term = kernel.SelectOuter_qualifier(self)
-    def level given (ctx: Context): Int = kernel.SelectOuter_level(self)
-    def tpe given (ctx: Context): Type = kernel.SelectOuter_tpe(self)
+    def qualifier given (ctx: Context): Term = internal.SelectOuter_qualifier(self)
+    def level given (ctx: Context): Int = internal.SelectOuter_level(self)
+    def tpe given (ctx: Context): Type = internal.SelectOuter_tpe(self)
   }
 
   object IsWhile {
     /** Matches any While and returns it */
-    def unapply(tree: Tree) given (ctx: Context): Option[While] = kernel.matchWhile(tree)
+    def unapply(tree: Tree) given (ctx: Context): Option[While] = internal.matchWhile(tree)
   }
 
   object While {
 
     /** Creates a while loop `while (<cond>) <body>` and returns (<cond>, <body>) */
     def apply(cond: Term, body: Term) given (ctx: Context): While =
-      kernel.While_apply(cond, body)
+      internal.While_apply(cond, body)
 
     def copy(original: Tree)(cond: Term, body: Term) given (ctx: Context): While =
-      kernel.While_copy(original)(cond, body)
+      internal.While_copy(original)(cond, body)
 
     /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
     def unapply(tree: Tree) given (ctx: Context): Option[(Term, Term)] =
-      kernel.matchWhile(tree).map(x => (x.cond, x.body))
+      internal.matchWhile(tree).map(x => (x.cond, x.body))
 
   }
 
   implicit class WhileAPI(self: While) {
-    def cond given (ctx: Context): Term = kernel.While_cond(self)
-    def body given (ctx: Context): Term = kernel.While_body(self)
+    def cond given (ctx: Context): Term = internal.While_cond(self)
+    def body given (ctx: Context): Term = internal.While_body(self)
   }
 
   // ----- TypeTrees ------------------------------------------------
 
   implicit class TypeTreeAPI(self: TypeTree) {
     /** Position in the source code */
-    def pos given (ctx: Context): Position = kernel.TypeTree_pos(self)
+    def pos given (ctx: Context): Position = internal.TypeTree_pos(self)
 
     /** Type of this type tree */
-    def tpe given (ctx: Context): Type = kernel.TypeTree_tpe(self)
+    def tpe given (ctx: Context): Type = internal.TypeTree_tpe(self)
 
     /** Symbol of this type tree */
-    def symbol given (ctx: Context): Symbol = kernel.TypeTree_symbol(self)
+    def symbol given (ctx: Context): Symbol = internal.TypeTree_symbol(self)
   }
 
   object IsTypeTree {
     def unapply(tpt: Tree) given (ctx: Context): Option[TypeTree] =
-      kernel.matchTypeTree(tpt)
+      internal.matchTypeTree(tpt)
   }
 
   object IsInferred {
     /** Matches any Inferred and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[Inferred] =
-      kernel.matchInferred(tree)
+      internal.matchInferred(tree)
   }
 
   /** TypeTree containing an inferred type */
   object Inferred {
     def apply(tpe: Type) given (ctx: Context): Inferred =
-      kernel.Inferred_apply(tpe)
+      internal.Inferred_apply(tpe)
     /** Matches a TypeTree containing an inferred type */
     def unapply(tree: Tree) given (ctx: Context): Boolean =
-      kernel.matchInferred(tree).isDefined
+      internal.matchInferred(tree).isDefined
   }
 
   object IsTypeIdent {
     /** Matches any TypeIdent and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[TypeIdent] =
-      kernel.matchTypeIdent(tree)
+      internal.matchTypeIdent(tree)
   }
 
   implicit class TypeIdentAPI(self: TypeIdent) {
-    def name given (ctx: Context): String = kernel.TypeIdent_name(self)
+    def name given (ctx: Context): String = internal.TypeIdent_name(self)
   }
 
   object TypeIdent {
     // TODO def apply(name: String) given (ctx: Context): TypeIdent
     def copy(original: TypeIdent)(name: String) given (ctx: Context): TypeIdent =
-      kernel.TypeIdent_copy(original)(name)
+      internal.TypeIdent_copy(original)(name)
     def unapply(tree: Tree) given (ctx: Context): Option[String] =
-      kernel.matchTypeIdent(tree).map(_.name)
+      internal.matchTypeIdent(tree).map(_.name)
   }
 
   object IsTypeSelect {
     /** Matches any TypeSelect and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[TypeSelect] =
-      kernel.matchTypeSelect(tree)
+      internal.matchTypeSelect(tree)
   }
 
   object TypeSelect {
     def apply(qualifier: Term, name: String) given (ctx: Context): TypeSelect =
-      kernel.TypeSelect_apply(qualifier, name)
+      internal.TypeSelect_apply(qualifier, name)
     def copy(original: TypeSelect)(qualifier: Term, name: String) given (ctx: Context): TypeSelect =
-      kernel.TypeSelect_copy(original)(qualifier, name)
+      internal.TypeSelect_copy(original)(qualifier, name)
     def unapply(tree: Tree) given (ctx: Context): Option[(Term, String)] =
-      kernel.matchTypeSelect(tree).map(x => (x.qualifier, x.name))
+      internal.matchTypeSelect(tree).map(x => (x.qualifier, x.name))
   }
 
   implicit class TypeSelectAPI(self: TypeSelect) {
-    def qualifier given (ctx: Context): Term = kernel.TypeSelect_qualifier(self)
-    def name given (ctx: Context): String = kernel.TypeSelect_name(self)
+    def qualifier given (ctx: Context): Term = internal.TypeSelect_qualifier(self)
+    def name given (ctx: Context): String = internal.TypeSelect_name(self)
   }
 
   object IsProjection {
     /** Matches any Projection and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[Projection] =
-      kernel.matchProjection(tree)
+      internal.matchProjection(tree)
   }
 
   object Projection {
     // TODO def apply(qualifier: TypeTree, name: String) given (ctx: Context): Project
     def copy(original: Projection)(qualifier: TypeTree, name: String) given (ctx: Context): Projection =
-      kernel.Projection_copy(original)(qualifier, name)
+      internal.Projection_copy(original)(qualifier, name)
     def unapply(tree: Tree) given (ctx: Context): Option[(TypeTree, String)] =
-      kernel.matchProjection(tree).map(x => (x.qualifier, x.name))
+      internal.matchProjection(tree).map(x => (x.qualifier, x.name))
   }
 
   implicit class ProjectionAPI(self: Projection) {
-    def qualifier given (ctx: Context): TypeTree = kernel.Projection_qualifier(self)
-    def name given (ctx: Context): String = kernel.Projection_name(self)
+    def qualifier given (ctx: Context): TypeTree = internal.Projection_qualifier(self)
+    def name given (ctx: Context): String = internal.Projection_name(self)
   }
 
   object IsSingleton {
     /** Matches any Singleton and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[Singleton] =
-      kernel.matchSingleton(tree)
+      internal.matchSingleton(tree)
   }
 
   object Singleton {
     def apply(ref: Term) given (ctx: Context): Singleton =
-      kernel.Singleton_apply(ref)
+      internal.Singleton_apply(ref)
     def copy(original: Singleton)(ref: Term) given (ctx: Context): Singleton =
-      kernel.Singleton_copy(original)(ref)
+      internal.Singleton_copy(original)(ref)
     def unapply(tree: Tree) given (ctx: Context): Option[Term] =
-      kernel.matchSingleton(tree).map(_.ref)
+      internal.matchSingleton(tree).map(_.ref)
   }
 
   implicit class SingletonAPI(self: Singleton) {
-    def ref given (ctx: Context): Term = kernel.Singleton_ref(self)
+    def ref given (ctx: Context): Term = internal.Singleton_ref(self)
   }
 
   object IsRefined {
     /** Matches any Refined and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[Refined] =
-      kernel.matchRefined(tree)
+      internal.matchRefined(tree)
   }
 
   object Refined {
     // TODO def apply(tpt: TypeTree, refinements: List[Definition]) given (ctx: Context): Refined
     def copy(original: Refined)(tpt: TypeTree, refinements: List[Definition]) given (ctx: Context): Refined =
-      kernel.Refined_copy(original)(tpt, refinements)
+      internal.Refined_copy(original)(tpt, refinements)
     def unapply(tree: Tree) given (ctx: Context): Option[(TypeTree, List[Definition])] =
-      kernel.matchRefined(tree).map(x => (x.tpt, x.refinements))
+      internal.matchRefined(tree).map(x => (x.tpt, x.refinements))
   }
 
   implicit class RefinedAPI(self: Refined) {
-    def tpt given (ctx: Context): TypeTree = kernel.Refined_tpt(self)
-    def refinements given (ctx: Context): List[Definition] = kernel.Refined_refinements(self)
+    def tpt given (ctx: Context): TypeTree = internal.Refined_tpt(self)
+    def refinements given (ctx: Context): List[Definition] = internal.Refined_refinements(self)
   }
 
   object IsApplied {
     /** Matches any Applied and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[Applied] =
-      kernel.matchApplied(tree)
+      internal.matchApplied(tree)
   }
 
   object Applied {
     def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]) given (ctx: Context): Applied =
-      kernel.Applied_apply(tpt, args)
+      internal.Applied_apply(tpt, args)
     def copy(original: Applied)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]) given (ctx: Context): Applied =
-      kernel.Applied_copy(original)(tpt, args)
+      internal.Applied_copy(original)(tpt, args)
     def unapply(tree: Tree) given (ctx: Context): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
-      kernel.matchApplied(tree).map(x => (x.tpt, x.args))
+      internal.matchApplied(tree).map(x => (x.tpt, x.args))
   }
 
   implicit class AppliedAPI(self: Applied) {
-    def tpt given (ctx: Context): TypeTree = kernel.Applied_tpt(self)
-    def args given (ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = kernel.Applied_args(self)
+    def tpt given (ctx: Context): TypeTree = internal.Applied_tpt(self)
+    def args given (ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = internal.Applied_args(self)
   }
 
   object IsAnnotated {
     /** Matches any Annotated and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[Annotated] =
-      kernel.matchAnnotated(tree)
+      internal.matchAnnotated(tree)
   }
 
   object Annotated {
     def apply(arg: TypeTree, annotation: Term) given (ctx: Context): Annotated =
-      kernel.Annotated_apply(arg, annotation)
+      internal.Annotated_apply(arg, annotation)
     def copy(original: Annotated)(arg: TypeTree, annotation: Term) given (ctx: Context): Annotated =
-      kernel.Annotated_copy(original)(arg, annotation)
+      internal.Annotated_copy(original)(arg, annotation)
     def unapply(tree: Tree) given (ctx: Context): Option[(TypeTree, Term)] =
-      kernel.matchAnnotated(tree).map(x => (x.arg, x.annotation))
+      internal.matchAnnotated(tree).map(x => (x.arg, x.annotation))
   }
 
   implicit class AnnotatedAPI(self: Annotated) {
-    def arg given (ctx: Context): TypeTree = kernel.Annotated_arg(self)
-    def annotation given (ctx: Context): Term = kernel.Annotated_annotation(self)
+    def arg given (ctx: Context): TypeTree = internal.Annotated_arg(self)
+    def annotation given (ctx: Context): Term = internal.Annotated_annotation(self)
   }
 
   object IsMatchTypeTree {
     /** Matches any MatchTypeTree and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[MatchTypeTree] =
-      kernel.matchMatchTypeTree(tree)
+      internal.matchMatchTypeTree(tree)
   }
 
   object MatchTypeTree {
     def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]) given (ctx: Context): MatchTypeTree =
-      kernel.MatchTypeTree_apply(bound, selector, cases)
+      internal.MatchTypeTree_apply(bound, selector, cases)
     def copy(original: MatchTypeTree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]) given (ctx: Context): MatchTypeTree =
-      kernel.MatchTypeTree_copy(original)(bound, selector, cases)
+      internal.MatchTypeTree_copy(original)(bound, selector, cases)
     def unapply(tree: Tree) given (ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
-      kernel.matchMatchTypeTree(tree).map(x => (x.bound, x.selector, x.cases))
+      internal.matchMatchTypeTree(tree).map(x => (x.bound, x.selector, x.cases))
   }
 
   implicit class MatchTypeTreeAPI(self: MatchTypeTree) {
-    def bound given (ctx: Context): Option[TypeTree] = kernel.MatchTypeTree_bound(self)
-    def selector given (ctx: Context): TypeTree = kernel.MatchTypeTree_selector(self)
-    def cases given (ctx: Context): List[TypeCaseDef] = kernel.MatchTypeTree_cases(self)
+    def bound given (ctx: Context): Option[TypeTree] = internal.MatchTypeTree_bound(self)
+    def selector given (ctx: Context): TypeTree = internal.MatchTypeTree_selector(self)
+    def cases given (ctx: Context): List[TypeCaseDef] = internal.MatchTypeTree_cases(self)
   }
 
   object IsByName {
     /** Matches any ByName and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[ByName] =
-      kernel.matchByName(tree)
+      internal.matchByName(tree)
   }
 
   object ByName {
     def apply(result: TypeTree) given (ctx: Context): ByName =
-      kernel.ByName_apply(result)
+      internal.ByName_apply(result)
     def copy(original: ByName)(result: TypeTree) given (ctx: Context): ByName =
-      kernel.ByName_copy(original)(result)
+      internal.ByName_copy(original)(result)
     def unapply(tree: Tree) given (ctx: Context): Option[TypeTree] =
-      kernel.matchByName(tree).map(_.result)
+      internal.matchByName(tree).map(_.result)
   }
 
   implicit class ByNameAPI(self: ByName) {
-    def result given (ctx: Context): TypeTree = kernel.ByName_result(self)
+    def result given (ctx: Context): TypeTree = internal.ByName_result(self)
   }
 
   object IsLambdaTypeTree {
     /** Matches any LambdaTypeTree and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[LambdaTypeTree] =
-      kernel.matchLambdaTypeTree(tree)
+      internal.matchLambdaTypeTree(tree)
   }
 
   object LambdaTypeTree {
     def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/) given (ctx: Context): LambdaTypeTree =
-      kernel.Lambdaapply(tparams, body)
+      internal.Lambdaapply(tparams, body)
     def copy(original: LambdaTypeTree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/) given (ctx: Context): LambdaTypeTree =
-      kernel.Lambdacopy(original)(tparams, body)
+      internal.Lambdacopy(original)(tparams, body)
     def unapply(tree: Tree) given (ctx: Context): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
-      kernel.matchLambdaTypeTree(tree).map(x => (x.tparams, x.body))
+      internal.matchLambdaTypeTree(tree).map(x => (x.tparams, x.body))
   }
 
   implicit class LambdaTypeTreeAPI(self: LambdaTypeTree) {
-    def tparams given (ctx: Context): List[TypeDef] = kernel.Lambdatparams(self)
-    def body given (ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.Lambdabody(self)
+    def tparams given (ctx: Context): List[TypeDef] = internal.Lambdatparams(self)
+    def body given (ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.Lambdabody(self)
   }
 
   object IsTypeBind {
     /** Matches any TypeBind and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[TypeBind] =
-      kernel.matchTypeBind(tree)
+      internal.matchTypeBind(tree)
   }
 
   object TypeBind {
     // TODO def apply(name: String, tree: Tree) given (ctx: Context): TypeBind
     def copy(original: TypeBind)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/) given (ctx: Context): TypeBind =
-      kernel.TypeBind_copy(original)(name, tpt)
+      internal.TypeBind_copy(original)(name, tpt)
     def unapply(tree: Tree) given (ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)] =
-      kernel.matchTypeBind(tree).map(x => (x.name, x.body))
+      internal.matchTypeBind(tree).map(x => (x.name, x.body))
   }
 
   implicit class TypeBindAPI(self: TypeBind) {
-    def name given (ctx: Context): String = kernel.TypeBind_name(self)
-    def body given (ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = kernel.TypeBind_body(self)
+    def name given (ctx: Context): String = internal.TypeBind_name(self)
+    def body given (ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeBind_body(self)
   }
 
   object IsTypeBlock {
     /** Matches any TypeBlock and returns it */
     def unapply(tree: Tree) given (ctx: Context): Option[TypeBlock] =
-      kernel.matchTypeBlock(tree)
+      internal.matchTypeBlock(tree)
   }
 
   object TypeBlock {
     def apply(aliases: List[TypeDef], tpt: TypeTree) given (ctx: Context): TypeBlock =
-      kernel.TypeBlock_apply(aliases, tpt)
+      internal.TypeBlock_apply(aliases, tpt)
     def copy(original: TypeBlock)(aliases: List[TypeDef], tpt: TypeTree) given (ctx: Context): TypeBlock =
-      kernel.TypeBlock_copy(original)(aliases, tpt)
+      internal.TypeBlock_copy(original)(aliases, tpt)
     def unapply(tree: Tree) given (ctx: Context): Option[(List[TypeDef], TypeTree)] =
-      kernel.matchTypeBlock(tree).map(x => (x.aliases, x.tpt))
+      internal.matchTypeBlock(tree).map(x => (x.aliases, x.tpt))
   }
 
   implicit class TypeBlockAPI(self: TypeBlock) {
-    def aliases given (ctx: Context): List[TypeDef] = kernel.TypeBlock_aliases(self)
-    def tpt given (ctx: Context): TypeTree = kernel.TypeBlock_tpt(self)
+    def aliases given (ctx: Context): List[TypeDef] = internal.TypeBlock_aliases(self)
+    def tpt given (ctx: Context): TypeTree = internal.TypeBlock_tpt(self)
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------
 
   implicit class TypeBoundsTreeAPI(self: TypeBoundsTree) {
-    def tpe given (ctx: Context): TypeBounds = kernel.TypeBoundsTree_tpe(self)
-    def low given (ctx: Context): TypeTree = kernel.TypeBoundsTree_low(self)
-    def hi given (ctx: Context): TypeTree = kernel.TypeBoundsTree_hi(self)
+    def tpe given (ctx: Context): TypeBounds = internal.TypeBoundsTree_tpe(self)
+    def low given (ctx: Context): TypeTree = internal.TypeBoundsTree_low(self)
+    def hi given (ctx: Context): TypeTree = internal.TypeBoundsTree_hi(self)
   }
 
   object IsTypeBoundsTree {
     def unapply(tree: Tree) given (ctx: Context): Option[TypeBoundsTree] =
-      kernel.matchTypeBoundsTree(tree)
+      internal.matchTypeBoundsTree(tree)
   }
 
   object TypeBoundsTree {
     def unapply(tree: Tree) given (ctx: Context): Option[(TypeTree, TypeTree)] =
-      kernel.matchTypeBoundsTree(tree).map(x => (x.low, x.hi))
+      internal.matchTypeBoundsTree(tree).map(x => (x.low, x.hi))
   }
 
   implicit class WildcardTypeTreeAPI(self: WildcardTypeTree) {
-    def tpe given (ctx: Context): TypeOrBounds = kernel.WildcardTypeTree_tpe(self)
+    def tpe given (ctx: Context): TypeOrBounds = internal.WildcardTypeTree_tpe(self)
   }
 
   object IsWildcardTypeTree {
     def unapply(tree: Tree) given (ctx: Context): Option[WildcardTypeTree] =
-      kernel.matchWildcardTypeTree(tree)
+      internal.matchWildcardTypeTree(tree)
   }
 
   /** TypeBoundsTree containing wildcard type bounds */
   object WildcardTypeTree {
     /** Matches a TypeBoundsTree containing wildcard type bounds */
     def unapply(tree: Tree) given (ctx: Context): Boolean =
-      kernel.matchWildcardTypeTree(tree).isDefined
+      internal.matchWildcardTypeTree(tree).isDefined
   }
 
   // ----- CaseDefs ------------------------------------------------
 
   implicit class CaseDefAPI(caseDef: CaseDef) {
-    def pattern given (ctx: Context): Pattern = kernel.CaseDef_pattern(caseDef)
-    def guard given (ctx: Context): Option[Term] = kernel.CaseDef_guard(caseDef)
-    def rhs given (ctx: Context): Term = kernel.CaseDef_rhs(caseDef)
+    def pattern given (ctx: Context): Pattern = internal.CaseDef_pattern(caseDef)
+    def guard given (ctx: Context): Option[Term] = internal.CaseDef_guard(caseDef)
+    def rhs given (ctx: Context): Term = internal.CaseDef_rhs(caseDef)
   }
 
   object IsCaseDef {
     def unapply(self: Tree) given (ctx: Context): Option[CaseDef] =
-      kernel.matchCaseDef(self)
+      internal.matchCaseDef(self)
   }
 
   object CaseDef {
     def apply(pattern: Pattern, guard: Option[Term], rhs: Term) given (ctx: Context): CaseDef =
-      kernel.CaseDef_module_apply(pattern, guard, rhs)
+      internal.CaseDef_module_apply(pattern, guard, rhs)
 
     def copy(original: CaseDef)(pattern: Pattern, guard: Option[Term], rhs: Term) given (ctx: Context): CaseDef =
-      kernel.CaseDef_module_copy(original)(pattern, guard, rhs)
+      internal.CaseDef_module_copy(original)(pattern, guard, rhs)
 
     def unapply(tree: Tree) given (ctx: Context): Option[(Pattern, Option[Term], Term)] =
-      kernel.matchCaseDef(tree).map( x => (x.pattern, x.guard, x.rhs))
+      internal.matchCaseDef(tree).map( x => (x.pattern, x.guard, x.rhs))
   }
 
   implicit class TypeCaseDefAPI(caseDef: TypeCaseDef) {
-    def pattern given (ctx: Context): TypeTree = kernel.TypeCaseDef_pattern(caseDef)
-    def rhs given (ctx: Context): TypeTree = kernel.TypeCaseDef_rhs(caseDef)
+    def pattern given (ctx: Context): TypeTree = internal.TypeCaseDef_pattern(caseDef)
+    def rhs given (ctx: Context): TypeTree = internal.TypeCaseDef_rhs(caseDef)
   }
 
   object IsTypeCaseDef {
     def unapply(self: Tree) given (ctx: Context): Option[TypeCaseDef] =
-      kernel.matchTypeCaseDef(self)
+      internal.matchTypeCaseDef(self)
   }
 
   object TypeCaseDef {
     def apply(pattern: TypeTree, rhs: TypeTree) given (ctx: Context): TypeCaseDef =
-      kernel.TypeCaseDef_module_apply(pattern, rhs)
+      internal.TypeCaseDef_module_apply(pattern, rhs)
 
     def copy(original: TypeCaseDef)(pattern: TypeTree, rhs: TypeTree) given (ctx: Context): TypeCaseDef =
-      kernel.TypeCaseDef_module_copy(original)(pattern, rhs)
+      internal.TypeCaseDef_module_copy(original)(pattern, rhs)
 
     def unapply(tree: Tree) given (ctx: Context): Option[(TypeTree, TypeTree)] =
-      kernel.matchTypeCaseDef(tree).map( x => (x.pattern, x.rhs))
+      internal.matchTypeCaseDef(tree).map( x => (x.pattern, x.rhs))
   }
 }

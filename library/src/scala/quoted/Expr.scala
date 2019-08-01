@@ -39,7 +39,7 @@ package quoted {
       /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
       def apply[G] given (tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]]): G = {
         import qctx.tasty._
-        tg.untupled(args => qctx.tasty.kernel.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
+        tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
       }
     }
 
@@ -47,7 +47,7 @@ package quoted {
       /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
       def apply[G] given (tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]]): G = {
         import qctx.tasty._
-        tg.untupled(args => qctx.tasty.kernel.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
+        tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
       }
     }
 
