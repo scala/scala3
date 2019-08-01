@@ -1,6 +1,6 @@
 
 import scala.quoted._
-import scala.quoted.autolift._
+import given scala.quoted.autolift._
 
 class MVmult[Idx, T, Unt](tring: Ring[T], vec: VecROp[Idx, T, Unt]) {
   private[this] val blas2 = new Blas2(tring, vec)

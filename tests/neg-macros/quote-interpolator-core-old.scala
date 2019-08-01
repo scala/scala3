@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.autolift._
+import given scala.quoted.autolift._
 
 // This test checks the correct interpretation of the inlined value class
 

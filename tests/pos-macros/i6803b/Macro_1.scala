@@ -2,7 +2,7 @@ package blah
 
 import scala.language.implicitConversions
 import scala.quoted._
-import scala.quoted.autolift._
+import given scala.quoted.autolift._
 
 object AsObject {
   final class LineNo(val lineNo: Int)
