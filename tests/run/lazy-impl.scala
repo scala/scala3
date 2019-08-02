@@ -32,7 +32,7 @@
  *          if CAS(_x, null, Evaluating) then
  *              var result = rhs
  *  //          if result == null then result == NULL
- *              if !CAS(x, Evaluating, result) then
+ *              if !CAS(_x, Evaluating, result) then
  *                  val lock = _x.asInstanceOf[Waiting]
  *                  _x = result
  *                  lock.release(result)
@@ -60,7 +60,7 @@
  *          notifyAll()
  *
  *      def awaitRelease(): AnyRef = synchronized:
- *          if !done then wait()
+ *          while !done do wait()
  *          result
  *
  *  Note 2: The code assumes that the getter result type `A` is disjoint from the type
@@ -189,7 +189,7 @@ class Waiting extends LazyControl {
   }
 
   def awaitRelease(): AnyRef = synchronized {
-    if (!done) wait()
+    while (!done) wait()
     result
   }
 }
