@@ -41,7 +41,7 @@ abstract class Platform {
    */
   final def hasMainMethod(sym: Symbol, staticOnly: Boolean = false)(implicit ctx: Context): Boolean =
     sym.info.member(nme.main).hasAltWith {
-      case x: SymDenotation => isMainMethod(x)
+      case x: SymDenotation => isMainMethod(x) && (!staticOnly || x.isStatic)
       case _ => false
     }
 }
