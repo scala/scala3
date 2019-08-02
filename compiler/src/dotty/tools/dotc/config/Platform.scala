@@ -1,8 +1,3 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
- * @author  Paul Phillips
- */
-
 package dotty.tools
 package dotc
 package config
@@ -41,8 +36,10 @@ abstract class Platform {
   /** The given symbol is a method with the right name and signature to be a runnable program. */
   def isMainMethod(sym: SymDenotation)(implicit ctx: Context): Boolean
 
-  /** The given class has a main method. */
-  final def hasMainMethod(sym: Symbol)(implicit ctx: Context): Boolean =
+  /** The given class has a main method.
+   *  @param  staticOnly   only static main methods count
+   */
+  final def hasMainMethod(sym: Symbol, staticOnly: Boolean = false)(implicit ctx: Context): Boolean =
     sym.info.member(nme.main).hasAltWith {
       case x: SymDenotation => isMainMethod(x)
       case _ => false
