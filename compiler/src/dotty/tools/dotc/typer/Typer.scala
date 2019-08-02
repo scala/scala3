@@ -2426,18 +2426,26 @@ class Typer extends Namer
         case alt :: Nil =>
           readaptSimplified(tree.withType(alt))
         case Nil =>
+          // If alternative matches, there are still two ways to recover:
+          //  1. If context is an application, try to insert an apply or implicit
+          //  2. If context is not an application, pick a alternative that does
+          //     not take parameters.
           def noMatches =
             errorTree(tree, NoMatchingOverload(altDenots, pt)(err))
           def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
           pt match {
-            case pt: FunProto if !pt.isGivenApply =>
-              // insert apply or convert qualifier only for a regular application
+            case pt: FunOrPolyProto if !pt.isGivenApply =>
+              // insert apply or convert qualifier, but only for a regular application
               tryInsertApplyOrImplicit(tree, pt, locked)(noMatches)
             case _ =>
-              if (altDenots exists (_.info.paramInfoss == ListOfNil))
-                typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt, locked)
-              else
-                noMatches
+              alts.filter(_.info.isParameterless) match {
+                case alt :: Nil => readaptSimplified(tree.withType(alt))
+                case _ =>
+                  if (altDenots exists (_.info.paramInfoss == ListOfNil))
+                    typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt, locked)
+                  else
+                    noMatches
+              }
           }
         case alts =>
           if (tree.tpe.isErroneous || pt.isErroneous) tree.withType(UnspecifiedErrorType)
