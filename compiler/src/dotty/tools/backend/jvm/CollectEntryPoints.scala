@@ -16,9 +16,7 @@ import dotty.tools.dotc.util.SourcePosition
 import Decorators._
 import StdNames.nme
 
-/**
- * Created by dark on 26/11/14.
- */
+// FIXME: This is dead code, enable the phase and add tests for it.
 class CollectEntryPoints extends MiniPhase {
   def phaseName: String = "Collect entry points"
 
