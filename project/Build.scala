@@ -221,6 +221,9 @@ object Build {
 
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
 
+    // If someone puts a source file at the root (e.g., for manual testing),
+    // don't pick it up as part of any project.
+    sourcesInBase := false,
   )
 
   // Settings used for projects compiled only with Java
