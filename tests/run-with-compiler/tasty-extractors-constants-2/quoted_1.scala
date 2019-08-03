@@ -7,7 +7,7 @@ object Macros {
 
   inline def testMacro: Unit = ${impl}
 
-  def impl: Expr[Unit] = {
+  def impl given QuoteContext: Expr[Unit] = {
     implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
     // 2 is a lifted constant
     val show1 = withQuoteContext(power(2, 3.0).show)
@@ -27,21 +27,19 @@ object Macros {
     val show4 = withQuoteContext(power(n2, 6.0).show)
     val run4  = run(power(n2, 6.0))
 
-    withQuoteContext(
-      '{
-        println(${show1})
-        println(${run1})
-        println()
-        println(${show2})
-        println(${run2})
-        println()
-        println(${show3})
-        println(${run3})
-        println()
-        println(${show4})
-        println(${run4})
-      }
-    )
+    '{
+      println(${show1})
+      println(${run1})
+      println()
+      println(${show2})
+      println(${run2})
+      println()
+      println(${show3})
+      println(${run3})
+      println()
+      println(${show4})
+      println(${run4})
+    }
   }
 
   def power(n: Expr[Int], x: Expr[Double]) given QuoteContext: Expr[Double] = {

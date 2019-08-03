@@ -18,15 +18,15 @@ Result: ()
 
 Original: scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).map[scala.Int, scala.collection.immutable.List[scala.Int]](((a: scala.Int) => a.*(2)))(scala.collection.immutable.List.canBuildFrom[scala.Int]).map[java.lang.String, scala.collection.immutable.List[java.lang.String]](((b: scala.Int) => b.toString()))(scala.collection.immutable.List.canBuildFrom[java.lang.String])
 Optimized: scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).map[java.lang.String, scala.collection.immutable.List[java.lang.String]](((x: scala.Int) => {
-  val x$5: scala.Int = x.*(2)
-  x$5.toString()
+  val x$1: scala.Int = x.*(2)
+  x$1.toString()
 }))(scala.collection.immutable.List.canBuildFrom[java.lang.String])
 Result: List(2, 4, 6)
 
 Original: scala.List.apply[scala.Int]((55, 67, 87: scala.<repeated>[scala.Int])).map[scala.Char, scala.collection.immutable.List[scala.Char]](((a: scala.Int) => a.toChar))(scala.collection.immutable.List.canBuildFrom[scala.Char]).map[java.lang.String, scala.collection.immutable.List[java.lang.String]](((b: scala.Char) => b.toString()))(scala.collection.immutable.List.canBuildFrom[java.lang.String])
 Optimized: scala.List.apply[scala.Int]((55, 67, 87: scala.<repeated>[scala.Int])).map[java.lang.String, scala.collection.immutable.List[java.lang.String]](((x: scala.Int) => {
-  val x$10: scala.Char = x.toChar
-  x$10.toString()
+  val x$2: scala.Char = x.toChar
+  x$2.toString()
 }))(scala.collection.immutable.List.canBuildFrom[java.lang.String])
 Result: List(7, C, W)
 

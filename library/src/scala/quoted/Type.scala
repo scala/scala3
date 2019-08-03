@@ -68,16 +68,9 @@ package quoted {
 
 package internal {
   package quoted {
-    import scala.quoted.Type
-    import scala.runtime.quoted.Unpickler.Pickled
-
-    /** A Type backed by a pickled TASTY tree */
-    final class TastyType[T](val tasty: Pickled, val args: Seq[Any]) extends Type[T] {
-      override def toString(): String = s"Type(<pickled tasty>)"
-    }
 
     /** An Type backed by a tree */
-    final class TreeType[Tree](val typeTree: Tree) extends Type[Any] {
+    final class TreeType[Tree](val typeTree: Tree) extends scala.quoted.Type[Any] {
       override def toString: String = s"Type(<tasty tree>)"
     }
 

@@ -79,12 +79,7 @@ package quoted {
 package internal {
   package quoted {
 
-    import scala.quoted._
-
-    /** An Expr backed by a pickled TASTY tree */
-    final class TastyExpr[+T](val tasty: scala.runtime.quoted.Unpickler.Pickled, val args: Seq[Any]) extends Expr[T] {
-      override def toString: String = s"Expr(<pickled tasty>)"
-    }
+    import scala.quoted.{Expr, QuoteContext}
 
     /** An Expr backed by a tree. Only the current compiler trees are allowed.
      *

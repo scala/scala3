@@ -1,6 +1,8 @@
-package scala.tasty.reflect
+package scala.tasty.reflect // TODO move to scala.internal.tasty.reflect
 
 import scala.quoted.QuoteContext
+import scala.tasty.Reflection
+import scala.runtime.quoted.Unpickler
 
 /** Tasty reflect abstract types
  *
@@ -128,6 +130,20 @@ trait CompilerInterface {
   def rootPosition: Position
 
   def settings: Settings
+
+  //
+  // QUOTE UNPICKLING
+  //
+
+  /** Unpickle `repr` which represents a pickled `Expr` tree,
+   *  replacing splice nodes with `args`
+   */
+  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): scala.quoted.Expr[_]
+
+  /** Unpickle `repr` which represents a pickled `Type` tree,
+   *  replacing splice nodes with `args`
+   */
+  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[_]
 
   //
   // CONTEXT

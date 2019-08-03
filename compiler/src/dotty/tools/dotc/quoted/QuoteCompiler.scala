@@ -64,7 +64,8 @@ class QuoteCompiler extends Compiler {
           cls.enter(ctx.newDefaultConstructor(cls), EmptyScope)
           val meth = ctx.newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
 
-          val quoted = PickledQuotes.quotedExprToTree(exprUnit.exprBuilder.apply(new QuoteContext(ReflectionImpl(ctx))))(ctx.withOwner(meth))
+          val qctx = dotty.tools.dotc.quoted.QuoteContext()
+          val quoted = PickledQuotes.quotedExprToTree(exprUnit.exprBuilder.apply(qctx))(ctx.withOwner(meth))
 
           getLiteral(quoted) match {
             case Some(value) =>
