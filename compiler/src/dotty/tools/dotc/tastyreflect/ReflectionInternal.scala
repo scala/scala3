@@ -36,7 +36,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): scala.quoted.Expr[_] =
     new scala.internal.quoted.TastyTreeExpr(PickledQuotes.unpickleExpr(repr, args))
 
-  def unpickleType[T](repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[_] =
+  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[_] =
     new scala.internal.quoted.TreeType(PickledQuotes.unpickleType(repr, args))
 
   //
