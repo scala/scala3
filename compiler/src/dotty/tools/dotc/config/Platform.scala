@@ -7,6 +7,7 @@ import core.Contexts._, core.Symbols._
 import core.SymbolLoader
 import core.SymDenotations.SymDenotation
 import core.StdNames.nme
+import core.Flags.Module
 
 /** The platform dependent pieces of Global.
  */
@@ -36,12 +37,10 @@ abstract class Platform {
   /** The given symbol is a method with the right name and signature to be a runnable program. */
   def isMainMethod(sym: SymDenotation)(implicit ctx: Context): Boolean
 
-  /** The given class has a main method.
-   *  @param  staticOnly   only static main methods count
-   */
-  final def hasMainMethod(sym: Symbol, staticOnly: Boolean = false)(implicit ctx: Context): Boolean =
+  /** The given class has a main method. */
+  final def hasMainMethod(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.info.member(nme.main).hasAltWith {
-      case x: SymDenotation => isMainMethod(x) && (!staticOnly || x.isStatic)
+      case x: SymDenotation => isMainMethod(x) && (sym.is(Module) || x.isStatic)
       case _ => false
     }
 }
