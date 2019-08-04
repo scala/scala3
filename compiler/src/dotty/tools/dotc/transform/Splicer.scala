@@ -355,10 +355,10 @@ object Splicer {
           sw.write("Exception occurred while executing macro expansion.\n")
           val targetException = ex.getTargetException
           if (!ctx.settings.Ydebug.value) {
-            val end = ex.getTargetException.getStackTrace.lastIndexWhere { x =>
+            val end = targetException.getStackTrace.lastIndexWhere { x =>
               x.getClassName == method.getDeclaringClass.getCanonicalName && x.getMethodName == method.getName
             }
-            val shortStackTrace = ex.getTargetException.getStackTrace.take(end + 1)
+            val shortStackTrace = targetException.getStackTrace.take(end + 1)
             targetException.setStackTrace(shortStackTrace)
           }
           targetException.printStackTrace(new PrintWriter(sw))
