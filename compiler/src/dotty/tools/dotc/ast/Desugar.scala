@@ -824,12 +824,37 @@ object desugar {
    *    object name extends parents { self => body }
    *
    *  to:
+   *
    *    <module> val name: name$ = New(name$)
    *    <module> final class name$ extends parents { self: name.type => body }
+   *
+   *  Special case for extension methods with collective parameters. Expand:
+   *
+   *     given object name[tparams](x: T) extends parents { self => bpdy }
+   *
+   *  to:
+   *
+   *     given object name extends parents { self => body' }
+   *
+   *  where every definition in `body` is expanded to an extension method
+   *  taking type parameters `tparams` and a leading paramter `(x: T)`.
+   *  See: makeExtensionDef
    */
   def moduleDef(mdef: ModuleDef)(implicit ctx: Context): Tree = {
     val impl = mdef.impl
     val mods = mdef.mods
+    impl.constr match {
+      case DefDef(_, tparams, (vparams @ (vparam :: Nil)) :: _, _, _) =>
+        assert(mods.is(Given))
+        return moduleDef(
+          cpy.ModuleDef(mdef)(
+            mdef.name,
+            cpy.Template(impl)(
+              constr = emptyConstructor,
+              body = impl.body.map(makeExtensionDef(_, tparams, vparams)))))
+      case _ =>
+    }
+
     val moduleName = normalizeName(mdef, impl).asTermName
     def isEnumCase = mods.isEnumCase
 
@@ -866,6 +891,36 @@ object desugar {
       val cls = TypeDef(clsName, clsTmpl)
         .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
       Thicket(modul, classDef(cls).withSpan(mdef.span))
+    }
+  }
+
+  /** Given tpe parameters `Ts` (possibly empty) and a leading value parameter `(x: T)`,
+   *  map a method definition
+   *
+   *     def foo [Us] paramss ...
+   *
+   *  to
+   *
+   *     <extension> def foo[Ts ++ Us](x: T) parammss ...
+   *
+   *  If the given member `mdef` is not of this form, flag it as an error.
+   */
+
+  def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef]) given (ctx: Context): Tree = {
+    val allowed = "allowed here, since collective parameters are given"
+    mdef match {
+      case mdef: DefDef =>
+        if (mdef.mods.is(Extension)) {
+          ctx.error(em"No extension method $allowed", mdef.sourcePos)
+          mdef
+        }
+        else cpy.DefDef(mdef)(tparams = tparams ++ mdef.tparams, vparamss = leadingParams :: Nil)
+          .withFlags(Extension)
+      case mdef: Import =>
+        mdef
+      case mdef =>
+        ctx.error(em"Only methods $allowed", mdef.sourcePos)
+        mdef
     }
   }
 

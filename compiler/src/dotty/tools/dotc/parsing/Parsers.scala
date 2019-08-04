@@ -2869,11 +2869,20 @@ object Parsers {
     /** GivenDef          ::=  [id] [DefTypeParamClause] GivenBody
      *  GivenBody         ::=  [‘as ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
      *                      |  ‘as’ Type {GivenParamClause} ‘=’ Expr
+     *                      |  ‘(’ DefParam ‘)’ TemplateBody
      */
     def instanceDef(newStyle: Boolean, start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
       val name = if (isIdent && (!newStyle || in.name != nme.as)) ident() else EmptyTermName
       val tparams = typeParamClauseOpt(ParamOwner.Def)
+      var leadingParamss =
+        if (in.token == LPAREN)
+          try paramClause(prefix = true) :: Nil
+          finally {
+            newLineOptWhenFollowedBy(LBRACE)
+            if (in.token != LBRACE) syntaxErrorOrIncomplete("`{' expected")
+          }
+        else Nil
       val parents =
         if (!newStyle && in.token == FOR || isIdent(nme.as)) { // for the moment, accept both `given for` and `given as`
           in.nextToken()
@@ -2889,11 +2898,15 @@ object Parsers {
         }
         else {
           newLineOptWhenFollowedBy(LBRACE)
-          val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
-          val vparamss1 = vparamss.map(_.map(vparam =>
-            vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
+          val (tparams1, vparamss1) =
+            if (leadingParamss.nonEmpty)
+              (tparams, leadingParamss)
+            else
+              (tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal)),
+               vparamss.map(_.map(vparam =>
+                 vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal))))
           val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
-          if (tparams.isEmpty && vparamss.isEmpty) ModuleDef(name, templ)
+          if (tparams.isEmpty && vparamss1.isEmpty || leadingParamss.nonEmpty) ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
         }
       finalizeDef(instDef, mods1, start)

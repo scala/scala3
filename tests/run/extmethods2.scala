@@ -14,4 +14,25 @@ object Test extends App {
   }
 
   test given TC()
+
+  object A {
+    given ListOps[T](xs: List[T]) {
+      def second: T = xs.tail.head
+      def third: T = xs.tail.tail.head
+    }
+    given (xs: List[Int]) {
+      def prod = (1 /: xs)(_ * _)
+    }
+  }
+
+  object B {
+    import given A._
+    val xs = List(1, 2, 3)
+    assert(xs.second[Int] == 2)
+    assert(xs.third == 3)
+    assert(A.ListOps.second[Int](xs) == 2)
+    assert(A.ListOps.third(xs) == 3)
+    assert(xs.prod == 6)
+  }
 }
+
