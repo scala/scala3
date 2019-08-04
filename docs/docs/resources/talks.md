@@ -5,6 +5,8 @@ title: Talks
 
 Talks on Dotty
 --------------
+- (ScalaDays 2019, Lausanne) [A Tour of Scala 3](https://portal.klewel.com/watch/webcast/scala-days-2019/talk/2/) by [Martin Odersky](http://twitter.com/odersky) [\[slides\]](https://www.slideshare.net/Odersky/a-tour-of-scala-3)
+
 - (ScalaDays 2016, Berlin) [Scala's Road Ahead](https://www.youtube.com/watch?v=GHzWqJKFCk4) by [Martin Odersky](http://twitter.com/odersky) [\[slides\]](http://www.slideshare.net/Odersky/scala-days-nyc-2016)
 
 - (JVMLS 2015) [Compilers are Databases](https://www.youtube.com/watch?v=WxyyJyB_Ssc) by [Martin Odersky](http://twitter.com/odersky) [\[slides\]](http://www.slideshare.net/Odersky/compilers-are-databases)
@@ -17,6 +19,10 @@ transformations and more.
 
 Deep Dive with Dotty
 --------------------
+- (ScalaDays 2019, Lausanne) [Metaprogramming in Dotty](https://portal.klewel.com/watch/webcast/scala-days-2019/talk/38/) by [Nicolas Stucki](https://twitter.com/stucki153).
+
+- (ScalaDays 2019, Lausanne) [Future-proofing Scala: the TASTY intermediate representation](https://portal.klewel.com/watch/webcast/scala-days-2019/talk/7/) by [Guillaume Martres](http://guillaume.martres.me/).
+
 - (Mar 21, 2017) [Dotty Internals 1: Trees & Symbols](https://www.youtube.com/watch?v=yYd-zuDd3S8) by [Dmitry Petrashko](http://twitter.com/darkdimius) [\[meeting notes\]](../internals/dotty-internals-1-notes.md). 
 This is a recorded meeting between EPFL and Waterloo, where we introduce first notions inside Dotty: Trees and Symbols.
 
