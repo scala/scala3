@@ -10,7 +10,7 @@ object GadtStlc {
   // Var[M[W]]
   sealed trait Var[A]
   object VarW extends Var[W]
-  case class VarM[A] extends Var[M[A]]
+  case class VarM[A]() extends Var[M[A]]
 
   // \s.e
   sealed trait Abs[S, E]

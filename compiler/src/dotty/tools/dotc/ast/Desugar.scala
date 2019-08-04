@@ -446,7 +446,7 @@ object desugar {
     val constrTparams = impliedTparams.map(toDefParam(_, keepAnnotations = false))
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
-        if (isCaseClass && originalTparams.isEmpty)
+        if (isCaseClass)
           ctx.error(CaseClassMissingParamList(cdef), namePos)
         ListOfNil
       } else if (isCaseClass && originalVparamss.head.exists(_.mods.isOneOf(GivenOrImplicit))) {
