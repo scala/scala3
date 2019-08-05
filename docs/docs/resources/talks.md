@@ -19,7 +19,7 @@ transformations and more.
 
 Deep Dive with Dotty
 --------------------
-- (ScalaDays 2019, Lausanne) [Metaprogramming in Dotty](https://portal.klewel.com/watch/webcast/scala-days-2019/talk/38/) by [Nicolas Stucki](https://twitter.com/stucki153).
+- (ScalaDays 2019, Lausanne) [Metaprogramming in Dotty](https://portal.klewel.com/watch/webcast/scala-days-2019/talk/38/) by [Nicolas Stucki](https://github.com/nicolasstucki).
 
 - (ScalaDays 2019, Lausanne) [Future-proofing Scala: the TASTY intermediate representation](https://portal.klewel.com/watch/webcast/scala-days-2019/talk/7/) by [Guillaume Martres](http://guillaume.martres.me/).
 
