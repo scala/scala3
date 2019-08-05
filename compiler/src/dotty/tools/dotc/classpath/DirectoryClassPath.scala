@@ -60,7 +60,7 @@ trait DirectoryLookup[FileEntryType <: ClassRepresentation] extends ClassPath {
       case None => emptyFiles
       case Some(directory) => listChildren(directory, Some(isMatchingFile))
     }
-    files.map(f => createFileEntry(toAbstractFile(f)))
+    files.iterator.map(f => createFileEntry(toAbstractFile(f))).toSeq
   }
 
   private[dotty] def list(inPackage: String): ClassPathEntries = {

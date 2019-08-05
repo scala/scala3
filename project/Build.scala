@@ -246,13 +246,17 @@ object Build {
 
   // Settings used when compiling dotty with the reference compiler
   lazy val commonNonBootstrappedSettings = commonDottySettings ++ Seq(
+    unmanagedSourceDirectories in Compile += baseDirectory.value / "src-non-bootstrapped",
+
     version := dottyNonBootstrappedVersion,
     scalaVersion := referenceVersion,
-    excludeFromIDE := true
+    excludeFromIDE := true,
   )
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
+    unmanagedSourceDirectories in Compile += baseDirectory.value / "src-bootstrapped",
+
     version := dottyVersion,
     scalaVersion := dottyNonBootstrappedVersion,
 
@@ -716,17 +720,6 @@ object Build {
   lazy val dottyLibrarySettings = Seq(
     // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
     scalacOptions in Compile ++= Seq("-sourcepath", (scalaSource in Compile).value.getAbsolutePath),
-
-    // Add version-specific source directories:
-    // - files in src-non-bootstrapped will only be compiled by the reference compiler
-    // - files in src-bootstrapped will only be compiled by the current dotty compiler (non-bootstrapped and bootstrapped)
-    unmanagedSourceDirectories in Compile ++= {
-      val baseDir = baseDirectory.value
-      if (scalaVersion.value == referenceVersion)
-        Seq(baseDir / "src-non-bootstrapped")
-      else
-        Seq(baseDir / "src-bootstrapped")
-    }
   )
 
   lazy val `dotty-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)

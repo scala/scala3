@@ -37,7 +37,7 @@ object Settings {
 
     def update(idx: Int, x: Any): SettingsState =
       if (_wasRead)
-        new SettingsState(values).update(idx, x)
+        new SettingsState(values.toSeq).update(idx, x)
       else {
         values(idx) = x
         this
@@ -194,7 +194,7 @@ object Settings {
   class SettingGroup {
 
     private[this] val _allSettings = new ArrayBuffer[Setting[_]]
-    def allSettings: Seq[Setting[_]] = _allSettings
+    def allSettings: Seq[Setting[_]] = _allSettings.toSeq
 
     def defaultState: SettingsState = new SettingsState(allSettings map (_.default))
 

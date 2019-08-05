@@ -25,7 +25,7 @@ import printing.Texts._
 import printing.Printer
 import Hashable._
 import Uniques._
-import collection.{mutable, Seq}
+import collection.mutable
 import config.Config
 import annotation.tailrec
 import language.implicitConversions
@@ -757,9 +757,9 @@ object Types {
     }
 
     def memberDenots(keepOnly: NameFilter, f: (Name, mutable.Buffer[SingleDenotation]) => Unit)(implicit ctx: Context): Seq[SingleDenotation] = {
-      val buf = mutable.ArrayBuffer[SingleDenotation]()
+      val buf = mutable.ListBuffer[SingleDenotation]()
       for (name <- memberNames(keepOnly)) f(name, buf)
-      buf
+      buf.toList
     }
 
     /** The set of abstract term members of this type. */

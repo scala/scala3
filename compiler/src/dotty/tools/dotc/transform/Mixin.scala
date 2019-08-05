@@ -191,8 +191,8 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       for (p <- impl.parents; constr = stripBlock(p).symbol if constr.isConstructor)
       yield constr.owner -> transformConstructor(p)
     ).toMap
-    val superCalls = superCallsAndArgs.mapValues(_._1)
-    val initArgs = superCallsAndArgs.mapValues(_._2)
+    val superCalls = superCallsAndArgs.transform((_, v) => v._1)
+    val initArgs = superCallsAndArgs.transform((_, v) => v._2)
 
     def superCallOpt(baseCls: Symbol): List[Tree] = superCalls.get(baseCls) match {
       case Some(call) =>
