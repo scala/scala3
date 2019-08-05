@@ -77,7 +77,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val XprintDiffDel: Setting[Boolean] = BooleanSetting("-Xprint-diff-del", "Print changed parts of the tree since last print including deleted parts.")
   val XprintInline: Setting[Boolean] = BooleanSetting("-Xprint-inline", "Show  where inlined code comes from")
   val Xprompt: Setting[Boolean] = BooleanSetting("-Xprompt", "Display a prompt after each error (debugging option).")
-  val XmainClass: Setting[String] = StringSetting("-Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
   val XnoValueClasses: Setting[Boolean] = BooleanSetting("-Xno-value-classes", "Do not use value classes. Helps debugging.")
   val XreplLineWidth: Setting[Int] = IntSetting("-Xrepl-line-width", "Maximal number of columns per line for REPL output", 390)
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Xfatal-warnings", "Fail the compilation if there are any warnings.")

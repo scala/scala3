@@ -77,27 +77,12 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   /*
    * must-single-thread
    */
-  def initBytecodeWriter(entryPoints: List[Symbol]): BytecodeWriter = {
+  def initBytecodeWriter(): BytecodeWriter = {
     getSingleOutput match {
-      case Some(f) if f hasExtension "jar" =>
-        // If no main class was specified, see if there's only one
-        // entry point among the classes going into the jar.
-        if (mainClass.isEmpty) {
-          entryPoints map (_.fullName('.')) match {
-            case Nil =>
-              log("No Main-Class designated or discovered.")
-            case name :: Nil =>
-              log(s"Unique entry point: setting Main-Class to $name")
-              setMainClass(name)
-            case names =>
-              log(s"No Main-Class due to multiple entry points:\n  ${names.mkString("\n  ")}")
-          }
-        }
-        else log(s"Main-Class was specified: ${mainClass.get}")
-
+      case Some(f) if f.hasExtension("jar") =>
         new DirectToJarfileWriter(f.file)
-
-      case _ => factoryNonJarBytecodeWriter()
+      case _ =>
+        factoryNonJarBytecodeWriter()
     }
   }
 
