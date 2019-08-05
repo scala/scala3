@@ -132,8 +132,20 @@ class ClassfileParser(
     /** Parse parents for Java classes. For Scala, return AnyRef, since the real type will be unpickled.
      *  Updates the read pointer of 'in'. */
     def parseParents: List[Type] = {
-      val superType = if (isAnnotation) { in.nextChar; defn.AnnotationClass.typeRef }
-                      else pool.getSuperClass(in.nextChar).typeRef
+      val superType =
+        if (isAnnotation) {
+          in.nextChar
+          defn.AnnotationClass.typeRef
+        }
+        else if (classRoot.symbol == defn.ComparableClass ||
+                 classRoot.symbol == defn.JavaCloneableClass ||
+                 classRoot.symbol == defn.JavaSerializableClass) {
+          // Treat these interfaces as universal traits
+          in.nextChar
+          defn.AnyType
+        }
+        else
+          pool.getSuperClass(in.nextChar).typeRef
       val ifaceCount = in.nextChar
       var ifaces = for (i <- (0 until ifaceCount).toList) yield pool.getSuperClass(in.nextChar).typeRef
         // Dotty deviation: was
