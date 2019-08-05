@@ -2688,7 +2688,10 @@ class Typer extends Namer
         tree.tpe <:< wildApprox(pt)
         readaptSimplified(Inliner.inlineCall(tree))
       }
-      else if (tree.symbol.isScala2Macro) {
+      else if (tree.symbol.isScala2Macro &&
+               // raw and s are eliminated by the StringInterpolatorOpt phase
+              tree.symbol != defn.StringContext_raw &&
+              tree.symbol != defn.StringContext_s) {
         if (tree.symbol eq defn.StringContext_f) {
           // As scala.StringContext.f is defined in the standard library which
           // we currently do not bootstrap we cannot implement the macro in the library.

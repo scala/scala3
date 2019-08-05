@@ -347,6 +347,7 @@ class Definitions {
   @tu lazy val ScalaPredefModule: Symbol = ctx.requiredModule("scala.Predef")
     @tu lazy val Predef_conforms : Symbol = ScalaPredefModule.requiredMethod(nme.conforms_)
     @tu lazy val Predef_classOf  : Symbol = ScalaPredefModule.requiredMethod(nme.classOf)
+    @tu lazy val Predef_identity : Symbol = ScalaPredefModule.requiredMethod(nme.identity)
     @tu lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
 
   def SubTypeClass(implicit ctx: Context): ClassSymbol = ctx.requiredClass("scala.<:<")
@@ -564,11 +565,14 @@ class Definitions {
     @tu lazy val StringAdd_+ : Symbol = StringAddClass.requiredMethod(nme.raw.PLUS)
 
   @tu lazy val StringContextClass: ClassSymbol = ctx.requiredClass("scala.StringContext")
-    @tu lazy val StringContextS  : Symbol = StringContextClass.requiredMethod(nme.s)
-    @tu lazy val StringContextRaw: Symbol = StringContextClass.requiredMethod(nme.raw_)
-    @tu lazy val StringContext_f : Symbol = StringContextClass.requiredMethod(nme.f)
+    @tu lazy val StringContext_s  : Symbol = StringContextClass.requiredMethod(nme.s)
+    @tu lazy val StringContext_raw: Symbol = StringContextClass.requiredMethod(nme.raw_)
+    @tu lazy val StringContext_f  : Symbol = StringContextClass.requiredMethod(nme.f)
+    @tu lazy val StringContext_parts: Symbol = StringContextClass.requiredMethod(nme.parts)
   @tu lazy val StringContextModule: Symbol = StringContextClass.companionModule
     @tu lazy val StringContextModule_apply: Symbol = StringContextModule.requiredMethod(nme.apply)
+    @tu lazy val StringContextModule_standardInterpolator: Symbol = StringContextModule.requiredMethod(nme.standardInterpolator)
+    @tu lazy val StringContextModule_processEscapes: Symbol = StringContextModule.requiredMethod(nme.processEscapes)
 
   @tu lazy val InternalStringContextMacroModule: Symbol = ctx.requiredModule("dotty.internal.StringContextMacro")
     @tu lazy val InternalStringContextMacroModule_f: Symbol = InternalStringContextMacroModule.requiredMethod(nme.f)
