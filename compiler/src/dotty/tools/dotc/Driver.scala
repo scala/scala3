@@ -8,6 +8,7 @@ import core.Comments.{ContextDoc, ContextDocstrings}
 import core.Contexts.{Context, ContextBase}
 import core.{MacroClassLoader, Mode, TypeError}
 import dotty.tools.dotc.ast.Positioned
+import dotty.tools.io.File
 import reporting._
 
 import scala.util.control.NonFatal
@@ -70,19 +71,25 @@ class Driver {
   protected def fromTastySetup(fileNames0: List[String], ctx0: Context): (List[String], Context) = {
     if (ctx0.settings.fromTasty.value(ctx0)) {
       // Resolve classpath and class names of tasty files
-      val (classPaths, classNames) = fileNames0.map { name =>
+      val (classPaths, classNames) = fileNames0.flatMap { name =>
         val path = Paths.get(name)
-        if (!name.endsWith(".tasty")) ("", name)
+        if (name.endsWith(".jar")) {
+          new dotty.tools.io.Jar(File(name)).iterator.collect {
+            case e if e.getName.endsWith(".tasty") =>
+              (name, e.getName.stripSuffix(".tasty").replace("/", "."))
+          }.toList
+        }
+        else if (!name.endsWith(".tasty")) ("", name) :: Nil
         else if (Files.exists(path)) {
           TastyFileUtil.getClassName(path) match {
-            case Some(res) => res
+            case Some(res) => res:: Nil
             case _ =>
               ctx0.error(s"Could not load classname from $name.")
-              ("", name)
+              ("", name) :: Nil
           }
         } else {
           ctx0.error(s"File $name does not exist.")
-          ("", name)
+          ("", name):: Nil
         }
       }.unzip
       val ctx1 = ctx0.fresh
