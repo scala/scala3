@@ -282,7 +282,7 @@ object Splicer {
 
       val name = getDirectName(fn.info.finalResultType, fn.name.asTermName)
       val method = getMethod(clazz, name, paramsSig(fn))
-      (args: List[Object]) => stopIfRuntimeException(method.invoke(inst, args: _*))
+      (args: List[Object]) => stopIfRuntimeException(method.invoke(inst, args: _*), method)
     }
 
     private def interpretModuleAccess(fn: Symbol)(implicit env: Env): Object =
@@ -339,7 +339,7 @@ object Splicer {
 
     private def extraMsg = ". The most common reason for that is that you apply macros in the compilation run that defines them"
 
-    private def stopIfRuntimeException[T](thunk: => T): T = {
+    private def stopIfRuntimeException[T](thunk: => T, method: Method): T = {
       try thunk
       catch {
         case ex: RuntimeException =>
@@ -352,13 +352,16 @@ object Splicer {
           throw new StopInterpretation(sw.toString, pos)
         case ex: InvocationTargetException =>
           val sw = new StringWriter()
-          sw.write("An exception occurred while executing macro expansion: ")
-          sw.write(ex.getTargetException.getMessage)
-          sw.write("\n")
-          for (stack <- ex.getTargetException.getStackTrace.iterator.takeWhile(_.getClassName != this.getClass.getName).drop(1)) {
-            sw.write(stack.toString)
-            sw.write("\n")
+          sw.write("Exception occurred while executing macro expansion.\n")
+          val targetException = ex.getTargetException
+          if (!ctx.settings.Ydebug.value) {
+            val end = targetException.getStackTrace.lastIndexWhere { x =>
+              x.getClassName == method.getDeclaringClass.getCanonicalName && x.getMethodName == method.getName
+            }
+            val shortStackTrace = targetException.getStackTrace.take(end + 1)
+            targetException.setStackTrace(shortStackTrace)
           }
+          targetException.printStackTrace(new PrintWriter(sw))
           sw.write("\n")
           throw new StopInterpretation(sw.toString, pos)
       }
