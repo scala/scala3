@@ -432,10 +432,9 @@ class DottyLanguageServer extends LanguageServer
 
     val changes =
       refs.groupBy(ref => toUriOption(ref.source))
-        .flatMap((uriOpt, ref) => uriOpt.map(uri => (uri.toString, ref)))
-        .mapValues(refs =>
-          refs.flatMap(ref =>
-            range(ref.namePos).map(nameRange => new TextEdit(nameRange, newName))).distinct.asJava)
+        .flatMap { case (uriOpt, refs) => uriOpt.map(uri => (uri.toString, refs)) }
+        .transform((_, refs) => refs.flatMap(ref =>
+          range(ref.namePos).map(nameRange => new TextEdit(nameRange, newName))).distinct.asJava)
 
     new WorkspaceEdit(changes.asJava)
   }
@@ -584,7 +583,7 @@ class DottyLanguageServer extends LanguageServer
         definition <- definitions.toSet
         uri <- toUriOption(definition.pos.source).toSet
         config = configFor(uri)
-        project <- dependentProjects(config) + config
+        project <- dependentProjects(config) union Set(config)
       } yield project
     }
   }
