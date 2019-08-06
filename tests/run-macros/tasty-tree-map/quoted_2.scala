@@ -16,7 +16,7 @@ object Test {
     println(identityMaped({ val i = 34; i }))
     println(identityMaped({ var i = 34; i += 1; i }))
     println(identityMaped({ var i = 0; while (i < 36) i += 1; i }))
-    println(identityMaped({ var i = 0; do i += 1 while (i < 37); i }))
+    println(identityMaped({ var i = 0; while { i += 1 ; i < 37 } do (); i }))
     println(identityMaped(try 38 finally ()))
     println(identityMaped(try 39 catch { case _: Error => }))
     println(identityMaped(new java.lang.Integer(40)))

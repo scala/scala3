@@ -137,7 +137,7 @@ package liftable {
 
   object Loops {
     def liftedWhile(cond: Expr[Boolean])(body: Expr[Unit]) given QuoteContext: Expr[Unit] = '{ while ($cond) $body }
-    def liftedDoWhile(body: Expr[Unit])(cond: Expr[Boolean]) given QuoteContext: Expr[Unit] = '{ do $body while ($cond) }
+    def liftedDoWhile(body: Expr[Unit])(cond: Expr[Boolean]) given QuoteContext: Expr[Unit] = '{ while { $body ; $cond } do () }
   }
 
 

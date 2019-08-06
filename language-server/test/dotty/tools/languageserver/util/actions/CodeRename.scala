@@ -33,10 +33,11 @@ class CodeRename(override val marker: CodeMarker,
     withOverridden.foreach { includeOverridden =>
       var question: (ShowMessageRequestParams, CompletableFuture[MessageActionItem]) = null
       val startTime = System.currentTimeMillis()
-      do {
+      while {
         Thread.sleep(50)
         question = client.requests.get.headOption.orNull
-      } while (question == null && System.currentTimeMillis() - startTime < TIMEOUT_MS)
+        question == null && System.currentTimeMillis() - startTime < TIMEOUT_MS
+      } do ()
 
       if (question == null) fail("The server didn't ask about overridden symbols.")
 
