@@ -1353,7 +1353,7 @@ object Parsers {
             }
             patch(source, cond.span.endPos, "}) ()")
           }
-          WhileDo(Block(Block(Nil, body), Block(Nil, cond)), Literal(Constant(())))
+          WhileDo(Block(body, cond), Literal(Constant(())))
         }
       case TRY =>
         val tryOffset = in.offset
