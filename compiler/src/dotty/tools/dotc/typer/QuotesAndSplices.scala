@@ -163,6 +163,16 @@ trait QuotesAndSplices {
       })
 
     object splitter extends tpd.TreeMap {
+      private var variance: Int = 1
+
+      @forceInline private def atVariance[T](v: Int)(op: => T): T = {
+        val saved = variance
+        variance = v
+        val res = op
+        variance = saved
+        res
+      }
+
       val patBuf = new mutable.ListBuffer[Tree]
       val freshTypePatBuf = new mutable.ListBuffer[Tree]
       val freshTypeBindingsBuff = new mutable.ListBuffer[Tree]
@@ -206,11 +216,21 @@ trait QuotesAndSplices {
           super.transform(tree)
         case tdef: TypeDef if tdef.symbol.hasAnnotation(defn.InternalQuoted_patternBindHoleAnnot) =>
           transformTypeBindingTypeDef(tdef, typePatBuf)
+         case tree @ AppliedTypeTree(tpt, args) =>
+            val args1: List[Tree] = args.zipWithConserve(tpt.tpe.typeParams.map(_.paramVariance)) { (arg, v) =>
+              arg.tpe match {
+                case _: TypeBounds => transform(arg)
+                case _ => atVariance(variance * v)(transform(arg))
+              }
+            }
+            cpy.AppliedTypeTree(tree)(transform(tpt), args1)
         case _ =>
           super.transform(tree)
       }
 
-      def transformTypeBindingTypeDef(tdef: TypeDef, buff: mutable.Builder[Tree, List[Tree]]): Tree = {
+      private def transformTypeBindingTypeDef(tdef: TypeDef, buff: mutable.Builder[Tree, List[Tree]])(implicit ctx: Context): Tree = {
+        if (variance == -1)
+          tdef.symbol.addAnnotation(Annotation(New(ref(defn.InternalQuoted_formAboveAnnot.typeRef)).withSpan(tdef.span)))
         val bindingType = getBinding(tdef.symbol).symbol.typeRef
         val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)
         assert(tdef.name.startsWith("$"))

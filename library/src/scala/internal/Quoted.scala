@@ -28,6 +28,9 @@ object Quoted {
   /** A splice of a name in a quoted pattern is that marks the definition of a type splice */
   class patternType extends Annotation
 
+  /** A type pattern that must be aproximated from above */
+  class formAbove extends Annotation
+
   /** Artifact of pickled type splices
    *
    *  During quote reification a quote `'{ ... F[$t] ... }` will be transformed into
