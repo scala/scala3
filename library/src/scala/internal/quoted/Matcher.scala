@@ -19,7 +19,7 @@ private[quoted] object Matcher {
 
     inline private def withEnv[T](env: Env)(body: => given Env => T): T = body given env
 
-    class SymBinding(val sym: Symbol)
+    class SymBinding(val sym: Symbol, val fromAbove: Boolean)
 
     def termMatch(scrutineeTerm: Term, patternTerm: Term, hasTypeSplices: Boolean): Option[Tuple] = {
       implicit val env: Env = Set.empty
@@ -30,7 +30,7 @@ private[quoted] object Matcher {
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performace
-            case x: SymBinding => internal.Context_GADT_approximation(the[Context])(x.sym, true).seal
+            case x: SymBinding => internal.Context_GADT_approximation(the[Context])(x.sym, !x.fromAbove).seal
             case x => x
           })
         }
@@ -50,7 +50,7 @@ private[quoted] object Matcher {
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performace
-            case x: SymBinding => internal.Context_GADT_approximation(the[Context])(x.sym, true).seal
+            case x: SymBinding => internal.Context_GADT_approximation(the[Context])(x.sym, !x.fromAbove).seal
             case x => x
           })
         }
@@ -67,9 +67,16 @@ private[quoted] object Matcher {
 
     private def hasBindAnnotation(sym: Symbol) = sym.annots.exists(isBindAnnotation)
 
+    private def hasFromAboveAnnotation(sym: Symbol) = sym.annots.exists(isFromAboveAnnotation)
+
     private def isBindAnnotation(tree: Tree): Boolean = tree match {
       case New(tpt) => tpt.symbol == internal.Definitions_InternalQuoted_patternBindHoleAnnot
       case annot => annot.symbol.owner == internal.Definitions_InternalQuoted_patternBindHoleAnnot
+    }
+
+    private def isFromAboveAnnotation(tree: Tree): Boolean = tree match {
+      case New(tpt) => tpt.symbol == internal.Definitions_InternalQuoted_formAboveAnnot
+      case annot => annot.symbol.owner == internal.Definitions_InternalQuoted_formAboveAnnot
     }
 
     /** Check that all trees match with `mtch` and concatenate the results with && */
@@ -160,7 +167,7 @@ private[quoted] object Matcher {
 
         case (Block(stats1, expr1), Block(binding :: stats2, expr2)) if isTypeBinding(binding) =>
           qctx.tasty.internal.Context_GADT_addToConstraint(the[Context])(binding.symbol :: Nil)
-          matched(new SymBinding(binding.symbol)) && Block(stats1, expr1) =#= Block(stats2, expr2)
+          matched(new SymBinding(binding.symbol, hasFromAboveAnnotation(binding.symbol))) && Block(stats1, expr1) =#= Block(stats2, expr2)
 
         case (Block(stat1 :: stats1, expr1), Block(stat2 :: stats2, expr2)) =>
           withEnv(the[Env] + (stat1.symbol -> stat2.symbol)) {
@@ -170,7 +177,7 @@ private[quoted] object Matcher {
         case (scrutinee, Block(typeBindings, expr2)) if typeBindings.forall(isTypeBinding) =>
           val bindingSymbols = typeBindings.map(_.symbol)
           qctx.tasty.internal.Context_GADT_addToConstraint(the[Context])(bindingSymbols)
-          bindingSymbols.foldRight(scrutinee =#= expr2)((x, acc) => matched(new SymBinding(x)) && acc)
+          bindingSymbols.foldRight(scrutinee =#= expr2)((x, acc) => matched(new SymBinding(x, hasFromAboveAnnotation(x))) && acc)
 
         case (If(cond1, thenp1, elsep1), If(cond2, thenp2, elsep2)) =>
           cond1 =#= cond2 && thenp1 =#= thenp2 && elsep1 =#= elsep2
