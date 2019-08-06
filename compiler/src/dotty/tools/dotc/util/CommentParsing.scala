@@ -172,8 +172,10 @@ object CommentParsing {
   def skipVariable(str: String, start: Int): Int = {
     var idx = start
     if (idx < str.length && (str charAt idx) == '{') {
-      do idx += 1
-      while (idx < str.length && (str charAt idx) != '}')
+      while {
+        idx += 1
+        idx < str.length && (str charAt idx) != '}'
+      } do ()
       if (idx < str.length) idx + 1 else start
     } else {
       while (idx < str.length && isVarPart(str charAt idx))

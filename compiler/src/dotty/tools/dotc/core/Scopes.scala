@@ -382,9 +382,9 @@ object Scopes {
     override final def lookupNextEntry(entry: ScopeEntry)(implicit ctx: Context): ScopeEntry = {
       var e = entry
       if (hashTable ne null)
-        do { e = e.tail } while ((e ne null) && e.name != entry.name)
+        while ({ e = e.tail ; (e ne null) && e.name != entry.name }) ()
       else
-        do { e = e.prev } while ((e ne null) && e.name != entry.name)
+        while ({ e = e.prev ; (e ne null) && e.name != entry.name }) ()
       e
     }
 

@@ -15,10 +15,11 @@ object Macros {
         ${f.apply('i)}
         i += 1
       }
-      do {
+      while {
         ${f.apply('i)}
         i += 1
-      } while (i < j)
+        i < j
+      } do ()
     }
     res.show
   }

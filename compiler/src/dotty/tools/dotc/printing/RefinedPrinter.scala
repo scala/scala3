@@ -584,8 +584,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "(" ~ toTextGlobal(t) ~ ")"
       case Tuple(ts) =>
         "(" ~ toTextGlobal(ts, ", ") ~ ")"
-      case DoWhile(cond, body) =>
-        changePrec(GlobalPrec) { keywordStr("do ") ~ toText(body) ~ keywordStr(" while ") ~ toText(cond) }
       case ForYield(enums, expr) =>
         forText(enums, expr, keywordStr(" yield "))
       case ForDo(enums, expr) =>

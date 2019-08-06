@@ -102,7 +102,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class Quote(quoted: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class Splice(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class TypSplice(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
-  case class DoWhile(body: Tree, cond: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class ForYield(enums: List[Tree], expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class ForDo(enums: List[Tree], body: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
   case class GenFrom(pat: Tree, expr: Tree, checkMode: GenCheckMode)(implicit @constructorOnly src: SourceFile) extends Tree
@@ -532,10 +531,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: TypSplice if expr eq tree.expr => tree
       case _ => finalize(tree, untpd.TypSplice(expr)(tree.source))
     }
-    def DoWhile(tree: Tree)(body: Tree, cond: Tree)(implicit ctx: Context): TermTree = tree match {
-      case tree: DoWhile if (body eq tree.body) && (cond eq tree.cond) => tree
-      case _ => finalize(tree, untpd.DoWhile(body, cond)(tree.source))
-    }
     def ForYield(tree: Tree)(enums: List[Tree], expr: Tree)(implicit ctx: Context): TermTree = tree match {
       case tree: ForYield if (enums eq tree.enums) && (expr eq tree.expr) => tree
       case _ => finalize(tree, untpd.ForYield(enums, expr)(tree.source))
@@ -604,8 +599,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.Splice(tree)(transform(expr))
       case TypSplice(expr) =>
         cpy.TypSplice(tree)(transform(expr))
-      case DoWhile(body, cond) =>
-        cpy.DoWhile(tree)(transform(body), transform(cond))
       case ForYield(enums, expr) =>
         cpy.ForYield(tree)(transform(enums), transform(expr))
       case ForDo(enums, body) =>
@@ -661,8 +654,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(x, expr)
       case TypSplice(expr) =>
         this(x, expr)
-      case DoWhile(body, cond) =>
-        this(this(x, body), cond)
       case ForYield(enums, expr) =>
         this(this(x, enums), expr)
       case ForDo(enums, body) =>

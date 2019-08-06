@@ -149,11 +149,12 @@ class TastyBuffer(initialSize: Int) {
     var b = 0L
     var x = 0L
     var idx = at.index
-    do {
+    while {
       b = bytes(idx)
       x = (x << 7) | (b & 0x7f)
       idx += 1
-    } while ((b & 0x80) == 0)
+      (b & 0x80) == 0
+    } do ()
     x
   }
 

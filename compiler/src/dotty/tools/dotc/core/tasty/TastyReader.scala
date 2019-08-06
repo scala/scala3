@@ -75,11 +75,12 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   def readLongNat(): Long = {
     var b = 0L
     var x = 0L
-    do {
+    while {
       b = bytes(bp)
       x = (x << 7) | (b & 0x7f)
       bp += 1
-    } while ((b & 0x80) == 0)
+      (b & 0x80) == 0
+    } do ()
     x
   }
 

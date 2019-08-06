@@ -169,7 +169,7 @@ private[comment] final class WikiParser(
         return ""
     }
 
-    do {
+    while {
       val str = readUntil { char == safeTagMarker || char == endOfText }
       nextChar()
 
@@ -188,7 +188,8 @@ private[comment] final class WikiParser(
         }
         case _ => ;
       }
-    } while (stack.length > 0 && char != endOfText)
+      stack.length > 0 && char != endOfText
+    } do ()
 
     list mkString ""
   }

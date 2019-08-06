@@ -301,9 +301,6 @@ object Parsers {
     def deprecationWarning(msg: => Message, offset: Int = in.offset): Unit =
       ctx.deprecationWarning(msg, source.atSpan(Span(offset)))
 
-    def errorOrMigrationWarning(msg: => Message, offset: Int = in.offset): Unit =
-      ctx.errorOrMigrationWarning(msg, source.atSpan(Span(offset)))
-
     /** Issue an error at current offset that input is incomplete */
     def incompleteInputError(msg: => Message): Unit =
       ctx.incompleteInputError(msg, source.atSpan(Span(in.offset)))
@@ -391,12 +388,6 @@ object Parsers {
       try op
       finally staged = saved
     }
-
-    def migrationWarningOrError(msg: String, offset: Int = in.offset): Unit =
-      if (in.isScala2Mode)
-        ctx.migrationWarning(msg, source.atSpan(Span(offset)))
-      else
-        syntaxError(msg, offset)
 
 /* ---------- TREE CONSTRUCTION ------------------------------------------- */
 
@@ -780,9 +771,9 @@ object Parsers {
             Quote(t)
           }
           else {
-            migrationWarningOrError(em"""symbol literal '${in.name} is no longer supported,
-                                        |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
-                                        |or enclose in braces '{${in.name}} if you want a quoted expression.""")
+            in.errorOrMigrationWarning(em"""symbol literal '${in.name} is no longer supported,
+                                           |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
+                                           |or enclose in braces '{${in.name}} if you want a quoted expression.""")
             if (in.isScala2Mode) {
               patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
               patch(source, Span(in.charOffset - 1), "\")")
@@ -1216,7 +1207,7 @@ object Parsers {
           AppliedTypeTree(toplevelTyp(), Ident(pname))
         } :: contextBounds(pname)
       case VIEWBOUND =>
-        errorOrMigrationWarning("view bounds `<%' are deprecated, use a context bound `:' instead")
+        in.errorOrMigrationWarning("view bounds `<%' are deprecated, use a context bound `:' instead")
         atSpan(in.skipToken()) {
           Function(Ident(pname) :: Nil, toplevelTyp())
         } :: contextBounds(pname)
@@ -1339,12 +1330,30 @@ object Parsers {
           WhileDo(cond, body)
         }
       case DO =>
-        atSpan(in.skipToken()) {
+        in.errorOrMigrationWarning(
+          i"""`do <body> while <cond>' is no longer supported,
+             |use `while {<body> ; <cond>} do ()' instead.
+             |The statement can be rewritten automatically under -language:Scala2 -migration -rewrite.
+           """)
+        val start = in.skipToken()
+        atSpan(start) {
           val body = expr()
           if (isStatSep) in.nextToken()
+          val whileStart = in.offset
           accept(WHILE)
           val cond = expr()
-          DoWhile(body, cond)
+          if (ctx.settings.migration.value) {
+            patch(source, Span(start, start + 2), "while ({")
+            patch(source, Span(whileStart, whileStart + 5), ";")
+            cond match {
+              case Parens(_) =>
+                patch(source, Span(cond.span.start, cond.span.start + 1), "")
+                patch(source, Span(cond.span.end - 1, cond.span.end), "")
+              case _ =>
+            }
+            patch(source, cond.span.endPos, "}) ()")
+          }
+          WhileDo(Block(body :: Nil, cond), Literal(Constant(())))
         }
       case TRY =>
         val tryOffset = in.offset
@@ -1525,7 +1534,7 @@ object Parsers {
             if (ctx.settings.strict.value)
                 // Don't error in non-strict mode, as the alternative syntax "implicit (x: T) => ... "
                 // is not supported by Scala2.x
-              migrationWarningOrError(s"This syntax is no longer supported; parameter needs to be enclosed in (...)")
+              in.errorOrMigrationWarning(s"This syntax is no longer supported; parameter needs to be enclosed in (...)")
             in.nextToken()
             val t = infixType()
             if (false && in.isScala2Mode) {
@@ -1933,7 +1942,7 @@ object Parsers {
         infixPattern() match {
           case pt @ Ident(tpnme.WILDCARD_STAR) =>
             if (ctx.settings.strict.value)
-              migrationWarningOrError("The syntax `x @ _*' is no longer supported; use `x : _*' instead", startOffset(p))
+              in.errorOrMigrationWarning("The syntax `x @ _*' is no longer supported; use `x : _*' instead", Span(startOffset(p)))
             atSpan(startOffset(p), offset) { Typed(p, pt) }
           case pt =>
             atSpan(startOffset(p), 0) { Bind(name, pt) }
@@ -1941,7 +1950,7 @@ object Parsers {
       case p @ Ident(tpnme.WILDCARD_STAR) =>
         // compatibility for Scala2 `_*` syntax
         if (ctx.settings.strict.value)
-          migrationWarningOrError("The syntax `_*' is no longer supported; use `x : _*' instead", startOffset(p))
+          in.errorOrMigrationWarning("The syntax `_*' is no longer supported; use `x : _*' instead", Span(startOffset(p)))
         atSpan(startOffset(p)) { Typed(Ident(nme.WILDCARD), p) }
       case p =>
         p

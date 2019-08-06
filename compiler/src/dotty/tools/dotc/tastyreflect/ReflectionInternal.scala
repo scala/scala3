@@ -466,7 +466,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   }
 
   /** Normalizes non Blocks.
-   *  i) Put `while` and `doWhile` loops in their own blocks: `{ def while$() = ...; while$() }`
+   *  i) Put `while` loops in their own blocks: `{ def while$() = ...; while$() }`
    *  ii) Put closures in their own blocks: `{ def anon$() = ...; closure(anon$, ...) }`
    */
   private def normalizedLoops(tree: tpd.Tree) given Context: tpd.Tree = tree match {
