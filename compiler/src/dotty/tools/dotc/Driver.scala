@@ -79,7 +79,8 @@ class Driver {
               (name, e.getName.stripSuffix(".tasty").replace("/", "."))
           }.toList
         }
-        else if (!name.endsWith(".tasty")) ("", name) :: Nil
+        else if (!name.endsWith(".tasty"))
+          ("", name) :: Nil
         else if (Files.exists(path)) {
           TastyFileUtil.getClassName(path) match {
             case Some(res) => res:: Nil
@@ -89,7 +90,7 @@ class Driver {
           }
         } else {
           ctx0.error(s"File $name does not exist.")
-          ("", name):: Nil
+          ("", name) :: Nil
         }
       }.unzip
       val ctx1 = ctx0.fresh
