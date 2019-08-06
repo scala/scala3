@@ -17,8 +17,8 @@ object Test {
     var x = Double.NaN
     while(x < 10.0) { x = x + 1; println(x) }
     while(x > 10.0) { x = x + 1; println(x) }
-    do { x = x + 1; println(x) } while(x < 10.0)
-    do { x = x + 1; println(x) } while(x > 10.0)
+    while ({ x = x + 1; println(x) ; x < 10.0 }) ()
+    while ({ x = x + 1; println(x) ; x > 10.0 }) ()
 
     // tests from https://github.com/scala/scala/pull/5207
     {

@@ -192,7 +192,6 @@ Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl}
                     |  ‘if’ Expr ‘then’ Expr [[semi] ‘else’ Expr]    If(cond, thenp, elsep?)
                     |  ‘while’ ‘(’ Expr ‘)’ {nl} Expr                           WhileDo(Parens(cond), body)
                     |  ‘while’ Expr ‘do’ Expr                                   WhileDo(cond, body)
-                    |  ‘do’ Expr [semi] ‘while’ Expr                            DoWhile(expr, cond)
                     |  ‘try’ Expr Catches [‘finally’ Expr]                      Try(expr, catches, expr?)
                     |  ‘try’ Expr [‘finally’ Expr]                              Try(expr, Nil, expr?)
                     |  ‘throw’ Expr                                             Throw(expr)

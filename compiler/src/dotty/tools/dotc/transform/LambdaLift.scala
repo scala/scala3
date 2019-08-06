@@ -252,7 +252,7 @@ object LambdaLift {
 
     /** Compute final free variables map `fvs by closing over caller dependencies. */
     private def computeFreeVars()(implicit ctx: Context): Unit =
-      do {
+      while ({
         changedFreeVars = false
         for {
           caller <- called.keys
@@ -260,11 +260,12 @@ object LambdaLift {
           fvs <- free get callee
           fv <- fvs
         } markFree(fv, caller)
-      } while (changedFreeVars)
+        changedFreeVars
+      }) ()
 
     /** Compute final liftedOwner map by closing over caller dependencies */
     private def computeLiftedOwners()(implicit ctx: Context): Unit =
-      do {
+      while ({
         changedLiftedOwner = false
         for {
           caller <- called.keys
@@ -282,7 +283,8 @@ object LambdaLift {
               narrowLiftedOwner(caller, calleeOwner)
           }
         }
-      } while (changedLiftedOwner)
+        changedLiftedOwner
+      }) ()
 
     private def newName(sym: Symbol)(implicit ctx: Context): Name =
       if (sym.isAnonymousFunction && sym.owner.is(Method))

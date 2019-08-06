@@ -663,7 +663,7 @@ object Scanners {
           skipComment()
         }
         else if (ch == '*') {
-          do nextChar() while (ch == '*')
+          while ({ nextChar() ; ch == '*' }) ()
           if (ch == '/') nextChar()
           else skipComment()
         }
@@ -703,17 +703,20 @@ object Scanners {
   /** Is the token following the current one in `tokens`? */
   def lookaheadIn(tokens: BitSet): Boolean = {
     val lookahead = lookaheadScanner
-    do lookahead.nextToken()
-    while (lookahead.token == NEWLINE || lookahead.token == NEWLINES)
+    while ({
+      lookahead.nextToken()
+      lookahead.token == NEWLINE || lookahead.token == NEWLINES
+    }) ()
     tokens.contains(lookahead.token)
   }
 
   /** Is the current token in a position where a modifier is allowed? */
   def inModifierPosition(): Boolean = {
     val lookahead = lookaheadScanner
-    do lookahead.nextToken()
-    while (lookahead.token == NEWLINE || lookahead.token == NEWLINES ||
-           lookahead.isSoftModifier)
+    while ({
+      lookahead.nextToken()
+      lookahead.token == NEWLINE || lookahead.token == NEWLINES || lookahead.isSoftModifier
+    }) ()
     modifierFollowers.contains(lookahead.token)
   }
 
@@ -866,10 +869,11 @@ object Scanners {
           next.token = LBRACE
         } else if (Character.isUnicodeIdentifierStart(ch) || ch == '_') {
           finishStringPart()
-          do {
+          while ({
             putChar(ch)
             nextRawChar()
-          } while (ch != SU && Character.isUnicodeIdentifierPart(ch))
+            ch != SU && Character.isUnicodeIdentifierPart(ch)
+          }) ()
           finishNamed(target = next)
         } else {
           error("invalid string interpolation: `$$', `$'ident or `$'BlockExpr expected")

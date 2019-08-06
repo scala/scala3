@@ -1330,12 +1330,30 @@ object Parsers {
           WhileDo(cond, body)
         }
       case DO =>
-        atSpan(in.skipToken()) {
+        in.errorOrMigrationWarning(
+          i"""`do <body> while <cond>' is no longer supported,
+             |use `while ({<body> ; <cond>}) ()' instead.
+             |The statement can be rewritten automatically under -language:Scala2 -migration -rewrite.
+           """)
+        val start = in.skipToken()
+        atSpan(start) {
           val body = expr()
           if (isStatSep) in.nextToken()
+          val whileStart = in.offset
           accept(WHILE)
           val cond = expr()
-          DoWhile(body, cond)
+          if (ctx.settings.migration.value) {
+            patch(source, Span(start, start + 2), "while ({")
+            patch(source, Span(whileStart, whileStart + 5), ";")
+            cond match {
+              case Parens(_) =>
+                patch(source, Span(cond.span.start, cond.span.start + 1), "")
+                patch(source, Span(cond.span.end - 1, cond.span.end), "")
+              case _ =>
+            }
+            patch(source, cond.span.endPos, "}) ()")
+          }
+          WhileDo(Block(Block(Nil, body), Block(Nil, cond)), Literal(Constant(())))
         }
       case TRY =>
         val tryOffset = in.offset

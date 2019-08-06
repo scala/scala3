@@ -101,12 +101,12 @@ object ShowPickled {
     var idx = index
     var result = 0L
     var b = 0L
-    do {
+    while ({
       b = data(idx)
       idx += 1
       result = (result << 7) + (b & 0x7f)
-    } while((b & 0x80) != 0L)
-
+      (b & 0x80) != 0L
+    }) ()
     result.toInt
   }
 

@@ -719,14 +719,15 @@ abstract class BTypes {
       var chainA = as
       var chainB = bs
       var fcs: ClassBType = null
-      do {
+      while {
         if      (chainB contains chainA.head) fcs = chainA.head
         else if (chainA contains chainB.head) fcs = chainB.head
         else {
           chainA = chainA.tail
           chainB = chainB.tail
         }
-      } while (fcs == null)
+        fcs == null
+      } do ()
       fcs
     }
 

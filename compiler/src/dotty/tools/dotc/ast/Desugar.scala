@@ -1569,10 +1569,6 @@ object desugar {
       case PrefixOp(op, t) =>
         val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
         Select(t, nspace.UNARY_PREFIX ++ op.name)
-      case DoWhile(body, cond) =>
-        // while ({ { body }; { cond } }) { () }
-        // the inner blocks are there to protect the scopes of body and cond from each other
-        WhileDo(Block(Block(Nil, body), Block(Nil, cond)), Literal(Constant(())))
       case ForDo(enums, body) =>
         makeFor(nme.foreach, nme.foreach, enums, body) orElse tree
       case ForYield(enums, body) =>

@@ -141,7 +141,7 @@ object JavaParsers {
     def skipAhead(): Unit = {
       var nparens = 0
       var nbraces = 0
-      do {
+      while ({
         in.token match {
           case LPAREN =>
             nparens += 1
@@ -157,7 +157,8 @@ object JavaParsers {
             nbraces -= 1
           case _ =>
         }
-      } while (in.token != EOF && (nparens > 0 || nbraces > 0))
+        in.token != EOF && (nparens > 0 || nbraces > 0)
+      }) ()
     }
 
     def skipTo(tokens: Int*): Unit = {

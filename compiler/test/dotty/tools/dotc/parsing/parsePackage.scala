@@ -43,8 +43,6 @@ object parsePackage extends ParserTest {
           Tuple(ts map transform)
         case WhileDo(cond, body) =>
           WhileDo(transform(cond), transform(body))
-        case DoWhile(body, cond) =>
-          DoWhile(transform(body), transform(cond))
         case ForYield(enums, expr) =>
           ForYield(enums map transform, transform(expr))
         case ForDo(enums, expr) =>

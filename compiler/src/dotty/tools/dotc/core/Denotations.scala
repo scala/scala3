@@ -802,11 +802,11 @@ object Denotations {
     def history: List[SingleDenotation] = {
       val b = new ListBuffer[SingleDenotation]
       var current = initial
-      do {
+      while {
         b += (current)
         current = current.nextInRun
-      }
-      while (current ne initial)
+        current ne initial
+      } do ()
       b.toList
     }
 
@@ -820,11 +820,12 @@ object Denotations {
         symbol.is(Permanent),              // Permanent symbols are valid in all runIds
         s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
       var d: SingleDenotation = this
-      do {
+      while {
         d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
         d.invalidateInheritedInfo()
         d = d.nextInRun
-      } while (d ne this)
+        d ne this
+      } do ()
       this
     }
 
@@ -1053,12 +1054,13 @@ object Denotations {
       var cur = this
       var cnt = 0
       var interval = validFor
-      do {
+      while {
         cur = cur.nextInRun
         cnt += 1
         assert(cnt <= MaxPossiblePhaseId, demandOutsideDefinedMsg)
         interval |= cur.validFor
-      } while (cur ne this)
+        cur ne this
+      } do ()
       interval
     }
 
@@ -1075,12 +1077,13 @@ object Denotations {
       var sb = new StringBuilder()
       var cur = this
       var cnt = 0
-      do {
+      while {
         sb.append(" " + cur.validFor)
         cur = cur.nextInRun
         cnt += 1
         if (cnt > MaxPossiblePhaseId) { sb.append(" ..."); cur = this }
-      } while (cur ne this)
+        cur ne this
+      } do ()
       sb.toString
     }
 
