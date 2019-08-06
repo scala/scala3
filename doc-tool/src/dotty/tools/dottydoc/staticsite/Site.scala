@@ -169,7 +169,8 @@ case class Site(
     val baseUrl: String = {
       val rootLen = root.toPath.toAbsolutePath.normalize.getNameCount
       val assetLen = pageLocation.toPath.toAbsolutePath.normalize.getNameCount
-      "../" * (assetLen - rootLen + additionalDepth) + "."
+      "../" * (assetLen - rootLen - 1 + additionalDepth) + "."
+      // -1 because for root/index.html the root is the current directory (.) not its parent (../.)
     }
 
     DefaultParams(
