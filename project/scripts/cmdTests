@@ -13,6 +13,11 @@ clear_out "$OUT"
 "$SBT" ";dotc $SOURCE -d $OUT ;dotc -from-tasty -classpath $OUT -d $OUT1 $MAIN ;dotr -classpath $OUT1 $MAIN" > "$tmp"
 grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
+echo "testing sbt dotc -from-tasty from a jar and dotr -classpath"
+clear_out "$OUT"
+"$SBT" ";dotc -d $OUT/out.jar $SOURCE ;dotc -from-tasty -d $OUT1 $OUT/out.jar ;dotr -classpath $OUT1 $MAIN" > "$tmp"
+grep -qe "$EXPECTED_OUTPUT" "$tmp"
+
 # check that `sbt dotc -decompile` runs
 echo "testing sbt dotc -decompile"
 "$SBT" ";dotc -decompile -color:never -classpath $OUT $MAIN" > "$tmp"
