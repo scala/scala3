@@ -15,7 +15,7 @@ object Test {
       throw new Exception
     } catch {
       case ex: java.lang.reflect.InvocationTargetException =>
-        assert(ex.getTargetException.isInstanceOf[scala.quoted.Toolbox.ToolboxAlreadyRunning])
+        assert(ex.getTargetException.isInstanceOf[scala.quoted.Toolbox.RunScopeException])
     }
   }
 }

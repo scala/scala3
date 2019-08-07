@@ -70,7 +70,7 @@ package internal {
   package quoted {
 
     /** An Type backed by a tree */
-    final class TreeType[Tree](val typeTree: Tree) extends scala.quoted.Type[Any] {
+    final class TreeType[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quoted.Type[Any] {
       override def toString: String = s"Type(<tasty tree>)"
     }
 
