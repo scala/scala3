@@ -282,7 +282,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Ident_name(self: Ident) given Context: String = self.name.show
 
-  def Ident_apply(tmref: TermRef) given Context: Term =
+  def Ident_apply(tmref: NamedTermRef) given Context: Term =
     withDefaultPos(tpd.ref(tmref).asInstanceOf[Term])
 
   def Ident_copy(original: Tree)(name: String) given Context: Ident =
@@ -1145,32 +1145,53 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def ConstantType_constant(self: ConstantType) given Context: Constant = self.value
 
-  type SymRef = Types.NamedType
-
-  def matchSymRef(tpe: TypeOrBounds) given Context: Option[SymRef] = tpe match {
-    case tp: Types.NamedType =>
-      tp.designator match {
-        case sym: Symbol => Some(tp)
-        case _ => None
-      }
-    case _ => None
-  }
-
-  def SymRef_qualifier(self: SymRef) given Context: TypeOrBounds = self.prefix
-
-  // TODO remove this method. May require splitting SymRef into TypeSymRef and TermSymRef
-  def matchSymRef_unapply(tpe: TypeOrBounds) given Context: Option[(Symbol, Type | NoPrefix)] = tpe match {
-    case tpe: Types.NamedType =>
-      tpe.designator match {
-        case sym: Symbol => Some((sym, tpe.prefix))
-        case _ => None
-      }
-    case _ => None
-  }
-
   type TermRef = Types.NamedType
 
   def matchTermRef(tpe: TypeOrBounds) given Context: Option[TermRef] = tpe match {
+    case tp: Types.NamedType =>
+      tp.designator match {
+        case sym: Symbol if sym.isTerm => Some(tp)
+        case _ => None
+      }
+    case _ => None
+  }
+
+  def TermRef_qualifier(self: TermRef) given Context: TypeOrBounds = self.prefix
+
+  def matchTermRef_unapply(tpe: TypeOrBounds) given Context: Option[(Symbol, Type | NoPrefix)] = tpe match {
+    case tpe: Types.NamedType =>
+      tpe.designator match {
+        case sym: Symbol if sym.isTerm => Some((sym, tpe.prefix))
+        case _ => None
+      }
+    case _ => None
+  }
+
+  type TypeRef = Types.NamedType
+
+  def matchTypeRef(tpe: TypeOrBounds) given Context: Option[TypeRef] = tpe match {
+    case tp: Types.NamedType =>
+      tp.designator match {
+        case sym: Symbol if sym.isType => Some(tp)
+        case _ => None
+      }
+    case _ => None
+  }
+
+  def TypeRef_qualifier(self: TypeRef) given Context: TypeOrBounds = self.prefix
+
+  def matchTypeRef_unapply(tpe: TypeOrBounds) given Context: Option[(Symbol, Type | NoPrefix)] = tpe match {
+    case tpe: Types.NamedType =>
+      tpe.designator match {
+        case sym: Symbol if sym.isType => Some((sym, tpe.prefix))
+        case _ => None
+      }
+    case _ => None
+  }
+
+  type NamedTermRef = Types.NamedType
+
+  def matchNamedTermRef(tpe: TypeOrBounds) given Context: Option[NamedTermRef] = tpe match {
     case tpe: Types.NamedType =>
       tpe.designator match {
         case name: Names.TermName => Some(tpe)
@@ -1179,15 +1200,15 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     case _ => None
   }
 
-  def TermRef_name(self: TermRef) given Context: String = self.name.toString
-  def TermRef_qualifier(self: TermRef) given Context: TypeOrBounds = self.prefix
+  def NamedTermRef_name(self: NamedTermRef) given Context: String = self.name.toString
+  def NamedTermRef_qualifier(self: NamedTermRef) given Context: TypeOrBounds = self.prefix
 
-  def TermRef_apply(qual: TypeOrBounds, name: String) given Context: TermRef =
+  def NamedTermRef_apply(qual: TypeOrBounds, name: String) given Context: NamedTermRef =
     Types.TermRef(qual, name.toTermName)
 
-  type TypeRef = Types.NamedType
+  type NamedTypeRef = Types.NamedType
 
-  def matchTypeRef(tpe: TypeOrBounds) given Context: Option[TypeRef] = tpe match {
+  def matchNamedTypeRef(tpe: TypeOrBounds) given Context: Option[NamedTypeRef] = tpe match {
     case tpe: Types.NamedType =>
       tpe.designator match {
         case name: Names.TypeName => Some(tpe)
@@ -1196,8 +1217,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     case _ => None
   }
 
-  def TypeRef_name(self: TypeRef) given Context: String = self.name.toString
-  def TypeRef_qualifier(self: TypeRef) given Context: TypeOrBounds = self.prefix
+  def NamedTypeRef_name(self: NamedTypeRef) given Context: String = self.name.toString
+  def NamedTypeRef_qualifier(self: NamedTypeRef) given Context: TypeOrBounds = self.prefix
 
   type SuperType = Types.SuperType
 

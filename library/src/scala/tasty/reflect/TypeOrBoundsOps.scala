@@ -77,17 +77,6 @@ trait TypeOrBoundsOps extends Core {
         internal.matchConstantType(typeOrBounds).map(_.constant)
     }
 
-    object IsSymRef {
-      /** Matches any SymRef and returns it */
-      def unapply(tpe: TypeOrBounds) given (ctx: Context): Option[SymRef] =
-        internal.matchSymRef(tpe)
-    }
-
-    object SymRef {
-      def unapply(typeOrBounds: TypeOrBounds) given (ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)] =
-        internal.matchSymRef_unapply(typeOrBounds)
-    }
-
     object IsTermRef {
       /** Matches any TermRef and returns it */
       def unapply(tpe: TypeOrBounds) given (ctx: Context): Option[TermRef] =
@@ -95,22 +84,44 @@ trait TypeOrBoundsOps extends Core {
     }
 
     object TermRef {
-      // TODO should qual be a Type?
-      def apply(qual: TypeOrBounds, name: String) given (ctx: Context): TermRef =
-        internal.TermRef_apply(qual, name)
-      def unapply(typeOrBounds: TypeOrBounds) given (ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] =
-        internal.matchTermRef(typeOrBounds).map(x => (x.name, x.qualifier))
+      def unapply(typeOrBounds: TypeOrBounds) given (ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)] =
+        internal.matchTermRef_unapply(typeOrBounds)
     }
 
-    object IsTypeRef {
+   object IsTypeRef {
       /** Matches any TypeRef and returns it */
       def unapply(tpe: TypeOrBounds) given (ctx: Context): Option[TypeRef] =
         internal.matchTypeRef(tpe)
     }
 
     object TypeRef {
+      def unapply(typeOrBounds: TypeOrBounds) given (ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)] =
+        internal.matchTypeRef_unapply(typeOrBounds)
+    }
+
+    object IsNamedTermRef {
+      /** Matches any NamedTermRef and returns it */
+      def unapply(tpe: TypeOrBounds) given (ctx: Context): Option[NamedTermRef] =
+        internal.matchNamedTermRef(tpe)
+    }
+
+    object NamedTermRef {
+      // TODO should qual be a Type?
+      def apply(qual: TypeOrBounds, name: String) given (ctx: Context): NamedTermRef =
+        internal.NamedTermRef_apply(qual, name)
       def unapply(typeOrBounds: TypeOrBounds) given (ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] =
-        internal.matchTypeRef(typeOrBounds).map(x => (x.name, x.qualifier))
+        internal.matchNamedTermRef(typeOrBounds).map(x => (x.name, x.qualifier))
+    }
+
+    object IsNameTypeRef {
+      /** Matches any TypeRef and returns it */
+      def unapply(tpe: TypeOrBounds) given (ctx: Context): Option[NamedTypeRef] =
+        internal.matchNamedTypeRef(tpe)
+    }
+
+    object NamedTypeRef {
+      def unapply(typeOrBounds: TypeOrBounds) given (ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] =
+        internal.matchNamedTypeRef(typeOrBounds).map(x => (x.name, x.qualifier))
     }
 
     object IsSuperType {
@@ -286,18 +297,22 @@ trait TypeOrBoundsOps extends Core {
     def constant given (ctx: Context): Constant = internal.ConstantType_constant(self)
   }
 
-  implicit class Type_SymRefAPI(self: SymRef) {
-    def qualifier given (ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.SymRef_qualifier(self)
-  }
-
   implicit class Type_TermRefAPI(self: TermRef) {
-    def name given (ctx: Context): String = internal.TermRef_name(self)
     def qualifier given (ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TermRef_qualifier(self)
   }
 
   implicit class Type_TypeRefAPI(self: TypeRef) {
-    def name given (ctx: Context): String = internal.TypeRef_name(self)
     def qualifier given (ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TypeRef_qualifier(self)
+  }
+
+  implicit class Type_NamedTermRefAPI(self: NamedTermRef) {
+    def name given (ctx: Context): String = internal.NamedTermRef_name(self)
+    def qualifier given (ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.NamedTermRef_qualifier(self)
+  }
+
+  implicit class Type_NamedTypeRefAPI(self: NamedTypeRef) {
+    def name given (ctx: Context): String = internal.NamedTypeRef_name(self)
+    def qualifier given (ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.NamedTypeRef_qualifier(self)
   }
 
   implicit class Type_SuperTypeAPI(self: SuperType) {
