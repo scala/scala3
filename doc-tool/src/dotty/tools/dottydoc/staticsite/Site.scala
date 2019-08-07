@@ -147,7 +147,6 @@ case class Site(
         "css/api-page.css" -> "/css/api-page.css",
         "css/dottydoc.css" -> "/css/dottydoc.css",
         "css/color-brewer.css" -> "/css/color-brewer.css",
-        "css/font-awesome.min.css" -> "/css/font-awesome.min.css",
         "css/bootstrap.min.css" -> "/css/bootstrap.min.css",
         "js/api-search.js" -> "/js/api-search.js",
         "js/bootstrap.min.js" -> "/js/bootstrap.min.js",
