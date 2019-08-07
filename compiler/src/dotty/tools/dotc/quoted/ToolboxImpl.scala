@@ -15,8 +15,17 @@ object ToolboxImpl {
 
     private[this] val driver: QuoteDriver = new QuoteDriver(appClassloader)
 
+    private[this] var running = false
+
     def run[T](exprBuilder: QuoteContext => Expr[T]): T = synchronized {
-      driver.run(exprBuilder, settings)
+      try {
+        if (running) // detected nested run
+          throw new scala.quoted.Toolbox.ToolboxAlreadyRunning()
+        running = true
+        driver.run(exprBuilder, settings)
+      } finally {
+        running = false
+      }
     }
 
   }

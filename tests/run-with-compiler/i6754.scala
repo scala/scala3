@@ -10,6 +10,12 @@ object Test {
       println("foo")
       run(x)
     }
-    run(y)
+    try {
+      run(y)
+      throw new Exception
+    } catch {
+      case ex: java.lang.reflect.InvocationTargetException =>
+        assert(ex.getTargetException.isInstanceOf[scala.quoted.Toolbox.ToolboxAlreadyRunning])
+    }
   }
 }
