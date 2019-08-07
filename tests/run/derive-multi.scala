@@ -26,7 +26,7 @@ enum Lst[T] derives A, B {
   case Nil()
 }
 
-case class Triple[S, T, U] derives A, B
+case class Triple[S, T, U]() derives A, B
 
 object Test1 {
   import Lst._

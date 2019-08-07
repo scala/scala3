@@ -1,0 +1,18 @@
+-- [E004] Syntax Error: tests/neg/EmptyCaseClassParams.scala:2:13 ------------------------------------------------------
+2 |  case class A[T] // error
+  |             ^
+  |             A case class must have at least one parameter list
+
+longer explanation available when compiling with `-explain`
+-- [E004] Syntax Error: tests/neg/EmptyCaseClassParams.scala:5:13 ------------------------------------------------------
+5 |  case class B[T] // error
+  |             ^
+  |             A case class must have at least one parameter list
+
+longer explanation available when compiling with `-explain`
+-- [E004] Syntax Error: tests/neg/EmptyCaseClassParams.scala:9:9 -------------------------------------------------------
+9 |    case D[T] extends Foo[T] // error
+  |         ^
+  |         A case class must have at least one parameter list
+
+longer explanation available when compiling with `-explain`

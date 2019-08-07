@@ -9,7 +9,7 @@ enum Lst[T] derives Eql {
   case Nil()
 }
 
-case class Triple[S, T, U] derives Eql
+case class Triple[S, T, U]() derives Eql
 
 
 object Test extends App {

@@ -5,7 +5,7 @@ object test1 {
   enum E4 {
     case C1(x: INT) // error: illegal reference
     case C2(x: Int = defaultX) // error: illegal reference
-    case C3[T <: INT] // error: illegal reference
+    case C3[T <: INT]() // error: illegal reference
   }
 
   object E4 {
@@ -24,7 +24,7 @@ object test2 {
   enum E5 {
     case C1(x: INT) // ok
     case C2(x: Int = defaultX) // ok
-    case C3[T <: INT] // ok
+    case C3[T <: INT]() // ok
   }
 }
 
@@ -39,7 +39,7 @@ object test3 {
   enum E5 {
     case C1(x: INT) // ok
     case C2(x: Int = defaultX)// ok
-    case C3[T <: INT] // ok
+    case C3[T <: INT]() // ok
   }
 }
 
@@ -48,7 +48,7 @@ object test4 {
   enum E5 {
     case C1(x: INT) // error: illegal reference
     case C2(x: Int = defaultX) // error: illegal reference
-    case C3[T <: INT] // error: illegal reference
+    case C3[T <: INT]() // error: illegal reference
   }
 
   import E5._
@@ -76,7 +76,7 @@ object test6 {
   import E5._
   enum E5[T](x: T) {
     case C3() extends E5[INT](defaultX) // ok
-    case C4 extends E5[INT](defaultX) // ok
+    case C4() extends E5[INT](defaultX) // ok
   }
 
   object E5 {
@@ -90,7 +90,7 @@ object test7 {
   trait Arg
 
   enum E(x: Arg) {
-    case C extends E(this) // error: illegal reference to `this`
+    case C() extends E(this) // error: illegal reference to `this`
   }
   object E extends Arg
 }
