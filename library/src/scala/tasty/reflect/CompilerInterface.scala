@@ -978,6 +978,8 @@ trait CompilerInterface {
   def AppliedType_tycon(self: AppliedType) given (ctx: Context): Type
   def AppliedType_args(self: AppliedType) given (ctx: Context): List[TypeOrBounds]
 
+  def AppliedType_apply(tycon: Type, args: List[TypeOrBounds]) given (ctx: Context) : AppliedType
+
   /** A type with an anottation `T @foo` */
   type AnnotatedType <: Type
 

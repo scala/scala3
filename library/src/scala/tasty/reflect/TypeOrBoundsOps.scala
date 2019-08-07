@@ -142,6 +142,8 @@ trait TypeOrBoundsOps extends Core {
     }
 
     object AppliedType {
+      def apply(tycon: Type, args: List[TypeOrBounds]) given (ctx: Context) : AppliedType =
+        internal.AppliedType_apply(tycon, args)
       def unapply(typeOrBounds: TypeOrBounds) given (ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] =
         internal.matchAppliedType(typeOrBounds).map(x => (x.tycon, x.args))
     }

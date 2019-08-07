@@ -1230,6 +1230,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def AppliedType_tycon(self: AppliedType) given Context: Type = self.tycon
   def AppliedType_args(self: AppliedType) given Context: List[TypeOrBounds] = self.args
 
+  def AppliedType_apply(tycon: Type, args: List[TypeOrBounds]) given Context: AppliedType = Types.AppliedType(tycon, args)
+
   type AnnotatedType = Types.AnnotatedType
 
   def matchAnnotatedType(tpe: TypeOrBounds) given Context: Option[AnnotatedType] = tpe match {
