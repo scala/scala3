@@ -21,7 +21,8 @@ class ScriptEngine extends AbstractScriptEngine {
     Array(
       "-classpath", "", // Avoid the default "."
       "-usejavacp",
-      "-color:never"
+      "-color:never",
+      "-Xrepl-disable-display"
     ), Console.out, None)
   private val rendering = new Rendering
   private var state: State = driver.initialState
