@@ -914,7 +914,7 @@ object desugar {
           ctx.error(em"No extension method $allowed", mdef.sourcePos)
           mdef
         }
-        else cpy.DefDef(mdef)(tparams = tparams ++ mdef.tparams, vparamss = leadingParams :: Nil)
+        else cpy.DefDef(mdef)(tparams = tparams ++ mdef.tparams, vparamss = leadingParams :: mdef.vparamss)
           .withFlags(Extension)
       case mdef: Import =>
         mdef
