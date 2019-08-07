@@ -112,6 +112,10 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           if (tp.isTerm)
             ctx.error(i"splice outside quotes", pos)
           tp
+        case tp: TypeRef if tp.prefix.derivesFrom(defn.QuotedTypeClass) && tp.name.toString == "T" =>
+          // Adapt direct references to the type of the type parameter T of a quoted.Type[T].
+          // Replace it with a properly encoded type splice. This is the normal for expected for type splices.
+          tp.prefix.select(tpnme.splice)
         case tp: NamedType =>
           checkSymLevel(tp.symbol, tp, pos) match {
             case Some(tpRef) => tpRef.tpe
