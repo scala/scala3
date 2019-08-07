@@ -152,7 +152,6 @@ case class Site(
         "js/api-search.js" -> "/js/api-search.js",
         "js/bootstrap.min.js" -> "/js/bootstrap.min.js",
         "js/jquery.min.js" -> "/js/jquery.min.js",
-        "js/tether.min.js" -> "/js/tether.min.js",
         "js/highlight.pack.js" -> "/js/highlight.pack.js"
       )
       .transform((_, v) => getResource(v))

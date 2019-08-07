@@ -93,7 +93,6 @@ class SiteTests extends DottyDocTest with SourceFileOps with CheckFromSource {
       "js/api-search.js",
       "js/highlight.pack.js",
       "js/bootstrap.min.js",
-      "js/tether.min.js",
       "js/jquery.min.js"
     )
     val expectedCompd = Set(
