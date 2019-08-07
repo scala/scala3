@@ -1332,7 +1332,7 @@ object Parsers {
       case DO =>
         in.errorOrMigrationWarning(
           i"""`do <body> while <cond>' is no longer supported,
-             |use `while {<body> ; <cond>} do ()' instead.
+             |use `while ({<body> ; <cond>}) ()' instead.
              |The statement can be rewritten automatically under -language:Scala2 -migration -rewrite.
            """)
         val start = in.skipToken()
@@ -1353,7 +1353,7 @@ object Parsers {
             }
             patch(source, cond.span.endPos, "}) ()")
           }
-          WhileDo(Block(body :: Nil, cond), Literal(Constant(())))
+          WhileDo(Block(body, cond), Literal(Constant(())))
         }
       case TRY =>
         val tryOffset = in.offset
