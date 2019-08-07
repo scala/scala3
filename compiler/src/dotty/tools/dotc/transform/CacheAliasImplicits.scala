@@ -50,16 +50,18 @@ class CacheAliasImplicits extends MiniPhase with IdentityDenotTransformer { this
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
     val sym = tree.symbol
     val rhsType = tree.rhs.tpe
-    val isCached = sym.info match {
-      case _: ExprType if sym.is(Given, butNot = CacheAliasImplicits.NoCacheFlags) =>
-        rhsType match {
-          case TermRef(NoPrefix, _)
-          if rhsType.isStable => false
-          case TermRef(pre: ThisType, _)
-          if rhsType.isStable && pre.cls == sym.owner.enclosingClass => false
-          case _ => true
-        }
-      case _ => false
+    val isCached = !sym.is(Inline) && {
+      sym.info match {
+        case _: ExprType if sym.is(Given, butNot = CacheAliasImplicits.NoCacheFlags) =>
+          rhsType match {
+            case TermRef(NoPrefix, _)
+            if rhsType.isStable => false
+            case TermRef(pre: ThisType, _)
+            if rhsType.isStable && pre.cls == sym.owner.enclosingClass => false
+            case _ => true
+          }
+        case _ => false
+      }
     }
     if (isCached) {
       sym.copySymDenotation(
