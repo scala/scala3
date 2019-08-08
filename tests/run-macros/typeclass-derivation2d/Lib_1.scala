@@ -105,6 +105,17 @@ object Eq {
         true
     }
 
+  private def eqlElemsExpr[Elems <: Tuple: Type](n: Int)(x: Expr[Any], y: Expr[Any]) given QuoteContext: Expr[Boolean] = {
+    the[Type[Elems]] match {
+      case '[*:[$elem, $elems1]] =>
+        '{
+          ${ tryEqlExpr[`$elem`]('{ productElement[$elem]($x, ${n.toExpr}) }, '{ productElement[$elem]($y, ${n.toExpr}) }) } &&
+          ${ eqlElemsExpr[`$elems1`](n + 1)(x, y) }
+        }
+      case '[Unit] => '{ true }
+    }
+  }
+
   inline def eqlProduct[T](m: Mirror.ProductOf[T])(x: Any, y: Any): Boolean =
     eqlElems[m.ElemTypes](0)(x, y)
 
