@@ -396,6 +396,7 @@ class Definitions {
       List(AnyClass.typeRef), EmptyScope)
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
+  @tu lazy val CollectionSeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
   @tu lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.immutable.Seq")
   def SeqClass given Context: ClassSymbol = SeqType.symbol.asClass
     @tu lazy val Seq_apply        : Symbol = SeqClass.requiredMethod(nme.apply)

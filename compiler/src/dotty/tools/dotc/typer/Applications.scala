@@ -78,8 +78,8 @@ object Applications {
     *  {
     *    def lengthCompare(len: Int): Int // or, def length: Int
     *    def apply(i: Int): T = a(i)
-    *    def drop(n: Int): scala.Seq[T]
-    *    def toSeq: scala.Seq[T]
+    *    def drop(n: Int): scala.collection.Seq[T]
+    *    def toSeq: scala.collection.Seq[T]
     *  }
     *  ```
     *  returns `T`, otherwise NoType.
@@ -88,8 +88,8 @@ object Applications {
     def lengthTp = ExprType(defn.IntType)
     def lengthCompareTp = MethodType(List(defn.IntType), defn.IntType)
     def applyTp(elemTp: Type) = MethodType(List(defn.IntType), elemTp)
-    def dropTp(elemTp: Type) = MethodType(List(defn.IntType), defn.SeqType.appliedTo(elemTp))
-    def toSeqTp(elemTp: Type) = ExprType(defn.SeqType.appliedTo(elemTp))
+    def dropTp(elemTp: Type) = MethodType(List(defn.IntType), defn.CollectionSeqType.appliedTo(elemTp))
+    def toSeqTp(elemTp: Type) = ExprType(defn.CollectionSeqType.appliedTo(elemTp))
 
     // the result type of `def apply(i: Int): T`
     val elemTp = getTp.member(nme.apply).suchThat(_.info <:< applyTp(WildcardType)).info.resultType
