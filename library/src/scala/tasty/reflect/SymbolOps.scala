@@ -85,6 +85,9 @@ trait SymbolOps extends Core {
 
     def isType given (ctx: Context): Boolean = internal.matchTypeSymbol(self).isDefined
     def isTerm given (ctx: Context): Boolean = internal.matchTermSymbol(self).isDefined
+    def isValDef given (ctx: Context): Boolean = internal.matchValDefSymbol(self).isDefined
+    def isDefDef given (ctx: Context): Boolean = internal.matchDefDefSymbol(self).isDefined
+    def isClass given (ctx: Context): Boolean = internal.matchClassDefSymbol(self).isDefined
   }
 
   // PackageSymbol

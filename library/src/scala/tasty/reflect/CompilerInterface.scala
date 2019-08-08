@@ -878,9 +878,11 @@ trait CompilerInterface {
    */
   def Type_dealias(self: Type) given (ctx: Context): Type
 
-  def Type_classSymbol(self: Type) given (ctx: Context): Option[ClassDefSymbol]
+  def Type_classSymbol(self: Type) given (ctx: Context): Option[ClassDefSymbol] // TODO remove Option and use NoSymbol
 
   def Type_typeSymbol(self: Type) given (ctx: Context): Symbol
+
+  def Type_termSymbol(self: Type) given (ctx: Context): Symbol
 
   def Type_isSingleton(self: Type) given (ctx: Context): Boolean
 
@@ -931,9 +933,9 @@ trait CompilerInterface {
 
   def matchTermRef(tpe: TypeOrBounds) given (ctx: Context): Option[TermRef]
 
-  def matchTermRef_unapply(tpe: TypeOrBounds) given (ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)]
-
   def TermRef_qualifier(self: TermRef) given (ctx: Context): TypeOrBounds
+  def TermRef_name(self: TermRef) given (ctx: Context): String
+
 
   /** Type of a reference to a type symbol */
   type TypeRef <: Type

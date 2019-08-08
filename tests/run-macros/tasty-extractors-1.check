@@ -20,13 +20,13 @@ Inlined(None, Nil, Apply(Ident("println"), List(Literal(Constant("abc")))))
 Type.TypeRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
 Inlined(None, Nil, Typed(Literal(Constant(8)), TypeIdent("Int")))
-Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))
+Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala"))
 
 Inlined(None, Nil, Typed(Literal(Constant(8: Byte)), TypeIdent("Byte")))
-Type.TypeRef(IsClassDefSymbol(<scala.Byte>), Type.TermRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))
+Type.TypeRef(IsClassDefSymbol(<scala.Byte>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala"))
 
 Inlined(None, Nil, Typed(Literal(Constant(8: Short)), TypeIdent("Short")))
-Type.TypeRef(IsClassDefSymbol(<scala.Short>), Type.TermRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))
+Type.TypeRef(IsClassDefSymbol(<scala.Short>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala"))
 
 Inlined(None, Nil, Literal(Constant('a')))
 Type.ConstantType(Constant('a'))
@@ -83,7 +83,7 @@ Inlined(None, Nil, Apply(Select(Ident("Int"), "box"), List(NamedArg("x", Literal
 Type.TypeRef(IsClassDefSymbol(<java.lang.Integer>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<java.lang>), NoPrefix())))
 
 Inlined(None, Nil, Apply(TypeApply(Select(Ident("Ordering"), "apply"), List(TypeIdent("Int"))), List(Ident("Int"))))
-Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.math.Ordering>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala.math>), NoPrefix()))), List(Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))))
+Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.math.Ordering>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala.math>), NoPrefix()))), List(Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala"))))
 
 Inlined(None, Nil, Block(List(ValDef("a", TypeIdent("Int"), Some(Literal(Constant(3))))), Literal(Constant(()))))
 Type.TypeRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())))
@@ -113,7 +113,7 @@ Inlined(None, Nil, Block(List(DefDef("f7", List(TypeDef("T", TypeBoundsTree(Infe
 Type.TypeRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
 Inlined(None, Nil, Block(List(DefDef("f8", Nil, List(List(ValDef("i", Annotated(Applied(Inferred(), List(TypeIdent("Int"))), Apply(Select(New(Inferred()), "<init>"), Nil)), None))), TypeIdent("Int"), Some(Literal(Constant(9))))), Apply(Ident("f8"), List(Typed(Repeated(List(Literal(Constant(1)), Literal(Constant(2)), Literal(Constant(3))), Inferred()), Inferred())))))
-Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))
+Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala"))
 
 Inlined(None, Nil, Block(List(DefDef("f9", Nil, List(List(ValDef("i", ByName(TypeIdent("Int")), None))), TypeIdent("Int"), Some(Ident("i")))), Literal(Constant(()))))
 Type.TypeRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())))

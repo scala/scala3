@@ -1114,6 +1114,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Type_typeSymbol(self: Type) given Context: Symbol = self.typeSymbol
 
+  def Type_termSymbol(self: Type) given Context: Symbol = self.termSymbol
+
   def Type_isSingleton(self: Type) given Context: Boolean = self.isSingleton
 
   def Type_memberType(self: Type)(member: Symbol) given Context: Type =
@@ -1158,14 +1160,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def TermRef_qualifier(self: TermRef) given Context: TypeOrBounds = self.prefix
 
-  def matchTermRef_unapply(tpe: TypeOrBounds) given Context: Option[(Symbol, Type | NoPrefix)] = tpe match {
-    case tpe: Types.NamedType =>
-      tpe.designator match {
-        case sym: Symbol if sym.isTerm => Some((sym, tpe.prefix))
-        case _ => None
-      }
-    case _ => None
-  }
+  def TermRef_name(self: TermRef) given Context: String = self.name.toString
 
   type TypeRef = Types.NamedType
 

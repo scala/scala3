@@ -1,12 +1,12 @@
 Inferred()
-Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))
+Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala"))
 
 Inferred()
-Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.collection.immutable.List>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.TypeRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.TermRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix()))))))
+Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.collection.immutable.List>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.TypeRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())), "Predef"))))
 
 Inferred()
-Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.collection.immutable.Map>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.TypeRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.TermRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())))), Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))))
+Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.collection.immutable.Map>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.TypeRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())), "Predef")), Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala"))))
 
 Inferred()
-Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.collection.immutable.Map>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.TypeRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.TermRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())))), Type.TypeRef(IsTypeDefSymbol(<Test$._$I>), NoPrefix())))
+Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.collection.immutable.Map>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.TypeRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())), "Predef")), Type.TypeRef(IsTypeDefSymbol(<Test$._$I>), NoPrefix())))
 

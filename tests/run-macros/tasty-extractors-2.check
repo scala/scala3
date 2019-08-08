@@ -2,25 +2,25 @@ Inlined(None, Nil, Block(List(ValDef("x", Inferred(), Some(Literal(Constant(1)))
 Type.TypeRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())))
 
 Inlined(None, Nil, Block(List(DefDef("$anonfun", Nil, List(List(ValDef("x", TypeIdent("Int"), None))), Inferred(), Some(Ident("x")))), Closure(Ident("$anonfun"), None)))
-Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.Function1>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix()))), List(Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())))), Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))))
+Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.Function1>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix()))), List(Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala")), Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala"))))
 
 Inlined(None, Nil, Ident("???"))
-Type.TermRef(IsDefDefSymbol(<scala.Predef$.???>), Type.TermRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix()))))
+Type.TermRef(Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())), "Predef"), "???")
 
 Inlined(None, Nil, Literal(Constant(1)))
 Type.ConstantType(Constant(1))
 
 Inlined(None, Nil, Typed(Literal(Constant(1)), TypeIdent("Int")))
-Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))
+Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala"))
 
 Inlined(None, Nil, Typed(Ident("Nil"), Applied(TypeIdent("List"), List(TypeIdent("Int")))))
-Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.collection.immutable.List>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix()))))))
+Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.collection.immutable.List>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala"))))
 
 Inlined(None, Nil, Typed(Apply(Select(New(TypeIdent("Baz")), "<init>"), Nil), Applied(TypeIdent("&"), List(TypeIdent("Foo"), TypeIdent("Bar")))))
 Type.AndType(Type.TypeRef(IsClassDefSymbol(<Foo>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<empty>>), NoPrefix()))), Type.TypeRef(IsClassDefSymbol(<Bar>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<empty>>), NoPrefix()))))
 
 Inlined(None, Nil, Typed(Literal(Constant(1)), Applied(TypeIdent("|"), List(TypeIdent("Int"), TypeIdent("String")))))
-Type.OrType(Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(IsPackageDefSymbol(<scala>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())))), Type.TypeRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.TermRef(IsValDefSymbol(<scala.Predef>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())))))
+Type.OrType(Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala")), Type.TypeRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())), "Predef")))
 
 Inlined(None, Nil, Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, Nil)), Literal(Constant(()))))
 Type.TypeRef(IsClassDefSymbol(<scala.Unit>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())))
