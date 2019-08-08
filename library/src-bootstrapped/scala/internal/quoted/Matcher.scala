@@ -104,7 +104,7 @@ object Matcher {
         case (IsTerm(scrutinee @ Typed(s, tpt1)), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
             if patternHole.symbol == internal.Definitions_InternalQuoted_patternHole &&
                s.tpe <:< tpt.tpe &&
-               tpt2.tpe.derivesFrom(definitions.RepeatedParamClass) =>
+               tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
           matched(scrutinee.seal)
 
         // Match a scala.internal.Quoted.patternHole and return the scrutinee tree

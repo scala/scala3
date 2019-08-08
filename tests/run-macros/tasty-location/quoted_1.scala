@@ -11,7 +11,7 @@ object Location {
     import qctx.tasty._
 
     def listOwnerNames(sym: Symbol, acc: List[String]): List[String] =
-      if (sym == definitions.RootClass || sym == definitions.EmptyPackageClass) acc
+      if (sym == defn.RootClass || sym == defn.EmptyPackageClass) acc
       else listOwnerNames(sym.owner, sym.name :: acc)
 
     val list = listOwnerNames(rootContext.owner, Nil)

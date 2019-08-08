@@ -6,7 +6,7 @@ trait StandardDefinitions extends Core {
   /** A value containing all standard definitions in [[DefinitionsAPI]]
     *  @group Definitions
     */
-  object definitions extends StandardSymbols with StandardTypes
+  object defn extends StandardSymbols with StandardTypes
 
   /** Defines standard symbols (and types via its base trait).
     *  @group API

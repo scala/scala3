@@ -1518,7 +1518,7 @@ trait Printers
         case Type.IsTypeRef(tpe) =>
           val sym = tpe.typeSymbol
           tpe.qualifier match {
-            case Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
+            case Type.ThisType(tp) if tp.typeSymbol == defn.RootClass || tp.typeSymbol == defn.EmptyPackageClass =>
             case NoPrefix() =>
               if (sym.owner.flags.is(Flags.Package)) {
                 // TODO should these be in the prefix? These are at least `scala`, `java` and `scala.collection`.
@@ -1542,7 +1542,9 @@ trait Printers
 
         case Type.TermRef(prefix, name) =>
           prefix match {
-            case NoPrefix() | Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
+            case NoPrefix() =>
+                this += highlightTypeDef(name)
+            case Type.ThisType(tp) if tp.typeSymbol == defn.RootClass || tp.typeSymbol == defn.EmptyPackageClass =>
                 this += highlightTypeDef(name)
             case _ =>
               printTypeOrBound(prefix)
@@ -1597,7 +1599,8 @@ trait Printers
               this += highlightTypeDef(".this")
             case Type.TypeRef(prefix, name) if name.endsWith("$") =>
               prefix match {
-                case NoPrefix() | Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
+                case NoPrefix() =>
+                case Type.ThisType(tp) if tp.typeSymbol == defn.RootClass || tp.typeSymbol == defn.EmptyPackageClass =>
                 case _ =>
                   printTypeOrBound(prefix)
                   this += "."
@@ -1898,21 +1901,7 @@ trait Printers
 
       object ScalaPackage {
         def unapply(tpe: TypeOrBounds) given (ctx: Context): Boolean = tpe match {
-          case Type.IsTermRef(tpe) => tpe.termSymbol == definitions.ScalaPackage
-          case _ => false
-        }
-      }
-
-      object RootPackage {
-        def unapply(tpe: TypeOrBounds) given (ctx: Context): Boolean = tpe match {
-          case Type.IsTypeRef(tpe) => tpe.typeSymbol.fullName == "<root>" // TODO use Symbol.==
-          case _ => false
-        }
-      }
-
-      object EmptyPackage {
-        def unapply(tpe: TypeOrBounds) given (ctx: Context): Boolean = tpe match {
-          case Type.IsTypeRef(tpe) => tpe.typeSymbol.fullName == "<empty>"
+          case Type.IsTermRef(tpe) => tpe.termSymbol == defn.ScalaPackage
           case _ => false
         }
       }

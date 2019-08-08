@@ -19,47 +19,47 @@ package quoted {
 
     given UnitTag as Type[Unit] given (qctx: QuoteContext) = {
       import qctx.tasty._
-      definitions.UnitType.seal.asInstanceOf[quoted.Type[Unit]]
+      defn.UnitType.seal.asInstanceOf[quoted.Type[Unit]]
     }
 
     given BooleanTag as Type[Boolean] given (qctx: QuoteContext) = {
       import qctx.tasty._
-      definitions.BooleanType.seal.asInstanceOf[quoted.Type[Boolean]]
+      defn.BooleanType.seal.asInstanceOf[quoted.Type[Boolean]]
     }
 
     given ByteTag as Type[Byte] given (qctx: QuoteContext) = {
       import qctx.tasty._
-      definitions.ByteType.seal.asInstanceOf[quoted.Type[Byte]]
+      defn.ByteType.seal.asInstanceOf[quoted.Type[Byte]]
     }
 
     given CharTag as Type[Char] given (qctx: QuoteContext) = {
       import qctx.tasty._
-      definitions.CharType.seal.asInstanceOf[quoted.Type[Char]]
+      defn.CharType.seal.asInstanceOf[quoted.Type[Char]]
     }
 
     given ShortTag as Type[Short] given (qctx: QuoteContext) = {
       import qctx.tasty._
-      definitions.ShortType.seal.asInstanceOf[quoted.Type[Short]]
+      defn.ShortType.seal.asInstanceOf[quoted.Type[Short]]
     }
 
     given IntTag as Type[Int] given (qctx: QuoteContext) = {
       import qctx.tasty._
-      definitions.IntType.seal.asInstanceOf[quoted.Type[Int]]
+      defn.IntType.seal.asInstanceOf[quoted.Type[Int]]
     }
 
     given LongTag as Type[Long] given (qctx: QuoteContext) = {
       import qctx.tasty._
-      definitions.LongType.seal.asInstanceOf[quoted.Type[Long]]
+      defn.LongType.seal.asInstanceOf[quoted.Type[Long]]
     }
 
     given FloatTag as Type[Float] given (qctx: QuoteContext) = {
       import qctx.tasty._
-      definitions.FloatType.seal.asInstanceOf[quoted.Type[Float]]
+      defn.FloatType.seal.asInstanceOf[quoted.Type[Float]]
     }
 
     given DoubleTag as Type[Double] given (qctx: QuoteContext) = {
       import qctx.tasty._
-      definitions.DoubleType.seal.asInstanceOf[quoted.Type[Double]]
+      defn.DoubleType.seal.asInstanceOf[quoted.Type[Double]]
     }
 
   }
