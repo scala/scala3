@@ -310,8 +310,8 @@ trait Printers
           this += "Type.ConstantType(" += value += ")"
         case Type.TermRef(qual, name) =>
           this += "Type.TermRef(" += qual+= ", \"" += name += "\")"
-        case Type.TypeRef(sym, qual) =>
-          this += "Type.TypeRef(" += sym += ", " += qual += ")"
+        case Type.TypeRef(qual, name) =>
+          this += "Type.TypeRef(" += qual += ", \"" += name += "\")"
         case Type.NamedTermRef(name, qual) =>
           this += "Type.NamedTermRef(\"" += name += "\", " += qual += ")"
         case Type.NamedTypeRef(name, qual) =>
@@ -1420,7 +1420,7 @@ trait Printers
               printTypeAndAnnots(tp)
               this += " "
               printAnnotation(annot)
-            case Type.TypeRef(IsClassDefSymbol(sym), _) if sym.fullName == "scala.runtime.Null$" || sym.fullName == "scala.runtime.Nothing$" =>
+            case Type.IsTypeRef(tpe) if tpe.typeSymbol.fullName == "scala.runtime.Null$" || tpe.typeSymbol.fullName == "scala.runtime.Nothing$" =>
               // scala.runtime.Null$ and scala.runtime.Nothing$ are not modules, those are their actual names
               printType(tpe)
             case Type.IsTermRef(tpe) if tpe.termSymbol.isClass && tpe.termSymbol.name.endsWith("$") =>
@@ -1533,7 +1533,7 @@ trait Printers
             case Type.IsTermRef(prefix) if prefix.termSymbol.isClass =>
               printType(prefix)
               this += "#"
-            case IsType(prefix @ Type.TypeRef(IsClassDefSymbol(_), _)) =>
+            case Type.IsTypeRef(prefix) if prefix.typeSymbol.isClass =>
               printType(prefix)
               this += "#"
             case IsType(Type.ThisType(Type.TermRef(cdef, _))) if elideThis.nonEmpty && cdef == elideThis.get =>
@@ -1617,7 +1617,7 @@ trait Printers
 
         case Type.ThisType(tp) =>
           tp match {
-            case Type.TypeRef(cdef, _) if !cdef.flags.is(Flags.Object) =>
+            case Type.IsTypeRef(tp) if !tp.typeSymbol.flags.is(Flags.Object) =>
               printFullClassName(tp)
               this += highlightTypeDef(".this")
             case Type.NamedTypeRef(name, prefix) if name.endsWith("$") =>
@@ -1805,8 +1805,7 @@ trait Printers
       def printProtectedOrPrivate(definition: Definition): Boolean = {
         var prefixWasPrinted = false
         def printWithin(within: Type) = within match {
-          case Type.TypeRef(sym, _) =>
-            this += sym.name
+          case Type.TypeRef(_, name) => this += name
           case _ => printFullClassName(within)
         }
         if (definition.symbol.flags.is(Flags.Protected)) {
@@ -1833,14 +1832,14 @@ trait Printers
 
       def printFullClassName(tp: TypeOrBounds): Unit = {
         def printClassPrefix(prefix: TypeOrBounds): Unit = prefix match {
-          case Type.TypeRef(IsClassDefSymbol(sym), prefix2) =>
+          case Type.TypeRef(prefix2, name) =>
             printClassPrefix(prefix2)
-            this += sym.name += "."
+            this += name += "."
           case _ =>
         }
-        val Type.TypeRef(sym, prefix) = tp
+        val Type.TypeRef(prefix, name) = tp
         printClassPrefix(prefix)
-        this += sym.name
+        this += name
       }
 
       def +=(x: Boolean): this.type = { sb.append(x); this }
@@ -1872,8 +1871,8 @@ trait Printers
       def unapply(arg: Tree) given (ctx: Context): Option[(String, List[Term])] = arg match {
         case IsTerm(arg @ Apply(fn, args)) =>
           fn.tpe match {
-            case tpe @ Type.TermRef(Type.ThisType(Type.TypeRef(sym2, _)), _) if sym2.name == "<special-ops>" =>
-              Some((tpe.termSymbol.asDefDef.tree.name, args))
+            case tpe @ Type.TermRef(Type.ThisType(Type.TypeRef(_, name)), name2) if name == "<special-ops>" =>
+              Some((name2, args))
             case _ => None
           }
         case _ => None

@@ -942,9 +942,8 @@ trait CompilerInterface {
 
   def matchTypeRef(tpe: TypeOrBounds) given (ctx: Context): Option[TypeRef]
 
-  def matchTypeRef_unapply(tpe: TypeOrBounds) given (ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)]
-
   def TypeRef_qualifier(self: TypeRef) given (ctx: Context): TypeOrBounds
+  def TypeRef_name(self: TypeRef) given Context: String
 
   /** Type of a reference to a term by it's name */
   type NamedTermRef <: Type

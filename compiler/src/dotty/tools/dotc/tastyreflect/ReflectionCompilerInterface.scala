@@ -1175,14 +1175,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def TypeRef_qualifier(self: TypeRef) given Context: TypeOrBounds = self.prefix
 
-  def matchTypeRef_unapply(tpe: TypeOrBounds) given Context: Option[(Symbol, Type | NoPrefix)] = tpe match {
-    case tpe: Types.NamedType =>
-      tpe.designator match {
-        case sym: Symbol if sym.isType => Some((sym, tpe.prefix))
-        case _ => None
-      }
-    case _ => None
-  }
+  def TypeRef_name(self: TypeRef) given Context: String = self.name.toString
 
   type NamedTermRef = Types.NamedType
 

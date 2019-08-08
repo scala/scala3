@@ -1,12 +1,12 @@
 Inferred()
-Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala"))
+Type.TypeRef(Type.TermRef(Type.ThisType(Type.TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
 
 Inferred()
-Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.collection.immutable.List>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.TypeRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())), "Predef"))))
+Type.AppliedType(Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "immutable")), "List"), List(Type.TypeRef(Type.TermRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Predef"), "String")))
 
 Inferred()
-Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.collection.immutable.Map>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.TypeRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())), "Predef")), Type.TypeRef(IsClassDefSymbol(<scala.Int>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<<root>>), NoPrefix())), "scala"))))
+Type.AppliedType(Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "immutable")), "Map"), List(Type.TypeRef(Type.TermRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Predef"), "String"), Type.TypeRef(Type.TermRef(Type.ThisType(Type.TypeRef(NoPrefix(), "<root>")), "scala"), "Int")))
 
 Inferred()
-Type.AppliedType(Type.TypeRef(IsClassDefSymbol(<scala.collection.immutable.Map>), Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala.collection.immutable>), NoPrefix()))), List(Type.TypeRef(IsTypeDefSymbol(<scala.Predef$.String>), Type.TermRef(Type.ThisType(Type.TypeRef(IsPackageDefSymbol(<scala>), NoPrefix())), "Predef")), Type.TypeRef(IsTypeDefSymbol(<Test$._$I>), NoPrefix())))
+Type.AppliedType(Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "immutable")), "Map"), List(Type.TypeRef(Type.TermRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Predef"), "String"), Type.TypeRef(NoPrefix(), "I")))
 

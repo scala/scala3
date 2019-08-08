@@ -102,7 +102,7 @@ object Iso {
     val cls = tpS.classSymbol.get
 
     val companion = tpS match {
-      case Type.TypeRef(sym, prefix) => Type.NamedTermRef(prefix, sym.name)
+      case Type.TypeRef(prefix, name) => Type.NamedTermRef(prefix, name)
       case Type.NamedTypeRef(name, prefix) => Type.NamedTermRef(prefix, name)
     }
 
@@ -145,7 +145,7 @@ object Iso {
       }
 
       val companion = tpS match {
-        case Type.TypeRef(sym, prefix) => Type.NamedTermRef(prefix, sym.name)
+        case Type.TypeRef(prefix, name) => Type.NamedTermRef(prefix, name)
         case Type.NamedTypeRef(name, prefix) => Type.NamedTermRef(prefix, name)
       }
 

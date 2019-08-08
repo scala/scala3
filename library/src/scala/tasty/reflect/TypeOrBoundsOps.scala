@@ -96,8 +96,8 @@ trait TypeOrBoundsOps extends Core {
     }
 
     object TypeRef {
-      def unapply(typeOrBounds: TypeOrBounds) given (ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)] =
-        internal.matchTypeRef_unapply(typeOrBounds)
+      def unapply(typeOrBounds: TypeOrBounds) given (ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
+        internal.matchTypeRef(typeOrBounds).map(x => (x.qualifier, x.name))
     }
 
     object IsNamedTermRef {
@@ -305,6 +305,7 @@ trait TypeOrBoundsOps extends Core {
 
   implicit class Type_TypeRefAPI(self: TypeRef) {
     def qualifier given (ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TypeRef_qualifier(self)
+    def name given (ctx: Context): String = internal.TypeRef_name(self)
   }
 
   implicit class Type_NamedTermRefAPI(self: NamedTermRef) {
