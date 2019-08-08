@@ -312,10 +312,6 @@ trait Printers
           this += "Type.TermRef(" += qual+= ", \"" += name += "\")"
         case Type.TypeRef(qual, name) =>
           this += "Type.TypeRef(" += qual += ", \"" += name += "\")"
-        case Type.NamedTermRef(qual, name) =>
-          this += "Type.NamedTermRef(" += qual += ", \"" += name += "\")"
-        case Type.NamedTypeRef(qual, name) =>
-          this += "Type.NamedTypeRef(" += qual += ", \"" += name += "\")"
         case Type.Refinement(parent, name, info) =>
           this += "Type.Refinement(" += parent += ", " += name += ", " += info += ")"
         case Type.AppliedType(tycon, args) =>
@@ -1555,27 +1551,6 @@ trait Printers
               this
           }
 
-        case Type.NamedTermRef(prefix, name) =>
-          prefix match {
-            case Type.ThisType(Types.EmptyPackage()) =>
-              this += highlightTypeDef(name)
-            case IsType(prefix) =>
-              printType(prefix)
-              if (name != "package")
-                this += "." += highlightTypeDef(name)
-              this
-            case NoPrefix() =>
-              this += highlightTypeDef(name)
-          }
-
-        case Type.NamedTypeRef(prefix, name) =>
-          prefix match {
-            case NoPrefix() | Type.ThisType(Types.EmptyPackage()) =>
-            case IsType(prefix) => printType(prefix) += "."
-          }
-          if (name.endsWith("$")) this += highlightTypeDef(name.stripSuffix("$")) += ".type"
-          else this += highlightTypeDef(name)
-
         case tpe @ Type.Refinement(_, _, _) =>
           printRefinement(tpe)
 
@@ -1583,7 +1558,7 @@ trait Printers
           tp match {
             case Type.IsTypeLambda(tp) =>
               printType(tpe.dealias)
-            case Type.NamedTypeRef(Types.ScalaPackage(), "<repeated>") =>
+            case Type.TypeRef(Types.ScalaPackage(), "<repeated>") =>
               this += "_*"
             case _ =>
               printType(tp)
@@ -1620,7 +1595,7 @@ trait Printers
             case Type.IsTypeRef(tp) if !tp.typeSymbol.flags.is(Flags.Object) =>
               printFullClassName(tp)
               this += highlightTypeDef(".this")
-            case Type.NamedTypeRef(prefix, name) if name.endsWith("$") =>
+            case Type.TypeRef(prefix, name) if name.endsWith("$") =>
               prefix match {
                 case NoPrefix() | Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
                 case _ =>
@@ -1707,9 +1682,9 @@ trait Printers
         val annots = definition.symbol.annots.filter {
           case Annotation(annot, _) =>
             annot.tpe match {
-              case Type.NamedTypeRef(Type.IsTermRef(prefix), _) if prefix.termSymbol.fullName == "scala.annotation.internal" => false
-              case Type.NamedTypeRef(Type.IsTypeRef(prefix), _) if prefix.typeSymbol.fullName == "scala.annotation.internal" => false
-              case Type.NamedTypeRef(Types.ScalaPackage(), "forceInline") => false
+              case Type.TypeRef(Type.IsTermRef(prefix), _) if prefix.termSymbol.fullName == "scala.annotation.internal" => false
+              case Type.TypeRef(Type.IsTypeRef(prefix), _) if prefix.typeSymbol.fullName == "scala.annotation.internal" => false
+              case Type.TypeRef(Types.ScalaPackage(), "forceInline") => false
               case _ => true
             }
           case x => throw new MatchError(x.showExtractors)
@@ -1893,30 +1868,30 @@ trait Printers
 
       object JavaLangObject {
         def unapply(tpe: Type) given (ctx: Context): Boolean = tpe match {
-          case Type.NamedTypeRef(Type.IsTermRef(prefix), "Object") => prefix.typeSymbol.fullName == "java.lang"
+          case Type.TypeRef(Type.IsTermRef(prefix), "Object") => prefix.typeSymbol.fullName == "java.lang"
           case _ => false
         }
       }
 
       object Sequence {
         def unapply(tpe: Type) given (ctx: Context): Option[Type] = tpe match {
-          case Type.AppliedType(Type.NamedTypeRef(Type.IsTermRef(prefix), "Seq"), IsType(tp) :: Nil) if prefix.termSymbol.fullName == "scala.collection" => Some(tp)
-          case Type.AppliedType(Type.NamedTypeRef(Type.IsTypeRef(prefix), "Seq"), IsType(tp) :: Nil) if prefix.typeSymbol.fullName == "scala.collection" => Some(tp)
+          case Type.AppliedType(Type.TypeRef(Type.IsTermRef(prefix), "Seq"), IsType(tp) :: Nil) if prefix.termSymbol.fullName == "scala.collection" => Some(tp)
+          case Type.AppliedType(Type.TypeRef(Type.IsTypeRef(prefix), "Seq"), IsType(tp) :: Nil) if prefix.typeSymbol.fullName == "scala.collection" => Some(tp)
           case _ => None
         }
       }
 
       object RepeatedAnnotation {
         def unapply(tpe: Type) given (ctx: Context): Boolean = tpe match {
-          case Type.NamedTypeRef(Type.IsTermRef(prefix), "Repeated") => prefix.termSymbol.fullName == "scala.annotation.internal"
-          case Type.NamedTypeRef(Type.IsTypeRef(prefix), "Repeated") => prefix.typeSymbol.fullName == "scala.annotation.internal"
+          case Type.TypeRef(Type.IsTermRef(prefix), "Repeated") => prefix.termSymbol.fullName == "scala.annotation.internal"
+          case Type.TypeRef(Type.IsTypeRef(prefix), "Repeated") => prefix.typeSymbol.fullName == "scala.annotation.internal"
           case _ => false
         }
       }
 
       object Repeated {
         def unapply(tpe: Type) given (ctx: Context): Option[Type] = tpe match {
-          case Type.AppliedType(Type.NamedTypeRef(ScalaPackage(), "<repeated>"), IsType(tp) :: Nil) => Some(tp)
+          case Type.AppliedType(Type.TypeRef(ScalaPackage(), "<repeated>"), IsType(tp) :: Nil) => Some(tp)
           case _ => None
         }
       }
