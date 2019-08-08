@@ -140,6 +140,8 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
 
     if (sym.exists && !sym.isStaticOwner && !isClassRef && !levelOK(sym))
       tryHeal(sym, tp, pos)
+    else if (sym.exists && !sym.owner.isStaticOwner && !levelOK(sym)) // local class reference that is phase
+      levelError(sym, tp, pos, "")
     else
       None
   }
@@ -170,17 +172,6 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *                    to be added to the "inconsistent phase" message.
    */
   protected def tryHeal(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[Tree] = {
-    def levelError(errMsg: String) = {
-      def symStr =
-        if (!tp.isInstanceOf[ThisType]) sym.show
-        else if (sym.is(ModuleClass)) sym.sourceModule.show
-        else i"${sym.name}.this"
-      ctx.error(
-        em"""access to $symStr from wrong staging level:
-            | - the definition is at level ${levelOf(sym).getOrElse(0)},
-            | - but the access is at level $level.$errMsg""", pos)
-      None
-    }
     tp match {
       case tp: TypeRef =>
         if (level == -1) {
@@ -193,19 +184,33 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
             case _: TermRef =>
               Some(tag.select(tpnme.splice))
             case _: SearchFailureType =>
-              levelError(i"""
+              levelError(sym, tp, pos,
+                         i"""
                             |
                             | The access would be accepted with the right type tag, but
                             | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
             case _ =>
-              levelError(i"""
+              levelError(sym, tp, pos,
+                         i"""
                             |
                             | The access would be accepted with an implict $reqType""")
           }
         }
       case _ =>
-        levelError("")
+        levelError(sym, tp, pos, "")
     }
+  }
+
+  private def levelError(sym: Symbol, tp: Type, pos: SourcePosition, errMsg: String) given Context = {
+    def symStr =
+      if (!tp.isInstanceOf[ThisType]) sym.show
+      else if (sym.is(ModuleClass)) sym.sourceModule.show
+      else i"${sym.name}.this"
+    the[Context].error(
+      em"""access to $symStr from wrong staging level:
+          | - the definition is at level ${levelOf(sym).getOrElse(0)},
+          | - but the access is at level $level.$errMsg""", pos)
+    None
   }
 
 }
