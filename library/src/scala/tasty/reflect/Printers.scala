@@ -1898,7 +1898,7 @@ trait Printers
 
       object ScalaPackage {
         def unapply(tpe: TypeOrBounds) given (ctx: Context): Boolean = tpe match {
-          case Type.IsTermRef(tpe) => tpe.termSymbol == definitions.ScalaPackage
+          case Type.IsTermRef(tpe) => tpe.termSymbol == defn.ScalaPackage
           case _ => false
         }
       }

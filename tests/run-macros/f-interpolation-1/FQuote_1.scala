@@ -47,7 +47,7 @@ object FQuote {
     val Typed(Repeated(allArgs, _), _) = args.unseal.underlyingArgument
 
     for ((arg, part) <- allArgs.zip(parts.tail)) {
-      if (part.startsWith("%d") && !(arg.tpe <:< definitions.IntType)) {
+      if (part.startsWith("%d") && !(arg.tpe <:< defn.IntType)) {
         return '{s"`${${arg.show}}` is not of type Int"}
       }
 
