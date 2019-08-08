@@ -138,9 +138,11 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     /** Is a reference to a class but not `this.type` */
     def isClassRef = sym.isClass && !tp.isInstanceOf[ThisType]
 
-    if (sym.exists && !sym.isStaticOwner && !isClassRef && !levelOK(sym))
+    if (!sym.exists || levelOK(sym))
+      None
+    else if (!sym.isStaticOwner && !isClassRef)
       tryHeal(sym, tp, pos)
-    else if (sym.exists && !sym.owner.isStaticOwner && !levelOK(sym)) // local class reference that is phase
+    else if (!sym.owner.isStaticOwner) // local class reference that is phase
       levelError(sym, tp, pos, "")
     else
       None
