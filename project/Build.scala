@@ -267,7 +267,7 @@ object Build {
     /*
     scalacOptions ++= {
       val cp = (dependencyClasspath in `dotty-library` in Compile).value
-      val scalaLib = findLib(cp, "scala-library")
+      val scalaLib = findArtifactPath(cp, "scala-library")
       Seq("-Yscala2-unpickler", scalaLib)
     },
     */
@@ -279,12 +279,7 @@ object Build {
     managedScalaInstance := false,
     scalaInstance := {
       val externalNonBootstrappedDeps = externalDependencyClasspath.in(`dotty-doc`, Compile).value
-      def getExternalDep(name: String): File =
-        externalNonBootstrappedDeps.find(_.get(artifact.key).exists(_.name == name))
-          .getOrElse(throw new MessageOnlyException(s"Artifact for $name not found in $externalNonBootstrappedDeps"))
-          .data
-
-      val scalaLibrary = getExternalDep("scala-library")
+      val scalaLibrary = findArtifact(externalNonBootstrappedDeps, "scala-library")
 
       // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
       // just directories containing classfiles because sbt maintains a cache of
@@ -357,7 +352,7 @@ object Build {
     val dottyInterfaces = jars("dotty-interfaces")
     val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(File.pathSeparator)
     val externalDeps = externalCompilerClasspathTask.value
-    dottyLib + File.pathSeparator + findLib(externalDeps, "scala-library-")
+    dottyLib + File.pathSeparator + findArtifactPath(externalDeps, "scala-library")
   }
 
   def dottyDocSettings(implicit mode: Mode) = Seq(
@@ -426,10 +421,15 @@ object Build {
     case Bootstrapped => `dotty-doc-bootstrapped`
   }
 
-  def findLib(classpath: Def.Classpath, name: String) = classpath
-    .map(_.data.getAbsolutePath)
-    .find(_.contains(name))
-    .toList.mkString(File.pathSeparator)
+  /** Find an artifact with the given `name` in `classpath` */
+  def findArtifact(classpath: Def.Classpath, name: String): File = classpath
+    .find(_.get(artifact.key).exists(_.name == name))
+    .getOrElse(throw new MessageOnlyException(s"Artifact for $name not found in $classpath"))
+    .data
+
+  /** Like `findArtifact` but returns the absolute path of the entry as a string */
+  def findArtifactPath(classpath: Def.Classpath, name: String): String =
+    findArtifact(classpath, name).getAbsolutePath
 
   // Settings shared between dotty-compiler and dotty-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
@@ -517,11 +517,11 @@ object Build {
           "-Ddotty.tests.classes.dottyInterfaces=" + jars("dotty-interfaces"),
           "-Ddotty.tests.classes.dottyLibrary=" + jars("dotty-library"),
           "-Ddotty.tests.classes.dottyCompiler=" + jars("dotty-compiler"),
-          "-Ddotty.tests.classes.compilerInterface=" + findLib(externalDeps, "compiler-interface"),
-          "-Ddotty.tests.classes.scalaLibrary=" + findLib(externalDeps, "scala-library-"),
-          "-Ddotty.tests.classes.scalaAsm=" + findLib(externalDeps, "scala-asm"),
-          "-Ddotty.tests.classes.jlineTerminal=" + findLib(externalDeps, "jline-terminal"),
-          "-Ddotty.tests.classes.jlineReader=" + findLib(externalDeps, "jline-reader")
+          "-Ddotty.tests.classes.compilerInterface=" + findArtifactPath(externalDeps, "compiler-interface"),
+          "-Ddotty.tests.classes.scalaLibrary=" + findArtifactPath(externalDeps, "scala-library"),
+          "-Ddotty.tests.classes.scalaAsm=" + findArtifactPath(externalDeps, "scala-asm"),
+          "-Ddotty.tests.classes.jlineTerminal=" + findArtifactPath(externalDeps, "jline-terminal"),
+          "-Ddotty.tests.classes.jlineReader=" + findArtifactPath(externalDeps, "jline-reader")
         )
 
         jarOpts ::: tuning ::: agentOptions ::: ci_build
@@ -562,7 +562,7 @@ object Build {
         val externalDeps = externalCompilerClasspathTask.value
         val jars = packageAll.value
 
-        val scalaLib = findLib(externalDeps, "scala-library")
+        val scalaLib = findArtifactPath(externalDeps, "scala-library")
         val dottyLib = jars("dotty-library")
 
         def run(args: List[String]): Unit = {
@@ -576,7 +576,7 @@ object Build {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
         } else if (args.contains("-with-compiler")) {
           val args1 = args.filter(_ != "-with-compiler")
-          val asm = findLib(externalDeps, "scala-asm")
+          val asm = findArtifactPath(externalDeps, "scala-asm")
           val dottyCompiler = jars("dotty-compiler")
           val dottyInterfaces = jars("dotty-interfaces")
           run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm).mkString(File.pathSeparator)))
@@ -626,7 +626,7 @@ object Build {
     val log = streams.value.log
     val externalDeps = externalCompilerClasspathTask.value
     val jars = packageAll.value
-    val scalaLib = findLib(externalDeps, "scala-library-")
+    val scalaLib = findArtifactPath(externalDeps, "scala-library")
     val dottyLib = jars("dotty-library")
     val dottyCompiler = jars("dotty-compiler")
     val args0: List[String] = spaceDelimited("<arg>").parsed.toList
@@ -652,7 +652,7 @@ object Build {
         log.error("-with-compiler should only be used with a bootstrapped compiler")
       }
       val dottyInterfaces = jars("dotty-interfaces")
-      val asm = findLib(externalDeps, "scala-asm")
+      val asm = findArtifactPath(externalDeps, "scala-asm")
       extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm)
     }
 
