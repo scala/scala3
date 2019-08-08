@@ -158,7 +158,15 @@ object Build {
 
     // include sources in eclipse (downloads source code for all dependencies)
     //http://stackoverflow.com/questions/10472840/how-to-attach-sources-to-sbt-managed-dependencies-in-scala-ide#answer-11683728
-    EclipseKeys.withSource := true
+    EclipseKeys.withSource := true,
+
+    // Avoid various sbt craziness involving classloaders and parallelism
+    fork in run := true,
+    fork in Test := true,
+    parallelExecution in Test := false,
+
+    // enable verbose exception messages for JUnit
+    testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
@@ -207,8 +215,6 @@ object Build {
 
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
 
-    // enable verbose exception messages for JUnit
-    testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v")
   )
 
   // Settings used for projects compiled only with Java
@@ -343,9 +349,6 @@ object Build {
     outputStrategy := Some(StdoutOutput),
 
     javaOptions ++= (javaOptions in `dotty-compiler`).value,
-    fork in run := true,
-    fork in Test := true,
-    parallelExecution in Test := false,
 
     genDocs := Def.taskDyn {
       // Make majorVersion available at dotty.epfl.ch/versions/latest-nightly-base
@@ -462,9 +465,6 @@ object Build {
       ),
 
       // Spawn new JVM in run and test
-      fork in run := true,
-      fork in Test := true,
-      parallelExecution in Test := false,
 
       // Add git-hash used to package the distribution to the manifest to know it in runtime and report it in REPL
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)),
@@ -767,9 +767,6 @@ object Build {
       scalaSource in Test := baseDirectory.value,
       javaSource  in Test := baseDirectory.value,
 
-      fork in Test := true,
-      parallelExecution in Test := false,
-
       libraryDependencies += (Dependencies.`zinc-api-info` % Test).withDottyCompat(scalaVersion.value)
     )
 
@@ -781,10 +778,6 @@ object Build {
       // plugin and the language server
       unmanagedSourceDirectories in Compile += baseDirectory.value / "../sbt-dotty/src/dotty/tools/sbtplugin/config",
 
-      // fork so that the shutdown hook in Main is run when we ctrl+c a run
-      // (you need to have `cancelable in Global := true` in your global sbt config to ctrl+c a run)
-      fork in run := true,
-      fork in Test := true,
       libraryDependencies ++= Seq(
         "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.6.0",
         Dependencies.`jackson-databind`

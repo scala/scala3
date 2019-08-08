@@ -9,7 +9,7 @@ import org.junit.experimental.categories.Category
 
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTest {
-  lazy val communitybuildDir: Path = Paths.get(sys.props("user.dir") + "/community-build/")
+  lazy val communitybuildDir: Path = Paths.get(sys.props("user.dir"))
 
   lazy val compilerVersion: String = {
     val file = communitybuildDir.resolve("dotty-bootstrapped.version")
