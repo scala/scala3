@@ -110,8 +110,8 @@ trait TypeOrBoundsOps extends Core {
       // TODO should qual be a Type?
       def apply(qual: TypeOrBounds, name: String) given (ctx: Context): NamedTermRef =
         internal.NamedTermRef_apply(qual, name)
-      def unapply(typeOrBounds: TypeOrBounds) given (ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] =
-        internal.matchNamedTermRef(typeOrBounds).map(x => (x.name, x.qualifier))
+      def unapply(typeOrBounds: TypeOrBounds) given (ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
+        internal.matchNamedTermRef(typeOrBounds).map(x => (x.qualifier, x.name))
     }
 
     object IsNameTypeRef {
@@ -121,8 +121,8 @@ trait TypeOrBoundsOps extends Core {
     }
 
     object NamedTypeRef {
-      def unapply(typeOrBounds: TypeOrBounds) given (ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] =
-        internal.matchNamedTypeRef(typeOrBounds).map(x => (x.name, x.qualifier))
+      def unapply(typeOrBounds: TypeOrBounds) given (ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
+        internal.matchNamedTypeRef(typeOrBounds).map(x => (x.qualifier, x.name))
     }
 
     object IsSuperType {

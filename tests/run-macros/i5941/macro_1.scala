@@ -103,7 +103,7 @@ object Iso {
 
     val companion = tpS match {
       case Type.TypeRef(prefix, name) => Type.NamedTermRef(prefix, name)
-      case Type.NamedTypeRef(name, prefix) => Type.NamedTermRef(prefix, name)
+      case Type.NamedTypeRef(prefix, name) => Type.NamedTermRef(prefix, name)
     }
 
     if (cls.caseFields.size != 1) {
@@ -146,7 +146,7 @@ object Iso {
 
       val companion = tpS match {
         case Type.TypeRef(prefix, name) => Type.NamedTermRef(prefix, name)
-        case Type.NamedTypeRef(name, prefix) => Type.NamedTermRef(prefix, name)
+        case Type.NamedTypeRef(prefix, name) => Type.NamedTermRef(prefix, name)
       }
 
       val obj = Select.overloaded(Ident(companion), "apply", Nil, Nil).seal.cast[S]
