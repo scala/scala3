@@ -250,7 +250,7 @@ trait TreeOps extends Core {
 
   /** Scala term identifier */
   object Ident {
-    def apply(tmref: NamedTermRef) given (ctx: Context): Term =
+    def apply(tmref: TermRef) given (ctx: Context): Term =
       internal.Ident_apply(tmref)
 
     def copy(original: Tree)(name: String) given (ctx: Context): Ident =

@@ -74,8 +74,6 @@ import scala.runtime.quoted.Unpickler
  *                   +- Type -------+- ConstantType
  *                                  +- TermRef
  *                                  +- TypeRef
- *                                  +- NamedTermRef
- *                                  +- NamedTypeRef
  *                                  +- SuperType
  *                                  +- Refinement
  *                                  +- AppliedType
@@ -330,7 +328,7 @@ trait CompilerInterface {
 
   def Ident_name(self: Ident) given (ctx: Context): String
 
-  def Ident_apply(tmref: NamedTermRef) given (ctx: Context): Term
+  def Ident_apply(tmref: TermRef) given (ctx: Context): Term
   def Ident_copy(original: Tree)(name: String) given (ctx: Context): Ident
 
   /** Tree representing a selection of definition with a given name on a given prefix */
@@ -878,9 +876,11 @@ trait CompilerInterface {
    */
   def Type_dealias(self: Type) given (ctx: Context): Type
 
-  def Type_classSymbol(self: Type) given (ctx: Context): Option[ClassDefSymbol]
+  def Type_classSymbol(self: Type) given (ctx: Context): Option[ClassDefSymbol] // TODO remove Option and use NoSymbol
 
   def Type_typeSymbol(self: Type) given (ctx: Context): Symbol
+
+  def Type_termSymbol(self: Type) given (ctx: Context): Symbol
 
   def Type_isSingleton(self: Type) given (ctx: Context): Boolean
 
@@ -931,36 +931,18 @@ trait CompilerInterface {
 
   def matchTermRef(tpe: TypeOrBounds) given (ctx: Context): Option[TermRef]
 
-  def matchTermRef_unapply(tpe: TypeOrBounds) given (ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)]
+  def TermRef_apply(qual: TypeOrBounds, name: String) given (ctx: Context): TermRef
 
   def TermRef_qualifier(self: TermRef) given (ctx: Context): TypeOrBounds
+  def TermRef_name(self: TermRef) given (ctx: Context): String
 
   /** Type of a reference to a type symbol */
   type TypeRef <: Type
 
   def matchTypeRef(tpe: TypeOrBounds) given (ctx: Context): Option[TypeRef]
 
-  def matchTypeRef_unapply(tpe: TypeOrBounds) given (ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)]
-
   def TypeRef_qualifier(self: TypeRef) given (ctx: Context): TypeOrBounds
-
-  /** Type of a reference to a term by it's name */
-  type NamedTermRef <: Type
-
-  def matchNamedTermRef(tpe: TypeOrBounds) given (ctx: Context): Option[NamedTermRef]
-
-  def NamedTermRef_name(self: NamedTermRef) given (ctx: Context): String
-  def NamedTermRef_qualifier(self: NamedTermRef) given (ctx: Context): TypeOrBounds
-
-  def NamedTermRef_apply(qual: TypeOrBounds, name: String) given (ctx: Context): NamedTermRef
-
-  /** Type of a reference to a type by it's name */
-  type NamedTypeRef <: Type
-
-  def matchNamedTypeRef(tpe: TypeOrBounds) given (ctx: Context): Option[NamedTypeRef]
-
-  def NamedTypeRef_name(self: NamedTypeRef) given (ctx: Context): String
-  def NamedTypeRef_qualifier(self: NamedTypeRef) given (ctx: Context): TypeOrBounds
+  def TypeRef_name(self: TypeRef) given Context: String
 
   /** Type of a `super` refernce */
   type SuperType <: Type

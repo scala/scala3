@@ -71,8 +71,6 @@ package scala.tasty.reflect
  *                   +- Type -------+- ConstantType
  *                                  +- TermRef
  *                                  +- TypeRef
- *                                  +- NamedTermRef
- *                                  +- NamedTypeRef
  *                                  +- SuperType
  *                                  +- Refinement
  *                                  +- AppliedType
@@ -337,12 +335,6 @@ trait Core {
 
       /** Type of a reference to a type symbol */
       type TypeRef = internal.TypeRef
-
-      /** Type of a reference to a term */
-      type NamedTermRef = internal.NamedTermRef
-
-      /** Type of a reference to a type */
-      type NamedTypeRef = internal.NamedTypeRef
 
       /** Type of a `super` refernce */
       type SuperType = internal.SuperType
