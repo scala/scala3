@@ -7,14 +7,6 @@ import scala.collection.JavaConverters._
 
 object TestSources {
 
-  // Std Lib
-  def stdLibSources: List[String] = {
-    val blacklisted = List(
-      "volatile.scala",          // see #5610
-    )
-    sources(Paths.get("tests/scala2-library/src/library/"), excludedFiles = blacklisted)
-  }
-
   // pos tests lists
 
   def posFromTastyBlacklistFile: String = "compiler/test/dotc/pos-from-tasty.blacklist"
