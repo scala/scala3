@@ -258,10 +258,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def chooseHashcode(implicit ctx: Context) = {
       if (clazz.is(ModuleClass))
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString.hashCode))
-      else if (accessors `exists` (_.info.finalResultType.classSymbol.isPrimitiveValueClass))
+      else if (accessors.exists(_.info.finalResultType.classSymbol.isPrimitiveValueClass))
         caseHashCodeBody
       else
-        ref(defn.ScalaRuntimeModule).select(defn.ScalaRuntime__hashCode).appliedTo(This(clazz))
+        ref(defn.ScalaRuntime__hashCode).appliedTo(This(clazz))
     }
 
     /** The class

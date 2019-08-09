@@ -449,6 +449,7 @@ object StdNames {
     val getOrElse: N            = "getOrElse"
     val hasNext: N              = "hasNext"
     val hashCode_ : N           = "hashCode"
+    val _hashCode_ : N          = "_hashCode"
     val hash_ : N               = "hash"
     val head: N                 = "head"
     val higherKinds: N          = "higherKinds"

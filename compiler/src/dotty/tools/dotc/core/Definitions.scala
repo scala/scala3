@@ -357,7 +357,7 @@ class Definitions {
   @tu lazy val ScalaRuntimeModule: Symbol = ctx.requiredModule("scala.runtime.ScalaRunTime")
     def runtimeMethodRef(name: PreName): TermRef = ScalaRuntimeModule.requiredMethodRef(name)
     def ScalaRuntime_drop: Symbol = runtimeMethodRef(nme.drop).symbol
-    @tu lazy val ScalaRuntime__hashCode: Symbol = runtimeMethodRef("_hashCode").symbol
+    @tu lazy val ScalaRuntime__hashCode: Symbol = ScalaRuntimeModule.requiredMethod(nme._hashCode_)
 
   @tu lazy val BoxesRunTimeModule: Symbol = ctx.requiredModule("scala.runtime.BoxesRunTime")
   @tu lazy val ScalaStaticsModule: Symbol = ctx.requiredModule("scala.runtime.Statics")
