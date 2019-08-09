@@ -1371,6 +1371,9 @@ trait Printers
 
       }
 
+      inline private val qc  = '\''
+      inline private val qSc = '"'
+
       def printConstant(const: Constant): Buffer = const match {
         case Constant(()) => this += highlightLiteral("()")
         case Constant(null) => this += highlightLiteral("null")
@@ -1381,8 +1384,8 @@ trait Printers
         case Constant(v: Long) => this += highlightLiteral(v.toString + "L")
         case Constant(v: Float) => this += highlightLiteral(v.toString + "f")
         case Constant(v: Double) => this += highlightLiteral(v.toString)
-        case Constant(v: Char) => this += highlightString('\'' + escapedChar(v) + '\'')
-        case Constant(v: String) => this += highlightString('"' + escapedString(v) + '"')
+        case Constant(v: Char) => this += highlightString(s"${qc}${escapedChar(v)}${qc}")
+        case Constant(v: String) => this += highlightString(s"${qSc}${escapedString(v)}${qSc}")
         case Constant.ClassTag(v) =>
           this += "classOf"
           inSquare(printType(v))

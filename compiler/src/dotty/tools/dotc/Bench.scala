@@ -15,7 +15,7 @@ object Bench extends Driver {
   @sharable private[this] var numRuns = 1
 
   private def ntimes(n: Int)(op: => Reporter): Reporter =
-    (emptyReporter /: (0 until n)) ((_, _) => op)
+    (0 until n).foldLeft(emptyReporter)((_, _) => op)
 
   override def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
     ntimes(numRuns) {

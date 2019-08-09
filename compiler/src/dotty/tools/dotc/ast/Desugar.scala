@@ -491,12 +491,12 @@ object desugar {
     // Annotations are dropped from the constructor parameters but should be
     // preserved in all derived parameters.
     val derivedTparams = {
-      val impliedTparamsIt = impliedTparams.toIterator
+      val impliedTparamsIt = impliedTparams.iterator
       constrTparams.map(tparam => derivedTypeParam(tparam)
         .withAnnotations(impliedTparamsIt.next().mods.annotations))
     }
     val derivedVparamss = {
-      val constrVparamsIt = constrVparamss.toIterator.flatten
+      val constrVparamsIt = constrVparamss.iterator.flatten
       constrVparamss.nestedMap(vparam => derivedTermParam(vparam)
         .withAnnotations(constrVparamsIt.next().mods.annotations))
     }
@@ -560,7 +560,7 @@ object desugar {
         case _ =>
           constrVparamss
       }
-      val nu = (makeNew(classTypeRef) /: vparamss) { (nu, vparams) =>
+      val nu = vparamss.foldLeft(makeNew(classTypeRef)) { (nu, vparams) =>
         val app = Apply(nu, vparams.map(refOfDef))
         vparams match {
           case vparam :: _ if vparam.mods.is(Given) => app.setGivenApply()
@@ -698,10 +698,9 @@ object desugar {
               isEnumCase) anyRef
           else
             // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
-            (constrVparamss :\ classTypeRef) (
-              (vparams, restpe) => Function(vparams map (_.tpt), restpe))
+            constrVparamss.foldRight(classTypeRef)((vparams, restpe) => Function(vparams map (_.tpt), restpe))
         def widenedCreatorExpr =
-          (creatorExpr /: widenDefs)((rhs, meth) => Apply(Ident(meth.name), rhs :: Nil))
+          widenDefs.foldLeft(creatorExpr)((rhs, meth) => Apply(Ident(meth.name), rhs :: Nil))
         val applyMeths =
           if (mods.is(Abstract)) Nil
           else {
@@ -788,12 +787,12 @@ object desugar {
 
     val cdef1 = addEnumFlags {
       val tparamAccessors = {
-        val impliedTparamsIt = impliedTparams.toIterator
+        val impliedTparamsIt = impliedTparams.iterator
         derivedTparams.map(_.withMods(impliedTparamsIt.next().mods))
       }
       val caseAccessor = if (isCaseClass) CaseAccessor else EmptyFlags
       val vparamAccessors = {
-        val originalVparamsIt = originalVparamss.toIterator.flatten
+        val originalVparamsIt = originalVparamss.iterator.flatten
         derivedVparamss match {
           case first :: rest =>
             first.map(_.withMods(originalVparamsIt.next().mods | caseAccessor)) ++
@@ -1332,7 +1331,7 @@ object desugar {
     val ttree = ctx.typerPhase match {
       case phase: FrontEnd if phase.stillToBeEntered(parts.last) =>
         val prefix =
-          ((Ident(nme.ROOTPKG): Tree) /: parts.init)((qual, name) =>
+          parts.init.foldLeft((Ident(nme.ROOTPKG): Tree))((qual, name) =>
             Select(qual, name.toTermName))
         Select(prefix, parts.last.toTypeName)
       case _ =>

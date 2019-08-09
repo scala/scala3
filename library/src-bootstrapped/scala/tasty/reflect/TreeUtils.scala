@@ -14,8 +14,8 @@ trait TreeUtils
     def foldTree(x: X, tree: Tree) given (ctx: Context): X
     def foldPattern(x: X, tree: Pattern) given (ctx: Context): X
 
-    def foldTrees(x: X, trees: Iterable[Tree]) given (ctx: Context): X = (x /: trees)(foldTree)
-    def foldPatterns(x: X, trees: Iterable[Pattern]) given (ctx: Context): X = (x /: trees)(foldPattern)
+    def foldTrees(x: X, trees: Iterable[Tree]) given (ctx: Context): X = trees.foldLeft(x)(foldTree)
+    def foldPatterns(x: X, trees: Iterable[Pattern]) given (ctx: Context): X = trees.foldLeft(x)(foldPattern)
 
     def foldOverTree(x: X, tree: Tree) given (ctx: Context): X = {
       def localCtx(definition: Definition): Context = definition.symbol.localContext
@@ -65,7 +65,7 @@ trait TreeUtils
           foldTrees(foldTree(x, tpt), rhs)
         case IsDefinition(ddef @ DefDef(_, tparams, vparamss, tpt, rhs)) =>
           implicit val ctx = localCtx(ddef)
-          foldTrees(foldTree((foldTrees(x, tparams) /: vparamss)(foldTrees), tpt), rhs)
+          foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams))(foldTrees), tpt), rhs)
         case IsDefinition(tdef @ TypeDef(_, rhs)) =>
           implicit val ctx = localCtx(tdef)
           foldTree(x, rhs)

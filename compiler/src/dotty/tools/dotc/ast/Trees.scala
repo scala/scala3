@@ -851,7 +851,7 @@ object Trees {
     override def isEmpty: Boolean = trees.isEmpty
     override def toList: List[Tree[T]] = flatten(trees)
     override def toString: String = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
-    override def span: Span = (NoSpan /: trees) ((span, t) => span union t.span)
+    override def span: Span = trees.foldLeft(NoSpan) ((span, t) => span union t.span)
 
     override def withSpan(span: Span): this.type =
       mapElems(_.withSpan(span)).asInstanceOf[this.type]
@@ -1365,7 +1365,7 @@ object Trees {
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
       def apply(x: X, tree: Tree)(implicit ctx: Context): X
 
-      def apply(x: X, trees: Traversable[Tree])(implicit ctx: Context): X = (x /: trees)(apply)
+      def apply(x: X, trees: Traversable[Tree])(implicit ctx: Context): X = trees.foldLeft(x)(apply)
       def foldOver(x: X, tree: Tree)(implicit ctx: Context): X =
         if (tree.source != ctx.source && tree.source.exists)
           foldOver(x, tree)(ctx.withSource(tree.source))
@@ -1446,7 +1446,7 @@ object Trees {
               this(this(x, tpt), tree.rhs)
             case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
               implicit val ctx = localCtx
-              this(this((this(x, tparams) /: vparamss)(apply), tpt), tree.rhs)
+              this(this(vparamss.foldLeft(this(x, tparams))(apply), tpt), tree.rhs)
             case TypeDef(name, rhs) =>
               implicit val ctx = localCtx
               this(x, rhs)
