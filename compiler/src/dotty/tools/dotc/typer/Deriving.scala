@@ -61,21 +61,19 @@ trait Deriving { this: Typer =>
 
     /** Check derived type tree `derived` for the following well-formedness conditions:
      *  (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
-     *  (2) It must have exactly one type parameter
+     *
+     *  (2) It must belong to one of the following three categories:
+     *      (a) a single paramter type class with a parameter which matches the kind of
+     *          the deriving ADT
+     *      (b) a single parameter type class with a parameter of kind * and an ADT with
+     *          one or more type parameter of kind *
+     *      (c) the Eql type class
+     *
+     *      See detailed descriptions in deriveSingleParameter and deriveEql below.
+     *
      *  If it passes the checks, enter a typeclass instance for it in the current scope.
-     *  Given
      *
-     *     class C[Ts] .... derives ... D ...
-     *
-     *  where `T_1, ..., T_n` are the first-kinded type parameters in `Ts`,
-     *  the typeclass instance has the form
-     *
-     *      implicit def derived$D(implicit ev_1: D[T_1], ..., ev_n: D[T_n]): D[C[Ts]] = D.derived
-     *
-     *  See the body of this method for how to generalize this to typeclasses with more
-     *  or less than one type parameter.
-     *
-     *  See test run/typeclass-derivation2 and run/derive-multi
+     *  See test run/typeclass-derivation2, run/poly-kinded-derives and pos/derive-eq
      *  for examples that spell out what would be generated.
      *
      *  Note that the name of the derived method contains the name in the derives clause, not
@@ -86,6 +84,8 @@ trait Deriving { this: Typer =>
       val originalTypeClassType = typedAheadType(derived, AnyTypeConstructorProto).tpe
       val typeClassType = checkClassType(underlyingClassRef(originalTypeClassType), derived.sourcePos, traitReq = false, stablePrefixReq = true)
       val typeClass = typeClassType.classSymbol
+      val typeClassParams = typeClass.typeParams
+      val typeClassArity = typeClassParams.length
 
       def sameParamKinds(xs: List[ParamInfo], ys: List[ParamInfo]): Boolean =
         xs.corresponds(ys)((x, y) => x.paramInfo.hasSameKindAs(y.paramInfo))
@@ -102,10 +102,8 @@ trait Deriving { this: Typer =>
         addDerivedInstance(originalTypeClassType.typeSymbol.name, derivedInfo, derived.sourcePos)
       }
 
-      val typeClassParams = typeClass.typeParams
-      val typeClassArity = typeClassParams.length
-      if (typeClassArity == 1) {
-        // Primary case: single parameter type classes
+      def deriveSingleParameter: Unit = {
+        // Single parameter type classes ... (a) and (b) above
         //
         // (a) ADT and type class parameters overlap on the right and have the
         //     same kinds at the overlap.
@@ -161,6 +159,7 @@ trait Deriving { this: Typer =>
         val alignedClsParamInfos = clsParamInfos.takeRight(instanceArity)
         val alignedTypeClassParamInfos = typeClassParamInfos.take(alignedClsParamInfos.length)
 
+
         if ((instanceArity == clsArity || instanceArity > 0) && sameParamKinds(alignedClsParamInfos, alignedTypeClassParamInfos)) {
           // case (a) ... see description above
           val derivedParams = clsParams.dropRight(instanceArity)
@@ -182,8 +181,10 @@ trait Deriving { this: Typer =>
           addInstance(clsParams, evidenceParamInfos, List(instanceType))
         } else
           cannotBeUnified
-      } else if (typeClass == defn.EqlClass) {
-        // Special case: derives semantics for the Eql type class
+      }
+
+      def deriveEql: Unit = {
+        // Specific derives rules for the Eql type class ... (c) above
         //
         // This has been extracted from the earlier more general multi-parameter
         // type class model. Modulo the assumptions below, the implied semantics
@@ -243,7 +244,11 @@ trait Deriving { this: Typer =>
 
         // Eql[A[T_L, U_L, V_L], A[T_R, U_R, V_R]]
         addInstance(clsParamss.flatten, evidenceParamInfos, instanceTypes)
-      } else if (typeClassArity == 0)
+      }
+
+      if (typeClassArity == 1) deriveSingleParameter
+      else if (typeClass == defn.EqlClass) deriveEql
+      else if (typeClassArity == 0)
         ctx.error(i"type ${typeClass.name} in derives clause of ${cls.name} has no type parameters", derived.sourcePos)
       else
         cannotBeUnified
