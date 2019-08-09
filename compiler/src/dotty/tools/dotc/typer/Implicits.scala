@@ -911,6 +911,16 @@ trait Implicits { self: Typer =>
     loop(formal)
   }
 
+  private def mkMirroredMonoType(mirroredType: HKTypeLambda)(implicit ctx: Context): Type = {
+    val monoMap = new TypeMap {
+      def apply(t: Type) = t match {
+        case TypeParamRef(lambda, n) if lambda eq mirroredType => mirroredType.paramInfos(n)
+        case t => mapOver(t)
+      }
+    }
+    monoMap(mirroredType.resultType)
+  }
+
   /** An implied instance for a type of the form `Mirror.Product { type MirroredType = T }`
    *  where `T` is a generic product type or a case object or an enum case.
    */
@@ -945,9 +955,7 @@ trait Implicits { self: Typer =>
                     mirroredType.derivedLambdaType(
                       resType = TypeOps.nestedPairs(accessors.map(mirroredType.memberInfo(_).widenExpr))
                     )
-                  val AppliedType(tycon, _) = mirroredType.resultType
-                  val monoType = AppliedType(tycon, mirroredType.paramInfos)
-                  (monoType, elems)
+                  (mkMirroredMonoType(mirroredType), elems)
                 case _ =>
                   val elems = TypeOps.nestedPairs(accessors.map(mirroredType.memberInfo(_).widenExpr))
                   (mirroredType, elems)
@@ -1029,9 +1037,7 @@ trait Implicits { self: Typer =>
                   val elems = mirroredType.derivedLambdaType(
                     resType = TypeOps.nestedPairs(cls.children.map(solve))
                   )
-                  val AppliedType(tycon, _) = mirroredType.resultType
-                  val monoType = AppliedType(tycon, mirroredType.paramInfos)
-                  (monoType, elems)
+                  (mkMirroredMonoType(mirroredType), elems)
                 case _ =>
                   val elems = TypeOps.nestedPairs(cls.children.map(solve))
                   (mirroredType, elems)
