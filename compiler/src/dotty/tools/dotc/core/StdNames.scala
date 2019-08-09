@@ -141,7 +141,7 @@ object StdNames {
     val INITIALIZER_PREFIX: N         = "initial$"
     val BOUNDTYPE_ANNOT: N            = "$boundType$"
     val QUOTE: N                      = "'"
-    val TYPE_QUOTE: N                = "type_'"
+    val TYPE_QUOTE: N                 = "type_'"
     val TRAIT_SETTER_SEPARATOR: N     = str.TRAIT_SETTER_SEPARATOR
 
     // value types (and AnyRef) are all used as terms as well
@@ -368,6 +368,7 @@ object StdNames {
     val TypeRef: N              = "TypeRef"
     val UNIT : N                = "UNIT"
     val add_ : N                = "add"
+    val acc: N                  = "acc"
     val annotation: N           = "annotation"
     val anyHash: N              = "anyHash"
     val anyValClass: N          = "anyValClass"

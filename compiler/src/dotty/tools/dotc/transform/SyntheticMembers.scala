@@ -238,7 +238,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  gets the `hashCode` method:
      *
      *  ```
-     *  "C".hashCode // constant folded
+     *  def hashCode: Int = "C".hashCode // constant folded
      *  ```
      *
      *  The class
@@ -247,7 +247,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  case class C(x: T, y: U)
      *  ```
      *
-     *  if non of `T` or `U` are primitive types, gets the `hashCode` method:
+     *  if none of `T` or `U` are primitive types, gets the `hashCode` method:
      *
      *  ```
      *  def hashCode: Int = ScalaRunTime._hashCode(this)
@@ -256,12 +256,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  else if either `T` or `U` are primitive, gets the `hashCode` method implemented by [[caseHashCodeBody]]
      */
     def chooseHashcode(implicit ctx: Context) = {
-      if clazz.is(ModuleClass) then
+      if (clazz.is(ModuleClass))
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString.hashCode))
-      else if accessors `exists` (_.info.finalResultType.classSymbol.isPrimitiveValueClass) then
+      else if (accessors `exists` (_.info.finalResultType.classSymbol.isPrimitiveValueClass))
         caseHashCodeBody
       else
-        ref(defn.ScalaRuntimeModule).select("_hashCode".toTermName).appliedTo(This(clazz))
+        ref(defn.ScalaRuntimeModule).select(defn.ScalaRuntime__hashCode).appliedTo(This(clazz))
     }
 
     /** The class
@@ -275,7 +275,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  ```
      *  def hashCode: Int = {
      *    <synthetic> var acc: Int = 0xcafebabe
-     *    acc = Statics.mix(acc, this.productPrefix.hashCode);
+     *    acc = Statics.mix(acc, this.productPrefix.hashCode());
      *    acc = Statics.mix(acc, x);
      *    acc = Statics.mix(acc, Statics.this.anyHash(y));
      *    Statics.finalizeHash(acc, 2)
@@ -283,11 +283,11 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  ```
      */
     def caseHashCodeBody(implicit ctx: Context): Tree = {
-      val acc       = ctx.newSymbol(ctx.owner, "acc".toTermName, Mutable | Synthetic, defn.IntType, coord = ctx.owner.span)
-      val accDef    = ValDef(acc, Literal(Constant(0xcafebabe)))
+      val acc = ctx.newSymbol(ctx.owner, nme.acc, Mutable | Synthetic, defn.IntType, coord = ctx.owner.span)
+      val accDef = ValDef(acc, Literal(Constant(0xcafebabe)))
       val mixPrefix = Assign(ref(acc),
-        ref(defn.staticsMethod("mix")).appliedTo(ref(acc), This(clazz).select(defn.Product_productPrefix).select(defn.Any_hashCode)))
-      val mixes   = for accessor <- accessors yield
+        ref(defn.staticsMethod("mix")).appliedTo(ref(acc), This(clazz).select(defn.Product_productPrefix).select(defn.Any_hashCode).appliedToNone))
+      val mixes = for (accessor <- accessors) yield
         Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
       val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
       Block(accDef :: mixPrefix :: mixes, finish)
