@@ -1747,7 +1747,7 @@ class Typer extends Namer
     parents match {
       case p :: _ if p.classSymbol.isRealClass => parents
       case _ =>
-        val pcls = (defn.ObjectClass /: parents)(improve)
+        val pcls = parents.foldLeft(defn.ObjectClass)(improve)
         typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseType pcls)}%, %")
         val first = ctx.typeComparer.glb(defn.ObjectType :: parents.map(_.baseType(pcls)))
         checkFeasibleParent(first, ctx.source.atSpan(span), em" in inferred superclass $first") :: parents
@@ -1933,7 +1933,7 @@ class Typer extends Namer
         else List.fill(arity)(defn.AnyType)
       val elems = (tree.trees, pts).zipped.map(typed(_, _))
       if (ctx.mode.is(Mode.Type))
-        (elems :\ (TypeTree(defn.UnitType): Tree))((elemTpt, elemTpts) =>
+        elems.foldRight(TypeTree(defn.UnitType): Tree)((elemTpt, elemTpts) =>
           AppliedTypeTree(TypeTree(defn.PairClass.typeRef), List(elemTpt, elemTpts)))
           .withSpan(tree.span)
       else {

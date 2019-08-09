@@ -117,7 +117,7 @@ class StringConcatTest extends DottyBytecodeTest {
            chsq: java.lang.CharSequence,
            chrs: Array[Char]) = {
       val s1 = str + obj + v + z + c + b + s + i + f + l + d + sbuf + chsq + chrs
-      val s2 = obj + str + v + z + c + b + s + i + f + l + d + sbuf + chsq + chrs
+      val s2 = String.valueOf(obj) + str + v + z + c + b + s + i + f + l + d + sbuf + chsq + chrs
       s1 + "//" + s2
     }
     def sbuf = { val r = new java.lang.StringBuffer(); r.append("sbuf"); r }

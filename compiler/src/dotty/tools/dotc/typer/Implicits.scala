@@ -520,7 +520,7 @@ trait ImplicitRunInfo { self: Run =>
 
       def apply(tp: Type) = tp.widenDealias match {
         case tp: TypeRef =>
-          ((defn.AnyType: Type) /: anchors(tp))(AndType.make(_, _))
+          anchors(tp).foldLeft(defn.AnyType: Type)(AndType.make(_, _))
         case tp: TypeVar =>
           apply(tp.underlying)
         case tp: AppliedType if !tp.tycon.typeSymbol.isClass =>
@@ -529,7 +529,7 @@ trait ImplicitRunInfo { self: Run =>
             case WildcardType(TypeBounds(lo, hi)) => AndType.make(lo, hi)
             case _ => arg
           }
-          (apply(tp.tycon) /: tp.args)((tc, arg) => AndType.make(tc, applyArg(arg)))
+          tp.args.foldLeft(apply(tp.tycon))((tc, arg) => AndType.make(tc, applyArg(arg)))
         case tp: TypeLambda =>
           apply(tp.resType)
         case _ =>

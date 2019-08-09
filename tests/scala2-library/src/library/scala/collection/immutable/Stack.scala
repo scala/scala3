@@ -90,7 +90,7 @@ class Stack[+A] protected (protected val elems: List[A])
    *  @return the stack with the new elements on top.
    */
   def pushAll[B >: A](xs: TraversableOnce[B]): Stack[B] =
-    ((this: Stack[B]) /: xs.toIterator)(_ push _)
+    xs.toIterator.foldLeft(this: Stack[B])(_ push _)
 
   /** Returns the top element of the stack. An error is signaled if
    *  there is no element on the stack.

@@ -164,7 +164,7 @@ object Names {
     override def isTypeName: Boolean = false
     override def isTermName: Boolean = true
     override def toTermName: TermName = this
-    override def asTypeName: Nothing = throw new ClassCastException(this + " is not a type name")
+    override def asTypeName: Nothing = throw new ClassCastException(s"$this is not a type name")
     override def asTermName: TermName = this
 
     @sharable // because it is only modified in the synchronized block of toTypeName.
@@ -436,7 +436,7 @@ object Names {
     override def isTermName: Boolean = false
     override def toTypeName: TypeName = this
     override def asTypeName: TypeName = this
-    override def asTermName: Nothing = throw new ClassCastException(this + " is not a term name")
+    override def asTermName: Nothing = throw new ClassCastException(s"$this is not a term name")
 
     override def asSimpleName: SimpleName = toTermName.asSimpleName
     override def toSimpleName: SimpleName = toTermName.toSimpleName

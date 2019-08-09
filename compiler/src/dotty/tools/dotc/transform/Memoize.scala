@@ -110,7 +110,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       else if (sym eq defn.NullClass) nullLiteral
       else if (sym eq defn.BoxedUnitClass) ref(defn.BoxedUnit_UNIT)
       else {
-        assert(false, sym + " has no erased bottom tree")
+        assert(false, s"$sym has no erased bottom tree")
         EmptyTree
       }
     }

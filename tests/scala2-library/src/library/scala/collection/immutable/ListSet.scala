@@ -78,7 +78,7 @@ sealed class ListSet[A] extends AbstractSet[A]
 
   override def ++(xs: GenTraversableOnce[A]): ListSet[A] =
     if (xs.isEmpty) this
-    else (repr /: xs) (_ + _)
+    else xs.foldLeft(repr) (_ + _)
 
   def iterator: Iterator[A] = {
     def reverseList = {

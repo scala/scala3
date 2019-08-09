@@ -656,7 +656,7 @@ object JavaParsers {
         syntaxError(start, "illegal import", skipIt = false)
         List()
       } else {
-        val qual = ((Ident(names.head): Tree) /: names.tail.init) (Select(_, _))
+        val qual = names.tail.init.foldLeft(Ident(names.head): Tree)(Select(_, _))
         val lastname = names.last
         val ident = Ident(lastname).withSpan(Span(lastnameOffset))
 //        val selector = lastname match {

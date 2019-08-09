@@ -72,10 +72,10 @@ trait ConstraintHandling[AbstractContext] {
   def nonParamBounds(param: TypeParamRef)(implicit actx: AbstractContext): TypeBounds = constraint.nonParamBounds(param)
 
   def fullLowerBound(param: TypeParamRef)(implicit actx: AbstractContext): Type =
-    (nonParamBounds(param).lo /: constraint.minLower(param))(_ | _)
+    constraint.minLower(param).foldLeft(nonParamBounds(param).lo)(_ | _)
 
   def fullUpperBound(param: TypeParamRef)(implicit actx: AbstractContext): Type =
-    (nonParamBounds(param).hi /: constraint.minUpper(param))(_ & _)
+    constraint.minUpper(param).foldLeft(nonParamBounds(param).hi)(_ & _)
 
   /** Full bounds of `param`, including other lower/upper params.
     *

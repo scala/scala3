@@ -28,9 +28,11 @@ class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
     else if (debugPrint) super.toText(sym)
     else keyString(sym) ~~ nameString(sym.name.stripModuleClassSuffix)
 
+  inline private val qSc = '"';
+
   override def toText(const: Constant): Text =
     if (debugPrint) super.toText(const)
-    else if (const.tag == Constants.StringTag) Str('"' + const.value.toString + '"')
+    else if (const.tag == Constants.StringTag) Str(s"${qSc}${const.value}$qSc")
     else Str(const.value.toString)
 
   override def dclText(sym: Symbol): Text = if (debugPrint) super.dclText(sym) else {

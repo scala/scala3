@@ -51,7 +51,7 @@ trait DirectoryLookup[FileEntryType <: ClassRepresentation] extends ClassPath {
       case Some(directory) => listChildren(directory, Some(isPackage))
     }
     val prefix = PackageNameUtils.packagePrefix(inPackage)
-    nestedDirs.map(f => PackageEntryImpl(prefix + getName(f)))
+    nestedDirs.toIndexedSeq.map(f => PackageEntryImpl(prefix + getName(f)))
   }
 
   protected def files(inPackage: String): Seq[FileEntryType] = {

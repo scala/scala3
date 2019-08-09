@@ -28,7 +28,7 @@ object Variances {
 
   /** Compute variance of type parameter `tparam' in types of all symbols `sym'. */
   def varianceInSyms(syms: List[Symbol])(tparam: Symbol)(implicit ctx: Context): Variance =
-    (Bivariant /: syms) ((v, sym) => v & varianceInSym(sym)(tparam))
+    syms.foldLeft(Bivariant) ((v, sym) => v & varianceInSym(sym)(tparam))
 
   /** Compute variance of type parameter `tparam' in type of symbol `sym'. */
   def varianceInSym(sym: Symbol)(tparam: Symbol)(implicit ctx: Context): Variance =
@@ -37,7 +37,7 @@ object Variances {
 
   /** Compute variance of type parameter `tparam' in all types `tps'. */
   def varianceInTypes(tps: List[Type])(tparam: Symbol)(implicit ctx: Context): Variance =
-    (Bivariant /: tps) ((v, tp) => v & varianceInType(tp)(tparam))
+    tps.foldLeft(Bivariant) ((v, tp) => v & varianceInType(tp)(tparam))
 
   /** Compute variance of type parameter `tparam' in all type arguments
    *  <code>tps</code> which correspond to formal type parameters `tparams1'.
@@ -55,7 +55,7 @@ object Variances {
 
   /** Compute variance of type parameter `tparam' in all type annotations `annots'. */
   def varianceInAnnots(annots: List[Annotation])(tparam: Symbol)(implicit ctx: Context): Variance = {
-    (Bivariant /: annots) ((v, annot) => v & varianceInAnnot(annot)(tparam))
+    annots.foldLeft(Bivariant) ((v, annot) => v & varianceInAnnot(annot)(tparam))
   }
 
   /** Compute variance of type parameter `tparam' in type annotation `annot'. */

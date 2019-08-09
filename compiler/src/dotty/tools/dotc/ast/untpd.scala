@@ -354,7 +354,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  PrepareInlineable.
    */
   def New(tpt: Tree, argss: List[List[Tree]])(implicit ctx: Context): Tree =
-    ensureApplied((makeNew(tpt) /: argss)(Apply(_, _)))
+    ensureApplied(argss.foldLeft(makeNew(tpt))(Apply(_, _)))
 
   /** A new expression with constrictor and possibly type arguments. See
    *  `New(tpt, argss)` for details.

@@ -1724,7 +1724,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   }
 
   /** The greatest lower bound of a list types */
-  final def glb(tps: List[Type]): Type = ((AnyType: Type) /: tps)(glb)
+  final def glb(tps: List[Type]): Type = tps.foldLeft(AnyType: Type)(glb)
 
   def widenInUnions(implicit ctx: Context): Boolean = ctx.scala2Mode || ctx.erasedTypes
 
@@ -1767,7 +1767,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
   /** The least upper bound of a list of types */
   final def lub(tps: List[Type]): Type =
-    ((NothingType: Type) /: tps)(lub(_,_, canConstrain = false))
+    tps.foldLeft(NothingType: Type)(lub(_,_, canConstrain = false))
 
   /** Try to produce joint arguments for a lub `A[T_1, ..., T_n] | A[T_1', ..., T_n']` using
    *  the following strategies:

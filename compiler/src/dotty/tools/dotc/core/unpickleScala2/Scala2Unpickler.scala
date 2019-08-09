@@ -355,9 +355,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val denot1 = denot.disambiguate(p)
         val sym = denot1.symbol
         if (denot.exists && !denot1.exists) { // !!!DEBUG
-          val alts = denot.alternatives map (d => d + ":" + d.info + "/" + d.signature)
+          val alts = denot.alternatives map (d => s"$d:${d.info}/${d.signature}")
           System.err.println(s"!!! disambiguation failure: $alts")
-          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => d + ":" + d.info + "/" + d.signature)
+          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => s"$d:${d.info}/${d.signature}")
           System.err.println(s"!!! all members: $members")
         }
         if (tag == EXTref) sym else sym.moduleClass
@@ -773,7 +773,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             if (clazz.isClass) info.substThis(clazz.asClass, rt.recThis)
             else info // turns out some symbols read into `clazz` are not classes, not sure why this is the case.
           def addRefinement(tp: Type, sym: Symbol) = RefinedType(tp, sym.name, sym.info)
-          val refined = (parent /: decls.toList)(addRefinement)
+          val refined = decls.toList.foldLeft(parent)(addRefinement)
           RecType.closeOver(rt => subst(refined, rt))
         }
       case CLASSINFOtpe =>

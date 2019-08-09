@@ -95,6 +95,6 @@ object LRUCache {
 
   /** The initial ring: 0 -> 1 -> ... -> 7 -> 0 */
   val initialRing: SixteenNibbles =
-    (new SixteenNibbles(0L) /: (0 until Retained))((nibbles, idx) =>
+    (0 until Retained).foldLeft(new SixteenNibbles(0L))((nibbles, idx) =>
       nibbles.updated(idx, (idx + 1) % Retained))
 }

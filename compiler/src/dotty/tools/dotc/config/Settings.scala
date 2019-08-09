@@ -94,7 +94,7 @@ object Settings {
     def legalChoices: String =
       if (choices.isEmpty) ""
       else choices match {
-        case r: Range => r.head + ".." + r.last
+        case r: Range => s"${r.head}..${r.last}"
         case xs: List[_] => xs.mkString(", ")
       }
 
@@ -205,10 +205,10 @@ object Settings {
       userSetSettings(state).mkString("(", " ", ")")
 
     private def checkDependencies(state: ArgsSummary): ArgsSummary =
-      (state /: userSetSettings(state.sstate))(checkDependenciesOfSetting)
+      userSetSettings(state.sstate).foldLeft(state)(checkDependenciesOfSetting)
 
     private def checkDependenciesOfSetting(state: ArgsSummary, setting: Setting[_]) =
-      (state /: setting.depends) { (s, dep) =>
+      setting.depends.foldLeft(state) { (s, dep) =>
         val (depSetting, reqValue) = dep
         if (depSetting.valueIn(state.sstate) == reqValue) s
         else s.fail(s"incomplete option ${setting.name} (requires ${depSetting.name})")

@@ -594,7 +594,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case GenAlias(pat, expr) =>
         toText(pat) ~ " = " ~ toText(expr)
       case ContextBounds(bounds, cxBounds) =>
-        (toText(bounds) /: cxBounds) {(t, cxb) =>
+        cxBounds.foldLeft(toText(bounds)) {(t, cxb) =>
           t ~ cxBoundToText(cxb)
         }
       case PatDef(mods, pats, tpt, rhs) =>
@@ -728,7 +728,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val (leading, paramss) =
       if (isExtension && vparamss.nonEmpty) (paramsText(vparamss.head) ~ " " ~ txt, vparamss.tail)
       else (txt, vparamss)
-    (leading /: paramss)((txt, params) =>
+    paramss.foldLeft(leading)((txt, params) =>
       txt ~
       (Str(" given ") provided params.nonEmpty && params.head.mods.is(Given)) ~
       paramsText(params))

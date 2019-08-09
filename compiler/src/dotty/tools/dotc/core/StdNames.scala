@@ -116,9 +116,9 @@ object StdNames {
     val ANON_FUN: N                   = str.ANON_FUN
     val BITMAP_PREFIX: N              = "bitmap$"  // @darkdimius: $bitmap? Also, the next 4 names are unused.
     val BITMAP_NORMAL: N              = BITMAP_PREFIX         // initialization bitmap for public/protected lazy vals
-    val BITMAP_TRANSIENT: N           = BITMAP_PREFIX + "trans$"    // initialization bitmap for transient lazy vals
-    val BITMAP_CHECKINIT: N           = BITMAP_PREFIX + "init$"      // initialization bitmap for checkinit values
-    val BITMAP_CHECKINIT_TRANSIENT: N = BITMAP_PREFIX + "inittrans$" // initialization bitmap for transient checkinit values
+    val BITMAP_TRANSIENT: N           = s"${BITMAP_PREFIX}trans$$"    // initialization bitmap for transient lazy vals
+    val BITMAP_CHECKINIT: N           = s"${BITMAP_PREFIX}init$$"      // initialization bitmap for checkinit values
+    val BITMAP_CHECKINIT_TRANSIENT: N = s"${BITMAP_PREFIX}inittrans$$" // initialization bitmap for transient checkinit values
     val DEFAULT_GETTER: N             = str.DEFAULT_GETTER
     val DEFAULT_GETTER_INIT: N        = "$lessinit$greater"
     val DO_WHILE_PREFIX: N            = "doWhile$"

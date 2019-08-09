@@ -235,7 +235,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           FileDiff.dump(checkFile.toPath.toString, actual)
           echo("Updated checkfile: " + checkFile.getPath)
         } else {
-          val outFile = checkFile.toPath.resolveSibling(checkFile.toPath.getFileName + ".out").toString
+          val outFile = checkFile.toPath.resolveSibling(s"${checkFile.toPath.getFileName}.out").toString
           FileDiff.dump(outFile, actual)
           echo(FileDiff.diffMessage(checkFile.getPath, outFile))
         }
@@ -460,7 +460,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         if (times == 1) new Driver
         else new Driver {
           private def ntimes(n: Int)(op: Int => Reporter): Reporter =
-            (emptyReporter /: (1 to n)) ((_, i) => op(i))
+            (1 to n).foldLeft(emptyReporter) ((_, i) => op(i))
 
           override def doCompile(comp: Compiler, files: List[String])(implicit ctx: Context) =
             ntimes(times) { run =>
@@ -625,7 +625,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] = {
       def compilerCrashed = reporters.exists(_.compilerCrashed)
-      lazy val (errorMap, expectedErrors) = getErrorMapAndExpectedCount(testSource.sourceFiles)
+      lazy val (errorMap, expectedErrors) = getErrorMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
       lazy val actualErrors = reporters.foldLeft(0)(_ + _.errorCount)
       def hasMissingAnnotations = getMissingExpectedErrors(errorMap, reporters.iterator.flatMap(_.errors))
 

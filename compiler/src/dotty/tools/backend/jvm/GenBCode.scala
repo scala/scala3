@@ -394,11 +394,11 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         }
         for ((label, i) <- initialLabels.iterator.zipWithIndex) {
           mv.visitLabel(label)
-          emitLambdaDeserializeIndy(groups(i))
+          emitLambdaDeserializeIndy(groups(i).toIndexedSeq)
           mv.visitInsn(ARETURN)
         }
         mv.visitLabel(terminalLabel)
-        emitLambdaDeserializeIndy(groups(numGroups - 1))
+        emitLambdaDeserializeIndy(groups(numGroups - 1).toIndexedSeq)
         mv.visitInsn(ARETURN)
       }
 

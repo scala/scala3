@@ -1331,7 +1331,7 @@ object desugar {
     val ttree = ctx.typerPhase match {
       case phase: FrontEnd if phase.stillToBeEntered(parts.last) =>
         val prefix =
-          parts.init.foldLeft((Ident(nme.ROOTPKG): Tree))((qual, name) =>
+          parts.init.foldLeft(Ident(nme.ROOTPKG): Tree)((qual, name) =>
             Select(qual, name.toTermName))
         Select(prefix, parts.last.toTypeName)
       case _ =>

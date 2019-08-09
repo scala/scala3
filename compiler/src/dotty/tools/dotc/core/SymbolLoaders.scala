@@ -331,7 +331,7 @@ abstract class SymbolLoader extends LazyType { self =>
         else "error while loading " + root.name + ",\n" + msg)
     }
     try {
-      val start = currentTime
+      val start = System.currentTimeMillis
       if (Config.tracingEnabled && ctx.settings.YdebugTrace.value)
         trace(s">>>> loading ${root.debugString}", _ => s"<<<< loaded ${root.debugString}") {
           doComplete(root)

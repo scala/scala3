@@ -673,5 +673,5 @@ object TypeOps {
   // TODO: Move other typeops here. It's a bit weird that they are a part of `ctx`
 
   def nestedPairs(ts: List[Type])(implicit ctx: Context): Type =
-    (ts :\ (defn.UnitType: Type))(defn.PairClass.typeRef.appliedTo(_, _))
+    ts.foldRight(defn.UnitType: Type)(defn.PairClass.typeRef.appliedTo(_, _))
 }

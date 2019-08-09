@@ -198,11 +198,11 @@ object ExtensionMethods {
           |
           | Candidates:
           |
-          | ${candidates.map(c => c.name + ":" + c.info.show).mkString("\n")}
+          | ${candidates.map(c => s"${c.name}:${c.info.show}").mkString("\n")}
           |
           | Candidates (signatures normalized):
           |
-          | ${candidates.map(c => c.name + ":" + c.info.signature + ":" + FullParameterization.memberSignature(c.info)).mkString("\n")}""")
+          | ${candidates.map(c => s"${c.name}:${c.info.signature}:${FullParameterization.memberSignature(c.info)}").mkString("\n")}""")
       matching.head.symbol.asTerm
     }
 }

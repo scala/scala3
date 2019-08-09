@@ -84,7 +84,7 @@ sealed class ListMap[A, +B] extends AbstractMap[A, B]
 
   override def ++[B1 >: B](xs: GenTraversableOnce[(A, B1)]): ListMap[A, B1] =
     if (xs.isEmpty) this
-    else ((repr: ListMap[A, B1]) /: xs) (_ + _)
+    else xs.foldLeft(repr: ListMap[A, B1]) (_ + _)
 
   def iterator: Iterator[(A, B)] = {
     def reverseList = {

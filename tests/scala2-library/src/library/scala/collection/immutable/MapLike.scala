@@ -85,7 +85,7 @@ self =>
    *  @return        a new immutable map with the bindings of this map and those from `xs`.
    */
   override def ++[V1 >: V](xs: GenTraversableOnce[(K, V1)]): immutable.Map[K, V1] =
-    ((repr: immutable.Map[K, V1]) /: xs.seq) (_ + _)
+    xs.seq.foldLeft(repr: immutable.Map[K, V1]) (_ + _)
 
   /** Filters this map by retaining only keys satisfying a predicate.
    *  @param  p   the predicate used to test keys
@@ -113,7 +113,7 @@ self =>
     override def - (elem: K): immutable.Set[K] =
       if (this(elem)) immutable.Set[K]() ++ this - elem
       else this
-      
+
     // ImmutableDefaultKeySet is only protected, so we won't warn on override.
     // Someone could override in a way that makes widening not okay
     // (e.g. by overriding +, though the version in this class is fine)

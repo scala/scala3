@@ -3154,7 +3154,7 @@ object Types {
       else {
         val result =
           if (paramInfos.isEmpty) NoDeps
-          else (NoDeps /: paramInfos.tail)(depStatus(_, _))
+          else paramInfos.tail.foldLeft(NoDeps)(depStatus(_, _))
         if ((result & Provisional) == 0) myParamDependencyStatus = result
         (result & StatusMask).toByte
       }
@@ -4235,7 +4235,7 @@ object Types {
 
   object AnnotatedType {
     def make(underlying: Type, annots: List[Annotation]): Type =
-      (underlying /: annots)(AnnotatedType(_, _))
+      annots.foldLeft(underlying)(AnnotatedType(_, _))
   }
 
   // Special type objects and classes -----------------------------------------------------

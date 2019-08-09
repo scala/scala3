@@ -22,7 +22,7 @@ lazy val pairs =
 	expected.map { case (from,tos) =>
 		(toFile(from), tos.map(toFile))
 	}
-lazy val expectedDeps = (Relation.empty[File,File] /: pairs) { case (r, (x,ys)) => r + (x,ys) }
+lazy val expectedDeps = pairs.foldLeft(Relation.empty[File,File]) { case (r, (x,ys)) => r + (x,ys) }
 def toFile(s: String) = file(s + ".java").getAbsoluteFile
 
 def same[T](x: T, y: T): Unit = {

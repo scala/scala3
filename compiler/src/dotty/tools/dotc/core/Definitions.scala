@@ -382,7 +382,7 @@ class Definitions {
 
   // The set of all wrap{X, Ref}Array methods, where X is a value type
   val WrapArrayMethods: PerRun[collection.Set[Symbol]] = new PerRun({ implicit ctx =>
-    val methodNames = ScalaValueTypes.map(ast.tpd.wrapArrayMethodName) + nme.wrapRefArray
+    val methodNames = ScalaValueTypes.map(ast.tpd.wrapArrayMethodName) `union` Set(nme.wrapRefArray)
     methodNames.map(getWrapVarargsArrayModule.requiredMethod(_))
   })
 
@@ -1192,7 +1192,7 @@ class Definitions {
     ByteType, ShortType, CharType, IntType, LongType, FloatType, DoubleType)
 
   @tu private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
-  @tu private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitType + BooleanType
+  @tu private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes `union` Set(UnitType, BooleanType)
 
   val ScalaNumericValueClasses: PerRun[collection.Set[Symbol]] = new PerRun(implicit ctx => ScalaNumericValueTypes.map(_.symbol))
   val ScalaValueClasses: PerRun[collection.Set[Symbol]]        = new PerRun(implicit ctx => ScalaValueTypes.map(_.symbol))

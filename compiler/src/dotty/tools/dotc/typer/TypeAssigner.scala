@@ -72,7 +72,7 @@ trait TypeAssigner {
 
     def isRefinable(sym: Symbol) = !sym.is(Private) && !sym.isConstructor
     val refinableDecls = info.decls.filter(isRefinable)
-    val raw = (parentType /: refinableDecls)(addRefinement)
+    val raw = refinableDecls.foldLeft(parentType)(addRefinement)
     HKTypeLambda.fromParams(cls.typeParams, raw) match {
       case tl: HKTypeLambda => tl.derivedLambdaType(resType = close(tl.resType))
       case tp => close(tp)
@@ -555,7 +555,7 @@ trait TypeAssigner {
       else if (!rinfo.exists) parent // can happen after failure in self type definition
       else RefinedType(parent, rsym.name, rinfo)
     }
-    val refined = (parent.tpe /: refinements)(addRefinement)
+    val refined = refinements.foldLeft(parent.tpe)(addRefinement)
     tree.withType(RecType.closeOver(rt => refined.substThis(refineCls, rt.recThis)))
   }
 

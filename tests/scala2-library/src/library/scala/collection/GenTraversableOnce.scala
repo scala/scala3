@@ -176,10 +176,10 @@ trait GenTraversableOnce[+A] extends Any {
    *      scala> val a = List(1,2,3,4)
    *      a: List[Int] = List(1, 2, 3, 4)
    *
-   *      scala> val b = (5 /: a)(_+_)
+   *      scala> val b = a.foldLeft(5)(_+_)
    *      b: Int = 15
    *
-   *      scala> val c = (5 /: a)((x,y) => x + y)
+   *      scala> val c = a.foldLeft(5)((x,y) => x + y)
    *      c: Int = 15
    *  }}}
 

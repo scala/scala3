@@ -34,7 +34,7 @@ class PatmatExhaustivityTest {
 
     val actualLines: Seq[String] = stringBuffer.toString.trim.replaceAll("\\s+\n", "\n") match {
       case "" => Nil
-      case s  => s.split("\\r?\\n")
+      case s  => s.split("\\r?\\n").toIndexedSeq
     }
     val baseFilePath = path.toString.stripSuffix(".scala")
     val checkFilePath = baseFilePath + ".check"
@@ -61,10 +61,10 @@ class PatmatExhaustivityTest {
 
     val actualLines: Seq[String] = stringBuffer.toString.trim.replaceAll("\\s+\n", "\n") match {
       case "" => Nil
-      case s  => s.split("\\r?\\n")
+      case s  => s.split("\\r?\\n").toIndexedSeq
     }
 
-    val checkFilePath = path + File.separator + "expected.check"
+    val checkFilePath = s"${path}${File.separator}expected.check"
 
     FileDiff.checkAndDump(path.toString, actualLines, checkFilePath)
   }

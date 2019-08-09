@@ -377,7 +377,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     var flag: Tree = EmptyTree
     var ord = 0
 
-    def offsetName(id: Int) = (StdNames.nme.LAZY_FIELD_OFFSET + (if (x.symbol.owner.is(Module)) "_m_" else "") + id.toString).toTermName
+    def offsetName(id: Int) = s"${StdNames.nme.LAZY_FIELD_OFFSET}${if (x.symbol.owner.is(Module)) "_m_" else ""}$id".toTermName
 
     // compute or create appropriate offsetSymbol, bitmap and bits used by current ValDef
     appendOffsetDefs.get(claz) match {
@@ -394,7 +394,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         } else { // need to create a new flag
           offsetSymbol = ctx.newSymbol(claz, offsetById, Synthetic, defn.LongType).enteredAfter(this)
           offsetSymbol.addAnnotation(Annotation(defn.ScalaStaticAnnot))
-          val flagName = (StdNames.nme.BITMAP_PREFIX + id.toString).toTermName
+          val flagName = s"${StdNames.nme.BITMAP_PREFIX}$id".toTermName
           val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
           flag = ValDef(flagSymbol, Literal(Constant(0L)))
           val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thizClass, Literal(Constant(flagName.toString))))
@@ -404,7 +404,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       case None =>
         offsetSymbol = ctx.newSymbol(claz, offsetName(0), Synthetic, defn.LongType).enteredAfter(this)
         offsetSymbol.addAnnotation(Annotation(defn.ScalaStaticAnnot))
-        val flagName = (StdNames.nme.BITMAP_PREFIX + "0").toTermName
+        val flagName = s"${StdNames.nme.BITMAP_PREFIX}0".toTermName
         val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
         flag = ValDef(flagSymbol, Literal(Constant(0L)))
         val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thizClass, Literal(Constant(flagName.toString))))

@@ -294,7 +294,7 @@ object LambdaLift {
       else sym.name.freshened
 
     private def generateProxies()(implicit ctx: Context): Unit =
-      for ((owner, freeValues) <- free.toIterator) {
+      for ((owner, freeValues) <- free.iterator) {
         val newFlags = Synthetic | (if (owner.isClass) ParamAccessor | Private else Param)
         ctx.debuglog(i"free var proxy: ${owner.showLocated}, ${freeValues.toList}%, %")
         proxyMap(owner) = {

@@ -194,7 +194,7 @@ class JSCodeGen()(implicit ctx: Context) {
       ctx.settings.outputDir.value
 
     val pathParts = sym.fullName.toString.split("[./]")
-    val dir = (outputDirectory /: pathParts.init)(_.subdirectoryNamed(_))
+    val dir = pathParts.init.foldLeft(outputDirectory)(_.subdirectoryNamed(_))
 
     var filename = pathParts.last
     if (sym.is(ModuleClass))

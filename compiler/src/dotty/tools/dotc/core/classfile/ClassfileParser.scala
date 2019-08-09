@@ -421,7 +421,7 @@ class ClassfileParser(
         if (sig(index) != ':') // guard against empty class bound
           ts += objToAny(sig2type(tparams, skiptvs))
       }
-      TypeBounds.upper(((NoType: Type) /: ts)(_ & _) orElse defn.AnyType)
+      TypeBounds.upper(ts.foldLeft(NoType: Type)(_ & _) orElse defn.AnyType)
     }
 
     var tparams = classTParams
@@ -878,7 +878,7 @@ class ClassfileParser(
     def originalName: SimpleName = pool.getName(name)
 
     override def toString: String =
-      originalName + " in " + outerName + "(" + externalName + ")"
+      s"$originalName in $outerName($externalName)"
   }
 
   object innerClasses extends scala.collection.mutable.HashMap[Name, InnerClassEntry] {
