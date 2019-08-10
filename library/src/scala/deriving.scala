@@ -26,7 +26,6 @@ object deriving {
 
     /** The Mirror for a product type */
     trait Product extends Mirror {
-
       /** Create a new instance of type `T` with elements taken from product `p`. */
       def fromProduct(p: scala.Product): MirroredMonoType
     }
@@ -46,6 +45,12 @@ object deriving {
       type MirroredElemTypes = Unit
       type MirroredElemLabels = Unit
       def fromProduct(p: scala.Product) = value
+    }
+
+    trait ValueClass extends Product {
+      type MirroredMonoType <: scala.Product
+      def fromProduct(p: scala.Product): MirroredMonoType = wrapValue(p.productElement(0))
+      def wrapValue(v: Any): MirroredMonoType
     }
 
     type Of[T]        = Mirror { type MirroredType = T; type MirroredMonoType = T ; type MirroredElemTypes <: Tuple }

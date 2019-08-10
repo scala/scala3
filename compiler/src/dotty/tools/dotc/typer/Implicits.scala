@@ -30,6 +30,7 @@ import Trees._
 import transform.SymUtils._
 import transform.TypeUtils._
 import transform.SyntheticMembers._
+import transform.ValueClasses.isDerivedValueClass
 import Hashable._
 import util.{Property, SourceFile, NoSource}
 import config.Config
@@ -960,8 +961,9 @@ trait Implicits { self: Typer =>
                   val elems = TypeOps.nestedPairs(accessors.map(mirroredType.memberInfo(_).widenExpr))
                   (mirroredType, elems)
               }
+              val mirrorClass = if (isDerivedValueClass(cls)) defn.Mirror_ValueClassClass else defn.Mirror_ProductClass
               val mirrorType =
-                mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name, formal)
+                mirrorCore(mirrorClass, monoType, mirroredType, cls.name, formal)
                   .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
                   .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
               val mirrorRef =

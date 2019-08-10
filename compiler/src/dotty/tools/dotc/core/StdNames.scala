@@ -573,6 +573,7 @@ object StdNames {
     val withFilterIfRefutable: N = "withFilterIfRefutable$"
     val WorksheetWrapper: N     = "WorksheetWrapper"
     val wrap: N                 = "wrap"
+    val wrapValue: N            = "wrapValue"
     val writeReplace: N         = "writeReplace"
     val zero: N                 = "zero"
     val zip: N                  = "zip"

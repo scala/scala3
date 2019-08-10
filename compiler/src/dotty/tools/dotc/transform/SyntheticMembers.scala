@@ -367,6 +367,28 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       }
     }
 
+    def wrapValueBody(caseClass: Symbol, param: Tree)(implicit ctx: Context): Tree = {
+      val (classRef, methTpe) =
+        caseClass.primaryConstructor.info match {
+          case tl: PolyType =>
+            val (tl1, tpts) = constrained(tl, untpd.EmptyTree, alwaysAddTypeVars = true)
+            val targs =
+              for (tpt <- tpts) yield
+                tpt.tpe match {
+                  case tvar: TypeVar => tvar.instantiate(fromBelow = false)
+                }
+            (caseClass.typeRef.appliedTo(targs), tl.instantiate(targs))
+          case methTpe =>
+            (caseClass.typeRef, methTpe)
+        }
+      methTpe match {
+        case methTpe: MethodType =>
+          val formal = methTpe.paramInfos(0)
+          val elem = param.ensureConforms(formal)
+          New(classRef, List(elem))
+      }
+    }
+
   /** For an enum T:
    *
    *     def ordinal(x: MirroredMonoType) = x.ordinal
@@ -438,9 +460,15 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def makeSingletonMirror() =
       addParent(defn.Mirror_SingletonClass.typeRef)
     def makeProductMirror(cls: Symbol) = {
-      addParent(defn.Mirror_ProductClass.typeRef)
-      addMethod(nme.fromProduct, MethodType(defn.ProductClass.typeRef :: Nil, monoType.typeRef), cls,
-        fromProductBody(_, _)(_).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
+      if (isDerivedValueClass(cls)) {
+        addParent(defn.Mirror_ValueClassClass.typeRef)
+        addMethod(nme.wrapValue, MethodType(defn.AnyClass.typeRef :: Nil, monoType.typeRef), cls,
+          wrapValueBody(_, _)(_).ensureConforms(monoType.typeRef))
+      } else {
+        addParent(defn.Mirror_ProductClass.typeRef)
+        addMethod(nme.fromProduct, MethodType(defn.ProductClass.typeRef :: Nil, monoType.typeRef), cls,
+          fromProductBody(_, _)(_).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
+      }
     }
     def makeSumMirror(cls: Symbol) = {
       addParent(defn.Mirror_SumClass.typeRef)

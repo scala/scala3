@@ -12,7 +12,6 @@ import StdNames._
 import NameKinds._
 import Flags._
 import Annotations._
-import ValueClasses.isDerivedValueClass
 import Decorators._
 
 import language.implicitConversions
@@ -79,7 +78,6 @@ class SymUtils(val self: Symbol) extends AnyVal {
     if (!self.is(CaseClass)) "it is not a case class"
     else if (self.is(Abstract)) "it is an abstract class"
     else if (self.primaryConstructor.info.paramInfoss.length != 1) "it takes more than one parameter list"
-    else if (isDerivedValueClass(self)) "it is a value class"
     else ""
 
   def isGenericProduct(implicit ctx: Context): Boolean = whyNotGenericProduct.isEmpty

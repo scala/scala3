@@ -625,6 +625,8 @@ class Definitions {
   @tu lazy val Mirror_SumClass: ClassSymbol = ctx.requiredClass("scala.deriving.Mirror.Sum")
   @tu lazy val Mirror_SingletonClass: ClassSymbol = ctx.requiredClass("scala.deriving.Mirror.Singleton")
   @tu lazy val Mirror_SingletonProxyClass: ClassSymbol = ctx.requiredClass("scala.deriving.Mirror.SingletonProxy")
+  @tu lazy val Mirror_ValueClassClass: ClassSymbol = ctx.requiredClass("scala.deriving.Mirror.ValueClass")
+    @tu lazy val Mirror_ValueClassClass_wrapValue: Symbol = Mirror_ValueClassClass.requiredMethod(nme.wrapValue)
 
   @tu lazy val LanguageModule: Symbol = ctx.requiredModule("scala.language")
   @tu lazy val NonLocalReturnControlClass: ClassSymbol = ctx.requiredClass("scala.runtime.NonLocalReturnControl")
