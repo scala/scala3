@@ -142,7 +142,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       None
     else if (!sym.isStaticOwner && !isClassRef)
       tryHeal(sym, tp, pos)
-    else if (!sym.owner.isStaticOwner) // local class reference that is phase
+    else if (!sym.owner.isStaticOwner) // non-top level class reference that is phase inconsistent
       levelError(sym, tp, pos, "")
     else
       None
