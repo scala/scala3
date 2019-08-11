@@ -139,8 +139,19 @@ class ReplDriver(settings: Array[String],
   // TODO: i5069
   final def bind(name: String, value: Any)(implicit state: State): State = state
 
-  private def withRedirectedOutput(op: => State): State =
-    Console.withOut(out) { Console.withErr(out) { op } }
+  private def withRedirectedOutput(op: => State): State = {
+    val savedOut = System.out
+    val savedErr = System.err
+    try {
+      System.setOut(out)
+      System.setErr(out)
+      op
+    }
+    finally {
+      System.setOut(savedOut)
+      System.setErr(savedErr)
+    }
+  }
 
   private def newRun(state: State) = {
     val run = compiler.newRun(rootCtx.fresh.setReporter(newStoreReporter), state)
