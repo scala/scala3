@@ -387,6 +387,7 @@ EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   
 GivenDef          ::=  [id] [DefTypeParamClause] GivenBody
 GivenBody         ::=  [‘as ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
                     |  ‘as’ Type {GivenParamClause} ‘=’ Expr
+                    |  ‘(’ DefParam ‘)’ TemplateBody
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}

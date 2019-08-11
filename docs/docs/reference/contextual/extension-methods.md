@@ -80,7 +80,7 @@ So `circle.circumference` translates to `CircleOps.circumference(circle)`, provi
 
 ### Given Instances for Extension Methods
 
-Given instances that define extension methods can also be defined without a `for` clause. E.g.,
+Given instances that define extension methods can also be defined without an `as` clause. E.g.,
 
 ```scala
 given StringOps {
@@ -94,8 +94,33 @@ given {
   def (xs: List[T]) second[T] = xs.tail.head
 }
 ```
-If such given instances are anonymous (as in the second clause), their name is synthesized from the name
-of the first defined extension method.
+If such given instances are anonymous (as in the second clause), their name is synthesized from the name of the first defined extension method.
+
+### Given Instances with Collective Parameters
+
+If a given instance has several extension methods one can pull out the left parameter section
+as well as any type parameters of these extension methods into the given instance itself.
+For instance, here is a given instance with two extension methods.
+```scala
+given ListOps {
+  def (xs: List[T]) second[T]: T = xs.tail.head
+  def (xs: List[T]) third[T]: T = xs.tail.tail.head
+}
+```
+The repetition in the parameters can be avoided by moving the parameters into the given instance itself. The following version is a shorthand for the code above.
+```scala
+given ListOps[T](xs: List[T]) {
+  def second: T = xs.tail.head
+  def third: T = xs.tail.tail.head
+}
+```
+This syntax just adds convenience at the definition site. Applications of such extension methods are exactly the same as if their parameters were repeated in each extension method.
+Examples:
+```scala
+val xs = List(1, 2, 3)
+xs.second[Int]
+ListOps.third[T](xs)
+```
 
 ### Operators
 
@@ -143,4 +168,6 @@ to the [current syntax](../../internals/syntax.md).
 ```
 DefSig            ::=  ...
                     |  ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] DefParamClauses
+GivenBody         ::=  ...
+                    |  ‘(’ DefParam ‘)’ TemplateBody
 ```
