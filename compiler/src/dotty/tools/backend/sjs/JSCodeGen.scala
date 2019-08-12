@@ -2162,7 +2162,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
     val genBody = {
       val call = if (isStaticCall) {
-        genApplyStatic(sym, formalCaptures.map(_.ref))
+        genApplyStatic(sym, formalCaptures.map(_.ref) ::: actualParams)
       } else {
         val thisCaptureRef :: argCaptureRefs = formalCaptures.map(_.ref)
         genApplyMethodMaybeStatically(thisCaptureRef, sym,
