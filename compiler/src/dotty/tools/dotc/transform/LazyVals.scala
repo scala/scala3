@@ -76,8 +76,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       if (isField) {
         if (sym.isAllOf(SyntheticModule))
           transformSyntheticModule(tree)
-        else if (sym.isThreadUnsafe) {
-          if (sym.is(Module)) {
+        else if (sym.isThreadUnsafe || ctx.settings.scalajs.value) {
+          if (sym.is(Module) && !ctx.settings.scalajs.value) {
             ctx.error(em"@threadUnsafe is only supported on lazy vals", sym.sourcePos)
             transformMemberDefThreadSafe(tree)
           }
@@ -453,6 +453,3 @@ object LazyVals {
     val retry: TermName       = "retry".toTermName
   }
 }
-
-
-
