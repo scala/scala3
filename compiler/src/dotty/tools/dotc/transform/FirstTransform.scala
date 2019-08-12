@@ -144,7 +144,13 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
-    if (tree.isType) toTypeTree(tree) else constToLiteral(tree)
+    if (tree.isType) {
+      toTypeTree(tree)
+    } else if (tree.name != nme.WILDCARD) {
+      // Constant-foldable wildcards can occur in patterns, for instance as `case _: "a"`
+      // we avoid constant-folding those as doing so would change the meaning of the pattern
+      constToLiteral(tree)
+    } else tree
 
   override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
     if (tree.isType) toTypeTree(tree) else constToLiteral(tree)
@@ -156,7 +162,9 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     constToLiteral(foldCondition(tree))
 
   override def transformTyped(tree: Typed)(implicit ctx: Context): Tree =
-    constToLiteral(tree)
+    // Singleton type cases (such as `case _: "a"`) are constant-foldable
+    // we avoid constant-folding those as doing so would change the meaning of the pattern
+    if (!ctx.mode.is(Mode.Pattern)) constToLiteral(tree) else tree
 
   override def transformBlock(tree: Block)(implicit ctx: Context): Tree =
     constToLiteral(tree)
