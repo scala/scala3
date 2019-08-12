@@ -258,16 +258,24 @@ object JSEncoding {
         if (sym.asClass.isPrimitiveValueClass) {
           if (sym == defn.BooleanClass)
             jstpe.BooleanType
+          else if (sym == defn.CharClass)
+            jstpe.CharType
+          else if (sym == defn.ByteClass)
+            jstpe.ByteType
+          else if (sym == defn.ShortClass)
+            jstpe.ShortType
+          else if (sym == defn.IntClass)
+            jstpe.IntType
+          else if (sym == defn.LongClass)
+            jstpe.LongType
           else if (sym == defn.FloatClass)
             jstpe.FloatType
           else if (sym == defn.DoubleClass)
             jstpe.DoubleType
-          else if (sym == defn.LongClass)
-            jstpe.LongType
           else if (sym == defn.UnitClass)
             jstpe.NoType
           else
-            jstpe.IntType
+            throw new AssertionError(s"unknown primitive value class $sym")
         } else {
           if (sym == defn.ObjectClass || isJSType(sym))
             jstpe.AnyType
