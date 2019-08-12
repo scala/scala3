@@ -553,9 +553,10 @@ object Symbols {
 
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(implicit ctx: Context): this.type = {
-      assert(this.owner.isClass, s"symbol ($this) entered the scope of non-class owner ${this.owner}") // !!! DEBUG
-      this.owner.asClass.enter(this)
-      if (this.is(Module)) this.owner.asClass.enter(this.moduleClass)
+      if (this.owner.isClass) {
+        this.owner.asClass.enter(this)
+        if (this.is(Module)) this.owner.asClass.enter(this.moduleClass)
+      }
       this
     }
 
@@ -566,14 +567,16 @@ object Symbols {
      */
     def enteredAfter(phase: DenotTransformer)(implicit ctx: Context): this.type =
       if (ctx.phaseId != phase.next.id) enteredAfter(phase)(ctx.withPhase(phase.next))
-      else {
-        if (this.owner.is(Package)) {
-          denot.validFor |= InitialPeriod
-          if (this.is(Module)) this.moduleClass.validFor |= InitialPeriod
-        }
-        else this.owner.asClass.ensureFreshScopeAfter(phase)
-        assert(isPrivate || phase.changesMembers, i"$this entered in ${this.owner} at undeclared phase $phase")
-        entered
+      else this.owner match {
+        case owner: ClassSymbol =>
+          if (owner.is(Package)) {
+            denot.validFor |= InitialPeriod
+            if (this.is(Module)) this.moduleClass.validFor |= InitialPeriod
+          }
+          else owner.ensureFreshScopeAfter(phase)
+          assert(isPrivate || phase.changesMembers, i"$this entered in $owner at undeclared phase $phase")
+          entered
+        case _ => this
       }
 
     /** Remove symbol from scope of owning class */

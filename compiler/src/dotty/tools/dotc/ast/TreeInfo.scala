@@ -244,20 +244,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   /**  The largest subset of {NoInits, PureInterface} that a
-   *   trait or class enclosing this statement can have as flags.
-   */
-  def defKind(tree: Tree)(implicit ctx: Context): FlagSet = unsplice(tree) match {
-    case EmptyTree | _: Import => NoInitsInterface
-    case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
-    case tree: DefDef =>
-      if (tree.unforcedRhs == EmptyTree &&
-          tree.vparamss.forall(_.forall(_.rhs.isEmpty))) NoInitsInterface
-      else NoInits
-    case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
-    case _ => EmptyFlags
-  }
-
-  /**  The largest subset of {NoInits, PureInterface} that a
    *   trait or class with these parents can have as flags.
    */
   def parentsKind(parents: List[Tree])(implicit ctx: Context): FlagSet = parents match {
@@ -265,12 +251,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case Apply(_, _ :: _) :: _ => EmptyFlags
     case _ :: parents1 => parentsKind(parents1)
   }
-
-  /**  The largest subset of {NoInits, PureInterface} that a
-   *   trait or class with this body can have as flags.
-   */
-  def bodyKind(body: List[Tree])(implicit ctx: Context): FlagSet =
-    (NoInitsInterface /: body)((fs, stat) => fs & defKind(stat))
 
   /** Checks whether predicate `p` is true for all result parts of this expression,
    *  where we zoom into Ifs, Matches, and Blocks.
@@ -341,6 +321,28 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       }
     case _ => false
   }
+
+  /**  The largest subset of {NoInits, PureInterface} that a
+   *   trait or class enclosing this statement can have as flags.
+   */
+  def defKind(tree: Tree)(implicit ctx: Context): FlagSet = unsplice(tree) match {
+    case EmptyTree | _: Import => NoInitsInterface
+    case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
+    case tree: DefDef =>
+      if (tree.unforcedRhs == EmptyTree &&
+          tree.vparamss.forall(_.forall(_.rhs.isEmpty))) NoInitsInterface
+      else if (tree.mods.is(Given) && tree.tparams.isEmpty && tree.vparamss.isEmpty)
+        EmptyFlags // might become a lazy val: TODO: check whether we need to suppress NoInits once we have new lazy val impl
+      else NoInits
+    case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
+    case _ => EmptyFlags
+  }
+
+  /**  The largest subset of {NoInits, PureInterface} that a
+   *   trait or class with this body can have as flags.
+   */
+  def bodyKind(body: List[Tree])(implicit ctx: Context): FlagSet =
+    (NoInitsInterface /: body)((fs, stat) => fs & defKind(stat))
 
   // todo: fill with other methods from TreeInfo that only apply to untpd.Tree's
 }

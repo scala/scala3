@@ -1175,7 +1175,7 @@ class Namer { typer: Typer =>
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.info = avoidPrivateLeaks(cls)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
-      cls.setNoInitsFlags(parentsKind(parents), bodyKind(rest))
+      cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest))
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)
       processExports(localCtx)
     }

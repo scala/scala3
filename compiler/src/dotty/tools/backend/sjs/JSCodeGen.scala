@@ -404,7 +404,10 @@ class JSCodeGen()(implicit ctx: Context) {
         case EmptyTree  => ()
         case dd: DefDef => generatedMethods ++= genMethod(dd)
         case _ =>
-          throw new FatalError("Illegal tree in gen of genInterface(): " + tree)
+          throw new FatalError(
+            i"""Illegal tree in gen of genInterface(): $tree
+               |class = $td
+               |in ${ctx.compilationUnit}""")
       }
     }
 

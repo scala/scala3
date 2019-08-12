@@ -300,8 +300,9 @@ object LambdaLift {
         proxyMap(owner) = {
           for (fv <- freeValues.toList) yield {
             val proxyName = newName(fv)
-            val proxy = ctx.newSymbol(owner, proxyName.asTermName, newFlags, fv.info, coord = fv.coord)
-            if (owner.isClass) proxy.enteredAfter(thisPhase)
+            val proxy =
+              ctx.newSymbol(owner, proxyName.asTermName, newFlags, fv.info, coord = fv.coord)
+                .enteredAfter(thisPhase)
             (fv, proxy)
           }
         }.toMap
