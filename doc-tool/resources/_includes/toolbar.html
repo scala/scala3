@@ -11,6 +11,8 @@
     <a title="Project repository" id="github-link" href="{{ site.projectUrl }}">
         {% if site.projectUrl contains "github" %}
         <i class="fab fa-github" aria-hidden="true"></i>
+        {% elsif site.projectUrl contains "gitlab" %}
+        <i class="fab fa-gitlab" aria-hidden="true"></i>
         {% else %}
         <i class="fas fa-code" aria-hidden="true"></i>
         {% endif %}
