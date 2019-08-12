@@ -937,6 +937,7 @@ object Build {
         val dir = fetchScalaJSSource.value / "test-suite"
         (
           (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** "IntTest.scala").get
+          ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/util" ** "Base64Test.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
         )
       }

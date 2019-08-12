@@ -936,7 +936,13 @@ class JSCodeGen()(implicit ctx: Context) {
             js.Skip()
           case BooleanTag =>
             js.BooleanLiteral(value.booleanValue)
-          case ByteTag | ShortTag | CharTag | IntTag =>
+          case ByteTag =>
+            js.ByteLiteral(value.byteValue)
+          case ShortTag =>
+            js.ShortLiteral(value.shortValue)
+          case CharTag =>
+            js.CharLiteral(value.charValue)
+          case IntTag =>
             js.IntLiteral(value.intValue)
           case LongTag =>
             js.LongLiteral(value.longValue)
@@ -2156,7 +2162,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
     val genBody = {
       val call = if (isStaticCall) {
-        genApplyStatic(sym, formalCaptures.map(_.ref))
+        genApplyStatic(sym, formalCaptures.map(_.ref) ::: actualParams)
       } else {
         val thisCaptureRef :: argCaptureRefs = formalCaptures.map(_.ref)
         genApplyMethodMaybeStatically(thisCaptureRef, sym,
