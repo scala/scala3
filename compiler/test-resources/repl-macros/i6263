@@ -7,9 +7,5 @@ scala> withQuoteContext { fn("foo") }
 ok
 scala> withQuoteContext { fn((1,2)) }
 ok
-scala> object O
-// defined object O
-scala> withQuoteContext { fn(O) }
-ok
 scala> withQuoteContext { fn(1) }
 ok

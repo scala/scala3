@@ -72,12 +72,13 @@ object PickledQuotes {
   def unpickleType(tasty: PickledQuote, args: PickledTypeArgs)(implicit ctx: Context): Tree = {
     val tastyBytes = TastyString.unpickle(tasty)
     val unpickled = unpickle(tastyBytes, args, isType = true)(ctx.addMode(Mode.ReadPositions))
-    unpickled match {
+    val tpt = unpickled match {
       case Block(aliases, tpt) =>
         // `@quoteTypeTag type` aliasses are not required after unpickling
         tpt
       case tpt => tpt
     }
+    tpt.withType(dealiasTypeTags(tpt.tpe))
   }
 
   // TASTY picklingtests/pos/quoteTest.scala
