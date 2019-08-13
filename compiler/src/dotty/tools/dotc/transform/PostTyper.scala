@@ -113,6 +113,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       val sym = tree.symbol
       Checking.checkValidOperator(sym)
       sym.transformAnnotations(transformAnnot)
+      sym.defTree = tree
       tree
     }
 
