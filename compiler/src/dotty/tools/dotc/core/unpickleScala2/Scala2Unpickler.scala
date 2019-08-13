@@ -348,7 +348,18 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def atEnd = readIndex == end
 
     def readExtSymbol(): Symbol = {
-      val name = readNameRef().decode
+      val nameRef = readNameRef()
+      var name = nameRef.decode
+
+      // If the symbol tag is EXTMODCLASSref, then we know that the method names
+      // mangling do not make sense, but in general we don't know what kind of
+      // symbol we're reading at this point, so we don't know which unmanglings
+      // are safe to apply. Empirically, we at least need to unmangle default
+      // getter names, since they're used to encode the default parameters of
+      // annotations, but more might be needed.
+      if (tag != EXTMODCLASSref)
+        name = name.unmangle(Scala2MethodNameKinds)
+
       val owner = if (atEnd) loadingMirror.RootClass else readSymbolRef()
 
       def adjust(denot: Denotation) = {
