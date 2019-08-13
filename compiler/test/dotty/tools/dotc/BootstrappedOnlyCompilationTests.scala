@@ -183,6 +183,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     }
 
     compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
+    compileFilesInDir("tests/plugins/pos").checkCompile()
   }
 }
 
