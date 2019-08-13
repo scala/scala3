@@ -532,9 +532,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         else if (isModuleClassRoot)
           completeRoot(
             moduleClassRoot, rootClassUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule, infoRef), privateWithin)
-        else if (name == tpnme.REFINE_CLASS)
-          // create a type alias instead
-          ctx.newSymbol(owner, name, flags, localMemberUnpickler, privateWithin, coord = start)
         else {
           def completer(cls: Symbol) = {
             val unpickler = new ClassUnpickler(infoRef) withDecls symScope(cls)
@@ -580,7 +577,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val tp = at(inforef, () => readType()(ctx))
 
         denot match {
-          case denot: ClassDenotation =>
+          case denot: ClassDenotation if !isRefinementClass(denot.symbol) =>
             val selfInfo = if (atEnd) NoType else readTypeRef()
             setClassInfo(denot, tp, fromScala2 = true, selfInfo)
           case denot =>
@@ -773,19 +770,17 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case TYPEBOUNDStpe =>
         TypeBounds(readTypeRef(), readTypeRef())
       case REFINEDtpe =>
-        val clazz = readSymbolRef()
+        val clazz = readSymbolRef().asClass
         val decls = symScope(clazz)
         symScopes(clazz) = EmptyScope // prevent further additions
         val parents = until(end, () => readTypeRef())
         val parent = parents.reduceLeft(AndType(_, _))
         if (decls.isEmpty) parent
         else {
-          def subst(info: Type, rt: RecType) =
-            if (clazz.isClass) info.substThis(clazz.asClass, rt.recThis)
-            else info // turns out some symbols read into `clazz` are not classes, not sure why this is the case.
+          def subst(info: Type, rt: RecType) = info.substThis(clazz.asClass, rt.recThis)
           def addRefinement(tp: Type, sym: Symbol) = RefinedType(tp, sym.name, sym.info)
           val refined = decls.toList.foldLeft(parent)(addRefinement)
-          RecType.closeOver(rt => subst(refined, rt))
+          RecType.closeOver(rt => refined.substThis(clazz, rt.recThis))
         }
       case CLASSINFOtpe =>
         val clazz = readSymbolRef()
