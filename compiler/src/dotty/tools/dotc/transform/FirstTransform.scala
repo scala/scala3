@@ -147,8 +147,9 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     if (tree.isType) {
       toTypeTree(tree)
     } else if (tree.name != nme.WILDCARD) {
-      // Constant-foldable wildcards can occur in patterns, for instance as `case _: "a"`
-      // we avoid constant-folding those as doing so would change the meaning of the pattern
+      // We want to constant-fold _some_ idents here - for instance, @switch needs to see literals in patterns.
+      // However, constant-foldable wildcards can occur in patterns, for instance as `case _: "a"`;
+      // we avoid constant-folding those as doing so would change the meaning of the pattern.
       constToLiteral(tree)
     } else tree
 
