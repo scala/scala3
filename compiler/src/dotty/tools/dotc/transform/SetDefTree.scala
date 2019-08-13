@@ -14,7 +14,7 @@ class SetDefTree extends MiniPhase {
   import tpd._
 
   override val phaseName: String = SetDefTree.name
-  override def runsAfter: Set[String] = Set(Pickler.name)
+  override def runsAfter: Set[String] = Set(ReifyQuotes.name)
     // don't allow plugins to change tasty
     // research plugins can still change the phase plan at will
 
