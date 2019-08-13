@@ -28,6 +28,8 @@ sealed trait Plugin {
    *
    *  Research plugin receives a phase plan and return a new phase plan, while
    *  non-research plugin returns a list of phases to be inserted.
+   *
+   *  @note Research plugins only compile with nightly build.
    */
   def isResearch: Boolean = isInstanceOf[ResearchPlugin]
 
