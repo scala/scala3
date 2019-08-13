@@ -2,9 +2,14 @@ package hello
 
 import lib._
 
+case class Student(name: String)
+
 class M(val n: Int) {
   val a = 30 * n
+  def this(c: Char) = this(c.toInt)
+
   class B(x: Int) {
+    def this(c: Char) = this(c.toInt)
     val b = x * a
     def bar(i: Int) = i * x
   }
@@ -20,17 +25,17 @@ class M(val n: Int) {
 }
 
 
-object Hello {
+object Test {
   def testLib: Unit = {
-    val a = new A(30)
-    val b = new a.B(24)
+    val a: A = new A(30)
+    val b: a.B = new a.B(24)
     a.foo(3)
     b.bar(9)
   }
 
   def testHello: Unit = {
-    val a = new M(30)
-    val b = new a.B(24)
+    val a: M = new M(30)
+    val b: a.B = new a.B(24)
     a.foo(3)
     b.bar(9)
   }
