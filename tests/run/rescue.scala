@@ -10,4 +10,9 @@ import lib._
   assert((9 / 0 rescue 1) == 1)
   assert(((9 / 0 rescue { ex: NullPointerException => 5  }) rescue 10) == 10)
   assert(((9 / 0 rescue { ex: ArithmeticException => 5  }) rescue 10) == 5)
+
+  assert((9 / 0 rescue {
+    case ex: NullPointerException => 4
+    case ex: ArithmeticException => 3
+  }) == 3)
 }
