@@ -1,14 +1,25 @@
-<div id="toolbar">
-    <a id="home-button" href="{{ site.baseurl }}/index.html">
-        {% include "scala-logo.svg" %}
-    </a>
-    <div id="project-details">
-        <h1 id="project-name"><a href="{{ site.baseurl }}/docs/">{{ site.project }} Documentation</a></h1>
-        <h2 id="project-version">{{ site.version }}</h2>
+<nav class="navbar navbar-expand navbar-dark fixed-top bg-primary">
+    <i class="fas fa-bars"></i>
+    <i class="fas fa-search" id="search-icon"></i>
+    <!--<form class="form-inline" action="{{ site.baseurl }}/api/search.html" method="get">
+        <input type="text" class="form-control" placeholder="Search" aria-label="Search">
+    </form>-->
+    <div class="navbar-brand">
+        {% if site.logo %}
+        <a href="{{ site.baseurl }}/index.html">
+            <img class="project-logo" src="{{ site.baseurl }}/images/{{ site.logo }}">
+        </a>
+        {% endif %}
+        <a href="{{ site.baseurl }}/docs/index.html">
+            <div class="project-details">
+                <h1>{{ site.project }} Documentation</h1>
+                <h2>{{ site.version }}</h2>
+            </div>
+        </a>
     </div>
 
     {% if site.projectUrl %}
-    <a title="Project repository" id="github-link" href="{{ site.projectUrl }}">
+    <a id="github-link" title="Project repository" href="{{ site.projectUrl }}">
         {% if site.projectUrl contains "github" %}
         <i class="fab fa-github" aria-hidden="true"></i>
         {% elsif site.projectUrl contains "gitlab" %}
@@ -18,5 +29,4 @@
         {% endif %}
     </a>
     {% endif %}
-</div>
-<div id="toolbar-spacing"></div>
+</nav>

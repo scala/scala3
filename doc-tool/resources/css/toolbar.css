@@ -1,78 +1,64 @@
 @import url(https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,600,700);
 
-div#toolbar {
-  height: 75px;
-  width: 100%;
-  background-color: #414551;
-  position: fixed;
-  top: 0; left: 0;
-  z-index: 2;
+body {
+  margin-top: 50px;
 }
 
-div#toolbar-spacing {
-  width: 100%;
-  height: 75px;
+nav.navbar {
+  height: 50px;
+  line-height: 1;
+  font-size: 24px;
+}
+nav.navbar-dark * {
+  color: white;
 }
 
-div#toolbar > a#home-button svg g#logo-foreground {
-    fill: rgba(202, 68, 94, 1);
+nav.navbar-dark a:hover *, nav.navbar-dark a:focus * {
+  color: var(--contrast);
+}
+nav.navbar a:hover {
+  text-decoration: none;
 }
 
-div#toolbar > a#home-button svg g#logo-background {
-    fill: rgba(202, 68, 94, 0.45);
+.navbar-brand {
+  margin-right: auto;
+  margin-left: auto;
+  font-size: inherit;
+  display: flex;
+  align-items: center;
+  font-family: "Source Sans Pro", sans-serif;
 }
 
-div#toolbar > a#home-button {
-    margin: 9px 0 0 38px;
-    user-select: none;
-    float: left;
+.navbar-brand .project-logo {
+  display: none;
+  height: 40px;
+  margin-right: 7px;
 }
 
-div#toolbar > div#project-details {
-    float: left;
-    color: #fff;
-    font-family: "Source Sans Pro", sans-serif;
-    margin: 18px 0 0 40px;
-    padding-left: 10px;
+.navbar-brand .project-details * {
+  margin: 0;
+  line-height: inherit;
+}
+.navbar-brand .project-details h1 {
+  font-size: 1.1em;
+}
+.navbar-brand .project-details h2 {
+  font-size: 0.5em;
+  color: grey;
 }
 
-div#toolbar > div#project-details:before {
-    display: block;
-    content: '';
-    position: absolute;
-    top: 22px;
-    left: 95px;
-    width: 1px;
-    bottom: 20px;
-    background-color: #767e94;
+#search-icon {
+  margin-left: .5em;
 }
 
-div#toolbar > div#project-details > h1#project-name {
-    font-size: 20px;
-    font-weight: 300;
-    margin-bottom: 3px;
+@media (min-width: 410px) {
+  .navbar-brand .project-logo {
+    display: inline;
+  }
 }
 
-div#toolbar > div#project-details > h1#project-name > a {
-    color: #fff;
-}
-
-div#toolbar > div#project-details > h1#project-name > a:hover,
-div#toolbar > div#project-details > h1#project-name > a:focus {
-    text-decoration: none;
-    color: rgba(255, 255, 255, 0.8);
-}
-
-div#toolbar > div#project-details > h2#project-version {
-    font-size: 12px;
-    font-weight: 200;
-    margin-left: 1px;
-}
-
-div#toolbar > a#github-link {
-    color: #fff;
-    position: absolute;
-    top: 7px;
-    right: 15px;
-    font-size: 40px;
+@media (min-width: 768px) {
+  #search-icon {
+    margin-left: 1em;
+  }
 }
