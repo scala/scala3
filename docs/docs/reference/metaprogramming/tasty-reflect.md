@@ -20,8 +20,8 @@ guarantees and may fail at macro expansion time, hence additional explicit
 checks must be done.
 
 To provide reflection capabilities in macros we need to add an implicit
-parameter of type `scala.quoted.QuoteContext` and import `tasty._` from it in the scope where it
-is used.
+parameter of type `scala.quoted.QuoteContext` and import `tasty._` from it in
+the scope where it is used.
 
 ```scala
 import scala.quoted._
@@ -47,18 +47,22 @@ def natConstImpl(x: Expr[Int]) given (qctx: QuoteContext): Expr[Int] = {
   import qctx.tasty._
   val xTree: Term = x.unseal
   xTree match {
-    case Term.Literal(Constant.Int(n)) =>
-      if (n <= 0)
-        QuoteError("Parameter must be natural number")
-      n.toExpr
+    case Inlined(_, _, Literal(Constant(n: Int))) =>
+      if (n <= 0) {
+        qctx.error("Parameter must be natural number")
+        '{0}
+      } else {
+        xTree.seal.cast[Int]
+      }
     case _ =>
-      QuoteError("Parameter must be a known constant")
+      qctx.error("Parameter must be a known constant")
+      '{0}
   }
 }
 ```
 
-To easily know which extractors are needed, the `qctx.tasty.Term.show` method
-returns the string representation of the extractors.
+To easily know which extractors are needed, the `showExtractors` method on a
+`qctx.tasty.Term` returns the string representation of the extractors.
 
 The method `qctx.tasty.Term.seal[T]` provides a way to go back to a
 `quoted.Expr[Any]`. Note that the type is `Expr[Any]`. Consequently, the type
