@@ -1,0 +1,3 @@
+-> app/run
+$ copy-file changes/A.scala macro/A.scala
+> app/run
