@@ -57,8 +57,7 @@ class Compiler {
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
          new CookComments,           // Cook the comments: expand variables, doc, etc.
-         new CompleteJavaEnums,      // Fill in constructors for Java enums
-         new SetDefTree) ::          // set `symbol.defTree`
+         new CompleteJavaEnums) ::   // Fill in constructors for Java enums
     List(new CheckStatic,            // Check restrictions that apply to @static members
          new ElimRepeated,           // Rewrite vararg parameters and arguments
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
@@ -70,7 +69,6 @@ class Compiler {
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new ClassOf,                // Expand `Predef.classOf` calls.
          new RefChecks) ::           // Various checks mostly related to abstract members and overriding
-         // new SetDefTreeOff) ::       // unset `symbol.defTree`
     List(new ElimOpaque,             // Turn opaque into normal aliases
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches

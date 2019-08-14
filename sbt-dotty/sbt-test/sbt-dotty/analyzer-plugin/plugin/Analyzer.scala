@@ -13,20 +13,24 @@ import Decorators._
 import Symbols.Symbol
 import Constants.Constant
 import Types._
-import transform.{SetDefTree, SetDefTreeOff}
+import transform.{CheckStatic}
 
-class InitChecker extends PluginPhase with StandardPlugin {
+class InitPlugin extends StandardPlugin {
   import tpd._
-
-  val name: String = "initChecker"
+  val name: String = "initPlugin"
   override val description: String = "checks that under -Yretain-trees we may get tree for all symbols"
 
-  val phaseName = name
+  def init(options: List[String]): List[PluginPhase] =
+    (new SetDefTree) :: (new InitChecker) :: Nil
+}
+
+class InitChecker extends PluginPhase {
+  import tpd._
+
+  val phaseName = "symbolTreeChecker"
 
   override val runsAfter = Set(SetDefTree.name)
-  override val runsBefore = Set(SetDefTreeOff.name)
-
-  def init(options: List[String]): List[PluginPhase] = this :: Nil
+  override val runsBefore = Set(CheckStatic.name)
 
   private def checkDef(tree: Tree)(implicit ctx: Context): Tree = {
     if (tree.symbol.defTree.isEmpty)

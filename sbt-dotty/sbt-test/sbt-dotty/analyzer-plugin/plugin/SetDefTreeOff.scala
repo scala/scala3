@@ -1,15 +1,18 @@
-package dotty.tools.dotc.transform
+package analyzer
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.transform.MegaPhase._
+import dotty.tools.dotc.transform.{ReifyQuotes, FirstTransform}
+import dotty.tools.dotc.plugins._
 
 /** Unset the `defTree` property of symbols. See the doc for `SetDefTree` */
-class SetDefTreeOff extends MiniPhase {
+class SetDefTreeOff extends PluginPhase {
   import tpd._
 
   override val phaseName: String = SetDefTreeOff.name
   override def runsAfter: Set[String] = Set(SetDefTree.name)
+  override def runsBefore: Set[String] = Set(FirstTransform.name)
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree = {
     tree.symbol.defTree = EmptyTree

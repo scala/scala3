@@ -13,7 +13,27 @@ import Decorators._
 import Symbols.Symbol
 import Constants.Constant
 import Types._
-import transform.{SetDefTree, SetDefTreeOff}
+import transform.{ReifyQuotes, FirstTransform}
+
+class SetDefTree extends PluginPhase {
+  import tpd._
+
+  override val phaseName: String = SetDefTree.name
+  override def runsAfter: Set[String] = Set(ReifyQuotes.name)
+  override def runsBefore: Set[String] = Set(FirstTransform.name)
+    // don't allow plugins to change tasty
+    // research plugins can still change the phase plan at will
+
+  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree = tree.setDefTree
+
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = tree.setDefTree
+
+  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context): Tree = tree.setDefTree
+}
+
+object SetDefTree {
+  val name: String = "SetDefTree"
+}
 
 class InitChecker extends PluginPhase with StandardPlugin {
   import tpd._
@@ -24,9 +44,9 @@ class InitChecker extends PluginPhase with StandardPlugin {
   val phaseName = name
 
   override val runsAfter = Set(SetDefTree.name)
-  override val runsBefore = Set(SetDefTreeOff.name)
+  override val runsBefore = Set(FirstTransform.name)
 
-  def init(options: List[String]): List[PluginPhase] = this :: Nil
+  def init(options: List[String]): List[PluginPhase] = this :: (new SetDefTree) :: Nil
 
   private def checkDef(tree: Tree)(implicit ctx: Context): Tree = {
     if (tree.symbol.defTree.isEmpty)
