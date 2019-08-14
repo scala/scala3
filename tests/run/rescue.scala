@@ -1,15 +1,20 @@
+import scala.util.control.NonFatal
+import scala.util.control.NonLocalReturns._
+
 object lib {
   inline def (op: => T) rescue[T] (fallback: => T) =
     try op
     catch {
-      case _: Throwable => fallback
+      case NonFatal(_) => fallback    // ReturnThrowable is fatal error, thus ignored
     }
 
   inline def (op: => T) rescue[T, E <: Throwable] (fallback: PartialFunction[E, T]) =
     try op
     catch {
+      // case ex: ReturnThrowable[_] => throw ex      // bug #7041
       case ex: E =>
-        if (fallback.isDefinedAt(ex)) fallback(ex) else throw ex
+        // user should never match `ReturnThrowable`, which breaks semantics of non-local return
+        if (fallback.isDefinedAt(ex) && !ex.isInstanceOf[ReturnThrowable[_]]) fallback(ex) else throw ex
     }
 }
 
@@ -30,6 +35,8 @@ import lib._
     } == 3
   )
 
+  (9 / 0) rescue { case ex: ArithmeticException => 4 }
+
   assert(
     {
       {
@@ -42,4 +49,30 @@ import lib._
       }
     } == 3
   )
+
+  assert(foo(10) == 40)
+  assert(bar(10) == 40)
+
+  // should not catch fatal errors
+  assert(
+    try { { throw new OutOfMemoryError(); true } rescue false }
+    catch { case _: OutOfMemoryError => true }
+  )
+
+  // should catch any errors specified, including fatal errors
+  assert(
+    try { { throw new OutOfMemoryError(); true } rescue { case _: OutOfMemoryError => true } }
+    catch { case _: OutOfMemoryError => false }
+  )
+
+  // should not catch NonLocalReturns
+  def foo(x: Int): Int = returning[Int] {
+    { throwReturn[Int](4 * x) : Int } rescue 10
+  }
+
+  // should catch specified exceptions, but not NonLocalReturn
+  def bar(x: Int): Int = returning[Int] {
+    { throwReturn[Int](4 * x) : Int } rescue { case _ => 10 }
+  }
+
 }
