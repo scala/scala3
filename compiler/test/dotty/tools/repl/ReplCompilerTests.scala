@@ -65,7 +65,7 @@ class ReplCompilerTests extends ReplTest {
       assertEquals(1, state.imports.size)
       run("""mutable.Map("one" -> 1)""")
       assertEquals(
-        "val res0: scala.collection.mutable.Map[String, Int] = Map(one -> 1)",
+        "val res0: scala.collection.mutable.Map[String, Int] = HashMap(one -> 1)",
         storedOutput().trim
       )
     }
@@ -115,9 +115,10 @@ class ReplCompilerTests extends ReplTest {
   }
 
   @Test def i4051 = fromInitialState { implicit state =>
+    // FIXME: shouldn't have to pass a type parameter to collect.
     val source =
       """val x: PartialFunction[Int, Int] = { case x => x }
-        |val y = Map(("A", 1), ("B", 2), ("X", 3)).collect { case (k, v) => v }.toList""".stripMargin
+        |val y = Map(("A", 1), ("B", 2), ("X", 3)).collect[Int] { case (k, v) => v }.toList""".stripMargin
 
     val expected = List(
       "val x: PartialFunction[Int, Int] = <function1>",
