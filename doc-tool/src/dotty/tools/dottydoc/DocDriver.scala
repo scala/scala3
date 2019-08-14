@@ -41,8 +41,8 @@ class DocDriver extends Driver {
     val siteRoot = new java.io.File(ctx.settings.siteRoot.value)
     val projectName = ctx.settings.projectName.value
     val projectVersion = ctx.settings.projectVersion.value
-    val projectUrl = ctx.settings.projectUrl.value
-    val projectLogo = ctx.settings.projectLogo.value
+    val projectUrl = Option(ctx.settings.projectUrl.value).filter(_.nonEmpty)
+    val projectLogo = Option(ctx.settings.projectLogo.value).filter(_.nonEmpty)
 
     if (projectName.isEmpty)
       ctx.error(s"Site project name not set. Use `-project <title>` to set the project name")

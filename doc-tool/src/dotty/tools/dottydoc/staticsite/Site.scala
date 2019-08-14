@@ -33,8 +33,8 @@ case class Site(
   root: JFile,
   projectTitle: String,
   projectVersion: String,
-  projectUrl: String,
-  projectLogo: String,
+  projectUrl: Option[String],
+  projectLogo: Option[String],
   documentation: Map[String, Package]
 ) extends ResourceFinder {
   /** Documentation serialized to java maps */

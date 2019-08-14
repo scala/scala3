@@ -39,8 +39,8 @@ case class DefaultParams(
         "posts" -> site.posts.map(_.toMap),
         "project" -> site.projectTitle,
         "version" -> site.projectVersion,
-        "projectUrl" -> site.projectUrl,
-        "logo" -> site.projectLogo,
+        "projectUrl" -> site.projectUrl.orNull,
+        "logo" -> site.projectLogo.orNull,
         "root" -> site.root
       ).asJava,
 
@@ -76,8 +76,8 @@ case class SiteInfo(
   baseurl: String,
   projectTitle: String,
   projectVersion: String,
-  projectUrl: String,
-  projectLogo: String,
+  projectUrl: Option[String],
+  projectLogo: Option[String],
   posts: Array[BlogPost],
   root: String
 )
