@@ -42,13 +42,14 @@ class DocDriver extends Driver {
     val projectName = ctx.settings.projectName.value
     val projectVersion = ctx.settings.projectVersion.value
     val projectUrl = ctx.settings.projectUrl.value
+    val projectLogo = ctx.settings.projectLogo.value
 
     if (projectName.isEmpty)
       ctx.error(s"Site project name not set. Use `-project <title>` to set the project name")
     else if (!siteRoot.exists || !siteRoot.isDirectory)
       ctx.error(s"Site root does not exist: $siteRoot")
     else {
-      Site(siteRoot, projectName, projectVersion, projectUrl, ctx.docbase.packages)
+      Site(siteRoot, projectName, projectVersion, projectUrl, projectLogo, ctx.docbase.packages)
         .generateApiDocs()
         .copyStaticFiles()
         .generateHtmlFiles()

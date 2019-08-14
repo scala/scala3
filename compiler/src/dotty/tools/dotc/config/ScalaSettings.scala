@@ -200,6 +200,13 @@ class ScalaSettings extends Settings.SettingGroup {
     "The source repository of your project",
     ""
   )
+  
+  val projectLogo: Setting[String] = StringSetting(
+    "-project-logo",
+    "project logo filename",
+    "The file that contains the project's logo (in /images)",
+    ""
+  )
 
   val wikiSyntax: Setting[Boolean] = BooleanSetting("-Xwiki-syntax", "Retains the Scala2 behavior of using Wiki Syntax in Scaladoc")
 }

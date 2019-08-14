@@ -40,6 +40,7 @@ case class DefaultParams(
         "project" -> site.projectTitle,
         "version" -> site.projectVersion,
         "projectUrl" -> site.projectUrl,
+        "logo" -> site.projectLogo,
         "root" -> site.root
       ).asJava,
 
@@ -56,7 +57,8 @@ case class DefaultParams(
 
   def withPosts(posts: Array[BlogPost]): DefaultParams =
     copy(site = SiteInfo(
-      site.baseurl, site.projectTitle, site.projectVersion, site.projectUrl, posts, site.root))
+      site.baseurl, site.projectTitle, site.projectVersion, site.projectUrl, site.projectLogo,
+      posts, site.root))
 
   def withUrl(url: String): DefaultParams =
     copy(page = PageInfo(url))
@@ -75,6 +77,7 @@ case class SiteInfo(
   projectTitle: String,
   projectVersion: String,
   projectUrl: String,
+  projectLogo: String,
   posts: Array[BlogPost],
   root: String
 )

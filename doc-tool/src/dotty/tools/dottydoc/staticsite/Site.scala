@@ -34,6 +34,7 @@ case class Site(
   projectTitle: String,
   projectVersion: String,
   projectUrl: String,
+  projectLogo: String,
   documentation: Map[String, Package]
 ) extends ResourceFinder {
   /** Documentation serialized to java maps */
@@ -178,7 +179,7 @@ case class Site(
     DefaultParams(
       docs, docsFlattened, documentation, PageInfo(pathFromRoot),
       SiteInfo(
-        baseUrl, projectTitle, projectVersion, projectUrl, Array(),
+        baseUrl, projectTitle, projectVersion, projectUrl, projectLogo, Array(),
         root.toString
       ),
       sidebar
