@@ -1,0 +1,16 @@
+// Required imports
+@import "node_modules/bootstrap/scss/functions";
+@import "node_modules/bootstrap/scss/variables";
+@import "node_modules/bootstrap/scss/mixins";
+
+// Custom values that override the default variables of Bootstrap
+$colors: (
+  "red": #ca445e,
+  "orange": #f26527
+);
+$theme-colors: (
+  "primary": #002b36,
+  "contrast": #ca445e, // contrasts with primary (used on dark backgrounds)
+  "secondary": #ca445e, // used on light backgrounds
+);
+@import "node_modules/bootstrap/scss/bootstrap";
