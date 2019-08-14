@@ -151,7 +151,11 @@ case class Site(
         "js/api-search.js" -> "/js/api-search.js",
         "js/bootstrap.min.js" -> "/js/bootstrap.min.js",
         "js/jquery.min.js" -> "/js/jquery.min.js",
-        "js/highlight.pack.js" -> "/js/highlight.pack.js"
+        "js/highlight.pack.js" -> "/js/highlight.pack.js",
+        "images/dotty-logo.svg" -> "/images/dotty-logo.svg",
+        "images/scala-logo.svg" -> "/images/scala-logo.svg",
+        "images/dotty-logo-white.svg" -> "/images/dotty-logo-white.svg",
+        "images/scala-logo-white.svg" -> "/images/scala-logo-white.svg"
       )
       .transform((_, v) => getResource(v))
       .foreach { case (path, resource) =>
@@ -402,7 +406,6 @@ case class Site(
 
     val defaultIncludes: Map[String, Include] = Map(
       "header.html" -> "/_includes/header.html",
-      "scala-logo.svg" -> "/_includes/scala-logo.svg",
       "toolbar.html" -> "/_includes/toolbar.html",
       "sidebar.html" -> "/_includes/sidebar.html"
     ).map {
