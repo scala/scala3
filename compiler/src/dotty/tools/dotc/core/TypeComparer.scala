@@ -822,7 +822,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
        */
       def isMatchingApply(tp1: Type): Boolean = tp1 match {
         case AppliedType(tycon1, args1) =>
-          tycon1.dealiasKeepRefiningAnnots match {
+          def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1.dealiasKeepRefiningAnnots match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
                canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
@@ -865,12 +865,13 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
                   false
               }
             case tycon1: TypeVar =>
-              isMatchingApply(tycon1.underlying)
+              loop(tycon1.underlying, args1)
             case tycon1: AnnotatedType if !tycon1.isRefining =>
-              isMatchingApply(tycon1.underlying)
+              loop(tycon1.underlying, args1)
             case _ =>
               false
           }
+          loop(tycon1, args1)
         case _ =>
           false
       }
