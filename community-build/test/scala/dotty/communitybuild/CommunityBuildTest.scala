@@ -194,10 +194,16 @@ class CommunityBuildTest {
     // We set `useEffpiPlugin := false` because we don't want to run their
     // compiler plugin since it relies on external binaries (from the model
     // checker mcrl2), however we do compile the compiler plugin.
-    // have to drop the plugin and akka tests for now, testCommand   = ";set ThisBuild / useEffpiPlugin := false; effpi/test:compile; plugin/test:compile; benchmarks/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
-    // have to drop the plugin and akka tests for now, updateCommand = ";set ThisBuild / useEffpiPlugin := false; effpi/test:update; plugin/test:update; benchmarks/test:update; examples/test:update; pluginBenchmarks/test:update"
-    testCommand   = ";set ThisBuild / useEffpiPlugin := false; effpi/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
-    updateCommand = ";set ThisBuild / useEffpiPlugin := false; effpi/test:update; examples/test:update; pluginBenchmarks/test:update"
+
+    // We have to drop the plugin and some akka tests for now, the plugin depends on github.com/bmc/scalasti which
+    // has not been updated since 2018, so no 2.13 compat. Some akka tests are dropped due to MutableBehaviour being
+    // dropped in the 2.13 compatible release
+
+    // testCommand   = ";set ThisBuild / useEffpiPlugin := false; effpi/test:compile; plugin/test:compile; benchmarks/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
+    // updateCommand = ";set ThisBuild / useEffpiPlugin := false; effpi/test:update; plugin/test:update; benchmarks/test:update; examples/test:update; pluginBenchmarks/test:update"
+
+    testCommand   = ";set ThisBuild / useEffpiPlugin := false; effpi/test:compile; benchmarks/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
+    updateCommand = ";set ThisBuild / useEffpiPlugin := false; effpi/test:update; benchmarks/test:update; examples/test:update; pluginBenchmarks/test:update"
   )
 
   // TODO @oderky? It got broken by #5458
