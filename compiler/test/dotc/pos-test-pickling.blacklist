@@ -25,3 +25,6 @@ i7087.scala
 
 # Opaque type
 i5720.scala
+
+# Tuples
+toexproftuple.scala
