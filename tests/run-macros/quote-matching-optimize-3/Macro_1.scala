@@ -13,7 +13,7 @@ object Macro {
       case '{ ($ls: List[$t]).filter($f).filter($g) } =>
         optimize('{ $ls.filter(x => $f(x) && $g(x)) })
 
-      case '{ type $uu; type $vv; ($ls: List[$tt]).map[`$uu`, List[`$uu`]]($f).map[String, List[String]]($g) } =>
+      case '{ type $uu; type $vv; ($ls: List[$tt]).map[`$uu`]($f).map[String]($g) } =>
         optimize('{ $ls.map(x => $g($f(x))) })
 
       case '{ ($ls: List[$t]).filter($f).foreach[$u]($g) } =>

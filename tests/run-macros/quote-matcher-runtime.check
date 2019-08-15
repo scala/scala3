@@ -787,13 +787,13 @@ Pattern: {
 }
 Result: None
 
-Scrutinee: scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).map[scala.Double, scala.collection.immutable.List[scala.Double]](((x: scala.Int) => x.toDouble./(2)))(scala.collection.immutable.List.canBuildFrom[scala.Double]).map[java.lang.String, scala.collection.immutable.List[java.lang.String]](((y: scala.Double) => y.toString()))(scala.collection.immutable.List.canBuildFrom[java.lang.String])
+Scrutinee: scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int])).map[scala.Double](((x: scala.Int) => x.toDouble./(2))).map[java.lang.String](((y: scala.Double) => y.toString()))
 Pattern: {
   @scala.internal.Quoted.patternBindHole type T
   @scala.internal.Quoted.patternBindHole type U
   @scala.internal.Quoted.patternBindHole type V
 
-  (scala.internal.Quoted.patternHole[scala.List[T]].map[U, scala.collection.immutable.List[U]](scala.internal.Quoted.patternHole[scala.Function1[T, U]])(scala.collection.immutable.List.canBuildFrom[U]).map[V, scala.collection.immutable.List[V]](scala.internal.Quoted.patternHole[scala.Function1[U, V]])(scala.collection.immutable.List.canBuildFrom[V]): scala.collection.immutable.List[scala.Any])
+  (scala.internal.Quoted.patternHole[scala.List[T]].map[U](scala.internal.Quoted.patternHole[scala.Function1[T, U]]).map[V](scala.internal.Quoted.patternHole[scala.Function1[U, V]]): scala.collection.immutable.List[scala.Any])
 }
 Result: Some(List(Type(scala.Int), Type(scala.Double), Type(java.lang.String), Expr(scala.List.apply[scala.Int]((1, 2, 3: scala.<repeated>[scala.Int]))), Expr(((x: scala.Int) => x.toDouble./(2))), Expr(((y: scala.Double) => y.toString()))))
 
