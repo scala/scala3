@@ -17,21 +17,21 @@ object Var {
   /** Create a variable initialized with `init` and used in `body`.
    *  `body` recieves a `Var[T]` argument which exposes `get` and `update`.
    *
-   *  `var`('(7)) {
+   *  Var('{7}) {
    *    x => '{
-   *      while(0 < ~x)
-   *        ~x.update('(~x - 1))
-   *      ~x.get
+   *      while(0 < ${x.get})
+   *        ${x.update('{${x.get} - 1})}
+   *      ${x.get}
    *    }
    *  }
    *
-   *  will create the equivalent of
+   *  will create the equivalent of:
    *
    *  '{
    *    var x = 7
    *    while (0 < x)
    *      x = x - 1
-   *     x
+   *    x
    *  }
    */
   def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U]) given QuoteContext: Expr[U] = '{
