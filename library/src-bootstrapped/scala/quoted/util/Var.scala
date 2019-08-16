@@ -17,17 +17,17 @@ object Var {
   /** Create a variable initialized with `init` and used in `body`.
    *  `body` recieves a `Var[T]` argument which exposes `get` and `update`.
    *
-   *  Var('(7)) {
+   *  Var('{7}) {
    *    x => '{
-   *      while(0 < $x.get)
-   *        $x.update('($x.get - 1))
-   *      $x.get
+   *      while(0 < ${x.get})
+   *        ${x.update('{${x.get} - 1})}
+   *      ${x.get}
    *    }
    *  }
    *
    *  will create the equivalent of:
    *
-   *  {
+   *  '{
    *    var x = 7
    *    while (0 < x)
    *      x = x - 1
