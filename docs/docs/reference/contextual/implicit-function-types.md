@@ -120,9 +120,10 @@ object PostConditions {
 
   def result[T] given (r: WrappedResult[T]): T = r
 
-  def (x: T)
-      ensuring[T](condition: given WrappedResult[T] => Boolean): T =
-    assert(condition) given x
+  def (x: T) ensuring[T](condition: given WrappedResult[T] => Boolean): T = {
+    assert(condition given x)
+    x
+  }
 }
 import PostConditions.{ensuring, result}
 
