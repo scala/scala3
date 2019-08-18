@@ -139,12 +139,11 @@ class CommunityBuildTest {
     updateCommand = "dotty-community-build/update"
   )
 
-  // removing for now as the project migrated to using fastparse 2, which does not play well with type inference
-  // @Test def ScalaPB = test(
-  //   project       = "ScalaPB",
-  //   testCommand   = "dotty-community-build/compile",
-  //   updateCommand = "dotty-community-build/update"
-  // )
+  @Test def ScalaPB = test(
+    project       = "ScalaPB",
+    testCommand   = "dotty-community-build/compile",
+    updateCommand = "dotty-community-build/update"
+  )
 
   @Test def minitest = test(
     project       = "minitest",
