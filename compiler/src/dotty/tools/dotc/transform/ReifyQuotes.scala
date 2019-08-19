@@ -230,7 +230,7 @@ class ReifyQuotes extends MacroTransform {
       def pickleAsTasty() = {
         val meth =
           if (isType) ref(defn.Unpickler_unpickleType).appliedToType(originalTp)
-          else ref(defn.Unpickler_unpickleExpr).appliedToType(originalTp)
+          else ref(defn.Unpickler_unpickleExpr).appliedToType(originalTp.widen)
         val spliceResType =
           if (isType) defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
           else defn.FunctionType(1, isContextual = true).appliedTo(defn.QuoteContextClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)) | defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
@@ -244,7 +244,10 @@ class ReifyQuotes extends MacroTransform {
         if (splices.isEmpty && body.symbol.isPrimitiveValueClass) tag(s"${body.symbol.name}Tag")
         else pickleAsTasty().select(nme.apply).appliedTo(qctx)
       }
-      else pickleAsTasty()
+      else toValue(body) match {
+        case Some(value) => pickleAsValue(value)
+        case _ => pickleAsTasty()
+      }
     }
 
     /** If inside a quote, split the body of the splice into a core and a list of embedded quotes
