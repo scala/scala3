@@ -209,7 +209,9 @@ class ReifyQuotes extends MacroTransform {
       }
 
       def liftedValue[T](value: T, name: TermName) =
-        ref(defn.LiftableModule).select(name).select("toExpr".toTermName).appliedTo(Literal(Constant(value)))
+        ref(defn.LiftableModule)
+          .select(name).appliedToType(originalTp)
+          .select("toExpr".toTermName).appliedTo(Literal(Constant(value)))
 
       def pickleAsValue[T](value: T) = {
         value match {
