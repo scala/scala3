@@ -15,6 +15,7 @@ import SymDenotations._, Symbols._, StdNames._, Denotations._
 import TypeErasure.{ valueErasure, ErasedValueType }
 import NameKinds.{ExtMethName, UniqueExtMethName}
 import Decorators._
+import TypeUtils._
 
 /**
  * Perform Step 1 in the inline classes SIP: Creates extension methods for all
@@ -190,11 +191,13 @@ object ExtensionMethods {
       val companion = imeth.owner.companionModule
       val companionInfo = companion.info
       val candidates = companionInfo.decl(extensionName(imeth)).alternatives
-      val matching = candidates filter (c => FullParameterization.memberSignature(c.info) == imeth.signature)
+      val matching =
+        // See the documentation of `memberSignature` to understand why `.stripPoly.ensureMethodic` is needed here.
+        candidates filter (c => FullParameterization.memberSignature(c.info) == imeth.info.stripPoly.ensureMethodic.signature)
       assert(matching.nonEmpty,
        i"""no extension method found for:
           |
-          |  $imeth:${imeth.info.show} with signature ${imeth.signature} in ${companion.moduleClass}
+          |  $imeth:${imeth.info.show} with signature ${imeth.info.signature} in ${companion.moduleClass}
           |
           | Candidates:
           |

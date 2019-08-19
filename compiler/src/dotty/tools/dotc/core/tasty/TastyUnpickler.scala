@@ -36,6 +36,14 @@ class TastyUnpickler(reader: TastyReader) {
   private def readName(): TermName = nameAtRef(readNameRef())
   private def readString(): String = readName().toString
 
+  private def readParamSig(): Signature.ParamSig = {
+    val ref = readInt()
+    if (ref < 0)
+      ref.abs
+    else
+      nameAtRef(NameRef(ref)).toTypeName
+  }
+
   private def readNameContents(): TermName = {
     val tag = readByte()
     val length = readNat()
@@ -58,8 +66,9 @@ class TastyUnpickler(reader: TastyReader) {
       case SIGNED =>
         val original = readName()
         val result = readName().toTypeName
-        val params = until(end)(readName().toTypeName)
-        var sig = Signature(params, result)
+        // DOTTY: we shouldn't have to give an explicit type to paramsSig
+        val paramsSig: List[Signature.ParamSig] = until(end)(readParamSig())
+        val sig = Signature(paramsSig, result)
         SignedName(original, sig)
       case _ =>
         simpleNameKindOfTag(tag)(readName())

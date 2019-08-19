@@ -42,7 +42,10 @@ Macro-format:
                   INLINEACCESSOR    Length underlying_NameRef                               -- inline$A
                   OBJECTCLASS       Length underlying_NameRef                               -- A$  (name of the module class for module A)
 
-                  SIGNED            Length original_NameRef resultSig_NameRef paramSig_NameRef*   -- name + signature
+                  SIGNED            Length original_NameRef resultSig_NameRef ParamSig*     -- name + signature
+
+  ParamSig      = Int // If negative, the absolute value represents the length of a type parameter section
+                      // If positive, this is a NameRef for the fully qualified name of a term parameter.
 
   NameRef       = Nat                    // ordinal number of name in name table, starting from 1.
 
@@ -248,7 +251,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 16
+  val MajorVersion: Int = 17
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names */

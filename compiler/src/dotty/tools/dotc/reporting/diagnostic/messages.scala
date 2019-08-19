@@ -2152,19 +2152,27 @@ object messages {
     val kind: String = "Duplicate Symbol"
     val msg: String = {
       def nameAnd = if (decl.name != previousDecl.name) " name and" else ""
-      val details = if (decl.isRealMethod && previousDecl.isRealMethod) {
-        // compare the signatures when both symbols represent methods
-        decl.signature.matchDegree(previousDecl.signature) match {
-          case Signature.MatchDegree.NoMatch =>
+      def details(implicit ctx: Context): String =
+        if (decl.isRealMethod && previousDecl.isRealMethod) {
+          // compare the signatures when both symbols represent methods
+          decl.signature.matchDegree(previousDecl.signature) match {
             // DOTTY problem: Need to qualify MatchDegree enum vals since otherwise exhaustivity fails.
             // To fix this, we need to export vals under singleton types.
-            "" // shouldn't be reachable
-          case Signature.MatchDegree.ParamMatch =>
-            "have matching parameter types."
-          case Signature.MatchDegree.FullMatch =>
-            i"have the same$nameAnd type after erasure."
+            case Signature.MatchDegree.NoMatch =>
+              // If the signatures don't match at all at the current phase, then
+              // they might match after erasure.
+              val elimErasedCtx = ctx.withPhaseNoEarlier(ctx.elimErasedValueTypePhase.next)
+              if (elimErasedCtx != ctx)
+                details(elimErasedCtx)
+              else
+                "" // shouldn't be reachable
+            case Signature.MatchDegree.ParamMatch =>
+              "have matching parameter types."
+            case Signature.MatchDegree.FullMatch =>
+              i"have the same$nameAnd type after erasure."
+          }
         }
-      } else ""
+        else ""
       def symLocation(sym: Symbol) = {
         val lineDesc =
           if (sym.span.exists && sym.span != sym.owner.span)

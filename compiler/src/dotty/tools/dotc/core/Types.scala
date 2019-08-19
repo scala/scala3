@@ -3216,7 +3216,7 @@ object Types {
 
     def computeSignature(implicit ctx: Context): Signature = {
       val params = if (isErasedMethod) Nil else paramInfos
-      resultSignature.prepend(params, isJavaMethod)
+      resultSignature.prependTermParams(params, isJavaMethod)
     }
 
     protected def prefixString: String = companion.prefixString
@@ -3402,7 +3402,8 @@ object Types {
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
 
-    def computeSignature(implicit ctx: Context): Signature = resultSignature
+    def computeSignature(implicit ctx: Context): Signature =
+      resultSignature.prependTypeParams(paramNames.length)
 
     override def isContextualMethod = resType.isContextualMethod
     override def isImplicitMethod = resType.isImplicitMethod

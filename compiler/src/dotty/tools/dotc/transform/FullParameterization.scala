@@ -247,7 +247,16 @@ trait FullParameterization {
 object FullParameterization {
 
   /** Assuming `info` is a result of a `fullyParameterizedType` call, the signature of the
-   *  original method type `X` such that `info = fullyParameterizedType(X, ...)`.
+   *  original method type `X` after stripping its leading type parameters section,
+   *  such that:
+   *    info.stripPoly.ensureMethodic = fullyParameterizedType(X, ...).stripPoly.ensureMethodic
+   *
+   *  NOTE: Keeping the polymorphic part of the signature would be more precise,
+   *  but we cannot distinguish which type parameters of `info` are also type
+   *  parameters of`X`. This could be fixed by using a specific NameKind for the
+   *  extra type parameters, but that wouldn't help for extension methods
+   *  unpickled from Scala 2 (because Scala 2 extmeths phase happens before
+   *  pickling, which is maybe something we should change for 2.14).
    */
   def memberSignature(info: Type)(implicit ctx: Context): Signature = info match {
     case info: PolyType =>
