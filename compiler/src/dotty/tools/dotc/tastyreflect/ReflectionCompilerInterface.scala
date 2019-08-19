@@ -34,10 +34,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   //
 
   def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): scala.quoted.Expr[_] =
-    new scala.internal.quoted.TastyTreeExpr(PickledQuotes.unpickleExpr(repr, args))
+    new scala.internal.quoted.TastyTreeExpr(PickledQuotes.unpickleExpr(repr, args), compilerId)
 
   def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[_] =
-    new scala.internal.quoted.TreeType(PickledQuotes.unpickleType(repr, args))
+    new scala.internal.quoted.TreeType(PickledQuotes.unpickleType(repr, args), compilerId)
 
   //
   // CONTEXT
@@ -1752,7 +1752,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
         tpd.Closure(closureMethod, tss => etaExpand(new tpd.TreeOps(term).appliedToArgs(tss.head)))
       case _ => term
     }
-    new scala.internal.quoted.TastyTreeExpr(etaExpand(self))
+    new scala.internal.quoted.TastyTreeExpr(etaExpand(self), compilerId)
   }
 
   /** Checked cast to a `quoted.Expr[U]` */
@@ -1773,7 +1773,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   /** Convert `Type` to an `quoted.Type[_]` */
   def QuotedType_seal(self: Type) given (ctx: Context): scala.quoted.Type[_] = {
     val dummySpan = ctx.owner.span // FIXME
-    new scala.internal.quoted.TreeType(tpd.TypeTree(self).withSpan(dummySpan))
+    new scala.internal.quoted.TreeType(tpd.TypeTree(self).withSpan(dummySpan), compilerId)
   }
 
   //
@@ -1933,5 +1933,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   private def withDefaultPos[T <: Tree](fn: given Context => T) given (ctx: Context): T =
     (fn given ctx.withSource(rootPosition.source)).withSpan(rootPosition.span)
+
+  private def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()
 
 }

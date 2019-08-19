@@ -56,4 +56,7 @@ object Toolbox {
   }
 
   class ToolboxNotFoundException(msg: String, cause: ClassNotFoundException) extends Exception(msg, cause)
+
+  class RunScopeException extends Exception("Cannot call `scala.quoted.run(...)` within a macro or another `run(...)`")
+
 }

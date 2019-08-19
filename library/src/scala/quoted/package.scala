@@ -15,8 +15,6 @@ package object quoted {
    *
    *  This method should not be called in a context where there is already has a `QuoteContext`
    *  such as within a `run` or a `withQuoteContext`.
-   *
-   *  May throw a FreeVariableError on expressions that came from a macro.
    */
   def run[T](expr: given QuoteContext => Expr[T]) given (toolbox: Toolbox): T = toolbox.run(expr given _)
 

@@ -14,6 +14,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.{PositionPickler, TastyPickler, TastyPrinter, TastyString}
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
+import dotty.tools.dotc.quoted.ToolboxImpl
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
 
 import scala.internal.quoted._
@@ -35,12 +36,18 @@ object PickledQuotes {
   }
 
   /** Transform the expression into its fully spliced Tree */
-  def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree =
-    healOwner(expr.asInstanceOf[TastyTreeExpr[Tree]].tree)
+  def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree = {
+    val expr1 = expr.asInstanceOf[TastyTreeExpr[Tree]]
+    ToolboxImpl.checkScopeId(expr1.scopeId)
+    healOwner(expr1.tree)
+  }
 
   /** Transform the expression into its fully spliced TypeTree */
-  def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree =
-    healOwner(expr.asInstanceOf[TreeType[Tree]].typeTree)
+  def quotedTypeToTree(tpe: quoted.Type[_])(implicit ctx: Context): Tree = {
+    val tpe1 = tpe.asInstanceOf[TreeType[Tree]]
+    ToolboxImpl.checkScopeId(tpe1.scopeId)
+    healOwner(tpe1.typeTree)
+  }
 
   private def dealiasTypeTags(tp: Type)(implicit ctx: Context): Type = new TypeMap() {
     override def apply(tp: Type): Type = {
