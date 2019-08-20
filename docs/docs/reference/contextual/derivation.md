@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Typeclass Derivation
+title: Type Class Derivation
 ---
 
 Type class derivation is a way to automatically generate given instances for type classes which satisfy some simple
@@ -28,8 +28,9 @@ We say that `Tree` is the _deriving type_ and that the `Eq`, `Ordering` and `Sho
 
 ### Types supporting `derives` clauses
 
-Any data type with an available instance of the `Mirror` type class supports `derives` clauses. Instances of the
-`Mirror` type class are generated automatically by the compiler for,
+All data types can have a `derives` clause. This document focuses primarily on data types which also have an instance
+of the `Mirror` type class available. Instances of the `Mirror` type class are generated automatically by the compiler
+for,
 
 + enums and enum cases
 + case classes and case objects
@@ -103,6 +104,7 @@ Mirror.Product {
 
   def fromProduct(p: Product): MirroredMonoType =
     new Branch(...)
+}
 
 // Mirror for Leaf
 Mirror.Product {
@@ -114,6 +116,7 @@ Mirror.Product {
 
   def fromProduct(p: Product): MirroredMonoType =
     new Leaf(...)
+}
 ```
 
 Note the following properties of `Mirror` types,
@@ -131,24 +134,29 @@ Note the following properties of `Mirror` types,
 
 ### Type classes supporting automatic deriving
 
-A trait or class can appear in a `derives` clause if its companion object defines a method named `derived`. The type
-and implementation of a `derived` method for a type class `TC[_]` are arbitrary but it is typically of the following
-form,
+A trait or class can appear in a `derives` clause if its companion object defines a method named `derived`. The
+signature and implementation of a `derived` method for a type class `TC[_]` are arbitrary but it is typically of the
+following form,
 
 ```scala
   def derived[T] given Mirror.Of[T]: TC[T] = ...
 ```
 
 That is, the `derived` method takes a given parameter of (some subtype of) type `Mirror` which defines the shape of
-the deriving type `T`, and computes the typeclass implementation according to that shape.  This is all that the
+the deriving type `T`, and computes the type class implementation according to that shape. This is all that the
 provider of an ADT with a `derives` clause has to know about the derivation of a type class instance.
 
+Note that `derived` methods may have given `Mirror` arguments indirectly (eg. by having a given argument which in turn
+has a given `Mirror`, or not at all (eg. they might use some completely different user-provided mechanism, for
+instance using Dotty macros or runtime reflection). We expect that (direct or indirect) `Mirror` based implementations
+will be the most common and that is what this document emphasises.
+
 Type class authors will most likely use higher level derivation or generic programming libraries to implement
-`derived` methods. The rest of this page gives an example of how a `derived` method might be implemented using _only_
-the low level facilities described above and Dotty's general metaprogramming features. It is not anticipated that type
-class authors would normally implement a `derived` method in this way, however this walkthrough can be taken as a
-guide for authors of the higher level derivation libraries that we expect typical type class authors will use (for a
-fully worked out example of such a library, see [shapeless 3](https://github.com/milessabin/shapeless/tree/shapeless-3)).
+`derived` methods. An example of how a `derived` method might be implemented using _only_ the low level facilities
+described above and Dotty's general metaprogramming features is provided below. It is not anticipated that type class
+authors would normally implement a `derived` method in this way, however this walkthrough can be taken as a guide for
+authors of the higher level derivation libraries that we expect typical type class authors will use (for a fully
+worked out example of such a library, see [shapeless 3](https://github.com/milessabin/shapeless/tree/shapeless-3)).
 
 #### How to write a type class `derived` method using low level mechanisms
 
@@ -341,8 +349,8 @@ The framework described here enables all three of these approaches without manda
 
 ### Deriving instances elsewhere
 
-Sometimes one would like to derive a typeclass instance for an ADT after the ADT is defined, without being able to
-change the code of the ADT itself.  To do this, simply define an instance using the `derived` method of the typeclass
+Sometimes one would like to derive a type class instance for an ADT after the ADT is defined, without being able to
+change the code of the ADT itself.  To do this, simply define an instance using the `derived` method of the type class
 as right-hand side. E.g, to implement `Ordering` for `Option` define,
 
 ```scala
@@ -365,7 +373,7 @@ ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
 
 ### Discussion
 
-This typeclass derivation framework is intentionally very small and low-level. There are essentially two pieces of
+This type class derivation framework is intentionally very small and low-level. There are essentially two pieces of
 infrastructure in compiler-generated `Mirror` instances,
 
 + type members encoding properties of the mirrored types.
@@ -380,7 +388,7 @@ feature small enough to make it possible to provide `Mirror` instances _uncondit
 Whilst `Mirrors` encode properties precisely via type members, the value level `ordinal` and `fromProduct` are
 somewhat weakly typed (because they are defined in terms of `MirroredMonoType`) just like the members of `Product`.
 This means that code for generic type classes has to ensure that type exploration and value selection proceed in
-lockstep and it has to assert this conformance in some places using casts. If generic typeclasses are correctly
+lockstep and it has to assert this conformance in some places using casts. If generic type classes are correctly
 written these casts will never fail.
 
 As mentioned, however, the compiler-provided mechansim is intentionally very low level and it is anticipated that
