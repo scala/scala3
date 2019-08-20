@@ -15,7 +15,7 @@ enum Tree[T] derives Eq, Ordering, Show {
 }
 ```
 
-The `derives` clause generates the follwoing given instances for the `Eq`, `Ordering` and `Show` type classes in the
+The `derives` clause generates the following given instances for the `Eq`, `Ordering` and `Show` type classes in the
 companion object of `Tree`,
 
 ```scala
@@ -47,7 +47,7 @@ derivation support.
     type MirroredType
  
     /** the type of the elements of the mirrored type */
-    type MirroedElemTypes
+    type MirroredElemTypes
 
     /** The mirrored *-type */
     type MirroredMonoType
@@ -74,8 +74,8 @@ derivation support.
   }
 ```
 
-Product types (ie. case classes and objects, and enum cases) have mirrors which are subtypes of `Mirror.Product`. Sum
-types (ie. sealed class or traits with product children, and enums) have mirrors which are subtypes of `Mirror.Sum`.
+Product types (i.e. case classes and objects, and enum cases) have mirrors which are subtypes of `Mirror.Product`. Sum
+types (i.e. sealed class or traits with product children, and enums) have mirrors which are subtypes of `Mirror.Sum`.
 
 For the `Tree` ADT from above the following `Mirror` instances will be automatically provided by the compiler,
 
@@ -146,8 +146,8 @@ That is, the `derived` method takes a given parameter of (some subtype of) type 
 the deriving type `T`, and computes the type class implementation according to that shape. This is all that the
 provider of an ADT with a `derives` clause has to know about the derivation of a type class instance.
 
-Note that `derived` methods may have given `Mirror` arguments indirectly (eg. by having a given argument which in turn
-has a given `Mirror`, or not at all (eg. they might use some completely different user-provided mechanism, for
+Note that `derived` methods may have given `Mirror` arguments indirectly (e.g. by having a given argument which in turn
+has a given `Mirror`, or not at all (e.g. they might use some completely different user-provided mechanism, for
 instance using Dotty macros or runtime reflection). We expect that (direct or indirect) `Mirror` based implementations
 will be the most common and that is what this document emphasises.
 
