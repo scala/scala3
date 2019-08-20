@@ -1,10 +1,6 @@
 package scala.runtime
 
-import scala.Tuple.Concat
-import scala.Tuple.Size
-import scala.Tuple.Head
-import scala.Tuple.Tail
-import scala.Tuple.Elem
+import scala.Tuple.{ Concat, Size, Head, Tail, Elem, Zip, Map }
 
 object DynamicTuple {
   inline val MaxSpecialized = 22
@@ -252,6 +248,18 @@ object DynamicTuple {
     }
     res.asInstanceOf[Result]
   }
+
+  def dynamicZip[This <: Tuple, T2 <: Tuple](t1: This, t2: T2): Zip[This, T2] = {
+    if (t1.size == 0 || t2.size == 0) ().asInstanceOf[Zip[This, T2]]
+    else Tuple.fromArray(
+      t1.asInstanceOf[Product].productIterator.zip(
+      t2.asInstanceOf[Product].productIterator).toArray // TODO use toIArray of Object to avoid double/triple array copy
+    ).asInstanceOf[Zip[This, T2]]
+  }
+
+  def dynamicMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): Map[This, F] =
+    Tuple.fromArray(self.asInstanceOf[Product].productIterator.map(f(_)).toArray) // TODO use toIArray of Object to avoid double/triple array copy
+      .asInstanceOf[Map[This, F]]
 
   def consIterator(head: Any, tail: Tuple): Iterator[Any] =
     Iterator.single(head) ++ tail.asInstanceOf[Product].productIterator

@@ -33,6 +33,23 @@ sealed trait Tuple extends Any {
   inline def size[This >: this.type <: Tuple]: Size[This] =
     DynamicTuple.dynamicSize(this)
 
+  /** Given two tuples, `(a1, ..., an)` and `(a1, ..., an)`, returns a tuple
+   *  `((a1, b1), ..., (an, bn))`. If the two tuples have different sizes,
+   *  the extra elements of the larger tuple will be disregarded.
+   *  The result is typed as `((A1, B1), ..., (An, Bn))` if at least one of the
+   *  tuple types has a `Unit` tail. Otherwise the result type is
+   *  `(A1, B1) *: ... *: (Ai, Bi) *: Tuple`
+   */
+  inline def zip[This >: this.type <: Tuple, T2 <: Tuple](t2: T2): Zip[This, T2] =
+    DynamicTuple.dynamicZip(this, t2)
+
+ /** Called on a tuple `(a1, ..., an)`, returns a new tuple `(f(a1), ..., f(an))`.
+  *  The result is typed as `(F[A1], ..., F[An])` if the tuple type is fully known.
+  *  If the tuple is of the form `a1 *: ... *: Tuple` (that is, the tail is not known
+  *  to be the cons type.
+  */
+  inline def map[F[_]](f: [t] => t => F[t]): Map[this.type, F] =
+    DynamicTuple.dynamicMap(this, f)
 }
 
 object Tuple {
@@ -74,6 +91,18 @@ object Tuple {
     case h *: t => F[h] *: Map[t, F]
   }
 
+  /** Given two tuples, `A1 *: ... *: An * At` and `B1 *: ... *: Bn *: Bt`
+   *  where at least one of `At` or `Bt` is `Unit` or `Tuple`,
+   *  returns the tuple type `(A1, B1) *: ... *: (An, Bn) *: Ct`
+   *  where `Ct` is `Unit` if `At` or `Bt` is `Unit`, otherwise `Ct` is `Tuple`.
+   */
+  type Zip[T1 <: Tuple, T2 <: Tuple] <: Tuple = (T1, T2) match {
+    case (h1 *: t1, h2 *: t2) => (h1, h2) *: Zip[t1, t2]
+    case (Unit, _) => Unit
+    case (_, Unit) => Unit
+    case _ => Tuple
+  }
+
   /** Convert an array into a tuple of unknown arity and types */
   def fromArray[T](xs: Array[T]): Tuple = {
     val xs2 = xs match {
@@ -98,6 +127,8 @@ object Tuple {
   def fromProduct(product: Product): Tuple =
     runtime.DynamicTuple.dynamicFromProduct[Tuple](product)
 
+  def fromProductTyped[P <: Product](p: P) given (m: scala.deriving.Mirror.ProductOf[P]): m.MirroredElemTypes =
+    Tuple.fromArray(p.productIterator.toArray).asInstanceOf[m.MirroredElemTypes] // TODO use toIArray of Object to avoid double/triple array copy
 }
 
 /** Tuple of arbitrary non-zero arity */
