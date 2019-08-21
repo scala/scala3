@@ -56,8 +56,4 @@ object Toolbox {
       new Settings(outDir, showRawTree, compilerArgs)
   }
 
-  class ToolboxNotFoundException(msg: String, cause: ClassNotFoundException) extends Exception(msg, cause)
-
-  class RunScopeException extends Exception("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
-
 }

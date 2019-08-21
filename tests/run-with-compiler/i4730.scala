@@ -14,7 +14,7 @@ object Test {
       run(ret).apply(10)
       throw new Exception
     } catch {
-      case ex: scala.quoted.staging.Toolbox.RunScopeException =>
+      case ex: scala.quoted.staging.RunScopeException =>
         // ok
     }
   }

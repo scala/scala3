@@ -22,7 +22,7 @@ object ToolboxImpl {
     def run[T](exprBuilder: QuoteContext => Expr[T]): T = synchronized {
       try {
         if (running) // detected nested run
-          throw new scala.quoted.staging.Toolbox.RunScopeException()
+          throw new scala.quoted.staging.RunScopeException()
         running = true
         driver.run(exprBuilder, settings)
       } finally {
@@ -35,7 +35,7 @@ object ToolboxImpl {
 
   private[dotty] def checkScopeId(id: ScopeId) given Context: Unit = {
     if (id != scopeId)
-      throw new staging.Toolbox.RunScopeException
+      throw new scala.quoted.staging.RunScopeException
   }
 
   // TODO Explore more fine grained scope ids.
