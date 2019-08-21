@@ -153,8 +153,8 @@ class CommunityBuildTest {
 
   @Test def fastparse = test(
     project       = "fastparse",
-    testCommand   = "fastparseJVM/compile",
-    updateCommand = "fastparseJVM/update"
+    testCommand   = ";dotty-community-build/compile;dotty-community-build/test:compile",
+    updateCommand = ";dotty-community-build/update"
   )
 
   // TODO: revert to sourcecodeJVM/test
