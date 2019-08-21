@@ -4,7 +4,7 @@ import scala.quoted.staging._
 import given scala.quoted.autolift._
 
 object Test {
-  implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = run {
     def code1 given QuoteContext = '{ (arr: Array[Int], f: Int => Unit) => ${ foreach1('arr, 'f) } }
     println(code1.show)

@@ -81,8 +81,10 @@ expression at runtime. Within the scope of `run` we can also invoke `show` on an
 to get a source-like representation of the expression.
 
 ```scala
+import scala.quoted.staging._
+
 // make available the necessary toolbox for runtime code generation
-implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
 
 val f: Array[Int] => Int = run {
   val stagedSum: Expr[Array[Int] => Int] = '{ (arr: Array[Int]) => ${sum('arr)}}

@@ -9,7 +9,7 @@ object Macros {
   inline def testMacro: Unit = ${impl}
 
   def impl given QuoteContext: Expr[Unit] = {
-    implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+    delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
     // 2 is a lifted constant
     val show1 = withQuoteContext(power(2, 3.0).show)
     val run1  = run(power(2, 3.0))

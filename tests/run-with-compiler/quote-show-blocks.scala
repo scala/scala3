@@ -3,7 +3,7 @@ import scala.quoted.staging._
 import given scala.quoted.autolift._
 
 object Test {
-  implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = run {
     def a(n: Int, x: Expr[Unit]): Expr[Unit] =
       if (n == 0) x

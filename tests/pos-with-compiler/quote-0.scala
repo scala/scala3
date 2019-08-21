@@ -25,7 +25,7 @@ object Macros {
 
 class Test {
 
-  implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
 
   run {
     val program = '{

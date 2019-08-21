@@ -4,7 +4,7 @@ import scala.quoted.staging._
 object Test {
 
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+    delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
 
     withQuoteContext('[List])
     def list given QuoteContext = bound('{List(1, 2, 3)})

@@ -28,7 +28,7 @@ object Test {
 
 
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+    delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
     val exp = Plus(Plus(Num(2), Var("x")), Num(4))
     val letExp = Let("x", Num(3), exp)
 

@@ -7,7 +7,7 @@ class Foo[T: Type] {
 }
 
 object Test {
-  implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuoteContext {
     println((new Foo[Object]).q.show)
     println((new Foo[String]).q.show)

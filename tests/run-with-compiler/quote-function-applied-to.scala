@@ -3,7 +3,7 @@ import scala.quoted.staging._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+    delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
     def show(expr: given QuoteContext => Expr[_]): String = withQuoteContext(expr.show)
     println(show(('{ () => x(0) }).apply()))
     println(show(('{ (x1: Int) => x1 }).apply('{x(1)})))
