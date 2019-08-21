@@ -376,10 +376,7 @@ object Build {
       // This file is used by GitHub Pages when the page is available in a custom domain
       IO.write(file("./docs/_site/CNAME"), "dotty.epfl.ch")
 
-      val sources = unmanagedSources.in(mode match {
-        case NonBootstrapped => `dotty-library`
-        case Bootstrapped => `dotty-library-bootstrapped`
-      }, Compile).value
+      val sources = unmanagedSources.in(dottyLibrary, Compile).value
       val args = Seq(
         "-siteroot", "docs",
         "-project", "Dotty",
@@ -520,6 +517,7 @@ object Build {
           "-Ddotty.tests.classes.dottyInterfaces=" + jars("dotty-interfaces"),
           "-Ddotty.tests.classes.dottyLibrary=" + jars("dotty-library"),
           "-Ddotty.tests.classes.dottyCompiler=" + jars("dotty-compiler"),
+          "-Ddotty.tests.classes.dottyStaging=" + jars("dotty-staging"),
           "-Ddotty.tests.classes.compilerInterface=" + findArtifactPath(externalDeps, "compiler-interface"),
           "-Ddotty.tests.classes.scalaLibrary=" + findArtifactPath(externalDeps, "scala-library"),
           "-Ddotty.tests.classes.scalaAsm=" + findArtifactPath(externalDeps, "scala-asm"),
@@ -632,6 +630,7 @@ object Build {
     val scalaLib = findArtifactPath(externalDeps, "scala-library")
     val dottyLib = jars("dotty-library")
     val dottyCompiler = jars("dotty-compiler")
+    val dottyStaging = jars("dotty-staging")
     val args0: List[String] = spaceDelimited("<arg>").parsed.toList
     val decompile = args0.contains("-decompile")
     val printTasty = args0.contains("-print-tasty")
@@ -656,7 +655,7 @@ object Build {
       }
       val dottyInterfaces = jars("dotty-interfaces")
       val asm = findArtifactPath(externalDeps, "scala-asm")
-      extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm)
+      extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging)
     }
 
     val fullArgs = main :: insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
@@ -682,7 +681,8 @@ object Build {
           // running the compiler, we should always have the bootstrapped
           // library on the compiler classpath since the non-bootstrapped one
           // may not be binary-compatible.
-          "dotty-library"       -> packageBin.in(`dotty-library-bootstrapped`, Compile).value
+          "dotty-library"       -> packageBin.in(`dotty-library-bootstrapped`, Compile).value,
+          "dotty-staging"       -> packageBin.in(LocalProject("dotty-staging"), Compile).value,
         ).mapValues(_.getAbsolutePath)
       }
     }.value,
@@ -699,7 +699,8 @@ object Build {
   lazy val bootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
     packageAll := {
       packageAll.in(`dotty-compiler`).value ++ Seq(
-        "dotty-compiler" -> packageBin.in(Compile).value.getAbsolutePath
+        "dotty-compiler" -> packageBin.in(Compile).value.getAbsolutePath,
+        "dotty-staging"  -> packageBin.in(LocalProject("dotty-staging"), Compile).value.getAbsolutePath,
       )
     }
   )
@@ -744,6 +745,31 @@ object Build {
     settings(
       unmanagedSourceDirectories in Compile :=
         (unmanagedSourceDirectories in (`dotty-library-bootstrapped`, Compile)).value,
+    )
+
+  lazy val `dotty-staging` = project.in(file("staging")).
+    withCommonSettings(Bootstrapped).
+    dependsOn(dottyCompiler(Bootstrapped)).
+    dependsOn(dottyCompiler(Bootstrapped) % "test->test").
+    settings(commonBootstrappedSettings).
+    settings(
+      fork in run := true,
+      fork in Test := true,
+      javaOptions ++= {
+        val externalDeps = externalCompilerClasspathTask.value
+        val jars = packageAll.in(`dotty-compiler-bootstrapped`).value
+        List(
+          "-Ddotty.tests.classes.dottyInterfaces=" + jars("dotty-interfaces"),
+          "-Ddotty.tests.classes.dottyLibrary=" + jars("dotty-library"),
+          "-Ddotty.tests.classes.dottyCompiler=" + jars("dotty-compiler"),
+          "-Ddotty.tests.classes.dottyStaging=" + jars("dotty-staging"),
+          "-Ddotty.tests.classes.compilerInterface=" + findArtifactPath(externalDeps, "compiler-interface"),
+          "-Ddotty.tests.classes.scalaLibrary=" + findArtifactPath(externalDeps, "scala-library"),
+          "-Ddotty.tests.classes.scalaAsm=" + findArtifactPath(externalDeps, "scala-asm"),
+          "-Ddotty.tests.classes.jlineTerminal=" + findArtifactPath(externalDeps, "jline-terminal"),
+          "-Ddotty.tests.classes.jlineReader=" + findArtifactPath(externalDeps, "jline-reader")
+        )
+      }
     )
 
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge/src")).
@@ -1012,6 +1038,7 @@ object Build {
         publishLocal in `dotty-interfaces`,
         publishLocal in `dotty-compiler-bootstrapped`,
         publishLocal in `dotty-library-bootstrapped`,
+        publishLocal in `dotty-staging`,
         publishLocal in `scala-library`,
         publishLocal in `scala-reflect`,
         publishLocal in `dotty-doc-bootstrapped`,
@@ -1225,7 +1252,7 @@ object Build {
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`dotty-interfaces`, dottyLibrary, dottyCompiler, dottyDoc, `dotty-sbt-bridge`).
-      bootstrappedAggregate(`scala-library`, `scala-compiler`, `scala-reflect`, scalap, `dotty-language-server`).
+      bootstrappedAggregate(`scala-library`, `scala-compiler`, `scala-reflect`, scalap, `dotty-language-server`, `dotty-staging`).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
       nonBootstrappedSettings(

@@ -1,4 +1,5 @@
-package dotty.tools.dotc.quoted
+package scala.quoted
+package staging
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
@@ -12,10 +13,10 @@ import scala.quoted.staging.Toolbox
 import java.net.URLClassLoader
 
 /** Driver to compile quoted code
-  *
-  * @param appClassloader classloader of the application that generated the quotes
-  */
-class QuoteDriver(appClassloader: ClassLoader) extends Driver {
+ *
+ * @param appClassloader classloader of the application that generated the quotes
+ */
+private class QuoteDriver(appClassloader: ClassLoader) extends Driver {
   import tpd._
 
   private[this] val contextBase: ContextBase = new ContextBase
@@ -52,7 +53,7 @@ class QuoteDriver(appClassloader: ClassLoader) extends Driver {
 
   override def initCtx: Context = {
     val ictx = contextBase.initialCtx
-    ictx.settings.classpath.update(QuoteDriver.currentClasspath(appClassloader))(ictx)
+    ictx.settings.classpath.update(getCurrentClasspath(appClassloader))(ictx)
     ictx
   }
 
@@ -62,11 +63,8 @@ class QuoteDriver(appClassloader: ClassLoader) extends Driver {
     // Setting the throwing reporter however will report any exception
     ctx.setReporter(new ThrowingReporter(ctx.reporter))
   }
-}
 
-object QuoteDriver {
-
-  def currentClasspath(cl: ClassLoader): String = {
+  private def getCurrentClasspath(cl: ClassLoader): String = {
     val classpath0 = System.getProperty("java.class.path")
     cl match {
       case cl: URLClassLoader =>

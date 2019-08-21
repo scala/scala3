@@ -3,16 +3,8 @@ package scala
 package quoted {
 
   import scala.quoted.show.SyntaxHighlight
-  import scala.quoted.staging.Toolbox
 
   sealed trait Expr[+T] {
-
-    /** Evaluate the contents of this expression and return the result.
-     *
-     *  May throw a FreeVariableError on expressions that came from a macro.
-     */
-    @deprecated("Use scala.quoted.run", "")
-    final def run(implicit toolbox: Toolbox): T = toolbox.run(_ => this)
 
     /** Show a source code like representation of this expression without syntax highlight */
     def show(implicit qctx: QuoteContext): String = qctx.show(this, SyntaxHighlight.plain)

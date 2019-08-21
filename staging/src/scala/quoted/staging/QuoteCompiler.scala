@@ -1,7 +1,8 @@
-package dotty.tools
-package dotc
-package quoted
+package scala.quoted
+package staging
 
+import dotty.tools.unsupported
+import dotty.tools.dotc._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators._
@@ -27,7 +28,7 @@ import scala.quoted.{Expr, QuoteContext, Type}
 /** Compiler that takes the contents of a quoted expression `expr` and produces
  *  a class file with `class ' { def apply: Object = expr }`.
  */
-class QuoteCompiler extends Compiler {
+private class QuoteCompiler extends Compiler {
 
   /** Either `Left` with name of the classfile generated or `Right` with the value contained in the expression */
   private[this] var result: Either[String, Any] = null

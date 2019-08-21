@@ -33,16 +33,15 @@ package object staging {
    *  such as within a `run` or a `withQuoteContext`.
    */
   def withQuoteContext[T](thunk: given QuoteContext => T) given (toolbox: Toolbox): T = {
-    var result: T = NoResult.asInstanceOf[T]
+    val noResult = new Object
+    var result: T = noResult.asInstanceOf[T]
     def dummyRun given QuoteContext: Expr[Unit] = {
       result = thunk
       Expr.unitExpr
     }
     toolbox.run(dummyRun given _)
-    assert(result != NoResult) // toolbox.run should have thrown an exception
+    assert(result != noResult) // toolbox.run should have thrown an exception
     result
   }
-
-  private object NoResult
 
 }

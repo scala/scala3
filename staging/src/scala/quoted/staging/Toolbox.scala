@@ -11,29 +11,32 @@ trait Toolbox {
 object Toolbox {
 
   /** Create a new instance of the toolbox using the the classloader of the application.
-    *
-    * Usuage:
-    * ```
-    * import scala.quoted.staging._
-    * delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
-    * ```
-    *
-    * @param appClassloader classloader of the application that generated the quotes
-    * @param settings toolbox settings
-    * @return A new instance of the toolbox
-    */
-  def make(appClassloader: ClassLoader)(implicit settings: Settings): Toolbox = {
-    try {
-      val toolboxImplCls = appClassloader.loadClass("dotty.tools.dotc.quoted.ToolboxImpl")
-      val makeMeth = toolboxImplCls.getMethod("make", classOf[Settings], classOf[ClassLoader])
-      makeMeth.invoke(null, settings, appClassloader).asInstanceOf[Toolbox]
-    }
-    catch {
-      case ex: ClassNotFoundException =>
-        throw new ToolboxNotFoundException(
-          s"""Could not load the Toolbox class `${ex.getMessage}` from the JVM classpath. Make sure that the compiler is on the JVM classpath.""",
-          ex
-        )
+   *
+   * Usuage:
+   * ```
+   * import scala.quoted.staging._
+   * delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+   * ```
+   *
+   * @param appClassloader classloader of the application that generated the quotes
+   * @param settings toolbox settings
+   * @return A new instance of the toolbox
+   */
+  def make(appClassloader: ClassLoader)(implicit settings: Settings): Toolbox = new Toolbox {
+
+    private[this] val driver: QuoteDriver = new QuoteDriver(appClassloader)
+
+    private[this] var running = false
+
+    def run[T](exprBuilder: QuoteContext => Expr[T]): T = synchronized {
+      try {
+        if (running) // detected nested run
+          throw new ScopeException("Cannot call `scala.quoted.staging.run(...)` within a another `run(...)`")
+        running = true
+        driver.run(exprBuilder, settings)
+      } finally {
+        running = false
+      }
     }
   }
 

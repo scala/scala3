@@ -25,7 +25,7 @@ import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.reflect.ClassTag
 
-import dotty.tools.dotc.quoted.{QuoteContext, ToolboxImpl}
+import dotty.tools.dotc.quoted.QuoteContext
 
 /** Utility class to splice quoted expressions */
 object Splicer {
@@ -251,10 +251,10 @@ object Splicer {
     }
 
     private def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.internal.quoted.TastyTreeExpr(Inlined(EmptyTree, Nil, tree).withSpan(tree.span), ToolboxImpl.scopeId)
+      new scala.internal.quoted.TastyTreeExpr(Inlined(EmptyTree, Nil, tree).withSpan(tree.span), QuoteContext.scopeId)
 
     private def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.internal.quoted.TreeType(tree, ToolboxImpl.scopeId)
+      new scala.internal.quoted.TreeType(tree, QuoteContext.scopeId)
 
     private def interpretLiteral(value: Any)(implicit env: Env): Object =
       value.asInstanceOf[Object]
