@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.staging._
 import given scala.quoted.autolift._
 
 trait Ring[T] {
@@ -116,7 +117,7 @@ class Blas1[Idx, T](r: Ring[T], ops: VecOps[Idx, T]) {
 
 object Test {
 
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = {
     val arr1 = Array(0, 1, 2, 4, 8)
     val arr2 = Array(1, 0, 1, 0, 1)

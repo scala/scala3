@@ -1,8 +1,9 @@
 import scala.quoted._
+import scala.quoted.staging._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+    implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
     def expr given QuoteContext = '{
       val a = 3
       println("foo")

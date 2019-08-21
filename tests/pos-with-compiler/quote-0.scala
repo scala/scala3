@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.staging._
 import given scala.quoted.autolift._
 
 object Macros {
@@ -24,7 +25,7 @@ object Macros {
 
 class Test {
 
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
 
   run {
     val program = '{

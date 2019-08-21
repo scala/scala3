@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.staging._
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -59,7 +60,7 @@ object Test {
       new Foo(5)
     }
 
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+    implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
 
     withQuoteContext {
       a.show // Force unpiclking of the expression

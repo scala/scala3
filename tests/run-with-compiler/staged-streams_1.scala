@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.staging._
 import scala.quoted.util._
 import given scala.quoted.autolift._
 
@@ -657,7 +658,7 @@ object Test {
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+    implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
     println(run(test1()))
     println
     println(run(test2()))

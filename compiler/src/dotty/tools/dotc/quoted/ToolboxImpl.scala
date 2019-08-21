@@ -13,7 +13,7 @@ object ToolboxImpl {
     * @param settings toolbox settings
     * @return A new instance of the toolbox
     */
-  def make(settings: scala.quoted.Toolbox.Settings, appClassloader: ClassLoader): scala.quoted.Toolbox = new scala.quoted.Toolbox {
+  def make(settings: scala.quoted.staging.Toolbox.Settings, appClassloader: ClassLoader): scala.quoted.staging.Toolbox = new scala.quoted.staging.Toolbox {
 
     private[this] val driver: QuoteDriver = new QuoteDriver(appClassloader)
 
@@ -22,7 +22,7 @@ object ToolboxImpl {
     def run[T](exprBuilder: QuoteContext => Expr[T]): T = synchronized {
       try {
         if (running) // detected nested run
-          throw new scala.quoted.Toolbox.RunScopeException()
+          throw new scala.quoted.staging.Toolbox.RunScopeException()
         running = true
         driver.run(exprBuilder, settings)
       } finally {
@@ -35,7 +35,7 @@ object ToolboxImpl {
 
   private[dotty] def checkScopeId(id: ScopeId) given Context: Unit = {
     if (id != scopeId)
-      throw new Toolbox.RunScopeException
+      throw new staging.Toolbox.RunScopeException
   }
 
   // TODO Explore more fine grained scope ids.

@@ -1,8 +1,9 @@
 
 import scala.quoted._
+import scala.quoted.staging._
 
 object Test {
-  implicit val tbx: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  implicit val tbx: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = {
     def y given QuoteContext: Expr[Unit] = '{
@@ -15,7 +16,7 @@ object Test {
       throw new Exception
     } catch {
       case ex: java.lang.reflect.InvocationTargetException =>
-        assert(ex.getTargetException.isInstanceOf[scala.quoted.Toolbox.RunScopeException])
+        assert(ex.getTargetException.isInstanceOf[scala.quoted.staging.Toolbox.RunScopeException])
     }
   }
 }

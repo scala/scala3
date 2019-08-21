@@ -1,8 +1,9 @@
 package scala.quoted
+package staging
 
 import scala.annotation.implicitNotFound
 
-@implicitNotFound("Could not find implicit quoted.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)`\n\n")
+@implicitNotFound("Could not find implicit scala.quoted.staging.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)`\n\n")
 trait Toolbox {
   def run[T](expr: QuoteContext => Expr[T]): T
 }
@@ -13,7 +14,7 @@ object Toolbox {
     *
     * Usuage:
     * ```
-    * implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+    * implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
     * ```
     *
     * @param appClassloader classloader of the application that generated the quotes
@@ -57,6 +58,6 @@ object Toolbox {
 
   class ToolboxNotFoundException(msg: String, cause: ClassNotFoundException) extends Exception(msg, cause)
 
-  class RunScopeException extends Exception("Cannot call `scala.quoted.run(...)` within a macro or another `run(...)`")
+  class RunScopeException extends Exception("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
 
 }
