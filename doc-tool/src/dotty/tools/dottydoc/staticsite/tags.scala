@@ -168,15 +168,17 @@ object tags {
   extends Tag("renderTitle") with ParamConverter {
     private def renderTitle(t: Title, parent: String): String = {
       if (!t.url.isDefined && t.subsection.nonEmpty) {
-        s"""|<a class="toggle-children" onclick='clickToc(this, "$parent");'>${t.title}</a>
-            |<ul id="${ if(parent == t.title.toLowerCase.split(" ").mkString("-")) "active-toc-entry" else "" }">
-            |    ${ t.subsection.map(renderTitle(_, parent)).mkString("<li>","\n</li>\n<li>", "</li>") }
-            |</ul>
+        s"""|<li class="section">
+            |  <a onclick='toggleSection(this);'>${t.title}</a>
+            |  <ul id="${ if(parent == t.title.toLowerCase.split(" ").mkString("-")) "active-toc-entry" else "" }">
+            |    ${ t.subsection.map(renderTitle(_, parent)).mkString("\n") }
+            |  </ul>
+            |</li>
             |""".stripMargin
       }
       else if (t.url.isDefined) {
         val url = t.url.get
-        s"""<a href="$baseurl/$url">${t.title}</a>"""
+        s"""<li class="leaf"><a href="$baseurl/$url">${t.title}</a></li>"""
       }
       else {
         ctx.docbase.error(

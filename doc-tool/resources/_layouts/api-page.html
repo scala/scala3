@@ -7,11 +7,9 @@ extraCSS:
 ---
 
 {% include "toolbar" %}
+{% include "sidebar" %}
 
 <div id="content-wrapper">
-    {% assign sidebarTop = "75px" %}
-    {% include "sidebar" %}
-
     <script>
         document.title = "{{ site.project }} Docs - {{ entity.name }}"
     </script>

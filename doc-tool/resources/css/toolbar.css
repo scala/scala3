@@ -1,5 +1,3 @@
-@import url(https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,600,700);
-
 body {
   margin-top: 50px;
 }
@@ -8,16 +6,21 @@ nav.navbar {
   height: 50px;
   line-height: 1;
   font-size: 24px;
+  font-family: var(--font-family-sans-serif);
+  background: var(--primary);
 }
 nav.navbar-dark * {
   color: white;
 }
 
 nav.navbar-dark a:hover *, nav.navbar-dark a:focus * {
-  color: var(--contrast);
+  color: var(--accent);
 }
 nav.navbar a:hover {
   text-decoration: none;
+}
+nav.navbar a {
+  cursor: pointer;
 }
 
 .navbar-brand {
@@ -26,7 +29,6 @@ nav.navbar a:hover {
   font-size: inherit;
   display: flex;
   align-items: center;
-  font-family: "Source Sans Pro", sans-serif;
 }
 
 .navbar-brand .project-logo {
@@ -47,18 +49,45 @@ nav.navbar a:hover {
   color: grey;
 }
 
+#search-api-input {
+  color: initial;
+  width: 10em;
+}
+#searchbar {
+  display: none;
+}
+#searchbar.shown {
+  display: initial;
+  margin-left: auto;
+  margin-right: auto;
+}
+#searchbar.shown + .navbar-brand {
+  display: none;
+}
+
 #search-icon {
   margin-left: .5em;
 }
 
-@media (min-width: 410px) {
+@media (min-width: 420px) {
   .navbar-brand .project-logo {
     display: inline;
   }
 }
 
 @media (min-width: 768px) {
-  #search-icon {
+  #search-icon, #searchbar.shown {
     margin-left: 1em;
+    margin-right: initial;
+  }
+  #searchbar.shown + .navbar-brand {
+    display: flex;
+  }
+}
+
+@media (min-width: 1200px) {
+  #searchbar.shown {
+    position: absolute;
+    margin-left: 4em;
   }
 }
