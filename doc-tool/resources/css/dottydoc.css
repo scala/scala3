@@ -1,24 +1,11 @@
-@import url(https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,600,700);
-@import url(https://fonts.googleapis.com/css?family=Titillium+Web:200,300,400,600);
-@import url(https://fonts.googleapis.com/css?family=Roboto+Slab:100,300,400,700);
-
 html, body {
-    overflow-x: hidden;
-    font-family: "Roboto Slab", serif;
-    font-weight: 300;
-}
-
-html {
-    height: 100%;
-}
-
-body {
-    min-height: 100%;
+  font-weight: 300;
+  height: 100%;
 }
 
 div#content-wrapper {
-    min-height: 100vh;
-    padding-left: 0;
+  min-height: 100vh;
+  padding-left: 0;
 }
 
 div#content-wrapper div#content-body {
