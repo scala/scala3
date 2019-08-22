@@ -93,8 +93,23 @@ object DottyPlugin extends AutoPlugin {
         val name = moduleID.name
         if (name != "dotty" && name != "dotty-library" && name != "dotty-compiler")
           moduleID.crossVersion match {
-            case _: librarymanagement.Binary if scalaVersion.startsWith("0.") =>
-              moduleID.cross(CrossVersion.constant("2.13"))
+            case _: librarymanagement.Binary =>
+              val compatVersion =
+                CrossVersion.partialVersion(scalaVersion) match {
+                  case Some((3, _)) =>
+                    "2.13"
+                  case Some((0, minor)) =>
+                    if (minor > 18 || scalaVersion.startsWith("0.18.1"))
+                      "2.13"
+                    else
+                      "2.12"
+                  case _ =>
+                    ""
+                }
+              if (compatVersion.nonEmpty)
+                moduleID.cross(CrossVersion.constant(compatVersion))
+              else
+                moduleID
             case _ =>
               moduleID
           }
