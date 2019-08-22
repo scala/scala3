@@ -1101,7 +1101,18 @@ object Build {
         "--include-categories=dotty.communitybuild.TestCategory",
       ),
       (Test / testOnly) := ((Test / testOnly) dependsOn prepareCommunityBuild).evaluated,
-      (Test / test    ) := ((Test / test    ) dependsOn prepareCommunityBuild).value
+      (Test / test    ) := ((Test / test    ) dependsOn prepareCommunityBuild).value,
+      javaOptions ++= {
+        // Propagate the ivy cache directory setting to the tests, which will
+        // then propagate it further to the sbt instances they will spawn.
+        val sbtProps = Option(System.getProperty("sbt.ivy.home")) match {
+          case Some(ivyHome) =>
+            Seq(s"-Dsbt.ivy.home=$ivyHome")
+          case _ =>
+            Seq()
+        }
+        sbtProps
+      }
     )
 
   lazy val publishSettings = Seq(
