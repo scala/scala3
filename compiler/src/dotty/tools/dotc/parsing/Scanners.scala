@@ -222,6 +222,10 @@ object Scanners {
     /** A switch whether operators at the start of lines can be infix operators */
     private var allowLeadingInfixOperators = true
 
+    val rewrite = ctx.settings.rewrite.value.isDefined
+    val oldSyntax = ctx.settings.oldSyntax.value
+    val newSyntax = ctx.settings.newSyntax.value
+
     /** All doc comments kept by their end position in a `Map` */
     private[this] var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
@@ -236,7 +240,7 @@ object Scanners {
       def nextPos: Int = (lookahead.getc(): @switch) match {
         case ' ' | '\t' => nextPos
         case CR | LF | FF =>
-          // if we encounter line delimitng whitespace we don't count it, since
+          // if we encounter line delimiting whitespace we don't count it, since
           // it seems not to affect positions in source
           nextPos - 1
         case _ => lookahead.charOffset - 1
@@ -420,7 +424,7 @@ object Scanners {
           insertNL(NEWLINES)
         else if (!isLeadingInfixOperator)
           insertNL(NEWLINE)
-        else if (isScala2Mode)
+        else if (isScala2Mode || oldSyntax)
           ctx.warning(em"""Line starts with an operator;
                           |it is now treated as a continuation of the expression on the previous line,
                           |not as a separate statement.""",

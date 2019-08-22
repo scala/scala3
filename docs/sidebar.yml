@@ -101,6 +101,8 @@ sidebar:
               url: docs/reference/other-new-features/tupled-function.html
             - title: threadUnsafe Annotation
               url: docs/reference/other-new-features/threadUnsafe-annotation.html
+            - title: New Control Syntax
+              url: docs/reference/other-new-features/control-syntax.html
         - title: Other Changed Features
           subsection:
             - title: Structural Types
@@ -143,6 +145,8 @@ sidebar:
               url: docs/reference/dropped-features/existential-types.html
             - title: Type Projection
               url: docs/reference/dropped-features/type-projection.html
+            - title: Do-While
+              url: docs/reference/dropped-features/do-while.html
             - title: Procedure Syntax
               url: docs/reference/dropped-features/procedure-syntax.html
             - title: Package Objects
