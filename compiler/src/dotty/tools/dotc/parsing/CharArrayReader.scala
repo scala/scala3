@@ -27,9 +27,6 @@ abstract class CharArrayReader { self =>
   /** The start offset of the current line */
   var lineStartOffset: Int = startFrom
 
-  /** The start offset of the line before the current one */
-  var lastLineStartOffset: Int = startFrom
-
   private[this] var lastUnicodeOffset = -1
 
   /** Is last character a unicode escape \\uxxxx? */
@@ -112,12 +109,8 @@ abstract class CharArrayReader { self =>
   }
 
   /** Handle line ends */
-  private def potentialLineEnd(): Unit = {
-    if (ch == LF || ch == FF) {
-      lastLineStartOffset = lineStartOffset
-      lineStartOffset = charOffset
-    }
-  }
+  private def potentialLineEnd(): Unit =
+    if (ch == LF || ch == FF) lineStartOffset = charOffset
 
   def isAtEnd: Boolean = charOffset >= buf.length
 

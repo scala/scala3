@@ -157,6 +157,9 @@ object Config {
    */
   final val simplifyApplications = true
 
+  /** Always assume -indent */
+  final val allowIndent = true
+
   /** If set, prints a trace of all symbol completions */
   final val showCompletions = false
 

@@ -125,9 +125,11 @@ abstract class TokensCommon {
   final val RBRACKET = 93;         enter(RBRACKET, "']'")
   final val LBRACE = 94;           enter(LBRACE, "'{'")
   final val RBRACE = 95;           enter(RBRACE, "'}'")
+  final val INDENT = 96;           enter(INDENT, "indent")
+  final val OUTDENT = 97;          enter(OUTDENT, "unindent")
 
   final val firstParen = LPAREN
-  final val lastParen = RBRACE
+  final val lastParen = OUTDENT
 
   def buildKeywordArray(keywords: TokenSet): (Int, Array[Int]) = {
     def start(tok: Token) = tokenString(tok).toTermName.asSimpleName.start
@@ -186,6 +188,7 @@ object Tokens extends TokensCommon {
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
   final val NEWLINES = 79;         enter(NEWLINES, "end of statement", "new lines")
+  final val COLONEOL = 88;         enter(COLONEOL, ":", ": at eol")
 
   /** special keywords */
   final val USCORE = 73;           enter(USCORE, "_")
@@ -200,7 +203,7 @@ object Tokens extends TokensCommon {
   final val QUOTE = 86;            enter(QUOTE, "'")
 
   /** XML mode */
-  final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
+  final val XMLSTART = 98;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val alphaKeywords: TokenSet = tokenRange(IF, MACRO)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, TLARROW)
@@ -216,7 +219,7 @@ object Tokens extends TokensCommon {
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, QUOTEID, XMLSTART)
 
   final val canStartExpressionTokens: TokenSet = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, QUOTE, IF, DO, WHILE, FOR, NEW, TRY, THROW, IMPLIED, GIVEN)
+    LBRACE, LPAREN, INDENT, QUOTE, IF, DO, WHILE, FOR, NEW, TRY, THROW, IMPLIED, GIVEN)
 
   final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)
@@ -249,7 +252,7 @@ object Tokens extends TokensCommon {
     AT, CASE)
 
   final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(
-    TYPE, RPAREN, RBRACE, RBRACKET)
+    TYPE, RPAREN, RBRACE, RBRACKET, OUTDENT)
 
   /** Tokens that stop a lookahead scan search for a `<-`, `then`, or `do`.
    *  Used for disambiguating between old and new syntax.
@@ -258,6 +261,12 @@ object Tokens extends TokensCommon {
     BitSet(IF, ELSE, WHILE, DO, FOR, YIELD, NEW, TRY, CATCH, FINALLY, THROW, RETURN, MATCH, SEMI, EOF)
 
   final val numericLitTokens: TokenSet = BitSet(INTLIT, LONGLIT, FLOATLIT, DOUBLELIT)
+
+  final val statCtdTokens: BitSet = BitSet(THEN, ELSE, DO, CATCH, FINALLY, YIELD, MATCH)
+
+  final val canStartIndentTokens: BitSet =
+    statCtdTokens | BitSet(COLONEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR)
+      // `if` is excluded because it often comes after `else` which makes for awkward indentation rules
 
   final val scala3keywords = BitSet(ENUM, ERASED, GIVEN, IMPLIED)
 

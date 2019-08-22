@@ -77,6 +77,17 @@ object Spans {
     def contains(that: Span): Boolean =
       !that.exists || exists && (start <= that.start && end >= that.end)
 
+    /** Does the range of this span overlap with the range of that span at more than a single point? */
+    def overlaps(that: Span): Boolean = {
+      def containsInner(span: Span, offset: Int) = span.start < offset && offset < span.end
+      exists && that.exists && (
+         containsInner(this, that.start)
+      || containsInner(this, that.end)
+      || containsInner(that, this.start)
+      || containsInner(that, this.end)
+      )
+    }
+
     /** Is this span synthetic? */
     def isSynthetic: Boolean = pointDelta == SyntheticPointDelta
 

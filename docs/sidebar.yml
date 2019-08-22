@@ -103,6 +103,8 @@ sidebar:
               url: docs/reference/other-new-features/threadUnsafe-annotation.html
             - title: New Control Syntax
               url: docs/reference/other-new-features/control-syntax.html
+            - title: Significant Indentation
+              url: docs/reference/other-new-features/indentation.html
         - title: Other Changed Features
           subsection:
             - title: Structural Types

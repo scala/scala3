@@ -50,6 +50,8 @@ class ScalaSettings extends Settings.SettingGroup {
 
   val newSyntax: Setting[Boolean] = BooleanSetting("-new-syntax", "Require `then` and `do` in control expressions")
   val oldSyntax: Setting[Boolean] = BooleanSetting("-old-syntax", "Require `(...)` around conditions")
+  val indent: Setting[Boolean] = BooleanSetting("-indent", "allow significant indentation")
+  val noindent: Setting[Boolean] = BooleanSetting("-noindent", "require classical {...} syntax, indentation is not significant")
 
   /** Decompiler settings */
   val printTasty: Setting[Boolean] = BooleanSetting("-print-tasty", "Prints the raw tasty.") withAbbreviation "--print-tasty"
