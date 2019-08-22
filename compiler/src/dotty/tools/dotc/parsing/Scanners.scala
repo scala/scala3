@@ -219,6 +219,9 @@ object Scanners {
   class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
     val keepComments: Boolean = !ctx.settings.YdropComments.value
 
+    /** A switch whether operators at the start of lines can be infix operators */
+    private var allowLeadingInfixOperators = true
+
     /** All doc comments kept by their end position in a `Map` */
     private[this] var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
@@ -265,12 +268,12 @@ object Scanners {
       else IDENTIFIER
     }
 
-    private class TokenData0 extends TokenData
+    def newTokenData: TokenData = new TokenData {}
 
     /** We need one token lookahead and one token history
      */
-    val next : TokenData = new TokenData0
-    private val prev : TokenData = new TokenData0
+    val next = newTokenData
+    private val prev = newTokenData
 
     /** a stack of tokens which indicates whether line-ends can be statement separators
      *  also used for keeping track of nesting levels.
@@ -378,6 +381,30 @@ object Scanners {
         next.token = EMPTY
       }
 
+      def insertNL(nl: Token): Unit = {
+        next.copyFrom(this)
+        //  todo: make offset line-end of previous line?
+        offset = if (lineStartOffset <= offset) lineStartOffset else lastLineStartOffset
+        token = nl
+      }
+
+
+      /** A leading symbolic or backquoted identifier is treated as an infix operator
+       *  if it is followed by at least one ' ' and a token on the same line
+       *  that can start an expression.
+       */
+      def isLeadingInfixOperator =
+        allowLeadingInfixOperators &&
+        (token == BACKQUOTED_IDENT ||
+         token == IDENTIFIER && isOperatorPart(name(name.length - 1))) &&
+        (ch == ' ') && {
+          val lookahead = lookaheadScanner
+          lookahead.allowLeadingInfixOperators = false
+            // force a NEWLINE a after current token if it is on its own line
+          lookahead.nextToken()
+          canStartExpressionTokens.contains(lookahead.token)
+        }
+
       /** Insert NEWLINE or NEWLINES if
        *  - we are after a newline
        *  - we are within a { ... } or on toplevel (wrt sepRegions)
@@ -389,10 +416,15 @@ object Scanners {
           (canStartStatTokens contains token) &&
           (sepRegions.isEmpty || sepRegions.head == RBRACE ||
            sepRegions.head == ARROW && token == CASE)) {
-        next copyFrom this
-        //  todo: make offset line-end of previous line?
-        offset = if (lineStartOffset <= offset) lineStartOffset else lastLineStartOffset
-        token = if (pastBlankLine()) NEWLINES else NEWLINE
+        if (pastBlankLine())
+          insertNL(NEWLINES)
+        else if (!isLeadingInfixOperator)
+          insertNL(NEWLINE)
+        else if (isScala2Mode)
+          ctx.warning(em"""Line starts with an operator;
+                          |it is now treated as a continuation of the expression on the previous line,
+                          |not as a separate statement.""",
+                      source.atSpan(Span(offset)))
       }
 
       postProcessToken()
@@ -1086,8 +1118,6 @@ object Scanners {
       case COMMA => ","
       case _ => showToken(token)
     }
-
-// (does not seem to be needed) def flush = { charOffset = offset; nextChar(); this }
 
     /* Resume normal scanning after XML */
     def resume(lastToken: Token): Unit = {

@@ -271,7 +271,13 @@ trait TypeAssigner {
               |An extension method was tried, but could not be fully constructed:
               |
               |    ${failure.tree.show.replace("\n", "\n    ")}"""
-          case _ => ""
+          case _ =>
+            if (tree.hasAttachment(desugar.MultiLineInfix))
+              i""".
+                 |Note that `$name` is treated as an infix operator in Scala 3.
+                 |If you do not want that, insert a `;` or empty line in front
+                 |or drop any spaces behind the operator."""
+            else ""
         }
       errorType(NotAMember(qualType, name, kind, addendum), tree.sourcePos)
     }
