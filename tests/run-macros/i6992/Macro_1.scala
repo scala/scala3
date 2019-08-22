@@ -1,5 +1,6 @@
 
 import scala.quoted._, scala.quoted.matching._
+import scala.quoted.staging._
 import delegate scala.quoted._
 
 delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
@@ -16,7 +17,7 @@ object macros {
         case '{$x: Foo} => run(x).x.toExpr
       }
     } catch {
-      case _: scala.quoted.Toolbox.RunScopeException =>
+      case _: scala.quoted.staging.RunScopeException =>
         '{"OK"}
     }
   }

@@ -1,6 +1,7 @@
 scala> import quoted._
-scala> implicit def toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-def toolbox: quoted.Toolbox
+scala> import quoted.staging._
+scala> implicit def toolbox: Toolbox = Toolbox.make(getClass.getClassLoader)
+def toolbox: quoted.staging.Toolbox
 scala> def fn[T : Type](v : T) = println("ok")
 def fn[T](v: T)(implicit evidence$1: quoted.Type[T]): Unit
 scala> withQuoteContext { fn("foo") }

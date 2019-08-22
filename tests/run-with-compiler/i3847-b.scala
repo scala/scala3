@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.staging._
 import scala.reflect.ClassTag
 
 object Arrays {
@@ -13,7 +14,7 @@ object Arrays {
 }
 
 object Test {
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuoteContext {
     import Arrays._
     implicit val ct: Expr[ClassTag[Int]] = '{ClassTag.Int}

@@ -3,6 +3,7 @@ package scala
 package quoted {
 
   import scala.quoted.show.SyntaxHighlight
+  import scala.quoted.staging.Toolbox
 
   sealed trait Expr[+T] {
 

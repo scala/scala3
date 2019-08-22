@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.staging._
 
 sealed abstract class VarRef[T] {
   def update(expr: Expr[T]) given QuoteContext: Expr[Unit]
@@ -19,7 +20,7 @@ object VarRef {
 }
 
 object Test {
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuoteContext {
     val q = VarRef('{4})(varRef => '{ ${varRef.update('{3})}; ${varRef.expr} })
     println(q.show)

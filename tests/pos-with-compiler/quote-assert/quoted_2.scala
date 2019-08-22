@@ -1,5 +1,7 @@
 
 import scala.quoted._
+import scala.quoted.staging._
+
 import Macros._
 
 object Test {
@@ -15,6 +17,6 @@ object Test {
     ${ assertImpl('{x != 0}) }
   }
 
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
   run(program)
 }

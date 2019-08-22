@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.staging._
 
 object Test extends App {
 
@@ -36,7 +37,7 @@ object Test extends App {
 
   def m given QuoteContext: STM[Int, RS] = k => k('{42})
 
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
 
   withQuoteContext {
      println(Effects[RS].reify[Int] { m }.show)

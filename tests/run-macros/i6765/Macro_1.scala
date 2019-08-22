@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.staging._
 import given scala.quoted._
 
 given as Toolbox = Toolbox.make(getClass.getClassLoader)

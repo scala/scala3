@@ -1,10 +1,11 @@
 import scala.quoted._
+import scala.quoted.staging._
 
 // DYNAMIC
 
 object Test {
 
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = withQuoteContext {
 

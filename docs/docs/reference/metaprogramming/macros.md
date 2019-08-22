@@ -471,7 +471,7 @@ you can expand code at runtime with a method `run`. There is also a problem with
 that invokation of `run` in splices. Consider the following expression:
 
 ```scala
-    '{ (x: Int) => ${ ('x).run; 1 } }
+    '{ (x: Int) => ${ run('x); 1 } }
 ```
 This is again phase correct, but will lead us into trouble. Indeed, evaluating
 the splice will reduce the expression `('x).run` to `x`. But then the result
