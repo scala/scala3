@@ -287,15 +287,15 @@ trait TreeUtils
   def let(rhs: Term)(body: Ident => Term): Term = {
     import scala.quoted.QuoteContext
     given as QuoteContext = new QuoteContext(this)
-    type T // TODO probably it is better to use the Sealed contruct rather than let the user create their own existential type
-    implicit val rhsTpe: quoted.Type[T] = rhs.tpe.seal.asInstanceOf[quoted.Type[T]]
-    val rhsExpr = rhs.seal.cast[T]
-    val expr = '{
-      val x = $rhsExpr
-      ${
-        val id = ('x).unseal.asInstanceOf[Ident]
-        body(id).seal
-      }
+    val expr = (rhs.seal: @unchecked) match {
+      case '{ $rhsExpr: $t } =>
+        '{
+          val x = $rhsExpr
+          ${
+            val id = ('x).unseal.asInstanceOf[Ident]
+            body(id).seal
+          }
+        }
     }
     expr.unseal
   }
