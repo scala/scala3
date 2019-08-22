@@ -421,6 +421,7 @@ object StdNames {
     val elem: N                 = "elem"
     val elems: N                = "elems"
     val emptyValDef: N          = "emptyValDef"
+    val end: N                  = "end"
     val ensureAccessible : N    = "ensureAccessible"
     val eq: N                   = "eq"
     val eqInstance: N           = "eqInstance"
