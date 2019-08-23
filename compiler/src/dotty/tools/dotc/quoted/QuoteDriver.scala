@@ -8,7 +8,7 @@ import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory
 import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.reporting._
 import scala.quoted._
-import scala.quoted.Toolbox
+import scala.quoted.staging.Toolbox
 import java.net.URLClassLoader
 
 /** Driver to compile quoted code

@@ -19,15 +19,15 @@ trait Liftable[T] {
  */
 object Liftable {
 
-  given Liftable_Boolean_delegate as Liftable[Boolean] = new PrimitiveLiftable
-  given Liftable_Byte_delegate as Liftable[Byte] = new PrimitiveLiftable
-  given Liftable_Short_delegate as Liftable[Short] = new PrimitiveLiftable
-  given Liftable_Int_delegate as Liftable[Int] = new PrimitiveLiftable
-  given Liftable_Long_delegate as Liftable[Long] = new PrimitiveLiftable
-  given Liftable_Float_delegate as Liftable[Float] = new PrimitiveLiftable
-  given Liftable_Double_delegate as Liftable[Double] = new PrimitiveLiftable
-  given Liftable_Char_delegate as Liftable[Char] = new PrimitiveLiftable
-  given Liftable_String_delegate as Liftable[String] = new PrimitiveLiftable
+  given Liftable_Boolean_delegate[T <: Boolean] as Liftable[T] = new PrimitiveLiftable
+  given Liftable_Byte_delegate[T <: Byte] as Liftable[T] = new PrimitiveLiftable
+  given Liftable_Short_delegate[T <: Short] as Liftable[T] = new PrimitiveLiftable
+  given Liftable_Int_delegate[T <: Int] as Liftable[T] = new PrimitiveLiftable
+  given Liftable_Long_delegate[T <: Long] as Liftable[T] = new PrimitiveLiftable
+  given Liftable_Float_delegate[T <: Float] as Liftable[T] = new PrimitiveLiftable
+  given Liftable_Double_delegate[T <: Double] as Liftable[T] = new PrimitiveLiftable
+  given Liftable_Char_delegate[T <: Char] as Liftable[T] = new PrimitiveLiftable
+  given Liftable_String_delegate[T <: String] as Liftable[T] = new PrimitiveLiftable
 
   private class PrimitiveLiftable[T <: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends Liftable[T] {
     /** Lift a primitive value `n` into `'{ n }` */

@@ -665,6 +665,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             errorMap.put("nopos", noposErrors + existing)
           }
 
+          val possibleTypos = List("//error" -> "// error" , "//nopos-error" -> "// nopos-error")
+          for ((possibleTypo, expected) <- possibleTypos) {
+            if (line.contains(possibleTypo))
+              echo(s"Warning: Possible typo in error tag in file ${file.getCanonicalPath}:$lineNbr: found `$possibleTypo` but expected `$expected`")
+          }
+
           expectedErrors += noposErrors + errors
         }
       }

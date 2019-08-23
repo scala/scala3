@@ -1,8 +1,9 @@
 import quoted._
+import scala.quoted.staging._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+    delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
     def q given QuoteContext = f
     println(run(q))
     println(withQuoteContext(q.show))

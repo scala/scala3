@@ -31,6 +31,7 @@ import scala.collection.mutable.ListBuffer
 import scala.collection.mutable
 import config.Printers.pickling
 import core.quoted.PickledQuotes
+import dotty.tools.dotc.quoted.ToolboxImpl
 
 import scala.quoted
 import scala.internal.quoted.{TastyTreeExpr, TreeType}
@@ -1273,8 +1274,8 @@ class TreeUnpickler(reader: TastyReader,
       val args = until(end)(readTerm())
       val splice = splices(idx)
       def wrap(arg: Tree) =
-        if (arg.isTerm) given (qctx: scala.quoted.QuoteContext) => new TastyTreeExpr(arg)
-        else new TreeType(arg)
+        if (arg.isTerm) given (qctx: scala.quoted.QuoteContext) => new TastyTreeExpr(arg, ToolboxImpl.scopeId)
+        else new TreeType(arg, ToolboxImpl.scopeId)
       val reifiedArgs = args.map(wrap)
       val filled = if (isType) {
         val quotedType = splice.asInstanceOf[Seq[Any] => quoted.Type[_]](reifiedArgs)

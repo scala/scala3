@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.staging._
 import given scala.quoted.autolift._
 
 import scala.tasty.util._
@@ -8,7 +9,7 @@ object Macros {
   inline def testMacro: Unit = ${impl}
 
   def impl given QuoteContext: Expr[Unit] = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+    delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
     // 2 is a lifted constant
     val show1 = withQuoteContext(power(2, 3.0).show)
     val run1  = run(power(2, 3.0))

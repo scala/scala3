@@ -1,362 +1,365 @@
 ---
 layout: doc-page
-title: Typeclass Derivation
+title: Type Class Derivation
 ---
 
-Typeclass derivation is a way to generate given instances for certain type classes automatically or with minimal code hints. A type class in this sense is any trait or class with a type parameter that describes the type being operated on. Commonly used examples are `Eql`, `Ordering`, `Show`, or `Pickling`. Example:
-```scala
-enum Tree[T] derives Eql, Ordering, Pickling {
-  case Branch(left: Tree[T], right: Tree[T])
-  case Leaf(elem: T)
-}
-```
-The `derives` clause generates given instances for the `Eql`, `Ordering`, and `Pickling` traits in the companion object `Tree`:
-```scala
-given [T: Eql]      as Eql[Tree[T]]      = Eql.derived
-given [T: Ordering] as Ordering[Tree[T]] = Ordering.derived
-given [T: Pickling] as Pickling[Tree[T]] = Pickling.derived
-```
-
-### Deriving Types
-
-Besides for enums, typeclasses can also be derived for other sets of classes and objects that form an algebraic data type. These are:
-
- - individual case classes or case objects
- - sealed classes or traits that have only case classes and case objects as children.
-
- Examples:
-
- ```scala
-case class Labelled[T](x: T, label: String) derives Eql, Show
-
-sealed trait Option[T] derives Eql
-case class Some[T] extends Option[T]
-case object None extends Option[Nothing]
-```
-
-The generated typeclass instances are placed in the companion objects `Labelled` and `Option`, respectively.
-
-### Derivable Types
-
-A trait or class can appear in a `derives` clause if its companion object defines a method named `derived`. The type and implementation of a `derived` method are arbitrary, but typically it has a definition like this:
-```scala
-  def derived[T] given Mirror.Of[T] = ...
-```
-That is, the `derived` method takes an implicit parameter of (some subtype of) type `Mirror` that defines the shape of the deriving type `T` and it computes the typeclass implementation according
-to that shape. A given `Mirror` instance is generated automatically for
-
- - case classes and objects,
- - enums and enum cases,
- - sealed traits or classes that have only case classes and case objects as children.
-
-<!---
-This is all a user of typeclass derivation has to know. The rest of this page contains information needed to be able to write a typeclass that can appear in a `derives` clause. In particular, it details the means provided for the implementation of data generic `derived` methods.
---->
-
-The description that follows gives a low-level way to define a type class.
-
-### The Shape Type
-
-For every class with a `derives` clause, the compiler computes the shape of that class as a type. For example, here is the shape type for the `Tree[T]` enum:
+Type class derivation is a way to automatically generate given instances for type classes which satisfy some simple
+conditions. A type class in this sense is any trait or class with a type parameter determining the type being operated
+on. Common examples are `Eq`, `Ordering`, or `Show`. For example, given the following `Tree` algebraic data type
+(ADT),
 
 ```scala
-Cases[(
-  Case[Branch[T], (Tree[T], Tree[T])],
-  Case[Leaf[T], T *: Unit]
-)]
-```
-Informally, this states that
-
-> The shape of a `Tree[T]` is one of two cases: Either a `Branch[T]` with two
-  elements of type `Tree[T]`, or a `Leaf[T]` with a single element of type `T`.
-
-The type constructors `Cases` and `Case` come from the companion object of a class
-`scala.compiletime.Shape`, which is defined in the standard library as follows:
-```scala
-sealed abstract class Shape
-
-object Shape {
-
-  /** A sum with alternative types `Alts` */
-  case class Cases[Alts <: Tuple] extends Shape
-
-  /** A product type `T` with element types `Elems` */
-  case class Case[T, Elems <: Tuple] extends Shape
+enum Tree[T] derives Eq, Ordering, Show {
+  case Branch[T](left: Tree[T], right: Tree[T])
+  case Leaf[T](elem: T)
 }
 ```
 
-Here is the shape type for `Labelled[T]`:
-```scala
-Case[Labelled[T], (T, String)]
-```
-And here is the one for `Option[T]`:
-```scala
-Cases[(
-  Case[Some[T], T *: Unit],
-  Case[None.type, Unit]
-)]
-```
-Note that an empty element tuple is represented as type `Unit`. A single-element tuple
-is represented as `T *: Unit` since there is no direct syntax for such tuples: `(T)` is just `T` in parentheses, not a tuple.
+The `derives` clause generates the following given instances for the `Eq`, `Ordering` and `Show` type classes in the
+companion object of `Tree`,
 
-### The Generic Typeclass
-
-For every class `C[T_1,...,T_n]` with a `derives` clause, the compiler generates in the companion object of `C` a given instance for `Generic[C[T_1,...,T_n]]` that follows
-the outline below:
 ```scala
-given [T_1, ..., T_n] as Generic[C[T_1,...,T_n]] {
-  type Shape = ...
-  ...
+given [T: Eq]       as Eq[Tree[T]]    = Eq.derived
+given [T: Ordering] as Ordering[Tree] = Ordering.derived
+given [T: Show]     as Show[Tree]     = Show.derived
+```
+
+We say that `Tree` is the _deriving type_ and that the `Eq`, `Ordering` and `Show` instances are _derived instances_.
+
+### Types supporting `derives` clauses
+
+All data types can have a `derives` clause. This document focuses primarily on data types which also have an instance
+of the `Mirror` type class available. Instances of the `Mirror` type class are generated automatically by the compiler
+for,
+
++ enums and enum cases
++ case classes and case objects
++ sealed classes or traits that have only case classes and case objects as children
+
+`Mirror` type class instances provide information at the type level about the components and labelling of the type.
+They also provide minimal term level infrastructure to allow higher level libraries to provide comprehensive
+derivation support.
+
+```scala
+  sealed trait Mirror {
+
+    /** the type being mirrored */
+    type MirroredType
+ 
+    /** the type of the elements of the mirrored type */
+    type MirroredElemTypes
+
+    /** The mirrored *-type */
+    type MirroredMonoType
+
+    /** The name of the type */
+    type MirroredLabel <: String
+
+    /** The names of the elements of the type */
+    type MirroredElemLabels <: Tuple
+  }
+
+  object Mirror {
+    /** The Mirror for a product type */
+    trait Product extends Mirror {
+
+      /** Create a new instance of type `T` with elements taken from product `p`. */
+      def fromProduct(p: scala.Product): MirroredMonoType
+    }
+
+    trait Sum extends Mirror { self =>
+      /** The ordinal number of the case class of `x`. For enums, `ordinal(x) == x.ordinal` */
+      def ordinal(x: MirroredMonoType): Int
+    }
+  }
+```
+
+Product types (i.e. case classes and objects, and enum cases) have mirrors which are subtypes of `Mirror.Product`. Sum
+types (i.e. sealed class or traits with product children, and enums) have mirrors which are subtypes of `Mirror.Sum`.
+
+For the `Tree` ADT from above the following `Mirror` instances will be automatically provided by the compiler,
+
+```scala
+// Mirror for Tree
+Mirror.Sum {
+  type MirroredType = Tree
+  type MirroredElemTypes[T] = (Branch[T], Leaf[T])
+  type MirroredMonoType = Tree[_]
+  type MirroredLabels = "Tree"
+  type MirroredElemLabels = ("Branch", "Leaf")
+
+  def ordinal(x: MirroredMonoType): Int = x match {
+    case _: Branch[_] => 0
+    case _: Leaf[_] => 1
+  }
+}
+
+// Mirror for Branch
+Mirror.Product {
+  type MirroredType = Branch
+  type MirroredElemTypes[T] = (Tree[T], Tree[T])
+  type MirroredMonoType = Branch[_]
+  type MirroredLabels = "Branch"
+  type MirroredElemLabels = ("left", "right")
+
+  def fromProduct(p: Product): MirroredMonoType =
+    new Branch(...)
+}
+
+// Mirror for Leaf
+Mirror.Product {
+  type MirroredType = Leaf
+  type MirroredElemTypes[T] = Tuple1[T]
+  type MirroredMonoType = Leaf[_]
+  type MirroredLabels = "Leaf"
+  type MirroredElemLabels = Tuple1["elem"]
+
+  def fromProduct(p: Product): MirroredMonoType =
+    new Leaf(...)
 }
 ```
-where the right hand side of `Shape` is the shape type of `C[T_1,...,T_n]`.
-For instance, the definition
+
+Note the following properties of `Mirror` types,
+
++ Properties are encoded using types rather than terms. This means that they have no runtime footprint unless used and
+  also that they are a compile time feature for use with Dotty's metaprogramming facilities.
++ The kinds of `MirroredType` and `MirroredElemTypes` match the kind of the data type the mirror is an instance for.
+  This allows `Mirrors` to support ADTs of all kinds.
++ There is no distinct representation type for sums or products (ie. there is no `HList` or `Coproduct` type as in
+  Scala 2 versions of shapeless). Instead the collection of child types of a data type is represented by an ordinary,
+  possibly parameterized, tuple type. Dotty's metaprogramming facilities can be used to work with these tuple types
+  as-is, and higher level libraries can be built on top of them.
++ The methods `ordinal` and `fromProduct` are defined in terms of `MirroredMonoType` which is the type of kind-`*`
+  which is obtained from `MirroredType` by wildcarding its type parameters. 
+
+### Type classes supporting automatic deriving
+
+A trait or class can appear in a `derives` clause if its companion object defines a method named `derived`. The
+signature and implementation of a `derived` method for a type class `TC[_]` are arbitrary but it is typically of the
+following form,
+
 ```scala
-enum Result[+T, +E] derives Logging {
-  case Ok[T](result: T)
-  case Err[E](err: E)
+  def derived[T] given Mirror.Of[T]: TC[T] = ...
+```
+
+That is, the `derived` method takes a given parameter of (some subtype of) type `Mirror` which defines the shape of
+the deriving type `T`, and computes the type class implementation according to that shape. This is all that the
+provider of an ADT with a `derives` clause has to know about the derivation of a type class instance.
+
+Note that `derived` methods may have given `Mirror` arguments indirectly (e.g. by having a given argument which in turn
+has a given `Mirror`, or not at all (e.g. they might use some completely different user-provided mechanism, for
+instance using Dotty macros or runtime reflection). We expect that (direct or indirect) `Mirror` based implementations
+will be the most common and that is what this document emphasises.
+
+Type class authors will most likely use higher level derivation or generic programming libraries to implement
+`derived` methods. An example of how a `derived` method might be implemented using _only_ the low level facilities
+described above and Dotty's general metaprogramming features is provided below. It is not anticipated that type class
+authors would normally implement a `derived` method in this way, however this walkthrough can be taken as a guide for
+authors of the higher level derivation libraries that we expect typical type class authors will use (for a fully
+worked out example of such a library, see [shapeless 3](https://github.com/milessabin/shapeless/tree/shapeless-3)).
+
+#### How to write a type class `derived` method using low level mechanisms
+
+The low-level method we will use to implement a type class `derived` method in this example exploits three new
+type-level constructs in Dotty: inline methods, inline matches, and given matches. Given this definition of the
+`Eq` type class,
+
+
+```scala
+trait Eq[T] {
+  def eqv(x: T, y: T): Boolean
 }
 ```
-would produce:
-```scala
-object Result {
-  import scala.compiletime.Shape._
 
-  given [T, E] as Generic[Result[T, E]] {
-    type Shape = Cases[(
-      Case[Ok[T], T *: Unit],
-      Case[Err[E], E *: Unit]
-    )]
-    ...
+we need to implement a method `Eq.derived` on the companion object of `Eq` that produces an instance for `Eq[T]` given
+a `Mirror[T]`. Here is a possible implementation,
+
+```scala
+inline given derived[T] as Eq[T] given (m: Mirror.Of[T]) = {
+  val elemInstances = summonAll[m.MirroredElemTypes]           // (1)
+  inline m match {                                             // (2)
+    case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
+    case p: Mirror.ProductOf[T] => eqProduct(p, elemInstances)
   }
 }
 ```
-The `Generic` class is defined in package `scala.reflect`.
+
+Note that the `derived` method is defined as both `inline` and `given`. This means that the method will be expanded at
+call sites (for instance the compiler generated instance definitions in the companion objects of ADTs which have a
+`derived Eq` clause), and also that it can be used recursively if necessary, to compute instance for children.
+
+The body of this method (1) first materializes the `Eq` instances for all the child types of type the instance is
+being derived for. This is either all the branches of a sum type or all the fields of a product type. The
+implementation of `summonAll` is `inline` and uses Dotty's `given match` construct to collect the instances as a
+`List`,
 
 ```scala
-abstract class Generic[T] {
-  type Shape <: scala.compiletime.Shape
-
-  /** The mirror corresponding to ADT instance `x` */
-  def reflect(x: T): Mirror
-
-  /** The ADT instance corresponding to given `mirror` */
-  def reify(mirror: Mirror): T
-
-  /** The companion object of the ADT */
-  def common: GenericClass
+inline def summon[T]: T = given match {
+  case t: T => t
 }
-```
-It defines the `Shape` type for the ADT `T`, as well as two methods that map between a
-type `T` and a generic representation of `T`, which we call a `Mirror`:
-The `reflect` method maps an instance of the ADT `T` to its mirror whereas
-the `reify` method goes the other way. There's also a `common` method that returns
-a value of type `GenericClass` which contains information that is the same for all
-instances of a class (right now, this consists of the runtime `Class` value and
-the names of the cases and their parameters).
 
-### Mirrors
-
-A mirror is a generic representation of an instance of an ADT. `Mirror` objects have three components:
-
- - `adtClass: GenericClass`: The representation of the ADT class
- - `ordinal: Int`: The ordinal number of the case among all cases of the ADT, starting from 0
- - `elems: Product`: The elements of the instance, represented as a `Product`.
-
- The `Mirror` class is defined in package `scala.reflect` as follows:
-
-```scala
-class Mirror(val adtClass: GenericClass, val ordinal: Int, val elems: Product) {
-
-  /** The `n`'th element of this generic case */
-  def apply(n: Int): Any = elems.productElement(n)
-
-  /** The name of the constructor of the case reflected by this mirror */
-  def caseLabel: String = adtClass.label(ordinal)(0)
-
-  /** The label of the `n`'th element of the case reflected by this mirror */
-  def elementLabel(n: Int): String = adtClass.label(ordinal)(n + 1)
+inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
+  case _: Unit => Nil
+  case _: (t *: ts) => summon[Eq[t]] :: summonAll[ts]
 }
 ```
 
-### GenericClass
+with the instances for children in hand the `derived` method uses an `inline match` to dispatch to methods which can
+construct instances for either sums or products (2). Note that because `derived` is `inline` the match will be
+resolved at compile-time and only the left-hand side of the matching case will be inlined into the generated code with
+types refined as revealed by the match.
 
-Here's the API of `scala.reflect.GenericClass`:
+In the sum case, `eqSum`, we use the runtime `ordinal` values of the arguments to `eqv` to first check if the two
+values are of the same subtype of the ADT (3) and then, if they are, to further test for equality based on the `Eq`
+instance for the appropriate ADT subtype using the auxilliary method `check` (4).
 
 ```scala
-class GenericClass(val runtimeClass: Class[_], labelsStr: String) {
-
-  /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
-  def mirror(ordinal: Int, product: Product): Mirror =
-    new Mirror(this, ordinal, product)
-
-  /** A mirror with elements given as an array */
-  def mirror(ordinal: Int, elems: Array[AnyRef]): Mirror =
-    mirror(ordinal, new ArrayProduct(elems))
-
-  /** A mirror with an initial empty array of `numElems` elements, to be filled in. */
-  def mirror(ordinal: Int, numElems: Int): Mirror =
-    mirror(ordinal, new Array[AnyRef](numElems))
-
-  /** A mirror of a case with no elements */
-  def mirror(ordinal: Int): Mirror =
-    mirror(ordinal, EmptyProduct)
-
-  /** Case and element labels as a two-dimensional array.
-   *  Each row of the array contains a case label, followed by the labels of the elements of that case.
-   */
-  val label: Array[Array[String]] = ...
-}
+def eqSum[T](s: Mirror.SumOf[T], elems: List[Eq[_]]): Eq[T] =
+  new Eq[T] {
+    def eqv(x: T, y: T): Boolean = {
+      val ordx = s.ordinal(x)                            // (3)
+      (s.ordinal(y) == ordx) && check(elems(ordx))(x, y) // (4)
+    }
+  }
 ```
 
-The class provides four overloaded methods to create mirrors. The first of these is invoked by the `reify` method that maps an ADT instance to its mirror. It simply passes the
-instance itself (which is a `Product`) to the second parameter of the mirror. That operation does not involve any copying and is thus quite efficient. The second and third versions of `mirror` are typically invoked by typeclass methods that create instances from mirrors. An example would be an `unpickle` method that first creates an array of elements, then creates
-a mirror over that array, and finally uses the `reify` method in `Reflected` to create the ADT instance. The fourth version of `mirror` is used to create mirrors of instances that do not have any elements.
+In the product case, `eqProduct` we test the runtime values of the arguments to `eqv` for equality as products based
+on the `Eq` instances for the fields of the data type (5),
 
-### How to Write Generic Typeclasses
-
-Based on the machinery developed so far it becomes possible to define type classes generically. This means that the `derived` method will compute a type class instance for any ADT that has a given `Generic` instance, recursively.
-The implementation of these methods typically uses three new type-level constructs in Dotty: inline methods, inline matches, and implicit matches. As an example, here is one possible implementation of a generic `Eql` type class, with explanations. Let's assume `Eql` is defined by the following trait:
 ```scala
-trait Eql[T] {
-  def eql(x: T, y: T): Boolean
-}
+def eqProduct[T](p: Mirror.ProductOf[T], elems: List[Eq[_]]): Eq[T] =
+  new Eq[T] {
+    def eqv(x: T, y: T): Boolean =
+      iterator(x).zip(iterator(y)).zip(elems.iterator).forall {  // (5)
+        case ((x, y), elem) => check(elem)(x, y)
+      }
+  }
 ```
-We need to implement a method `Eql.derived` that produces a given instance for `Eql[T]` provided
-a given `Generic[T]`. Here's a possible solution:
+
+Pulling this all together we have the following complete implementation,
+
 ```scala
-  inline def derived[T] given (ev: Generic[T]): Eql[T] = new Eql[T] {
-    def eql(x: T, y: T): Boolean = {
-      val mx = ev.reflect(x)                    // (1)
-      val my = ev.reflect(y)                    // (2)
-      inline erasedValue[ev.Shape] match {
-        case _: Cases[alts] =>
-          mx.ordinal == my.ordinal &&           // (3)
-          eqlCases[alts](mx, my, 0)             // [4]
-        case _: Case[_, elems] =>
-          eqlElems[elems](mx, my, 0)            // [5]
+import scala.deriving._
+import scala.compiletime.erasedValue
+
+inline def summon[T]: T = given match {
+  case t: T => t
+}
+
+inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
+  case _: Unit => Nil
+  case _: (t *: ts) => summon[Eq[t]] :: summonAll[ts]
+}
+
+trait Eq[T] {
+  def eqv(x: T, y: T): Boolean
+}
+
+object Eq {
+  given as Eq[Int] {
+    def eqv(x: Int, y: Int) = x == y
+  }
+
+  def check(elem: Eq[_])(x: Any, y: Any): Boolean =
+    elem.asInstanceOf[Eq[Any]].eqv(x, y)
+
+  def iterator[T](p: T) = p.asInstanceOf[Product].productIterator
+
+  def eqSum[T](s: Mirror.SumOf[T], elems: List[Eq[_]]): Eq[T] =
+    new Eq[T] {
+      def eqv(x: T, y: T): Boolean = {
+        val ordx = s.ordinal(x)
+        (s.ordinal(y) == ordx) && check(elems(ordx))(x, y)
       }
     }
-  }
-```
-The implementation of the inline method `derived` creates a given instance for `Eql[T]` and implements its `eql` method. The right-hand side of `eql` mixes compile-time and runtime elements. In the code above, runtime elements are marked with a number in parentheses, i.e
-`(1)`, `(2)`, `(3)`. Compile-time calls that expand to runtime code are marked with a number in brackets, i.e. `[4]`, `[5]`. The implementation of `eql` consists of the following steps.
 
-  1. Map the compared values `x` and `y` to their mirrors using the `reflect` method of the implicitly passed `Generic` `(1)`, `(2)`.
-  2. Match at compile-time against the shape of the ADT given in `ev.Shape`. Dotty does not have a construct for matching types directly, but we can emulate it using an `inline` match over an `erasedValue`. Depending on the actual type `ev.Shape`, the match will reduce at compile time to one of its two alternatives.
-  3. If `ev.Shape` is of the form `Cases[alts]` for some tuple `alts` of alternative types, the equality test consists of comparing the ordinal values of the two mirrors `(3)` and, if they are equal, comparing the elements of the case indicated by that ordinal value. That second step is performed by code that results from the compile-time expansion of the `eqlCases` call `[4]`.
-  4. If `ev.Shape` is of the form `Case[elems]` for some tuple `elems` for element types, the elements of the case are compared by code that results from the compile-time expansion of the `eqlElems` call `[5]`.
-
-Here is a possible implementation of `eqlCases`:
-```scala
-  inline def eqlCases[Alts <: Tuple](mx: Mirror, my: Mirror, n: Int): Boolean =
-    inline erasedValue[Alts] match {
-      case _: (Shape.Case[_, elems] *: alts1) =>
-        if (mx.ordinal == n)                    // (6)
-          eqlElems[elems](mx, my, 0)            // [7]
-        else
-          eqlCases[alts1](mx, my, n + 1)        // [8]
-      case _: Unit =>
-        throw new MatchError(mx.ordinal)        // (9)
+  def eqProduct[T](p: Mirror.ProductOf[T], elems: List[Eq[_]]): Eq[T] =
+    new Eq[T] {
+      def eqv(x: T, y: T): Boolean =
+        iterator(x).zip(iterator(y)).zip(elems.iterator).forall {
+          case ((x, y), elem) => check(elem)(x, y)
+        }
     }
-```
-The inline method `eqlCases` takes as type arguments the alternatives of the ADT that remain to be tested. It takes as value arguments mirrors of the two instances `x` and `y` to be compared and an integer `n` that indicates the ordinal number of the case that is tested next. It produces an expression that compares these two values.
 
-If the list of alternatives `Alts` consists of a case of type `Case[_, elems]`, possibly followed by further cases in `alts1`, we generate the following code:
-
- 1. Compare the `ordinal` value of `mx` (a runtime value) with the case number `n` (a compile-time value translated to a constant in the generated code) in an if-then-else `(6)`.
- 2. In the then-branch of the conditional we have that the `ordinal` value of both mirrors
- matches the number of the case with elements `elems`. Proceed by comparing the elements
- of the case in code expanded from the `eqlElems` call `[7]`.
- 3. In the else-branch of the conditional we have that the present case does not match
- the ordinal value of both mirrors. Proceed by trying the remaining cases in `alts1` using
- code expanded from the `eqlCases` call `[8]`.
-
- If the list of alternatives `Alts` is the empty tuple, there are no further cases to check.
- This place in the code should not be reachable at runtime. Therefore an appropriate
- implementation is by throwing a `MatchError` or some other runtime exception `(9)`.
-
-The `eqlElems` method compares the elements of two mirrors that are known to have the same
-ordinal number, which means they represent the same case of the ADT. Here is a possible
-implementation:
-```scala
-  inline def eqlElems[Elems <: Tuple](xs: Mirror, ys: Mirror, n: Int): Boolean =
-    inline erasedValue[Elems] match {
-      case _: (elem *: elems1) =>
-        tryEql[elem](                           // [12]
-          xs(n).asInstanceOf[elem],             // (10)
-          ys(n).asInstanceOf[elem]) &&          // (11)
-        eqlElems[elems1](xs, ys, n + 1)         // [13]
-      case _: Unit =>
-        true                                    // (14)
-    }
-```
-`eqlElems` takes as arguments the two mirrors of the elements to compare and a compile-time index `n`, indicating the index of the next element to test. It is defined in terms of another compile-time match, this time over the tuple type `Elems` of all element types that remain to be tested. If that type is
-non-empty, say of form `elem *: elems1`, the following code is produced:
-
- 1. Access the `n`'th elements of both mirrors and cast them to the current element type `elem`
- `(10)`, `(11)`. Note that because of the way runtime reflection mirrors compile-time `Shape` types, the casts are guaranteed to succeed.
- 2. Compare the element values using code expanded by the `tryEql` call `[12]`.
- 3. "And" the result with code that compares the remaining elements using a recursive call
- to `eqlElems` `[13]`.
-
- If type `Elems` is empty, there are no more elements to be compared, so the comparison's result is `true`. `(14)`
-
- Since `eqlElems` is an inline method, its recursive calls are unrolled. The end result is a conjunction `test_1 && ... && test_n && true` of test expressions produced by the `tryEql` calls.
-
-The last, and in a sense most interesting part of the derivation is the comparison of a pair of element values in `tryEql`. Here is the definition of this method:
-```scala
-  inline def tryEql[T](x: T, y: T) = implicit match {
-    case ev: Eql[T] =>
-      ev.eql(x, y)                              // (15)
-    case _ =>
-      error("No `Eql` instance was found for $T")
-  }
-```
-`tryEql` is an inline method that takes an element type `T` and two element values of that type as arguments. It is defined using an `implicit match` that tries to find a given instance for `Eql[T]`. If an instance `ev` is found, it proceeds by comparing the arguments using `ev.eql`. On the other hand, if no instance is found
-this signals a compilation error: the user tried a generic derivation of `Eql` for a class with an element type that does not have an `Eql` instance itself. The error is signaled by
-calling the `error` method defined in `scala.compiletime`.
-
-**Note:** At the moment our error diagnostics for metaprogramming does not support yet interpolated string arguments for the `scala.compiletime.error` method that is called in the second case above. As an alternative, one can simply leave off the second case, then a missing typeclass would result in a "failure to reduce match" error.
-
-**Example:** Here is a slightly polished and compacted version of the code that's generated by inline expansion for the derived `Eql` instance for class `Tree`.
-
-```scala
-given [T] as Eql[Tree[T]] where (elemEq: Eql[T]) {
-  def eql(x: Tree[T], y: Tree[T]): Boolean = {
-    val ev = the[Generic[Tree[T]]]
-    val mx = ev.reflect(x)
-    val my = ev.reflect(y)
-    mx.ordinal == my.ordinal && {
-      if (mx.ordinal == 0) {
-        this.eql(mx(0).asInstanceOf[Tree[T]], my(0).asInstanceOf[Tree[T]]) &&
-        this.eql(mx(1).asInstanceOf[Tree[T]], my(1).asInstanceOf[Tree[T]])
-      }
-      else if (mx.ordinal == 1) {
-        elemEq.eql(mx(0).asInstanceOf[T], my(0).asInstanceOf[T])
-      }
-      else throw new MatchError(mx.ordinal)
+  inline given derived[T] as Eq[T] given (m: Mirror.Of[T]) = {
+    val elemInstances = summonAll[m.MirroredElemTypes]
+    inline m match {
+      case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
+      case p: Mirror.ProductOf[T] => eqProduct(p, elemInstances)
     }
   }
 }
 ```
 
-One important difference between this approach and Scala-2 typeclass derivation frameworks such as Shapeless or Magnolia is that no automatic attempt is made to generate typeclass instances for elements recursively using the generic derivation framework. There must be a given instance for `Eql[T]` (which can of course be produced in turn using `Eql.derived`), or the compilation will fail. The advantage of this more restrictive approach to typeclass derivation is that it avoids uncontrolled transitive typeclass derivation by design. This keeps code sizes smaller, compile times lower, and is generally more predictable.
+we can test this relative to a simple ADT like so,
 
-### Deriving Instances Elsewhere
-
-Sometimes one would like to derive a typeclass instance for an ADT after the ADT is defined, without being able to change the code of the ADT itself.
-To do this, simply define an instance with the `derived` method of the typeclass as right-hand side. E.g, to implement `Ordering` for `Option`, define:
 ```scala
-instance [T: Ordering] as Ordering[Option[T]] = Ordering.derived
+enum Opt[+T] derives Eq {
+  case Sm(t: T)
+  case Nn
+}
+
+object Test extends App {
+  import Opt._
+  val eqoi = the[Eq[Opt[Int]]]
+  assert(eqoi.eqv(Sm(23), Sm(23)))
+  assert(!eqoi.eqv(Sm(23), Sm(13)))
+  assert(!eqoi.eqv(Sm(23), Nn))
+}
 ```
-Usually, the `Ordering.derived` clause has an implicit parameter of type
-`Generic[Option[T]]`. Since the `Option` trait has a `derives` clause,
-the necessary instance is already present in the companion object of `Option`.
-If the ADT in question does not have a `derives` clause, a `Generic` instance
-would still be synthesized by the compiler at the point where `derived` is called.
-This is similar to the situation with type tags or class tags: If no instance
-is found, the compiler will synthesize one.
+
+In this case the code that is generated by the inline expansion for the derived `Eq` instance for `Opt` looks like the
+following, after a little polishing,
+
+```scala
+given derived$Eq[T] as Eq[Opt[T]] given (eqT: Eq[T]) =
+  eqSum(the[Mirror[Opt[T]]],
+    List(
+      eqProduct(the[Mirror[Sm[T]]], List(the[Eq[T]]))
+      eqProduct(the[Mirror[Nn.type]], Nil)     
+    )
+  )
+```
+
+Alternative approaches can be taken to the way that `derived` methods can be defined. For example, more aggressively
+inlined variants using Dotty macros, whilst being more involved for type class authors to write than the example
+above, can produce code for type classes like `Eq` which eliminate all the abstraction artefacts (eg. the `Lists` of
+child instances in the above) and generate code which is indistinguishable from what a programmer might write by hand.
+As a third example, using a higher level library such as shapeless the type class author could define an equivalent
+`derived` method as,
+
+```scala
+given eqSum[A] as Eq[A] given (inst: => K0.CoproductInstances[Eq, A]) {
+  def eqv(x: A, y: A): Boolean = inst.fold2(x, y)(false)(
+    [t] => (eqt: Eq[t], t0: t, t1: t) => eqt.eqv(t0, t1)
+  )
+}
+
+given eqProduct[A] as Eq[A] given (inst: K0.ProductInstances[Eq, A]) {
+  def eqv(x: A, y: A): Boolean = inst.foldLeft2(x, y)(true: Boolean)(
+    [t] => (acc: Boolean, eqt: Eq[t], t0: t, t1: t) => Complete(!eqt.eqv(t0, t1))(false)(true)
+  )
+}
+
+
+inline def derived[A] given (gen: K0.Generic[A]): Eq[A] = gen.derive(eqSum, eqProduct)
+```
+
+The framework described here enables all three of these approaches without mandating any of them.
+
+### Deriving instances elsewhere
+
+Sometimes one would like to derive a type class instance for an ADT after the ADT is defined, without being able to
+change the code of the ADT itself.  To do this, simply define an instance using the `derived` method of the type class
+as right-hand side. E.g, to implement `Ordering` for `Option` define,
+
+```scala
+given [T: Ordering] as Ordering[Option[T]] = Ordering.derived
+```
+
+Assuming the `Ordering.derived` method has a given parameter of type `Mirror[T]` it will be satisfied by the
+compiler generated `Mirror` instance for `Option` and the derivation of the instance will be expanded on the right
+hand side of this definition in the same way as an instance defined in ADT companion objects.
 
 ### Syntax
 
@@ -370,23 +373,27 @@ ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
 
 ### Discussion
 
-The typeclass derivation framework is quite small and low-level. There are essentially
-two pieces of infrastructure in the compiler-generated `Generic` instances:
+This type class derivation framework is intentionally very small and low-level. There are essentially two pieces of
+infrastructure in compiler-generated `Mirror` instances,
 
- - a type representing the shape of an ADT,
- - a way to map between ADT instances and generic mirrors.
++ type members encoding properties of the mirrored types.
++ a minimal value level mechanism for working generically with terms of the mirrored types.
 
-Generic mirrors make use of the already existing `Product` infrastructure for case
-classes, which means they are efficient and their generation requires not much code.
+The `Mirror` infrastructure can be seen as an extension of the existing `Product` infrastructure for case classes:
+typically `Mirror` types will be implemented by the ADTs companion object, hence the type members and the `ordinal` or
+`fromProduct` methods will be members of that object. The primary motivation for this design decision, and the
+decision to encode properties via types rather than terms was to keep the bytecode and runtime footprint of the
+feature small enough to make it possible to provide `Mirror` instances _unconditionally_.
 
-Generic mirrors can be so simple because, just like `Product`s, they are weakly
-typed. On the other hand, this means that code for generic typeclasses has to
-ensure that type exploration and value selection proceed in lockstep and it
-has to assert this conformance in some places using casts. If generic typeclasses
-are correctly written these casts will never fail.
+Whilst `Mirrors` encode properties precisely via type members, the value level `ordinal` and `fromProduct` are
+somewhat weakly typed (because they are defined in terms of `MirroredMonoType`) just like the members of `Product`.
+This means that code for generic type classes has to ensure that type exploration and value selection proceed in
+lockstep and it has to assert this conformance in some places using casts. If generic type classes are correctly
+written these casts will never fail.
 
-It could make sense to explore a higher-level framework that encapsulates all casts
-in the framework. This could give more guidance to the typeclass implementer.
-It also seems quite possible to put such a framework on top of the lower-level
-mechanisms presented here.
--->
+As mentioned, however, the compiler-provided mechansim is intentionally very low level and it is anticipated that
+higher level type class derivation and generic programming libraries will build on this and Dotty's other
+metaprogramming facilities to hide these low-level details from type class authors and general users. Type class
+derivation in the style of both shapeless and Magnolia are possible (a prototype of shapeless 3, which combines
+aspects of both shapeless 2 and Magnolia has been developed alongside this language feature) as is a more aggressively
+inlined style, supported by Dotty's new quote/splice macro and inlining facilities.

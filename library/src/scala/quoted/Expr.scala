@@ -3,6 +3,7 @@ package scala
 package quoted {
 
   import scala.quoted.show.SyntaxHighlight
+  import scala.quoted.staging.Toolbox
 
   sealed trait Expr[+T] {
 
@@ -79,7 +80,7 @@ package quoted {
 package internal {
   package quoted {
 
-    import scala.quoted.{Expr, QuoteContext}
+    import scala.quoted.Expr
 
     /** An Expr backed by a tree. Only the current compiler trees are allowed.
      *
@@ -88,7 +89,7 @@ package internal {
      *
      *  May contain references to code defined outside this TastyTreeExpr instance.
      */
-    final class TastyTreeExpr[Tree](val tree: Tree) extends Expr[Any] {
+    final class TastyTreeExpr[Tree](val tree: Tree, val scopeId: Int) extends Expr[Any] {
       override def toString: String = s"Expr(<tasty tree>)"
     }
 

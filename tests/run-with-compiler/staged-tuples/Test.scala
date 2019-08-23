@@ -1,10 +1,10 @@
-import scala.quoted.run
+import scala.quoted.staging.run
 import scala.internal.StagedTuple._
 
 object Test {
 
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+    implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
 
     assert(run(fromArrayStaged('{ Array.empty[Object] }, Some(0))).==(()))
     assert(run(fromArrayStaged[Tuple1[String]]('{ Array[Object]("a") }, Some(1))) == Tuple1("a"))
