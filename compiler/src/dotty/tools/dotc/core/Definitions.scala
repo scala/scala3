@@ -596,10 +596,11 @@ class Definitions {
 
   @tu lazy val EnumValuesClass: ClassSymbol = ctx.requiredClass("scala.runtime.EnumValues")
   @tu lazy val ProductClass: ClassSymbol = ctx.requiredClass("scala.Product")
-    @tu lazy val Product_canEqual      : Symbol = ProductClass.requiredMethod(nme.canEqual_)
-    @tu lazy val Product_productArity  : Symbol = ProductClass.requiredMethod(nme.productArity)
-    @tu lazy val Product_productElement: Symbol = ProductClass.requiredMethod(nme.productElement)
-    @tu lazy val Product_productPrefix : Symbol = ProductClass.requiredMethod(nme.productPrefix)
+    @tu lazy val Product_canEqual          : Symbol = ProductClass.requiredMethod(nme.canEqual_)
+    @tu lazy val Product_productArity      : Symbol = ProductClass.requiredMethod(nme.productArity)
+    @tu lazy val Product_productElement    : Symbol = ProductClass.requiredMethod(nme.productElement)
+    @tu lazy val Product_productElementName: Symbol = ProductClass.requiredMethod(nme.productElementName)
+    @tu lazy val Product_productPrefix     : Symbol = ProductClass.requiredMethod(nme.productPrefix)
 
   @tu lazy val IteratorClass: ClassSymbol = ctx.requiredClass("scala.collection.Iterator")
   def IteratorModule(implicit ctx: Context): Symbol = IteratorClass.companionModule

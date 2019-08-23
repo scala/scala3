@@ -62,7 +62,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
       myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
-        defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement)
+        defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement,
+        defn.Product_productElementName)
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
       myEnumCaseSymbols = List(defn.Enum_ordinal)
     }
@@ -126,6 +127,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.productArity => Literal(Constant(accessors.length))
         case nme.productPrefix => ownName
         case nme.productElement => productElementBody(accessors.length, vrefss.head.head)
+        case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
         case nme.ordinal => Select(This(clazz), nme.ordinalDollar)
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
@@ -149,6 +151,40 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  ```
      */
     def productElementBody(arity: Int, index: Tree)(implicit ctx: Context): Tree = {
+      // case N => _${N + 1}
+      val cases = 0.until(arity).map { i =>
+        CaseDef(Literal(Constant(i)), EmptyTree, Select(This(clazz), nme.selectorName(i)))
+      }
+
+      Match(index, (cases :+ generateIOBECase(index)).toList)
+    }
+
+    /** The class
+     *
+     *  ```
+     *  case class C(x: T, y: T)
+     *  ```
+     *
+     *  gets the `productElementName` method:
+     *
+     *  ```
+     *  def productElementName(index: Int): String = index match {
+     *    case 0 => "x"
+     *    case 1 => "y"
+     *    case _ => throw new IndexOutOfBoundsException(index.toString)
+     *  }
+     *  ```
+     */
+    def productElementNameBody(arity: Int, index: Tree)(implicit ctx: Context): Tree = {
+      // case N => // name for case arg N
+      val cases = 0.until(arity).map { i =>
+        CaseDef(Literal(Constant(i)), EmptyTree, Literal(Constant(accessors(i).name.toString)))
+      }
+
+      Match(index, (cases :+ generateIOBECase(index)).toList)
+    }
+
+    def generateIOBECase(index: Tree): CaseDef = {
       val ioob = defn.IndexOutOfBoundsException.typeRef
       // Second constructor of ioob that takes a String argument
       def filterStringConstructor(s: Symbol): Boolean = s.info match {
@@ -160,14 +196,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val error = Throw(New(ioob, constructor, List(stringIndex)))
 
       // case _ => throw new IndexOutOfBoundsException(i.toString)
-      val defaultCase = CaseDef(Underscore(defn.IntType), EmptyTree, error)
-
-      // case N => _${N + 1}
-      val cases = 0.until(arity).map { i =>
-        CaseDef(Literal(Constant(i)), EmptyTree, Select(This(clazz), nme.selectorName(i)))
-      }
-
-      Match(index, (cases :+ defaultCase).toList)
+      CaseDef(Underscore(defn.IntType), EmptyTree, error)
     }
 
     /** The class

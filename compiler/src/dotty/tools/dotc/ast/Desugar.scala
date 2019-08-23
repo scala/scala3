@@ -610,24 +610,8 @@ object desugar {
         }
       }
 
-      def productElemNameMeth = {
-        val methodParam = makeSyntheticParameter(tpt = scalaDot(tpnme.Int))
-        val paramRef = Ident(methodParam.name)
-
-        val indexAsString = Apply(Select(javaDotLangDot(nme.String), nme.valueOf), paramRef)
-        val throwOutOfBound = Throw(New(javaDotLangDot(tpnme.IOOBException), List(List(indexAsString))))
-        val defaultCase = CaseDef(Ident(nme.WILDCARD), EmptyTree, throwOutOfBound)
-
-        val patternMatchCases = derivedVparamss.head.zipWithIndex.map { case (param, idx) =>
-            CaseDef(Literal(Constant(idx)), EmptyTree, Literal(Constant(param.name.decode.toString)))
-        } :+ defaultCase
-        val body = Match(paramRef, patternMatchCases)
-        DefDef(nme.productElementName, Nil, List(List(methodParam)), javaDotLangDot(tpnme.String), body)
-          .withFlags(Override | Synthetic)
-      }
-
       if (isCaseClass)
-        productElemNameMeth :: copyMeths ::: ordinalMeths ::: productElemMeths
+        copyMeths ::: ordinalMeths ::: productElemMeths
       else Nil
     }
 
