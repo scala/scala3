@@ -1,3 +1,9 @@
+// Similar code resides in scripted tests, which only runs on nightly:
+//
+// sbt-dotty/sbt-test/sbt-dotty/analyzer-plugin/plugin
+//
+// You may want to change the code there too
+
 package analyzer
 
 import scala.language.implicitConversions
