@@ -131,6 +131,7 @@ class TreeChecker extends Phase with SymTransformer {
   class Checker(phasesToCheck: Seq[Phase]) extends ReTyper with Checking {
 
     private[this] val nowDefinedSyms = new mutable.HashSet[Symbol]
+    private[this] val patBoundSyms = new mutable.HashSet[Symbol]
     private[this] val everDefinedSyms = newMutableSymbolMap[untpd.Tree]
 
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
@@ -171,10 +172,25 @@ class TreeChecker extends Phase with SymTransformer {
       res
     }
 
+    /** The following invariant holds:
+     *
+     *  patBoundSyms.contains(sym) <=> patternBound(sym)
+     */
+    def patternBound(sym: Symbol)(implicit ctx: Context): Boolean =
+      (sym.isType && !sym.isClass && sym.isOneOf(Case)) ||
+        (sym.isTerm && sym.isOneOf(Case, butNot = Enum | Module))
+
     def withPatSyms[T](syms: List[Symbol])(op: => T)(implicit ctx: Context): T = {
-      nowDefinedSyms ++= syms
+      syms.foreach { sym =>
+        assert(
+          patternBound(sym),
+          "patBoundSyms.contains(sym) => patternBound(sym) is broken." +
+          " Pattern bound symbol has incorrect flags: " + sym.flags + ", line " + sym.sourcePos.line
+        )
+      }
+      patBoundSyms ++= syms
       val res = op
-      nowDefinedSyms --= syms
+      patBoundSyms --= syms
       res
     }
 
@@ -189,8 +205,19 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     def assertDefined(tree: untpd.Tree)(implicit ctx: Context): Unit =
-      if (tree.symbol.maybeOwner.isTerm)
-        assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol} at line " + tree.sourcePos.line)
+      if (tree.symbol.maybeOwner.isTerm) {
+        val sym = tree.symbol
+        assert(
+          nowDefinedSyms.contains(sym) || patBoundSyms.contains(sym),
+          i"undefined symbol ${sym} at line " + tree.sourcePos.line
+        )
+
+        if (!ctx.phase.patternTranslated)
+          assert(
+            !patternBound(sym) || patBoundSyms.contains(sym),
+            "patternBound(sym) => patBoundSyms.contains(sym) is broken, line " + tree.sourcePos.line
+          )
+      }
 
     /** assert Java classes are not used as objects */
     def assertIdentNotJavaClass(tree: Tree)(implicit ctx: Context): Unit = tree match {
