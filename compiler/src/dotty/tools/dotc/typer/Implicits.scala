@@ -1018,7 +1018,7 @@ trait Implicits { self: Typer =>
                           resType <:< target
                           val tparams = poly.paramRefs
                           val variances = caseClass.typeParams.map(_.paramVariance)
-                          val instanceTypes = (tparams, variances).zipped.map((tparam, variance) =>
+                          val instanceTypes = tparams.lazyZip(variances).map((tparam, variance) =>
                             ctx.typeComparer.instanceType(tparam, fromBelow = variance < 0))
                           resType.substParams(poly, instanceTypes)
                         }

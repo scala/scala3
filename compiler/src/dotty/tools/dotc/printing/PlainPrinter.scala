@@ -232,7 +232,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def paramsText(tp: LambdaType): Text = {
     def paramText(name: Name, tp: Type) = toText(name) ~ toTextRHS(tp)
-    Text((tp.paramNames, tp.paramInfos).zipped.map(paramText), ", ")
+    Text(tp.paramNames.lazyZip(tp.paramInfos).map(paramText), ", ")
   }
 
   protected def ParamRefNameString(name: Name): String = name.toString

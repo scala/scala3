@@ -360,7 +360,7 @@ object SymDenotations {
 
     /** Add all given annotations to this symbol */
     final def addAnnotations(annots: TraversableOnce[Annotation])(implicit ctx: Context): Unit =
-      annots.foreach(addAnnotation)
+      annots.iterator.foreach(addAnnotation)
 
     @tailrec
     private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(implicit ctx: Context): List[Annotation] = anns match {

@@ -342,7 +342,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    *   trait or class with this body can have as flags.
    */
   def bodyKind(body: List[Tree])(implicit ctx: Context): FlagSet =
-    (NoInitsInterface /: body)((fs, stat) => fs & defKind(stat))
+    body.foldLeft(NoInitsInterface)((fs, stat) => fs & defKind(stat))
 
   // todo: fill with other methods from TreeInfo that only apply to untpd.Tree's
 }

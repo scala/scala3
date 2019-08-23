@@ -1346,7 +1346,7 @@ class Typer extends Namer
         }
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
       }
-      val paramBounds = (tparams, args).zipped.map {
+      val paramBounds = tparams.lazyZip(args).map {
         case (tparam, TypeBoundsTree(EmptyTree, EmptyTree)) =>
           // if type argument is a wildcard, suppress kind checking since
           // there is no real argument.
@@ -1541,7 +1541,7 @@ class Typer extends Namer
         // that their type parameters are aliases of the class type parameters.
         // See pos/i941.scala
         rhsCtx.gadt.addToConstraint(tparams1.map(_.symbol))
-        (tparams1, sym.owner.typeParams).zipped.foreach { (tdef, tparam) =>
+        tparams1.lazyZip(sym.owner.typeParams).foreach { (tdef, tparam) =>
           val tr = tparam.typeRef
           rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = false)
           rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = true)
@@ -1940,7 +1940,7 @@ class Typer extends Namer
       val pts =
         if (arity == pt.tupleArity) pt.tupleElementTypes
         else List.fill(arity)(defn.AnyType)
-      val elems = (tree.trees, pts).zipped.map(typed(_, _))
+      val elems = tree.trees.lazyZip(pts).map(typed(_, _))
       if (ctx.mode.is(Mode.Type))
         elems.foldRight(TypeTree(defn.UnitType): Tree)((elemTpt, elemTpts) =>
           AppliedTypeTree(TypeTree(defn.PairClass.typeRef), List(elemTpt, elemTpts)))
@@ -1952,7 +1952,7 @@ class Typer extends Namer
         val app1 = typed(app, defn.TupleXXLClass.typeRef)
         if (ctx.mode.is(Mode.Pattern)) app1
         else {
-          val elemTpes = (elems, pts).zipped.map((elem, pt) =>
+          val elemTpes = elems.lazyZip(pts).map((elem, pt) =>
             ctx.typeComparer.widenInferred(elem.tpe, pt))
           val resTpe = TypeOps.nestedPairs(elemTpes)
           app1.cast(resTpe)
@@ -2559,7 +2559,7 @@ class Typer extends Namer
         val propFail = propagatedFailure(args)
 
         def issueErrors(): Tree = {
-          (wtp.paramNames, wtp.paramInfos, args).zipped.foreach { (paramName, formal, arg) =>
+          wtp.paramNames.lazyZip(wtp.paramInfos).lazyZip(args).foreach { (paramName, formal, arg) =>
             arg.tpe match {
               case failure: SearchFailureType =>
                 ctx.error(
@@ -2580,7 +2580,7 @@ class Typer extends Namer
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
           if (methPart(tree).symbol.hasDefaultParams && !propFail.isInstanceOf[AmbiguousImplicits]) {
-            val namedArgs = (wtp.paramNames, args).zipped.flatMap { (pname, arg) =>
+            val namedArgs = wtp.paramNames.lazyZip(args).flatMap { (pname, arg) =>
               if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
             tryEither {

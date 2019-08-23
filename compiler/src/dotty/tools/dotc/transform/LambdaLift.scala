@@ -437,7 +437,7 @@ object LambdaLift {
           val classProxies = fvs.map(proxyOf(sym.owner, _))
           val constrProxies = fvs.map(proxyOf(sym, _))
           ctx.debuglog(i"copy params ${constrProxies.map(_.showLocated)}%, % to ${classProxies.map(_.showLocated)}%, %}")
-          seq((classProxies, constrProxies).zipped.map(proxyInit), rhs)
+          seq(classProxies.lazyZip(constrProxies).map(proxyInit), rhs)
         }
 
         tree match {

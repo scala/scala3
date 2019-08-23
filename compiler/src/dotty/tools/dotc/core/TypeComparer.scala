@@ -1963,10 +1963,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       original(applied(tp1), tp2)
     else if (tparams1.hasSameLengthAs(tparams2))
       HKTypeLambda(
-        paramNames = (HKTypeLambda.syntheticParamNames(tparams1.length), tparams1, tparams2)
-          .zipped.map((pname, tparam1, tparam2) =>
+        paramNames = HKTypeLambda.syntheticParamNames(tparams1.length).lazyZip(tparams1).lazyZip(tparams2)
+          .map((pname, tparam1, tparam2) =>
             pname.withVariance((tparam1.paramVariance + tparam2.paramVariance) / 2)))(
-        paramInfosExp = tl => (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
+        paramInfosExp = tl => tparams1.lazyZip(tparams2).map((tparam1, tparam2) =>
           tl.integrate(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
           tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
@@ -2211,7 +2211,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           }
         }
 
-        (args1, args2, tycon1.typeParams).zipped.exists {
+        args1.lazyZip(args2).lazyZip(tycon1.typeParams).exists {
           (arg1, arg2, tparam) =>
             val v = tparam.paramVariance
             if (v > 0)

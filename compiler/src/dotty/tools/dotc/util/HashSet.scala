@@ -95,7 +95,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
 
   /** Add all entries in `xs` to set */
   def addEntries(xs: TraversableOnce[T]): Unit = {
-    xs foreach addEntry
+    xs.iterator foreach addEntry
   }
 
   /** The iterator of all elements in the set */

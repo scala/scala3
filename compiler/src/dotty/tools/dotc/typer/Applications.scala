@@ -1152,7 +1152,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }
-        val unapplyPatterns = (bunchedArgs, argTypes).zipped map (typed(_, _))
+        val unapplyPatterns = bunchedArgs.lazyZip(argTypes) map (typed(_, _))
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if ((ownType eq selType) || ownType.isError) result

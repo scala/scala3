@@ -58,7 +58,7 @@ class DivergenceCheckerTests extends DottyTest {
           5
         )
 
-        (tpes, expectedSizes, expectedCoveringSets).zipped.foreach {
+        tpes.lazyZip(expectedSizes).lazyZip(expectedCoveringSets).foreach {
           case (tpe, expectedSize, expectedCoveringSet) =>
             val size = tpe.typeSize
             val cs = tpe.coveringSet

@@ -58,7 +58,7 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "0.17.0-RC1"
+  val referenceVersion = "0.18.1-bin-20190823-8c856e9-NIGHTLY"
 
   val baseVersion = "0.18.1"
   val baseSbtDottyVersion = "0.3.4"
@@ -77,7 +77,7 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.12.8"
+    case NonBootstrapped => "2.13.0"
     case Bootstrapped => "2.13.0"
   }
 

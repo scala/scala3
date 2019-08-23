@@ -285,14 +285,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    */
   private def computeParamBindings(tp: Type, targs: List[Tree], argss: List[List[Tree]]): Unit = tp match {
     case tp: PolyType =>
-      (tp.paramNames, targs).zipped.foreach { (name, arg) =>
+      tp.paramNames.lazyZip(targs).foreach { (name, arg) =>
         paramSpan(name) = arg.span
         paramBinding(name) = arg.tpe.stripTypeVar
       }
       computeParamBindings(tp.resultType, Nil, argss)
     case tp: MethodType =>
       assert(argss.nonEmpty, i"missing bindings: $tp in $call")
-      (tp.paramNames, tp.paramInfos, argss.head).zipped.foreach { (name, paramtp, arg) =>
+      tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head).foreach { (name, paramtp, arg) =>
         paramSpan(name) = arg.span
         paramBinding(name) = arg.tpe.dealias match {
           case _: SingletonType if isIdempotentPath(arg) => arg.tpe
@@ -538,7 +538,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     trace(i"inlining $call", inlining, show = true) {
 
       // The normalized bindings collected in `bindingsBuf`
-      bindingsBuf.transform { binding =>
+      bindingsBuf.mapInPlace { binding =>
         // Set trees to symbols allow macros to see the definition tree.
         // This is used by `underlyingArgument`.
         reducer.normalizeBinding(binding)(inlineCtx).setDefTree
@@ -734,7 +734,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         ddef.tpe.widen match {
           case mt: MethodType if ddef.vparamss.head.length == args.length =>
             val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
-            val argSyms = (mt.paramNames, mt.paramInfos, args).zipped.map { (name, paramtp, arg) =>
+            val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args).map { (name, paramtp, arg) =>
               arg.tpe.dealias match {
                 case ref @ TermRef(NoPrefix, _) => ref.symbol
                 case _ => paramBindingDef(name, paramtp, arg, bindingsBuf)(ctx.withSource(cl.source)).symbol

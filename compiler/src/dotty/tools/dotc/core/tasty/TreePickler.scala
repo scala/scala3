@@ -271,7 +271,7 @@ class TreePickler(pickler: TastyPickler) {
     writeByte(tag)
     withLength {
       pickleType(tpe.resultType, richTypes = true)
-      (tpe.paramNames, tpe.paramInfos).zipped.foreach { (name, tpe) =>
+      tpe.paramNames.lazyZip(tpe.paramInfos).foreach { (name, tpe) =>
         pickleName(name); pickleType(tpe)
       }
     }

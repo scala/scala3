@@ -15,7 +15,7 @@ object TastyString {
   /** Encode TASTY bytes into a List of String */
   def pickle(bytes: Array[Byte]): PickledQuote = {
     val str = new String(Base64.getEncoder().encode(bytes), UTF_8)
-    str.sliding(maxStringSize, maxStringSize).toList
+    str.toSeq.sliding(maxStringSize, maxStringSize).map(_.unwrap).toList
   }
 
   /** Decode the List of Strings into TASTY bytes */

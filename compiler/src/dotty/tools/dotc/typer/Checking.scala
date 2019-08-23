@@ -48,7 +48,7 @@ object Checking {
    *  See TypeOps.boundsViolations for an explanation of the parameters.
    */
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type, app: Type = NoType)(implicit ctx: Context): Unit = {
-    (args, boundss).zipped.foreach { (arg, bound) =>
+    args.lazyZip(boundss).foreach { (arg, bound) =>
       if (!bound.isLambdaSub && !arg.tpe.hasSimpleKind) {
         // see MissingTypeParameterFor
         ctx.error(ex"missing type parameter(s) for $arg", arg.sourcePos)

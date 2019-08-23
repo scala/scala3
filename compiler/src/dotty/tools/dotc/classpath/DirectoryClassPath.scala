@@ -231,7 +231,7 @@ case class DirectorySourcePath(dir: JFile) extends JFileDirectoryLookup[SourceFi
 
   private def findSourceFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className)
-    val sourceFile = Stream("scala", "java")
+    val sourceFile = LazyList("scala", "java")
       .map(ext => new JFile(dir, relativePath + "." + ext))
       .collectFirst { case file if file.exists() => file }
 

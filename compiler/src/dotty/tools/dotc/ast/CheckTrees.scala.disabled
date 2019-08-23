@@ -64,10 +64,10 @@ object CheckTrees {
         check(arg.tpe <:< formal)
       }
       val MethodType(paramNames, paramTypes) = fn.tpe.widen // checked already at construction
-      (args, paramNames, paramTypes).zipped foreach checkArg
+      args.lazyZip(paramNames).lazyZip(paramTypes) foreach checkArg
     case TypeApply(fn, args) =>
       val pt @ PolyType(_) = fn.tpe.widen // checked already at construction
-      (args, pt.instantiateBounds(args map (_.tpe))).zipped foreach checkTypeArg
+      args.lazyZip(pt.instantiateBounds(args map (_.tpe))) foreach checkTypeArg
     case Literal(const: Constant) =>
     case New(tpt) =>
       check(tpt.isValueType)
@@ -184,7 +184,7 @@ object CheckTrees {
       check(tpt.isValueType)
       val tparams = tpt.tpe.typeParams
       check(sameLength(tparams, args))
-      (args, tparams map (_.info.bounds)).zipped foreach checkTypeArg
+      args.lazyZip(tparams map (_.info.bounds)) foreach checkTypeArg
     case TypeBoundsTree(lo, hi) =>
       check(lo.isValueType); check(hi.isValueType)
       check(lo.tpe <:< hi.tpe)

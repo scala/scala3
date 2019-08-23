@@ -1523,7 +1523,7 @@ object desugar {
           val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
           val (defpat0, id0) = makeIdPat(gen.pat)
           val (defpats, ids) = (pats map makeIdPat).unzip
-          val pdefs = (valeqs, defpats, rhss).zipped.map(makePatDef(_, Modifiers(), _, _))
+          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map(makePatDef(_, Modifiers(), _, _))
           val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
           val allpats = gen.pat :: pats
           val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)

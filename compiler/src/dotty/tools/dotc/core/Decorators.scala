@@ -98,7 +98,7 @@ object Decorators {
       loop(xs, 0)
     }
 
-    /** Like `(xs, ys).zipped.map(f)`, but returns list `xs` itself
+    /** Like `xs.lazyZip(ys).map(f)`, but returns list `xs` itself
      *  - instead of a copy - if function `f` maps all elements of
      *  `xs` to themselves. Also, it is required that `ys` is at least
      *  as long as `xs`.

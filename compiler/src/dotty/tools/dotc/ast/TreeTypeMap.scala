@@ -190,7 +190,7 @@ class TreeTypeMap(
       val mappedDcls = ctx.mapSymbols(origDcls, tmap)
       val tmap1 = tmap.withMappedSyms(origDcls, mappedDcls)
       if (symsChanged) {
-        (origDcls, mappedDcls).zipped.foreach(cls.asClass.replace)
+        origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
       }
       tmap1
     }

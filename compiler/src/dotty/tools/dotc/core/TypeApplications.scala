@@ -330,7 +330,7 @@ class TypeApplications(val self: Type) extends AnyVal {
              !tparams.corresponds(hkParams)(_.paramVariance == _.paramVariance) &&
              tparams.corresponds(hkParams)(varianceConforms) =>
           HKTypeLambda(
-            (tparams, hkParams).zipped.map((tparam, hkparam) =>
+            tparams.lazyZip(hkParams).map((tparam, hkparam) =>
               tparam.paramName.withVariance(hkparam.paramVariance)))(
             tl => arg.paramInfos.map(_.subst(arg, tl).bounds),
             tl => arg.resultType.subst(arg, tl)

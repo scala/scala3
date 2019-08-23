@@ -654,11 +654,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       var expectedErrors = 0
       files.filter(_.getName.endsWith(".scala")).foreach { file =>
         Source.fromFile(file, "UTF-8").getLines().zipWithIndex.foreach { case (line, lineNbr) =>
-          val errors = line.sliding("// error".length).count(_.mkString == "// error")
+          val errors = line.toSeq.sliding("// error".length).count(_.unwrap == "// error")
           if (errors > 0)
             errorMap.put(s"${file.getPath}:${lineNbr}", errors)
 
-          val noposErrors = line.sliding("// nopos-error".length).count(_.mkString == "// nopos-error")
+          val noposErrors = line.toSeq.sliding("// nopos-error".length).count(_.unwrap == "// nopos-error")
           if (noposErrors > 0) {
             val nopos = errorMap.get("nopos")
             val existing: Integer = if (nopos eq null) 0 else nopos
