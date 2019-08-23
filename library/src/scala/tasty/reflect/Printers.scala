@@ -356,7 +356,7 @@ trait Printers
 
       def visitSignature(sig: Signature): Buffer = {
         val Signature(params, res) = sig
-        this += "Signature(" ++= params += ", " += res += ")"
+        this += "Signature(" ++= params.map(_.toString) += ", " += res += ")"
       }
 
       def visitImportSelector(sel: ImportSelector): Buffer = sel match {

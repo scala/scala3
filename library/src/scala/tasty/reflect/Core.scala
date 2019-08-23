@@ -400,7 +400,7 @@ trait Core {
   /** Untyped identifier */
   type Id = internal.Id
 
-  /** JVM signature of a method */
+  /** Signature of a method */
   type Signature = internal.Signature
 
   /** Position in a source file */
