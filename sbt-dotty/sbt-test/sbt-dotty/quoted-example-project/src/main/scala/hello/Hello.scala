@@ -1,11 +1,12 @@
 package hello
 
-// Import Expr and some extension methods
+// Import `Expr` and some extension methods
 import scala.quoted._
+import scala.quoted.staging.{run, Toolbox}
 
 object Main {
 
-  implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+  given as Toolbox = Toolbox.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = {
 
