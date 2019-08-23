@@ -598,7 +598,7 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
-        ("org.scala-js" % "scalajs-ir_2.13.0-RC2" % scalaJSVersion % "sourcedeps").withDottyCompat(scalaVersion.value),
+        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").withDottyCompat(scalaVersion.value),
       sourceGenerators in Compile += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
