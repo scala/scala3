@@ -2485,13 +2485,6 @@ class Typer extends Namer
       }
     }
 
-    /** Reveal ignored parts of prototype when synthesizing the receiver
-     *  of an extension method. This is necessary for pos/i5773a.scala
-     */
-    def revealProtoOfExtMethod(tp: Type)(implicit ctx: Context): Type =
-      if (ctx.mode.is(Mode.SynthesizeExtMethodReceiver)) tp.deepenProto
-      else tp
-
     def adaptNoArgsImplicitMethod(wtp: MethodType): Tree = {
       assert(wtp.isImplicitMethod)
       val tvarsToInstantiate = tvarsInParams(tree, locked).distinct
@@ -2512,7 +2505,7 @@ class Typer extends Namer
             arg.tpe match {
               case failed: AmbiguousImplicits =>
                 val pt1 = pt.deepenProto
-                if ((pt1 `ne` pt) && resultMatches(wtp, pt1)) implicitArgs(formals, argIndex, pt1)
+                if ((pt1 `ne` pt) && constrainResult(tree.symbol, wtp, pt1)) implicitArgs(formals, argIndex, pt1)
                 else arg :: implicitArgs(formals1, argIndex + 1, pt1)
               case failed: SearchFailureType if !tree.symbol.hasDefaultParams =>
                 // no need to search further, the adapt fails in any case
@@ -2742,9 +2735,6 @@ class Typer extends Namer
       case _ => tp
     }
 
-    def resultMatches(wtp: Type, pt: Type) =
-      constrainResult(tree.symbol, wtp, revealProtoOfExtMethod(pt))
-
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
       def functionExpected = defn.isFunctionType(ptNorm)
@@ -2758,7 +2748,7 @@ class Typer extends Namer
         case wtp: ExprType =>
           readaptSimplified(tree.withType(wtp.resultType))
         case wtp: MethodType if wtp.isImplicitMethod &&
-          ({ resMatch = resultMatches(wtp, pt); resMatch } || !functionExpected) =>
+          ({ resMatch = constrainResult(tree.symbol, wtp, pt); resMatch } || !functionExpected) =>
           if (resMatch || ctx.mode.is(Mode.ImplicitsEnabled))
             adaptNoArgsImplicitMethod(wtp)
           else {
