@@ -51,7 +51,7 @@ object desugar {
    *  case class method if it clashes with a user-defined method?
    */
   def isRetractableCaseClassMethodName(name: Name)(implicit ctx: Context): Boolean = name match {
-    case nme.apply | nme.unapply | nme.unapplySeq | nme.copy | nme.productElementName => true
+    case nme.apply | nme.unapply | nme.unapplySeq | nme.copy => true
     case DefaultGetterName(nme.copy, _) => true
     case _ => false
   }
