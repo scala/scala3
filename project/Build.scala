@@ -153,8 +153,7 @@ object Build {
       "-feature",
       "-deprecation",
       "-unchecked",
-      // TODO: reenable once we've fixed all the deprecation warnings.
-      // "-Xfatal-warnings",
+      "-Xfatal-warnings",
       "-encoding", "UTF8",
       "-language:existentials,higherKinds,implicitConversions"
     ),
