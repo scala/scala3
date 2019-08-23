@@ -1011,7 +1011,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.hasType, tree)
       val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
-      val res = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
+      val res = constToLiteral(untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt))
       ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.sourcePos)
       res
     }
