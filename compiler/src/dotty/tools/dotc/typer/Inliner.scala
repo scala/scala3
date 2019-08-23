@@ -784,7 +784,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       	 *  scrutinee as RHS and type that corresponds to RHS.
       	 */
         def newTermBinding(sym: TermSymbol, rhs: Tree): Unit = {
-          val copied = sym.copy(info = rhs.tpe.widenTermRefExpr, coord = sym.coord).asTerm
+          val copied = sym.copy(info = rhs.tpe.widenTermRefExpr, coord = sym.coord, flags = sym.flags &~ Case).asTerm
           caseBindingMap += ((sym, ValDef(copied, constToLiteral(rhs)).withSpan(sym.span)))
         }
 
