@@ -43,7 +43,7 @@ class TestServer(testFolder: Path, projects: List[Project]) {
     def projectSetup(project: Project): String = {
       def showSeq[T](lst: collection.Seq[T]): String =
         lst
-          .map(elem => s"'${elem.toString.replace('\\', '/')}'")
+          .map(elem => '"'.toString + elem.toString.replace('\\', '/') + '"'.toString)
           .mkString("[ ", ", ", " ]")
 
       if (project.sources.exists(_.isInstanceOf[TastyWithPositions])) {
