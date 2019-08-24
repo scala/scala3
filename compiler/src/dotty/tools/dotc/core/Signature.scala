@@ -158,4 +158,32 @@ object Signature {
     assert(!resultType.isInstanceOf[ExprType])
     apply(Nil, sigName(resultType, isJava))
   }
+
+  val lexicographicOrdering: Ordering[Signature] = new Ordering[Signature] {
+    val paramSigOrdering: Ordering[Signature.ParamSig] = new Ordering[Signature.ParamSig] {
+      def compare(x: ParamSig, y: ParamSig): Int = x match { // `(x, y) match` leads to extra allocations
+        case x: TypeName =>
+          y match {
+            case y: TypeName =>
+              // `Ordering[TypeName]` doesn't work due to `Ordering` still being invariant
+              the[Ordering[Name]].compare(x, y)
+            case y: Int =>
+              1
+          }
+        case x: Int =>
+          y match {
+            case y: Name =>
+              -1
+            case y: Int =>
+              x - y
+          }
+      }
+    }
+    def compare(x: Signature, y: Signature): Int = {
+      import scala.math.Ordering.Implicits.seqOrdering
+      val paramsOrdering = seqOrdering(paramSigOrdering).compare(x.paramsSig, y.paramsSig)
+      if (paramsOrdering != 0) paramsOrdering
+      else the[Ordering[Name]].compare(x.resSig, y.resSig)
+    }
+  }
 }

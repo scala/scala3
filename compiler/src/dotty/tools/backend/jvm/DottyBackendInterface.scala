@@ -878,8 +878,18 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def =:=(other: Type): Boolean = tp =:= other
 
-    def membersBasedOnFlags(excludedFlags: Flags, requiredFlags: Flags): List[Symbol] =
-      tp.membersBasedOnFlags(termFlagSet(requiredFlags), termFlagSet(excludedFlags)).map(_.symbol).toList
+    def sortedMembersBasedOnFlags(required: Flags, excluded: Flags): List[Symbol] = {
+      val requiredFlagSet = termFlagSet(required)
+      val excludedFlagSet = termFlagSet(excluded)
+      // The output of `memberNames` is a Set, sort it to guarantee a stable ordering.
+      val names = tp.memberNames(takeAllFilter).toSeq.sorted
+      val buffer = mutable.ListBuffer[Symbol]()
+      names.foreach { name =>
+        buffer ++= tp.memberBasedOnFlags(name, requiredFlagSet, excludedFlagSet)
+          .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol)
+      }
+      buffer.toList
+    }
 
     def resultType: Type = tp.resultType
 
