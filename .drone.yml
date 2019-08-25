@@ -34,79 +34,78 @@ steps:
   - ./project/scripts/sbt ";compile ;test"
   - ./project/scripts/cmdTests
 
-# - name: test_bootstrapped
-#   pull: default
-#   image: lampepfl/dotty:2019-08-22
-#   depends_on: [ clone ]
-#   commands:
-#   - cp -R . /tmp/2/ && cd /tmp/2/
-#   - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test ;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test"
-#   - ./project/scripts/bootstrapCmdTests
+- name: test_bootstrapped
+  pull: default
+  image: lampepfl/dotty:2019-08-22
+  depends_on: [ clone ]
+  commands:
+  - cp -R . /tmp/2/ && cd /tmp/2/
+  - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test ;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test"
+  - ./project/scripts/bootstrapCmdTests
 
-# - name: community_build
-#   pull: default
-#   image: lampepfl/dotty:2019-08-22
-#   depends_on: [ clone ]
-#   commands:
-#   - cp -R . /tmp/3/ && cd /tmp/3/
-#   - git submodule update --init --recursive --jobs 7
-#   - ./project/scripts/sbt community-build/test
+- name: community_build
+  pull: default
+  image: lampepfl/dotty:2019-08-22
+  depends_on: [ clone ]
+  commands:
+  - cp -R . /tmp/3/ && cd /tmp/3/
+  - git submodule update --init --recursive --jobs 7
+  - ./project/scripts/sbt community-build/test
 
-# - name: test_sbt
-#   pull: default
-#   image: lampepfl/dotty:2019-08-22
-#   depends_on: [ clone ]
-#   commands:
-#   - cp -R . /tmp/4/ && cd /tmp/4/
-#   - ./project/scripts/sbt sbt-dotty/scripted
-#   when:
-#     event:
-#     - tag
-#     - promote
+- name: test_sbt
+  pull: default
+  image: lampepfl/dotty:2019-08-22
+  depends_on: [ clone ]
+  commands:
+  - cp -R . /tmp/4/ && cd /tmp/4/
+  - ./project/scripts/sbt sbt-dotty/scripted
+  when:
+    event:
+    - tag
+    - promote
 
-# - name: test_java11
-#   pull: default
-#   image: lampepfl/dotty:2019-08-22
-#   depends_on: [ clone ]
-#   commands:
-#   - export PATH="/usr/lib/jvm/java-11-openjdk-amd64/bin:$PATH"
-#   - cp -R . /tmp/6/ && cd /tmp/6/
-#   - ./project/scripts/sbt ";compile ;test"
-#   when:
-#     event:
-#     - push
-#     - tag
-#     - promote
+- name: test_java11
+  pull: default
+  image: lampepfl/dotty:2019-08-22
+  depends_on: [ clone ]
+  commands:
+  - export PATH="/usr/lib/jvm/java-11-openjdk-amd64/bin:$PATH"
+  - cp -R . /tmp/6/ && cd /tmp/6/
+  - ./project/scripts/sbt ";compile ;test"
+  when:
+    event:
+    - push
+    - tag
+    - promote
 
-# - name: documentation
-#   pull: default
-#   image: lampepfl/dotty:2019-08-22
-#   depends_on:
-#   - test
-#   - test_bootstrapped
-#   - community_build
-#   - test_java11
-#   commands:
-#   - ./project/scripts/genDocs
-#   environment:
-#     BOT_TOKEN:
-#       from_secret: bot_token
-#   when:
-#     branch:
-#     - master
-#     event:
-#     - push
+- name: documentation
+  pull: default
+  image: lampepfl/dotty:2019-08-22
+  depends_on:
+  - test
+  - test_bootstrapped
+  - community_build
+  - test_java11
+  commands:
+  - ./project/scripts/genDocs
+  environment:
+    BOT_TOKEN:
+      from_secret: bot_token
+  when:
+    branch:
+    - master
+    event:
+    - push
 
 - name: publish_nightly
   pull: default
   image: lampepfl/dotty:2019-08-22
   depends_on:
-  - clone
-  # - test
-  # - test_bootstrapped
-  # - community_build
-  # - test_sbt
-  # - test_java11
+  - test
+  - test_bootstrapped
+  - community_build
+  - test_sbt
+  - test_java11
   commands:
   - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
   environment:
@@ -125,90 +124,90 @@ steps:
     target:
     - nightly
 
-# - name: publish_release
-#   pull: default
-#   image: lampepfl/dotty:2019-08-22
-#   depends_on:
-#   - test
-#   - test_bootstrapped
-#   - community_build
-#   - test_sbt
-#   - test_java11
-#   commands:
-#   - ./project/scripts/sbt dist-bootstrapped/packArchive
-#   - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
-#   environment:
-#     PGP_PW:
-#       from_secret: pgp_pw
-#     PGP_SECRET:
-#       from_secret: pgp_secret
-#     RELEASEBUILD: yes
-#     SONATYPE_PW:
-#       from_secret: sonatype_pw
-#     SONATYPE_USER:
-#       from_secret: sonatype_user
-#   when:
-#     event:
-#     - tag
+- name: publish_release
+  pull: default
+  image: lampepfl/dotty:2019-08-22
+  depends_on:
+  - test
+  - test_bootstrapped
+  - community_build
+  - test_sbt
+  - test_java11
+  commands:
+  - ./project/scripts/sbt dist-bootstrapped/packArchive
+  - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
+  environment:
+    PGP_PW:
+      from_secret: pgp_pw
+    PGP_SECRET:
+      from_secret: pgp_secret
+    RELEASEBUILD: yes
+    SONATYPE_PW:
+      from_secret: sonatype_pw
+    SONATYPE_USER:
+      from_secret: sonatype_user
+  when:
+    event:
+    - tag
 
-# - name: github_release
-#   pull: default
-#   image: plugins/github-release
-#   depends_on: [ publish_release ]
-#   settings:
-#     checksum:
-#     - sha256
-#     draft: true
-#     files:
-#     - dist-bootstrapped/target/dotty-*
-#   environment:
-#     GITHUB_TOKEN:
-#       from_secret: github_token
-#   when:
-#     event:
-#     - tag
+- name: github_release
+  pull: default
+  image: plugins/github-release
+  depends_on: [ publish_release ]
+  settings:
+    checksum:
+    - sha256
+    draft: true
+    files:
+    - dist-bootstrapped/target/dotty-*
+  environment:
+    GITHUB_TOKEN:
+      from_secret: github_token
+  when:
+    event:
+    - tag
 
-# - name: publish_sbt_release
-#   pull: default
-#   image: lampepfl/dotty:2019-08-22
-#   depends_on:
-#   - test
-#   - test_bootstrapped
-#   - community_build
-#   - test_sbt
-#   - test_java11
-#   commands:
-#   - ./project/scripts/sbtPublish ";sbt-dotty/publishSigned ;sonatypeRelease"
-#   environment:
-#     PGP_PW:
-#       from_secret: pgp_pw
-#     PGP_SECRET:
-#       from_secret: pgp_secret
-#     RELEASEBUILD: yes
-#     SONATYPE_PW:
-#       from_secret: sonatype_pw
-#     SONATYPE_USER:
-#       from_secret: sonatype_user
-#   when:
-#     event:
-#     - promote
-#     target:
-#     - sbt_release
+- name: publish_sbt_release
+  pull: default
+  image: lampepfl/dotty:2019-08-22
+  depends_on:
+  - test
+  - test_bootstrapped
+  - community_build
+  - test_sbt
+  - test_java11
+  commands:
+  - ./project/scripts/sbtPublish ";sbt-dotty/publishSigned ;sonatypeRelease"
+  environment:
+    PGP_PW:
+      from_secret: pgp_pw
+    PGP_SECRET:
+      from_secret: pgp_secret
+    RELEASEBUILD: yes
+    SONATYPE_PW:
+      from_secret: sonatype_pw
+    SONATYPE_USER:
+      from_secret: sonatype_user
+  when:
+    event:
+    - promote
+    target:
+    - sbt_release
 
-# - name: slack
-#   pull: default
-#   image: plugins/slack
-#   settings:
-#     channel: dotty
-#   environment:
-#     SLACK_WEBHOOK:
-#       from_secret: slack_webhook
-#   when:
-#     event:
-#     - push
-#     - tag
-#     - promote
-#     status:
-#     - failure
+- name: slack
+  pull: default
+  image: plugins/slack
+  settings:
+    channel: dotty
+  environment:
+    SLACK_WEBHOOK:
+      from_secret: slack_webhook
+  when:
+    event:
+    - push
+    - tag
+    - promote
+    status:
+    - failure
 
 ...
