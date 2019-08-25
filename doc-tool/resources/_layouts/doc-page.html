@@ -1,23 +1,15 @@
 ---
 layout: main
 extraCSS:
-    - css/sidebar.css
-    - css/toolbar.css
     - css/api-page.css
 ---
-
-{% include "toolbar" %}
-{% include "sidebar" %}
-
-<div id="content-wrapper">
-    <div id="content-body" class="doc-page-body">
-        <h1 id="doc-page-title">{{ page.title }}</h1>
-        <a id="edit-on-github" href="{{ site.projectUrl }}/edit/master/{{ site.root }}/{{ page.url }}">
-            Edit this page on GitHub
-        </a>
-        <hr/>
-        <div id="doc-page-container">
-            {{ content }}
-        </div>
-    </div><!-- end content-body -->
-</div><!-- end content-wrapper -->
+<main>
+    <h1 id="doc-page-title">{{ page.title }}</h1>
+    <a id="edit-on-github" href="{{ site.projectUrl }}/edit/master/{{ site.root }}/{{ page.url }}">
+        Edit this page on GitHub
+    </a>
+    <hr/>
+    <div id="doc-page-container">
+        {{ content }}
+    </div>
+</main>

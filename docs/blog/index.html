@@ -1,17 +1,8 @@
 ---
 layout: main
-extraCSS:
-    - css/toolbar.css
-    - css/sidebar.css
 title: Blog
 ---
-
-{% include "toolbar" %}
-
-<div id="content-wrapper">
-    {% assign sidebarTop = "75px" %}
-    {% include "sidebar" %}
-
+<main>
     <div id="content-body" class="doc-page-body">
         <div id="post-title">
             <h1 id="main-title">{{ page.title }}</h1>
@@ -50,4 +41,4 @@ title: Blog
         {% endif %}
 
     </div><!-- end content-body -->
-</div><!-- end content-wrapper -->
+</main>

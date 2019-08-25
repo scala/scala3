@@ -1,39 +1,30 @@
 ---
 layout: main
-extraCSS:
-    - css/toolbar.css
-    - css/sidebar.css
 ---
-
-{% include "toolbar" %}
-{% include "sidebar" %}
-
-<div id="content-wrapper">
-    <div id="content-body" class="doc-page-body">
-        <div id="post-title">
-            <h3 id="post-date">
-                {{ page.date | date: '%B %d, %Y' }}
-            </h3>
-            <h1 id="main-title">{{ page.title }}</h1>
-            {% if page.subTitle %}
-            <h2 id="sub-title">{{ page.subTitle }}</h2>
-            {% endif %}
-        </div>
-
-        <div id="blog-post-container">
-            {{ content }}
-        </div>
-
-        {% if page.author %}
-        <div id="post-footer">
-            {% if page.authorImg %}
-            <img id="author-image" src="{{ site.baseurl }}/{{ page.authorImg }}">
-            {% endif %}
-            <span id="post-author">
-                {% if page.authorImg == null %}- {% endif %}{{ page.author }}
-            </span>
-        </div>
+<main>
+    <div id="post-title">
+        <h3 id="post-date">
+            {{ page.date | date: '%B %d, %Y' }}
+        </h3>
+        <h1 id="main-title">{{ page.title }}</h1>
+        {% if page.subTitle %}
+        <h2 id="sub-title">{{ page.subTitle }}</h2>
         {% endif %}
+    </div>
 
-    </div><!-- end content-body -->
-</div><!-- end content-wrapper -->
+    <div id="blog-post-container">
+        {{ content }}
+    </div>
+
+    {% if page.author %}
+    <div id="post-footer">
+        {% if page.authorImg %}
+        <img id="author-image" src="{{ site.baseurl }}/{{ page.authorImg }}">
+        {% endif %}
+        <span id="post-author">
+            {% if page.authorImg == null %}- {% endif %}{{ page.author }}
+        </span>
+    </div>
+    {% endif %}
+
+</main>

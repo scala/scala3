@@ -27,6 +27,16 @@
 
         <link
             rel="stylesheet"
+            href="{{ site.baseurl }}/css/toolbar.css"
+        >
+
+        <link
+            rel="stylesheet"
+            href="{{ site.baseurl }}/css/sidebar.css"
+        >
+
+        <link
+            rel="stylesheet"
             href="{{ site.baseurl }}/css/color-brewer.css"
         >
 
@@ -40,13 +50,16 @@
         <script src="{{ site.baseurl }}/js/jquery.min.js"></script>
     </head>
     <body>
-
-        {{ content }}
+        {% include "toolbar" %}
+        {% include "sidebar" %}
+        <div id="content-wrapper">
+            {{ content }}
+        </div>
 
         <script src="{{ site.baseurl }}/js/highlight.pack.js"></script>
         <script src="{{ site.baseurl }}/js/bootstrap.min.js"></script>
         {% for js in page.extraJS %}
-        <script src="{{ site.baseurl }}/{{ js }}"></script>
+            <script src="{{ site.baseurl }}/{{ js }}"></script>
         {% endfor %}
         <script src="{{ site.baseurl }}/js/dottydoc.js"></script>
         <script>

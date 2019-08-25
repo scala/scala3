@@ -126,11 +126,11 @@
   .sidebar.toggled {
     margin-left: -320px;
   }
-  div#content-body {
+  #content-wrapper {
     margin-left: 320px !important;
     transition: margin .25s ease-out;
   }
-  .sidebar.toggled ~ div div#content-body {
+  .sidebar.toggled ~ #content-wrapper {
     margin-left: 0 !important;
   }
 }
