@@ -39,6 +39,11 @@ object desugar {
    */
   val CheckIrrefutable: Property.Key[MatchCheck] = Property.StickyKey()
 
+  /** A multi-line infix operation with the infix operator starting a new line.
+   *  Used for explaining potential errors.
+   */
+  val MultiLineInfix: Property.Key[Unit] = Property.StickyKey()
+
   /** What static check should be applied to a Match? */
   enum MatchCheck {
     case None, Exhaustive, IrrefutablePatDef, IrrefutableGenFrom
@@ -1194,7 +1199,10 @@ object desugar {
         case Tuple(args) => args.mapConserve(assignToNamedArg)
         case _ => arg :: Nil
       }
-      Apply(Select(fn, op.name).withSpan(selectPos), args)
+      val sel = Select(fn, op.name).withSpan(selectPos)
+      if (left.sourcePos.endLine < op.sourcePos.startLine)
+        sel.pushAttachment(MultiLineInfix, ())
+      Apply(sel, args)
     }
 
     if (isLeftAssoc(op.name))
