@@ -954,6 +954,12 @@ class Namer { typer: Typer =>
           else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) SKIP
           else if (cls.derivesFrom(sym.owner) &&
                    (sym.owner == cls || !sym.is(Deferred))) i"is already a member of $cls"
+          else if (sym.is(Override))
+            sym.allOverriddenSymbols.find(
+             other => cls.derivesFrom(other.owner) && !other.is(Deferred)) match {
+               case Some(other) => i"overrides ${other.showLocated}, which is already a member of $cls"
+               case None => ""
+             }
           else ""
         }
 

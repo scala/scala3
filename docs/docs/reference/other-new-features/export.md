@@ -59,6 +59,8 @@ of one of the following forms:
 A member is _eligible_ if all of the following holds:
 
  - its owner is not a base class of the class(*) containing the export clause,
+ - the member does not override a concrete definition that has as owner
+   a base class of the class containing the export clause.
  - it is accessible at the export clause,
  - it is not a constructor, nor the (synthetic) class part of an object,
  - it is a given instance (or an old-style `implicit` value)
