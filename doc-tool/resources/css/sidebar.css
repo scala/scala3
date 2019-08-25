@@ -60,7 +60,6 @@
 
 .sidebar .entity-package > .entity-name {
   text-transform: none;
-  color: var(--contrast);
 }
 
 .sidebar a {
