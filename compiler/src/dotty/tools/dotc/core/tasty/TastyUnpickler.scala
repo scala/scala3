@@ -66,7 +66,8 @@ class TastyUnpickler(reader: TastyReader) {
       case SIGNED =>
         val original = readName()
         val result = readName().toTypeName
-        // DOTTY: we shouldn't have to give an explicit type to paramsSig
+        // DOTTY: we shouldn't have to give an explicit type to paramsSig,
+        // see https://github.com/lampepfl/dotty/issues/4867
         val paramsSig: List[Signature.ParamSig] = until(end)(readParamSig())
         val sig = Signature(paramsSig, result)
         SignedName(original, sig)

@@ -76,7 +76,8 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
     else if (!this.paramsSig.hasSameLengthAs(that.paramsSig)) that
     else {
       val mapped = Signature(
-          // DOTTY: we shouldn't have to explicitly pass a type argument to `update`
+          // DOTTY: we shouldn't have to explicitly pass a type argument to `update`,
+          // see https://github.com/lampepfl/dotty/issues/4867
           this.paramsSig.zipWithConserve(that.paramsSig)(update[ParamSig]),
           update(this.resSig, that.resSig))
       if (mapped == this) this else mapped
