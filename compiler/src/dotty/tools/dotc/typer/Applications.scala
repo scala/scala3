@@ -1883,12 +1883,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val app =
       typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)(
         ctx.addMode(Mode.SynthesizeExtMethodReceiver))
-    val appSym =
-      app match {
-        case Inlined(call, _, _) => call.symbol
-        case _ => app.symbol
-      }
-    if (!appSym.is(Extension))
+    def isExtension(tree: Tree): Boolean = methPart(tree) match {
+      case Inlined(call, _, _) => isExtension(call)
+      case tree @ Select(qual, nme.apply) => tree.symbol.is(Extension) || isExtension(qual)
+      case tree => tree.symbol.is(Extension)
+    }
+    if (!isExtension(app))
       ctx.error(em"not an extension method: $methodRef", receiver.sourcePos)
     app
   }
