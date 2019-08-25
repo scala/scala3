@@ -86,7 +86,7 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
   /** The degree to which this signature matches `that`.
    *  If parameter signatures are consistent and result types names match (i.e. they are the same
    *  or one is a wildcard), the result is `FullMatch`.
-   *  If only the parameter signatures are consistent, the result ParamMatch` before erasure and
+   *  If only the parameter signatures are consistent, the result is `ParamMatch` before erasure and
    *  `NoMatch` otherwise.
    *  If the parameters are inconsistent, the result is always `NoMatch`.
    */
