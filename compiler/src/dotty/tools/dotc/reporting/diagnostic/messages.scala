@@ -2156,8 +2156,6 @@ object messages {
         if (decl.isRealMethod && previousDecl.isRealMethod) {
           // compare the signatures when both symbols represent methods
           decl.signature.matchDegree(previousDecl.signature) match {
-            // DOTTY problem: Need to qualify MatchDegree enum vals since otherwise exhaustivity fails.
-            // To fix this, we need to export vals under singleton types.
             case Signature.MatchDegree.NoMatch =>
               // If the signatures don't match at all at the current phase, then
               // they might match after erasure.
