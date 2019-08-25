@@ -706,7 +706,7 @@ object Erasure {
             def sameSymbol(tp1: Type, tp2: Type) = tp1.typeSymbol == tp2.typeSymbol
 
             val paramAdaptationNeeded =
-              (implParamTypes, samParamTypes).zipped.exists((implType, samType) =>
+              implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
                 !sameSymbol(implType, samType) && !autoAdaptedParam(implType))
             val resultAdaptationNeeded =
               !sameSymbol(implResultType, samResultType) && !autoAdaptedResult(implResultType)
@@ -723,7 +723,7 @@ object Erasure {
                 implicit val ctx = bridgeCtx
 
                 val List(bridgeParams) = bridgeParamss
-                val rhs = Apply(meth, (bridgeParams, implParamTypes).zipped.map(adapt(_, _)))
+                val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(adapt(_, _)))
                 adapt(rhs, bridgeType.resultType)
               }, targetType = implClosure.tpt.tpe)
             } else implClosure

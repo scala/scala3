@@ -116,9 +116,9 @@ object StdNames {
     val ANON_FUN: N                   = str.ANON_FUN
     val BITMAP_PREFIX: N              = "bitmap$"  // @darkdimius: $bitmap? Also, the next 4 names are unused.
     val BITMAP_NORMAL: N              = BITMAP_PREFIX         // initialization bitmap for public/protected lazy vals
-    val BITMAP_TRANSIENT: N           = BITMAP_PREFIX + "trans$"    // initialization bitmap for transient lazy vals
-    val BITMAP_CHECKINIT: N           = BITMAP_PREFIX + "init$"      // initialization bitmap for checkinit values
-    val BITMAP_CHECKINIT_TRANSIENT: N = BITMAP_PREFIX + "inittrans$" // initialization bitmap for transient checkinit values
+    val BITMAP_TRANSIENT: N           = s"${BITMAP_PREFIX}trans$$"    // initialization bitmap for transient lazy vals
+    val BITMAP_CHECKINIT: N           = s"${BITMAP_PREFIX}init$$"      // initialization bitmap for checkinit values
+    val BITMAP_CHECKINIT_TRANSIENT: N = s"${BITMAP_PREFIX}inittrans$$" // initialization bitmap for transient checkinit values
     val DEFAULT_GETTER: N             = str.DEFAULT_GETTER
     val DEFAULT_GETTER_INIT: N        = "$lessinit$greater"
     val DO_WHILE_PREFIX: N            = "doWhile$"
@@ -141,7 +141,7 @@ object StdNames {
     val INITIALIZER_PREFIX: N         = "initial$"
     val BOUNDTYPE_ANNOT: N            = "$boundType$"
     val QUOTE: N                      = "'"
-    val TYPE_QUOTE: N                = "type_'"
+    val TYPE_QUOTE: N                 = "type_'"
     val TRAIT_SETTER_SEPARATOR: N     = str.TRAIT_SETTER_SEPARATOR
 
     // value types (and AnyRef) are all used as terms as well
@@ -368,6 +368,7 @@ object StdNames {
     val TypeRef: N              = "TypeRef"
     val UNIT : N                = "UNIT"
     val add_ : N                = "add"
+    val acc: N                  = "acc"
     val annotation: N           = "annotation"
     val anyHash: N              = "anyHash"
     val anyValClass: N          = "anyValClass"
@@ -448,6 +449,7 @@ object StdNames {
     val getOrElse: N            = "getOrElse"
     val hasNext: N              = "hasNext"
     val hashCode_ : N           = "hashCode"
+    val _hashCode_ : N          = "_hashCode"
     val hash_ : N               = "hash"
     val head: N                 = "head"
     val higherKinds: N          = "higherKinds"
@@ -504,7 +506,9 @@ object StdNames {
     val ordinalDollar: N        = "$ordinal"
     val ordinalDollar_ : N      = "_$ordinal"
     val origin: N               = "origin"
+    val parts: N                = "parts"
     val prefix : N              = "prefix"
+    val processEscapes: N       = "processEscapes"
     val productArity: N         = "productArity"
     val productElement: N       = "productElement"
     val productElementName: N   = "productElementName"
@@ -536,6 +540,7 @@ object StdNames {
     val setType: N              = "setType"
     val setTypeSignature: N     = "setTypeSignature"
     val splice: N               = "$splice"
+    val standardInterpolator: N = "standardInterpolator"
     val staticClass : N         = "staticClass"
     val staticModule : N        = "staticModule"
     val staticPackage : N       = "staticPackage"

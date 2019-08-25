@@ -115,7 +115,7 @@ final class ProperGadtConstraint private(
       pt => defn.AnyType
     )
 
-    val tvars = (params, poly1.paramRefs).zipped.map { (sym, paramRef) =>
+    val tvars = params.lazyZip(poly1.paramRefs).map { (sym, paramRef) =>
       val tv = new TypeVar(paramRef, creatorState = null)
       mapping = mapping.updated(sym, tv)
       reverseMapping = reverseMapping.updated(tv.origin, sym)
@@ -251,12 +251,12 @@ final class ProperGadtConstraint private(
      }
 
    override def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type =
-     (nonParamBounds(param).lo /: constraint.minLower(param)) {
+     constraint.minLower(param).foldLeft(nonParamBounds(param).lo) {
        (t, u) => t | externalize(u)
      }
 
    override def fullUpperBound(param: TypeParamRef)(implicit ctx: Context): Type =
-     (nonParamBounds(param).hi /: constraint.minUpper(param)) {
+     constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) {
        (t, u) => t & externalize(u)
      }
 

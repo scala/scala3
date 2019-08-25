@@ -5,8 +5,6 @@ import java.io.{ StringWriter, PrintWriter }
 import java.lang.{ ClassLoader, ExceptionInInitializerError }
 import java.lang.reflect.InvocationTargetException
 
-import scala.runtime.ScalaRunTime
-
 import dotc.core.Contexts.Context
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags
@@ -23,25 +21,42 @@ import dotc.core.StdNames.str
  */
 private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
+  private[this] val MaxStringElements: Int = 1000  // no need to mkString billions of elements
+
   private[this] var myClassLoader: ClassLoader = _
+
+  private[this] var myReplStringOf: Object => String = _
+
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(implicit ctx: Context) =
     if (myClassLoader != null) myClassLoader
     else {
       val parent = parentClassLoader.getOrElse {
-        // the compiler's classpath, as URL's
         val compilerClasspath = ctx.platform.classPath(ctx).asURLs
-        new java.net.URLClassLoader(compilerClasspath.toArray, classOf[ReplDriver].getClassLoader)
+        new java.net.URLClassLoader(compilerClasspath.toArray, null)
       }
 
       myClassLoader = new AbstractFileClassLoader(ctx.settings.outputDir.value, parent)
-      // Set the current Java "context" class loader to this rendering class loader
-      Thread.currentThread.setContextClassLoader(myClassLoader)
+      myReplStringOf = {
+        // We need to use the ScalaRunTime class coming from the scala-library
+        // on the user classpath, and not the one avilable in the current
+        // classloader, so we use reflection instead of simply calling
+        // `ScalaRunTime.replStringOf`.
+        val scalaRuntime = Class.forName("scala.runtime.ScalaRunTime", true, myClassLoader)
+        val meth = scalaRuntime.getMethod("replStringOf", classOf[Object], classOf[Int])
+
+        (value: Object) => meth.invoke(null, value, Integer.valueOf(MaxStringElements)).asInstanceOf[String]
+      }
       myClassLoader
     }
 
-  private[this] def MaxStringElements = 1000  // no need to mkString billions of elements
+  /** Return a String representation of a value we got from `classLoader()`. */
+  private[repl] def replStringOf(value: Object)(implicit ctx: Context): String = {
+    assert(myReplStringOf != null,
+      "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
+    myReplStringOf(value)
+  }
 
   /** Load the value of the symbol using reflection.
    *
@@ -55,7 +70,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       resObj
         .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
         .map(_.invoke(null))
-    val string = value.map(ScalaRunTime.replStringOf(_, MaxStringElements).trim)
+    val string = value.map(replStringOf(_).trim)
     if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
       None
     else

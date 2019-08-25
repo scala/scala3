@@ -228,12 +228,12 @@ class ExtractUsedNamesSpecification {
       val compilerForTesting = new ScalaCompilerForUnitTesting
       val (_, callback) =
         compilerForTesting.compileSrcs(List(List(sealedClass, in)), reuseCompilerInstance = false)
-      val clientNames = callback.usedNamesAndScopes.filterKeys(!_.startsWith("base."))
+      val clientNames = callback.usedNamesAndScopes.view.filterKeys(!_.startsWith("base."))
 
       val names: Set[String] = clientNames.flatMap {
         case (_, usages) =>
           usages.filter(_.scopes.contains(UseScope.PatMatTarget)).map(_.name)
-      }(collection.breakOut)
+      }.toSet
 
       names
     }

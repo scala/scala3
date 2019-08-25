@@ -74,10 +74,10 @@ class Driver {
       val (classPaths, classNames) = fileNames0.flatMap { name =>
         val path = Paths.get(name)
         if (name.endsWith(".jar")) {
-          new dotty.tools.io.Jar(File(name)).iterator.collect {
+          new dotty.tools.io.Jar(File(name)).toList.collect {
             case e if e.getName.endsWith(".tasty") =>
               (name, e.getName.stripSuffix(".tasty").replace("/", "."))
-          }.toList
+          }
         }
         else if (!name.endsWith(".tasty"))
           ("", name) :: Nil

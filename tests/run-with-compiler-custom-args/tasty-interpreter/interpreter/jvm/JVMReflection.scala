@@ -81,34 +81,35 @@ class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
   }
 
   private def paramsSig(sym: Symbol): List[Class[_]] = {
-    sym.asDefDef.signature.paramSigs.map { param =>
-      def javaArraySig(name: String): String = {
-        if (name.endsWith("[]")) "[" + javaArraySig(name.dropRight(2))
-        else name match {
-          case "scala.Boolean" => "Z"
-          case "scala.Byte" => "B"
-          case "scala.Short" => "S"
-          case "scala.Int" => "I"
-          case "scala.Long" => "J"
-          case "scala.Float" => "F"
-          case "scala.Double" => "D"
-          case "scala.Char" => "C"
-          case paramName => "L" + paramName + ";"
+    sym.asDefDef.signature.paramSigs.collect {
+      case param: String =>
+        def javaArraySig(name: String): String = {
+          if (name.endsWith("[]")) "[" + javaArraySig(name.dropRight(2))
+          else name match {
+            case "scala.Boolean" => "Z"
+            case "scala.Byte" => "B"
+            case "scala.Short" => "S"
+            case "scala.Int" => "I"
+            case "scala.Long" => "J"
+            case "scala.Float" => "F"
+            case "scala.Double" => "D"
+            case "scala.Char" => "C"
+            case paramName => "L" + paramName + ";"
+          }
         }
-      }
 
-      def javaSig(name: String): String =
-        if (name.endsWith("[]")) javaArraySig(name) else name
+        def javaSig(name: String): String =
+          if (name.endsWith("[]")) javaArraySig(name) else name
 
-      if (param == "scala.Boolean") classOf[Boolean]
-      else if (param == "scala.Byte") classOf[Byte]
-      else if (param == "scala.Char") classOf[Char]
-      else if (param == "scala.Short") classOf[Short]
-      else if (param == "scala.Int") classOf[Int]
-      else if (param == "scala.Long") classOf[Long]
-      else if (param == "scala.Float") classOf[Float]
-      else if (param == "scala.Double") classOf[Double]
-      else java.lang.Class.forName(javaSig(param), false, classLoader)
+        if (param == "scala.Boolean") classOf[Boolean]
+        else if (param == "scala.Byte") classOf[Byte]
+        else if (param == "scala.Char") classOf[Char]
+        else if (param == "scala.Short") classOf[Short]
+        else if (param == "scala.Int") classOf[Int]
+        else if (param == "scala.Long") classOf[Long]
+        else if (param == "scala.Float") classOf[Float]
+        else if (param == "scala.Double") classOf[Double]
+        else java.lang.Class.forName(javaSig(param), false, classLoader)
     }
   }
 

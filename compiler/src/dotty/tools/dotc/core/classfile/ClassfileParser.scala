@@ -132,8 +132,20 @@ class ClassfileParser(
     /** Parse parents for Java classes. For Scala, return AnyRef, since the real type will be unpickled.
      *  Updates the read pointer of 'in'. */
     def parseParents: List[Type] = {
-      val superType = if (isAnnotation) { in.nextChar; defn.AnnotationClass.typeRef }
-                      else pool.getSuperClass(in.nextChar).typeRef
+      val superType =
+        if (isAnnotation) {
+          in.nextChar
+          defn.AnnotationClass.typeRef
+        }
+        else if (classRoot.symbol == defn.ComparableClass ||
+                 classRoot.symbol == defn.JavaCloneableClass ||
+                 classRoot.symbol == defn.JavaSerializableClass) {
+          // Treat these interfaces as universal traits
+          in.nextChar
+          defn.AnyType
+        }
+        else
+          pool.getSuperClass(in.nextChar).typeRef
       val ifaceCount = in.nextChar
       var ifaces = for (i <- (0 until ifaceCount).toList) yield pool.getSuperClass(in.nextChar).typeRef
         // Dotty deviation: was
@@ -409,7 +421,7 @@ class ClassfileParser(
         if (sig(index) != ':') // guard against empty class bound
           ts += objToAny(sig2type(tparams, skiptvs))
       }
-      TypeBounds.upper(((NoType: Type) /: ts)(_ & _) orElse defn.AnyType)
+      TypeBounds.upper(ts.foldLeft(NoType: Type)(_ & _) orElse defn.AnyType)
     }
 
     var tparams = classTParams
@@ -866,7 +878,7 @@ class ClassfileParser(
     def originalName: SimpleName = pool.getName(name)
 
     override def toString: String =
-      originalName + " in " + outerName + "(" + externalName + ")"
+      s"$originalName in $outerName($externalName)"
   }
 
   object innerClasses extends scala.collection.mutable.HashMap[Name, InnerClassEntry] {
@@ -1152,7 +1164,7 @@ class ClassfileParser(
           val start = starts(index)
           if (in.buf(start).toInt != CONSTANT_UTF8) errorBadTag(start)
           val len = in.getChar(start + 1)
-          bytesBuffer ++= in.buf.view(start + 3, start + 3 + len)
+          bytesBuffer ++= in.buf.view.slice(start + 3, start + 3 + len)
         }
         value = getSubArray(bytesBuffer.toArray)
         values(indices.head) = value

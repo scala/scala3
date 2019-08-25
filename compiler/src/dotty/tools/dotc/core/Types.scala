@@ -25,7 +25,7 @@ import printing.Texts._
 import printing.Printer
 import Hashable._
 import Uniques._
-import collection.{mutable, Seq}
+import collection.mutable
 import config.Config
 import annotation.tailrec
 import language.implicitConversions
@@ -757,9 +757,9 @@ object Types {
     }
 
     def memberDenots(keepOnly: NameFilter, f: (Name, mutable.Buffer[SingleDenotation]) => Unit)(implicit ctx: Context): Seq[SingleDenotation] = {
-      val buf = mutable.ArrayBuffer[SingleDenotation]()
+      val buf = mutable.ListBuffer[SingleDenotation]()
       for (name <- memberNames(keepOnly)) f(name, buf)
-      buf
+      buf.toList
     }
 
     /** The set of abstract term members of this type. */
@@ -3154,7 +3154,7 @@ object Types {
       else {
         val result =
           if (paramInfos.isEmpty) NoDeps
-          else (NoDeps /: paramInfos.tail)(depStatus(_, _))
+          else paramInfos.tail.foldLeft(NoDeps)(depStatus(_, _))
         if ((result & Provisional) == 0) myParamDependencyStatus = result
         (result & StatusMask).toByte
       }
@@ -3216,7 +3216,7 @@ object Types {
 
     def computeSignature(implicit ctx: Context): Signature = {
       val params = if (isErasedMethod) Nil else paramInfos
-      resultSignature.prepend(params, isJavaMethod)
+      resultSignature.prependTermParams(params, isJavaMethod)
     }
 
     protected def prefixString: String = companion.prefixString
@@ -3402,7 +3402,8 @@ object Types {
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
 
-    def computeSignature(implicit ctx: Context): Signature = resultSignature
+    def computeSignature(implicit ctx: Context): Signature =
+      resultSignature.prependTypeParams(paramNames.length)
 
     override def isContextualMethod = resType.isContextualMethod
     override def isImplicitMethod = resType.isImplicitMethod
@@ -4235,7 +4236,7 @@ object Types {
 
   object AnnotatedType {
     def make(underlying: Type, annots: List[Annotation]): Type =
-      (underlying /: annots)(AnnotatedType(_, _))
+      annots.foldLeft(underlying)(AnnotatedType(_, _))
   }
 
   // Special type objects and classes -----------------------------------------------------

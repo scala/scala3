@@ -43,7 +43,7 @@ class PrintingTest {
 
     val actualLines = byteStream.toString("UTF-8").split("\\r?\\n")
 
-    FileDiff.checkAndDump(path.toString, actualLines, checkFilePath)
+    FileDiff.checkAndDump(path.toString, actualLines.toIndexedSeq, checkFilePath)
   }
 
   @Test

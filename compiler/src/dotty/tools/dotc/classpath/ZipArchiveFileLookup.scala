@@ -5,7 +5,7 @@ package dotty.tools.dotc.classpath
 
 import java.io.File
 import java.net.URL
-import scala.collection.Seq
+
 import dotty.tools.io.{ AbstractFile, FileZipArchive }
 import FileUtils.AbstractFileOps
 import dotty.tools.io.{ClassPath, ClassRepresentation}

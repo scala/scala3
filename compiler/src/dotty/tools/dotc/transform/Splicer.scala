@@ -394,7 +394,7 @@ object Splicer {
           case _ =>
             // Take the flatten name of the class and the full package name
             val pack = tpe.classSymbol.topLevelClass.owner
-            val packageName = if (pack == defn.EmptyPackageClass) "" else pack.fullName + "."
+            val packageName = if (pack == defn.EmptyPackageClass) "" else s"${pack.fullName}."
             packageName + tpe.classSymbol.fullNameSeparated(FlatName).toString
         }
 

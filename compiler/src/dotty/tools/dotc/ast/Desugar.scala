@@ -496,12 +496,12 @@ object desugar {
     // Annotations are dropped from the constructor parameters but should be
     // preserved in all derived parameters.
     val derivedTparams = {
-      val impliedTparamsIt = impliedTparams.toIterator
+      val impliedTparamsIt = impliedTparams.iterator
       constrTparams.map(tparam => derivedTypeParam(tparam)
         .withAnnotations(impliedTparamsIt.next().mods.annotations))
     }
     val derivedVparamss = {
-      val constrVparamsIt = constrVparamss.toIterator.flatten
+      val constrVparamsIt = constrVparamss.iterator.flatten
       constrVparamss.nestedMap(vparam => derivedTermParam(vparam)
         .withAnnotations(constrVparamsIt.next().mods.annotations))
     }
@@ -565,7 +565,7 @@ object desugar {
         case _ =>
           constrVparamss
       }
-      val nu = (makeNew(classTypeRef) /: vparamss) { (nu, vparams) =>
+      val nu = vparamss.foldLeft(makeNew(classTypeRef)) { (nu, vparams) =>
         val app = Apply(nu, vparams.map(refOfDef))
         vparams match {
           case vparam :: _ if vparam.mods.is(Given) => app.setGivenApply()
@@ -615,26 +615,8 @@ object desugar {
         }
       }
 
-      // TODO When the Scala library is updated to 2.13.x add the override keyword to this generated method.
-      // (because Product.scala was updated)
-      def productElemNameMeth = {
-        val methodParam = makeSyntheticParameter(tpt = scalaDot(tpnme.Int))
-        val paramRef = Ident(methodParam.name)
-
-        val indexAsString = Apply(Select(javaDotLangDot(nme.String), nme.valueOf), paramRef)
-        val throwOutOfBound = Throw(New(javaDotLangDot(tpnme.IOOBException), List(List(indexAsString))))
-        val defaultCase = CaseDef(Ident(nme.WILDCARD), EmptyTree, throwOutOfBound)
-
-        val patternMatchCases = derivedVparamss.head.zipWithIndex.map { case (param, idx) =>
-            CaseDef(Literal(Constant(idx)), EmptyTree, Literal(Constant(param.name.decode.toString)))
-        } :+ defaultCase
-        val body = Match(paramRef, patternMatchCases)
-        DefDef(nme.productElementName, Nil, List(List(methodParam)), javaDotLangDot(tpnme.String), body)
-          .withFlags(if (defn.isNewCollections) Override | Synthetic else Synthetic)
-      }
-
       if (isCaseClass)
-        productElemNameMeth :: copyMeths ::: ordinalMeths ::: productElemMeths
+        copyMeths ::: ordinalMeths ::: productElemMeths
       else Nil
     }
 
@@ -705,10 +687,9 @@ object desugar {
               isEnumCase) anyRef
           else
             // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
-            (constrVparamss :\ classTypeRef) (
-              (vparams, restpe) => Function(vparams map (_.tpt), restpe))
+            constrVparamss.foldRight(classTypeRef)((vparams, restpe) => Function(vparams map (_.tpt), restpe))
         def widenedCreatorExpr =
-          (creatorExpr /: widenDefs)((rhs, meth) => Apply(Ident(meth.name), rhs :: Nil))
+          widenDefs.foldLeft(creatorExpr)((rhs, meth) => Apply(Ident(meth.name), rhs :: Nil))
         val applyMeths =
           if (mods.is(Abstract)) Nil
           else {
@@ -795,12 +776,12 @@ object desugar {
 
     val cdef1 = addEnumFlags {
       val tparamAccessors = {
-        val impliedTparamsIt = impliedTparams.toIterator
+        val impliedTparamsIt = impliedTparams.iterator
         derivedTparams.map(_.withMods(impliedTparamsIt.next().mods))
       }
       val caseAccessor = if (isCaseClass) CaseAccessor else EmptyFlags
       val vparamAccessors = {
-        val originalVparamsIt = originalVparamss.toIterator.flatten
+        val originalVparamsIt = originalVparamss.iterator.flatten
         derivedVparamss match {
           case first :: rest =>
             first.map(_.withMods(originalVparamsIt.next().mods | caseAccessor)) ++
@@ -1342,7 +1323,7 @@ object desugar {
     val ttree = ctx.typerPhase match {
       case phase: FrontEnd if phase.stillToBeEntered(parts.last) =>
         val prefix =
-          ((Ident(nme.ROOTPKG): Tree) /: parts.init)((qual, name) =>
+          parts.init.foldLeft(Ident(nme.ROOTPKG): Tree)((qual, name) =>
             Select(qual, name.toTermName))
         Select(prefix, parts.last.toTypeName)
       case _ =>
@@ -1534,7 +1515,7 @@ object desugar {
           val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
           val (defpat0, id0) = makeIdPat(gen.pat)
           val (defpats, ids) = (pats map makeIdPat).unzip
-          val pdefs = (valeqs, defpats, rhss).zipped.map(makePatDef(_, Modifiers(), _, _))
+          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map(makePatDef(_, Modifiers(), _, _))
           val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
           val allpats = gen.pat :: pats
           val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)

@@ -144,7 +144,7 @@ object ShowPickled {
         val accessBoundary = (
           for (idx <- privateWithin) yield {
             val s = entryList nameAt idx
-            idx + "(" + s + ")"
+            s"$idx($s)"
           }
         )
         val flagString = PickleBuffer.unpickleScalaFlags(pflags, isType).toString
@@ -169,12 +169,12 @@ object ShowPickled {
      */
     def printEntry(i: Int): Unit = {
       buf.readIndex = index(i)
-      p(i + "," + buf.readIndex + ": ")
+      p(s"$i,${buf.readIndex}: ")
       val tag = buf.readByte()
       out.print(tag2string(tag))
       val len = buf.readNat()
       val end = len + buf.readIndex
-      p(" " + len + ":")
+      p(s" $len:")
       tag match {
         case TERMname =>
           out.print(" ")

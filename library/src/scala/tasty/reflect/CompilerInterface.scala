@@ -1121,13 +1121,10 @@ trait CompilerInterface {
   // SIGNATURES
   //
 
-  /** JVM signature of a method */
   type Signature <: AnyRef
 
-  /** The (JVM) erased signatures of the parameters */
-  def Signature_paramSigs(self: Signature): List[String]
+  def Signature_paramSigs(self: Signature): List[String | Int]
 
-  /** The (JVM) erased result type */
   def Signature_resultSig(self: Signature): String
 
   //

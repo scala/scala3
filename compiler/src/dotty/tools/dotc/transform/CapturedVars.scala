@@ -32,7 +32,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   private class RefInfo(implicit ctx: Context) {
     /** The classes for which a Ref type exists. */
     val refClassKeys: collection.Set[Symbol] =
-      defn.ScalaNumericValueClasses() + defn.BooleanClass + defn.ObjectClass
+      defn.ScalaNumericValueClasses() `union` Set(defn.BooleanClass, defn.ObjectClass)
 
     val refClass: Map[Symbol, Symbol] =
       refClassKeys.map(rc => rc -> ctx.requiredClass(s"scala.runtime.${rc.name}Ref")).toMap

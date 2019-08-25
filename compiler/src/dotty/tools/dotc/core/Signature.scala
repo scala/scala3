@@ -1,27 +1,42 @@
 package dotty.tools.dotc
 package core
 
-import Names._, Types._, Contexts._, StdNames._, Decorators._
-import TypeErasure.sigName
-
 import scala.annotation.tailrec
 
+import Names._, Types._, Contexts._, StdNames._, Decorators._
+import TypeErasure.sigName
+import Signature._
+
 /** The signature of a denotation.
- *  Overloaded denotations with the same name are distinguished by
- *  their signatures. A signature of a method (of type PolyType,MethodType, or ExprType) is
- *  composed of a list of signature names, one for each parameter type, plus a signature for
- *  the result type. Methods are uncurried before taking their signatures.
- *  The signature name of a type is the fully qualified name of the type symbol of the type's erasure.
+ *
+ *  Same-named denotations with different signatures are considered to be
+ *  overloads, see `SingleDenotation#matches` for more details.
+ *
+ *  A _method signature_ (a value of type `Signature`, excluding `NotAMethod`
+ *  and `OverloadedSignature`) is composed of a list of _parameter signatures_,
+ *  plus a _type signature_ for the final result type.
+ *
+ *  A _parameter signature_ (a value of type `ParamSig`) is either an integer,
+ *  representing the number of type parameters in a type parameter section, or
+ *  the _type signature_ of a term parameter.
+ *
+ *  A _type signature_ is the fully qualified name of the type symbol of the
+ *  type's erasure.
  *
  *  For instance a definition
  *
- *      def f(x: Int)(y: List[String]): String
+ *      def f[T, S](x: Int)(y: List[T]): S
  *
  *  would have signature
  *
  *      Signature(
- *        List("scala.Int".toTypeName, "scala.collection.immutable.List".toTypeName),
- *        "scala.String".toTypeName)
+ *        List(2, "scala.Int".toTypeName, "scala.collection.immutable.List".toTypeName),
+ *        "java.lang.Object".toTypeName)
+ *
+ *  Note that `paramsSig` has one entry for *a whole type parameter section* but
+ *  one entry *for each term parameter* (currently, methods in Dotty can only
+ *  have one type parameter section but this encoding leaves the door open for
+ *  supporting multiple sections).
  *
  *  The signatures of non-method types are always `NotAMethod`.
  *
@@ -31,19 +46,18 @@ import scala.annotation.tailrec
  *   - tpnme.WILDCARD       Arises from a Wildcard or error type
  *   - tpnme.Uninstantiated Arises from an uninstantiated type variable
  */
-case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
-  import Signature._
+case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
 
   /** Two names are consistent if they are the same or one of them is tpnme.Uninstantiated */
-  private def consistent(name1: TypeName, name2: TypeName) =
+  private def consistent(name1: ParamSig, name2: ParamSig) =
     name1 == name2 || name1 == tpnme.Uninstantiated || name2 == tpnme.Uninstantiated
 
   /** Does this signature coincide with that signature on their parameter parts?
-   *  This is the case if all parameter names are _consistent_, i.e. they are either
+   *  This is the case if all parameter signatures are _consistent_, i.e. they are either
    *  equal or on of them is tpnme.Uninstantiated.
    */
   final def consistentParams(that: Signature)(implicit ctx: Context): Boolean = {
-    @tailrec def loop(names1: List[TypeName], names2: List[TypeName]): Boolean =
+    @tailrec def loop(names1: List[ParamSig], names2: List[ParamSig]): Boolean =
       if (names1.isEmpty) names2.isEmpty
       else !names2.isEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
     if (ctx.erasedTypes && (this == NotAMethod) != (that == NotAMethod))
@@ -56,22 +70,24 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
 
   /** `that` signature, but keeping all corresponding parts of `this` signature. */
   final def updateWith(that: Signature): Signature = {
-    def update(name1: TypeName, name2: TypeName): TypeName =
+    def update[T <: ParamSig](name1: T, name2: T): T =
       if (consistent(name1, name2)) name1 else name2
     if (this == that) this
     else if (!this.paramsSig.hasSameLengthAs(that.paramsSig)) that
     else {
       val mapped = Signature(
-          this.paramsSig.zipWithConserve(that.paramsSig)(update),
+          // DOTTY: we shouldn't have to explicitly pass a type argument to `update`,
+          // see https://github.com/lampepfl/dotty/issues/4867
+          this.paramsSig.zipWithConserve(that.paramsSig)(update[ParamSig]),
           update(this.resSig, that.resSig))
       if (mapped == this) this else mapped
     }
   }
 
   /** The degree to which this signature matches `that`.
-   *  If parameter names are consistent and result types names match (i.e. they are the same
+   *  If parameter signatures are consistent and result types names match (i.e. they are the same
    *  or one is a wildcard), the result is `FullMatch`.
-   *  If only the parameter names are consistent, the result is `ParamMatch` before erasure and
+   *  If only the parameter signatures are consistent, the result is `ParamMatch` before erasure and
    *  `NoMatch` otherwise.
    *  If the parameters are inconsistent, the result is always `NoMatch`.
    */
@@ -94,8 +110,16 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
    *
    *  Like Signature#apply, the result is only cacheable if `isUnderDefined == false`.
    */
-  def prepend(params: List[Type], isJava: Boolean)(implicit ctx: Context): Signature =
-    Signature(params.map(p => sigName(p, isJava)) ++ paramsSig, resSig)
+  def prependTermParams(params: List[Type], isJava: Boolean)(implicit ctx: Context): Signature =
+    Signature(params.map(p => sigName(p, isJava)) ::: paramsSig, resSig)
+
+  /** Construct a signature by prepending the length of a type parameter section
+   *  to the parameter part of this signature.
+   *
+   *  Like Signature#apply, the result is only cacheable if `isUnderDefined == false`.
+   */
+  def prependTypeParams(typeParamSigsSectionLength: Int)(implicit ctx: Context): Signature =
+    Signature(typeParamSigsSectionLength :: paramsSig, resSig)
 
   /** A signature is under-defined if its paramsSig part contains at least one
    *  `tpnme.Uninstantiated`. Under-defined signatures arise when taking a signature
@@ -106,6 +130,10 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
 }
 
 object Signature {
+  /** A parameter signature, see the documentation of `Signature` for more information. */
+  type ParamSig = TypeName | Int
+    // Erasure means that our Ints will be boxed, but Integer#valueOf caches
+    // small values, so the performance hit should be minimal.
 
   enum MatchDegree {
     case NoMatch, ParamMatch, FullMatch
@@ -130,5 +158,33 @@ object Signature {
   def apply(resultType: Type, isJava: Boolean)(implicit ctx: Context): Signature = {
     assert(!resultType.isInstanceOf[ExprType])
     apply(Nil, sigName(resultType, isJava))
+  }
+
+  val lexicographicOrdering: Ordering[Signature] = new Ordering[Signature] {
+    val paramSigOrdering: Ordering[Signature.ParamSig] = new Ordering[Signature.ParamSig] {
+      def compare(x: ParamSig, y: ParamSig): Int = x match { // `(x, y) match` leads to extra allocations
+        case x: TypeName =>
+          y match {
+            case y: TypeName =>
+              // `Ordering[TypeName]` doesn't work due to `Ordering` still being invariant
+              the[Ordering[Name]].compare(x, y)
+            case y: Int =>
+              1
+          }
+        case x: Int =>
+          y match {
+            case y: Name =>
+              -1
+            case y: Int =>
+              x - y
+          }
+      }
+    }
+    def compare(x: Signature, y: Signature): Int = {
+      import scala.math.Ordering.Implicits.seqOrdering
+      val paramsOrdering = seqOrdering(paramSigOrdering).compare(x.paramsSig, y.paramsSig)
+      if (paramsOrdering != 0) paramsOrdering
+      else the[Ordering[Name]].compare(x.resSig, y.resSig)
+    }
   }
 }

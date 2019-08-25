@@ -342,7 +342,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    *   trait or class with this body can have as flags.
    */
   def bodyKind(body: List[Tree])(implicit ctx: Context): FlagSet =
-    (NoInitsInterface /: body)((fs, stat) => fs & defKind(stat))
+    body.foldLeft(NoInitsInterface)((fs, stat) => fs & defKind(stat))
 
   // todo: fill with other methods from TreeInfo that only apply to untpd.Tree's
 }
@@ -416,7 +416,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       Impure
   }
 
-  private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = (l0 /: ls)(_ `min` _)
+  private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = ls.foldLeft(l0)(_ `min` _)
 
   def isPurePath(tree: Tree)(implicit ctx: Context): Boolean = tree.tpe match {
     case tpe: ConstantType => exprPurity(tree) >= Pure
@@ -827,8 +827,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           case t1: Ident => t1.symbol.hashCode
           case t1 @ Select(q1, _) => t1.symbol.hashCode * 41 + q1.hash
           case Literal(c1) => c1.hashCode
-          case Apply(f1, as1) => (f1.hash /: as1)((h, arg) => h * 41 + arg.hash)
-          case TypeApply(f1, ts1) => (f1.hash /: ts1)((h, arg) => h * 41 + arg.tpe.hash)
+          case Apply(f1, as1) => as1.foldLeft(f1.hash)((h, arg) => h * 41 + arg.hash)
+          case TypeApply(f1, ts1) => ts1.foldLeft(f1.hash)((h, arg) => h * 41 + arg.tpe.hash)
           case _ => t1.hashCode
         }
       }

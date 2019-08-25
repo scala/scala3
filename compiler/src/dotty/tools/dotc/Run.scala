@@ -56,7 +56,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     ctx.initialize()(start) // re-initialize the base context with start
     def addImport(ctx: Context, refFn: () => TermRef) =
       ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))
-    (start.setRun(this) /: defn.RootImportFns)(addImport)
+    defn.RootImportFns.foldLeft(start.setRun(this))(addImport)
   }
 
   private[this] var compiling = false

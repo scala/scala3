@@ -4,7 +4,7 @@ package core
 package tasty
 
 import collection.mutable
-import Names.{Name, chrs, SimpleName, DerivedName}
+import Names.{Name, chrs, SimpleName, DerivedName, TypeName}
 import NameKinds._
 import Decorators._
 import TastyBuffer._
@@ -23,7 +23,13 @@ class NameBuffer extends TastyBuffer(10000) {
       case None =>
         name1 match {
           case SignedName(original, Signature(params, result)) =>
-            nameIndex(original); nameIndex(result); params.foreach(nameIndex)
+            nameIndex(original)
+            nameIndex(result)
+            params.foreach {
+              case param: TypeName =>
+                nameIndex(param)
+              case _ =>
+            }
           case AnyQualifiedName(prefix, name) =>
             nameIndex(prefix); nameIndex(name)
           case AnyUniqueName(original, separator, num) =>
@@ -50,6 +56,16 @@ class NameBuffer extends TastyBuffer(10000) {
   def writeNameRef(ref: NameRef): Unit = writeNat(ref.index)
   def writeNameRef(name: Name): Unit = writeNameRef(nameRefs(name.toTermName))
 
+  def writeParamSig(paramSig: Signature.ParamSig): Unit ={
+    val encodedValue = paramSig match {
+      case paramSig: TypeName =>
+        nameRefs(paramSig.toTermName).index
+      case paramSig: Int =>
+        -paramSig
+    }
+    writeInt(encodedValue)
+  }
+
   def pickleNameContents(name: Name): Unit = {
     val tag = name.toTermName.info.kind.tag
     writeByte(tag)
@@ -70,10 +86,10 @@ class NameBuffer extends TastyBuffer(10000) {
         }
       case AnyNumberedName(original, num) =>
         withLength { writeNameRef(original); writeNat(num) }
-      case SignedName(original, Signature(params, result)) =>
+      case SignedName(original, Signature(paramsSig, result)) =>
         withLength(
-          { writeNameRef(original); writeNameRef(result); params.foreach(writeNameRef) },
-          if ((params.length + 2) * maxIndexWidth <= maxNumInByte) 1 else 2)
+          { writeNameRef(original); writeNameRef(result); paramsSig.foreach(writeParamSig) },
+          if ((paramsSig.length + 2) * maxIndexWidth <= maxNumInByte) 1 else 2)
       case DerivedName(original, _) =>
         withLength { writeNameRef(original) }
     }

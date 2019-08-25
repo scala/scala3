@@ -1398,8 +1398,13 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   type Signature = core.Signature
 
-  def Signature_paramSigs(self: Signature): List[String] =
-    self.paramsSig.map(_.toString)
+  def Signature_paramSigs(self: Signature): List[String | Int] =
+    self.paramsSig.map {
+      case paramSig: core.Names.TypeName =>
+        paramSig.toString
+      case paramSig: Int =>
+        paramSig
+    }
 
   def Signature_resultSig(self: Signature): String =
     self.resSig.toString

@@ -73,7 +73,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
       case (stat: TypeDef) :: stats1 if stat.symbol.isClass =>
         if (stat.symbol.is(Flags.Module)) {
           def pushOnTop(xs: List[Tree], ys: List[Tree]): List[Tree] =
-            (ys /: xs)((ys, x) => x :: ys)
+            xs.foldLeft(ys)((ys, x) => x :: ys)
           moduleClassDefs += (stat.name -> stat)
           singleClassDefs -= stat.name.stripModuleClassSuffix
           val stats1r = reorder(stats1, Nil)
@@ -134,7 +134,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   private def toTypeTree(tree: Tree)(implicit ctx: Context) = {
     val binders = collectBinders.apply(Nil, tree)
     val result: Tree = TypeTree(tree.tpe).withSpan(tree.span)
-    (result /: binders)(Annotated(_, _))
+    binders.foldLeft(result)(Annotated(_, _))
   }
 
   override def transformOther(tree: Tree)(implicit ctx: Context): Tree = tree match {

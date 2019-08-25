@@ -80,7 +80,7 @@ abstract class Lifter {
   def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(implicit ctx: Context): List[Tree] =
     methRef.widen match {
       case mt: MethodType =>
-        (args, mt.paramNames, mt.paramInfos).zipped.map { (arg, name, tp) =>
+        args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map { (arg, name, tp) =>
           val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
           lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
         }
@@ -210,7 +210,7 @@ object EtaExpansion extends LiftImpure {
     var paramFlag = Synthetic | Param
     if (mt.isContextualMethod) paramFlag |= Given
     else if (mt.isImplicitMethod) paramFlag |= Implicit
-    val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
+    val params = mt.paramNames.lazyZip(paramTypes).map((name, tpe) =>
       ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.span.startPos))
     var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.span.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)

@@ -185,11 +185,13 @@ class TreeTypeMap(
   def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap = {
     val symsChanged = syms ne mapped
     val substMap = withSubstitution(syms, mapped)
-    val fullMap = (substMap /: mapped.filter(_.isClass)) { (tmap, cls) =>
+    val fullMap = mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
       val origDcls = cls.info.decls.toList
       val mappedDcls = ctx.mapSymbols(origDcls, tmap)
       val tmap1 = tmap.withMappedSyms(origDcls, mappedDcls)
-      if (symsChanged) (origDcls, mappedDcls).zipped.foreach(cls.asClass.replace)
+      if (symsChanged) {
+        origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
+      }
       tmap1
     }
     if (symsChanged || (fullMap eq substMap)) fullMap

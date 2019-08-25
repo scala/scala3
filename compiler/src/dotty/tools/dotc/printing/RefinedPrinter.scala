@@ -594,7 +594,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case GenAlias(pat, expr) =>
         toText(pat) ~ " = " ~ toText(expr)
       case ContextBounds(bounds, cxBounds) =>
-        (toText(bounds) /: cxBounds) {(t, cxb) =>
+        cxBounds.foldLeft(toText(bounds)) {(t, cxb) =>
           t ~ cxBoundToText(cxb)
         }
       case PatDef(mods, pats, tpt, rhs) =>
@@ -649,10 +649,29 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val tp = tp1.tryNormalize
         if (tp != NoType) tp else tp1
       }
+      val tp3 =
+        if (homogenizedView && tree.isInstanceOf[If | Match | Annotated | Block | CaseDef]) {
+          // Types of non-leaf trees are not pickled but reconstructed when
+          // unpickled using the TypeAssigner. Sometimes, this requires choosing
+          // arbitrarily between two =:= types (e.g., when typing an `if`, where
+          // one branch is typed with a type alias and the other with a
+          // dealiased version of the same type) and we cannot guarantee that
+          // the same choice was made by the original Typer (e.g., because the
+          // original choice involved type variables). So we need to get rid of
+          // any alias in these types to make -Ytest-pickler work (the list of
+          // types in the isInstanceOf check above is conservative and might
+          // need to be expanded).
+          val dealiasMap = new TypeMap {
+            def apply(tp: Type) = mapOver(tp.dealias)
+          }
+          dealiasMap(tp2)
+        }
+        else tp2
+
       if (!suppressTypes)
-        txt = ("<" ~ txt ~ ":" ~ toText(tp2) ~ ">").close
+        txt = ("<" ~ txt ~ ":" ~ toText(tp3) ~ ">").close
       else if (tree.isType && !homogenizedView)
-        txt = toText(tp2)
+        txt = toText(tp3)
     }
     if (!suppressPositions) {
       if (printPos) {
@@ -728,7 +747,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val (leading, paramss) =
       if (isExtension && vparamss.nonEmpty) (paramsText(vparamss.head) ~ " " ~ txt, vparamss.tail)
       else (txt, vparamss)
-    (leading /: paramss)((txt, params) =>
+    paramss.foldLeft(leading)((txt, params) =>
       txt ~
       (Str(" given ") provided params.nonEmpty && params.head.mods.is(Given)) ~
       paramsText(params))

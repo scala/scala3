@@ -1455,7 +1455,7 @@ object Parsers {
             t
           }
         case AT if location != Location.InPattern =>
-          (t /: annotations())(Annotated)
+          annotations().foldLeft(t)(Annotated)
         case _ =>
           val tpt = typeDependingOn(location)
           if (isWildcard(t) && location != Location.InPattern) {

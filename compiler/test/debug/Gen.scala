@@ -77,7 +77,7 @@ object Gen {
       }
     }
 
-    Program(breaks, cmds)
+    Program(breaks.toList, cmds.toList)
   }
 
   def generate(program: Program, source: String = "tests/debug/"): String = {

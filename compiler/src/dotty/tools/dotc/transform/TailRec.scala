@@ -147,7 +147,7 @@ class TailRec extends MiniPhase {
         val varsForRewrittenParamSyms = transformer.varsForRewrittenParamSyms
 
         val initialVarDefs = {
-          val initialParamVarDefs = (rewrittenParamSyms, varsForRewrittenParamSyms).zipped.map {
+          val initialParamVarDefs = rewrittenParamSyms.lazyZip(varsForRewrittenParamSyms).map {
             (param, local) => ValDef(local.asTerm, ref(param))
           }
           varForRewrittenThis match {

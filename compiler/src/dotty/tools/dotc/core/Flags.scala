@@ -173,7 +173,7 @@ object Flags {
    *  lie in the given range
    */
   private def flagRange(start: Int, end: Int) =
-    FlagSet((KINDFLAGS.toLong /: (start until end)) ((bits, idx) =>
+    FlagSet((start until end).foldLeft(KINDFLAGS.toLong) ((bits, idx) =>
       if (isDefinedAsFlag(idx)) bits | (1L << idx) else bits))
 
   /** The union of all flags in given flag set */

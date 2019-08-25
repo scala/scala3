@@ -822,7 +822,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
        */
       def isMatchingApply(tp1: Type): Boolean = tp1 match {
         case AppliedType(tycon1, args1) =>
-          tycon1.dealiasKeepRefiningAnnots match {
+          def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1.dealiasKeepRefiningAnnots match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
                canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
@@ -865,12 +865,13 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
                   false
               }
             case tycon1: TypeVar =>
-              isMatchingApply(tycon1.underlying)
+              loop(tycon1.underlying, args1)
             case tycon1: AnnotatedType if !tycon1.isRefining =>
-              isMatchingApply(tycon1.underlying)
+              loop(tycon1.underlying, args1)
             case _ =>
               false
           }
+          loop(tycon1, args1)
         case _ =>
           false
       }
@@ -1724,7 +1725,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   }
 
   /** The greatest lower bound of a list types */
-  final def glb(tps: List[Type]): Type = ((AnyType: Type) /: tps)(glb)
+  final def glb(tps: List[Type]): Type = tps.foldLeft(AnyType: Type)(glb)
 
   def widenInUnions(implicit ctx: Context): Boolean = ctx.scala2Mode || ctx.erasedTypes
 
@@ -1767,7 +1768,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
   /** The least upper bound of a list of types */
   final def lub(tps: List[Type]): Type =
-    ((NothingType: Type) /: tps)(lub(_,_, canConstrain = false))
+    tps.foldLeft(NothingType: Type)(lub(_,_, canConstrain = false))
 
   /** Try to produce joint arguments for a lub `A[T_1, ..., T_n] | A[T_1', ..., T_n']` using
    *  the following strategies:
@@ -1962,10 +1963,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       original(applied(tp1), tp2)
     else if (tparams1.hasSameLengthAs(tparams2))
       HKTypeLambda(
-        paramNames = (HKTypeLambda.syntheticParamNames(tparams1.length), tparams1, tparams2)
-          .zipped.map((pname, tparam1, tparam2) =>
+        paramNames = HKTypeLambda.syntheticParamNames(tparams1.length).lazyZip(tparams1).lazyZip(tparams2)
+          .map((pname, tparam1, tparam2) =>
             pname.withVariance((tparam1.paramVariance + tparam2.paramVariance) / 2)))(
-        paramInfosExp = tl => (tparams1, tparams2).zipped.map((tparam1, tparam2) =>
+        paramInfosExp = tl => tparams1.lazyZip(tparams2).map((tparam1, tparam2) =>
           tl.integrate(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
           tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
@@ -2210,7 +2211,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           }
         }
 
-        (args1, args2, tycon1.typeParams).zipped.exists {
+        args1.lazyZip(args2).lazyZip(tycon1.typeParams).exists {
           (arg1, arg2, tparam) =>
             val v = tparam.paramVariance
             if (v > 0)

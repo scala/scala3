@@ -145,7 +145,7 @@ trait MessageRendering {
 
   /** The whole message rendered from `msg` */
   def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): String = {
-    val sb = mutable.StringBuilder.newBuilder
+    val sb = mutable.StringBuilder()
     val posString = posStr(pos, diagnosticLevel, msg)
     if (posString.nonEmpty) sb.append(posString).append(EOL)
     if (pos.exists && pos.source.file.exists) {

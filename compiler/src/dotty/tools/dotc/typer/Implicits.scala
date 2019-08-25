@@ -145,10 +145,8 @@ object Implicits {
               val isFunctionInS2 =
                 ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1)) && ref.symbol != defn.Predef_conforms
               val isImplicitConversion = tpw.derivesFrom(defn.ConversionClass)
-              val isConforms = // An implementation of <:< counts as a view, except that $conforms is always omitted
-                  tpw.derivesFrom(defn.SubTypeClass) &&
-                    (defn.isNewCollections || // In 2.13, the type of `$conforms` changed from `A <:< A` to `A => A`
-                     ref.symbol != defn.Predef_conforms)
+              // An implementation of <:< counts as a view
+              val isConforms = tpw.derivesFrom(defn.SubTypeClass)
               val hasExtensions = resType match {
                 case SelectionProto(name, _, _, _) =>
                   tpw.memberBasedOnFlags(name, required = ExtensionMethod).exists
@@ -522,7 +520,7 @@ trait ImplicitRunInfo { self: Run =>
 
       def apply(tp: Type) = tp.widenDealias match {
         case tp: TypeRef =>
-          ((defn.AnyType: Type) /: anchors(tp))(AndType.make(_, _))
+          anchors(tp).foldLeft(defn.AnyType: Type)(AndType.make(_, _))
         case tp: TypeVar =>
           apply(tp.underlying)
         case tp: AppliedType if !tp.tycon.typeSymbol.isClass =>
@@ -531,7 +529,7 @@ trait ImplicitRunInfo { self: Run =>
             case WildcardType(TypeBounds(lo, hi)) => AndType.make(lo, hi)
             case _ => arg
           }
-          (apply(tp.tycon) /: tp.args)((tc, arg) => AndType.make(tc, applyArg(arg)))
+          tp.args.foldLeft(apply(tp.tycon))((tc, arg) => AndType.make(tc, applyArg(arg)))
         case tp: TypeLambda =>
           apply(tp.resType)
         case _ =>
@@ -1020,7 +1018,7 @@ trait Implicits { self: Typer =>
                           resType <:< target
                           val tparams = poly.paramRefs
                           val variances = caseClass.typeParams.map(_.paramVariance)
-                          val instanceTypes = (tparams, variances).zipped.map((tparam, variance) =>
+                          val instanceTypes = tparams.lazyZip(variances).map((tparam, variance) =>
                             ctx.typeComparer.instanceType(tparam, fromBelow = variance < 0))
                           resType.substParams(poly, instanceTypes)
                         }

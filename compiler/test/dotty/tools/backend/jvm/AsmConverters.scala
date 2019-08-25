@@ -35,7 +35,7 @@ object ASMConverters {
 
     def dropStaleLabels = {
       val definedLabels: Set[Instruction] = self.filter(_.isInstanceOf[Label]).toSet
-      val usedLabels: Set[Instruction] = self.flatMap(referencedLabels)(collection.breakOut)
+      val usedLabels: Set[Instruction] = self.iterator.flatMap(referencedLabels).toSet
       self.filterNot(definedLabels diff usedLabels)
     }
 
@@ -144,19 +144,19 @@ object ASMConverters {
       case i: t.LineNumberNode         => LineNumber   (i.line, applyLabel(i.start))
     }
 
-    private def convertBsmArgs(a: Array[Object]): List[Object] = a.map({
+    private def convertBsmArgs(a: Array[Object]): List[Object] = a.iterator.map({
       case h: asm.Handle => convertMethodHandle(h)
       case _ => a // can be: Class, method Type, primitive constant
-    })(collection.breakOut)
+    }).toList
 
     private def convertMethodHandle(h: asm.Handle): MethodHandle = MethodHandle(h.getTag, h.getOwner, h.getName, h.getDesc, h.isInterface)
 
     private def convertHandlers(method: t.MethodNode): List[ExceptionHandler] = {
-      method.tryCatchBlocks.asScala.map(h => ExceptionHandler(applyLabel(h.start), applyLabel(h.end), applyLabel(h.handler), Option(h.`type`)))(collection.breakOut)
+      method.tryCatchBlocks.asScala.map(h => ExceptionHandler(applyLabel(h.start), applyLabel(h.end), applyLabel(h.handler), Option(h.`type`))).toList
     }
 
     private def convertLocalVars(method: t.MethodNode): List[LocalVariable] = {
-      method.localVariables.asScala.map(v => LocalVariable(v.name, v.desc, Option(v.signature), applyLabel(v.start), applyLabel(v.end), v.index))(collection.breakOut)
+      method.localVariables.asScala.map(v => LocalVariable(v.name, v.desc, Option(v.signature), applyLabel(v.start), applyLabel(v.end), v.index)).toList
     }
   }
 
@@ -233,7 +233,7 @@ object ASMConverters {
   def unconvertBsmArgs(a: List[Object]): Array[Object] = a.map({
     case h: MethodHandle => unconvertMethodHandle(h)
     case o => o
-  })(collection.breakOut)
+  }).toArray
 
   private def visitMethod(method: t.MethodNode, instruction: Instruction, asmLabel: Map[Label, asm.Label]): Unit = instruction match {
     case Field(op, owner, name, desc)                => method.visitFieldInsn(op, owner, name, desc)

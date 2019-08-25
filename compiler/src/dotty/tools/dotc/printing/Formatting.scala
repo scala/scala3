@@ -40,7 +40,7 @@ object Formatting {
     private def treatArg(arg: Any, suffix: String)(implicit ctx: Context): (Any, String) = arg match {
       case arg: Seq[_] if suffix.nonEmpty && suffix.head == '%' =>
         val (rawsep, rest) = suffix.tail.span(_ != '%')
-        val sep = StringContext.treatEscapes(rawsep)
+        val sep = StringContext.processEscapes(rawsep)
         if (rest.nonEmpty) (arg.map(showArg).mkString(sep), rest.tail)
         else (arg, suffix)
       case _ =>
@@ -57,7 +57,7 @@ object Formatting {
         case head :: tail => (head.stripMargin, tail map stripTrailingPart)
         case Nil => ("", Nil)
       }
-      val (args1, suffixes1) = (args, suffixes).zipped.map(treatArg(_, _)).unzip
+      val (args1, suffixes1) = args.lazyZip(suffixes).map(treatArg(_, _)).unzip
       new StringContext(prefix :: suffixes1.toList: _*).s(args1: _*)
     }
   }

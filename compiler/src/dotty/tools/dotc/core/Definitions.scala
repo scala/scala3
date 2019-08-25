@@ -347,23 +347,17 @@ class Definitions {
   @tu lazy val ScalaPredefModule: Symbol = ctx.requiredModule("scala.Predef")
     @tu lazy val Predef_conforms : Symbol = ScalaPredefModule.requiredMethod(nme.conforms_)
     @tu lazy val Predef_classOf  : Symbol = ScalaPredefModule.requiredMethod(nme.classOf)
+    @tu lazy val Predef_identity : Symbol = ScalaPredefModule.requiredMethod(nme.identity)
     @tu lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
 
-  def SubTypeClass(implicit ctx: Context): ClassSymbol =
-    if (isNewCollections)
-      ctx.requiredClass("scala.<:<")
-    else
-      ScalaPredefModule.requiredClass("<:<")
+  def SubTypeClass(implicit ctx: Context): ClassSymbol = ctx.requiredClass("scala.<:<")
 
-  def DummyImplicitClass(implicit ctx: Context): ClassSymbol =
-    if (isNewCollections)
-      ctx.requiredClass("scala.DummyImplicit")
-    else
-      ScalaPredefModule.requiredClass("DummyImplicit")
+  def DummyImplicitClass(implicit ctx: Context): ClassSymbol = ctx.requiredClass("scala.DummyImplicit")
 
   @tu lazy val ScalaRuntimeModule: Symbol = ctx.requiredModule("scala.runtime.ScalaRunTime")
     def runtimeMethodRef(name: PreName): TermRef = ScalaRuntimeModule.requiredMethodRef(name)
     def ScalaRuntime_drop: Symbol = runtimeMethodRef(nme.drop).symbol
+    @tu lazy val ScalaRuntime__hashCode: Symbol = ScalaRuntimeModule.requiredMethod(nme._hashCode_)
 
   @tu lazy val BoxesRunTimeModule: Symbol = ctx.requiredModule("scala.runtime.BoxesRunTime")
   @tu lazy val ScalaStaticsModule: Symbol = ctx.requiredModule("scala.runtime.Statics")
@@ -385,14 +379,11 @@ class Definitions {
     def newGenericArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
     def newArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
-  // TODO: Remove once we drop support for 2.12 standard library
-  @tu lazy val isNewCollections: Boolean = ctx.settings.YnewCollections.value
-
-  def getWrapVarargsArrayModule: Symbol = if (isNewCollections) ScalaRuntimeModule else ScalaPredefModule
+  def getWrapVarargsArrayModule: Symbol = ScalaRuntimeModule
 
   // The set of all wrap{X, Ref}Array methods, where X is a value type
   val WrapArrayMethods: PerRun[collection.Set[Symbol]] = new PerRun({ implicit ctx =>
-    val methodNames = ScalaValueTypes.map(ast.tpd.wrapArrayMethodName) + nme.wrapRefArray
+    val methodNames = ScalaValueTypes.map(ast.tpd.wrapArrayMethodName) `union` Set(nme.wrapRefArray)
     methodNames.map(getWrapVarargsArrayModule.requiredMethod(_))
   })
 
@@ -406,9 +397,8 @@ class Definitions {
       List(AnyClass.typeRef), EmptyScope)
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
-  @tu lazy val SeqType: TypeRef =
-    if (isNewCollections) ctx.requiredClassRef("scala.collection.immutable.Seq")
-    else ctx.requiredClassRef("scala.collection.Seq")
+  @tu lazy val CollectionSeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
+  @tu lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.immutable.Seq")
   def SeqClass given Context: ClassSymbol = SeqType.symbol.asClass
     @tu lazy val Seq_apply        : Symbol = SeqClass.requiredMethod(nme.apply)
     @tu lazy val Seq_head         : Symbol = SeqClass.requiredMethod(nme.head)
@@ -540,11 +530,7 @@ class Definitions {
 
   @tu lazy val ThrowableType: TypeRef          = ctx.requiredClassRef("java.lang.Throwable")
   def ThrowableClass given Context: ClassSymbol = ThrowableType.symbol.asClass
-  @tu lazy val SerializableType: TypeRef       =
-    if (isNewCollections)
-      JavaSerializableClass.typeRef
-    else
-      ctx.requiredClassRef("scala.Serializable")
+  @tu lazy val SerializableType: TypeRef       = JavaSerializableClass.typeRef
   def SerializableClass given Context: ClassSymbol = SerializableType.symbol.asClass
 
    @tu lazy val JavaEnumClass: ClassSymbol = {
@@ -581,11 +567,14 @@ class Definitions {
     @tu lazy val StringAdd_+ : Symbol = StringAddClass.requiredMethod(nme.raw.PLUS)
 
   @tu lazy val StringContextClass: ClassSymbol = ctx.requiredClass("scala.StringContext")
-    @tu lazy val StringContextS  : Symbol = StringContextClass.requiredMethod(nme.s)
-    @tu lazy val StringContextRaw: Symbol = StringContextClass.requiredMethod(nme.raw_)
-    @tu lazy val StringContext_f : Symbol = StringContextClass.requiredMethod(nme.f)
+    @tu lazy val StringContext_s  : Symbol = StringContextClass.requiredMethod(nme.s)
+    @tu lazy val StringContext_raw: Symbol = StringContextClass.requiredMethod(nme.raw_)
+    @tu lazy val StringContext_f  : Symbol = StringContextClass.requiredMethod(nme.f)
+    @tu lazy val StringContext_parts: Symbol = StringContextClass.requiredMethod(nme.parts)
   @tu lazy val StringContextModule: Symbol = StringContextClass.companionModule
     @tu lazy val StringContextModule_apply: Symbol = StringContextModule.requiredMethod(nme.apply)
+    @tu lazy val StringContextModule_standardInterpolator: Symbol = StringContextModule.requiredMethod(nme.standardInterpolator)
+    @tu lazy val StringContextModule_processEscapes: Symbol = StringContextModule.requiredMethod(nme.processEscapes)
 
   @tu lazy val InternalStringContextMacroModule: Symbol = ctx.requiredModule("dotty.internal.StringContextMacro")
     @tu lazy val InternalStringContextMacroModule_f: Symbol = InternalStringContextMacroModule.requiredMethod(nme.f)
@@ -607,10 +596,11 @@ class Definitions {
 
   @tu lazy val EnumValuesClass: ClassSymbol = ctx.requiredClass("scala.runtime.EnumValues")
   @tu lazy val ProductClass: ClassSymbol = ctx.requiredClass("scala.Product")
-    @tu lazy val Product_canEqual      : Symbol = ProductClass.requiredMethod(nme.canEqual_)
-    @tu lazy val Product_productArity  : Symbol = ProductClass.requiredMethod(nme.productArity)
-    @tu lazy val Product_productElement: Symbol = ProductClass.requiredMethod(nme.productElement)
-    @tu lazy val Product_productPrefix : Symbol = ProductClass.requiredMethod(nme.productPrefix)
+    @tu lazy val Product_canEqual          : Symbol = ProductClass.requiredMethod(nme.canEqual_)
+    @tu lazy val Product_productArity      : Symbol = ProductClass.requiredMethod(nme.productArity)
+    @tu lazy val Product_productElement    : Symbol = ProductClass.requiredMethod(nme.productElement)
+    @tu lazy val Product_productElementName: Symbol = ProductClass.requiredMethod(nme.productElementName)
+    @tu lazy val Product_productPrefix     : Symbol = ProductClass.requiredMethod(nme.productPrefix)
 
   @tu lazy val IteratorClass: ClassSymbol = ctx.requiredClass("scala.collection.Iterator")
   def IteratorModule(implicit ctx: Context): Symbol = IteratorClass.companionModule
@@ -1204,7 +1194,7 @@ class Definitions {
     ByteType, ShortType, CharType, IntType, LongType, FloatType, DoubleType)
 
   @tu private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
-  @tu private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes + UnitType + BooleanType
+  @tu private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes `union` Set(UnitType, BooleanType)
 
   val ScalaNumericValueClasses: PerRun[collection.Set[Symbol]] = new PerRun(implicit ctx => ScalaNumericValueTypes.map(_.symbol))
   val ScalaValueClasses: PerRun[collection.Set[Symbol]]        = new PerRun(implicit ctx => ScalaValueTypes.map(_.symbol))

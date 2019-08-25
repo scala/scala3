@@ -288,7 +288,7 @@ trait Symbols { this: Context =>
     }
     val tparams = tparamBuf.toList
     val bounds = boundsFn(trefBuf.toList)
-    for ((name, tparam, bound) <- (names, tparams, bounds).zipped)
+    for ((name, tparam, bound) <- names.lazyZip(tparams).lazyZip(bounds))
       tparam.denot = SymDenotation(tparam, owner, name, flags | owner.typeParamCreationFlags, bound)
     tparams
   }
@@ -323,7 +323,7 @@ trait Symbols { this: Context =>
             newNakedSymbol[original.ThisName](original.coord)
         }
       val ttmap1 = ttmap.withSubstitution(originals, copies)
-      (originals, copies).zipped foreach { (original, copy) =>
+      originals.lazyZip(copies) foreach { (original, copy) =>
         val odenot = original.denot
         val oinfo = original.info match {
           case ClassInfo(pre, _, parents, decls, selfInfo) =>

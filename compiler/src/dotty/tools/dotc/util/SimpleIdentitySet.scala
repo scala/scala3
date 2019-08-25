@@ -140,7 +140,7 @@ object SimpleIdentitySet {
     def exists[E >: Elem <: AnyRef](p: E => Boolean): Boolean =
       xs.asInstanceOf[Array[E]].exists(p)
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
-      (z /: xs.asInstanceOf[Array[E]])(f)
+      xs.asInstanceOf[Array[E]].foldLeft(z)(f)
     def toList: List[Elem] = {
       val buf = new mutable.ListBuffer[Elem]
       foreach(buf += _)

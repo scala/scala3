@@ -11,7 +11,7 @@ class Tag(val name: String,
           val children: mutable.Buffer[Node] = mutable.Buffer()) extends Node {
 
     override def mkString(n: Int): String = {
-        Tag.spaces(n) + s"<$name ${attributes.map(_.name + "=" + Tag.unescape(_)).mkString(" ")}>" +
+        Tag.spaces(n) + s"<$name ${attributes.map { case (k,v) => k.name + "=" + Tag.unescape(v) }.mkString(" ")}>" +
             (if(children.isEmpty) "\n"
                 else children.map(_.mkString(n + 4)).mkString("\n", "\n", "\n")) +
         Tag.spaces(n) + s"</$name>"

@@ -349,7 +349,7 @@ object NameKinds {
   val OuterSelectName: NumberedNameKind = new NumberedNameKind(OUTERSELECT, "OuterSelect") {
     def mkString(underlying: TermName, info: ThisInfo) = {
       assert(underlying.isEmpty)
-      info.num + "_<outer>"
+      s"${info.num}_<outer>"
     }
   }
 

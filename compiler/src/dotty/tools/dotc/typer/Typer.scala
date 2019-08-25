@@ -991,13 +991,22 @@ class Typer extends Namer
             pt match {
               case SAMType(sam)
               if !defn.isFunctionType(pt) && mt <:< sam =>
-                if (!isFullyDefined(pt, ForceDegree.all))
-                  ctx.error(ex"result type of lambda is an underspecified SAM type $pt", tree.sourcePos)
-                else if (pt.classSymbol.isOneOf(FinalOrSealed)) {
+                val targetTpe =
+                  if (!isFullyDefined(pt, ForceDegree.all)) {
+                    if (pt.isRef(defn.PartialFunctionClass))
+                      // Replace the underspecified expected type by one based on the closure method type
+                      defn.PartialFunctionOf(mt.firstParamTypes.head, mt.resultType)
+                    else {
+                      ctx.error(ex"result type of lambda is an underspecified SAM type $pt", tree.sourcePos)
+                      pt
+                    }
+                  }
+                  else pt
+                if (pt.classSymbol.isOneOf(FinalOrSealed)) {
                   val offendingFlag = pt.classSymbol.flags & FinalOrSealed
                   ctx.error(ex"lambda cannot implement $offendingFlag ${pt.classSymbol}", tree.sourcePos)
                 }
-                TypeTree(pt)
+                TypeTree(targetTpe)
               case _ =>
                 if (mt.isParamDependent) {
                   throw new java.lang.Error(
@@ -1337,7 +1346,7 @@ class Typer extends Namer
         }
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
       }
-      val paramBounds = (tparams, args).zipped.map {
+      val paramBounds = tparams.lazyZip(args).map {
         case (tparam, TypeBoundsTree(EmptyTree, EmptyTree)) =>
           // if type argument is a wildcard, suppress kind checking since
           // there is no real argument.
@@ -1532,7 +1541,7 @@ class Typer extends Namer
         // that their type parameters are aliases of the class type parameters.
         // See pos/i941.scala
         rhsCtx.gadt.addToConstraint(tparams1.map(_.symbol))
-        (tparams1, sym.owner.typeParams).zipped.foreach { (tdef, tparam) =>
+        tparams1.lazyZip(sym.owner.typeParams).foreach { (tdef, tparam) =>
           val tr = tparam.typeRef
           rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = false)
           rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = true)
@@ -1747,7 +1756,7 @@ class Typer extends Namer
     parents match {
       case p :: _ if p.classSymbol.isRealClass => parents
       case _ =>
-        val pcls = (defn.ObjectClass /: parents)(improve)
+        val pcls = parents.foldLeft(defn.ObjectClass)(improve)
         typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseType pcls)}%, %")
         val first = ctx.typeComparer.glb(defn.ObjectType :: parents.map(_.baseType(pcls)))
         checkFeasibleParent(first, ctx.source.atSpan(span), em" in inferred superclass $first") :: parents
@@ -1931,9 +1940,9 @@ class Typer extends Namer
       val pts =
         if (arity == pt.tupleArity) pt.tupleElementTypes
         else List.fill(arity)(defn.AnyType)
-      val elems = (tree.trees, pts).zipped.map(typed(_, _))
+      val elems = tree.trees.lazyZip(pts).map(typed(_, _))
       if (ctx.mode.is(Mode.Type))
-        (elems :\ (TypeTree(defn.UnitType): Tree))((elemTpt, elemTpts) =>
+        elems.foldRight(TypeTree(defn.UnitType): Tree)((elemTpt, elemTpts) =>
           AppliedTypeTree(TypeTree(defn.PairClass.typeRef), List(elemTpt, elemTpts)))
           .withSpan(tree.span)
       else {
@@ -1943,7 +1952,7 @@ class Typer extends Namer
         val app1 = typed(app, defn.TupleXXLClass.typeRef)
         if (ctx.mode.is(Mode.Pattern)) app1
         else {
-          val elemTpes = (elems, pts).zipped.map((elem, pt) =>
+          val elemTpes = elems.lazyZip(pts).map((elem, pt) =>
             ctx.typeComparer.widenInferred(elem.tpe, pt))
           val resTpe = TypeOps.nestedPairs(elemTpes)
           app1.cast(resTpe)
@@ -2550,7 +2559,7 @@ class Typer extends Namer
         val propFail = propagatedFailure(args)
 
         def issueErrors(): Tree = {
-          (wtp.paramNames, wtp.paramInfos, args).zipped.foreach { (paramName, formal, arg) =>
+          wtp.paramNames.lazyZip(wtp.paramInfos).lazyZip(args).foreach { (paramName, formal, arg) =>
             arg.tpe match {
               case failure: SearchFailureType =>
                 ctx.error(
@@ -2571,7 +2580,7 @@ class Typer extends Namer
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
           if (methPart(tree).symbol.hasDefaultParams && !propFail.isInstanceOf[AmbiguousImplicits]) {
-            val namedArgs = (wtp.paramNames, args).zipped.flatMap { (pname, arg) =>
+            val namedArgs = wtp.paramNames.lazyZip(args).flatMap { (pname, arg) =>
               if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
             tryEither {
@@ -2688,7 +2697,10 @@ class Typer extends Namer
         tree.tpe <:< wildApprox(pt)
         readaptSimplified(Inliner.inlineCall(tree))
       }
-      else if (tree.symbol.isScala2Macro) {
+      else if (tree.symbol.isScala2Macro &&
+               // raw and s are eliminated by the StringInterpolatorOpt phase
+              tree.symbol != defn.StringContext_raw &&
+              tree.symbol != defn.StringContext_s) {
         if (tree.symbol eq defn.StringContext_f) {
           // As scala.StringContext.f is defined in the standard library which
           // we currently do not bootstrap we cannot implement the macro in the library.

@@ -355,7 +355,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
               qual.info.member(DefaultGetterName(sym.name, start + i)).exists)
           } else
             pnames.indices.map(Function.const(false))
-        val params = (pnames, ptypes, defaults).zipped.map((pname, ptype, isDefault) =>
+        val params = pnames.lazyZip(ptypes).lazyZip(defaults).map((pname, ptype, isDefault) =>
           api.MethodParameter.of(pname.toString, apiType(ptype),
             isDefault, api.ParameterModifier.Plain))
         api.ParameterList.of(params.toArray, mt.isImplicitMethod) :: paramLists(restpe, params.length)
@@ -365,7 +365,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
     val tparams = sym.info match {
       case pt: TypeLambda =>
-        (pt.paramNames, pt.paramInfos).zipped.map((pname, pbounds) =>
+        pt.paramNames.lazyZip(pt.paramInfos).map((pname, pbounds) =>
           apiTypeParameter(pname.toString, 0, pbounds.lo, pbounds.hi))
       case _ =>
         Nil

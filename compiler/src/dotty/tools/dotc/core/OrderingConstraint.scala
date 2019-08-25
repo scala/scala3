@@ -301,8 +301,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       val lo = normalizedType(bounds.lo, loBuf, isUpper = false)
       val hi = normalizedType(bounds.hi, hiBuf, isUpper = true)
       current = updateEntry(current, param, bounds.derivedTypeBounds(lo, hi))
-      current = (current /: loBuf)(order(_, _, param))
-      current = (current /: hiBuf)(order(_, param, _))
+      current = loBuf.foldLeft(current)(order(_, _, param))
+      current = hiBuf.foldLeft(current)(order(_, param, _))
       loBuf.clear()
       hiBuf.clear()
       i += 1
@@ -323,8 +323,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       assert(contains(param2), i"$param2")
       val newUpper = param2 :: exclusiveUpper(param2, param1)
       val newLower = param1 :: exclusiveLower(param1, param2)
-      val current1 = (current /: newLower)(upperLens.map(this, _, _, newUpper ::: _))
-      val current2 = (current1 /: newUpper)(lowerLens.map(this, _, _, newLower ::: _))
+      val current1 = newLower.foldLeft(current)(upperLens.map(this, _, _, newUpper ::: _))
+      val current2 = newUpper.foldLeft(current1)(lowerLens.map(this, _, _, newLower ::: _))
       current2
     }
 
@@ -508,7 +508,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     }
 
     def mergeParams(ps1: List[TypeParamRef], ps2: List[TypeParamRef]) =
-      (ps1 /: ps2)((ps1, p2) => if (ps1.contains(p2)) ps1 else p2 :: ps1)
+      ps2.foldLeft(ps1)((ps1, p2) => if (ps1.contains(p2)) ps1 else p2 :: ps1)
 
     // Must be symmetric
     def mergeEntries(e1: Type, e2: Type): Type =
@@ -679,7 +679,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         val assocs =
           for (param <- domainParams)
           yield
-            param.binder.paramNames(param.paramNum) + ": " + entryText(entry(param))
+            s"${param.binder.paramNames(param.paramNum)}: ${entryText(entry(param))}"
         assocs.mkString("\n")
     }
     constrainedText + "\n" + boundsText

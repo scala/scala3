@@ -37,7 +37,7 @@ object Settings {
 
     def update(idx: Int, x: Any): SettingsState =
       if (_wasRead)
-        new SettingsState(values).update(idx, x)
+        new SettingsState(values.toSeq).update(idx, x)
       else {
         values(idx) = x
         this
@@ -94,7 +94,7 @@ object Settings {
     def legalChoices: String =
       if (choices.isEmpty) ""
       else choices match {
-        case r: Range => r.head + ".." + r.last
+        case r: Range => s"${r.head}..${r.last}"
         case xs: List[_] => xs.mkString(", ")
       }
 
@@ -194,7 +194,7 @@ object Settings {
   class SettingGroup {
 
     private[this] val _allSettings = new ArrayBuffer[Setting[_]]
-    def allSettings: Seq[Setting[_]] = _allSettings
+    def allSettings: Seq[Setting[_]] = _allSettings.toSeq
 
     def defaultState: SettingsState = new SettingsState(allSettings map (_.default))
 
@@ -205,10 +205,10 @@ object Settings {
       userSetSettings(state).mkString("(", " ", ")")
 
     private def checkDependencies(state: ArgsSummary): ArgsSummary =
-      (state /: userSetSettings(state.sstate))(checkDependenciesOfSetting)
+      userSetSettings(state.sstate).foldLeft(state)(checkDependenciesOfSetting)
 
     private def checkDependenciesOfSetting(state: ArgsSummary, setting: Setting[_]) =
-      (state /: setting.depends) { (s, dep) =>
+      setting.depends.foldLeft(state) { (s, dep) =>
         val (depSetting, reqValue) = dep
         if (depSetting.valueIn(state.sstate) == reqValue) s
         else s.fail(s"incomplete option ${setting.name} (requires ${depSetting.name})")

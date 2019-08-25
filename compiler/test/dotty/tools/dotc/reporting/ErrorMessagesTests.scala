@@ -1475,18 +1475,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("class Object", parentSym.show)
     }
 
-  @Test def i3187 =
-    checkMessagesAfter(GenBCode.name) {
-      """
-        |package scala
-        |object collection
-      """.stripMargin
-    }.expect { (itcx, messages) =>
-      implicit val ctx: Context = itcx
-
-      assert(ctx.reporter.hasErrors)
-    }
-
   @Test def typeDoubleDeclaration =
     checkMessagesAfter(FrontEnd.name) {
       """

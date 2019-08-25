@@ -585,7 +585,7 @@ object Denotations {
      *  otherwise generate new synthetic names.
      */
     private def mergeParamNames(tp1: LambdaType, tp2: LambdaType): List[tp1.ThisName] =
-      (for ((name1, name2, idx) <- (tp1.paramNames, tp2.paramNames, tp1.paramNames.indices).zipped)
+      (for ((name1, name2, idx) <- tp1.paramNames.lazyZip(tp2.paramNames).lazyZip(tp1.paramNames.indices))
        yield if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx)).toList
 
     /** Normally, `tp1 & tp2`.

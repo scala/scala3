@@ -23,7 +23,7 @@ class Implementation(override val range: CodeRange, expected: List[CodeRange]) e
 
   override def onMarker(marker: CodeMarker): Exec[Unit] = {
     val expectedLocations = expected.map(_.toLocation)
-    val results: Seq[org.eclipse.lsp4j.Location] = server.implementation(marker.toTextDocumentPositionParams).get().asScala
+    val results: Seq[org.eclipse.lsp4j.Location] = server.implementation(marker.toTextDocumentPositionParams).get().asScala.toSeq
 
     assertEquals(expectedLocations.length, results.length)
     expectedLocations.sorted.zip(results.sorted).foreach {

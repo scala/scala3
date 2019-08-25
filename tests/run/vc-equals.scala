@@ -2,7 +2,7 @@ object Test extends App {
 
   class C(val s: Array[Int]) extends AnyVal {
     override def equals(that: Any) = that match {
-      case that: C => s.deep == that.s.deep
+      case that: C => s.toList == that.s.toList
       case _ => false
     }
   }
@@ -22,13 +22,13 @@ object Test extends App {
   trait Eql extends Any {
      def deep: Any
      override def equals(that: Any) = that match {
-      case that: D => deep == that.s.deep
+      case that: D => deep == that.s.toList
       case _ => false
     }
   }
 
   class D(val s: Array[Int]) extends AnyVal with Eql {
-    def deep = s.deep
+    def deep = s.toList
   }
 
   def test2() = {

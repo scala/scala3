@@ -97,7 +97,7 @@ private[comment] final class WikiParser(
         line = listLine(indent, style)
       }
       val constructor = listStyles(style)
-      constructor(lines)
+      constructor(lines.toList)
     }
 
     val indent = countWhitespace
@@ -370,7 +370,7 @@ private[comment] final class WikiParser(
 
     // maxSkip - size of the longest common whitespace prefix of non-empty lines
     val nonEmptyLines = lines.filter(_.trim.nonEmpty)
-    val maxSkip = if (nonEmptyLines.isEmpty) 0 else nonEmptyLines.map(line => line.prefixLength(_ == ' ')).min
+    val maxSkip = if (nonEmptyLines.isEmpty) 0 else nonEmptyLines.map(line => line.takeWhile(_ == ' ').length).min
 
     // remove common whitespace prefix
     lines.map(line => if (line.trim.nonEmpty) line.substring(maxSkip) else line).mkString("\n")

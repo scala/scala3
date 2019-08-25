@@ -212,8 +212,8 @@ object Phases {
         this.squashedPhases = this.phases
       }
 
-      config.println(s"Phases = ${phases.deep}")
-      config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.deep}")
+      config.println(s"Phases = ${phases.toList}")
+      config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
     }
 
     private[this] var myTyperPhase: Phase = _

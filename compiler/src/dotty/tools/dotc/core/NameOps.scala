@@ -271,7 +271,7 @@ object NameOps {
     }
 
     def unmangle(kinds: List[NameKind]): N = {
-      val unmangled = (name /: kinds)(_.unmangle(_))
+      val unmangled = kinds.foldLeft(name)(_.unmangle(_))
       if (unmangled eq name) name else unmangled.unmangle(kinds)
     }
   }

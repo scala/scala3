@@ -133,7 +133,7 @@ trait NamerContextOps { this: Context =>
   /** The method type corresponding to given parameters and result type */
   def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(implicit ctx: Context): Type = {
     val monotpe =
-      (valueParamss :\ resultType) { (params, resultType) =>
+      valueParamss.foldRight(resultType) { (params, resultType) =>
         val (isContextual, isImplicit, isErased) =
           if (params.isEmpty) (false, false, false)
           else (params.head.is(Given), params.head.is(Implicit), params.head.is(Erased))
@@ -720,7 +720,7 @@ class Namer { typer: Typer =>
 
     stats.foreach(expand)
     mergeCompanionDefs()
-    val ctxWithStats = (ctx /: stats) ((ctx, stat) => indexExpanded(stat)(ctx))
+    val ctxWithStats = stats.foldLeft(ctx)((ctx, stat) => indexExpanded(stat)(ctx))
     createCompanionLinks(ctxWithStats)
     ctxWithStats
   }
@@ -1248,7 +1248,7 @@ class Namer { typer: Typer =>
           // TODO: Look only at member of supertype instead?
           lazy val schema = paramFn(WildcardType)
           val site = sym.owner.thisType
-          ((NoType: Type) /: sym.owner.info.baseClasses.tail) { (tp, cls) =>
+          sym.owner.info.baseClasses.tail.foldLeft(NoType: Type) { (tp, cls) =>
             def instantiatedResType(info: Type, tparams: List[Symbol], paramss: List[List[Symbol]]): Type = info match {
               case info: PolyType =>
                 if (info.paramNames.length == typeParams.length)

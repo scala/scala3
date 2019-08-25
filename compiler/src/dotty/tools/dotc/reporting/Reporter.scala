@@ -309,12 +309,12 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   /** Returns a string meaning "n elements". */
   protected def countString(n: Int, elements: String): String = n match {
-    case 0 => "no " + elements + "s"
-    case 1 => "one " + elements
-    case 2 => "two " + elements + "s"
-    case 3 => "three " + elements + "s"
-    case 4 => "four " + elements + "s"
-    case _ => n + " " + elements + "s"
+    case 0 => s"no ${elements}s"
+    case 1 => s"one ${elements}s"
+    case 2 => s"two ${elements}s"
+    case 3 => s"three ${elements}s"
+    case 4 => s"four ${elements}s"
+    case _ => s"$n ${elements}s"
   }
 
   /** Should this diagnostic not be reported at all? */

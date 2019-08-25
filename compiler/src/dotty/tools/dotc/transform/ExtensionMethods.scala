@@ -15,6 +15,7 @@ import SymDenotations._, Symbols._, StdNames._, Denotations._
 import TypeErasure.{ valueErasure, ErasedValueType }
 import NameKinds.{ExtMethName, UniqueExtMethName}
 import Decorators._
+import TypeUtils._
 
 /**
  * Perform Step 1 in the inline classes SIP: Creates extension methods for all
@@ -131,8 +132,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
     else NoSymbol
 
   private def createExtensionMethod(imeth: Symbol, staticClass: Symbol)(implicit ctx: Context): TermSymbol = {
-    val extensionName = extensionNames(imeth).head.toTermName
-    val extensionMeth = ctx.newSymbol(staticClass, extensionName,
+    val extensionMeth = ctx.newSymbol(staticClass, extensionName(imeth),
       (imeth.flags | Final) &~ (Override | Protected | AbsOverride),
       fullyParameterizedType(imeth.info, imeth.owner.asClass),
       privateWithin = imeth.privateWithin, coord = imeth.coord)
@@ -180,40 +180,9 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
 object ExtensionMethods {
   val name: String = "extmethods"
 
-  /** Generate stream of possible names for the extension version of given instance method `imeth`.
-   *  If the method is not overloaded, this stream consists of just "imeth$extension".
-   *  If the method is overloaded, the stream has as first element "imeth$extenionX", where X is the
-   *  index of imeth in the sequence of overloaded alternatives with the same name. This choice will
-   *  always be picked as the name of the generated extension method.
-   *  After this first choice, all other possible indices in the range of 0 until the number
-   *  of overloaded alternatives are returned. The secondary choices are used to find a matching method
-   *  in `extensionMethod` if the first name has the wrong type. We thereby gain a level of insensitivity
-   *  of how overloaded types are ordered between phases and picklings.
-   */
-  private def extensionNames(imeth: Symbol)(implicit ctx: Context): Stream[Name] = {
-    val decl = imeth.owner.info.decl(imeth.name)
-
-    /** No longer needed for Dotty, as we are more disciplined with scopes now.
-    // Bridge generation is done at phase `erasure`, but new scopes are only generated
-    // for the phase after that. So bridges are visible in earlier phases.
-    //
-    // `info.member(imeth.name)` filters these out, but we need to use `decl`
-    // to restrict ourselves to members defined in the current class, so we
-    // must do the filtering here.
-    val declTypeNoBridge = decl.filter(sym => !sym.isBridge).tpe
-    */
-    decl match {
-      case decl: MultiDenotation =>
-        val alts = decl.alternatives
-        val index = alts indexOf imeth.denot
-        assert(index >= 0, alts + " does not contain " + imeth)
-        def altName(index: Int) = UniqueExtMethName(imeth.name.asTermName, index)
-        altName(index) #:: ((0 until alts.length).toStream filter (index != _) map altName)
-      case decl =>
-        assert(decl.exists, imeth.name + " not found in " + imeth.owner + "'s decls: " + imeth.owner.info.decls)
-        Stream(ExtMethName(imeth.name.asTermName))
-    }
-  }
+  /** Name of the extension method that corresponds to given instance method `meth`. */
+  def extensionName(imeth: Symbol)(implicit ctx: Context): TermName =
+    ExtMethName(imeth.name.asTermName)
 
   /** Return the extension method that corresponds to given instance method `meth`. */
   def extensionMethod(imeth: Symbol)(implicit ctx: Context): TermSymbol =
@@ -221,22 +190,22 @@ object ExtensionMethods {
       // FIXME use toStatic instead?
       val companion = imeth.owner.companionModule
       val companionInfo = companion.info
-      val candidates = extensionNames(imeth) map (companionInfo.decl(_).symbol) filter (_.exists)
-      val matching = candidates filter (c => FullParameterization.memberSignature(c.info) == imeth.signature)
+      val candidates = companionInfo.decl(extensionName(imeth)).alternatives
+      val matching =
+        // See the documentation of `memberSignature` to understand why `.stripPoly.ensureMethodic` is needed here.
+        candidates filter (c => FullParameterization.memberSignature(c.info) == imeth.info.stripPoly.ensureMethodic.signature)
       assert(matching.nonEmpty,
        i"""no extension method found for:
           |
-          |  $imeth:${imeth.info.show} with signature ${imeth.signature} in ${companion.moduleClass}
+          |  $imeth:${imeth.info.show} with signature ${imeth.info.signature} in ${companion.moduleClass}
           |
           | Candidates:
           |
-          | ${candidates.map(c => c.name + ":" + c.info.show).mkString("\n")}
+          | ${candidates.map(c => s"${c.name}:${c.info.show}").mkString("\n")}
           |
           | Candidates (signatures normalized):
           |
-          | ${candidates.map(c => c.name + ":" + c.info.signature + ":" + FullParameterization.memberSignature(c.info)).mkString("\n")}
-          |
-          | Eligible Names: ${extensionNames(imeth).mkString(",")}""")
-      matching.head.asTerm
+          | ${candidates.map(c => s"${c.name}:${c.info.signature}:${FullParameterization.memberSignature(c.info)}").mkString("\n")}""")
+      matching.head.symbol.asTerm
     }
 }

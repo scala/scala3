@@ -177,7 +177,7 @@ object DesugarEnums {
     parentTypes.head match {
       case parent: RefTree if parent.name == enumClass.name =>
         // need a widen method to compute correct type parameters for enum base class
-        val widenParamType = (appliedEnumRef /: parentTypes.tail)(makeAndType)
+        val widenParamType = parentTypes.tail.foldLeft(appliedEnumRef)(makeAndType)
         val widenParam = makeSyntheticParameter(tpt = widenParamType)
         val widenDef = DefDef(
           name = s"${cdef.name}$$to$$${enumClass.name}".toTermName,

@@ -49,7 +49,7 @@ object Texts {
           case Vertical(_) => throw new IllegalArgumentException("Unexpected Vertical.appendToLastLine")
         }
       case Fluid(relems) =>
-        (this /: relems.reverse)(_ appendToLastLine _)
+        relems.reverse.foldLeft(this)(_ appendToLastLine _)
       case Vertical(_) => throw new IllegalArgumentException("Unexpected Text.appendToLastLine(Vertical(...))")
     }
 
@@ -62,7 +62,7 @@ object Texts {
       else if (that.isVertical) appendIndented(that)(width)
       else if (this.isVertical) Fluid(that.layout(width) :: this.relems)
       else if (that.remaining(width - lengthWithoutAnsi(lastLine)) >= 0) appendToLastLine(that)
-      else if (that.isSplittable) (this /: that.relems.reverse)(_.append(width)(_))
+      else if (that.isSplittable) that.relems.reverse.foldLeft(this)(_.append(width)(_))
       else appendIndented(that)(width)
     }
 
@@ -73,7 +73,7 @@ object Texts {
       case Str(s, _) =>
         this
       case Fluid(relems) =>
-        ((Str(""): Text) /: relems.reverse)(_.append(width)(_))
+        relems.reverse.foldLeft(Str(""): Text)(_.append(width)(_))
       case Vertical(relems) =>
         Vertical(relems map (_ layout width))
     }
@@ -125,7 +125,7 @@ object Texts {
 
     def maxLine: Int = this match {
       case Str(_, lines) => lines.end
-      case _ => (-1 /: relems)((acc, relem) => acc max relem.maxLine)
+      case _ => relems.foldLeft(-1)((acc, relem) => acc max relem.maxLine)
     }
 
     def mkString(width: Int, withLineNumbers: Boolean): String = {

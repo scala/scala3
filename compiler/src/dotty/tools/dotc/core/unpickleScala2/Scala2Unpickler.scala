@@ -348,16 +348,27 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def atEnd = readIndex == end
 
     def readExtSymbol(): Symbol = {
-      val name = readNameRef().decode
+      val nameRef = readNameRef()
+      var name = nameRef.decode
+
+      // If the symbol tag is EXTMODCLASSref, then we know that the method names
+      // mangling do not make sense, but in general we don't know what kind of
+      // symbol we're reading at this point, so we don't know which unmanglings
+      // are safe to apply. Empirically, we at least need to unmangle default
+      // getter names, since they're used to encode the default parameters of
+      // annotations, but more might be needed.
+      if (tag != EXTMODCLASSref)
+        name = name.unmangle(Scala2MethodNameKinds)
+
       val owner = if (atEnd) loadingMirror.RootClass else readSymbolRef()
 
       def adjust(denot: Denotation) = {
         val denot1 = denot.disambiguate(p)
         val sym = denot1.symbol
         if (denot.exists && !denot1.exists) { // !!!DEBUG
-          val alts = denot.alternatives map (d => d + ":" + d.info + "/" + d.signature)
+          val alts = denot.alternatives map (d => s"$d:${d.info}/${d.signature}")
           System.err.println(s"!!! disambiguation failure: $alts")
-          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => d + ":" + d.info + "/" + d.signature)
+          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => s"$d:${d.info}/${d.signature}")
           System.err.println(s"!!! all members: $members")
         }
         if (tag == EXTref) sym else sym.moduleClass
@@ -521,9 +532,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         else if (isModuleClassRoot)
           completeRoot(
             moduleClassRoot, rootClassUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule, infoRef), privateWithin)
-        else if (name == tpnme.REFINE_CLASS)
-          // create a type alias instead
-          ctx.newSymbol(owner, name, flags, localMemberUnpickler, privateWithin, coord = start)
         else {
           def completer(cls: Symbol) = {
             val unpickler = new ClassUnpickler(infoRef) withDecls symScope(cls)
@@ -569,7 +577,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val tp = at(inforef, () => readType()(ctx))
 
         denot match {
-          case denot: ClassDenotation =>
+          case denot: ClassDenotation if !isRefinementClass(denot.symbol) =>
             val selfInfo = if (atEnd) NoType else readTypeRef()
             setClassInfo(denot, tp, fromScala2 = true, selfInfo)
           case denot =>
@@ -762,19 +770,17 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case TYPEBOUNDStpe =>
         TypeBounds(readTypeRef(), readTypeRef())
       case REFINEDtpe =>
-        val clazz = readSymbolRef()
+        val clazz = readSymbolRef().asClass
         val decls = symScope(clazz)
         symScopes(clazz) = EmptyScope // prevent further additions
         val parents = until(end, () => readTypeRef())
         val parent = parents.reduceLeft(AndType(_, _))
         if (decls.isEmpty) parent
         else {
-          def subst(info: Type, rt: RecType) =
-            if (clazz.isClass) info.substThis(clazz.asClass, rt.recThis)
-            else info // turns out some symbols read into `clazz` are not classes, not sure why this is the case.
+          def subst(info: Type, rt: RecType) = info.substThis(clazz.asClass, rt.recThis)
           def addRefinement(tp: Type, sym: Symbol) = RefinedType(tp, sym.name, sym.info)
-          val refined = (parent /: decls.toList)(addRefinement)
-          RecType.closeOver(rt => subst(refined, rt))
+          val refined = decls.toList.foldLeft(parent)(addRefinement)
+          RecType.closeOver(rt => refined.substThis(clazz, rt.recThis))
         }
       case CLASSINFOtpe =>
         val clazz = readSymbolRef()

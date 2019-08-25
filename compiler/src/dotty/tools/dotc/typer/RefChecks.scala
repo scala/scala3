@@ -181,7 +181,7 @@ object RefChecks {
 
     def printMixinOverrideErrors(): Unit = {
       mixinOverrideErrors.toList match {
-        case List() =>
+        case Nil =>
         case List(MixinOverrideError(_, msg)) =>
           ctx.error(msg, clazz.sourcePos)
         case MixinOverrideError(member, msg) :: others =>
@@ -364,7 +364,7 @@ object RefChecks {
         else if (member.owner != clazz && other.owner != clazz &&
                  !(other.owner derivesFrom member.owner))
           emitOverrideError(
-            clazz + " inherits conflicting members:\n  "
+            s"$clazz inherits conflicting members:\n  "
               + infoStringWithLocation(other) + "  and\n  " + infoStringWithLocation(member)
               + "\n(Note: this can be resolved by declaring an override in " + clazz + ".)")
         else
@@ -457,8 +457,8 @@ object RefChecks {
       def abstractClassError(mustBeMixin: Boolean, msg: String): Unit = {
         def prelude = (
           if (clazz.isAnonymousClass || clazz.is(Module)) "object creation impossible"
-          else if (mustBeMixin) clazz + " needs to be a mixin"
-          else clazz + " needs to be abstract") + ", since"
+          else if (mustBeMixin) s"$clazz needs to be a mixin"
+          else s"$clazz needs to be abstract") + ", since"
 
         if (abstractErrors.isEmpty) abstractErrors ++= List(prelude, msg)
         else abstractErrors += msg
@@ -857,7 +857,7 @@ object RefChecks {
   class LevelInfo(outerLevelAndIndex: LevelAndIndex, stats: List[Tree])(implicit ctx: Context)
   extends OptLevelInfo {
     override val levelAndIndex: LevelAndIndex =
-      ((outerLevelAndIndex, 0) /: stats) {(mi, stat) =>
+      stats.foldLeft(outerLevelAndIndex, 0) {(mi, stat) =>
         val (m, idx) = mi
         val m1 = stat match {
           case stat: MemberDef => m.updated(stat.symbol, (this, idx))
@@ -988,7 +988,7 @@ class RefChecks extends MiniPhase { thisPhase =>
 
   override def transformApply(tree: Apply)(implicit ctx: Context): Apply = {
     if (isSelfConstrCall(tree)) {
-      assert(currentLevel.isInstanceOf[LevelInfo], ctx.owner + "/" + i"$tree")
+      assert(currentLevel.isInstanceOf[LevelInfo], s"${ctx.owner}/" + i"$tree")
       val level = currentLevel.asInstanceOf[LevelInfo]
       if (level.maxIndex > 0) {
         // An implementation restriction to avoid VerifyErrors and lazyvals mishaps; see SI-4717

@@ -171,10 +171,10 @@ class CheckRealizable(implicit ctx: Context) {
     val baseProblems =
       tp.baseClasses.map(_.baseTypeOf(tp)).flatMap(baseTypeProblems)
 
-    ((((Realizable: Realizability)
-      /: memberProblems)(_ andAlso _)
-      /: refinementProblems)(_ andAlso _)
-      /: baseProblems)(_ andAlso _)
+    baseProblems.foldLeft(
+      refinementProblems.foldLeft(
+        memberProblems.foldLeft(
+          Realizable: Realizability)(_ andAlso _))(_ andAlso _))(_ andAlso _)
   }
 
   /** `Realizable` if all of `tp`'s non-strict fields have realizable types,
@@ -199,7 +199,7 @@ class CheckRealizable(implicit ctx: Context) {
       // Reason: An embedded field could well be nullable, which means it
       // should not be part of a path and need not be checked; but we cannot recognize
       // this situation until we have a typesystem that tracks nullability.
-      ((Realizable: Realizability) /: tp.fields)(checkField)
+      tp.fields.foldLeft(Realizable: Realizability)(checkField)
     else
       Realizable
   }

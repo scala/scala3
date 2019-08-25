@@ -10,7 +10,7 @@ object typers {
 
   object Inference {
 
-    for ((name, n) <- (names, ints).zipped)
+    for ((name, n) <- names.lazyZip(ints))
       println(name.length + n)
 
     def double(x: Char): String = s"$x$x"

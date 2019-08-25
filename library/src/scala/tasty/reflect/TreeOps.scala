@@ -196,7 +196,7 @@ trait TreeOps extends Core {
      *  `tree (argss(0)) ... (argss(argss.length -1))`
      */
     def appliedToArgss(argss: List[List[Term]]) given (ctx: Context): Term =
-      ((self: Term) /: argss)(Apply(_, _))
+      argss.foldLeft(self: Term)(Apply(_, _))
 
     /** The current tree applied to (): `tree()` */
     def appliedToNone given (ctx: Context): Apply = appliedToArgs(Nil)

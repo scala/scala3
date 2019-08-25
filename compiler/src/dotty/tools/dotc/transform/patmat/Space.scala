@@ -288,7 +288,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   import tpd._
   import SpaceEngine._
 
-  private val scalaSeqFactoryClass = ctx.requiredClass("scala.collection.generic.SeqFactory")
+  private val scalaSeqFactoryClass = ctx.requiredClass("scala.collection.SeqFactory")
   private val scalaListType        = ctx.requiredClassRef("scala.collection.immutable.List")
   private val scalaNilType         = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   private val scalaConsType        = ctx.requiredClassRef("scala.collection.immutable.::")

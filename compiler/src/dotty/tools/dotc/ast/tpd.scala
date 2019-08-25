@@ -251,7 +251,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
             makeSym(origInfo)
         }
 
-        val params = (tp.paramNames, tp.paramInfos).zipped.map(valueParam)
+        val params = tp.paramNames.lazyZip(tp.paramInfos).map(valueParam)
         val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.termRef)))
         (params :: paramss, rtp)
       case tp => (Nil, tp.widenExpr)
@@ -295,7 +295,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       for (tparam <- cls.typeParams if !(bodyTypeParams contains tparam))
       yield TypeDef(tparam)
     val findLocalDummy = FindLocalDummyAccumulator(cls)
-    val localDummy = ((NoSymbol: Symbol) /: body)(findLocalDummy.apply)
+    val localDummy = body.foldLeft(NoSymbol: Symbol)(findLocalDummy.apply)
       .orElse(ctx.newLocalDummy(cls))
     val impl = untpd.Template(constr, parents, Nil, selfType, newTypeParams ++ body)
       .withType(localDummy.termRef)
@@ -328,7 +328,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (fwdMeth.allOverriddenSymbols.exists(!_.is(Deferred))) fwdMeth.setFlag(Override)
       polyDefDef(fwdMeth, tprefs => prefss => ref(fn).appliedToTypes(tprefs).appliedToArgss(prefss))
     }
-    val forwarders = (fns, methNames).zipped.map(forwarder)
+    val forwarders = fns.lazyZip(methNames).map(forwarder)
     val cdef = ClassDef(cls, DefDef(constr), forwarders)
     Block(cdef :: Nil, New(cls.typeRef, Nil))
   }
@@ -873,7 +873,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  `tree (argss(0)) ... (argss(argss.length -1))`
      */
     def appliedToArgss(argss: List[List[Tree]])(implicit ctx: Context): Tree =
-      ((tree: Tree) /: argss)(Apply(_, _))
+      argss.foldLeft(tree: Tree)(Apply(_, _))
 
     /** The current tree applied to (): `tree()` */
     def appliedToNone(implicit ctx: Context): Apply = appliedToArgs(Nil)

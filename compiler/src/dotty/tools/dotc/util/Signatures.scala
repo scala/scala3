@@ -84,12 +84,10 @@ object Signatures {
     def toParamss(tp: MethodType)(implicit ctx: Context): List[List[Param]] = {
       val rest = tp.resType match {
         case res: MethodType =>
-          // Hide parameter lists consisting only of CanBuildFrom or DummyImplicit,
-          // we can remove the CanBuildFrom special-case once we switch to the 2.13 standard library.
+          // Hide parameter lists consisting only of DummyImplicit,
           if (res.resultType.isParameterless &&
               res.isImplicitMethod &&
               res.paramInfos.forall(info =>
-                info.classSymbol.fullName.toString == "scala.collection.generic.CanBuildFrom" ||
                 info.classSymbol.derivesFrom(ctx.definitions.DummyImplicitClass)))
             Nil
           else
