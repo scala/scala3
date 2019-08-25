@@ -850,6 +850,9 @@ object Build {
     enablePlugins(MyScalaJSPlugin).
     dependsOn(`dotty-library-bootstrappedJS`).
     settings(
+      // Required to run Scala.js tests.
+      fork in Test := false,
+
       scalaJSUseMainModuleInitializer := true,
     )
 
@@ -865,6 +868,9 @@ object Build {
     dependsOn(`dotty-library-bootstrappedJS`).
     settings(
       scalacOptions --= Seq("-Xfatal-warnings", "-deprecation"),
+
+      // Required to run Scala.js tests.
+      fork in Test := false,
 
       sourceDirectory in fetchScalaJSSource := target.value / s"scala-js-src-$scalaJSVersion",
 
