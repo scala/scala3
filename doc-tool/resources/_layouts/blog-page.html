@@ -1,30 +1,34 @@
 ---
 layout: main
 ---
-<main>
-    <div id="post-title">
-        <h3 id="post-date">
-            {{ page.date | date: '%B %d, %Y' }}
-        </h3>
-        <h1 id="main-title">{{ page.title }}</h1>
+<main class="container">
+    <header>
+        <h1 class="post-title">{{ page.title }}</h1>
+        <div class="byline">
+            <time class="date">
+                <i class="far fa-calendar-alt"></i>
+                {{ page.date | date: "%Y-%m-%d" }}
+            </time>
+            <span class="author">
+                <i class="fas fa-pen-nib"></i>
+                {{ page.author }}
+            </span>
+        </div>
         {% if page.subTitle %}
-        <h2 id="sub-title">{{ page.subTitle }}</h2>
+        <div class="subtitle">
+            {{ page.subTitle }}
+        </div>
         {% endif %}
-    </div>
+    </header>
 
-    <div id="blog-post-container">
-        {{ content }}
-    </div>
+    {{ content }}
 
-    {% if page.author %}
-    <div id="post-footer">
-        {% if page.authorImg %}
-        <img id="author-image" src="{{ site.baseurl }}/{{ page.authorImg }}">
-        {% endif %}
-        <span id="post-author">
-            {% if page.authorImg == null %}- {% endif %}{{ page.author }}
+    {% if page.author and page.authorImg %}
+    <footer>
+        <img id="author-img" src="{{ site.baseurl }}/{{ page.authorImg }}">
+        <span id="author-signature">
+            {{ page.author }}
         </span>
-    </div>
+    </footer>
     {% endif %}
-
 </main>

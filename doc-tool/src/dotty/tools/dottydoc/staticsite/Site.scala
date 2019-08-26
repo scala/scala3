@@ -446,6 +446,8 @@ object Site {
   val markdownOptions: DataHolder =
     new MutableDataSet()
       .setFrom(ParserEmulationProfile.KRAMDOWN.getOptions)
+      .set(AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
+      .set(AnchorLinkExtension.ANCHORLINKS_ANCHOR_CLASS, "anchor")
       .set(Parser.EXTENSIONS, Arrays.asList(
         TablesExtension.create(),
         TaskListExtension.create(),
