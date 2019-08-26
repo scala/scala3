@@ -372,6 +372,7 @@ case class Site(
       .toMap
 
     val defaultLayouts: Map[String, Layout] = Map(
+      "base" -> "/_layouts/base.html",
       "main" -> "/_layouts/main.html",
       "search" -> "/_layouts/search.html",
       "doc-page" -> "/_layouts/doc-page.html",
