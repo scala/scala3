@@ -129,7 +129,9 @@ class Definitions {
           ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: Nil, decls)
       }
     }
-    newClassSymbol(ScalaPackageClass, name, Trait | NoInits, completer)
+    val flags0 = Trait | NoInits
+    val flags = if (name.isImplicitFunction) flags0 | Final else flags0
+    newClassSymbol(ScalaPackageClass, name, flags, completer)
   }
 
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
