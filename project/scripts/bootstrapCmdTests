@@ -9,7 +9,7 @@ source $(dirname $0)/cmdTestsCommon.inc.sh
 "$SBT" "dotty-bench-bootstrapped/jmh:run 1 1 -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
 
 echo "testing scala.quoted.Expr.run from sbt dotr"
-"$SBT" ";dotty-compiler-bootstrapped/dotc tests/run-staging/quote-run.scala; dotty-compiler-bootstrapped/dotr -with-compiler Test" > "$tmp"
+"$SBT" ";dotty-compiler-bootstrapped/dotc -with-compiler tests/run-staging/quote-run.scala; dotty-compiler-bootstrapped/dotr -with-compiler Test" > "$tmp"
 grep -qe "val a: scala.Int = 3" "$tmp"
 
 
