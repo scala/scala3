@@ -29,7 +29,7 @@ object Quoted {
   class patternType extends Annotation
 
   /** A type pattern that must be aproximated from above */
-  class formAbove extends Annotation
+  class fromAbove extends Annotation
 
   /** Artifact of pickled type splices
    *

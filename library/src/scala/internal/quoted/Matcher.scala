@@ -26,7 +26,7 @@ private[quoted] object Matcher {
       if (hasTypeSplices) {
         implicit val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
         val matchings = scrutineeTerm.underlyingArgument =#= patternTerm.underlyingArgument
-        // After matching and doing all subtype check, we have to aproximate all the type bindings
+        // After matching and doing all subtype checks, we have to aproximate all the type bindings
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performace
@@ -46,7 +46,7 @@ private[quoted] object Matcher {
       if (hasTypeSplices) {
         implicit val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
         val matchings = scrutineeTypeTree =#= patternTypeTree
-        // After matching and doing all subtype check, we have to aproximate all the type bindings
+        // After matching and doing all subtype checks, we have to aproximate all the type bindings
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performace
@@ -75,8 +75,8 @@ private[quoted] object Matcher {
     }
 
     private def isFromAboveAnnotation(tree: Tree): Boolean = tree match {
-      case New(tpt) => tpt.symbol == internal.Definitions_InternalQuoted_formAboveAnnot
-      case annot => annot.symbol.owner == internal.Definitions_InternalQuoted_formAboveAnnot
+      case New(tpt) => tpt.symbol == internal.Definitions_InternalQuoted_fromAboveAnnot
+      case annot => annot.symbol.owner == internal.Definitions_InternalQuoted_fromAboveAnnot
     }
 
     /** Check that all trees match with `mtch` and concatenate the results with && */

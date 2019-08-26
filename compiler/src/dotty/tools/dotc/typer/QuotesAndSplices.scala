@@ -230,7 +230,7 @@ trait QuotesAndSplices {
 
       private def transformTypeBindingTypeDef(tdef: TypeDef, buff: mutable.Builder[Tree, List[Tree]])(implicit ctx: Context): Tree = {
         if (variance == -1)
-          tdef.symbol.addAnnotation(Annotation(New(ref(defn.InternalQuoted_formAboveAnnot.typeRef)).withSpan(tdef.span)))
+          tdef.symbol.addAnnotation(Annotation(New(ref(defn.InternalQuoted_fromAboveAnnot.typeRef)).withSpan(tdef.span)))
         val bindingType = getBinding(tdef.symbol).symbol.typeRef
         val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)
         assert(tdef.name.startsWith("$"))
