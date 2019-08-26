@@ -801,6 +801,7 @@ class TreeUnpickler(reader: TastyReader,
           ValDef(tpt)
         case TYPEDEF | TYPEPARAM =>
           if (sym.isClass) {
+            sym.owner.ensureCompleted() // scalacLinkedClass uses unforcedDecls. Make sure it does not miss anything.
             val companion = sym.scalacLinkedClass
 
             // Is the companion defined in the same Tasty file as `sym`?
