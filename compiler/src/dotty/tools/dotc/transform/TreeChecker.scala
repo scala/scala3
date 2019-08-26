@@ -174,17 +174,13 @@ class TreeChecker extends Phase with SymTransformer {
 
     /** The following invariant holds:
      *
-     *  patBoundSyms.contains(sym) <=> patternBound(sym)
+     *  patBoundSyms.contains(sym) <=> sym.isPatternBound
      */
-    def patternBound(sym: Symbol)(implicit ctx: Context): Boolean =
-      (sym.isType && !sym.isClass && sym.isOneOf(Case)) ||
-        (sym.isTerm && sym.isOneOf(Case, butNot = Enum | Module))
-
     def withPatSyms[T](syms: List[Symbol])(op: => T)(implicit ctx: Context): T = {
       syms.foreach { sym =>
         assert(
-          patternBound(sym),
-          "patBoundSyms.contains(sym) => patternBound(sym) is broken." +
+          sym.isPatternBound,
+          "patBoundSyms.contains(sym) => sym.isPatternBound is broken." +
           i" Pattern bound symbol $sym has incorrect flags: " + sym.flagsString + ", line " + sym.sourcePos.line
         )
       }
@@ -214,8 +210,8 @@ class TreeChecker extends Phase with SymTransformer {
 
         if (!ctx.phase.patternTranslated)
           assert(
-            !patternBound(sym) || patBoundSyms.contains(sym),
-            i"patternBound(sym) => patBoundSyms.contains(sym) is broken, sym = $sym, line " + tree.sourcePos.line
+            !sym.isPatternBound || patBoundSyms.contains(sym),
+            i"sym.isPatternBound => patBoundSyms.contains(sym) is broken, sym = $sym, line " + tree.sourcePos.line
           )
       }
 

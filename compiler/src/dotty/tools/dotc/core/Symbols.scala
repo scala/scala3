@@ -540,6 +540,11 @@ object Symbols {
       d != null && d.flagsUNSAFE.is(Private)
     }
 
+    /** Is the symbol a pattern bound symbol?
+     */
+    final def isPatternBound(implicit ctx: Context): Boolean =
+      !isClass && this.is(Case, butNot = Enum | Module)
+
     /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
     final def signature(implicit ctx: Context): Signature =
       if (lastDenot != null && (lastDenot.isCompleted || lastDenot.is(Method)))
