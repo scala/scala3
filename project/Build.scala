@@ -639,7 +639,6 @@ object Build {
     val scalaLib = findArtifactPath(externalDeps, "scala-library")
     val dottyLib = jars("dotty-library")
     val dottyCompiler = jars("dotty-compiler")
-    val dottyStaging = jars("dotty-staging")
     val args0: List[String] = spaceDelimited("<arg>").parsed.toList
     val decompile = args0.contains("-decompile")
     val printTasty = args0.contains("-print-tasty")
@@ -663,6 +662,7 @@ object Build {
         log.error("-with-compiler should only be used with a bootstrapped compiler")
       }
       val dottyInterfaces = jars("dotty-interfaces")
+      val dottyStaging = jars("dotty-staging")
       val asm = findArtifactPath(externalDeps, "scala-asm")
       extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging)
     }
