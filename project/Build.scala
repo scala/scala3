@@ -587,8 +587,9 @@ object Build {
           val args1 = args.filter(_ != "-with-compiler")
           val asm = findArtifactPath(externalDeps, "scala-asm")
           val dottyCompiler = jars("dotty-compiler")
+          val dottyStaging = jars("dotty-staging")
           val dottyInterfaces = jars("dotty-interfaces")
-          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm).mkString(File.pathSeparator)))
+          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging).mkString(File.pathSeparator)))
         } else run(args)
       },
 
