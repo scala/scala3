@@ -35,17 +35,8 @@ object TestConfiguration {
     Properties.dottyCompiler
   ))
 
-  val withStagingClasspath = mkClasspath(List(
-    Properties.scalaLibrary,
-    Properties.scalaAsm,
-    Properties.jlineTerminal,
-    Properties.jlineReader,
-    Properties.compilerInterface,
-    Properties.dottyInterfaces,
-    Properties.dottyLibrary,
-    Properties.dottyStaging,
-    Properties.dottyCompiler
-  ))
+  val withStagingClasspath =
+    withCompilerClasspath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
 
   def mkClasspath(classpaths: List[String]): String =
     classpaths.map({ p =>
