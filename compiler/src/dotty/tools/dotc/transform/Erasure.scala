@@ -388,7 +388,7 @@ object Erasure {
         case Block(_, tpt) => tpt // erase type aliases (statements) from type block
         case tpt => tpt
       }
-      val tpt2 = promote(tpt1)
+      val tpt2 = typedType(tpt1)
       val expr1 = typed(expr, tpt2.tpe)
       assignType(untpd.cpy.Typed(tree)(expr1, tpt2), tpt2)
     }
@@ -735,6 +735,9 @@ object Erasure {
 
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): Tree =
       EmptyTree
+
+    override def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree =
+      typed(tree.arg, pt)
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
       val stats1 =
