@@ -21,7 +21,7 @@ main.container {
 .byline .author {
   display: block;
 }
-h1:not(.post-title) {
+h1:not(.above-byline) {
   margin-bottom: 20px;
 }
 h1 + .byline {

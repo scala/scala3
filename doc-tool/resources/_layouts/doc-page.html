@@ -1,15 +1,16 @@
 ---
 layout: main
-extraCSS:
-    - css/api-page.css
 ---
-<main>
-    <h1 id="doc-page-title">{{ page.title }}</h1>
-    <a id="edit-on-github" href="{{ site.projectUrl }}/edit/master/{{ site.root }}/{{ page.url }}">
-        Edit this page on GitHub
-    </a>
+<main class="container">
+    <header>
+        <h1 class="above-byline">{{ page.title }}</h1>
+        <div class="byline">
+            <a href="{{ site.projectUrl }}/edit/master/{{ site.root }}/{{ page.url }}">
+                <i class="fab fa-github"></i>
+                Edit this page on GitHub
+            </a>
+        </div>
+    </header>
     <hr/>
-    <div id="doc-page-container">
-        {{ content }}
-    </div>
+    {{ content }}
 </main>
