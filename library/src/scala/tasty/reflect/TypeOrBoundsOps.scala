@@ -18,6 +18,11 @@ trait TypeOrBoundsOps extends Core {
      */
     def dealias given (ctx: Context): Type = internal.Type_dealias(self)
 
+    /** A simplified version of this type which is equivalent wrt =:= to this type.
+     *  Reduces typerefs, applied match types, and and or types.
+     */
+    def simplified given (ctx: Context): Type = internal.Type_simplified(self)
+
     def classSymbol given (ctx: Context): Option[ClassDefSymbol] = internal.Type_classSymbol(self)
     def typeSymbol given (ctx: Context): Symbol = internal.Type_typeSymbol(self)
     def termSymbol given (ctx: Context): Symbol = internal.Type_termSymbol(self)
