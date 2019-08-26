@@ -1,8 +1,9 @@
 import scala.quoted._
+import scala.quoted.staging._
 import scala.reflect.ClassTag
 
 object Test {
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(this.getClass.getClassLoader)
+  given as Toolbox = Toolbox.make(this.getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuoteContext {
     val '[List[Int]] = '[List[Int]]
 
