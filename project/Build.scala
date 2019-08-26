@@ -517,7 +517,6 @@ object Build {
           "-Ddotty.tests.classes.dottyInterfaces=" + jars("dotty-interfaces"),
           "-Ddotty.tests.classes.dottyLibrary=" + jars("dotty-library"),
           "-Ddotty.tests.classes.dottyCompiler=" + jars("dotty-compiler"),
-          "-Ddotty.tests.classes.dottyStaging=" + jars("dotty-staging"),
           "-Ddotty.tests.classes.compilerInterface=" + findArtifactPath(externalDeps, "compiler-interface"),
           "-Ddotty.tests.classes.scalaLibrary=" + findArtifactPath(externalDeps, "scala-library"),
           "-Ddotty.tests.classes.scalaAsm=" + findArtifactPath(externalDeps, "scala-asm"),
@@ -682,7 +681,6 @@ object Build {
           // library on the compiler classpath since the non-bootstrapped one
           // may not be binary-compatible.
           "dotty-library"       -> packageBin.in(`dotty-library-bootstrapped`, Compile).value,
-          "dotty-staging"       -> packageBin.in(LocalProject("dotty-staging"), Compile).value,
         ).mapValues(_.getAbsolutePath)
       }
     }.value,
@@ -697,6 +695,10 @@ object Build {
   )
 
   lazy val bootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
+    javaOptions += {
+      val jars = packageAll.in(LocalProject("dotty-compiler-bootstrapped")).value
+      "-Ddotty.tests.classes.dottyStaging=" + jars("dotty-staging")
+    },
     packageAll := {
       packageAll.in(`dotty-compiler`).value ++ Seq(
         "dotty-compiler" -> packageBin.in(Compile).value.getAbsolutePath,
