@@ -479,11 +479,11 @@ object ProtoTypes {
    *  for each parameter.
    *  @return  The added type lambda, and the list of created type variables.
    */
-  def constrained(tl: TypeLambda, owningTree: untpd.Tree, alwaysAddTypeVars: Boolean = false)(implicit ctx: Context): (TypeLambda, List[TypeTree]) = {
+  def constrained(tl: TypeLambda, owningTree: untpd.Tree, alwaysAddTypeVars: Boolean)(implicit ctx: Context): (TypeLambda, List[TypeTree]) = {
     val state = ctx.typerState
     val addTypeVars = alwaysAddTypeVars || !owningTree.isEmpty
     if (tl.isInstanceOf[PolyType])
-      assert(!(ctx.typerState.isCommittable && !addTypeVars),
+      assert(!ctx.typerState.isCommittable || addTypeVars,
         s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
       // hk type lambdas can be added to constraints without typevars during match reduction
 
@@ -502,8 +502,13 @@ object ProtoTypes {
     (added, tvars)
   }
 
+  def constrained(tl: TypeLambda, owningTree: untpd.Tree)(implicit ctx: Context): (TypeLambda, List[TypeTree]) =
+    constrained(tl, owningTree,
+      alwaysAddTypeVars = tl.isInstanceOf[PolyType] && ctx.typerState.isCommittable)
+
   /**  Same as `constrained(tl, EmptyTree)`, but returns just the created type lambda */
-  def constrained(tl: TypeLambda)(implicit ctx: Context): TypeLambda = constrained(tl, EmptyTree)._1
+  def constrained(tl: TypeLambda)(implicit ctx: Context): TypeLambda =
+    constrained(tl, EmptyTree)._1
 
   def newTypeVar(bounds: TypeBounds)(implicit ctx: Context): TypeVar = {
     val poly = PolyType(DepParamName.fresh().toTypeName :: Nil)(
