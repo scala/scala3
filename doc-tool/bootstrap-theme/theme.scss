@@ -17,6 +17,12 @@ $theme-colors: (
   "accent": #ca445e, // secondary-like for dark backgrounds
   "contrast": #f26527, // used on dark backgrounds
 );
+$container-max-widths: (
+  sm: 540px,
+  md: 720px,
+  lg: 960px,
+  xl: 960px
+);
 
 $code-color: theme-color("secondary");
 $font-family-monospace: "Source Code Pro", monospace;
