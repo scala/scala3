@@ -766,8 +766,6 @@ object Build {
     settings(commonBootstrappedSettings).
     settings(commonDottyJarClasspathSettings).
     settings(
-      fork in run := true,
-      fork in Test := true,
       javaOptions ++= {
         val jars = packageAll.in(`dotty-compiler-bootstrapped`).value
         List("-Ddotty.tests.classes.dottyStaging=" + jars("dotty-staging"))
