@@ -761,7 +761,11 @@ object Build {
 
   lazy val `dotty-staging` = project.in(file("staging")).
     withCommonSettings(Bootstrapped).
-    dependsOn(dottyCompiler(Bootstrapped)).
+    // We want the compiler to be present in the compiler classpath when compiling this project but not
+    // when compiling a project that depends on dotty-staging (see ...), but we always need it to be present
+    // on the JVM classpath at runtime.
+    dependsOn(dottyCompiler(Bootstrapped) % "provided").
+    dependsOn(dottyCompiler(Bootstrapped) % "compile->runtime").
     dependsOn(dottyCompiler(Bootstrapped) % "test->test").
     settings(commonBootstrappedSettings).
     settings(commonDottyJarClasspathSettings).
