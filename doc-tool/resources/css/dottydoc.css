@@ -72,7 +72,7 @@ h5:hover a.anchor:hover {
 footer {
   color: grey;
 }
-footer#author-img {
+footer img#author-img {
   width: auto;
   height: auto;
   max-width:100px;
