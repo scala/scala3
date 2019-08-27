@@ -957,7 +957,7 @@ object desugar {
           case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
             s"${name}_of_${inventTypeName(vparam.tpt)}"
           case _ =>
-            ctx.error(i"anonymous instance must have `for` part or must define at least one extension method", impl.sourcePos)
+            ctx.error(i"anonymous instance must have `as` part or must define at least one extension method", impl.sourcePos)
             nme.ERROR.toString
         }
       else

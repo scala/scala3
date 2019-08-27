@@ -2873,7 +2873,7 @@ object Parsers {
      */
     def instanceDef(newStyle: Boolean, start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
-      val name = if (isIdent && (!newStyle || in.name != nme.as)) ident() else EmptyTermName
+      val name = if (isIdent && !(newStyle && isIdent(nme.as))) ident() else EmptyTermName
       val tparams = typeParamClauseOpt(ParamOwner.Def)
       var leadingParamss =
         if (in.token == LPAREN)
