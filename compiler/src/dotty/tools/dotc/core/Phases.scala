@@ -107,7 +107,7 @@ object Phases {
           val filteredPhaseBlock = filteredPhases(i)
           val phaseToAdd =
             if (filteredPhaseBlock.length > 1) {
-              for (phase <- filteredPhaseBlock) {
+              for (phase <- filteredPhaseBlock)
                 phase match {
                   case p: MiniPhase =>
                     val unmetRequirements = p.runsAfterGroupsOf &~ prevPhases
@@ -117,11 +117,11 @@ object Phases {
                   case _ =>
                     assert(false, s"Only tree transforms can be squashed, ${phase.phaseName} can not be squashed")
                 }
-              }
               val superPhase = new MegaPhase(filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray)
               prevPhases ++= filteredPhaseBlock.map(_.phaseName)
               superPhase
-            } else { // block of a single phase, no squashing
+            }
+            else { // block of a single phase, no squashing
               val phase = filteredPhaseBlock.head
               prevPhases += phase.phaseName
               phase
@@ -169,8 +169,8 @@ object Phases {
         assert(unmetPrecedeRequirements.isEmpty,
           s"phase ${p} has unmet requirement: ${unmetPrecedeRequirements.mkString(", ")} should precede this phase")
         phasesAfter += p.phaseName
-
       }
+
       var i = 0
 
       while (i < phasess.length) {
@@ -206,11 +206,10 @@ object Phases {
         nextDenotTransformerId(i) = lastTransformerId
       }
 
-      if (squash) {
+      if (squash)
         this.squashedPhases = (NoPhase :: phasess).toArray
-      } else {
+      else
         this.squashedPhases = this.phases
-      }
 
       config.println(s"Phases = ${phases.toList}")
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")

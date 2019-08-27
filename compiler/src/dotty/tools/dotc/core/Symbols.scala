@@ -444,8 +444,9 @@ object Symbols {
       if (myDefTree == null) tpd.EmptyTree else myDefTree
 
     /** Set defining tree if this symbol retains its definition tree */
-    def defTree_=(tree: Tree)(implicit ctx: Context): Unit =
+    def defTree_=(tree: Tree)(implicit ctx: Context): Unit = {
       if (retainsDefTree) myDefTree = tree
+    }
 
     /** Does this symbol retain its definition tree?
      *  A good policy for this needs to balance costs and benefits, where
@@ -802,7 +803,7 @@ object Symbols {
               }
             sourceFromTopLevel(ctx.withPhaseNoLater(ctx.flattenPhase))
           }
-        }//.reporting(i"source of $this # $id in ${denot.owner} = $result")
+        }
       mySource
     }
 

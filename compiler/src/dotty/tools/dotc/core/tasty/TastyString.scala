@@ -24,5 +24,5 @@ object TastyString {
     strings.foreach(string.append)
     Base64.getDecoder().decode(string.result().getBytes(UTF_8))
   }
-
 }
+

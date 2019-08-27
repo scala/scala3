@@ -30,52 +30,48 @@ class CheckStatic extends MiniPhase {
   override def transformTemplate(tree: tpd.Template)(implicit ctx: Context): tpd.Tree = {
     val defns = tree.body.collect{case t: ValOrDefDef => t}
     var hadNonStaticField = false
-    for(defn <- defns) {
+    for (defn <- defns)
       if (defn.symbol.hasAnnotation(ctx.definitions.ScalaStaticAnnot)) {
-        if(!ctx.owner.is(Module)) {
+        if (!ctx.owner.is(Module))
           ctx.error(StaticFieldsOnlyAllowedInObjects(defn.symbol), defn.sourcePos)
-        }
 
-        if (defn.isInstanceOf[ValDef] && hadNonStaticField) {
+        if (defn.isInstanceOf[ValDef] && hadNonStaticField)
           ctx.error(StaticFieldsShouldPrecedeNonStatic(defn.symbol, defns), defn.sourcePos)
-        }
 
         val companion = ctx.owner.companionClass
         def clashes = companion.asClass.membersNamed(defn.name)
 
-        if (!companion.exists) {
+        if (!companion.exists)
           ctx.error(MissingCompanionForStatic(defn.symbol), defn.sourcePos)
-        } else if (clashes.exists) {
+        else if (clashes.exists)
           ctx.error(MemberWithSameNameAsStatic(), defn.sourcePos)
-         } else if (defn.symbol.is(Flags.Mutable) && companion.is(Flags.Trait)) {
+        else if (defn.symbol.is(Flags.Mutable) && companion.is(Flags.Trait))
           ctx.error(TraitCompanionWithMutableStatic(), defn.sourcePos)
-        } else if (defn.symbol.is(Flags.Lazy)) {
+        else if (defn.symbol.is(Flags.Lazy))
           ctx.error(LazyStaticField(), defn.sourcePos)
-        } else if (defn.symbol.allOverriddenSymbols.nonEmpty) {
+        else if (defn.symbol.allOverriddenSymbols.nonEmpty)
           ctx.error(StaticOverridingNonStaticMembers(), defn.sourcePos)
-        }
-      } else hadNonStaticField = hadNonStaticField || defn.isInstanceOf[ValDef]
+      }
+      else hadNonStaticField = hadNonStaticField || defn.isInstanceOf[ValDef]
 
-    }
     tree
   }
 
-  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): tpd.Tree = {
+  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): tpd.Tree =
     if (tree.symbol.hasAnnotation(defn.ScalaStaticAnnot)) {
       val symbolWhitelist = tree.symbol.ownersIterator.flatMap(x => if (x.is(Flags.Module)) List(x, x.companionModule) else List(x)).toSet
-      def isSafeQual(t: Tree): Boolean = { // follow the desugared paths created by typer
+      def isSafeQual(t: Tree): Boolean = // follow the desugared paths created by typer
         t match {
           case t: This => true
           case t: Select => isSafeQual(t.qualifier) && symbolWhitelist.contains(t.symbol)
           case t: Ident => symbolWhitelist.contains(t.symbol)
           case t: Block => t.stats.forall(tpd.isPureExpr) && isSafeQual(t.expr)
         }
-      }
       if (isSafeQual(tree.qualifier))
         ref(tree.symbol)
       else tree
-    } else tree
-  }
+    }
+    else tree
 }
 
 object CheckStatic {

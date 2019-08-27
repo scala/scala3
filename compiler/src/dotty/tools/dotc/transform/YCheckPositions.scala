@@ -18,7 +18,7 @@ class YCheckPositions extends Phases.Phase {
 
   override def run(implicit ctx: Context): Unit = () // YCheck only
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
     tree match {
       case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
         new TreeTraverser {
@@ -54,12 +54,10 @@ class YCheckPositions extends Phases.Phase {
         }.traverse(tree)
       case _ =>
     }
-  }
 
-  private def isMacro(call: Tree)(implicit ctx: Context) = {
+  private def isMacro(call: Tree)(implicit ctx: Context) =
     if (ctx.phase <= ctx.postTyperPhase) call.symbol.is(Macro)
     else call.isInstanceOf[Select] // The call of a macro after typer is encoded as a Select while other inlines are Ident
                                    // TODO remove this distinction once Inline nodes of expanded macros can be trusted (also in Inliner.inlineCallTrace)
-  }
-
 }
+

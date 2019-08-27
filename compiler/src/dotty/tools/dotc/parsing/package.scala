@@ -36,5 +36,5 @@ package object parsing {
   def minPrec: Int = 0
   def minInfixPrec: Int = 1
   def maxPrec: Int = 11
-
 }
+

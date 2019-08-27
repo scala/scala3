@@ -131,19 +131,16 @@ object Periods {
   object Period {
 
     /** The single-phase period consisting of given run id and phase id */
-    def apply(rid: RunId, pid: PhaseId): Period = {
+    def apply(rid: RunId, pid: PhaseId): Period =
       new Period(((rid << PhaseWidth) | pid) << PhaseWidth)
-    }
 
     /** The period consisting of given run id, and lo/hi phase ids */
-    def apply(rid: RunId, loPid: PhaseId, hiPid: PhaseId): Period = {
+    def apply(rid: RunId, loPid: PhaseId, hiPid: PhaseId): Period =
       new Period(((rid << PhaseWidth) | hiPid) << PhaseWidth | (hiPid - loPid))
-    }
 
     /** The interval consisting of all periods of given run id */
-    def allInRun(rid: RunId): Period = {
+    def allInRun(rid: RunId): Period =
       apply(rid, 0, PhaseMask)
-    }
   }
 
   final val Nowhere: Period = new Period(0)

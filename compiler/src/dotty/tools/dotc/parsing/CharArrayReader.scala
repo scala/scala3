@@ -89,10 +89,10 @@ abstract class CharArrayReader { self =>
       }
     }
     if (charOffset < buf.length && buf(charOffset) == 'u' && decodeUni && evenSlashPrefix) {
-      while {
+      while ({
         charOffset += 1
         charOffset < buf.length && buf(charOffset) == 'u'
-      } do ()
+      }) ()
       val code = udigit << 12 | udigit << 8 | udigit << 4 | udigit
       lastUnicodeOffset = charOffset
       ch = code.toChar

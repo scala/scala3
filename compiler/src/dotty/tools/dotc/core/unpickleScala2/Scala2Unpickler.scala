@@ -88,12 +88,13 @@ object Scala2Unpickler {
       tp.derivedLambdaType(tp.paramNames, tp.paramInfos, arrayToRepeated(tp.resultType))
   }
 
-  def ensureConstructor(cls: ClassSymbol, scope: Scope)(implicit ctx: Context): Unit =
+  def ensureConstructor(cls: ClassSymbol, scope: Scope)(implicit ctx: Context): Unit = {
     if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) {
       val constr = ctx.newDefaultConstructor(cls)
       addConstructorTypeParams(constr)
       cls.enter(constr, scope)
     }
+  }
 
   def setClassInfo(denot: ClassDenotation, info: Type, fromScala2: Boolean, selfInfo: Type = NoType)(implicit ctx: Context): Unit = {
     val cls = denot.classSymbol
@@ -149,12 +150,11 @@ object Scala2Unpickler {
 class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(ictx: Context)
   extends PickleBuffer(bytes, 0, -1) with ClassfileParser.Embedded {
 
-  def showPickled(): Unit = {
+  def showPickled(): Unit =
     atReadPos(0, () => {
       println(s"classRoot = ${classRoot.debugString}, moduleClassRoot = ${moduleClassRoot.debugString}")
       util.ShowPickled.printFile(this)
     })
-  }
 
   // print("unpickling "); showPickled() // !!! DEBUG
 
@@ -215,7 +215,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             readIndex = index(i)
             readSymbolAnnotation()
             readIndex = savedIndex
-          } else if (isChildrenEntry(i)) {
+          }
+          else if (isChildrenEntry(i)) {
             val savedIndex = readIndex
             readIndex = index(i)
             readChildren()
@@ -224,7 +225,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
         i += 1
       }
-    } catch {
+    }
+    catch {
       case ex: RuntimeException => handleRuntimeException(ex)
     }
 
@@ -386,7 +388,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       def slowSearch(name: Name): Symbol =
         owner.info.decls.find(_.name == name)
 
-      def nestedObjectSymbol: Symbol = {
+      def nestedObjectSymbol: Symbol =
         // If the owner is overloaded (i.e. a method), it's not possible to select the
         // right member, so return NoSymbol. This can only happen when unpickling a tree.
         // the "case Apply" in readTree() takes care of selecting the correct alternative
@@ -398,14 +400,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           val module = owner.info.decl(name.toTermName).suchThat(_.is(Module))
           module.info // force it, as completer does not yet point to module class.
           module.symbol.moduleClass
+        }
 
           /* was:
             val moduleVar = owner.info.decl(name.toTermName.moduleVarName).symbol
             if (moduleVar.isLazyAccessor)
               return moduleVar.lazyAccessor.lazyAccessor
            */
-        } else NoSymbol
-      }
+        else NoSymbol
 
       // println(s"read ext symbol $name from ${owner.denot.debugString} in ${classRoot.debugString}")  // !!! DEBUG
 
@@ -455,11 +457,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     }
 
     name = name.adjustIfModuleClass(flags)
-    if (flags.is(Method)) {
+    if (flags.is(Method))
       name =
         if (name == nme.TRAIT_CONSTRUCTOR) nme.CONSTRUCTOR
         else name.asTermName.unmangle(Scala2MethodNameKinds)
-    }
     if ((flags.is(Scala2ExpandedName))) {
       name = name.unmangle(ExpandedName)
       flags = flags &~ Scala2ExpandedName
@@ -496,9 +497,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     }
 
     def finishSym(sym: Symbol): Symbol = {
-      if (sym.isClass) {
+      if (sym.isClass)
         sym.setFlag(Scala2x)
-      }
       if (!(isRefinementClass(sym) || isUnpickleRoot(sym) || sym.is(Scala2Existential))) {
         val owner = sym.owner
         if (owner.isClass)
@@ -589,15 +589,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               else if (!denot.is(Param)) tp1.underlyingIfRepeated(isJava = false)
               else tp1
             if (denot.isConstructor) addConstructorTypeParams(denot)
-            if (atEnd) {
+            if (atEnd)
               assert(!denot.isSuperAccessor, denot)
-            } else {
+            else {
               assert(denot.is(ParamAccessor) || denot.isSuperAccessor, denot)
-              def disambiguate(alt: Symbol) = { // !!! DEBUG
+              def disambiguate(alt: Symbol) = // !!! DEBUG
                 trace.onDebug(s"disambiguating ${denot.info} =:= ${denot.owner.thisType.memberInfo(alt)} ${denot.owner}") {
                   denot.info matches denot.owner.thisType.memberInfo(alt)
                 }
-              }
               val alias = readDisambiguatedSymbolRef(disambiguate).asTerm
               denot.addAnnotation(Annotation.makeAlias(alias))
             }
@@ -607,7 +606,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       atReadPos(startCoord(denot).toIndex,
           () => parseToCompletion(denot)(
             ctx.addMode(Mode.Scala2Unpickling).withPhaseNoLater(ctx.picklerPhase)))
-    } catch {
+    }
+    catch {
       case ex: RuntimeException => handleRuntimeException(ex)
     }
   }
@@ -621,7 +621,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       if (tag == POLYtpe) {
         val unusedRestpeRef = readNat()
         until(end, () => readSymbolRef()(ctx)).asInstanceOf[List[TypeSymbol]]
-      } else Nil
+      }
+      else Nil
     }
     private def loadTypeParams(implicit ctx: Context) =
       atReadPos(index(infoRef), () => readTypeParams()(ctx))
@@ -651,7 +652,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     // Need to be careful not to run into cyclic references here (observed when
     // compiling t247.scala). That's why we avoid taking `symbol` of a TypeRef
     // unless names match up.
-    val isBound = (tp: Type) => {
+    val isBound = { (tp: Type) =>
       def refersTo(tp: Type, sym: Symbol): Boolean = tp match {
         case tp: TypeRef => sym.name == tp.name && sym == tp.symbol
         case tp: TypeVar => refersTo(tp.underlying, sym)
@@ -701,7 +702,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       val tp2 = tp1.subst(boundSyms, boundBounds).subst(boundSyms, anyTypes)
       ctx.warning(FailureToEliminateExistential(tp, tp1, tp2, boundSyms))
       tp2
-    } else tp1
+    }
+    else tp1
   }
 
   /** Read type ref, mapping a TypeRef to a package to the package's ThisType
@@ -813,7 +815,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     if (tag == POLYtpe) {
       val unusedRestperef = readNat()
       until(end, () => readSymbolRef())
-    } else Nil
+    }
+    else Nil
   }
 
   def noSuchTypeTag(tag: Int, end: Int)(implicit ctx: Context): Type =
@@ -935,7 +938,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             val name = at(argref, () => readName())
             val arg = readClassfileAnnotArg(readNat())
             NamedArg(name.asTermName, arg)
-          } else readAnnotArg(argref)
+          }
+          else readAnnotArg(argref)
         }
       }
       t.toList
@@ -1006,9 +1010,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       name = readNameRef()
     }
     /** Read a Symbol */
-    def setSym(): Unit = {
+    def setSym(): Unit =
       symbol = readSymbolRef()
-    }
 
     implicit val span: Span = NoSpan
 
@@ -1297,5 +1300,5 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case other =>
         errorBadSignature("expected an TypeDef (" + other + ")")
     }
-
 }
+

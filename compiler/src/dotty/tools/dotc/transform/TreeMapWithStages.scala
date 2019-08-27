@@ -59,17 +59,16 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   }
 
   /** Transform the quote `quote` which contains the quoted `body`. */
-  protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
+  protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree =
     quote match {
       case quote: Apply => cpy.Apply(quote)(quote.fun, body :: Nil)
       case quote: TypeApply => cpy.TypeApply(quote)(quote.fun, body :: Nil)
     }
-  }
 
   /** Transform the splice `splice` which contains the spliced `body`. */
   protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree
 
-  override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+  override def transform(tree: Tree)(implicit ctx: Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(ctx.withSource(tree.source))
     else reporting.trace(i"StagingTransformer.transform $tree at $level", staging, show = true) {
@@ -127,7 +126,6 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
           mapOverTree(enteredSyms)
       }
     }
-  }
 }
 
 

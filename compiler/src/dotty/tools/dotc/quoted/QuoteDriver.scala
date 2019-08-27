@@ -78,5 +78,5 @@ object QuoteDriver {
       case _ => classpath0
     }
   }
-
 }
+

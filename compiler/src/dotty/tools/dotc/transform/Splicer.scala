@@ -163,7 +163,7 @@ object Splicer {
     /** Returns the interpreted result of interpreting the code a call to the symbol with default arguments.
      *  Return Some of the result or None if some error happen during the interpretation.
      */
-    def interpret[T](tree: Tree)(implicit ct: ClassTag[T]): Option[T] = {
+    def interpret[T](tree: Tree)(implicit ct: ClassTag[T]): Option[T] =
       interpretTree(tree)(Map.empty) match {
         case obj: T => Some(obj)
         case obj =>
@@ -171,7 +171,6 @@ object Splicer {
           ctx.error(s"Interpreted tree returned a result of an unexpected type. Expected ${ct.runtimeClass} but was ${obj.getClass}", pos)
           None
       }
-    }
 
     def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
       case Apply(Select(Apply(TypeApply(fn, _), quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
@@ -195,27 +194,27 @@ object Splicer {
 
       // TODO disallow interpreted method calls as arguments
       case Call(fn, args) =>
-        if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) {
+        if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package))
           interpretNew(fn.symbol, args.flatten.map(interpretTree))
-        } else if (fn.symbol.is(Module)) {
+        else if (fn.symbol.is(Module))
           interpretModuleAccess(fn.symbol)
-        } else if (fn.symbol.isStatic) {
+        else if (fn.symbol.isStatic) {
           val staticMethodCall = interpretedStaticMethodCall(fn.symbol.owner, fn.symbol)
           staticMethodCall(args.flatten.map(interpretTree))
-        } else if (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic) {
-          if (fn.name == nme.asInstanceOfPM) {
+        }
+        else if (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic)
+          if (fn.name == nme.asInstanceOfPM)
             interpretModuleAccess(fn.qualifier.symbol)
-          } else {
+          else {
             val staticMethodCall = interpretedStaticMethodCall(fn.qualifier.symbol.moduleClass, fn.symbol)
             staticMethodCall(args.flatten.map(interpretTree))
           }
-        } else if (env.contains(fn.symbol)) {
+        else if (env.contains(fn.symbol))
           env(fn.symbol)
-        } else if (tree.symbol.is(InlineProxy)) {
+        else if (tree.symbol.is(InlineProxy))
           interpretTree(tree.symbol.defTree.asInstanceOf[ValOrDefDef].rhs)
-        } else {
+        else
           unexpectedTree(tree)
-        }
 
       case closureDef((ddef @ DefDef(_, _, (arg :: Nil) :: Nil, _, _))) =>
         (obj: AnyRef) => interpretTree(ddef.rhs) given env.updated(arg.symbol, obj)
@@ -267,9 +266,9 @@ object Splicer {
 
     private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol)(implicit env: Env): List[Object] => Object = {
       val (inst, clazz) =
-        if (moduleClass.name.startsWith(str.REPL_SESSION_LINE)) {
+        if (moduleClass.name.startsWith(str.REPL_SESSION_LINE))
           (null, loadReplLineClass(moduleClass))
-        } else {
+        else {
           val inst = loadModule(moduleClass)
           (inst, inst.getClass)
         }
@@ -297,12 +296,13 @@ object Splicer {
     private def unexpectedTree(tree: Tree)(implicit env: Env): Object =
       throw new StopInterpretation("Unexpected tree could not be interpreted: " + tree, tree.sourcePos)
 
-    private def loadModule(sym: Symbol): Object = {
+    private def loadModule(sym: Symbol): Object =
       if (sym.owner.is(Package)) {
         // is top level object
         val moduleClass = loadClass(sym.fullName.toString)
         moduleClass.getField(str.MODULE_INSTANCE_FIELD).get(null)
-      } else {
+      }
+      else {
         // nested object in an object
         val className = {
           val pack = sym.topLevelClass.owner
@@ -312,34 +312,31 @@ object Splicer {
         val clazz = loadClass(className)
         clazz.getConstructor().newInstance().asInstanceOf[Object]
       }
-    }
 
     private def loadReplLineClass(moduleClass: Symbol)(implicit env: Env): Class[_] = {
       val lineClassloader = new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader)
       lineClassloader.loadClass(moduleClass.name.firstPart.toString)
     }
 
-    private def loadClass(name: String): Class[_] = {
+    private def loadClass(name: String): Class[_] =
       try classLoader.loadClass(name)
       catch {
         case _: ClassNotFoundException =>
           val msg = s"Could not find class $name in classpath$extraMsg"
           throw new StopInterpretation(msg, pos)
       }
-    }
 
-    private def getMethod(clazz: Class[_], name: Name, paramClasses: List[Class[_]]): Method = {
+    private def getMethod(clazz: Class[_], name: Name, paramClasses: List[Class[_]]): Method =
       try clazz.getMethod(name.toString, paramClasses: _*)
       catch {
         case _: NoSuchMethodException =>
           val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)$extraMsg"
           throw new StopInterpretation(msg, pos)
       }
-    }
 
     private def extraMsg = ". The most common reason for that is that you apply macros in the compilation run that defines them"
 
-    private def stopIfRuntimeException[T](thunk: => T, method: Method): T = {
+    private def stopIfRuntimeException[T](thunk: => T, method: Method): T =
       try thunk
       catch {
         case ex: RuntimeException =>
@@ -365,7 +362,6 @@ object Splicer {
           sw.write("\n")
           throw new StopInterpretation(sw.toString, pos)
       }
-    }
 
     /** List of classes of the parameters of the signature of `sym` */
     private def paramsSig(sym: Symbol): List[Class[_]] = {
@@ -422,9 +418,9 @@ object Splicer {
       }
       allParams.map(paramClass)
     }
-
-
   }
+
+
 
   /** Exception that stops interpretation if some issue is found */
   private class StopInterpretation(val msg: String, val pos: SourcePosition) extends Exception
@@ -449,5 +445,5 @@ object Splicer {
       }
     }
   }
-
 }
+

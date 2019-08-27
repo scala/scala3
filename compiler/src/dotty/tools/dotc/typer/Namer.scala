@@ -22,7 +22,9 @@ import transform.TypeUtils._
 import transform.SymUtils._
 import reporting.diagnostic.messages._
 
-trait NamerContextOps { this: Context =>
+trait NamerContextOps { 
+  this: Context =>
+  
   import NamerContextOps._
 
   def typer: Typer = ctx.typeAssigner match {
@@ -69,7 +71,7 @@ trait NamerContextOps { this: Context =>
 
   /** The symbol (stored in some typer's symTree) of an enclosing context definition */
   def symOfContextTree(tree: untpd.Tree): Symbol = {
-    def go(ctx: Context): Symbol = {
+    def go(ctx: Context): Symbol =
       ctx.typeAssigner match {
         case typer: Typer =>
           tree.getAttachment(typer.SymOfTree) match {
@@ -81,7 +83,6 @@ trait NamerContextOps { this: Context =>
           }
         case _ => NoSymbol
       }
-    }
     go(this)
   }
 

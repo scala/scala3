@@ -14,5 +14,5 @@ object MacroExpansion {
 
   def context(inlinedFrom: tpd.Tree)(implicit ctx: Context): Context =
     ctx.fresh.setProperty(MacroExpansionPosition, SourcePosition(inlinedFrom.source, inlinedFrom.span)).withSource(inlinedFrom.source)
-
 }
+

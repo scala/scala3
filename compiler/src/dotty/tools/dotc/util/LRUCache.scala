@@ -42,10 +42,12 @@ class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
           next = next.updated(last, current)
         }
         values(current)
-      } else if (current == last) {
+      }
+      else if (current == last) {
         lastButOne = prev
         null
-      } else
+      }
+      else
         lookupNext(current, follow, nx)
     }
     lookupNext(last, first, next)
@@ -67,11 +69,12 @@ class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
   /** Invalidate key. The invalidated element becomes
    *  the last in the queue.
    */
-  def invalidate(key: Key): Unit =
+  def invalidate(key: Key): Unit = {
     if (lookup(key) != null) {
       keys(first) = null
       last = first
     }
+  }
 
   def indices: Iterator[Int] = Iterator.iterate(first)(next.apply)
 

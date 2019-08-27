@@ -25,9 +25,9 @@ object ToolboxImpl {
           throw new scala.quoted.staging.RunScopeException()
         running = true
         driver.run(exprBuilder, settings)
-      } finally {
-        running = false
       }
+      finally
+        running = false
     }
   }
 
@@ -42,5 +42,5 @@ object ToolboxImpl {
   //      This id can only differentiate scope extrusion from one compiler instance to another.
   private[dotty] def scopeId given Context: ScopeId =
     the[Context].outersIterator.toList.last.hashCode()
-
 }
+

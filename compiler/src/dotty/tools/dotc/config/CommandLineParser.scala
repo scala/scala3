@@ -26,7 +26,8 @@ object CommandLineParser {
         // require(next.isEmpty || !escaped)
         if (next startsWith del) Some((quoted, next substring 1))
         else None
-      } else None
+      }
+      else None
     }
   }
   private object DoubleQuoted extends QuotedExtractor('"')
@@ -59,10 +60,9 @@ object CommandLineParser {
   class ParseException(msg: String) extends RuntimeException(msg)
 
   def tokenize(line: String): List[String] = tokenize(line, x => throw new ParseException(x))
-  def tokenize(line: String, errorFn: String => Unit): List[String] = {
+  def tokenize(line: String, errorFn: String => Unit): List[String] =
     commandLine(line) match {
       case Right((args, _)) => args
       case Left(msg)        => errorFn(msg) ; Nil
     }
-  }
 }

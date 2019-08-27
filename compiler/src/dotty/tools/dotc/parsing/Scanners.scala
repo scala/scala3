@@ -80,9 +80,8 @@ object Scanners {
       errOffset = off
     }
 
-    def errorButContinue(msg: String, off: Offset = offset): Unit = {
+    def errorButContinue(msg: String, off: Offset = offset): Unit =
       ctx.error(msg, source atSpan Span(off))
-    }
 
     /** signal an error where the input ended in the middle of a token */
     def incompleteInputError(msg: String): Unit = {
@@ -130,10 +129,10 @@ object Scanners {
     /** Convert current strVal, base to long value
       *  This is tricky because of max negative value.
       */
-    def intVal(negated: Boolean): Long = {
-      if (token == CHARLIT && !negated) {
+    def intVal(negated: Boolean): Long =
+      if (token == CHARLIT && !negated)
         charVal
-      } else {
+      else {
         var value: Long = 0
         val divider = if (base == 10) 1 else 2
         val limit: Long =
@@ -161,7 +160,6 @@ object Scanners {
         }
         if (negated) -value else value
       }
-    }
 
     def intVal: Long = intVal(false)
 
@@ -180,7 +178,8 @@ object Scanners {
         if (value == 0.0f && !zeroFloat.pattern.matcher(text).matches)
           errorButContinue("floating point number too small")
         if (negated) -value else value
-      } catch {
+      }
+      catch {
         case _: NumberFormatException =>
           error("malformed floating point number")
           0.0f
@@ -202,7 +201,8 @@ object Scanners {
         if (value == 0.0d && !zeroFloat.pattern.matcher(text).matches)
           errorButContinue("double precision floating point number too small")
         if (negated) -value else value
-      } catch {
+      }
+      catch {
         case _: NumberFormatException =>
           error("malformed floating point number")
           0.0
@@ -400,7 +400,8 @@ object Scanners {
         lastOffset = lastCharOffset
         if (inStringInterpolation) fetchStringPart() else fetchToken()
         if (token == ERROR) adjustSepRegions(STRINGLIT)
-      } else {
+      }
+      else {
         this.copyFrom(next)
         next.token = EMPTY
       }
@@ -423,7 +424,7 @@ object Scanners {
     /** If this token and the next constitute an end marker, skip them and append a new EndMarker
      *  value at the end of the endMarkers queue.
      */
-    private def handleEndMarkers(width: IndentWidth): Unit =
+    private def handleEndMarkers(width: IndentWidth): Unit = {
       if (next.token == IDENTIFIER && next.name == nme.end && width == indent.width) {
         val lookahead = lookaheadScanner
         lookahead.nextToken() // skip the `end`
@@ -445,6 +446,7 @@ object Scanners {
           case _ =>
         }
       }
+    }
 
     /** Consume and cancel the head of the end markers queue if it has the given `tag` and width.
      *  Flag end markers with higher indent widths as errors.
@@ -606,7 +608,7 @@ object Scanners {
                 |Previous indent : $lastWidth
                 |Latest indent   : $curWidth""")
       }
-      if (indentIsSignificant && indent.width < curWidth && !indent.others.contains(curWidth)) {
+      if (indentIsSignificant && indent.width < curWidth && !indent.others.contains(curWidth))
         if (token == OUTDENT)
           errorButContinue(
             i"""The start of this line does not match any of the previous indentation widths.
@@ -614,7 +616,6 @@ object Scanners {
                 |This falls between previous widths: ${indent.width} and $lastWidth""")
         else
           indent = IndentRegion(indent.width, indent.others + curWidth, indent.token, indent.outer)
-      }
     }
 
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
@@ -731,9 +732,9 @@ object Scanners {
           nextChar()
           getOperatorRest()
         case '/' =>
-          if (skipComment()) {
+          if (skipComment())
             fetchToken()
-          } else {
+          else {
             putChar('/')
             getOperatorRest()
           }
@@ -746,7 +747,8 @@ object Scanners {
               base = 16
               if (isNumberSeparator(ch))
                 errorButContinue("leading separator is not allowed", offset + 2)
-            } else {
+            }
+            else {
               /**
                * What should leading 0 be in the future? It is potentially dangerous
                *  to let it be base-10 because of history.  Should it be an error? Is
@@ -765,7 +767,7 @@ object Scanners {
         case '`' =>
           getBackquotedIdent()
         case '\"' =>
-          def fetchDoubleQuote() = {
+          def fetchDoubleQuote() =
             if (token == INTERPOLATIONID) {
               nextRawChar()
               if (ch == '\"') {
@@ -775,30 +777,33 @@ object Scanners {
                   getStringPart(multiLine = true)
                   sepRegions = STRINGPART :: sepRegions // indicate string part
                   sepRegions = STRINGLIT :: sepRegions // once more to indicate multi line string part
-                } else {
+                }
+                else {
                   token = STRINGLIT
                   strVal = ""
                 }
-              } else {
+              }
+              else {
                 getStringPart(multiLine = false)
                 sepRegions = STRINGLIT :: sepRegions // indicate single line string part
               }
-            } else {
+            }
+            else {
               nextChar()
               if (ch == '\"') {
                 nextChar()
                 if (ch == '\"') {
                   nextRawChar()
                   getRawStringLit()
-                } else {
+                }
+                else {
                   token = STRINGLIT
                   strVal = ""
                 }
-              } else {
-                getStringLit()
               }
+              else
+                getStringLit()
             }
-          }
           fetchDoubleQuote()
         case '\'' =>
           def fetchSingleQuote() = {
@@ -821,9 +826,9 @@ object Scanners {
           nextChar()
           if ('0' <= ch && ch <= '9') {
             putChar('.'); getFraction(); setStrVal()
-          } else {
-            token = DOT
           }
+          else
+            token = DOT
         case ';' =>
           nextChar(); token = SEMI
         case ',' =>
@@ -847,32 +852,36 @@ object Scanners {
             nextChar()
           }
         case _ =>
-          def fetchOther() = {
+          def fetchOther() =
             if (ch == '\u21D2') {
               nextChar(); token = ARROW
-            } else if (ch == '\u2190') {
+            }
+            else if (ch == '\u2190') {
               nextChar(); token = LARROW
-            } else if (Character.isUnicodeIdentifierStart(ch)) {
+            }
+            else if (Character.isUnicodeIdentifierStart(ch)) {
               putChar(ch)
               nextChar()
               getIdentRest()
-            } else if (isSpecial(ch)) {
+            }
+            else if (isSpecial(ch)) {
               putChar(ch)
               nextChar()
               getOperatorRest()
-            } else {
+            }
+            else {
               // FIXME: Dotty deviation: f"" interpolator is not supported (#1814)
               error("illegal character '\\u%04x'".format(ch: Int))
               nextChar()
             }
-          }
           fetchOther()
       }
     }
 
     private def skipComment(): Boolean = {
-      def appendToComment(ch: Char) =
+      def appendToComment(ch: Char) = {
         if (keepComments) commentBuf.append(ch)
+      }
       def nextChar() = {
         appendToComment(ch)
         Scanner.this.nextChar()
@@ -882,7 +891,7 @@ object Scanners {
         if ((ch != CR) && (ch != LF) && (ch != SU)) skipLine()
       }
       @tailrec
-      def skipComment(): Unit = {
+      def skipComment(): Unit =
         if (ch == '/') {
           nextChar()
           if (ch == '*') nestedComment()
@@ -895,7 +904,6 @@ object Scanners {
         }
         else if (ch == SU) incompleteInputError("unclosed comment")
         else { nextChar(); skipComment() }
-      }
       def nestedComment() = { nextChar(); skipComment() }
       val start = lastCharOffset
       def finishComment(): Boolean = {
@@ -904,9 +912,8 @@ object Scanners {
           val comment = Comment(pos, flushBuf(commentBuf))
           commentPosBuf += pos
 
-          if (comment.isDocComment) {
+          if (comment.isDocComment)
             addComment(comment)
-          }
         }
 
         true
@@ -923,34 +930,36 @@ object Scanners {
 
 // Lookahead ---------------------------------------------------------------
 
-  /** A new Scanner that starts at the current token offset */
-  def lookaheadScanner: Scanner = new Scanner(source, offset) {
-    override val indentSyntax = false
-    override protected def printState() = {
-      print("la:")
-      super.printState()
+    /** A new Scanner that starts at the current token offset */
+    def lookaheadScanner: Scanner = new Scanner(source, offset) {
+      override val indentSyntax = false
+      override protected def printState() = {
+        print("la:")
+        super.printState()
+      }
     }
-  }
 
-  /** Is the token following the current one in `tokens`? */
-  def lookaheadIn(tokens: BitSet): Boolean = {
-    val lookahead = lookaheadScanner
-    while ({
-      lookahead.nextToken()
-      lookahead.token == NEWLINE || lookahead.token == NEWLINES
-    }) ()
-    tokens.contains(lookahead.token)
-  }
+    /** Is the token following the current one in `tokens`? */
+    def lookaheadIn(tokens: BitSet): Boolean = {
+      val lookahead = lookaheadScanner
+      while ({
+        lookahead.nextToken()
+        lookahead.token == NEWLINE || lookahead.token == NEWLINES
+      })
+      ()
+      tokens.contains(lookahead.token)
+    }
 
-  /** Is the current token in a position where a modifier is allowed? */
-  def inModifierPosition(): Boolean = {
-    val lookahead = lookaheadScanner
-    while ({
-      lookahead.nextToken()
-      lookahead.token == NEWLINE || lookahead.token == NEWLINES || lookahead.isSoftModifier
-    }) ()
-    modifierFollowers.contains(lookahead.token)
-  }
+    /** Is the current token in a position where a modifier is allowed? */
+    def inModifierPosition(): Boolean = {
+      val lookahead = lookaheadScanner
+      while ({
+        lookahead.nextToken()
+        lookahead.token == NEWLINE || lookahead.token == NEWLINES || lookahead.isSoftModifier
+      })
+      ()
+      modifierFollowers.contains(lookahead.token)
+    }
 
 // Identifiers ---------------------------------------------------------------
 
@@ -998,9 +1007,9 @@ object Scanners {
           putChar(ch)
           nextChar()
           getIdentRest()
-        } else {
-          finishNamed()
         }
+        else
+          finishNamed()
     }
 
     private def getOperatorRest(): Unit = (ch: @switch) match {
@@ -1017,7 +1026,7 @@ object Scanners {
         else finishNamed()
     }
 
-    private def getIdentOrOperatorRest(): Unit = {
+    private def getIdentOrOperatorRest(): Unit =
       if (isIdentifierPart(ch))
         getIdentRest()
       else ch match {
@@ -1030,7 +1039,6 @@ object Scanners {
           if (isSpecial(ch)) getOperatorRest()
           else finishNamed()
       }
-    }
 
     def isSoftModifier: Boolean =
       token == IDENTIFIER && softModifierNames.contains(name)
@@ -1052,25 +1060,27 @@ object Scanners {
         setStrVal()
         nextChar()
         token = STRINGLIT
-      } else error("unclosed string literal")
+      }
+      else error("unclosed string literal")
     }
 
-    private def getRawStringLit(): Unit = {
+    private def getRawStringLit(): Unit =
       if (ch == '\"') {
         nextRawChar()
         if (isTripleQuote()) {
           setStrVal()
           token = STRINGLIT
-        } else
+        }
+        else
           getRawStringLit()
-      } else if (ch == SU) {
+      }
+      else if (ch == SU)
         incompleteInputError("unclosed multi-line string literal")
-      } else {
+      else {
         putChar(ch)
         nextRawChar()
         getRawStringLit()
       }
-    }
 
     @annotation.tailrec private def getStringPart(multiLine: Boolean): Unit = {
       def finishStringPart() = {
@@ -1079,48 +1089,53 @@ object Scanners {
         next.lastOffset = charOffset - 1
         next.offset = charOffset - 1
       }
-      if (ch == '"') {
+      if (ch == '"')
         if (multiLine) {
           nextRawChar()
           if (isTripleQuote()) {
             setStrVal()
             token = STRINGLIT
-          } else
+          }
+          else
             getStringPart(multiLine)
-        } else {
+        }
+        else {
           nextChar()
           setStrVal()
           token = STRINGLIT
         }
-      } else if (ch == '$') {
+      else if (ch == '$') {
         nextRawChar()
         if (ch == '$') {
           putChar(ch)
           nextRawChar()
           getStringPart(multiLine)
-        } else if (ch == '{') {
+        }
+        else if (ch == '{') {
           finishStringPart()
           nextRawChar()
           next.token = LBRACE
-        } else if (Character.isUnicodeIdentifierStart(ch) || ch == '_') {
+        }
+        else if (Character.isUnicodeIdentifierStart(ch) || ch == '_') {
           finishStringPart()
           while ({
             putChar(ch)
             nextRawChar()
             ch != SU && Character.isUnicodeIdentifierPart(ch)
-          }) ()
+          })
+          ()
           finishNamed(target = next)
-        } else {
-          error("invalid string interpolation: `$$', `$'ident or `$'BlockExpr expected")
         }
-      } else {
+        else
+          error("invalid string interpolation: `$$', `$'ident or `$'BlockExpr expected")
+      }
+      else {
         val isUnclosedLiteral = !isUnicodeEscape && (ch == SU || (!multiLine && (ch == CR || ch == LF)))
-        if (isUnclosedLiteral) {
+        if (isUnclosedLiteral)
           if (multiLine)
             incompleteInputError("unclosed multi-line string literal")
           else
             error("unclosed string literal")
-        }
         else {
           putChar(ch)
           nextRawChar()
@@ -1144,12 +1159,14 @@ object Scanners {
             nextChar()
           }
           true
-        } else {
+        }
+        else {
           putChar('"')
           putChar('"')
           false
         }
-      } else {
+      }
+      else {
         putChar('"')
         false
       }
@@ -1173,7 +1190,8 @@ object Scanners {
             }
           }
           putChar(oct.toChar)
-        } else {
+        }
+        else {
           ch match {
             case 'b'  => putChar('\b')
             case 't'  => putChar('\t')
@@ -1187,7 +1205,8 @@ object Scanners {
           }
           nextChar()
         }
-      } else  {
+      }
+      else {
         putChar(ch)
         nextChar()
       }
@@ -1197,10 +1216,9 @@ object Scanners {
       putChar(ch)
     }
 
-    private def getLitChars(delimiter: Char) = {
+    private def getLitChars(delimiter: Char) =
       while (ch != delimiter && !isAtEnd && (ch != SU && ch != CR && ch != LF || isUnicodeEscape))
         getLitChar()
-    }
 
     /** read fractional part and exponent of floating point number
      *  if one is present.
@@ -1215,9 +1233,8 @@ object Scanners {
       if (ch == 'e' || ch == 'E') {
         val lookahead = lookaheadReader()
         lookahead.nextChar()
-        if (lookahead.ch == '+' || lookahead.ch == '-') {
+        if (lookahead.ch == '+' || lookahead.ch == '-')
           lookahead.nextChar()
-        }
         if ('0' <= lookahead.ch && lookahead.ch <= '9' || isNumberSeparator(ch)) {
           putChar(ch)
           nextChar()
@@ -1237,7 +1254,8 @@ object Scanners {
         putChar(ch)
         nextChar()
         token = DOUBLELIT
-      } else if (ch == 'f' || ch == 'F') {
+      }
+      else if (ch == 'f' || ch == 'F') {
         putChar(ch)
         nextChar()
         token = FLOATLIT
@@ -1265,7 +1283,8 @@ object Scanners {
           nextChar()
           getFraction()
         }
-      } else (ch: @switch) match {
+      }
+      else (ch: @switch) match {
         case 'e' | 'E' | 'f' | 'F' | 'd' | 'D' =>
           if (base == 10) getFraction()
         case 'l' | 'L' =>
@@ -1334,7 +1353,8 @@ object Scanners {
    /* Initialization: read first char, then first token */
     nextChar()
     nextToken()
-  } // end Scanner
+  }
+  // end Scanner
 
   /** A class describing an indentation region.
    *  @param width   The principal indendation width

@@ -49,8 +49,11 @@ class Pickler extends Phase {
     val unit = ctx.compilationUnit
     pickling.println(i"unpickling in run ${ctx.runId}")
 
-    for { cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
-          tree <- sliceTopLevel(unit.tpdTree, cls) } {
+    for {
+      cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
+      tree <- sliceTopLevel(unit.tpdTree, cls)
+    }
+    {
       val pickler = new TastyPickler(cls)
       if (ctx.settings.YtestPickler.value) {
         beforePickling(cls) = tree.show
@@ -75,6 +78,7 @@ class Pickler extends Phase {
         pickled.iterator.grouped(10).toList.zipWithIndex.map {
           case (row, i) => s"${i}0: ${row.mkString(" ")}"
         }
+        
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
       if (pickling ne noPrinter) {
         println(i"**** pickled info of $cls")
@@ -112,7 +116,7 @@ class Pickler extends Phase {
     }
   }
 
-  private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(implicit ctx: Context) =
+  private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(implicit ctx: Context) = {
     if (previous != unpickled) {
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)
@@ -120,4 +124,5 @@ class Pickler extends Phase {
                    |
                    |  diff before-pickling.txt after-pickling.txt""".stripMargin)
     }
+  }
 }

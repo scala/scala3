@@ -83,9 +83,9 @@ object Plugin {
    */
   def load(classname: String, loader: ClassLoader): Try[AnyClass] = {
     import scala.util.control.NonFatal
-    try {
+    try
       Success[AnyClass](loader loadClass classname)
-    } catch {
+    catch {
       case NonFatal(e) =>
         Failure(new PluginLoadException(classname, s"Error: unable to load class $classname: ${e.getMessage}"))
       case e: NoClassDefFoundError =>
@@ -103,8 +103,7 @@ object Plugin {
   def loadAllFrom(
     paths: List[List[Path]],
     dirs: List[Path],
-    ignoring: List[String]): List[Try[Plugin]] =
-  {
+    ignoring: List[String]): List[Try[Plugin]] = {
 
     def fromFile(inputStream: InputStream, path: Path): String = {
       val props = new Properties

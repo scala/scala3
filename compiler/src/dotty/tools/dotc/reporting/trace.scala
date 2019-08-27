@@ -35,7 +35,8 @@ abstract class TraceSyntax {
       def op1 = op
       if (cond) apply[TC](question, Printers.default, show)(op1)
       else op1
-    } else op
+    }
+    else op
 
   @forceInline
   def apply[T](question: => String, printer: Printers.Printer, showOp: Any => String)(op: => T)(implicit ctx: Context): T =
@@ -97,22 +98,24 @@ abstract class TraceSyntax {
     if (ctx.mode.is(Mode.Printing)) op
     else {
       var finalized = false
-      def finalize(result: Any, note: String) =
+      def finalize(result: Any, note: String) = {
         if (!finalized) {
           ctx.base.indent -= 1
           log(s"${ctx.base.indentTab * ctx.base.indent}${trailing(result)}$note")
           finalized = true
         }
-    try {
-      log(s"${ctx.base.indentTab * ctx.base.indent}$leading")
-      ctx.base.indent += 1
-      val res = op
-      finalize(res, "")
-      res
-    } catch {
-      case ex: Throwable =>
-        finalize("<missing>", s" (with exception $ex)")
-        throw ex
+      }
+      try {
+        log(s"${ctx.base.indentTab * ctx.base.indent}$leading")
+        ctx.base.indent += 1
+        val res = op
+        finalize(res, "")
+        res
+      }
+      catch {
+        case ex: Throwable =>
+          finalize("<missing>", s" (with exception $ex)")
+          throw ex
+      }
     }
-  }
 }

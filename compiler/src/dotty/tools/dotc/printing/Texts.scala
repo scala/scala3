@@ -56,7 +56,7 @@ object Texts {
     private def appendIndented(that: Text)(width: Int): Text =
       Vertical(that.layout(width - indentMargin).indented :: this.relems)
 
-    private def append(width: Int)(that: Text): Text = {
+    private def append(width: Int)(that: Text): Text =
       if (this.isEmpty) that.layout(width)
       else if (that.isEmpty) this
       else if (that.isVertical) appendIndented(that)(width)
@@ -64,7 +64,6 @@ object Texts {
       else if (that.remaining(width - lengthWithoutAnsi(lastLine)) >= 0) appendToLastLine(that)
       else if (that.isSplittable) that.relems.reverse.foldLeft(this)(_.append(width)(_))
       else appendIndented(that)(width)
-    }
 
     private def lengthWithoutAnsi(str: String): Int =
       str.replaceAll("\u001b\\[\\d+m", "").length
@@ -158,14 +157,13 @@ object Texts {
     /** A concatenation of elements in `xs` and interspersed with
      *  separator strings `sep`.
      */
-    def apply(xs: Traversable[Text], sep: String = " "): Text = {
+    def apply(xs: Traversable[Text], sep: String = " "): Text =
       if (sep == "\n") lines(xs)
       else {
         val ys = xs filterNot (_.isEmpty)
         if (ys.isEmpty) Str("")
         else ys reduce (_ ~ sep ~ _)
       }
-    }
 
     /** The given texts `xs`, each on a separate line */
     def lines(xs: Traversable[Text]): Vertical = Vertical(xs.toList.reverse)

@@ -118,7 +118,7 @@ object Trees {
      *   - the child tree is an identifier, or
      *   - errors were reported
      */
-    private def checkChildrenTyped(it: Iterator[Any])(implicit ctx: Context): Unit =
+    private def checkChildrenTyped(it: Iterator[Any])(implicit ctx: Context): Unit = {
       if (!this.isInstanceOf[Import[_]])
         while (it.hasNext)
           it.next() match {
@@ -129,6 +129,7 @@ object Trees {
             case xs: List[_] => checkChildrenTyped(xs.iterator)
             case _ =>
           }
+    }
 
     def withTypeUnchecked(tpe: Type): ThisTree[Type] = {
       val tree =
@@ -374,7 +375,7 @@ object Trees {
               if (idx >= 0) idx
               else point // use `point` anyway. This is important if no source exists so scanning fails
             }
-            Span(point, point + realName.length, point)
+          Span(point, point + realName.length, point)
         }
       }
       else span
@@ -421,14 +422,13 @@ object Trees {
     extends DenotingTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = This[T]
     // Denotation of a This tree is always the underlying class; needs correction for modules.
-    override def denot(implicit ctx: Context): Denotation = {
+    override def denot(implicit ctx: Context): Denotation =
       typeOpt match {
         case tpe @ TermRef(pre, _) if tpe.symbol.is(Module) =>
           tpe.symbol.moduleClass.denot.asSeenFrom(pre)
         case _ =>
           super.denot
       }
-    }
   }
 
   /** C.super[mix], where qual = C.this */

@@ -111,7 +111,8 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
       b = readByte()
       x = (x << 7) + (b & 0x7f)
       (b & 0x80) != 0L
-    }) ()
+    })
+    ()
     x
   }
 

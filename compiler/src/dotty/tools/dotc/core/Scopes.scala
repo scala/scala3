@@ -158,11 +158,12 @@ object Scopes {
      */
     final def filteredScope(p: Symbol => Boolean)(implicit ctx: Context): Scope = {
       var result: MutableScope = null
-      for (sym <- iterator)
+      for (sym <- iterator) {
         if (!p(sym)) {
           if (result == null) result = cloneScope
           result.unlink(sym)
         }
+      }
       if (result == null) this else result
     }
 
@@ -265,10 +266,9 @@ object Scopes {
 
     /** enter a symbol in this scope. */
     final def enter[T <: Symbol](sym: T)(implicit ctx: Context): T = {
-      if (sym.isType && ctx.phaseId <= ctx.typerPhase.id) {
+      if (sym.isType && ctx.phaseId <= ctx.typerPhase.id)
         assert(lookup(sym.name) == NoSymbol,
           s"duplicate ${sym.debugString}; previous was ${lookup(sym.name).debugString}") // !!! DEBUG
-      }
       newScopeEntry(sym)
       sym
     }
@@ -279,8 +279,9 @@ object Scopes {
       enter(sym)
     }
 
-    private def ensureCapacity(tableSize: Int)(implicit ctx: Context): Unit =
+    private def ensureCapacity(tableSize: Int)(implicit ctx: Context): Unit = {
       if (size >= tableSize * FillFactor) createHash(tableSize * 2)
+    }
 
     private def createHash(tableSize: Int)(implicit ctx: Context): Unit =
       if (size > tableSize * FillFactor) createHash(tableSize * 2)
@@ -291,11 +292,12 @@ object Scopes {
       }
 
     private def enterAllInHash(e: ScopeEntry, n: Int = 0)(implicit ctx: Context): Unit = {
-      if (e ne null) {
+      if (e ne null)
         if (n < MaxRecursions) {
           enterAllInHash(e.prev, n + 1)
           enterInHash(e)
-        } else {
+        }
+        else {
           var entries: List[ScopeEntry] = List()
           var ee = e
           while (ee ne null) {
@@ -304,14 +306,13 @@ object Scopes {
           }
           entries foreach enterInHash
         }
-      }
     }
 
     /** Remove entry from this scope (which is required to be present) */
     final def unlink(e: ScopeEntry)(implicit ctx: Context): Unit = {
-      if (lastEntry == e) {
+      if (lastEntry == e)
         lastEntry = e.prev
-      } else {
+      else {
         var e1 = lastEntry
         while (e1.prev != e) e1 = e1.prev
         e1.prev = e.prev
@@ -362,14 +363,13 @@ object Scopes {
       var e: ScopeEntry = null
       if (hashTable ne null) {
         e = hashTable(name.hashCode & (hashTable.length - 1))
-        while ((e ne null) && e.name != name) {
+        while ((e ne null) && e.name != name)
           e = e.tail
-        }
-      } else {
+      }
+      else {
         e = lastEntry
-        while ((e ne null) && e.name != name) {
+        while ((e ne null) && e.name != name)
           e = e.prev
-        }
       }
       if ((e eq null) && (synthesize != null)) {
         val sym = synthesize(name)(ctx)

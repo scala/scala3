@@ -176,5 +176,5 @@ class ExpandSAMs extends MiniPhase {
     case tpe =>
       tpe
   }
-
 }
+

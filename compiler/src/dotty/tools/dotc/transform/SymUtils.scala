@@ -40,10 +40,9 @@ class SymUtils(val self: Symbol) extends AnyVal {
   /** All traits implemented by a class, except for those inherited through the superclass.
    *  The empty list if `self` is a trait.
    */
-  def mixins(implicit ctx: Context): List[ClassSymbol] = {
+  def mixins(implicit ctx: Context): List[ClassSymbol] =
     if (self.is(Trait)) Nil
     else directlyInheritedTraits
-  }
 
   def isTypeTest(implicit ctx: Context): Boolean =
     self == defn.Any_isInstanceOf || self == defn.Any_typeTest
@@ -122,9 +121,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
     if (self.isConstructor) self.owner else self
 
   /** The closest properly enclosing method or class of this symbol. */
-  final def enclosure(implicit ctx: Context): Symbol = {
+  final def enclosure(implicit ctx: Context): Symbol =
     self.owner.enclosingMethodOrClass
-  }
 
   /** The closest enclosing method or class of this symbol */
   @tailrec final def enclosingMethodOrClass(implicit ctx: Context): Symbol =

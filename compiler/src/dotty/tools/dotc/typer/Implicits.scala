@@ -93,7 +93,7 @@ object Implicits {
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[Candidate] = {
       record("filterMatching")
 
-      def candidateKind(ref: TermRef)(implicit ctx: Context): Candidate.Kind = /*trace(i"candidateKind $ref $pt")*/ {
+      def candidateKind(ref: TermRef)(implicit ctx: Context): Candidate.Kind = { /*trace(i"candidateKind $ref $pt")*/
 
         def viewCandidateKind(tpw: Type, argType: Type, resType: Type): Candidate.Kind = {
 
@@ -280,7 +280,7 @@ object Implicits {
     }
 
     /** The implicit references that are eligible for type `tp`. */
-    def eligible(tp: Type): List[Candidate] = {
+    def eligible(tp: Type): List[Candidate] =
       if (tp.hash == NotCached) computeEligible(tp)
       else {
         val eligibles = eligibleCache.get(tp)
@@ -300,7 +300,6 @@ object Implicits {
           result
         }
       }
-    }
 
     private def computeEligible(tp: Type): List[Candidate] = /*>|>*/ trace(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
       if (monitored) record(s"check eligible refs in ctx", refs.length)
@@ -462,7 +461,8 @@ object Implicits {
 import Implicits._
 
 /** Info relating to implicits that is kept for one run */
-trait ImplicitRunInfo { self: Run =>
+trait ImplicitRunInfo {
+  self: Run =>
 
   private val implicitScopeCache = mutable.AnyRefMap[Type, OfTypeImplicits]()
 
@@ -548,7 +548,8 @@ trait ImplicitRunInfo { self: Run =>
             if (seen contains t) {
               incomplete += tp  // all references to rootTo will be accounted for in `seen` so we return `EmptySet`.
               EmptyTermRefSet   // on the other hand, the refs of `tp` are now not accurate, so `tp` is marked incomplete.
-            } else {
+            }
+            else {
               seen += t
               val is = iscope(t)
               if (!implicitScopeCache.contains(t)) incomplete += tp
@@ -557,8 +558,9 @@ trait ImplicitRunInfo { self: Run =>
         }
 
         val comps = new TermRefSet
-        def addCompanion(pre: Type, companion: Symbol) =
+        def addCompanion(pre: Type, companion: Symbol) = {
           if (companion.exists && !companion.isAbsent()) comps += TermRef(pre, companion)
+        }
 
         def addPath(pre: Type): Unit = pre.dealias match {
           case pre: ThisType if pre.cls.is(Module) && pre.cls.isStaticOwner =>
@@ -624,9 +626,8 @@ trait ImplicitRunInfo { self: Run =>
     iscope(rootTp)
   }
 
-  protected def reset(): Unit = {
+  protected def reset(): Unit =
     implicitScopeCache.clear()
-  }
 }
 
 /** The implicit resolution part of type checking */
@@ -652,7 +653,7 @@ trait Implicits { self: Typer =>
    */
   def inferView(from: Tree, to: Type)(implicit ctx: Context): SearchResult = {
     record("inferView")
-    if (   (to isRef defn.AnyClass)
+    if    ((to isRef defn.AnyClass)
         || (to isRef defn.ObjectClass)
         || (to isRef defn.UnitClass)
         || (from.tpe isRef defn.NothingClass)
@@ -1805,7 +1806,7 @@ final class SearchRoot extends SearchHistory {
    * @param tpe  The type to link.
    * @result     The TermRef of the corresponding dictionary entry.
    */
-  override def linkBynameImplicit(tpe: Type)(implicit ctx: Context): TermRef = {
+  override def linkBynameImplicit(tpe: Type)(implicit ctx: Context): TermRef =
     implicitDictionary.get(tpe) match {
       case Some((ref, _)) => ref
       case None =>
@@ -1814,7 +1815,6 @@ final class SearchRoot extends SearchHistory {
         implicitDictionary.put(tpe, (ref, tpd.EmptyTree))
         ref
     }
-  }
 
   /**
    * Look up an implicit dictionary entry by type.
@@ -1825,9 +1825,8 @@ final class SearchRoot extends SearchHistory {
    * @param tpe The type to look up.
    * @result    The corresponding TermRef, or NoType if none.
    */
-  override def refBynameImplicit(tpe: Type)(implicit ctx: Context): Type = {
+  override def refBynameImplicit(tpe: Type)(implicit ctx: Context): Type =
     implicitDictionary.get(tpe).map(_._1).getOrElse(NoType)
-  }
 
   /**
    * Define a pending dictionary entry if any.
@@ -1842,14 +1841,13 @@ final class SearchRoot extends SearchHistory {
    * @result        A SearchResult referring to the newly created dictionary entry if tpe
    *                is an under-construction by name implicit, the provided result otherwise.
    */
-  override def defineBynameImplicit(tpe: Type, result: SearchSuccess)(implicit ctx: Context): SearchResult = {
+  override def defineBynameImplicit(tpe: Type, result: SearchSuccess)(implicit ctx: Context): SearchResult =
     implicitDictionary.get(tpe) match {
       case Some((ref, _)) =>
         implicitDictionary.put(tpe, (ref, result.tree))
         SearchSuccess(tpd.ref(ref).withSpan(result.tree.span), result.ref, result.level)(result.tstate, result.gstate)
       case None => result
     }
-  }
 
   /**
    * Emit the implicit dictionary at the completion of an implicit search.
@@ -1859,9 +1857,9 @@ final class SearchRoot extends SearchHistory {
    * @result       The elaborated result, comprising the implicit dictionary and a result tree
    *               substituted with references into the dictionary.
    */
-  override def emitDictionary(span: Span, result: SearchResult)(implicit ctx: Context): SearchResult = {
+  override def emitDictionary(span: Span, result: SearchResult)(implicit ctx: Context): SearchResult =
     if (implicitDictionary == null || implicitDictionary.isEmpty) result
-    else {
+    else
       result match {
         case failure: SearchFailure => failure
         case success @ SearchSuccess(tree, _, _) =>
@@ -1951,8 +1949,6 @@ final class SearchRoot extends SearchHistory {
             success.copy(tree = blk)(success.tstate, success.gstate)
           }
       }
-    }
-  }
 }
 
 /** A set of term references where equality is =:= */

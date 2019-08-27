@@ -7,5 +7,5 @@ object QuoteContext {
 
   def apply() given Context: scala.quoted.QuoteContext =
     new scala.quoted.QuoteContext(ReflectionImpl(the[Context]))
-
 }
+

@@ -213,7 +213,7 @@ object PrepareInlineable {
    *                     to have the inline method as owner.
    */
   def registerInlineInfo(
-      inlined: Symbol, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
+      inlined: Symbol, treeExpr: Context => Tree)(implicit ctx: Context): Unit =
     inlined.unforcedAnnotation(defn.BodyAnnot) match {
       case Some(ann: ConcreteBodyAnnotation) =>
       case Some(ann: LazyBodyAnnotation) if ann.isEvaluated =>
@@ -233,7 +233,6 @@ object PrepareInlineable {
           })
         }
     }
-  }
 
   def checkInlineMethod(inlined: Symbol, body: Tree)(implicit ctx: Context): Unit = {
     if (ctx.outer.inInlineMethod)
@@ -275,5 +274,5 @@ object PrepareInlineable {
       isValidMacro(rhs)
     }
   }
-
 }
+

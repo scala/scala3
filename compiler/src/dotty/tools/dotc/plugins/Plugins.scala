@@ -58,8 +58,7 @@ trait Plugins {
     // remove any with conflicting names or subcomponent names
     def pick(
       plugins: List[Plugin],
-      plugNames: Set[String]): List[Plugin] =
-    {
+      plugNames: Set[String]): List[Plugin] = {
       if (plugins.isEmpty) return Nil // early return
 
       val plug :: tail      = plugins
@@ -89,7 +88,8 @@ trait Plugins {
     for {
       opt <- ctx.settings.pluginOptions.value
       if !(plugs exists (opt startsWith _.name + ":"))
-    } ctx.error("bad option: -P:" + opt)
+    }
+    ctx.error("bad option: -P:" + opt)
 
     plugs
   }

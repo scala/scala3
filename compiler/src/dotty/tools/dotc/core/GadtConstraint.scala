@@ -194,7 +194,7 @@ final class ProperGadtConstraint private(
           .ensuring(containsNoInternalTypes(_))
     }
 
-  override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = {
+  override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds =
     mapping(sym) match {
       case null => null
       case tv =>
@@ -208,7 +208,6 @@ final class ProperGadtConstraint private(
           //.reporting(i"gadt bounds $sym: $result", gadts)
           //.ensuring(containsNoInternalTypes(_))
     }
-  }
 
   override def contains(sym: Symbol)(implicit ctx: Context): Boolean = mapping(sym) ne null
 

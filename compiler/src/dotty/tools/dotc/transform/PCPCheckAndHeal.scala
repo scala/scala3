@@ -33,7 +33,7 @@ import scala.annotation.constructorOnly
 class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) {
   import tpd._
 
-  override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+  override def transform(tree: Tree)(implicit ctx: Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(ctx.withSource(tree.source))
     else tree match {
@@ -44,7 +44,6 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         checkLevel(super.transform(tree))
       case _ => checkLevel(super.transform(tree))
     }
-  }
 
   /** Transform quoted trees while maintaining phase correctness */
   override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
@@ -87,14 +86,13 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         assert(checkSymLevel(tree.symbol, tree.tpe, tree.sourcePos).isEmpty)
         tree
       case Ident(name) =>
-        if (name == nme.WILDCARD) {
+        if (name == nme.WILDCARD)
           untpd.Ident(name).withType(checkType(tree.sourcePos).apply(tree.tpe)).withSpan(tree.span)
-        } else {
+        else
           checkSymLevel(tree.symbol, tree.tpe, tree.sourcePos) match {
             case Some(tpRef) => tpRef
             case _ => tree
           }
-        }
       case _: TypeTree | _: AppliedTypeTree | _: Apply | _: TypeApply | _: UnApply | Select(_, OuterSelectName(_, _)) =>
         tree.withType(checkTp(tree.tpe))
       case _: ValOrDefDef | _: Bind =>
@@ -181,13 +179,14 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  @return Some(msg) if unsuccessful where `msg` is a potentially empty error message
    *                    to be added to the "inconsistent phase" message.
    */
-  protected def tryHeal(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[Tree] = {
+  protected def tryHeal(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[Tree] =
     tp match {
       case tp: TypeRef =>
         if (level == -1) {
           assert(ctx.inInlineMethod)
           None
-        } else {
+        }
+        else {
           val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
           val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
           tag.tpe match {
@@ -209,7 +208,6 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       case _ =>
         levelError(sym, tp, pos, "")
     }
-  }
 
   private def levelError(sym: Symbol, tp: Type, pos: SourcePosition, errMsg: String) given Context = {
     def symStr =
@@ -222,5 +220,5 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           | - but the access is at level $level.$errMsg""", pos)
     None
   }
-
 }
+

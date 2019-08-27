@@ -62,11 +62,11 @@ object ErrorReporting {
 
     def anonymousTypeMemberStr(tpe: Type): String = {
       val kind = tpe match {
-          case _: TypeBounds => "type with bounds"
-          case _: MethodOrPoly => "method"
-          case _ => "value of type"
-        }
-        em"$kind $tpe"
+        case _: TypeBounds => "type with bounds"
+        case _: MethodOrPoly => "method"
+        case _ => "value of type"
+      }
+      em"$kind $tpe"
     }
 
     def overloadedAltsStr(alts: List[SingleDenotation]): String =

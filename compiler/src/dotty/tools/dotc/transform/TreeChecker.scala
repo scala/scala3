@@ -154,14 +154,13 @@ class TreeChecker extends Phase with SymTransformer {
             }
             assert(!nowDefinedSyms.contains(sym), i"doubly defined symbol: ${sym.fullName} in $tree")
 
-            if (ctx.settings.YcheckMods.value) {
+            if (ctx.settings.YcheckMods.value)
               tree match {
                 case t: untpd.MemberDef =>
                   if (t.name ne sym.name) ctx.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
                 // todo: compare trees inside annotations
                 case _ =>
               }
-            }
             locally = sym :: locally
             nowDefinedSyms += sym
           case _ =>
@@ -357,8 +356,7 @@ class TreeChecker extends Phase with SymTransformer {
       }
       if (sym.exists && !sym.is(Private) &&
           !symIsFixed &&
-          !tree.name.is(OuterSelectName) // outer selects have effectively fixed symbols
-          ) {
+          !tree.name.is(OuterSelectName)) { // outer selects have effectively fixed symbols
         val qualTpe = tree.qualifier.typeOpt
         val member =
           if (sym.is(Private)) qualTpe.member(tree.name)
@@ -437,11 +435,10 @@ class TreeChecker extends Phase with SymTransformer {
         }
       }
 
-    override def typedCase(tree: untpd.CaseDef, selType: Type, pt: Type)(implicit ctx: Context): CaseDef = {
+    override def typedCase(tree: untpd.CaseDef, selType: Type, pt: Type)(implicit ctx: Context): CaseDef =
       withPatSyms(tpd.patVars(tree.pat.asInstanceOf[tpd.Tree])) {
         super.typedCase(tree, selType, pt)
       }
-    }
 
     override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context): Tree = {
       if (!ctx.phase.lambdaLifted) nestingBlock match {
@@ -522,7 +519,7 @@ class TreeChecker extends Phase with SymTransformer {
   /**
     * Checks that `New` nodes are always wrapped inside `Select` nodes.
     */
-  def assertSelectWrapsNew(tree: Tree)(implicit ctx: Context): Unit = {
+  def assertSelectWrapsNew(tree: Tree)(implicit ctx: Context): Unit =
     (new TreeAccumulator[tpd.Tree] {
       override def apply(parent: Tree, tree: Tree)(implicit ctx: Context): Tree = {
         tree match {
@@ -537,7 +534,6 @@ class TreeChecker extends Phase with SymTransformer {
         parent // return the old parent so that my siblings see it
       }
     })(tpd.EmptyTree, tree)
-  }
 }
 
 object TreeChecker {

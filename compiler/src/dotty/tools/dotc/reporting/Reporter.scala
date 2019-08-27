@@ -269,7 +269,7 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   var unreportedWarnings: Map[String, Int] = Map.empty
 
-  def report(m: MessageContainer)(implicit ctx: Context): Unit =
+  def report(m: MessageContainer)(implicit ctx: Context): Unit = {
     if (!isHidden(m)) {
       doReport(m)(ctx.addMode(Mode.Printing))
       m match {
@@ -285,6 +285,7 @@ abstract class Reporter extends interfaces.ReporterResult {
         // match error if d is something else
       }
     }
+  }
 
   def incomplete(m: MessageContainer)(implicit ctx: Context): Unit =
     incompleteHandler(m, ctx)

@@ -401,7 +401,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           || fn.symbol.isPrimaryConstructor && fn.symbol.owner.isNoInitsClass) // TODO: include in isStable?
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
       else if (fn.symbol.is(Erased)) Pure
-      else if (fn.symbol.isStableMember /* && fn.symbol.is(Lazy) */)
+      else if (fn.symbol.isStableMember) /* && fn.symbol.is(Lazy) */
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Idempotent
       else Impure
     case Typed(expr, _) =>

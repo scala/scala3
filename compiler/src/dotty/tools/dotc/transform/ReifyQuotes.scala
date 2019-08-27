@@ -74,7 +74,7 @@ class ReifyQuotes extends MacroTransform {
 
   override def allowsImplicitSearch: Boolean = true
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
     tree match {
       case tree: RefTree if !ctx.inInlineMethod =>
         assert(!tree.symbol.isQuote)
@@ -84,10 +84,10 @@ class ReifyQuotes extends MacroTransform {
           s"${tree.symbol} should have been removed by PickledQuotes because it has a @quoteTypeTag")
       case _ =>
     }
-  }
 
-  override def run(implicit ctx: Context): Unit =
+  override def run(implicit ctx: Context): Unit = {
     if (ctx.compilationUnit.needsStaging) super.run(freshStagingContext)
+  }
 
   protected def newTransformer(implicit ctx: Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree =
@@ -452,12 +452,11 @@ object ReifyQuotes {
     }
 
     /** Type used for the hole that will replace this splice */
-    def getHoleType(body: tpd.Tree, splice: tpd.Tree)(implicit ctx: Context): Type = {
+    def getHoleType(body: tpd.Tree, splice: tpd.Tree)(implicit ctx: Context): Type =
       // For most expressions the splice.tpe but there are some types that are lost by lifting
       // that can be recoverd from the original tree. Currently the cases are:
       //  * Method types: the splice represents a method reference
       map.get(body.symbol).map(_.tpe.widen).getOrElse(splice.tpe)
-    }
 
     def isLiftedSymbol(sym: Symbol)(implicit ctx: Context): Boolean = map.contains(sym)
 
@@ -465,6 +464,6 @@ object ReifyQuotes {
     def getTrees: List[tpd.Tree] = trees.toList
 
     override def toString: String = s"Embedded($trees, $map)"
-
   }
 }
+

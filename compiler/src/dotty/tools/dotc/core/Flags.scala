@@ -75,10 +75,10 @@ object Flags {
       (fs & KINDFLAGS) != 0 && (fs & ~KINDFLAGS) != 0
     }
 
-   /** Does the given flag set have a non-empty intersection with another flag set,
-    *  and at the same time contain none of the flags in the `butNot` set?
-    */
-   def (x: FlagSet) isOneOf (flags: FlagSet, butNot: FlagSet): Boolean = x.isOneOf(flags) && !x.isOneOf(butNot)
+    /** Does the given flag set have a non-empty intersection with another flag set,
+     *  and at the same time contain none of the flags in the `butNot` set?
+     */
+    def (x: FlagSet) isOneOf (flags: FlagSet, butNot: FlagSet): Boolean = x.isOneOf(flags) && !x.isOneOf(butNot)
 
     /** Does a given flag set have all of the flags of another flag set?
      *  Pre: The intersection of the term/type flags of both sets must be non-empty.

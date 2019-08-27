@@ -47,15 +47,12 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
     case _ => t
   }
 
-  override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
+  override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree =
     normalize(tree)
-  }
 
-  override def transformTypeApply(tree: tpd.TypeApply)(implicit ctx: Context): tpd.Tree = {
+  override def transformTypeApply(tree: tpd.TypeApply)(implicit ctx: Context): tpd.Tree =
     normalize(tree)
-  }
 
-  override def transformClosure(tree: tpd.Closure)(implicit ctx: Context): tpd.Tree = {
+  override def transformClosure(tree: tpd.Closure)(implicit ctx: Context): tpd.Tree =
     normalize(tree)
-  }
 }

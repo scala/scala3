@@ -106,7 +106,8 @@ object ShowPickled {
       idx += 1
       result = (result << 7) + (b & 0x7f)
       (b & 0x80) != 0L
-    }) ()
+    })
+    ()
     result.toInt
   }
 
@@ -248,15 +249,15 @@ object ShowPickled {
         case _ =>
       }
       out.println()
-      if (buf.readIndex != end) {
+      if (buf.readIndex != end)
         out.println("BAD ENTRY END: computed = %d, actual = %d, bytes = %s".format(
           end, buf.readIndex, buf.bytes.slice(index(i), (end max buf.readIndex)).mkString(", ")
         ))
-      }
     }
 
     for (i <- 0 until index.length) printEntry(i)
   }
+}
 
 /*
  *
@@ -282,4 +283,3 @@ object ShowPickled {
       }
     }
   }*/
-}

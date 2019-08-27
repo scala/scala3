@@ -104,15 +104,16 @@ object Interactive {
         val funSym = fn.symbol
         if (funSym.name == StdNames.nme.copy
           && funSym.is(Synthetic)
-          && funSym.owner.is(CaseClass)) {
+          && funSym.owner.is(CaseClass))
             List(funSym.owner.info.member(name).symbol)
-        } else {
+        else {
           val classTree = funSym.topLevelClass.asClass.rootTree
           val paramSymbol =
             for {
               DefDef(_, _, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
               param <- paramss.flatten.find(_.name == name)
-            } yield param.symbol
+            }
+            yield param.symbol
           List(paramSymbol.getOrElse(fn.symbol))
         }
 
@@ -179,7 +180,7 @@ object Interactive {
                 )(implicit ctx: Context): List[SourceTree] = safely {
     val buf = new mutable.ListBuffer[SourceTree]
 
-    def traverser(source: SourceFile) = {
+    def traverser(source: SourceFile) =
       new untpd.TreeTraverser {
         private def handle(utree: untpd.NameTree): Unit = {
           val tree = utree.asInstanceOf[tpd.NameTree]
@@ -192,7 +193,7 @@ object Interactive {
                && treePredicate(tree))
             buf += SourceTree(tree, source)
         }
-        override def traverse(tree: untpd.Tree)(implicit ctx: Context) = {
+        override def traverse(tree: untpd.Tree)(implicit ctx: Context) =
           tree match {
             case imp: untpd.Import if include.isImports && tree.hasType =>
               val tree = imp.asInstanceOf[tpd.Import]
@@ -210,9 +211,7 @@ object Interactive {
             case _ =>
               traverseChildren(tree)
           }
-        }
       }
-    }
 
     trees.foreach(t => traverser(t.source).traverse(t.tree))
 
@@ -404,20 +403,20 @@ object Interactive {
    * @param sym The symbol whose implementations to find.
    * @return A function that determines whether a `NameTree` is an implementation of `sym`.
    */
-  def implementationFilter(sym: Symbol)(implicit ctx: Context): NameTree => Boolean = {
+  def implementationFilter(sym: Symbol)(implicit ctx: Context): NameTree => Boolean =
     if (sym.isClass) {
       case td: TypeDef =>
         val treeSym = td.symbol
         (treeSym != sym || !treeSym.isOneOf(AbstractOrTrait)) && treeSym.derivesFrom(sym)
       case _ =>
         false
-    } else {
+    }
+    else {
       case md: MemberDef =>
         matchSymbol(md, sym, Include.overriding) && !md.symbol.is(Deferred)
       case _ =>
         false
     }
-  }
 
   /**
    * Is this tree using a renaming introduced by an import statement or an alias for `this`?
@@ -432,11 +431,10 @@ object Interactive {
   }
 
   /** Are the two names the same? */
-  def sameName(n0: Name, n1: Name): Boolean = {
+  def sameName(n0: Name, n1: Name): Boolean =
     n0.stripModuleClassSuffix.toTermName eq n1.stripModuleClassSuffix.toTermName
-  }
 
   private[interactive] def safely[T](op: => List[T]): List[T] =
     try op catch { case ex: TypeError => Nil }
-
 }
+

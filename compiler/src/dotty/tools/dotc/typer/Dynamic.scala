@@ -38,7 +38,9 @@ object Dynamic {
  *    or `applyDynamic` on a `Selectable` instance. @See handleStructural.
  *
  */
-trait Dynamic { self: Typer with Applications =>
+trait Dynamic {
+  self: Typer & Applications =>
+
   import Dynamic._
   import tpd._
 
@@ -66,7 +68,7 @@ trait Dynamic { self: Typer with Applications =>
       }
     }
 
-     tree.fun match {
+    tree.fun match {
       case sel @ Select(qual, name) if !isDynamicMethod(name) =>
         typedDynamicApply(qual, name, sel.span, Nil)
       case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>

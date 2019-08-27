@@ -56,11 +56,11 @@ object NameTransformer {
   }
 
   /** Decode expanded characters starting with `$u`, followed by the character's unicode expansion. */
-  def decodeIllegalChars(name: String): String = {
+  def decodeIllegalChars(name: String): String =
     if (name.contains("$u")) {
       val sb = new mutable.StringBuilder()
       var i = 0
-      while (i < name.length) {
+      while (i < name.length)
         if (i < name.length - 5 && name(i) == '$' && name(i + 1) == 'u') {
           val numbers = name.substring(i + 2, i + 6)
           try sb.append(Integer.valueOf(name.substring(i + 2, i + 6), 16).toChar)
@@ -69,15 +69,14 @@ object NameTransformer {
               sb.append("$u").append(numbers)
           }
           i += 6
-        } else {
+        }
+        else {
           sb.append(name(i))
           i += 1
         }
-      }
       sb.result()
     }
     else name
-  }
 
   /** Replace operator symbols by corresponding expansion strings.
    *

@@ -27,9 +27,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       try {
         ctx.base.toTextRecursions += 1
         op
-      } finally {
-        ctx.base.toTextRecursions -= 1
       }
+      finally
+        ctx.base.toTextRecursions -= 1
     else {
       if (ctx.base.toTextRecursions >= maxToTextRecursions)
         recursionLimitExceeded()
@@ -404,7 +404,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }
 
   protected def privateWithinString(sym: Symbol): String =
-  	if (sym.exists && sym.privateWithin.exists)
+    if (sym.exists && sym.privateWithin.exists)
       nameString(sym.privateWithin.name.stripModuleClassSuffix)
     else ""
 
@@ -520,11 +520,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.sourcePos.toString) provided printDebug)
   }.close // todo: override in refined printer
 
-  def toText(pos: SourcePosition): Text = {
+  def toText(pos: SourcePosition): Text =
     if (!pos.exists) "<no position>"
     else if (pos.source.exists) s"${pos.source.file.name}:${pos.line + 1}"
     else s"(no source file, offset = ${pos.span.point})"
-  }
 
   def toText(result: SearchResult): Text = result match {
     case result: SearchSuccess =>
@@ -537,7 +536,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           "Ambiguous Implicit: " ~ toText(result.alt1.ref) ~ " and " ~ toText(result.alt2.ref)
         case _ =>
           "Search Failure: " ~ toText(result.tree)
-    }
+      }
   }
 
   def toText(importInfo: ImportInfo): Text = {
