@@ -160,6 +160,7 @@ aside {
   position: absolute;
   width: 100%;
   font-size: 1.5em;
+  line-height: 3vh;
 }
 
 .scala-logo-container .subtitle h1 {
