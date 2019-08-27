@@ -251,6 +251,12 @@ object Tokens extends TokensCommon {
   final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(
     TYPE, RPAREN, RBRACE, RBRACKET)
 
+  /** Tokens that stop a lookahead scan search for a `<-`, `then`, or `do`.
+   *  Used for disambiguating between old and new syntax.
+   */
+  final val stopScanTokens: BitSet = mustStartStatTokens |
+    BitSet(IF, ELSE, WHILE, DO, FOR, YIELD, NEW, TRY, CATCH, FINALLY, THROW, RETURN, MATCH, SEMI, EOF)
+
   final val numericLitTokens: TokenSet = BitSet(INTLIT, LONGLIT, FLOATLIT, DOUBLELIT)
 
   final val scala3keywords = BitSet(ENUM, ERASED, GIVEN, IMPLIED)

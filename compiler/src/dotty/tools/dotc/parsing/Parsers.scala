@@ -22,7 +22,7 @@ import Constants._
 import Symbols.defn
 import ScriptParsers._
 import Decorators._
-import scala.internal.Chars.isIdentifierStart
+import scala.internal.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.patch
 
@@ -351,6 +351,31 @@ object Parsers {
             accept(SEMI)
         }
 
+    def rewriteNotice(additionalOption: String = "") = {
+      val optionStr = if (additionalOption.isEmpty) "" else " " ++ additionalOption
+      i"\nThis construct can be rewritten automatically under$optionStr -rewrite."
+    }
+
+    def syntaxVersionError(option: String, span: Span) = {
+      syntaxError(em"""This construct is not allowed under $option.${rewriteNotice(option)}""", span)
+    }
+
+    def rewriteToNewSyntax(span: Span = Span(in.offset)): Boolean = {
+      if (in.newSyntax) {
+        if (in.rewrite) return true
+        syntaxVersionError("-new-syntax", span)
+      }
+      false
+    }
+
+    def rewriteToOldSyntax(span: Span = Span(in.offset)): Boolean = {
+      if (in.oldSyntax) {
+        if (in.rewrite) return true
+        syntaxVersionError("-old-syntax", span)
+      }
+      false
+    }
+
     def errorTermTree: Literal = atSpan(in.offset) { Literal(Constant(null)) }
 
     private[this] var inFunReturnType = false
@@ -524,6 +549,131 @@ object Parsers {
     }
 
     def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
+
+    def inSepRegion[T](opening: Token, closing: Token)(op: => T): T = {
+      in.adjustSepRegions(opening)
+      try op finally in.adjustSepRegions(closing)
+    }
+
+/* -------- REWRITES ----------------------------------------------------------- */
+
+    /** A list of pending patches, to be issued if we can rewrite all enclosing braces to
+     *  indentation regions.
+     */
+    var pendingPatches: List[() => Unit] = Nil
+
+    def testChar(idx: Int, p: Char => Boolean): Boolean = {
+      val txt = source.content
+      idx < txt.length && p(txt(idx))
+    }
+
+    def testChar(idx: Int, c: Char): Boolean = {
+      val txt = source.content
+      idx < txt.length && txt(idx) == c
+    }
+
+    def testChars(from: Int, str: String): Boolean =
+      str.isEmpty ||
+      testChar(from, str.head) && testChars(from + 1, str.tail)
+
+    def skipBlanks(idx: Int, step: Int = 1): Int =
+      if (testChar(idx, c => c == ' ' || c == '\t' || c == Chars.CR)) skipBlanks(idx + step, step)
+      else idx
+
+    def skipLineCommentsRightOf(idx: Int, column: Int): Int = {
+      val j = skipBlanks(idx)
+      if (testChar(j, '/') && testChar(j + 1, '/') && source.column(j) > column)
+        skipLineCommentsRightOf(source.nextLine(j), column)
+      else idx
+    }
+
+    /** The region to eliminate when replacing a closing `)` or `}` that starts
+     *  a new line
+     */
+    def closingElimRegion(): (Offset, Offset) = {
+      val skipped = skipBlanks(in.lastOffset)
+      if (testChar(skipped, Chars.LF))                    // if `}` is on a line by itself
+        (source.startOfLine(in.lastOffset), skipped + 1)  //   skip the whole line
+      else                                                // else
+        (in.lastOffset - 1, skipped)                      //   move the following text up to where the `}` was
+    }
+
+    /** Drop (...) or { ... }, replacing the closing element with `endStr` */
+    def dropParensOrBraces(start: Offset, endStr: String): Unit = {
+      patch(source, Span(start, start + 1),
+        if (testChar(start - 1, Chars.isIdentifierPart)) " " else "")
+      val closingStartsLine = testChar(skipBlanks(in.lastOffset - 2, -1), Chars.LF)
+      val preFill = if (closingStartsLine || endStr.isEmpty) "" else " "
+      val postFill = if (in.lastOffset == in.offset) " " else ""
+      val (startClosing, endClosing) =
+        if (closingStartsLine && endStr.isEmpty) closingElimRegion()
+        else (in.lastOffset - 1, in.lastOffset)
+      patch(source, Span(startClosing, endClosing), s"$preFill$endStr$postFill")
+    }
+
+    /** Drop current token, which is assumed to be `then` or `do`. */
+    def dropTerminator(): Unit = {
+      var startOffset = in.offset
+      var endOffset = in.lastCharOffset
+      if (in.isAfterLineEnd()) {
+        if (testChar(endOffset, ' ')) endOffset += 1
+      }
+      else {
+        if (testChar(startOffset - 1, ' ')) startOffset -= 1
+      }
+      patch(source, Span(startOffset, endOffset), "")
+    }
+
+    /** rewrite code with (...) around the source code of `t` */
+    def revertToParens(t: Tree): Unit =
+      if (t.span.exists) {
+        patch(source, t.span.startPos, "(")
+        patch(source, t.span.endPos, ")")
+        dropTerminator()
+      }
+
+    /** In the tokens following the current one, does `query` precede any of the tokens that
+     *   - must start a statement, or
+     *   - separate two statements, or
+     *   - continue a statement (e.g. `else`, catch`)?
+     */
+    def followedByToken(query: Token): Boolean = {
+      val lookahead = in.lookaheadScanner
+      var braces = 0
+      while (true) {
+        val token = lookahead.token
+        if (braces == 0) {
+          if (token == query) return true
+          if (stopScanTokens.contains(token) || lookahead.token == RBRACE) return false
+        }
+        else if (token == EOF)
+          return false
+        else if (lookahead.token == RBRACE)
+          braces -= 1
+        if (lookahead.token == LBRACE) braces += 1
+        lookahead.nextToken()
+      }
+      false
+    }
+
+    /** A the generators of a for-expression enclosed in (...)? */
+    def parensEncloseGenerators: Boolean = {
+      val lookahead = in.lookaheadScanner
+      var parens = 1
+      lookahead.nextToken()
+      while (parens != 0 && lookahead.token != EOF) {
+        val token = lookahead.token
+        if (token == LPAREN) parens += 1
+        else if (token == RPAREN) parens -= 1
+        lookahead.nextToken()
+      }
+      if (lookahead.token == LARROW)
+        false // it's a pattern
+      else if (lookahead.token != IDENTIFIER && lookahead.token != BACKQUOTED_IDENT)
+        true // it's not a pattern since token cannot be an infix operator
+      else
+        followedByToken(LARROW) // `<-` comes before possible statement starts
+    }
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -758,7 +908,7 @@ object Parsers {
       }
       else atSpan(negOffset) {
         if (in.token == QUOTEID) {
-          if ((staged & StageKind.Spliced) != 0 && isIdentifierStart(in.name(0))) {
+          if ((staged & StageKind.Spliced) != 0 && Chars.isIdentifierStart(in.name(0))) {
             val t = atSpan(in.offset + 1) {
               val tok = in.toToken(in.name)
               tok match {
@@ -844,7 +994,7 @@ object Parsers {
 
     def newLineOptWhenFollowedBy(token: Int): Unit = {
       // note: next is defined here because current == NEWLINE
-      if (in.token == NEWLINE && in.next.token == token) newLineOpt()
+      if (in.token == NEWLINE && in.next.token == token) in.nextToken()
     }
 
     def newLineOptWhenFollowing(p: Int => Boolean): Unit = {
@@ -1235,11 +1385,22 @@ object Parsers {
 
     def condExpr(altToken: Token): Tree = {
       if (in.token == LPAREN) {
-        val t = atSpan(in.offset) { Parens(inParens(exprInParens())) }
-        if (in.token == altToken) in.nextToken()
+        var t: Tree = atSpan(in.offset) { Parens(inParens(exprInParens())) }
+        if (in.token != altToken && followedByToken(altToken))
+          t = inSepRegion(LPAREN, RPAREN) {
+            newLineOpt()
+            expr1Rest(postfixExprRest(simpleExprRest(t)), Location.ElseWhere)
+          }
+        if (in.token == altToken) {
+          if (rewriteToOldSyntax()) revertToParens(t)
+          in.nextToken()
+        }
+        else if (rewriteToNewSyntax(t.span))
+          dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
         t
       } else {
-        val t = expr()
+        val t = inSepRegion(LPAREN, RPAREN)(expr())
+        if (rewriteToOldSyntax(t.span.startPos)) revertToParens(t)
         accept(altToken)
         t
       }
@@ -1333,7 +1494,7 @@ object Parsers {
         in.errorOrMigrationWarning(
           i"""`do <body> while <cond>' is no longer supported,
              |use `while ({<body> ; <cond>}) ()' instead.
-             |The statement can be rewritten automatically under -language:Scala2 -migration -rewrite.
+             |${rewriteNotice("-language:Scala2")}
            """)
         val start = in.skipToken()
         atSpan(start) {
@@ -1342,7 +1503,7 @@ object Parsers {
           val whileStart = in.offset
           accept(WHILE)
           val cond = expr()
-          if (ctx.settings.migration.value) {
+          if (in.isScala2Mode) {
             patch(source, Span(start, start + 2), "while ({")
             patch(source, Span(whileStart, whileStart + 5), ";")
             cond match {
@@ -1576,8 +1737,10 @@ object Parsers {
      *                  | InfixExpr id [nl] InfixExpr
      *                  | InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)
      */
-    def postfixExpr(): Tree =
-      infixOps(prefixExpr(), canStartExpressionTokens, prefixExpr, maybePostfix = true)
+    def postfixExpr(): Tree = postfixExprRest(prefixExpr())
+
+    def postfixExprRest(t: Tree): Tree =
+      infixOps(t, canStartExpressionTokens, prefixExpr, maybePostfix = true)
 
     /** PrefixExpr   ::= [`-' | `+' | `~' | `!'] SimpleExpr
     */
@@ -1799,8 +1962,13 @@ object Parsers {
     def enumerators(): List[Tree] = generator() :: enumeratorsRest()
 
     def enumeratorsRest(): List[Tree] =
-      if (isStatSep) { in.nextToken(); enumerator() :: enumeratorsRest() }
-      else if (in.token == IF) guard() :: enumeratorsRest()
+      if (isStatSep) {
+        in.nextToken()
+        if (in.token == DO || in.token == YIELD || in.token == RBRACE) Nil
+        else enumerator() :: enumeratorsRest()
+      }
+      else if (in.token == IF)
+        guard() :: enumeratorsRest()
       else Nil
 
     /** Enumerator  ::=  Generator
@@ -1838,13 +2006,16 @@ object Parsers {
      */
     def forExpr(): Tree = atSpan(in.skipToken()) {
       var wrappedEnums = true
+      val start = in.offset
+      val forEnd = in.lastOffset
+      val leading = in.token
       val enums =
-        if (in.token == LBRACE) inBraces(enumerators())
-        else if (in.token == LPAREN) {
-          val lparenOffset = in.skipToken()
-          openParens.change(LPAREN, 1)
+        if (leading == LBRACE || leading == LPAREN && parensEncloseGenerators) {
+          in.nextToken()
+          openParens.change(leading, 1)
           val res =
-            if (in.token == CASE) enumerators()
+            if (leading == LBRACE || in.token == CASE)
+              enumerators()
             else {
               val pats = patternsOpt()
               val pat =
@@ -1852,23 +2023,55 @@ object Parsers {
                   wrappedEnums = false
                   accept(RPAREN)
                   openParens.change(LPAREN, -1)
-                  atSpan(lparenOffset) { makeTupleOrParens(pats) } // note: alternatives `|' need to be weeded out by typer.
+                  atSpan(start) { makeTupleOrParens(pats) } // note: alternatives `|' need to be weeded out by typer.
                 }
                 else pats.head
               generatorRest(pat, casePat = false) :: enumeratorsRest()
             }
           if (wrappedEnums) {
-            accept(RPAREN)
-            openParens.change(LPAREN, -1)
+            val closingOnNewLine = in.isAfterLineEnd()
+            accept(leading + 1)
+            openParens.change(leading, -1)
+            def hasMultiLineEnum =
+              res.exists { t =>
+                val pos = t.sourcePos
+                pos.startLine < pos.endLine
+              }
+            if (rewriteToNewSyntax(Span(start)) && (leading == LBRACE || !hasMultiLineEnum)) {
+              // Don't rewrite if that could change meaning of newlines
+              newLinesOpt()
+              dropParensOrBraces(start, if (in.token == YIELD || in.token == DO) "" else "do")
+            }
           }
           res
-        } else {
+        }
+        else {
           wrappedEnums = false
-          enumerators()
+
+          /*if (in.token == INDENT) inBracesOrIndented(enumerators()) else*/
+          val ts = inSepRegion(LBRACE, RBRACE)(enumerators())
+          if (rewriteToOldSyntax(Span(start)) && ts.nonEmpty) {
+            if (ts.length > 1 && ts.head.sourcePos.startLine != ts.last.sourcePos.startLine) {
+              patch(source, Span(forEnd), " {")
+              patch(source, Span(in.offset), "} ")
+            }
+            else {
+              patch(source, ts.head.span.startPos, "(")
+              patch(source, ts.last.span.endPos, ")")
+            }
+          }
+          ts
         }
       newLinesOpt()
-      if (in.token == YIELD) { in.nextToken(); ForYield(enums, expr()) }
-      else if (in.token == DO) { in.nextToken(); ForDo(enums, expr()) }
+      if (in.token == YIELD) {
+        in.nextToken()
+        ForYield(enums, expr())
+      }
+      else if (in.token == DO) {
+        if (rewriteToOldSyntax()) dropTerminator()
+        in.nextToken()
+        ForDo(enums, expr())
+      }
       else {
         if (!wrappedEnums) syntaxErrorOrIncomplete(YieldOrDoExpectedInForComprehension())
         ForDo(enums, expr())
@@ -2675,7 +2878,7 @@ object Parsers {
     }
 
     /** ConstrExpr      ::=  SelfInvocation
-     *                    |  ConstrBlock
+     *                    |  `{' SelfInvocation {semi BlockStat} `}'
      */
     def constrExpr(): Tree =
       if (in.token == LBRACE) constrBlock()
