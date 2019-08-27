@@ -1,13 +1,17 @@
 package dotty.tools.backend.sjs
 
+import scala.annotation.tailrec
+
 import scala.collection.mutable
 
 import dotty.tools.FatalError
 
 import dotty.tools.dotc.core._
+import Decorators._
 import Periods._
 import SymDenotations._
 import Contexts._
+import Flags._
 import Types._
 import Symbols._
 import Denotations._
@@ -103,13 +107,6 @@ object JSEncoding {
     js.Ident(localNames.localSymbolName(sym), Some(sym.unexpandedName.decoded))
   }
 
-  private def allRefClasses(implicit ctx: Context): Set[Symbol] = {
-    //TODO
-    /*(Set(ObjectRefClass, VolatileObjectRefClass) ++
-        refClass.values ++ volatileRefClass.values)*/
-    Set()
-  }
-
   def encodeFieldSym(sym: Symbol)(
       implicit ctx: Context, pos: ir.Position): js.Ident = {
     require(sym.owner.isClass && sym.isTerm && !sym.is(Flags.Method) && !sym.is(Flags.Module),
@@ -120,14 +117,19 @@ object JSEncoding {
       if (name0.charAt(name0.length()-1) != ' ') name0
       else name0.substring(0, name0.length()-1)
 
+    @tailrec
+    def superClassCount(sym: Symbol, acc: Int): Int =
+      if (sym == defn.ObjectClass) acc
+      else superClassCount(sym.asClass.superClass, acc + 1)
+
     /* We have to special-case fields of Ref types (IntRef, ObjectRef, etc.)
      * because they are emitted as private by our .scala source files, but
      * they are considered public at use site since their symbols come from
      * Java-emitted .class files.
      */
     val idSuffix =
-      if (sym.is(Flags.Private) || allRefClasses.contains(sym.owner))
-        sym.owner.asClass.baseClasses.size.toString
+      if (sym.is(Flags.Private) || jsdefn.allRefClasses.contains(sym.owner))
+        superClassCount(sym.owner, 0).toString
       else
         "f"
 

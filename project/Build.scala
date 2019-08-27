@@ -948,6 +948,7 @@ object Build {
         (
           (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** "IntTest.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** "IntegerTest.scala").get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** "ObjectTest.scala").get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/util" ** "Base64Test.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
         )
