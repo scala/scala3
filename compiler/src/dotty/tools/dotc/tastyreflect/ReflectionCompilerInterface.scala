@@ -1109,6 +1109,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Type_dealias(self: Type) given Context: Type = self.dealias
 
+  def Type_simplified(self: Type) given Context: Type = self.simplified
+
   def Type_classSymbol(self: Type) given Context: Option[ClassDefSymbol] =
     if (self.classSymbol.exists) Some(self.classSymbol.asClass) else None
 

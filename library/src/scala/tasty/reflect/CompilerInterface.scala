@@ -876,6 +876,8 @@ trait CompilerInterface {
    */
   def Type_dealias(self: Type) given (ctx: Context): Type
 
+  def Type_simplified(self: Type) given (ctx: Context): Type
+
   def Type_classSymbol(self: Type) given (ctx: Context): Option[ClassDefSymbol] // TODO remove Option and use NoSymbol
 
   def Type_typeSymbol(self: Type) given (ctx: Context): Symbol
