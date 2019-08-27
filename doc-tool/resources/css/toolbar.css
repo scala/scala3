@@ -43,10 +43,12 @@ nav.navbar a {
 }
 .navbar-brand .project-details h1 {
   font-size: 1.1em;
+  font-family: "Lobster", cursive;
 }
 .navbar-brand .project-details h2 {
   font-size: 0.5em;
   color: grey;
+  margin-top: 2px;
 }
 
 #search-api-input {
