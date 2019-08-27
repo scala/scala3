@@ -1721,11 +1721,15 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           .map(advanced.toMap) // map surviving result(s) back to original candidates
       case _ =>
         val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
-        if (noDefaults.length == 1) noDefaults // return unique alternative without default parameters if it exists
+        val noDefaultsCount = noDefaults.length
+        if (noDefaultsCount == 1)
+          noDefaults // return unique alternative without default parameters if it exists
+        else if (noDefaultsCount > 1 && noDefaultsCount < alts.length)
+          resolveOverloaded(noDefaults, pt, targs) // try again, dropping defult arguments
         else {
           val deepPt = pt.deepenProto
           if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
-          else alts
+          else candidates
         }
     }
   }
