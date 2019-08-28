@@ -1076,7 +1076,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"
             val msg =
               if (tree.selector.isEmpty)
-                em"""cannot reduce delegate match with
+                em"""cannot reduce given match with
                    | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
               else
                 em"""cannot reduce inline match with
