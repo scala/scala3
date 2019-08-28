@@ -354,6 +354,7 @@ object Phases {
     private[this] var myFlatClasses = false
     private[this] var myRefChecked = false
     private[this] var myLambdaLifted = false
+    private[this] var myPatternTranslated = false
 
     private[this] var mySameMembersStartId = NoPhaseId
     private[this] var mySameParentsStartId = NoPhaseId
@@ -372,7 +373,8 @@ object Phases {
     final def erasedTypes: Boolean = myErasedTypes   // Phase is after erasure
     final def flatClasses: Boolean = myFlatClasses   // Phase is after flatten
     final def refChecked: Boolean = myRefChecked     // Phase is after RefChecks
-    final def lambdaLifted: Boolean = myLambdaLifted     // Phase is after LambdaLift
+    final def lambdaLifted: Boolean = myLambdaLifted // Phase is after LambdaLift
+    final def patternTranslated: Boolean = myPatternTranslated // Phase is after PatternMatcher
 
     final def sameMembersStartId: Int = mySameMembersStartId
       // id of first phase where all symbols are guaranteed to have the same members as in this phase
@@ -391,6 +393,7 @@ object Phases {
       myFlatClasses  = prev.getClass == classOf[Flatten]    || prev.flatClasses
       myRefChecked   = prev.getClass == classOf[RefChecks]  || prev.refChecked
       myLambdaLifted = prev.getClass == classOf[LambdaLift] || prev.lambdaLifted
+      myPatternTranslated = prev.getClass == classOf[PatternMatcher] || prev.patternTranslated
       mySameMembersStartId = if (changesMembers) id else prev.sameMembersStartId
       mySameParentsStartId = if (changesParents) id else prev.sameParentsStartId
       mySameBaseTypesStartId = if (changesBaseTypes) id else prev.sameBaseTypesStartId

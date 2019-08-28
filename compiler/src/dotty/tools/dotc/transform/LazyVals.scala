@@ -336,7 +336,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     }
 
     val retryCase = {
-      val caseSymbol = ctx.newSymbol(methodSymbol, nme.DEFAULT_EXCEPTION_NAME, Synthetic, defn.ThrowableType)
+      val caseSymbol = ctx.newSymbol(methodSymbol, nme.DEFAULT_EXCEPTION_NAME, Synthetic | Case, defn.ThrowableType)
       val triggerRetry = setFlagState.appliedTo(thiz, offset, initState, fieldId)
       CaseDef(
         Bind(caseSymbol, ref(caseSymbol)),

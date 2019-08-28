@@ -163,6 +163,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
   }
 
   @Test def testPlugins: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("testPlugins")
     val pluginFile = "plugin.properties"
 
     // 1. hack with absolute path for -Xplugin
@@ -183,6 +184,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     }
 
     compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
+    compileDir("tests/plugins/custom/analyzer", withCompilerOptions.and("-Yretain-trees")).checkCompile()
   }
 }
 
