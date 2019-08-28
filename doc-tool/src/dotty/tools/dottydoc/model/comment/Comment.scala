@@ -85,7 +85,7 @@ trait MarkupConversion[T] extends MemberLookup {
     short                   = stringToShortHtml(parsed.body),
     authors                 = filterEmpty(parsed.authors).map(markupToHtml),
     see                     = filterEmpty(parsed.see).map(markupToHtml),
-    result                  = single("@result", parsed.result).map(markupToHtml),
+    result                  = single("@return", parsed.result).map(markupToHtml),
     throws                  = linkedExceptions(parsed.throws),
     valueParams             = filterEmpty(parsed.valueParams).transform((_, v) => markupToHtml(v)).toMap,
     typeParams              = filterEmpty(parsed.typeParams).transform((_, v) => markupToHtml(v)).toMap,
