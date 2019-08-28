@@ -19,7 +19,7 @@ import dotty.tools.dotc.ast.tpd
 import typer.Implicits.SearchFailureType
 
 import scala.collection.mutable
-import dotty.tools.dotc.core.Annotations.Annotation
+import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
@@ -407,6 +407,14 @@ class ReifyQuotes extends MacroTransform {
             // TODO move to FirstTransform to trigger even without quotes
             cpy.DefDef(tree)(rhs = defaultValue(tree.rhs.tpe))
 
+          case tree: DefTree if level >= 1 =>
+            val newAnnotations = tree.symbol.annotations.mapconserve { annot =>
+              val newAnnotTree = transform(annot.tree) given ctx.withOwner(tree.symbol)
+              if (annot.tree == newAnnotTree) annot
+              else ConcreteAnnotation(newAnnotTree)
+            }
+            tree.symbol.annotations = newAnnotations
+            super.transform(tree)
           case _ =>
             super.transform(tree)
         }

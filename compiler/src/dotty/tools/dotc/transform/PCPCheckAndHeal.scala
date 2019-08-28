@@ -38,6 +38,10 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       transform(tree)(ctx.withSource(tree.source))
     else tree match {
       case tree: DefDef if tree.symbol.is(Inline) && level > 0 => EmptyTree
+      case tree: DefTree =>
+        for (annot <- tree.symbol.annotations)
+          transform(annot.tree) given ctx.withOwner(tree.symbol)
+        checkLevel(super.transform(tree))
       case _ => checkLevel(super.transform(tree))
     }
   }
