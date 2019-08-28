@@ -697,7 +697,7 @@ trait Implicits { self: Typer =>
                 classTag.select(sym.name.toTermName)
               else
                 classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(erasure(tp)))
-              tag.withSpan(span)
+            tag.withSpan(span)
           case tp =>
             EmptyTree
         }
@@ -708,7 +708,7 @@ trait Implicits { self: Typer =>
   /** Synthesize the tree for `'[T]` for an implicit `scala.quoted.Type[T]`.
    *  `T` is deeply dealiased to avoid references to local type aliases.
    */
-  lazy val synthesizedTypeTag: SpecialHandler =
+  lazy val synthesizedTypeTag: SpecialHandler = {
     (formal, span) => implicit ctx => {
       def quotedType(t: Type) = {
         if (StagingContext.level == 0)
@@ -725,6 +725,7 @@ trait Implicits { self: Typer =>
           EmptyTree
       }
     }
+  }
 
   lazy val synthesizedQuoteContext: SpecialHandler =
     (formal, span) => implicit ctx =>
@@ -778,7 +779,7 @@ trait Implicits { self: Typer =>
   /** If `formal` is of the form Eql[T, U], try to synthesize an
     *  `Eql.eqlAny[T, U]` as solution.
     */
-  lazy val synthesizedEq: SpecialHandler =
+  lazy val synthesizedEq: SpecialHandler = {
     (formal, span) => implicit ctx => {
 
       /** Is there an `Eql[T, T]` instance, assuming -strictEquality? */
@@ -839,11 +840,12 @@ trait Implicits { self: Typer =>
           EmptyTree
       }
     }
+  }
 
   /** Creates a tree that will produce a ValueOf instance for the requested type.
    * An EmptyTree is returned if materialization fails.
    */
-  lazy val synthesizedValueOf: SpecialHandler =
+  lazy val synthesizedValueOf: SpecialHandler = {
     (formal, span) => implicit ctx => {
       def success(t: Tree) = New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
 
@@ -863,6 +865,7 @@ trait Implicits { self: Typer =>
           EmptyTree
       }
     }
+  }
 
   /** Create an anonymous class `new Object { type MirroredMonoType = ... }`
    *  and mark it with given attachment so that it is made into a mirror at PostTyper.
@@ -923,7 +926,7 @@ trait Implicits { self: Typer =>
   /** An implied instance for a type of the form `Mirror.Product { type MirroredType = T }`
    *  where `T` is a generic product type or a case object or an enum case.
    */
-  lazy val synthesizedProductMirror: SpecialHandler =
+  lazy val synthesizedProductMirror: SpecialHandler = {
     (formal, span) => implicit ctx => {
       def mirrorFor(mirroredType0: Type): Tree = {
         val mirroredType = mirroredType0.stripTypeVar
@@ -979,6 +982,7 @@ trait Implicits { self: Typer =>
           case other => EmptyTree
         }
     }
+  }
 
   /** An implied instance for a type of the form `Mirror.Sum { type MirroredType = T }`
    *  where `T` is a generic sum type.
@@ -1114,8 +1118,8 @@ trait Implicits { self: Typer =>
           case Nil =>
             failed
         }
-      if (fail.isAmbiguous) failed
-      else trySpecialCases(specialHandlers)
+        if (fail.isAmbiguous) failed
+        else trySpecialCases(specialHandlers)
     }
 
   /** Search an implicit argument and report error if not found */
@@ -1151,7 +1155,8 @@ trait Implicits { self: Typer =>
     def userDefinedMsg(sym: Symbol, cls: Symbol) = for {
       ann <- sym.getAnnotation(cls)
       Trees.Literal(Constant(msg: String)) <- ann.argument(0)
-    } yield msg
+    }
+    yield msg
 
 
     arg.tpe match {
@@ -1279,11 +1284,12 @@ trait Implicits { self: Typer =>
   }
 
   /** Check that equality tests between types `ltp` and `rtp` make sense */
-  def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit =
+  def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit = {
     if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
       val res = implicitArgTree(defn.EqlClass.typeRef.appliedTo(ltp, rtp), span)
       implicits.println(i"Eql witness found for $ltp / $rtp: $res: ${res.tpe}")
     }
+  }
 
   /** Find an implicit parameter or conversion.
    *  @param pt              The expected type of the parameter or conversion.
@@ -1400,22 +1406,22 @@ trait Implicits { self: Typer =>
             }
             else tryConversion
           }
-        if (ctx.reporter.hasErrors) {
-          ctx.reporter.removeBufferedMessages
-          SearchFailure {
-            adapted.tpe match {
-              case _: SearchFailureType => adapted
-              case _ => adapted.withType(new MismatchedImplicit(ref, pt, argument))
-            }
+      if (ctx.reporter.hasErrors) {
+        ctx.reporter.removeBufferedMessages
+        SearchFailure {
+          adapted.tpe match {
+            case _: SearchFailureType => adapted
+            case _ => adapted.withType(new MismatchedImplicit(ref, pt, argument))
           }
         }
-        else {
-          val returned =
-            if (cand.isExtension) Applications.ExtMethodApply(adapted)
-            else adapted
-          SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadt)
-        }
       }
+      else {
+        val returned =
+          if (cand.isExtension) Applications.ExtMethodApply(adapted)
+          else adapted
+        SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadt)
+      }
+    }
 
     /** Try to type-check implicit reference, after checking that this is not
       * a diverging search
