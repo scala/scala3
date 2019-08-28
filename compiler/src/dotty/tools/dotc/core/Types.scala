@@ -1869,10 +1869,9 @@ object Types {
      *  Assumes that symbols do not change between periods in the same run.
      *  Used to get the class underlying a ThisType.
      */
-    private[Types] def stableInRunSymbol(implicit ctx: Context): Symbol = {
+    private[Types] def stableInRunSymbol(implicit ctx: Context): Symbol =
       if (checkedPeriod.runId == ctx.runId) lastSymbol
       else symbol
-    }
 
     def info(implicit ctx: Context): Type = denot.info
 
@@ -2008,9 +2007,10 @@ object Types {
       setDenot(memberDenot(name, allowPrivate = !symbol.exists || symbol.is(Private)))
 
     private def setDenot(denot: Denotation)(implicit ctx: Context): Unit = {
-      if (Config.checkNoDoubleBindings)
+      if (Config.checkNoDoubleBindings) {
         if (ctx.settings.YnoDoubleBindings.value)
           checkSymAssign(denot.symbol)
+      }
 
       lastDenotation = denot
       lastSymbol = denot.symbol
@@ -2107,9 +2107,9 @@ object Types {
         } finally {
           ctx.pendingUnderlying -= this
         }
-    } finally {
-      ctx.base.underlyingRecursions -= 1
     }
+    finally
+      ctx.base.underlyingRecursions -= 1
 
     /** The argument corresponding to class type parameter `tparam` as seen from
      *  prefix `pre`. Can produce a TypeBounds type in case prefix is an & or | type
@@ -3139,19 +3139,18 @@ object Types {
      *    def f(x: C)(y: x.T)       // dependencyStatus = FalseDeps, i.e.
      *                              // dependency can be eliminated by dealiasing.
      */
-    private def dependencyStatus(implicit ctx: Context): DependencyStatus = {
+    private def dependencyStatus(implicit ctx: Context): DependencyStatus =
       if (myDependencyStatus != Unknown) myDependencyStatus
       else {
         val result = depStatus(NoDeps, resType)
         if ((result & Provisional) == 0) myDependencyStatus = result
         (result & StatusMask).toByte
       }
-    }
 
     /** The parameter dependency status of this method. Analogous to `dependencyStatus`,
      *  but tracking dependencies in same parameter list.
      */
-    private def paramDependencyStatus(implicit ctx: Context): DependencyStatus = {
+    private def paramDependencyStatus(implicit ctx: Context): DependencyStatus =
       if (myParamDependencyStatus != Unknown) myParamDependencyStatus
       else {
         val result =
@@ -3160,7 +3159,6 @@ object Types {
         if ((result & Provisional) == 0) myParamDependencyStatus = result
         (result & StatusMask).toByte
       }
-    }
 
     /** Does result type contain references to parameters of this method type,
      *  which cannot be eliminated by de-aliasing?
@@ -4722,7 +4720,7 @@ object Types {
      *  If the expansion is a wildcard parameter reference, convert its
      *  underlying bounds to a range, otherwise return the expansion.
      */
-    def expandParam(tp: NamedType, pre: Type): Type = {
+    def expandParam(tp: NamedType, pre: Type): Type =
       tp.argForParam(pre) match {
         case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol) =>
           arg.info match {
@@ -4732,7 +4730,6 @@ object Types {
         case arg: TypeBounds => expandBounds(arg)
         case arg => reapply(arg)
       }
-    }
 
     /** Derived selection.
      *  @pre   the (upper bound of) prefix `pre` has a member named `tp.name`.
@@ -4858,9 +4855,8 @@ object Types {
           if (underlying.isBottomType) underlying
           else tp.derivedAnnotatedType(underlying, annot)
       }
-    override protected def derivedWildcardType(tp: WildcardType, bounds: Type): WildcardType = {
+    override protected def derivedWildcardType(tp: WildcardType, bounds: Type): WildcardType =
       tp.derivedWildcardType(rangeToBounds(bounds))
-    }
 
     override protected def derivedSkolemType(tp: SkolemType, info: Type): Type = info match {
       case Range(lo, hi) =>

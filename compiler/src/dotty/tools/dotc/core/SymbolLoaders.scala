@@ -340,7 +340,8 @@ abstract class SymbolLoader extends LazyType { self =>
       else
         doComplete(root)
       ctx.informTime("loaded " + description, start)
-    } catch {
+    }
+    catch {
       case ex: IOException =>
         signalError(ex)
       case NonFatal(ex: TypeError) =>
@@ -349,11 +350,13 @@ abstract class SymbolLoader extends LazyType { self =>
       case NonFatal(ex) =>
         println(s"exception caught when loading $root: $ex")
         throw ex
-    } finally {
-      def postProcess(denot: SymDenotation) =
+    }
+    finally {
+      def postProcess(denot: SymDenotation) = {
         if (!denot.isCompleted &&
             !denot.completer.isInstanceOf[SymbolLoaders.SecondCompleter])
           denot.markAbsent()
+      }
       postProcess(root)
       if (!root.isRoot)
         postProcess(root.scalacLinkedClass.denot)

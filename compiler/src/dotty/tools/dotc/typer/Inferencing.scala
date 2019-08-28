@@ -422,7 +422,7 @@ trait Inferencing { this: Typer =>
         //     val y: List[List[String]] = List(List(1))
         val hasUnreportedErrors = state.reporter.hasUnreportedErrors
         def constraint = state.constraint
-        for (tvar <- qualifying)
+        for (tvar <- qualifying) {
           if (!tvar.isInstantiated && state.constraint.contains(tvar)) {
             // Needs to be checked again, since previous interpolations could already have
             // instantiated `tvar` through unification.
@@ -438,6 +438,7 @@ trait Inferencing { this: Typer =>
               }
               else typr.println(i"no interpolation for nonvariant $tvar in $state")
           }
+        }
       }
     }
     tree

@@ -67,7 +67,8 @@ trait SymDenotations { this: Context =>
       || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
       || denot.isSelfSym
       || denot.isLocalDummy)
-  } catch {
+  }
+  catch {
     case ex: StaleSymbol => false
   }
 

@@ -67,9 +67,9 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   override private[dotty] def hasPackage(pkg: String): Boolean = aggregates.exists(_.hasPackage(pkg))
   override private[dotty] def list(inPackage: String): ClassPathEntries = {
     val (packages, classesAndSources) = aggregates.map { cp =>
-      try {
+      try
         cp.list(inPackage).toTuple
-      } catch {
+      catch {
         case ex: java.io.IOException =>
           val e = new FatalError(ex.getMessage)
           e.initCause(ex)

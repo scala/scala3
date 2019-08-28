@@ -945,14 +945,13 @@ class RefChecks extends MiniPhase { thisPhase =>
         case Ident(nme.WILDCARD) => ctx.error(UnboundPlaceholderParameter(), sym.sourcePos)
         case _ =>
       }
-      if (!sym.is(Lazy)) {
+      if (!sym.is(Lazy))
         currentLevel.levelAndIndex.get(sym) match {
           case Some((level, symIdx)) if symIdx <= level.maxIndex =>
             ctx.error(ForwardReferenceExtendsOverDefinition(sym, level.refSym),
               ctx.source.atSpan(level.refSpan))
           case _ =>
         }
-      }
     }
     tree
   }
@@ -970,7 +969,8 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkCompanionNameClashes(cls)
     checkAllOverrides(cls)
     tree
-  } catch {
+  }
+  catch {
     case ex: TypeError =>
       ctx.error(ex, tree.sourcePos)
       tree

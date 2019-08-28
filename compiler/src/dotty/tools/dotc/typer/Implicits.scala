@@ -1091,7 +1091,7 @@ trait Implicits { self: Typer =>
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
-  def inferImplicitArg(formal: Type, span: Span)(implicit ctx: Context): Tree = {
+  def inferImplicitArg(formal: Type, span: Span)(implicit ctx: Context): Tree =
     inferImplicit(formal, EmptyTree, span)(ctx) match {
       case SearchSuccess(arg, _, _) => arg
       case fail @ SearchFailure(failed) =>
@@ -1117,7 +1117,6 @@ trait Implicits { self: Typer =>
       if (fail.isAmbiguous) failed
       else trySpecialCases(specialHandlers)
     }
-  }
 
   /** Search an implicit argument and report error if not found */
   def implicitArgTree(formal: Type, span: Span)(implicit ctx: Context): Tree = {
@@ -1421,7 +1420,7 @@ trait Implicits { self: Typer =>
     /** Try to type-check implicit reference, after checking that this is not
       * a diverging search
       */
-    def tryImplicit(cand: Candidate, contextual: Boolean): SearchResult = {
+    def tryImplicit(cand: Candidate, contextual: Boolean): SearchResult =
       if (ctx.searchHistory.checkDivergence(cand, pt))
         SearchFailure(new DivergingImplicit(cand.ref, pt.widenExpr, argument))
       else {
@@ -1435,7 +1434,6 @@ trait Implicits { self: Typer =>
             result
         }
       }
-    }
 
     /** Search a list of eligible implicit references */
     def searchImplicits(eligible: List[Candidate], contextual: Boolean): SearchResult = {
@@ -1590,10 +1588,11 @@ trait Implicits { self: Typer =>
       }
 
       rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
-    } // end searchImplicits
+    }
+    // end searchImplicits
 
     /** Find a unique best implicit reference */
-    def bestImplicit(contextual: Boolean): SearchResult = {
+    def bestImplicit(contextual: Boolean): SearchResult =
       // Before searching for contextual or implicit scope candidates we first check if
       // there is an under construction or already constructed term with which we can tie
       // the knot.
@@ -1631,7 +1630,6 @@ trait Implicits { self: Typer =>
               }
           }
       }
-    }
 
     def implicitScope(tp: Type): OfTypeImplicits = ctx.run.implicitScope(tp, ctx)
 
@@ -1671,13 +1669,12 @@ abstract class SearchHistory { outer =>
    * @param pt   The target type for the above candidate.
    * @result     The nested history.
    */
-  def nest(cand: Candidate, pt: Type)(implicit ctx: Context): SearchHistory = {
+  def nest(cand: Candidate, pt: Type)(implicit ctx: Context): SearchHistory =
     new SearchHistory {
       val root = outer.root
       val open = (cand, pt) :: outer.open
       val byname = outer.byname || isByname(pt)
     }
-  }
 
   def isByname(tp: Type): Boolean = tp.isInstanceOf[ExprType]
 
@@ -1755,13 +1752,12 @@ abstract class SearchHistory { outer =>
         // argument as we ascend the chain of open implicits to the outermost search
         // context.
         @tailrec
-        def loop(ois: List[(Candidate, Type)], belowByname: Boolean): Type = {
+        def loop(ois: List[(Candidate, Type)], belowByname: Boolean): Type =
           ois match {
             case (hd@(cand, tp)) :: tl if (belowByname || isByname(tp)) && tp.widenExpr <:< widePt => tp
             case (_, tp) :: tl => loop(tl, belowByname || isByname(tp))
             case _ => NoType
           }
-        }
 
         loop(open, bynamePt) match {
           case NoType => NoType

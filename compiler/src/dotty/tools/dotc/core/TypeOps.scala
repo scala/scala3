@@ -89,7 +89,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         }
       }
 
-      /*>|>*/ trace.conditionally(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
+      trace.conditionally(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) { // !!! DEBUG
         // All cases except for ThisType are the same as in Map. Inlined for performance
         // TODO: generalize the inlining trick?
         tp match {
@@ -649,16 +649,14 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       parent.argInfos.nonEmpty && minTypeMap.apply(parent) <:< maxTypeMap.apply(tp2)
     }
 
-    if (protoTp1 <:< tp2) {
+    if (protoTp1 <:< tp2)
       if (isFullyDefined(protoTp1, force)) protoTp1
       else instUndetMap.apply(protoTp1)
-    }
     else {
       val protoTp2 = maxTypeMap.apply(tp2)
-      if (protoTp1 <:< protoTp2 || parentQualify) {
+      if (protoTp1 <:< protoTp2 || parentQualify)
         if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
         else instUndetMap.apply(protoTp1)
-      }
       else {
         typr.println(s"$protoTp1 <:< $protoTp2 = false")
         NoType

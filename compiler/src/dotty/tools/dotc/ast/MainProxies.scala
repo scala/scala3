@@ -45,7 +45,7 @@ object MainProxies {
     def pos = mainFun.sourcePos
     val argsRef = Ident(nme.args)
 
-    def addArgs(call: untpd.Tree, mt: MethodType, idx: Int): untpd.Tree = {
+    def addArgs(call: untpd.Tree, mt: MethodType, idx: Int): untpd.Tree =
       if (mt.isImplicitMethod) {
         ctx.error(s"@main method cannot have implicit parameters", pos)
         call
@@ -71,7 +71,6 @@ object MainProxies {
             call1
         }
       }
-    }
 
     var result: List[TypeDef] = Nil
     if (!mainFun.owner.isStaticOwner)

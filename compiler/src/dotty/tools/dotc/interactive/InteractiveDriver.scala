@@ -236,7 +236,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
             for {
               tastySuffix <- tastySuffixes
               if name.endsWith(tastySuffix)
-            } {
+            }
+            {
               buffer += dir.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix).toTypeName
             }
           }

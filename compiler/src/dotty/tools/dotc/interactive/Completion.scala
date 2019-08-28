@@ -293,9 +293,8 @@ object Completion {
           addMember(imp.site, name.toTypeName, nameInScope.toTypeName)
         }
         imp.reverseMapping.foreachBinding { (nameInScope, original) =>
-          if (original != nameInScope || !imp.excluded.contains(original)) {
+          if (original != nameInScope || !imp.excluded.contains(original))
             addImport(original, nameInScope)
-          }
         }
         if (imp.isWildcardImport)
           for (mbr <- accessibleMembers(imp.site) if !imp.excluded.contains(mbr.name.toTermName))

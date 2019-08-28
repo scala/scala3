@@ -604,12 +604,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     if (myUninstVars == null || myUninstVars.exists(_.inst.exists)) {
       myUninstVars = new mutable.ArrayBuffer[TypeVar]
       boundsMap.foreachBinding { (poly, entries) =>
-        for (i <- 0 until paramCount(entries)) {
+        for (i <- 0 until paramCount(entries))
           typeVar(entries, i) match {
             case tv: TypeVar if !tv.inst.exists && isBounds(entries(i)) => myUninstVars += tv
             case _ =>
           }
-        }
       }
     }
     myUninstVars

@@ -189,9 +189,8 @@ class TreeTypeMap(
       val origDcls = cls.info.decls.toList
       val mappedDcls = ctx.mapSymbols(origDcls, tmap)
       val tmap1 = tmap.withMappedSyms(origDcls, mappedDcls)
-      if (symsChanged) {
+      if (symsChanged)
         origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
-      }
       tmap1
     }
     if (symsChanged || (fullMap eq substMap)) fullMap

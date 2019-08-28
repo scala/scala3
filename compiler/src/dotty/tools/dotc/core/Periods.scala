@@ -32,9 +32,8 @@ abstract class Periods { self: Context =>
   def stablePeriod: Period = {
     var first = phaseId
     val nxTrans = ctx.base.nextDenotTransformerId(first)
-    while (first - 1 > NoPhaseId && (ctx.base.nextDenotTransformerId(first - 1) == nxTrans)) {
+    while (first - 1 > NoPhaseId && (ctx.base.nextDenotTransformerId(first - 1) == nxTrans))
       first -= 1
-    }
     Period(runId, first, nxTrans)
   }
 
