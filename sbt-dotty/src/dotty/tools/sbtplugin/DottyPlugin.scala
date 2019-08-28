@@ -168,7 +168,7 @@ object DottyPlugin extends AutoPlugin {
   val Def = sbt.Def
   override def projectSettings: Seq[Setting[_]] = {
     Seq(
-      isDotty := scalaVersion.value.startsWith("0."),
+      isDotty := scalaVersion.value.startsWith("0.") || scalaVersion.value.startsWith("3."),
 
       scalaOrganization := {
         if (isDotty.value)
