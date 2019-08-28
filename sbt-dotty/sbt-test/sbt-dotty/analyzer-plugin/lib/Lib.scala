@@ -4,7 +4,6 @@ class A(val n: Int) {
   def this(c: Char) = this(c.toInt)
 
   val a = 30 * n
-  // val p = Product("x", 100)
 
   class B(x: Int) {
     def this(c: Char) = this(c.toInt)

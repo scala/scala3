@@ -29,7 +29,6 @@ sealed trait Plugin {
    *  Research plugin receives a phase plan and return a new phase plan, while
    *  non-research plugin returns a list of phases to be inserted.
    *
-   *  @note Research plugins only compile with nightly build.
    */
   def isResearch: Boolean = isInstanceOf[ResearchPlugin]
 
@@ -40,6 +39,7 @@ sealed trait Plugin {
   val optionsHelp: Option[String] = None
 }
 
+/** A standard plugin can be inserted into the normal compilation pipeline */
 trait StandardPlugin extends Plugin {
   /** Non-research plugins should override this method to return the phases
    *
@@ -49,6 +49,10 @@ trait StandardPlugin extends Plugin {
   def init(options: List[String]): List[PluginPhase]
 }
 
+/** A research plugin may customize the compilation pipeline freely
+ *
+ *  @note Research plugins are only supported by nightly or snapshot build of the compiler.
+ */
 trait ResearchPlugin extends Plugin {
   /** Research plugins should override this method to return the new phase plan
    *
