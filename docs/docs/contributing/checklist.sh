@@ -13,10 +13,10 @@ rc_branch="0.$rc.x"
 LIST='- [ ] Publish artifacts to Maven via CI
   - [ ] On branch `<stable-branch>`, set `baseVersion` to `<stable-version>` and `git tag` it as `<stable-version>`. This will publish artefacts to Sonatype and GitHub Release
   - [ ] Merge branch `<stable-branch>` into `master` to guarantee that all of the `<stable-branch>` commits are propagated to `master`
-  - [ ] Look at the milestone of the RC version being released. Move all the open issues from it to the next milestone.
   - [ ] Create branch `<rc-branch>` from `master`
   - [ ] On `<rc-branch>`, set `baseVersion` to `<rc-version>` and `git tag` it as `<rc-version>`. This will publish artefacts to Sonatype and GitHub Release.
   - [ ] On `master`, set `baseVersion` to `<next-version>`
+- [ ] Look at the milestone of the RC version being released. Move all the open issues from it to the next milestone.
 - [ ] Update `scalaVersion` (and, if applicable, the `sbt-dotty` version) in the Dotty ecosystem projects
   - [ ] https://github.com/lampepfl/dotty-example-project [![Build Status](https://travis-ci.org/lampepfl/dotty-example-project.svg?branch=master)](https://travis-ci.org/lampepfl/dotty-example-project)
     - [ ] Committed to `master`

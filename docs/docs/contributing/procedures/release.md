@@ -62,6 +62,11 @@ The ecosystem update section for some projects also mentions a set of criteria u
 
 When no criteria is specified, common sense is to be used.
 
+### Release Script
+All of the "Publish artifacts" release steps are automated via a script. Run the following command from the root of the repository to perform these:
+
+`bash <(curl -sL https://raw.githubusercontent.com/lampepfl/dotty/master/docs/docs/contributing/release.sh) <stable_release>`
+
 ### GitHub Releases and Blog Post
 After the release is done, we document it as follows:
 
@@ -108,48 +113,3 @@ For each need to do the following:
 - Update Dotty version to the latest RC
 - Update the sbt-dotty SBT plugin version to the latest published one
 - Update the projects' source code to follow the Dotty developments if necessary
-
-# Procedure in Bash Scripts
-The below procedure is compiled from [this](https://github.com/lampepfl/dotty/issues/5907#issue-409313505) and [this](https://github.com/lampepfl/dotty/issues/6235#issue-429265748) checklists. It assumes we want to publish the `0.14.0` given the `0.14.0-RC1` release candidate.
-
-Note that at the same time we will also publish the `0.15.0-RC1` release. We publish two releases at the same time as per the logic outlined at the [Example/At the Dotty Repo](#at-the-dotty-repo) and the [Model](#model) sections above: the step (5) in the algorithm outlined in the [Example](#at-the-dotty-repo) for the release cycle of `0.14.0` is the step (1) in the release cycle of `0.15.0`.
-
-The following commands assume a remote tracking repository named `origin` pointing to the main Dotty repository: `https://github.com/lampepfl/dotty.git`.
-
-
-```bash
-
-######## Publish the 0.14.0 stable version – end the release cycle for 0.14.0 ########
-git checkout 0.14.x
-
-# Change `val baseVersion = "0.14.0-RC1"` to `val baseVersion = "0.14.0"` in project/Build.scala
-
-git commit -am 'Release Dotty 0.14.0'
-git tag 0.14.0
-git push origin 0.14.0
-
-git checkout master
-git merge 0.14.x
-
-# Make sure the merge doesn't break anything. In doubt, create a PR to run the CL
-git push origin master
-
-######## Publish the 0.15.0-RC1 unstable version – begin the release cycle for 0.15.0 ########
-# Move all the unfinished tasks from Milestone 15 to Milestone 16 on GitHub – see https://github.com/lampepfl/dotty/milestones
-
-git checkout -b 0.15.x
-
-# Change val baseVersion = "0.15.0" to val baseVersion = "0.15.0-RC1"
-
-git commit -am 'Release Dotty 0.15.0-RC1'
-git tag 0.15.0-RC1
-git push origin 0.15.x
-git push origin 0.15.0-RC1
-
-git checkout master
-
-# Change val baseVersion = "0.15.0" to val baseVersion = "0.16.0" - this will be the next version after `0.15.0-RC1` is promoted to `0.15.0`.
-
-git commit -am 'Set baseVersion to 0.16.0'
-git push origin master
-```
