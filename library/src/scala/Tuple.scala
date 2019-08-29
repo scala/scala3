@@ -114,11 +114,7 @@ object Tuple {
    *  (F[A1], ..., F[An]), but not `(F[A1], B2, ..., F[An])` where B2 does not
    *  have the shape of `F[A]`.
    */
-  type IsMappedBy[F[_]] = [X <: Tuple] =>> X <:< IsMappedByImpl[X, F]
-  type IsMappedByImpl[X <: Tuple, F[_]] <: Tuple = X match {
-    case F[x] *: t => F[x] *: IsMappedByImpl[t, F]
-    case Unit => Unit
-  }
+  type IsMappedBy[F[_]] = [X <: Tuple] =>> X <:< Map[InverseMap[X, F], F]
 
   /** Convert an array into a tuple of unknown arity and types */
   def fromArray[T](xs: Array[T]): Tuple = {
