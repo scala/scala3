@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -ex
 stable=$1
 stable_patch=0
 rc_patch=1
