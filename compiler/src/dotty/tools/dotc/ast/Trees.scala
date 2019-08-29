@@ -118,7 +118,7 @@ object Trees {
      *   - the child tree is an identifier, or
      *   - errors were reported
      */
-    private def checkChildrenTyped(it: Iterator[Any])(implicit ctx: Context): Unit = {
+    private def checkChildrenTyped(it: Iterator[Any])(implicit ctx: Context): Unit =
       if (!this.isInstanceOf[Import[_]])
         while (it.hasNext)
           it.next() match {
@@ -129,7 +129,6 @@ object Trees {
             case xs: List[_] => checkChildrenTyped(xs.iterator)
             case _ =>
           }
-    }
 
     def withTypeUnchecked(tpe: Type): ThisTree[Type] = {
       val tree =

@@ -20,16 +20,14 @@ import collection.mutable
   }
 
   @forceInline
-  def record(fn: => String, n: => Int = 1): Unit = {
+  def record(fn: => String, n: => Int = 1): Unit =
     if (enabled) doRecord(fn, n)
-  }
 
-  def doRecord(fn: String, n: Int) = {
+  def doRecord(fn: String, n: Int) =
     if (monitored) {
       val name = if (fn.startsWith("member-")) "member" else fn
       hits(name) += n
     }
-  }
 
   @forceInline
   def trackTime[T](fn: String)(op: => T): T =

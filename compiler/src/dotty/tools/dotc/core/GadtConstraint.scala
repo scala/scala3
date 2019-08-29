@@ -317,9 +317,8 @@ final class ProperGadtConstraint private(
   override def approximation(sym: Symbol, fromBelow: Boolean)(implicit ctx: Context): Type = unsupported("EmptyGadtConstraint.approximation")
 
   override def fresh = new ProperGadtConstraint
-  override def restore(other: GadtConstraint): Unit = {
+  override def restore(other: GadtConstraint): Unit =
     if (!other.isEmpty) sys.error("cannot restore a non-empty GADTMap")
-  }
 
   override def debugBoundsDescription(implicit ctx: Context): String = "EmptyGadtConstraint"
 

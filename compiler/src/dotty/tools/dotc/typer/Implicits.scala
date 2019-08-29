@@ -1284,12 +1284,11 @@ trait Implicits { self: Typer =>
   }
 
   /** Check that equality tests between types `ltp` and `rtp` make sense */
-  def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit = {
+  def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit =
     if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
       val res = implicitArgTree(defn.EqlClass.typeRef.appliedTo(ltp, rtp), span)
       implicits.println(i"Eql witness found for $ltp / $rtp: $res: ${res.tpe}")
     }
-  }
 
   /** Find an implicit parameter or conversion.
    *  @param pt              The expected type of the parameter or conversion.

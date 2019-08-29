@@ -203,7 +203,7 @@ object Completion {
      * If `info.mode` is `Import`, the members added via implicit conversion on `qual` are not
      * considered.
      */
-    def addMemberCompletions(qual: Tree)(implicit ctx: Context): Unit = {
+    def addMemberCompletions(qual: Tree)(implicit ctx: Context): Unit =
       if (!qual.tpe.widenDealias.isBottomType) {
         addAccessibleMembers(qual.tpe)
         if (!mode.is(Mode.Import) && !qual.tpe.isRef(defn.NullClass))
@@ -212,25 +212,22 @@ object Completion {
           implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
             .foreach(addAccessibleMembers)
       }
-    }
 
     /**
      * If `sym` exists, no symbol with the same name is already included, and it satisfies the
      * inclusion filter, then add it to the completions.
      */
-    private def add(sym: Symbol, nameInScope: Name)(implicit ctx: Context) = {
+    private def add(sym: Symbol, nameInScope: Name)(implicit ctx: Context) =
       if (sym.exists &&
           completionsFilter(NoType, nameInScope) &&
           !completions.lookup(nameInScope).exists &&
           include(sym, nameInScope))
         completions.enter(sym, nameInScope)
-    }
 
     /** Lookup members `name` from `site`, and try to add them to the completion list. */
-    private def addMember(site: Type, name: Name, nameInScope: Name)(implicit ctx: Context) = {
+    private def addMember(site: Type, name: Name, nameInScope: Name)(implicit ctx: Context) =
       if (!completions.lookup(nameInScope).exists)
         for (alt <- site.member(name).alternatives) add(alt.symbol, nameInScope)
-    }
 
     /** Include in completion sets only symbols that
      *   1. start with given name prefix, and

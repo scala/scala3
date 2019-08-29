@@ -58,12 +58,11 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends ClassPa
       val fileBuf = collection.mutable.ArrayBuffer.empty[FileEntryType]
       val prefix = PackageNameUtils.packagePrefix(inPackage)
 
-      for (entry <- dirEntry.iterator) {
+      for (entry <- dirEntry.iterator)
         if (entry.isPackage)
           pkgBuf += PackageEntryImpl(prefix + entry.name)
         else if (isRequiredFileType(entry))
           fileBuf += createFileEntry(entry)
-      }
       ClassPathEntries(pkgBuf, fileBuf)
     } getOrElse ClassPathEntries(Seq.empty, Seq.empty)
   }

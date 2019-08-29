@@ -1390,10 +1390,9 @@ object SymDenotations {
       case _ => false
     }
 
-    def assertNoSkolems(tp: Type): Unit = {
+    def assertNoSkolems(tp: Type): Unit =
       if (!this.isSkolem)
         assert(!hasSkolems(tp), s"assigning type $tp containing skolems to $this")
-    }
 
     // ----- copies and transforms  ----------------------------------------
 
@@ -2040,10 +2039,9 @@ object SymDenotations {
     private[this] var myCompanion: Symbol = NoSymbol
 
     /** Register companion class */
-    override def registerCompanion(companion: Symbol)(implicit ctx: Context) = {
+    override def registerCompanion(companion: Symbol)(implicit ctx: Context) =
       if (companion.isClass && !isAbsent(canForce = false) && !companion.isAbsent(canForce = false))
         myCompanion = companion
-    }
 
     override def registeredCompanion(implicit ctx: Context) = { ensureCompleted(); myCompanion }
     override def registeredCompanion_=(c: Symbol) = { myCompanion = c }
@@ -2163,12 +2161,11 @@ object SymDenotations {
     /** Unlink all package members defined in `file` in a previous run. */
     def unlinkFromFile(file: AbstractFile)(implicit ctx: Context): Unit = {
       val scope = unforcedDecls.openForMutations
-      for (sym <- scope.toList.iterator) {
+      for (sym <- scope.toList.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
         if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
           scope.unlink(sym, sym.lastKnownDenotation.name)
-      }
     }
   }
 
@@ -2370,14 +2367,13 @@ object SymDenotations {
      *  the cache itself. In that case we should cancel invalidation and
      *  proceed as usual. However, all cache entries should be cleared.
      */
-    def invalidate(): Unit = {
+    def invalidate(): Unit =
       if (cache != null)
         if (locked) cache = SimpleIdentityMap.Empty
         else {
           cache = null
           invalidateDependents()
         }
-    }
 
     def apply(keepOnly: NameFilter, clsd: ClassDenotation)(implicit onBehalf: MemberNames, ctx: Context) = {
       assert(isValid)
@@ -2407,13 +2403,12 @@ object SymDenotations {
 
     final def isValid(implicit ctx: Context): Boolean = valid && isValidAt(ctx.phase)
 
-    def invalidate(): Unit = {
+    def invalidate(): Unit =
       if (valid && !locked) {
         cache = null
         valid = false
         invalidateDependents()
       }
-    }
 
     def signalProvisional() = provisional = true
 

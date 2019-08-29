@@ -63,13 +63,12 @@ object Rewrites {
   /** If -rewrite is set, record a patch that replaces the range
    *  given by `span` in `source` by `replacement`
    */
-  def patch(source: SourceFile, span: Span, replacement: String)(implicit ctx: Context): Unit = {
+  def patch(source: SourceFile, span: Span, replacement: String)(implicit ctx: Context): Unit =
     if (ctx.reporter != Reporter.NoReporter) // NoReporter is used for syntax highlighting
       for (rewrites <- ctx.settings.rewrite.value)
         rewrites.patched
           .getOrElseUpdate(source, new Patches(source))
           .addPatch(span, replacement)
-  }
 
   /** Patch position in `ctx.compilationUnit.source`. */
   def patch(span: Span, replacement: String)(implicit ctx: Context): Unit =

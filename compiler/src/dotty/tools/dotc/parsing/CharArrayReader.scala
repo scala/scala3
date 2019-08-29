@@ -100,19 +100,16 @@ abstract class CharArrayReader { self =>
   }
 
   /** replace CR;LF by LF */
-  private def skipCR(): Unit = {
-    if (ch == CR) {
+  private def skipCR(): Unit =
+    if (ch == CR)
       if (charOffset < buf.length && buf(charOffset) == LF) {
         charOffset += 1
         ch = LF
       }
-    }
-  }
 
   /** Handle line ends */
-  private def potentialLineEnd(): Unit = {
+  private def potentialLineEnd(): Unit =
     if (ch == LF || ch == FF) lineStartOffset = charOffset
-  }
 
   def isAtEnd: Boolean = charOffset >= buf.length
 

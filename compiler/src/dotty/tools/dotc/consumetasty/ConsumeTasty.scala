@@ -36,5 +36,5 @@ object ConsumeTasty {
       case _ => classpath0
     }
   }
-
 }
+

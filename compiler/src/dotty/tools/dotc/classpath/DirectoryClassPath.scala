@@ -71,12 +71,11 @@ trait DirectoryLookup[FileEntryType <: ClassRepresentation] extends ClassPath {
     val packagePrefix = PackageNameUtils.packagePrefix(inPackage)
     val packageBuf = collection.mutable.ArrayBuffer.empty[PackageEntry]
     val fileBuf = collection.mutable.ArrayBuffer.empty[FileEntryType]
-    for (file <- files) {
+    for (file <- files)
       if (isPackage(file))
         packageBuf += PackageEntryImpl(packagePrefix + getName(file))
       else if (isMatchingFile(file))
         fileBuf += createFileEntry(toAbstractFile(file))
-    }
     ClassPathEntries(packageBuf, fileBuf)
   }
 }

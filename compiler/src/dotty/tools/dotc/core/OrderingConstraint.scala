@@ -588,10 +588,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       case TypeParamRef(binder: TypeLambda, _) => !contains(binder)
       case _ => false
     }
-    def checkClosedType(tp: Type, where: String) = {
+    def checkClosedType(tp: Type, where: String) =
       if (tp != null)
         assert(!tp.existsPart(isFreeTypeParamRef), i"unclosed constraint: $this refers to $tp in $where")
-    }
     boundsMap.foreachBinding((_, tps) => tps.foreach(checkClosedType(_, "bounds")))
     lowerMap.foreachBinding((_, paramss) => paramss.foreach(_.foreach(checkClosedType(_, "lower"))))
     upperMap.foreachBinding((_, paramss) => paramss.foreach(_.foreach(checkClosedType(_, "upper"))))

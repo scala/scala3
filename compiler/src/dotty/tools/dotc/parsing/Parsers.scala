@@ -130,13 +130,12 @@ object Parsers {
     /** Issue an error at given offset if beyond last error offset
       *  and update lastErrorOffset.
       */
-    def syntaxError(msg: => Message, offset: Int = in.offset): Unit = {
+    def syntaxError(msg: => Message, offset: Int = in.offset): Unit =
       if (offset > lastErrorOffset) {
         val length = if (offset == in.offset && in.name != null) in.name.show.length else 0
         syntaxError(msg, Span(offset, offset + length))
         lastErrorOffset = in.offset
       }
-    }
 
     /** Unconditionally issue an error at given span, without
      *  updating lastErrorOffset.
@@ -232,10 +231,9 @@ object Parsers {
      */
     private[this] var lastStatOffset = -1
 
-    def setLastStatOffset(): Unit = {
+    def setLastStatOffset(): Unit =
       if (mustStartStat && in.isAfterLineEnd)
         lastStatOffset = in.offset
-    }
 
     /** Is offset1 less or equally indented than offset2?
      *  This is the case if the characters between the preceding end-of-line and offset1
@@ -344,7 +342,7 @@ object Parsers {
       case _                  => accept(SEMI)
     }
 
-    def acceptStatSepUnlessAtEnd(altEnd: Token = EOF): Unit = {
+    def acceptStatSepUnlessAtEnd(altEnd: Token = EOF): Unit =
       if (!isStatSeqEnd)
         in.token match {
           case EOF =>
@@ -356,7 +354,6 @@ object Parsers {
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
             accept(SEMI)
         }
-    }
 
     def rewriteNotice(additionalOption: String = "") = {
       val optionStr = if (additionalOption.isEmpty) "" else " " ++ additionalOption
@@ -647,7 +644,10 @@ object Parsers {
         }
 
       val needsBraces = t match {
-        case Block(Nil, expr) => followsColon || isPartialIf(expr) || isBlockFunction(expr)
+        case Block(Nil, expr) =>
+          followsColon ||
+          isPartialIf(expr) && in.token == ELSE ||
+          isBlockFunction(expr)
         case _ => true
       }
       if (needsBraces) {
@@ -759,22 +759,20 @@ object Parsers {
         if (testChar(endOffset, ' '))
           endOffset += 1
       }
-      else {
+      else
         if (testChar(startOffset - 1, ' ') &&
             !overlapsPatch(source, Span(startOffset - 1, endOffset)))
           startOffset -= 1
-      }
       patch(source, widenIfWholeLine(Span(startOffset, endOffset)), "")
     }
 
     /** rewrite code with (...) around the source code of `t` */
-    def revertToParens(t: Tree): Unit = {
+    def revertToParens(t: Tree): Unit =
       if (t.span.exists) {
         patch(source, t.span.startPos, "(")
         patch(source, t.span.endPos, ")")
         dropTerminator()
       }
-    }
 
     /** In the tokens following the current one, does `query` precede any of the tokens that
      *   - must start a statement, or
@@ -823,10 +821,9 @@ object Parsers {
 
     var opStack: List[OpInfo] = Nil
 
-    def checkAssoc(offset: Token, op1: Name, op2: Name, op2LeftAssoc: Boolean): Unit = {
+    def checkAssoc(offset: Token, op1: Name, op2: Name, op2LeftAssoc: Boolean): Unit =
       if (isLeftAssoc(op1) != op2LeftAssoc)
         syntaxError(MixedLeftAndRightAssociativeOps(op1, op2, op2LeftAssoc), offset)
-    }
 
     def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean, op2: Name, isType: Boolean): Tree = {
       if (opStack != base && precedence(opStack.head.operator.name) == prec)
@@ -1128,24 +1125,20 @@ object Parsers {
 
 /* ------------- NEW LINES ------------------------------------------------- */
 
-    def newLineOpt(): Unit = {
+    def newLineOpt(): Unit =
       if (in.token == NEWLINE) in.nextToken()
-    }
 
-    def newLinesOpt(): Unit = {
+    def newLinesOpt(): Unit =
       if (in.token == NEWLINE || in.token == NEWLINES)
         in.nextToken()
-    }
 
-    def newLineOptWhenFollowedBy(token: Int): Unit = {
+    def newLineOptWhenFollowedBy(token: Int): Unit =
       // note: next is defined here because current == NEWLINE
       if (in.token == NEWLINE && in.next.token == token) in.nextToken()
-    }
 
-    def newLineOptWhenFollowing(p: Int => Boolean): Unit = {
+    def newLineOptWhenFollowing(p: Int => Boolean): Unit =
       // note: next is defined here because current == NEWLINE
       if (in.token == NEWLINE && p(in.next.token)) newLineOpt()
-    }
 
     def colonAtEOLOpt(): Unit = {
       possibleColonOffset = in.lastOffset

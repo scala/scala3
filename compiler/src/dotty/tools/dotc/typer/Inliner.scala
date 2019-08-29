@@ -395,7 +395,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** The Inlined node representing the inlined call */
   def inlined(sourcePos: SourcePosition): Tree = {
 
-    if (callTypeArgs.length == 1) {
+    if (callTypeArgs.length == 1)
       if (inlinedMethod == defn.Compiletime_constValue) {
         val constVal = tryConstValue
         if (!constVal.isEmpty) return constVal
@@ -408,7 +408,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), constVal :: Nil)
         )
       }
-    }
 
     // Compute bindings for all parameters, appending them to bindingsBuf
     computeParamBindings(inlinedMethod.info, callTypeArgs, callValueArgss)
@@ -858,9 +857,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             newTypeBinding(sym, ctx.gadt.approximation(sym, fromBelow = shouldBeMinimized))
           }
 
-        def registerAsGadtSyms(typeBinds: TypeBindsMap)(implicit ctx: Context): Unit = {
+        def registerAsGadtSyms(typeBinds: TypeBindsMap)(implicit ctx: Context): Unit =
           if (typeBinds.size > 0) ctx.gadt.addToConstraint(typeBinds.keys)
-        }
 
         pat match {
           case Typed(pat1, tpt) =>

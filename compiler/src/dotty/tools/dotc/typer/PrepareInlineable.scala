@@ -243,7 +243,7 @@ object PrepareInlineable {
         body.sourcePos)
   }
 
-  def checkInlineMacro(sym: Symbol, rhs: Tree, pos: SourcePosition)(implicit ctx: Context) = {
+  def checkInlineMacro(sym: Symbol, rhs: Tree, pos: SourcePosition)(implicit ctx: Context) =
     if (sym.is(Macro) && !ctx.isAfterTyper) {
       def isValidMacro(tree: Tree)(implicit ctx: Context): Unit = tree match {
         case Spliced(code) =>
@@ -273,6 +273,5 @@ object PrepareInlineable {
       }
       isValidMacro(rhs)
     }
-  }
 }
 

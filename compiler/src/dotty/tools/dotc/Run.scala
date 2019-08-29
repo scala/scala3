@@ -115,12 +115,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *  or we need to assemble phases on each run, and take -Yskip, -Ystop into
    *  account. I think the latter would be preferable.
    */
-  def compileSources(sources: List[SourceFile]): Unit = {
+  def compileSources(sources: List[SourceFile]): Unit =
     if (sources forall (_.exists)) {
       units = sources.map(CompilationUnit(_))
       compileUnits()
     }
-  }
 
   def compileUnits(us: List[CompilationUnit]): Unit = {
     units = us
@@ -152,7 +151,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       var lastPrintedTree: PrintedTree = NoPrintedTree
       val profiler = ctx.profiler
 
-      for (phase <- ctx.base.allPhases) {
+      for (phase <- ctx.base.allPhases)
         if (phase.isRunnable)
           Stats.trackTime(s"$phase ms ") {
             val start = System.currentTimeMillis
@@ -168,7 +167,6 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
             for (unit <- units)
               Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
           }
-      }
 
       profiler.finished()
     }
@@ -190,7 +188,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *  If `typeCheck = true`, also run typer on the compilation unit, and set
    *  `rootTreeOrProvider`.
    */
-  def lateCompile(file: AbstractFile, typeCheck: Boolean)(implicit ctx: Context): Unit = {
+  def lateCompile(file: AbstractFile, typeCheck: Boolean)(implicit ctx: Context): Unit =
     if (!files.contains(file) && !lateFiles.contains(file)) {
       lateFiles += file
       val unit = CompilationUnit(ctx.getSource(file.path))
@@ -209,7 +207,6 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       }
       process()(runContext.fresh.setCompilationUnit(unit))
     }
-  }
 
   private sealed trait PrintedTree
   private /*final*/ case class SomePrintedTree(phase: String, tree: String) extends PrintedTree

@@ -53,10 +53,9 @@ object Typer {
   }
 
   /** Assert tree has a position, unless it is empty or a typed splice */
-  def assertPositioned(tree: untpd.Tree)(implicit ctx: Context): Unit = {
+  def assertPositioned(tree: untpd.Tree)(implicit ctx: Context): Unit =
     if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable)
       assert(tree.span.exists, i"position not set for $tree # ${tree.uniqueId} of ${tree.getClass} in ${tree.source}")
-  }
 
   /** A context property that indicates the owner of any expressions to be typed in the context
    *  if that owner is different from the context's owner. Typically, a context with a class
@@ -2062,14 +2061,13 @@ class Typer extends Namer
   protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = {
     if (!tree.denot.isOverloaded &&
           // for overloaded trees: resolve overloading before simplifying
-        !tree.isInstanceOf[Applications.IntegratedTypeArgs]) {
+        !tree.isInstanceOf[Applications.IntegratedTypeArgs])
           // don't interpolate in the middle of an extension method application
       if (!tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
           || tree.isDef) {                             // ... unless tree is a definition
         interpolateTypeVars(tree, pt, locked)
         tree.overwriteType(tree.tpe.simplified)
       }
-    }
     tree
   }
 
@@ -3013,9 +3011,8 @@ class Typer extends Namer
       case _ =>
     }
 
-  private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol)(implicit ctx: Context): Unit = {
+  private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol)(implicit ctx: Context): Unit =
     if (!tree.tpe.isErroneous && !ctx.isAfterTyper && isPureExpr(tree) &&
         !tree.tpe.isRef(defn.UnitClass) && !isSelfOrSuperConstrCall(tree))
       ctx.warning(PureExpressionInStatementPosition(original, exprOwner), original.sourcePos)
-  }
 }

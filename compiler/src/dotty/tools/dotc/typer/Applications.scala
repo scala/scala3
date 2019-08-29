@@ -521,7 +521,7 @@ trait Applications extends Compatibility {
     /** Match re-ordered arguments against formal parameters
      *  @param n   The position of the first parameter in formals in `methType`.
      */
-    def matchArgs(args: List[Arg], formals: List[Type], n: Int): Unit = {
+    def matchArgs(args: List[Arg], formals: List[Type], n: Int): Unit =
       if (success) formals match {
         case formal :: formals1 =>
 
@@ -610,7 +610,6 @@ trait Applications extends Compatibility {
             case nil =>
           }
       }
-    }
   }
 
   /** Subclass of Application for the cases where we are interested only
@@ -721,12 +720,11 @@ trait Applications extends Compatibility {
     private def lifter(implicit ctx: Context) =
       if (methRef.symbol.hasDefaultParams) LiftComplex else LiftImpure
 
-    override def liftFun(): Unit = {
+    override def liftFun(): Unit =
       if (liftedDefs == null) {
         liftedDefs = new mutable.ListBuffer[Tree]
         myNormalizedFun = lifter.liftApp(liftedDefs, myNormalizedFun)
       }
-    }
 
     /** The index of the first difference between lists of trees `xs` and `ys`
      *  -1 if there are no differences.
@@ -850,10 +848,9 @@ trait Applications extends Compatibility {
       // expected type through `constrainResult`. This can add more constraints which
       // help sharpen the inferred parameter types for the argument function literal(s).
       // This tweak is needed to make i1378 compile.
-      if (tree.args.exists(untpd.isFunctionWithUnknownParamType(_))) {
+      if (tree.args.exists(untpd.isFunctionWithUnknownParamType(_)))
         if (!constrainResult(tree.symbol, fun1.tpe.widen, proto.derivedFunProto(resultType = pt)))
           typr.println(i"result failure for $tree with type ${fun1.tpe.widen}, expected = $pt")
-      }
 
       /** Type application where arguments come from prototype, and no implicits are inserted */
       def simpleApply(fun1: Tree, proto: FunProto)(implicit ctx: Context): Tree =

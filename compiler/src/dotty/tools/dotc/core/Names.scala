@@ -377,9 +377,8 @@ object Names {
     override def replace(from: Char, to: Char): SimpleName = {
       val cs = new Array[Char](length)
       System.arraycopy(chrs, start, cs, 0, length)
-      for (i <- 0 until length) {
+      for (i <- 0 until length)
         if (cs(i) == from) cs(i) = to
-      }
       termName(cs, 0, length)
     }
 
@@ -573,13 +572,12 @@ object Names {
     val h = hashValue(cs, offset, len) & (table.length - 1)
 
     /** Make sure the capacity of the character array is at least `n` */
-    def ensureCapacity(n: Int) = {
+    def ensureCapacity(n: Int) =
       if (n > chrs.length) {
         val newchrs = new Array[Char](chrs.length * 2)
         chrs.copyToArray(newchrs)
         chrs = newchrs
       }
-    }
 
     /** Enter characters into chrs array. */
     def enterChars(): Unit = {
@@ -593,7 +591,7 @@ object Names {
     }
 
     /** Rehash chain of names */
-    def rehash(name: SimpleName): Unit = {
+    def rehash(name: SimpleName): Unit =
       if (name != null) {
         val oldNext = name.next
         val h = hashValue(chrs, name.start, name.length) & (table.size - 1)
@@ -601,7 +599,6 @@ object Names {
         table(h) = name
         rehash(oldNext)
       }
-    }
 
     /** Make sure the hash table is large enough for the given load factor */
     def incTableSize() = {

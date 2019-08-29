@@ -123,7 +123,7 @@ object RefChecks {
   /** Check that a class and its companion object to not both define
    *  a class or module with same name
    */
-  private def checkCompanionNameClashes(cls: Symbol)(implicit ctx: Context): Unit = {
+  private def checkCompanionNameClashes(cls: Symbol)(implicit ctx: Context): Unit =
     if (!cls.owner.is(ModuleClass)) {
       def clashes(sym: Symbol) =
         sym.isClass &&
@@ -134,7 +134,6 @@ object RefChecks {
         ctx.error(ClassAndCompanionNameClash(cls, other), cls.sourcePos)
       }
     }
-  }
 
   // Override checking ------------------------------------------------------------
 
@@ -240,7 +239,7 @@ object RefChecks {
           infoStringWithLocation(other), infoString(member), msg, addendum)
       }
 
-      def emitOverrideError(fullmsg: String) = {
+      def emitOverrideError(fullmsg: String) =
         if (!(hasErrors && member.is(Synthetic) && member.is(Module))) {
           // suppress errors relating toi synthetic companion objects if other override
           // errors (e.g. relating to the companion class) have already been reported.
@@ -248,12 +247,10 @@ object RefChecks {
           else mixinOverrideErrors += new MixinOverrideError(member, fullmsg)
           hasErrors = true
         }
-      }
 
-      def overrideError(msg: String) = {
+      def overrideError(msg: String) =
         if (noErrorType)
           emitOverrideError(overrideErrorMsg(msg))
-      }
 
       def autoOverride(sym: Symbol) =
         sym.is(Synthetic) && (
@@ -601,7 +598,7 @@ object RefChecks {
       //
       // (3) is violated but not (2).
       def checkNoAbstractDecls(bc: Symbol): Unit = {
-        for (decl <- bc.info.decls) {
+        for (decl <- bc.info.decls)
           if (decl.is(Deferred) && !ignoreDeferred(decl)) {
             val impl = decl.matchingMember(clazz.thisType)
             if (impl == NoSymbol || (decl.owner isSubClass impl.owner)) {
@@ -612,7 +609,6 @@ object RefChecks {
                 " which is not implemented in a subclass" + err.abstractVarMessage(decl))
             }
           }
-        }
         if (bc.asClass.superClass.is(Abstract))
           checkNoAbstractDecls(bc.asClass.superClass)
       }
@@ -634,20 +630,18 @@ object RefChecks {
         //    (this is done to avoid false positives since Scala2's rules for checking are different)
         val membersToCheck = new util.HashSet[Name](4096)
         val seenClasses = new util.HashSet[Symbol](256)
-        def addDecls(cls: Symbol): Unit = {
+        def addDecls(cls: Symbol): Unit =
           if (!seenClasses.contains(cls)) {
             seenClasses.addEntry(cls)
-            for (mbr <- cls.info.decls) {
+            for (mbr <- cls.info.decls)
               if (mbr.isTerm && !mbr.isOneOf(Synthetic | Bridge) && mbr.memberCanMatchInheritedSymbols &&
                   !membersToCheck.contains(mbr.name))
                 membersToCheck.addEntry(mbr.name)
-            }
             cls.info.parents.map(_.classSymbol)
               .filter(_.isOneOf(AbstractOrTrait))
               .dropWhile(_.isOneOf(JavaDefined | Scala2x))
               .foreach(addDecls)
           }
-        }
         addDecls(clazz)
 
         // For each member, check that the type of its symbol, as seen from `self`
@@ -783,7 +777,7 @@ object RefChecks {
     }
 
     // 4. Check that every defined member with an `override` modifier overrides some other member.
-    for (member <- clazz.info.decls) {
+    for (member <- clazz.info.decls)
       if (member.isAnyOverride && !(clazz.thisType.baseClasses exists (hasMatchingSym(_, member)))) {
         if (checks != noPrinter)
           for (bc <- clazz.info.baseClasses.tail) {
@@ -802,7 +796,6 @@ object RefChecks {
         member.resetFlag(Override)
         member.resetFlag(AbsOverride)
       }
-    }
   }
 
   // Note: if a symbol has both @deprecated and @migration annotations and both
@@ -869,7 +862,7 @@ object RefChecks {
     var refSpan: Span = _
     var refSym: Symbol = _
 
-    override def enterReference(sym: Symbol, span: Span): Unit = {
+    override def enterReference(sym: Symbol, span: Span): Unit =
       if (sym.exists && sym.owner.isTerm)
         levelAndIndex.get(sym) match {
           case Some((level, idx)) if (level.maxIndex < idx) =>
@@ -878,7 +871,6 @@ object RefChecks {
             level.refSym = sym
           case _ =>
         }
-    }
   }
 
   val NoLevelInfo: RefChecks.OptLevelInfo = new OptLevelInfo()

@@ -453,12 +453,11 @@ object JavaParsers {
       }
     }
 
-    def optThrows(): Unit = {
+    def optThrows(): Unit =
       if (in.token == THROWS) {
         in.nextToken()
         repsep(() => typ(), COMMA)
       }
-    }
 
     def methodBody(): Tree = atSpan(in.offset) {
       skipAhead()
@@ -795,7 +794,7 @@ object JavaParsers {
       val interfaces = interfacesOpt()
       accept(LBRACE)
       val buf = new ListBuffer[Tree]
-      def parseEnumConsts(): Unit = {
+      def parseEnumConsts(): Unit =
         if (in.token != RBRACE && in.token != SEMI && in.token != EOF) {
           buf += enumConst(enumType)
           if (in.token == COMMA) {
@@ -803,7 +802,6 @@ object JavaParsers {
             parseEnumConsts()
           }
         }
-      }
       parseEnumConsts()
       val consts = buf.toList
       val (statics, body) =

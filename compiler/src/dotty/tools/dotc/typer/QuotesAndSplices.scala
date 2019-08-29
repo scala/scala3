@@ -77,11 +77,10 @@ trait QuotesAndSplices {
     else {
       if (StagingContext.level == 0) {
         // Mark the first inline method from the context as a macro
-        def markAsMacro(c: Context): Unit = {
+        def markAsMacro(c: Context): Unit =
           if (c.owner eq c.outer.owner) markAsMacro(c.outer)
           else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
           else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
-        }
         markAsMacro(ctx)
       }
       typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprSplice.termRef), tree.expr), pt)(spliceContext).withSpan(tree.span)
@@ -122,7 +121,7 @@ trait QuotesAndSplices {
       typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(spliceContext).withSpan(tree.span)
   }
 
-  private def checkSpliceOutsideQuote(tree: untpd.Tree)(implicit ctx: Context): Unit = {
+  private def checkSpliceOutsideQuote(tree: untpd.Tree)(implicit ctx: Context): Unit =
     if (level == 0 && !ctx.owner.ownersIterator.exists(_.is(Inline)))
       ctx.error("Splice ${...} outside quotes '{...} or inline method", tree.sourcePos)
     else if (level < 0)
@@ -132,7 +131,6 @@ trait QuotesAndSplices {
           |Inline method may contain a splice at level 0 but the contents of this splice cannot have a splice.
           |""".stripMargin, tree.sourcePos
       )
-  }
 
   /** Split a typed quoted pattern is split into its type bindings, pattern expression and inner patterns.
    *  Type definitions with `@patternBindHole` will be inserted in the pattern expression for each type binding.

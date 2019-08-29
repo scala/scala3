@@ -260,16 +260,14 @@ object SymbolLoaders {
       if (!root.isRoot) {
         val classReps = classPath.list(packageName).classesAndSources
 
-        for (classRep <- classReps) {
+        for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
             (!flat || isAbsent(classRep))) // on 2nd enter of flat names, check that the name has not been entered before
             initializeFromClassPath(root.symbol, classRep)
-        }
-        for (classRep <- classReps) {
+        for (classRep <- classReps)
           if (maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
               isAbsent(classRep))
             initializeFromClassPath(root.symbol, classRep)
-        }
       }
     }
 
@@ -352,11 +350,10 @@ abstract class SymbolLoader extends LazyType { self =>
         throw ex
     }
     finally {
-      def postProcess(denot: SymDenotation) = {
+      def postProcess(denot: SymDenotation) =
         if (!denot.isCompleted &&
             !denot.completer.isInstanceOf[SymbolLoaders.SecondCompleter])
           denot.markAbsent()
-      }
       postProcess(root)
       if (!root.isRoot)
         postProcess(root.scalacLinkedClass.denot)

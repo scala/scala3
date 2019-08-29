@@ -2007,10 +2007,9 @@ object Types {
       setDenot(memberDenot(name, allowPrivate = !symbol.exists || symbol.is(Private)))
 
     private def setDenot(denot: Denotation)(implicit ctx: Context): Unit = {
-      if (Config.checkNoDoubleBindings) {
+      if (Config.checkNoDoubleBindings)
         if (ctx.settings.YnoDoubleBindings.value)
           checkSymAssign(denot.symbol)
-      }
 
       lastDenotation = denot
       lastSymbol = denot.symbol
@@ -2361,9 +2360,8 @@ object Types {
   }
 
   /** Assert current phase does not have erasure semantics */
-  private def assertUnerased()(implicit ctx: Context) = {
+  private def assertUnerased()(implicit ctx: Context) =
     if (Config.checkUnerased) assert(!ctx.phase.erasedTypes)
-  }
 
   /** The designator to be used for a named type creation with given prefix, name, and denotation.
    *  This is the denotation's symbol, if it exists and the prefix is not the this type
@@ -2844,7 +2842,7 @@ object Types {
     private[this] var myAtoms: Set[Type] = _
     private[this] var myWidened: Type = _
 
-    private def ensureAtomsComputed()(implicit ctx: Context): Unit = {
+    private def ensureAtomsComputed()(implicit ctx: Context): Unit =
       if (atomsRunId != ctx.runId) {
         val atoms1 = tp1.atoms
         val atoms2 = tp2.atoms
@@ -2854,7 +2852,6 @@ object Types {
         myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else tp1w | tp2w
         atomsRunId = ctx.runId
       }
-    }
 
     override def atoms(implicit ctx: Context): Set[Type] = {
       ensureAtomsComputed()

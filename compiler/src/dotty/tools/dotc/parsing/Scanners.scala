@@ -218,10 +218,9 @@ object Scanners {
       if (s.indexOf('_') > 0) s.replaceAllLiterally("_", "") /*.replaceAll("'","")*/ else s
 
     // disallow trailing numeric separator char, but continue lexing
-    def checkNoTrailingSeparator(): Unit = {
+    def checkNoTrailingSeparator(): Unit =
       if (isNumberSeparator(litBuf.last))
         errorButContinue("trailing separator is not allowed", offset + litBuf.length - 1)
-    }
   }
 
   class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
@@ -412,7 +411,7 @@ object Scanners {
     /** If this token and the next constitute an end marker, skip them and append a new EndMarker
      *  value at the end of the endMarkers queue.
      */
-    private def handleEndMarkers(width: IndentWidth): Unit = {
+    private def handleEndMarkers(width: IndentWidth): Unit =
       if (next.token == IDENTIFIER && next.name == nme.end && width == currentRegion.indentWidth) {
         val lookahead = lookaheadScanner
         lookahead.nextToken() // skip the `end`
@@ -434,7 +433,6 @@ object Scanners {
           case _ =>
         }
       }
-    }
 
     /** Consume and cancel the head of the end markers queue if it has the given `tag` and width.
      *  Flag end markers with higher indent widths as errors.
@@ -584,7 +582,7 @@ object Scanners {
           canStartStatTokens.contains(token) &&
           !isLeadingInfixOperator())
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
-      else if (indentIsSignificant) {
+      else if (indentIsSignificant)
         if (nextWidth < lastWidth
             || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE)
           currentRegion match {
@@ -609,7 +607,6 @@ object Scanners {
             i"""Incompatible combinations of tabs and spaces in indentation prefixes.
                 |Previous indent : $lastWidth
                 |Latest indent   : $nextWidth""")
-      }
       currentRegion match {
         case Indented(curWidth, others, prefix, outer) if curWidth < nextWidth && !others.contains(nextWidth) =>
           if (token == OUTDENT)
@@ -887,9 +884,8 @@ object Scanners {
     }
 
     private def skipComment(): Boolean = {
-      def appendToComment(ch: Char) = {
+      def appendToComment(ch: Char) =
         if (keepComments) commentBuf.append(ch)
-      }
       def nextChar() = {
         appendToComment(ch)
         Scanner.this.nextChar()
@@ -1270,10 +1266,9 @@ object Scanners {
       }
       checkNoLetter()
     }
-    def checkNoLetter(): Unit = {
+    def checkNoLetter(): Unit =
       if (isIdentifierPart(ch) && ch >= ' ')
         error("Invalid literal number")
-    }
 
     /** Read a number into strVal and set base
     */
