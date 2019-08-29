@@ -355,12 +355,13 @@ object ExplicitOuter {
         val mt @ MethodTpe(pnames, ptypes, restpe) = tp
         mt.derivedLambdaType(
           nme.OUTER :: pnames, outerClass(cls).typeRef :: ptypes, restpe)
-      } else tp
+      }
+      else tp
 
     /** If function in an apply node is a constructor that needs to be passed an
      *  outer argument, the singleton list with the argument, otherwise Nil.
      */
-    def args(fun: Tree): List[Tree] = {
+    def args(fun: Tree): List[Tree] =
       if (fun.symbol.isConstructor) {
         val cls = fun.symbol.owner.asClass
         def outerArg(receiver: Tree): Tree = receiver match {
@@ -376,8 +377,8 @@ object ExplicitOuter {
             case Select(receiver, _) => outerArg(receiver).withSpan(fun.span) :: Nil
           }
         else Nil
-      } else Nil
-    }
+      }
+      else Nil
 
     /** A path of outer accessors starting from node `start`. `start` defaults to the
      *  context owner's this node. There are two alternative conditions that determine
@@ -405,7 +406,8 @@ object ExplicitOuter {
       }
       ctx.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).toList}")
       loop(start, count)
-    } catch {
+    }
+    catch {
       case ex: ClassCastException =>
         throw new ClassCastException(i"no path exists from ${ctx.owner.enclosingClass} to $toCls")
     }

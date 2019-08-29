@@ -45,9 +45,8 @@ class TreePickler(pickler: TastyPickler) {
     fillRef(lengthAddr, currentAddr, relative = true)
   }
 
-  def addrOfSym(sym: Symbol): Option[Addr] = {
+  def addrOfSym(sym: Symbol): Option[Addr] =
     symRefs.get(sym)
-  }
 
   def preRegister(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case tree: MemberDef =>
@@ -144,7 +143,8 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(SHAREDtype)
         writeRef(prev.asInstanceOf[Addr])
       }
-    } catch {
+    }
+    catch {
       case ex: AssertionError =>
         println(i"error when pickling type $tpe")
         throw ex
@@ -290,8 +290,9 @@ class TreePickler(pickler: TastyPickler) {
   def pickleTpt(tpt: Tree)(implicit ctx: Context): Unit =
     pickleTree(tpt)
 
-  def pickleTreeUnlessEmpty(tree: Tree)(implicit ctx: Context): Unit =
+  def pickleTreeUnlessEmpty(tree: Tree)(implicit ctx: Context): Unit = {
     if (!tree.isEmpty) pickleTree(tree)
+  }
 
   def pickleDef(tag: Int, sym: Symbol, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(implicit ctx: Context): Unit = {
     assert(symRefs(sym) == NoAddr, sym)
@@ -373,7 +374,8 @@ class TreePickler(pickler: TastyPickler) {
           if (fun.symbol eq defn.throwMethod) {
             writeByte(THROW)
             pickleTree(args.head)
-          } else {
+          }
+          else {
             writeByte(APPLY)
             withLength {
               pickleTree(fun)
@@ -437,10 +439,9 @@ class TreePickler(pickler: TastyPickler) {
         case tree @ Match(selector, cases) =>
           writeByte(MATCH)
           withLength {
-            if (tree.isInline) {
+            if (tree.isInline)
               if (selector.isEmpty) writeByte(IMPLICIT)
               else { writeByte(INLINE); pickleTree(selector) }
-            }
             else pickleTree(selector)
             tree.cases.foreach(pickleTree)
           }
@@ -661,7 +662,8 @@ class TreePickler(pickler: TastyPickler) {
       if (flags.is(ParamAccessor)) writeModTag(PARAMsetter)
       if (flags.is(Exported)) writeModTag(EXPORTED)
       assert(!(flags.is(Label)))
-    } else {
+    }
+    else {
       if (flags.is(Sealed)) writeModTag(SEALED)
       if (flags.is(Abstract)) writeModTag(ABSTRACT)
       if (flags.is(Trait)) writeModTag(TRAIT)
@@ -681,11 +683,12 @@ class TreePickler(pickler: TastyPickler) {
       ann.symbol == defn.BodyAnnot // inline bodies are reconstituted automatically when unpickling
   }
 
-  def pickleAnnotation(owner: Symbol, ann: Annotation)(implicit ctx: Context): Unit =
+  def pickleAnnotation(owner: Symbol, ann: Annotation)(implicit ctx: Context): Unit = {
     if (!isUnpicklable(owner, ann)) {
       writeByte(ANNOTATION)
       withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
     }
+  }
 
 // ---- main entry points ---------------------------------------
 

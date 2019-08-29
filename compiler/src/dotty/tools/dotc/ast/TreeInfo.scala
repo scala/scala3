@@ -401,7 +401,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           || fn.symbol.isPrimaryConstructor && fn.symbol.owner.isNoInitsClass) // TODO: include in isStable?
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
       else if (fn.symbol.is(Erased)) Pure
-      else if (fn.symbol.isStableMember /* && fn.symbol.is(Lazy) */)
+      else if (fn.symbol.isStableMember) /* && fn.symbol.is(Lazy) */
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Idempotent
       else Impure
     case Typed(expr, _) =>
@@ -686,7 +686,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def defPath(sym: Symbol, root: Tree)(implicit ctx: Context): List[Tree] = trace.onDebug(s"defpath($sym with position ${sym.span}, ${root.show})") {
     require(sym.span.exists, sym)
     object accum extends TreeAccumulator[List[Tree]] {
-      def apply(x: List[Tree], tree: Tree)(implicit ctx: Context): List[Tree] = {
+      def apply(x: List[Tree], tree: Tree)(implicit ctx: Context): List[Tree] =
         if (tree.span.contains(sym.span))
           if (definedSym(tree) == sym) tree :: x
           else {
@@ -694,7 +694,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
             if (x1 ne x) tree :: x1 else x1
           }
         else x
-      }
     }
     accum(Nil, root)
   }

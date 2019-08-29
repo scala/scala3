@@ -19,5 +19,4 @@ object QuoteContext {
   //      This id can only differentiate scope extrusion from one compiler instance to another.
   private[dotty] def scopeId given Context: ScopeId =
     the[Context].outersIterator.toList.last.hashCode()
-
 }

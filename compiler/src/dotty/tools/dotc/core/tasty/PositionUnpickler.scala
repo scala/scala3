@@ -17,7 +17,7 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
   private var mySourcePaths: mutable.HashMap[Addr, String] = _
   private var isDefined = false
 
-  def ensureDefined(): Unit =
+  def ensureDefined(): Unit = {
     if (!isDefined) {
       mySpans = new mutable.HashMap[Addr, Span]
       mySourcePaths = new mutable.HashMap[Addr, String]
@@ -42,10 +42,11 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
           mySpans(Addr(curIndex)) =
             if (hasPoint) Span(curStart, curEnd, curStart + readInt())
             else Span(curStart, curEnd)
-          }
+        }
       }
       isDefined = true
     }
+  }
 
   private[tasty] def spans: Map[Addr, Span] = {
     ensureDefined()

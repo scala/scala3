@@ -105,11 +105,10 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     val fromCompilationOutput = {
       val classNames = new mutable.ListBuffer[TypeName]
       val output = ctx.settings.outputDir.value
-      if (output.isDirectory) {
+      if (output.isDirectory)
         classesFromDir(output.jpath, classNames)
-      } else {
+      else
         classesFromZip(output.file, classNames)
-      }
       classNames.flatMap { cls =>
         treesFromClassName(cls, id)
       }
@@ -228,7 +227,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   }
 
   /** Adds the names of the classes that are defined in `dir` to `buffer`. */
-  private def classesFromDir(dir: Path, buffer: mutable.ListBuffer[TypeName]): Unit = {
+  private def classesFromDir(dir: Path, buffer: mutable.ListBuffer[TypeName]): Unit =
     try
       Files.walkFileTree(dir, new SimpleFileVisitor[Path] {
         override def visitFile(path: Path, attrs: BasicFileAttributes) = {
@@ -237,7 +236,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
             for {
               tastySuffix <- tastySuffixes
               if name.endsWith(tastySuffix)
-            } {
+            }
+            {
               buffer += dir.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix).toTypeName
             }
           }
@@ -247,7 +247,6 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     catch {
       case _: NoSuchFileException =>
     }
-  }
 
   private def topLevelTrees(topTree: Tree, source: SourceFile): List[SourceTree] = {
     val trees = new mutable.ListBuffer[SourceTree]
@@ -317,22 +316,22 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     myCtx = run.runContext
     run.compileUnits(Nil, myCtx)
   }
-
 }
+
 
 object InteractiveDriver {
   def toUriOption(file: AbstractFile): Option[URI] =
     if (!file.exists)
       None
     else
-      try {
+      try
         // We don't use file.file here since it'll be null
         // for the VirtualFiles created by InteractiveDriver#toSource
         // TODO: To avoid these round trip conversions, we could add an
         // AbstractFile#toUri method and implement it by returning a constant
         // passed as a parameter to a constructor of VirtualFile
         Some(Paths.get(file.path).toUri)
-      } catch {
+      catch {
         case e: InvalidPathException =>
           None
       }

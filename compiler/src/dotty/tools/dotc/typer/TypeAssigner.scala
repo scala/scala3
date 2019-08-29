@@ -202,9 +202,9 @@ trait TypeAssigner {
           val d2 = pre.nonPrivateMember(name)
           if (reallyExists(d2) && firstTry)
             test(NamedType(pre, name, d2), false)
-          else if (pre.derivesFrom(defn.DynamicClass) && name.isTermName) {
+          else if (pre.derivesFrom(defn.DynamicClass) && name.isTermName)
             TryDynamicCallType
-          } else {
+          else {
             val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
             var packageAccess = false
             val what = alts match {
@@ -396,7 +396,7 @@ trait TypeAssigner {
       safeSubstParams(tp1, params.tail, argTypes1)
     case Nil =>
       tp
-    }
+  }
 
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
     val ownType = fn.tpe.widen match {
@@ -569,11 +569,10 @@ trait TypeAssigner {
     assert(!hasNamedArg(args))
     val tparams = tycon.tpe.typeParams
     val ownType =
-      if (sameLength(tparams, args)) {
+      if (sameLength(tparams, args))
         if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
         else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe)
         else tycon.tpe.appliedTo(args.tpes)
-      }
       else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.sourcePos)
     tree.withType(ownType)
   }
@@ -622,8 +621,8 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(implicit ctx: Context): PackageDef =
     tree.withType(pid.symbol.termRef)
-
 }
+
 
 object TypeAssigner extends TypeAssigner
 

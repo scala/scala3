@@ -118,7 +118,8 @@ object TypeErasure {
     semiEraseVCs <- List(false, true)
     isConstructor <- List(false, true)
     wildcardOK <- List(false, true)
-  } erasures(erasureIdx(isJava, semiEraseVCs, isConstructor, wildcardOK)) =
+  }
+  erasures(erasureIdx(isJava, semiEraseVCs, isConstructor, wildcardOK)) =
     new TypeErasure(isJava, semiEraseVCs, isConstructor, wildcardOK)
 
   /** Produces an erasure function. See the documentation of the class [[TypeErasure]]
@@ -196,7 +197,7 @@ object TypeErasure {
           MethodType(Nil, defn.BoxedUnitClass.typeRef)
         else if (sym.isAnonymousFunction && einfo.paramInfos.length > MaxImplementedFunctionArity)
           MethodType(nme.ALLARGS :: Nil, JavaArrayType(defn.ObjectType) :: Nil, einfo.resultType)
-        else if (sym.name == nme.apply && sym.owner.derivesFrom(defn.PolyFunctionClass)) {
+        else if (sym.name == nme.apply && sym.owner.derivesFrom(defn.PolyFunctionClass))
           // The erasure of `apply` in subclasses of PolyFunction has to match
           // the erasure of FunctionN#apply, since after `ElimPolyFunction` we replace
           // a `PolyFunction` parent by a `FunctionN` parent.
@@ -204,7 +205,6 @@ object TypeErasure {
             paramInfos = einfo.paramInfos.map(_ => defn.ObjectType),
             resType = defn.ObjectType
           )
-        }
         else
           einfo
       case einfo =>
@@ -213,9 +213,9 @@ object TypeErasure {
         // PolyFunction arguments
         if (sym.is(TermParam) && sym.owner.name == nme.apply
             && sym.owner.owner.derivesFrom(defn.PolyFunctionClass)
-            && !(tp <:< defn.PolyFunctionType)) {
+            && !(tp <:< defn.PolyFunctionType))
           defn.ObjectType
-        } else
+        else
           einfo
     }
   }
@@ -290,11 +290,11 @@ object TypeErasure {
         import dotty.tools.dotc.transform.TypeUtils._
         tp2 match {
           case JavaArrayType(elem2) =>
-            if (elem1.isPrimitiveValueType || elem2.isPrimitiveValueType) {
+            if (elem1.isPrimitiveValueType || elem2.isPrimitiveValueType)
               if (elem1.classSymbol eq elem2.classSymbol) // same primitive
                 JavaArrayType(elem1)
               else defn.ObjectType
-            } else JavaArrayType(erasedLub(elem1, elem2))
+            else JavaArrayType(erasedLub(elem1, elem2))
           case _ => defn.ObjectType
         }
       case _ =>
@@ -573,13 +573,12 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   /** The name of the type as it is used in `Signature`s.
    *  Need to ensure correspondence with erasure!
    */
-  private def sigName(tp: Type)(implicit ctx: Context): TypeName = try {
+  private def sigName(tp: Type)(implicit ctx: Context): TypeName = try
     tp match {
       case tp: TypeRef =>
-        if (!tp.denot.exists) {
+        if (!tp.denot.exists)
           // println(i"missing: ${tp.toString} ${tp.denot} / ${tp.prefix.member(tp.name)}")
           throw new MissingType(tp.prefix, tp.name)
-        }
         val sym = tp.symbol
         if (!sym.isClass) {
           val info = tp.translucentSuperType
@@ -627,7 +626,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         assert(erasedTp ne tp, tp)
         sigName(erasedTp)
     }
-  } catch {
+  catch {
     case ex: AssertionError =>
       println(s"no sig for $tp because of ${ex.printStackTrace()}")
       throw ex

@@ -11,11 +11,10 @@ object Variances {
   val Invariant: Variance = EmptyFlags
 
   /** Flip between covariant and contravariant */
-  def flip(v: Variance): Variance = {
+  def flip(v: Variance): Variance =
     if (v == Covariant) Contravariant
     else if (v == Contravariant) Covariant
     else v
-  }
 
   /** Map everything below Bivariant to Invariant */
   def cut(v: Variance): Variance =
@@ -54,14 +53,12 @@ object Variances {
   }
 
   /** Compute variance of type parameter `tparam' in all type annotations `annots'. */
-  def varianceInAnnots(annots: List[Annotation])(tparam: Symbol)(implicit ctx: Context): Variance = {
+  def varianceInAnnots(annots: List[Annotation])(tparam: Symbol)(implicit ctx: Context): Variance =
     annots.foldLeft(Bivariant) ((v, annot) => v & varianceInAnnot(annot)(tparam))
-  }
 
   /** Compute variance of type parameter `tparam' in type annotation `annot'. */
-  def varianceInAnnot(annot: Annotation)(tparam: Symbol)(implicit ctx: Context): Variance = {
+  def varianceInAnnot(annot: Annotation)(tparam: Symbol)(implicit ctx: Context): Variance =
     varianceInType(annot.tree.tpe)(tparam)
-  }
 
   /** Compute variance of type parameter <code>tparam</code> in type <code>tp</code>. */
   def varianceInType(tp: Type)(tparam: Symbol)(implicit ctx: Context): Variance = tp match {

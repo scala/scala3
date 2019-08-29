@@ -104,7 +104,7 @@ object CommentParsing {
    * Merge sections following an usecase into the usecase comment, so they
    * can override the parent symbol's sections
    */
-  def mergeUsecaseSections(str: String, idxs: List[Int]): List[Int] = {
+  def mergeUsecaseSections(str: String, idxs: List[Int]): List[Int] =
     idxs.indexWhere(str.startsWith("@usecase", _)) match {
       case firstUCIndex if firstUCIndex != -1 =>
         val commentSections = idxs.take(firstUCIndex)
@@ -113,7 +113,6 @@ object CommentParsing {
       case _ =>
         idxs
     }
-  }
 
   /**
    * Merge the inheritdoc sections, as they never make sense on their own
@@ -172,12 +171,14 @@ object CommentParsing {
   def skipVariable(str: String, start: Int): Int = {
     var idx = start
     if (idx < str.length && (str charAt idx) == '{') {
-      while {
+      while ({
         idx += 1
         idx < str.length && (str charAt idx) != '}'
-      } do ()
+      })
+      ()
       if (idx < str.length) idx + 1 else start
-    } else {
+    }
+    else {
       while (idx < str.length && isVarPart(str charAt idx))
         idx += 1
       idx
@@ -243,7 +244,8 @@ object CommentParsing {
     val toBeRemoved = for {
       section <- xs
       lines = sections filter { startsWithTag(raw, _, section) }
-    } yield lines
+    }
+    yield lines
 
     val end = startTag(raw, toBeRemoved.flatten.sortBy(_._1).toList)
 

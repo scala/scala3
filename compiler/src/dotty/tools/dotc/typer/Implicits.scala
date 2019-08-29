@@ -93,7 +93,7 @@ object Implicits {
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[Candidate] = {
       record("filterMatching")
 
-      def candidateKind(ref: TermRef)(implicit ctx: Context): Candidate.Kind = /*trace(i"candidateKind $ref $pt")*/ {
+      def candidateKind(ref: TermRef)(implicit ctx: Context): Candidate.Kind = { /*trace(i"candidateKind $ref $pt")*/
 
         def viewCandidateKind(tpw: Type, argType: Type, resType: Type): Candidate.Kind = {
 
@@ -280,7 +280,7 @@ object Implicits {
     }
 
     /** The implicit references that are eligible for type `tp`. */
-    def eligible(tp: Type): List[Candidate] = {
+    def eligible(tp: Type): List[Candidate] =
       if (tp.hash == NotCached) computeEligible(tp)
       else {
         val eligibles = eligibleCache.get(tp)
@@ -300,7 +300,6 @@ object Implicits {
           result
         }
       }
-    }
 
     private def computeEligible(tp: Type): List[Candidate] = /*>|>*/ trace(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
       if (monitored) record(s"check eligible refs in ctx", refs.length)
@@ -462,7 +461,8 @@ object Implicits {
 import Implicits._
 
 /** Info relating to implicits that is kept for one run */
-trait ImplicitRunInfo { self: Run =>
+trait ImplicitRunInfo {
+  self: Run =>
 
   private val implicitScopeCache = mutable.AnyRefMap[Type, OfTypeImplicits]()
 
@@ -548,7 +548,8 @@ trait ImplicitRunInfo { self: Run =>
             if (seen contains t) {
               incomplete += tp  // all references to rootTo will be accounted for in `seen` so we return `EmptySet`.
               EmptyTermRefSet   // on the other hand, the refs of `tp` are now not accurate, so `tp` is marked incomplete.
-            } else {
+            }
+            else {
               seen += t
               val is = iscope(t)
               if (!implicitScopeCache.contains(t)) incomplete += tp
@@ -557,8 +558,9 @@ trait ImplicitRunInfo { self: Run =>
         }
 
         val comps = new TermRefSet
-        def addCompanion(pre: Type, companion: Symbol) =
+        def addCompanion(pre: Type, companion: Symbol) = {
           if (companion.exists && !companion.isAbsent()) comps += TermRef(pre, companion)
+        }
 
         def addPath(pre: Type): Unit = pre.dealias match {
           case pre: ThisType if pre.cls.is(Module) && pre.cls.isStaticOwner =>
@@ -624,9 +626,8 @@ trait ImplicitRunInfo { self: Run =>
     iscope(rootTp)
   }
 
-  protected def reset(): Unit = {
+  protected def reset(): Unit =
     implicitScopeCache.clear()
-  }
 }
 
 /** The implicit resolution part of type checking */
@@ -652,7 +653,7 @@ trait Implicits { self: Typer =>
    */
   def inferView(from: Tree, to: Type)(implicit ctx: Context): SearchResult = {
     record("inferView")
-    if (   (to isRef defn.AnyClass)
+    if    ((to isRef defn.AnyClass)
         || (to isRef defn.ObjectClass)
         || (to isRef defn.UnitClass)
         || (from.tpe isRef defn.NothingClass)
@@ -696,7 +697,7 @@ trait Implicits { self: Typer =>
                 classTag.select(sym.name.toTermName)
               else
                 classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(erasure(tp)))
-              tag.withSpan(span)
+            tag.withSpan(span)
           case tp =>
             EmptyTree
         }
@@ -707,7 +708,7 @@ trait Implicits { self: Typer =>
   /** Synthesize the tree for `'[T]` for an implicit `scala.quoted.Type[T]`.
    *  `T` is deeply dealiased to avoid references to local type aliases.
    */
-  lazy val synthesizedTypeTag: SpecialHandler =
+  lazy val synthesizedTypeTag: SpecialHandler = {
     (formal, span) => implicit ctx => {
       def quotedType(t: Type) = {
         if (StagingContext.level == 0)
@@ -724,6 +725,7 @@ trait Implicits { self: Typer =>
           EmptyTree
       }
     }
+  }
 
   lazy val synthesizedQuoteContext: SpecialHandler =
     (formal, span) => implicit ctx =>
@@ -777,7 +779,7 @@ trait Implicits { self: Typer =>
   /** If `formal` is of the form Eql[T, U], try to synthesize an
     *  `Eql.eqlAny[T, U]` as solution.
     */
-  lazy val synthesizedEq: SpecialHandler =
+  lazy val synthesizedEq: SpecialHandler = {
     (formal, span) => implicit ctx => {
 
       /** Is there an `Eql[T, T]` instance, assuming -strictEquality? */
@@ -838,11 +840,12 @@ trait Implicits { self: Typer =>
           EmptyTree
       }
     }
+  }
 
   /** Creates a tree that will produce a ValueOf instance for the requested type.
    * An EmptyTree is returned if materialization fails.
    */
-  lazy val synthesizedValueOf: SpecialHandler =
+  lazy val synthesizedValueOf: SpecialHandler = {
     (formal, span) => implicit ctx => {
       def success(t: Tree) = New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
 
@@ -862,6 +865,7 @@ trait Implicits { self: Typer =>
           EmptyTree
       }
     }
+  }
 
   /** Create an anonymous class `new Object { type MirroredMonoType = ... }`
    *  and mark it with given attachment so that it is made into a mirror at PostTyper.
@@ -922,7 +926,7 @@ trait Implicits { self: Typer =>
   /** An implied instance for a type of the form `Mirror.Product { type MirroredType = T }`
    *  where `T` is a generic product type or a case object or an enum case.
    */
-  lazy val synthesizedProductMirror: SpecialHandler =
+  lazy val synthesizedProductMirror: SpecialHandler = {
     (formal, span) => implicit ctx => {
       def mirrorFor(mirroredType0: Type): Tree = {
         val mirroredType = mirroredType0.stripTypeVar
@@ -978,6 +982,7 @@ trait Implicits { self: Typer =>
           case other => EmptyTree
         }
     }
+  }
 
   /** An implied instance for a type of the form `Mirror.Sum { type MirroredType = T }`
    *  where `T` is a generic sum type.
@@ -1090,7 +1095,7 @@ trait Implicits { self: Typer =>
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
-  def inferImplicitArg(formal: Type, span: Span)(implicit ctx: Context): Tree = {
+  def inferImplicitArg(formal: Type, span: Span)(implicit ctx: Context): Tree =
     inferImplicit(formal, EmptyTree, span)(ctx) match {
       case SearchSuccess(arg, _, _) => arg
       case fail @ SearchFailure(failed) =>
@@ -1113,10 +1118,9 @@ trait Implicits { self: Typer =>
           case Nil =>
             failed
         }
-      if (fail.isAmbiguous) failed
-      else trySpecialCases(specialHandlers)
+        if (fail.isAmbiguous) failed
+        else trySpecialCases(specialHandlers)
     }
-  }
 
   /** Search an implicit argument and report error if not found */
   def implicitArgTree(formal: Type, span: Span)(implicit ctx: Context): Tree = {
@@ -1151,7 +1155,8 @@ trait Implicits { self: Typer =>
     def userDefinedMsg(sym: Symbol, cls: Symbol) = for {
       ann <- sym.getAnnotation(cls)
       Trees.Literal(Constant(msg: String)) <- ann.argument(0)
-    } yield msg
+    }
+    yield msg
 
 
     arg.tpe match {
@@ -1279,11 +1284,12 @@ trait Implicits { self: Typer =>
   }
 
   /** Check that equality tests between types `ltp` and `rtp` make sense */
-  def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit =
+  def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit = {
     if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
       val res = implicitArgTree(defn.EqlClass.typeRef.appliedTo(ltp, rtp), span)
       implicits.println(i"Eql witness found for $ltp / $rtp: $res: ${res.tpe}")
     }
+  }
 
   /** Find an implicit parameter or conversion.
    *  @param pt              The expected type of the parameter or conversion.
@@ -1400,27 +1406,27 @@ trait Implicits { self: Typer =>
             }
             else tryConversion
           }
-        if (ctx.reporter.hasErrors) {
-          ctx.reporter.removeBufferedMessages
-          SearchFailure {
-            adapted.tpe match {
-              case _: SearchFailureType => adapted
-              case _ => adapted.withType(new MismatchedImplicit(ref, pt, argument))
-            }
+      if (ctx.reporter.hasErrors) {
+        ctx.reporter.removeBufferedMessages
+        SearchFailure {
+          adapted.tpe match {
+            case _: SearchFailureType => adapted
+            case _ => adapted.withType(new MismatchedImplicit(ref, pt, argument))
           }
         }
-        else {
-          val returned =
-            if (cand.isExtension) Applications.ExtMethodApply(adapted)
-            else adapted
-          SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadt)
-        }
       }
+      else {
+        val returned =
+          if (cand.isExtension) Applications.ExtMethodApply(adapted)
+          else adapted
+        SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadt)
+      }
+    }
 
     /** Try to type-check implicit reference, after checking that this is not
       * a diverging search
       */
-    def tryImplicit(cand: Candidate, contextual: Boolean): SearchResult = {
+    def tryImplicit(cand: Candidate, contextual: Boolean): SearchResult =
       if (ctx.searchHistory.checkDivergence(cand, pt))
         SearchFailure(new DivergingImplicit(cand.ref, pt.widenExpr, argument))
       else {
@@ -1434,7 +1440,6 @@ trait Implicits { self: Typer =>
             result
         }
       }
-    }
 
     /** Search a list of eligible implicit references */
     def searchImplicits(eligible: List[Candidate], contextual: Boolean): SearchResult = {
@@ -1589,10 +1594,11 @@ trait Implicits { self: Typer =>
       }
 
       rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
-    } // end searchImplicits
+    }
+    // end searchImplicits
 
     /** Find a unique best implicit reference */
-    def bestImplicit(contextual: Boolean): SearchResult = {
+    def bestImplicit(contextual: Boolean): SearchResult =
       // Before searching for contextual or implicit scope candidates we first check if
       // there is an under construction or already constructed term with which we can tie
       // the knot.
@@ -1630,7 +1636,6 @@ trait Implicits { self: Typer =>
               }
           }
       }
-    }
 
     def implicitScope(tp: Type): OfTypeImplicits = ctx.run.implicitScope(tp, ctx)
 
@@ -1670,13 +1675,12 @@ abstract class SearchHistory { outer =>
    * @param pt   The target type for the above candidate.
    * @result     The nested history.
    */
-  def nest(cand: Candidate, pt: Type)(implicit ctx: Context): SearchHistory = {
+  def nest(cand: Candidate, pt: Type)(implicit ctx: Context): SearchHistory =
     new SearchHistory {
       val root = outer.root
       val open = (cand, pt) :: outer.open
       val byname = outer.byname || isByname(pt)
     }
-  }
 
   def isByname(tp: Type): Boolean = tp.isInstanceOf[ExprType]
 
@@ -1754,13 +1758,12 @@ abstract class SearchHistory { outer =>
         // argument as we ascend the chain of open implicits to the outermost search
         // context.
         @tailrec
-        def loop(ois: List[(Candidate, Type)], belowByname: Boolean): Type = {
+        def loop(ois: List[(Candidate, Type)], belowByname: Boolean): Type =
           ois match {
             case (hd@(cand, tp)) :: tl if (belowByname || isByname(tp)) && tp.widenExpr <:< widePt => tp
             case (_, tp) :: tl => loop(tl, belowByname || isByname(tp))
             case _ => NoType
           }
-        }
 
         loop(open, bynamePt) match {
           case NoType => NoType
@@ -1805,7 +1808,7 @@ final class SearchRoot extends SearchHistory {
    * @param tpe  The type to link.
    * @result     The TermRef of the corresponding dictionary entry.
    */
-  override def linkBynameImplicit(tpe: Type)(implicit ctx: Context): TermRef = {
+  override def linkBynameImplicit(tpe: Type)(implicit ctx: Context): TermRef =
     implicitDictionary.get(tpe) match {
       case Some((ref, _)) => ref
       case None =>
@@ -1814,7 +1817,6 @@ final class SearchRoot extends SearchHistory {
         implicitDictionary.put(tpe, (ref, tpd.EmptyTree))
         ref
     }
-  }
 
   /**
    * Look up an implicit dictionary entry by type.
@@ -1825,9 +1827,8 @@ final class SearchRoot extends SearchHistory {
    * @param tpe The type to look up.
    * @result    The corresponding TermRef, or NoType if none.
    */
-  override def refBynameImplicit(tpe: Type)(implicit ctx: Context): Type = {
+  override def refBynameImplicit(tpe: Type)(implicit ctx: Context): Type =
     implicitDictionary.get(tpe).map(_._1).getOrElse(NoType)
-  }
 
   /**
    * Define a pending dictionary entry if any.
@@ -1842,14 +1843,13 @@ final class SearchRoot extends SearchHistory {
    * @result        A SearchResult referring to the newly created dictionary entry if tpe
    *                is an under-construction by name implicit, the provided result otherwise.
    */
-  override def defineBynameImplicit(tpe: Type, result: SearchSuccess)(implicit ctx: Context): SearchResult = {
+  override def defineBynameImplicit(tpe: Type, result: SearchSuccess)(implicit ctx: Context): SearchResult =
     implicitDictionary.get(tpe) match {
       case Some((ref, _)) =>
         implicitDictionary.put(tpe, (ref, result.tree))
         SearchSuccess(tpd.ref(ref).withSpan(result.tree.span), result.ref, result.level)(result.tstate, result.gstate)
       case None => result
     }
-  }
 
   /**
    * Emit the implicit dictionary at the completion of an implicit search.
@@ -1859,9 +1859,9 @@ final class SearchRoot extends SearchHistory {
    * @result       The elaborated result, comprising the implicit dictionary and a result tree
    *               substituted with references into the dictionary.
    */
-  override def emitDictionary(span: Span, result: SearchResult)(implicit ctx: Context): SearchResult = {
+  override def emitDictionary(span: Span, result: SearchResult)(implicit ctx: Context): SearchResult =
     if (implicitDictionary == null || implicitDictionary.isEmpty) result
-    else {
+    else
       result match {
         case failure: SearchFailure => failure
         case success @ SearchSuccess(tree, _, _) =>
@@ -1951,8 +1951,6 @@ final class SearchRoot extends SearchHistory {
             success.copy(tree = blk)(success.tstate, success.gstate)
           }
       }
-    }
-  }
 }
 
 /** A set of term references where equality is =:= */

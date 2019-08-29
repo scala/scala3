@@ -63,16 +63,15 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     isCurrent(meth)
   }
 
-  private def needsJUnit4Fix(meth: Symbol): Boolean = {
+  private def needsJUnit4Fix(meth: Symbol): Boolean =
     meth.annotations.nonEmpty && JUnit4Annotations.exists(annot => meth.hasAnnotation(annot)) &&
       ctx.settings.mixinForwarderChoices.isAtLeastJunit
-  }
 
   final val PrivateOrAccessor: FlagSet = Private | Accessor
   final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
-  def forwarderRhsFn(target: Symbol): List[Type] => List[List[Tree]] => Tree =
-    targs => vrefss => {
+  def forwarderRhsFn(target: Symbol): List[Type] => List[List[Tree]] => Tree = {
+    targs => vrefss =>
       val tapp = superRef(target).appliedToTypes(targs)
       vrefss match {
         case Nil | List(Nil) =>
@@ -82,12 +81,11 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
         case _ =>
           tapp.appliedToArgss(vrefss)
       }
-    }
+  }
 
-  private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] = {
+  private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] =
     cls.baseClasses.iterator
       .filter(_ ne meth.owner)
       .map(base => meth.overriddenSymbol(base, cls))
       .filter(_.exists)
-  }
 }

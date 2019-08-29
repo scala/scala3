@@ -199,12 +199,11 @@ trait ConstraintHandling[AbstractContext] {
   }
 
 
-  protected def isSubType(tp1: Type, tp2: Type, whenFrozen: Boolean)(implicit actx: AbstractContext): Boolean = {
+  protected def isSubType(tp1: Type, tp2: Type, whenFrozen: Boolean)(implicit actx: AbstractContext): Boolean =
     if (whenFrozen)
       isSubTypeWhenFrozen(tp1, tp2)
     else
       isSubType(tp1, tp2)
-  }
 
   @forceInline final def inFrozenConstraint[T](op: => T): T = {
     val savedFrozen = frozenConstraint
@@ -527,7 +526,7 @@ trait ConstraintHandling[AbstractContext] {
 
   /** Check that constraint is fully propagated. See comment in Config.checkConstraintsPropagated */
   def checkPropagated(msg: => String)(result: Boolean)(implicit actx: AbstractContext): Boolean = {
-    if (Config.checkConstraintsPropagated && result && addConstraintInvocations == 0) {
+    if (Config.checkConstraintsPropagated && result && addConstraintInvocations == 0)
       inFrozenConstraint {
         for (p <- constraint.domainParams) {
           def check(cond: => Boolean, q: TypeParamRef, ordering: String, explanation: String): Unit =
@@ -540,7 +539,6 @@ trait ConstraintHandling[AbstractContext] {
           }
         }
       }
-    }
     result
   }
 }

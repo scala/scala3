@@ -116,14 +116,13 @@ object Settings {
 
     def tryToSet(state: ArgsSummary): ArgsSummary = {
       val ArgsSummary(sstate, arg :: args, errors, warnings) = state
-      def update(value: Any, args: List[String]) = {
-        if (changed) {
+      def update(value: Any, args: List[String]) =
+        if (changed)
           ArgsSummary(updateIn(sstate, value), args, errors, warnings :+ s"Flag $name set repeatedly")
-        } else {
+        else {
           changed = true
           ArgsSummary(updateIn(sstate, value), args, errors, warnings)
         }
-      }
       def fail(msg: String, args: List[String]) =
         ArgsSummary(sstate, args, errors :+ msg, warnings)
       def missingArg =
@@ -161,7 +160,8 @@ object Settings {
               case _ =>
                 update(x, args2)
             }
-          } catch {
+          }
+          catch {
             case _: NumberFormatException =>
               fail(s"$arg2 is not an integer argument for $name", args2)
           }

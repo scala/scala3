@@ -39,5 +39,5 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr)(implic
           traverseChildren(tree)
       }
   }
-
 }
+

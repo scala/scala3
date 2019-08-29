@@ -26,14 +26,13 @@ object PickledQuotes {
   import tpd._
 
   /** Pickle the tree of the quote into strings */
-  def pickleQuote(tree: Tree)(implicit ctx: Context): PickledQuote = {
+  def pickleQuote(tree: Tree)(implicit ctx: Context): PickledQuote =
     if (ctx.reporter.hasErrors) Nil
     else {
       assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'{$x}` which should be optimized to `x`
       val pickled = pickle(tree)
       TastyString.pickle(pickled)
     }
-  }
 
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree = {
@@ -133,13 +132,12 @@ object PickledQuotes {
   /** Make sure that the owner of this tree is `ctx.owner` */
   private def healOwner(tree: Tree)(implicit ctx: Context): Tree = {
     val getCurrentOwner = new TreeAccumulator[Option[Symbol]] {
-      def apply(x: Option[Symbol], tree: tpd.Tree)(implicit ctx: Context): Option[Symbol] = {
+      def apply(x: Option[Symbol], tree: tpd.Tree)(implicit ctx: Context): Option[Symbol] =
         if (x.isDefined) x
         else tree match {
           case tree: DefTree => Some(tree.symbol.owner)
           case _ => foldOver(x, tree)
         }
-      }
     }
     getCurrentOwner(None, tree) match {
       case Some(owner) if owner != ctx.owner => tree.changeOwner(owner, ctx.owner)

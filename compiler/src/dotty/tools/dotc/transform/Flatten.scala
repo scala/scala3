@@ -28,14 +28,12 @@ class Flatten extends MiniPhase with SymTransformer {
   override def initContext(ctx: FreshContext): Unit =
     LiftedDefs = ctx.addLocation[mutable.ListBuffer[Tree]](null)
 
-  def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation = {
-    if (ref.isClass && !ref.is(Package) && !ref.owner.is(Package)) {
+  def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation =
+    if (ref.isClass && !ref.is(Package) && !ref.owner.is(Package))
       ref.copySymDenotation(
         name = ref.flatName,
         owner = ref.enclosingPackageClass)
-    }
     else ref
-  }
 
   override def prepareForPackageDef(tree: PackageDef)(implicit ctx: Context): FreshContext =
     ctx.fresh.updateStore(LiftedDefs, new mutable.ListBuffer[Tree])

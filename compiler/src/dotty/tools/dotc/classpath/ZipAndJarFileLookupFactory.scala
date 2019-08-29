@@ -21,10 +21,9 @@ import FileUtils._
 sealed trait ZipAndJarFileLookupFactory {
   private val cache = new FileBasedCache[ClassPath]
 
-  def create(zipFile: AbstractFile)(implicit ctx: Context): ClassPath = {
+  def create(zipFile: AbstractFile)(implicit ctx: Context): ClassPath =
     if (ctx.settings.YdisableFlatCpCaching.value || zipFile.file == null) createForZipFile(zipFile)
     else createUsingCache(zipFile)
-  }
 
   protected def createForZipFile(zipFile: AbstractFile): ClassPath
 

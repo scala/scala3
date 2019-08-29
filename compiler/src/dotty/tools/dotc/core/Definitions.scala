@@ -160,9 +160,8 @@ class Definitions {
     val info =
       if (useCompleter)
         new LazyType {
-          def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+          def complete(denot: SymDenotation)(implicit ctx: Context): Unit =
             denot.info = ptype
-          }
         }
       else ptype
     enterMethod(cls, name, info, flags)
@@ -311,10 +310,9 @@ class Definitions {
 
   @tu lazy val AnyKindClass: ClassSymbol = {
     val cls = ctx.newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil)
-    if (!ctx.settings.YnoKindPolymorphism.value) {
+    if (!ctx.settings.YnoKindPolymorphism.value)
       // Enable kind-polymorphism by exposing scala.AnyKind
       cls.entered
-    }
     cls
   }
   def AnyKindType: TypeRef = AnyKindClass.typeRef
@@ -801,13 +799,12 @@ class Definitions {
   object PartialFunctionOf {
     def apply(arg: Type, result: Type)(implicit ctx: Context): Type =
       PartialFunctionClass.typeRef.appliedTo(arg :: result :: Nil)
-    def unapply(pft: Type)(implicit ctx: Context): Option[(Type, List[Type])] = {
+    def unapply(pft: Type)(implicit ctx: Context): Option[(Type, List[Type])] =
       if (pft.isRef(PartialFunctionClass)) {
         val targs = pft.dealias.argInfos
         if (targs.length == 2) Some((targs.head, targs.tail)) else None
       }
       else None
-    }
   }
 
   object ArrayOf {
@@ -903,7 +900,7 @@ class Definitions {
     else
       ctx.requiredClass("scala.Function" + n.toString)
 
-    @tu lazy val Function0_apply: Symbol = ImplementedFunctionType(0).symbol.requiredMethod(nme.apply)
+  @tu lazy val Function0_apply: Symbol = ImplementedFunctionType(0).symbol.requiredMethod(nme.apply)
 
   def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): TypeRef =
     if (n <= MaxImplementedFunctionArity && (!isContextual || ctx.erasedTypes) && !isErased) ImplementedFunctionType(n)

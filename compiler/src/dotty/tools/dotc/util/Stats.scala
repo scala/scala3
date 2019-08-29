@@ -20,14 +20,16 @@ import collection.mutable
   }
 
   @forceInline
-  def record(fn: => String, n: => Int = 1): Unit =
+  def record(fn: => String, n: => Int = 1): Unit = {
     if (enabled) doRecord(fn, n)
+  }
 
-  def doRecord(fn: String, n: Int) =
+  def doRecord(fn: String, n: Int) = {
     if (monitored) {
       val name = if (fn.startsWith("member-")) "member" else fn
       hits(name) += n
     }
+  }
 
   @forceInline
   def trackTime[T](fn: String)(op: => T): T =
@@ -38,7 +40,8 @@ import collection.mutable
     if (monitored) {
       val start = System.nanoTime
       try op1 finally record(fn, ((System.nanoTime - start) / 1000).toInt)
-    } else op1
+    }
+    else op1
   }
 
   final val GroupChar = '/'
@@ -52,7 +55,7 @@ import collection.mutable
       hits(s"Total $prefix") += hits(name)
   }
 
-  def maybeMonitored[T](op: => T)(implicit ctx: Context): T = {
+  def maybeMonitored[T](op: => T)(implicit ctx: Context): T =
     if (ctx.settings.YdetailedStats.value) {
       monitored = true
       try op
@@ -62,6 +65,6 @@ import collection.mutable
         println(hits.toList.sortBy(_._2).map{ case (x, y) => s"$x -> $y" } mkString "\n")
         println(s"uniqueInfo (size, accesses, collisions): ${ctx.base.uniquesSizes}")
       }
-    } else op
-  }
+    }
+    else op
 }

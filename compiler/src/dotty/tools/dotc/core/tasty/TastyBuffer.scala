@@ -126,7 +126,7 @@ class TastyBuffer(initialSize: Int) {
   def putNat(at: Addr, x: Int, width: Int): Unit = {
     var y = x
     var w = width
-    if(at.index + w >= bytes.length)
+    if (at.index + w >= bytes.length)
       bytes = dble(bytes)
     var digit = y & 0x7f | 0x80
     while (w > 0) {
@@ -149,12 +149,13 @@ class TastyBuffer(initialSize: Int) {
     var b = 0L
     var x = 0L
     var idx = at.index
-    while {
+    while ({
       b = bytes(idx)
       x = (x << 7) | (b & 0x7f)
       idx += 1
       (b & 0x80) == 0
-    } do ()
+    })
+    ()
     x
   }
 

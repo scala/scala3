@@ -42,7 +42,7 @@ class NameBuffer extends TastyBuffer(10000) {
         val ref = NameRef(nameRefs.size)
         nameRefs(name1) = ref
         ref
-      }
+    }
   }
 
   private def withLength(op: => Unit, lengthWidth: Int = 1): Unit = {

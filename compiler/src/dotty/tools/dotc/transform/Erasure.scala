@@ -54,8 +54,9 @@ class Erasure extends Phase with DenotTransformer {
         // After erasure, all former Any members are now Object members
         val ClassInfo(pre, _, ps, decls, selfInfo) = ref.info
         val extendedScope = decls.cloneScope
-        for (decl <- defn.AnyClass.classInfo.decls)
+        for (decl <- defn.AnyClass.classInfo.decls) {
           if (!decl.isConstructor) extendedScope.enter(decl)
+        }
         ref.copySymDenotation(
           info = transformInfo(ref.symbol,
               ClassInfo(pre, defn.ObjectClass, ps, extendedScope, selfInfo))
@@ -66,7 +67,7 @@ class Erasure extends Phase with DenotTransformer {
         val newSymbol =
           if ((oldSymbol.owner eq defn.AnyClass) && oldSymbol.isConstructor)
             defn.ObjectClass.primaryConstructor
-        else oldSymbol
+          else oldSymbol
         val oldOwner = ref.owner
         val newOwner = if (oldOwner eq defn.AnyClass) defn.ObjectClass else oldOwner
         val oldName = ref.name
@@ -229,7 +230,8 @@ object Erasure {
                   unboxedNull,
                   unboxedTree(t))
               }
-            } else unboxedTree(tree)
+            }
+            else unboxedTree(tree)
 
           cast(tree1, pt)
         case _ =>
@@ -401,9 +403,8 @@ object Erasure {
       else
         super.typedLiteral(tree)
 
-    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
+    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree =
       checkValue(checkNotErased(super.typedIdent(tree, pt)), pt)
-    }
 
     /** Type check select nodes, applying the following rewritings exhaustively
      *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`
@@ -443,7 +444,8 @@ object Erasure {
           if (defn.specialErasure.contains(owner)) {
             assert(sym.isConstructor, s"${sym.showLocated}")
             defn.specialErasure(owner)
-          } else if (defn.isSyntheticFunctionClass(owner))
+          }
+          else if (defn.isSyntheticFunctionClass(owner))
             defn.erasedFunctionClass(owner)
           else
             owner
@@ -584,13 +586,11 @@ object Erasure {
     override def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try =
       super.typedTry(tree, adaptProto(tree, pt))
 
-    private def adaptProto(tree: untpd.Tree, pt: Type)(implicit ctx: Context) = {
-      if (pt.isValueType) pt else {
+    private def adaptProto(tree: untpd.Tree, pt: Type)(implicit ctx: Context) =
+      if (pt.isValueType) pt else
         if (tree.typeOpt.derivesFrom(ctx.definitions.UnitClass))
           tree.typeOpt
         else valueErasure(tree.typeOpt)
-      }
-    }
 
     override def typedInlined(tree: untpd.Inlined, pt: Type)(implicit ctx: Context): Tree =
       super.typedInlined(tree, pt) match {
@@ -713,10 +713,10 @@ object Erasure {
 
             if (paramAdaptationNeeded || resultAdaptationNeeded) {
               val bridgeType =
-                if (paramAdaptationNeeded) {
+                if (paramAdaptationNeeded)
                   if (resultAdaptationNeeded) sam
                   else implType.derivedLambdaType(paramInfos = samParamTypes)
-                } else implType.derivedLambdaType(resType = samResultType)
+                else implType.derivedLambdaType(resType = samResultType)
               val bridge = ctx.newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method, bridgeType)
               val bridgeCtx = ctx.withOwner(bridge)
               Closure(bridge, bridgeParamss => {
@@ -726,8 +726,10 @@ object Erasure {
                 val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(adapt(_, _)))
                 adapt(rhs, bridgeType.resultType)
               }, targetType = implClosure.tpt.tpe)
-            } else implClosure
-          } else implClosure
+            }
+            else implClosure
+          }
+          else implClosure
         case _ =>
           implClosure
       }

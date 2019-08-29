@@ -44,9 +44,8 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
   private def computeCapacity = {
     if (initialCapacity < 0) throw new IllegalArgumentException("initial capacity cannot be less than 0")
     var candidate = 1
-    while (candidate < initialCapacity) {
+    while (candidate < initialCapacity)
       candidate  *= 2
-    }
     candidate
   }
 
@@ -132,13 +131,12 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
       @tailrec
       def linkedListLoop(entry: Entry[A]): Unit = entry match {
         case null => ()
-        case _ => {
+        case _ =>
           val bucket = bucketFor(entry.hash)
           val oldNext = entry.tail
           entry.tail = table(bucket)
           table(bucket) = entry
           linkedListLoop(oldNext)
-        }
       }
       linkedListLoop(oldTable(oldBucket))
 
@@ -152,7 +150,7 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
   // from scala.reflect.internal.Set, find an element or null if it isn't contained
   def findEntry(elem: A): A = elem match {
     case null => throw new NullPointerException("WeakHashSet cannot hold nulls")
-    case _    => {
+    case _    =>
       removeStaleEntries()
       val hash = elem.hashCode
       val bucket = bucketFor(hash)
@@ -160,20 +158,18 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
       @tailrec
       def linkedListLoop(entry: Entry[A]): A = entry match {
         case null                    => null.asInstanceOf[A]
-        case _                       => {
+        case _                       =>
           val entryElem = entry.get
           if (elem.equals(entryElem)) entryElem
           else linkedListLoop(entry.tail)
-        }
       }
 
       linkedListLoop(table(bucket))
-    }
   }
   // add an element to this set unless it's already in there and return the element
   def findEntryOrUpdate(elem: A): A = elem match {
     case null => throw new NullPointerException("WeakHashSet cannot hold nulls")
-    case _    => {
+    case _    =>
       removeStaleEntries()
       val hash = elem.hashCode
       val bucket = bucketFor(hash)
@@ -189,21 +185,19 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
       @tailrec
       def linkedListLoop(entry: Entry[A]): A = entry match {
         case null                    => add()
-        case _                       => {
+        case _                       =>
           val entryElem = entry.get
           if (elem.equals(entryElem)) entryElem
           else linkedListLoop(entry.tail)
-        }
       }
 
       linkedListLoop(oldHead)
-    }
   }
 
   // add an element to this set unless it's already in there and return this set
   override def addOne(elem: A): this.type = elem match {
     case null => throw new NullPointerException("WeakHashSet cannot hold nulls")
-    case _    => {
+    case _    =>
       removeStaleEntries()
       val hash = elem.hashCode
       val bucket = bucketFor(hash)
@@ -224,13 +218,12 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
 
       linkedListLoop(oldHead)
       this
-    }
   }
 
   // remove an element from this set and return this set
   override def subtractOne(elem: A): this.type = elem match {
     case null => this
-    case _ => {
+    case _ =>
       removeStaleEntries()
       val bucket = bucketFor(elem.hashCode)
 
@@ -245,7 +238,6 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
 
       linkedListLoop(null, table(bucket))
       this
-    }
   }
 
   // empty this set
@@ -309,9 +301,9 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
             // element null means the weakref has been cleared since we last did a removeStaleEntries(), move to the next entry
             entry = entry.tail
             hasNext
-          } else {
-            true
           }
+          else
+            true
         }
       }
 

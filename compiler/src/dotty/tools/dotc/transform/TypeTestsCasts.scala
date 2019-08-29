@@ -157,7 +157,7 @@ object TypeTestsCasts {
 
   def interceptTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = trace(s"transforming ${tree.show}", show = true) {
     /** Intercept `expr.xyz[XYZ]` */
-    def interceptWith(expr: Tree): Tree = {
+    def interceptWith(expr: Tree): Tree =
       if (expr.isEmpty) tree
       else {
         val sym = tree.symbol
@@ -241,19 +241,16 @@ object TypeTestsCasts {
           def testCls = testType.widen.classSymbol
           if (expr.tpe <:< testType)
             Typed(expr, tree.args.head)
-          else if (testCls eq defn.BoxedUnitClass) {
+          else if (testCls eq defn.BoxedUnitClass)
             // as a special case, casting to Unit always successfully returns Unit
             Block(expr :: Nil, Literal(Constant(()))).withSpan(expr.span)
-          }
-          else if (foundCls.isPrimitiveValueClass) {
+          else if (foundCls.isPrimitiveValueClass)
             if (testCls.isPrimitiveValueClass) primitiveConversion(expr, testCls)
             else derivedTree(box(expr), defn.Any_asInstanceOf, testType)
-          }
           else if (testCls.isPrimitiveValueClass)
             unbox(expr.ensureConforms(defn.ObjectType), testType)
-          else if (isDerivedValueClass(testCls)) {
+          else if (isDerivedValueClass(testCls))
             expr // adaptToType in Erasure will do the necessary type adaptation
-          }
           else if (testCls eq defn.NothingClass) {
             // In the JVM `x.asInstanceOf[Nothing]` would throw a class cast exception except when `x eq null`.
             // To avoid this loophole we execute `x` and then regardless of the result throw a `ClassCastException`
@@ -309,7 +306,6 @@ object TypeTestsCasts {
           transformAsInstanceOf(erasure(tree.args.head.tpe))
         else tree
       }
-    }
     val expr = tree.fun match {
       case Select(expr, _) => expr
       case i: Ident =>

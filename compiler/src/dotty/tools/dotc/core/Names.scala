@@ -573,12 +573,13 @@ object Names {
     val h = hashValue(cs, offset, len) & (table.length - 1)
 
     /** Make sure the capacity of the character array is at least `n` */
-    def ensureCapacity(n: Int) =
+    def ensureCapacity(n: Int) = {
       if (n > chrs.length) {
         val newchrs = new Array[Char](chrs.length * 2)
         chrs.copyToArray(newchrs)
         chrs = newchrs
       }
+    }
 
     /** Enter characters into chrs array. */
     def enterChars(): Unit = {
@@ -592,7 +593,7 @@ object Names {
     }
 
     /** Rehash chain of names */
-    def rehash(name: SimpleName): Unit =
+    def rehash(name: SimpleName): Unit = {
       if (name != null) {
         val oldNext = name.next
         val h = hashValue(chrs, name.start, name.length) & (table.size - 1)
@@ -600,6 +601,7 @@ object Names {
         table(h) = name
         rehash(oldNext)
       }
+    }
 
     /** Make sure the hash table is large enough for the given load factor */
     def incTableSize() = {
@@ -681,12 +683,11 @@ object Names {
       val until = x.length min y.length
       var i = 0
       while (i < until && x(i) == y(i)) i = i + 1
-      if (i < until) {
+      if (i < until)
         if (x(i) < y(i)) -1
         else /*(x(i) > y(i))*/ 1
-      } else {
+      else
         x.length - y.length
-      }
     }
     private def compareTermNames(x: TermName, y: TermName): Int = x match {
       case x: SimpleName =>
@@ -702,11 +703,10 @@ object Names {
           case _ => 1
         }
     }
-    def compare(x: Name, y: Name): Int = {
+    def compare(x: Name, y: Name): Int =
       if (x.isTermName && y.isTypeName) 1
       else if (x.isTypeName && y.isTermName) -1
       else if (x eq y) 0
       else compareTermNames(x.toTermName, y.toTermName)
-    }
   }
 }

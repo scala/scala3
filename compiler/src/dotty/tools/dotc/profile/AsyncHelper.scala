@@ -15,8 +15,8 @@ sealed trait AsyncHelper {
   def newBoundedQueueFixedThreadPool
   (nThreads: Int, maxQueueSize: Int, rejectHandler: RejectedExecutionHandler,
    shortId: String, priority : Int = Thread.NORM_PRIORITY) : ThreadPoolExecutor
-
 }
+
 
 object AsyncHelper {
   def apply(phase: Phase)(implicit ctx: Context): AsyncHelper = ctx.profiler match {
@@ -78,7 +78,8 @@ object AsyncHelper {
       new SinglePhaseInstrumentedThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue[Runnable](maxQueueSize), threadFactory, rejectHandler)
     }
 
-    override protected def wrapRunnable(r: Runnable, shortId:String): Runnable = () => {
+    override protected def wrapRunnable(r: Runnable, shortId:String): Runnable = {
+      () =>
       val data = new ThreadProfileData
       localData.set(data)
 
@@ -133,7 +134,7 @@ object AsyncHelper {
 
         super.afterExecute(r, t)
       }
-
     }
   }
 }
+

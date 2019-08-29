@@ -187,17 +187,15 @@ object NameOps {
 
     /** Is an implicit function name, i.e one of ImplicitFunctionN for N >= 0 or ErasedImplicitFunctionN for N > 0
      */
-    def isImplicitFunction: Boolean = {
+    def isImplicitFunction: Boolean =
       functionArityFor(str.ImplicitFunction) >= 0 ||
       functionArityFor(str.ErasedImplicitFunction) > 0
-    }
 
     /** Is an erased function name, i.e. one of ErasedFunctionN, ErasedImplicitFunctionN for N > 0
       */
-    def isErasedFunction: Boolean = {
+    def isErasedFunction: Boolean =
       functionArityFor(str.ErasedFunction) > 0 ||
       functionArityFor(str.ErasedImplicitFunction) > 0
-    }
 
     /** Is a synthetic function name, i.e. one of
      *    - FunctionN for N > 22
@@ -205,22 +203,21 @@ object NameOps {
      *    - ErasedFunctionN for N > 0
      *    - ErasedImplicitFunctionN for N > 0
      */
-    def isSyntheticFunction: Boolean = {
+    def isSyntheticFunction: Boolean =
       functionArityFor(str.Function) > MaxImplementedFunctionArity ||
       functionArityFor(str.ImplicitFunction) >= 0 ||
       isErasedFunction
-    }
 
     /** Parsed function arity for function with some specific prefix */
-    private def functionArityFor(prefix: String): Int = {
+    private def functionArityFor(prefix: String): Int =
       if (name.startsWith(prefix)) {
         val suffix = name.toString.substring(prefix.length)
         if (suffix.matches("\\d+"))
           suffix.toInt
         else
           -1
-      } else -1
-    }
+      }
+      else -1
 
     /** The name of the generic runtime operation corresponding to an array operation */
     def genericArrayOp: TermName = name match {
@@ -287,13 +284,12 @@ object NameOps {
         else n)
 
     def fieldName: TermName =
-      if (name.isSetterName) {
+      if (name.isSetterName)
         if (name.is(TraitSetterName)) {
           val TraitSetterName(_, original) = name
           original.fieldName
         }
         else getterName.fieldName
-      }
       else FieldName(name)
 
     def stripScala2LocalSuffix: TermName =

@@ -36,7 +36,7 @@ object TastyFileUtil {
       val classpath = path.toString.replace(classInPath, "")
       (classpath, fullName)
     }
-
   }
-
 }
+
+

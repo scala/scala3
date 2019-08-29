@@ -37,9 +37,9 @@ abstract class CharArrayReader { self =>
     val idx = charOffset
     lastCharOffset = idx
     charOffset = idx + 1
-    if (idx >= buf.length) {
+    if (idx >= buf.length)
       ch = SU
-    } else {
+    else {
       val c = buf(idx)
       ch = c
       if (c == '\\') potentialUnicode()
@@ -57,9 +57,9 @@ abstract class CharArrayReader { self =>
     val idx = charOffset
     lastCharOffset = idx
     charOffset = idx + 1
-    if (idx >= buf.length) {
+    if (idx >= buf.length)
       ch = SU
-    } else {
+    else {
       val c = buf(idx)
       ch = c
       if (c == '\\') potentialUnicode()
@@ -73,7 +73,7 @@ abstract class CharArrayReader { self =>
       while (p >= 0 && buf(p) == '\\') p -= 1
       (charOffset - p) % 2 == 0
     }
-    def udigit: Int = {
+    def udigit: Int =
       if (charOffset >= buf.length) {
         // Since the positioning code is very insistent about throwing exceptions,
         // we have to decrement the position so our error message can be seen, since
@@ -87,12 +87,12 @@ abstract class CharArrayReader { self =>
         else error("error in unicode escape", charOffset)
         d
       }
-    }
     if (charOffset < buf.length && buf(charOffset) == 'u' && decodeUni && evenSlashPrefix) {
-      while {
+      while ({
         charOffset += 1
         charOffset < buf.length && buf(charOffset) == 'u'
-      } do ()
+      })
+      ()
       val code = udigit << 12 | udigit << 8 | udigit << 4 | udigit
       lastUnicodeOffset = charOffset
       ch = code.toChar
@@ -101,16 +101,18 @@ abstract class CharArrayReader { self =>
 
   /** replace CR;LF by LF */
   private def skipCR(): Unit = {
-    if (ch == CR)
+    if (ch == CR) {
       if (charOffset < buf.length && buf(charOffset) == LF) {
         charOffset += 1
         ch = LF
       }
+    }
   }
 
   /** Handle line ends */
-  private def potentialLineEnd(): Unit =
+  private def potentialLineEnd(): Unit = {
     if (ch == LF || ch == FF) lineStartOffset = charOffset
+  }
 
   def isAtEnd: Boolean = charOffset >= buf.length
 

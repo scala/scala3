@@ -91,5 +91,6 @@ class NonLocalReturns extends MiniPhase {
       if (!ctx.scala2Mode)
         ctx.strictWarning("Non local returns are deprecated; use scala.util.control.NonLocalReturns instead", tree.sourcePos)
       nonLocalReturnThrow(tree.expr, tree.from.symbol).withSpan(tree.span)
-    } else tree
+    }
+    else tree
 }

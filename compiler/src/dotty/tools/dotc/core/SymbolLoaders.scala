@@ -65,7 +65,7 @@ object SymbolLoaders {
    */
   def enterPackage(owner: Symbol, pname: TermName, completer: (TermSymbol, ClassSymbol) => PackageLoader)(implicit ctx: Context): Symbol = {
     val preExisting = owner.info.decls lookup pname
-    if (preExisting != NoSymbol) {
+    if (preExisting != NoSymbol)
       // Some jars (often, obfuscated ones) include a package and
       // object with the same name. Rather than render them unusable,
       // offer a setting to resolve the conflict one way or the other.
@@ -75,7 +75,8 @@ object SymbolLoaders {
         ctx.warning(
           s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
         owner.asClass.delete(preExisting)
-      } else if (ctx.settings.YtermConflict.value == "object") {
+      }
+      else if (ctx.settings.YtermConflict.value == "object") {
         ctx.warning(
           s"Resolving package/object name conflict in favor of object ${preExisting.fullName}.  The package will be inaccessible.")
         return NoSymbol
@@ -84,7 +85,6 @@ object SymbolLoaders {
         throw new TypeError(
           i"""$owner contains object and package with same name: $pname
              |one of them needs to be removed from classpath""")
-    }
     ctx.newModuleSymbol(owner, pname, PackageCreationFlags, PackageCreationFlags,
       completer).entered
   }
@@ -180,7 +180,7 @@ object SymbolLoaders {
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */
-  def initializeFromClassPath(owner: Symbol, classRep: ClassRepresentation)(implicit ctx: Context): Unit = {
+  def initializeFromClassPath(owner: Symbol, classRep: ClassRepresentation)(implicit ctx: Context): Unit =
     ((classRep.binary, classRep.source): @unchecked) match {
       case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
         if (ctx.settings.verbose.value) ctx.inform("[symloader] picked up newer source file for " + src.path)
@@ -191,7 +191,6 @@ object SymbolLoaders {
       case (Some(bin), _) =>
         enterClassAndModule(owner, classRep.name, ctx.platform.newClassLoader(bin))
     }
-  }
 
   def needCompile(bin: AbstractFile, src: AbstractFile): Boolean =
     src.lastModified >= bin.lastModified
@@ -261,14 +260,16 @@ object SymbolLoaders {
       if (!root.isRoot) {
         val classReps = classPath.list(packageName).classesAndSources
 
-        for (classRep <- classReps)
+        for (classRep <- classReps) {
           if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
             (!flat || isAbsent(classRep))) // on 2nd enter of flat names, check that the name has not been entered before
             initializeFromClassPath(root.symbol, classRep)
-        for (classRep <- classReps)
+        }
+        for (classRep <- classReps) {
           if (maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
               isAbsent(classRep))
             initializeFromClassPath(root.symbol, classRep)
+        }
       }
     }
 
@@ -339,7 +340,8 @@ abstract class SymbolLoader extends LazyType { self =>
       else
         doComplete(root)
       ctx.informTime("loaded " + description, start)
-    } catch {
+    }
+    catch {
       case ex: IOException =>
         signalError(ex)
       case NonFatal(ex: TypeError) =>
@@ -348,11 +350,13 @@ abstract class SymbolLoader extends LazyType { self =>
       case NonFatal(ex) =>
         println(s"exception caught when loading $root: $ex")
         throw ex
-    } finally {
-      def postProcess(denot: SymDenotation) =
+    }
+    finally {
+      def postProcess(denot: SymDenotation) = {
         if (!denot.isCompleted &&
             !denot.completer.isInstanceOf[SymbolLoaders.SecondCompleter])
           denot.markAbsent()
+      }
       postProcess(root)
       if (!root.isRoot)
         postProcess(root.scalacLinkedClass.denot)
@@ -396,14 +400,13 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
     val classfileParser = new ClassfileParser(classfile, classRoot, moduleRoot)(ctx)
     val result = classfileParser.run()
-    if (mayLoadTreesFromTasty) {
+    if (mayLoadTreesFromTasty)
       result match {
         case Some(unpickler: tasty.DottyUnpickler) =>
           classRoot.classSymbol.rootTreeOrProvider = unpickler
           moduleRoot.classSymbol.rootTreeOrProvider = unpickler
         case _ =>
       }
-    }
   }
 
   private def mayLoadTreesFromTasty(implicit ctx: Context): Boolean =

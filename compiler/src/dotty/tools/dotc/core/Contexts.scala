@@ -210,7 +210,7 @@ object Contexts {
     /** The new implicit references that are introduced by this scope */
     protected var implicitsCache: ContextualImplicits = null
     def implicits: ContextualImplicits = {
-      if (implicitsCache == null )
+      if (implicitsCache == null)
         implicitsCache = {
           val implicitRefs: List[ImplicitRef] =
             if (isClassDefContext)
@@ -643,10 +643,9 @@ object Contexts {
 
     /** The platform */
     def platform: Platform = {
-      if (_platform == null) {
+      if (_platform == null)
         throw new IllegalStateException(
             "initialize() must be called before accessing platform")
-      }
       _platform
     }
 
@@ -671,9 +670,8 @@ object Contexts {
       definitions.init()
     }
 
-    def squashed(p: Phase): Phase = {
+    def squashed(p: Phase): Phase =
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
-    }
   }
 
   /** The essential mutable state of a context base, collected into a common class */

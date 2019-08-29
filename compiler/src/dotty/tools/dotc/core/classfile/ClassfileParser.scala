@@ -85,7 +85,8 @@ class ClassfileParser(
     parseHeader()
     this.pool = new ConstantPool
     parseClass()
-  } catch {
+  }
+  catch {
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
       throw new IOException(
@@ -188,16 +189,15 @@ class ClassfileParser(
 
       setClassInfo(classRoot, classInfo, fromScala2 = false)
       setClassInfo(moduleRoot, staticInfo, fromScala2 = false)
-    } else if (result == Some(NoEmbedded)) {
+    }
+    else if (result == Some(NoEmbedded))
       for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
         classRoot.owner.asClass.delete(sym)
-        if (classRoot.owner == defn.ScalaShadowingPackage.moduleClass) {
+        if (classRoot.owner == defn.ScalaShadowingPackage.moduleClass)
           // Symbols in scalaShadowing are also added to scala
           defn.ScalaPackageClass.delete(sym)
-        }
         sym.markAbsent()
       }
-    }
 
     // eager load java enum definitions for exhaustivity check of pattern match
     if (isEnum) {
@@ -214,9 +214,8 @@ class ClassfileParser(
   def addEnclosingTParams()(implicit ctx: Context): Unit = {
     var sym = classRoot.owner
     while (sym.isClass && !sym.is(Flags.ModuleClass)) {
-      for (tparam <- sym.typeParams) {
+      for (tparam <- sym.typeParams)
         classTParams = classTParams.updated(tparam.name, tparam)
-      }
       sym = sym.owner
     }
   }
@@ -298,9 +297,9 @@ class ClassfileParser(
             enumClass.addAnnotation(Annotation.Child(sym, NoSpan))
           }
         }
-      } finally {
-        in.bp = oldbp
       }
+      finally
+        in.bp = oldbp
     }
   }
 
@@ -366,7 +365,8 @@ class ClassfileParser(
                 }
                 accept('>')
                 if (skiptvs) tp else tp.appliedTo(argsBuf.toList)
-              } else tp
+              }
+              else tp
             case tp =>
               assert(sig(index) != '<', tp)
               tp
@@ -391,9 +391,8 @@ class ClassfileParser(
           // NOTE that the comparison to Object only works for abstract types bounded by classes that are strict subclasses of Object
           // if the bound is exactly Object, it will have been converted to Any, and the comparison will fail
           // see also RestrictJavaArraysMap (when compiling java sources directly)
-          if (elemtp.typeSymbol.isAbstractOrParamType && !(elemtp.derivesFrom(defn.ObjectClass))) {
+          if (elemtp.typeSymbol.isAbstractOrParamType && !(elemtp.derivesFrom(defn.ObjectClass)))
             elemtp = AndType(elemtp, defn.ObjectType)
-          }
           defn.ArrayOf(elemtp)
         case '(' =>
           // we need a method symbol. given in line 486 by calling getType(methodSym, ..)
@@ -412,7 +411,8 @@ class ClassfileParser(
           //assert(tparams contains n, s"classTparams = $classTParams, tparams = $tparams, key = $n")
           if (skiptvs) defn.AnyType else tparams(n).typeRef
       }
-    } // sig2type(tparams, skiptvs)
+    }
+    // sig2type(tparams, skiptvs)
 
     def sig2typeBounds(tparams: immutable.Map[Name, Symbol], skiptvs: Boolean)(implicit ctx: Context): Type = {
       val ts = new ListBuffer[Type]
@@ -436,9 +436,9 @@ class ClassfileParser(
                 denot.symbol,
                 sig2typeBounds(tparams, skiptvs = false),
                 reportErrors = false)
-        } finally {
-          index = savedIndex
         }
+        finally
+          index = savedIndex
       }
     }
 
@@ -466,13 +466,13 @@ class ClassfileParser(
       else {
         classTParams = tparams
         val parents = new ListBuffer[Type]()
-        while (index < end) {
+        while (index < end)
           parents += sig2type(tparams, skiptvs = false)  // here the variance doesnt'matter
-        }
         TempClassInfoType(parents.toList, instanceScope, owner)
       }
     if (ownTypeParams.isEmpty) tpe else TempPolyType(ownTypeParams, tpe)
-  } // sigToType
+  }
+  // sigToType
 
   def parseAnnotArg(skip: Boolean = false)(implicit ctx: Context): Option[Tree] = {
     val tag = in.nextByte.toChar
@@ -491,11 +491,11 @@ class ClassfileParser(
         val n = pool.getName(in.nextChar)
         val module = t.typeSymbol.companionModule
         val s = module.info.decls.lookup(n)
-        if (skip) {
+        if (skip)
           None
-        } else if (s != NoSymbol) {
+        else if (s != NoSymbol)
           Some(Literal(Constant(s)))
-        } else {
+        else {
           ctx.warning(s"""While parsing annotations in ${in.file}, could not find $n in enum $module.\nThis is likely due to an implementation restriction: an annotation argument cannot refer to a member of the annotated class (SI-7014).""")
           None
         }
@@ -538,7 +538,8 @@ class ClassfileParser(
     }
     if (hasError || skip) None
     else Some(Annotation.deferredResolve(attrType, argbuf.toList))
-  } catch {
+  }
+  catch {
     case f: FatalError => throw f // don't eat fatal errors, they mean a class was not found
     case NonFatal(ex) =>
       // We want to be robust when annotations are unavailable, so the very least
@@ -554,12 +555,11 @@ class ClassfileParser(
   }
 
   def parseAttributes(sym: Symbol, symtype: Type)(implicit ctx: Context): Type = {
-    def convertTo(c: Constant, pt: Type): Constant = {
+    def convertTo(c: Constant, pt: Type): Constant =
       if (pt == defn.BooleanType && c.tag == IntTag)
         Constant(c.value != 0)
       else
         c convertTo pt
-    }
     var newType = symtype
 
     def parseAttribute(): Unit = {
@@ -629,7 +629,7 @@ class ClassfileParser(
 
     /** Parse a sequence of annotations and attaches them to the
      *  current symbol sym, except for the ScalaSignature annotation that it returns, if it is available. */
-    def parseAnnotations(len: Int): Unit =  {
+    def parseAnnotations(len: Int): Unit = {
       val nAttr = in.nextChar
       for (n <- 0 until nAttr)
         parseAnnotation(in.nextChar) match {
@@ -640,9 +640,8 @@ class ClassfileParser(
     }
 
     // begin parseAttributes
-    for (i <- 0 until in.nextChar) {
+    for (i <- 0 until in.nextChar)
       parseAttribute()
-    }
 
     cook.apply(newType)
   }
@@ -676,14 +675,13 @@ class ClassfileParser(
       name1.drop(name1.lastIndexOf('.') + 1)
     }
 
-    def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) = {
+    def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) =
       SymbolLoaders.enterClassAndModule(
           getOwner(jflags),
           entry.originalName,
           new ClassfileLoader(file),
           classTranslation.flags(jflags),
           getScope(jflags))
-    }
 
     for (entry <- innerClasses.values) {
       // create a new class member for immediate inner classes
@@ -791,7 +789,8 @@ class ClassfileParser(
                 }
                 tastyOutStream.flush()
                 tastyOutStream.toByteArray
-              } else {
+              }
+              else {
                 ctx.error(s"Could not find $path in $jar")
                 Array.empty
               }
@@ -815,7 +814,7 @@ class ClassfileParser(
         else return unpickleTASTY(bytes)
       }
 
-      if (scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)) {
+      if (scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name))
         // To understand the situation, it's helpful to know that:
         // - Scalac emits the `ScalaSig` attribute for classfiles with pickled information
         // and the `Scala` attribute for everything else.
@@ -825,7 +824,6 @@ class ClassfileParser(
         // Therefore, if the `Scala` attribute is present but the `TASTY`
         // attribute isn't, this classfile is a compilation artifact.
         return Some(NoEmbedded)
-      }
 
       if (scan(tpnme.RuntimeVisibleAnnotationATTR) || scan(tpnme.RuntimeInvisibleAnnotationATTR)) {
         val attrLen = in.nextInt
@@ -837,7 +835,7 @@ class ClassfileParser(
           var j = 0
           while (j < nArgs) {
             val argName = pool.getName(in.nextChar)
-            if (argName == nme.bytes)
+            if (argName == nme.bytes) {
               if (attrClass == defn.ScalaSignatureAnnot)
                 return unpickleScala(parseScalaSigBytes)
               else if (attrClass == defn.ScalaLongSignatureAnnot)
@@ -846,6 +844,7 @@ class ClassfileParser(
                 return unpickleTASTY(parseScalaSigBytes)
               else if (attrClass == defn.TASTYLongSignatureAnnot)
                 return unpickleTASTY(parseScalaLongSigBytes)
+            }
             parseAnnotArg(skip = true)
             j += 1
           }
@@ -868,7 +867,8 @@ class ClassfileParser(
         }
       }
       None
-    } finally in.bp = oldbp
+    }
+    finally in.bp = oldbp
   }
 
   /** An entry in the InnerClasses attribute of this class file. */
@@ -891,7 +891,8 @@ class ClassfileParser(
         while (isDefinedAt(entry.outerName))
           entry = this(entry.outerName)
         entry.outerName
-      } else
+      }
+      else
         name
       classNameToSymbol(tlName)
     }
@@ -901,7 +902,7 @@ class ClassfileParser(
      */
     def classSymbol(entry: InnerClassEntry)(implicit ctx: Context): Symbol = {
       def getMember(sym: Symbol, name: Name)(implicit ctx: Context): Symbol =
-        if (isStatic(entry.jflags)) {
+        if (isStatic(entry.jflags))
           if (sym == classRoot.symbol)
             staticScope.lookup(name)
           else {
@@ -910,7 +911,6 @@ class ClassfileParser(
               module = sym.scalacLinkedClass
             module.info.member(name).symbol
           }
-        }
         else if (sym == classRoot.symbol)
           instanceScope.lookup(name)
         else
@@ -931,7 +931,7 @@ class ClassfileParser(
     }
   }
 
- def skipAttributes(): Unit = {
+  def skipAttributes(): Unit = {
     val attrCount = in.nextChar
     for (i <- 0 until attrCount) {
       in.skip(2); in.skip(in.nextInt)
@@ -1068,12 +1068,14 @@ class ClassfileParser(
         if (name.firstPart(0) == ARRAY_TAG) {
           c = sigToType(name)
           values(index) = c
-        } else {
+        }
+        else {
           val sym = classNameToSymbol(name)
           values(index) = sym
           c = sym.typeRef
         }
-      } else c = value match {
+      }
+      else c = value match {
           case tp: Type => tp
           case cls: Symbol => cls.typeRef
       }

@@ -69,14 +69,15 @@ object Reporter {
 trait Reporting { this: Context =>
 
   /** For sending messages that are printed only if -verbose is set */
-  def inform(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+  def inform(msg: => String, pos: SourcePosition = NoSourcePosition): Unit = {
     if (this.settings.verbose.value) this.echo(msg, pos)
+  }
 
   def echo(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(new Info(msg, pos))
 
-  def reportWarning(warning: Warning): Unit =
-    if (!this.settings.silentWarnings.value) {
+  def reportWarning(warning: Warning): Unit = {
+    if (!this.settings.silentWarnings.value)
       if (this.settings.XfatalWarnings.value)
         warning match {
           case warning: ConditionalWarning if !warning.enablingOption.value =>
@@ -85,7 +86,7 @@ trait Reporting { this: Context =>
             reporter.report(warning.toError)
         }
       else reporter.report(warning)
-    }
+  }
 
   def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new DeprecationWarning(msg, pos))
@@ -104,7 +105,7 @@ trait Reporting { this: Context =>
     val req = if (required) "needs to" else "should"
     val fqname = s"scala.language.$feature"
 
-    val explain = {
+    val explain =
       if (reporter.isReportedFeatureUseSite(featureUseSite)) ""
       else {
         reporter.reportNewFeatureUseSite(featureUseSite)
@@ -114,7 +115,6 @@ trait Reporting { this: Context =>
            |See the Scala docs for value $fqname for a discussion
            |why the feature $req be explicitly enabled.""".stripMargin
       }
-    }
 
     val msg = s"$featureDescription $req be enabled\nby making the implicit value $fqname visible.$explain"
     if (required) error(msg, pos)
@@ -160,12 +160,14 @@ trait Reporting { this: Context =>
    *  See [[config.CompilerCommand#explainAdvanced]] for the exact meaning of
    *  "contains" here.
    */
-  def log(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+  def log(msg: => String, pos: SourcePosition = NoSourcePosition): Unit = {
     if (this.settings.Ylog.value.containsPhase(phase))
       echo(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg", pos)
+  }
 
-  def debuglog(msg: => String): Unit =
+  def debuglog(msg: => String): Unit = {
     if (ctx.debug) log(msg)
+  }
 
   def informTime(msg: => String, start: Long): Unit = {
     def elapsed = s" in ${currentTimeMillis - start}ms"
@@ -180,8 +182,9 @@ trait Reporting { this: Context =>
     value
   }
 
-  def debugwarn(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+  def debugwarn(msg: => String, pos: SourcePosition = NoSourcePosition): Unit = {
     if (this.settings.Ydebug.value) warning(msg, pos)
+  }
 
   private def addInlineds(pos: SourcePosition)(implicit ctx: Context) = {
     def recur(pos: SourcePosition, inlineds: List[Trees.Tree[_]]): SourcePosition = inlineds match {
@@ -269,7 +272,7 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   var unreportedWarnings: Map[String, Int] = Map.empty
 
-  def report(m: MessageContainer)(implicit ctx: Context): Unit =
+  def report(m: MessageContainer)(implicit ctx: Context): Unit = {
     if (!isHidden(m)) {
       doReport(m)(ctx.addMode(Mode.Printing))
       m match {
@@ -285,6 +288,7 @@ abstract class Reporter extends interfaces.ReporterResult {
         // match error if d is something else
       }
     }
+  }
 
   def incomplete(m: MessageContainer)(implicit ctx: Context): Unit =
     incompleteHandler(m, ctx)

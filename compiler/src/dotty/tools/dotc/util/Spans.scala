@@ -143,13 +143,12 @@ object Spans {
     def !=(that: Span): Boolean = this.coords != that.coords
   }
 
-  private def fromOffsets(start: Int, end: Int, pointDelta: Int) = {
+  private def fromOffsets(start: Int, end: Int, pointDelta: Int) =
     //assert(start <= end || start == 1 && end == 0, s"$start..$end")
     new Span(
       (start & StartEndMask).toLong |
       ((end & StartEndMask).toLong << StartEndBits) |
       (pointDelta.toLong << (StartEndBits * 2)))
-  }
 
   /** A synthetic span with given start and end */
   def Span(start: Int, end: Int): Span =

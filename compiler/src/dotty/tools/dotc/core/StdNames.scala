@@ -865,7 +865,7 @@ object StdNames {
     final val BeanProperty: N        = "scala.beans.BeanProperty"
     final val BooleanBeanProperty: N = "scala.beans.BooleanBeanProperty"
     final val JavaSerializable: N    = "java.io.Serializable"
-   }
+  }
 
   class JavaTermNames extends JavaNames[TermName] {
     protected def fromString(s: String): TermName = termName(s)

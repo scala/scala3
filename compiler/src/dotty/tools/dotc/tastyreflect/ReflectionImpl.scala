@@ -20,5 +20,5 @@ object ReflectionImpl {
       else SyntaxHighlight.plain
     new refl.SourceCodePrinter(syntaxHighlight).showTree(reflTree) given reflCtx
   }
-
 }
+

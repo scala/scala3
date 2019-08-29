@@ -59,16 +59,15 @@ class Driver {
     MacroClassLoader.init(ctx)
     Positioned.updateDebugPos(ctx)
 
-    if (!ctx.settings.YdropComments.value(ctx) || ctx.mode.is(Mode.ReadComments)) {
+    if (!ctx.settings.YdropComments.value(ctx) || ctx.mode.is(Mode.ReadComments))
       ctx.setProperty(ContextDoc, new ContextDocstrings)
-    }
 
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     fromTastySetup(fileNames, ctx)
   }
 
   /** Setup extra classpath and figure out class names for tasty file inputs */
-  protected def fromTastySetup(fileNames0: List[String], ctx0: Context): (List[String], Context) = {
+  protected def fromTastySetup(fileNames0: List[String], ctx0: Context): (List[String], Context) =
     if (ctx0.settings.fromTasty.value(ctx0)) {
       // Resolve classpath and class names of tasty files
       val (classPaths, classNames) = fileNames0.flatMap { name =>
@@ -98,8 +97,8 @@ class Driver {
       val fullClassPath = (classPaths1 :+ ctx1.settings.classpath.value(ctx1)).mkString(java.io.File.pathSeparator)
       ctx1.setSetting(ctx1.settings.classpath, fullClassPath)
       (classNames, ctx1)
-    } else (fileNames0, ctx0)
-  }
+    }
+    else (fileNames0, ctx0)
 
   /** Entry point to the compiler that can be conveniently used with Java reflection.
    *

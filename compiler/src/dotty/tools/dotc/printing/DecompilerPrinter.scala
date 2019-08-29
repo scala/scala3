@@ -73,9 +73,8 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
     else super.toTextTemplate(untpd.cpy.Template(impl)(parents = parents, body = body), ofNew)
   }
 
-  override protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
+  override protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text =
     if (tree.symbol eq defn.InternalQuoted_exprQuote) "'"
     else if (tree.symbol eq defn.InternalQuoted_typeQuote) "'[" ~ toTextGlobal(tree.args, ", ") ~ "]"
     else super.typeApplyText(tree)
-  }
 }
