@@ -13,7 +13,7 @@ For example, with the [given instances](./delegates.md) defined previously,
 a maximum function that works for any arguments for which an ordering exists can be defined as follows:
 ```scala
 def max[T](x: T, y: T) given (ord: Ord[T]): T =
-  if (ord.compare(x, y) < 1) y else x
+  if (ord.compare(x, y) < 0) y else x
 ```
 Here, `ord` is an _implicit parameter_ introduced with a `given` clause.
 The `max` method can be applied as follows:
