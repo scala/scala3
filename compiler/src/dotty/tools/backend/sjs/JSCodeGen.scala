@@ -728,8 +728,8 @@ class JSCodeGen()(implicit ctx: Context) {
       else genExpr(tree)
 
     //if (!isScalaJSDefinedJSClass(currentClassSym)) {
-      val flags = js.MemberFlags.empty.withNamespace(namespace)
-      js.MethodDef(flags, methodName, jsParams, resultIRType, Some(genBody()))(
+    val flags = js.MemberFlags.empty.withNamespace(namespace)
+    js.MethodDef(flags, methodName, jsParams, resultIRType, Some(genBody()))(
           optimizerHints, None)
     /*} else {
       assert(!namespace.isStatic, tree.span)

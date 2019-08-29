@@ -35,6 +35,14 @@ object Test:
     val y = x * x
     y + y
 
+  xs.map { x =>
+    val y = x * x
+    if y >= 0 then
+      val z = y + y
+      println(z)
+    y + 1
+  }
+
   println(f(2) + g)
 
   (new Test2).foo
@@ -105,3 +113,6 @@ class Coder(words: List[String]):
       .flatMap:
         case (digit, str) => str map (ltr => ltr -> digit)
 end Coder
+
+object Test22
+  def foo: Int = 22

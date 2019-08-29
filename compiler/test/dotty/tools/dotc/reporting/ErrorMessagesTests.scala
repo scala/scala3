@@ -1155,19 +1155,19 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals(method.show, "method foo")
     }
 
-    @Test def expectedTypeBoundOrEquals =
-      checkMessagesAfter(FrontEnd.name) {
-        """object typedef {
-          |  type asd > Seq
-          |}
-        """.stripMargin
-      }.expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
+  @Test def expectedTypeBoundOrEquals =
+    checkMessagesAfter(FrontEnd.name) {
+      """object typedef {
+        |  type asd > Seq
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
 
-        assertMessageCount(1, messages)
-        val ExpectedTypeBoundOrEquals(found) :: Nil = messages
-        assertEquals(Tokens.IDENTIFIER, found)
-      }
+      assertMessageCount(1, messages)
+      val ExpectedTypeBoundOrEquals(found) :: Nil = messages
+      assertEquals(Tokens.IDENTIFIER, found)
+    }
 
   @Test def classAndCompanionNameClash =
     checkMessagesAfter(RefChecks.name) {
@@ -1619,23 +1619,23 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       )
     }
 
-    @Test def StableIdentifiers() =
-      checkMessagesAfter(FrontEnd.name) {
-        """
-          | object Test {
-          |   var x = 2
-          |   def test = 2 match {
-          |     case `x` => x + 1
-          |   }
-          | }
-        """.stripMargin
-      }.expect { (_, messages) =>
-        assertMessageCount(1, messages)
-        val message = messages.head
-        assertTrue(message.isInstanceOf[StableIdentPattern])
-        assertEquals(
-          "Stable identifier required, but `x` found",
-          message.msg
-        )
-      }
+  @Test def StableIdentifiers() =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        | object Test {
+        |   var x = 2
+        |   def test = 2 match {
+        |     case `x` => x + 1
+        |   }
+        | }
+      """.stripMargin
+    }.expect { (_, messages) =>
+      assertMessageCount(1, messages)
+      val message = messages.head
+      assertTrue(message.isInstanceOf[StableIdentPattern])
+      assertEquals(
+        "Stable identifier required, but `x` found",
+        message.msg
+      )
+    }
 }

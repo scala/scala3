@@ -23,10 +23,10 @@ class Tokenizer(s: String, delimiters: String) extends Iterator[String] {
       var ch = s.charAt(i); i = i + 1;
       if (isDelimiter(ch)) ch.toString()
       else {
-	while (i < s.length() &&
-	       s.charAt(i) > ' ' &&
-	       !isDelimiter(s.charAt(i))){ i = i + 1 }
-	s.substring(start, i)
+        while (i < s.length() &&
+               s.charAt(i) > ' ' &&
+               !isDelimiter(s.charAt(i))){ i = i + 1 }
+        s.substring(start, i)
       }
     } else "";
 
@@ -100,8 +100,8 @@ object Terms {
     case (List(), List()) => Some(s)
     case (x :: xs1, y :: ys1) =>
       unify(x, y, s) match {
-	case Some(s1) => unify(xs1, ys1, s1)
-	case None => None
+        case Some(s1) => unify(xs1, ys1, s1)
+        case None => None
       }
     case _ => None
   }
@@ -136,14 +136,14 @@ object Programs {
 
     def solve2(query: List[Term], s: Subst): LazyList[Subst] = query match {
       case List() =>
-	LazyList.cons(s, LazyList.empty)
+        LazyList.cons(s, LazyList.empty)
       case Con("not", qs) :: query1 =>
-	if (solve1(qs, s).isEmpty) LazyList.cons(s, LazyList.empty)
-	else LazyList.empty
+        if (solve1(qs, s).isEmpty) LazyList.cons(s, LazyList.empty)
+        else LazyList.empty
       case q :: query1 =>
-	for (clause <- list2stream(clauses);
-	     s1 <- tryClause(clause.newInstance, q, s);
-	     s2 <- solve1(query1, s1)) yield s2
+        for (clause <- list2stream(clauses);
+             s1 <- tryClause(clause.newInstance, q, s);
+             s2 <- solve1(query1, s1)) yield s2
     }
 
     def solve1(query: List[Term], s: Subst): LazyList[Subst] = {
@@ -200,7 +200,7 @@ class Parser(s: String) {
         token = it.next;
         Clause(NoTerm, rep(constructor));
       } else {
-	Clause(
+        Clause(
           constructor,
           if (token equals ":-") { token = it.next; rep(constructor) } else List())
       }
@@ -219,27 +219,27 @@ object Prolog {
     var tvs: List[String] = List();
     { input =>
       new Parser(input).all foreach { c =>
-	if (c.lhs == NoTerm) {
-	  c.rhs match {
-	    case List(Con("more", List())) =>
+        if (c.lhs == NoTerm) {
+          c.rhs match {
+            case List(Con("more", List())) =>
               solutions = solutions.tail;
-	    case _ =>
+            case _ =>
               solutions = solve(c.rhs, program);
-	      tvs = c.tyvars;
+              tvs = c.tyvars;
           }
-	  if (solutions.isEmpty) {
-            Console.println("no")
-	  } else {
-	    val s: Subst = solutions.head
-	      .filter(b => tvs contains b.name)
-	      .map(b => Binding(b.name, b.term map solutions.head))
+          if (solutions.isEmpty) {
+          Console.println("no")
+          } else {
+            val s: Subst = solutions.head
+              .filter(b => tvs contains b.name)
+              .map(b => Binding(b.name, b.term map solutions.head))
               .reverse;
-	    if (s.isEmpty) Console.println("yes")
-	    else Console.println(s);
+            if (s.isEmpty) Console.println("yes")
+            else Console.println(s);
           }
-	} else {
-	  program = program ::: List(c);
-	}
+        } else {
+          program = program ::: List(c);
+        }
       }
     }
   }

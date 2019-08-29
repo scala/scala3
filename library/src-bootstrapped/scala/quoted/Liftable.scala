@@ -58,13 +58,13 @@ object Liftable {
   given ArrayOfBooleanIsLiftable as Liftable[Array[Boolean]] = new Liftable[Array[Boolean]] {
     def toExpr(array: Array[Boolean]): given QuoteContext => Expr[Array[Boolean]] =
       if (array.length == 0) '{ Array.emptyBooleanArray }
-     else '{ Array(${array(0).toExpr}, ${array.toSeq.tail.toExpr}: _*) }
+      else '{ Array(${array(0).toExpr}, ${array.toSeq.tail.toExpr}: _*) }
   }
 
   given ArrayOfByteIsLiftable as Liftable[Array[Byte]] = new Liftable[Array[Byte]] {
     def toExpr(array: Array[Byte]): given QuoteContext => Expr[Array[Byte]] =
       if (array.length == 0) '{ Array.emptyByteArray }
-     else '{ Array(${array(0).toExpr}, ${array.toSeq.tail.toExpr}: _*) }
+      else '{ Array(${array(0).toExpr}, ${array.toSeq.tail.toExpr}: _*) }
   }
 
   given ArrayOfShortIsLiftable as Liftable[Array[Short]] = new Liftable[Array[Short]] {

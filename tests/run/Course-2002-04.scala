@@ -59,13 +59,13 @@ object M1 {
       var i = l;
       var j = r;
       While (i <= j) {
-	While (less(xs(i), pivot)) { i = i + 1 }
-	While (less(pivot, xs(j))) { j = j - 1 }
-	if (i <= j) {
-	  swap(i, j);
-	  i = i + 1;
-	  j = j - 1;
-	}
+        While (less(xs(i), pivot)) { i = i + 1 }
+        While (less(pivot, xs(j))) { j = j - 1 }
+        if (i <= j) {
+          swap(i, j);
+          i = i + 1;
+          j = j - 1;
+        }
       }
       if (l < j) sort1(l, j);
       if (j < r) sort1(i, r);
