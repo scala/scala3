@@ -28,17 +28,4 @@ class Reflection(private[scala] val internal: CompilerInterface)
   def typeOf[T: scala.quoted.Type]: Type =
     implicitly[scala.quoted.Type[T]].unseal.tpe
 
-  // TODO move out of Reflection
-  object typing {
-   /** Whether the code type checks in the given context?
-    *
-    *  @param code The code to be type checked
-    *
-    *  @return false if the code has syntax error or type error in the given context, otherwise returns true.
-    *
-    *  The code should be a sequence of expressions or statements that may appear in a block.
-    */
-    def typeChecks(code: String)(implicit ctx: Context): Boolean = internal.typeChecks(code)
-  }
-
 }

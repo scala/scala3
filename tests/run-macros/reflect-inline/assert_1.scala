@@ -8,10 +8,9 @@ object api {
     x.stripMargin.toExpr
 
   inline def typeChecks(inline x: String): Boolean =
-    ${ typeChecksImpl(x) }
+    ${ typeChecksImpl(scala.compiletime.testing.typeChecks(x)) }
 
-  private def typeChecksImpl(x: String) given (qctx: QuoteContext): Expr[Boolean] = {
-    import qctx.tasty._
-    if (qctx.tasty.typing.typeChecks(x)) true.toExpr else false.toExpr
+  private def typeChecksImpl(b: Boolean) given (qctx: QuoteContext): Expr[Boolean] = {
+    if (b) true.toExpr else false.toExpr
   }
 }

@@ -187,17 +187,6 @@ trait CompilerInterface {
   def Settings_color(self: Settings): Boolean
 
   //
-  // MISC
-  //
-  /** Whether the code type checks in the given context?
-   *
-   *  @param code The code to be type checked
-   *
-   *  The code should be a sequence of expressions or statements that may appear in a block.
-   */
-  def typeChecks(code: String) given (ctx: Context): Boolean
-
-  //
   // TREES
   //
 
