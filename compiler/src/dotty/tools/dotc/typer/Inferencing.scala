@@ -434,7 +434,14 @@ trait Inferencing { this: Typer =>
             else if (!hasUnreportedErrors)
               if (v.intValue != 0) {
                 typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
-                tvar.instantiate(fromBelow = v.intValue == 1)
+                if (true) {
+                  val fromBelow = v.intValue == 1
+                  val instType = ctx.typeComparer.instanceType(tvar.origin, fromBelow)
+                  if (!(fromBelow && instType.isRef(defn.NothingClass)))
+                    tvar.instantiateWith(instType)
+                }
+                else
+                  tvar.instantiate(fromBelow = v.intValue == 1)
               }
               else typr.println(i"no interpolation for nonvariant $tvar in $state")
           }
