@@ -39,6 +39,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("compilePosWithCompiler")
     aggregateTests(
       compileFilesInDir("tests/pos-with-compiler", withCompilerOptions),
+      compileFilesInDir("tests/pos-staging", withStagingOptions),
       compileDir("compiler/src/dotty/tools/dotc/ast", withCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/config", withCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/core", withCompilerOptions),
@@ -103,7 +104,10 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   @Test def negWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
-    compileFilesInDir("tests/neg-with-compiler", withCompilerOptions).checkExpectedErrors()
+    aggregateTests(
+      compileFilesInDir("tests/neg-with-compiler", withCompilerOptions),
+      compileFilesInDir("tests/neg-staging", withStagingOptions),
+    ).checkExpectedErrors()
   }
 
   // Run tests -----------------------------------------------------------------
@@ -120,6 +124,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
     aggregateTests(
       compileFilesInDir("tests/run-with-compiler", withCompilerOptions),
+      compileFilesInDir("tests/run-staging", withStagingOptions),
       compileDir("tests/run-with-compiler-custom-args/tasty-interpreter", withCompilerOptions)
     ).checkRuns()
   }

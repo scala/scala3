@@ -40,7 +40,7 @@ steps:
   depends_on: [ clone ]
   commands:
   - cp -R . /tmp/2/ && cd /tmp/2/
-  - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test ;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test"
+  - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test ;dotty-staging/test ;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test"
   - ./project/scripts/bootstrapCmdTests
 
 - name: community_build

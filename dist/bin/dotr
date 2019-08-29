@@ -102,7 +102,7 @@ elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
     echo "warning: multiple classpaths are found, dotr only use the last one."
   fi
   if [ $with_compiler == true ]; then
-    cp_arg+="$PSEP$DOTTY_COMP$PSEP$DOTTY_INTF$PSEP$SCALA_ASM"
+    cp_arg+="$PSEP$DOTTY_COMP$PSEP$DOTTY_INTF$PSEP$SCALA_ASM$DOTTY_STAGING"
   fi
   eval exec "\"$JAVACMD\"" "$DEBUG"  "-classpath \"$cp_arg\"" "${jvm_options[@]}" "${residual_args[@]}"
 else

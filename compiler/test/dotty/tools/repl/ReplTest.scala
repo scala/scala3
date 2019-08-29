@@ -14,11 +14,11 @@ import org.junit.{After, Before}
 import org.junit.Assert._
 
 
-class ReplTest(withCompiler: Boolean = false, out: ByteArrayOutputStream = new ByteArrayOutputStream) extends ReplDriver(
+class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new ByteArrayOutputStream) extends ReplDriver(
   Array(
     "-classpath",
-    if (withCompiler)
-      TestConfiguration.withCompilerClasspath
+    if (withStaging)
+      TestConfiguration.withStagingClasspath
     else
       TestConfiguration.basicClasspath,
     "-color:never"),
