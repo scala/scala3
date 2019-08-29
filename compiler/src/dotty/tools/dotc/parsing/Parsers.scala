@@ -633,7 +633,7 @@ object Parsers {
        *  at indent width greater than the indent width of the closing brace.
        */
       def closingOffset(lineStart: Offset): Offset =
-        if (lineStart >= in.lineOffset) in.lineOffset
+        if (in.lineOffset >= 0 && lineStart >= in.lineOffset) in.lineOffset
         else {
           val candidate = source.nextLine(lineStart)
           val commentStart = skipBlanks(lineStart)
