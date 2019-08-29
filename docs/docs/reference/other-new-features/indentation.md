@@ -3,9 +3,7 @@ layout: doc-page
 title: Significant Indentation
 ---
 
-As an experimental feature, Scala 3 treats indentation as significant.
-
-Indentation is significant everywhere except inside regions delineated by braces `{...}`, brackets `[...]` or parentheses `(...)` or within string or character literals.
+As an experimental feature, Scala 3 treats indentation as significant. Indentation is significant everywhere except inside regions delineated by brackets `[...]` or parentheses `(...)`.
 
 Where indentation is significant, the compiler will insert `<indent>` or `<outdent>`
 tokens at certain line breaks. Grammatically, pairs of `<indent>` and `<outdent>` tokens have the same effect as pairs of braces `{` and `}`.
@@ -17,27 +15,27 @@ There are two rules:
  1. An `<indent>` is inserted at a line break, if
 
      - the first token on the next line has an indentation width strictly greater
-	    than the current indentation width, and
+       than the current indentation width, and
      - the last token on the previous line can start an indentation region.
 
-	 The following tokens can start an indentation region:
+     The following tokens can start an indentation region:
     ```
-	  :  =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match
+      :  =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match
     ```
 
-   If an `<indent>` is inserted, the indentation width of the token on the next line
-	 is pushed onto `IW`, which makes it the new current indentation width.
+     If an `<indent>` is inserted, the indentation width of the token on the next line
+     is pushed onto `IW`, which makes it the new current indentation width.
 
  2. An `<outdent>` is inserted at a line break, if
 
     - the first token on the next line has an indentation width strictly less
-	    than the current indentation width, and
-	  - the first token on the next line is not a
-	    [leading infix operator](../changed-features/operators.html).
+        than the current indentation width, and
+    - the first token on the next line is not a
+        [leading infix operator](../changed-features/operators.html).
 
-	 If an `<outdent>` is inserted, the top element if popped from `IW`.
-	 If the indentation width of the token on the next line is still less than the new current indentation width, step (2) repeats. Therefore, several `<outdent>` tokens
-	 may be inserted in a row.
+     If an `<outdent>` is inserted, the top element if popped from `IW`.
+     If the indentation width of the token on the next line is still less than the new current indentation width, step (2) repeats. Therefore, several `<outdent>` tokens
+     may be inserted in a row.
 
 It is an error if the indentation width of the token following an `<outdent>` does not
 match the indentation of some previous line in the enclosing indentation region. For instance, the following would be rejected.
@@ -45,10 +43,22 @@ match the indentation of some previous line in the enclosing indentation region.
 if x < 0 then
     -x
   else   // error: `else` does not align correctly
-	 x
+     x
 ```
 
-Indentation prefixes can consist of spaces and tabs. Indentation widths are the indentation prefixes themselves, ordered by the string prefix relation. So, so for instance "2 tabs, followed by 4 spaces" is strictly less than "2 tabs, followed by 5 spaces", but "2 tabs, followed by 4 spaces" is incomparable to "6 tabs" or to "4 spaces, followed by 2 tabs". It is an error if the indentation width of some line is incomparable with the indentation width of the region that's current at that point. To avoid such errors, it is a good idea not to mix spaces and tabs in the same source file.
+### Spaces vs Tabs
+
+Indentation prefixes can consist of spaces and/or tabs. Indentation widths are the indentation prefixes themselves, ordered by the string prefix relation. So, so for instance "2 tabs, followed by 4 spaces" is strictly less than "2 tabs, followed by 5 spaces", but "2 tabs, followed by 4 spaces" is incomparable to "6 tabs" or to "4 spaces, followed by 2 tabs". It is an error if the indentation width of some line is incomparable with the indentation width of the region that's current at that point. To avoid such errors, it is a good idea not to mix spaces and tabs in the same source file.
+
+### Indentation and Braces
+
+Indentatation can be mixed freely with braces. For interpreting  indentation inside braces, the following rules apply.
+
+ 1. The assumed indentation width of a multiline region enclosed in braces is the
+    indentation width of the first token that starts a new line after the opening brace.
+
+ 2. On encountering a closing brace `}`, as many `<outdent>` tokens as necessary are
+    inserted to close all open indentation regions inside the pair of braces.
 
 ### Indentation Marker `:`
 
@@ -63,14 +73,13 @@ or
 ```scala
   xs.map:
     x =>
-	    val y = x - 1
-	    y * y
+        val y = x - 1
+        y * y
 ```
 Colons at the end of lines are their own token, distinct from normal `:`.
 The Scala grammar is changed so that colons at end of lines are accepted at all points
 where an opening brace is legal, except if the previous token can already start an
-indentation region. Special provisions are taken so that method result types can still use a colon on
-the end of a line, followed by the actual type on the next.
+indentation region. Special provisions are taken so that method result types can still use a colon on the end of a line, followed by the actual type on the next.
 
 ### Special Treatment of Case Clauses
 
@@ -80,7 +89,7 @@ The indentation rules for `match` expressions and `catch` clauses are refined as
    appears at the indentation width that's current for the `match` itself.
  - In that case, the indentation region closes at the first token at that
    same indentation width that is not a `case`, or at any token with a smaller
-	 indentation width, whichever comes first.
+     indentation width, whichever comes first.
 
 The rules allow to write `match` expressions where cases are not indented themselves, as in the example below:
 ```scala
@@ -113,8 +122,8 @@ An `end` marker consists of the identifier `end` which follows an `<outdent>` to
 ```scala
   if  while  for  match  try  new
 ```
-If `end` is followed by a reserved word, the compiler checks that the marker closes an indentation region belonging to a construct that starts with the reserved word. If it is followed by an identifier _id_, the compiler checks that the marker closes an indentation region containing the right hand side of a `val`, `var`, or `def` or
-the body of a class, trait, object, enum, given instance, or package clause that defines _id_.
+If `end` is followed by a reserved word, the compiler checks that the marker closes an indentation region belonging to a construct that starts with the reserved word. If it is followed by an identifier _id_, the compiler checks that the marker closes a definition
+that defines _id_ or a package clause that refers to _id_.
 
 `end` itself is a soft keyword. It is only treated as an `end` marker if it
 occurs at the start of a line and is followed by an identifier or one of the reserved words above.
@@ -127,59 +136,57 @@ Here is a (somewhat meta-circular) example of code using indentation. It provide
 
 ```scala
 enum IndentWidth:
+  case Run(ch: Char, n: Int)
+  case Conc(l: IndentWidth, r: Run)
 
-    /** A run of `n` characters `ch` */
-    case Run(ch: Char, n: Int)
+  def <= (that: IndentWidth): Boolean =
+    this match
+      case Run(ch1, n1) =>
+        that match
+          case Run(ch2, n2) => n1 <= n2 && (ch1 == ch2 || n1 == 0)
+          case Conc(l, r)   => this <= l
+      case Conc(l1, r1) =>
+        that match
+          case Conc(l2, r2) => l1 == l2 && r1 <= r2
+          case _            => false
 
-    /** `l` followed by `r` */
-    case Conc(l: IndentWidth, r: Run)
+  def < (that: IndentWidth): Boolean = this <= that && !(that <= this)
 
-    def <= (that: IndentWidth): Boolean =
-        this match
-        case Run(ch1, n1) =>
-            that match
-            case Run(ch2, n2) => n1 <= n2 && (ch1 == ch2 || n1 == 0)
-            case Conc(l, r)   => this <= l
-        case Conc(l1, r1) =>
-            that match
-            case Conc(l2, r2) => l1 == l2 && r1 <= r2
-            case _            => false
-
-    def < (that: IndentWidth): Boolean = this <= that && !(that <= this)
-
-    override def toString: String =
-        this match
-        case Run(ch, n) =>
-            val kind = ch match
-                case ' '  => "space"
-                case '\t' => "tab"
-                case _    => s"'$ch'-character"
-            val suffix = if n == 1 then "" else "s"
-            s"$n $kind$suffix"
-        case Conc(l, r) =>
-            s"$l, $r"
+  override def toString: String =
+    this match
+      case Run(ch, n) =>
+        val kind = ch match
+          case ' '  => "space"
+          case '\t' => "tab"
+          case _    => s"'$ch'-character"
+        val suffix = if n == 1 then "" else "s"
+        s"$n $kind$suffix"
+      case Conc(l, r) =>
+        s"$l, $r"
 
 object IndentWidth:
-    private inline val MaxCached = 40
+  private inline val MaxCached = 40
 
-    private val spaces = IArray.tabulate(MaxCached + 1):
-        new Run(' ', _)
-    private val tabs = IArray.tabulate(MaxCached + 1):
-        new Run('\t', _)
+  private val spaces = IArray.tabulate(MaxCached + 1):
+    new Run(' ', _)
+  private val tabs = IArray.tabulate(MaxCached + 1):
+    new Run('\t', _)
 
-    def Run(ch: Char, n: Int): Run =
-        if n <= MaxCached && ch == ' ' then
-            spaces(n)
-        else if n <= MaxCached && ch == '\t' then
-            tabs(n)
-        else
-            new Run(ch, n)
+  def Run(ch: Char, n: Int): Run =
+    if n <= MaxCached && ch == ' ' then
+      spaces(n)
+    else if n <= MaxCached && ch == '\t' then
+      tabs(n)
+    else
+      new Run(ch, n)
+  end Run
 
-    val Zero = Run(' ', 0)
-end IndentWidth
+  val Zero = Run(' ', 0)
 ```
 
-### Rewrites
+### Settings and Rewrites
+
+Significant indentation is enabled by default. It can be turned off by giving any of the options `-noindent`, `old-syntax` and `language:Scala2`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues an error (or, in the case of `-language:Scala2`, a migration warning).
 
 The Dotty compiler can rewrite source code to indented code and back.
 When invoked with options `-rewrite -indent` it will rewrite braces to

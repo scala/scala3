@@ -10,12 +10,13 @@ import scala.internal.Chars._
 import util.NameTransformer.avoidIllegalChars
 import util.Spans.Span
 import config.Config
+import config.Printers.lexical
+import config.Settings.Setting
 import Tokens._
 import scala.annotation.{ switch, tailrec }
 import scala.collection.mutable
 import scala.collection.immutable.{SortedMap, BitSet}
 import rewrites.Rewrites.patch
-import config.Printers.lexical
 
 object Scanners {
 
@@ -229,17 +230,30 @@ object Scanners {
     /** A switch whether operators at the start of lines can be infix operators */
     private var allowLeadingInfixOperators = true
 
+    val isScala2Mode: Boolean = ctx.scala2Setting
+
     val rewrite = ctx.settings.rewrite.value.isDefined
     val oldSyntax = ctx.settings.oldSyntax.value
     val newSyntax = ctx.settings.newSyntax.value
 
-    val noindentSyntax = ctx.settings.noindent.value
-    val indentSyntax = Config.allowIndent || ctx.settings.indent.value || noindentSyntax && rewrite
     val rewriteToIndent = ctx.settings.indent.value && rewrite
-    val rewriteNoIndent = noindentSyntax && rewrite
+    val rewriteNoIndent = ctx.settings.noindent.value && rewrite
 
-    if (rewrite && oldSyntax & noindentSyntax)
-      error("-rewrite cannot be used with both -old-syntax and -noindent; -noindent must come first")
+    val noindentSyntax =
+      ctx.settings.noindent.value ||
+      ctx.settings.oldSyntax.value ||
+      isScala2Mode
+    val indentSyntax =
+      (if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value) ||
+      rewriteNoIndent
+
+    if (rewrite) {
+      val s = ctx.settings
+      val rewriteTargets = List(s.newSyntax, s.oldSyntax, s.indent, s.noindent)
+      val enabled = rewriteTargets.filter(_.value)
+      if (enabled.length > 1)
+        error(s"illegal combination of -rewrite targets: ${enabled(0).name} and ${enabled(1).name}")
+    }
 
     /** All doc comments kept by their end position in a `Map` */
     private[this] var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
@@ -294,28 +308,13 @@ object Scanners {
     val next = newTokenData
     private val prev = newTokenData
 
-    /** a stack of tokens which indicates whether line-ends can be statement separators
-     *  also used for keeping track of nesting levels.
-     *  We keep track of the closing symbol of a region. This can be
-     *  RPAREN    if region starts with '('
-     *  RBRACKET  if region starts with '['
-     *  RBRACE    if region starts with '{'
-     *  ARROW     if region starts with `case'
-     *  STRINGLIT if region is a string interpolation expression starting with '${'
-     *            (the STRINGLIT appears twice in succession on the stack iff the
-     *             expression is a multiline string literal).
-     */
-    var sepRegions: List[Token] = Nil
-
-    /** Indentation widths, innermost to outermost */
-    var indent: IndentRegion = IndentRegion(IndentWidth.Zero, Set(), EMPTY, null)
+    /** The current region. This is initially an Indented region with indentation width. */
+    var currentRegion: Region = Indented(IndentWidth.Zero, Set(), EMPTY, null)
 
     /** The end marker that was skipped last */
     val endMarkers = new mutable.ListBuffer[EndMarker]
 
 // Scala 2 compatibility
-
-    val isScala2Mode: Boolean = ctx.scala2Setting
 
     /** Cannot use ctx.featureEnabled because accessing the context would force too much */
     def testScala2Mode(msg: String, span: Span = Span(offset)): Boolean = {
@@ -330,16 +329,13 @@ object Scanners {
 
 // Get next token ------------------------------------------------------------
 
-    /** Are we directly in a string interpolation expression?
-     */
-    private def inStringInterpolation =
-      !sepRegions.isEmpty && sepRegions.head == STRINGLIT
-
     /** Are we directly in a multiline string interpolation expression?
      *  @pre inStringInterpolation
      */
-    private def inMultiLineInterpolation =
-      inStringInterpolation && !sepRegions.tail.isEmpty && sepRegions.tail.head == STRINGPART
+    private def inMultiLineInterpolation = currentRegion match {
+      case InString(multiLine, _) => multiLine
+      case _ => false
+    }
 
     /** read next token and return last offset
      */
@@ -350,43 +346,32 @@ object Scanners {
     }
 
     def adjustSepRegions(lastToken: Token): Unit = (lastToken: @switch) match {
-      case LPAREN =>
-        sepRegions = RPAREN :: sepRegions
-      case LBRACKET =>
-        sepRegions = RBRACKET :: sepRegions
+      case LPAREN | LBRACKET =>
+        currentRegion = InParens(lastToken, currentRegion)
       case LBRACE =>
-        sepRegions = RBRACE :: sepRegions
-      case CASE =>
-        sepRegions = ARROW :: sepRegions
+        currentRegion = InBraces(null, currentRegion)
       case RBRACE =>
-        while (!sepRegions.isEmpty && sepRegions.head != RBRACE)
-          sepRegions = sepRegions.tail
-        if (!sepRegions.isEmpty) sepRegions = sepRegions.tail
-      case RBRACKET | RPAREN =>
-        if (!sepRegions.isEmpty && sepRegions.head == lastToken)
-          sepRegions = sepRegions.tail
-      case ARROW =>
-        if (!sepRegions.isEmpty && sepRegions.head == ARROW)
-          sepRegions = sepRegions.tail
-      case EXTENDS =>
-        if (!sepRegions.isEmpty && sepRegions.head == ARROW)
-          sepRegions = sepRegions.tail
+        def dropBraces(): Unit = currentRegion match {
+          case r: InBraces =>
+            currentRegion = r.enclosing
+          case _ =>
+            if (!currentRegion.isOutermost) {
+              currentRegion = currentRegion.enclosing
+              dropBraces()
+            }
+        }
+        dropBraces()
+      case RPAREN | RBRACKET =>
+        currentRegion match {
+          case InParens(prefix, outer) if prefix + 1 == lastToken => currentRegion = outer
+          case _ =>
+        }
       case STRINGLIT =>
-        if (inMultiLineInterpolation)
-          sepRegions = sepRegions.tail.tail
-        else if (inStringInterpolation)
-          sepRegions = sepRegions.tail
+        currentRegion match {
+          case InString(_, outer) => currentRegion = outer
+          case _ =>
+        }
       case _ =>
-    }
-
-    /** Advance beyond a case token without marking the CASE in sepRegions.
-     *  This method should be called to skip beyond CASE tokens that are
-     *  not part of matches, i.e. no ARROW is expected after them.
-     */
-    def skipCASE() = {
-      assert(token == CASE)
-      nextToken()
-      sepRegions = sepRegions.tail
     }
 
     /** Produce next token, filling TokenData fields of Scanner.
@@ -398,8 +383,11 @@ object Scanners {
       // Read a token or copy it from `next` tokenData
       if (next.token == EMPTY) {
         lastOffset = lastCharOffset
-        if (inStringInterpolation) fetchStringPart() else fetchToken()
-        if (token == ERROR) adjustSepRegions(STRINGLIT)
+        currentRegion match {
+          case InString(multiLine, _) => fetchStringPart(multiLine)
+          case _ => fetchToken()
+        }
+        if (token == ERROR) adjustSepRegions(STRINGLIT) // make sure we exit enclosing string literal
       }
       else {
         this.copyFrom(next)
@@ -425,7 +413,7 @@ object Scanners {
      *  value at the end of the endMarkers queue.
      */
     private def handleEndMarkers(width: IndentWidth): Unit = {
-      if (next.token == IDENTIFIER && next.name == nme.end && width == indent.width) {
+      if (next.token == IDENTIFIER && next.name == nme.end && width == currentRegion.indentWidth) {
         val lookahead = lookaheadScanner
         lookahead.nextToken() // skip the `end`
 
@@ -521,14 +509,14 @@ object Scanners {
      *
      *  Indentation is _significant_ if indentSyntax is set, and we are not inside a
      *  {...}, [...], (...), case ... => pair, nor in a if/while condition
-     *  (i.e. sepRegions is empty).
+     *  (i.e. currentRegion is empty).
      *
      *  There are three rules:
      *
      *   1. Insert NEWLINE or NEWLINES if
      *
      *      - the closest enclosing sepRegion is { ... } or for ... do/yield,
-     *         or we are on the toplevel, i.e. sepRegions is empty, and
+     *         or we are on the toplevel, i.e. currentRegion is empty, and
      *      - the previous token can end a statement, and
      *      - the current token can start a statement, and
      *      - the current token is not a leading infix operator, and
@@ -572,50 +560,67 @@ object Scanners {
      *  if the current indentation width and the indentation of the current token are incomparable.
      */
     def handleNewLine(lastToken: Token) = {
-      val indentIsSignificant = indentSyntax && sepRegions.isEmpty
-      val newlineIsSeparating = (
-           sepRegions.isEmpty
-        || sepRegions.head == RBRACE
-        || sepRegions.head == ARROW && token == CASE
-       )
-      val curWidth = indentWidth(offset)
-      val lastWidth = indent.width
+      var indentIsSignificant = false
+      var newlineIsSeparating = false
+      var lastWidth = IndentWidth.Zero
+      var indentPrefix = EMPTY
+      val nextWidth = indentWidth(offset)
+      currentRegion match {
+        case r: Indented =>
+          indentIsSignificant = indentSyntax
+          lastWidth = r.width
+          newlineIsSeparating = lastWidth <= nextWidth
+          indentPrefix = r.prefix
+        case r: InBraces =>
+          indentIsSignificant = indentSyntax
+          if (r.width == null) r.width = nextWidth
+          lastWidth = r.width
+          newlineIsSeparating = true
+          indentPrefix = LBRACE
+        case _ =>
+      }
       if (newlineIsSeparating &&
-          canEndStatTokens.contains(lastToken)&&
+          canEndStatTokens.contains(lastToken) &&
           canStartStatTokens.contains(token) &&
-          (!indentIsSignificant || lastWidth <= curWidth) &&
           !isLeadingInfixOperator())
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
       else if (indentIsSignificant) {
-        if (lastWidth < curWidth ||
-            lastWidth == curWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE) {
+        if (nextWidth < lastWidth
+            || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE)
+          currentRegion match {
+            case r: Indented
+            if !r.isOutermost &&
+               !isLeadingInfixOperator() &&
+               !statCtdTokens.contains(lastToken) =>
+              currentRegion = r.enclosing
+              insert(OUTDENT, offset)
+              handleEndMarkers(nextWidth)
+            case _ =>
+          }
+        else if (lastWidth < nextWidth ||
+                 lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE) {
           if (canStartIndentTokens.contains(lastToken)) {
-            indent = IndentRegion(curWidth, Set(), lastToken, indent)
+            currentRegion = Indented(nextWidth, Set(), lastToken, currentRegion)
             insert(INDENT, offset)
           }
         }
-        else if (curWidth < lastWidth ||
-                 curWidth == lastWidth && (indent.token == MATCH || indent.token == CATCH) && token != CASE) {
-          if (!isLeadingInfixOperator()) {
-            indent = indent.enclosing
-            insert(OUTDENT, offset)
-            handleEndMarkers(curWidth)
-          }
-        }
-        else if (lastWidth != curWidth)
+        else if (lastWidth != nextWidth)
           errorButContinue(
             i"""Incompatible combinations of tabs and spaces in indentation prefixes.
                 |Previous indent : $lastWidth
-                |Latest indent   : $curWidth""")
+                |Latest indent   : $nextWidth""")
       }
-      if (indentIsSignificant && indent.width < curWidth && !indent.others.contains(curWidth))
-        if (token == OUTDENT)
-          errorButContinue(
-            i"""The start of this line does not match any of the previous indentation widths.
-                |Indentation width of current line : $curWidth
-                |This falls between previous widths: ${indent.width} and $lastWidth""")
-        else
-          indent = IndentRegion(indent.width, indent.others + curWidth, indent.token, indent.outer)
+      currentRegion match {
+        case Indented(curWidth, others, prefix, outer) if curWidth < nextWidth && !others.contains(nextWidth) =>
+          if (token == OUTDENT)
+            errorButContinue(
+              i"""The start of this line does not match any of the previous indentation widths.
+                  |Indentation width of current line : $nextWidth
+                  |This falls between previous widths: $curWidth and $lastWidth""")
+          else
+            currentRegion = Indented(curWidth, others + nextWidth, prefix, outer)
+        case _ =>
+      }
     }
 
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
@@ -658,9 +663,13 @@ object Scanners {
           val atEOL = isAfterLineEnd
           reset()
           if (atEOL) token = COLONEOL
-        case EOF if !indent.isOutermost =>
-          insert(OUTDENT, offset)
-          indent = indent.outer
+        case EOF | RBRACE =>
+          currentRegion match {
+            case r: Indented if !r.isOutermost =>
+              insert(OUTDENT, offset)
+              currentRegion = r.outer
+            case _ =>
+          }
         case _ =>
       }
     }
@@ -767,6 +776,10 @@ object Scanners {
         case '`' =>
           getBackquotedIdent()
         case '\"' =>
+          def stringPart(multiLine: Boolean) = {
+            getStringPart(multiLine)
+            currentRegion = InString(multiLine, currentRegion)
+          }
           def fetchDoubleQuote() =
             if (token == INTERPOLATIONID) {
               nextRawChar()
@@ -774,19 +787,14 @@ object Scanners {
                 nextRawChar()
                 if (ch == '\"') {
                   nextRawChar()
-                  getStringPart(multiLine = true)
-                  sepRegions = STRINGPART :: sepRegions // indicate string part
-                  sepRegions = STRINGLIT :: sepRegions // once more to indicate multi line string part
+                  stringPart(multiLine = true)
                 }
                 else {
                   token = STRINGLIT
                   strVal = ""
                 }
               }
-              else {
-                getStringPart(multiLine = false)
-                sepRegions = STRINGLIT :: sepRegions // indicate single line string part
-              }
+              else stringPart(multiLine = false)
             }
             else {
               nextChar()
@@ -1144,9 +1152,9 @@ object Scanners {
       }
     }
 
-    private def fetchStringPart() = {
+    private def fetchStringPart(multiLine: Boolean) = {
       offset = charOffset - 1
-      getStringPart(multiLine = inMultiLineInterpolation)
+      getStringPart(multiLine)
     }
 
     private def isTripleQuote(): Boolean =
@@ -1356,13 +1364,40 @@ object Scanners {
   }
   // end Scanner
 
+  /** A Region indicates what encloses the current token. It can be one of the following
+   *
+   *   InString    a string interpolation
+   *   InParens    a pair of parentheses (...) or brackets [...]
+   *   InBraces    a pair of braces { ... }
+   *   Indented    a pair of <indent> ... <outdent> tokens
+   */
+  abstract class Region {
+    /** The region enclosing this one, or `null` for the outermost region */
+    def outer: Region | Null
+
+    /** Is this region the outermost region? */
+    def isOutermost = outer == null
+
+    /** The enclosing region, which is required to exist */
+    def enclosing: Region = outer.asInstanceOf[Region]
+
+    /** If this is an InBraces or Indented region, its indentation width, or Zero otherwise */
+    def indentWidth = IndentWidth.Zero
+  }
+
+  case class InString(multiLine: Boolean, outer: Region) extends Region
+  case class InParens(prefix: Token, outer: Region) extends Region
+  case class InBraces(var width: IndentWidth | Null, outer: Region) extends Region {
+    override def indentWidth = width
+  }
+
   /** A class describing an indentation region.
    *  @param width   The principal indendation width
    *  @param others  Other indendation widths > width of lines in the same region
+   *  @param prefix  The token before the initial <indent> of the region
    */
-  class IndentRegion(val width: IndentWidth, val others: Set[IndentWidth], val token: Token, val outer: IndentRegion | Null) {
-    def enclosing: IndentRegion = outer.asInstanceOf[IndentRegion]
-    def isOutermost = outer == null
+  case class Indented(width: IndentWidth, others: Set[IndentWidth], prefix: Token, outer: Region | Null) extends Region {
+    override def indentWidth = width
   }
 
   enum IndentWidth {

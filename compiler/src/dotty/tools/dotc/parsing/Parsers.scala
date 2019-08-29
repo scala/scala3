@@ -581,11 +581,6 @@ object Parsers {
      */
     var possibleColonOffset: Int = -1
 
-    /** A list of pending patches, to be issued if we can rewrite all enclosing braces to
-     *  indentation regions.
-     */
-    var pendingPatches: List[() => Unit] = Nil
-
     def testChar(idx: Int, p: Char => Boolean): Boolean = {
       val txt = source.content
       idx < txt.length && p(txt(idx))
@@ -606,7 +601,8 @@ object Parsers {
 
     /** Parse indentation region `body` and rewrite it to be in braces instead */
     def indentedToBraces[T](body: => T): T = {
-      val indentWidth = in.indent.enclosing.width
+      val enclRegion = in.currentRegion.enclosing
+      def indentWidth = enclRegion.indentWidth
       val followsColon = testChar(in.lastOffset - 1, ':')
       val startOpening =
         if (followsColon)
@@ -701,10 +697,12 @@ object Parsers {
     def bracesToIndented[T](body: => T): T = {
       val colonRequired = possibleColonOffset == in.lastOffset
       val (startOpening, endOpening) = startingElimRegion(colonRequired)
-      val isOuterMost = in.sepRegions.isEmpty
-      val savedPending = pendingPatches
-      var canRewrite =
-        in.sepRegions.forall(token => token == RBRACE || token == OUTDENT) && // test (1)
+      val isOutermost = in.currentRegion.isOutermost
+      def allBraces(r: Region): Boolean = r match {
+        case r: InBraces => allBraces(r.enclosing)
+        case _ => r.isOutermost
+      }
+      var canRewrite = allBraces(in.currentRegion) && // test (1)
         !testChars(in.lastOffset - 3, " =>") // test(6)
       val t = enclosed(LBRACE, {
         canRewrite &= in.isAfterLineEnd // test (2)
@@ -721,17 +719,9 @@ object Parsers {
           else if (testChar(startOpening - 1, Chars.isOperatorPart(_))) " :"
           else ":"
         val (startClosing, endClosing) = closingElimRegion()
-        val applyPatch = () => {
-          patch(source, Span(startOpening, endOpening), openingPatchStr)
-          patch(source, Span(startClosing, endClosing), "")
-        }
-        pendingPatches = applyPatch :: pendingPatches
-        if (isOuterMost) {
-          pendingPatches.reverse.foreach(_())
-          pendingPatches = Nil
-        }
+        patch(source, Span(startOpening, endOpening), openingPatchStr)
+        patch(source, Span(startClosing, endClosing), "")
       }
-      else pendingPatches = savedPending // can't rewrite, cancel all nested patches.
       t
     }
 
@@ -1168,7 +1158,7 @@ object Parsers {
     }
 
     def indentRegion[T](tag: EndMarkerTag)(op: => T): T = {
-      val iw = in.indent.width
+      val iw = in.currentRegion.indentWidth
       val t = op
       in.consumeEndMarker(tag, iw)
       t
@@ -1282,6 +1272,7 @@ object Parsers {
           }
           else { accept(TLARROW); typ() }
         }
+        else if (in.token == INDENT) enclosed(INDENT, typ())
         else infixType()
 
       in.token match {
@@ -2152,8 +2143,15 @@ object Parsers {
     def block(): Tree = {
       val stats = blockStatSeq()
       def isExpr(stat: Tree) = !(stat.isDef || stat.isInstanceOf[Import])
-      if (stats.nonEmpty && isExpr(stats.last)) Block(stats.init, stats.last)
-      else Block(stats, EmptyTree)
+      stats match {
+        case (stat : Block) :: Nil =>
+          stat // A typical case where this happens is creating a block around a region
+               // hat is already indented, e.g. something following a =>.
+        case _ :: stats1 if isExpr(stats.last) =>
+          Block(stats.init, stats.last)
+        case _ =>
+          Block(stats, EmptyTree)
+      }
     }
 
     /** Guard ::= if PostfixExpr
@@ -2192,7 +2190,7 @@ object Parsers {
     /** Generator   ::=  [‘case’] Pattern `<-' Expr
      */
     def generator(): Tree = {
-      val casePat = if (in.token == CASE) { in.skipCASE(); true } else false
+      val casePat = if (in.token == CASE) { in.nextToken(); true } else false
       generatorRest(pattern1(), casePat)
     }
 
@@ -2302,15 +2300,21 @@ object Parsers {
     *  ImplicitCaseClause ::= ‘case’ PatVar [Ascription] [Guard] `=>' Block
     */
     val caseClause: () => CaseDef = () => atSpan(in.offset) {
-      accept(CASE)
-      CaseDef(pattern(), guard(), atSpan(accept(ARROW)) { block() })
+      val (pat, grd) = inSepRegion(LPAREN, RPAREN) {
+        accept(CASE)
+        (pattern(), guard())
+      }
+      CaseDef(pat, grd, atSpan(accept(ARROW)) { block() })
     }
 
     /** TypeCaseClause     ::= ‘case’ InfixType ‘=>’ Type [nl]
      */
     val typeCaseClause: () => CaseDef = () => atSpan(in.offset) {
-      accept(CASE)
-      CaseDef(infixType(), EmptyTree, atSpan(accept(ARROW)) {
+      val pat = inSepRegion(LPAREN, RPAREN) {
+        accept(CASE)
+        infixType()
+      }
+      CaseDef(pat, EmptyTree, atSpan(accept(ARROW)) {
         val t = typ()
         if (isStatSep) in.nextToken()
         t
@@ -3246,7 +3250,7 @@ object Parsers {
      */
     def enumCase(start: Offset, mods: Modifiers): DefTree = {
       val mods1 = mods | EnumCase
-      in.skipCASE()
+      accept(CASE)
 
       atSpan(start, nameStart) {
         val id = termIdent()
@@ -3349,9 +3353,8 @@ object Parsers {
         case _ => false
       }
 
-      def givenArgs(t: Tree): Tree = {
+      def givenArgs(t: Tree): Tree =
         if (in.token == GIVEN) givenArgs(applyGiven(t, prefixExpr)) else t
-      }
 
       if (in.token == LPAREN)
         inParens {

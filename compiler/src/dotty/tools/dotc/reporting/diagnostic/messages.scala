@@ -578,7 +578,7 @@ object messages {
   case class IllegalStartSimpleExpr(illegalToken: String)(implicit ctx: Context)
   extends Message(IllegalStartSimpleExprID) {
     val kind: String = "Syntax"
-    val msg: String = "expression expected"
+    val msg: String = em"expression expected but ${Red(illegalToken)} found"
     val explanation: String = {
       em"""|An expression cannot start with ${Red(illegalToken)}."""
     }
