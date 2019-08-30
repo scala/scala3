@@ -24,25 +24,47 @@
     exit 1
   fi
 
+#package object util:
+  function replace {
+    local where="$1"
+    local what="$2"
+    local with_what="$3"
+    gsed -i -E "s/$what/$with_what/g" "$where"
+  }
+
+  function isDefined { type $1 &> /dev/null; }
+  function notDefined { ! isDefined $1; }
+
 #class Project:
-  function deploy {
-    local FUNCTION="deploy_$SELF"
-    local SUPER_CALL="$1"
-    if type $FUNCTION &>/dev/null && [ -z $SUPER_CALL ]; then
-      git clone https://github.com/lampepfl/$SELF.git
-      cd $SELF
+  function project_call {
+    local NAME=$1
+    local SUPER_CALL=$2
+    local FUNCTION="$NAME"_"$SELF"
+    local PARENT_FUNCTION="$NAME"_"project"
+
+    if $(notDefined $FUNCTION) || [ ! -z $SUPER_CALL ]; then
+      $PARENT_FUNCTION
+    else
+      $FUNCTION
     fi
   }
 
-  function update {
-    local FUNCTION="update_$SELF"
-    $FUNCTION
+  function deploy { project_call "deploy" $1; }
+  function deploy_project {
+    git clone https://github.com/lampepfl/$SELF.git
+    cd $SELF
+  }
+
+  function update { project_call "update" $1; }
+  function update_project {
+    echo "Not implemented error: update"
+    exit 1
   }
 
   function test {
     local FUNCTION="test_$SELF"
     local SUPER_CALL="$1"
-    if type $FUNCTION &>/dev/null && [ -z $SUPER_CALL ]; then
+    if $(isDefined $FUNCTION); then
       if ! $FUNCTION; then
         echo "Test failed for $SELF"
         exit 1
@@ -52,24 +74,15 @@
     fi
   }
 
-  function publish {
-    local FUNCTION="publish_$SELF"
-    local SUPER_CALL="$1"
-    if type $FUNCTION &>/dev/null && [ -z $SUPER_CALL ]; then
-      $FUNCTION
-    else
-      git commit -am "Upgrade Dotty to $rc_version"
-      # git push  # TODO uncomment
-    fi
+  function publish { project_call "publish" $1; }
+  function publish_project {
+    git commit -am "Upgrade Dotty to $rc_version"
   }
 
-  function cleanup {
-    local FUNCTION="cleanup_$SELF"
-    local SUPER_CALL="$1"
-    if type $FUNCTION &>/dev/null && [ -z $SUPER_CALL ]; then
-      cd ..
-      rm -rf $SELF
-    fi
+  function cleanup { project_call "cleanup" $1; }
+  function cleanup_project {
+    cd ..
+    rm -rf $SELF
   }
 
   function process {
@@ -80,14 +93,6 @@
     test
     publish
     cleanup
-  }
-
-#package object util:
-  function replace {
-    local where="$1"
-    local what="$2"
-    local with_what="$3"
-    gsed -i -E "s/$what/$with_what/g" "$where"
   }
 
 #package object impl:
@@ -165,13 +170,28 @@
       echo 'sbt new file://./dotty-cross.g8 --name=foo --description=bar && cd foo && sbt run'  # TODO unecho
     }
 
+  #class Homebrew extends Project:
+    function update_homebrew-brew {
+      local hash=$(curl -L -s https://github.com/lampepfl/dotty/releases/download/0.18.1-RC1/sha256sum.txt | grep ".tar.gz" | awk '{ print $1 }')
+
+      replace "dotty.rb" \
+        "url\s*\"https://github.com/lampepfl/dotty/releases/download/[\d\.\-RC]+/dotty-[\d\.\-RC]+.tar.gz\"" \
+        "url \"https://github.com/lampepfl/dotty/releases/download/$rc_version/dotty-$rc_version.tar.gz\""
+
+      replace "dotty.rb" \
+        "sha256 \"[0-9a-z]+\"" \
+        "sha256 \"$hash\""
+    }
+
 #object Main:
   PROJECTS='
   dotty-example-project
-  dotty-example-project-mill
-  dotty.g8
-  dotty-cross.g8
   '
+  # dotty-example-project-mill
+  # dotty.g8
+  # dotty-cross.g8
+  # homebrew-brew
+
   function main {
     export -f process
     for p_raw in $PROJECTS; do
