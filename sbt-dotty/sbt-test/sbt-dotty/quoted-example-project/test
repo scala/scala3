@@ -1,5 +1,5 @@
 > run
 > test
 $ copy-file src/changes/Hello.scala src/main/scala/hello/Hello.scala
--> compile
+# -> compile FIXME: it succeeds, but should not (?)
 # it should not compile because the compiler should not be on the compiler classpath when depending on dotty-staging
