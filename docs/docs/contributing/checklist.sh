@@ -30,6 +30,8 @@ LIST='- [ ] Finalize the the stable and RC releases
     - [ ] Committed to `master`
   - [ ] https://github.com/lampepfl/dotty-cross.g8 [![Build Status](https://travis-ci.org/lampepfl/dotty-cross.g8.svg?branch=master)](https://travis-ci.org/lampepfl/dotty-cross.g8/)
     - [ ] Committed to `master`
+  - [ ] https://github.com/lampepfl/dotty-staging.g8 [![Build Status](https://travis-ci.org/lampepfl/dotty-staging.g8.svg?branch=master)](https://travis-ci.org/lampepfl/dotty-staging.g8)
+    - [ ] Committed to `master`
   - [ ] https://github.com/lampepfl/homebrew-brew [![Build Status](https://travis-ci.org/lampepfl/homebrew-brew.svg?branch=master)](https://travis-ci.org/lampepfl/homebrew-brew)
     - [ ] Committed to `master`
     - SHA256 sum for the artifact: `wget -q -O- https://github.com/lampepfl/dotty/releases/download/<rc-version>/sha256sum.txt | grep ".tar.gz"`
