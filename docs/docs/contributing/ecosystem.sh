@@ -92,7 +92,7 @@
     update
     test
     publish
-    cleanup
+    # cleanup
   }
 
 #package object impl:
@@ -171,16 +171,29 @@
     }
 
   #class Homebrew extends Project:
+    RC_PATTERN="[0-9\.RC\-]+"
+
     function update_homebrew-brew {
       local hash=$(curl -L -s https://github.com/lampepfl/dotty/releases/download/0.18.1-RC1/sha256sum.txt | grep ".tar.gz" | awk '{ print $1 }')
 
       replace "dotty.rb" \
-        "url\s+\"https:\/\/github\.com\/lampepfl\/dotty\/releases\/download\/[\d\.]+-RC\d\/dotty-[\d\.]-RC\d\.tar\.gz\"" \
+        "url\s+\"https:\/\/github\.com\/lampepfl\/dotty\/releases\/download\/$RC_PATTERN\/dotty-$RC_PATTERN\.tar\.gz\"" \
         "url \"https:\/\/github.com\/lampepfl\/dotty\/releases\/download\/$rc_version\/dotty-$rc_version.tar.gz\""
 
       replace "dotty.rb" \
         "sha256 \"[0-9a-z]+\"" \
         "sha256 \"$hash\""
+    }
+
+  #class Packtest extends Project with Homebrew:  // RC_PATTERN comes from Homebrew
+    function update_packtest {
+      replace "artifacts" \
+        "zip=https:\/\/github.com\/lampepfl\/dotty\/releases\/download\/$RC_PATTERN\/dotty-$RC_PATTERN.zip" \
+        "zip=https:\/\/github.com\/lampepfl\/dotty\/releases\/download\/$rc_version\/dotty-$rc_version.zip"
+
+      replace "artifacts" \
+        "tar=https:\/\/github.com\/lampepfl\/dotty\/releases\/download\/$RC_PATTERN\/dotty-$RC_PATTERN.tar.gz" \
+        "tar=https:\/\/github.com\/lampepfl\/dotty\/releases\/download\/$rc_version\/dotty-$rc_version.tar.gz"
     }
 
 #object Main:
@@ -189,7 +202,8 @@
   # dotty-example-project-mill
   # dotty.g8
   # dotty-cross.g8
-  PROJECTS='homebrew-brew
+  # PROJECTS='homebrew-brew'
+  PROJECTS='packtest
   '
 
   function main {
