@@ -37,6 +37,14 @@
   function isDefined { type $1 &> /dev/null; }
   function notDefined { ! isDefined $1; }
 
+  function push {
+    if [ ! -z $live ]; then
+      git push $@
+    else
+      echo "Dry run, not pushing to github"
+    fi
+  }
+
 #class Project:
   function project_call {
     local NAME=$1
@@ -79,7 +87,7 @@
   function publish { project_call "publish" $1; }
   function publish_project {
     git commit -am "Upgrade Dotty to $rc_version"
-    [ ! -z $live ] && push -u
+    push
   }
 
   function cleanup { project_call "cleanup" $1; }
@@ -220,7 +228,7 @@
 
     function publish_scastie {
       git commit -am "Upgrade Dotty to $rc_version"
-      [ ! -z $live ] && push -u staging
+      push -u staging
     }
 
   #class Scalac extends Project:
@@ -239,7 +247,7 @@
 
     function publish_scalac {
       git commit -am "Upgrade Dotty to $rc_version"
-      [ ! -z $live ] && push -u staging
+      push -u staging
     }
 
 #object Main:
