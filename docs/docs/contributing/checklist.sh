@@ -10,9 +10,9 @@ next_version="0.$next.0"
 stable_branch="0.$stable.x"
 rc_branch="0.$rc.x"
 
-LIST='- [ ] Publish artifacts to Maven via CI
+LIST='- [ ] Merge branch `<stable-branch>` into `master` to guarantee that all of the `<stable-branch>` commits are propagated to `master`
+- [ ] Publish artifacts to Maven via CI. Use the following command: `bash <(curl -sL https://raw.githubusercontent.com/lampepfl/dotty/master/docs/docs/contributing/release.sh) '$stable'`
   - [ ] On branch `<stable-branch>`, set `baseVersion` to `<stable-version>` and `git tag` it as `<stable-version>`. This will publish artefacts to Sonatype and GitHub Release
-  - [ ] Merge branch `<stable-branch>` into `master` to guarantee that all of the `<stable-branch>` commits are propagated to `master`
   - [ ] Create branch `<rc-branch>` from `master`
   - [ ] On `<rc-branch>`, set `baseVersion` to `<rc-version>` and `git tag` it as `<rc-version>`. This will publish artefacts to Sonatype and GitHub Release.
   - [ ] On `master`, set `baseVersion` to `<next-version>`
