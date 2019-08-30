@@ -27,7 +27,8 @@
 #class Project:
   function deploy {
     local FUNCTION="deploy_$SELF"
-    if type $FUNCTION &>/dev/null; then $FUNCTION; else
+    local SUPER_CALL="$1"
+    if type $FUNCTION &>/dev/null && [ -z $SUPER_CALL ]; then
       git clone https://github.com/lampepfl/$SELF.git
       cd $SELF
     fi
@@ -40,7 +41,8 @@
 
   function test {
     local FUNCTION="test_$SELF"
-    if type $FUNCTION &>/dev/null; then
+    local SUPER_CALL="$1"
+    if type $FUNCTION &>/dev/null && [ -z $SUPER_CALL ]; then
       if ! $FUNCTION; then
         echo "Test failed for $SELF"
         exit 1
@@ -51,13 +53,20 @@
   }
 
   function publish {
-    git commit -am "Upgrade Dotty to $rc_version"
-    # git push  # TODO uncomment
+    local FUNCTION="publish_$SELF"
+    local SUPER_CALL="$1"
+    if type $FUNCTION &>/dev/null && [ -z $SUPER_CALL ]; then
+      $FUNCTION
+    else
+      git commit -am "Upgrade Dotty to $rc_version"
+      # git push  # TODO uncomment
+    fi
   }
 
   function cleanup {
     local FUNCTION="cleanup_$SELF"
-    if type $FUNCTION &>/dev/null; then $FUNCTION; else
+    local SUPER_CALL="$1"
+    if type $FUNCTION &>/dev/null && [ -z $SUPER_CALL ]; then
       cd ..
       rm -rf $SELF
     fi
@@ -114,6 +123,11 @@
       echo mill root.run # TODO un-echo
     }
 
+    function cleanup_dotty-example-project-mill {
+      cd ..
+      rm -rf dotty-example-project
+    }
+
   #class DottyG8 extends Project:
     function deploy_dotty.g8 {
       git clone https://github.com/lampepfl/dotty.g8
@@ -130,11 +144,33 @@
       echo 'sbt new file://./dotty.g8 --name=foo --description=bar && cd foo && sbt run'  # TODO unecho
     }
 
+    function publish_dotty.g8 {
+      cd "$SELF"
+      publish super
+    }
+
+  #class DottyG8Cross extends Project:
+    function deploy_dotty-cross.g8 {
+      git clone https://github.com/lampepfl/dotty-cross.g8.git
+    }
+
+    function update_dotty-cross.g8 {
+      local what="val\s+dottyVersion\s*=\s*\".*\""
+      local with_what="val dottyVersion = \"$rc_version\""
+
+      replace "dotty-cross.g8/src/main/g8/build.sbt" "$what" "$with_what"
+    }
+
+    function test_dotty-cross.g8 {
+      sbt new file://./dotty-cross.g8 --name=foo --description=bar && cd foo && sbt run
+    }
+
 #object Main:
   PROJECTS='
   dotty-example-project
   dotty-example-project-mill
   dotty.g8
+  dotty-cross.g8
   '
   function main {
     export -f process
