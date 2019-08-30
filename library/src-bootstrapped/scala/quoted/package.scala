@@ -95,6 +95,12 @@ package object quoted {
           '{ Tuple.fromIArray(IArray(${seq.toExprOfSeq}: _*)) }
       }
     }
-  }
 
+    /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
+    def (tup: T) toExprOfTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type] given (ctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
+      import ctx.tasty._
+      tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[_]]].toExprOfTuple
+        .cast[Tuple.InverseMap[T, Expr]]
+    }
+  }
 }

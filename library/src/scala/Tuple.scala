@@ -103,6 +103,19 @@ object Tuple {
     case _ => Tuple
   }
 
+  /** Converts a tuple `(F[T1], ..., F[Tn])` to `(T1,  ... Tn)` */
+  type InverseMap[X <: Tuple, F[_]] <: Tuple = X match {
+    case F[x] *: t => x *: InverseMap[t, F]
+    case Unit => Unit
+  }
+
+  /** Implicit evidence. IsMappedBy[F][X] is present in the implicit scope iff
+   *  X is a tuple for which each element's type is constructed via `F`. E.g.
+   *  (F[A1], ..., F[An]), but not `(F[A1], B2, ..., F[An])` where B2 does not
+   *  have the shape of `F[A]`.
+   */
+  type IsMappedBy[F[_]] = [X <: Tuple] =>> X =:= Map[InverseMap[X, F], F]
+
   /** Convert an array into a tuple of unknown arity and types */
   def fromArray[T](xs: Array[T]): Tuple = {
     val xs2 = xs match {
