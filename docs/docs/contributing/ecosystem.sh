@@ -52,14 +52,14 @@
 
   function publish {
     git commit -am "Upgrade Dotty to $rc_version"
-    # git push
+    # git push  # TODO uncomment
   }
 
   function cleanup {
     local FUNCTION="cleanup_$SELF"
     if type $FUNCTION &>/dev/null; then $FUNCTION; else
       cd ..
-      echo "rm -rf $SELF"
+      rm -rf $SELF
     fi
   }
 
@@ -92,12 +92,32 @@
     }
 
     function test_dotty-example-project {
-      sbt run
+      echo sbt run  # TODO un-echo
+    }
+
+  #class DottyExampleMill extends Project:
+    function deploy_dotty-example-project-mill {
+      git clone https://github.com/lampepfl/dotty-example-project
+      cd dotty-example-project
+      git checkout mill
+    }
+
+    function update_dotty-example-project-mill {
+      local what="def\s+scalaVersion\s*=\s*\".*\""
+      local with_what="def scalaVersion = \"$rc_version\""
+
+      replace "build.sc" "$what" "$with_what"
+      replace "README.md" "$what" "$with_what"
+    }
+
+    function test_dotty-example-project-mill {
+      echo mill root.run # TODO un-echo
     }
 
 #object Main:
   PROJECTS='
   dotty-example-project
+  dotty-example-project-mill
   '
   function main {
     export -f process
