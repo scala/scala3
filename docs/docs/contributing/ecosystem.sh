@@ -162,7 +162,7 @@
     }
 
     function test_dotty-cross.g8 {
-      sbt new file://./dotty-cross.g8 --name=foo --description=bar && cd foo && sbt run
+      echo 'sbt new file://./dotty-cross.g8 --name=foo --description=bar && cd foo && sbt run'  # TODO unecho
     }
 
 #object Main:
