@@ -1,12 +1,16 @@
 # #!/usr/bin/env bash
 stable=$1
+stable_patch=0
+rc_patch=1
+next_patch=1
 
 rc="$(($stable+1))"
 next="$(($rc+1))"
 
-stable_version="0.$stable.0"
-rc_version="0.$rc.0-RC1"
-next_version="0.$next.0"
+stable_version="0.$stable.$stable_patch"
+rc_version_preview="0.$rc.$rc_patch"
+rc_version="$rc_version_preview-RC1"
+next_version="0.$next.$next_patch"
 stable_branch="0.$stable.x"
 rc_branch="0.$rc.x"
 
