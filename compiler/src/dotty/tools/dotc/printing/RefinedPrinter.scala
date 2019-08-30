@@ -305,10 +305,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else ""
 
     def argText(arg: Tree): Text = arg match {
-      case arg: TypeBoundsTree => "_" ~ toTextGlobal(arg)
+      case arg: TypeBoundsTree => "?" ~ toTextGlobal(arg)
       case arg: TypeTree =>
         arg.typeOpt match {
-          case tp: TypeBounds => "_" ~ toTextGlobal(arg)
+          case tp: TypeBounds => "?" ~ toTextGlobal(arg)
           case _ => toTextGlobal(arg)
         }
       case _ => toTextGlobal(arg)
