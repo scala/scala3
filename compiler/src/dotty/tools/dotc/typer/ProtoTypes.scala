@@ -520,7 +520,7 @@ object ProtoTypes {
   /** Create a new TypeVar that represents a dependent method parameter singleton */
   def newDepTypeVar(tp: Type)(implicit ctx: Context): TypeVar =
     newTypeVar(TypeBounds.upper(AndType(tp.widenExpr, defn.SingletonClass.typeRef)))
-    
+
   /** The result type of `mt`, where all references to parameters of `mt` are
    *  replaced by either wildcards (if typevarsMissContext) or TypeParamRefs.
    */
