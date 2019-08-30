@@ -669,7 +669,18 @@ class Definitions {
   @tu lazy val StatsModule: Symbol = ctx.requiredModule("dotty.tools.dotc.util.Stats")
     @tu lazy val Stats_doRecord: Symbol = StatsModule.requiredMethod("doRecord")
 
-  @tu lazy val XMLTopScopeModule: Symbol = ctx.requiredModule("scala.xml.TopScope")
+  @threadUnsafe lazy val FromDigitsClass: ClassSymbolPerRun      = perRunClass(ctx.requiredClassRef("scala.util.FromDigits"))
+  @threadUnsafe lazy val FromDigits_WithRadixClass: ClassSymbolPerRun = perRunClass(ctx.requiredClassRef("scala.util.FromDigits.WithRadix"))
+  @threadUnsafe lazy val FromDigits_DecimalClass: ClassSymbolPerRun   = perRunClass(ctx.requiredClassRef("scala.util.FromDigits.Decimal"))
+  @threadUnsafe lazy val FromDigits_FloatingClass: ClassSymbolPerRun  = perRunClass(ctx.requiredClassRef("scala.util.FromDigits.Floating"))
+
+  @threadUnsafe lazy val XMLTopScopeModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.xml.TopScope"))
+
+  @threadUnsafe lazy val CommandLineParserModule: SymbolPerRun = perRunSym(ctx.requiredModuleRef("scala.util.CommandLineParser"))
+    @threadUnsafe lazy val CLP_ParseError: ClassSymbolPerRun = perRunClass(CommandLineParserModule.requiredClass("ParseError").typeRef)
+    @threadUnsafe lazy val CLP_parseArgument: SymbolPerRun = perRunSym(CommandLineParserModule.requiredMethodRef("parseArgument"))
+    @threadUnsafe lazy val CLP_parseRemainingArguments: SymbolPerRun = perRunSym(CommandLineParserModule.requiredMethodRef("parseRemainingArguments"))
+    @threadUnsafe lazy val CLP_showError: SymbolPerRun = perRunSym(CommandLineParserModule.requiredMethodRef("showError"))
 
   @tu lazy val CommandLineParserModule: Symbol = ctx.requiredModule("scala.util.CommandLineParser")
     @tu lazy val CLP_ParseError: ClassSymbol = CommandLineParserModule.requiredClass("ParseError").typeRef.symbol.asClass

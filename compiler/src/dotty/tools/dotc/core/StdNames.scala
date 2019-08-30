@@ -442,6 +442,7 @@ object StdNames {
     val flagsFromBits : N       = "flagsFromBits"
     val flatMap: N              = "flatMap"
     val foreach: N              = "foreach"
+    val fromDigits: N           = "fromDigits"
     val fromProduct: N          = "fromProduct"
     val genericArrayOps: N      = "genericArrayOps"
     val genericClass: N         = "genericClass"

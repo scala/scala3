@@ -508,6 +508,70 @@ class Typer extends Namer
     }
   }
 
+  def typedNumber(tree: untpd.Number, pt: Type)(implicit ctx: Context): Tree = {
+    import scala.util.FromDigits._
+    import untpd.NumberKind._
+    record("typedNumber")
+    val digits = tree.digits
+    val target = pt.dealias
+    def lit(value: Any) = Literal(Constant(value)).withSpan(tree.span)
+    try {
+      // Special case primitive numeric types
+      if (target.isRef(defn.IntClass) ||
+          target.isRef(defn.CharClass) ||
+          target.isRef(defn.ByteClass) ||
+          target.isRef(defn.ShortClass))
+        tree.kind match {
+          case Whole(radix) => return lit(intFromDigits(digits, radix))
+          case _ =>
+        }
+      else if (target.isRef(defn.LongClass))
+        tree.kind match {
+          case Whole(radix) => return lit(longFromDigits(digits, radix))
+          case _ =>
+        }
+      else if (target.isRef(defn.FloatClass))
+        return lit(floatFromDigits(digits))
+      else if (target.isRef(defn.DoubleClass))
+        return lit(doubleFromDigits(digits))
+      else if (target.isValueType && isFullyDefined(target, ForceDegree.none)) {
+        // If expected type is defined with a FromDigits instance, use that one
+        val fromDigitsCls = tree.kind match {
+          case Whole(10) => defn.FromDigitsClass
+          case Whole(_) => defn.FromDigits_WithRadixClass
+          case Decimal => defn.FromDigits_DecimalClass
+          case Floating => defn.FromDigits_FloatingClass
+        }
+        inferImplicit(fromDigitsCls.typeRef.appliedTo(target), EmptyTree, tree.span) match {
+          case SearchSuccess(arg, _, _) =>
+            val fromDigits = untpd.Select(untpd.TypedSplice(arg), nme.fromDigits).withSpan(tree.span)
+            val firstArg = Literal(Constant(digits))
+            val otherArgs = tree.kind match {
+              case Whole(r) if r != 10 => Literal(Constant(r)) :: Nil
+              case _ => Nil
+            }
+            var app: untpd.Tree = untpd.Apply(fromDigits, firstArg :: otherArgs)
+            if (ctx.mode.is(Mode.Pattern)) app = untpd.Block(Nil, app)
+            return typed(app, pt)
+          case _ =>
+        }
+      }
+      // Otherwise convert to Int or Double according to digits format
+      tree.kind match {
+        case Whole(radix) => lit(intFromDigits(digits, radix))
+        case _ => lit(doubleFromDigits(digits))
+      }
+    }
+    catch {
+      case ex: FromDigitsException =>
+        ctx.error(ex.getMessage, tree.sourcePos)
+        tree.kind match {
+          case Whole(_) => lit(0)
+          case _ => lit(0.0)
+        }
+    }
+  }
+
   def typedLiteral(tree: untpd.Literal)(implicit ctx: Context): Tree = {
     val tree1 = assignType(tree)
     if (ctx.mode.is(Mode.Type)) tpd.SingletonTypeTree(tree1) // this ensures that tree is classified as a type tree
@@ -702,7 +766,8 @@ class Typer extends Namer
     (index(stats), typedStats(stats, ctx.owner))
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context): Tree = {
-    val (exprCtx, stats1) = typedBlockStats(tree.stats)
+    val localCtx = ctx.retractMode(Mode.Pattern)
+    val (exprCtx, stats1) = typedBlockStats(tree.stats) given localCtx
     val expr1 = typedExpr(tree.expr, pt.dropIfProto)(exprCtx)
     ensureNoLocalRefs(
       cpy.Block(tree)(stats1, expr1).withType(expr1.tpe), pt, localSyms(stats1))
@@ -1997,6 +2062,7 @@ class Typer extends Namer
           case tree: untpd.Apply =>
             if (ctx.mode is Mode.Pattern) typedUnApply(tree, pt) else typedApply(tree, pt)
           case tree: untpd.This => typedThis(tree)
+          case tree: untpd.Number => typedNumber(tree, pt)
           case tree: untpd.Literal => typedLiteral(tree)
           case tree: untpd.New => typedNew(tree, pt)
           case tree: untpd.Typed => typedTyped(tree, pt)
