@@ -111,6 +111,7 @@ class Typer extends Namer
    */
   private[this] var foundUnderScala2: Type = NoType
 
+  // Overridden in derived typers
   def newLikeThis: Typer = new Typer
 
   /** Find the type of an identifier with given `name` in given context `ctx`.
@@ -1536,10 +1537,8 @@ class Typer extends Namer
     if (sym.isInlineMethod) rhsCtx.addMode(Mode.InlineableBody)
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(rhsCtx)
 
-    if (sym.isInlineMethod) {
-      PrepareInlineable.checkInlineMacro(sym, rhs1, ddef.sourcePos)
+    if (sym.isInlineMethod)
       PrepareInlineable.registerInlineInfo(sym, _ => rhs1)
-    }
 
     if (sym.isConstructor && !sym.isPrimaryConstructor) {
       for (param <- tparams1 ::: vparamss1.flatten)
@@ -2119,7 +2118,7 @@ class Typer extends Namer
             traverse(xtree :: rest)
           case none =>
             typed(mdef) match {
-              case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
+              case mdef1: DefDef if !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
                 buf += inlineExpansion(mdef1)
                   // replace body with expansion, because it will be used as inlined body
                   // from separately compiled files - the original BodyAnnotation is not kept.
@@ -2666,10 +2665,11 @@ class Typer extends Namer
       }
       else if (Inliner.isInlineable(tree) &&
                !ctx.settings.YnoInline.value &&
-               !ctx.isAfterTyper &&
-               !ctx.reporter.hasErrors) {
+               !suppressInline) {
         tree.tpe <:< wildApprox(pt)
-        readaptSimplified(Inliner.inlineCall(tree))
+        val errorCount = ctx.reporter.errorCount
+        val inlined = Inliner.inlineCall(tree)
+        if (errorCount == ctx.reporter.errorCount) readaptSimplified(inlined) else inlined
       }
       else if (tree.symbol.isScala2Macro &&
                // raw and s are eliminated by the StringInterpolatorOpt phase
@@ -2977,6 +2977,9 @@ class Typer extends Namer
       }
     }
   }
+
+  // Overridden in InlineTyper
+  def suppressInline given (ctx: Context): Boolean = ctx.isAfterTyper
 
   /** Does the "contextuality" of the method type `methType` match the one of the prototype `pt`?
    *  This is the case if
