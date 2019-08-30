@@ -4,6 +4,8 @@
   set -ex
 
   stable=$1
+  live=$2  # Push changes to github if it is defined
+
   stable_patch=0
   rc_patch=1
   next_patch=1
@@ -77,7 +79,7 @@
   function publish { project_call "publish" $1; }
   function publish_project {
     git commit -am "Upgrade Dotty to $rc_version"
-    # push -u  # TODO uncomment
+    [ ! -z $live ] && push -u
   }
 
   function cleanup { project_call "cleanup" $1; }
@@ -218,7 +220,7 @@
 
     function publish_scastie {
       git commit -am "Upgrade Dotty to $rc_version"
-      # push -u staging  # TODO uncomment
+      [ ! -z $live ] && push -u staging
     }
 
   #class Scalac extends Project:
@@ -237,7 +239,7 @@
 
     function publish_scalac {
       git commit -am "Upgrade Dotty to $rc_version"
-      # push -u staging  # TODO uncomment
+      [ ! -z $live ] && push -u staging
     }
 
 #object Main:
