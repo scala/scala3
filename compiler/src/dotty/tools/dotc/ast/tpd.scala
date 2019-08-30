@@ -1147,6 +1147,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         var allAlts = denot.alternatives
           .map(denot => TermRef(receiver.tpe, denot.symbol))
           .filter(tr => typeParamCount(tr) == targs.length)
+          .filter { _.widen match {
+            case MethodTpe(_, _, x: MethodType) => !x.isImplicitMethod
+            case _ => true
+          }}
         if (targs.isEmpty) allAlts = allAlts.filterNot(_.widen.isInstanceOf[PolyType])
         val alternatives = ctx.typer.resolveOverloaded(allAlts, proto)
         assert(alternatives.size == 1,
