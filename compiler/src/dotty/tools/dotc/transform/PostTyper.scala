@@ -305,9 +305,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             // conform to selector bounds. I.e. assume
             //     type Tree[T >: Null <: Type]
             // One is still allowed to write
-            //     case x: Tree[_]
+            //     case x: Tree[?]
             // (which translates to)
-            //     case x: (_: Tree[_])
+            //     case x: (_: Tree[?])
         case tree =>
           super.transform(tree)
       }

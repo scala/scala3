@@ -843,7 +843,7 @@ class Definitions {
    *  Note that this will also extract the high bound if an
    *  element type is a wildcard. E.g.
    *
-   *     Array[_ <: Array[_ <: Number]]
+   *     Array[? <: Array[? <: Number]]
    *
    *  would match
    *
@@ -1211,10 +1211,10 @@ class Definitions {
   private val typeTags = mutable.Map[TypeName, Name]().withDefaultValue(nme.specializedTypeNames.Object)
 
 //  private val unboxedTypeRef = mutable.Map[TypeName, TypeRef]()
-//  private val javaTypeToValueTypeRef = mutable.Map[Class[_], TypeRef]()
-//  private val valueTypeNamesToJavaType = mutable.Map[TypeName, Class[_]]()
+//  private val javaTypeToValueTypeRef = mutable.Map[Class[?], TypeRef]()
+//  private val valueTypeNamesToJavaType = mutable.Map[TypeName, Class[?]]()
 
-  private def valueTypeRef(name: String, jtype: Class[_], enc: Int, tag: Name): TypeRef = {
+  private def valueTypeRef(name: String, jtype: Class[?], enc: Int, tag: Name): TypeRef = {
     val vcls = ctx.requiredClassRef(name)
     valueTypeEnc(vcls.name) = enc
     typeTags(vcls.name) = tag
@@ -1242,8 +1242,8 @@ class Definitions {
   /** The JVM tag for `tp` if it's a primitive, `java.lang.Object` otherwise. */
   def typeTag(tp: Type)(implicit ctx: Context): Name = typeTags(scalaClassName(tp))
 
-//  /** The `Class[_]` of a primitive value type name */
-//  def valueTypeNameToJavaType(name: TypeName)(implicit ctx: Context): Option[Class[_]] =
+//  /** The `Class[?]` of a primitive value type name */
+//  def valueTypeNameToJavaType(name: TypeName)(implicit ctx: Context): Option[Class[?]] =
 //    valueTypeNamesToJavaType.get(if (name.firstPart eq nme.scala_) name.lastPart.toTypeName else name)
 
   type PrimitiveClassEnc = Int

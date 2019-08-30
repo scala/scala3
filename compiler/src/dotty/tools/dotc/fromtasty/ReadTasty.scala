@@ -47,7 +47,7 @@ class ReadTasty extends Phase {
                 unit.pickled += (cls -> unpickler.unpickler.bytes)
                 Some(unit)
               }
-            case tree: Tree[_] =>
+            case tree: Tree[?] =>
                alreadyLoaded()
             case _ =>
               cannotUnpickle(s"its class file does not have a TASTY attribute")

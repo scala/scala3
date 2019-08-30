@@ -42,7 +42,7 @@ object PickledQuotes {
   }
 
   /** Transform the expression into its fully spliced TypeTree */
-  def quotedTypeToTree(tpe: quoted.Type[_])(implicit ctx: Context): Tree = {
+  def quotedTypeToTree(tpe: quoted.Type[?])(implicit ctx: Context): Tree = {
     val tpe1 = tpe.asInstanceOf[TreeType[Tree]]
     QuoteContext.checkScopeId(tpe1.scopeId)
     healOwner(tpe1.typeTree)

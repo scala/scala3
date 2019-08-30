@@ -294,7 +294,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree = {
       val res = tree match {
-        case _: untpd.TypedSplice | _: untpd.Thicket | _: EmptyValDef[_] =>
+        case _: untpd.TypedSplice | _: untpd.Thicket | _: EmptyValDef[?] =>
           super.typedUnadapted(tree, pt, locked)
         case _ if tree.isType =>
           promote(tree)

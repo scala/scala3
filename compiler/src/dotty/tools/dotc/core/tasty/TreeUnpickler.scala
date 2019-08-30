@@ -1275,11 +1275,11 @@ class TreeUnpickler(reader: TastyReader,
         else new TreeType(arg, QuoteContext.scopeId)
       val reifiedArgs = args.map(wrap)
       val filled = if (isType) {
-        val quotedType = splice.asInstanceOf[Seq[Any] => quoted.Type[_]](reifiedArgs)
+        val quotedType = splice.asInstanceOf[Seq[Any] => quoted.Type[?]](reifiedArgs)
         PickledQuotes.quotedTypeToTree(quotedType)
       }
       else {
-        val splice1 = splice.asInstanceOf[Seq[Any] => given scala.quoted.QuoteContext => quoted.Expr[_]]
+        val splice1 = splice.asInstanceOf[Seq[Any] => given scala.quoted.QuoteContext => quoted.Expr[?]]
         val quotedExpr = splice1(reifiedArgs) given dotty.tools.dotc.quoted.QuoteContext()
         PickledQuotes.quotedExprToTree(quotedExpr)
       }

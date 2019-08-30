@@ -1028,7 +1028,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       """
         |object TyperDemo {
         |  class Team[A]
-        |  val team = new Team[_]
+        |  val team = new Team[?]
         |}""".stripMargin
     }
     .expect { (ictx, messages) =>

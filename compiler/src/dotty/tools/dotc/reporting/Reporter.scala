@@ -182,7 +182,7 @@ trait Reporting { this: Context =>
     if (this.settings.Ydebug.value) warning(msg, pos)
 
   private def addInlineds(pos: SourcePosition)(implicit ctx: Context) = {
-    def recur(pos: SourcePosition, inlineds: List[Trees.Tree[_]]): SourcePosition = inlineds match {
+    def recur(pos: SourcePosition, inlineds: List[Trees.Tree[?]]): SourcePosition = inlineds match {
       case inlined :: inlineds1 => pos.withOuter(recur(inlined.sourcePos, inlineds1))
       case Nil => pos
     }

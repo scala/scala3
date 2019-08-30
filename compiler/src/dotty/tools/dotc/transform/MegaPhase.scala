@@ -434,13 +434,13 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   }
 
   /** Class#getDeclaredMethods is slow, so we cache its output */
-  private val clsMethodsCache = new java.util.IdentityHashMap[Class[_], Array[java.lang.reflect.Method]]
+  private val clsMethodsCache = new java.util.IdentityHashMap[Class[?], Array[java.lang.reflect.Method]]
 
   /** Does `phase` contain a redefinition of method `name`?
    *  (which is a method of MiniPhase)
    */
   private def defines(phase: MiniPhase, name: String) = {
-    def hasRedefinedMethod(cls: Class[_]): Boolean =
+    def hasRedefinedMethod(cls: Class[?]): Boolean =
       if (cls.eq(classOf[MiniPhase])) false
       else {
         var clsMethods = clsMethodsCache.get(cls)

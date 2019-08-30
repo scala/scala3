@@ -1133,7 +1133,7 @@ trait Implicits { self: Typer =>
   def missingArgMsg(arg: Tree, pt: Type, where: String)(implicit ctx: Context): String = {
 
     def msg(shortForm: String)(headline: String = shortForm) = arg match {
-      case arg: Trees.SearchFailureIdent[_] =>
+      case arg: Trees.SearchFailureIdent[?] =>
         shortForm
       case _ =>
         arg.tpe match {

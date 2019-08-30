@@ -464,7 +464,7 @@ trait Applications extends Compatibility {
         case mr => mr.tpe.normalizedPrefix match {
           case mr: TermRef => ref(mr)
           case mr =>
-            if (this.isInstanceOf[TestApplication[_]])
+            if (this.isInstanceOf[TestApplication[?]])
               // In this case it is safe to skolemize now; we will produce a stable prefix for the actual call.
               ref(mr.narrow)
             else
@@ -729,7 +729,7 @@ trait Applications extends Compatibility {
     /** The index of the first difference between lists of trees `xs` and `ys`
      *  -1 if there are no differences.
      */
-    private def firstDiff[T <: Trees.Tree[_]](xs: List[T], ys: List[T], n: Int = 0): Int = xs match {
+    private def firstDiff[T <: Trees.Tree[?]](xs: List[T], ys: List[T], n: Int = 0): Int = xs match {
       case x :: xs1 =>
         ys match {
           case y :: ys1 => if (x ne y) n else firstDiff(xs1, ys1, n + 1)
@@ -741,7 +741,7 @@ trait Applications extends Compatibility {
           case nil => -1
         }
     }
-    private def sameSeq[T <: Trees.Tree[_]](xs: List[T], ys: List[T]): Boolean = firstDiff(xs, ys) < 0
+    private def sameSeq[T <: Trees.Tree[?]](xs: List[T], ys: List[T]): Boolean = firstDiff(xs, ys) < 0
 
     val result:   Tree = {
       var typedArgs = typedArgBuf.toList

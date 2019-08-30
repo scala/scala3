@@ -128,7 +128,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
         x.contains(that)
       case m: untpd.Modifiers =>
         m.mods.exists(isParent) || m.annotations.exists(isParent)
-      case xs: List[_] =>
+      case xs: List[?] =>
         xs.exists(isParent)
       case _ =>
         false
@@ -195,7 +195,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
       case m: untpd.Modifiers =>
         m.annotations.foreach(check)
         m.mods.foreach(check)
-      case xs: List[_] =>
+      case xs: List[?] =>
         xs.foreach(check)
       case _ =>
     }

@@ -119,14 +119,14 @@ object Trees {
      *   - errors were reported
      */
     private def checkChildrenTyped(it: Iterator[Any])(implicit ctx: Context): Unit =
-      if (!this.isInstanceOf[Import[_]])
+      if (!this.isInstanceOf[Import[?]])
         while (it.hasNext)
           it.next() match {
-            case x: Ident[_] => // untyped idents are used in a number of places in typed trees
-            case x: Tree[_] =>
+            case x: Ident[?] => // untyped idents are used in a number of places in typed trees
+            case x: Tree[?] =>
               assert(x.hasType || ctx.reporter.errorsReported,
                      s"$this has untyped child $x")
-            case xs: List[_] => checkChildrenTyped(xs.iterator)
+            case xs: List[?] => checkChildrenTyped(xs.iterator)
             case _ =>
           }
 
@@ -188,8 +188,8 @@ object Trees {
     def treeSize: Int = {
       var s = 1
       def addSize(elem: Any): Unit = elem match {
-        case t: Tree[_] => s += t.treeSize
-        case ts: List[_] => ts foreach addSize
+        case t: Tree[?] => s += t.treeSize
+        case ts: List[?] => ts foreach addSize
         case _ =>
       }
       productIterator foreach addSize
@@ -203,18 +203,18 @@ object Trees {
 
     override def toText(printer: Printer): Text = printer.toText(this)
 
-    def sameTree(that: Tree[_]): Boolean = {
+    def sameTree(that: Tree[?]): Boolean = {
       def isSame(x: Any, y: Any): Boolean =
         x.asInstanceOf[AnyRef].eq(y.asInstanceOf[AnyRef]) || {
           x match {
-            case x: Tree[_] =>
+            case x: Tree[?] =>
               y match {
-                case y: Tree[_] => x.sameTree(y)
+                case y: Tree[?] => x.sameTree(y)
                 case _ => false
               }
-            case x: List[_] =>
+            case x: List[?] =>
               y match {
-                case y: List[_] => x.corresponds(y)(isSame)
+                case y: List[?] => x.corresponds(y)(isSame)
                 case _ => false
               }
             case _ =>
@@ -771,7 +771,7 @@ object Trees {
     type ThisTree[-T >: Untyped] = TypeDef[T]
 
     /** Is this a definition of a class? */
-    def isClassDef: Boolean = rhs.isInstanceOf[Template[_]]
+    def isClassDef: Boolean = rhs.isInstanceOf[Template[?]]
 
     def isBackquoted: Boolean = hasAttachment(Backquoted)
   }

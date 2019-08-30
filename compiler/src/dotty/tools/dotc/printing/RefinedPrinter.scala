@@ -37,7 +37,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override protected[this] implicit def ctx: Context = myCtx
 
-  def withEnclosingDef(enclDef: Tree[_ >: Untyped])(op: => Text): Text = {
+  def withEnclosingDef(enclDef: Tree[? >: Untyped])(op: => Text): Text = {
     val savedCtx = myCtx
     if (enclDef.hasType && enclDef.symbol.exists)
       myCtx = ctx.withOwner(enclDef.symbol)

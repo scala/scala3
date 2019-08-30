@@ -10,7 +10,7 @@ import java.util.jar.Attributes.{ Name => AttributeName }
 /** Loads `library.properties` from the jar. */
 object Properties extends PropertiesTrait {
   protected def propCategory: String = "compiler"
-  protected def pickJarBasedOn: Class[Option[_]] = classOf[Option[_]]
+  protected def pickJarBasedOn: Class[Option[?]] = classOf[Option[?]]
 
   /** Scala manifest attributes.
    */
@@ -19,7 +19,7 @@ object Properties extends PropertiesTrait {
 
 trait PropertiesTrait {
   protected def propCategory: String      // specializes the remainder of the values
-  protected def pickJarBasedOn: Class[_]  // props file comes from jar containing this
+  protected def pickJarBasedOn: Class[?]  // props file comes from jar containing this
 
   /** The name of the properties file */
   protected val propFilename: String = "/" + propCategory + ".properties"

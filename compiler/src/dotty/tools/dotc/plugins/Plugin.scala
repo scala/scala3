@@ -77,7 +77,7 @@ object Plugin {
     new java.net.URLClassLoader(urls.toArray, compilerLoader)
   }
 
-  type AnyClass = Class[_]
+  type AnyClass = Class[?]
 
   /** Use a class loader to load the plugin class.
    */

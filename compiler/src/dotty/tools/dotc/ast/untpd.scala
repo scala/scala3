@@ -241,7 +241,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def hasFlags: Boolean = flags != EmptyFlags
     def hasAnnotations: Boolean = annotations.nonEmpty
     def hasPrivateWithin: Boolean = privateWithin != tpnme.EMPTY
-    def hasMod(cls: Class[_]) = mods.exists(_.getClass == cls)
+    def hasMod(cls: Class[?]) = mods.exists(_.getClass == cls)
 
     private def isEnum = is(Enum, butNot = JavaDefined)
 

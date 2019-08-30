@@ -1285,7 +1285,7 @@ class Typer extends Namer
       val elemtptType =
         if (isFullyDefined(elemProto, ForceDegree.none))
           elemProto
-        else if (tree.elems.isEmpty && tree.isInstanceOf[Trees.JavaSeqLiteral[_]])
+        else if (tree.elems.isEmpty && tree.isInstanceOf[Trees.JavaSeqLiteral[?]])
           defn.ObjectType // generic empty Java varargs are of type Object[]
         else
           ctx.typeComparer.lub(elems1.tpes)
@@ -1386,8 +1386,8 @@ class Typer extends Namer
                  tpt1.tpe.typeParamSymbols.nonEmpty &&
                  !ctx.mode.is(Mode.Pattern) =>
                 // An unbounded `_` automatically adapts to type parameter bounds. This means:
-                // If we have wildcard application C[_], where `C` is a class replace
-                // with C[_ >: L <: H] where `L` and `H` are the bounds of the corresponding
+                // If we have wildcard application C[?], where `C` is a class replace
+                // with C[? >: L <: H] where `L` and `H` are the bounds of the corresponding
                 // type parameter in `C`.
                 // The transform does not apply for patterns, where empty bounds translate to
                 // wildcard identifiers `_` instead.
@@ -3001,7 +3001,7 @@ class Typer extends Namer
     }
 
     tree match {
-      case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[_] | _: Closure => tree
+      case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[?] | _: Closure => tree
       case _ => tree.tpe.widen match {
         case tp: FlexType =>
           ensureReported(tp)
