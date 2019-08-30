@@ -49,6 +49,7 @@ function main {
 
   # Create branch 0.18.x from master, set baseVersion to 0.18.1-RC1 and git tag it as 0.18.1-RC1
   git checkout master
+  git pull
   git checkout -b "$rc_branch"
   release "$rc_version"
 
