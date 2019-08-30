@@ -564,8 +564,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ => "(" ~ Text(args map argToText, ", ") ~ ")"
         }
         changePrec(GlobalPrec) {
-		  (keywordText("given ") provided contextual) ~
-		  (keywordText("erased ") provided isErased) ~
+          (keywordText("given ") provided contextual) ~
+          (keywordText("erased ") provided isErased) ~
           argsText ~ " => " ~ toText(body)
         }
       case PolyFunction(targs, body) =>
@@ -711,14 +711,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def optAscription[T >: Untyped](tpt: Tree[T]): Text = optText(tpt)(": " ~ _)
 
-  private def idText(tree: untpd.Tree): Text = {
+  private def idText(tree: untpd.Tree): Text =
     if ((ctx.settings.uniqid.value || Printer.debugPrintUnique) && tree.hasType && tree.symbol.exists) s"#${tree.symbol.id}" else ""
-  }
 
   private def useSymbol(tree: untpd.Tree) =
     tree.hasType && tree.symbol.exists && ctx.settings.YprintSyms.value
 
-  protected def nameIdText[T >: Untyped](tree: NameTree[T]): Text = {
+  protected def nameIdText[T >: Untyped](tree: NameTree[T]): Text =
     if (tree.hasType && tree.symbol.exists) {
       val str: Text = nameString(tree.symbol)
       tree match {
@@ -728,7 +727,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       }
     }
     else toText(tree.name) ~ idText(tree)
-  }
 
   private def toTextOwner(tree: Tree[_]) =
     "[owner = " ~ tree.symbol.maybeOwner.show ~ "]" provided ctx.settings.YprintDebugOwners.value
@@ -801,7 +799,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         case _ => false
       }
       params ::: rest
-    } else impl.body
+    }
+    else impl.body
 
     val bodyText = " {" ~~ selfText ~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
 
@@ -936,11 +935,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def plain: PlainPrinter = new PlainPrinter(_ctx)
 
-  private def withPos(txt: Text, pos: SourcePosition): Text = {
+  private def withPos(txt: Text, pos: SourcePosition): Text =
     if (!printLines || !pos.exists) txt
     else txt match {
       case Str(s, _) => Str(s, LineRange(pos.line, pos.endLine))
       case _ => txt
     }
-  }
 }

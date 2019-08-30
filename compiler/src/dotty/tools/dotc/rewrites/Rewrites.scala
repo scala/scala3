@@ -17,7 +17,7 @@ object Rewrites {
   }
 
   private class Patches(source: SourceFile) {
-    private val pbuf = new mutable.ListBuffer[Patch]()
+    private[Rewrites] val pbuf = new mutable.ListBuffer[Patch]()
 
     def addPatch(span: Span, replacement: String): Unit =
       pbuf += Patch(span, replacement)
@@ -27,7 +27,7 @@ object Rewrites {
       val patches = pbuf.toList.sortBy(_.span.start)
       if (patches.nonEmpty)
         patches reduceLeft {(p1, p2) =>
-          assert(p1.span.end <= p2.span.start, s"overlapping patches: $p1 and $p2")
+          assert(p1.span.end <= p2.span.start, s"overlapping patches in $source: $p1 and $p2")
           p2
         }
       val ds = new Array[Char](cs.length + delta)
@@ -73,6 +73,12 @@ object Rewrites {
   /** Patch position in `ctx.compilationUnit.source`. */
   def patch(span: Span, replacement: String)(implicit ctx: Context): Unit =
     patch(ctx.compilationUnit.source, span, replacement)
+
+  /** Does `span` overlap with a patch region of `source`? */
+  def overlapsPatch(source: SourceFile, span: Span) given (ctx: Context): Boolean =
+    ctx.settings.rewrite.value.exists(rewrites =>
+      rewrites.patched.get(source).exists(patches =>
+        patches.pbuf.exists(patch => patch.span.overlaps(span))))
 
   /** If -rewrite is set, apply all patches and overwrite patched source files.
    */

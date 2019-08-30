@@ -27,7 +27,7 @@ object Macros {
     def foreach(f: Int => Expr[Unit]) given QuoteContext: Expr[Unit] = {
       @tailrec def loop(i: Int, acc: Expr[Unit]): Expr[Unit] =
         if (i >= 0) loop(i - 1, '{ ${f(i)}; $acc })
-      else acc
+        else acc
       loop(end - 1, '{})
     }
   }

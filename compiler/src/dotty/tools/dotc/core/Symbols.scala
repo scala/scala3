@@ -802,7 +802,7 @@ object Symbols {
               }
             sourceFromTopLevel(ctx.withPhaseNoLater(ctx.flattenPhase))
           }
-        }//.reporting(i"source of $this # $id in ${denot.owner} = $result")
+        }
       mySource
     }
 

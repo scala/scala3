@@ -52,7 +52,7 @@ private class QuoteCompiler extends Compiler {
 
     def phaseName: String = "quotedFrontend"
 
-    override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+    override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
       units.flatMap {
         case exprUnit: ExprCompilationUnit =>
           val pos = Span(0)
@@ -81,7 +81,6 @@ private class QuoteCompiler extends Compiler {
               Some(CompilationUnit(source, tree, forceTrees = true))
           }
       }
-    }
 
     /** Get the literal value if this tree only contains a literal tree */
     @tailrec private def getLiteral(tree: Tree): Option[Any] = tree match {

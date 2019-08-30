@@ -94,14 +94,13 @@ class VarianceChecker()(implicit ctx: Context) {
      *  The search proceeds from `base` to the owner of `tvar`.
      *  Initially the state is covariant, but it might change along the search.
      */
-    def relativeVariance(tvar: Symbol, base: Symbol, v: Variance = Covariant): Variance = /*trace(i"relative variance of $tvar wrt $base, so far: $v")*/ {
+    def relativeVariance(tvar: Symbol, base: Symbol, v: Variance = Covariant): Variance = /*trace(i"relative variance of $tvar wrt $base, so far: $v")*/
       if (base == tvar.owner) v
       else if (base.is(Param) && base.owner.isTerm)
         relativeVariance(tvar, paramOuter(base.owner), flip(v))
       else if (ignoreVarianceIn(base.owner)) Bivariant
       else if (base.isAliasType) relativeVariance(tvar, base.owner, Invariant)
       else relativeVariance(tvar, base.owner, v)
-    }
 
     /** The next level to take into account when determining the
      *  relative variance with a method parameter as base. The method
@@ -175,7 +174,7 @@ class VarianceChecker()(implicit ctx: Context) {
       case Some(VarianceError(tvar, required)) =>
         def msg = i"${varianceString(tvar.flags)} $tvar occurs in ${varianceString(required)} position in type ${sym.info} of $sym"
         if (ctx.scala2Mode &&
-            (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAllOf(ProtectedLocal)))) {
+            (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAllOf(ProtectedLocal))))
           ctx.migrationWarning(
             s"According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance:\n$msg",
             pos)
@@ -183,7 +182,6 @@ class VarianceChecker()(implicit ctx: Context) {
             // Patch is disabled until two TODOs are solved:
             // TODO use an import or shorten if possible
             // TODO need to use a `:' if annotation is on term
-        }
         else ctx.error(msg, pos)
       case None =>
     }

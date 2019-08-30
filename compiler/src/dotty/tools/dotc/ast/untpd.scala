@@ -208,7 +208,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     /** Modifiers with given list of Mods. It is checked that
      *  all modifiers are already accounted for in `flags` and `privateWithin`.
      */
-    def withMods(ms: List[Mod]): Modifiers = {
+    def withMods(ms: List[Mod]): Modifiers =
       if (mods eq ms) this
       else {
         if (ms.nonEmpty)
@@ -218,7 +218,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
                    s"unaccounted modifier: $m in $this when adding $ms")
         copy(mods = ms)
       }
-    }
 
     def withAddedAnnotation(annot: Tree): Modifiers =
       if (annotations.exists(_ eq annot)) this

@@ -35,7 +35,7 @@ class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
     else if (const.tag == Constants.StringTag) Str(s"${qSc}${const.value}$qSc")
     else Str(const.value.toString)
 
-  override def dclText(sym: Symbol): Text = if (debugPrint) super.dclText(sym) else {
+  override def dclText(sym: Symbol): Text = if (debugPrint) super.dclText(sym) else
     ("lazy": Text).provided(sym.is(Lazy)) ~~
     toText(sym) ~ {
       if (sym.is(Method)) toText(sym.info)
@@ -43,7 +43,6 @@ class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
       else if (sym.isType || sym.isClass) ""
       else ":" ~~ toText(sym.info)
     }
-  }
 
   override def toTextSingleton(tp: SingletonType): Text =
     if (debugPrint)

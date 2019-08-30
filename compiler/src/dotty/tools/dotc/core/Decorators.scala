@@ -55,10 +55,10 @@ object Decorators {
     final def mapconserve[U](f: T => U): List[U] = {
       @tailrec
       def loop(mapped: ListBuffer[U], unchanged: List[U], pending: List[T]): List[U] =
-        if (pending.isEmpty) {
+        if (pending.isEmpty)
           if (mapped eq null) unchanged
           else mapped.prependToList(unchanged)
-        } else {
+        else {
           val head0 = pending.head
           val head1 = f(head0)
 
@@ -93,7 +93,8 @@ object Decorators {
               if (ys1 eq xs1) xs else x :: ys1
             else
               ys1
-          } else xs filter p
+          }
+          else xs filter p
       }
       loop(xs, 0)
     }

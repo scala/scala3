@@ -32,7 +32,8 @@ object ScriptSourceFile {
         val matcher = headerPattern matcher content.mkString
         if (matcher.find) matcher.end
         else throw new IOException("script file does not close its header with !# or ::!#")
-      } else 0
+      }
+      else 0
     new SourceFile(file, content drop headerLength) {
       override val underlying = new SourceFile(file, content)
     }

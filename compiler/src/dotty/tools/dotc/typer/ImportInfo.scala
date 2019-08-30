@@ -137,7 +137,8 @@ class ImportInfo(symf: given Context => Symbol, val selectors: List[untpd.Tree],
       for {
         renamed <- reverseMapping.keys
         denot <- pre.member(reverseMapping(renamed)).altsWith(_.isOneOf(implicitFlags))
-      } yield {
+      }
+      yield {
         val original = reverseMapping(renamed)
         val ref = TermRef(pre, original, denot)
         if (renamed == original) ref

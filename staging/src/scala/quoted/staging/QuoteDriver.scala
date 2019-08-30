@@ -76,5 +76,5 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver {
       case _ => classpath0
     }
   }
-
 }
+

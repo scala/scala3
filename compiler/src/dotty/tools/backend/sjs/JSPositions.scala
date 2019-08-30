@@ -66,7 +66,8 @@ class JSPositions()(implicit ctx: Context) {
             case ScalaJSOptions.URIMap(from, to) if matches(from) =>
               val relURI = from.relativize(srcURI)
               to.fold(relURI)(_.resolve(relURI))
-          } getOrElse*/ srcURI
+          } getOrElse*/
+          srcURI
       }
     }
   }

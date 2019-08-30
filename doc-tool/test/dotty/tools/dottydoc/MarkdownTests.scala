@@ -69,7 +69,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
         .get
         .trim
 
-        assertEquals("""<p><a href="http://www.google.com">out</a></p>""", traitCmt)
+      assertEquals("""<p><a href="http://www.google.com">out</a></p>""", traitCmt)
     }
   }
 
@@ -92,7 +92,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
         .get
         .trim
 
-        assertEquals("""<p><a href="./None.html">None</a></p>""", traitCmt)
+      assertEquals("""<p><a href="./None.html">None</a></p>""", traitCmt)
     }
   }
 
@@ -115,7 +115,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
         .get
         .trim
 
-        assertEquals("""<p><a href="../scala/None.html">None</a></p>""", traitCmt)
+      assertEquals("""<p><a href="../scala/None.html">None</a></p>""", traitCmt)
     }
   }
 
@@ -141,12 +141,12 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
         .get
         .trim
 
-        assertEquals(
-          """|<ul>
-             |<li>Item1</li>
-             |<li>Item2</li>
-             |<li>Item3</li>
-             |</ul>""".stripMargin, traitCmt)
+      assertEquals(
+        """|<ul>
+            |<li>Item1</li>
+            |<li>Item2</li>
+            |<li>Item3</li>
+            |</ul>""".stripMargin, traitCmt)
     }
   }
 
@@ -174,17 +174,17 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
         .get
         .trim
 
-        assertEquals(
-          """|<ul>
-             |<li>Item1
-             |<ul>
-             |<li>Item1a</li>
-             |<li>Item1b</li>
-             |</ul>
-             |</li>
-             |<li>Item2</li>
-             |<li>Item3</li>
-             |</ul>""".stripMargin, traitCmt)
+      assertEquals(
+        """|<ul>
+            |<li>Item1
+            |<ul>
+            |<li>Item1a</li>
+            |<li>Item1b</li>
+            |</ul>
+            |</li>
+            |<li>Item2</li>
+            |<li>Item3</li>
+            |</ul>""".stripMargin, traitCmt)
     }
   }
 
@@ -210,9 +210,9 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
         .get
         .trim
 
-        assertEquals(
-          """|<pre><code class="language-scala">val x = 1 + 5
-             |</code></pre>""".stripMargin, traitCmt)
+      assertEquals(
+        """|<pre><code class="language-scala">val x = 1 + 5
+            |</code></pre>""".stripMargin, traitCmt)
     }
   }
 
@@ -241,9 +241,9 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
         .get
         .trim
 
-        assertEquals(
-          """|<pre><code class="language-scala">val x = 1 + 5
-             |</code></pre>""".stripMargin, traitCmt)
+      assertEquals(
+        """|<pre><code class="language-scala">val x = 1 + 5
+            |</code></pre>""".stripMargin, traitCmt)
     }
   }
 

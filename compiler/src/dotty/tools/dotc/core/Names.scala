@@ -377,9 +377,8 @@ object Names {
     override def replace(from: Char, to: Char): SimpleName = {
       val cs = new Array[Char](length)
       System.arraycopy(chrs, start, cs, 0, length)
-      for (i <- 0 until length) {
+      for (i <- 0 until length)
         if (cs(i) == from) cs(i) = to
-      }
       termName(cs, 0, length)
     }
 
@@ -681,12 +680,11 @@ object Names {
       val until = x.length min y.length
       var i = 0
       while (i < until && x(i) == y(i)) i = i + 1
-      if (i < until) {
+      if (i < until)
         if (x(i) < y(i)) -1
         else /*(x(i) > y(i))*/ 1
-      } else {
+      else
         x.length - y.length
-      }
     }
     private def compareTermNames(x: TermName, y: TermName): Int = x match {
       case x: SimpleName =>
@@ -702,11 +700,10 @@ object Names {
           case _ => 1
         }
     }
-    def compare(x: Name, y: Name): Int = {
+    def compare(x: Name, y: Name): Int =
       if (x.isTermName && y.isTypeName) 1
       else if (x.isTypeName && y.isTermName) -1
       else if (x eq y) 0
       else compareTermNames(x.toTermName, y.toTermName)
-    }
   }
 }

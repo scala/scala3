@@ -27,7 +27,8 @@ import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
 /** Type quotes `'{ ... }` and splices `${ ... }` */
-trait QuotesAndSplices { self: Typer =>
+trait QuotesAndSplices {
+  self: Typer =>
 
   import tpd._
 
@@ -61,18 +62,18 @@ trait QuotesAndSplices { self: Typer =>
         ctx.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.sourcePos)
       case _ =>
     }
-    if (ctx.mode.is(Mode.QuotedPattern) && level == 1) {
+    if (ctx.mode.is(Mode.QuotedPattern) && level == 1)
       if (isFullyDefined(pt, ForceDegree.all)) {
         def spliceOwner(ctx: Context): Symbol =
           if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
         val pat = typedPattern(tree.expr, defn.QuotedExprClass.typeRef.appliedTo(pt))(
           spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
         Splice(pat)
-      } else {
+      }
+      else {
         ctx.error(i"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.sourcePos)
         tree.withType(UnspecifiedErrorType)
       }
-    }
     else {
       if (StagingContext.level == 0) {
         // Mark the first inline method from the context as a macro
@@ -96,11 +97,12 @@ trait QuotesAndSplices { self: Typer =>
         ctx.warning("Canceled quote directly inside a splice. ${ '[ XYZ ] } is equivalent to XYZ.", tree.sourcePos)
       case _ =>
     }
-    if (ctx.mode.is(Mode.QuotedPattern) && level == 1) {
+    if (ctx.mode.is(Mode.QuotedPattern) && level == 1)
       if (isFullyDefined(pt, ForceDegree.all)) {
         ctx.error(i"Spliced type pattern must not be fully defined. Consider using $pt directly", tree.expr.sourcePos)
         tree.withType(UnspecifiedErrorType)
-      } else {
+      }
+      else {
         def spliceOwner(ctx: Context): Symbol =
           if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
         val name = tree.expr match {
@@ -115,12 +117,11 @@ trait QuotesAndSplices { self: Typer =>
             spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
         pat.select(tpnme.splice)
       }
-    } else {
+    else
       typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(spliceContext).withSpan(tree.span)
-    }
   }
 
-  private def checkSpliceOutsideQuote(tree: untpd.Tree)(implicit ctx: Context): Unit = {
+  private def checkSpliceOutsideQuote(tree: untpd.Tree)(implicit ctx: Context): Unit =
     if (level == 0 && !ctx.owner.ownersIterator.exists(_.is(Inline)))
       ctx.error("Splice ${...} outside quotes '{...} or inline method", tree.sourcePos)
     else if (level < 0)
@@ -130,7 +131,6 @@ trait QuotesAndSplices { self: Typer =>
           |Inline method may contain a splice at level 0 but the contents of this splice cannot have a splice.
           |""".stripMargin, tree.sourcePos
       )
-  }
 
   /** Split a typed quoted pattern is split into its type bindings, pattern expression and inner patterns.
    *  Type definitions with `@patternBindHole` will be inserted in the pattern expression for each type binding.
@@ -228,7 +228,7 @@ trait QuotesAndSplices { self: Typer =>
       freshTypeBindings,
       shape0
     )
-    val shape2 = {
+    val shape2 =
       if (freshTypeBindings.isEmpty) shape1
       else {
         val isFreshTypeBindings = freshTypeBindings.map(_.symbol).toSet
@@ -243,7 +243,6 @@ trait QuotesAndSplices { self: Typer =>
         }
         new TreeTypeMap(typeMap = typeMap).transform(shape1)
       }
-    }
 
     (typeBindings.toMap, shape2, patterns)
   }
@@ -324,7 +323,7 @@ trait QuotesAndSplices { self: Typer =>
 
     val replaceBindingsInTree = new TreeMap {
       private[this] var bindMap = Map.empty[Symbol, Symbol]
-      override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
+      override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree =
         tree match {
           case tree: Bind =>
             val sym = tree.symbol
@@ -335,7 +334,6 @@ trait QuotesAndSplices { self: Typer =>
           case _ =>
             super.transform(tree).withType(replaceBindingsInType(tree.tpe))
         }
-      }
       private[this] val replaceBindingsInType = new ReplaceBindings {
         override def apply(tp: Type): Type = tp match {
           case tp: TermRef => bindMap.get(tp.termSymbol).fold[Type](tp)(_.typeRef)
@@ -355,5 +353,5 @@ trait QuotesAndSplices { self: Typer =>
       patterns = splicePat :: Nil,
       proto = defn.QuotedExprClass.typeRef.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))
   }
-
 }
+

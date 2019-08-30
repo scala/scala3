@@ -91,7 +91,7 @@ object Test extends App {
   }
 
   def unreachableSwitch: Int = {
-  	return 42
+    return 42
     val x = nextInt() % 2
     x match {
       case 0 => return 0

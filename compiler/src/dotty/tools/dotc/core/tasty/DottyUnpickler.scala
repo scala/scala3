@@ -51,9 +51,8 @@ class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLe
   def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit =
     treeUnpickler.enter(roots)
 
-  protected def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler], commentUnpicklerOpt: Option[CommentUnpickler]): TreeSectionUnpickler = {
+  protected def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler], commentUnpicklerOpt: Option[CommentUnpickler]): TreeSectionUnpickler =
     new TreeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)
-  }
 
   protected def computeRootTrees(implicit ctx: Context): List[Tree] = treeUnpickler.unpickle(mode)
 

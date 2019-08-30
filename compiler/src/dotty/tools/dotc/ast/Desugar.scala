@@ -308,12 +308,12 @@ object desugar {
    *    case '{ @patternBindHole def `$a`(...) = ...; ... `$a`() ... } => a
    *  ```
    */
-  def transformQuotedPatternName(tree: ValOrDefDef)(implicit ctx: Context): ValOrDefDef = {
+  def transformQuotedPatternName(tree: ValOrDefDef)(implicit ctx: Context): ValOrDefDef =
     if (ctx.mode.is(Mode.QuotedPattern) && !isBackquoted(tree) && tree.name != nme.ANON_FUN && tree.name.startsWith("$")) {
       val mods = tree.mods.withAddedAnnotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.span))
       tree.withMods(mods)
-    } else tree
-  }
+    }
+    else tree
 
   /** Add an explicit ascription to the `expectedTpt` to every tail splice.
    *
@@ -926,7 +926,8 @@ object desugar {
       val patternBindHoleAnnot = New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.span)
       val mods = tree.mods.withAddedAnnotation(patternBindHoleAnnot)
       tree.withMods(mods)
-    } else tree
+    }
+    else tree
   }
 
   /** The normalized name of `mdef`. This means
@@ -953,7 +954,8 @@ object desugar {
         impl.body.find {
           case dd: DefDef if dd.mods.is(Extension) => true
           case _ => false
-        } match {
+        }
+        match {
           case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
             s"${name}_of_${inventTypeName(vparam.tpt)}"
           case _ =>
@@ -1007,7 +1009,7 @@ object desugar {
         case id: Ident =>
           expandSimpleEnumCase(id.name.asTermName, mods,
             Span(id.span.start, id.span.end, id.span.start))
-    }
+      }
     else {
       val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
       pats1 map (makePatDef(pdef, mods, _, rhs))
@@ -1068,7 +1070,7 @@ object desugar {
         if (tupleOptimizable) // include `_`
           pat match {
             case Tuple(pats) =>
-            pats.map { case id: Ident => id -> TypeTree() }
+              pats.map { case id: Ident => id -> TypeTree() }
           }
         else getVariables(pat)  // no `_`
 
@@ -1127,11 +1129,12 @@ object desugar {
     case tree: MemberDef =>
       var tested: MemberDef = tree
       def fail(msg: String) = ctx.error(msg, tree.sourcePos)
-      def checkApplicable(flag: Flag, test: MemberDefTest): Unit =
+      def checkApplicable(flag: Flag, test: MemberDefTest): Unit = {
         if (tested.mods.is(flag) && !test.applyOrElse(tree, (md: MemberDef) => false)) {
           fail(i"modifier `${flag.flagsString}` is not allowed for this definition")
           tested = tested.withMods(tested.mods.withoutFlags(flag))
         }
+      }
       checkApplicable(Opaque, legalOpaque)
       tested
     case _ =>
@@ -1296,7 +1299,7 @@ object desugar {
       if (isGenericTuple) Apply(Select(refOfDef(param), nme.apply), Literal(Constant(n)))
       else Select(refOfDef(param), nme.selectorName(n))
     val vdefs =
-      params.zipWithIndex.map{
+      params.zipWithIndex.map {
         case (param, idx) =>
           DefDef(param.name, Nil, Nil, TypeTree(), selector(idx)).withSpan(param.span)
       }
@@ -1338,7 +1341,7 @@ object desugar {
       .withSpan(original.span.withPoint(named.span.start))
     val mayNeedSetter = valDef(vdef)
     mayNeedSetter
-   }
+  }
 
   private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit src: SourceFile) =
     DefDef(named.name.asTermName, Nil, Nil, tpt, rhs)
@@ -1551,7 +1554,8 @@ object desugar {
           RefinedTypeTree(polyFunctionTpt, List(
             DefDef(nme.apply, applyTParams, List(applyVParams), res, EmptyTree)
           ))
-        } else {
+        }
+        else {
           // Desugar [T_1, ..., T_M] -> (x_1: P_1, ..., x_N: P_N) => body
           // Into    new scala.PolyFunction { def apply[T_1, ..., T_M](x_1: P_1, ..., x_N: P_N) = body }
 
@@ -1606,7 +1610,8 @@ object desugar {
           Annotated(
             AppliedTypeTree(ref(seqType), t),
             New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
-        } else {
+        }
+        else {
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)
         }

@@ -19,12 +19,13 @@ implicit object FooAssoc extends Assoc[Foo] {
   def foo(t: Foo): Int = t.i
 }
 
-inline def link[T] = delegate match {
-  case _: Link[T, s] =>
-    delegate match {
-      case stuff: s => stuff
-    }
-}
+inline def link[T] <: Any =
+  delegate match {
+    case _: Link[T, s] =>
+      delegate match {
+        case stuff: s => stuff
+      }
+  }
 
 object Test {
   println(s"Test")

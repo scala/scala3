@@ -315,7 +315,7 @@ object PatternMatcher {
           matchArgsPlan(caseAccessors.map(ref(scrutinee).select(_)), args, onSuccess)
         else if (unapp.tpe.widenSingleton.isRef(defn.BooleanClass))
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
-        else {
+        else
           letAbstract(unapp) { unappResult =>
             val isUnapplySeq = unapp.symbol.name == nme.unapplySeq
             if (isProductMatch(unapp.tpe.widen, args.length) && !isUnapplySeq) {
@@ -348,7 +348,6 @@ object PatternMatcher {
               TestPlan(NonEmptyTest, unappResult, unapp.span, argsPlan)
             }
           }
-        }
       }
 
       // begin patternPlan
@@ -365,11 +364,11 @@ object PatternMatcher {
               patternPlan(casted, pat, onSuccess)
             })
         case UnApply(extractor, implicits, args) =>
-          val unappPlan = if (defn.isBottomType(scrutinee.info)) {
+          val unappPlan = if (defn.isBottomType(scrutinee.info))
             // Generate a throwaway but type-correct plan.
             // This plan will never execute because it'll be guarded by a `NonNullTest`.
             ResultPlan(tpd.Throw(tpd.nullLiteral))
-          } else {
+          else {
             val mt @ MethodType(_) = extractor.tpe.widen
             var unapp = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))
             if (implicits.nonEmpty) unapp = unapp.appliedToArgs(implicits)
@@ -412,14 +411,13 @@ object PatternMatcher {
       patternPlan(scrutinee, cdef.pat, onSuccess)
     }
 
-    private def matchPlan(tree: Match): Plan = {
+    private def matchPlan(tree: Match): Plan =
       letAbstract(tree.selector) { scrutinee =>
         val matchError: Plan = ResultPlan(Throw(New(defn.MatchErrorClass.typeRef, ref(scrutinee) :: Nil)))
         tree.cases.foldRight(matchError) { (cdef, next) =>
           SeqPlan(caseDefPlan(scrutinee, cdef), next)
         }
       }
-    }
 
     // ----- Optimizing plans ---------------
 
@@ -639,20 +637,18 @@ object PatternMatcher {
               super.transform(tree)
           }
         }
-        override def apply(plan: LetPlan): Plan = {
+        override def apply(plan: LetPlan): Plan =
           if (toDrop(plan.sym)) apply(plan.body)
           else {
             initializer(plan.sym) = apply(initializer(plan.sym))
             plan.body = apply(plan.body)
             plan
           }
-        }
         override def apply(plan: SeqPlan): Plan = {
           val newHead = apply(plan.head)
-          if (!canFallThrough(newHead)) {
+          if (!canFallThrough(newHead))
             // If the head cannot fall through, the tail is dead code
             newHead
-          }
           else {
             plan.head = newHead
             plan.tail = apply(plan.tail)
@@ -696,7 +692,7 @@ object PatternMatcher {
           val expectedTp = tpt.tpe
 
           // An outer test is needed in a situation like  `case x: y.Inner => ...`
-          def outerTestNeeded: Boolean = {
+          def outerTestNeeded: Boolean =
             // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
             // generates an outer test based on `patType.prefix` with automatically dealises.
             expectedTp.dealias match {
@@ -706,7 +702,6 @@ object PatternMatcher {
               case _ =>
                 false
             }
-          }
 
           def outerTest: Tree = thisPhase.transformFollowingDeep {
             val expectedOuter = singleton(expectedTp.normalizedPrefix)
@@ -760,7 +755,7 @@ object PatternMatcher {
 
       // An extractor to recover the shape of plans that can become alternatives
       object AlternativesPlan {
-        def unapply(plan: LabeledPlan): Option[(List[Tree], Plan)] = {
+        def unapply(plan: LabeledPlan): Option[(List[Tree], Plan)] =
           plan.expr match {
             case SeqPlan(LabeledPlan(innerLabel, innerPlan), ons) if !canFallThrough(ons) =>
               val outerLabel = plan.sym
@@ -783,7 +778,6 @@ object PatternMatcher {
             case _ =>
               None
           }
-        }
       }
 
       def recur(plan: Plan): List[(List[Tree], Plan)] = plan match {
@@ -800,7 +794,7 @@ object PatternMatcher {
       else Nil
     }
 
-    private def hasEnoughSwitchCases(cases: List[(List[Tree], Plan)], required: Int): Boolean = {
+    private def hasEnoughSwitchCases(cases: List[(List[Tree], Plan)], required: Int): Boolean =
       // 1 because of the default case
       required <= 1 || {
         cases match {
@@ -808,7 +802,6 @@ object PatternMatcher {
           case _ => false
         }
       }
-    }
 
     /** Emit cases of a switch */
     private def emitSwitchCases(cases: List[(List[Tree], Plan)]): List[CaseDef] = (cases: @unchecked) match {
@@ -910,7 +903,7 @@ object PatternMatcher {
         case TypeTest(tpt, trusted) => i"TypeTest($tpt, trusted=$trusted)"
         case _ => test.toString
       }
-      def showPlan(plan: Plan): Unit =
+      def showPlan(plan: Plan): Unit = {
         if (!seen.contains(plan.id)) {
           seen += plan.id
           sb append s"\n${plan.id}: "
@@ -936,6 +929,7 @@ object PatternMatcher {
               sb.append(tree.show)
           }
         }
+      }
       showPlan(plan)
       sb.toString
     }

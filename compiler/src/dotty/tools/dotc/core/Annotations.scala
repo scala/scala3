@@ -207,18 +207,24 @@ object Annotations {
       sym.hasAnnotation(defn.DeprecatedAnnot)
 
     def deprecationMessage(implicit ctx: Context): Option[String] =
-      for (annot <- sym.getAnnotation(defn.DeprecatedAnnot);
-           arg <- annot.argumentConstant(0))
+      for {
+        annot <- sym.getAnnotation(defn.DeprecatedAnnot)
+        arg <- annot.argumentConstant(0)
+      }
       yield arg.stringValue
 
     def migrationVersion(implicit ctx: Context): Option[Try[ScalaVersion]] =
-      for (annot <- sym.getAnnotation(defn.MigrationAnnot);
-           arg <- annot.argumentConstant(1))
+      for {
+        annot <- sym.getAnnotation(defn.MigrationAnnot)
+        arg <- annot.argumentConstant(1)
+      }
       yield ScalaVersion.parse(arg.stringValue)
 
     def migrationMessage(implicit ctx: Context): Option[Try[ScalaVersion]] =
-      for (annot <- sym.getAnnotation(defn.MigrationAnnot);
-           arg <- annot.argumentConstant(0))
+      for {
+        annot <- sym.getAnnotation(defn.MigrationAnnot)
+        arg <- annot.argumentConstant(0)
+      }
       yield ScalaVersion.parse(arg.stringValue)
   }
 }

@@ -318,6 +318,9 @@ object MarkupParsers {
 
     /** Some try/catch/finally logic used by xLiteral and xLiteralPattern.  */
     @forceInline private def xLiteralCommon(f: () => Tree, ifTruncated: String => Unit): Tree = {
+      assert(parser.in.token == Tokens.XMLSTART)
+      val saved = parser.in.newTokenData
+      saved.copyFrom(parser.in)
       var output: Tree = null.asInstanceOf[Tree]
       try output = f()
       catch {
@@ -328,7 +331,7 @@ object MarkupParsers {
         case _: ArrayIndexOutOfBoundsException =>
           parser.syntaxError("missing end tag in XML literal for <%s>" format debugLastElem, debugLastPos)
       }
-      finally parser.in resume Tokens.XMLSTART
+      finally parser.in.resume(saved)
 
       if (output == null)
         parser.errorTermTree
@@ -395,8 +398,13 @@ object MarkupParsers {
 
     def escapeToScala[A](op: => A, kind: String): A = {
       xEmbeddedBlock = false
-      val res = saving[List[Int], A](parser.in.sepRegions, parser.in.sepRegions = _) {
-        parser.in resume LBRACE
+      val res = saving(parser.in.currentRegion, parser.in.currentRegion = _) {
+        val lbrace = parser.in.newTokenData
+        lbrace.token = LBRACE
+        lbrace.offset = parser.in.charOffset - 1
+        lbrace.lastOffset = parser.in.lastOffset
+        lbrace.lineOffset = parser.in.lineOffset
+        parser.in.resume(lbrace)
         op
       }
       if (parser.in.token != RBRACE)

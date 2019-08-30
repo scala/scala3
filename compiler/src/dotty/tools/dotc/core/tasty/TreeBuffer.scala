@@ -98,16 +98,16 @@ class TreeBuffer extends TastyBuffer(50000) {
       assert(len1 == len2,
           s"adjusting offset #$i: $at, original = $original, len1 = $len1, len2 = $len2")
       len1
-    } else adjusted(original)
+    }
+    else adjusted(original)
   }
 
   /** Adjust all offsets according to previously computed deltas */
-  private def adjustOffsets(): Unit = {
+  private def adjustOffsets(): Unit =
     for (i <- 0 until numOffsets) {
       val corrected = adjustedOffset(i)
       fillAddr(offset(i), corrected)
     }
-  }
 
   /** Adjust deltas to also take account references that will shrink (and thereby
    *  generate additional zeroes that can be skipped) due to previously
@@ -175,11 +175,12 @@ class TreeBuffer extends TastyBuffer(50000) {
     //println(s"offsets: ${offsets.take(numOffsets).deep}")
     //println(s"deltas: ${delta.take(numOffsets).deep}")
     var saved = 0
-    while {
+    while ({
       saved = adjustDeltas()
       pickling.println(s"adjusting deltas, saved = $saved")
       saved > 0 && length / saved < 100
-    } do ()
+    })
+    ()
     adjustOffsets()
     adjustTreeAddrs()
     val wasted = compress()

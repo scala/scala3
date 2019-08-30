@@ -19,7 +19,8 @@ import transform.SymUtils._
 import ErrorReporting.errorTree
 
 /** A typer mixin that implements typeclass derivation functionality */
-trait Deriving { this: Typer =>
+trait Deriving {
+  this: Typer =>
 
   /** A helper class to derive type class instances for one class or object
    *  @param  cls      The class symbol of the class or object with a `derives` clause
@@ -49,14 +50,13 @@ trait Deriving { this: Typer =>
       val instanceName = s"derived$$$clsName".toTermName
       if (ctx.denotNamed(instanceName).exists)
         ctx.error(i"duplicate typeclass derivation for $clsName", pos)
-      else {
+      else
         // If we set the Synthetic flag here widenGiven will widen too far and the
         // derived instance will have too low a priority to be selected over a freshly
         // derived instance at the summoning site.
         synthetics +=
           ctx.newSymbol(ctx.owner, instanceName, Given | Method, info, coord = pos.span)
             .entered
-      }
     }
 
     /** Check derived type tree `derived` for the following well-formedness conditions:
@@ -174,12 +174,14 @@ trait Deriving { this: Typer =>
             }
 
           addInstance(derivedParams, Nil, List(instanceType))
-        } else if (instanceArity == 0 && !clsParams.exists(_.info.isLambdaSub)) {
+        }
+        else if (instanceArity == 0 && !clsParams.exists(_.info.isLambdaSub)) {
           // case (b) ... see description above
           val instanceType = clsType.appliedTo(clsParams.map(_.typeRef))
           val evidenceParamInfos = clsParams.map(param => List(param.typeRef))
           addInstance(clsParams, evidenceParamInfos, List(instanceType))
-        } else
+        }
+        else
           cannotBeUnified
       }
 
@@ -266,8 +268,8 @@ trait Deriving { this: Typer =>
       import tpd._
 
       /** The type class instance definition with symbol `sym` */
-      def typeclassInstance(sym: Symbol)(implicit ctx: Context): List[Type] => (List[List[tpd.Tree]] => tpd.Tree) =
-        (tparamRefs: List[Type]) => (paramRefss: List[List[tpd.Tree]]) => {
+      def typeclassInstance(sym: Symbol)(implicit ctx: Context): List[Type] => (List[List[tpd.Tree]] => tpd.Tree) = {
+        (tparamRefs: List[Type]) => (paramRefss: List[List[tpd.Tree]]) =>
           val tparams = tparamRefs.map(_.typeSymbol.asType)
           val params = if (paramRefss.isEmpty) Nil else paramRefss.head.map(_.symbol.asTerm)
           tparams.foreach(ctx.enter)
@@ -287,7 +289,7 @@ trait Deriving { this: Typer =>
           val module = untpd.ref(companionRef(resultType)).withSpan(sym.span)
           val rhs = untpd.Select(module, nme.derived)
           typed(rhs, resultType)
-        }
+      }
 
       def syntheticDef(sym: Symbol): Tree =
         tpd.polyDefDef(sym.asTerm, typeclassInstance(sym)(ctx.fresh.setOwner(sym).setNewScope))

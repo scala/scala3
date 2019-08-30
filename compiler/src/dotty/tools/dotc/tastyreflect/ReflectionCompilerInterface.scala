@@ -173,10 +173,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def PackageDef_owner(self: PackageDef) given Context: PackageDef = packageDefFromSym(self.symbol.owner)
 
-  def PackageDef_members(self: PackageDef) given Context: List[Statement] = {
+  def PackageDef_members(self: PackageDef) given Context: List[Statement] =
     if (self.symbol.is(core.Flags.JavaDefined)) Nil // FIXME should also support java packages
     else self.symbol.info.decls.iterator.map(definitionFromSym).toList
-  }
 
   def PackageDef_symbol(self: PackageDef) given Context: PackageDefSymbol = self.symbol
 
@@ -481,7 +480,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
         val stats1 = normalizeInnerLoops(block.stats.init)
         val normalLoop = tpd.Block(block.stats.last :: Nil, block.expr)
         tpd.Block(stats1, normalLoop)
-      } else {
+      }
+      else {
         val stats1 = normalizeInnerLoops(block.stats)
         tpd.cpy.Block(block)(stats1, block.expr)
       }
@@ -1030,12 +1030,11 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   type WildcardPattern = tpd.Ident
 
-  def matchPattern_WildcardPattern(pattern: Pattern) given Context: Option[WildcardPattern] = {
+  def matchPattern_WildcardPattern(pattern: Pattern) given Context: Option[WildcardPattern] =
     pattern match {
       case pattern: tpd.Ident if tpd.isWildcardArg(pattern) => Some(pattern)
       case _ => None
     }
-  }
 
   def Pattern_WildcardPattern_module_apply(tpe: TypeOrBounds) given Context: WildcardPattern =
     untpd.Ident(nme.WILDCARD).withType(tpe)
@@ -1069,8 +1068,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     case _ => Some(x)
   }
 
-  def Type_apply(clazz: Class[_]) given (ctx: Context): Type = {
-    if (clazz.isPrimitive) {
+  def Type_apply(clazz: Class[_]) given (ctx: Context): Type =
+    if (clazz.isPrimitive)
       if (clazz == classOf[Boolean]) defn.BooleanType
       else if (clazz == classOf[Byte]) defn.ByteType
       else if (clazz == classOf[Char]) defn.CharType
@@ -1080,17 +1079,16 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       else if (clazz == classOf[Float]) defn.FloatType
       else if (clazz == classOf[Double]) defn.DoubleType
       else defn.UnitType
-    } else if (clazz.isArray) {
+    else if (clazz.isArray)
       defn.ArrayType.appliedTo(Type_apply(clazz.getComponentType))
-    } else if (clazz.isMemberClass) {
+    else if (clazz.isMemberClass) {
       val name = clazz.getSimpleName.toTypeName
       val enclosing = Type_apply(clazz.getEnclosingClass)
       if (enclosing.member(name).exists) enclosing.select(name)
-      else {
+      else
         enclosing.classSymbol.companionModule.termRef.select(name)
-      }
-    } else ctx.getClassIfDefined(clazz.getCanonicalName).typeRef
-  }
+    }
+    else ctx.getClassIfDefined(clazz.getCanonicalName).typeRef
 
   def `Type_=:=`(self: Type)(that: Type) given Context: Boolean = self =:= that
 
@@ -1503,10 +1501,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Symbol_pos(self: Symbol) given Context: Position = self.sourcePos
 
-  def Symbol_localContext(self: Symbol) given (ctx: Context): Context = {
+  def Symbol_localContext(self: Symbol) given (ctx: Context): Context =
     if (self.exists) ctx.withOwner(self)
     else ctx
-  }
 
   def Symbol_comment(self: Symbol) given (ctx: Context): Option[Comment] = {
     import dotty.tools.dotc.core.Comments.CommentsContext
@@ -1517,12 +1514,11 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     }
     docCtx.docstring(self)
   }
-  def Symbol_annots(self: Symbol) given Context: List[Term] = {
+  def Symbol_annots(self: Symbol) given Context: List[Term] =
     self.annotations.flatMap {
       case _: core.Annotations.LazyBodyAnnotation => Nil
       case annot => annot.tree :: Nil
     }
-  }
 
   def Symbol_isDefinedInCurrentRun(self: Symbol) given Context: Boolean =
     self.topLevelClass.asClass.isDefinedInCurrentRun
@@ -1564,41 +1560,36 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     if (sym.exists && isField(sym)) Some(sym) else None
   }
 
-  def ClassDefSymbol_classMethod(self: Symbol)(name: String) given Context: List[DefDefSymbol] = {
+  def ClassDefSymbol_classMethod(self: Symbol)(name: String) given Context: List[DefDefSymbol] =
     self.typeRef.decls.iterator.collect {
       case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
     }.toList
-  }
 
-  def ClassDefSymbol_classMethods(self: Symbol) given Context: List[DefDefSymbol] = {
+  def ClassDefSymbol_classMethods(self: Symbol) given Context: List[DefDefSymbol] =
     self.typeRef.decls.iterator.collect {
       case sym if isMethod(sym) => sym.asTerm
     }.toList
-  }
 
   private def appliedTypeRef(sym: Symbol): Type = sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef))
 
-  def ClassDefSymbol_method(self: Symbol)(name: String) given Context: List[DefDefSymbol] = {
+  def ClassDefSymbol_method(self: Symbol)(name: String) given Context: List[DefDefSymbol] =
     appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
     }.toList
-  }
 
-  def ClassDefSymbol_methods(self: Symbol) given Context: List[DefDefSymbol] = {
+  def ClassDefSymbol_methods(self: Symbol) given Context: List[DefDefSymbol] =
     appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) => sym.asTerm
     }.toList
-  }
 
   private def isMethod(sym: Symbol) given Context: Boolean =
     sym.isTerm && sym.is(Flags.Method) && !sym.isConstructor
 
-  def ClassDefSymbol_caseFields(self: Symbol) given Context: List[ValDefSymbol] = {
+  def ClassDefSymbol_caseFields(self: Symbol) given Context: List[ValDefSymbol] =
     if (!self.isClass) Nil
     else self.asClass.paramAccessors.collect {
       case sym if sym.is(Flags.CaseAccessor) => sym.asTerm
     }
-  }
 
   def ClassDefSymbol_companionClass(self: Symbol) given Context: Option[ClassDefSymbol] = {
     val sym = self.companionModule.companionClass
@@ -1766,15 +1757,14 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def QuotedExpr_cast[U](self: scala.quoted.Expr[_]) given (tp: scala.quoted.Type[U], ctx: Context): scala.quoted.Expr[U] = {
     val tree = QuotedExpr_unseal(self)
     val expectedType = QuotedType_unseal(tp).tpe
-    if (tree.tpe <:< expectedType) {
+    if (tree.tpe <:< expectedType)
       self.asInstanceOf[scala.quoted.Expr[U]]
-    } else {
+    else
       throw new scala.tasty.reflect.ExprCastError(
         s"""Expr: ${tree.show}
            |did not conform to type: ${expectedType.show}
            |""".stripMargin
       )
-    }
   }
 
   /** Convert `Type` to an `quoted.Type[_]` */
@@ -1942,5 +1932,5 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     (fn given ctx.withSource(rootPosition.source)).withSpan(rootPosition.span)
 
   private def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()
-
 }
+

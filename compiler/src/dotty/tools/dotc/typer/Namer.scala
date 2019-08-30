@@ -22,7 +22,9 @@ import transform.TypeUtils._
 import transform.SymUtils._
 import reporting.diagnostic.messages._
 
-trait NamerContextOps { this: Context =>
+trait NamerContextOps { 
+  this: Context =>
+  
   import NamerContextOps._
 
   def typer: Typer = ctx.typeAssigner match {
@@ -69,7 +71,7 @@ trait NamerContextOps { this: Context =>
 
   /** The symbol (stored in some typer's symTree) of an enclosing context definition */
   def symOfContextTree(tree: untpd.Tree): Symbol = {
-    def go(ctx: Context): Symbol = {
+    def go(ctx: Context): Symbol =
       ctx.typeAssigner match {
         case typer: Typer =>
           tree.getAttachment(typer.SymOfTree) match {
@@ -81,7 +83,6 @@ trait NamerContextOps { this: Context =>
           }
         case _ => NoSymbol
       }
-    }
     go(this)
   }
 
@@ -139,8 +140,9 @@ trait NamerContextOps { this: Context =>
           else (params.head.is(Given), params.head.is(Implicit), params.head.is(Erased))
         val make = MethodType.companion(isJava = isJava, isContextual = isContextual, isImplicit = isImplicit, isErased = isErased)
         if (isJava)
-          for (param <- params)
+          for (param <- params) {
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
+          }
         make.fromSymbols(params, resultType)
       }
     if (typeParams.nonEmpty) PolyType.fromParams(typeParams.asInstanceOf[List[TypeSymbol]], monotpe)
@@ -247,7 +249,7 @@ class Namer { typer: Typer =>
   }
 
   /** The enclosing class with given name; error if none exists */
-  def enclosingClassNamed(name: TypeName, span: Span)(implicit ctx: Context): Symbol = {
+  def enclosingClassNamed(name: TypeName, span: Span)(implicit ctx: Context): Symbol =
     if (name.isEmpty) NoSymbol
     else {
       val cls = ctx.owner.enclosingClassNamed(name)
@@ -255,7 +257,6 @@ class Namer { typer: Typer =>
         ctx.error(s"no enclosing class or object is named $name", ctx.source.atSpan(span))
       cls
     }
-  }
 
   /** Record `sym` as the symbol defined by `tree` */
   def recordSym(sym: Symbol, tree: Tree)(implicit ctx: Context): Symbol = {
@@ -663,10 +664,9 @@ class Namer { typer: Typer =>
       val moduleDef = mutable.Map[TypeName, TypeDef]()
 
       def updateCache(cdef: TypeDef): Unit =
-        if (cdef.isClassDef && !cdef.mods.is(Package)) {
+        if (cdef.isClassDef && !cdef.mods.is(Package))
           if (cdef.mods.is(ModuleClass)) moduleDef(cdef.name) = cdef
           else classDef(cdef.name) = cdef
-        }
 
       for (stat <- stats)
         expanded(stat) match {
@@ -679,13 +679,12 @@ class Namer { typer: Typer =>
           case _ =>
         }
 
-      for (cdef @ TypeDef(name, _) <- classDef.values) {
+      for (cdef @ TypeDef(name, _) <- classDef.values)
         moduleDef.getOrElse(name.moduleClassName, EmptyTree) match {
           case t: TypeDef =>
             createLinks(cdef, t)
           case EmptyTree =>
         }
-      }
 
       // If a top-level object or class has no companion in the current run, we
       // enter a dummy companion (`denot.isAbsent` returns true) in scope. This
@@ -845,7 +844,7 @@ class Namer { typer: Typer =>
 
       def register(child: Symbol, parent: Type) = {
         val cls = parent.classSymbol
-        if (cls.is(Sealed)) {
+        if (cls.is(Sealed))
           if ((child.isInaccessibleChildOf(cls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
             addChild(cls, cls)
           else if (!cls.is(ChildrenQueried))
@@ -854,7 +853,6 @@ class Namer { typer: Typer =>
             ctx.error(em"""children of $cls were already queried before $sym was discovered.
                           |As a remedy, you could move $sym on the same nesting level as $cls.""",
                       child.sourcePos)
-        }
       }
 
       if (denot.isClass && !sym.isEnumAnonymClass && !sym.isRefinementClass)
@@ -966,7 +964,7 @@ class Namer { typer: Typer =>
         /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
          *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
          */
-        def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit = {
+        def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit =
           if (whyNoForwarder(mbr) == "") {
 
             /** The info of a forwarder to type `ref` which has info `info`
@@ -1011,7 +1009,6 @@ class Namer { typer: Typer =>
               }
             buf += forwarderDef.withSpan(span)
           }
-        }
 
         def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit = {
           val size = buf.size
@@ -1342,12 +1339,11 @@ class Namer { typer: Typer =>
 
       // Approximate a type `tp` with a type that does not contain skolem types.
       val deskolemize = new ApproximatingTypeMap {
-        def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/ {
+        def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/
           tp match {
             case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
             case _ => mapOver(tp)
           }
-        }
       }
 
       def cookedRhsType = deskolemize(dealiasIfUnit(widenRhs(rhsType)))

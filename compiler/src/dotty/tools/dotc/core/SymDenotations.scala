@@ -67,7 +67,8 @@ trait SymDenotations { this: Context =>
       || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
       || denot.isSelfSym
       || denot.isLocalDummy)
-  } catch {
+  }
+  catch {
     case ex: StaleSymbol => false
   }
 
@@ -433,7 +434,7 @@ object SymDenotations {
         case tp: HKTypeLambda => tp.derivedLambdaType(resType = abstractRHS(tp.resType))
         case _ => defn.AnyType
       }
-      if (isOpaqueAlias) {
+      if (isOpaqueAlias)
         info match {
           case TypeAlias(alias) =>
             val (refiningAlias, bounds) = alias match {
@@ -457,7 +458,6 @@ object SymDenotations {
             typeRef.recomputeDenot()
           case _ =>
         }
-      }
     }
 
     // ------ Names ----------------------------------------------
@@ -486,7 +486,7 @@ object SymDenotations {
      *  followed by the separator implied by `kind` and the given `name`.
      *  Drops package objects. Represents each term in the owner chain by a simple `_$`.
      */
-     def fullNameSeparated(prefixKind: QualifiedNameKind, kind: QualifiedNameKind, name: Name)(implicit ctx: Context): Name =
+    def fullNameSeparated(prefixKind: QualifiedNameKind, kind: QualifiedNameKind, name: Name)(implicit ctx: Context): Name =
       if (symbol == NoSymbol || isEffectiveRoot || kind == FlatName && is(PackageClass))
         name
       else {
@@ -830,8 +830,8 @@ object SymDenotations {
             i"""
                | Access to protected $this not permitted because enclosing ${ctx.owner.enclosingClass.showLocated}
                | is not a subclass of ${owner.showLocated} where target is defined""")
-        else if (
-          !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
+        else if
+          (!(  isType // allow accesses to types from arbitrary subclasses fixes #4737
            || pre.derivesFrom(cls)
            || isConstructor
            || owner.is(ModuleClass) // don't perform this check for static members
@@ -1080,10 +1080,9 @@ object SymDenotations {
      *  except for a toplevel module, where its module class is returned.
      */
     final def topLevelClass(implicit ctx: Context): Symbol = {
-      @tailrec def topLevel(d: SymDenotation): Symbol = {
+      @tailrec def topLevel(d: SymDenotation): Symbol =
         if (d.isTopLevelClass) d.symbol
         else topLevel(d.owner)
-      }
 
       val sym = topLevel(this)
       if (sym.isClass) sym else sym.moduleClass
@@ -1407,8 +1406,8 @@ object SymDenotations {
       initFlags: FlagSet = UndefinedFlags,
       info: Type = null,
       privateWithin: Symbol = null,
-      annotations: List[Annotation] = null)(implicit ctx: Context): SymDenotation =
-    { // simulate default parameters, while also passing implicit context ctx to the default values
+      annotations: List[Annotation] = null)(implicit ctx: Context): SymDenotation = {
+      // simulate default parameters, while also passing implicit context ctx to the default values
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags)
       val info1 = if (info != null) info else this.info
       if (ctx.isAfterTyper && changedClassParents(info, info1, completersMatter = false))
@@ -1709,9 +1708,8 @@ object SymDenotations {
       if (proceedWithEnter(sym, mscope)) {
         enterNoReplace(sym, mscope)
         val nxt = this.nextInRun
-        if (nxt.validFor.code > this.validFor.code) {
+        if (nxt.validFor.code > this.validFor.code)
           this.nextInRun.asSymDenotation.asClass.enter(sym)
-        }
         if (defn.isScalaShadowingPackageClass(sym.owner))
           defn.ScalaPackageClass.enter(sym)  // ScalaShadowing members are mirrored in ScalaPackage
       }
@@ -1779,12 +1777,14 @@ object SymDenotations {
         if (denots == null) {
           denots = computeNPMembersNamed(name)
           memberCache.enter(name, denots)
-        } else if (Config.checkCacheMembersNamed) {
+        }
+        else if (Config.checkCacheMembersNamed) {
           val denots1 = computeNPMembersNamed(name)
           assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")
         }
         denots
-      } else computeNPMembersNamed(name)
+      }
+      else computeNPMembersNamed(name)
     }
 
     private[core] def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
@@ -1895,8 +1895,8 @@ object SymDenotations {
             def computeApplied = {
               btrCache.put(tp, NoPrefix)
               val baseTp =
-              	if (tycon.typeSymbol eq symbol) tp
-              	else (tycon.typeParams: @unchecked) match {
+                if (tycon.typeSymbol eq symbol) tp
+                else (tycon.typeParams: @unchecked) match {
                   case LambdaParam(_, _) :: _ =>
                     recur(tp.superType)
                   case tparams: List[Symbol @unchecked] =>
@@ -1959,14 +1959,14 @@ object SymDenotations {
       }
 
 
-      /*>|>*/ trace.onDebug(s"$tp.baseType($this)") /*<|<*/ {
+      trace.onDebug(s"$tp.baseType($this)") {
         Stats.record("baseTypeOf")
         recur(tp)
       }
     }
 
     def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] =
-     if (this.is(PackageClass) || !Config.cacheMemberNames)
+      if (this.is(PackageClass) || !Config.cacheMemberNames)
         computeMemberNames(keepOnly) // don't cache package member names; they might change
       else {
         if (!memberNamesCache.isValid) memberNamesCache = MemberNames.newCache()
@@ -2161,12 +2161,11 @@ object SymDenotations {
     /** Unlink all package members defined in `file` in a previous run. */
     def unlinkFromFile(file: AbstractFile)(implicit ctx: Context): Unit = {
       val scope = unforcedDecls.openForMutations
-      for (sym <- scope.toList.iterator) {
+      for (sym <- scope.toList.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
         if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
           scope.unlink(sym, sym.lastKnownDenotation.name)
-      }
     }
   }
 
@@ -2416,7 +2415,7 @@ object SymDenotations {
     def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context)
         : (List[ClassSymbol], BaseClassSet) = {
       assert(isValid)
-      try {
+      try
         if (cache != null) cache
         else {
           if (locked) throw CyclicReference(clsd)
@@ -2429,7 +2428,6 @@ object SymDenotations {
           else onBehalf.signalProvisional()
           computed
         }
-      }
       finally addDependent(onBehalf)
     }
 

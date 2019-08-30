@@ -42,10 +42,12 @@ class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
           next = next.updated(last, current)
         }
         values(current)
-      } else if (current == last) {
+      }
+      else if (current == last) {
         lastButOne = prev
         null
-      } else
+      }
+      else
         lookupNext(current, follow, nx)
     }
     lookupNext(last, first, next)

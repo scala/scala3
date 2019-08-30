@@ -32,10 +32,10 @@ trait MessageRendering {
     * @return a list of strings with inline locations
     */
   def outer(pos: SourcePosition, prefix: String)(implicit ctx: Context): List[String] =
-    if (pos.outer.exists) {
+    if (pos.outer.exists)
        i"$prefix| This location is in code that was inlined at ${pos.outer}" ::
        outer(pos.outer, prefix)
-    } else Nil
+    else Nil
 
   /** Get the sourcelines before and after the position, as well as the offset
     * for rendering line numbers
@@ -153,7 +153,8 @@ trait MessageRendering {
       val marker = columnMarker(pos, offset, diagnosticLevel)
       val err = errorMsg(pos, msg.msg, offset)
       sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString(EOL))
-    } else sb.append(msg.msg)
+    }
+    else sb.append(msg.msg)
     sb.toString
   }
 

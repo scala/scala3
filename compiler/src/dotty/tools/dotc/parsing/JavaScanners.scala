@@ -28,7 +28,7 @@ object JavaScanners {
 
     // Get next token ------------------------------------------------------------
 
-    def nextToken(): Unit = {
+    def nextToken(): Unit =
       if (next.token == EMPTY) {
         lastOffset = lastCharOffset
         fetchToken()
@@ -37,7 +37,6 @@ object JavaScanners {
         this copyFrom next
         next.token = EMPTY
       }
-    }
 
     def lookaheadToken: Int = {
       prev copyFrom this
@@ -80,9 +79,9 @@ object JavaScanners {
               if (ch == 'x' || ch == 'X') {
                 nextChar()
                 base = 16
-              } else {
-                base = 8
               }
+              else
+                base = 8
               getNumber()
 
             case '1' | '2' | '3' | '4' |
@@ -92,16 +91,15 @@ object JavaScanners {
 
             case '\"' =>
               nextChar()
-              while (ch != '\"' && (isUnicodeEscape || ch != CR && ch != LF && ch != SU)) {
+              while (ch != '\"' && (isUnicodeEscape || ch != CR && ch != LF && ch != SU))
                 getlitch()
-              }
               if (ch == '\"') {
                 token = STRINGLIT
                 setStrVal()
                 nextChar()
-              } else {
-                error("unclosed string literal")
               }
+              else
+                error("unclosed string literal")
 
             case '\'' =>
               nextChar()
@@ -110,9 +108,9 @@ object JavaScanners {
                 nextChar()
                 token = CHARLIT
                 setStrVal()
-              } else {
-                error("unclosed character literal")
               }
+              else
+                error("unclosed character literal")
 
             case '=' =>
               token = EQUALS
@@ -128,13 +126,15 @@ object JavaScanners {
               if (ch == '=') {
                 token = GTEQ
                 nextChar()
-              } else if (ch == '>') {
+              }
+              else if (ch == '>') {
                 token = GTGT
                 nextChar()
                 if (ch == '=') {
                   token = GTGTEQ
                   nextChar()
-                } else if (ch == '>') {
+                }
+                else if (ch == '>') {
                   token = GTGTGT
                   nextChar()
                   if (ch == '=') {
@@ -150,7 +150,8 @@ object JavaScanners {
               if (ch == '=') {
                 token = LTEQ
                 nextChar()
-              } else if (ch == '<') {
+              }
+              else if (ch == '<') {
                 token = LTLT
                 nextChar()
                 if (ch == '=') {
@@ -189,7 +190,8 @@ object JavaScanners {
               if (ch == '&') {
                 token = AMPAMP
                 nextChar()
-              } else if (ch == '=') {
+              }
+              else if (ch == '=') {
                 token = AMPEQ
                 nextChar()
               }
@@ -200,7 +202,8 @@ object JavaScanners {
               if (ch == '|') {
                 token = BARBAR
                 nextChar()
-              } else if (ch == '=') {
+              }
+              else if (ch == '=') {
                 token = BAREQ
                 nextChar()
               }
@@ -211,7 +214,8 @@ object JavaScanners {
               if (ch == '+') {
                 token = PLUSPLUS
                 nextChar()
-              } else if (ch == '=') {
+              }
+              else if (ch == '=') {
                 token = PLUSEQ
                 nextChar()
               }
@@ -222,7 +226,8 @@ object JavaScanners {
               if (ch == '-') {
                 token = MINUSMINUS
                 nextChar()
-              } else if (ch == '=') {
+              }
+              else if (ch == '=') {
                 token = MINUSEQ
                 nextChar()
               }
@@ -244,7 +249,8 @@ object JavaScanners {
                   token = SLASHEQ
                   nextChar()
                 }
-              } else fetchToken()
+              }
+              else fetchToken()
 
             case '^' =>
               token = HAT
@@ -268,12 +274,14 @@ object JavaScanners {
               if ('0' <= ch && ch <= '9') {
                 putChar('.');
                 getFraction()
-              } else if (ch == '.') {
+              }
+              else if (ch == '.') {
                 nextChar()
                 if (ch == '.') {
                   nextChar()
                   token = DOTDOTDOT
-                } else error("`.' character expected")
+                }
+                else error("`.' character expected")
               }
 
             case ';' =>
@@ -320,7 +328,8 @@ object JavaScanners {
                 putChar(ch)
                 nextChar()
                 getIdentRest()
-              } else {
+              }
+              else {
                 error("illegal character: " + ch.toInt)
                 nextChar()
               }
@@ -347,8 +356,8 @@ object JavaScanners {
 
     // Identifiers ---------------------------------------------------------------
 
-    private def getIdentRest(): Unit = {
-      while (true) {
+    private def getIdentRest(): Unit =
+      while (true)
         (ch: @switch) match {
           case 'A' | 'B' | 'C' | 'D' | 'E' |
                'F' | 'G' | 'H' | 'I' | 'J' |
@@ -379,13 +388,12 @@ object JavaScanners {
             if (Character.isUnicodeIdentifierPart(ch)) {
               putChar(ch)
               nextChar()
-            } else {
+            }
+            else {
               finishNamed()
               return
             }
         }
-      }
-    }
 
     // Literals -----------------------------------------------------------------
 
@@ -407,7 +415,8 @@ object JavaScanners {
             }
           }
           putChar(oct.asInstanceOf[Char])
-        } else {
+        }
+        else {
           ch match {
             case 'b' => putChar('\b')
             case 't' => putChar('\t')
@@ -423,7 +432,8 @@ object JavaScanners {
           }
           nextChar()
         }
-      } else {
+      }
+      else {
         putChar(ch)
         nextChar()
       }
@@ -440,9 +450,8 @@ object JavaScanners {
       if (ch == 'e' || ch == 'E') {
         val lookahead = lookaheadReader()
         lookahead.nextChar()
-        if (lookahead.ch == '+' || lookahead.ch == '-') {
+        if (lookahead.ch == '+' || lookahead.ch == '-')
           lookahead.nextChar()
-        }
         if ('0' <= lookahead.ch && lookahead.ch <= '9') {
           putChar(ch)
           nextChar()
@@ -461,7 +470,8 @@ object JavaScanners {
         putChar(ch)
         nextChar()
         token = DOUBLELIT
-      } else if (ch == 'f' || ch == 'F') {
+      }
+      else if (ch == 'f' || ch == 'F') {
         putChar(ch)
         nextChar()
         token = FLOATLIT
@@ -497,9 +507,8 @@ object JavaScanners {
       if (base <= 10 &&
         (ch == 'e' || ch == 'E' ||
           ch == 'f' || ch == 'F' ||
-          ch == 'd' || ch == 'D')) {
+          ch == 'd' || ch == 'D'))
         return getFraction()
-      }
       setStrVal()
       if (ch == 'l' || ch == 'L') {
         nextChar()

@@ -1,16 +1,16 @@
 object Test {
 
-	def main(args: Array[String]): Unit = {
-		def foo = {println("foo"); 0}
-		lazyDep(X)(foo)
-	}
+  def main(args: Array[String]): Unit = {
+    def foo = {println("foo"); 0}
+    lazyDep(X)(foo)
+  }
 
   trait T {
-  	type U
+    type U
   }
   object X extends T { type U = Int }
 
-	def lazyDep(t: T)(us: t.U*): Unit = {
-		List(us: _*)
-	}
+  def lazyDep(t: T)(us: t.U*): Unit = {
+    List(us: _*)
+  }
 }

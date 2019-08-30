@@ -508,9 +508,8 @@ object Types {
     }
 
     /** A denotation containing the non-private declaration(s) in this type with the given name */
-    final def nonPrivateDecl(name: Name)(implicit ctx: Context): Denotation = {
+    final def nonPrivateDecl(name: Name)(implicit ctx: Context): Denotation =
       findDecl(name, Private)
-    }
 
     /** A denotation containing the declaration(s) in this type with the given
      *  name, as seen from prefix type `pre`. Declarations that have a flag
@@ -528,7 +527,7 @@ object Types {
     }
 
     /** The member of this type with the given name  */
-    final def member(name: Name)(implicit ctx: Context): Denotation = /*>|>*/ {
+    final def member(name: Name)(implicit ctx: Context): Denotation = {
       record("member")
       memberBasedOnFlags(name, required = EmptyFlags, excluded = EmptyFlags)
     }
@@ -643,7 +642,8 @@ object Types {
             if (tp.opened) { // defensive copy
               tp.openedTwice = true
               RecType(rt => tp.parent.substRecThis(tp, rt.recThis))
-            } else tp
+            }
+            else tp
           rt.opened = true
           try go(rt.parent).mapInfo(_.substRecThis(rt, pre))
           finally {
@@ -660,12 +660,12 @@ object Types {
             if (ctx.base.pendingMemberSearches.contains(name)) pinfo safe_& rinfo
             else pinfo recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
-        } else {
+        }
+        else
           pdenot & (
             new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)),
             pre,
             safeIntersection = ctx.base.pendingMemberSearches.contains(name))
-        }
       }
 
       def goApplied(tp: AppliedType, tycon: HKTypeLambda) =
@@ -705,9 +705,8 @@ object Types {
         case d => d
       }
 
-      def goAnd(l: Type, r: Type) = {
+      def goAnd(l: Type, r: Type) =
         go(l) & (go(r), pre, safeIntersection = ctx.base.pendingMemberSearches.contains(name))
-      }
 
       val recCount = ctx.base.findMemberCount
       if (recCount >= Config.LogPendingFindMemberThreshold)
@@ -1298,10 +1297,9 @@ object Types {
           }
         case pre: RecType =>
           val candidate = pre.parent.lookupRefined(name)
-          if (candidate.exists && !pre.isReferredToBy(candidate)) {
+          if (candidate.exists && !pre.isReferredToBy(candidate))
             //println(s"lookupRefined ${this.toString} . $name, pre: $pre ---> $candidate / ${candidate.toString}")
             candidate
-          }
           else NoType
         case SkolemType(tp) =>
           loop(tp)
@@ -1619,8 +1617,9 @@ object Types {
 
     /** Is the `hash` of this type the same for all possible sequences of enclosing binders? */
     def stableHash: Boolean = true
+  }
 
-  } // end Type
+  // end Type
 
 // ----- Type categories ----------------------------------------------
 
@@ -1870,10 +1869,9 @@ object Types {
      *  Assumes that symbols do not change between periods in the same run.
      *  Used to get the class underlying a ThisType.
      */
-    private[Types] def stableInRunSymbol(implicit ctx: Context): Symbol = {
+    private[Types] def stableInRunSymbol(implicit ctx: Context): Symbol =
       if (checkedPeriod.runId == ctx.runId) lastSymbol
       else symbol
-    }
 
     def info(implicit ctx: Context): Type = denot.info
 
@@ -2108,9 +2106,9 @@ object Types {
         } finally {
           ctx.pendingUnderlying -= this
         }
-    } finally {
-      ctx.base.underlyingRecursions -= 1
     }
+    finally
+      ctx.base.underlyingRecursions -= 1
 
     /** The argument corresponding to class type parameter `tparam` as seen from
      *  prefix `pre`. Can produce a TypeBounds type in case prefix is an & or | type
@@ -2347,9 +2345,8 @@ object Types {
     }
 
     /** Hook that can be called from creation methods in TermRef and TypeRef */
-    def validated(implicit ctx: Context): this.type = {
+    def validated(implicit ctx: Context): this.type =
       this
-    }
   }
 
   final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
@@ -2575,6 +2572,8 @@ object Types {
       case _ => false
     }
 
+    // equals comes from case class; no matching override is needed
+
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: RefinedType =>
         refinedName.eq(that.refinedName) &&
@@ -2582,7 +2581,6 @@ object Types {
         parent.equals(that.parent, bs)
       case _ => false
     }
-    // equals comes from case class; no matching override is needed
   }
 
   class CachedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
@@ -2944,11 +2942,12 @@ object Types {
       case _ => false
     }
 
+    // equals comes from case class; no matching override is needed
+
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: ExprType => resType.equals(that.resType, bs)
       case _ => false
     }
-    // equals comes from case class; no matching override is needed
   }
 
   final class CachedExprType(resultType: Type) extends ExprType(resultType)
@@ -3137,19 +3136,18 @@ object Types {
      *    def f(x: C)(y: x.T)       // dependencyStatus = FalseDeps, i.e.
      *                              // dependency can be eliminated by dealiasing.
      */
-    private def dependencyStatus(implicit ctx: Context): DependencyStatus = {
+    private def dependencyStatus(implicit ctx: Context): DependencyStatus =
       if (myDependencyStatus != Unknown) myDependencyStatus
       else {
         val result = depStatus(NoDeps, resType)
         if ((result & Provisional) == 0) myDependencyStatus = result
         (result & StatusMask).toByte
       }
-    }
 
     /** The parameter dependency status of this method. Analogous to `dependencyStatus`,
      *  but tracking dependencies in same parameter list.
      */
-    private def paramDependencyStatus(implicit ctx: Context): DependencyStatus = {
+    private def paramDependencyStatus(implicit ctx: Context): DependencyStatus =
       if (myParamDependencyStatus != Unknown) myParamDependencyStatus
       else {
         val result =
@@ -3158,7 +3156,6 @@ object Types {
         if ((result & Provisional) == 0) myParamDependencyStatus = result
         (result & StatusMask).toByte
       }
-    }
 
     /** Does result type contain references to parameters of this method type,
      *  which cannot be eliminated by de-aliasing?
@@ -3305,7 +3302,7 @@ object Types {
   }
 
   object MethodType extends MethodTypeCompanion("MethodType") {
-    def companion(isJava: Boolean = false, isContextual: Boolean = false, isImplicit: Boolean = false, isErased: Boolean = false): MethodTypeCompanion = {
+    def companion(isJava: Boolean = false, isContextual: Boolean = false, isImplicit: Boolean = false, isErased: Boolean = false): MethodTypeCompanion =
       if (isJava) {
         assert(!isImplicit)
         assert(!isErased)
@@ -3318,7 +3315,6 @@ object Types {
         if (isErased) ErasedImplicitMethodType else ImplicitMethodType
       else
         if (isErased) ErasedMethodType else MethodType
-    }
   }
   object JavaMethodType extends MethodTypeCompanion("JavaMethodType")
   object ErasedMethodType extends MethodTypeCompanion("ErasedMethodType")
@@ -3432,9 +3428,8 @@ object Types {
   object HKTypeLambda extends TypeLambdaCompanion[HKTypeLambda] {
     def apply(paramNames: List[TypeName])(
         paramInfosExp: HKTypeLambda => List[TypeBounds],
-        resultTypeExp: HKTypeLambda => Type)(implicit ctx: Context): HKTypeLambda = {
+        resultTypeExp: HKTypeLambda => Type)(implicit ctx: Context): HKTypeLambda =
       unique(new HKTypeLambda(paramNames)(paramInfosExp, resultTypeExp))
-    }
 
     def unapply(tl: HKTypeLambda): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
@@ -3469,9 +3464,8 @@ object Types {
   object PolyType extends TypeLambdaCompanion[PolyType] {
     def apply(paramNames: List[TypeName])(
         paramInfosExp: PolyType => List[TypeBounds],
-        resultTypeExp: PolyType => Type)(implicit ctx: Context): PolyType = {
+        resultTypeExp: PolyType => Type)(implicit ctx: Context): PolyType =
       unique(new PolyType(paramNames)(paramInfosExp, resultTypeExp))
-    }
 
     def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
@@ -3556,14 +3550,13 @@ object Types {
           case _ =>
             NoType
         }
-        if (defn.isCompiletime_S(tycon.symbol) && args.length == 1) {
+        if (defn.isCompiletime_S(tycon.symbol) && args.length == 1)
           trace(i"normalize S $this", typr, show = true) {
             args.head.normalized match {
               case ConstantType(Constant(n: Int)) => ConstantType(Constant(n + 1))
               case none => tryMatchAlias
             }
           }
-        }
         else tryMatchAlias
       case _ =>
         NoType
@@ -3603,11 +3596,12 @@ object Types {
 
     override def eql(that: Type): Boolean = this `eq` that // safe because applied types are hash-consed separately
 
+    // equals comes from case class; no matching override is needed
+
     final override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: AppliedType => tycon.equals(that.tycon, bs) && args.equalElements(that.args, bs)
       case _ => false
     }
-    // equals comes from case class; no matching override is needed
   }
 
   final class CachedAppliedType(tycon: Type, args: List[Type], hc: Int) extends AppliedType(tycon, args) {
@@ -4154,6 +4148,7 @@ object Types {
       case that: AliasingBounds => this.isTypeAlias == that.isTypeAlias && alias.equals(that.alias, bs)
       case _ => false
     }
+
     // equals comes from case class; no matching override is needed
 
     override def eql(that: Type): Boolean = that match {
@@ -4227,11 +4222,12 @@ object Types {
       isRefiningCache
     }
 
+    // equals comes from case class; no matching override is needed
+
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: AnnotatedType => parent.equals(that.parent, bs) && (annot `eq` that.annot)
       case _ => false
     }
-    // equals comes from case class; no matching override is needed
   }
 
   object AnnotatedType {
@@ -4317,11 +4313,12 @@ object Types {
       case _ => false
     }
 
+    // equals comes from case class; no matching override is needed
+
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: WildcardType => optBounds.equals(that.optBounds, bs)
       case _ => false
     }
-    // equals comes from case class; no matching override is needed
   }
 
   final class CachedWildcardType(optBounds: Type) extends WildcardType(optBounds)
@@ -4404,7 +4401,7 @@ object Types {
                         mapOver(info.alias)
                       case TypeBounds(lo, hi) =>
                         range(atVariance(-variance)(apply(lo)), apply(hi))
-                       case _ =>
+                      case _ =>
                         range(defn.NothingType, defn.AnyType) // should happen only in error cases
                     }
                   case _ =>
@@ -4720,7 +4717,7 @@ object Types {
      *  If the expansion is a wildcard parameter reference, convert its
      *  underlying bounds to a range, otherwise return the expansion.
      */
-    def expandParam(tp: NamedType, pre: Type): Type = {
+    def expandParam(tp: NamedType, pre: Type): Type =
       tp.argForParam(pre) match {
         case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol) =>
           arg.info match {
@@ -4730,7 +4727,6 @@ object Types {
         case arg: TypeBounds => expandBounds(arg)
         case arg => reapply(arg)
       }
-    }
 
     /** Derived selection.
      *  @pre   the (upper bound of) prefix `pre` has a member named `tp.name`.
@@ -4856,9 +4852,8 @@ object Types {
           if (underlying.isBottomType) underlying
           else tp.derivedAnnotatedType(underlying, annot)
       }
-    override protected def derivedWildcardType(tp: WildcardType, bounds: Type): WildcardType = {
+    override protected def derivedWildcardType(tp: WildcardType, bounds: Type): WildcardType =
       tp.derivedWildcardType(rangeToBounds(bounds))
-    }
 
     override protected def derivedSkolemType(tp: SkolemType, info: Type): Type = info match {
       case Range(lo, hi) =>
@@ -5083,23 +5078,23 @@ object Types {
       else {
         seen.put(tp, tp)
         tp match {
-        case tp: AppliedType =>
-          foldOver(n + 1, tp)
-        case tp: RefinedType =>
-          foldOver(n + 1, tp)
-        case tp: TypeRef if tp.info.isTypeAlias =>
-          apply(n, tp.superType)
-        case tp: TypeParamRef =>
-          apply(n, ctx.typeComparer.bounds(tp))
-        case _ =>
-          foldOver(n, tp)
+          case tp: AppliedType =>
+            foldOver(n + 1, tp)
+          case tp: RefinedType =>
+            foldOver(n + 1, tp)
+          case tp: TypeRef if tp.info.isTypeAlias =>
+            apply(n, tp.superType)
+          case tp: TypeParamRef =>
+            apply(n, ctx.typeComparer.bounds(tp))
+          case _ =>
+            foldOver(n, tp)
+        }
       }
-    }
   }
 
   class CoveringSetAccumulator(implicit ctx: Context) extends TypeAccumulator[Set[Symbol]] {
     val seen = new java.util.IdentityHashMap[Type, Type]
-    def apply(cs: Set[Symbol], tp: Type): Set[Symbol] = {
+    def apply(cs: Set[Symbol], tp: Type): Set[Symbol] =
       if (seen.get(tp) != null) cs
       else {
         seen.put(tp, tp)
@@ -5123,7 +5118,6 @@ object Types {
             foldOver(cs, tp)
         }
       }
-    }
   }
 
   //   ----- Name Filters --------------------------------------------------

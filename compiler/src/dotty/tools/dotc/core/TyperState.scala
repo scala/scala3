@@ -106,11 +106,10 @@ class TyperState(private val previous: TyperState /* | Null */) {
       val savedCommitted = isCommitted
       myIsCommittable = false
       myReporter = {
-        if (testReporter == null || testReporter.inUse) {
+        if (testReporter == null || testReporter.inUse)
           testReporter = new TestReporter(reporter)
-        } else {
+        else
           testReporter.reset()
-        }
         testReporter.inUse = true
         testReporter
       }

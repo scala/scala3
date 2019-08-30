@@ -148,7 +148,7 @@ object ProtoTypes {
       case _ => false
     }
 
-    override def isMatchedBy(tp1: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean = {
+    override def isMatchedBy(tp1: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean =
       name == nme.WILDCARD || hasUnknownMembers(tp1) ||
       {
         val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
@@ -162,7 +162,6 @@ object ProtoTypes {
           case _ => mbr hasAltWith qualifies
         }
       }
-    }
 
     def underlying(implicit ctx: Context): Type = WildcardType
 
@@ -275,7 +274,7 @@ object ProtoTypes {
 
     private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(implicit ctx: Context): Tree = {
       var targ = state.typedArg(arg)
-      if (targ == null) {
+      if (targ == null)
         untpd.functionWithUnknownParamType(arg) match {
           case Some(untpd.Function(args, _)) if !force =>
             // If force = false, assume what we know about the parameter types rather than reporting an error.
@@ -292,7 +291,6 @@ object ProtoTypes {
             if (!ctx.reporter.hasUnreportedErrors)
               state.typedArg = state.typedArg.updated(arg, targ)
         }
-      }
       targ
     }
 
@@ -315,9 +313,10 @@ object ProtoTypes {
           if (!args1.exists(arg => isUndefined(arg.tpe))) state.typedArgs = args1
           args1
         }
-        finally
+        finally {
           if (this.ctx.typerState.constraint ne prevConstraint)
             ctx.typerState.mergeConstraintWith(this.ctx.typerState)
+        }
       }
 
     /** Type single argument and remember the unadapted result in `myTypedArg`.
@@ -519,9 +518,9 @@ object ProtoTypes {
   }
 
   /** Create a new TypeVar that represents a dependent method parameter singleton */
-  def newDepTypeVar(tp: Type)(implicit ctx: Context): TypeVar = {
+  def newDepTypeVar(tp: Type)(implicit ctx: Context): TypeVar =
     newTypeVar(TypeBounds.upper(AndType(tp.widenExpr, defn.SingletonClass.typeRef)))
-  }
+    
   /** The result type of `mt`, where all references to parameters of `mt` are
    *  replaced by either wildcards (if typevarsMissContext) or TypeParamRefs.
    */

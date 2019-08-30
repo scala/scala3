@@ -18,14 +18,13 @@ object DottyTypeStealer extends DottyTest {
       (tree, context) =>
         implicit val ctx = context
         val findValDef: (List[ValDef], tpd.Tree) => List[ValDef] =
-          (acc , tree) =>  { tree match {
-          case t: ValDef if t.name.startsWith(dummyName) => t :: acc
-          case _ => acc
-        }
-      }
-      val d = new DeepFolder[List[ValDef]](findValDef).foldOver(Nil, tree)
-      tp = d.map(_.tpe.widen).reverse
-      scontext = context
+          (acc , tree) =>  tree match {
+            case t: ValDef if t.name.startsWith(dummyName) => t :: acc
+            case _ => acc
+          }
+        val d = new DeepFolder[List[ValDef]](findValDef).foldOver(Nil, tree)
+        tp = d.map(_.tpe.widen).reverse
+        scontext = context
     }
     (scontext, tp)
   }

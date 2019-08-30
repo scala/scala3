@@ -52,8 +52,8 @@ class RecursionOverflow(val op: String, details: => String, val previous: Throwa
         result += ro
         loop(ro.previous)
       case _ => result.toList
-
     }
+
     loop(this)
   }
 
@@ -86,10 +86,10 @@ class RecursionOverflow(val op: String, details: => String, val previous: Throwa
 // Beware: Since this object is only used when handling a StackOverflow, this code
 // cannot consume significant amounts of stack.
 object handleRecursive {
-  def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(implicit ctx: Context): Nothing = {
-    if (ctx.settings.YnoDecodeStacktraces.value) {
+  def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(implicit ctx: Context): Nothing =
+    if (ctx.settings.YnoDecodeStacktraces.value)
       throw exc
-    } else {
+    else
       exc match {
         case _: RecursionOverflow =>
           throw new RecursionOverflow(op, details, exc, weight)
@@ -99,8 +99,6 @@ object handleRecursive {
           if (e != null) throw new RecursionOverflow(op, details, e, weight)
           else throw exc
       }
-    }
-  }
 }
 
 /**
@@ -125,8 +123,8 @@ class CyclicReference private (val denot: SymDenotation) extends TypeError {
      * Mode.InferringReturnType for the innermost member without type
      * annotations (!tree.tpt.typeOpt.exists).
      */
-    def errorMsg(cx: Context): Message = {
-      if (cx.mode is Mode.InferringReturnType) {
+    def errorMsg(cx: Context): Message =
+      if (cx.mode is Mode.InferringReturnType)
         cx.tree match {
           case tree: untpd.ValOrDefDef if !tree.tpt.typeOpt.exists =>
             if (inImplicitSearch)
@@ -140,13 +138,12 @@ class CyclicReference private (val denot: SymDenotation) extends TypeError {
           case _ =>
             errorMsg(cx.outer)
         }
-      }
+
       // Give up and give generic errors.
       else if (cycleSym.isOneOf(GivenOrImplicit, butNot = Method) && cycleSym.owner.isTerm)
         CyclicReferenceInvolvingImplicit(cycleSym)
       else
         CyclicReferenceInvolving(denot)
-    }
 
     errorMsg(ctx)
   }

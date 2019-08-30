@@ -59,18 +59,20 @@ class CheckReentrant extends MiniPhase {
     if (!seen.contains(cls) && !isIgnored(cls)) {
       seen += cls
       scanning(cls) {
-        for (sym <- cls.classInfo.decls)
-          if (sym.isTerm && !sym.isSetter && !isIgnored(sym))
+        for (sym <- cls.classInfo.decls) {
+          if (sym.isTerm && !sym.isSetter && !isIgnored(sym)) {
             if (sym.is(Mutable)) {
               ctx.error(
                 i"""possible data race involving globally reachable ${sym.showLocated}: ${sym.info}
                    |  use -Ylog:checkReentrant+ to find out more about why the variable is reachable.""")
               shared += sym
-            } else if (!sym.is(Method) || sym.isOneOf(Accessor | ParamAccessor)) {
+            }
+            else if (!sym.is(Method) || sym.isOneOf(Accessor | ParamAccessor))
               scanning(sym) {
                 sym.info.widenExpr.classSymbols.foreach(addVars)
               }
-            }
+          }
+        }
         for (parent <- cls.classInfo.classParents)
           addVars(parent.classSymbol.asClass)
       }

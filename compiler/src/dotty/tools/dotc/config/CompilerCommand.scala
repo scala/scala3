@@ -80,13 +80,12 @@ object CompilerCommand {
             // For example 'false' for the version command.
             ""
         }
-        def formatSetting(name: String, value: String) = {
+        def formatSetting(name: String, value: String) =
           if (value.nonEmpty)
           // the format here is helping to make empty padding and put the additional information exactly under the description.
             s"\n${format("")} $name: $value."
           else
             ""
-        }
         s"${format(s.name)} ${s.description}${formatSetting("Default", defaultValue)}${formatSetting("Choices", s.legalChoices)}"
       }
       ss map helpStr mkString "\n"
@@ -140,7 +139,8 @@ object CompilerCommand {
     else if (shouldStopWithInfo) {
       ctx.echo(infoMessage)
       Nil
-    } else {
+    }
+    else {
       if (sourcesRequired && summary.arguments.isEmpty) ctx.echo(usageMessage)
       summary.arguments
     }

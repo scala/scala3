@@ -97,7 +97,8 @@ object NavigateAST {
           case _ =>
         }
         childPath(p.productIterator, p :: path)
-      } else path
+      }
+      else path
     singlePath(from, Nil)
   }
 }

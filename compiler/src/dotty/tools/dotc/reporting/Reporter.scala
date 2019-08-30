@@ -76,7 +76,7 @@ trait Reporting { this: Context =>
     reporter.report(new Info(msg, pos))
 
   def reportWarning(warning: Warning): Unit =
-    if (!this.settings.silentWarnings.value) {
+    if (!this.settings.silentWarnings.value)
       if (this.settings.XfatalWarnings.value)
         warning match {
           case warning: ConditionalWarning if !warning.enablingOption.value =>
@@ -85,7 +85,6 @@ trait Reporting { this: Context =>
             reporter.report(warning.toError)
         }
       else reporter.report(warning)
-    }
 
   def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new DeprecationWarning(msg, pos))
@@ -104,7 +103,7 @@ trait Reporting { this: Context =>
     val req = if (required) "needs to" else "should"
     val fqname = s"scala.language.$feature"
 
-    val explain = {
+    val explain =
       if (reporter.isReportedFeatureUseSite(featureUseSite)) ""
       else {
         reporter.reportNewFeatureUseSite(featureUseSite)
@@ -114,7 +113,6 @@ trait Reporting { this: Context =>
            |See the Scala docs for value $fqname for a discussion
            |why the feature $req be explicitly enabled.""".stripMargin
       }
-    }
 
     val msg = s"$featureDescription $req be enabled\nby making the implicit value $fqname visible.$explain"
     if (required) error(msg, pos)
@@ -310,7 +308,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** Returns a string meaning "n elements". */
   protected def countString(n: Int, elements: String): String = n match {
     case 0 => s"no ${elements}s"
-    case 1 => s"one ${elements}s"
+    case 1 => s"one ${elements}"
     case 2 => s"two ${elements}s"
     case 3 => s"three ${elements}s"
     case 4 => s"four ${elements}s"

@@ -69,10 +69,10 @@ min cardinality(ys, e)))
       }, "obey min cardinality")
     assert({
         val intersection = xs intersect ys
-		val unconsumed = xs.foldLeft(intersection){(rest, e) =>
-		  if (! rest.isEmpty && e == rest.head) rest.tail else rest
-		}
-		unconsumed.isEmpty
+    val unconsumed = xs.foldLeft(intersection){(rest, e) =>
+      if (! rest.isEmpty && e == rest.head) rest.tail else rest
+    }
+    unconsumed.isEmpty
       }, "maintain order")
     assert(xs == (xs intersect xs),
       "has the list as again intersection")

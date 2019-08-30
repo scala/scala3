@@ -42,6 +42,7 @@ class FunctionalInterfaces extends MiniPhase {
       val interface = ctx.withPhase(ctx.typerPhase).requiredClass(functionPackage ++ interfaceName)
       val tpt = tpd.TypeTree(interface.asType.appliedRef)
       tpd.Closure(tree.env, tree.meth, tpt)
-    } else tree
+    }
+    else tree
   }
 }

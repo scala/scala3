@@ -29,11 +29,10 @@ class CollectEntryPoints extends MiniPhase {
 
   override def phaseName: String = "collectEntryPoints"
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
-    if (tree.symbol.owner.isClass && isJavaEntryPoint(tree.symbol)) {
+    if (tree.symbol.owner.isClass && isJavaEntryPoint(tree.symbol))
       // collecting symbols for entry points here (as opposed to GenBCode where they are used)
       // has the advantage of saving an additional pass over all ClassDefs.
       entryPoints += tree.symbol
-    }
     tree
   }
 
@@ -49,9 +48,8 @@ class CollectEntryPoints extends MiniPhase {
       )
       false
     }
-    def failNoForwarder(msg: String) = {
+    def failNoForwarder(msg: String) =
       fail(s"$msg, which means no static forwarder can be generated.\n")
-    }
     val possibles = if (sym.flags is Flags.Module) (sym.info nonPrivateMember nme.main).alternatives else Nil
     val hasApproximate = possibles exists {
       m =>
@@ -90,17 +88,13 @@ class CollectEntryPoints extends MiniPhase {
       }
     }
 
-  // At this point it's a module with a main-looking method, so either succeed or warn that it isn't.
-  hasApproximate && precise(ctx.withPhase(ctx.erasurePhase))
+    // At this point it's a module with a main-looking method, so either succeed or warn that it isn't.
+    hasApproximate && precise(ctx.withPhase(ctx.erasurePhase))
     // Before erasure so we can identify generic mains.
-
-
-}
-
+  }
 }
 
 class SymbolOrdering(implicit ctx: Context) extends Ordering[Symbol] {
-  override def compare(x: Symbol, y: Symbol): Int = {
+  override def compare(x: Symbol, y: Symbol): Int =
     x.fullName.toString.compareTo(y.fullName.toString)
-  }
 }

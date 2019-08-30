@@ -49,10 +49,9 @@ object Checking {
    */
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type, app: Type = NoType)(implicit ctx: Context): Unit = {
     args.lazyZip(boundss).foreach { (arg, bound) =>
-      if (!bound.isLambdaSub && !arg.tpe.hasSimpleKind) {
+      if (!bound.isLambdaSub && !arg.tpe.hasSimpleKind)
         // see MissingTypeParameterFor
         ctx.error(ex"missing type parameter(s) for $arg", arg.sourcePos)
-      }
     }
     for ((arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate, app))
       ctx.error(
@@ -263,7 +262,8 @@ object Checking {
             tp.withPrefix(pre1)
           }
           else tp
-        } catch {
+        }
+        catch {
           case ex: CyclicReference =>
             ctx.debuglog(i"cycle detected for $tp, $nestedCycleOK, $cycleOK")
             if (cycleOK) LazyRef(_ => tp)
@@ -298,9 +298,8 @@ object Checking {
     try checker.checkInfo(info)
     catch {
       case ex: CyclicReference =>
-        if (reportErrors) {
+        if (reportErrors)
           errorType(i"illegal cyclic reference: ${checker.where} ${checker.lastChecked} of $sym refers back to the type itself", sym.sourcePos)
-        }
         else info
     }
   }
@@ -371,7 +370,7 @@ object Checking {
       for (parent <- parents; mbr <- parent.abstractTypeMembers if qualifies(mbr.symbol))
       yield mbr.name.asTypeName
 
-   for (name <- abstractTypeNames)
+    for (name <- abstractTypeNames)
       try {
         val mbr = joint.member(name)
         mbr.info match {
@@ -575,10 +574,9 @@ object Checking {
               ctx.error(ValueClassParameterMayNotBeCallByName(clazz, param), param.sourcePos)
             if (param.is(Erased))
               ctx.error("value class first parameter cannot be `erased`", param.sourcePos)
-            else {
+            else
               for (p <- params if !p.is(Erased))
                 ctx.error("value class can only have one non `erased` parameter", p.sourcePos)
-            }
           case Nil =>
             ctx.error(ValueClassNeedsOneValParam(clazz), clazz.sourcePos)
         }
@@ -684,13 +682,12 @@ trait Checking {
    *  @pre  sym.is(GivenOrImplicit)
    */
   def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = {
-    def check(): Unit = {
+    def check(): Unit =
       checkFeature(
         nme.implicitConversions,
         i"Definition of implicit conversion $sym",
         ctx.owner.topLevelClass,
         sym.sourcePos)
-    }
 
     sym.info.stripPoly match {
       case mt @ MethodType(_ :: Nil)
@@ -829,10 +826,9 @@ trait Checking {
               sym.name == nme.apply && sym.is(Synthetic) && sym.owner.is(Module) && sym.owner.companionClass.is(Case)
             def isCaseClassNew(sym: Symbol): Boolean =
               sym.isPrimaryConstructor && sym.owner.is(Case) && sym.owner.isStatic
-            def isCaseObject(sym: Symbol): Boolean = {
+            def isCaseObject(sym: Symbol): Boolean =
               // TODO add alias to Nil in scala package
               sym.is(Case) && sym.is(Module)
-            }
             val allow =
               ctx.erasedTypes ||
               ctx.inInlineMethod ||
@@ -929,11 +925,10 @@ trait Checking {
 
   /** Check that `tpt` does not define a higher-kinded type */
   def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree =
-    if (!tpt.tpe.hasSimpleKind && !ctx.compilationUnit.isJava) {
+    if (!tpt.tpe.hasSimpleKind && !ctx.compilationUnit.isJava)
         // be more lenient with missing type params in Java,
         // needed to make pos/java-interop/t1196 work.
       errorTree(tpt, MissingTypeParameterFor(tpt.tpe))
-    }
     else tpt
 
   /** Verify classes extending AnyVal meet the requirements */
@@ -1060,7 +1055,7 @@ trait Checking {
       cls.isAnonymousClass &&
       cls.owner.isTerm &&
       (cls.owner.flagsUNSAFE.is(Case) || cls.owner.name == nme.DOLLAR_NEW)
-    if (!isEnumAnonCls) {
+    if (!isEnumAnonCls)
       if (cdef.mods.isEnumCase) {
         if (cls.derivesFrom(defn.JavaEnumClass))
           ctx.error(em"paramerized case is not allowed in an enum that extends java.lang.Enum", cdef.sourcePos)
@@ -1072,7 +1067,6 @@ trait Checking {
         // Unlike firstParent.derivesFrom(defn.EnumClass), this test allows inheriting from `Enum` by hand;
         // see enum-List-control.scala.
         ctx.error(ClassCannotExtendEnum(cls, firstParent), cdef.sourcePos)
-    }
   }
 
   /** Check that all references coming from enum cases in an enum companion object

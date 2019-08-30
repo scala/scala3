@@ -63,7 +63,7 @@ class TestSealedExhaustive { // compile only
 
   def ma7() = List(1,2) match { //exhaustive
     case 1::2::Nil =>
-      case _ =>
+    case _ =>
   }
 
   sealed class B
