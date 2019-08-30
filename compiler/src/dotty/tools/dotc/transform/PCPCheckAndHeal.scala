@@ -119,7 +119,8 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           // Replace it with a properly encoded type splice. This is the normal for expected for type splices.
           tp.prefix.select(tpnme.splice)
         case tp: NamedType =>
-          checkSymLevel(tp.symbol, tp, pos) match {
+          if (tp.prefix.isInstanceOf[TermRef] && tp.prefix.isStable) tp
+          else checkSymLevel(tp.symbol, tp, pos) match {
             case Some(tpRef) => tpRef.tpe
             case _ =>
               if (tp.symbol.is(Param)) tp
