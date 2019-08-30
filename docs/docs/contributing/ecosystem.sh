@@ -93,7 +93,7 @@
     update
     test
     publish
-    # cleanup  TODO Uncomment
+    cleanup
   }
 
 #package object impl:
@@ -107,7 +107,7 @@
     }
 
     function test_dotty-example-project {
-      echo sbt run  # TODO un-echo
+      sbt run
     }
 
   #class DottyExampleMill extends Project:
@@ -126,7 +126,7 @@
     }
 
     function test_dotty-example-project-mill {
-      echo mill root.run # TODO un-echo
+      mill root.run
     }
 
     function cleanup_dotty-example-project-mill {
@@ -147,11 +147,11 @@
     }
 
     function test_dotty.g8 {
-      echo 'sbt new file://./dotty.g8 --name=foo --description=bar && cd foo && sbt run'  # TODO unecho
+      sbt new file://./dotty.g8 --name=foo --description=bar && cd foo && sbt run
     }
 
     function publish_dotty.g8 {
-      cd "$SELF"
+      cd "../$SELF"
       publish super
     }
 
@@ -168,10 +168,15 @@
     }
 
     function test_dotty-cross.g8 {
-      echo 'sbt new file://./dotty-cross.g8 --name=foo --description=bar && cd foo && sbt run'  # TODO unecho
+      sbt new file://./dotty-cross.g8 --name=foo --description=bar && cd foo && sbt run
     }
 
-  #class Homebrew extends Project:
+    function publish_dotty-cross.g8 {
+      cd "../$SELF"
+      publish super
+    }
+
+  #trait Homebrew extends Project:
     RC_PATTERN="[0-9\.RC\-]+"
 
     function update_homebrew-brew {
@@ -236,15 +241,15 @@
     }
 
 #object Main:
-  # PROJECTS='
-  # dotty-example-project
-  # dotty-example-project-mill
-  # dotty.g8
-  # dotty-cross.g8
-  # homebrew-brew
-  # packtest
-  # scastie
-  PROJECTS='scalac'
+  PROJECTS='
+  dotty-example-project
+  dotty-example-project-mill
+  dotty.g8
+  dotty-cross.g8
+  homebrew-brew
+  packtest
+  scastie
+  scalac'
 
   function main {
     export -f process
