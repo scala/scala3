@@ -30,10 +30,6 @@
 10 |  def s = 3_.1 // error
    |           ^
    |           trailing separator is not allowed
--- Error: tests/neg/t6124.scala:12:17 ----------------------------------------------------------------------------------
-12 |  def tooSmall = 1.0E-325 // error
-   |                 ^
-   |                 double precision floating point number too small
 -- Error: tests/neg/t6124.scala:17:13 ----------------------------------------------------------------------------------
 17 |  val pi1 = 3_.1415F // error
    |             ^
@@ -58,6 +54,10 @@
 26 |  val x8 = 0x52_ // error
    |              ^
    |              trailing separator is not allowed
+-- Error: tests/neg/t6124.scala:12:17 ----------------------------------------------------------------------------------
+12 |  def tooSmall = 1.0E-325 // error
+   |                 ^^^^^^^^
+   |                 number too small
 -- [E008] Member Not Found Error: tests/neg/t6124.scala:18:14 ----------------------------------------------------------
 18 |  val pi2 = 3._1415F // error
    |            ^^^^^^^^

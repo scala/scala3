@@ -123,99 +123,10 @@ object Scanners {
     def setStrVal(): Unit =
       strVal = flushBuf(litBuf)
 
-    /** Convert current strVal to char value
-      */
-    def charVal: Char = if (strVal.length > 0) strVal.charAt(0) else 0
-
-    /** Convert current strVal, base to long value
-      *  This is tricky because of max negative value.
-      */
-    def intVal(negated: Boolean): Long =
-      if (token == CHARLIT && !negated)
-        charVal
-      else {
-        var value: Long = 0
-        val divider = if (base == 10) 1 else 2
-        val limit: Long =
-          if (token == LONGLIT) Long.MaxValue else Int.MaxValue
-        var i = 0
-        val len = strVal.length
-        while (i < len) {
-          val c = strVal charAt i
-          if (! isNumberSeparator(c)) {
-            val d = digit2int(c, base)
-            if (d < 0) {
-              error(s"malformed integer number")
-              return 0
-            }
-            if (value < 0 ||
-              limit / (base / divider) < value ||
-              limit - (d / divider) < value * (base / divider) &&
-                !(negated && limit == value * base - 1 + d)) {
-              error("integer number too large")
-              return 0
-            }
-            value = value * base + d
-          }
-          i += 1
-        }
-        if (negated) -value else value
-      }
-
-    def intVal: Long = intVal(false)
-
-    private val zeroFloat = raw"[0.]+(?:[eE][+-]?[0-9]+)?[fFdD]?".r
-
-    /** Convert current strVal, base to double value
-      */
-    def floatVal(negated: Boolean): Float = {
-      assert(token == FLOATLIT)
-      val text = removeNumberSeparators(strVal)
-      try {
-        val value: Float = java.lang.Float.valueOf(text).floatValue()
-        if (value > Float.MaxValue)
-          errorButContinue("floating point number too large")
-
-        if (value == 0.0f && !zeroFloat.pattern.matcher(text).matches)
-          errorButContinue("floating point number too small")
-        if (negated) -value else value
-      }
-      catch {
-        case _: NumberFormatException =>
-          error("malformed floating point number")
-          0.0f
-      }
-    }
-
-    def floatVal: Float = floatVal(false)
-
-    /** Convert current strVal, base to double value
-      */
-    def doubleVal(negated: Boolean): Double = {
-      assert(token == DOUBLELIT)
-      val text = removeNumberSeparators(strVal)
-      try {
-        val value: Double = java.lang.Double.valueOf(text).doubleValue()
-        if (value > Double.MaxValue)
-          errorButContinue("double precision floating point number too large")
-
-        if (value == 0.0d && !zeroFloat.pattern.matcher(text).matches)
-          errorButContinue("double precision floating point number too small")
-        if (negated) -value else value
-      }
-      catch {
-        case _: NumberFormatException =>
-          error("malformed floating point number")
-          0.0
-      }
-    }
-
-    def doubleVal: Double = doubleVal(false)
-
     @inline def isNumberSeparator(c: Char): Boolean = c == '_'
 
     @inline def removeNumberSeparators(s: String): String =
-      if (s.indexOf('_') > 0) s.replaceAllLiterally("_", "") /*.replaceAll("'","")*/ else s
+      if (s.indexOf('_') > 0) s.replaceAllLiterally("_", "") else s
 
     // disallow trailing numeric separator char, but continue lexing
     def checkNoTrailingSeparator(): Unit =
@@ -1228,7 +1139,7 @@ object Scanners {
      *  if one is present.
      */
     protected def getFraction(): Unit = {
-      token = DOUBLELIT
+      token = DECILIT
       while ('0' <= ch && ch <= '9' || isNumberSeparator(ch)) {
         putChar(ch)
         nextChar()
@@ -1252,7 +1163,7 @@ object Scanners {
           }
           checkNoTrailingSeparator()
         }
-        token = DOUBLELIT
+        token = EXPOLIT
       }
       if (ch == 'd' || ch == 'D') {
         putChar(ch)
@@ -1329,11 +1240,11 @@ object Scanners {
 
     def show: String = token match {
       case IDENTIFIER | BACKQUOTED_IDENT => s"id($name)"
-      case CHARLIT => s"char($intVal)"
-      case INTLIT => s"int($intVal)"
-      case LONGLIT => s"long($intVal)"
-      case FLOATLIT => s"float($floatVal)"
-      case DOUBLELIT => s"double($doubleVal)"
+      case CHARLIT => s"char($strVal)"
+      case INTLIT => s"int($strVal, $base)"
+      case LONGLIT => s"long($strVal, $base)"
+      case FLOATLIT => s"float($strVal)"
+      case DOUBLELIT => s"double($strVal)"
       case STRINGLIT => s"string($strVal)"
       case STRINGPART => s"stringpart($strVal)"
       case INTERPOLATIONID => s"interpolationid($name)"

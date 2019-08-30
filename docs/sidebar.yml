@@ -107,6 +107,8 @@ sidebar:
               url: docs/reference/other-new-features/indentation.html
         - title: Other Changed Features
           subsection:
+            - title: Numeric Literals
+              url: docs/reference/changed-features/numeric-literals.html
             - title: Structural Types
               url: docs/reference/changed-features/structural-types.html
             - title: Operators

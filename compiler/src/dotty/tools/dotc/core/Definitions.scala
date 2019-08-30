@@ -669,6 +669,11 @@ class Definitions {
   @tu lazy val StatsModule: Symbol = ctx.requiredModule("dotty.tools.dotc.util.Stats")
     @tu lazy val Stats_doRecord: Symbol = StatsModule.requiredMethod("doRecord")
 
+  @tu lazy val FromDigitsClass: ClassSymbol           = ctx.requiredClass("scala.util.FromDigits")
+  @tu lazy val FromDigits_WithRadixClass: ClassSymbol = ctx.requiredClass("scala.util.FromDigits.WithRadix")
+  @tu lazy val FromDigits_DecimalClass: ClassSymbol   = ctx.requiredClass("scala.util.FromDigits.Decimal")
+  @tu lazy val FromDigits_FloatingClass: ClassSymbol  = ctx.requiredClass("scala.util.FromDigits.Floating")
+
   @tu lazy val XMLTopScopeModule: Symbol = ctx.requiredModule("scala.xml.TopScope")
 
   @tu lazy val CommandLineParserModule: Symbol = ctx.requiredModule("scala.util.CommandLineParser")

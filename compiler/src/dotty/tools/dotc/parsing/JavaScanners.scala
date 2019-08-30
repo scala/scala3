@@ -519,20 +519,13 @@ object JavaScanners {
     // Errors -----------------------------------------------------------------
 
     override def toString(): String = token match {
-      case IDENTIFIER =>
-        "id(" + name + ")"
-      case CHARLIT =>
-        "char(" + intVal + ")"
-      case INTLIT =>
-        "int(" + intVal + ")"
-      case LONGLIT =>
-        "long(" + intVal + ")"
-      case FLOATLIT =>
-        "float(" + floatVal + ")"
-      case DOUBLELIT =>
-        "double(" + doubleVal + ")"
-      case STRINGLIT =>
-        "string(" + name + ")"
+      case IDENTIFIER => s"id($name)"
+      case CHARLIT => s"char($strVal)"
+      case INTLIT => s"int($strVal, $base)"
+      case LONGLIT => s"long($strVal, $base)"
+      case FLOATLIT => s"float($strVal)"
+      case DOUBLELIT => s"double($strVal)"
+      case STRINGLIT => s"string($strVal)"
       case SEMI =>
         ";"
       case COMMA =>

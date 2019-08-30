@@ -339,17 +339,19 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         }
       else
         Prod(erase(pat.tpe.stripAnnots), erase(fun.tpe), fun.symbol, pats.map(project), isIrrefutableUnapply(fun))
-    case Typed(pat: UnApply, _) =>
-      project(pat)
-    case Typed(expr, tpt) =>
+    case Typed(expr @ Ident(nme.WILDCARD), tpt) =>
       Typ(erase(expr.tpe.stripAnnots), true)
+    case Typed(pat, _) =>
+      project(pat)
     case This(_) =>
       Typ(pat.tpe.stripAnnots, false)
     case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala
       Typ(WildcardType, false)
+    case Block(Nil, expr) =>
+      project(expr)
     case _ =>
-      ctx.error(s"unknown pattern: $pat", pat.sourcePos)
-      Empty
+      // Pattern is an arbitrary expression; assume a skolem (i.e. an unknown value) of the pattern type
+      Typ(pat.tpe.narrow, false)
   }
 
   private def unapplySeqInfo(resTp: Type, pos: SourcePosition)(implicit ctx: Context): (Int, Type, Type) = {

@@ -38,15 +38,20 @@ object Inliner {
   def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
     sym.isInlineMethod && sym.hasAnnotation(defn.BodyAnnot)
 
-  /** The body to inline for method `sym`.
+  /** The body to inline for method `sym`, or `EmptyTree` if none exists.
+   *  Note: definitions coming from Scala2x class files might be `@forceInline`,
+   *  but still lack that body.
    *  @pre  hasBodyToInline(sym)
    */
   def bodyToInline(sym: SymDenotation)(implicit ctx: Context): Tree =
-    sym.unforcedAnnotation(defn.BodyAnnot).get.tree
+    if (sym.isInlineMethod && sym.hasAnnotation(defn.BodyAnnot))
+      sym.getAnnotation(defn.BodyAnnot).get.tree
+    else
+      EmptyTree
 
   /** Should call to method `meth` be inlined in this context? */
   def isInlineable(meth: Symbol)(implicit ctx: Context): Boolean =
-    meth.is(Inline) && hasBodyToInline(meth) && !ctx.inInlineMethod
+    meth.is(Inline) && !ctx.inInlineMethod && !bodyToInline(meth).isEmpty
 
   /** Should call be inlined in this context? */
   def isInlineable(tree: Tree)(implicit ctx: Context): Boolean = tree match {
@@ -105,8 +110,7 @@ object Inliner {
       cpy.Block(tree)(bindings.toList, inlineCall(tree1))
     else if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) {
       val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
-      if (ctx.reporter.hasErrors) tree
-      else new Inliner(tree, body).inlined(tree.sourcePos)
+      new Inliner(tree, body).inlined(tree.sourcePos)
     }
     else
       errorTree(
@@ -204,7 +208,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private val inlineCallPrefix =
      qualifier(methPart).orElse(This(inlinedMethod.enclosingClass.asClass))
 
-  inlining.println("-----------------------\nInlining $call\nWith RHS $rhsToInline")
+  inlining.println(i"-----------------------\nInlining $call\nWith RHS $rhsToInline")
 
   // Make sure all type arguments to the call are fully determined
   for (targ <- callTypeArgs) fullyDefinedType(targ.tpe, "inlined type argument", targ.span)
@@ -421,7 +425,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     // Compute bindings for all this-proxies, appending them to bindingsBuf
     computeThisBindings()
 
-    val inlineTyper = new InlineTyper
+    val inlineTyper = new InlineTyper(ctx.reporter.errorCount)
 
     val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
 
@@ -986,7 +990,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    *  4. Make sure inlined code is type-correct.
    *  5. Make sure that the tree's typing is idempotent (so that future -Ycheck passes succeed)
    */
-  class InlineTyper extends ReTyper {
+  class InlineTyper(initialErrorCount: Int) extends ReTyper {
     import reducer._
 
     override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SourcePosition)(implicit ctx: Context): Type = {
@@ -1033,7 +1037,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree =
       constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
-        case res: Apply if res.symbol == defn.InternalQuoted_exprSplice && level == 0 && call.symbol.is(Macro) =>
+        case res: Apply
+        if res.symbol == defn.InternalQuoted_exprSplice &&
+           level == 0 &&
+           call.symbol.is(Macro) &&
+           !suppressInline =>
           expandMacro(res.args.head, tree.span)
         case res => res
       }
@@ -1082,7 +1090,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         }
       }
 
-    override def newLikeThis: Typer = new InlineTyper
+    override def newLikeThis: Typer = new InlineTyper(initialErrorCount)
+
+    /** Suppress further inlining if this inline typer has already issued errors */
+    override def suppressInline given (ctx: Context) =
+      ctx.reporter.errorCount > initialErrorCount || super.suppressInline
   }
 
   /** Drop any side-effect-free bindings that are unused in expansion or other reachable bindings.
@@ -1202,8 +1214,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
     }
     val normalizedSplice = inlinedNormailizer.transform(evaluatedSplice)
-
-    if (ctx.reporter.hasErrors) EmptyTree
+    if (normalizedSplice.isEmpty) normalizedSplice
     else normalizedSplice.withSpan(span)
   }
 }

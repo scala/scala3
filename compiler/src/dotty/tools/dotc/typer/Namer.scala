@@ -805,8 +805,6 @@ class Namer { typer: Typer =>
 
     private def addInlineInfo(sym: Symbol) = original match {
       case original: untpd.DefDef if sym.isInlineMethod =>
-        if (sym.owner.isClass && sym.owner.seesOpaques)
-          ctx.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", sym.sourcePos)
         PrepareInlineable.registerInlineInfo(
             sym,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs

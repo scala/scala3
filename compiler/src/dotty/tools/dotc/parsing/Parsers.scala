@@ -1016,24 +1016,37 @@ object Parsers {
      *  @param negOffset   The offset of a preceding `-' sign, if any.
      *                     If the literal is not negated, negOffset = in.offset.
      */
-    def literal(negOffset: Int = in.offset, inPattern: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
-
-      def literalOf(token: Token): Literal = {
+    def literal(negOffset: Int = in.offset, inPattern: Boolean = false, inType: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
+      def literalOf(token: Token): Tree = {
         val isNegated = negOffset < in.offset
-        val value = token match {
-          case CHARLIT                => in.charVal
-          case INTLIT                 => in.intVal(isNegated).toInt
-          case LONGLIT                => in.intVal(isNegated)
-          case FLOATLIT               => in.floatVal(isNegated).toFloat
-          case DOUBLELIT              => in.doubleVal(isNegated)
-          case STRINGLIT | STRINGPART => in.strVal
-          case TRUE                   => true
-          case FALSE                  => false
-          case NULL                   => null
-          case _                      =>
-            syntaxErrorOrIncomplete(IllegalLiteral())
-            null
-        }
+        def digits0 = in.removeNumberSeparators(in.strVal)
+        def digits = if (isNegated) "-" + digits0 else digits0
+        if (!inType)
+          token match {
+            case INTLIT  => return Number(digits, NumberKind.Whole(in.base))
+            case DECILIT => return Number(digits, NumberKind.Decimal)
+            case EXPOLIT => return Number(digits, NumberKind.Floating)
+            case _ =>
+          }
+        import scala.util.FromDigits._
+        val value =
+          try token match {
+            case INTLIT                        => intFromDigits(digits, in.base)
+            case LONGLIT                       => longFromDigits(digits, in.base)
+            case FLOATLIT                      => floatFromDigits(digits)
+            case DOUBLELIT | DECILIT | EXPOLIT => doubleFromDigits(digits)
+            case CHARLIT                       => in.strVal.head
+            case STRINGLIT | STRINGPART        => in.strVal
+            case TRUE                          => true
+            case FALSE                         => false
+            case NULL                          => null
+            case _                             =>
+              syntaxErrorOrIncomplete(IllegalLiteral())
+              null
+          }
+          catch {
+            case ex: FromDigitsException => syntaxErrorOrIncomplete(ex.getMessage)
+          }
         Literal(Constant(value))
       }
 
@@ -1163,6 +1176,7 @@ object Parsers {
     }
 
 /* ------------- TYPES ------------------------------------------------------ */
+
     /** Same as [[typ]], but if this results in a wildcard it emits a syntax error and
      *  returns a tree for type `Any` instead.
      */
@@ -1378,11 +1392,11 @@ object Parsers {
         }
       else if (in.token == LBRACE)
         atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
-      else if (isSimpleLiteral) { SingletonTypeTree(literal()) }
+      else if (isSimpleLiteral) { SingletonTypeTree(literal(inType = true)) }
       else if (isIdent(nme.raw.MINUS) && in.lookaheadIn(numericLitTokens)) {
         val start = in.offset
         in.nextToken()
-        SingletonTypeTree(literal(negOffset = start))
+        SingletonTypeTree(literal(negOffset = start, inType = true))
       }
       else if (in.token == USCORE) {
         if (ctx.settings.strict.value) {
@@ -2329,12 +2343,11 @@ object Parsers {
       if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1() :: patternAlts() }
       else Nil
 
-    /**  Pattern1          ::= PatVar Ascription
-     *                      |  Pattern2
+    /**  Pattern1          ::= Pattern2 [Ascription]
      */
     def pattern1(): Tree = {
       val p = pattern2()
-      if (isVarPattern(p) && in.token == COLON) {
+      if (in.token == COLON) {
         in.nextToken()
         ascription(p, Location.InPattern)
       }

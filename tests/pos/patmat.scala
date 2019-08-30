@@ -8,7 +8,7 @@ object Test {
 
   xs.length match {
     case 0 => println("0")
-    case 1 => println("1")
+    case 1: Int => println("1")
     case 2 => println("2")
     case 3 => println("3")
     case 4 => println("4")
@@ -16,7 +16,7 @@ object Test {
   }
 
   (xs.length, xs) match {
-    case (0, Nil) => println("1")
+    case (0, Nil: List[Int]) => println("1")
     case (_, Nil) => println("2")
     case (0, _)   => println("3")
     case (x, y)   => println("4")
@@ -45,5 +45,10 @@ object Test {
   x match {
     case Some(s) => println(s)
     case None => println("nothing")
+  }
+
+  type IntPair = (Int, Int)
+  ??? match {
+    case (x, y): IntPair => x * y
   }
 }

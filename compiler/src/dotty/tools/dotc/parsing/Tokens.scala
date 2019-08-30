@@ -37,17 +37,19 @@ abstract class TokensCommon {
   /** literals */
   final val CHARLIT = 3;           enter(CHARLIT, "character literal")
   final val INTLIT = 4;            enter(INTLIT, "integer literal")
-  final val LONGLIT = 5;           enter(LONGLIT, "long literal")
-  final val FLOATLIT = 6;          enter(FLOATLIT, "float literal")
-  final val DOUBLELIT = 7;         enter(DOUBLELIT, "double literal")
-  final val STRINGLIT = 8;         enter(STRINGLIT, "string literal")
-  final val STRINGPART = 9;        enter(STRINGPART, "string literal", "string literal part")
-  //final val INTERPOLATIONID = 10;  enter(INTERPOLATIONID, "string interpolator")
-  //final val QUOTEID = 11;        enter(QUOTEID, "quoted identifier") // TODO: deprecate
+  final val DECILIT = 5;           enter(DECILIT, "number literal")  // with decimal point
+  final val EXPOLIT = 6;           enter(EXPOLIT, "number literal with exponent")
+  final val LONGLIT = 7;           enter(LONGLIT, "long literal")
+  final val FLOATLIT = 8;          enter(FLOATLIT, "float literal")
+  final val DOUBLELIT = 9;         enter(DOUBLELIT, "double literal")
+  final val STRINGLIT = 10;         enter(STRINGLIT, "string literal")
+  final val STRINGPART = 11;       enter(STRINGPART, "string literal", "string literal part")
+  //final val INTERPOLATIONID = 12;  enter(INTERPOLATIONID, "string interpolator")
+  //final val QUOTEID = 13;        enter(QUOTEID, "quoted identifier") // TODO: deprecate
 
   /** identifiers */
-  final val IDENTIFIER = 12;       enter(IDENTIFIER, "identifier")
-  //final val BACKQUOTED_IDENT = 13; enter(BACKQUOTED_IDENT, "identifier", "backquoted ident")
+  final val IDENTIFIER = 14;       enter(IDENTIFIER, "identifier")
+  //final val BACKQUOTED_IDENT = 15; enter(BACKQUOTED_IDENT, "identifier", "backquoted ident")
 
   /** alphabetic keywords */
   final val IF = 20;               enter(IF, "if")
@@ -150,10 +152,10 @@ object Tokens extends TokensCommon {
   final val minToken = EMPTY
   final def maxToken: Int = XMLSTART
 
-  final val INTERPOLATIONID = 10;  enter(INTERPOLATIONID, "string interpolator")
-  final val QUOTEID = 11;          enter(QUOTEID, "quoted identifier") // TODO: deprecate
+  final val INTERPOLATIONID = 12;  enter(INTERPOLATIONID, "string interpolator")
+  final val QUOTEID = 13;          enter(QUOTEID, "quoted identifier") // TODO: deprecate
 
-  final val BACKQUOTED_IDENT = 13; enter(BACKQUOTED_IDENT, "identifier", "backquoted ident")
+  final val BACKQUOTED_IDENT = 15; enter(BACKQUOTED_IDENT, "identifier", "backquoted ident")
 
   final val identifierTokens: TokenSet = BitSet(IDENTIFIER, BACKQUOTED_IDENT)
 
@@ -260,7 +262,7 @@ object Tokens extends TokensCommon {
   final val stopScanTokens: BitSet = mustStartStatTokens |
     BitSet(IF, ELSE, WHILE, DO, FOR, YIELD, NEW, TRY, CATCH, FINALLY, THROW, RETURN, MATCH, SEMI, EOF)
 
-  final val numericLitTokens: TokenSet = BitSet(INTLIT, LONGLIT, FLOATLIT, DOUBLELIT)
+  final val numericLitTokens: TokenSet = BitSet(INTLIT, DECILIT, EXPOLIT, LONGLIT, FLOATLIT, DOUBLELIT)
 
   final val statCtdTokens: BitSet = BitSet(THEN, ELSE, DO, CATCH, FINALLY, YIELD, MATCH)
 
