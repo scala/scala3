@@ -175,8 +175,8 @@
       local hash=$(curl -L -s https://github.com/lampepfl/dotty/releases/download/0.18.1-RC1/sha256sum.txt | grep ".tar.gz" | awk '{ print $1 }')
 
       replace "dotty.rb" \
-        "url\s*\"https://github.com/lampepfl/dotty/releases/download/[\d\.\-RC]+/dotty-[\d\.\-RC]+.tar.gz\"" \
-        "url \"https://github.com/lampepfl/dotty/releases/download/$rc_version/dotty-$rc_version.tar.gz\""
+        "url\s+\"https:\/\/github\.com\/lampepfl\/dotty\/releases\/download\/[\d\.]+-RC\d\/dotty-[\d\.]-RC\d\.tar\.gz\"" \
+        "url \"https:\/\/github.com\/lampepfl\/dotty\/releases\/download\/$rc_version\/dotty-$rc_version.tar.gz\""
 
       replace "dotty.rb" \
         "sha256 \"[0-9a-z]+\"" \
@@ -184,13 +184,13 @@
     }
 
 #object Main:
-  PROJECTS='
-  dotty-example-project
-  '
+  # PROJECTS='
+  # dotty-example-project
   # dotty-example-project-mill
   # dotty.g8
   # dotty-cross.g8
-  # homebrew-brew
+  PROJECTS='homebrew-brew
+  '
 
   function main {
     export -f process
