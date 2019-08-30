@@ -211,7 +211,26 @@
         "val latestDotty = \"$rc_version\""
     }
 
-    function scastie_project {
+    function publish_scastie {
+      git commit -am "Upgrade Dotty to $rc_version"
+      # push -u staging  # TODO uncomment
+    }
+
+  #class Scalac extends Project:
+    function deploy_scalac {
+      git clone https://github.com/scala/scala.git
+      cd scala
+      git remote add staging https://github.com/dotty-staging/scala
+      git checkout -b "dotty-release-$rc_version"
+    }
+
+    function update_scalac {
+      replace "project/DottySupport.scala" \
+        "val\s+dottyVersion\s*=\s*\".*\"" \
+        "val dottyVersion = \"$rc_version\""
+    }
+
+    function publish_scalac {
       git commit -am "Upgrade Dotty to $rc_version"
       # push -u staging  # TODO uncomment
     }
@@ -224,7 +243,8 @@
   # dotty-cross.g8
   # homebrew-brew
   # packtest
-  PROJECTS='scastie'
+  # scastie
+  PROJECTS='scalac'
 
   function main {
     export -f process
