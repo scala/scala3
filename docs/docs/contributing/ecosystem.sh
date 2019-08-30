@@ -77,6 +77,7 @@
   function publish { project_call "publish" $1; }
   function publish_project {
     git commit -am "Upgrade Dotty to $rc_version"
+    # push -u  # TODO uncomment
   }
 
   function cleanup { project_call "cleanup" $1; }
@@ -92,7 +93,7 @@
     update
     test
     publish
-    # cleanup
+    # cleanup  TODO Uncomment
   }
 
 #package object impl:
@@ -196,15 +197,34 @@
         "tar=https:\/\/github.com\/lampepfl\/dotty\/releases\/download\/$rc_version\/dotty-$rc_version.tar.gz"
     }
 
+  #class Scastie extends Project:
+    function deploy_scastie {
+      git clone https://github.com/scalacenter/scastie.git
+      cd scastie
+      git remote add staging https://github.com/dotty-staging/scastie
+      git checkout -b "dotty-release-$rc_version"
+    }
+
+    function update_scastie {
+      replace "project/SbtShared.scala" \
+        "val\s+latestDotty\s*=\s*\".*\"" \
+        "val latestDotty = \"$rc_version\""
+    }
+
+    function scastie_project {
+      git commit -am "Upgrade Dotty to $rc_version"
+      # push -u staging  # TODO uncomment
+    }
+
 #object Main:
   # PROJECTS='
   # dotty-example-project
   # dotty-example-project-mill
   # dotty.g8
   # dotty-cross.g8
-  # PROJECTS='homebrew-brew'
-  PROJECTS='packtest
-  '
+  # homebrew-brew
+  # packtest
+  PROJECTS='scastie'
 
   function main {
     export -f process
