@@ -26,7 +26,7 @@ test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 # check that `dotc` and `dotr` works for staging
 clear_out "$OUT"
 ./bin/dotc tests/run-staging/i4044f.scala -d "$OUT"
-./bin/dotr -classpath "$OUT" Test > "$tmp"
+./bin/dotr -with-compiler -classpath "$OUT" Test > "$tmp"
 ./bin/dotd -project Staging -siteroot "$OUT" "tests/run-staging/i4044f.scala"
 
 # check that `dotc -from-tasty` compiles and `dotr` runs it
