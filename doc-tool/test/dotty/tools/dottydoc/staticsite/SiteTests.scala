@@ -10,7 +10,7 @@ class SiteTests extends DottyDocTest with SourceFileOps with CheckFromSource {
     assert(site.root.exists && site.root.isDirectory,
            s"'${site.root.getName}' is not a directory")
 
-    val expectedLayouts = Set("main", "index", "blog-page", "doc-page", "api-page", "search")
+    val expectedLayouts = Set("base", "main", "index", "blog-page", "doc-page", "api-page", "search")
     assert(site.layouts.keys == expectedLayouts,
            s"Incorrect layouts in: ${site.layouts.keys}, expected: $expectedLayouts")
   }
@@ -82,17 +82,23 @@ class SiteTests extends DottyDocTest with SourceFileOps with CheckFromSource {
     val compd  = site.compilableFiles.map(site.stripRoot(_).replace('\\','/')).toSet
 
     val expectedAssets = Set(
-      "css/toolbar.css",
-      "css/sidebar.css",
-      "css/search.css",
-      "css/api-page.css",
-      "css/dottydoc.css",
-      "css/color-brewer.css",
       "css/bootstrap.min.css",
+      "css/color-brewer.css",
+      "css/dottydoc.css",
+      "css/search.css",
+      "css/sidebar.css",
+      "css/toolbar.css",
+      "images/dotty-logo-white.svg",
+      "images/dotty-logo.svg",
+      "images/scala-logo-white.svg",
+      "images/scala-logo.svg",
       "js/api-search.js",
-      "js/highlight.pack.js",
       "js/bootstrap.min.js",
-      "js/jquery.min.js"
+      "js/dottydoc.js",
+      "js/highlight.pack.js",
+      "js/jquery.min.js",
+      "js/sidebar.js",
+      "js/toolbar.js"
     )
     val expectedCompd = Set(
       // Directories starting in `_` are not included in compilable files
