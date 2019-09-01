@@ -446,8 +446,10 @@ object Site {
   val markdownOptions: DataHolder =
     new MutableDataSet()
       .setFrom(ParserEmulationProfile.KRAMDOWN.getOptions)
+      .set(Parser.INDENTED_CODE_BLOCK_PARSER, false)
       .set(AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
       .set(AnchorLinkExtension.ANCHORLINKS_ANCHOR_CLASS, "anchor")
+      .set(EmojiExtension.ROOT_IMAGE_PATH, "https://github.global.ssl.fastly.net/images/icons/emoji/")
       .set(Parser.EXTENSIONS, Arrays.asList(
         TablesExtension.create(),
         TaskListExtension.create(),
@@ -457,6 +459,4 @@ object Site {
         YamlFrontMatterExtension.create(),
         StrikethroughExtension.create()
       ))
-      .set(EmojiExtension.ROOT_IMAGE_PATH,
-        "https://github.global.ssl.fastly.net/images/icons/emoji/")
 }
