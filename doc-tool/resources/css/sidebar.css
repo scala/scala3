@@ -65,8 +65,8 @@
 .sidebar a {
   width: 100%;
   color: var(--contrast);
+  transition: color .2s ease-out;
 }
-
 .sidebar a:hover {
   color: var(--accent) !important;
 }

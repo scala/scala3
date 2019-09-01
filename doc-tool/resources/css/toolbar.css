@@ -11,6 +11,7 @@ nav.navbar {
 }
 nav.navbar-dark * {
   color: white;
+  transition: color .2s ease-out;
 }
 
 nav.navbar-dark a:hover *, nav.navbar-dark a:focus * {

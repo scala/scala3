@@ -2,7 +2,7 @@
 function toggleSection(titleElement) {
   const title = $(titleElement);
   title.siblings("ul").toggle();
-  title.children("i.fas").toggleClass("fa-plus").toggleClass("fa-minus");
+  title.children("i.fas").toggleClass("fa-angle-right").toggleClass("fa-angle-down");
 }
 
 // Unfolds the sidebar section corresponding to the current page

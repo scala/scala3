@@ -13,7 +13,7 @@
             {% for pkg in docs %}
                 <li class="index-entity entity-package section">
                     <a class="package-toggle" onclick="toggleSection(this);">
-                        <i class="fas fa-plus"></i>
+                        <i class="fas fa-angle-right"></i>
                     </a>
                     <a class="entity-name" href="{{ site.baseurl }}/api/{{ pkg.path | join: "/" }}/index.html">
                         {{ pkg.name }}
