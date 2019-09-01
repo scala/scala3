@@ -1,30 +1,40 @@
 ---
 layout: main
 title: Search
-extraCSS:
-    - css/search.css
 ---
+<link rel="stylesheet" href="{{site.baseurl}}/css/search.css">
 <div id="back-container">
-    <span>
-        <a id="back-anchor" href="">Back</a>
-    </span>
+    <a id="back-anchor" href=""><i class="fas fa-hand-point-left"></i> Back</a>
 </div>
 
-<div id="search-container">
+<main id="search-container" class="container">
+    <!-- Search terms -->
     <h1 id="searching-for"></h1>
-    <div id="result-container">
-        <div class="results">
-            <h1>Entity Results</h1>
-            <ul id="entity-results">
-            </ul>
+    <!-- Tabs for small screens -->
+    <ul class="nav nav-tabs d-md-none" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active href="#entities" aria-controls="entities" data-toggle="tab">
+                Entity Results
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link href="#members" aria-controls="members" data-toggle="tab">
+                Member Results
+            </a>
+        </li>
+    </ul>
+    <!-- Content -->
+    <div class="tab-content row">
+        <div id="entities" class="tab-pane active col-12 col-md-6" role="tabpanel">
+            <h2 class="d-none d-md-block">Entity Results</h2>
+            <ul id="entity-results"></ul>
         </div>
-        <div class="results">
-            <h1>Member Results</h1>
-            <ul id="member-results">
-            </ul>
+        <div id="members" class="tab-pane col-12 col-md-6" role="tabpanel">
+            <h2 class="d-none d-md-block">Member Results</h2>
+            <ul id="member-results"></ul>
         </div>
     </div>
-</div>
+</main>
 
 <script>
     // Parse parameters from URL:
