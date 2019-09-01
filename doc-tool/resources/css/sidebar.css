@@ -114,7 +114,7 @@
   background: linear-gradient(45deg, #2c6c8d 49%, #19aacf 51%);
 }
 
-@media (min-width: 576px) {
+@media (min-width: 768px) {
   .sidebar { /* visible by default, hidden by toggle */
     width: 320px;
     visibility: visible;
