@@ -7,18 +7,14 @@
 @import url('https://fonts.googleapis.com/css?family=Roboto+Slab:300|Source+Code+Pro:400,600|Source+Sans+Pro:400,600|Lobster&display=swap');
 
 // Custom values that override the default variables of Bootstrap
-$colors: (
-  "red": #ca445e,
-  "orange": #f26527
-);
 $theme-colors: (
   "primary": #002b36, // primary toolbar+sidebar dark color
   "secondary": #ca445e, // secondary color used on light backgrounds
+  "secondary-lite": #ca44c822, // less opaque version of secondary
   "accent": #ca445e, // secondary-like for dark backgrounds
   "contrast": #f26527, // used on dark backgrounds
 );
 $container-max-widths: (
-  sm: 540px,
   md: 720px,
   lg: 960px,
   xl: 960px

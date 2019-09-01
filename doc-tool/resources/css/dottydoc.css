@@ -14,20 +14,25 @@ main.container {
   height: auto;
 }
 
-/* byline */
-.byline {
+/* headers */
+main header {
+  border-bottom: 1px solid rgba(0,0,0,.1);
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+}
+
+main > h1 {
+  margin-bottom: 20px;
+}
+
+.byline, .byline a {
   color: grey;
 }
 .byline .author {
   display: block;
 }
-h1:not(.above-byline) {
-  margin-bottom: 20px;
-}
-h1 + .byline {
-  margin-bottom: 20px;
-}
 
+/* indexes */
 ul.post-list {
   list-style: none;
   padding-left: 0;
@@ -67,8 +72,9 @@ h4:hover a.anchor:hover,
 h5:hover a.anchor:hover {
   color: var(--secondary);
 }
-/* --- */
 
+
+/* footer */
 footer {
   color: grey;
 }
@@ -80,10 +86,94 @@ footer img#author-img {
   border-radius: 50%;
 }
 
-.darken {
-  background-color: rgba(0, 0, 0, 0.2);
+/* api docs */
+.api span.letter-anchor {
+  float: left;
+  width: 50px;
+  height: 50px;
+  border-radius: 50px;
+  color: white;
+  margin-top: 6px;
+  margin-right: 8px;
+  line-height: 50px;
+  text-align: center;
+  text-decoration: none;
+  font-size: 42px;
+  font-family: var(--font-family-sans-serif);
 }
 
+.letter-anchor.object {
+  background: #2c6c8d;
+}
+.letter-anchor.class {
+  background: #44ad7d;
+}
+.letter-anchor.trait {
+  background: #19aacf;
+}
+.letter-anchor.enum {
+  background: #7803fc;
+}
+.letter-anchor.package {
+  background: #2c6c8d;
+}
+
+.api header {
+  font-family: var(--font-family-sans-serif);
+}
+.api header .name-prefix {
+  display: block;
+}
+.api header .name-suffix {
+  display: inline-block;
+}
+
+.api header h1 {
+  margin: -13px 8px 0 0;
+  display: inline-block;
+}
+.api h2 {
+  margin-top: 1rem;
+}
+.api h3 {
+  display: inline;
+  margin: 0;
+  font: inherit;
+  font-weight: bold;
+}
+
+/* improved display and wrapping of parameters */
+.api .params, .api .type-params {
+  display: inline-flex;
+  flex-flow: wrap;
+}
+
+/* api layout */
+.wide-table {
+  display: table;
+  width: 100%;
+}
+.api .member:hover {
+  background: var(--secondary-lite);
+  cursor: pointer;
+}
+.api .left-column {
+  white-space: nowrap;
+  padding-left: 1em;
+  border-left: 3px solid transparent;/* table rows cannot have borders*/
+  font-family: var(--font-family-monospace);
+  width: 0;
+}
+.api .member:hover .left-column {
+  border-left: 3px solid var(--secondary);
+}
+.api .right-column {
+  display: inline;
+  text-align: right;
+  font-family: var(--font-family-monospace);
+}
+
+/* code */
 pre {
   padding: 0;
   font-size: 13px;
@@ -100,6 +190,7 @@ pre > code.hljs {
   background: transparent;
 }
 
+/* admonitions */
 blockquote {
   padding: 0 1em;
   color: #777;
@@ -126,6 +217,7 @@ aside.success {
   background-color: #ebfddd;
 }
 
+/* gitter chat */
 .gitter-open-chat-button {
   background-color: grey;
 }
@@ -140,6 +232,7 @@ aside.success {
   bottom: -10px;
 }
 
+/* media queries for bigger screens (dottydoc is mobile-first) */
 @media (min-width: 576px) {
   .byline .author {
     display: inline;
@@ -147,5 +240,17 @@ aside.success {
   }
   main.container {
     padding: 15px 30px;
+  }
+}
+@media (min-width: 768px) {
+  .api .member {
+    display: table-row;
+  }
+  .api .left-column {
+    display: table-cell;
+  }
+  .api .right-column {
+    display: flex;
+    flex-flow: wrap;
   }
 }

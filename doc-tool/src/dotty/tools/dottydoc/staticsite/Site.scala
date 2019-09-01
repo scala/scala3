@@ -145,7 +145,6 @@ case class Site(
         "css/toolbar.css" -> "/css/toolbar.css",
         "css/search.css" -> "/css/search.css",
         "css/sidebar.css" -> "/css/sidebar.css",
-        "css/api-page.css" -> "/css/api-page.css",
         "css/dottydoc.css" -> "/css/dottydoc.css",
         "css/color-brewer.css" -> "/css/color-brewer.css",
         "css/bootstrap.min.css" -> "/css/bootstrap.min.css",

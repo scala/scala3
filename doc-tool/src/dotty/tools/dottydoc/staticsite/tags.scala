@@ -71,10 +71,9 @@ object tags {
     private def renderReference(ref: Reference): String = ref match {
       case TypeReference(_, tpeLink, paramLinks) => {
         if (paramLinks.nonEmpty) {
-          s"""|${renderLink(baseurl, tpeLink)}
-              |<span class="no-left no-right">[</span>
-              |${ paramLinks.map(renderReference).mkString("""<span class="">, </span>""") }
-              |<span class="no-left">]</span>""".stripMargin
+          val link = renderLink(baseurl, tpeLink);
+          val typeParamsLinks = paramLinks.map(renderReference).mkString("[", ",", "]");
+          s"""$link<span class="type-params">$typeParamsLinks</span>"""
         }
         else renderLink(baseurl, tpeLink)
       }
