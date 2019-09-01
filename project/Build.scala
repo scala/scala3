@@ -1288,7 +1288,7 @@ object Build {
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
       withCommonSettings.
-      dependsOn(`dotty-interfaces`, dottyCompiler, dottyLibrary, dottyDoc).
+      dependsOn(`dotty-interfaces`, dottyCompiler, dottyLibrary, `dotty-staging`, dottyDoc).
       settings(commonDistSettings).
       bootstrappedSettings(
         target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings
