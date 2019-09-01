@@ -6,10 +6,10 @@
         <a id="search-icon" title="Search" aria-label="Search">
             <i class="fas fa-search"></i>
         </a>
-        <form id="searchbar" class="form-inline">
+        <span id="searchbar">
             <input id="search-api-input" type="text" class="form-control" placeholder="Search API" aria-label="Search API">
             <input id="baseurl-input" type="hidden" value="{{ site.baseurl }}">
-        </form>
+        </span>
         <div class="navbar-brand">
             {% if site.logo %}
             <a href="{{ site.baseurl }}/index.html">

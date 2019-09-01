@@ -3,22 +3,18 @@ layout: main
 title: Search
 ---
 <link rel="stylesheet" href="{{site.baseurl}}/css/search.css">
-<div id="back-container">
-    <a id="back-anchor" href=""><i class="fas fa-hand-point-left"></i> Back</a>
-</div>
-
-<main id="search-container" class="container">
+<main class="container">
     <!-- Search terms -->
     <h1 id="searching-for"></h1>
     <!-- Tabs for small screens -->
     <ul class="nav nav-tabs d-md-none" role="tablist">
         <li class="nav-item">
-            <a class="nav-link active href="#entities" aria-controls="entities" data-toggle="tab">
+            <a class="nav-link active" href="#entities" aria-controls="entities" data-toggle="tab">
                 Entity Results
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link href="#members" aria-controls="members" data-toggle="tab">
+            <a class="nav-link" href="#members" aria-controls="members" data-toggle="tab">
                 Member Results
             </a>
         </li>
@@ -49,10 +45,9 @@ title: Search
         }
     })();
 
-    // Set search term and back button:
+    // Set search term and title:
     var searchTerm = decodeURIComponent(parameters["searchTerm"]);
     document.getElementById("searching-for").innerHTML = 'Search results for "' + searchTerm + '"';
-    document.getElementById("back-anchor").href = parameters["previousUrl"];
     document.title = searchTerm + ' - Search results';
 
     if (!window.Worker) {
@@ -81,20 +76,13 @@ title: Search
                         var packageLi = document.createElement("li");
                         entityResultsNode.appendChild(packageLi);
 
-                        packageLi.innerHTML =
-                            "<h1 class=\"package-name\">" +
-                                "<a href=\"{{ site.baseurl }}/api/" + parent.path.join('/') + "/index.html\">" +
-                                    parent.name +
-                                "</a>" +
-                            "</h1>";
+                        var href = "{{ site.baseurl }}/api/" + parent.path.join('/') + "/index.html";
+                        packageLi.innerHTML = "<h3 class=\"package-name\"><a href=\"" + href + "\">" + parent.name + "</a></h3>";
 
                         var entityUl = document.createElement("ul");
                         entityUl.classList.add("entity-ul");
                         packageLi.appendChild(entityUl);
                         entityResults[parent.name] = entityUl;
-                        var coverBlock = document.createElement("div");
-                        coverBlock.classList.add("cover-block");
-                        entityUl.appendChild(coverBlock);
                     }
 
                     // Insert into list of results in package, no need to sort -
@@ -125,9 +113,9 @@ title: Search
                                 companion +
                                 letter +
                             '</div>' +
-                            "<a class=\"entity-name\" href=\"{{ site.baseurl }}/api/" + entity.path.join('/') + ".html\">" +
+                            "<h4><a class=\"entity-name\" href=\"{{ site.baseurl }}/api/" + entity.path.join('/') + ".html\">" +
                             entity.name +
-                            "</a>"
+                            "</a></h4>"
                         );
                         entityUl.appendChild(entityLi);
                     }
@@ -140,33 +128,39 @@ title: Search
             };
         };
 
-        var insertMember = function(member, li) {
-            var div = document.createElement("div");
+        var insertMember = function(member, li, parentLink) {
+            const div = document.createElement("div");
             div.classList.add("member-result");
 
-            var renderParamList = function(plist) {
+            const renderParamList = function(plist) {
                 var start = plist.isImplicit ? "(implicit " : "(";
-                var args = plist.list.join(', ');
+                var args = plist.list.map(x=>x.ref.title).join(', ');
                 return start + args + ")";
             };
 
-            var concatenateStrings = function(acc, str) { return acc + str; };
+            const concatenateStrings = function(acc, str) { return acc + str; };
 
-            var paramLists = !member.paramLists ? "" : (
+            const paramLists = !member.paramLists ? "" : (
                 member.paramLists
                     .map(renderParamList)
-                    .reduce(concatenateStrings, "") + ': '
+                    .reduce(concatenateStrings, "") + ':'
             );
 
-            var returnValue = !member.returnValue ? "" : (
-                member.returnValue
+            const returnValue = !member.returnValue ? "" : (
+                member.returnValue.title
             );
 
+            const sigObject = member.kind == "object" ? "$" : "";
+            const sigParams = !member.paramLists ? "" : (
+                member.paramLists.map(l => "(" + l.list.map(x=>x.title).join(",") + ")").reduce(concatenateStrings, "")
+            );
+            const signature = member.name + sigObject + sigParams;
+            const memberLink = parentLink + "#" + signature;
             div.innerHTML =
-                '<div class="member-kind">'+ member.kind +'</div>' +
-                '<div class="member-name">'+ member.name +'</div>' +
-                '<div class="member-param-lists">' + paramLists + '</div>' +
-                '<div class="member-return">'+ returnValue +'</div>'
+                '<span class="member-kind">'+ member.kind +'</span>&nbsp;' +
+                '<span class="member-name"><a href=\"' + memberLink + '\">' + member.name +'</a></span>' +
+                '<span class="member-param-lists">' + paramLists + '</span>&nbsp;' +
+                '<span class="member-return">'+ returnValue +'</span>'
 
             li.appendChild(div);
         };
@@ -189,8 +183,9 @@ title: Search
                     var member = res.data.member;
                     var parent = res.data.parent;
                     //console.log("got member: " + member.name + ", in entity: " + parent.name);
+                    var parentLink = "{{ site.baseurl }}/api/" + parent.path.join('/') + ".html";
                     var li = insertEntity(memberResultsNode, memberResults, "member")(parent, package);
-                    if (li) insertMember(member, li);
+                    if (li) insertMember(member, li, parentLink);
                     break;
                 }
                 default: {
