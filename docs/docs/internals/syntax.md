@@ -232,8 +232,8 @@ Quoted            ::=  ‘'’ ‘{’ Block ‘}’
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type                                     -- normal Expr allows only RefinedType here
                     |  Expr
-ParArgumentExprs  ::=  ‘(’ ExprsInParens ‘)’                                    exprs
-                    |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’          exprs :+ Typed(expr, Ident(wildcardStar))
+ParArgumentExprs  ::=  ‘(’ [‘given’] ExprsInParens ‘)’                          exprs
+                    |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’      exprs :+ Typed(expr, Ident(wildcardStar))
 ArgumentExprs     ::=  ParArgumentExprs
                     |  [cnl] BlockExpr
 BlockExpr         ::=  ‘{’ CaseClauses | Block ‘}’
@@ -298,7 +298,7 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
                     |  {ClsParamClause} {GivenClsParamClause}
 ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
-GivenClsParamClause::= ‘given’ (‘(’ ClsParams ‘)’ | GivenTypes)
+GivenClsParamClause::= ‘(’ ‘given’ (ClsParams | GivenTypes) ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
@@ -308,7 +308,7 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
                     |  {DefParamClause} {GivenParamClause}
 DefParamClause    ::=  [nl] ‘(’ DefParams ‘)’
-GivenParamClause  ::=  ‘given’ (‘(’ DefParams ‘)’ | GivenTypes)
+GivenParamClause  ::=  ‘(’ ‘given’ (DefParams | GivenTypes) ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
 GivenTypes        ::=  AnnotType {‘,’ AnnotType}
@@ -335,12 +335,16 @@ AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
 
 Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                        Apply(tpe, args)
 
-Import            ::=  ‘import’ [‘given’] ImportExpr {‘,’ ImportExpr}
-ImportExpr        ::=  StableId ‘.’ (id | ‘_’ | ImportSelectors)                Import(expr, sels)
-ImportSelectors   ::=  ‘{’ {ImportSelector ‘,’} FinalSelector ‘}’
-FinalSelector     ::=  ImportSelector                                           Ident(name)
-                    |  ‘_’ [‘:’ Type]                                           TypeBoundsTree(EmptyTree, tpt)
-ImportSelector    ::=  id [‘=>’ id | ‘=>’ ‘_’]
+Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
+ImportExpr        ::=  StableId ‘.’ ImportSpec                                  Import(expr, sels)
+ImportSpec        ::=  id
+                    | ‘_’
+                    | ‘given’
+                    | ‘{’ ImportSelectors) ‘}’
+ImportSelectors   ::=  [‘given’] id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
+                    |  WildCardSelector {‘,’ WildCardSelector}
+WildCardSelector  ::=  ‘given’ [‘as’ InfixType]
+                    |  ‘_' [‘:’ InfixType]
 Export            ::=  ‘export’ [‘given’] ImportExpr {‘,’ ImportExpr}
 ```
 
@@ -382,17 +386,15 @@ ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
-GivenDef          ::=  [id] [DefTypeParamClause] GivenBody
-GivenBody         ::=  [‘as’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
-                    |  ‘as’ Type {GivenParamClause} ‘=’ Expr
+GivenDef          ::=  [id] [DefTypeParamClause] {GivenParamClause} GivenBody
+GivenBody         ::=  [‘as’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
+                    |  ‘as’ Type ‘=’ Expr
                     |  ‘(’ DefParam ‘)’ TemplateBody
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
                     |  ConstrApp {‘,’ ConstrApp}
-ConstrApp         ::=  SimpleConstrApp
-                    |  ‘(’ SimpleConstrApp {‘given’ (PrefixExpr | ParArgumentExprs)} ‘)’
-SimpleConstrApp   ::=  AnnotType {ArgumentExprs}                                Apply(tp, args)
+ConstrApp         ::=  AnnotType {ArgumentExprs}                                Apply(tp, args)
 ConstrExpr        ::=  SelfInvocation
                     |  ‘{’ SelfInvocation {semi BlockStat} ‘}’
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}

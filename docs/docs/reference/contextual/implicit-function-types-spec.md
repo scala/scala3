@@ -6,12 +6,12 @@ title: "Implicit Function Types - More Details"
 ## Syntax
 
     Type              ::=  ...
-                        |  `given' FunArgTypes `=>' Type
+                        |  `(' `given' FunArgTypes `)' `=>' Type
     Expr              ::=  ...
-                        |  `given' FunParams `=>' Expr
+                        |  `(' `given' FunParams `)' `=>' Expr
 
 Implicit function types associate to the right, e.g.
-`given S => given T => U` is the same as `given S => (given T => U)`.
+`(given S) => (given T) => U` is the same as `(given S) => ((given T) => U)`.
 
 ## Implementation
 
@@ -22,13 +22,13 @@ methods with implicit parameters. Specifically, the `N`-ary function type
 ```scala
 package scala
 trait ImplicitFunctionN[-T1 , ... , -TN, +R] {
-  def apply given (x1: T1 , ... , xN: TN): R
+  def apply(given x1: T1 , ... , xN: TN): R
 }
 ```
 Implicit function types erase to normal function types, so these classes are
 generated on the fly for typechecking, but not realized in actual code.
 
-Implicit function literals `given (x1: T1, ..., xn: Tn) => e` map
+Implicit function literals `(given x1: T1, ..., xn: Tn) => e` map
 implicit parameters `xi` of types `Ti` to the result of evaluating the expression `e`.
 The scope of each implicit parameter `xi` is `e`. The parameters must have pairwise distinct names.
 
@@ -45,12 +45,9 @@ The implicit function literal is evaluated as the instance creation
 expression
 ```scala
 new scala.ImplicitFunctionN[T1, ..., Tn, T] {
-  def apply given (x1: T1, ..., xn: Tn): T = e
+  def apply(given x1: T1, ..., xn: Tn): T = e
 }
 ```
-In the case of a single untyped parameter, `given (x) => e` can be
-abbreviated to `given x => e`.
-
 An implicit parameter may also be a wildcard represented by an underscore `_`. In
 that case, a fresh name for the parameter is chosen arbitrarily.
 
@@ -58,7 +55,7 @@ Note: The closing paragraph of the
 [Anonymous Functions section](https://www.scala-lang.org/files/archive/spec/2.12/06-expressions.html#anonymous-functions)
 of Scala 2.12 is subsumed by implicit function types and should be removed.
 
-Implicit function literals `given (x1: T1, ..., xn: Tn) => e` are
+Implicit function literals `(given x1: T1, ..., xn: Tn) => e` are
 automatically created for any expression `e` whose expected type is
 `scala.ImplicitFunctionN[T1, ..., Tn, R]`, unless `e` is
 itself a implicit function literal. This is analogous to the automatic
