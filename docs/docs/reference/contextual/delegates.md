@@ -18,7 +18,7 @@ given IntOrd as Ord[Int] {
     if (x < y) -1 else if (x > y) +1 else 0
 }
 
-given ListOrd[T] as Ord[List[T]] given (ord: Ord[T]) {
+given ListOrd[T](given ord: Ord[T]) as Ord[List[T]] {
 
   def compare(xs: List[T], ys: List[T]): Int = (xs, ys) match {
     case (Nil, Nil) => 0
@@ -42,7 +42,7 @@ The name of a given instance can be left out. So the definitions
 of the last section can also be expressed like this:
 ```scala
 given as Ord[Int] { ... }
-given [T] as Ord[List[T]] given Ord[T] { ... }
+given [T](given Ord[T]) as Ord[List[T]] { ... }
 ```
 If the name of a given is missing, the compiler will synthesize a name from
 the type(s) in the `as` clause.
@@ -61,7 +61,7 @@ returned for this and all subsequent accesses to `global`.
 Alias givens can be anonymous, e.g.
 ```scala
 given as Position = enclosingTree.position
-given as Context given (outer: Context) = outer.withOwner(currentOwner)
+given (given outer: Context) as Context = outer.withOwner(currentOwner)
 ```
 An alias given can have type parameters and given clauses just like any other given instance, but it can only implement a single type.
 
@@ -78,13 +78,10 @@ Here is the new syntax of given instances, seen as a delta from the [standard co
 ```
 TmplDef          ::=  ...
                   |   ‘given’ GivenDef
-GivenDef         ::=  [id] [DefTypeParamClause] GivenBody
-GivenBody        ::=  [‘as’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
-                   |  ‘as’ Type {GivenParamClause} ‘=’ Expr
-ConstrApp        ::=  SimpleConstrApp
-                   |  ‘(’ SimpleConstrApp {‘given’ (PrefixExpr | ParArgumentExprs)} ‘)’
-SimpleConstrApp  ::=  AnnotType {ArgumentExprs}
-GivenParamClause ::=  ‘given’ (‘(’ [DefParams] ‘)’ | GivenTypes)
+GivenDef         ::=  [id] [DefTypeParamClause] {GivenParamClause} GivenBody
+GivenBody        ::=  [‘as’ ConstrApp {‘,’ ConstrApp }] [TemplateBody]
+                   |  ‘as’ Type ‘=’ Expr
+GivenParamClause ::=  ‘(’ ‘given’ (DefParams | GivenTypes) ‘)’
 GivenTypes       ::=  AnnotType {‘,’ AnnotType}
 ```
 The identifier `id` can be omitted only if either the `as` part or the template body is present.

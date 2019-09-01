@@ -12,15 +12,15 @@ repetitive arguments instead of the programmer having to write them explicitly.
 For example, with the [given instances](./delegates.md) defined previously,
 a maximum function that works for any arguments for which an ordering exists can be defined as follows:
 ```scala
-def max[T](x: T, y: T) given (ord: Ord[T]): T =
+def max[T](x: T, y: T)(given ord: Ord[T]): T =
   if (ord.compare(x, y) < 0) y else x
 ```
 Here, `ord` is an _implicit parameter_ introduced with a `given` clause.
 The `max` method can be applied as follows:
 ```scala
-max(2, 3) given IntOrd
+max(2, 3)(given IntOrd)
 ```
-The `given IntOrd` part passes `IntOrd` as an argument for the `ord` parameter. But the point of
+The `(given IntOrd)` part passes `IntOrd` as an argument for the `ord` parameter. But the point of
 implicit parameters is that this argument can also be left out (and it usually is). So the following
 applications are equally valid:
 ```scala
@@ -35,65 +35,68 @@ mentioned explicitly at all, since it is used only in synthesized arguments for
 other implicit parameters. In that case one can avoid defining a parameter name
 and just provide its type. Example:
 ```scala
-def maximum[T](xs: List[T]) given Ord[T]: T =
+def maximum[T](xs: List[T])(given Ord[T]): T =
   xs.reduceLeft(max)
 ```
 `maximum` takes an implicit parameter of type `Ord` only to pass it on as an
 inferred argument to `max`. The name of the parameter is left out.
 
-Generally, implicit parameters may be defined either as a parameter list `(p_1: T_1, ..., p_n: T_n)`
-or as a sequence of types, separated by commas.
+Generally, implicit parameters may be defined either as a full parameter list `(given p_1: T_1, ..., p_n: T_n)` or just as a sequence of types `(given T_1, ..., T_n)`.
+Vararg given parameters are not allowed.
 
 ## Inferring Complex Arguments
 
 Here are two other methods that have an implicit parameter of type `Ord[T]`:
 ```scala
-def descending[T] given (asc: Ord[T]): Ord[T] = new Ord[T] {
+def descending[T](given asc: Ord[T]): Ord[T] = new Ord[T] {
   def compare(x: T, y: T) = asc.compare(y, x)
 }
 
-def minimum[T](xs: List[T]) given Ord[T] =
-  maximum(xs) given descending
+def minimum[T](xs: List[T])(given Ord[T]) =
+  maximum(xs)(given descending)
 ```
 The `minimum` method's right hand side passes `descending` as an explicit argument to `maximum(xs)`.
 With this setup, the following calls are all well-formed, and they all normalize to the last one:
 ```scala
 minimum(xs)
-maximum(xs) given descending
-maximum(xs) given (descending given ListOrd)
-maximum(xs) given (descending given (ListOrd given IntOrd))
+maximum(xs)(given descending)
+maximum(xs)(given descending(given ListOrd))
+maximum(xs)(given descending(given ListOrd(given IntOrd)))
 ```
 
 ## Multiple Given Clauses
 
-There can be several given clauses in a definition. Example:
+There can be several `given` parameter clauses in a definition and `given` parameter clauses can be freely
+mixed with normal ones. Example:
 ```scala
-def f given (u: Universe) given (x: u.Context) = ...
+def f(u: Universe)(given c: u.Context)(given s: ctx.Symbol, k: ctx.Kind) = ...
 ```
-However, all `given` clauses in a definition must come after any normal parameter clauses.
 Multiple given clauses are matched left-to-right in applications. Example:
 ```scala
-given global as Universe { type Context = ... }
-given ctx as global.Context { ... }
+object global extends Universe { type Context = ... }
+given ctx as global.Context { type Symbol = ...; type Kind = ... }
+given sym as ctx.Symbol
+given kind as ctx.Kind
 ```
 Then the following calls are all valid (and normalize to the last one)
 ```scala
 f
-(f given global)
-(f given global) given ctx
+f(global)
+f(global)(given ctx)
+f(global)(given ctx)(given sym, kind)
 ```
-But `f given ctx` would give a type error.
+But `f(global)(given sym, kind)` would give a type error.
 
 ## Summoning Instances
 
-A method `the` in `Predef` returns the given instance of a specific type. For example,
+The method `theGiven` in `Predef` returns the given instance of a specific type. For example,
 the given instance for `Ord[List[Int]]` is produced by
 ```scala
-the[Ord[List[Int]]]  // reduces to ListOrd given IntOrd
+theGiven[Ord[List[Int]]]  // reduces to ListOrd given IntOrd
 ```
-The `the` method is simply defined as the (non-widening) identity function over a implicit parameter.
+The `theGiven` method is simply defined as the (non-widening) identity function over a implicit parameter.
 ```scala
-def the[T] given (x: T): x.type = x
+def theGiven[T](given x: T): x.type = x
 ```
 
 ## Syntax
@@ -102,12 +105,12 @@ Here is the new syntax of parameters and arguments seen as a delta from the [sta
 ```
 ClsParamClauses     ::=  ...
                       |  {ClsParamClause} {GivenClsParamClause}
-GivenClsParamClause ::=  ‘given’ (‘(’ ClsParams ‘)’ | GivenTypes)
+GivenClsParamClause ::=  ‘(’ ‘given’ (ClsParams | GivenTypes) ‘)’
 DefParamClauses     ::=  ...
                       |  {DefParamClause} {GivenParamClause}
-GivenParamClause    ::=  ‘given’ (‘(’ DefParams ‘)’ | GivenTypes)
+GivenParamClause    ::=  ‘(’ ‘given’ (DefParams | GivenTypes) ‘)’
 GivenTypes          ::=  AnnotType {‘,’ AnnotType}
 
-InfixExpr           ::=  ...
-                      |  InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)
+ParArgumentExprs    ::=  ...
+                      |  ‘(’ ‘given’ ExprsInParens ‘)’
 ```

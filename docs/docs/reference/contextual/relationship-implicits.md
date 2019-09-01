@@ -21,7 +21,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
     ```
  2. Parameterized given instances are mapped to combinations of classes and implicit methods. E.g.,
     ```scala
-      given ListOrd[T] as Ord[List[T]] given (ord: Ord[T]) { ... }
+      given ListOrd[T](given (ord: Ord[T]) as Ord[List[T]] { ... }
     ```
     maps to
     ```scala
@@ -73,7 +73,7 @@ gets the synthesized name `second_of_List_T_given`.
 
 Given clauses corresponds largely to Scala-2's implicit parameter clauses. E.g.
 ```scala
-  def max[T](x: T, y: T) given (ord: Ord[T]): T
+  def max[T](x: T, y: T)(given ord: Ord[T]): T
 ```
 would be written
 ```scala
@@ -81,7 +81,7 @@ would be written
 ```
 in Scala 2. The main difference concerns applications of such parameters.
 Explicit arguments to parameters of given clauses _must_ be written using `given`,
-mirroring the definition syntax. E.g, `max(2, 3) given IntOrd`.
+mirroring the definition syntax. E.g, `max(2, 3)(given IntOrd`).
 Scala 2 uses normal applications `max(2, 3)(IntOrd)` instead. The Scala 2 syntax has some inherent ambiguities and restrictions which are overcome by the new syntax. For instance, multiple implicit parameter lists are not available in the old syntax, even though they can be simulated using auxiliary objects in the "Aux" pattern.
 
 The `the` method corresponds to `implicitly` in Scala 2.
