@@ -24,7 +24,7 @@ object M0 {
 object M1 {
 
   def scale(x: Double, s: LazyList[Double]): LazyList[Double] =
-    s map { e: Double => e*x }
+    s map { (e: Double) => e*x }
 
   def partialSums(s: LazyList[Double]): LazyList[Double] =
     LazyList.cons(s.head, partialSums(s.tail) map (x => x + s.head));
@@ -45,14 +45,14 @@ object M1 {
     better(s, transform) map (x => x.head);
 
   def lnSummands(n: Double): LazyList[Double] =
-    LazyList.cons(1.0 / n, lnSummands(n + 1.0) map { x: Double => -x })
+    LazyList.cons(1.0 / n, lnSummands(n + 1.0) map { (x: Double) => -x })
 
   var ln0 = partialSums(lnSummands(1.0));
   var ln1 = euler(ln0);
   var ln2 = veryGood(ln0, euler);
 
   def piSummands(n: Double): LazyList[Double] =
-    LazyList.cons(1.0 / n, piSummands(n + 2.0) map { x: Double => -x })
+    LazyList.cons(1.0 / n, piSummands(n + 2.0) map { (x: Double) => -x })
 
   var pi0 = scale(4.0, partialSums(piSummands(1.0)));
   var pi1 = euler(pi0);

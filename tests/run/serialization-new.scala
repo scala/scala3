@@ -105,7 +105,7 @@ object Test1_scala {
     println()
 
     // Function
-    val f1 = { x: Int => 2 * x }
+    val f1 = { (x: Int) => 2 * x }
     val _f1: Function[Int, Int] = read(write(f1))
     println("f1 = <na>")
     println("_f1 = <na>")

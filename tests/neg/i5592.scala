@@ -11,19 +11,19 @@ object Test {
   }
 
   // these are both fine
-  val eqReflexive1: (x: Obj) => (EQ[x.type, x.type]) = { x: Obj => implicitly }
-  val eqReflexive2: Forall[[x] =>> EQ[x, x]] = { x: Obj => implicitly }
+  val eqReflexive1: (x: Obj) => (EQ[x.type, x.type]) = { (x: Obj) => implicitly }
+  val eqReflexive2: Forall[[x] =>> EQ[x, x]] = { (x: Obj) => implicitly }
 
   // this compiles
   val eqSymmetric1: (x: Obj) => (y: Obj) => EQ[x.type, y.type] => EQ[y.type, x.type] = {
-    { x: Obj => { y: Obj => { xEqy: EQ[x.type, y.type] => xEqy.commute } } }
+    { (x: Obj) => { (y: Obj) => { (xEqy: EQ[x.type, y.type]) => xEqy.commute } } }
   }
 
   val eqSymmetric2: Forall[[x] =>> (y: Obj) => (EQ[x, y.type]) => (EQ[y.type, x])] = {
-    { x: Obj => { y: Obj => { xEqy: EQ[x.type, y.type] => xEqy.commute } } } // error
+    { (x: Obj) => { (y: Obj) => { (xEqy: EQ[x.type, y.type]) => xEqy.commute } } } // error
   }
 
   val eqSymmetric3: Forall[[x] =>> Forall[[y] =>> EQ[x, y] => EQ[y, x]]] = {
-    { x: Obj => { y: Obj => { xEqy: EQ[x.type, y.type] => xEqy.commute } } } // error
+    { (x: Obj) => { (y: Obj) => { (xEqy: EQ[x.type, y.type]) => xEqy.commute } } } // error
   }
 }
