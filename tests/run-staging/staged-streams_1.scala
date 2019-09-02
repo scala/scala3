@@ -437,7 +437,7 @@ object Test {
                   })
                   case Many => producer.init(st => '{
                     val oldnadv: Unit => Unit = ${nadv.get}
-                    val adv1: Unit => Unit = { _: Unit => {
+                    val adv1: Unit => Unit = { (_: Unit) => {
                       if(${producer.hasNext(st)}) {
                         ${producer.step(st, k)}
                       }
