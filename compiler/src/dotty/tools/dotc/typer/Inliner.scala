@@ -200,23 +200,29 @@ object Inliner {
     /** Expand call to scala.compiletime.testing.typeChecks */
     def typeChecks(tree: Tree)(implicit ctx: Context): Tree = {
       assert(tree.symbol == defn.CompiletimeTesting_typeChecks)
-      def getCodeArgValue(t: Tree): String = t match {
-        case Literal(Constant(code: String)) => code
+      def getCodeArgValue(t: Tree): Option[String] = t match {
+        case Literal(Constant(code: String)) => Some(code)
         case Typed(t2, _) => getCodeArgValue(t2)
         case Inlined(_, Nil, t2) => getCodeArgValue(t2)
         case Block(Nil, t2) => getCodeArgValue(t2)
+        case _ => None
       }
       val Apply(_, codeArg :: Nil) = tree
-      val code = getCodeArgValue(codeArg.underlyingArgument)
-      val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer)
-      val tree2 = new Parser(SourceFile.virtual("tasty-reflect", code))(ctx2).block()
-      val res =
-        if (ctx2.reporter.hasErrors) false
-        else {
-          ctx2.typer.typed(tree2)(ctx2)
-          !ctx2.reporter.hasErrors
-        }
-      Literal(Constant(res))
+      getCodeArgValue(codeArg.underlyingArgument) match {
+        case Some(code) =>
+          val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer)
+          val tree2 = new Parser(SourceFile.virtual("tasty-reflect", code))(ctx2).block()
+          val res =
+            if (ctx2.reporter.hasErrors) false
+            else {
+              ctx2.typer.typed(tree2)(ctx2)
+              !ctx2.reporter.hasErrors
+            }
+          Literal(Constant(res))
+        case _ =>
+          EmptyTree
+      }
+
     }
 
   }
