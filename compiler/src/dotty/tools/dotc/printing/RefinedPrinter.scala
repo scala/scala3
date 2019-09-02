@@ -742,12 +742,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def tparamsText[T >: Untyped](params: List[Tree[T]]): Text =
     "[" ~ toText(params, ", ") ~ "]" provided params.nonEmpty
 
-  def addVparamssText[T >: Untyped](txt: Text, vparamss: List[List[ValDef[T]]], isExtension: Boolean = false): Text = {
-    def paramsText(params: List[ValDef[T]]) = "(" ~ toText(params, ", ") ~ ")"
-    val (leading, paramss) =
-      if (isExtension && vparamss.nonEmpty) (paramsText(vparamss.head) ~ " " ~ txt, vparamss.tail)
-      else (txt, vparamss)
-    paramss.foldLeft(leading)((txt, params) =>
+  def addVparamssText[T >: Untyped](leading: Text, vparamss: List[List[ValDef[T]]]): Text = {
+    vparamss.foldLeft(leading)((txt, params) =>
       txt ~
       (Str(" given ") provided params.nonEmpty && params.head.mods.is(Given)) ~
       paramsText(params))
@@ -761,13 +757,19 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
   }
 
+  private def paramsText[T>: Untyped](params: List[ValDef[T]]) = "(" ~ toText(params, ", ") ~ ")"
+
   protected def defDefToText[T >: Untyped](tree: DefDef[T]): Text = {
     import untpd.{modsDeco => _}
     dclTextOr(tree) {
-      val prefix = modText(tree.mods, tree.symbol, keywordStr("def"), isType = false) ~~ valDefText(nameIdText(tree))
+      val defKeyword = modText(tree.mods, tree.symbol, keywordStr("def"), isType = false)
       val isExtension = tree.hasType && tree.symbol.is(Extension)
       withEnclosingDef(tree) {
-        addVparamssText(prefix ~ tparamsText(tree.tparams), tree.vparamss, isExtension) ~
+        val (prefix, vparamss) =
+          if(isExtension) (defKeyword ~~ paramsText(tree.vparamss.head) ~~ valDefText(nameIdText(tree)), tree.vparamss.tail)
+          else (defKeyword ~~ valDefText(nameIdText(tree)), tree.vparamss)
+
+        addVparamssText(prefix ~ tparamsText(tree.tparams), vparamss) ~
           optAscription(tree.tpt) ~
           optText(tree.rhs)(" = " ~ _)
       }
