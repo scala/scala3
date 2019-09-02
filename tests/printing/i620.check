@@ -10,6 +10,8 @@ package O {
         private[A] def e: Int = 0
         protected[A] def f: Int = 0
         def g: Int = 0
+        def g1(t: Int): Int = 0
+        def (c: D.this.C) g1: Int = 0
       }
       private[D] class E() extends Object() {}
       private class F() extends Object() {}
