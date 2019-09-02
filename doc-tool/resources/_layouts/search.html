@@ -129,33 +129,33 @@ title: Search
         };
 
         var insertMember = function(member, li, parentLink) {
-            const div = document.createElement("div");
+            var div = document.createElement("div");
             div.classList.add("member-result");
 
-            const renderParamList = function(plist) {
+            var renderParamList = function(plist) {
                 var start = plist.isImplicit ? "(implicit " : "(";
                 var args = plist.list.map(x=>x.ref.title).join(', ');
                 return start + args + ")";
             };
 
-            const concatenateStrings = function(acc, str) { return acc + str; };
+            var concatenateStrings = function(acc, str) { return acc + str; };
 
-            const paramLists = !member.paramLists ? "" : (
+            var paramLists = !member.paramLists ? "" : (
                 member.paramLists
                     .map(renderParamList)
                     .reduce(concatenateStrings, "") + ':'
             );
 
-            const returnValue = !member.returnValue ? "" : (
+            var returnValue = !member.returnValue ? "" : (
                 member.returnValue.title
             );
 
-            const sigObject = member.kind == "object" ? "$" : "";
-            const sigParams = !member.paramLists ? "" : (
+            var sigObject = member.kind == "object" ? "$" : "";
+            var sigParams = !member.paramLists ? "" : (
                 member.paramLists.map(l => "(" + l.list.map(x=>x.title).join(",") + ")").reduce(concatenateStrings, "")
             );
-            const signature = member.name + sigObject + sigParams;
-            const memberLink = parentLink + "#" + signature;
+            var signature = member.name + sigObject + sigParams;
+            var memberLink = parentLink + "#" + signature;
             div.innerHTML =
                 '<span class="member-kind">'+ member.kind +'</span>&nbsp;' +
                 '<span class="member-name"><a href=\"' + memberLink + '\">' + member.name +'</a></span>' +
