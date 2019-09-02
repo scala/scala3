@@ -1361,7 +1361,8 @@ object Types {
       case tp: TypeRef =>
         if (tp.info.isInstanceOf[TempClassInfo]) {
           tp.recomputeDenot()
-          assert(!tp.info.isInstanceOf[TempClassInfo])
+            // We usually should have `!tp.info.isInstanceOf[TempClassInfo]` here, but
+            // this can be falsified for code with illegal cyclic references. See neg/i7107.scala.
         }
         tp.info.parents
       case tp: TypeProxy =>
