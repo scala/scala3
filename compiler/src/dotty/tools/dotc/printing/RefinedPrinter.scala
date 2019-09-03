@@ -766,7 +766,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       val isExtension = tree.hasType && tree.symbol.is(Extension)
       withEnclosingDef(tree) {
         val (prefix, vparamss) =
-          if(isExtension) (defKeyword ~~ paramsText(tree.vparamss.head) ~~ valDefText(nameIdText(tree)), tree.vparamss.tail)
+          if (isExtension) (defKeyword ~~ paramsText(tree.vparamss.head) ~~ valDefText(nameIdText(tree)), tree.vparamss.tail)
           else (defKeyword ~~ valDefText(nameIdText(tree)), tree.vparamss)
 
         addVparamssText(prefix ~ tparamsText(tree.tparams), vparamss) ~
