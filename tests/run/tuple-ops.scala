@@ -13,13 +13,13 @@ val r5: Unit = a.zip(d)
 // Map
 case class Foo[X](x: X)
 
-val r6: (Int, Int, Int) = a.map[[t] =>> Int]([t] => x: t => x match {
+val r6: (Int, Int, Int) = a.map[[t] =>> Int]([t] => (x: t) => x match {
   case x: Int => x * x
   case _ => ???
 })
 
 val r7: ((1, Foo[1]), (2, Foo[2]), (3, Foo[3])) =
-  a.map[[t] =>> (t, Foo[t])]( [t] => x: t => (x, Foo(x)) )
+  a.map[[t] =>> (t, Foo[t])]( [t] => (x: t) => (x, Foo(x)) )
 
 // More Zip
 val t1: Int *: Long *: Tuple = (1, 2l, 100, 200)

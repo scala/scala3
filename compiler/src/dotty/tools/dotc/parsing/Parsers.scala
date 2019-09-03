@@ -423,9 +423,19 @@ object Parsers {
     /** Convert tree to formal parameter list
     */
     def convertToParams(tree: Tree): List[ValDef] = tree match {
-      case Parens(t)  => convertToParam(t) :: Nil
-      case Tuple(ts)  => ts map (convertToParam(_))
-      case t          => convertToParam(t) :: Nil
+      case Parens(t) =>
+        convertToParam(t) :: Nil
+      case Tuple(ts) =>
+        ts.map(convertToParam(_))
+      case t: Typed =>
+        in.errorOrMigrationWarning(
+          em"parentheses are required around the parameter of a lambda${rewriteNotice("-language:Scala2")}",
+          t.span)
+        patch(source, t.span.startPos, "(")
+        patch(source, t.span.endPos, ")")
+        convertToParam(t) :: Nil
+      case t =>
+        convertToParam(t) :: Nil
     }
 
     /** Convert tree to formal parameter
@@ -2915,7 +2925,7 @@ object Parsers {
         else from
       }
 
-      val handleImport: Tree => Tree = { tree: Tree =>
+      val handleImport: Tree => Tree = { (tree: Tree) =>
         if (in.token == USCORE) mkTree(importGiven, tree, wildcardIdent() :: Nil)
         else if (in.token == LBRACE) mkTree(importGiven, tree, inBraces(importSelectors()))
         else tree
