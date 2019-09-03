@@ -653,14 +653,16 @@ object Parsers {
             lineStart
         }
 
-      val needsBraces = t match {
-        case Block(Nil, expr) =>
+      def needsBraces(t: Any): Boolean = t match {
+        case Block(stats, expr) =>
+          stats.nonEmpty || needsBraces(expr)
+        case expr: Tree =>
           followsColon ||
           isPartialIf(expr) && in.token == ELSE ||
           isBlockFunction(expr)
         case _ => true
       }
-      if (needsBraces) {
+      if (needsBraces(t)) {
         patch(source, Span(startOpening, endOpening), " {")
         patch(source, Span(closingOffset(source.nextLine(in.lastOffset))), indentWidth.toPrefix ++ "}\n")
       }
@@ -1361,11 +1363,7 @@ object Parsers {
       else t
 
     /** The block in a quote or splice */
-    def stagedBlock() =
-      inDefScopeBraces(block()) match {
-        case t @ Block(Nil, expr) if !expr.isEmpty => expr
-        case t => t
-      }
+    def stagedBlock() = inDefScopeBraces(block(simplify = true))
 
     /** SimpleEpxr  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
      *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
@@ -2148,27 +2146,26 @@ object Parsers {
      *  BlockExprContents ::= CaseClauses | Block
      */
     def blockExpr(): Tree = atSpan(in.offset) {
+      val simplify = in.token == INDENT
       inDefScopeBraces {
         if (in.token == CASE) Match(EmptyTree, caseClauses(caseClause))
-        else block()
+        else block(simplify)
       }
     }
 
     /** Block ::= BlockStatSeq
      *  @note  Return tree does not have a defined span.
      */
-    def block(): Tree = {
+    def block(simplify: Boolean = false): Tree = {
       val stats = blockStatSeq()
       def isExpr(stat: Tree) = !(stat.isDef || stat.isInstanceOf[Import])
-      stats match {
-        case (stat : Block) :: Nil =>
-          stat // A typical case where this happens is creating a block around a region
-               // hat is already indented, e.g. something following a =>.
-        case _ :: stats1 if isExpr(stats.last) =>
-          Block(stats.init, stats.last)
-        case _ =>
-          Block(stats, EmptyTree)
+      if (stats.nonEmpty && isExpr(stats.last)) {
+        val inits = stats.init
+        val last = stats.last
+        if (inits.isEmpty && (simplify || last.isInstanceOf[Block])) last
+        else Block(inits, last)
       }
+      else Block(stats, EmptyTree)
     }
 
     /** Guard ::= if PostfixExpr
