@@ -2640,7 +2640,14 @@ class Typer extends Namer
             readaptSimplified(tpd.Apply(tree, args))
         }
       }
-      addImplicitArgs(argCtx(tree))
+      pt.revealIgnored match {
+        case pt: FunProto if pt.isGivenApply =>
+          // We can end up here if extension methods are called with explicit given arguments.
+          // See for instance #7119.
+          tree
+        case _ =>
+          addImplicitArgs(argCtx(tree))
+      }
     }
 
     /** A synthetic apply should be eta-expanded if it is the apply of an implicit function
