@@ -663,7 +663,7 @@ object Types {
         }
         else
           pdenot & (
-            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)),
+            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre),
             pre,
             safeIntersection = ctx.base.pendingMemberSearches.contains(name))
       }
@@ -701,7 +701,7 @@ object Types {
       def goSuper(tp: SuperType) = go(tp.underlying) match {
         case d: JointRefDenotation =>
           typr.println(i"redirecting super.$name from $tp to ${d.symbol.showLocated}")
-          new UniqueRefDenotation(d.symbol, tp.memberInfo(d.symbol), d.validFor)
+          new UniqueRefDenotation(d.symbol, tp.memberInfo(d.symbol), d.validFor, pre)
         case d => d
       }
 
@@ -4092,7 +4092,8 @@ object Types {
         // Note: Taking a normal typeRef does not work here. A normal ref might contain
         // also other information about the named type (e.g. bounds).
         contains(
-          TypeRef(tp.prefix, cls).withDenot(new UniqueRefDenotation(cls, tp, cls.validFor)))
+          TypeRef(tp.prefix, cls)
+            .withDenot(new UniqueRefDenotation(cls, tp, cls.validFor, tp.prefix)))
       case _ =>
         lo <:< tp && tp <:< hi
     }

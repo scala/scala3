@@ -501,6 +501,13 @@ class TreeChecker extends Phase with SymTransformer {
     override def adapt(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree = {
       def isPrimaryConstructorReturn =
         ctx.owner.isPrimaryConstructor && pt.isRef(ctx.owner.owner) && tree.tpe.isRef(defn.UnitClass)
+      def infoStr(tp: Type) = tp match {
+        case tp: TypeRef =>
+          val sym = tp.symbol
+          i"${sym.showLocated} with ${tp.designator}, flags = ${sym.flagsString}, underlying = ${tp.underlyingIterator.toList}%, %"
+        case _ =>
+          "??"
+      }
       if (ctx.mode.isExpr &&
           !tree.isEmpty &&
           !isPrimaryConstructorReturn &&
@@ -508,6 +515,8 @@ class TreeChecker extends Phase with SymTransformer {
         assert(tree.tpe <:< pt, {
           val mismatch = err.typeMismatchMsg(tree.tpe, pt)
           i"""|${mismatch.msg}
+              |found: ${infoStr(tree.tpe)}
+              |expected: ${infoStr(pt)}
               |tree = $tree""".stripMargin
         })
       tree
