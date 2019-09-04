@@ -13,19 +13,19 @@ you can now proceed with importing it to IDEA by selecting the
 corresponding option from the startup menu. Navigate on the corresponding directory and select it. Next, you need
 to select the model of the import and as the screenshot shows, select SBT.
 
-![](../../images/idea/idea-import.png "Import Dotty in IDEA")
+![](../../../images/idea/idea-import.png "Import Dotty in IDEA")
 
 Next, you select the version of the JDK that this project relies on and verify that you have selected 1.8 (assuming
 its installed on your local machine). Otherwise, specify it by pressing *New*.
 
-![](../../images/idea/idea-sdk.png "Select the JDK")
+![](../../../images/idea/idea-sdk.png "Select the JDK")
 
 Next we must select which modules we can import. IDEA version 2017.1 and earlier presents the full list of SBT modules
 that are defined in Dotty. You can either select all (expect performance degradation if you select all) or
 select only the `dotty` module. In order to do that, unselect all modules and select on `dotty`. IDEA, then, automatically
 selects all the necessary dependencies and you press OK.
 
-![](../../images/idea/idea-sbt.png "Select modules to import")
+![](../../../images/idea/idea-sbt.png "Select modules to import")
 
 In IDEA version 2017.2 and later, wait for the project to load. Then right click on `dotty` in the project explorer
 and select `Load/Unload Modules...`. Select only `dotty`, accept when IDEA asks to add its dependencies and press OK.
@@ -56,7 +56,7 @@ Next a configuration for Debug must be created in IDEA:
 
 > Run > Edit Configurations > Add New Configuration > (select) Remote
 
-![](../../images/idea/idea-debug.png "Create a Debug Configuration")
+![](../../../images/idea/idea-debug.png "Create a Debug Configuration")
 
 Under `Search sources using module's classpath` select `dotty`. Set breakpoints as desired.
 Then hit the button whose tooltip says `Debug dotty-debug` (since we used `dotty-debug` for the name of
