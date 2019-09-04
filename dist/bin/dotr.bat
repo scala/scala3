@@ -43,7 +43,7 @@ rem elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
         echo Warning: Multiple classpaths are found, dotr only use the last one. 1>&2
     )
     if %_WITH_COMPILER%==1 (
-        set _CP_ARG=!_CP_ARG!%_PSEP%%_DOTTY_COMP%%_PSEP%%_DOTTY_INTF%%_PSEP%%_SCALA_ASM%
+        set _CP_ARG=!_CP_ARG!%_PSEP%%_DOTTY_COMP%%_PSEP%%_DOTTY_INTF%%_PSEP%%_SCALA_ASM%%_PSEP%%_DOTTY_STAGING%
     )
     set _JAVA_ARGS=%_JAVA_DEBUG% -classpath "!_CP_ARG!" %_JVM_OPTS% %_RESIDUAL_ARGS%
     %_JAVACMD% !_JAVA_ARGS!

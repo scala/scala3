@@ -79,7 +79,7 @@ for /f %%f in ('dir /a-d /b "%__LIB_DIR%\*ST4*"') do set _ST4_LIB=%__LIB_DIR%\%%
 rem Set jsoup dep:
 for /f %%f in ('dir /a-d /b "%__LIB_DIR%\*jsoup*"') do set _JSOUP_LIB=%__LIB_DIR%\%%f%_PSEP%
 
-set _CLASS_PATH=%_DOTTY_LIB%%_PSEP%%_DOTTY_COMP%%_PSEP%%_DOTTY_DOC_LIB%%_PSEP%%_DOTTY_INTF%%_PSEP%%_SBT_INTF%
+set _CLASS_PATH=%_DOTTY_LIB%%_PSEP%%_DOTTY_COMP%%_PSEP%%_DOTTY_DOC_LIB%%_PSEP%%_DOTTY_INTF%%_PSEP%%_SBT_INTF%%_PSEP%%_DOTTY_STAGING%
 set _CLASS_PATH=%_CLASS_PATH%%_PSEP%%_SCALA_LIB%
 set _CLASS_PATH=%_CLASS_PATH%%_PSEP%%_FLEXMARK_LIBS%
 set _CLASS_PATH=%_CLASS_PATH%%_PSEP%%_JACKSON_LIBS%

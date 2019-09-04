@@ -110,8 +110,8 @@ if /i "%__ARG%"=="help" ( set _HELP=1& goto :eof
 ) else if /i "%__ARG:~0,7%"=="compile" (
     if not "%__ARG:~-5%"=="-only" set _CLONE=1
     set _COMPILE=1
-) else if /i "%__ARGS:~0,9%"=="community" (
-    if not "%__ARG:~-5%"=="-only" set _CLONE=1& set _COMPILE=1& set _BOOTSTRAP=1
+) else if /i "%__ARG:~0,9%"=="community" (
+    rem if not "%__ARG:~-5%"=="-only" set _CLONE=1& set _COMPILE=1& set _BOOTSTRAP=1
     set _COMMUNITY=1
 ) else if /i "%__ARG:~0,3%"=="doc" (
     if not "%__ARG:~-5%"=="-only" set _CLONE=1& set _COMPILE=1& set _BOOTSTRAP=1
@@ -144,7 +144,7 @@ echo     boot[strap]            generate+test bootstrapped compiler (after compi
 echo     cleanall               clean project (sbt+git) and quit
 echo     clone                  update submodules
 echo     compile                generate+test 1st stage compiler (after clone)
-echo     community              test community-build (after bootstrap)
+echo     community              test community-build
 echo     doc[umentation]        generate documentation (after bootstrap)
 echo     help                   display this help message
 echo     sbt                    test sbt-dotty (after bootstrap)
@@ -152,7 +152,6 @@ echo   Advanced subcommands (no deps):
 echo     arch[ives]-only        generate ONLY gz/zip archives
 echo     boot[strap]-only       generate+test ONLY bootstrapped compiler
 echo     compile-only           generate+test ONLY 1st stage compiler
-echo     community-only         test ONLY community-build
 echo     doc[umentation]-only]  generate ONLY documentation
 echo     sbt-only               test ONLY sbt-dotty
 
@@ -206,7 +205,7 @@ if "%_DRONE_BUILD_EVENT%"=="pull_request" if defined _DRONE_REMOTE_URL (
 if %_DEBUG%==1 echo [%_BASENAME%] %_GIT_CMD% submodule update --init --recursive --jobs 3
 %_GIT_CMD% submodule update --init --recursive --jobs 3
 if not %ERRORLEVEL%==0 (
-    echo Error: Failed to update Git submodules 1>&2
+    echo [91mError[0m: Failed to update Git submodules 1>&2
     set _EXITCODE=1
     goto :eof
 )
@@ -233,10 +232,10 @@ if not %ERRORLEVEL%==0 (
 goto :eof
 
 :test_bootstrapped
-if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
-call "%_SBT_CMD%" ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";dotty-bootstrapped/compile ;dotty-bootstrapped/test ;dotty-semanticdb/compile ;dotty-semanticdb/test ;sjsSandbox/run"
+call "%_SBT_CMD%" ";dotty-bootstrapped/compile ;dotty-bootstrapped/test ;dotty-semanticdb/compile ;dotty-semanticdb/test ;sjsSandbox/run"
 if not %ERRORLEVEL%==0 (
-    echo [91mError[0m: Failed to run sbt command ";dotty-bootstrapped/compile ;dotty-bootstrapped/test" 1>&2
+    echo [91mError[0m: Failed to run sbt command ";dotty-bootstrapped/compile ;dotty-bootstrapped/test ;dotty-semanticdb/compile ;dotty-semanticdb/test ;sjsSandbox/run" 1>&2
     set _EXITCODE=1
     goto :eof
 )
@@ -255,12 +254,13 @@ goto :eof
 if %_DEBUG%==1 echo [%_BASENAME%] %_GIT_CMD% submodule update --init --recursive --jobs 7
 %_GIT_CMD% submodule update --init --recursive --jobs 7
 if not %ERRORLEVEL%==0 (
-    echo Error: Failed to update Git submodules 1>&2
+    echo [91mError[0m: Failed to update Git submodules 1>&2
     set _EXITCODE=1
     goto :eof
 )
-if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" community-build/test
-call "%_SBT_CMD%" community-build/test
+echo sbt community-build/test
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" "-Dsbt.cmd=%_SBT_CMD%" community-build/test
+call "%_SBT_CMD%" "-Dsbt.cmd=%_SBT_CMD%" community-build/test
 if not %ERRORLEVEL%==0 (
     echo [91mError[0m: Failed to run sbt command community-build/test 1>&2
     set _EXITCODE=1
@@ -276,6 +276,34 @@ if not %ERRORLEVEL%==0 (
     set _EXITCODE=1
     goto :eof
 )
+goto :eof
+
+:test_java11
+set __PATH=C:\opt
+for /f "delims=" %%f in ('dir /ad /b "!__PATH!\jdk-11*" 2^>NUL') do set __JDK11_HOME=!__PATH!\%%f
+if not defined __JDK11_HOME (
+    set __PATH=C:\Progra~1\Java
+    for /f %%f in ('dir /ad /b "!__PATH!\jdk-11*" 2^>NUL') do set __JDK11_HOME=!__PATH!\%%f
+)
+if not defined __JDK11_HOME (
+    echo [91mError[0m: Java SDK 11 installation directory not found 1>&2
+	set _EXITCODE=1
+	goto :eof
+)
+setlocal
+rem export PATH="/usr/lib/jvm/java-11-openjdk-amd64/bin:$PATH"
+set "PATH=%__JDK11_HOME%\bin;%PATH%"
+rem ./project/scripts/sbt ";compile ;test"
+echo sbt compile and sbt test (Java 11)
+if %_DEBUG%==1 echo [%_BASENAME%] call "%_SBT_CMD%" ";compile ;test"
+call "%_SBT_CMD%" ";compile ;test"
+if not %ERRORLEVEL%==0 (
+    endlocal
+    echo [91mError[0m: Failed to run sbt command ";compile ;test" 1>&2
+    set _EXITCODE=1
+    goto :eof
+)
+endlocal
 goto :eof
 
 :documentation

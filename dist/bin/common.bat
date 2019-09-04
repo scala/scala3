@@ -50,6 +50,7 @@ set _PSEP=;
 for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*dotty-compiler*"')       do set _DOTTY_COMP=%_LIB_DIR%\%%f
 for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*dotty-interfaces*"')     do set _DOTTY_INTF=%_LIB_DIR%\%%f
 for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*dotty-library*"')        do set _DOTTY_LIB=%_LIB_DIR%\%%f
+for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*dotty-staging*"')        do set _DOTTY_STAGING=%_LIB_DIR%\%%f
 for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*scala-asm*"')            do set _SCALA_ASM=%_LIB_DIR%\%%f
 for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*scala-library*"')        do set _SCALA_LIB=%_LIB_DIR%\%%f
 rem removed since version 0.16.x (#5597)

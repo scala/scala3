@@ -66,6 +66,15 @@ if %_DEBUG%==1 echo [%_BASENAME%] call :test_pattern "%_EXPECTED_OUTPUT%" "%_TMP
 call :test_pattern "%_EXPECTED_OUTPUT%" "%_TMP_FILE%"
 if not %_EXITCODE%==0 goto end
 
+rem # check that `dotc` and `dotr` works for staging
+call :clear_out "%_OUT_DIR%"
+call %_BIN_DIR%\dotc.bat tests/run-staging/i4044f.scala -d "%_OUT_DIR%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
+call %_BIN_DIR%\dotr.bat -with-compiler -classpath "%_OUT_DIR%" Test > "%_TMP_FILE%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
+call %_BIN_DIR%\dotd.bat -project Staging -siteroot "%_OUT_DIR%" "tests/run-staging/i4044f.scala"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
+
 rem # check that `dotc -from-tasty` compiles and `dotr` runs it
 echo testing ./bin/dotc -from-tasty and dotr -classpath
 call :clear_out "%_OUT1_DIR%"
