@@ -38,7 +38,7 @@ When is an extension method applicable? There are two possibilities.
    or inherited or imported in a scope enclosing the application.
  - An extension method is applicable if it is a member of some given instance at the point of the application.
 
-As an example, consider an extension method `longestStrings` on `String` defined in a trait `StringSeqOps`.
+As an example, consider an extension method `longestStrings` on `Seq[String]` defined in a trait `StringSeqOps`.
 
 ```scala
 trait StringSeqOps {
