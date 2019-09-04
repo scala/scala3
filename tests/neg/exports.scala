@@ -5,7 +5,7 @@
     type PrinterType
     def print(bits: BitMap): Unit = ???
     def status: List[String] = ???
-    delegate bitmap for BitMap
+    given bitmap as BitMap
   }
 
   class Scanner {
@@ -23,7 +23,7 @@
     export printUnit.{stat => _, _} // error: double definition
     export scanUnit._               // error: double definition
     export printUnit.bitmap         // error: no eligible member
-    export delegate printUnit.status // error: no eligible member
+    export given printUnit.status   // error: no eligible member
 
     def status: List[String] = printUnit.status ++ scanUnit.status
   }
@@ -42,8 +42,8 @@ class Foo {
 }
 
 class Baz {
-  val bar: Bar = new Bar // error: cyclic reference
-  export bar._
+  val bar: Bar = new Bar
+  export bar._  // error: double definition
 }
 class Bar {
   val baz: Baz = new Baz

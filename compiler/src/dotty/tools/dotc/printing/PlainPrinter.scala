@@ -27,9 +27,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       try {
         ctx.base.toTextRecursions += 1
         op
-      } finally {
-        ctx.base.toTextRecursions -= 1
       }
+      finally
+        ctx.base.toTextRecursions -= 1
     else {
       if (ctx.base.toTextRecursions >= maxToTextRecursions)
         recursionLimitExceeded()
@@ -84,7 +84,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    *  to the name of the owner.
    */
   protected def hasMeaninglessName(sym: Symbol): Boolean = (
-       (sym is Param) && sym.owner.isSetter    // x$1
+       sym.is(Param) && sym.owner.isSetter    // x$1
     || sym.isClassConstructor                  // this
     || (sym.name == nme.PACKAGE)               // package
   )
@@ -125,8 +125,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
    *  They are either aliased in scala.Predef or in the scala package object.
    */
   private[this] lazy val printWithoutPrefix: Set[Symbol] =
-    (defn.ScalaPredefModuleRef.typeAliasMembers
-      ++ defn.ScalaPackageObjectRef.typeAliasMembers).map(_.info.classSymbol).toSet
+    (defn.ScalaPredefModule.termRef.typeAliasMembers
+      ++ defn.ScalaPackageObject.termRef.typeAliasMembers).map(_.info.classSymbol).toSet
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
@@ -232,7 +232,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def paramsText(tp: LambdaType): Text = {
     def paramText(name: Name, tp: Type) = toText(name) ~ toTextRHS(tp)
-    Text((tp.paramNames, tp.paramInfos).zipped.map(paramText), ", ")
+    Text(tp.paramNames.lazyZip(tp.paramInfos).map(paramText), ", ")
   }
 
   protected def ParamRefNameString(name: Name): String = name.toString
@@ -366,21 +366,21 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** String representation of symbol's kind. */
   def kindString(sym: Symbol): String = {
     val flags = sym.flagsUNSAFE
-    if (flags is PackageClass) "package class"
-    else if (flags is PackageVal) "package"
+    if (flags.is(PackageClass)) "package class"
+    else if (flags.is(PackageVal)) "package"
     else if (sym.isPackageObject)
       if (sym.isClass) "package object class"
       else "package object"
     else if (sym.isAnonymousClass) "anonymous class"
-    else if (flags is ModuleClass) "module class"
-    else if (flags is ModuleVal) "module"
-    else if (flags is Trait) "trait"
+    else if (flags.is(ModuleClass)) "module class"
+    else if (flags.is(ModuleVal)) "module"
+    else if (flags.is(Trait)) "trait"
     else if (sym.isClass) "class"
     else if (sym.isType) "type"
     else if (sym.isGetter) "getter"
     else if (sym.isSetter) "setter"
-    else if (flags is Lazy) "lazy value"
-    else if (flags is Mutable) "variable"
+    else if (flags.is(Lazy)) "lazy value"
+    else if (flags.is(Mutable)) "variable"
     else if (sym.isClassConstructor && sym.isPrimaryConstructor) "primary constructor"
     else if (sym.isClassConstructor) "constructor"
     else if (sym.is(Method)) "method"
@@ -391,20 +391,20 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** String representation of symbol's definition keyword */
   protected def keyString(sym: Symbol): String = {
     val flags = sym.flagsUNSAFE
-    if (flags is JavaTrait) "interface"
-    else if (flags is Trait) "trait"
-    else if (flags is Module) "object"
+    if (flags.isAllOf(JavaInterface)) "interface"
+    else if (flags.is(Trait)) "trait"
+    else if (flags.is(Module)) "object"
     else if (sym.isClass) "class"
     else if (sym.isType) "type"
-    else if (flags is Mutable) "var"
-    else if (flags is Package) "package"
-    else if (sym is Method) "def"
-    else if (sym.isTerm && (!(flags is Param))) "val"
+    else if (flags.is(Mutable)) "var"
+    else if (flags.is(Package)) "package"
+    else if (sym.is(Method)) "def"
+    else if (sym.isTerm && !flags.is(Param)) "val"
     else ""
   }
 
   protected def privateWithinString(sym: Symbol): String =
-  	if (sym.exists && sym.privateWithin.exists)
+    if (sym.exists && sym.privateWithin.exists)
       nameString(sym.privateWithin.name.stripModuleClassSuffix)
     else ""
 
@@ -464,7 +464,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else if (ownr.isAnonymousFunction) nextOuter("function")
         else if (isEmptyPrefix(ownr)) ""
         else if (ownr.isLocalDummy) showLocation(ownr.owner, "locally defined in")
-        else if (ownr.isTerm && !ownr.is(Module | Method)) showLocation(ownr, "in the initializer of")
+        else if (ownr.isTerm && !ownr.isOneOf(Module | Method)) showLocation(ownr, "in the initializer of")
         else showLocation(ownr, "in")
       }
       recur(sym.owner, "")
@@ -490,7 +490,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case CharTag => literalText(s"'${escapedChar(const.charValue)}'")
     case LongTag => literalText(const.longValue.toString + "L")
     case EnumTag => literalText(const.symbolValue.name.toString)
-    case ScalaSymbolTag => literalText("'" + const.scalaSymbolValue.name.toString)
     case _ => literalText(String.valueOf(const.value))
   }
 
@@ -521,11 +520,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.sourcePos.toString) provided printDebug)
   }.close // todo: override in refined printer
 
-  def toText(pos: SourcePosition): Text = {
+  def toText(pos: SourcePosition): Text =
     if (!pos.exists) "<no position>"
     else if (pos.source.exists) s"${pos.source.file.name}:${pos.line + 1}"
     else s"(no source file, offset = ${pos.span.point})"
-  }
 
   def toText(result: SearchResult): Text = result match {
     case result: SearchSuccess =>
@@ -538,7 +536,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           "Ambiguous Implicit: " ~ toText(result.alt1.ref) ~ " and " ~ toText(result.alt2.ref)
         case _ =>
           "Search Failure: " ~ toText(result.tree)
-    }
+      }
   }
 
   def toText(importInfo: ImportInfo): Text = {

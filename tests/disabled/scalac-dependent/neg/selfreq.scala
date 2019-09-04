@@ -26,7 +26,7 @@ object O {
 
 import scala.tools.nsc.interpreter.IMain
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val engine = new IMain.Factory getScriptEngine()
   engine.asInstanceOf[IMain].settings.usejavacp.value = true // no longer an error since we unpickle Scala2 inner classes with fixed syms
   val res2 = engine.asInstanceOf[javax.script.Compilable]

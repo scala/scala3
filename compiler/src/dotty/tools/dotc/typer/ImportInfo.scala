@@ -15,11 +15,11 @@ import Decorators._
 
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
-  def rootImport(refFn: () => TermRef, importImplied: Boolean = false)(implicit ctx: Context): ImportInfo = {
+  def rootImport(refFn: () => TermRef, importGiven: Boolean = false)(implicit ctx: Context): ImportInfo = {
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
     def expr(implicit ctx: Context) = tpd.Ident(refFn())
-    def imp(implicit ctx: Context) = tpd.Import(importImplied = importImplied, expr, selectors)
-    new ImportInfo(implicit ctx => imp.symbol, selectors, None, importImplied = importImplied, isRootImport = true)
+    def imp(implicit ctx: Context) = tpd.Import(importGiven = importGiven, expr, selectors)
+    new ImportInfo(imp.symbol, selectors, None, importGiven = importGiven, isRootImport = true)
   }
 }
 
@@ -28,20 +28,20 @@ object ImportInfo {
  *  @param   selectors     The selector clauses
  *  @param   symNameOpt    Optionally, the name of the import symbol. None for root imports.
  *                         Defined for all explicit imports from ident or select nodes.
- *  @param   importImplied true if this is a delegate import
+ *  @param   importGiven   true if this is a given import
  *  @param   isRootImport  true if this is one of the implicit imports of scala, java.lang,
  *                         scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */
-class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
+class ImportInfo(symf: given Context => Symbol, val selectors: List[untpd.Tree],
                  symNameOpt: Option[TermName],
-                 val importImplied: Boolean,
+                 val importGiven: Boolean,
                  val isRootImport: Boolean = false) extends Showable {
 
   // Dotty deviation: we cannot use a lazy val here for the same reason
   // that we cannot use one for `DottyPredefModuleRef`.
   def sym(implicit ctx: Context): Symbol = {
     if (mySym == null) {
-      mySym = symf(ctx)
+      mySym = symf given ctx
       assert(mySym != null)
     }
     mySym
@@ -91,7 +91,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
             myForwardMapping = myForwardMapping.updated(name, name)
             myReverseMapping = myReverseMapping.updated(name, name)
           case TypeBoundsTree(_, tpt) =>
-            myWildcardImport = true // details are handled separately in impliedBounds
+            myWildcardImport = true // details are handled separately in wildcardBounds
         }
         recur(sels1)
       case nil =>
@@ -99,45 +99,46 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
     recur(selectors)
   }
 
-  private[this] var myImpliedBound: Type = null
+  private[this] var myWildcardBound: Type = null
 
-  def impliedBound(implicit ctx: Context): Type = {
-    if (myImpliedBound == null)
-      myImpliedBound = selectors.lastOption match {
+  def wildcardBound(implicit ctx: Context): Type = {
+    if (myWildcardBound == null)
+      myWildcardBound = selectors.lastOption match {
         case Some(TypeBoundsTree(_, untpd.TypedSplice(tpt))) => tpt.tpe
         case Some(TypeBoundsTree(_, tpt)) =>
-          myImpliedBound = NoType
+          myWildcardBound = NoType
           ctx.typer.typedAheadType(tpt).tpe
         case _ => NoType
       }
-    myImpliedBound
+    myWildcardBound
   }
 
-  private def implicitFlag(implicit ctx: Context) =
-    if (importImplied || ctx.mode.is(Mode.FindHiddenImplicits)) ImplicitOrImpliedOrGiven
+  private def implicitFlags(implicit ctx: Context) =
+    if (importGiven || ctx.mode.is(Mode.FindHiddenImplicits)) GivenOrImplicit
     else Implicit
 
   /** The implicit references imported by this import clause */
   def importedImplicits(implicit ctx: Context): List[ImplicitRef] = {
     val pre = site
     if (isWildcardImport)
-      pre.implicitMembers(implicitFlag).flatMap { ref =>
+      pre.implicitMembers(implicitFlags).flatMap { ref =>
         val name = ref.name.toTermName
         if (excluded.contains(name)) Nil
         else {
           val renamed = forwardMapping(ref.name)
           if (renamed == ref.name) ref :: Nil
           else if (renamed != null) new RenamedImplicitRef(ref, renamed) :: Nil
-          else if (!impliedBound.exists ||
-                   normalizedCompatible(ref, impliedBound, keepConstraint = false)) ref :: Nil
+          else if (!wildcardBound.exists ||
+                   normalizedCompatible(ref, wildcardBound, keepConstraint = false)) ref :: Nil
           else Nil
         }
       }
     else
       for {
         renamed <- reverseMapping.keys
-        denot <- pre.member(reverseMapping(renamed)).altsWith(_ is implicitFlag)
-      } yield {
+        denot <- pre.member(reverseMapping(renamed)).altsWith(_.isOneOf(implicitFlags))
+      }
+      yield {
         val original = reverseMapping(renamed)
         val ref = TermRef(pre, original, denot)
         if (renamed == original) ref

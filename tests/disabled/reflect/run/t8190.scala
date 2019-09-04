@@ -94,7 +94,7 @@ trait Overloads {
   def test(x: TreeCopier) = "TreeCopier"
 }
 
-object Test extends dotty.runtime.LegacyApp with Overloads {
+object Test extends App with Overloads {
   val buf = scala.collection.mutable.ListBuffer[String]()
   def record(result: String): Unit = {
     println(result)

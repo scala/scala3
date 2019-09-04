@@ -1,5 +1,5 @@
 class Force {
-	val t1 = new Thread {
+  val t1 = new Thread {
     override def run(): Unit = {
       scala.`package`
     }

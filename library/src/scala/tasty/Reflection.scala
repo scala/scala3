@@ -1,14 +1,16 @@
 package scala.tasty
 
+import scala.quoted.QuoteContext
 import scala.tasty.reflect._
 
-class Reflection(val kernel: Kernel)
+class Reflection(private[scala] val internal: CompilerInterface)
     extends Core
     with ConstantOps
     with ContextOps
     with CommentOps
     with FlagsOps
     with IdOps
+    with ImplicitsOps
     with ImportSelectorOps
     with QuotedOps
     with PatternOps
@@ -26,6 +28,7 @@ class Reflection(val kernel: Kernel)
   def typeOf[T: scala.quoted.Type]: Type =
     implicitly[scala.quoted.Type[T]].unseal.tpe
 
+  // TODO move out of Reflection
   object typing {
    /** Whether the code type checks in the given context?
     *
@@ -35,15 +38,7 @@ class Reflection(val kernel: Kernel)
     *
     *  The code should be a sequence of expressions or statements that may appear in a block.
     */
-    def typeChecks(code: String)(implicit ctx: Context): Boolean = kernel.typeChecks(code)(ctx)
+    def typeChecks(code: String)(implicit ctx: Context): Boolean = internal.typeChecks(code)
   }
 
-  val util: reflect.utils.TreeUtils { val reflect: self.type } = new reflect.utils.TreeUtils {
-    val reflect: self.type = self
-  }
-}
-
-object Reflection {
-  /** Compiler tasty context available in a top level ~ of an inline macro */
-  def macroContext: Reflection = throw new Exception("Not in inline macro.")
 }

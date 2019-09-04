@@ -1,8 +1,8 @@
 
 
 @deprecated("Suppress warnings", since="2.11")
-object Test extends dotty.runtime.LegacyApp {
-  class X[T: ClassManifest] {
+object Test extends App {
+  class X[T: scala.reflect.ClassManifest] {
     val a = Array.ofDim[T](3, 4)
   }
   val x = new X[String]

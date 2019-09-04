@@ -1,6 +1,6 @@
 
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   JavaTest.main(null)
 
   var a1 : SomeClass = new SomeClass

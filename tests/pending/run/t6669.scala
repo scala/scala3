@@ -1,6 +1,6 @@
 import java.io.{ByteArrayOutputStream, PrintStream}
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val baos = new ByteArrayOutputStream()
   val ps = new PrintStream(baos)
 

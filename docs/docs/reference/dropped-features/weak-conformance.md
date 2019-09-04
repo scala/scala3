@@ -39,4 +39,4 @@ Therefore, Dotty drops the general notion of weak conformance, and
 instead keeps one rule: `Int` literals are adapted to other numeric
 types if necessary.
 
-[More details](weak-conformance-spec.html)
+[More details](weak-conformance-spec.md)

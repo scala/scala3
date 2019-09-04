@@ -1,5 +1,5 @@
-ClassDef("Foo", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("foo", TypeIdent("Int"), Some(Literal(Constant.Int(2)))), DefDef("bar", Nil, List(List(ValDef("i", TypeIdent("Int"), None))), TypeIdent("Int"), Some(Literal(Constant.Int(3))))))
+ClassDef("Foo", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("foo", TypeIdent("Int"), Some(Literal(Constant(2)))), DefDef("bar", Nil, List(List(ValDef("i", TypeIdent("Int"), None))), TypeIdent("Int"), Some(Literal(Constant(3))))))
 DefDef("<init>", Nil, List(Nil), Inferred(), None)
-ValDef("foo", TypeIdent("Int"), Some(Literal(Constant.Int(2))))
-DefDef("bar", Nil, List(List(ValDef("i", TypeIdent("Int"), None))), TypeIdent("Int"), Some(Literal(Constant.Int(3))))
+ValDef("foo", TypeIdent("Int"), Some(Literal(Constant(2))))
+DefDef("bar", Nil, List(List(ValDef("i", TypeIdent("Int"), None))), TypeIdent("Int"), Some(Literal(Constant(3))))
 ValDef("i", TypeIdent("Int"), None)

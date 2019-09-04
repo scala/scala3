@@ -2,14 +2,14 @@ object A {
 
   object opaques {
     opaque type FlagSet = Long
-    def FlagSet(bits: Long): FlagSet = bits.asInstanceOf // !!!
+    def FlagSet(bits: Long): FlagSet = bits
     def toBits(fs: FlagSet): Long = fs
   }
   val someFlag = FlagSet(1)
   type FlagSet = opaques.FlagSet
   def FlagSet(bits: Long): FlagSet = opaques.FlagSet(bits)
 
-  delegate FlagOps {
+  given FlagOps {
     def (xs: FlagSet) bits: Long = opaques.toBits(xs)
     def (xs: FlagSet) | (ys: FlagSet): FlagSet = FlagSet(xs.bits | ys.bits)
   }

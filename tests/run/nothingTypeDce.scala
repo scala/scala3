@@ -56,7 +56,7 @@ class C {
   }
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   // creating an instance is enough to trigger bytecode verification for all methods,
   // no need to invoke the methods.
   new C()

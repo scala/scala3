@@ -101,7 +101,7 @@ object M4 {
   def sumInts = sum(x => x)
   def sumCubes = sum(x => x * x * x)
   def sumReciprocals = sum(1.0/_)
-  def sumPi = { n: Int => 4 + sum(x => 4.0/(4*x+1) - 4.0/(4*x-1))(1, n) }
+  def sumPi = { (n: Int) => 4 + sum(x => 4.0/(4*x+1) - 4.0/(4*x-1))(1, n) }
 
   Console.println(sumInts(1,4))
   Console.println(sumCubes(1,4))
@@ -122,7 +122,7 @@ object M5 {
   def sumInts = sum(x => x)
   def sumCubes = sum(x => x * x * x)
   def sumReciprocals = sum(x => 1.0/x)
-  def sumPi = { n: Int => 4 + sum(x => 4.0/(4*x+1) - 4.0/(4*x-1))(1, n) }
+  def sumPi = { (n: Int) => 4 + sum(x => 4.0/(4*x+1) - 4.0/(4*x-1))(1, n) }
 
   Console.println(sumInts(1,4))
   Console.println(sumCubes(1,4))
@@ -142,7 +142,7 @@ object M6 {
   def sumInts = sum(x => x)_
   def sumCubes = sum(x => x * x * x)_
   def sumReciprocals = sum(x => 1.0/x)_
-  def sumPi = { n: Int => 4 + sum(x => 4.0/(4*x+1) - 4.0/(4*x-1))(1, n) }
+  def sumPi = { (n: Int) => 4 + sum(x => 4.0/(4*x+1) - 4.0/(4*x-1))(1, n) }
 
   Console.println(sumInts(1,4))
   Console.println(sumCubes(1,4))
@@ -165,7 +165,7 @@ object M7 {
   def sumInts = sum(x => x)_
   def sumCubes = sum(x => x * x * x)_
   def sumReciprocals = sum(x => 1.0/x)_
-  def sumPi = { n: Int => 4 + sum(x => 4.0/(4*x+1) - 4.0/(4*x-1))(1, n) }
+  def sumPi = { (n: Int) => 4 + sum(x => 4.0/(4*x+1) - 4.0/(4*x-1))(1, n) }
 
   Console.println(sumInts(1,4))
   Console.println(sumCubes(1,4))
@@ -182,7 +182,7 @@ object M8 {
     if (a > b) 1
     else f(a) * product(f)(a + step, step, b);
 
-  def productPi = { n: Int => product(x=>4.0*x*x/(2*x-1)/(2*x-1))(1,1,n)/n }
+  def productPi = { (n: Int) => product(x=>4.0*x*x/(2*x-1)/(2*x-1))(1,1,n)/n }
 
   val pi = 2 * product(x => x * x)(2, 2, 40) / product(x => x * x)(1, 2,40)/40;
 
@@ -210,9 +210,9 @@ object M9 {
   def sumInts = sum(x => x)
   def sumCubes = sum(x => x * x * x)
   def sumReciprocals = sum(x => 1.0 / x)
-  def sumPi = { n: Int => 4 + sum(x => 4.0/(4*x+1) - 4.0/(4*x-1))(1, n) }
+  def sumPi = { (n: Int) => 4 + sum(x => 4.0/(4*x+1) - 4.0/(4*x-1))(1, n) }
 
-  def productPi = { n: Int => product(x=>4.0*x*x/(2*x-1)/(2*x-1))(1,n)/n }
+  def productPi = { (n: Int) => product(x=>4.0*x*x/(2*x-1)/(2*x-1))(1,n)/n }
 
   val pi = 2*product(x => 2*x*2*x)(1,20)/product(x =>(2*x-1)*(2*x-1))(1,20)/40
 

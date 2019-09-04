@@ -13,7 +13,7 @@ import Scopes._
 import Uniques._
 import ast.Trees._
 import ast.untpd
-import Flags.ImplicitOrImpliedOrGiven
+import Flags.GivenOrImplicit
 import util.{FreshNameCreator, NoSource, SimpleIdentityMap, SourceFile}
 import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, SearchRoot, TypeAssigner, Typer}
 import Implicits.ContextualImplicits
@@ -210,11 +210,11 @@ object Contexts {
     /** The new implicit references that are introduced by this scope */
     protected var implicitsCache: ContextualImplicits = null
     def implicits: ContextualImplicits = {
-      if (implicitsCache == null )
+      if (implicitsCache == null)
         implicitsCache = {
           val implicitRefs: List[ImplicitRef] =
             if (isClassDefContext)
-              try owner.thisType.implicitMembers(ImplicitOrImpliedOrGiven)
+              try owner.thisType.implicitMembers(GivenOrImplicit)
               catch {
                 case ex: CyclicReference => Nil
               }
@@ -315,7 +315,7 @@ object Contexts {
     /** Run `op` as if it was run in a fresh explore typer state, but possibly
      *  optimized to re-use the current typer state.
      */
-    final def test[T](op: Context => T): T = typerState.test(op)(this)
+    final def test[T](op: given Context => T): T = typerState.test(op)(this)
 
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =
@@ -404,7 +404,7 @@ object Contexts {
         case _               => None
       }
       ctx.fresh.setImportInfo(
-        new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt, imp.importImplied))
+        ImportInfo(sym, imp.selectors, impNameOpt, imp.importGiven))
     }
 
     /** Does current phase use an erased types interpretation? */
@@ -643,10 +643,9 @@ object Contexts {
 
     /** The platform */
     def platform: Platform = {
-      if (_platform == null) {
+      if (_platform == null)
         throw new IllegalStateException(
             "initialize() must be called before accessing platform")
-      }
       _platform
     }
 
@@ -671,9 +670,8 @@ object Contexts {
       definitions.init()
     }
 
-    def squashed(p: Phase): Phase = {
+    def squashed(p: Phase): Phase =
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
-    }
   }
 
   /** The essential mutable state of a context base, collected into a common class */
@@ -708,7 +706,7 @@ object Contexts {
 
     /** A map that associates label and size of all uniques sets */
     def uniquesSizes: Map[String, (Int, Int, Int)] =
-      uniqueSets.mapValues(s => (s.size, s.accesses, s.misses))
+      uniqueSets.transform((_, s) => (s.size, s.accesses, s.misses))
 
     /** Number of findMember calls on stack */
     private[core] var findMemberCount: Int = 0

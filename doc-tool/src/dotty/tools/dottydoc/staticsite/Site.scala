@@ -155,7 +155,7 @@ case class Site(
         "js/tether.min.js" -> "/js/tether.min.js",
         "js/highlight.pack.js" -> "/js/highlight.pack.js"
       )
-      .mapValues(getResource)
+      .transform((_, v) => getResource(v))
       .foreach { case (path, resource) =>
         val source = new ByteArrayInputStream(resource.getBytes(StandardCharsets.UTF_8))
         val target = mkdirs(fs.getPath(outDir.getAbsolutePath, path))

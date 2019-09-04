@@ -56,7 +56,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     ctx.initialize()(start) // re-initialize the base context with start
     def addImport(ctx: Context, refFn: () => TermRef) =
       ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))
-    (start.setRun(this) /: defn.RootImportFns)(addImport)
+    defn.RootImportFns.foldLeft(start.setRun(this))(addImport)
   }
 
   private[this] var compiling = false
@@ -102,7 +102,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   def compile(fileNames: List[String]): Unit = try {
     val sources = fileNames.map(ctx.getSource(_))
     compileSources(sources)
-  } catch {
+  }
+  catch {
     case NonFatal(ex) =>
       ctx.echo(i"exception occurred while compiling $units%, %")
       throw ex
@@ -157,12 +158,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
             val profileBefore = profiler.beforePhase(phase)
             units = phase.runOn(units)
             profiler.afterPhase(phase, profileBefore)
-            if (ctx.settings.Xprint.value.containsPhase(phase)) {
-              for (unit <- units) {
+            if (ctx.settings.Xprint.value.containsPhase(phase))
+              for (unit <- units)
                 lastPrintedTree =
                   printTree(lastPrintedTree)(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
-              }
-            }
             ctx.informTime(s"$phase ", start)
             Stats.record(s"total trees at end of $phase", ast.Trees.ntrees)
             for (unit <- units)

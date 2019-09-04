@@ -137,7 +137,7 @@ object PathResolver {
    *  Otherwise, show values in Calculated as if those options had been given 
    *  to a scala runner.
    */
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit =
     if (args.isEmpty) {
       println(Environment)
       println(Defaults)
@@ -156,7 +156,6 @@ object PathResolver {
           println(s"ClassPath has ${cp.aggregates.size} entries and results in:\n${cp.asClassPathStrings}")
       }
     }
-  }
 }
 
 import PathResolver.{Defaults, ppcp}
@@ -203,10 +202,9 @@ class PathResolver(implicit ctx: Context) {
      */
     def sourcePath: String          = cmdLineOrElse("sourcepath", Defaults.scalaSourcePath)
 
-    def userClassPath: String = {
+    def userClassPath: String =
       if (!settings.classpath.isDefault) settings.classpath.value
       else sys.env.getOrElse("CLASSPATH", ".")
-    }
 
     import classPathFactory._
 
@@ -265,5 +263,5 @@ class PathResolver(implicit ctx: Context) {
   }
 
   def asURLs: Seq[java.net.URL] = result.asURLs
-
 }
+

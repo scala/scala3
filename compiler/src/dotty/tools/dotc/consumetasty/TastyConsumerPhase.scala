@@ -14,5 +14,5 @@ class TastyConsumerPhase(consumer: TastyConsumer) extends Phase {
     val reflect = ReflectionImpl(ctx)
     consumer(reflect)(ctx.compilationUnit.tpdTree.asInstanceOf[reflect.Tree])
   }
-
 }
+

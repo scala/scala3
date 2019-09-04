@@ -140,10 +140,12 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => false
   }
 
+  /** Is tree a backquoted identifier or definition */
+  def isBackquoted(tree: Tree): Boolean = tree.hasAttachment(Backquoted)
+
   /** Is tree a variable pattern? */
   def isVarPattern(pat: Tree): Boolean = unsplice(pat) match {
-    case x: BackquotedIdent => false
-    case x: Ident => x.name.isVariableName
+    case x: Ident => x.name.isVariableName && !isBackquoted(x)
     case _  => false
   }
 
@@ -242,20 +244,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   /**  The largest subset of {NoInits, PureInterface} that a
-   *   trait or class enclosing this statement can have as flags.
-   */
-  def defKind(tree: Tree)(implicit ctx: Context): FlagSet = unsplice(tree) match {
-    case EmptyTree | _: Import => NoInitsInterface
-    case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
-    case tree: DefDef =>
-      if (tree.unforcedRhs == EmptyTree &&
-          tree.vparamss.forall(_.forall(_.rhs.isEmpty))) NoInitsInterface
-      else NoInits
-    case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
-    case _ => EmptyFlags
-  }
-
-  /**  The largest subset of {NoInits, PureInterface} that a
    *   trait or class with these parents can have as flags.
    */
   def parentsKind(parents: List[Tree])(implicit ctx: Context): FlagSet = parents match {
@@ -263,12 +251,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case Apply(_, _ :: _) :: _ => EmptyFlags
     case _ :: parents1 => parentsKind(parents1)
   }
-
-  /**  The largest subset of {NoInits, PureInterface} that a
-   *   trait or class with this body can have as flags.
-   */
-  def bodyKind(body: List[Tree])(implicit ctx: Context): FlagSet =
-    (NoInitsInterface /: body)((fs, stat) => fs & defKind(stat))
 
   /** Checks whether predicate `p` is true for all result parts of this expression,
    *  where we zoom into Ifs, Matches, and Blocks.
@@ -296,7 +278,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    */
   def lacksDefinition(mdef: MemberDef)(implicit ctx: Context): Boolean = mdef match {
     case mdef: ValOrDefDef =>
-      mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.is(TermParamOrAccessor)
+      mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.isOneOf(TermParamOrAccessor)
     case mdef: TypeDef =>
       def isBounds(rhs: Tree): Boolean = rhs match {
         case _: TypeBoundsTree => true
@@ -339,6 +321,28 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       }
     case _ => false
   }
+
+  /**  The largest subset of {NoInits, PureInterface} that a
+   *   trait or class enclosing this statement can have as flags.
+   */
+  def defKind(tree: Tree)(implicit ctx: Context): FlagSet = unsplice(tree) match {
+    case EmptyTree | _: Import => NoInitsInterface
+    case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
+    case tree: DefDef =>
+      if (tree.unforcedRhs == EmptyTree &&
+          tree.vparamss.forall(_.forall(_.rhs.isEmpty))) NoInitsInterface
+      else if (tree.mods.is(Given) && tree.tparams.isEmpty && tree.vparamss.isEmpty)
+        EmptyFlags // might become a lazy val: TODO: check whether we need to suppress NoInits once we have new lazy val impl
+      else NoInits
+    case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
+    case _ => EmptyFlags
+  }
+
+  /**  The largest subset of {NoInits, PureInterface} that a
+   *   trait or class with this body can have as flags.
+   */
+  def bodyKind(body: List[Tree])(implicit ctx: Context): FlagSet =
+    body.foldLeft(NoInitsInterface)((fs, stat) => fs & defKind(stat))
 
   // todo: fill with other methods from TreeInfo that only apply to untpd.Tree's
 }
@@ -397,7 +401,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           || fn.symbol.isPrimaryConstructor && fn.symbol.owner.isNoInitsClass) // TODO: include in isStable?
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
       else if (fn.symbol.is(Erased)) Pure
-      else if (fn.symbol.isStableMember /* && fn.symbol.is(Lazy) */)
+      else if (fn.symbol.isStableMember) /* && fn.symbol.is(Lazy) */
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Idempotent
       else Impure
     case Typed(expr, _) =>
@@ -412,7 +416,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       Impure
   }
 
-  private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = (l0 /: ls)(_ `min` _)
+  private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = ls.foldLeft(l0)(_ `min` _)
 
   def isPurePath(tree: Tree)(implicit ctx: Context): Boolean = tree.tpe match {
     case tpe: ConstantType => exprPurity(tree) >= Pure
@@ -534,7 +538,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   def isVariableOrGetter(tree: Tree)(implicit ctx: Context): Boolean = {
     def sym = tree.symbol
-    def isVar    = sym is Mutable
+    def isVar = sym.is(Mutable)
     def isGetter =
       mayBeVarGetter(sym) && sym.owner.info.member(sym.name.asTermName.setterName).exists
 
@@ -661,7 +665,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   private def isSimpleThrowable(tp: Type)(implicit ctx: Context): Boolean = tp match {
     case tp @ TypeRef(pre, _) =>
       (pre == NoPrefix || pre.widen.typeSymbol.isStatic) &&
-      (tp.symbol derivesFrom defn.ThrowableClass) && !(tp.symbol is Trait)
+      (tp.symbol derivesFrom defn.ThrowableClass) && !tp.symbol.is(Trait)
     case _ =>
       false
   }
@@ -682,7 +686,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def defPath(sym: Symbol, root: Tree)(implicit ctx: Context): List[Tree] = trace.onDebug(s"defpath($sym with position ${sym.span}, ${root.show})") {
     require(sym.span.exists, sym)
     object accum extends TreeAccumulator[List[Tree]] {
-      def apply(x: List[Tree], tree: Tree)(implicit ctx: Context): List[Tree] = {
+      def apply(x: List[Tree], tree: Tree)(implicit ctx: Context): List[Tree] =
         if (tree.span.contains(sym.span))
           if (definedSym(tree) == sym) tree :: x
           else {
@@ -690,7 +694,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
             if (x1 ne x) tree :: x1 else x1
           }
         else x
-      }
     }
     accum(Nil, root)
   }
@@ -719,7 +722,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       else Nil
     case vdef: ValDef =>
       val sym = vdef.symbol
-      assert(sym is Module)
+      assert(sym.is(Module))
       if (cls == sym.companionClass || cls == sym.moduleClass) vdef :: Nil
       else Nil
     case tree =>
@@ -823,8 +826,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           case t1: Ident => t1.symbol.hashCode
           case t1 @ Select(q1, _) => t1.symbol.hashCode * 41 + q1.hash
           case Literal(c1) => c1.hashCode
-          case Apply(f1, as1) => (f1.hash /: as1)((h, arg) => h * 41 + arg.hash)
-          case TypeApply(f1, ts1) => (f1.hash /: ts1)((h, arg) => h * 41 + arg.tpe.hash)
+          case Apply(f1, as1) => as1.foldLeft(f1.hash)((h, arg) => h * 41 + arg.hash)
+          case TypeApply(f1, ts1) => ts1.foldLeft(f1.hash)((h, arg) => h * 41 + arg.tpe.hash)
           case _ => t1.hashCode
         }
       }

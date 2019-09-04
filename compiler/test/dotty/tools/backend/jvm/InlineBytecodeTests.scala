@@ -95,8 +95,8 @@ class InlineBytecodeTests extends DottyBytecodeTest {
           Op(RETURN),
           Label(22)
         )
-        assert(instructions == expected,
-          "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
+      assert(instructions == expected,
+        "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
 
     }
   }
@@ -155,8 +155,8 @@ class InlineBytecodeTests extends DottyBytecodeTest {
           Op(RETURN),
           Label(17)
         )
-        assert(instructions == expected,
-          "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
+      assert(instructions == expected,
+        "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
 
     }
   }
@@ -215,8 +215,8 @@ class InlineBytecodeTests extends DottyBytecodeTest {
           Op(RETURN),
           Label(17)
         )
-        assert(instructions == expected,
-          "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
+      assert(instructions == expected,
+        "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
 
     }
   }
@@ -276,8 +276,8 @@ class InlineBytecodeTests extends DottyBytecodeTest {
           Op(RETURN),
           Label(17)
         )
-        assert(instructions == expected,
-          "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
+      assert(instructions == expected,
+        "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
 
     }
   }
@@ -315,8 +315,8 @@ class InlineBytecodeTests extends DottyBytecodeTest {
           , VarOp(ILOAD, 1)
           , Op(IRETURN)
         )
-        assert(instructions == expected,
-          "`f` was not properly inlined in `fun`\n" + diffInstructions(instructions, expected))
+      assert(instructions == expected,
+        "`f` was not properly inlined in `fun`\n" + diffInstructions(instructions, expected))
 
     }
   }

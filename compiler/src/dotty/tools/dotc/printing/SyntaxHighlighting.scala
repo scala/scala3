@@ -39,16 +39,17 @@ object SyntaxHighlighting {
       def highlightRange(from: Int, to: Int, color: String) =
         Arrays.fill(colorAt.asInstanceOf[Array[AnyRef]], from, to, color)
 
-      def highlightPosition(span: Span, color: String) = if (span.exists) {
+      def highlightPosition(span: Span, color: String) = if (span.exists)
         if (span.start < 0 || span.end > in.length) {
           if (debug)
             println(s"Trying to highlight erroneous position $span. Input size: ${in.length}")
         }
         else
           highlightRange(span.start, span.end, color)
-      }
 
-      val scanner = new Scanner(source)
+      val scanner = new Scanner(source) {
+        override protected def printState() = ()
+      }
       while (scanner.token != EOF) {
         val start = scanner.offset
         val token = scanner.token

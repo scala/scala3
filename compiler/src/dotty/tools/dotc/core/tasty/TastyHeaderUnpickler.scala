@@ -26,6 +26,7 @@ class TastyHeaderUnpickler(reader: TastyReader) {
 
   def isAtEnd: Boolean = reader.isAtEnd
 
-  private def check(cond: Boolean, msg: => String): Unit =
+  private def check(cond: Boolean, msg: => String): Unit = {
     if (!cond) throw new UnpickleException(msg)
+  }
 }

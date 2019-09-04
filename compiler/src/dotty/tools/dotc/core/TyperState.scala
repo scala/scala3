@@ -77,7 +77,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
     new TyperState(this).setReporter(new StoreReporter(reporter)).setCommittable(isCommittable)
 
   /** The uninstantiated variables */
-  def uninstVars: Seq[TypeVar] = constraint.uninstVars
+  def uninstVars: collection.Seq[TypeVar] = constraint.uninstVars
 
   /** The set of uninstantiated type variables which have this state as their owning state */
   private[this] var myOwnedVars: TypeVars = SimpleIdentitySet.empty
@@ -96,9 +96,9 @@ class TyperState(private val previous: TyperState /* | Null */) {
    *  typerstate. If it is unshared, run `op` in current typerState, restoring typerState
    *  to previous state afterwards.
    */
-  def test[T](op: Context => T)(implicit ctx: Context): T =
+  def test[T](op: given Context => T)(implicit ctx: Context): T =
     if (isShared)
-      op(ctx.fresh.setExploreTyperState())
+      op given ctx.fresh.setExploreTyperState()
     else {
       val savedConstraint = myConstraint
       val savedReporter = myReporter
@@ -106,15 +106,14 @@ class TyperState(private val previous: TyperState /* | Null */) {
       val savedCommitted = isCommitted
       myIsCommittable = false
       myReporter = {
-        if (testReporter == null || testReporter.inUse) {
+        if (testReporter == null || testReporter.inUse)
           testReporter = new TestReporter(reporter)
-        } else {
+        else
           testReporter.reset()
-        }
         testReporter.inUse = true
         testReporter
       }
-      try op(ctx)
+      try op given ctx
       finally {
         testReporter.inUse = false
         resetConstraintTo(savedConstraint)

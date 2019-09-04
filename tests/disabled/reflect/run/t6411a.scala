@@ -29,7 +29,7 @@ object a {
   def zns_8(z: => Z[String])     = z.i
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def test(methName: String, arg: Any) = {
     val moduleA = cm.reflect(a)
     val msym = moduleA.symbol.info.decl(TermName(methName)).asMethod

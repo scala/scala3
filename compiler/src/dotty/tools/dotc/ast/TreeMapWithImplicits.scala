@@ -9,9 +9,9 @@ import dotty.tools.dotc.core.TypeError
 import scala.annotation.tailrec
 
 /** A TreeMap that maintains the necessary infrastructure to support
- *  contxtual implicit searches (type-scope implicits are supported anyway).
+ *  contextual implicit searches (type-scope implicits are supported anyway).
  *
- *  This incudes impicits defined in scope as well as imported implicits.
+ *  This incudes implicits defined in scope as well as imported implicits.
  */
 class TreeMapWithImplicits extends tpd.TreeMap {
   import tpd._
@@ -28,7 +28,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
 
     @tailrec def traverse(curStats: List[Tree])(implicit ctx: Context): List[Tree] = {
 
-      def recur(stats: List[Tree], changed: Tree, rest: List[Tree])(implicit ctx: Context): List[Tree] = {
+      def recur(stats: List[Tree], changed: Tree, rest: List[Tree])(implicit ctx: Context): List[Tree] =
         if (stats eq curStats) {
           val rest1 = transformStats(rest, exprOwner)
           changed match {
@@ -37,7 +37,6 @@ class TreeMapWithImplicits extends tpd.TreeMap {
           }
         }
         else stats.head :: recur(stats.tail, changed, rest)
-      }
 
       curStats match {
         case stat :: rest =>
@@ -62,9 +61,23 @@ class TreeMapWithImplicits extends tpd.TreeMap {
   private def nestedScopeCtx(defs: List[Tree])(implicit ctx: Context): Context = {
     val nestedCtx = ctx.fresh.setNewScope
     defs foreach {
-      case d: DefTree => nestedCtx.enter(d.symbol)
+      case d: DefTree if d.symbol.isOneOf(GivenOrImplicit) => nestedCtx.enter(d.symbol)
       case _ =>
     }
+    nestedCtx
+  }
+
+  private def patternScopeCtx(pattern: Tree)(implicit ctx: Context): Context = {
+    val nestedCtx = ctx.fresh.setNewScope
+    new TreeTraverser {
+      def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+        tree match {
+          case d: DefTree if d.symbol.isOneOf(GivenOrImplicit) => nestedCtx.enter(d.symbol)
+          case _ =>
+        }
+        traverseChildren(tree)
+      }
+    }.traverse(pattern)
     nestedCtx
   }
 
@@ -93,14 +106,21 @@ class TreeMapWithImplicits extends tpd.TreeMap {
           Nil,
           transformSelf(self),
           transformStats(impl.body, tree.symbol))
+      case tree: CaseDef =>
+        val patCtx = patternScopeCtx(tree.pat)(ctx)
+        cpy.CaseDef(tree)(
+          transform(tree.pat),
+          transform(tree.guard)(patCtx),
+          transform(tree.body)(patCtx)
+        )
       case _ =>
         super.transform(tree)
     }
     catch {
       case ex: TypeError =>
-        ctx.error(ex.toMessage, tree.sourcePos)
+        ctx.error(ex, tree.sourcePos)
         tree
     }
   }
-
 }
+

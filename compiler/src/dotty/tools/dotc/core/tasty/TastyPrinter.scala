@@ -33,17 +33,17 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
     sb.append("Trees:\n")
     unpickle(new TreeSectionUnpickler) match {
       case Some(s) => sb.append(s)
-      case _ => Unit
+      case _ =>
     }
     sb.append("\n\n")
     unpickle(new PositionSectionUnpickler) match {
       case Some(s) => sb.append(s)
-      case _ => Unit
+      case _ =>
     }
     sb.append("\n\n")
     unpickle(new CommentSectionUnpickler) match {
       case Some(s) => sb.append(s)
-      case _ => Unit
+      case _ =>
     }
     sb.result
   }

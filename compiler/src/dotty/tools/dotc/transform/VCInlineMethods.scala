@@ -67,7 +67,7 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
         val ctParams = origCls.typeParams
         val extensionMeth = extensionMethod(origMeth)
 
-        if (!ctParams.isEmpty) {
+        if (!ctParams.isEmpty)
           evalOnce(qual) { ev =>
             val ctArgs = ctParams.map(tparam =>
               TypeTree(tparam.typeRef.asSeenFrom(ev.tpe, origCls)))
@@ -76,12 +76,11 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
               .appliedTo(ev)
               .appliedToArgss(mArgss)
           }
-        } else {
+        else
           ref(extensionMeth)
             .appliedToTypeTrees(mtArgs)
             .appliedTo(qual)
             .appliedToArgss(mArgss)
-        }
     }
 
   /** If this tree corresponds to a fully-applied value class method call, replace it

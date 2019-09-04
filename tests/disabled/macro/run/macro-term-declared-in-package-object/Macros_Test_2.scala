@@ -2,7 +2,7 @@ package object Macros {
   def foo: Unit = macro Impls.foo
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   import Macros._
   foo
 }

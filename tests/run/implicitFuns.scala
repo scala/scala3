@@ -191,17 +191,17 @@ object TransactionalExpansion {
     trans.commit()
   }
 
-  def thisTransaction = $t: Transaction => $t
+  def thisTransaction = ($t: Transaction) => $t
 
-  def f1(x: Int) = { $t: Transaction =>
+  def f1(x: Int) = { ($t: Transaction) =>
     thisTransaction.apply($t).println(s"first step: $x")
     f2(x + 1).apply($t)
   }
-  def f2(x: Int) = { $t: Transaction =>
+  def f2(x: Int) = { ($t: Transaction) =>
     thisTransaction.apply($t).println(s"second step: $x")
     f3(x * x).apply($t)
   }
-  def f3(x: Int) = { $t: Transaction =>
+  def f3(x: Int) = { ($t: Transaction) =>
     thisTransaction.apply($t).println(s"third step: $x")
     if (x % 2 != 0) thisTransaction.apply($t).abort()
     x

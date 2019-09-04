@@ -5,13 +5,14 @@ object Test extends App {
   }
 
   class TC1
-  delegate for TC1
+
+  given as TC1
 
   class TV(val tc: TC) extends AnyVal
 
   trait C {
     val x: TC
-    delegate for TC = x
+    given as TC = x
     the[TC]
     the[TC]
   }
@@ -21,7 +22,7 @@ object Test extends App {
 
   locally{
     println("= new")
-    delegate t for TC = new TC
+    given t as TC = new TC
     the[TC]
     the[TC]
   }
@@ -33,7 +34,7 @@ object Test extends App {
 
   locally{
     println("= new VC")
-    delegate t for TV = new TV(new TC)
+    given t as TV = new TV(new TC)
     the[TV]
     the[TV]
   }
@@ -45,21 +46,21 @@ object Test extends App {
   val tcc = new TCC
   locally {
     println("= x.y")
-    delegate t for TC = tcc.tc
+    given t as TC = tcc.tc
     the[TC]
     the[TC]
   }
 
   locally {
     println("with given")
-    delegate t for TC given TC1 = new TC
+    given t as TC given TC1 = new TC
     the[TC]
     the[TC]
   }
 
   locally {
     println("with type params")
-    delegate t[X] for TC = new TC
+    given t[X] as TC = new TC
     the[TC]
     the[TC]
   }

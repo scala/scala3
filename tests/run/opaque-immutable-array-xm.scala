@@ -6,7 +6,7 @@ object Test extends App {
   opaque type IArray[A1] = Array[A1]
 
   implicit object IArray {
-    inline def initialize[A](body: => Array[A]): IArray[A] = body
+    def initialize[A](body: => Array[A]): IArray[A] = body
     def apply[A: ClassTag](xs: A*): IArray[A] = initialize(Array(xs: _*))
 
     // These should be inline but that does not work currently. Try again

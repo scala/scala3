@@ -40,7 +40,7 @@ object iq {
         q2
       }
       else {
-	val (head, q3) = q2.dequeue
+        val (head, q3) = q2.dequeue
         Console.println("Head: " + head)
         q3
       }

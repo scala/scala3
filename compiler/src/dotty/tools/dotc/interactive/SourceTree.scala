@@ -14,7 +14,7 @@ import util._, util.Spans._
  *
  * `tree` can be either an `Import` or a `NameTree`.
  */
-case class SourceTree(tree: tpd.Tree /** really: tpd.Import | tpd.NameTree */, source: SourceFile) {
+case class SourceTree(tree: tpd.Import | tpd.NameTree, source: SourceFile) {
 
   /** The position of `tree` */
   final def pos(implicit ctx: Context): SourcePosition = source.atSpan(tree.span)
@@ -51,7 +51,7 @@ case class SourceTree(tree: tpd.Tree /** really: tpd.Import | tpd.NameTree */, s
 }
 
 object SourceTree {
-  def fromSymbol(sym: ClassSymbol, id: String = "")(implicit ctx: Context): List[SourceTree] = {
+  def fromSymbol(sym: ClassSymbol, id: String = "")(implicit ctx: Context): List[SourceTree] =
     if (sym == defn.SourceFileAnnot || // FIXME: No SourceFile annotation on SourceFile itself
         !sym.source.exists) // FIXME: We cannot deal with external projects yet
       Nil
@@ -78,5 +78,4 @@ object SourceTree {
         case None => Nil
       }
     }
-  }
 }

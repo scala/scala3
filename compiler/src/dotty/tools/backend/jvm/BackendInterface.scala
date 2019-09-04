@@ -602,7 +602,11 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def params: List[Symbol]
     def resultType: Type
     def memberInfo(s: Symbol): Type
-    def membersBasedOnFlags(excludedFlags: Flags, requiredFlags: Flags): List[Symbol]
+
+    /** The members of this type that have all of `required` flags but none of `excluded` flags set.
+     *  The members are sorted by name and signature to guarantee a stable ordering.
+     */
+    def sortedMembersBasedOnFlags(required: Flags, excluded: Flags): List[Symbol]
     def members: List[Symbol]
     def decls: List[Symbol]
     def underlying: Type

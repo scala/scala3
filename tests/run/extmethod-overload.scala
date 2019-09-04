@@ -19,10 +19,10 @@ object Test extends App {
   assert(h(1)(1)(2) == 2)
   assert(h(1)(1)("two") == 3)
 
-  // Test with extension methods in delegate object
+  // Test with extension methods in given object
   object test1 {
 
-    delegate Foo {
+    given Foo {
       def (x: Int) |+| (y: Int) = x + y
       def (x: Int) |+| (y: String) = x + y.length
 
@@ -52,7 +52,7 @@ object Test extends App {
   }
   test2
 
-  // Test with delegate extension methods coming from base class
+  // Test with given extension methods coming from base class
   object test3 {
     class Foo {
       def (x: Int) |+| (y: Int) = x + y
@@ -61,7 +61,7 @@ object Test extends App {
       def (xs: List[T]) +++ [T] (ys: List[T]): List[T] = xs ++ ys ++ ys
       def (xs: List[T]) +++ [T] (ys: Iterator[T]): List[T] = xs ++ ys ++ ys
     }
-    delegate Bar for Foo
+    given Bar as Foo
 
     assert((1 |+| 2) == 3)
     assert((1 |+| "2") == 2)
@@ -72,9 +72,9 @@ object Test extends App {
   }
   test3
 
-  // Test with delegate extension methods coming from delegate alias
+  // Test with extension methods coming from given alias
   object test4 {
-    delegate for test3.Foo = test3.Bar
+    given as test3.Foo = test3.Bar
 
     assert((1 |+| 2) == 3)
     assert((1 |+| "2") == 2)
@@ -97,7 +97,7 @@ object Test extends App {
     def (x: Int) yy (y: Int) = x + y
   }
 
-  delegate {
+  given {
     def (x: Int) yy (y: Int) = x - y
   }
 

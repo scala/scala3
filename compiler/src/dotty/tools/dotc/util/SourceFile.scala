@@ -6,7 +6,7 @@ import scala.collection.mutable.ArrayBuffer
 import dotty.tools.io._
 import java.util.regex.Pattern
 import java.io.IOException
-import scala.tasty.util.Chars._
+import scala.internal.Chars._
 import Spans._
 import scala.io.Codec
 import core.Names.TermName
@@ -32,7 +32,8 @@ object ScriptSourceFile {
         val matcher = headerPattern matcher content.mkString
         if (matcher.find) matcher.end
         else throw new IOException("script file does not close its header with !# or ::!#")
-      } else 0
+      }
+      else 0
     new SourceFile(file, content drop headerLength) {
       override val underlying = new SourceFile(file, content)
     }

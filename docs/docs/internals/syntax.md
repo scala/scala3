@@ -84,6 +84,7 @@ comment          ::=  ‘/*’ “any sequence of characters; nested comments ar
                    |  ‘//’ “any sequence of characters up to end of line”
 
 nl               ::=  “new line character”
+cnl              ::=  nl | "colon at eol"
 semi             ::=  ‘;’ |  nl {nl}
 ```
 
@@ -92,12 +93,12 @@ semi             ::=  ‘;’ |  nl {nl}
 ### Regular keywords
 
 ```
-abstract  case      catch     class     def       delegate  do        else
-enum      export    extends   false     final     finally   for       given
-if        implicit  import    lazy      match     new       null      object
-package   private   protected override  return    super     sealed    then
-throw     trait     true      try       type      val       var       while
-with      yield
+abstract  case      catch     class     def       do        else      enum
+export    extends   false     final     finally   for       given     if
+implicit  import    lazy      match     new       null      object    package
+private   protected override  return    super     sealed    then      throw
+trait     true      try       type      val       var       while     with
+yield
 :         =         <-        =>        <:        :>        #         @
 =>>
 ```
@@ -105,7 +106,7 @@ with      yield
 ### Soft keywords
 
 ```
-derives   inline    opaque
+as        derives   inline    opaque
 ~         *         |         &         +         -
 ```
 
@@ -121,9 +122,9 @@ SimpleLiteral     ::=  [‘-’] integerLiteral
                     |  booleanLiteral
                     |  characterLiteral
                     |  stringLiteral
-                    |  symbolLiteral
 Literal           ::=  SimpleLiteral
                     |  processedStringLiteral
+                    |  symbolLiteral
                     |  ‘null’
 
 QualId            ::=  id {‘.’ id}
@@ -151,8 +152,8 @@ FunArgTypes       ::=  InfixType
                     |  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
 MatchType         ::=  InfixType `match` TypeCaseClauses
-InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
-RefinedType       ::=  WithType {[nl] Refinement}                               RefinedTypeTree(t, ds)
+InfixType         ::=  RefinedType {id [cnl] RefinedType}                       InfixOp(t1, op, t2)
+RefinedType       ::=  WithType {[cnl] Refinement}                              RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
 SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
@@ -189,10 +190,9 @@ FunParams         ::=  Bindings
                     |  ‘_’
 Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl}
                        Expr [[semi] ‘else’ Expr]                                If(Parens(cond), thenp, elsep?)
-                    |  ‘if’ Expr ‘then’ Expr [[semi] ‘else’ Expr]    If(cond, thenp, elsep?)
+                    |  ‘if’ Expr ‘then’ Expr [[semi] ‘else’ Expr]               If(cond, thenp, elsep?)
                     |  ‘while’ ‘(’ Expr ‘)’ {nl} Expr                           WhileDo(Parens(cond), body)
                     |  ‘while’ Expr ‘do’ Expr                                   WhileDo(cond, body)
-                    |  ‘do’ Expr [semi] ‘while’ Expr                            DoWhile(expr, cond)
                     |  ‘try’ Expr Catches [‘finally’ Expr]                      Try(expr, catches, expr?)
                     |  ‘try’ Expr [‘finally’ Expr]                              Try(expr, Nil, expr?)
                     |  ‘throw’ Expr                                             Throw(expr)
@@ -203,14 +203,14 @@ Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl}
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
                     |  Expr2
                     |  [‘inline’] Expr2 ‘match’ ‘{’ CaseClauses ‘}’             Match(expr, cases) -- point on match
-                    |  ‘implicit’ ‘match’ ‘{’ ImplicitCaseClauses ‘}’
+                    |  ‘given’ ‘match’ ‘{’ ImplicitCaseClauses ‘}’
 Expr2             ::=  PostfixExpr [Ascription]
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
 Catches           ::=  ‘catch’ Expr
 PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op)
 InfixExpr         ::=  PrefixExpr
-                    |  InfixExpr id [nl] InfixExpr                              InfixOp(expr, op, expr)
+                    |  InfixExpr id [cnl] InfixExpr                              InfixOp(expr, op, expr)
                     |  InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
 SimpleExpr        ::=  ‘new’ (ConstrApp [TemplateBody] | TemplateBody)          New(constr | templ)
@@ -235,7 +235,7 @@ ExprInParens      ::=  PostfixExpr ‘:’ Type                                 
 ParArgumentExprs  ::=  ‘(’ ExprsInParens ‘)’                                    exprs
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’          exprs :+ Typed(expr, Ident(wildcardStar))
 ArgumentExprs     ::=  ParArgumentExprs
-                    |  [nl] BlockExpr
+                    |  [cnl] BlockExpr
 BlockExpr         ::=  ‘{’ CaseClauses | Block ‘}’
 Block             ::=  {BlockStat semi} [BlockResult]                           Block(stats, expr?)
 BlockStat         ::=  Import
@@ -261,10 +261,9 @@ TypeCaseClauses   ::=  TypeCaseClause { TypeCaseClause }
 TypeCaseClause    ::=  ‘case’ InfixType ‘=>’ Type [nl]
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
-Pattern1          ::=  PatVar ‘:’ RefinedType                                   Bind(name, Typed(Ident(wildcard), tpe))
-                    |  Pattern2
+Pattern1          ::=  Pattern2 [‘:’ RefinedType]                               Bind(name, Typed(Ident(wildcard), tpe))
 Pattern2          ::=  [id ‘@’] InfixPattern                                    Bind(name, pat)
-InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  InfixOp(pat, op, pat)
+InfixPattern      ::=  SimplePattern { id [cnl] SimplePattern }                 InfixOp(pat, op, pat)
 SimplePattern     ::=  PatVar                                                   Ident(wildcard)
                     |  Literal                                                  Bind(name, Ident(wildcard))
                     |  ‘(’ [Patterns] ‘)’                                       Parens(pats) Tuple(pats)
@@ -283,7 +282,7 @@ ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                               
 ### Type and Value Parameters
 ```ebnf
 ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
-ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]                                   TypeDef(Modifiers, name, tparams, bounds)
+ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]                                 TypeDef(Modifiers, name, tparams, bounds)
                        id [HkTypeParamClause] TypeParamBounds                   Bound(below, above, context)
 
 DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
@@ -298,7 +297,7 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
                     |  {ClsParamClause} {GivenClsParamClause}
-ClsParamClause    ::=  ‘(’ ClsParams ‘)’
+ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
 GivenClsParamClause::= ‘given’ (‘(’ ClsParams ‘)’ | GivenTypes)
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
@@ -308,7 +307,7 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
                     |  {DefParamClause} {GivenParamClause}
-DefParamClause    ::=  ‘(’ DefParams ‘)’
+DefParamClause    ::=  [nl] ‘(’ DefParams ‘)’
 GivenParamClause  ::=  ‘given’ (‘(’ DefParams ‘)’ | GivenTypes)
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
@@ -336,14 +335,13 @@ AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
 
 Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                        Apply(tpe, args)
 
-Import            ::=  ‘import’ [‘delegate’] ImportExpr {‘,’ ImportExpr}
+Import            ::=  ‘import’ [‘given’] ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  StableId ‘.’ (id | ‘_’ | ImportSelectors)                Import(expr, sels)
 ImportSelectors   ::=  ‘{’ {ImportSelector ‘,’} FinalSelector ‘}’
 FinalSelector     ::=  ImportSelector                                           Ident(name)
-                    |  ‘_’                                                      Pair(id, id)
-                    |  ‘for’ InfixType {‘,’ InfixType}                          TypeBoundsTree(EmptyTree, tpt)
+                    |  ‘_’ [‘:’ Type]                                           TypeBoundsTree(EmptyTree, tpt)
 ImportSelector    ::=  id [‘=>’ id | ‘=>’ ‘_’]
-Export            ::=  ‘export’ [‘delegate’] ImportExpr {‘,’ ImportExpr}
+Export            ::=  ‘export’ [‘given’] ImportExpr {‘,’ ImportExpr}
 ```
 
 ### Declarations and Definitions
@@ -356,8 +354,8 @@ Dcl               ::=  RefineDcl
                     |  ‘var’ VarDcl
 ValDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
-DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
-DefSig            ::=  ‘(’ DefParam ‘)’ [nl] id
+DefDcl            ::=  DefSig ‘:’ Type                                          DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
+DefSig            ::=  [‘(’ DefParam ‘)’ [nl]] id
                        [DefTypeParamClause] DefParamClauses
 TypeDcl           ::=  id [TypeParamClause] SubtypeBounds [‘=’ Type]           TypeDefTree(_, name, tparams, bound
 
@@ -372,23 +370,22 @@ PatDef            ::=  ids [‘:’ Type] ‘=’ Expr
 VarDef            ::=  PatDef
                     |  ids ‘:’ Type ‘=’ ‘_’
 DefDef            ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr                      DefDef(_, name, tparams, vparamss, tpe, expr)
-                    |  DefSig [nl] ‘{’ Block ‘}’                                DefDef(_, name, tparams, vparamss, tpe, Block)
-                    |  ‘this’ DefParamClause DefParamClauses                    DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
-                       (‘=’ ConstrExpr | [nl] ConstrBlock)
+                    |  ‘this’ DefParamClause DefParamClauses ‘=’ ConstrExpr     DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
-                    |  ‘delegate’ DelegateDef
+                    |  ‘given’ GivenDef
                     |  Export
 ClassDef          ::=  id ClassConstr [Template]                                ClassDef(mods, name, tparams, templ)
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
-DelegateDef       ::=  [id] [DefTypeParamClause] DelegateBody
-DelegateBody      ::=  [‘for’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
-                    |  ‘for’ Type {GivenParamClause} ‘=’ Expr
+GivenDef          ::=  [id] [DefTypeParamClause] GivenBody
+GivenBody         ::=  [‘as’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
+                    |  ‘as’ Type {GivenParamClause} ‘=’ Expr
+                    |  ‘(’ DefParam ‘)’ TemplateBody
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
@@ -397,11 +394,10 @@ ConstrApp         ::=  SimpleConstrApp
                     |  ‘(’ SimpleConstrApp {‘given’ (PrefixExpr | ParArgumentExprs)} ‘)’
 SimpleConstrApp   ::=  AnnotType {ArgumentExprs}                                Apply(tp, args)
 ConstrExpr        ::=  SelfInvocation
-                    |  ConstrBlock
+                    |  ‘{’ SelfInvocation {semi BlockStat} ‘}’
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
-ConstrBlock       ::=  ‘{’ SelfInvocation {semi BlockStat} ‘}’
 
-TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’ (self, stats)
+TemplateBody      ::=  [cnl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’ (self, stats)
 TemplateStat      ::=  Import
                     |  Export
                     |  {Annotation [nl]} {Modifier} Def
@@ -411,7 +407,7 @@ TemplateStat      ::=  Import
 SelfType          ::=  id [‘:’ InfixType] ‘=>’                                  ValDef(_, name, tpt, _)
                     |  ‘this’ ‘:’ InfixType ‘=>’
 
-EnumBody          ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+EnumBody          ::=  [cnl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
 EnumStat          ::=  TemplateStat
                     |  {Annotation [nl]} {Modifier} EnumCase
 EnumCase          ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps]] | ids)
@@ -423,8 +419,8 @@ TopStat           ::=  Import
                     |  Packaging
                     |  PackageObject
                     |
-Packaging         ::=  ‘package’ QualId [nl] ‘{’ TopStatSeq ‘}’                 Package(qid, stats)
+Packaging         ::=  ‘package’ QualId [cnl] ‘{’ TopStatSeq ‘}’                 Package(qid, stats)
 PackageObject     ::=  ‘package’ ‘object’ ObjectDef                             object with package in mods.
 
-CompilationUnit   ::=  {‘package’ QualId semi} TopStatSeq                       Package(qid, stats)
+CompilationUnit   ::=  {‘package’ QualId (semi | cnl)} TopStatSeq               Package(qid, stats)
 ```

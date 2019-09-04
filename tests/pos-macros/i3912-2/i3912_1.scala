@@ -3,5 +3,5 @@ import scala.quoted._
 object Macros {
   inline def foo2(): Unit = ${ impl() }
 
-  def impl(): Expr[Int] = '{1}
+  def impl() given QuoteContext: Expr[Int] = '{1}
 }

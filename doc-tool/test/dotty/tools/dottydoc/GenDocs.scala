@@ -28,15 +28,6 @@ trait LocalResources extends DocDriver {
     files
 }
 
-object GenCollections extends LocalResources {
-  import Files._
-
-  val collections = TestWhitelistedCollections.files
-
-  override def main(args: Array[String]): Unit =
-    super.main(withClasspath(collections.toArray))
-}
-
 object GenDottyDocs extends LocalResources {
   import Files._
 

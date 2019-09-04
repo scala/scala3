@@ -7,7 +7,7 @@ trait C[@specialized U] {
   def bar[A](u: U) = u
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val declared = classOf[C[_]].getDeclaredMethods.sortBy(_.getName)
   println(declared.mkString("\n"))
   object CInt extends C[Int] { def foo(i: Int) = i }

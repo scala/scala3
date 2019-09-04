@@ -42,10 +42,12 @@ class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
           next = next.updated(last, current)
         }
         values(current)
-      } else if (current == last) {
+      }
+      else if (current == last) {
         lastButOne = prev
         null
-      } else
+      }
+      else
         lookupNext(current, follow, nx)
     }
     lookupNext(last, first, next)
@@ -95,6 +97,6 @@ object LRUCache {
 
   /** The initial ring: 0 -> 1 -> ... -> 7 -> 0 */
   val initialRing: SixteenNibbles =
-    (new SixteenNibbles(0L) /: (0 until Retained))((nibbles, idx) =>
+    (0 until Retained).foldLeft(new SixteenNibbles(0L))((nibbles, idx) =>
       nibbles.updated(idx, (idx + 1) % Retained))
 }

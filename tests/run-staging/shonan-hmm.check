@@ -1,0 +1,302 @@
+Complex(0,10)
+Complex(1.*(4).-(2.*(2)), 1.*(2).+(2.*(4)))
+List(Complex(2,0), Complex(-4,4), Complex(-2,6))
+((vout: scala.Array[Complex[scala.Int]], v1: scala.Array[Complex[scala.Int]], v2: scala.Array[Complex[scala.Int]]) => {
+  val n: scala.Int = vout.length
+  var i: scala.Int = 0
+  while (i.<(n)) {
+    vout.update(i, Complex.apply[scala.Int](v1.apply(i).re.*(v2.apply(i).re).-(v1.apply(i).im.*(v2.apply(i).im)), v1.apply(i).re.*(v2.apply(i).im).+(v1.apply(i).im.*(v2.apply(i).re))))
+    i = i.+(1)
+  }
+})
+List(25, 30, 20, 43, 44)
+
+
+
+((vout: scala.Array[scala.Int], a: scala.Array[scala.Array[scala.Int]], v: scala.Array[scala.Int]) => {
+  val n: scala.Int = vout.length
+  val m: scala.Int = v.length
+  var i: scala.Int = 0
+  while (i.<(n)) {
+    vout.update(i, {
+      var sum: scala.Int = 0
+      var i: scala.Int = 0
+      while (i.<(m)) {
+        sum = sum.+(v.apply(i).*(a.apply(i).apply(i)))
+        i = i.+(1)
+      }
+
+      (sum: scala.Int)
+    })
+    i = i.+(1)
+  }
+})
+
+
+
+((vout: scala.Array[scala.Int], a: scala.Array[scala.Array[scala.Int]], v: scala.Array[scala.Int]) => {
+  if (3.!=(vout.length)) throw new scala.IndexOutOfBoundsException("3") else ()
+  if (2.!=(v.length)) throw new scala.IndexOutOfBoundsException("2") else ()
+  vout.update(0, 0.+(v.apply(0).*(a.apply(0).apply(0))).+(v.apply(1).*(a.apply(0).apply(1))))
+  vout.update(1, 0.+(v.apply(0).*(a.apply(1).apply(0))).+(v.apply(1).*(a.apply(1).apply(1))))
+  vout.update(2, 0.+(v.apply(0).*(a.apply(2).apply(0))).+(v.apply(1).*(a.apply(2).apply(1))))
+})
+
+
+
+{
+  val arr: scala.Array[scala.Array[scala.Int]] = {
+    val array: scala.Array[scala.Array[scala.Int]] = dotty.runtime.Arrays.newGenericArray[scala.Array[scala.Int]](5)(scala.reflect.ClassTag.apply[scala.Array[scala.Int]](scala.Predef.classOf[scala.Array[scala.Int]]))
+    array.update(0, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 5)
+      array.update(1, 0)
+      array.update(2, 0)
+      array.update(3, 5)
+      array.update(4, 0)
+      array
+    })
+    array.update(1, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 0)
+      array.update(1, 0)
+      array.update(2, 10)
+      array.update(3, 0)
+      array.update(4, 0)
+      array
+    })
+    array.update(2, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 0)
+      array.update(1, 10)
+      array.update(2, 0)
+      array.update(3, 0)
+      array.update(4, 0)
+      array
+    })
+    array.update(3, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 0)
+      array.update(1, 0)
+      array.update(2, 2)
+      array.update(3, 3)
+      array.update(4, 5)
+      array
+    })
+    array.update(4, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 0)
+      array.update(1, 0)
+      array.update(2, 3)
+      array.update(3, 0)
+      array.update(4, 7)
+      array
+    })
+    array
+  }
+  ((vout: scala.Array[scala.Int], v: scala.Array[scala.Int]) => {
+    if (5.!=(vout.length)) throw new scala.IndexOutOfBoundsException("5") else ()
+    if (5.!=(v.length)) throw new scala.IndexOutOfBoundsException("5") else ()
+    vout.update(0, 0.+(v.apply(0).*(5)).+(v.apply(1).*(0)).+(v.apply(2).*(0)).+(v.apply(3).*(5)).+(v.apply(4).*(0)))
+    vout.update(1, 0.+(v.apply(0).*(0)).+(v.apply(1).*(0)).+(v.apply(2).*(10)).+(v.apply(3).*(0)).+(v.apply(4).*(0)))
+    vout.update(2, 0.+(v.apply(0).*(0)).+(v.apply(1).*(10)).+(v.apply(2).*(0)).+(v.apply(3).*(0)).+(v.apply(4).*(0)))
+    vout.update(3, 0.+(v.apply(0).*(0)).+(v.apply(1).*(0)).+(v.apply(2).*(2)).+(v.apply(3).*(3)).+(v.apply(4).*(5)))
+    vout.update(4, 0.+(v.apply(0).*(0)).+(v.apply(1).*(0)).+(v.apply(2).*(3)).+(v.apply(3).*(0)).+(v.apply(4).*(7)))
+  })
+}
+
+
+
+{
+  val arr: scala.Array[scala.Array[scala.Int]] = {
+    val array: scala.Array[scala.Array[scala.Int]] = dotty.runtime.Arrays.newGenericArray[scala.Array[scala.Int]](5)(scala.reflect.ClassTag.apply[scala.Array[scala.Int]](scala.Predef.classOf[scala.Array[scala.Int]]))
+    array.update(0, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 5)
+      array.update(1, 0)
+      array.update(2, 0)
+      array.update(3, 5)
+      array.update(4, 0)
+      array
+    })
+    array.update(1, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 0)
+      array.update(1, 0)
+      array.update(2, 10)
+      array.update(3, 0)
+      array.update(4, 0)
+      array
+    })
+    array.update(2, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 0)
+      array.update(1, 10)
+      array.update(2, 0)
+      array.update(3, 0)
+      array.update(4, 0)
+      array
+    })
+    array.update(3, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 0)
+      array.update(1, 0)
+      array.update(2, 2)
+      array.update(3, 3)
+      array.update(4, 5)
+      array
+    })
+    array.update(4, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 0)
+      array.update(1, 0)
+      array.update(2, 3)
+      array.update(3, 0)
+      array.update(4, 7)
+      array
+    })
+    array
+  }
+  ((vout: scala.Array[scala.Int], v: scala.Array[scala.Int]) => {
+    if (5.!=(vout.length)) throw new scala.IndexOutOfBoundsException("5") else ()
+    if (5.!=(v.length)) throw new scala.IndexOutOfBoundsException("5") else ()
+    vout.update(0, v.apply(0).*(5).+(v.apply(3).*(5)))
+    vout.update(1, v.apply(2).*(10))
+    vout.update(2, v.apply(1).*(10))
+    vout.update(3, v.apply(2).*(2).+(v.apply(3).*(3)).+(v.apply(4).*(5)))
+    vout.update(4, v.apply(2).*(3).+(v.apply(4).*(7)))
+  })
+}
+
+
+
+{
+  val arr: scala.Array[scala.Array[scala.Int]] = {
+    val array: scala.Array[scala.Array[scala.Int]] = dotty.runtime.Arrays.newGenericArray[scala.Array[scala.Int]](5)(scala.reflect.ClassTag.apply[scala.Array[scala.Int]](scala.Predef.classOf[scala.Array[scala.Int]]))
+    array.update(0, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 5)
+      array.update(1, 0)
+      array.update(2, 0)
+      array.update(3, 5)
+      array.update(4, 0)
+      array
+    })
+    array.update(1, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 0)
+      array.update(1, 0)
+      array.update(2, 10)
+      array.update(3, 0)
+      array.update(4, 0)
+      array
+    })
+    array.update(2, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 0)
+      array.update(1, 10)
+      array.update(2, 0)
+      array.update(3, 0)
+      array.update(4, 0)
+      array
+    })
+    array.update(3, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 0)
+      array.update(1, 0)
+      array.update(2, 2)
+      array.update(3, 3)
+      array.update(4, 5)
+      array
+    })
+    array.update(4, {
+      val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+      array.update(0, 0)
+      array.update(1, 0)
+      array.update(2, 3)
+      array.update(3, 0)
+      array.update(4, 7)
+      array
+    })
+    array
+  }
+  ((vout: scala.Array[scala.Int], v: scala.Array[scala.Int]) => {
+    if (5.!=(vout.length)) throw new scala.IndexOutOfBoundsException("5") else ()
+    if (5.!=(v.length)) throw new scala.IndexOutOfBoundsException("5") else ()
+    vout.update(0, v.apply(0).*(5).+(v.apply(3).*(5)))
+    vout.update(1, v.apply(2).*(10))
+    vout.update(2, v.apply(1).*(10))
+    vout.update(3, {
+      var sum: scala.Int = 0
+      var i: scala.Int = 0
+      while (i.<(5)) {
+        sum = sum.+(v.apply(i).*(arr.apply(3).apply(i)))
+        i = i.+(1)
+      }
+
+      (sum: scala.Int)
+    })
+    vout.update(4, v.apply(2).*(3).+(v.apply(4).*(7)))
+  })
+}
+
+
+
+((vout: scala.Array[scala.Int], v: scala.Array[scala.Int]) => {
+  if (5.!=(vout.length)) throw new scala.IndexOutOfBoundsException("5") else ()
+  if (5.!=(v.length)) throw new scala.IndexOutOfBoundsException("5") else ()
+  vout.update(0, v.apply(0).*(5).+(v.apply(3).*(5)))
+  vout.update(1, v.apply(2).*(10))
+  vout.update(2, v.apply(1).*(10))
+  vout.update(3, {
+    var sum: scala.Int = 0
+    var i: scala.Int = 0
+    while (i.<(5)) {
+      sum = sum.+(v.apply(i).*({
+        val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+        array.update(0, 0)
+        array.update(1, 0)
+        array.update(2, 2)
+        array.update(3, 3)
+        array.update(4, 5)
+        array
+      }.apply(i)))
+      i = i.+(1)
+    }
+
+    (sum: scala.Int)
+  })
+  vout.update(4, v.apply(2).*(3).+(v.apply(4).*(7)))
+})
+
+
+
+{
+  val row: scala.Array[scala.Int] = {
+    val array: scala.Array[scala.Int] = new scala.Array[scala.Int](5)
+    array.update(0, 0)
+    array.update(1, 0)
+    array.update(2, 2)
+    array.update(3, 3)
+    array.update(4, 5)
+    array
+  }
+  ((vout: scala.Array[scala.Int], v: scala.Array[scala.Int]) => {
+    if (5.!=(vout.length)) throw new scala.IndexOutOfBoundsException("5") else ()
+    if (5.!=(v.length)) throw new scala.IndexOutOfBoundsException("5") else ()
+    vout.update(0, v.apply(0).*(5).+(v.apply(3).*(5)))
+    vout.update(1, v.apply(2).*(10))
+    vout.update(2, v.apply(1).*(10))
+    vout.update(3, {
+      var sum: scala.Int = 0
+      var i: scala.Int = 0
+      while (i.<(5)) {
+        sum = sum.+(v.apply(i).*(row.apply(i)))
+        i = i.+(1)
+      }
+
+      (sum: scala.Int)
+    })
+    vout.update(4, v.apply(2).*(3).+(v.apply(4).*(7)))
+  })
+}

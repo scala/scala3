@@ -9,7 +9,7 @@ title: "Opaque Type Aliases: More Details"
 Modifier          ::=  ...
                     |  ‘opaque’
 ```
-`opaque` is a [soft modifier](../soft-modifier.html). It can still be used as a normal identifier when it is not in front of a definition keyword.
+`opaque` is a [soft modifier](../soft-modifier.md). It can still be used as a normal identifier when it is not in front of a definition keyword.
 
 Opaque type aliases must be members of classes, traits, or objects, or they are defined
 at the top-level. They cannot be defined in local blocks.

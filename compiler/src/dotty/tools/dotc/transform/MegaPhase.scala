@@ -170,7 +170,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
       catch {
         case ex: TypeError =>
-          ctx.error(ex.toMessage, tree.sourcePos)
+          ctx.error(ex, tree.sourcePos)
           tree
       }
     def goUnnamed(tree: Tree, start: Int) =
@@ -205,7 +205,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
       catch {
         case ex: TypeError =>
-          ctx.error(ex.toMessage, tree.sourcePos, sticky = true)
+          ctx.error(ex, tree.sourcePos)
           tree
       }
     if (tree.isInstanceOf[NameTree]) goNamed(tree, start) else goUnnamed(tree, start)
@@ -215,7 +215,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def transformTree(tree: Tree, start: Int)(implicit ctx: Context): Tree = {
     def localContext(implicit ctx: Context) = {
       val sym = tree.symbol
-      val owner = if (sym is PackageVal) sym.moduleClass else sym
+      val owner = if (sym.is(PackageVal)) sym.moduleClass else sym
       ctx.fresh.setOwner(owner)
     }
 

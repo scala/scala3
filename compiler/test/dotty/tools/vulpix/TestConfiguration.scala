@@ -35,6 +35,9 @@ object TestConfiguration {
     Properties.dottyCompiler
   ))
 
+  lazy val withStagingClasspath =
+    withCompilerClasspath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
+
   def mkClasspath(classpaths: List[String]): String =
     classpaths.map({ p =>
       val file = new java.io.File(p)
@@ -44,10 +47,12 @@ object TestConfiguration {
 
   val yCheckOptions = Array("-Ycheck:all")
 
-  val commonOptions = checkOptions ++ noCheckOptions ++ yCheckOptions
+  val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
   val defaultOptions = TestFlags(basicClasspath, commonOptions)
   val withCompilerOptions =
     defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+  lazy val withStagingOptions =
+    defaultOptions.withClasspath(withStagingClasspath).withRunClasspath(withStagingClasspath)
   val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
   val allowDoubleBindings = defaultOptions without "-Yno-double-bindings"
   val picklingOptions = defaultOptions and (

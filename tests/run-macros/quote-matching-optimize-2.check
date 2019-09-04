@@ -1,0 +1,32 @@
+Original: ls.filter(((x: scala.Int) => x.<(3))).filter(((x: scala.Int) => x.>(1)))
+Optimized: ls.filter(((x: scala.Int) => x.<(3).&&(x.>(1))))
+Result: List(2)
+
+Original: ls2.filter(((x: scala.Char) => x.<('c'))).filter(((x: scala.Char) => x.>('a')))
+Optimized: ls2.filter(((x: scala.Char) => x.<('c').&&(x.>('a'))))
+Result: List(b)
+
+Original: ls.filter(((x: scala.Int) => x.<(3))).filter(((x: scala.Int) => x.>(1))).filter(((x: scala.Int) => x.==(2)))
+Optimized: ls.filter(((x: scala.Int) => x.<(3).&&(x.>(1).&&(x.==(2)))))
+Result: List(2)
+
+1
+2
+Original: ls.filter(((x: scala.Int) => x.<(3))).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
+Optimized: ls.foreach[scala.Any](((x: scala.Int) => if (x.<(3)) scala.Predef.println(x) else ()))
+Result: ()
+
+Original: ls.map[scala.Int](((a: scala.Int) => a.*(2))).map[java.lang.String](((b: scala.Int) => b.toString()))
+Optimized: ls.map[java.lang.String](((x: scala.Int) => {
+  val x$1: scala.Int = x.*(2)
+  x$1.toString()
+}))
+Result: List(2, 4, 6)
+
+Original: ls.map[scala.Char](((a: scala.Int) => a.toChar)).map[java.lang.String](((b: scala.Char) => b.toString()))
+Optimized: ls.map[java.lang.String](((x: scala.Int) => {
+  val x$2: scala.Char = x.toChar
+  x$2.toString()
+}))
+Result: List(, , )
+

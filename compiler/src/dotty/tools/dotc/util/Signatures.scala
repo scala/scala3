@@ -48,7 +48,7 @@ object Signatures {
    * @return A triple containing the index of the parameter being edited, the index of the function
    *         being called, the list of overloads of this function).
    */
-  def callInfo(path: List[tpd.Tree], span: Span)(implicit ctx: Context): (Int, Int, List[SingleDenotation]) = {
+  def callInfo(path: List[tpd.Tree], span: Span)(implicit ctx: Context): (Int, Int, List[SingleDenotation]) =
     path match {
       case Apply(fun, params) :: _ =>
         val alreadyAppliedCount = Signatures.countParams(fun)
@@ -74,7 +74,6 @@ object Signatures {
       case _ =>
         (0, 0, Nil)
     }
-  }
 
   def toSignature(denot: SingleDenotation)(implicit ctx: Context): Option[Signature] = {
     val symbol = denot.symbol
@@ -84,12 +83,10 @@ object Signatures {
     def toParamss(tp: MethodType)(implicit ctx: Context): List[List[Param]] = {
       val rest = tp.resType match {
         case res: MethodType =>
-          // Hide parameter lists consisting only of CanBuildFrom or DummyImplicit,
-          // we can remove the CanBuildFrom special-case once we switch to the 2.13 standard library.
+          // Hide parameter lists consisting only of DummyImplicit,
           if (res.resultType.isParameterless &&
               res.isImplicitMethod &&
               res.paramInfos.forall(info =>
-                info.classSymbol.fullName.toString == "scala.collection.generic.CanBuildFrom" ||
                 info.classSymbol.derivesFrom(ctx.definitions.DummyImplicitClass)))
             Nil
           else
@@ -144,12 +141,11 @@ object Signatures {
    * @param tree The tree to inspect.
    * @return The number of parameters that are passed.
    */
-  private def countParams(tree: tpd.Tree): Int = {
+  private def countParams(tree: tpd.Tree): Int =
     tree match {
       case Apply(fun, params) => countParams(fun) + params.length
       case _ => 0
     }
-  }
 
   /**
    * Inspect `err` to determine, if it is an error related to application of an overloaded
@@ -175,31 +171,31 @@ object Signatures {
           Nil
       }
 
-      // If the user writes `foo(bar, <cursor>)`, the typer will insert a synthetic
-      // `null` parameter: `foo(bar, null)`. This may influence what's the "best"
-      // alternative, so we discard it.
-      val userParams = params match {
-        case xs :+ (nul @ Literal(Constant(null))) if nul.span.isZeroExtent => xs
-        case _ => params
-      }
-      val userParamsTypes = userParams.map(_.tpe)
+    // If the user writes `foo(bar, <cursor>)`, the typer will insert a synthetic
+    // `null` parameter: `foo(bar, null)`. This may influence what's the "best"
+    // alternative, so we discard it.
+    val userParams = params match {
+      case xs :+ (nul @ Literal(Constant(null))) if nul.span.isZeroExtent => xs
+      case _ => params
+    }
+    val userParamsTypes = userParams.map(_.tpe)
 
-      // Assign a score to each alternative (how many parameters are correct so far), and
-      // use that to determine what is the current active signature.
-      val alternativesScores = alternatives.map { alt =>
-        alt.info.stripPoly match {
-          case tpe: MethodType =>
-            userParamsTypes.zip(tpe.paramInfos).takeWhile{ case (t0, t1) => t0 <:< t1 }.size
-          case _ =>
-            0
-        }
+    // Assign a score to each alternative (how many parameters are correct so far), and
+    // use that to determine what is the current active signature.
+    val alternativesScores = alternatives.map { alt =>
+      alt.info.stripPoly match {
+        case tpe: MethodType =>
+          userParamsTypes.zip(tpe.paramInfos).takeWhile{ case (t0, t1) => t0 <:< t1 }.size
+        case _ =>
+          0
       }
-      val bestAlternative =
-        if (alternativesScores.isEmpty) 0
-        else alternativesScores.zipWithIndex.maxBy(_._1)._2
+    }
+    val bestAlternative =
+      if (alternativesScores.isEmpty) 0
+      else alternativesScores.zipWithIndex.maxBy(_._1)._2
 
-      (bestAlternative, alternatives)
+    (bestAlternative, alternatives)
   }
-
 }
+
 

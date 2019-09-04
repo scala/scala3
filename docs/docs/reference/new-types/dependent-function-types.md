@@ -40,4 +40,4 @@ refinement. In fact, the dependent function type above is just syntactic sugar f
       def apply(e: Entry): e.Key
     }
 
-[More details](./dependent-function-types-spec.html)
+[More details](./dependent-function-types-spec.md)

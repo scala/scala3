@@ -118,7 +118,8 @@ object TypeErasure {
     semiEraseVCs <- List(false, true)
     isConstructor <- List(false, true)
     wildcardOK <- List(false, true)
-  } erasures(erasureIdx(isJava, semiEraseVCs, isConstructor, wildcardOK)) =
+  }
+  erasures(erasureIdx(isJava, semiEraseVCs, isConstructor, wildcardOK)) =
     new TypeErasure(isJava, semiEraseVCs, isConstructor, wildcardOK)
 
   /** Produces an erasure function. See the documentation of the class [[TypeErasure]]
@@ -193,10 +194,10 @@ object TypeErasure {
     else erase.eraseInfo(tp, sym)(erasureCtx) match {
       case einfo: MethodType =>
         if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))
-          MethodType(Nil, defn.BoxedUnitType)
+          MethodType(Nil, defn.BoxedUnitClass.typeRef)
         else if (sym.isAnonymousFunction && einfo.paramInfos.length > MaxImplementedFunctionArity)
           MethodType(nme.ALLARGS :: Nil, JavaArrayType(defn.ObjectType) :: Nil, einfo.resultType)
-        else if (sym.name == nme.apply && sym.owner.derivesFrom(defn.PolyFunctionClass)) {
+        else if (sym.name == nme.apply && sym.owner.derivesFrom(defn.PolyFunctionClass))
           // The erasure of `apply` in subclasses of PolyFunction has to match
           // the erasure of FunctionN#apply, since after `ElimPolyFunction` we replace
           // a `PolyFunction` parent by a `FunctionN` parent.
@@ -204,7 +205,6 @@ object TypeErasure {
             paramInfos = einfo.paramInfos.map(_ => defn.ObjectType),
             resType = defn.ObjectType
           )
-        }
         else
           einfo
       case einfo =>
@@ -213,9 +213,9 @@ object TypeErasure {
         // PolyFunction arguments
         if (sym.is(TermParam) && sym.owner.name == nme.apply
             && sym.owner.owner.derivesFrom(defn.PolyFunctionClass)
-            && !(tp <:< defn.PolyFunctionType)) {
+            && !(tp <:< defn.PolyFunctionType))
           defn.ObjectType
-        } else
+        else
           einfo
     }
   }
@@ -244,7 +244,10 @@ object TypeErasure {
       !classify(tp).derivesFrom(defn.ObjectClass) &&
       !tp.binder.resultType.isJavaMethod
     case tp: TypeAlias => isUnboundedGeneric(tp.alias)
-    case tp: TypeBounds => !classify(tp.hi).derivesFrom(defn.ObjectClass)
+    case tp: TypeBounds =>
+      val upper = classify(tp.hi)
+      !upper.derivesFrom(defn.ObjectClass) &&
+      !upper.isPrimitiveValueType
     case tp: TypeProxy => isUnboundedGeneric(tp.translucentSuperType)
     case tp: AndType => isUnboundedGeneric(tp.tp1) && isUnboundedGeneric(tp.tp2)
     case tp: OrType => isUnboundedGeneric(tp.tp1) || isUnboundedGeneric(tp.tp2)
@@ -287,11 +290,11 @@ object TypeErasure {
         import dotty.tools.dotc.transform.TypeUtils._
         tp2 match {
           case JavaArrayType(elem2) =>
-            if (elem1.isPrimitiveValueType || elem2.isPrimitiveValueType) {
+            if (elem1.isPrimitiveValueType || elem2.isPrimitiveValueType)
               if (elem1.classSymbol eq elem2.classSymbol) // same primitive
                 JavaArrayType(elem1)
               else defn.ObjectType
-            } else JavaArrayType(erasedLub(elem1, elem2))
+            else JavaArrayType(erasedLub(elem1, elem2))
           case _ => defn.ObjectType
         }
       case _ =>
@@ -432,7 +435,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       val sym = tp.symbol
       if (!sym.isClass) this(tp.translucentSuperType)
       else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClassRef(tp)
-      else if (sym == defn.ArrayClass) apply(tp.appliedTo(TypeBounds.empty)) // i966 shows that we can hit a raw Array type.
       else if (defn.isSyntheticFunctionClass(sym)) defn.erasedFunctionType(sym)
       else eraseNormalClassRef(tp)
     case tp: AppliedType =>
@@ -473,7 +475,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     case tp: PolyType =>
       this(tp.resultType)
     case tp @ ClassInfo(pre, cls, parents, decls, _) =>
-      if (cls is Package) tp
+      if (cls.is(Package)) tp
       else {
         def eraseParent(tp: Type) = tp.dealias match { // note: can't be opaque, since it's a class parent
           case tp: AppliedType if tp.tycon.isRef(defn.PairClass) => defn.ObjectType
@@ -484,7 +486,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           else parents.mapConserve(eraseParent) match {
             case tr :: trs1 =>
               assert(!tr.classSymbol.is(Trait), i"$cls has bad parents $parents%, %")
-              val tr1 = if (cls is Trait) defn.ObjectType else tr
+              val tr1 = if (cls.is(Trait)) defn.ObjectType else tr
               tr1 :: trs1.filterNot(_ isRef defn.ObjectClass)
             case nil => nil
           }
@@ -509,9 +511,9 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
 
   private def erasePair(tp: Type)(implicit ctx: Context): Type = {
     val arity = tp.tupleArity
-    if (arity < 0) defn.ProductType
+    if (arity < 0) defn.ProductClass.typeRef
     else if (arity <= Definitions.MaxTupleArity) defn.TupleType(arity)
-    else defn.TupleXXLType
+    else defn.TupleXXLClass.typeRef
   }
 
   /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s and
@@ -520,7 +522,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    */
   def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
     case ExprType(rt) =>
-      if (sym is Param) apply(tp)
+      if (sym.is(Param)) apply(tp)
         // Note that params with ExprTypes are eliminated by ElimByName,
         // but potentially re-introduced by ResolveSuper, when we add
         // forwarders to mixin methods.
@@ -547,7 +549,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
 
   private def eraseNormalClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
     val cls = tref.symbol.asClass
-    (if (cls.owner is Package) normalizeClass(cls) else cls).typeRef
+    (if (cls.owner.is(Package)) normalizeClass(cls) else cls).typeRef
   }
 
   /** The erasure of a function result type. */
@@ -571,13 +573,12 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   /** The name of the type as it is used in `Signature`s.
    *  Need to ensure correspondence with erasure!
    */
-  private def sigName(tp: Type)(implicit ctx: Context): TypeName = try {
+  private def sigName(tp: Type)(implicit ctx: Context): TypeName = try
     tp match {
       case tp: TypeRef =>
-        if (!tp.denot.exists) {
+        if (!tp.denot.exists)
           // println(i"missing: ${tp.toString} ${tp.denot} / ${tp.prefix.member(tp.name)}")
           throw new MissingType(tp.prefix, tp.name)
-        }
         val sym = tp.symbol
         if (!sym.isClass) {
           val info = tp.translucentSuperType
@@ -625,7 +626,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         assert(erasedTp ne tp, tp)
         sigName(erasedTp)
     }
-  } catch {
+  catch {
     case ex: AssertionError =>
       println(s"no sig for $tp because of ${ex.printStackTrace()}")
       throw ex

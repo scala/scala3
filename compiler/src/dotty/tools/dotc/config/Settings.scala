@@ -37,7 +37,7 @@ object Settings {
 
     def update(idx: Int, x: Any): SettingsState =
       if (_wasRead)
-        new SettingsState(values).update(idx, x)
+        new SettingsState(values.toSeq).update(idx, x)
       else {
         values(idx) = x
         this
@@ -94,7 +94,7 @@ object Settings {
     def legalChoices: String =
       if (choices.isEmpty) ""
       else choices match {
-        case r: Range => r.head + ".." + r.last
+        case r: Range => s"${r.head}..${r.last}"
         case xs: List[_] => xs.mkString(", ")
       }
 
@@ -116,14 +116,13 @@ object Settings {
 
     def tryToSet(state: ArgsSummary): ArgsSummary = {
       val ArgsSummary(sstate, arg :: args, errors, warnings) = state
-      def update(value: Any, args: List[String]) = {
-        if (changed) {
+      def update(value: Any, args: List[String]) =
+        if (changed)
           ArgsSummary(updateIn(sstate, value), args, errors, warnings :+ s"Flag $name set repeatedly")
-        } else {
+        else {
           changed = true
           ArgsSummary(updateIn(sstate, value), args, errors, warnings)
         }
-      }
       def fail(msg: String, args: List[String]) =
         ArgsSummary(sstate, args, errors :+ msg, warnings)
       def missingArg =
@@ -161,7 +160,8 @@ object Settings {
               case _ =>
                 update(x, args2)
             }
-          } catch {
+          }
+          catch {
             case _: NumberFormatException =>
               fail(s"$arg2 is not an integer argument for $name", args2)
           }
@@ -194,7 +194,7 @@ object Settings {
   class SettingGroup {
 
     private[this] val _allSettings = new ArrayBuffer[Setting[_]]
-    def allSettings: Seq[Setting[_]] = _allSettings
+    def allSettings: Seq[Setting[_]] = _allSettings.toSeq
 
     def defaultState: SettingsState = new SettingsState(allSettings map (_.default))
 
@@ -205,10 +205,10 @@ object Settings {
       userSetSettings(state).mkString("(", " ", ")")
 
     private def checkDependencies(state: ArgsSummary): ArgsSummary =
-      (state /: userSetSettings(state.sstate))(checkDependenciesOfSetting)
+      userSetSettings(state.sstate).foldLeft(state)(checkDependenciesOfSetting)
 
     private def checkDependenciesOfSetting(state: ArgsSummary, setting: Setting[_]) =
-      (state /: setting.depends) { (s, dep) =>
+      setting.depends.foldLeft(state) { (s, dep) =>
         val (depSetting, reqValue) = dep
         if (depSetting.valueIn(state.sstate) == reqValue) s
         else s.fail(s"incomplete option ${setting.name} (requires ${depSetting.name})")

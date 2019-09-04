@@ -4,7 +4,7 @@ trait Foo[A] {
  
 class Bar extends Foo[Int]
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
    val sigs = classOf[Bar].getDeclaredMethods.map(m => s"${m.toString} / ${m.toGenericString}").sorted
    println(sigs.mkString("\n"))
 }

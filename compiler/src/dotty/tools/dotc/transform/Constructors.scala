@@ -99,7 +99,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
    */
   override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {
     def emptyRhsOK(sym: Symbol) =
-      sym.is(LazyOrDeferred) || sym.isConstructor && sym.owner.is(NoInitsTrait)
+      sym.isOneOf(DeferredOrLazy) || sym.isConstructor && sym.owner.isAllOf(NoInitsTrait)
     tree match {
       case tree: ValDef if tree.symbol.exists && tree.symbol.owner.isClass && !tree.symbol.is(Lazy) && !tree.symbol.hasAnnotation(defn.ScalaStaticAnnot) =>
         assert(tree.rhs.isEmpty, i"$tree: initializer should be moved to constructors")
@@ -119,9 +119,9 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
    *  constructor.
    */
   private def mightBeDropped(sym: Symbol)(implicit ctx: Context) =
-    sym.is(Private, butNot = MethodOrLazy) && !sym.is(MutableParamAccessor)
+    sym.is(Private, butNot = MethodOrLazy) && !sym.isAllOf(MutableParamAccessor)
 
-  private final val MutableParamAccessor = allOf(Mutable, ParamAccessor)
+  private final val MutableParamAccessor = Mutable | ParamAccessor
 
   override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = {
     val cls = ctx.owner.asClass
@@ -148,7 +148,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
         case Ident(_) | Select(This(_), _) =>
           var sym = tree.symbol
-          if (sym is (ParamAccessor, butNot = Mutable)) sym = sym.subst(accessors, paramSyms)
+          if (sym.is(ParamAccessor, butNot = Mutable)) sym = sym.subst(accessors, paramSyms)
           if (sym.owner.isConstructor) ref(sym).withSpan(tree.span) else tree
         case Apply(fn, Nil) =>
           val fn1 = transform(fn)
@@ -275,7 +275,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
     val finalConstrStats = copyParams ::: mappedSuperCalls ::: lazyAssignments ::: stats
     val expandedConstr =
-      if (cls.is(NoInitsTrait)) {
+      if (cls.isAllOf(NoInitsTrait)) {
         assert(finalConstrStats.isEmpty)
         constr
       }

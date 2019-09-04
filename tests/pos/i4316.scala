@@ -1,6 +1,6 @@
 object Test {
 
-  case class Bar[A]
+  case class Bar[A]()
 
   def meth[A](consumer: A => Unit, s: Bar[A]): Unit = {
     s match {

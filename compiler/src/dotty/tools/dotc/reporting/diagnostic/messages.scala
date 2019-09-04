@@ -315,10 +315,12 @@ object messages {
     val msg: String = {
       import core.Flags._
       val maxDist = 3
-      val decls = site.decls.toList.flatMap { sym =>
-        if (sym.flagsUNSAFE.is(Synthetic | PrivateOrLocal) || sym.isConstructor) Nil
-        else List((sym.name.show, sym))
-      }
+      val decls = site.decls.toList
+        .filter(_.isType == name.isTypeName)
+        .flatMap { sym =>
+          if (sym.flagsUNSAFE.isOneOf(Synthetic | PrivateLocal) || sym.isConstructor) Nil
+          else List((sym.name.show, sym))
+        }
 
       // Calculate Levenshtein distance
       def distance(n1: Iterable[_], n2: Iterable[_]) =
@@ -358,7 +360,8 @@ object messages {
       }
 
       val closeMember = closest match {
-        case (n, sym) :: Nil => s" - did you mean $siteName.$n?"
+        case (n, sym) :: Nil =>
+          s" - did you mean $siteName.$n?"
         case Nil => ""
         case _ => assert(
           false,
@@ -575,7 +578,7 @@ object messages {
   case class IllegalStartSimpleExpr(illegalToken: String)(implicit ctx: Context)
   extends Message(IllegalStartSimpleExprID) {
     val kind: String = "Syntax"
-    val msg: String = "expression expected"
+    val msg: String = em"expression expected but ${Red(illegalToken)} found"
     val explanation: String = {
       em"""|An expression cannot start with ${Red(illegalToken)}."""
     }
@@ -1314,23 +1317,24 @@ object messages {
            |"""
   }
 
-  case class AmbiguousImport(name: Name, newPrec: Int, prevPrec: Int, prevCtx: Context)(implicit ctx: Context)
-    extends Message(AmbiguousImportID) {
+  import typer.Typer.BindingPrec
 
-    import typer.Typer.BindingPrec
+  case class AmbiguousImport(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec, prevCtx: Context)(implicit ctx: Context)
+    extends Message(AmbiguousImportID) {
 
     /** A string which explains how something was bound; Depending on `prec` this is either
       *      imported by <tree>
       *  or  defined in <symbol>
       */
-    private def bindingString(prec: Int, whereFound: Context, qualifier: String = "") = {
+    private def bindingString(prec: BindingPrec, whereFound: Context, qualifier: String = "") = {
       val howVisible = prec match {
-        case BindingPrec.definition => "defined"
-        case BindingPrec.namedImport => "imported by name"
-        case BindingPrec.wildImport => "imported"
-        case BindingPrec.packageClause => "found"
+        case BindingPrec.Definition => "defined"
+        case BindingPrec.NamedImport => "imported by name"
+        case BindingPrec.WildImport => "imported"
+        case BindingPrec.PackageClause => "found"
+        case BindingPrec.NothingBound => assert(false)
       }
-      if (BindingPrec.isImportPrec(prec)) {
+      if (prec.isImportPrec) {
         ex"""$howVisible$qualifier by ${em"${whereFound.importInfo}"}"""
       } else
         ex"""$howVisible$qualifier in ${em"${whereFound.owner}"}"""
@@ -1501,7 +1505,7 @@ object messages {
   case class AbstractMemberMayNotHaveModifier(sym: Symbol, flag: FlagSet)(
     implicit ctx: Context)
     extends Message(AbstractMemberMayNotHaveModifierID) {
-    val msg: String = em"""${hl("abstract")} $sym may not have `$flag' modifier"""
+    val msg: String = em"""${hl("abstract")} $sym may not have `${flag.flagsString}` modifier"""
     val kind: String = "Syntax"
     val explanation: String = ""
   }
@@ -1694,7 +1698,7 @@ object messages {
   case class ModifiersNotAllowed(flags: FlagSet, printableType: Option[String])(implicit ctx: Context)
     extends Message(ModifiersNotAllowedID) {
     val kind: String = "Syntax"
-    val msg: String = em"Modifier(s) $flags not allowed for ${printableType.getOrElse("combination")}"
+    val msg: String = em"Modifier(s) `${flags.flagsString}` not allowed for ${printableType.getOrElse("combination")}"
     val explanation: String = {
       val first = "sealed def y: Int = 1"
       val second = "sealed lazy class z"
@@ -2148,17 +2152,25 @@ object messages {
     val kind: String = "Duplicate Symbol"
     val msg: String = {
       def nameAnd = if (decl.name != previousDecl.name) " name and" else ""
-      val details = if (decl.isRealMethod && previousDecl.isRealMethod) {
-        // compare the signatures when both symbols represent methods
-        decl.signature.matchDegree(previousDecl.signature) match {
-          case Signature.NoMatch =>
-            "" // shouldn't be reachable
-          case Signature.ParamMatch =>
-            "have matching parameter types."
-          case Signature.FullMatch =>
-            i"have the same$nameAnd type after erasure."
+      def details(implicit ctx: Context): String =
+        if (decl.isRealMethod && previousDecl.isRealMethod) {
+          // compare the signatures when both symbols represent methods
+          decl.signature.matchDegree(previousDecl.signature) match {
+            case Signature.MatchDegree.NoMatch =>
+              // If the signatures don't match at all at the current phase, then
+              // they might match after erasure.
+              val elimErasedCtx = ctx.withPhaseNoEarlier(ctx.elimErasedValueTypePhase.next)
+              if (elimErasedCtx != ctx)
+                details(elimErasedCtx)
+              else
+                "" // shouldn't be reachable
+            case Signature.MatchDegree.ParamMatch =>
+              "have matching parameter types."
+            case Signature.MatchDegree.FullMatch =>
+              i"have the same$nameAnd type after erasure."
+          }
         }
-      } else ""
+        else ""
       def symLocation(sym: Symbol) = {
         val lineDesc =
           if (sym.span.exists && sym.span != sym.owner.span)

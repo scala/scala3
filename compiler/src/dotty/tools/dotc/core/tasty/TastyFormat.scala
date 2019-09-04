@@ -42,7 +42,10 @@ Macro-format:
                   INLINEACCESSOR    Length underlying_NameRef                               -- inline$A
                   OBJECTCLASS       Length underlying_NameRef                               -- A$  (name of the module class for module A)
 
-                  SIGNED            Length original_NameRef resultSig_NameRef paramSig_NameRef*   -- name + signature
+                  SIGNED            Length original_NameRef resultSig_NameRef ParamSig*     -- name + signature
+
+  ParamSig      = Int // If negative, the absolute value represents the length of a type parameter section
+                      // If positive, this is a NameRef for the fully qualified name of a term parameter.
 
   NameRef       = Nat                    // ordinal number of name in name table, starting from 1.
 
@@ -57,7 +60,7 @@ Standard-Section: "ASTs" TopLevelStat*
   Stat          = Term
                   ValOrDefDef
                   TYPEDEF        Length NameRef (type_Term | Template) Modifier*   -- modifiers type name (= type | bounds)  |  moifiers class name template
-                  IMPORT         Length [IMPLIED] qual_Term Selector*              -- import implied? qual selectors
+                  IMPORT         Length [GIVEN] qual_Term Selector*                -- import given? qual selectors
   ValOrDefDef   = VALDEF         Length NameRef type_Term rhs_Term? Modifier*      -- modifiers val name : type (= rhs)?
                   DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
                                         Modifier*                                  -- modifiers def name [typeparams] paramss : returnType (= rhs)?
@@ -140,7 +143,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   NULLconst                                                        -- null
                   CLASSconst            Type                                       -- classOf[Type]
                   ENUMconst             Path                                       -- An enum constant
-                  SYMBOLconst           NameRef                                    -- A symbol literal (todo: drop?)
 
   Type          = Path                                                             -- Paths represent both types and terms
                   TYPEREFdirect         sym_ASTRef                                 -- A reference to a local symbol (without a prefix). Reference is to definition node of symbol.
@@ -183,7 +185,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SEALED                                                           -- sealed
                   CASE                                                             -- case  (for classes or objects)
                   IMPLICIT                                                         -- implicit
-                  IMPLIED                                                          -- implied
+                  GIVEN                                                            -- given
                   ERASED                                                           -- erased
                   LAZY                                                             -- lazy
                   OVERRIDE                                                         -- override
@@ -207,7 +209,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   DEFAULTparameterized                                             -- Method with default parameters (default arguments are separate methods with DEFAULTGETTER names)
                   STABLE                                                           -- Method that is assumed to be stable, i.e. its applications are legal paths
                   EXTENSION                                                        -- An extension method
-                  GIVEN                                                            -- A new style implicit parameter, introduced with `given`
                   PARAMsetter                                                      -- The setter part `x_=` of a var parameter `x` which itself is pickled as a PARAM
                   EXPORTED                                                         -- An export forwarder
                   Annotation
@@ -250,7 +251,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 14
+  val MajorVersion: Int = 17
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names */
@@ -329,9 +330,8 @@ object TastyFormat {
   final val OPAQUE = 35
   final val EXTENSION = 36
   final val GIVEN = 37
-  final val IMPLIED = 38
-  final val PARAMsetter = 39
-  final val EXPORTED = 40
+  final val PARAMsetter = 38
+  final val EXPORTED = 39
 
   // Cat. 2:    tag Nat
 
@@ -352,7 +352,6 @@ object TastyFormat {
   final val STRINGconst = 64
   final val IMPORTED = 65
   final val RENAMED = 66
-  final val SYMBOLconst = 67
 
   // Cat. 3:    tag AST
 
@@ -462,7 +461,7 @@ object TastyFormat {
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
     firstSimpleTreeTag <= tag && tag <= EXPORTED ||
-    firstNatTreeTag <= tag && tag <= SYMBOLconst ||
+    firstNatTreeTag <= tag && tag <= RENAMED ||
     firstASTTreeTag <= tag && tag <= BOUNDED ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
     firstLengthTreeTag <= tag && tag <= MATCHtpt ||
@@ -479,7 +478,7 @@ object TastyFormat {
        | SEALED
        | CASE
        | IMPLICIT
-       | IMPLIED
+       | GIVEN
        | ERASED
        | LAZY
        | OVERRIDE
@@ -540,7 +539,6 @@ object TastyFormat {
     case SEALED => "SEALED"
     case CASE => "CASE"
     case IMPLICIT => "IMPLICIT"
-    case IMPLIED => "IMPLIED"
     case ERASED => "ERASED"
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
@@ -636,7 +634,6 @@ object TastyFormat {
     case SUPER => "SUPER"
     case CLASSconst => "CLASSconst"
     case ENUMconst => "ENUMconst"
-    case SYMBOLconst => "SYMBOLconst"
     case SINGLETONtpt => "SINGLETONtpt"
     case SUPERtype => "SUPERtype"
     case TERMREFin => "TERMREFin"

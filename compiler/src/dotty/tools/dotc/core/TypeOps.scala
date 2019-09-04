@@ -89,7 +89,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         }
       }
 
-      /*>|>*/ trace.conditionally(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
+      trace.conditionally(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) { // !!! DEBUG
         // All cases except for ThisType are the same as in Map. Inlined for performance
         // TODO: generalize the inlining trick?
         tp match {
@@ -338,8 +338,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       tpe
     else
       tpe.prefix match {
-        case pre: ThisType if pre.cls is Package => tryInsert(pre.cls)
-        case pre: TermRef if pre.symbol is Package => tryInsert(pre.symbol.moduleClass)
+        case pre: ThisType if pre.cls.is(Package) => tryInsert(pre.cls)
+        case pre: TermRef if pre.symbol.is(Package) => tryInsert(pre.symbol.moduleClass)
         case _ => tpe
       }
   }
@@ -480,7 +480,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    */
   def featureEnabled(feature: TermName, owner: Symbol = NoSymbol): Boolean = {
     def hasImport = {
-      val owner1 = if (!owner.exists) defn.LanguageModuleClass else owner
+      val owner1 = if (!owner.exists) defn.LanguageModule.moduleClass else owner
       ctx.importInfo != null &&
       ctx.importInfo.featureImported(feature, owner1)(ctx.withPhase(ctx.typerPhase))
     }
@@ -649,16 +649,14 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       parent.argInfos.nonEmpty && minTypeMap.apply(parent) <:< maxTypeMap.apply(tp2)
     }
 
-    if (protoTp1 <:< tp2) {
+    if (protoTp1 <:< tp2)
       if (isFullyDefined(protoTp1, force)) protoTp1
       else instUndetMap.apply(protoTp1)
-    }
     else {
       val protoTp2 = maxTypeMap.apply(tp2)
-      if (protoTp1 <:< protoTp2 || parentQualify) {
+      if (protoTp1 <:< protoTp2 || parentQualify)
         if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
         else instUndetMap.apply(protoTp1)
-      }
       else {
         typr.println(s"$protoTp1 <:< $protoTp2 = false")
         NoType
@@ -673,5 +671,5 @@ object TypeOps {
   // TODO: Move other typeops here. It's a bit weird that they are a part of `ctx`
 
   def nestedPairs(ts: List[Type])(implicit ctx: Context): Type =
-    (ts :\ (defn.UnitType: Type))(defn.PairType.appliedTo(_, _))
+    ts.foldRight(defn.UnitType: Type)(defn.PairClass.typeRef.appliedTo(_, _))
 }

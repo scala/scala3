@@ -36,14 +36,17 @@ class CheckReentrant extends MiniPhase {
   private[this] var seen: Set[ClassSymbol] = Set()
   private[this] var indent: Int = 0
 
-  private val sharableAnnot = new CtxLazy(implicit ctx =>
+  private val sharableAnnot = new CtxLazy(given ctx =>
     ctx.requiredClass("scala.annotation.internal.sharable"))
-  private val unsharedAnnot = new CtxLazy(implicit ctx =>
+  private val unsharedAnnot = new CtxLazy(given ctx =>
     ctx.requiredClass("scala.annotation.internal.unshared"))
 
   def isIgnored(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
-    sym.hasAnnotation(unsharedAnnot())
+    sym.hasAnnotation(unsharedAnnot()) ||
+    sym.owner == defn.EnumValuesClass
+      // enum values are initialized eagerly before use
+      // in the long run, we should make them vals
 
   def scanning(sym: Symbol)(op: => Unit)(implicit ctx: Context): Unit = {
     ctx.log(i"${"  " * indent}scanning $sym")
@@ -56,18 +59,20 @@ class CheckReentrant extends MiniPhase {
     if (!seen.contains(cls) && !isIgnored(cls)) {
       seen += cls
       scanning(cls) {
-        for (sym <- cls.classInfo.decls)
-          if (sym.isTerm && !sym.isSetter && !isIgnored(sym))
+        for (sym <- cls.classInfo.decls) {
+          if (sym.isTerm && !sym.isSetter && !isIgnored(sym)) {
             if (sym.is(Mutable)) {
               ctx.error(
                 i"""possible data race involving globally reachable ${sym.showLocated}: ${sym.info}
                    |  use -Ylog:checkReentrant+ to find out more about why the variable is reachable.""")
               shared += sym
-            } else if (!sym.is(Method) || sym.is(Accessor | ParamAccessor)) {
+            }
+            else if (!sym.is(Method) || sym.isOneOf(Accessor | ParamAccessor))
               scanning(sym) {
                 sym.info.widenExpr.classSymbols.foreach(addVars)
               }
-            }
+          }
+        }
         for (parent <- cls.classInfo.classParents)
           addVars(parent.classSymbol.asClass)
       }

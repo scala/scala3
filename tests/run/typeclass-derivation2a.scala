@@ -88,10 +88,10 @@ object TypeLevel {
   enum Shape {
 
     /** A sum with alternative types `Alts` */
-    case Cases[Alts <: Tuple]
+    case Cases[Alts <: Tuple]()
 
     /** A product type `T` with element types `Elems` */
-    case Case[T, Elems <: Tuple]
+    case Case[T, Elems <: Tuple]()
   }
 
   /** Every generic derivation starts with a typeclass instance of this type.

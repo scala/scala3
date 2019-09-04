@@ -101,7 +101,7 @@ override val x = 10
 }
 
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
 
   def shouldThrow(t: => Unit) = try {
     t

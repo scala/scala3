@@ -7,7 +7,7 @@ object O {
   val B: LK = new K with L
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val scrut: O.LK = O.B
   scrut match {
     case O.A => ???

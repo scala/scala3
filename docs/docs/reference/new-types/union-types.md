@@ -41,5 +41,5 @@ The type of `res2` is `Object & Product`, which is a supertype of
 UserName`.  If we want the least supertype, we have to give it
 explicitly, as is done for the type of `either`.
 
-[More details](./union-types-spec.html)
+[More details](./union-types-spec.md)
 

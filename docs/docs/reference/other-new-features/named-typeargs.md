@@ -27,4 +27,4 @@ definition of `xs2` above. A missing type argument is inferred as usual by
 local type inference. This is particularly useful in situations where some type
 arguments can be easily inferred from others.
 
-[More details](./named-typeargs-spec.html)
+[More details](./named-typeargs-spec.md)

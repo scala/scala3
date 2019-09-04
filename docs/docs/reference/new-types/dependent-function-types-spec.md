@@ -35,7 +35,7 @@ dependent function types for methods with dependent result types.
 
 Dependent functions can be implicit, and generalize to arity `N > 22` in the
 same way that other functions do, see [the corresponding
-documentation](https://dotty.epfl.ch/docs/reference/dropped-features/limit22.html).
+documentation](../dropped-features/limit22.md).
 
 ## Examples
 

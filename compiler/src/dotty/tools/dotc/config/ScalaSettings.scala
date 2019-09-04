@@ -48,6 +48,11 @@ class ScalaSettings extends Settings.SettingGroup {
   val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.") withAbbreviation "--no-warnings"
   val fromTasty: Setting[Boolean] = BooleanSetting("-from-tasty", "Compile classes from tasty in classpath. The arguments are used as class names.") withAbbreviation "--from-tasty"
 
+  val newSyntax: Setting[Boolean] = BooleanSetting("-new-syntax", "Require `then` and `do` in control expressions")
+  val oldSyntax: Setting[Boolean] = BooleanSetting("-old-syntax", "Require `(...)` around conditions")
+  val indent: Setting[Boolean] = BooleanSetting("-indent", "allow significant indentation")
+  val noindent: Setting[Boolean] = BooleanSetting("-noindent", "require classical {...} syntax, indentation is not significant")
+
   /** Decompiler settings */
   val printTasty: Setting[Boolean] = BooleanSetting("-print-tasty", "Prints the raw tasty.") withAbbreviation "--print-tasty"
   val printLines: Setting[Boolean] = BooleanSetting("-print-lines", "Show source code line numbers.") withAbbreviation "--print-lines"
@@ -103,6 +108,8 @@ class ScalaSettings extends Settings.SettingGroup {
   val YdebugNames: Setting[Boolean] = BooleanSetting("-Ydebug-names", "Show internal representation of names")
   val YdebugPos: Setting[Boolean] = BooleanSetting("-Ydebug-pos", "Show full source positions including spans")
   val YdebugTreeWithId: Setting[Int] = IntSetting("-Ydebug-tree-with-id", "Print the stack trace when the tree with the given id is created", Int.MinValue)
+  val YdebugTypeError: Setting[Boolean] = BooleanSetting("-Ydebug-type-error", "Print the stack trace when a TypeError is caught", false)
+  val YdebugError: Setting[Boolean] = BooleanSetting("-Ydebug-error", "Print the stack trace when any error is caught", false)
   val YtermConflict: Setting[String] = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
   val Ylog: Setting[List[String]] = PhasesSetting("-Ylog", "Log operations during")
   val YemitTastyInClass: Setting[Boolean] = BooleanSetting("-Yemit-tasty-in-class", "Generate tasty in the .class file and add an empty *.hasTasty file.")
@@ -110,8 +117,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val YdisableFlatCpCaching: Setting[Boolean] = BooleanSetting("-YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
 
   val Yscala2Unpickler: Setting[String] = StringSetting("-Yscala2-unpickler", "", "Control where we may get Scala 2 symbols from. This is either \"always\", \"never\", or a classpath.", "always")
-  // TODO: Remove once we drop support for 2.12 standard library
-  val YnewCollections: Setting[Boolean] = BooleanSetting("-Ynew-collections", "Inform the compiler that we are using the 2.13 collection library (even if the 2.12 library is on the classpath).")
 
   val YnoImports: Setting[Boolean] = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
   val YnoInline: Setting[Boolean] = BooleanSetting("-Yno-inline", "Suppress inlining.")
@@ -124,7 +129,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val YtraceContextCreation: Setting[Boolean] = BooleanSetting("-Ytrace-context-creation", "Store stack trace of context creations.")
   val YshowSuppressedErrors: Setting[Boolean] = BooleanSetting("-Yshow-suppressed-errors", "Also show follow-on errors and warnings that are normally suppressed.")
   val YdetailedStats: Setting[Boolean] = BooleanSetting("-Ydetailed-stats", "show detailed internal compiler stats (needs Stats.enabled to be set to true).")
-  val Yheartbeat: Setting[Boolean] = BooleanSetting("-Yheartbeat", "show heartbeat stack trace of compiler operations (needs Stats.enabled to be set to true).")
   val YkindProjector: Setting[Boolean] = BooleanSetting("-Ykind-projector", "allow `*` as wildcard to be compatible with kind projector")
   val YprintPos: Setting[Boolean] = BooleanSetting("-Yprint-pos", "show tree positions.")
   val YprintPosSyms: Setting[Boolean] = BooleanSetting("-Yprint-pos-syms", "show symbol definitions positions.")

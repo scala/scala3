@@ -36,10 +36,9 @@ trait PropertiesTrait {
 
   private def quietlyDispose(action: => Unit, disposal: => Unit) =
     try     { action }
-    finally {
+    finally
         try     { disposal }
         catch   { case _: IOException => }
-    }
 
   def propIsSet(name: String): Boolean                  = System.getProperty(name) != null
   def propIsSetTo(name: String, value: String): Boolean = propOrNull(name) == value
@@ -70,9 +69,9 @@ trait PropertiesTrait {
   val versionString: String = {
     val v = scalaPropOrElse("version.number", "(unknown)")
     "version " + scalaPropOrElse("version.number", "(unknown)") + {
-      if (v.contains("SNAPSHOT") || v.contains("NIGHTLY")) {
+      if (v.contains("SNAPSHOT") || v.contains("NIGHTLY"))
         "-git-" + scalaPropOrElse("git.hash", "(unknown)")
-      } else ""
+      else ""
     }
   }
 

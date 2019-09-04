@@ -28,5 +28,5 @@ class CommentUnpickler(reader: TastyReader) {
 
   def commentAt(addr: Addr): Option[Comment] =
     comments.get(addr)
-
 }
+

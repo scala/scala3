@@ -35,7 +35,7 @@ class InterceptedMethods extends MiniPhase {
   override def transformIdent(tree: tpd.Ident)(implicit ctx: Context): Tree =
     transformRefTree(tree)
 
-  private def transformRefTree(tree: RefTree)(implicit ctx: Context): Tree = {
+  private def transformRefTree(tree: RefTree)(implicit ctx: Context): Tree =
     if (tree.symbol.isTerm && (defn.Any_## eq tree.symbol)) {
       val qual = tree match {
         case id: Ident => tpd.desugarIdentPrefix(id)
@@ -46,7 +46,6 @@ class InterceptedMethods extends MiniPhase {
       rewritten
     }
     else tree
-  }
 
   // TODO: add missing cases from scalac
   private def poundPoundValue(tree: Tree)(implicit ctx: Context) = {
@@ -77,8 +76,8 @@ class InterceptedMethods extends MiniPhase {
           case TermRef(prefix: ThisType, _) =>
             tpd.This(prefix.cls)
         }
-
     }
+
     val Any_!= = defn.Any_!=
     val rewritten: Tree = tree.fun.symbol match {
       case Any_!= =>

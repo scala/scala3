@@ -23,6 +23,14 @@ object Attachment {
       else nx.getAttachment[V](key)
     }
 
+    /** Does an attachment corresponding to `key` exist? */
+    final def hasAttachment[V](key: Key[V]): Boolean = {
+      val nx = next
+      if (nx == null) false
+      else if (nx.key eq key) true
+      else nx.hasAttachment[V](key)
+    }
+
     /** The attachment corresponding to `key`.
      *  @throws NoSuchElementException  if no attachment with key exists
      */
@@ -107,7 +115,7 @@ object Attachment {
     }
 
     final def pushAttachment[V](key: Key[V], value: V): Unit = {
-      assert(!getAttachment(key).isDefined, s"duplicate attachment for key $key")
+      assert(!hasAttachment(key), s"duplicate attachment for key $key")
       next = new Link(key, value, next)
     }
 

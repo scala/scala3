@@ -35,7 +35,7 @@ import scala.annotation.tailrec
 // static Attributes.Name   SPECIFICATION_VENDOR
 // static Attributes.Name   SPECIFICATION_VERSION
 
-class Jar(file: File) extends Iterable[JarEntry] {
+class Jar(file: File) {
   def this(jfile: JFile) = this(File(jfile.toPath))
   def this(path: String) = this(File(path))
 
@@ -64,10 +64,9 @@ class Jar(file: File) extends Iterable[JarEntry] {
     new JarWriter(file, Jar.WManifest.apply(mainAttrs: _*).underlying)
   }
 
-  override def foreach[U](f: JarEntry => U): Unit = withJarInput { in =>
-    Iterator continually in.getNextJarEntry() takeWhile (_ != null) foreach f
+  def toList: List[JarEntry] = withJarInput { in =>
+    Iterator.continually(in.getNextJarEntry()).takeWhile(_ != null).toList
   }
-  override def iterator: Iterator[JarEntry] = this.toList.iterator
 
   def getEntryStream(entry: JarEntry): java.io.InputStream = jarFile getInputStream entry match {
     case null   => errorFn("No such entry: " + entry) ; null

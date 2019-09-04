@@ -1,0 +1,8 @@
+-- Error: tests/neg/cannot-reduce-delegate-match.scala:4:13 ------------------------------------------------------------
+4 |    delegate match { // error
+  |    ^
+  |    cannot reduce delegate match with
+  |     patterns :  case evidence$1 @ _:Int
+  | This location is in code that was inlined at cannot-reduce-delegate-match.scala:13
+5 |      case _: Int =>
+6 |    }

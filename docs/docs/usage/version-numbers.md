@@ -3,7 +3,7 @@ layout: doc-page
 title: "Version numbers"
 ---
 
-**This documentation is outdated! Please find the newer version [here](/docs/contributing/release.html)**.
+**This documentation is outdated! Please find the newer version [here](../contributing/release.md)**.
 
 Dotty uses multiple schemes for version numbering.
 

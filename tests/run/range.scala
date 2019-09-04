@@ -4,7 +4,7 @@ object Test {
   def rangeForeach(range : Range) = {
     val buffer = new scala.collection.mutable.ListBuffer[Int];
     range.foreach(buffer += _);
-    assert(buffer.toList == range.iterator.toList, buffer.toList+"/"+range.iterator.toList)
+    assert(buffer.toList == range.iterator.toList, buffer.toList.toString + "/" + range.iterator.toList)
   }
 
   def boundaryTests() = {
@@ -36,28 +36,30 @@ object Test {
 
     def gr1 = NumericRange(x, x, x)
     def gr2 = NumericRange.inclusive(x, x, x)
-    def gr3 = NumericRange(x, x * fromInt(10), x)
-    def gr4 = NumericRange.inclusive(x, x * fromInt(10), x)
-    def gr5 = gr3.toList ::: negated.gr3.toList
+    def gr3 = NumericRange(x, x * fromInt(4), x * fromInt(2))  // scala/bug#9348
+    def gr4 = NumericRange(x, x * fromInt(-2), x * fromInt(-2))
+    def gr5 = NumericRange(x, x * fromInt(10), x)
+    def gr6 = NumericRange.inclusive(x, x * fromInt(10), x)
+    def gr7 = gr3.toList ::: negated.gr3.toList
 
     def check = {
       assert(gr1.isEmpty && !gr2.isEmpty)
-      assert(gr3.size == 9 && gr4.size == 10)
-      assert(gr5.sum == num.zero, gr5.toString)
-      assert(!(gr3 contains (x * fromInt(10))))
-      assert((gr4 contains (x * fromInt(10))))
+      assert(gr3.size == 2 && gr4.size == 2)
+      assert(gr5.size == 9 && gr6.size == 10)
+      assert(gr7.sum == num.zero, gr7.toString)
+      assert(!(gr5 contains (x * fromInt(10))))
+      assert(gr6 contains (x * fromInt(10)))
     }
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val imp1: Numeric.BigDecimalAsIfIntegral.type = Numeric.BigDecimalAsIfIntegral
-    implicit val imp2: Numeric.DoubleAsIfIntegral.type = Numeric.DoubleAsIfIntegral
+    implicit val imp1: Numeric.BigDecimalAsIfIntegral = Numeric.BigDecimalAsIfIntegral
 
     val _grs = List[GR[_]](
       GR(BigDecimal(5.0)),
+      GR(BigDecimal(0.25)),  // scala/bug#9348
       GR(BigInt(5)),
       GR(5L),
-      GR(5.0d),
       GR(2.toByte)
     )
     val grs = _grs ::: (_grs map (_.negated))

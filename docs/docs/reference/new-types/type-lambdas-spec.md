@@ -97,7 +97,7 @@ is treated as a shorthand for
 
 **Note**: The decision to treat `Nothing` as universal bottom type is provisional, and might be changed afer further discussion.
 
-**Note**: Scala 2 and 3 differ in that Scala 2 also treats `Any` as universal top-type. This is not done in Scala 3. See also the discussion on [kind polymorphism](../other-new-features/kind-polymorphism.html)
+**Note**: Scala 2 and 3 differ in that Scala 2 also treats `Any` as universal top-type. This is not done in Scala 3. See also the discussion on [kind polymorphism](../other-new-features/kind-polymorphism.md)
 
 ## Curried Type Parameters
 

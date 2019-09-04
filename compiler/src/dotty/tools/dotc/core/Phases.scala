@@ -31,13 +31,13 @@ trait Phases {
     }
 
   /** Execute `op` at given phase */
-  def atPhase[T](phase: Phase)(op: Context => T): T =
+  def atPhase[T](phase: Phase)(op: given Context => T): T =
     atPhase(phase.id)(op)
 
-  def atNextPhase[T](op: Context => T): T = atPhase(phase.next)(op)
+  def atNextPhase[T](op: given Context => T): T = atPhase(phase.next)(op)
 
-  def atPhaseNotLaterThan[T](limit: Phase)(op: Context => T): T =
-    if (!limit.exists || phase <= limit) op(this) else atPhase(limit)(op)
+  def atPhaseNotLaterThan[T](limit: Phase)(op: given Context => T): T =
+    if (!limit.exists || phase <= limit) op given this else atPhase(limit)(op)
 
   def isAfterTyper: Boolean = base.isAfterTyper(phase)
 }
@@ -107,7 +107,7 @@ object Phases {
           val filteredPhaseBlock = filteredPhases(i)
           val phaseToAdd =
             if (filteredPhaseBlock.length > 1) {
-              for (phase <- filteredPhaseBlock) {
+              for (phase <- filteredPhaseBlock)
                 phase match {
                   case p: MiniPhase =>
                     val unmetRequirements = p.runsAfterGroupsOf &~ prevPhases
@@ -117,11 +117,11 @@ object Phases {
                   case _ =>
                     assert(false, s"Only tree transforms can be squashed, ${phase.phaseName} can not be squashed")
                 }
-              }
               val superPhase = new MegaPhase(filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray)
               prevPhases ++= filteredPhaseBlock.map(_.phaseName)
               superPhase
-            } else { // block of a single phase, no squashing
+            }
+            else { // block of a single phase, no squashing
               val phase = filteredPhaseBlock.head
               prevPhases += phase.phaseName
               phase
@@ -169,8 +169,8 @@ object Phases {
         assert(unmetPrecedeRequirements.isEmpty,
           s"phase ${p} has unmet requirement: ${unmetPrecedeRequirements.mkString(", ")} should precede this phase")
         phasesAfter += p.phaseName
-
       }
+
       var i = 0
 
       while (i < phasess.length) {
@@ -206,14 +206,13 @@ object Phases {
         nextDenotTransformerId(i) = lastTransformerId
       }
 
-      if (squash) {
+      if (squash)
         this.squashedPhases = (NoPhase :: phasess).toArray
-      } else {
+      else
         this.squashedPhases = this.phases
-      }
 
-      config.println(s"Phases = ${phases.deep}")
-      config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.deep}")
+      config.println(s"Phases = ${phases.toList}")
+      config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
     }
 
     private[this] var myTyperPhase: Phase = _
@@ -353,6 +352,8 @@ object Phases {
     private[this] var myErasedTypes = false
     private[this] var myFlatClasses = false
     private[this] var myRefChecked = false
+    private[this] var myLambdaLifted = false
+    private[this] var myPatternTranslated = false
 
     private[this] var mySameMembersStartId = NoPhaseId
     private[this] var mySameParentsStartId = NoPhaseId
@@ -371,6 +372,8 @@ object Phases {
     final def erasedTypes: Boolean = myErasedTypes   // Phase is after erasure
     final def flatClasses: Boolean = myFlatClasses   // Phase is after flatten
     final def refChecked: Boolean = myRefChecked     // Phase is after RefChecks
+    final def lambdaLifted: Boolean = myLambdaLifted // Phase is after LambdaLift
+    final def patternTranslated: Boolean = myPatternTranslated // Phase is after PatternMatcher
 
     final def sameMembersStartId: Int = mySameMembersStartId
       // id of first phase where all symbols are guaranteed to have the same members as in this phase
@@ -385,9 +388,11 @@ object Phases {
       assert(start <= Periods.MaxPossiblePhaseId, s"Too many phases, Period bits overflow")
       myBase = base
       myPeriod = Period(NoRunId, start, end)
-      myErasedTypes  = prev.getClass == classOf[Erasure]   || prev.erasedTypes
-      myFlatClasses  = prev.getClass == classOf[Flatten]   || prev.flatClasses
-      myRefChecked   = prev.getClass == classOf[RefChecks] || prev.refChecked
+      myErasedTypes  = prev.getClass == classOf[Erasure]    || prev.erasedTypes
+      myFlatClasses  = prev.getClass == classOf[Flatten]    || prev.flatClasses
+      myRefChecked   = prev.getClass == classOf[RefChecks]  || prev.refChecked
+      myLambdaLifted = prev.getClass == classOf[LambdaLift] || prev.lambdaLifted
+      myPatternTranslated = prev.getClass == classOf[PatternMatcher] || prev.patternTranslated
       mySameMembersStartId = if (changesMembers) id else prev.sameMembersStartId
       mySameParentsStartId = if (changesParents) id else prev.sameParentsStartId
       mySameBaseTypesStartId = if (changesBaseTypes) id else prev.sameBaseTypesStartId

@@ -1,6 +1,6 @@
 import xml.Node
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   val body: Node = <elem>hi</elem>	
   println ((body: AnyRef, "foo") match {
     case (node: Node, "bar")        => "bye"

@@ -1,0 +1,7 @@
+
+-- Error: tests/neg-macros/delegate-match-2/Test_2.scala:5:2 -----------------------------------------------------------
+5 |  f // error
+  |  ^
+  |  DivergingImplicit
+  |  method a1 in class Test produces a diverging implicit search when trying to match type A
+  | This location is in code that was inlined at Test_2.scala:5

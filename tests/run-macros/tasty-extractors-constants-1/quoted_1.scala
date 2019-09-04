@@ -1,16 +1,15 @@
 import scala.quoted._
-import scala.quoted.autolift._
+import given scala.quoted.autolift._
 
 import scala.quoted.matching._
 
-import scala.tasty._
 import scala.tasty.util._
 
 object Macros {
 
   implicit inline def testMacro: Unit = ${impl}
 
-  def impl(implicit reflect: Reflection): Expr[Unit] = {
+  def impl given QuoteContext: Expr[Unit] = {
 
     val buff = new StringBuilder
     def stagedPrintln(x: Any): Unit = buff append java.util.Objects.toString(x) append "\n"

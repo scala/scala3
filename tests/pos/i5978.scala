@@ -7,16 +7,18 @@ trait TokenParser[Token, R]
 package p1 {
 
   object TextParser {
-    delegate TP for TokenParser[Char, Position[CharSequence]] {}
+    given TP as TokenParser[Char, Position[CharSequence]] {}
 
-    delegate FromCharToken for Conversion[Char, Position[CharSequence]]
-      given (T: TokenParser[Char, Position[CharSequence]])= ???
+    def f
+      given TokenParser[Char, Position[CharSequence]] = ???
+
+    given FromCharToken as Conversion[Char, Position[CharSequence]]
+      given (T: TokenParser[Char, Position[CharSequence]]) = ???
   }
-
 
   object Testcase {
     def main(args: Array[String]): Unit = {
-      import delegate TextParser._
+      import given TextParser._
       import TextParser._
 
       val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
@@ -25,7 +27,7 @@ package p1 {
       val co_x : Position[CharSequence] = 'x'
 
       {
-        delegate XXX for Conversion[Char, Position[CharSequence]] = co_i
+        given XXX as Conversion[Char, Position[CharSequence]] = co_i
         val co_y : Position[CharSequence] = 'x'
       }
     }
@@ -42,7 +44,7 @@ package p2 {
   object Testcase {
     def main(args: Array[String]): Unit = {
       import TextParser._
-      import delegate TextParser._
+      import given TextParser._
 
       val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
       val tp_i = the[TokenParser[Char, Position[CharSequence]]]
@@ -60,7 +62,7 @@ package p3 {
 
   object Testcase {
     def main(args: Array[String]): Unit = {
-      import delegate TextParser._
+      import given TextParser._
       import TextParser._
 
       val co_i: Conversion[Char, Position[CharSequence]] = the[Conversion[Char, Position[CharSequence]]]
@@ -68,14 +70,22 @@ package p3 {
       {
         val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
         val tp_i = the[TokenParser[Char, Position[CharSequence]]]
-        delegate for Conversion[Char, Position[CharSequence]] = co_i
+        given as Conversion[Char, Position[CharSequence]] = co_i
         val co_x : Position[CharSequence] = 'x'
 
         {
-          delegate XXX for Conversion[Char, Position[CharSequence]] = co_i
+          given XXX as Conversion[Char, Position[CharSequence]] = co_i
           val co_y : Position[CharSequence] = 'x'
         }
       }
     }
   }
+}
+package p4 {
+  class TC
+  given A as TC
+  given B[X[_], Y] as TC
+
+  given C as TC
+    given TC
 }

@@ -1,0 +1,23 @@
+{
+  val y: scala.Double = 3.0.*(3.0)
+  y
+}
+9.0
+
+{
+  val y: scala.Double = 4.0.*(4.0)
+  y
+}
+16.0
+
+{
+  val y: scala.Double = 5.0.*(5.0)
+  y
+}
+25.0
+
+Macros.dynamicPower({
+  scala.Predef.println("foo")
+  2
+}, 6.0)
+36.0

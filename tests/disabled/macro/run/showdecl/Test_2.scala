@@ -1,7 +1,7 @@
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.{currentMirror => cm}
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def test(sym: Symbol): Unit = {
     println(s"autoinitialized ${sym.name}: ${showDecl(sym)}")
     sym.info

@@ -1,6 +1,6 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   object m {
-    val f = { x: Unit => () }
+    val f = { (x: Unit) => () }
     Console.println("OK")
   }
   m;

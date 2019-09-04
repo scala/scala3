@@ -1,7 +1,7 @@
 package generic
 
 import java.io.{DataInputStream,DataOutputStream}
-import scala.collection.generic.GenericCompanion
+import scala.collection.IterableFactory
 import scala.collection.mutable.ArrayBuffer
 import Shapes._
 
@@ -98,7 +98,7 @@ object Serialization {
   }
 
   implicit def IterableSerializable[I[X] <: Iterable[X], Elem](implicit
-    ev1: GenericCompanion[I],
+    ev1: IterableFactory[I],
     ev2: Serializable[Elem]
   ): Serializable[I[Elem]] =
     new Serializable[I[Elem]] {

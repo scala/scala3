@@ -7,7 +7,7 @@ import util.NameTransformer
 import printing.{Showable, Texts, Printer}
 import Texts.Text
 import StdNames.str
-import scala.tasty.util.Chars.isIdentifierStart
+import scala.internal.Chars.isIdentifierStart
 import collection.immutable
 import config.Config
 import java.util.HashMap
@@ -164,7 +164,7 @@ object Names {
     override def isTypeName: Boolean = false
     override def isTermName: Boolean = true
     override def toTermName: TermName = this
-    override def asTypeName: Nothing = throw new ClassCastException(this + " is not a type name")
+    override def asTypeName: Nothing = throw new ClassCastException(s"$this is not a type name")
     override def asTermName: TermName = this
 
     @sharable // because it is only modified in the synchronized block of toTypeName.
@@ -185,10 +185,10 @@ object Names {
     def underlying: TermName = unsupported("underlying")
 
     @sharable // because of synchronized block in `and`
-    private[this] var derivedNames: AnyRef /* immutable.Map[NameInfo, DerivedName] | j.u.HashMap */ =
+    private[this] var derivedNames: immutable.Map[NameInfo, DerivedName] | HashMap[NameInfo, DerivedName] =
       immutable.Map.empty[NameInfo, DerivedName]
 
-    private def getDerived(info: NameInfo): DerivedName /* | Null */ = derivedNames match {
+    private def getDerived(info: NameInfo): DerivedName /* | Null */ = (derivedNames: @unchecked) match {
       case derivedNames: immutable.AbstractMap[NameInfo, DerivedName] @unchecked =>
         if (derivedNames.contains(info)) derivedNames(info) else null
       case derivedNames: HashMap[NameInfo, DerivedName] @unchecked =>
@@ -377,9 +377,8 @@ object Names {
     override def replace(from: Char, to: Char): SimpleName = {
       val cs = new Array[Char](length)
       System.arraycopy(chrs, start, cs, 0, length)
-      for (i <- 0 until length) {
+      for (i <- 0 until length)
         if (cs(i) == from) cs(i) = to
-      }
       termName(cs, 0, length)
     }
 
@@ -436,7 +435,7 @@ object Names {
     override def isTermName: Boolean = false
     override def toTypeName: TypeName = this
     override def asTypeName: TypeName = this
-    override def asTermName: Nothing = throw new ClassCastException(this + " is not a term name")
+    override def asTermName: Nothing = throw new ClassCastException(s"$this is not a term name")
 
     override def asSimpleName: SimpleName = toTermName.asSimpleName
     override def toSimpleName: SimpleName = toTermName.toSimpleName
@@ -681,12 +680,11 @@ object Names {
       val until = x.length min y.length
       var i = 0
       while (i < until && x(i) == y(i)) i = i + 1
-      if (i < until) {
+      if (i < until)
         if (x(i) < y(i)) -1
         else /*(x(i) > y(i))*/ 1
-      } else {
+      else
         x.length - y.length
-      }
     }
     private def compareTermNames(x: TermName, y: TermName): Int = x match {
       case x: SimpleName =>
@@ -702,11 +700,10 @@ object Names {
           case _ => 1
         }
     }
-    def compare(x: Name, y: Name): Int = {
+    def compare(x: Name, y: Name): Int =
       if (x.isTermName && y.isTypeName) 1
       else if (x.isTypeName && y.isTermName) -1
       else if (x eq y) 0
       else compareTermNames(x.toTermName, y.toTermName)
-    }
   }
 }

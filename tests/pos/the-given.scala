@@ -1,7 +1,7 @@
 object Test {
 
   class Encoder { def apply(x: Int): Int = x }
-  delegate for Encoder
+  given as Encoder
 
   the[Encoder](2)
 

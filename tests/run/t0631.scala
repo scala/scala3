@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   class Foo {
     override def equals(that: Any) = {
       println("Foo.equals called")

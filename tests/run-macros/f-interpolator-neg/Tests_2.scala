@@ -1,6 +1,6 @@
 object Test {
 
-	  def main(args: Array[String]): Unit = {
+    def main(args: Array[String]): Unit = {
       val s = "Scala"
       val d = 8
       val b = false
@@ -10,7 +10,7 @@ object Test {
       val x = new java.util.Formattable {
         def formatTo(ff: java.util.Formatter, g: Int, w: Int, p: Int): Unit = ff format "xxx"
       }
-	    numberArgumentsTests(s, d)
+      numberArgumentsTests(s, d)
       interpolationMismatches(s, f, b)
       flagMismatches(s, c, d, f, t)
       badPrecisions(c, d, f, t)
@@ -19,7 +19,7 @@ object Test {
       badArgTypes(s)
       misunderstoodConversions(t, s)
       otherBrainFailures(d)
-	  }
+    }
 
     def numberArgumentsTests(s : String, d : Int) = {
       import TestFooErrors._
@@ -115,7 +115,7 @@ object Test {
       assertEquals(foo"%%bci.2${'i'}%..2c2", List((true, 0, 1, 0, "Missing conversion operator in '%'; use %% for literal %, %n for newline")))
     }
 
-	  def assertEquals(actual: Any, expected: Any): Unit = {
-	    assert(actual == expected, s"actual: $actual\nbut expected: $expected")
-	  }
-	}
+    def assertEquals(actual: Any, expected: Any): Unit = {
+      assert(actual == expected, s"actual: $actual\nbut expected: $expected")
+    }
+  }

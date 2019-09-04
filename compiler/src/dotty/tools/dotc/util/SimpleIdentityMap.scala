@@ -159,19 +159,22 @@ object SimpleIdentityMap {
     def remove(k: K): SimpleIdentityMap[K, V] = {
       var i = 0
       while (i < bindings.length) {
-        if (bindings(i) eq k) return {
-          if (size == CompactifyThreshold) {
-            var m: SimpleIdentityMap[K, V] = Empty[K]
-            for (j <- 0 until bindings.length by 2)
-              if (j != i) m = m.updated(key(j), value(j))
-            m
-          } else {
-            val bindings1 = new Array[AnyRef](bindings.length - 2)
-            System.arraycopy(bindings, 0, bindings1, 0, i)
-            System.arraycopy(bindings, i + 2, bindings1, i, bindings1.length - i)
-            new MapMore(bindings1)
+        if (bindings(i) eq k)
+          return {
+            if (size == CompactifyThreshold) {
+              var m: SimpleIdentityMap[K, V] = Empty[K]
+              for (j <- 0 until bindings.length by 2) {
+                if (j != i) m = m.updated(key(j), value(j))
+              }
+              m
+            }
+            else {
+              val bindings1 = new Array[AnyRef](bindings.length - 2)
+              System.arraycopy(bindings, 0, bindings1, 0, i)
+              System.arraycopy(bindings, i + 2, bindings1, i, bindings1.length - i)
+              new MapMore(bindings1)
+            }
           }
-        }
         i += 2
       }
       this

@@ -3,4 +3,4 @@ object Foo extends Foo {
 }
 class Foo
 
-object Test extends dotty.runtime.LegacyApp { Foo }
+object Test extends App { Foo }

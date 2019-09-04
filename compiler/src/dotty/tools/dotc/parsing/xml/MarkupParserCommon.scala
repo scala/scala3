@@ -10,7 +10,7 @@ package parsing
 package xml
 
 import Utility._
-import scala.tasty.util.Chars.SU
+import scala.internal.Chars.SU
 
 
 
@@ -110,8 +110,7 @@ private[dotty] trait MarkupParserCommon {
 
     val buf = new StringBuilder
 
-    do buf append ch_returning_nextch
-    while (isNameChar(ch))
+    while ({ buf append ch_returning_nextch ; isNameChar(ch) }) ()
 
     if (buf.last == ':') {
       reportSyntaxError( "name cannot end in ':'" )

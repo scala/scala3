@@ -161,7 +161,8 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  For a refinement type, the type parameters of its parent, dropping
    *  any type parameter that is-rebound by the refinement.
    */
-  final def typeParams(implicit ctx: Context): List[TypeParamInfo] = /*>|>*/ track("typeParams") /*<|<*/ {
+  final def typeParams(implicit ctx: Context): List[TypeParamInfo] = {
+    record("typeParams")
     def isTrivial(prefix: Type, tycon: Symbol) = prefix match {
       case prefix: ThisType => prefix.cls `eq` tycon.owner
       case NoPrefix => true
@@ -329,7 +330,7 @@ class TypeApplications(val self: Type) extends AnyVal {
              !tparams.corresponds(hkParams)(_.paramVariance == _.paramVariance) &&
              tparams.corresponds(hkParams)(varianceConforms) =>
           HKTypeLambda(
-            (tparams, hkParams).zipped.map((tparam, hkparam) =>
+            tparams.lazyZip(hkParams).map((tparam, hkparam) =>
               tparam.paramName.withVariance(hkparam.paramVariance)))(
             tl => arg.paramInfos.map(_.subst(arg, tl).bounds),
             tl => arg.resultType.subst(arg, tl)
@@ -353,7 +354,8 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  @param  self   = `T`
    *  @param  args   = `U1,...,Un`
    */
-  final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
+  final def appliedTo(args: List[Type])(implicit ctx: Context): Type = {
+    record("appliedTo")
     val typParams = self.typeParams
     val stripped = self.stripTypeVar
     val dealiased = stripped.safeDealias

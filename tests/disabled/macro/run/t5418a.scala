@@ -1,3 +1,3 @@
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   println(scala.reflect.runtime.universe.reify(new Object().getClass))
 }

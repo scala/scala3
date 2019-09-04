@@ -2,9 +2,9 @@ object Test {
   trait T; trait Q
   val a: given T => given Q => Int = 1
 
-  delegate for Q = new Q {}
+  given as Q = new Q {}
   val i1: Int = a given (new T{})
-  delegate for T = new T {}
+  given as T = new T {}
   val i2: Int =  a
   val i3: Int =  a2
 

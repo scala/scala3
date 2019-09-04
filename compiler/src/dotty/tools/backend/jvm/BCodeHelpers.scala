@@ -387,7 +387,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       }
       debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
-      for (m0 <- moduleClass.info.membersBasedOnFlags(ExcludedForwarderFlags, Flag_METHOD)) {
+      for (m0 <- moduleClass.info.sortedMembersBasedOnFlags(required = Flag_METHOD, excluded = ExcludedForwarderFlags)) {
         val m = if (m0.isBridge) m0.nextOverriddenSymbol else m0
         if (m == NoSymbol)
           log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")

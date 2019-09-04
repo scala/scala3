@@ -3,7 +3,7 @@ import scala.reflect.runtime.{universe => ru}
 import scala.reflect.runtime.{currentMirror => cm}
 import scala.tools.reflect.ToolBox
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def foo[T: TypeTag](ys: List[T]): Int => Int = {
     val fun = reify{(x: Int) => {
       x + ys.length

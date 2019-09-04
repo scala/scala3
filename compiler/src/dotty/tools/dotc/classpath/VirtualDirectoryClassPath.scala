@@ -13,7 +13,7 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
   // From AbstractFileClassLoader
   private final def lookupPath(base: AbstractFile)(pathParts: Seq[String], directory: Boolean): AbstractFile = {
     var file: AbstractFile = base
-    val dirParts = pathParts.init.toIterator
+    val dirParts = pathParts.init.iterator
     while (dirParts.hasNext) {
       val dirPart = dirParts.next
       file = file.lookupName(dirPart, directory = true)
@@ -25,7 +25,7 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
 
   protected def emptyFiles: Array[AbstractFile] = Array.empty
   protected def getSubDir(packageDirName: String): Option[AbstractFile] =
-    Option(lookupPath(dir)(packageDirName.split(java.io.File.separator), directory = true))
+    Option(lookupPath(dir)(packageDirName.split(java.io.File.separator).toIndexedSeq, directory = true))
   protected def listChildren(dir: AbstractFile, filter: Option[AbstractFile => Boolean] = None): Array[F] = filter match {
     case Some(f) => dir.iterator.filter(f).toArray
     case _ => dir.toArray
@@ -42,7 +42,7 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
 
   def findClassFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className) + ".class"
-    Option(lookupPath(dir)(relativePath.split(java.io.File.separator), directory = false))
+    Option(lookupPath(dir)(relativePath.split(java.io.File.separator).toIndexedSeq, directory = false))
   }
 
   private[dotty] def classes(inPackage: String): Seq[ClassFileEntry] = files(inPackage)

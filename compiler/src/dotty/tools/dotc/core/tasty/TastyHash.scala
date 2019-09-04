@@ -19,5 +19,5 @@ object TastyHash {
     }
     h
   }
-
 }
+

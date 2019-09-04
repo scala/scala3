@@ -29,15 +29,15 @@ extends interfaces.SourcePosition with Showable {
     source.content.slice(source.startOfLine(start), source.nextLine(end))
 
   /** The lines of the position */
-  def lines: List[Int] = {
+  def lines: Range = {
     val startOffset = source.offsetToLine(start)
-    val endOffset = source.offsetToLine(end + 1)
-    if (startOffset >= endOffset) line :: Nil
-    else (startOffset until endOffset).toList
+    val endOffset = source.offsetToLine(end - 1) // -1 to drop a line if no chars in it form part of the position
+    if (startOffset >= endOffset) line to line
+    else startOffset to endOffset
   }
 
   def lineOffsets: List[Int] =
-    lines.map(source.lineToOffset(_))
+    lines.toList.map(source.lineToOffset(_))
 
   def beforeAndAfterPoint: (List[Int], List[Int]) =
     lineOffsets.partition(_ <= point)

@@ -53,7 +53,8 @@ object ConstFold {
       val x = compX
       if (x ne null) tree.withType(ConstantType(x)).asInstanceOf[T]
       else tree
-    } catch {
+    }
+    catch {
       case _: ArithmeticException => tree   // the code will crash at runtime,
                                             // but that is better than the
                                             // compiler itself crashing

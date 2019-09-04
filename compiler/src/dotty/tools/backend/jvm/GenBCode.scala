@@ -162,9 +162,14 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
             val (cl1, cl2) =
               if (classSymbol.effectiveName.toString < dupClassSym.effectiveName.toString) (classSymbol, dupClassSym)
               else (dupClassSym, classSymbol)
-            ctx.atPhase(ctx.typerPhase) { implicit ctx =>
-              ctx.warning(s"${cl1.show} differs only in case from ${cl2.showLocated}. " +
-                "Such classes will overwrite one another on case-insensitive filesystems.", cl1.sourcePos)
+            val same = classSymbol.effectiveName.toString == dupClassSym.effectiveName.toString
+            ctx.atPhase(ctx.typerPhase) {
+              if (same)
+                the[Context].warning( // FIXME: This should really be an error, but then FromTasty tests fail
+                  s"${cl1.show} and ${cl2.showLocated} produce classes that overwrite one another", cl1.sourcePos)
+              else
+                the[Context].warning(s"${cl1.show} differs only in case from ${cl2.showLocated}. " +
+                  "Such classes will overwrite one another on case-insensitive filesystems.", cl1.sourcePos)
             }
         }
       }
@@ -263,7 +268,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
         // ----------- compiler and sbt's callbacks
 
-        val (fullClassName, isLocal) = ctx.atPhase(ctx.sbtExtractDependenciesPhase) { implicit ctx =>
+        val (fullClassName, isLocal) = ctx.atPhase(ctx.sbtExtractDependenciesPhase) {
           (ExtractDependencies.classNameAsString(claszSymbol), claszSymbol.isLocal)
         }
 
@@ -389,11 +394,11 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         }
         for ((label, i) <- initialLabels.iterator.zipWithIndex) {
           mv.visitLabel(label)
-          emitLambdaDeserializeIndy(groups(i))
+          emitLambdaDeserializeIndy(groups(i).toIndexedSeq)
           mv.visitInsn(ARETURN)
         }
         mv.visitLabel(terminalLabel)
-        emitLambdaDeserializeIndy(groups(numGroups - 1))
+        emitLambdaDeserializeIndy(groups(numGroups - 1).toIndexedSeq)
         mv.visitInsn(ARETURN)
       }
 

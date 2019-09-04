@@ -1,7 +1,7 @@
 import scala.reflect.runtime.{universe => ru}
 import scala.reflect.runtime.{currentMirror => cm}
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   println("===== JAVA POV =====")
   val jfancy = Class.forName("Foo_1$1")
   println(jfancy)

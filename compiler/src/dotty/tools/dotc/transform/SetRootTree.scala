@@ -21,7 +21,7 @@ class SetRootTree extends Phase {
   }
 
   private def traverser = new tpd.TreeTraverser {
-    override def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+    override def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit =
       tree match {
         case pkg: tpd.PackageDef =>
           traverseChildren(pkg)
@@ -38,7 +38,6 @@ class SetRootTree extends Phase {
         case _ =>
           ()
       }
-    }
   }
 }
 

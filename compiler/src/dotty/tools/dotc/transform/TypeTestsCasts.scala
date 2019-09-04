@@ -156,8 +156,10 @@ object TypeTestsCasts {
   }
 
   def interceptTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = trace(s"transforming ${tree.show}", show = true) {
-    tree.fun match {
-      case fun @ Select(expr, selector) =>
+    /** Intercept `expr.xyz[XYZ]` */
+    def interceptWith(expr: Tree): Tree =
+      if (expr.isEmpty) tree
+      else {
         val sym = tree.symbol
 
         def isPrimitive(tp: Type) = tp.classSymbol.isPrimitiveValueClass
@@ -172,7 +174,7 @@ object TypeTestsCasts {
         def foundCls = effectiveClass(expr.tpe.widen)
 
         def inMatch =
-          fun.symbol == defn.Any_typeTest ||  // new scheme
+          tree.fun.symbol == defn.Any_typeTest ||  // new scheme
           expr.symbol.is(Case)                // old scheme
 
         def transformIsInstanceOf(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = {
@@ -239,19 +241,16 @@ object TypeTestsCasts {
           def testCls = testType.widen.classSymbol
           if (expr.tpe <:< testType)
             Typed(expr, tree.args.head)
-          else if (testCls eq defn.BoxedUnitClass) {
+          else if (testCls eq defn.BoxedUnitClass)
             // as a special case, casting to Unit always successfully returns Unit
             Block(expr :: Nil, Literal(Constant(()))).withSpan(expr.span)
-          }
-          else if (foundCls.isPrimitiveValueClass) {
+          else if (foundCls.isPrimitiveValueClass)
             if (testCls.isPrimitiveValueClass) primitiveConversion(expr, testCls)
             else derivedTree(box(expr), defn.Any_asInstanceOf, testType)
-          }
           else if (testCls.isPrimitiveValueClass)
             unbox(expr.ensureConforms(defn.ObjectType), testType)
-          else if (isDerivedValueClass(testCls)) {
+          else if (isDerivedValueClass(testCls))
             expr // adaptToType in Erasure will do the necessary type adaptation
-          }
           else if (testCls eq defn.NothingClass) {
             // In the JVM `x.asInstanceOf[Nothing]` would throw a class cast exception except when `x eq null`.
             // To avoid this loophole we execute `x` and then regardless of the result throw a `ClassCastException`
@@ -298,7 +297,7 @@ object TypeTestsCasts {
 
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
-          val isTrusted = tree.getAttachment(PatternMatcher.TrustedTypeTestKey).nonEmpty
+          val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
           if (!isTrusted && !checkable(expr.tpe, argType, tree.span))
             ctx.warning(i"the type test for $argType cannot be checked at runtime", tree.sourcePos)
           transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
@@ -306,9 +305,15 @@ object TypeTestsCasts {
         else if (sym.isTypeCast)
           transformAsInstanceOf(erasure(tree.args.head.tpe))
         else tree
-
-      case _ =>
-        tree
+      }
+    val expr = tree.fun match {
+      case Select(expr, _) => expr
+      case i: Ident =>
+        val expr = desugarIdentPrefix(i)
+        if (expr.isEmpty) expr
+        else expr.withSpan(i.span)
+      case _ => EmptyTree
     }
+    interceptWith(expr)
   }
 }

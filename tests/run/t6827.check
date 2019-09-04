@@ -1,5 +1,5 @@
-start at -5: java.lang.ArrayIndexOutOfBoundsException: -5
-start at -1: java.lang.ArrayIndexOutOfBoundsException: -1
+start at -5: OOB
+start at -1: OOB
 start at limit: ok
 start at limit-1: ok
 first 10: ok

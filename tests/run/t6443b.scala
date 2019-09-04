@@ -11,6 +11,6 @@ object B extends A {
   def foo(d: D)(d2: d.type): Unit = () // Bridge method required here!
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   new B.D().bar
 }

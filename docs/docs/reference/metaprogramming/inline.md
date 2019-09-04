@@ -5,7 +5,7 @@ title: Inline
 
 ## Inline Definitions
 
-`inline` is a new [soft modifier](../soft-modifier.html) that guarantees that a
+`inline` is a new [soft modifier](../soft-modifier.md) that guarantees that a
 definition will be inlined at the point of use. Example:
 
 ```scala
@@ -42,7 +42,7 @@ method will always be inlined at the point of call.
 
 In the inlined code, an `if-then-else` with a constant condition will be rewritten
 to its `then`- or `else`-part. Consequently, in the `log` method above the
-`if (Config.loggi0ng)` with `Config.logging == true` will get rewritten into its
+`if (Config.logging)` with `Config.logging == true` will get rewritten into its
 `then`-part.
 
 Here's an example:

@@ -1,6 +1,6 @@
 import Macros._
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def foo(x: Int, y: Int)(implicit loc0: SourceLocation): Int = {
     var loc = loc0;
     {

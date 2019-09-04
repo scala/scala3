@@ -38,5 +38,5 @@ conflict with eta expansion. Automatic `()` insertion is
 [limited](../dropped-features/auto-apply.md) in Dotty, but the fundamental ambiguity
 remains.
 
-[More details](eta-expansion-spec.html)
+[More details](eta-expansion-spec.md)
 

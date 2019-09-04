@@ -1,0 +1,38 @@
+-- Error: tests/neg/spaces-vs-tabs.scala:5:4 ---------------------------------------------------------------------------
+5 |    println(2)   // error
+  |    ^
+  |    Incompatible combinations of tabs and spaces in indentation prefixes.
+  |    Previous indent : 2 tabs
+  |    Latest indent   : 4 spaces
+-- Error: tests/neg/spaces-vs-tabs.scala:6:8 ---------------------------------------------------------------------------
+6 |  	println(3)   // error
+  |  	^
+  |  	Incompatible combinations of tabs and spaces in indentation prefixes.
+  |  	Previous indent : 2 tabs
+  |  	Latest indent   : 2 spaces, 1 tab
+-- Error: tests/neg/spaces-vs-tabs.scala:7:2 ---------------------------------------------------------------------------
+7 |	  println(4)   // error
+  |	  ^
+  |	  Incompatible combinations of tabs and spaces in indentation prefixes.
+  |	  Previous indent : 2 tabs
+  |	  Latest indent   : 1 tab, 2 spaces
+-- Error: tests/neg/spaces-vs-tabs.scala:8:1 ---------------------------------------------------------------------------
+8 | else ()         // error // error
+  | ^
+  | Incompatible combinations of tabs and spaces in indentation prefixes.
+  | Previous indent : 2 tabs
+  | Latest indent   : 1 space
+-- [E040] Syntax Error: tests/neg/spaces-vs-tabs.scala:8:6 -------------------------------------------------------------
+8 | else ()         // error // error
+  |      ^
+  |      ';' expected, but '(' found
+-- Error: tests/neg/spaces-vs-tabs.scala:14:2 --------------------------------------------------------------------------
+14 |	  else 2 // error // error
+   |	  ^
+   |	  The start of this line does not match any of the previous indentation widths.
+   |	  Indentation width of current line : 1 tab, 2 spaces
+   |	  This falls between previous widths: 1 tab and 1 tab, 4 spaces
+-- [E040] Syntax Error: tests/neg/spaces-vs-tabs.scala:14:7 ------------------------------------------------------------
+14 |	  else 2 // error // error
+   |	       ^
+   |	       ';' expected, but integer literal found

@@ -194,7 +194,7 @@ class JSCodeGen()(implicit ctx: Context) {
       ctx.settings.outputDir.value
 
     val pathParts = sym.fullName.toString.split("[./]")
-    val dir = (outputDirectory /: pathParts.init)(_.subdirectoryNamed(_))
+    val dir = pathParts.init.foldLeft(outputDirectory)(_.subdirectoryNamed(_))
 
     var filename = pathParts.last
     if (sym.is(ModuleClass))
@@ -404,7 +404,10 @@ class JSCodeGen()(implicit ctx: Context) {
         case EmptyTree  => ()
         case dd: DefDef => generatedMethods ++= genMethod(dd)
         case _ =>
-          throw new FatalError("Illegal tree in gen of genInterface(): " + tree)
+          throw new FatalError(
+            i"""Illegal tree in gen of genInterface(): $tree
+               |class = $td
+               |in ${ctx.compilationUnit}""")
       }
     }
 
@@ -447,7 +450,7 @@ class JSCodeGen()(implicit ctx: Context) {
         "genClassFields called with a ClassDef other than the current one")
 
     // Term members that are neither methods nor modules are fields
-    classSym.info.decls.filter(f => !f.is(Method | Module) && f.isTerm).map({ f =>
+    classSym.info.decls.filter(f => !f.isOneOf(Method | Module) && f.isTerm).map({ f =>
       implicit val pos = f.span
 
       val name =
@@ -540,7 +543,7 @@ class JSCodeGen()(implicit ctx: Context) {
       implicit pos: SourcePosition): Option[js.Tree] = {
     val ctors =
       if (sym.is(Abstract)) Nil
-      else sym.info.member(nme.CONSTRUCTOR).alternatives.map(_.symbol).filter(m => !m.is(Private | Protected))
+      else sym.info.member(nme.CONSTRUCTOR).alternatives.map(_.symbol).filter(m => !m.isOneOf(Private | Protected))
 
     if (ctors.isEmpty) {
       None
@@ -725,8 +728,8 @@ class JSCodeGen()(implicit ctx: Context) {
       else genExpr(tree)
 
     //if (!isScalaJSDefinedJSClass(currentClassSym)) {
-      val flags = js.MemberFlags.empty.withNamespace(namespace)
-      js.MethodDef(flags, methodName, jsParams, resultIRType, Some(genBody()))(
+    val flags = js.MemberFlags.empty.withNamespace(namespace)
+    js.MethodDef(flags, methodName, jsParams, resultIRType, Some(genBody()))(
           optimizerHints, None)
     /*} else {
       assert(!namespace.isStatic, tree.span)
@@ -936,7 +939,13 @@ class JSCodeGen()(implicit ctx: Context) {
             js.Skip()
           case BooleanTag =>
             js.BooleanLiteral(value.booleanValue)
-          case ByteTag | ShortTag | CharTag | IntTag =>
+          case ByteTag =>
+            js.ByteLiteral(value.byteValue)
+          case ShortTag =>
+            js.ShortLiteral(value.shortValue)
+          case CharTag =>
+            js.CharLiteral(value.charValue)
+          case IntTag =>
             js.IntLiteral(value.intValue)
           case LongTag =>
             js.LongLiteral(value.longValue)
@@ -1636,7 +1645,7 @@ class JSCodeGen()(implicit ctx: Context) {
   private lazy val externalEqualsNumObject: Symbol =
     defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
   private lazy val externalEquals: Symbol =
-    defn.BoxesRunTimeClass.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
+    defn.BoxesRunTimeModule.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
 
   /** Gen JS code for a call to Any.== */
   private def genEqEqPrimitive(ltpe: Type, rtpe: Type, lsrc: js.Tree, rsrc: js.Tree)(
@@ -1962,7 +1971,7 @@ class JSCodeGen()(implicit ctx: Context) {
     if (isStat) {
       boxedResult
     } else {
-      val tpe = ctx.atPhase(ctx.elimErasedValueTypePhase) { implicit ctx =>
+      val tpe = ctx.atPhase(ctx.elimErasedValueTypePhase) {
         sym.info.finalResultType
       }
       unbox(boxedResult, tpe)
@@ -2156,7 +2165,7 @@ class JSCodeGen()(implicit ctx: Context) {
 
     val genBody = {
       val call = if (isStaticCall) {
-        genApplyStatic(sym, formalCaptures.map(_.ref))
+        genApplyStatic(sym, formalCaptures.map(_.ref) ::: actualParams)
       } else {
         val thisCaptureRef :: argCaptureRefs = formalCaptures.map(_.ref)
         genApplyMethodMaybeStatically(thisCaptureRef, sym,
@@ -2578,13 +2587,13 @@ class JSCodeGen()(implicit ctx: Context) {
     def paramNamesAndTypes(implicit ctx: Context): List[(Names.TermName, Type)] =
       sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten)
 
-    val wereRepeated = ctx.atPhase(ctx.elimRepeatedPhase) { implicit ctx =>
+    val wereRepeated = ctx.atPhase(ctx.elimRepeatedPhase) {
       val list = for ((name, tpe) <- paramNamesAndTypes)
         yield (name -> tpe.isRepeatedParam)
       list.toMap
     }
 
-    val paramTypes = ctx.atPhase(ctx.elimErasedValueTypePhase) { implicit ctx =>
+    val paramTypes = ctx.atPhase(ctx.elimErasedValueTypePhase) {
       paramNamesAndTypes.toMap
     }
 

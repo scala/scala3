@@ -33,14 +33,17 @@ import scala.annotation.constructorOnly
 class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) {
   import tpd._
 
-  override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+  override def transform(tree: Tree)(implicit ctx: Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(ctx.withSource(tree.source))
     else tree match {
       case tree: DefDef if tree.symbol.is(Inline) && level > 0 => EmptyTree
+      case tree: DefTree =>
+        for (annot <- tree.symbol.annotations)
+          transform(annot.tree) given ctx.withOwner(tree.symbol)
+        checkLevel(super.transform(tree))
       case _ => checkLevel(super.transform(tree))
     }
-  }
 
   /** Transform quoted trees while maintaining phase correctness */
   override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
@@ -54,30 +57,14 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  - If inside of a macro definition, check the validity of the macro.
    */
   protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree = {
-    if (level >= 1) {
-      val body1 = transform(body)(spliceContext)
-      splice match {
-        case Apply(fun: TypeApply, _) if splice.isTerm =>
-          // Type of the splice itsel must also be healed
-          // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
-          val tp = checkType(splice.sourcePos).apply(splice.tpe.widenTermRefExpr)
-          cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), body1 :: Nil)
-        case splice: Select => cpy.Select(splice)(body1, splice.name)
-      }
-    }
-    else {
-      assert(enclosingInlineds.isEmpty, "unexpanded macro")
-      assert(ctx.owner.isInlineMethod)
-      if (Splicer.canBeSpliced(body)) { // level 0 inside an inline definition
-        transform(body)(spliceContext) // Just check PCP
-        splice
-      }
-      else { // level 0 inside an inline definition
-        ctx.error(
-          "Malformed macro call. The contents of the splice ${...} must call a static method and arguments must be quoted or inline.",
-          splice.sourcePos)
-        splice
-      }
+    val body1 = transform(body)(spliceContext)
+    splice match {
+      case Apply(fun: TypeApply, _) if splice.isTerm =>
+        // Type of the splice itsel must also be healed
+        // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
+        val tp = checkType(splice.sourcePos).apply(splice.tpe.widenTermRefExpr)
+        cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), body1 :: Nil)
+      case splice: Select => cpy.Select(splice)(body1, splice.name)
     }
   }
 
@@ -93,16 +80,19 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     tree match {
       case Quoted(_) | Spliced(_)  =>
         tree
-      case tree: RefTree if tree.symbol.is(InlineParam) =>
+      case tree: RefTree if tree.symbol.isAllOf(InlineParam) =>
         tree
       case _: This =>
         assert(checkSymLevel(tree.symbol, tree.tpe, tree.sourcePos).isEmpty)
         tree
-      case _: Ident =>
-        checkSymLevel(tree.symbol, tree.tpe, tree.sourcePos) match {
-          case Some(tpRef) => tpRef
-          case _ => tree
-        }
+      case Ident(name) =>
+        if (name == nme.WILDCARD)
+          untpd.Ident(name).withType(checkType(tree.sourcePos).apply(tree.tpe)).withSpan(tree.span)
+        else
+          checkSymLevel(tree.symbol, tree.tpe, tree.sourcePos) match {
+            case Some(tpRef) => tpRef
+            case _ => tree
+          }
       case _: TypeTree | _: AppliedTypeTree | _: Apply | _: TypeApply | _: UnApply | Select(_, OuterSelectName(_, _)) =>
         tree.withType(checkTp(tree.tpe))
       case _: ValOrDefDef | _: Bind =>
@@ -124,8 +114,13 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           if (tp.isTerm)
             ctx.error(i"splice outside quotes", pos)
           tp
+        case tp: TypeRef if tp.symbol == defn.QuotedTypeClass.typeParams.head =>
+          // Adapt direct references to the type of the type parameter T of a quoted.Type[T].
+          // Replace it with a properly encoded type splice. This is the normal for expected for type splices.
+          tp.prefix.select(tpnme.splice)
         case tp: NamedType =>
-          checkSymLevel(tp.symbol, tp, pos) match {
+          if (tp.prefix.isInstanceOf[TermRef] && tp.prefix.isStable) tp
+          else checkSymLevel(tp.symbol, tp, pos) match {
             case Some(tpRef) => tpRef.tpe
             case _ =>
               if (tp.symbol.is(Param)) tp
@@ -150,8 +145,12 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     /** Is a reference to a class but not `this.type` */
     def isClassRef = sym.isClass && !tp.isInstanceOf[ThisType]
 
-    if (sym.exists && !sym.isStaticOwner && !isClassRef && !levelOK(sym))
+    if (!sym.exists || levelOK(sym))
+      None
+    else if (!sym.isStaticOwner && !isClassRef)
       tryHeal(sym, tp, pos)
+    else if (!sym.owner.isStaticOwner) // non-top level class reference that is phase inconsistent
+      levelError(sym, tp, pos, "")
     else
       None
   }
@@ -165,7 +164,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     case Some(l) =>
       l == level ||
         level == -1 && (
-          sym == defn.TastyReflection_macroContext ||
+          sym == defn.QuoteContext_macroContext ||
             // here we assume that Splicer.canBeSpliced was true before going to level -1,
             // this implies that all non-inline arguments are quoted and that the following two cases are checked
             // on inline parameters or type parameters.
@@ -181,43 +180,46 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  @return Some(msg) if unsuccessful where `msg` is a potentially empty error message
    *                    to be added to the "inconsistent phase" message.
    */
-  protected def tryHeal(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[Tree] = {
-    def levelError(errMsg: String) = {
-      def symStr =
-        if (!tp.isInstanceOf[ThisType]) sym.show
-        else if (sym.is(ModuleClass)) sym.sourceModule.show
-        else i"${sym.name}.this"
-      ctx.error(
-        em"""access to $symStr from wrong staging level:
-            | - the definition is at level ${levelOf(sym).getOrElse(0)},
-            | - but the access is at level $level.$errMsg""", pos)
-      None
-    }
+  protected def tryHeal(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[Tree] =
     tp match {
       case tp: TypeRef =>
         if (level == -1) {
           assert(ctx.inInlineMethod)
           None
-        } else {
-          val reqType = defn.QuotedTypeType.appliedTo(tp)
+        }
+        else {
+          val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
           val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
           tag.tpe match {
             case _: TermRef =>
               Some(tag.select(tpnme.splice))
             case _: SearchFailureType =>
-              levelError(i"""
+              levelError(sym, tp, pos,
+                         i"""
                             |
                             | The access would be accepted with the right type tag, but
                             | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
             case _ =>
-              levelError(i"""
+              levelError(sym, tp, pos,
+                         i"""
                             |
                             | The access would be accepted with an implict $reqType""")
           }
         }
       case _ =>
-        levelError("")
+        levelError(sym, tp, pos, "")
     }
-  }
 
+  private def levelError(sym: Symbol, tp: Type, pos: SourcePosition, errMsg: String) given Context = {
+    def symStr =
+      if (!tp.isInstanceOf[ThisType]) sym.show
+      else if (sym.is(ModuleClass)) sym.sourceModule.show
+      else i"${sym.name}.this"
+    the[Context].error(
+      em"""access to $symStr from wrong staging level:
+          | - the definition is at level ${levelOf(sym).getOrElse(0)},
+          | - but the access is at level $level.$errMsg""", pos)
+    None
+  }
 }
+

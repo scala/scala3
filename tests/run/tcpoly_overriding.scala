@@ -14,6 +14,6 @@ class B extends A[List] {
   def b: List[Int] = List(1)
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   Console.println((new B).b(0))
 }

@@ -1236,11 +1236,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           (tk: @unchecked) match {
             case LONG   => emit(asm.Opcodes.LCMP)
             case FLOAT  =>
-              if (op == LT || op == LE) emit(asm.Opcodes.FCMPG)
-              else emit(asm.Opcodes.FCMPL)
+              if (op == LT || op == LE) emit(asm.Opcodes.FCMPL)
+              else emit(asm.Opcodes.FCMPG)
             case DOUBLE =>
-              if (op == LT || op == LE) emit(asm.Opcodes.DCMPG)
-              else emit(asm.Opcodes.DCMPL)
+              if (op == LT || op == LE) emit(asm.Opcodes.DCMPL)
+              else emit(asm.Opcodes.DCMPG)
           }
           bc.emitIF(op, success)
         }
@@ -1267,12 +1267,12 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               emit(asm.Opcodes.LCMP)
             case FLOAT  =>
               emit(asm.Opcodes.FCONST_0)
-              if (op == LT || op == LE) emit(asm.Opcodes.FCMPG)
-              else emit(asm.Opcodes.FCMPL)
+              if (op == LT || op == LE) emit(asm.Opcodes.FCMPL)
+              else emit(asm.Opcodes.FCMPG)
             case DOUBLE =>
               emit(asm.Opcodes.DCONST_0)
-              if (op == LT || op == LE) emit(asm.Opcodes.DCMPG)
-              else emit(asm.Opcodes.DCMPL)
+              if (op == LT || op == LE) emit(asm.Opcodes.DCMPL)
+              else emit(asm.Opcodes.DCMPG)
           }
           bc.emitIF(op, success)
         }

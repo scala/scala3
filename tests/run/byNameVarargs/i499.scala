@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp{
+object Test extends App{
   def foo(a: => Any*) = ()
   def bar(a: => Any*) = foo(a : _*)
   def baz(a: => Seq[Any]) = foo(a : _*)

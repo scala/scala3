@@ -159,7 +159,7 @@ object Test {
 }
 ```
 
-Note that in [Inline](./inline.html) we discussed `erasedValue` and inline
+Note that in [Inline](./inline.md) we discussed `erasedValue` and inline
 matches. `erasedValue` is implemented with `erased`, so the state machine above
 can be encoded as follows:
 
@@ -196,4 +196,4 @@ object Test {
 }
 ```
 
-[More Details](./erased-terms-spec.html)
+[More Details](./erased-terms-spec.md)

@@ -7,7 +7,7 @@ class Reader(fname: String) {
   def read() = in.read()
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def test(sym: MethodSymbol): Unit = {
     println(s"uninitialized ${sym.name}: ${sym.exceptions}")
     sym.info

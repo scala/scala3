@@ -116,9 +116,9 @@ object StdNames {
     val ANON_FUN: N                   = str.ANON_FUN
     val BITMAP_PREFIX: N              = "bitmap$"  // @darkdimius: $bitmap? Also, the next 4 names are unused.
     val BITMAP_NORMAL: N              = BITMAP_PREFIX         // initialization bitmap for public/protected lazy vals
-    val BITMAP_TRANSIENT: N           = BITMAP_PREFIX + "trans$"    // initialization bitmap for transient lazy vals
-    val BITMAP_CHECKINIT: N           = BITMAP_PREFIX + "init$"      // initialization bitmap for checkinit values
-    val BITMAP_CHECKINIT_TRANSIENT: N = BITMAP_PREFIX + "inittrans$" // initialization bitmap for transient checkinit values
+    val BITMAP_TRANSIENT: N           = s"${BITMAP_PREFIX}trans$$"    // initialization bitmap for transient lazy vals
+    val BITMAP_CHECKINIT: N           = s"${BITMAP_PREFIX}init$$"      // initialization bitmap for checkinit values
+    val BITMAP_CHECKINIT_TRANSIENT: N = s"${BITMAP_PREFIX}inittrans$$" // initialization bitmap for transient checkinit values
     val DEFAULT_GETTER: N             = str.DEFAULT_GETTER
     val DEFAULT_GETTER_INIT: N        = "$lessinit$greater"
     val DO_WHILE_PREFIX: N            = "doWhile$"
@@ -141,7 +141,7 @@ object StdNames {
     val INITIALIZER_PREFIX: N         = "initial$"
     val BOUNDTYPE_ANNOT: N            = "$boundType$"
     val QUOTE: N                      = "'"
-    val TYPE_QUOTE: N                = "type_'"
+    val TYPE_QUOTE: N                 = "type_'"
     val TRAIT_SETTER_SEPARATOR: N     = str.TRAIT_SETTER_SEPARATOR
 
     // value types (and AnyRef) are all used as terms as well
@@ -221,24 +221,24 @@ object StdNames {
     final val bridgeAnnot: N = "bridge"
 
     // Classfile Attributes
-    final val AnnotationDefaultATTR: N      = "AnnotationDefault"
-    final val BridgeATTR: N                 = "Bridge"
-    final val ClassfileAnnotationATTR: N    = "RuntimeInvisibleAnnotations" // RetentionPolicy.CLASS. Currently not used (Apr 2009).
-    final val CodeATTR: N                   = "Code"
-    final val ConstantValueATTR: N          = "ConstantValue"
-    final val DeprecatedATTR: N             = "Deprecated"
-    final val ExceptionsATTR: N             = "Exceptions"
-    final val InnerClassesATTR: N           = "InnerClasses"
-    final val LineNumberTableATTR: N        = "LineNumberTable"
-    final val LocalVariableTableATTR: N     = "LocalVariableTable"
-    final val RuntimeAnnotationATTR: N      = "RuntimeVisibleAnnotations"   // RetentionPolicy.RUNTIME
-    final val RuntimeParamAnnotationATTR: N = "RuntimeVisibleParameterAnnotations" // RetentionPolicy.RUNTIME (annotations on parameters)
-    final val ScalaATTR: N                  = "Scala"
-    final val ScalaSignatureATTR: N         = "ScalaSig"
-    final val TASTYATTR: N                  = "TASTY"
-    final val SignatureATTR: N              = "Signature"
-    final val SourceFileATTR: N             = "SourceFile"
-    final val SyntheticATTR: N              = "Synthetic"
+    final val AnnotationDefaultATTR: N            = "AnnotationDefault"
+    final val BridgeATTR: N                       = "Bridge"
+    final val CodeATTR: N                         = "Code"
+    final val ConstantValueATTR: N                = "ConstantValue"
+    final val DeprecatedATTR: N                   = "Deprecated"
+    final val ExceptionsATTR: N                   = "Exceptions"
+    final val InnerClassesATTR: N                 = "InnerClasses"
+    final val LineNumberTableATTR: N              = "LineNumberTable"
+    final val LocalVariableTableATTR: N           = "LocalVariableTable"
+    final val RuntimeVisibleAnnotationATTR: N     = "RuntimeVisibleAnnotations"   // RetentionPolicy.RUNTIME
+    final val RuntimeInvisibleAnnotationATTR: N   = "RuntimeInvisibleAnnotations" // RetentionPolicy.CLASS
+    final val RuntimeParamAnnotationATTR: N       = "RuntimeVisibleParameterAnnotations" // RetentionPolicy.RUNTIME (annotations on parameters)
+    final val ScalaATTR: N                        = "Scala"
+    final val ScalaSignatureATTR: N               = "ScalaSig"
+    final val TASTYATTR: N                        = "TASTY"
+    final val SignatureATTR: N                    = "Signature"
+    final val SourceFileATTR: N                   = "SourceFile"
+    final val SyntheticATTR: N                    = "Synthetic"
 
 
 // ----- Term names -----------------------------------------
@@ -368,6 +368,7 @@ object StdNames {
     val TypeRef: N              = "TypeRef"
     val UNIT : N                = "UNIT"
     val add_ : N                = "add"
+    val acc: N                  = "acc"
     val annotation: N           = "annotation"
     val anyHash: N              = "anyHash"
     val anyValClass: N          = "anyValClass"
@@ -386,6 +387,7 @@ object StdNames {
     val array_length : N        = "array_length"
     val array_update : N        = "array_update"
     val arraycopy: N            = "arraycopy"
+    val as: N                   = "as"
     val asTerm: N               = "asTerm"
     val asModule: N             = "asModule"
     val asMethod: N             = "asMethod"
@@ -419,6 +421,7 @@ object StdNames {
     val elem: N                 = "elem"
     val elems: N                = "elems"
     val emptyValDef: N          = "emptyValDef"
+    val end: N                  = "end"
     val ensureAccessible : N    = "ensureAccessible"
     val eq: N                   = "eq"
     val eqInstance: N           = "eqInstance"
@@ -439,6 +442,7 @@ object StdNames {
     val flagsFromBits : N       = "flagsFromBits"
     val flatMap: N              = "flatMap"
     val foreach: N              = "foreach"
+    val fromDigits: N           = "fromDigits"
     val fromProduct: N          = "fromProduct"
     val genericArrayOps: N      = "genericArrayOps"
     val genericClass: N         = "genericClass"
@@ -447,6 +451,7 @@ object StdNames {
     val getOrElse: N            = "getOrElse"
     val hasNext: N              = "hasNext"
     val hashCode_ : N           = "hashCode"
+    val _hashCode_ : N          = "_hashCode"
     val hash_ : N               = "hash"
     val head: N                 = "head"
     val higherKinds: N          = "higherKinds"
@@ -503,7 +508,9 @@ object StdNames {
     val ordinalDollar: N        = "$ordinal"
     val ordinalDollar_ : N      = "_$ordinal"
     val origin: N               = "origin"
+    val parts: N                = "parts"
     val prefix : N              = "prefix"
+    val processEscapes: N       = "processEscapes"
     val productArity: N         = "productArity"
     val productElement: N       = "productElement"
     val productElementName: N   = "productElementName"
@@ -535,6 +542,7 @@ object StdNames {
     val setType: N              = "setType"
     val setTypeSignature: N     = "setTypeSignature"
     val splice: N               = "$splice"
+    val standardInterpolator: N = "standardInterpolator"
     val staticClass : N         = "staticClass"
     val staticModule : N        = "staticModule"
     val staticPackage : N       = "staticPackage"
@@ -858,7 +866,7 @@ object StdNames {
     final val BeanProperty: N        = "scala.beans.BeanProperty"
     final val BooleanBeanProperty: N = "scala.beans.BooleanBeanProperty"
     final val JavaSerializable: N    = "java.io.Serializable"
-   }
+  }
 
   class JavaTermNames extends JavaNames[TermName] {
     protected def fromString(s: String): TermName = termName(s)

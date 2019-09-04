@@ -1,9 +1,11 @@
 import scala.quoted._
 
-object Test {
+def test given QuoteContext = {
+
+  given as QuoteContext = ???
 
   implicit def IntIsLiftable: Liftable[Int] = new {
-    def toExpr(n: Int): Expr[Int] = n match {
+    def toExpr(n: Int) = n match {
       case Int.MinValue    => '{Int.MinValue}
       case _ if n < 0      => '{- ${toExpr(n)}}
       case 0               => '{0}
@@ -18,7 +20,7 @@ object Test {
   }
 
   implicit def ListIsLiftable[T: Liftable: Type]: Liftable[List[T]] = new {
-    def toExpr(xs: List[T]): Expr[List[T]] = xs match {
+    def toExpr(xs: List[T]) = xs match {
       case x :: xs1 => '{ ${ implicitly[Liftable[T]].toExpr(x) } :: ${ toExpr(xs1) } }
       case Nil => '{Nil: List[T]}
     }

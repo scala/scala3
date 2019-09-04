@@ -7,7 +7,7 @@ Tupled Function
 ----------------------
 
 With functions bounded to arities up to 22 it was possible to generalize some operation on all function types using overloading. 
-Now that we have functions and tuples generalized to [arities above 22](https://dotty.epfl.ch/docs/reference/dropped-features/limit22.html) overloading is not an option anymore. 
+Now that we have functions and tuples generalized to [arities above 22](../dropped-features/limit22.md) overloading is not an option anymore. 
 The type class `TupleFunction` provides a way to abstract directly over a function of any arity converting it to an equivalent function that receives all arguments in a single tuple.
 
 ```scala

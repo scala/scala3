@@ -103,8 +103,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
         traverse(x.tree, current)
       case _ =>
     }
-    for (root <- roots) {
+    for (root <- roots)
       traverse(root, NoSource)
-    }
   }
 }

@@ -6,7 +6,7 @@ class Bean {
   def value = 1
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   println(cm.staticClass("Bean").isCaseClass)
   println(typeOf[Bean].decl(TermName("value")).annotations)
 }

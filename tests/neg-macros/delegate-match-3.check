@@ -1,0 +1,7 @@
+
+-- Error: tests/neg-macros/delegate-match-3/Test_2.scala:3:2 -----------------------------------------------------------
+3 |  f // error
+  |  ^
+  |  NoMatchingImplicits
+  |  no implicit values were found that match type A
+  | This location is in code that was inlined at Test_2.scala:3

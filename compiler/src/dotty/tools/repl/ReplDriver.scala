@@ -139,8 +139,19 @@ class ReplDriver(settings: Array[String],
   // TODO: i5069
   final def bind(name: String, value: Any)(implicit state: State): State = state
 
-  private def withRedirectedOutput(op: => State): State =
-    Console.withOut(out) { Console.withErr(out) { op } }
+  private def withRedirectedOutput(op: => State): State = {
+    val savedOut = System.out
+    val savedErr = System.err
+    try {
+      System.setOut(out)
+      System.setErr(out)
+      op
+    }
+    finally {
+      System.setOut(savedOut)
+      System.setErr(savedErr)
+    }
+  }
 
   private def newRun(state: State) = {
     val run = compiler.newRun(rootCtx.fresh.setReporter(newStoreReporter), state)
@@ -251,7 +262,7 @@ class ReplDriver(settings: Array[String],
       val info = symbol.info
       val defs =
         info.bounds.hi.finalResultType
-          .membersBasedOnFlags(required = allOf(Method), excluded = Accessor | ParamAccessor | Synthetic | Private)
+          .membersBasedOnFlags(required = Method, excluded = Accessor | ParamAccessor | Synthetic | Private)
           .filterNot { denot =>
             denot.symbol.owner == defn.AnyClass ||
             denot.symbol.owner == defn.ObjectClass ||
@@ -261,7 +272,7 @@ class ReplDriver(settings: Array[String],
 
       val vals =
         info.fields
-          .filterNot(_.symbol.is(ParamAccessor | Private | Synthetic | Module))
+          .filterNot(_.symbol.isOneOf(ParamAccessor | Private | Synthetic | Module))
           .filter(_.symbol.name.is(SimpleNameKind))
           .sortBy(_.name)
 
@@ -291,8 +302,7 @@ class ReplDriver(settings: Array[String],
       }
 
 
-    ctx.atPhase(ctx.typerPhase.next) { implicit ctx =>
-
+    ctx.atPhase(ctx.typerPhase.next) {
       // Display members of wrapped module:
       tree.symbol.info.memberClasses
         .find(_.symbol.name == newestWrapper.moduleClassName)

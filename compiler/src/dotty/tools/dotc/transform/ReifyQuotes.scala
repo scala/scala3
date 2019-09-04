@@ -19,6 +19,8 @@ import dotty.tools.dotc.ast.tpd
 import typer.Implicits.SearchFailureType
 
 import scala.collection.mutable
+import dotty.tools.dotc.core.Annotations._
+import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._
@@ -70,17 +72,22 @@ class ReifyQuotes extends MacroTransform {
 
   override def phaseName: String = ReifyQuotes.name
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+  override def allowsImplicitSearch: Boolean = true
+
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
     tree match {
       case tree: RefTree if !ctx.inInlineMethod =>
         assert(!tree.symbol.isQuote)
         assert(!tree.symbol.isSplice)
+      case _ : TypeDef =>
+        assert(!tree.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot),
+          s"${tree.symbol} should have been removed by PickledQuotes because it has a @quoteTypeTag")
       case _ =>
     }
-  }
 
-  override def run(implicit ctx: Context): Unit =
+  override def run(implicit ctx: Context): Unit = {
     if (ctx.compilationUnit.needsStaging) super.run(freshStagingContext)
+  }
 
   protected def newTransformer(implicit ctx: Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree =
@@ -115,9 +122,9 @@ class ReifyQuotes extends MacroTransform {
 
     /** Assuming <expr> contains types `${<tag1>}, ..., ${<tagN>}`, the expression
      *
-     *      { type <Type1> = ${<tag1>}
+     *      { @quoteTypeTag type <Type1> = ${<tag1>}
      *        ...
-     *        type <TypeN> = ${<tagN>}
+     *        @quoteTypeTag type <TypeN> = ${<tagN>}
      *        <expr>
      *      }
      *
@@ -137,7 +144,7 @@ class ReifyQuotes extends MacroTransform {
           flags = Synthetic,
           info = TypeAlias(splicedTree.tpe.select(tpnme.splice)),
           coord = spliced.termSymbol.coord).asType
-
+        local.addAnnotation(Annotation(defn.InternalQuoted_QuoteTypeTagAnnot))
         ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local)
       }
 
@@ -170,7 +177,6 @@ class ReifyQuotes extends MacroTransform {
      */
     override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
       val isType = quote.symbol eq defn.InternalQuoted_typeQuote
-      assert(!(body.symbol.isSplice && (body.isInstanceOf[GenericApply[_]] || body.isInstanceOf[Select])))
       if (level > 0) {
         val body1 = nested(isQuote = true).transform(body)(quoteContext)
         super.transformQuotation(body1, quote)
@@ -195,21 +201,50 @@ class ReifyQuotes extends MacroTransform {
     }
 
     private def pickledQuote(body: Tree, splices: List[Tree], originalTp: Type, isType: Boolean)(implicit ctx: Context) = {
-      def pickleAsValue[T](value: T) =
-        ref(defn.Unpickler_liftedExpr).appliedToType(originalTp.widen).appliedTo(Literal(Constant(value)))
+      def qctx: Tree = {
+        val qctx = ctx.typer.inferImplicitArg(defn.QuoteContextClass.typeRef, body.span)
+        if (qctx.tpe.isInstanceOf[SearchFailureType])
+          ctx.error(ctx.typer.missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(body.span))
+        qctx
+      }
+
+      def liftedValue[T](value: T, name: TermName) =
+        ref(defn.LiftableModule)
+          .select(name).appliedToType(originalTp)
+          .select("toExpr".toTermName).appliedTo(Literal(Constant(value)))
+
+      def pickleAsValue[T](value: T) = {
+        value match {
+          case null => ref(defn.QuotedExprModule).select("nullExpr".toTermName)
+          case _: Unit => ref(defn.QuotedExprModule).select("unitExpr".toTermName)
+          case _: Boolean => liftedValue(value, "Liftable_Boolean_delegate".toTermName)
+          case _: Byte => liftedValue(value, "Liftable_Byte_delegate".toTermName)
+          case _: Short => liftedValue(value, "Liftable_Short_delegate".toTermName)
+          case _: Int => liftedValue(value, "Liftable_Int_delegate".toTermName)
+          case _: Long => liftedValue(value, "Liftable_Long_delegate".toTermName)
+          case _: Float => liftedValue(value, "Liftable_Float_delegate".toTermName)
+          case _: Double => liftedValue(value, "Liftable_Double_delegate".toTermName)
+          case _: Char => liftedValue(value, "Liftable_Char_delegate".toTermName)
+          case _: String => liftedValue(value, "Liftable_String_delegate".toTermName)
+        }
+      }
+
       def pickleAsTasty() = {
         val meth =
           if (isType) ref(defn.Unpickler_unpickleType).appliedToType(originalTp)
           else ref(defn.Unpickler_unpickleExpr).appliedToType(originalTp.widen)
-        meth.appliedTo(
-          liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType),
-          liftList(splices, defn.AnyType))
+        val spliceResType =
+          if (isType) defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
+          else defn.FunctionType(1, isContextual = true).appliedTo(defn.QuoteContextClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)) | defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
+        val pickledQuoteStrings = liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType)
+        val splicesList = liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), spliceResType))
+        meth.appliedTo(pickledQuoteStrings, splicesList)
       }
-      if (splices.nonEmpty) pickleAsTasty()
-      else if (isType) {
-        def tag(tagName: String) = ref(defn.QuotedTypeModule).select(tagName.toTermName)
-        if (body.symbol.isPrimitiveValueClass) tag(s"${body.symbol.name}Tag")
-        else pickleAsTasty()
+
+      if (isType) {
+        def tag(tagName: String) = ref(defn.QuotedTypeModule).select(tagName.toTermName).appliedTo(qctx)
+        if (splices.isEmpty && body.symbol.isPrimitiveValueClass) tag(s"${body.symbol.name}Tag")
+        else pickleAsTasty().select(nme.apply).appliedTo(qctx)
       }
       else toValue(body) match {
         case Some(value) => pickleAsValue(value)
@@ -282,8 +317,8 @@ class ReifyQuotes extends MacroTransform {
                 }
                 assert(tpw.isInstanceOf[ValueType])
                 val argTpe =
-                  if (tree.isType) defn.QuotedTypeType.appliedTo(tpw)
-                  else defn.QuotedExprType.appliedTo(tpw)
+                  if (tree.isType) defn.QuotedTypeClass.typeRef.appliedTo(tpw)
+                  else defn.FunctionType(1, isContextual = true).appliedTo(defn.QuoteContextClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(tpw))
                 val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).cast(argTpe)
                 val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)
                 i += 1
@@ -324,7 +359,9 @@ class ReifyQuotes extends MacroTransform {
       val tree2 = transform(tree)
       capturers --= outer.localSymbols
 
-      seq(captured.result().valuesIterator.toList, tree2)
+      val captures = captured.result().valuesIterator.toList
+      if (captures.isEmpty) tree2
+      else Block(captures, tree2)
     }
 
     /** Returns true if this tree will be captured by `makeLambda`. Checks phase consistency and presence of capturer. */
@@ -370,6 +407,14 @@ class ReifyQuotes extends MacroTransform {
             // TODO move to FirstTransform to trigger even without quotes
             cpy.DefDef(tree)(rhs = defaultValue(tree.rhs.tpe))
 
+          case tree: DefTree if level >= 1 =>
+            val newAnnotations = tree.symbol.annotations.mapconserve { annot =>
+              val newAnnotTree = transform(annot.tree) given ctx.withOwner(tree.symbol)
+              if (annot.tree == newAnnotTree) annot
+              else ConcreteAnnotation(newAnnotTree)
+            }
+            tree.symbol.annotations = newAnnotations
+            super.transform(tree)
           case _ =>
             super.transform(tree)
         }
@@ -407,12 +452,11 @@ object ReifyQuotes {
     }
 
     /** Type used for the hole that will replace this splice */
-    def getHoleType(body: tpd.Tree, splice: tpd.Tree)(implicit ctx: Context): Type = {
+    def getHoleType(body: tpd.Tree, splice: tpd.Tree)(implicit ctx: Context): Type =
       // For most expressions the splice.tpe but there are some types that are lost by lifting
       // that can be recoverd from the original tree. Currently the cases are:
       //  * Method types: the splice represents a method reference
       map.get(body.symbol).map(_.tpe.widen).getOrElse(splice.tpe)
-    }
 
     def isLiftedSymbol(sym: Symbol)(implicit ctx: Context): Boolean = map.contains(sym)
 
@@ -420,6 +464,6 @@ object ReifyQuotes {
     def getTrees: List[tpd.Tree] = trees.toList
 
     override def toString: String = s"Embedded($trees, $map)"
-
   }
 }
+

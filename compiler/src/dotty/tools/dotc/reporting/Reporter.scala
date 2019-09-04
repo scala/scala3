@@ -5,6 +5,7 @@ package reporting
 import scala.annotation.internal.sharable
 
 import core.Contexts._
+import core.TypeError
 import util.{SourcePosition, NoSourcePosition}
 import core.Decorators.PhaseListDecorator
 import collection.mutable
@@ -75,7 +76,7 @@ trait Reporting { this: Context =>
     reporter.report(new Info(msg, pos))
 
   def reportWarning(warning: Warning): Unit =
-    if (!this.settings.silentWarnings.value) {
+    if (!this.settings.silentWarnings.value)
       if (this.settings.XfatalWarnings.value)
         warning match {
           case warning: ConditionalWarning if !warning.enablingOption.value =>
@@ -84,7 +85,6 @@ trait Reporting { this: Context =>
             reporter.report(warning.toError)
         }
       else reporter.report(warning)
-    }
 
   def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new DeprecationWarning(msg, pos))
@@ -103,7 +103,7 @@ trait Reporting { this: Context =>
     val req = if (required) "needs to" else "should"
     val fqname = s"scala.language.$feature"
 
-    val explain = {
+    val explain =
       if (reporter.isReportedFeatureUseSite(featureUseSite)) ""
       else {
         reporter.reportNewFeatureUseSite(featureUseSite)
@@ -113,7 +113,6 @@ trait Reporting { this: Context =>
            |See the Scala docs for value $fqname for a discussion
            |why the feature $req be explicitly enabled.""".stripMargin
       }
-    }
 
     val msg = s"$featureDescription $req be enabled\nby making the implicit value $fqname visible.$explain"
     if (required) error(msg, pos)
@@ -134,6 +133,14 @@ trait Reporting { this: Context =>
   def error(msg: => Message, pos: SourcePosition = NoSourcePosition, sticky: Boolean = false): Unit = {
     val fullPos = addInlineds(pos)
     reporter.report(if (sticky) new StickyError(msg, fullPos) else new Error(msg, fullPos))
+    if (ctx.settings.YdebugError.value)
+      Thread.dumpStack()
+  }
+
+  def error(ex: TypeError, pos: SourcePosition): Unit = {
+    error(ex.toMessage, pos, sticky = true)
+    if (ctx.settings.YdebugTypeError.value)
+      ex.printStackTrace
   }
 
   def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
@@ -243,6 +250,14 @@ abstract class Reporter extends interfaces.ReporterResult {
    */
   def errorsReported: Boolean = hasErrors
 
+  /** Run `op` and return `true` if errors were reported by this reporter.
+   */
+  def reportsErrorsFor(op: Context => Unit) given (ctx: Context): Boolean = {
+    val initial = errorCount
+    op(ctx)
+    errorCount > initial
+  }
+
   private[this] var reportedFeaturesUseSites = Set[Symbol]()
 
   def isReportedFeatureUseSite(featureTrait: Symbol): Boolean =
@@ -292,12 +307,12 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   /** Returns a string meaning "n elements". */
   protected def countString(n: Int, elements: String): String = n match {
-    case 0 => "no " + elements + "s"
-    case 1 => "one " + elements
-    case 2 => "two " + elements + "s"
-    case 3 => "three " + elements + "s"
-    case 4 => "four " + elements + "s"
-    case _ => n + " " + elements + "s"
+    case 0 => s"no ${elements}s"
+    case 1 => s"one ${elements}"
+    case 2 => s"two ${elements}s"
+    case 3 => s"three ${elements}s"
+    case 4 => s"four ${elements}s"
+    case _ => s"$n ${elements}s"
   }
 
   /** Should this diagnostic not be reported at all? */

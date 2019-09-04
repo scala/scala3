@@ -8,6 +8,7 @@ import core.Comments.{ContextDoc, ContextDocstrings}
 import core.Contexts.{Context, ContextBase}
 import core.{MacroClassLoader, Mode, TypeError}
 import dotty.tools.dotc.ast.Positioned
+import dotty.tools.io.File
 import reporting._
 
 import scala.util.control.NonFatal
@@ -58,31 +59,37 @@ class Driver {
     MacroClassLoader.init(ctx)
     Positioned.updateDebugPos(ctx)
 
-    if (!ctx.settings.YdropComments.value(ctx) || ctx.mode.is(Mode.ReadComments)) {
+    if (!ctx.settings.YdropComments.value(ctx) || ctx.mode.is(Mode.ReadComments))
       ctx.setProperty(ContextDoc, new ContextDocstrings)
-    }
 
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     fromTastySetup(fileNames, ctx)
   }
 
   /** Setup extra classpath and figure out class names for tasty file inputs */
-  protected def fromTastySetup(fileNames0: List[String], ctx0: Context): (List[String], Context) = {
+  protected def fromTastySetup(fileNames0: List[String], ctx0: Context): (List[String], Context) =
     if (ctx0.settings.fromTasty.value(ctx0)) {
       // Resolve classpath and class names of tasty files
-      val (classPaths, classNames) = fileNames0.map { name =>
+      val (classPaths, classNames) = fileNames0.flatMap { name =>
         val path = Paths.get(name)
-        if (!name.endsWith(".tasty")) ("", name)
+        if (name.endsWith(".jar")) {
+          new dotty.tools.io.Jar(File(name)).toList.collect {
+            case e if e.getName.endsWith(".tasty") =>
+              (name, e.getName.stripSuffix(".tasty").replace("/", "."))
+          }
+        }
+        else if (!name.endsWith(".tasty"))
+          ("", name) :: Nil
         else if (Files.exists(path)) {
           TastyFileUtil.getClassName(path) match {
-            case Some(res) => res
+            case Some(res) => res:: Nil
             case _ =>
               ctx0.error(s"Could not load classname from $name.")
-              ("", name)
+              ("", name) :: Nil
           }
         } else {
           ctx0.error(s"File $name does not exist.")
-          ("", name)
+          ("", name) :: Nil
         }
       }.unzip
       val ctx1 = ctx0.fresh
@@ -90,8 +97,8 @@ class Driver {
       val fullClassPath = (classPaths1 :+ ctx1.settings.classpath.value(ctx1)).mkString(java.io.File.pathSeparator)
       ctx1.setSetting(ctx1.settings.classpath, fullClassPath)
       (classNames, ctx1)
-    } else (fileNames0, ctx0)
-  }
+    }
+    else (fileNames0, ctx0)
 
   /** Entry point to the compiler that can be conveniently used with Java reflection.
    *

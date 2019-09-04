@@ -107,6 +107,7 @@ find_lib () {
 DOTTY_COMP=$(find_lib "*dotty-compiler*")
 DOTTY_INTF=$(find_lib "*dotty-interfaces*")
 DOTTY_LIB=$(find_lib "*dotty-library*")
+DOTTY_STAGING=$(find_lib "*dotty-staging*")
 SCALA_ASM=$(find_lib "*scala-asm*")
 SCALA_LIB=$(find_lib "*scala-library*")
 SBT_INTF=$(find_lib "*compiler-interface*")

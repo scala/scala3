@@ -24,4 +24,4 @@ other, but classes in Scala cannot be overridden. To keep things clean
 (and its internal operations consistent) the Dotty compiler forces you
 to rename the inner classes so that their names are different.
 
-[More details](./class-shadowing-spec.html)
+[More details](./class-shadowing-spec.md)

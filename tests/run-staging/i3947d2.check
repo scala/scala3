@@ -1,0 +1,6 @@
+scala.Predef.classOf[foo.Foo].getCanonicalName()
+scala.Predef.classOf[foo.Foo#Bar].getCanonicalName()
+scala.Predef.classOf[foo.Foo.Baz].getCanonicalName()
+foo.Foo
+foo.Foo.Bar
+foo.Foo.Baz

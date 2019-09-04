@@ -45,13 +45,9 @@ class TestSet(s0: Set[Int], s1: Set[Int]) {
   }
   Console.println("succeeded for "+Iterations+" iterations.")
 }
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   def t3954: Unit = {
     import scala.collection.mutable
-    import scala.collection.immutable
-    val result = new mutable.ImmutableSetAdaptor(immutable.ListSet.empty[Int])
-    println(result.add(1))
-    println(result.add(1))
     val result2 = new mutable.HashSet[Int]
     println(result2.add(1))
     println(result2.add(1))
@@ -62,5 +58,4 @@ object Test extends dotty.runtime.LegacyApp {
   t3954
 
   new TestSet(HashSet.empty, new LinkedHashSet)
-  new TestSet(new ImmutableSetAdaptor(collection.immutable.Set.empty[Int]), new LinkedHashSet)
 }

@@ -1,4 +1,4 @@
-object Test extends dotty.runtime.LegacyApp{
+object Test extends App{
   val q : Queryable[Any] = new Queryable[Any]
   q.map(x => x).map(x => x)
 

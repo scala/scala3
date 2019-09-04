@@ -196,7 +196,7 @@ object test4 {
 
 }
 
-object Test extends dotty.runtime.LegacyApp {
+object Test extends App {
   test1
   test2
   test3
