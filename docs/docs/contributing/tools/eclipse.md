@@ -36,12 +36,12 @@ Import to Eclipse
 First step is to import dotty to Eclipse. This is done by selecting `File > Import` from the menu and selecting
 _Existing Projects into Workplace_. 
 
-![](../../images/eclipse/eclipse-import.png "Import Dotty to Eclipse")
+![](../../../images/eclipse/eclipse-import.png "Import Dotty to Eclipse")
 
 On the next window, select the bare minimum configuration to run Dotty. You will need the compiler, library and the 
 interfaces.
 
-![](../../images/eclipse/eclipse-select.png "Import Dotty Projects")
+![](../../../images/eclipse/eclipse-select.png "Import Dotty Projects")
 
 
 Running/Debugging
@@ -55,7 +55,7 @@ specify three `Bootstrap Entries` which are the compiler, interfaces and the lib
 Additionally you need to specify the scala-asm library as an external jar dependency. This can be found on your local
 `~/.ivy2/cache/` directory.
 
-![](../../images/eclipse/eclipse-runconfiguration.png "Import Dotty Projects")
+![](../../../images/eclipse/eclipse-runconfiguration.png "Import Dotty Projects")
 
 The compiler can be run and debugged using the same configuration. 
 
