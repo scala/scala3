@@ -220,6 +220,8 @@ class Definitions {
     @tu lazy val Compiletime_constValue   : Symbol = CompiletimePackageObject.requiredMethod("constValue")
     @tu lazy val Compiletime_constValueOpt: Symbol = CompiletimePackageObject.requiredMethod("constValueOpt")
     @tu lazy val Compiletime_code         : Symbol = CompiletimePackageObject.requiredMethod("code")
+  @tu lazy val CompiletimeTestingPackageObject: Symbol = ctx.requiredModule("scala.compiletime.testing.package")
+    @tu lazy val CompiletimeTesting_typeChecks   : Symbol = CompiletimeTestingPackageObject.requiredMethod("typeChecks")
 
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will

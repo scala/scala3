@@ -23,6 +23,7 @@ import config.Printers.inlining
 import ErrorReporting.errorTree
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
 import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, SourceFile, SourcePosition}
+import dotty.tools.dotc.parsing.Parsers.Parser
 
 import collection.mutable
 import reporting.trace
@@ -68,6 +69,7 @@ object Inliner {
    *            and body that replace it.
    */
   def inlineCall(tree: Tree)(implicit ctx: Context): Tree = {
+    if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
 
    /** Set the position of all trees logically contained in the expansion of
     *  inlined call `call` to the position of `call`. This transform is necessary
@@ -191,6 +193,38 @@ object Inliner {
     assert(ctx.source == pos.source)
     if (callSym.is(Macro)) ref(callSym.topLevelClass.owner).select(callSym.topLevelClass.name).withSpan(pos.span)
     else Ident(callSym.topLevelClass.typeRef).withSpan(pos.span)
+  }
+
+  object Intrinsics {
+
+    /** Expand call to scala.compiletime.testing.typeChecks */
+    def typeChecks(tree: Tree)(implicit ctx: Context): Tree = {
+      assert(tree.symbol == defn.CompiletimeTesting_typeChecks)
+      def getCodeArgValue(t: Tree): Option[String] = t match {
+        case Literal(Constant(code: String)) => Some(code)
+        case Typed(t2, _) => getCodeArgValue(t2)
+        case Inlined(_, Nil, t2) => getCodeArgValue(t2)
+        case Block(Nil, t2) => getCodeArgValue(t2)
+        case _ => None
+      }
+      val Apply(_, codeArg :: Nil) = tree
+      getCodeArgValue(codeArg.underlyingArgument) match {
+        case Some(code) =>
+          val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer)
+          val tree2 = new Parser(SourceFile.virtual("tasty-reflect", code))(ctx2).block()
+          val res =
+            if (ctx2.reporter.hasErrors) false
+            else {
+              ctx2.typer.typed(tree2)(ctx2)
+              !ctx2.reporter.hasErrors
+            }
+          Literal(Constant(res))
+        case _ =>
+          EmptyTree
+      }
+
+    }
+
   }
 }
 

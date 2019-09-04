@@ -12,7 +12,6 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Types.SingletonType
 import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
-import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.typer.Implicits.{AmbiguousImplicits, DivergingImplicit, NoMatchingImplicits, SearchFailure, SearchFailureType}
 import dotty.tools.dotc.util.{SourceFile, SourcePosition, Spans}
 
@@ -81,26 +80,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   type Settings = config.ScalaSettings
 
   def Settings_color(self: Settings): Boolean = self.color.value(rootContext) == "always"
-
-  //
-  // MISC
-  //
-  /** Whether the code type checks in the given context?
-   *
-   *  @param code The code to be type checked
-   *
-   *  The code should be a sequence of expressions or statements that may appear in a block.
-   */
-  def typeChecks(code: String) given (ctx: Context): Boolean = {
-    val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer)
-    val tree = new Parser(SourceFile.virtual("tasty-reflect", code))(ctx2).block()
-
-    if (ctx2.reporter.hasErrors) false
-    else {
-      ctx2.typer.typed(tree)(ctx2)
-      !ctx2.reporter.hasErrors
-    }
-  }
 
   //
   // TREES
