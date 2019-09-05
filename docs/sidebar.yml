@@ -191,8 +191,6 @@ sidebar:
               url: docs/contributing/tools/intellij-idea.html
             - title: Mill
               url: docs/contributing/tools/mill.html
-            - title: Sbt
-              url: docs/contributing/tools/sbt.html
             - title: Scalafix
               url: docs/contributing/tools/scalafix.html
         - title: Procedures
