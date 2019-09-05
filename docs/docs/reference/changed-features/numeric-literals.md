@@ -3,7 +3,7 @@ layout: doc-page
 title: Numeric Literals
 ---
 
-In Scala 2, numeric literals were confined to the primitive numeric types `Int`, Long`, `Float`, and `Double`. Scala 3 allows to write numeric literals also for user defined types. Example:
+In Scala 2, numeric literals were confined to the primitive numeric types `Int`, `Long`, `Float`, and `Double`. Scala 3 allows to write numeric literals also for user defined types. Example:
 ```
 val x: Long = -10_000_000_000
 val y: BigInt = 0x123_abc_789_def_345_678_901
