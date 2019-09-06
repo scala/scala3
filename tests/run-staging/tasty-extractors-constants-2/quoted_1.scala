@@ -2,8 +2,6 @@ import scala.quoted._
 import scala.quoted.staging._
 import given scala.quoted.autolift._
 
-import scala.tasty.util._
-
 object Macros {
 
   inline def testMacro: Unit = ${impl}
