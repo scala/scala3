@@ -13,7 +13,8 @@
   var i: scala.Int = 0
   while (i.<(size)) {
     val element: java.lang.String = arr.apply(i)
-    f.apply(element)
+
+    (f: scala.Function1[scala.Any, scala.Unit]).apply(element)
     i = i.+(1)
   }
 })
@@ -23,7 +24,8 @@
   var i: scala.Int = 0
   while (i.<(size)) {
     val element: java.lang.String = arr.apply(i)
-    f.apply(element)
+
+    (f: scala.Function1[scala.Any, scala.Unit]).apply(element)
     i = i.+(1)
   }
 })

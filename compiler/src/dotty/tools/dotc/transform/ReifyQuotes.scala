@@ -415,6 +415,25 @@ class ReifyQuotes extends MacroTransform {
             }
             tree.symbol.annotations = newAnnotations
             super.transform(tree)
+
+          case tree @ Select(qual @ Spliced(_), name) if tree.isTerm =>
+            val qual0 = transform(qual)
+            //
+            lazy val erasedSplicesType = new TypeMap() {
+              override def apply(tp: Type): Type = tp match {
+                case tp: TypeRef if tp.typeSymbol.isSplice => tp.dealias.typeSymbol.info.hiBound
+                case tp => mapOver(tp)
+              }
+            }.apply(qual.tpe)
+
+            val qual1 =
+              if
+                tree.symbol.owner.is(Final) && !qual.tpe.member(name).isOverloaded || // Will never be overloaded
+                qual.tpe =:= erasedSplicesType
+              then qual0
+              else Typed(qual0, TypeTree(erasedSplicesType))
+
+            cpy.Select(tree)(qual1, name)
           case _ =>
             super.transform(tree)
         }
