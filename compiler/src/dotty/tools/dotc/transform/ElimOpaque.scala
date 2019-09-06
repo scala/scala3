@@ -8,7 +8,7 @@ import Types._
 import Contexts.Context
 import Symbols._
 import Decorators._
-import Denotations.SingleDenotation
+import Denotations.{SingleDenotation, NonSymSingleDenotation}
 import SymDenotations.SymDenotation
 import DenotTransformers._
 import TypeUtils._
@@ -46,11 +46,9 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
         ref.copySymDenotation(
           info = cinfo.derivedClassInfo(selfInfo = strippedSelfType),
           initFlags = ref.flags &~ Opaque)
+      case ref: NonSymSingleDenotation if sym.isOpaqueAlias =>
+        ref.derivedSingleDenotation(sym, TypeAlias(sym.opaqueAlias.asSeenFrom(ref.prefix, sym.owner)))
       case _ =>
-        // This is dubious as it means that we do not see the alias from an external reference
-        // which has type UniqueRefDenotation instead of SymDenotation. But to correctly recompute
-        // the alias we'd need a prefix, which we do not have here. To fix this, we'd have to
-        // maintain a prefix in UniqueRefDenotations and JointRefDenotations.
         ref
     }
   }

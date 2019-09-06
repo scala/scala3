@@ -490,7 +490,7 @@ object Denotations {
                   // compare with way merge is performed in SymDenotation#computeMembersNamed
                   else throw new MergeError(ex.sym1, ex.sym2, ex.tp1, ex.tp2, pre)
               }
-            new JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor)
+            new JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
           }
         }
       }
@@ -543,7 +543,7 @@ object Denotations {
                 lubSym(sym1.allOverriddenSymbols, NoSymbol)
               }
             new JointRefDenotation(
-                jointSym, infoJoin(info1, info2, sym1, sym2), denot1.validFor & denot2.validFor)
+                jointSym, infoJoin(info1, info2, sym1, sym2), denot1.validFor & denot2.validFor, pre)
           }
         }
         else NoDenotation
@@ -716,9 +716,14 @@ object Denotations {
 
   /** A non-overloaded denotation */
   abstract class SingleDenotation(symbol: Symbol, initInfo: Type) extends Denotation(symbol, initInfo) {
-    protected def newLikeThis(symbol: Symbol, info: Type): SingleDenotation
+    protected def newLikeThis(symbol: Symbol, info: Type, pre: Type): SingleDenotation
 
     final def name(implicit ctx: Context): Name = symbol.name
+
+    /** If this is not a SymDenotation: The prefix under which the denotation was constructed.
+     *  NoPrefix for SymDenotations.
+     */
+    def prefix: Type = NoPrefix
 
     final def signature(implicit ctx: Context): Signature =
       if (isType) Signature.NotAMethod // don't force info if this is a type SymDenotation
@@ -733,9 +738,9 @@ object Denotations {
         case _ => Signature.NotAMethod
       }
 
-    def derivedSingleDenotation(symbol: Symbol, info: Type)(implicit ctx: Context): SingleDenotation =
-      if ((symbol eq this.symbol) && (info eq this.info)) this
-      else newLikeThis(symbol, info)
+    def derivedSingleDenotation(symbol: Symbol, info: Type, pre: Type = this.prefix)(implicit ctx: Context): SingleDenotation =
+      if ((symbol eq this.symbol) && (info eq this.info) && (pre eq this.prefix)) this
+      else newLikeThis(symbol, info, pre)
 
     def mapInfo(f: Type => Type)(implicit ctx: Context): SingleDenotation =
       derivedSingleDenotation(symbol, f(info))
@@ -1126,9 +1131,29 @@ object Denotations {
         case thisd: SymDenotation => thisd.owner
         case _ => if (symbol.exists) symbol.owner else NoSymbol
       }
-      def derived(info: Type) = derivedSingleDenotation(symbol, info.asSeenFrom(pre, owner))
+
+      /** The derived denotation with the given `info` transformed with `asSeenFrom`.
+       *  The prefix of the derived denotation is the new prefix `pre` if the type is
+       *  opaque, or if the current prefix is already different from `NoPrefix`.
+       *  That leaves SymDenotations (which have NoPrefix as the prefix), which are left
+       *  as SymDenotations unless the type is opaque. The treatment of opaque types
+       *  is needed, without it i7159.scala fails in from-tasty. Without the treatment,
+       *  opaque type denotations in subclasses are kept as SymDenotations, which means
+       *  that the transform in `ElimOpaque` will return the symbol's opaque alias without
+       *  adding the needed asSeenFrom.
+       *
+       *  Logically, the right thing to do would be to extend the same treatment to all denotations
+       *  Currently this fails the bootstrap. There's also a concern that this generalization
+       *  would create more denotation objects, at a price in performance.
+       */
+      def derived(info: Type) =
+        derivedSingleDenotation(
+          symbol,
+          info.asSeenFrom(pre, owner),
+          if (symbol.is(Opaque) || this.prefix != NoPrefix) pre else this.prefix)
+
       pre match {
-        case pre: ThisType if symbol.isOpaqueAlias && pre.cls == symbol.owner =>
+        case pre: ThisType if symbol.isOpaqueAlias && pre.cls == owner =>
           // This code is necessary to compensate for a "window of vulnerability" with
           // opaque types. The problematic sequence is as follows.
           //  1. Type a selection  `m.this.T` where `T` is an opaque type alias in `m`
@@ -1164,7 +1189,7 @@ object Denotations {
     }
   }
 
-  abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type) extends SingleDenotation(symbol, initInfo) {
+  abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type, override val prefix: Type) extends SingleDenotation(symbol, initInfo) {
     def infoOrCompleter: Type = initInfo
     def isType: Boolean = infoOrCompleter.isInstanceOf[TypeType]
   }
@@ -1172,26 +1197,31 @@ object Denotations {
   class UniqueRefDenotation(
     symbol: Symbol,
     initInfo: Type,
-    initValidFor: Period) extends NonSymSingleDenotation(symbol, initInfo) {
+    initValidFor: Period,
+    prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = true
-    protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
+      new UniqueRefDenotation(s, i, validFor, pre)
   }
 
   class JointRefDenotation(
     symbol: Symbol,
     initInfo: Type,
-    initValidFor: Period) extends NonSymSingleDenotation(symbol, initInfo) {
+    initValidFor: Period,
+    prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = false
-    protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
+      new JointRefDenotation(s, i, validFor, pre)
   }
 
-  class ErrorDenotation(implicit ctx: Context) extends NonSymSingleDenotation(NoSymbol, NoType) {
+  class ErrorDenotation(implicit ctx: Context) extends NonSymSingleDenotation(NoSymbol, NoType, NoType) {
     override def exists: Boolean = false
     override def hasUniqueSym: Boolean = false
     validFor = Period.allInRun(ctx.runId)
-    protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = this
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
+      this
   }
 
   /** An error denotation that provides more info about the missing reference.
