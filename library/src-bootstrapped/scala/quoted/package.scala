@@ -6,7 +6,9 @@ package object quoted {
     given autoToExpr[T] as Conversion[T, Expr[T]] given Liftable[T], QuoteContext = _.toExpr
   }
 
-  implicit object ExprOps {
+  given ExprOps {
+
+    /** Lift a value into an expression containing the construction of that value */
     def (x: T) toExpr[T: Liftable] given QuoteContext: Expr[T] = the[Liftable[T]].toExpr(x)
 
    /** Lifts this sequence of expressions into an expression of a sequence

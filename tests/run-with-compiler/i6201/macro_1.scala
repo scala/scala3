@@ -1,4 +1,5 @@
 import scala.quoted._
+import given scala.quoted._
 
 inline def (inline x: String) strip: String =
   ${ stripImpl(x) }

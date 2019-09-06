@@ -1,5 +1,5 @@
 import scala.quoted._
-
+import given scala.quoted._
 
 inline def isFunctionType[T:Type]: Boolean = ${ isFunctionTypeImpl('[T]) }
 
@@ -30,4 +30,3 @@ def isDependentFunctionTypeImpl[T](tp: Type[T]) given (qctx: QuoteContext): Expr
   import qctx.tasty._
   tp.unseal.tpe.isDependentFunctionType.toExpr
 }
-

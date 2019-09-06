@@ -3,6 +3,7 @@
 package dotty.internal
 
 import scala.quoted._
+import given scala.quoted._
 import scala.quoted.matching._
 import reflect._
 

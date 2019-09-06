@@ -1,5 +1,6 @@
 
 import scala.quoted._
+import given scala.quoted._
 import scala.language.implicitConversions
 import given scala.quoted.autolift._
 

@@ -1,6 +1,7 @@
 package scala.internal
 
 import scala.quoted._
+import given scala.quoted._
 
 object StagedTuple {
   import Tuple.Concat

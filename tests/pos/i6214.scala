@@ -1,4 +1,5 @@
 import scala.quoted._
+import given scala.quoted._
 object Test {
   def res(x: quoted.Expr[Int]) given QuoteContext: quoted.Expr[Int] = x match {
     case '{ val a: Int = $y; 1} => y                     // owner of `y` is `res`

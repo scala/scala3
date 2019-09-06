@@ -1,5 +1,6 @@
 
 import scala.quoted._
+import given scala.quoted._
 
 object E {
 

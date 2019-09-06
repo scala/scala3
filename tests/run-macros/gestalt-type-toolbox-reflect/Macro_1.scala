@@ -2,6 +2,7 @@
 // using staging reflection
 
 import scala.quoted._
+import given scala.quoted._
 
 object TypeToolbox {
   /** are the two types equal? */

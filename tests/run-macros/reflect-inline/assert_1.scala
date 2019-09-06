@@ -1,4 +1,5 @@
 import scala.quoted._
+import given scala.quoted._
 
 object api {
   inline def (inline x: String) stripMargin: String =

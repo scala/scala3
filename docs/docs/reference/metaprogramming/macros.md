@@ -224,6 +224,7 @@ Here’s a compiler that maps an expression given in the interpreted
 language to quoted Scala code of type `Expr[Int]`.
 The compiler takes an environment that maps variable names to Scala `Expr`s.
 ```scala
+    import scala.quoted._
     import given scala.quoted._
 
     def compile(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
