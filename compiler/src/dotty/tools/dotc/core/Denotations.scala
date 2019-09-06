@@ -1134,20 +1134,23 @@ object Denotations {
 
       /** The derived denotation with the given `info` transformed with `asSeenFrom`.
        *  The prefix of the derived denotation is the new prefix `pre` if the type is
-       *  abstract or opaque, or if the current prefix is already different from `NoPrefix`.
+       *  opaque, or if the current prefix is already different from `NoPrefix`.
        *  That leaves SymDenotations (which have NoPrefix as the prefix), which are left
-       *  as SymDenotations unless the type is abstract or opaque. This special case
-       *  is not ideal, and we should see whether we can drop it.
-       *  Currently dropping the special case fails the bootstrap. There's also a concern
-       *  that without the special case we'd create more denotation objects, at a price
-       *  in performance.
+       *  as SymDenotations unless the type is opaque. The treatment of opaque types
+       *  is needed, without it i7159.scala fails in from-tasty. Without the treatment,
+       *  opaque type denotations in subclasses are kept as SymDenotations, which means
+       *  that the transform in `ElimOpaque` will return the symbol's opaque alias without
+       *  adding the needed asSeenFrom.
+       *
+       *  Logically, the right thing to do would be to extend the same treatment to all denotations
+       *  Currently this fails the bootstrap. There's also a concern that this generalization
+       *  would create more denotation objects, at a price in performance.
        */
       def derived(info: Type) =
         derivedSingleDenotation(
           symbol,
           info.asSeenFrom(pre, owner),
-          if (symbol.isOneOf(Opaque | Deferred) || this.prefix != NoPrefix) pre
-          else /* special case, see above */ this.prefix)
+          if (symbol.is(Opaque) || this.prefix != NoPrefix) pre else this.prefix)
 
       pre match {
         case pre: ThisType if symbol.isOpaqueAlias && pre.cls == owner =>
