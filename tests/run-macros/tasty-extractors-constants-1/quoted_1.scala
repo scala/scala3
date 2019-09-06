@@ -3,8 +3,6 @@ import given scala.quoted.autolift._
 
 import scala.quoted.matching._
 
-import scala.tasty.util._
-
 object Macros {
 
   implicit inline def testMacro: Unit = ${impl}
