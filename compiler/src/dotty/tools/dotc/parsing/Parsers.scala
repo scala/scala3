@@ -655,6 +655,7 @@ object Parsers {
         }
 
       def needsBraces(t: Any): Boolean = t match {
+        case Match(EmptyTree, _) => true
         case Block(stats, expr) =>
           stats.nonEmpty || needsBraces(expr)
         case expr: Tree =>
