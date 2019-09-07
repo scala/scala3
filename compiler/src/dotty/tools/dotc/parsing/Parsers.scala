@@ -1845,7 +1845,7 @@ object Parsers {
     def matchExpr(t: Tree, start: Offset, mkMatch: (Tree, List[CaseDef]) => Match) =
       indentRegion(MATCH) {
         atSpan(start, in.skipToken()) {
-          inBracesOrIndented(mkMatch(t, caseClauses(caseClause)))
+          mkMatch(t, inBracesOrIndented(caseClauses(caseClause)))
         }
       }
 
