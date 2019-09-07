@@ -712,8 +712,9 @@ object Parsers {
       val (startOpening, endOpening) = startingElimRegion(colonRequired)
       val isOutermost = in.currentRegion.isOutermost
       def allBraces(r: Region): Boolean = r match {
+        case r: Indented => r.isOutermost || allBraces(r.enclosing)
         case r: InBraces => allBraces(r.enclosing)
-        case _ => r.isOutermost
+        case _ => false
       }
       var canRewrite = allBraces(in.currentRegion) && // test (1)
         !testChars(in.lastOffset - 3, " =>") // test(6)
