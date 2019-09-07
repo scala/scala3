@@ -79,13 +79,12 @@ object GenericSignatures {
       boundsSig(hiBounds(param.paramInfo.bounds))
     }
 
-    def polyParamSig(tparams: List[LambdaParam]): Unit = {
+    def polyParamSig(tparams: List[LambdaParam]): Unit =
       if (tparams.nonEmpty) {
         builder.append('<')
         tparams.foreach(paramSig)
         builder.append('>')
       }
-    }
 
     def typeParamSig(name: Name): Unit = {
       builder.append(ClassfileConstants.TVAR_TAG)
@@ -270,7 +269,7 @@ object GenericSignatures {
           jsig(intersectionDominator(tp1 :: tp2 :: Nil), primitiveOK = primitiveOK)
 
         case ci: ClassInfo =>
-          def polyParamSig(tparams: List[TypeParamInfo]): Unit = {
+          def polyParamSig(tparams: List[TypeParamInfo]): Unit =
             if (tparams.nonEmpty) {
               builder.append('<')
               tparams.foreach { tp =>
@@ -279,7 +278,6 @@ object GenericSignatures {
               }
               builder.append('>')
             }
-          }
           val tParams = tp.typeParams
           if (toplevel) polyParamSig(tParams)
           superSig(ci.typeSymbol, ci.parents)

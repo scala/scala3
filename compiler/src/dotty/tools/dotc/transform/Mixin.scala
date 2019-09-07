@@ -200,10 +200,9 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         else call :: Nil
       case None =>
         if (baseCls.isAllOf(NoInitsTrait) || defn.NoInitClasses.contains(baseCls) || defn.isFunctionClass(baseCls)) Nil
-        else {
+        else
           //println(i"synth super call ${baseCls.primaryConstructor}: ${baseCls.primaryConstructor.info}")
           transformFollowingDeep(superRef(baseCls.primaryConstructor).appliedToNone) :: Nil
-        }
     }
 
     def wasOneOf(sym: Symbol, flags: FlagSet) =
@@ -236,14 +235,13 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           val rhs =
             if (wasOneOf(getter, ParamAccessor))
               nextArgument()
-            else if (isScala2x) {
+            else if (isScala2x)
               if (getter.is(Lazy, butNot = Module))
                 initial
               else if (getter.is(Module))
                 New(getter.info.resultType, List(This(cls)))
               else
                 Underscore(getter.info.resultType)
-            }
             else
               initial
           // transformFollowing call is needed to make memoize & lazy vals run

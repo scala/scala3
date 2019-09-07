@@ -742,12 +742,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def tparamsText[T >: Untyped](params: List[Tree[T]]): Text =
     "[" ~ toText(params, ", ") ~ "]" provided params.nonEmpty
 
-  def addVparamssText[T >: Untyped](leading: Text, vparamss: List[List[ValDef[T]]]): Text = {
+  def addVparamssText[T >: Untyped](leading: Text, vparamss: List[List[ValDef[T]]]): Text =
     vparamss.foldLeft(leading)((txt, params) =>
       txt ~
       (Str(" given ") provided params.nonEmpty && params.head.mods.is(Given)) ~
       paramsText(params))
-  }
   protected def valDefToText[T >: Untyped](tree: ValDef[T]): Text = {
     import untpd.{modsDeco => _}
     dclTextOr(tree) {

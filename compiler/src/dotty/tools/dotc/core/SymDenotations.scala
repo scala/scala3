@@ -86,18 +86,19 @@ trait SymDenotations { this: Context =>
         else {
           implicit val ctx = this
           val initial = denot.initial
-          if ((initial ne denot) || ctx.phaseId != initial.validFor.firstPhaseId) {
+          if ((initial ne denot) || ctx.phaseId != initial.validFor.firstPhaseId)
             ctx.withPhase(initial.validFor.firstPhaseId).traceInvalid(initial)
-          } else try {
+          else try {
             val owner = denot.owner.denot
             if (!traceInvalid(owner)) explainSym("owner is invalid")
             else if (!owner.isClass || owner.isRefinementClass || denot.isSelfSym) true
             else if (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol) true
             else explainSym(s"decls of ${show(owner)} are ${owner.unforcedDecls.lookupAll(denot.name).toList}, do not contain ${denot.symbol}")
-          } catch {
+          }
+          catch {
             case ex: StaleSymbol => explainSym(s"$ex was thrown")
           }
-      }
+        }
       case _ =>
         explain("denotation is not a SymDenotation")
     }

@@ -91,13 +91,12 @@ abstract class TraceSyntax {
     if (ctx.mode.is(Mode.Printing)) op
     else {
       var finalized = false
-      def finalize(result: Any, note: String) = {
+      def finalize(result: Any, note: String) =
         if (!finalized) {
           ctx.base.indent -= 1
           log(s"${ctx.base.indentTab * ctx.base.indent}${trailing(result)}$note")
           finalized = true
         }
-      }
       try {
         log(s"${ctx.base.indentTab * ctx.base.indent}$leading")
         ctx.base.indent += 1

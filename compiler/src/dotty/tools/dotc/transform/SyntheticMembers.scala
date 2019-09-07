@@ -93,11 +93,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val isEnumCase = clazz.derivesFrom(defn.EnumClass) && clazz != defn.EnumClass
 
     val symbolsToSynthesize: List[Symbol] =
-      if (clazz.is(Case)) {
+      if (clazz.is(Case))
         if (clazz.is(Module)) caseModuleSymbols
         else if (isEnumCase) caseSymbols ++ enumCaseSymbols
         else caseSymbols
-      }
       else if (isEnumCase) enumCaseSymbols
       else if (isDerivedValueClass(clazz)) valueSymbols
       else Nil
@@ -284,14 +283,13 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *
      *  else if either `T` or `U` are primitive, gets the `hashCode` method implemented by [[caseHashCodeBody]]
      */
-    def chooseHashcode(implicit ctx: Context) = {
+    def chooseHashcode(implicit ctx: Context) =
       if (clazz.is(ModuleClass))
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString.hashCode))
       else if (accessors.exists(_.info.finalResultType.classSymbol.isPrimitiveValueClass))
         caseHashCodeBody
       else
         ref(defn.ScalaRuntime__hashCode).appliedTo(This(clazz))
-    }
 
     /** The class
      *
@@ -380,51 +378,51 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       Nil
   }
 
-   /** The class
-     *
-     *  ```
-     *  case class C[T <: U](x: T, y: String*)
-     *  ```
-     *
-     *  gets the `fromProduct` method:
-     *
-     *  ```
-     *  def fromProduct(x$0: Product): MirroredMonoType =
-     *    new C[U](
-     *      x$0.productElement(0).asInstanceOf[U],
-     *      x$0.productElement(1).asInstanceOf[Seq[String]]: _*)
-     *  ```
-     *  where
-     *  ```
-     *  type MirroredMonoType = C[?]
-     *  ```
-     */
-    def fromProductBody(caseClass: Symbol, param: Tree)(implicit ctx: Context): Tree = {
-      val (classRef, methTpe) =
-        caseClass.primaryConstructor.info match {
-          case tl: PolyType =>
-            val (tl1, tpts) = constrained(tl, untpd.EmptyTree, alwaysAddTypeVars = true)
-            val targs =
-              for (tpt <- tpts) yield
-                tpt.tpe match {
-                  case tvar: TypeVar => tvar.instantiate(fromBelow = false)
-                }
-            (caseClass.typeRef.appliedTo(targs), tl.instantiate(targs))
-          case methTpe =>
-            (caseClass.typeRef, methTpe)
-        }
-      methTpe match {
-        case methTpe: MethodType =>
-          val elems =
-            for ((formal, idx) <- methTpe.paramInfos.zipWithIndex) yield {
-              val elem =
-                param.select(defn.Product_productElement).appliedTo(Literal(Constant(idx)))
-                  .ensureConforms(formal.underlyingIfRepeated(isJava = false))
-               if (formal.isRepeatedParam) ctx.typer.seqToRepeated(elem) else elem
-            }
-          New(classRef, elems)
+  /** The class
+   *
+   *  ```
+   *  case class C[T <: U](x: T, y: String*)
+   *  ```
+   *
+   *  gets the `fromProduct` method:
+   *
+   *  ```
+   *  def fromProduct(x$0: Product): MirroredMonoType =
+   *    new C[U](
+   *      x$0.productElement(0).asInstanceOf[U],
+   *      x$0.productElement(1).asInstanceOf[Seq[String]]: _*)
+   *  ```
+   *  where
+   *  ```
+   *  type MirroredMonoType = C[?]
+   *  ```
+   */
+  def fromProductBody(caseClass: Symbol, param: Tree)(implicit ctx: Context): Tree = {
+    val (classRef, methTpe) =
+      caseClass.primaryConstructor.info match {
+        case tl: PolyType =>
+          val (tl1, tpts) = constrained(tl, untpd.EmptyTree, alwaysAddTypeVars = true)
+          val targs =
+            for (tpt <- tpts) yield
+              tpt.tpe match {
+                case tvar: TypeVar => tvar.instantiate(fromBelow = false)
+              }
+          (caseClass.typeRef.appliedTo(targs), tl.instantiate(targs))
+        case methTpe =>
+          (caseClass.typeRef, methTpe)
       }
+    methTpe match {
+      case methTpe: MethodType =>
+        val elems =
+          for ((formal, idx) <- methTpe.paramInfos.zipWithIndex) yield {
+            val elem =
+              param.select(defn.Product_productElement).appliedTo(Literal(Constant(idx)))
+                .ensureConforms(formal.underlyingIfRepeated(isJava = false))
+            if (formal.isRepeatedParam) ctx.typer.seqToRepeated(elem) else elem
+          }
+        New(classRef, elems)
     }
+  }
 
   /** For an enum T:
    *

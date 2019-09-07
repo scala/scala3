@@ -85,9 +85,8 @@ class ReifyQuotes extends MacroTransform {
       case _ =>
     }
 
-  override def run(implicit ctx: Context): Unit = {
+  override def run(implicit ctx: Context): Unit =
     if (ctx.compilationUnit.needsStaging) super.run(freshStagingContext)
-  }
 
   protected def newTransformer(implicit ctx: Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree =
@@ -186,7 +185,7 @@ class ReifyQuotes extends MacroTransform {
           // Optimization: avoid the full conversion when capturing `x`
           // in '{ x } to '{ ${x$1} } and go directly to `x$1`
           capturers(body.symbol)(body)
-        case _=>
+        case _ =>
           val (body1, splices) = nested(isQuote = true).splitQuote(body)(quoteContext)
           if (level == 0) {
             val body2 =
@@ -194,9 +193,8 @@ class ReifyQuotes extends MacroTransform {
               else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
             pickledQuote(body2, splices, body.tpe, isType).withSpan(quote.span)
           }
-          else {
+          else
             body
-          }
       }
     }
 
@@ -213,7 +211,7 @@ class ReifyQuotes extends MacroTransform {
           .select(name).appliedToType(originalTp)
           .select("toExpr".toTermName).appliedTo(Literal(Constant(value)))
 
-      def pickleAsValue[T](value: T) = {
+      def pickleAsValue[T](value: T) =
         value match {
           case null => ref(defn.QuotedExprModule).select("nullExpr".toTermName)
           case _: Unit => ref(defn.QuotedExprModule).select("unitExpr".toTermName)
@@ -227,7 +225,6 @@ class ReifyQuotes extends MacroTransform {
           case _: Char => liftedValue(value, "Liftable_Char_delegate".toTermName)
           case _: String => liftedValue(value, "Liftable_String_delegate".toTermName)
         }
-      }
 
       def pickleAsTasty() = {
         val meth =
@@ -256,7 +253,7 @@ class ReifyQuotes extends MacroTransform {
      *  and make a hole from these parts. Otherwise issue an error, unless we
      *  are in the body of an inline method.
      */
-    protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree = {
+    protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree =
       if (level > 1) {
         val body1 = nested(isQuote = false).transform(body)(spliceContext)
         splice match {
@@ -276,7 +273,6 @@ class ReifyQuotes extends MacroTransform {
         if (splice.isType || outer.embedded.isLiftedSymbol(body.symbol)) hole
         else Inlined(EmptyTree, Nil, hole).withSpan(splice.span)
       }
-    }
 
     /** Transforms the contents of a nested splice
      *  Assuming
@@ -389,7 +385,7 @@ class ReifyQuotes extends MacroTransform {
       Hole(idx, splices).withType(tpe).asInstanceOf[Hole]
     }
 
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+    override def transform(tree: Tree)(implicit ctx: Context): Tree =
       if (tree.source != ctx.source && tree.source.exists)
         transform(tree)(ctx.withSource(tree.source))
       else reporting.trace(i"Reifier.transform $tree at $level", show = true) {
@@ -419,13 +415,11 @@ class ReifyQuotes extends MacroTransform {
             super.transform(tree)
         }
       }
-    }
 
-    private def liftList(list: List[Tree], tpe: Type)(implicit ctx: Context): Tree = {
+    private def liftList(list: List[Tree], tpe: Type)(implicit ctx: Context): Tree =
       list.foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>
         acc.select("::".toTermName).appliedToType(tpe).appliedTo(x)
       }
-    }
   }
 }
 

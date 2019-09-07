@@ -1006,13 +1006,12 @@ trait Applications extends Compatibility {
       case typedFn =>
         typedFn.tpe.widen match {
           case pt: PolyType =>
-            if (typedArgs.length <= pt.paramInfos.length && !isNamed) {
+            if (typedArgs.length <= pt.paramInfos.length && !isNamed)
               if (typedFn.symbol == defn.Predef_classOf && typedArgs.nonEmpty) {
                 val arg = typedArgs.head
                 if (!arg.symbol.is(Module)) // Allow `classOf[Foo.type]` if `Foo` is an object
                   checkClassType(arg.tpe, arg.sourcePos, traitReq = false, stablePrefixReq = false)
               }
-            }
           case _ =>
         }
         def tryDynamicTypeApply(): Tree = typedFn match {
@@ -1322,8 +1321,7 @@ trait Applications extends Compatibility {
         tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
       case tp1: PolyType => // (2)
         val nestedCtx = ctx.fresh.setExploreTyperState()
-
-        {
+        locally {
           implicit val ctx = nestedCtx
 
           // Fully define the PolyType parameters so that the infos of the

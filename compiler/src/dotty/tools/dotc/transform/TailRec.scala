@@ -411,10 +411,9 @@ class TailRec extends MiniPhase {
           if (inTailPosition)
             tailPositionLabeledSyms += bind.symbol
           try cpy.Labeled(tree)(bind, transform(expr))
-          finally {
+          finally
             if (inTailPosition)
               tailPositionLabeledSyms -= bind.symbol
-          }
 
         case Return(expr, from) =>
           val fromSym = from.symbol

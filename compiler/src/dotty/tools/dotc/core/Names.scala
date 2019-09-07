@@ -390,7 +390,7 @@ object Names {
     override def toString: String =
       if (length == 0) ""
       else {
-        if (Config.checkBackendNames) {
+        if (Config.checkBackendNames)
           if (!toStringOK) {
             // We print the stacktrace instead of doing an assert directly,
             // because asserts are caught in exception handlers which might
@@ -400,7 +400,6 @@ object Names {
             Thread.dumpStack()
             assert(false)
           }
-        }
         new String(chrs, start, length)
       }
 

@@ -105,7 +105,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     val NoFieldNeeded = Lazy | Deferred | JavaDefined | (if (ctx.settings.YnoInline.value) EmptyFlags else Inline)
 
-    def erasedBottomTree(sym: Symbol) = {
+    def erasedBottomTree(sym: Symbol) =
       if (sym eq defn.NothingClass) Throw(nullLiteral)
       else if (sym eq defn.NullClass) nullLiteral
       else if (sym eq defn.BoxedUnitClass) ref(defn.BoxedUnit_UNIT)
@@ -113,7 +113,6 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         assert(false, s"$sym has no erased bottom tree")
         EmptyTree
       }
-    }
 
     if (sym.is(Accessor, butNot = NoFieldNeeded)) {
       val field = sym.field.orElse(newField).asTerm
@@ -136,7 +135,8 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         addAnnotations(fieldDef.denot)
         removeAnnotations(sym)
         Thicket(fieldDef, getterDef)
-      } else if (sym.isSetter) {
+      }
+      else if (sym.isSetter) {
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // This is intended as an assertion
         field.setFlag(Mutable) // Necessary for vals mixed in from Scala2 traits
         val initializer =
