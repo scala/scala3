@@ -185,10 +185,6 @@ sidebar:
           url: docs/contributing/debugging.html
         - title: IDEs and Tools
           subsection:
-            - title: Eclipse
-              url: docs/contributing/tools/eclipse.html
-            - title: IntelliJ IDEA
-              url: docs/contributing/tools/intellij-idea.html
             - title: Mill
               url: docs/contributing/tools/mill.html
             - title: Scalafix
