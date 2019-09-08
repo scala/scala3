@@ -372,7 +372,7 @@ object Scanners {
     def isLeadingInfixOperator() = (
           allowLeadingInfixOperators
       && (  token == BACKQUOTED_IDENT
-          || token == IDENTIFIER && isOperatorPart(name(name.length - 1)))
+         || token == IDENTIFIER && isOperatorPart(name(name.length - 1)))
       && ch == ' '
       && !pastBlankLine
       && {
@@ -530,6 +530,25 @@ object Scanners {
         case _ =>
       }
     }
+
+    def observeIndented(): Unit =
+      if (indentSyntax && isAfterLineEnd && token != INDENT) {
+        val newLineInserted = token == NEWLINE || token == NEWLINES
+        val nextOffset = if (newLineInserted) next.offset else offset
+        val nextWidth = indentWidth(nextOffset)
+        val lastWidth = currentRegion match {
+          case r: Indented => r.width
+          case r: InBraces => r.width
+          case _ => nextWidth
+        }
+
+        if (lastWidth < nextWidth) {
+          currentRegion = Indented(nextWidth, Set(), COLONEOL, currentRegion)
+          if (!newLineInserted) next.copyFrom(this)
+          offset = nextOffset
+          token = INDENT
+        }
+      }
 
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
      *  - Insert missing OUTDENTs at EOF
@@ -1342,6 +1361,7 @@ object Scanners {
       }
     }
   }
+
   object IndentWidth {
     private inline val MaxCached = 40
     private val spaces = Array.tabulate(MaxCached + 1)(new Run(' ', _))

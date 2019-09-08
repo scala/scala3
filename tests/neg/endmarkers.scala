@@ -1,4 +1,4 @@
-object Test:
+object Test
 
   locally:
     var x = 0
@@ -52,11 +52,11 @@ object Test:
     x < 10
   do ()
 
-class Test2:
+class Test2
   self =>
   def foo = 1
 
-  object x:
+  object x
     new Test2:
       override def foo = 2
       end new               // error: end of statement expected but new found  // error: not found: end
@@ -64,16 +64,16 @@ class Test2:
   end Test2                 // error: misaligned end marker
 end Test2
 
-class Test3:
+class Test3
  self =>
   def foo = 1
  end Test3  // error: not found: end
 
 import collection.mutable.HashMap
 
-class Coder(words: List[String]):
+class Coder(words: List[String])
 
-  class Foo:
+  class Foo
     println()
     end Foo  // error: not found: end
 
