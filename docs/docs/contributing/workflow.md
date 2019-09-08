@@ -3,9 +3,8 @@ layout: doc-page
 title: Workflow
 ---
 
-Check [Getting Started](getting-started.md) for instructions on how to obtain the source code of dotty and 
-[Eclipse](tools/eclipse.md) or [IntelliJ-IDEA](tools/intellij-idea.md).
-This document details common workflow patterns when working with Dotty before using the debugging tools.
+Check [Getting Started](getting-started.md) for instructions on how to obtain the source code of dotty.
+This document details common workflow patterns when working with Dotty.
 
 ## Compiling files with dotc ##
 
