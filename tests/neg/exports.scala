@@ -28,24 +28,24 @@
     def status: List[String] = printUnit.status ++ scanUnit.status
   }
 
-trait IterableOps[+A, +CC[_], +C] {
+  trait IterableOps[+A, +CC[_], +C] {
 
-  def concat[B >: A](other: List[B]): CC[B]
+    def concat[B >: A](other: List[B]): CC[B]
 
-  export this.{concat => ++}   // error: no eligible member
+    export this.{concat => ++}   // error: no eligible member
 
-}
+  }
 
-class Foo {
-  val foo : Foo = new Foo
-  export foo.foo // error: no eligible member
-}
+  class Foo {
+    val foo : Foo = new Foo
+    export foo.foo // error: no eligible member
+  }
 
-class Baz {
-  val bar: Bar = new Bar
-  export bar._  // error: double definition
-}
-class Bar {
-  val baz: Baz = new Baz
-  export baz._
-}
+  class Baz {
+    val bar: Bar = new Bar
+    export bar._  // error: double definition
+  }
+  class Bar {
+    val baz: Baz = new Baz
+    export baz._
+  }
