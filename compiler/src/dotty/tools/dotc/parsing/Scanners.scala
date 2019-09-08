@@ -28,6 +28,8 @@ object Scanners {
 
   type Token = Int
 
+  private val identity: IndentWidth => IndentWidth = Predef.identity
+
   trait TokenData {
 
     /** the next token */
@@ -392,25 +394,24 @@ object Scanners {
       }
     )
 
-    /** The indentation width of the given offset.
-     *  It is assumed that only blank characters are between the start of the line and the offset.
-     */
+    /** The indentation width of the given offset */
     def indentWidth(offset: Offset): IndentWidth = {
       import IndentWidth.{Run, Conc}
-      def recur(idx: Int, ch: Char, n: Int): IndentWidth =
-        if (idx < 0) Run(ch, n)
+      def recur(idx: Int, ch: Char, n: Int, k: IndentWidth => IndentWidth): IndentWidth =
+        if (idx < 0) k(Run(ch, n))
         else {
           val nextChar = buf(idx)
-          if (nextChar == ' ' || nextChar == '\t')
+          if (nextChar == LF) k(Run(ch, n))
+          else if (nextChar == ' ' || nextChar == '\t')
             if (nextChar == ch)
-              recur(idx - 1, ch, n + 1)
+              recur(idx - 1, ch, n + 1, k)
             else {
-              val prefix = recur(idx - 1, nextChar, 1)
-              if (n == 0) prefix else Conc(prefix, Run(ch, n))
+              val k1: IndentWidth => IndentWidth = if (n == 0) k else Conc(_, Run(ch, n))
+              recur(idx - 1, nextChar, 1, k1)
             }
-          else Run(ch, n)
+          else recur(idx - 1, ' ', 0, identity)
         }
-      recur(offset - 1, ' ', 0)
+      recur(offset - 1, ' ', 0, identity)
     }
 
     /** Handle newlines, possibly inserting an INDENT, OUTDENT, NEWLINE, or NEWLINES token
@@ -1286,6 +1287,7 @@ object Scanners {
    /* Initialization: read first char, then first token */
     nextChar()
     nextToken()
+    currentRegion = Indented(indentWidth(offset), Set(), EMPTY, null)
   }
   // end Scanner
 
