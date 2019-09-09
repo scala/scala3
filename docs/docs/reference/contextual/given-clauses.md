@@ -74,9 +74,9 @@ def f(u: Universe)(given c: u.Context)(given s: ctx.Symbol, k: ctx.Kind) = ...
 Multiple given clauses are matched left-to-right in applications. Example:
 ```scala
 object global extends Universe { type Context = ... }
-given ctx as global.Context { type Symbol = ...; type Kind = ... }
-given sym as ctx.Symbol
-given kind as ctx.Kind
+given ctx  : global.Context { type Symbol = ...; type Kind = ... }
+given sym  : ctx.Symbol
+given kind : ctx.Kind
 ```
 Then the following calls are all valid (and normalize to the last one)
 ```scala

@@ -33,7 +33,7 @@ class T derives Eql
 ```
 Alternatively, one can also provide an `Eql` given instance directly, like this:
 ```scala
-given as Eql[T, T] = Eql.derived
+given Eql[T, T] = Eql.derived
 ```
 This definition effectively says that values of type `T` can (only) be
 compared to other values of type `T` when using `==` or `!=`. The definition
@@ -59,10 +59,10 @@ definitions below make values of type `A` and type `B` comparable with
 each other, but not comparable to anything else:
 
 ```scala
-given as Eql[A, A] = Eql.derived
-given as Eql[B, B] = Eql.derived
-given as Eql[A, B] = Eql.derived
-given as Eql[B, A] = Eql.derived
+given Eql[A, A] = Eql.derived
+given Eql[B, B] = Eql.derived
+given Eql[A, B] = Eql.derived
+given Eql[B, A] = Eql.derived
 ```
 The `scala.Eql` object defines a number of `Eql` givens that together
 define a rule book for what standard types can be compared (more details below).
@@ -97,7 +97,7 @@ class Box[T](x: T) derives Eql
 By the usual rules if [typeclass derivation](./derivation.md),
 this generates the following `Eql` instance in the companion object of `Box`:
 ```scala
-given [T, U](given Eql[T, U]) as Eql[Box[T], Box[U]] = Eql.derived
+given [T, U](given Eql[T, U]) : Eql[Box[T], Box[U]] = Eql.derived
 ```
 That is, two boxes are comparable with `==` or `!=` if their elements are. Examples:
 ```scala

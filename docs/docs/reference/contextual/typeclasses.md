@@ -20,12 +20,12 @@ object Monoid {
   def apply[T](given Monoid[T]) = the[Monoid[T]]
 }
 
-given as Monoid[String] {
+given Monoid[String] {
   def (x: String) combine (y: String): String = x.concat(y)
   def unit: String = ""
 }
 
-given as Monoid[Int] {
+given Monoid[Int] {
   def (x: Int) combine (y: Int): Int = x + y
   def unit: Int = 0
 }
@@ -48,14 +48,14 @@ trait Monad[F[_]] extends Functor[F] {
   def pure[A](x: A): F[A]
 }
 
-given ListMonad as Monad[List] {
+given listMonad: Monad[List] {
   def (xs: List[A]) flatMap [A, B] (f: A => List[B]): List[B] =
     xs.flatMap(f)
   def pure[A](x: A): List[A] =
     List(x)
 }
 
-given ReaderMonad[Ctx] as Monad[[X] =>> Ctx => X] {
+given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] {
   def (r: Ctx => A) flatMap [A, B] (f: A => Ctx => B): Ctx => B =
     ctx => f(r(ctx))(ctx)
   def pure[A](x: A): Ctx => A =
