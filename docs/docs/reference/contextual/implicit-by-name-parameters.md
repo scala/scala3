@@ -19,7 +19,7 @@ given optionCodec[T](given ev: => Codec[T]): Codec[Option[T]] {
   }
 }
 
-val s = the[Codec[Option[Int]]]
+val s = summon[Codec[Option[Int]]]
 
 s.write(Some(33))
 s.write(None)
@@ -54,7 +54,7 @@ The precise steps for synthesizing an argument for an implicit by-name parameter
 In the example above, the definition of `s` would be expanded as follows.
 
 ```scala
-val s = the[Test.Codec[Option[Int]]](
+val s = summon[Test.Codec[Option[Int]]](
   optionCodec[Int](intCodec)
 )
 ```

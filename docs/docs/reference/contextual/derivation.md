@@ -301,7 +301,7 @@ enum Opt[+T] derives Eq {
 
 object Test extends App {
   import Opt._
-  val eqoi = the[Eq[Opt[Int]]]
+  val eqoi = summon[Eq[Opt[Int]]]
   assert(eqoi.eqv(Sm(23), Sm(23)))
   assert(!eqoi.eqv(Sm(23), Sm(13)))
   assert(!eqoi.eqv(Sm(23), Nn))
@@ -313,10 +313,10 @@ following, after a little polishing,
 
 ```scala
 given derived$Eq[T](given eqT: Eq[T]): Eq[Opt[T]] =
-  eqSum(the[Mirror[Opt[T]]],
+  eqSum(summon[Mirror[Opt[T]]],
     List(
-      eqProduct(the[Mirror[Sm[T]]], List(the[Eq[T]]))
-      eqProduct(the[Mirror[Nn.type]], Nil)
+      eqProduct(summon[Mirror[Sm[T]]], List(summon[Eq[T]]))
+      eqProduct(summon[Mirror[Nn.type]], Nil)
     )
   )
 ```
