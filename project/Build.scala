@@ -3,7 +3,6 @@ import java.nio.file._
 
 import Modes._
 import com.typesafe.sbt.pgp.PgpKeys
-import com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys
 import sbt.Keys._
 import sbt._
 import complete.DefaultParsers._
@@ -164,10 +163,6 @@ object Build {
     // vscode extension from the source repository of dotty instead of a
     // published version.
     runCode := (run in `dotty-language-server`).toTask("").value,
-
-    // include sources in eclipse (downloads source code for all dependencies)
-    //http://stackoverflow.com/questions/10472840/how-to-attach-sources-to-sbt-managed-dependencies-in-scala-ide#answer-11683728
-    EclipseKeys.withSource := true,
 
     // Avoid various sbt craziness involving classloaders and parallelism
     fork in run := true,
@@ -1055,7 +1050,6 @@ object Build {
   lazy val `vscode-dotty` = project.in(file("vscode-dotty")).
     settings(commonSettings).
     settings(
-      EclipseKeys.skipProject := true,
       version := "0.1.15-snapshot", // Keep in sync with package.json
       autoScalaLibrary := false,
       publishArtifact := false,

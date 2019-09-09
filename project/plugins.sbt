@@ -2,9 +2,6 @@
 //
 // e.g. addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
 
-// Scala IDE project file generator
-addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "5.2.4")
-
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.0.0-M8")
 
 addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "2.1")
