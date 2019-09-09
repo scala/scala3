@@ -42,7 +42,7 @@ class WorksheetTest {
 
   @Test def defineCaseClass: Unit = {
     ws"""${m1}case class Foo(x: Int)${m2}
-         ${m3}Foo(1)${m4}""".withSource
+        |${m3}Foo(1)${m4}""".withSource
       .run(m1,
         ((m1 to m2), "// defined case class Foo"),
         ((m3 to m4), "val res0: Foo = Foo(1)"))
@@ -68,10 +68,10 @@ class WorksheetTest {
 
   @Test def defineAnonymousClass1: Unit = {
     ws"""${m1}class Foo${m2}
-         ${m3}trait Bar${m4}
-         ${m5}new Foo with Bar {
-           override def toString: String = "Foo"
-         }${m6}""".withSource
+        |${m3}trait Bar${m4}
+        |${m5}new Foo with Bar {
+        |   override def toString: String = "Foo"
+        |}${m6}""".withSource
       .run(m1,
         ((m1 to m2), "// defined class Foo"),
         ((m3 to m4), "// defined trait Bar"),
