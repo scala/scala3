@@ -89,14 +89,14 @@ But `f(global)(given sym, kind)` would give a type error.
 
 ## Summoning Instances
 
-The method `theGiven` in `Predef` returns the given instance of a specific type. For example,
+The method `summon` in `Predef` returns the given instance of a specific type. For example,
 the given instance for `Ord[List[Int]]` is produced by
 ```scala
-theGiven[Ord[List[Int]]]  // reduces to ListOrd given IntOrd
+summon[Ord[List[Int]]]  // reduces to ListOrd given IntOrd
 ```
-The `theGiven` method is simply defined as the (non-widening) identity function over a implicit parameter.
+The `summon` method is simply defined as the (non-widening) identity function over a implicit parameter.
 ```scala
-def theGiven[T](given x: T): x.type = x
+def summon[T](given x: T): x.type = x
 ```
 
 ## Syntax
