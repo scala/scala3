@@ -50,7 +50,7 @@ trait StringSeqOps {
 ```
 We can make the extension method available by defining a given `StringSeqOps` instance, like this:
 ```scala
-given ops1 as StringSeqOps
+given ops1: StringSeqOps
 ```
 Then
 ```scala

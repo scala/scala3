@@ -12,7 +12,7 @@ type Executable[T] = (given ExecutionContext) => T
 An implicit function is applied to synthesized arguments, in
 the same way a method with a given clause is applied. For instance:
 ```scala
-  given ec as ExecutionContext = ...
+  given ec: ExecutionContext = ...
 
   def f(x: Int): Executable[Int] = ...
 
@@ -83,13 +83,13 @@ with implicit function types as parameters to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
   def table(init: (given Table) => Unit) = {
-    given t as Table
+    given t: Table
     init
     t
   }
 
   def row(init: (given Row) => Unit)(given t: Table) = {
-    given r as Row
+    given r: Row
     init
     t.add(r)
   }
