@@ -64,7 +64,7 @@ map into case classes or vals.
 
        val C = $new(n, "C")
 
-   Here, `$new` is a private method that creates an instance of of `E` (see
+   Here, `$new` is a private method that creates an instance of `E` (see
    below).
 
 4. If `E` is an enum with type parameters
