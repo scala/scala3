@@ -18,9 +18,9 @@ if [ ! "$NIGHTLYBUILD" = "yes" ] && [ ! "$RELEASEBUILD" = "yes" ]; then
     exit 1
 fi
 
-# Write down PGP secret key to the location expected by sbt-pgp
-mkdir -p "$HOME/.sbt/gpg"
-echo "$PGP_SECRET" > "$HOME/.sbt/gpg/secring.asc"
+# Setup gpg
+export GPG_TTY="$(tty)"
+echo "$PGP_SECRET" | gpg --batch --import
 
 # run sbt with the supplied arg
 SBT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/sbt"

@@ -27,7 +27,7 @@ steps:
 
 - name: test
   pull: default
-  image: lampepfl/dotty:2019-08-22
+  image: lampepfl/dotty:2019-09-10
   depends_on: [ clone ]
   commands:
   - cp -R . /tmp/1/ && cd /tmp/1/
@@ -36,7 +36,7 @@ steps:
 
 - name: test_bootstrapped
   pull: default
-  image: lampepfl/dotty:2019-08-22
+  image: lampepfl/dotty:2019-09-10
   depends_on: [ clone ]
   commands:
   - cp -R . /tmp/2/ && cd /tmp/2/
@@ -45,7 +45,7 @@ steps:
 
 - name: community_build
   pull: default
-  image: lampepfl/dotty:2019-08-22
+  image: lampepfl/dotty:2019-09-10
   depends_on: [ clone ]
   commands:
   - cp -R . /tmp/3/ && cd /tmp/3/
@@ -54,7 +54,7 @@ steps:
 
 - name: test_sbt
   pull: default
-  image: lampepfl/dotty:2019-08-22
+  image: lampepfl/dotty:2019-09-10
   depends_on: [ clone ]
   commands:
   - cp -R . /tmp/4/ && cd /tmp/4/
@@ -66,7 +66,7 @@ steps:
 
 - name: test_java11
   pull: default
-  image: lampepfl/dotty:2019-08-22
+  image: lampepfl/dotty:2019-09-10
   depends_on: [ clone ]
   commands:
   - export PATH="/usr/lib/jvm/java-11-openjdk-amd64/bin:$PATH"
@@ -80,7 +80,7 @@ steps:
 
 - name: documentation
   pull: default
-  image: lampepfl/dotty:2019-08-22
+  image: lampepfl/dotty:2019-09-10
   depends_on:
   - test
   - test_bootstrapped
@@ -99,7 +99,7 @@ steps:
 
 - name: publish_nightly
   pull: default
-  image: lampepfl/dotty:2019-08-22
+  image: lampepfl/dotty:2019-09-10
   depends_on:
   - test
   - test_bootstrapped
@@ -107,7 +107,7 @@ steps:
   - test_sbt
   - test_java11
   commands:
-  - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
+  - ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
   environment:
     NIGHTLYBUILD: yes
     PGP_PW:
@@ -126,7 +126,7 @@ steps:
 
 - name: publish_release
   pull: default
-  image: lampepfl/dotty:2019-08-22
+  image: lampepfl/dotty:2019-09-10
   depends_on:
   - test
   - test_bootstrapped
@@ -135,7 +135,7 @@ steps:
   - test_java11
   commands:
   - ./project/scripts/sbt dist-bootstrapped/packArchive
-  - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
+  - ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
   environment:
     PGP_PW:
       from_secret: pgp_pw
@@ -169,7 +169,7 @@ steps:
 
 - name: publish_sbt_release
   pull: default
-  image: lampepfl/dotty:2019-08-22
+  image: lampepfl/dotty:2019-09-10
   depends_on:
   - test
   - test_bootstrapped
@@ -177,7 +177,7 @@ steps:
   - test_sbt
   - test_java11
   commands:
-  - ./project/scripts/sbtPublish ";sbt-dotty/publishSigned ;sonatypeRelease"
+  - ./project/scripts/sbtPublish ";project sbt-dotty ;publishSigned ;sonatypeBundleRelease"
   environment:
     PGP_PW:
       from_secret: pgp_pw
