@@ -78,11 +78,9 @@ Here is the new syntax of given instances, seen as a delta from the [standard co
 ```
 TmplDef          ::=  ...
                   |   ‘given’ GivenDef
-GivenDef         ::=  GivenBody
-                  |   [id] [DefTypeParamClause] {GivenParamClause}
-                      (‘:’ GivenBody | ‘<:’ Type ‘=’ Expr)
-GivenBody        ::=  [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
-                  |   Type ‘=’ Expr
+GivenDef         ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
+                  |   [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
+GivenSig         ::=  [id] [DefTypeParamClause] {GivenParamClause}
 GivenParamClause ::=  ‘(’ ‘given’ (DefParams | GivenTypes) ‘)’
 GivenTypes       ::=  AnnotType {‘,’ AnnotType}
 ```
