@@ -1809,6 +1809,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Definitions_InternalQuoted_patternHole: Symbol = defn.InternalQuoted_patternHole
   def Definitions_InternalQuoted_patternBindHoleAnnot: Symbol = defn.InternalQuoted_patternBindHoleAnnot
+  def Definitions_InternalQuoted_fromAboveAnnot: Symbol = defn.InternalQuoted_fromAboveAnnot
 
   // Types
 

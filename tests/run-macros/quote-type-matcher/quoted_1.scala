@@ -4,15 +4,13 @@ import scala.quoted.matching._
 
 object Macros {
 
-  inline def matches[A, B](a: => A, b: => B): Unit = ${impl('a, 'b)}
+  inline def matches[A, B]: Unit = ${ matchesExpr('[A], '[B]) }
 
-  private def impl[A, B](a: Expr[A], b: Expr[B]) given (qctx: QuoteContext): Expr[Unit] = {
+  private def matchesExpr[A, B](a: Type[A], b: Type[B]) given (qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty.{Bind => _, _}
 
-    val res = scala.internal.quoted.Expr.unapply[Tuple, Tuple](a)(b, true, qctx).map { tup =>
+    val res = scala.internal.quoted.Type.unapply[Tuple, Tuple](a)(b, true, qctx).map { tup =>
       tup.toArray.toList.map {
-        case r: Expr[_] =>
-          s"Expr(${r.unseal.show})"
         case r: quoted.Type[_] =>
           s"Type(${r.unseal.show})"
         case r: Bind[_] =>
