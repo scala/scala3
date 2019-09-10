@@ -457,7 +457,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   abstract class ModsDecorator { def mods: Modifiers }
 
-  implicit class modsDeco(val mdef: MemberDef)(implicit ctx: Context) {
+  implicit class modsDeco(val mdef: DefTree)(implicit ctx: Context) {
     def mods: Modifiers = mdef.rawMods
   }
 

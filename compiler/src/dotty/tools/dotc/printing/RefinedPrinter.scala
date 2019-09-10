@@ -479,7 +479,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (lo eq hi) optText(lo)(" = " ~ _)
         else optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _)
       case Bind(name, body) =>
-        ("given ": Text).provided(tree.symbol.is(Implicit) && !homogenizedView) ~ // Used for scala.quoted.Type in quote patterns (not pickled)
+        ("given ": Text).provided(tree.symbol.isOneOf(GivenOrImplicit) && !homogenizedView) ~ // Used for scala.quoted.Type in quote patterns (not pickled)
         changePrec(InfixPrec) { toText(name) ~ " @ " ~ toText(body) }
       case Alternative(trees) =>
         changePrec(OrPrec) { toText(trees, " | ") }
@@ -699,7 +699,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   /** Print modifiers from symbols if tree has type, overriding the untpd behavior. */
-  implicit def modsDeco(mdef: untpd.MemberDef)(implicit ctx: Context): untpd.ModsDecorator =
+  implicit def modsDeco(mdef: untpd.DefTree)(implicit ctx: Context): untpd.ModsDecorator =
     new untpd.ModsDecorator {
       def mods = if (mdef.hasType) Modifiers(mdef.symbol) else mdef.rawMods
     }

@@ -14,6 +14,7 @@ import Flags._
 import Contexts._
 import Names._
 import NameKinds.WildcardParamName
+import NameOps._
 import ast.{Positioned, Trees}
 import ast.Trees._
 import StdNames._
@@ -2350,16 +2351,34 @@ object Parsers {
       if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1() :: patternAlts() }
       else Nil
 
-    /**  Pattern1          ::= Pattern2 [Ascription]
+    /**  Pattern1     ::= Pattern2 [Ascription]
+     *                  | ‘given’ PatVar ‘:’ RefinedType
      */
-    def pattern1(): Tree = {
-      val p = pattern2()
-      if (in.token == COLON) {
-        in.nextToken()
-        ascription(p, Location.InPattern)
+    def pattern1(): Tree =
+      if (in.token == GIVEN) {
+        val givenMod = atSpan(in.skipToken())(Mod.Given())
+        atSpan(in.offset) {
+          in.token match {
+            case IDENTIFIER | USCORE if in.name.isVariableName =>
+              val name = in.name
+              in.nextToken()
+              accept(COLON)
+              val typed = ascription(Ident(nme.WILDCARD), Location.InPattern)
+              Bind(name, typed).withMods(addMod(Modifiers(), givenMod))
+            case _ =>
+              syntaxErrorOrIncomplete("pattern variable expected")
+              errorTermTree
+          }
+        }
       }
-      else p
-    }
+      else {
+        val p = pattern2()
+        if (in.token == COLON) {
+          in.nextToken()
+          ascription(p, Location.InPattern)
+        }
+        else p
+      }
 
     /**  Pattern2    ::=  [id `@'] InfixPattern
      */
