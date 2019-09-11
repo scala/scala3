@@ -216,7 +216,7 @@ trait Core {
         /** Tree representing a pattern match `x match  { ... }` in the source code */
         type Match = internal.Match
 
-        /** Tree representing a pattern match `delegate match { ... }` in the source code */
+        /** Tree representing a pattern match `delegate match { ... }` in the source code */  // TODO: drop
         type ImpliedMatch = internal.ImpliedMatch
 
         /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */

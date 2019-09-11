@@ -224,10 +224,10 @@ trait Eq[T] {
 }
 
 object Eq {
-  import scala.compiletime.{erasedValue, error}
+  import scala.compiletime.{erasedValue, error, summonFrom}
   import TypeLevel._
 
-  inline def tryEql[T](x: T, y: T) = delegate match {
+  inline def tryEql[T](x: T, y: T) = summonFrom {
     case eq: Eq[T] => eq.eql(x, y)
   }
 
@@ -283,12 +283,12 @@ trait Pickler[T] {
 }
 
 object Pickler {
-  import scala.compiletime.{erasedValue, constValue, error}
+  import scala.compiletime.{erasedValue, constValue, error, summonFrom}
   import TypeLevel._
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
-  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = delegate match {
+  inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = summonFrom {
     case pkl: Pickler[T] => pkl.pickle(buf, x)
   }
 
@@ -321,7 +321,7 @@ object Pickler {
       case _: Unit =>
     }
 
-  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = delegate match {
+  inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = summonFrom {
     case pkl: Pickler[T] => pkl.unpickle(buf)
   }
 
@@ -379,10 +379,10 @@ trait Show[T] {
   def show(x: T): String
 }
 object Show {
-  import scala.compiletime.{erasedValue, error}
+  import scala.compiletime.{erasedValue, error, summonFrom}
   import TypeLevel._
 
-  inline def tryShow[T](x: T): String = delegate match {
+  inline def tryShow[T](x: T): String = summonFrom {
     case s: Show[T] => s.show(x)
   }
 

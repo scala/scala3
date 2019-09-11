@@ -1,11 +1,14 @@
+import compiletime.summonFrom
+
 trait Link[T, A]
 
-inline def link[T] = delegate match {
-  case _: Link[T, s] =>
-    delegate match {
-      case stuff: s => stuff
-    }
-}
+inline def link[T] =
+  summonFrom {
+    case _: Link[T, s] =>
+      summonFrom {
+        case stuff: s => stuff
+      }
+  }
 
 class Foo
 object Foo {

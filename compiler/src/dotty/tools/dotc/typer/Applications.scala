@@ -890,7 +890,14 @@ trait Applications extends Compatibility {
         case err: ErrorType => cpy.Apply(tree)(fun1, proto.unforcedTypedArgs).withType(err)
         case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
-          if (originalProto.isDropped) fun1
+          if originalProto.isDropped then fun1
+          else if fun1.symbol == defn.Compiletime_summonFrom then
+            tree.args match {
+              case (arg @ Match(EmptyTree, cases)) :: Nil =>
+                typed(untpd.InlineMatch(EmptyTree, cases).withSpan(arg.span), pt)
+              case _ =>
+                errorTree(tree, em"argument to summonFrom must be a pattern matching closure")
+            }
           else
             tryEither {
               simpleApply(fun1, proto)
