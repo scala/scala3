@@ -103,7 +103,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     (refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
   protected def argText(arg: Type): Text = homogenizeArg(arg) match {
-    case arg: TypeBounds => "_" ~ toText(arg)
+    case arg: TypeBounds => "?" ~ toText(arg)
     case arg => toText(arg)
   }
 
@@ -505,7 +505,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toText[T >: Untyped](tree: Tree[T]): Text = {
     def toTextElem(elem: Any): Text = elem match {
       case elem: Showable => elem.toText(this)
-      case elem: List[_] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
+      case elem: List[?] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
       case elem => elem.toString
     }
     val nodeName = tree.productPrefix

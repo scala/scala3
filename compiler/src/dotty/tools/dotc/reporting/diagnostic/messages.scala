@@ -226,7 +226,7 @@ object messages {
       """
         |object TyperDemo {
         |  class Team[A]
-        |  val team = new Team[_]
+        |  val team = new Team[?]
         |}
       """.stripMargin
 
@@ -323,7 +323,7 @@ object messages {
         }
 
       // Calculate Levenshtein distance
-      def distance(n1: Iterable[_], n2: Iterable[_]) =
+      def distance(n1: Iterable[?], n2: Iterable[?]) =
         n1.foldLeft(List.range(0, n2.size)) { (prev, x) =>
           (prev zip prev.tail zip n2).scanLeft(prev.head + 1) {
             case (h, ((d, v), y)) => math.min(
@@ -1034,7 +1034,7 @@ object messages {
            |
            |Try using a wildcard type variable
            |
-           |${hl("List[_]")}
+           |${hl("List[?]")}
            |"""
   }
 
@@ -1060,7 +1060,7 @@ object messages {
            |- Type arguments
            |
            |  Instead of:
-           |    ${hl("val foo = List[_](1, 2)")}
+           |    ${hl("val foo = List[?](1, 2)")}
            |
            |  Use:
            |    ${hl("val foo = List[Int](1, 2)")}

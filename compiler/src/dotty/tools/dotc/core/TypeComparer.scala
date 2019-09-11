@@ -1180,7 +1180,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         /** Try a capture conversion:
          *  If the original left-hand type `leftRoot` is a path `p.type`,
          *  and the current widened left type is an application with wildcard arguments
-         *  such as `C[_]`, where `X` is `C`'s type parameter corresponding to the `_` argument,
+         *  such as `C[?]`, where `X` is `C`'s type parameter corresponding to the `_` argument,
          *  compare with `C[p.X]` instead. Otherwise approximate based on variance.
          *  Also do a capture conversion in either of the following cases:
          *
@@ -1459,7 +1459,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       // or like:
       //
       //    class C[T]
-      //    C[_] <: C[TV]
+      //    C[?] <: C[TV]
       //
       // where TV is a type variable. See i2397.scala for an example of the latter.
       def matchAbstractTypeMember(info1: Type) = info1 match {

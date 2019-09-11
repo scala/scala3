@@ -32,10 +32,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   // QUOTE UNPICKLING
   //
 
-  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): scala.quoted.Expr[_] =
+  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): scala.quoted.Expr[?] =
     new scala.internal.quoted.TastyTreeExpr(PickledQuotes.unpickleExpr(repr, args), compilerId)
 
-  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[_] =
+  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[?] =
     new scala.internal.quoted.TreeType(PickledQuotes.unpickleType(repr, args), compilerId)
 
   //
@@ -1047,7 +1047,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     case _ => Some(x)
   }
 
-  def Type_apply(clazz: Class[_]) given (ctx: Context): Type =
+  def Type_apply(clazz: Class[?]) given (ctx: Context): Type =
     if (clazz.isPrimitive)
       if (clazz == classOf[Boolean]) defn.BooleanType
       else if (clazz == classOf[Byte]) defn.ByteType
@@ -1708,12 +1708,12 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   // QUOTED SEAL/UNSEAL
   //
 
-  /** View this expression `quoted.Expr[_]` as a `Term` */
-  def QuotedExpr_unseal(self: scala.quoted.Expr[_]) given Context: Term =
+  /** View this expression `quoted.Expr[?]` as a `Term` */
+  def QuotedExpr_unseal(self: scala.quoted.Expr[?]) given Context: Term =
     PickledQuotes.quotedExprToTree(self)
 
-  /** View this expression `quoted.Type[_]` as a `TypeTree` */
-  def QuotedType_unseal(self: scala.quoted.Type[_]) given Context: TypeTree =
+  /** View this expression `quoted.Type[?]` as a `TypeTree` */
+  def QuotedType_unseal(self: scala.quoted.Type[?]) given Context: TypeTree =
     PickledQuotes.quotedTypeToTree(self)
 
   /** Convert `Term` to an `quoted.Expr[Any]`  */
@@ -1733,7 +1733,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   }
 
   /** Checked cast to a `quoted.Expr[U]` */
-  def QuotedExpr_cast[U](self: scala.quoted.Expr[_]) given (tp: scala.quoted.Type[U], ctx: Context): scala.quoted.Expr[U] = {
+  def QuotedExpr_cast[U](self: scala.quoted.Expr[?]) given (tp: scala.quoted.Type[U], ctx: Context): scala.quoted.Expr[U] = {
     val tree = QuotedExpr_unseal(self)
     val expectedType = QuotedType_unseal(tp).tpe
     if (tree.tpe <:< expectedType)
@@ -1746,8 +1746,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       )
   }
 
-  /** Convert `Type` to an `quoted.Type[_]` */
-  def QuotedType_seal(self: Type) given (ctx: Context): scala.quoted.Type[_] = {
+  /** Convert `Type` to an `quoted.Type[?]` */
+  def QuotedType_seal(self: Type) given (ctx: Context): scala.quoted.Type[?] = {
     val dummySpan = ctx.owner.span // FIXME
     new scala.internal.quoted.TreeType(tpd.TypeTree(self).withSpan(dummySpan), compilerId)
   }
@@ -1905,7 +1905,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   // HELPERS
   //
 
-  private def optional[T <: Trees.Tree[_]](tree: T): Option[tree.type] =
+  private def optional[T <: Trees.Tree[?]](tree: T): Option[tree.type] =
     if (tree.isEmpty) None else Some(tree)
 
   private def withDefaultPos[T <: Tree](fn: given Context => T) given (ctx: Context): T =

@@ -32,7 +32,7 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   override protected def packageDefText(tree: PackageDef): Text = {
     val stats = tree.stats.filter {
-      case vdef: ValDef[_] => !vdef.symbol.is(Module)
+      case vdef: ValDef[?] => !vdef.symbol.is(Module)
       case _ => true
     }
     val statsText = stats match {

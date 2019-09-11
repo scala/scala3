@@ -2127,7 +2127,7 @@ object Parsers {
         (lookahead.token == LPAREN) && {
           lookahead.nextToken()
           if (lookahead.token == RPAREN)
-            !fn.isInstanceOf[Trees.Apply[_]] // allow one () as annotation argument
+            !fn.isInstanceOf[Trees.Apply[?]] // allow one () as annotation argument
           else if (lookahead.token == IDENTIFIER) {
             lookahead.nextToken()
             lookahead.token != COLON

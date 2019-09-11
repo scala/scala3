@@ -80,7 +80,7 @@ object TypeApplications {
    *  and there are no other occurrences of `X` in the reduced type. In that case
    *  the refinement above is replaced by
    *
-   *        C[..., _ >: L <: H, ...]
+   *        C[..., ? >: L <: H, ...]
    *
    *  The `allReplaced` field indicates whether all occurrences of type lambda parameters
    *  in the reduced type have been replaced with arguments.
@@ -88,7 +88,7 @@ object TypeApplications {
    *  2. If Mode.AllowLambdaWildcardApply is not set:
    *  All `X` arguments are replaced by:
    *
-   *        _ >: L <: H
+   *        ? >: L <: H
    *
    *  Any other occurrence of `X` in `tycon` is replaced by `U`, if the
    *  occurrence of `X` in `tycon` is covariant, or nonvariant, or by `L`,
@@ -442,7 +442,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => if (self.isMatch) MatchAlias(self) else TypeAlias(self)
   }
 
-  /** Translate a type of the form From[T] to either To[T] or To[_ <: T] (if `wildcardArg` is set). Keep other types as they are.
+  /** Translate a type of the form From[T] to either To[T] or To[? <: T] (if `wildcardArg` is set). Keep other types as they are.
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
    *  Do the same for by name types => From[T] and => To[T]
    */
@@ -464,7 +464,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def underlyingIfRepeated(isJava: Boolean)(implicit ctx: Context): Type =
     if (self.isRepeatedParam) {
       val seqClass = if (isJava) defn.ArrayClass else defn.SeqClass
-      // If `isJava` is set, then we want to turn `RepeatedParam[T]` into `Array[_ <: T]`,
+      // If `isJava` is set, then we want to turn `RepeatedParam[T]` into `Array[? <: T]`,
       // since arrays aren't covariant until after erasure. See `tests/pos/i5140`.
       translateParameterized(defn.RepeatedParamClass, seqClass, wildcardArg = isJava)
     }

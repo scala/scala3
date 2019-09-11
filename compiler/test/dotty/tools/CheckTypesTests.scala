@@ -17,7 +17,7 @@ class CheckTypeTest extends DottyTest {
     val types = List(
       "A",
       "B",
-      "List[_]",
+      "List[?]",
       "List[Int]",
       "List[AnyRef]",
       "List[String]",

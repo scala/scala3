@@ -37,7 +37,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override protected[this] implicit def ctx: Context = myCtx
 
-  def withEnclosingDef(enclDef: Tree[_ >: Untyped])(op: => Text): Text = {
+  def withEnclosingDef(enclDef: Tree[? >: Untyped])(op: => Text): Text = {
     val savedCtx = myCtx
     if (enclDef.hasType && enclDef.symbol.exists)
       myCtx = ctx.withOwner(enclDef.symbol)
@@ -305,10 +305,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else ""
 
     def argText(arg: Tree): Text = arg match {
-      case arg: TypeBoundsTree => "_" ~ toTextGlobal(arg)
+      case arg: TypeBoundsTree => "?" ~ toTextGlobal(arg)
       case arg: TypeTree =>
         arg.typeOpt match {
-          case tp: TypeBounds => "_" ~ toTextGlobal(arg)
+          case tp: TypeBounds => "?" ~ toTextGlobal(arg)
           case _ => toTextGlobal(arg)
         }
       case _ => toTextGlobal(arg)
@@ -323,7 +323,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       def selectorText(sel: Tree): Text = sel match {
         case Thicket(l :: r :: Nil) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
         case _: Ident => toTextGlobal(sel)
-        case TypeBoundsTree(_, tpt) => "for " ~ toTextGlobal(tpt)
+        case TypeBoundsTree(_, tpt) => "_: " ~ toTextGlobal(tpt)
       }
       val selectorsText: Text = selectors match {
         case id :: Nil => toText(id)
@@ -334,7 +334,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     tree match {
-      case id: Trees.SearchFailureIdent[_] =>
+      case id: Trees.SearchFailureIdent[?] =>
         tree.typeOpt match {
           case reason: Implicits.SearchFailureType =>
             toText(id.name) ~ "implicitly[" ~ toText(reason.clarify(reason.expectedType)) ~ "]"
@@ -403,7 +403,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case block: Block =>
         blockToText(block)
       case If(cond, thenp, elsep) =>
-        val isInline = tree.isInstanceOf[Trees.InlineIf[_]]
+        val isInline = tree.isInstanceOf[Trees.InlineIf[?]]
         changePrec(GlobalPrec) {
           keywordStr(if (isInline) "inline if " else "if ") ~
           toText(cond) ~ (keywordText(" then") provided !cond.isInstanceOf[Parens]) ~~
@@ -413,7 +413,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "closure(" ~ (toTextGlobal(env, ", ") ~ " | " provided env.nonEmpty) ~
         toTextGlobal(ref) ~ (":" ~ toText(target) provided !target.isEmpty) ~ ")"
       case Match(sel, cases) =>
-        val isInline = tree.isInstanceOf[Trees.InlineMatch[_]]
+        val isInline = tree.isInstanceOf[Trees.InlineMatch[?]]
         if (sel.isEmpty && !isInline) blockText(cases)
         else changePrec(GlobalPrec) {
           val selTxt: Text =
@@ -637,7 +637,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         // with the original types before they are rewritten, which causes a discrepancy.
 
     def suppressPositions = tree match {
-      case _: WithoutTypeOrPos[_] | _: TypeTree => true // TypeTrees never have an interesting position
+      case _: WithoutTypeOrPos[?] | _: TypeTree => true // TypeTrees never have an interesting position
       case _ => false
     }
 
@@ -730,7 +730,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
     else toText(tree.name) ~ idText(tree)
 
-  private def toTextOwner(tree: Tree[_]) =
+  private def toTextOwner(tree: Tree[?]) =
     "[owner = " ~ tree.symbol.maybeOwner.show ~ "]" provided ctx.settings.YprintDebugOwners.value
 
   protected def dclTextOr[T >: Untyped](tree: Tree[T])(treeText: => Text): Text =

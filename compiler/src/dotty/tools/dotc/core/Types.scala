@@ -1066,7 +1066,7 @@ object Types {
   	 * 	      ArrayBuffer[Int] | ArrayBuffer[A]
   	 *
      *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
-     *  instead of `ArrayBuffer[_ >: Int | A <: Int & A]`
+     *  instead of `ArrayBuffer[? >: Int | A <: Int & A]`
      */
     def widenUnion(implicit ctx: Context): Type = widen match {
       case OrType(tp1, tp2) =>
@@ -4382,11 +4382,11 @@ object Types {
               // Given a SAM type such as:
               //
               //     import java.util.function.Function
-              //     Function[_ >: String, _ <: Int]
+              //     Function[? >: String, ? <: Int]
               //
               // the single abstract method will have type:
               //
-              //     (x: Function[_ >: String, _ <: Int]#T): Function[_ >: String, _ <: Int]#R
+              //     (x: Function[? >: String, ? <: Int]#T): Function[? >: String, ? <: Int]#R
               //
               // which is not implementable outside of the scope of Function.
               //
@@ -4702,7 +4702,7 @@ object Types {
             // hence we can replace with U under all variances
             reapply(alias.rewrapAnnots(tp1))
           case tp: TypeBounds =>
-            // If H#T = _ >: S <: U, then for any x in L..H, S <: x.T <: U,
+            // If H#T = ? >: S <: U, then for any x in L..H, S <: x.T <: U,
             // hence we can replace with S..U under all variances
             expandBounds(tp)
           case info: SingletonType =>

@@ -38,7 +38,7 @@ object Formatting {
     }
 
     private def treatArg(arg: Any, suffix: String)(implicit ctx: Context): (Any, String) = arg match {
-      case arg: Seq[_] if suffix.nonEmpty && suffix.head == '%' =>
+      case arg: Seq[?] if suffix.nonEmpty && suffix.head == '%' =>
         val (rawsep, rest) = suffix.tail.span(_ != '%')
         val sep = StringContext.processEscapes(rawsep)
         if (rest.nonEmpty) (arg.map(showArg).mkString(sep), rest.tail)

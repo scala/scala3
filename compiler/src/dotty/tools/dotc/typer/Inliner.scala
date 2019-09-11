@@ -151,7 +151,7 @@ object Inliner {
       def reposition(tree: Tree)(implicit ctx: Context): Tree = enclosingInlineds match {
         case call :: _ if call.symbol.source != curSource =>
           tree match {
-            case _: EmptyTree[_] | _: EmptyValDef[_] => tree
+            case _: EmptyTree[?] | _: EmptyValDef[?] => tree
             case _ =>
               // Until we implement JSR-45, we cannot represent in output positions in other source files.
               // So, reposition inlined code from other files with the call position:
@@ -174,7 +174,7 @@ object Inliner {
           case tree: DefTree => super.transform(tree).setDefTree
           case _ => super.transform(tree)
         })
-        assert(transformed.isInstanceOf[EmptyTree[_]] || transformed.isInstanceOf[EmptyValDef[_]] || transformed.source == curSource)
+        assert(transformed.isInstanceOf[EmptyTree[?]] || transformed.isInstanceOf[EmptyValDef[?]] || transformed.source == curSource)
         transformed
       }
     }
@@ -724,7 +724,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
      */
     private object InlineableArg {
       lazy val paramProxies = paramProxy.values.toSet
-      def unapply(tree: Trees.Ident[_])(implicit ctx: Context): Option[Tree] = {
+      def unapply(tree: Trees.Ident[?])(implicit ctx: Context): Option[Tree] = {
         def search(buf: mutable.ListBuffer[ValOrDefDef]) = buf.find(_.name == tree.name)
         if (paramProxies.contains(tree.typeOpt))
           search(bindingsBuf) match {

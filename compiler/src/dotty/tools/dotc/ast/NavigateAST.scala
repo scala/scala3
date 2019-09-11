@@ -39,9 +39,9 @@ object NavigateAST {
    */
   def untypedPath(tree: tpd.Tree, exactMatch: Boolean = false)(implicit ctx: Context): List[Positioned] =
     tree match {
-      case tree: MemberDef[_] =>
+      case tree: MemberDef[?] =>
         untypedPath(tree.span) match {
-          case path @ (last: DefTree[_]) :: _ => path
+          case path @ (last: DefTree[?]) :: _ => path
           case path if !exactMatch => path
           case _ => Nil
         }
@@ -75,7 +75,7 @@ object NavigateAST {
         val path1 = it.next() match {
           case p: Positioned => singlePath(p, path)
           case m: untpd.Modifiers => childPath(m.productIterator, path)
-          case xs: List[_] => childPath(xs.iterator, path)
+          case xs: List[?] => childPath(xs.iterator, path)
           case _ => path
         }
         if ((path1 ne path) &&
@@ -92,7 +92,7 @@ object NavigateAST {
         // our usage of `productIterator` by something in `Positioned` that takes
         // care of low-level details like this for us.
         p match {
-          case p: WithLazyField[_] =>
+          case p: WithLazyField[?] =>
             p.forceIfLazy
           case _ =>
         }

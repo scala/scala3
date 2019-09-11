@@ -165,7 +165,7 @@ object ExplicitOuter {
    *  - if owner == cls, O[X1, ..., Xn]
    *  - otherwise, if the class P enclosing `owner` derives from O, the
    *    base type of P.this wrt class O
-   *  - otherwise O[_, ..., _]
+   *  - otherwise O[?, ..., ?]
    */
   private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(implicit ctx: Context) = {
     val outerThis = owner.owner.enclosingClass.thisType

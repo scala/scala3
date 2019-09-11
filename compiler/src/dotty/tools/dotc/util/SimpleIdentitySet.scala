@@ -148,7 +148,7 @@ object SimpleIdentitySet {
     }
     override def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
       that match {
-        case that: SetN[_] =>
+        case that: SetN[?] =>
           var toAdd: mutable.ArrayBuffer[AnyRef] = null
           var i = 0
           val limit = that.xs.length
@@ -176,7 +176,7 @@ object SimpleIdentitySet {
       }
     override def -- [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
       that match {
-        case that: SetN[_] =>
+        case that: SetN[?] =>
           // both sets are large, optimize assuming they are similar
           // by starting from empty set and adding elements
           var toAdd: mutable.ArrayBuffer[AnyRef] = null

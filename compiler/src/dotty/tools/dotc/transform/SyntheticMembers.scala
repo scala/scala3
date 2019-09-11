@@ -396,7 +396,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  ```
      *  where
      *  ```
-     *  type MirroredMonoType = C[_]
+     *  type MirroredMonoType = C[?]
      *  ```
      */
     def fromProductBody(caseClass: Symbol, param: Tree)(implicit ctx: Context): Tree = {
@@ -438,7 +438,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *        case _: C_n => n - 1
    *     }
    *
-   *  Here, the normalized type of a class C is C[_, ...., _] with
+   *  Here, the normalized type of a class C is C[?, ...., ?] with
    *  a wildcard for each type parameter. The normalized type of an object
    *  O is O.type.
    */

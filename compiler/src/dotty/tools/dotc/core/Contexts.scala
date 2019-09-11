@@ -114,9 +114,9 @@ object Contexts {
     final def owner: Symbol = _owner
 
     /** The current tree */
-    private[this] var _tree: Tree[_ >: Untyped]= _
-    protected def tree_=(tree: Tree[_ >: Untyped]): Unit = _tree = tree
-    final def tree: Tree[_ >: Untyped] = _tree
+    private[this] var _tree: Tree[? >: Untyped]= _
+    protected def tree_=(tree: Tree[? >: Untyped]): Unit = _tree = tree
+    final def tree: Tree[? >: Untyped] = _tree
 
     /** The current scope */
     private[this] var _scope: Scope = _
@@ -337,7 +337,7 @@ object Contexts {
      *  Note: Currently unused
     def enclTemplate: Context = {
       var c = this
-      while (c != NoContext && !c.tree.isInstanceOf[Template[_]] && !c.tree.isInstanceOf[PackageDef[_]])
+      while (c != NoContext && !c.tree.isInstanceOf[Template[?]] && !c.tree.isInstanceOf[PackageDef[?]])
         c = c.outer
       c
     }*/
@@ -392,15 +392,15 @@ object Contexts {
     }
 
     /** The context of expression `expr` seen as a member of a statement sequence */
-    def exprContext(stat: Tree[_ >: Untyped], exprOwner: Symbol): Context =
+    def exprContext(stat: Tree[? >: Untyped], exprOwner: Symbol): Context =
       if (exprOwner == this.owner) this
       else if (untpd.isSuperConstrCall(stat) && this.owner.isClass) superCallContext
       else ctx.fresh.setOwner(exprOwner)
 
     /** A new context that summarizes an import statement */
-    def importContext(imp: Import[_], sym: Symbol): FreshContext = {
+    def importContext(imp: Import[?], sym: Symbol): FreshContext = {
       val impNameOpt = imp.expr match {
-        case ref: RefTree[_] => Some(ref.name.asTermName)
+        case ref: RefTree[?] => Some(ref.name.asTermName)
         case _               => None
       }
       ctx.fresh.setImportInfo(
@@ -524,7 +524,7 @@ object Contexts {
     def setPeriod(period: Period): this.type = { this.period = period; this }
     def setMode(mode: Mode): this.type = { this.mode = mode; this }
     def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
-    def setTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
+    def setTree(tree: Tree[? >: Untyped]): this.type = { this.tree = tree; this }
     def setScope(scope: Scope): this.type = { this.scope = scope; this }
     def setNewScope: this.type = { this.scope = newScope; this }
     def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
@@ -559,7 +559,7 @@ object Contexts {
     def setProperty[T](key: Key[T], value: T): this.type =
       setMoreProperties(moreProperties.updated(key, value))
 
-    def dropProperty(key: Key[_]): this.type =
+    def dropProperty(key: Key[?]): this.type =
       setMoreProperties(moreProperties - key)
 
     def addLocation[T](initial: T): Store.Location[T] = {

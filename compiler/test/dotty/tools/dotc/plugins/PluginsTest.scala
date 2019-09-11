@@ -37,7 +37,7 @@ class PluginsTest {
     List(new P8)
   )
 
-  implicit def clazzToName(cls: Class[_]): String = cls.getName
+  implicit def clazzToName(cls: Class[?]): String = cls.getName
 
   def debugPlan(plan: List[List[Phase]]): Unit = {
     println(plan.mkString("plan:\n- ", "\n- ", ""))

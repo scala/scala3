@@ -14,7 +14,7 @@ import util.HashSet
 object Uniques {
 
   private def recordCaching(tp: Type): Unit = recordCaching(tp.hash, tp.getClass)
-  private def recordCaching(h: Int, clazz: Class[_]): Unit =
+  private def recordCaching(h: Int, clazz: Class[?]): Unit =
     if (h == NotCached) {
       record("uncached-types")
       record(s"uncached: $clazz")

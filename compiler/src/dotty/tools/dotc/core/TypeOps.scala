@@ -409,9 +409,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
           for (sym <- lazyRefs) {
 
-            // If symbol `S` has an F-bound such as `C[_, S]` that contains wildcards,
+            // If symbol `S` has an F-bound such as `C[?, S]` that contains wildcards,
             // add a modifieed bound where wildcards are skolemized as a GADT bound for `S`.
-            // E.g. for `C[_, S]` we would add `C[C[_, S]#T0, S]` where `T0` is the first
+            // E.g. for `C[?, S]` we would add `C[C[?, S]#T0, S]` where `T0` is the first
             // type parameter of `C`. The new bound is added as a GADT bound for `S` in
             // `checkCtx`.
             // This mirrors what we do for the bounds that are checked and allows us thus

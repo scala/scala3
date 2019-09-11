@@ -64,7 +64,7 @@ object PluggableTransformers {
       else finishIdent(ops(tree, old, c), old, c, ops.next)
 
     override def finishIdent(tree: Tree[T], old: Tree[T], c: Context, plugins: Plugins): Tree[T] = tree match {
-      case tree: Ident[_] => postIdent(tree, old, c, plugins.IdentOps)
+      case tree: Ident[?] => postIdent(tree, old, c, plugins.IdentOps)
       case _ => postProcess(tree, old, c, plugins)
     }
 
@@ -73,13 +73,13 @@ object PluggableTransformers {
       else finishSelect(ops(tree, old, c), old, c, ops.next)
 
     override def finishSelect(tree: Tree[T], old: Tree[T], c: Context, plugins: Plugins): Tree[T] = tree match {
-      case tree: Select[_] => postSelect(tree, old, c, plugins.SelectOps)
+      case tree: Select[?] => postSelect(tree, old, c, plugins.SelectOps)
       case _ => postProcess(tree, old, c, plugins)
     }
 
     protected def postProcess(tree: Tree[T], old: Tree[T], c: Context, plugins: Plugins): Tree[T] = tree match {
-      case tree: Ident[_] => finishIdent(tree, old, c, plugins)
-      case tree: Select[_] => finishSelect(tree, old, c, plugins)
+      case tree: Ident[?] => finishIdent(tree, old, c, plugins)
+      case tree: Select[?] => finishSelect(tree, old, c, plugins)
     }
   }
 }

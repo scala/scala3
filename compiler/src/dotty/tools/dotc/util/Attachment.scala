@@ -13,7 +13,7 @@ object Attachment {
    *  Clients should inherit from Container instead.
    */
   trait LinkSource {
-    private[Attachment] var next: Link[_]
+    private[Attachment] var next: Link[?]
 
     /** Optionally get attachment corresponding to `key` */
     final def getAttachment[V](key: Key[V]): Option[V] = {
@@ -84,7 +84,7 @@ object Attachment {
     }
 
     /** The list of all keys and values attached to this container. */
-    final def allAttachments: List[(Key[_], Any)] = {
+    final def allAttachments: List[(Key[?], Any)] = {
       val nx = next
       if (nx == null) Nil else (nx.key, nx.value) :: nx.allAttachments
     }
@@ -92,18 +92,18 @@ object Attachment {
 
   /** A private, concrete implementation class linking attachments.
    */
-  private[Attachment] class Link[+V](val key: Key[V], val value: V, var next: Link[_])
+  private[Attachment] class Link[+V](val key: Key[V], val value: V, var next: Link[?])
       extends LinkSource
 
   /** A trait for objects that can contain attachments */
   trait Container extends LinkSource {
-    private[Attachment] var next: Link[_] = null
+    private[Attachment] var next: Link[?] = null
 
     /** Copy the sticky attachments from `container` to this container. */
     final def withAttachmentsFrom(container: Container): this.type = {
-      var current: Link[_] = container.next
+      var current: Link[?] = container.next
       while (current != null) {
-        if (current.key.isInstanceOf[StickyKey[_]]) pushAttachment(current.key, current.value)
+        if (current.key.isInstanceOf[StickyKey[?]]) pushAttachment(current.key, current.value)
         current = current.next
       }
       this

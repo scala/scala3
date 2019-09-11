@@ -313,12 +313,12 @@ object Splicer {
         clazz.getConstructor().newInstance().asInstanceOf[Object]
       }
 
-    private def loadReplLineClass(moduleClass: Symbol)(implicit env: Env): Class[_] = {
+    private def loadReplLineClass(moduleClass: Symbol)(implicit env: Env): Class[?] = {
       val lineClassloader = new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader)
       lineClassloader.loadClass(moduleClass.name.firstPart.toString)
     }
 
-    private def loadClass(name: String): Class[_] =
+    private def loadClass(name: String): Class[?] =
       try classLoader.loadClass(name)
       catch {
         case _: ClassNotFoundException =>
@@ -326,7 +326,7 @@ object Splicer {
           throw new StopInterpretation(msg, pos)
       }
 
-    private def getMethod(clazz: Class[_], name: Name, paramClasses: List[Class[_]]): Method =
+    private def getMethod(clazz: Class[?], name: Name, paramClasses: List[Class[?]]): Method =
       try clazz.getMethod(name.toString, paramClasses: _*)
       catch {
         case _: NoSuchMethodException =>
@@ -364,8 +364,8 @@ object Splicer {
       }
 
     /** List of classes of the parameters of the signature of `sym` */
-    private def paramsSig(sym: Symbol): List[Class[_]] = {
-      def paramClass(param: Type): Class[_] = {
+    private def paramsSig(sym: Symbol): List[Class[?]] = {
+      def paramClass(param: Type): Class[?] = {
         def arrayDepth(tpe: Type, depth: Int): (Type, Int) = tpe match {
           case JavaArrayType(elemType) => arrayDepth(elemType, depth + 1)
           case _ => (tpe, depth)

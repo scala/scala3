@@ -1596,9 +1596,9 @@ class RefChecks extends MiniPhase { thisPhase =>
               //         that we are in the user-supplied code in the case body.
               //
               //         Relies on the translation of:
-              //            (null: Any) match { case x: List[_] => x; x.reverse; case _ => }'
+              //            (null: Any) match { case x: List[?] => x; x.reverse; case _ => }'
               //         to:
-              //            <synthetic> val x2: List[_] = (x1.asInstanceOf[List[_]]: List[_]);
+              //            <synthetic> val x2: List[?] = (x1.asInstanceOf[List[?]]: List[?]);
               //                  matchEnd4({ x2; x2.reverse}) // case body is an argument to a label apply.
               inPattern = false
               super.transform(result)
