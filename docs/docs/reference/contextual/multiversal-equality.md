@@ -112,24 +112,21 @@ The precise rules for equality checking are as follows.
 
 If the `strictEquality` feature is enabled then
 a comparison using `x == y` or `x != y` between values `x: T` and `y: U`
-is legal if
-
- 1. there is a given instance for `Eql[T, U]`, or
- 2. one of `T`, `U` is `Null`.
+is legal if there is a given instance for `Eql[T, U]`.
 
 In the default case where the `strictEquality` feature is not enabled the comparison is
 also legal if
 
- 1. `T` and `U` the same, or
- 2. one of `T` and `U`is a subtype of the _lifted_ version of the other type, or
- 3. neither `T` nor `U` have a _reflexive `Eql` given.
+ 1. `T` and `U` are the same, or
+ 2. one of `T`, `U` is a subtype of the _lifted_ version of the other type, or
+ 3. neither `T` nor `U` have a _reflexive_ `Eql` given.
 
 Explanations:
 
  - _lifting_ a type `S` means replacing all references to  abstract types
    in covariant positions of `S` by their upper bound, and to replacing
    all refinement types in covariant positions of `S` by their parent.
- - a type `T` has a _reflexive `Eql` given if the implicit search for `Eql[T, T]`
+ - a type `T` has a _reflexive_ `Eql` given if the implicit search for `Eql[T, T]`
    succeeds.
 
 ## Predefined Eql Instances
@@ -139,7 +136,7 @@ The `Eql` object defines givens for comparing
  - `java.lang.Number`, `java.lang.Boolean`, and `java.lang.Character`,
  - `scala.collection.Seq`, and `scala.collection.Set`.
 
-Given instances are defined so that every one of these types has a reflexive `Eql` given, and the following holds:
+Given instances are defined so that every one of these types has a _reflexive_ `Eql` given, and the following holds:
 
  - Primitive numeric types can be compared with each other.
  - Primitive numeric types can be compared with subtypes of `java.lang.Number` (and _vice versa_).
