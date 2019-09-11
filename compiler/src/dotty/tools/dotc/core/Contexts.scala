@@ -381,6 +381,8 @@ object Contexts {
       superOrThisCallContext(owner, constrCtx.scope)
         .setTyperState(typerState)
         .setGadt(gadt)
+        .fresh
+        .setScope(this.scope)
     }
 
     /** The super- or this-call context with given owner and locals. */
