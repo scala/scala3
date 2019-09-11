@@ -29,7 +29,7 @@ Particular criticisms are:
 
  3. The syntax of implicit definitions is too minimal. It consists of a single modifier, `implicit`, that can be attached to a large number of language constructs. A problem with this for newcomers is that it conveys mechanism instead of intent. For instance, a typeclass instance is an implicit object or val if unconditional and an implicit def with implicit parameters referring to some class if conditional. This describes precisely what the implicit definitions translate to -- just drop the `implicit` modifier, and that's it! But the cues that define intent are rather indirect and can be easily misread, as demonstrated by the definitions of `i1` and `i2` above.
 
- 4. The syntax of implicit parameters also has shortcomings. It starts with the position of `implicit` as a pseudo-modifier that applies to a whole parameter section instead of a single parameter. This represents an irregular case wrt to the rest of Scala's syntax. Furthermore, while implicit _parameters_ are designated specifically, arguments are not. Passing an argument to an implicit parameter looks like a regular application `f(arg)`. This is problematic because it means there can be confusion regarding what parameter gets instantiated in a call. For instance, in
+ 4. The syntax of implicit parameters also has shortcomings. It starts with the position of `implicit` as a pseudo-modifier that applies to a whole parameter section instead of a single parameter. This represents an irregular case with respect to the rest of Scala's syntax. Furthermore, while implicit _parameters_ are designated specifically, arguments are not. Passing an argument to an implicit parameter looks like a regular application `f(arg)`. This is problematic because it means there can be confusion regarding what parameter gets instantiated in a call. For instance, in
     ```scala
     def currentMap(implicit ctx: Context): Map[String, Int]
     ```
@@ -39,7 +39,7 @@ Particular criticisms are:
 
 None of the shortcomings is fatal, after all implicits are very widely used, and many libraries and applications rely on them. But together, they make code using implicits a lot more cumbersome and less clear than it could be.
 
-Historically, many of these shortcomings come from the way implicits were gradually "discovered" in Scala. Scala originally had only implicit conversions with the intended use case of "extending" a class or trait after it was defined, i.e. what is expressed by implicit classes in later versions of Scala. Implicit parameters and instance definitions came later in 2006 and picked similar syntax since it seemed convenient. For the same reason, no effort was made to distinguish implicit imports or arguments from normal ones.
+Historically, many of these shortcomings come from the way implicits were gradually "discovered" in Scala. Scala originally had only implicit conversions with the intended use case of "extending" a class or trait after it was defined, i.e. what is expressed by implicit classes in later versions of Scala. Implicit parameters and instance definitions came later in 2006 and we picked similar syntax since it seemed convenient. For the same reason, no effort was made to distinguish implicit imports or arguments from normal ones.
 
 Existing Scala programmers by and large have gotten used to the status quo and see little need for change. But for newcomers this status quo presents a big hurdle. I believe if we want to overcome that hurdle, we should take a step back and allow ourselves to consider a radically new design.
 
@@ -61,8 +61,7 @@ This section also contains pages describing other language features that are rel
  - [Extension Methods](./extension-methods.md) replace implicit classes in a way that integrates better with typeclasses.
  - [Implementing Typeclasses](./typeclasses.md) demonstrates how some common typeclasses can be implemented using the new constructs.
  - [Typeclass Derivation](./derivation.md) introduces constructs to automatically derive typeclass instances for ADTs.
- - [Multiversal Equality](./multiversal-equality.md) introduces a special typeclass
-  to support type safe equality.
+ - [Multiversal Equality](./multiversal-equality.md) introduces a special typeclass to support type safe equality.
  - [Implicit Function Types](./implicit-function-types.md) provide a way to abstract over given clauses.
  - [Implicit By-Name Parameters](./implicit-by-name-parameters.md) are an essential tool to define recursive synthesized values without looping.
  - [Relationship with Scala 2 Implicits](./relationship-implicits.md) discusses the relationship between old-style implicits and new-style givens and how to migrate from one to the other.
