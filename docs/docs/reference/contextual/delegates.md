@@ -34,7 +34,7 @@ This code defines a trait `Ord` with two given instances. `IntOrd` defines
 a given for the type `Ord[Int]` whereas `ListOrd[T]` defines givens
 for `Ord[List[T]]` for all types `T` that come with a given instance for `Ord[T]` themselves.
 The `given (ord: Ord[T])` clause in `ListOrd` defines an implicit parameter.
-Given clauses are further explained in the [next section](./given-clauses.md).
+Given clauses are further explained in [given clauses](./given-clauses.md).
 
 ## Anonymous Given Instances
 
