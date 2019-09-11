@@ -1239,17 +1239,60 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     assert(level == 0)
     val inlinedFrom = enclosingInlineds.last
     val ctx1 = tastyreflect.MacroExpansion.context(inlinedFrom)
-    val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)(ctx1)
 
-    val inlinedNormailizer = new TreeMap {
-      override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-        case Inlined(EmptyTree, Nil, expr) if enclosingInlineds.isEmpty => transform(expr)
-        case _ => super.transform(tree)
+    val dependencies = macroDependencies(body)
+
+    if (dependencies.nonEmpty) {
+      var location = inlinedFrom.symbol
+      if (location.isLocalDummy) location = location.owner
+
+      val msg =
+        em"""Failed to expand macro. This macro depends on an implementation that is defined in the same project and not yet compiled.
+           |In particular ${inlinedFrom.symbol} depends on ${dependencies.map(_.show).mkString(", ")}.
+           |
+           |Moving ${dependencies.map(_.show).mkString(", ")} to a different project would fix this.
+           |""".stripMargin
+      ctx.error(msg, inlinedFrom.sourcePos)
+      EmptyTree
+    } else {
+      val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)(ctx1)
+
+      val inlinedNormailizer = new TreeMap {
+        override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+          case Inlined(EmptyTree, Nil, expr) if enclosingInlineds.isEmpty => transform(expr)
+          case _ => super.transform(tree)
+        }
       }
+      val normalizedSplice = inlinedNormailizer.transform(evaluatedSplice)
+      if (normalizedSplice.isEmpty) normalizedSplice
+      else normalizedSplice.withSpan(span)
     }
-    val normalizedSplice = inlinedNormailizer.transform(evaluatedSplice)
-    if (normalizedSplice.isEmpty) normalizedSplice
-    else normalizedSplice.withSpan(span)
+  }
+
+  /** Return the set of symbols that are refered at level -1 by the tree and defined in the current run.
+   *  This corresponds to the symbols that will need to be interpreted.
+   */
+  private def macroDependencies(tree: Tree)(implicit ctx: Context) = {
+    new TreeAccumulator[Set[Symbol]] {
+      private[this] var level = -1
+      override def apply(syms: Set[Symbol], tree: tpd.Tree)(implicit ctx: Context): Set[Symbol] = {
+        if (level != -1) foldOver(syms, tree)
+        else tree match {
+          case tree: RefTree if level == -1 && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
+            foldOver(syms + tree.symbol, tree)
+          case Quoted(body) =>
+            level += 1
+            try apply(syms, body)
+            finally level -= 1
+          case Spliced(body) =>
+            level -= 1
+            try apply(syms, body)
+            finally level += 1
+          case _ =>
+            foldOver(syms, tree)
+        }
+      }
+    }.apply(Set.empty, tree)
   }
 }
 
