@@ -413,7 +413,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** Register type of leaf node */
   private def registerLeaf(tree: Tree): Unit = tree match {
     case _: This | _: Ident | _: TypeTree =>
-      tree.tpe.foreachPart(registerType, stopAtStatic = true)
+      tree.typeOpt.foreachPart(registerType, stopAtStatic = true)
     case _ =>
   }
 
@@ -433,11 +433,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** The Inlined node representing the inlined call */
   def inlined(sourcePos: SourcePosition): Tree = {
 
+  	// Special handling of `constValue[T]` and `constValueOpt[T]`
     if (callTypeArgs.length == 1)
       if (inlinedMethod == defn.Compiletime_constValue) {
         val constVal = tryConstValue
         if (!constVal.isEmpty) return constVal
-        ctx.error(i"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.sourcePos)
+        ctx.error(em"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.sourcePos)
       }
       else if (inlinedMethod == defn.Compiletime_constValueOpt) {
         val constVal = tryConstValue
