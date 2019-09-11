@@ -2,7 +2,6 @@
 
 class Test {
   import scala.collection.immutable.{TreeSet, HashSet}
-  import compiletime.trySummon
 
   inline def trySummon[S, T](f: PartialFunction[S, T]) <: T = ???
 
