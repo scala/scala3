@@ -203,8 +203,8 @@ object Parsers {
     } && !in.isSoftModifierInModifierPosition
 
     def isExprIntro: Boolean =
-      if (in.token == IMPLIED || in.token == GIVEN) in.lookaheadIn(BitSet(MATCH))
-      else (canStartExpressionTokens.contains(in.token) && !in.isSoftModifierInModifierPosition)
+      if (in.token == GIVEN) false
+      else canStartExpressionTokens.contains(in.token) && !in.isSoftModifierInModifierPosition
 
     def isDefIntro(allowedMods: BitSet, excludedSoftModifiers: Set[TermName] = Set.empty): Boolean =
       in.token == AT ||
@@ -1645,15 +1645,6 @@ object Parsers {
         val imods = modifiers(closureMods)
         if (in.token == MATCH) impliedMatch(start, imods)
         else implicitClosure(start, location, imods)
-      }
-      else if (in.token == IMPLIED || in.token == GIVEN) {
-        in.nextToken()
-        if (in.token == MATCH)
-          impliedMatch(start, EmptyModifiers)
-        else {
-          syntaxError("`match` expected")
-          EmptyTree
-        }
       }
       else {
         val saved = placeholderParams
@@ -3316,10 +3307,17 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
-    /** GivenDef          ::=  [id] [DefTypeParamClause] GivenBody
-     *  GivenBody         ::=  [‘as ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
-     *                      |  ‘as’ Type {GivenParamClause} ‘=’ Expr
-     *                      |  ‘(’ DefParam ‘)’ TemplateBody
+    /** OLD:
+     *  GivenDef       ::=  [id] [DefTypeParamClause] GivenBody
+     *  GivenBody      ::=  [‘as ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
+     *                   |  ‘as’ Type {GivenParamClause} ‘=’ Expr
+     *                   |  ‘(’ DefParam ‘)’ TemplateBody
+     *  NEW:
+     *  GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
+     *                   |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
+     *                // |  [id ‘:’] [ExtParamClause] TemplateBody   (not yet implemented)
+     *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause {GivenParamClause}
+     *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
      */
     def instanceDef(newStyle: Boolean, start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
