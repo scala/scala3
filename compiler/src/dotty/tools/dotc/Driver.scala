@@ -14,6 +14,8 @@ import reporting._
 import scala.util.control.NonFatal
 import fromtasty.{TASTYCompiler, TastyFileUtil}
 
+import scala.annotation.tailrec
+
 /** Run the Dotty compiler.
  *
  *  Extending this class lets you customize many aspect of the compilation
@@ -29,24 +31,48 @@ class Driver {
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
   protected def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
-    if (fileNames.nonEmpty)
-      try {
-        val run = compiler.newRun
-        run.compile(fileNames)
-        run.printSummary()
+    doCompileBySteps(compiler, fileNames :: Nil)
+
+  protected def doCompileBySteps(compiler: Compiler, fileNamess: List[List[String]])(implicit ctx: Context): Reporter = {
+    assert(fileNamess.nonEmpty)
+    try {
+      @tailrec def runSteps(fileNamess: List[List[String]], step: Int)(implicit ctx: Context): Unit = fileNamess match {
+        case fileNames :: rest =>
+          if (fileNames.nonEmpty) {
+            val run = compiler.newRun
+            run.compile(fileNames)
+            run.printSummary()
+          }
+          if (rest.nonEmpty) {
+            if (ctx.reporter.hasErrors)
+              ctx.error("Errors emitted while compiling with -XsplitCompilation. The following files where included in the compilation: " +
+                  rest.flatten.mkString(", "))
+            else runSteps(rest, step + 1)(updateMacroClasspath(ctx))
+          }
+        case Nil =>
       }
-      catch {
-        case ex: FatalError  =>
-          ctx.error(ex.getMessage) // signals that we should fail compilation.
-          ctx.reporter
-        case ex: TypeError =>
-          println(s"${ex.toMessage} while compiling ${fileNames.mkString(", ")}")
-          throw ex
-        case ex: Throwable =>
-          println(s"$ex while compiling ${fileNames.mkString(", ")}")
-          throw ex
-      }
-    else ctx.reporter
+      runSteps(fileNamess, 0)
+      ctx.reporter
+    }
+    catch {
+      case ex: FatalError  =>
+        ctx.error(ex.getMessage) // signals that we should fail compilation.
+        ctx.reporter
+      case ex: TypeError =>
+        println(s"${ex.toMessage} while compiling ${fileNamess.flatten.mkString(", ")}")
+        throw ex
+      case ex: Throwable =>
+        println(s"$ex while compiling ${fileNamess.flatten.mkString(", ")}")
+        throw ex
+    }
+  }
+
+  private def updateMacroClasspath(implicit ctx: Context): Context = {
+    val ctx2 = ctx.fresh
+    val newClasspath = ctx2.settings.outputDir.value.path + java.io.File.pathSeparator + ctx2.settings.classpath.value
+    ctx2.setSetting(ctx2.settings.classpath, newClasspath)
+    MacroClassLoader.init(ctx2) // Update classloader with new classpath
+  }
 
   protected def initCtx: Context = (new ContextBase).initialCtx
 
@@ -176,7 +202,14 @@ class Driver {
    */
   def process(args: Array[String], rootCtx: Context): Reporter = {
     val (fileNames, ctx) = setup(args, rootCtx)
-    doCompile(newCompiler(ctx), fileNames)(ctx)
+    val compiler = newCompiler(ctx)
+    val XsplitCompilation = ctx.settings.XsplitCompilation.value(ctx).split(java.io.File.pathSeparator).filter(_.length > 0).toSet
+    if (XsplitCompilation.nonEmpty) {
+      val (firstFiles, secondFiles) = fileNames.partition(XsplitCompilation)
+      doCompileBySteps(compiler, List(firstFiles, secondFiles))(ctx)
+    } else {
+      doCompile(compiler, fileNames)(ctx)
+    }
   }
 
   def main(args: Array[String]): Unit = {

@@ -32,7 +32,12 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   @Test def posMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePosMacros")
-    compileFilesInDir("tests/pos-macros", defaultOptions).checkCompile()
+    aggregateTests(
+      compileFilesInDir("tests/pos-macros", defaultOptions),
+      compileDir("tests/pos-special/macros-in-same-project-1", defaultOptions and "-XsplitCompilation" and "tests/pos-special/macros-in-same-project-1/Foo.scala"),
+      compileDir("tests/pos-special/macros-in-same-project-2", defaultOptions and "-XsplitCompilation" and "tests/pos-special/macros-in-same-project-2/Foo.scala"),
+      compileDir("tests/pos-special/macros-in-same-project-3", defaultOptions and "-XsplitCompilation" and "tests/pos-special/macros-in-same-project-3/Foo.scala:tests/pos-special/macros-in-same-project-3/Bar.scala"),
+    ).checkCompile()
   }
 
   @Test def posWithCompiler: Unit = {
