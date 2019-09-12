@@ -28,7 +28,7 @@ import collection.mutable.ListBuffer
  *  "symbol" and "deref". Both methods are parameterized by the current context,
  *  and are effectively indexed by current period.
  *
- *  Lines ending in a horizontal line mean subtying (right is a subtype of left).
+ *  Lines ending in a horizontal line mean subtyping (right is a subtype of left).
  *
  *  NamedType
  *    |                                          Symbol---------ClassSymbol
