@@ -571,7 +571,7 @@ sum
 
 ### Find implicits within a macro
 
-Similarly to the `implicit match` construct, it is possible to make implicit search available
+Similarly to the `summonFrom` construct, it is possible to make implicit search available
 in a quote context. For this we simply provide `scala.quoted.matching.searchImplicitExpr:
 
 ```scala
