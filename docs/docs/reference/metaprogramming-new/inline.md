@@ -406,10 +406,7 @@ inline def fail(p1: => Any) = {
 fail(indentity("foo")) // error: failed on: indentity("foo")
 ```
 
-## Implicit Matches
-
-**Note** The syntax described in this section is currently under revision.
-[Here is the new version which will be implemented in Dotty 0.19](../metaprogramming-new/inline.html).
+## Summoning Implicits Selectively
 
 It is foreseen that many areas of typelevel programming can be done with rewrite
 methods instead of implicits. But sometimes implicits are unavoidable. The
@@ -444,27 +441,25 @@ There are some proposals to improve the situation in specific areas, for
 instance by allowing more elaborate schemes to specify priorities. But they all
 keep the viral nature of implicit search programs based on logic programming.
 
-By contrast, the new `implicit match` construct makes implicit search available
+By contrast, the new `summonFrom` construct makes implicit search available
 in a functional context. To solve the problem of creating the right set, one
 would use it as follows:
 ```scala
-inline def setFor[T]: Set[T] = implicit match {
-  case ord: Ordering[T] => new TreeSet[T]
-  case _                => new HashSet[T]
+import scala.compiletime.summonFrom
+
+inline def setFor[T]: Set[T] = summonFrom match {
+  case given ord: Ordering[T] => new TreeSet[T]
+  case _                      => new HashSet[T]
 }
 ```
-An implicit match uses the `implicit` keyword in the place of the scrutinee. Its
-patterns are type ascriptions of the form `identifier : Type`.
+A `summonFrom` call takes a pattern matching closure as argument. All patterns
+in the closure are type ascriptions of the form `identifier : Type`.
 
 Patterns are tried in sequence. The first case with a pattern `x: T` such that
-an implicit value of type `T` can be summoned is chosen. The variable `x` is
-then bound to the implicit value for the remainder of the case. It can in turn
-be used as an implicit in the right hand side of the case. It is an error if one
-of the tested patterns gives rise to an ambiguous implicit search.
+an implicit value of type `T` can be summoned is chosen. If the pattern is prefixed
+with `given`, the variable `x` is bound to the implicit value for the remainder of the case. It can in turn be used as an implicit in the right hand side of the case. It is an error if one of the tested patterns gives rise to an ambiguous implicit search.
 
-An implicit matches is considered to be a special kind of a inline match. This
-means it can only occur in the body of an inline method, and it must be reduced
-at compile time.
+`summonFrom` applications must be reduced at compile time.
 
 Consequently, if we summon an `Ordering[String]` the code above will return a
 new instance of `TreeSet[String]`.
@@ -475,7 +470,7 @@ summon[Ordering[String]]
 println(setFor[String].getClass) // prints class scala.collection.immutable.TreeSet
 ```
 
-**Note** implicit matches can raise ambiguity errors. Consider the following
+**Note** `summonFrom` applications can raise ambiguity errors. Consider the following
 code with two implicit values in scope of type `A`. The single pattern match
 case of the implicit match with type ascription of an `A` raises the ambiguity
 error.
@@ -485,13 +480,12 @@ class A
 implicit val a1: A = new A
 implicit val a2: A = new A
 
-inline def f: Any = implicit match {
+inline def f: Any = summonFrom {
   case _: A => ???  // error: ambiguous implicits
 }
 ```
 
 ### Reference
 
-For more info, see [PR #4927](https://github.com/lampepfl/dotty/pull/4768),
-which explains how inline methods can be used for typelevel programming and code
-specialization.
+For more info, see [PR #4768](https://github.com/lampepfl/dotty/pull/4768),
+which explains how `summonFrom`'s predecessor (implicit matches) can be used for typelevel programming and code specialization and [PR #7201](https://github.com/lampepfl/dotty/pull/7201) which explains the new `summonFrom` syntax.
