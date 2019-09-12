@@ -2,7 +2,7 @@ object Test {
 
   type Foo
 
-  given A {
+  given extension {
     def (y: Any) g given Foo: Any = ???
   }
 

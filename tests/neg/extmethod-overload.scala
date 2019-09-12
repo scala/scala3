@@ -1,8 +1,8 @@
 object Test {
-  given extension A: {
+  given A: extension {
     def (x: Int) |+| (y: Int) = x + y
   }
-  given extension B: {
+  given B: extension {
     def (x: Int) |+| (y: String) = x + y.length
   }
   assert((1 |+| 2) == 3)  // error ambiguous

@@ -48,7 +48,7 @@ object Instances extends Common {
     }
   }
 
-  given extension stringOps: {
+  given stringOps: extension {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
@@ -152,7 +152,7 @@ object Instances extends Common {
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  private given extension WrappedResult: {
+  private given WrappedResult: extension {
     def apply[T](x: T): WrappedResult[T] = x
     def (x: WrappedResult[T]) unwrap[T]: T = x
   }

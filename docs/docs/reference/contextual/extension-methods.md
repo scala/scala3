@@ -82,13 +82,13 @@ and where `T` is the expected type. The following two rewritings are tried in or
 So `circle.circumference` translates to `CircleOps.circumference(circle)`, provided
 `circle` has type `Circle` and `CircleOps` is given  (i.e. it is visible at the point of call or it is defined in the companion object of `Circle`).
 
-### Given Instances for Extension Methods
+### Given Instances Defining Only Extension Methods
 
-Given instances that define extension methods can also be defined without a parent clause. In this case the `given` is followed  by
+Given instances that define extension methods can also be defined without a parent clause. In this case the `given` is followed  by the special identifier
 `extension`. E.g.,
 
 ```scala
-given extension stringOps: {
+given stringOps: extension {
   def (xs: Seq[String]) longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
@@ -101,8 +101,7 @@ given extension {
 ```
 If given extensions are anonymous (as in the second clause), their name is synthesized from the name of the first defined extension method.
 
-Note: `extension` is a soft keyword, it can be used elsewhere
-as a normal identifier.
+Note: `extension` is a soft keyword, it can be used elsewhere as a normal identifier.
 
 ### Given Extensions with Collective Parameters
 
@@ -110,14 +109,14 @@ If a given extension defines several extension methods one can pull out the left
 as well as any type parameters of these extension methods into the given instance itself.
 For instance, here is a given instance with two extension methods.
 ```scala
-given extension listOps: {
+given listOps: extension {
   def (xs: List[T]) second[T]: T = xs.tail.head
   def (xs: List[T]) third[T]: T = xs.tail.tail.head
 }
 ```
 The repetition in the parameters can be avoided by moving the parameters in front of the opening brace. The following version is a shorthand for the code above.
 ```scala
-given extension listOps: [T](xs: List[T]) {
+given listOps: extension[T](xs: List[T]) {
   def second: T = xs.tail.head
   def third: T = xs.tail.tail.head
 }
@@ -171,11 +170,12 @@ As usual, type parameters of the extension method follow the defined method name
 
 ### Syntax
 
-The required syntax extension just adds one clause for extension methods relative
-to the [current syntax](../../internals/syntax.md).
+Here are the required syntax extensions compared to the
+[current syntax](../../internals/syntax.md).
 ```
+DefSig            ::=  ...
+                    |  ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] DefParamClauses
 GivenDef          ::=  ...
-                    |  ‘extension’ [id ‘:’] ExtParamClause TemplateBody
+                    |  [id ‘:’] ‘extension’ ExtParamClause TemplateBody
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’ {GivenParamClause}
-                    |  ‘(’ DefParam ‘)’ TemplateBody
 ```

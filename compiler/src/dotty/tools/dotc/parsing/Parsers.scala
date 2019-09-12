@@ -3336,52 +3336,46 @@ object Parsers {
      */
     def instanceDef(newStyle: Boolean, start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
-
-      def extensionDef() = {
-        in.nextToken()
-        val name =
-          if isIdent then
-            val id = ident()
-            accept(COLON)
-            id
-          else EmptyTermName
-        indentRegion(name) {
-          // TODO: accept type params here
-          val leadingParamss = if in.token == LPAREN then paramClause(prefix = true) :: Nil else Nil
-          // TODO: accept given params here
-          possibleTemplateStart()
-          val templ = templateBodyOpt(makeConstructor(Nil, leadingParamss), Nil, Nil)
-          ModuleDef(name, templ)
-        }
-      }
-
-      def regularDef() = {
-        val name =
-          if isIdent && !(newStyle && allowOldGiven && isIdent(nme.as)) then ident()
-          else EmptyTermName
-        indentRegion(name) {
-          val tparams = typeParamClauseOpt(ParamOwner.Def)
-          var leadingParamss =
-            if (in.token == LPAREN && allowOldExtension)
-              try paramClause(prefix = true) :: Nil
-              finally {
-                possibleTemplateStart()
-                if (!in.isNestedStart) syntaxErrorOrIncomplete("`{' expected")
-              }
-            else Nil
-          val parents =
-            if (!newStyle && in.token == FOR || isIdent(nme.as)) { // for the moment, accept both `given for` and `given as`
+      var isExtension = false
+      val name =
+        if isIdent(nme.extension) then
+          in.nextToken()
+          isExtension = true
+          EmptyTermName
+        else if newStyle && allowOldGiven && isIdent(nme.as) then EmptyTermName
+        else if isIdent then ident()
+        else EmptyTermName
+      indentRegion(name) {
+        var tparams: List[TypeDef] = Nil
+        var leadingParamss: List[List[ValDef]] = Nil
+        def parseParams() =
+          tparams = typeParamClauseOpt(ParamOwner.Def)
+          if in.token == LPAREN then leadingParamss = paramClause(prefix = true) :: Nil
+        if !isExtension then parseParams()
+        val parents =
+          if isExtension then Nil
+          else if allowOldGiven && (!newStyle && in.token == FOR || isIdent(nme.as)) then // for the moment, accept both `given for` and `given as`
+            in.nextToken()
+            tokenSeparated(COMMA, constrApp)
+          else if in.token == COLON then
+            in.nextToken()
+            if isIdent(nme.extension) then
+              if tparams.nonEmpty then
+                syntaxError(i"no type parameters allowed before `extension`", tparams.head.span)
+              if leadingParamss.nonEmpty then
+                syntaxError(i"no parameters allowed before `extension`", leadingParamss.head.head.span)
               in.nextToken()
-              tokenSeparated(COMMA, constrApp)
-            }
-            else Nil
-          val vparamss = paramClauses(ofInstance = true)
-          if (in.token == EQUALS && parents.length == 1 && parents.head.isType) {
+              parseParams()
+              Nil
+            else tokenSeparated(COMMA, constrApp)
+          else Nil
+        val vparamss = paramClauses(ofInstance = true)
+        val gdef =
+          if (in.token == EQUALS && parents.length == 1 && parents.head.isType) then
             in.nextToken()
             mods1 |= Final
             DefDef(name, tparams, vparamss, parents.head, expr())
-          }
-          else {
+          else
             possibleTemplateStart()
             val (tparams1, vparamss1) =
               if (leadingParamss.nonEmpty)
@@ -3393,12 +3387,8 @@ object Parsers {
             val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
             if (tparams.isEmpty && vparamss1.isEmpty || leadingParamss.nonEmpty) ModuleDef(name, templ)
             else TypeDef(name.toTypeName, templ)
-          }
-        }
+        finalizeDef(gdef, mods1, start)
       }
-
-      val gdef = if isIdent(nme.extension) then extensionDef() else regularDef()
-      finalizeDef(gdef, mods1, start)
     }
 
 /* -------- TEMPLATES ------------------------------------------- */
