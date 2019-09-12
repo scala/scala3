@@ -14,6 +14,7 @@ import Flags._
 import Contexts._
 import Names._
 import NameKinds.WildcardParamName
+import NameOps._
 import ast.{Positioned, Trees}
 import ast.Trees._
 import StdNames._
@@ -202,8 +203,8 @@ object Parsers {
     } && !in.isSoftModifierInModifierPosition
 
     def isExprIntro: Boolean =
-      if (in.token == IMPLIED || in.token == GIVEN) in.lookaheadIn(BitSet(MATCH))
-      else (canStartExpressionTokens.contains(in.token) && !in.isSoftModifierInModifierPosition)
+      if (in.token == GIVEN) false
+      else canStartExpressionTokens.contains(in.token) && !in.isSoftModifierInModifierPosition
 
     def isDefIntro(allowedMods: BitSet, excludedSoftModifiers: Set[TermName] = Set.empty): Boolean =
       in.token == AT ||
@@ -1645,15 +1646,6 @@ object Parsers {
         if (in.token == MATCH) impliedMatch(start, imods)
         else implicitClosure(start, location, imods)
       }
-      else if (in.token == IMPLIED || in.token == GIVEN) {
-        in.nextToken()
-        if (in.token == MATCH)
-          impliedMatch(start, EmptyModifiers)
-        else {
-          syntaxError("`match` expected")
-          EmptyTree
-        }
-      }
       else {
         val saved = placeholderParams
         placeholderParams = Nil
@@ -2350,16 +2342,34 @@ object Parsers {
       if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1() :: patternAlts() }
       else Nil
 
-    /**  Pattern1          ::= Pattern2 [Ascription]
+    /**  Pattern1     ::= Pattern2 [Ascription]
+     *                  | ‘given’ PatVar ‘:’ RefinedType
      */
-    def pattern1(): Tree = {
-      val p = pattern2()
-      if (in.token == COLON) {
-        in.nextToken()
-        ascription(p, Location.InPattern)
+    def pattern1(): Tree =
+      if (in.token == GIVEN) {
+        val givenMod = atSpan(in.skipToken())(Mod.Given())
+        atSpan(in.offset) {
+          in.token match {
+            case IDENTIFIER | USCORE if in.name.isVariableName =>
+              val name = in.name
+              in.nextToken()
+              accept(COLON)
+              val typed = ascription(Ident(nme.WILDCARD), Location.InPattern)
+              Bind(name, typed).withMods(addMod(Modifiers(), givenMod))
+            case _ =>
+              syntaxErrorOrIncomplete("pattern variable expected")
+              errorTermTree
+          }
+        }
       }
-      else p
-    }
+      else {
+        val p = pattern2()
+        if (in.token == COLON) {
+          in.nextToken()
+          ascription(p, Location.InPattern)
+        }
+        else p
+      }
 
     /**  Pattern2    ::=  [id `@'] InfixPattern
      */
@@ -3297,10 +3307,17 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
-    /** GivenDef          ::=  [id] [DefTypeParamClause] GivenBody
-     *  GivenBody         ::=  [‘as ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
-     *                      |  ‘as’ Type {GivenParamClause} ‘=’ Expr
-     *                      |  ‘(’ DefParam ‘)’ TemplateBody
+    /** OLD:
+     *  GivenDef       ::=  [id] [DefTypeParamClause] GivenBody
+     *  GivenBody      ::=  [‘as ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
+     *                   |  ‘as’ Type {GivenParamClause} ‘=’ Expr
+     *                   |  ‘(’ DefParam ‘)’ TemplateBody
+     *  NEW:
+     *  GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
+     *                   |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
+     *                // |  [id ‘:’] [ExtParamClause] TemplateBody   (not yet implemented)
+     *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause {GivenParamClause}
+     *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
      */
     def instanceDef(newStyle: Boolean, start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)

@@ -308,24 +308,11 @@ object Trees {
   /** Tree defines a new symbol */
   trait DefTree[-T >: Untyped] extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] <: DefTree[T]
-    override def isDef: Boolean = true
-    def namedType: NamedType = tpe.asInstanceOf[NamedType]
-  }
-
-  /** Tree defines a new symbol and carries modifiers.
-   *  The position of a MemberDef contains only the defined identifier or pattern.
-   *  The envelope of a MemberDef contains the whole definition and has its point
-   *  on the opening keyword (or the next token after that if keyword is missing).
-   */
-  abstract class MemberDef[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NameTree[T] with DefTree[T] {
-    type ThisTree[-T >: Untyped] <: MemberDef[T]
 
     private[this] var myMods: untpd.Modifiers = null
 
     private[dotc] def rawMods: untpd.Modifiers =
       if (myMods == null) untpd.EmptyModifiers else myMods
-
-    def rawComment: Option[Comment] = getAttachment(DocComment)
 
     def withAnnotations(annots: List[untpd.Tree]): ThisTree[Untyped] = withMods(rawMods.withAnnotations(annots))
 
@@ -338,13 +325,27 @@ object Trees {
     def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(untpd.Modifiers(flags))
     def withAddedFlags(flags: FlagSet): ThisTree[Untyped] = withMods(rawMods | flags)
 
+    /** Destructively update modifiers. To be used with care. */
+    def setMods(mods: untpd.Modifiers): Unit = myMods = mods
+
+    override def isDef: Boolean = true
+    def namedType: NamedType = tpe.asInstanceOf[NamedType]
+  }
+
+  /** Tree defines a new symbol and carries modifiers.
+   *  The position of a MemberDef contains only the defined identifier or pattern.
+   *  The envelope of a MemberDef contains the whole definition and has its point
+   *  on the opening keyword (or the next token after that if keyword is missing).
+   */
+  abstract class MemberDef[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NameTree[T] with DefTree[T] {
+    type ThisTree[-T >: Untyped] <: MemberDef[T]
+
+    def rawComment: Option[Comment] = getAttachment(DocComment)
+
     def setComment(comment: Option[Comment]): this.type = {
       comment.map(putAttachment(DocComment, _))
       this
     }
-
-    /** Destructively update modifiers. To be used with care. */
-    def setMods(mods: untpd.Modifiers): Unit = myMods = mods
 
     /** The position of the name defined by this definition.
      *  This is a point position if the definition is synthetic, or a range position

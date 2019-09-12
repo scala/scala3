@@ -5,7 +5,7 @@ object `implicit-match-and-inline-match` {
   implicit val ibox: Box[Int] = Box(0)
 
   object a {
-    inline def isTheBoxInScopeAnInt = delegate match {
+    inline def isTheBoxInScopeAnInt = summonFrom {
       case _: Box[t] => inline erasedValue[t] match {
         case _: Int => true
       }
@@ -14,7 +14,7 @@ object `implicit-match-and-inline-match` {
   }
 
   object b {
-    inline def isTheBoxInScopeAnInt = delegate match {
+    inline def isTheBoxInScopeAnInt = summonFrom {
       case _: Box[t] => inline 0 match {
         case _: t => true
       }

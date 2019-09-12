@@ -7,23 +7,23 @@ _Implicit functions_ are functions with (only) implicit parameters.
 Their types are _implicit function types_. Here is an example of an implicit function type:
 
 ```scala
-type Executable[T] = given ExecutionContext => T
+type Executable[T] = (given ExecutionContext) => T
 ```
 An implicit function is applied to synthesized arguments, in
 the same way a method with a given clause is applied. For instance:
 ```scala
-  given ec as ExecutionContext = ...
+  given ec: ExecutionContext = ...
 
   def f(x: Int): Executable[Int] = ...
 
-  f(2) given ec    // explicit argument
+  f(2)(given ec)   // explicit argument
   f(2)             // argument is inferred
 ```
 Conversely, if the expected type of an expression `E` is an implicit function type
-`given (T_1, ..., T_n) => U` and `E` is not already an
+`(given T_1, ..., T_n) => U` and `E` is not already an
 implicit function literal, `E` is converted to an implicit function literal by rewriting to
 ```scala
-  given (x_1: T1, ..., x_n: Tn) => E
+  (given x_1: T1, ..., x_n: Tn) => E
 ```
 where the names `x_1`, ..., `x_n` are arbitrary. This expansion is performed
 before the expression `E` is typechecked, which means that `x_1`, ..., `x_n`
@@ -38,11 +38,11 @@ For example, continuing with the previous definitions,
 ```scala
   def g(arg: Executable[Int]) = ...
 
-  g(22)      // is expanded to g(given ev => 22)
+  g(22)      // is expanded to g((given ev) => 22)
 
-  g(f(2))    // is expanded to g(given ev => (f(2) given ev))
+  g(f(2))    // is expanded to g((given ev) => f(2)(given ev))
 
-  g(given ctx => f(22) given ctx) // is left as it is
+  g((given ctx) => f(22)(given ctx)) // is left as it is
 ```
 ### Example: Builder Pattern
 
@@ -82,32 +82,32 @@ Then, the `table`, `row` and `cell` constructor methods can be defined
 with implicit function types as parameters to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
-  def table(init: given Table => Unit) = {
-    given t as Table
+  def table(init: (given Table) => Unit) = {
+    given t: Table
     init
     t
   }
 
-  def row(init: given Row => Unit) given (t: Table) = {
-    given r as Row
+  def row(init: (given Row) => Unit)(given t: Table) = {
+    given r: Row
     init
     t.add(r)
   }
 
-  def cell(str: String) given (r: Row) =
+  def cell(str: String)(given r: Row) =
     r.add(new Cell(str))
 ```
 With that setup, the table construction code above compiles and expands to:
 ```scala
-  table { given ($t: Table) =>
-    row { given ($r: Row) =>
-      cell("top left") given $r
-      cell("top right") given $r
-    } given $t
-    row { given ($r: Row) =>
-      cell("bottom left") given $r
-      cell("bottom right") given $r
-    } given $t
+  table { (given $t: Table) =>
+    row { (given $r: Row) =>
+      cell("top left")(given $r)
+      cell("top right")(given $r)
+    } (given $t)
+    row { (given $r: Row) =>
+      cell("bottom left")(given $r)
+      cell("bottom right")(given $r)
+    } (given $t)
   }
 ```
 ### Example: Postconditions
@@ -118,10 +118,10 @@ As a larger example, here is a way to define constructs for checking arbitrary p
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  def result[T] given (r: WrappedResult[T]): T = r
+  def result[T](given r: WrappedResult[T]): T = r
 
-  def (x: T) ensuring[T](condition: given WrappedResult[T] => Boolean): T = {
-    assert(condition given x)
+  def (x: T) ensuring[T](condition: (given WrappedResult[T]) => Boolean): T = {
+    assert(condition(given x))
     x
   }
 }
@@ -129,7 +129,7 @@ import PostConditions.{ensuring, result}
 
 val s = List(1, 2, 3).sum.ensuring(result == 6)
 ```
-**Explanations**: We use an implicit function type `given WrappedResult[T] => Boolean`
+**Explanations**: We use an implicit function type `(given WrappedResult[T]) => Boolean`
 as the type of the condition of `ensuring`. An argument to `ensuring` such as
 `(result == 6)` will therefore have a given instance of type `WrappedResult[T]` in
 scope to pass along to the `result` method. `WrappedResult` is a fresh type, to make sure

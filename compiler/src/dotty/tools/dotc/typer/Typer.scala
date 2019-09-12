@@ -1090,7 +1090,7 @@ class Typer extends Namer
     tree.selector match {
       case EmptyTree =>
         if (tree.isInline) {
-          checkInInlineContext("delegate match", tree.posd)
+          checkInInlineContext("summonFrom", tree.posd)
           val cases1 = tree.cases.mapconserve {
             case cdef @ CaseDef(pat @ Typed(Ident(nme.WILDCARD), _), _, _) =>
               // case _ : T  -->  case evidence$n : T
@@ -1478,18 +1478,23 @@ class Typer extends Namer
         tpd.cpy.UnApply(body1)(fn, Nil,
             typed(untpd.Bind(tree.name, untpd.TypedSplice(arg)).withSpan(tree.span), arg.tpe) :: Nil)
       case _ =>
-        if (tree.name == nme.WILDCARD) body1
+        var name = tree.name
+        if (name == nme.WILDCARD && tree.mods.is(Given)) {
+          val Typed(_, tpt): @unchecked = tree.body
+          name = desugar.inventGivenName(tpt)
+        }
+        if (name == nme.WILDCARD) body1
         else {
           // for a singleton pattern like `x @ Nil`, `x` should get the type from the scrutinee
           // see tests/neg/i3200b.scala and SI-1503
           val symTp =
             if (body1.tpe.isInstanceOf[TermRef]) pt1
             else body1.tpe.underlyingIfRepeated(isJava = false)
-          val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.span)
-          if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Given)
+          val sym = ctx.newPatternBoundSymbol(name, symTp, tree.span)
+          if (pt == defn.ImplicitScrutineeTypeRef || tree.mods.is(Given)) sym.setFlag(Given)
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.sourcePos)
-          assignType(cpy.Bind(tree)(tree.name, body1), sym)
+          assignType(cpy.Bind(tree)(name, body1), sym)
         }
     }
   }

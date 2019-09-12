@@ -1,7 +1,7 @@
 object Test {
 
   inline def bar() =
-    delegate match { // error
+    compiletime.summonFrom {  // error
       case _: Int =>
     }
 

@@ -37,5 +37,20 @@ package object compiletime {
 
   inline def constValue[T]: T = ???
 
+  /** Summons first given matching one of the listed cases. E.g. in
+   *
+   *      given B { ... }
+   *
+   *      summonFrom {
+   *        case given A => 1
+   *        case given B => 2
+   *        case given C => 3
+   *        case _ => 4
+   *      }
+   *
+   *  the returned value would be `2`.
+   */
+  inline def summonFrom(f: Nothing => Any) <: Any = ???
+
   type S[X <: Int] <: Int
 }

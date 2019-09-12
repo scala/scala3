@@ -1,22 +1,25 @@
 package implicitmatch
 
-class Test {
+class Test extends App {
   import scala.collection.immutable.{TreeSet, HashSet}
+  import scala.compiletime.summonFrom
 
-  inline def setFor[T]: Set[T] = implicit match {
-    case ord: Ordering[T] => new TreeSet[T]
-    case _                => new HashSet[T]
+  inline def setFor[T] <: Set[T] = summonFrom {
+    case given ord: Ordering[T] => new TreeSet[T]
+    case _                      => new HashSet[T]
   }
 
   the[Ordering[String]]
 
-  println(setFor[String].getClass) // prints class scala.collection.immutable.TreeSet
+  val sf = setFor[String]
 
-  class A
-  implicit val a1: A = new A
-  implicit val a2: A = new A
+  println(sf.getClass) // prints class scala.collection.immutable.TreeSet
 
-  inline def f: Any = implicit match {
-    case _: A => ???  // error: ambiguous implicits
+  class A(val x: String)
+  implicit val a1: A = new A("a1")
+  implicit val a2: A = new A("a2")
+
+  inline def f: Any = summonFrom {
+    case ev: A => println(ev.x)  // error: ambiguous implicits
   }
 }

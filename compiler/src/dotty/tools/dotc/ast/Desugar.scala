@@ -930,6 +930,10 @@ object desugar {
     else tree
   }
 
+  /** Invent a name for an anonympus given of type or template `impl`. */
+  def inventGivenName(impl: Tree)(implicit ctx: Context): SimpleName =
+    avoidIllegalChars(s"${inventName(impl)}_given".toTermName.asSimpleName)
+
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
    *      If it does redefine, issue an error and return a mangled name instead of the original one.
@@ -937,7 +941,7 @@ object desugar {
    */
   def normalizeName(mdef: MemberDef, impl: Tree)(implicit ctx: Context): Name = {
     var name = mdef.name
-    if (name.isEmpty) name = name.likeSpaced(avoidIllegalChars(s"${inventName(impl)}_given".toTermName.asSimpleName))
+    if (name.isEmpty) name = name.likeSpaced(inventGivenName(impl))
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
       def kind = if (name.isTypeName) "class" else "object"
       ctx.error(em"illegal redefinition of standard $kind $name", mdef.sourcePos)

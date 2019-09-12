@@ -50,7 +50,7 @@ trait StringSeqOps {
 ```
 We can make the extension method available by defining a given `StringSeqOps` instance, like this:
 ```scala
-given ops1 as StringSeqOps
+given ops1: StringSeqOps
 ```
 Then
 ```scala
@@ -155,7 +155,7 @@ def (xs: List[List[T]]) flattened [T] =
   xs.foldLeft[List[T]](Nil)(_ ++ _)
 
 def (x: T) + [T : Numeric](y: T): T =
-  the[Numeric[T]].plus(x, y)
+  summon[Numeric[T]].plus(x, y)
 ```
 
 As usual, type parameters of the extension method follow the defined method name. Nevertheless, such type parameters can already be used in the preceding parameter clause.
