@@ -33,6 +33,9 @@ object Parsers {
   import reporting.diagnostic.Message
   import reporting.diagnostic.messages._
 
+  private inline val allowOldGiven = true
+  private inline val allowOldExtension = true
+
   case class OpInfo(operand: Tree, operator: Ident, offset: Offset)
 
   class ParensCounters {
@@ -795,7 +798,7 @@ object Parsers {
      *   - continue a statement (e.g. `else`, catch`)?
      */
     def followedByToken(query: Token): Boolean = {
-      val lookahead = in.lookaheadScanner
+      val lookahead = in.LookaheadScanner()
       var braces = 0
       while (true) {
         val token = lookahead.token
@@ -815,7 +818,7 @@ object Parsers {
 
     /** A the generators of a for-expression enclosed in (...)? */
     def parensEncloseGenerators: Boolean = {
-      val lookahead = in.lookaheadScanner
+      val lookahead = in.LookaheadScanner()
       var parens = 1
       lookahead.nextToken()
       while (parens != 0 && lookahead.token != EOF) {
@@ -891,7 +894,7 @@ object Parsers {
           }
           else recur(operand())
         }
-        else if (in.token == GIVEN && !isType) {
+        else if (in.token == GIVEN && allowOldGiven && !isType) {
           val top1 = reduceStack(base, top, minInfixPrec, leftAssoc = true, nme.WITHkw, isType)
           assert(opStack `eq` base)
           recur(applyGiven(top1, operand))
@@ -2122,7 +2125,7 @@ object Parsers {
      */
     def parArgumentExprss(fn: Tree): Tree = {
       def isLegalAnnotArg: Boolean = {
-        val lookahead = in.lookaheadScanner
+        val lookahead = in.LookaheadScanner()
         (lookahead.token == LPAREN) && {
           lookahead.nextToken()
           if (lookahead.token == RPAREN)
@@ -2580,8 +2583,13 @@ object Parsers {
     /** ClosureMods ::=  { ‘implicit’ | ‘erased’ | ‘given’}
      *  FunTypeMods ::=  { ‘erased’ | ‘given’}
      */
-    val closureMods: BitSet = BitSet(GIVEN, IMPLICIT, ERASED)
-    val funTypeMods: BitSet = BitSet(GIVEN, ERASED)
+    val closureMods: BitSet =
+      if allowOldGiven then BitSet(GIVEN, IMPLICIT, ERASED)
+      else BitSet(IMPLICIT)
+
+    val funTypeMods: BitSet =
+      if allowOldGiven then BitSet(GIVEN, ERASED)
+      else BitSet()
 
     /** Wrap annotation or constructor in New(...).<init> */
     def wrapNew(tpt: Tree): Select = Select(New(tpt), nme.CONSTRUCTOR)
@@ -2765,7 +2773,7 @@ object Parsers {
                      ofInstance: Boolean = false): List[List[ValDef]] = {
 
       def followingIsParamClause: Boolean = {
-        val lookahead = in.lookaheadScanner
+        val lookahead = in.LookaheadScanner()
         lookahead.nextToken()
         paramIntroTokens.contains(lookahead.token) && {
           lookahead.token != IDENTIFIER ||
@@ -2792,7 +2800,7 @@ object Parsers {
        */
       def followingIsInstanceDef =
         (ofClass || ofInstance) && {
-          val lookahead = in.lookaheadScanner // skips newline on startup
+          val lookahead = in.LookaheadScanner() // skips newline on startup
           lookahead.nextToken()  // skip the `given`
           if (lookahead.token == LBRACKET) true
           else {
@@ -2818,9 +2826,9 @@ object Parsers {
         var initialMods = EmptyModifiers
         val isNewLine = in.token == NEWLINE
         newLineOptWhenFollowedBy(LPAREN)
-        if (in.token == NEWLINE && in.next.token == GIVEN && !followingIsInstanceDef)
+        if (in.token == NEWLINE && in.next.token == GIVEN && allowOldGiven && !followingIsInstanceDef)
           in.nextToken()
-        if (in.token == GIVEN) {
+        if (in.token == GIVEN && allowOldGiven) {
           in.nextToken()
           initialMods |= Given
         }
@@ -3322,31 +3330,52 @@ object Parsers {
      *  NEW:
      *  GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
      *                   |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
-     *                // |  [id ‘:’] [ExtParamClause] TemplateBody   (not yet implemented)
+     *                   |  ‘extension’ [id ‘:’] [ExtParamClause] TemplateBody
      *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause {GivenParamClause}
      *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
      */
     def instanceDef(newStyle: Boolean, start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
-      val name = if (isIdent && !(newStyle && isIdent(nme.as))) ident() else EmptyTermName
-      indentRegion(name) {
-        val tparams = typeParamClauseOpt(ParamOwner.Def)
-        var leadingParamss =
-          if (in.token == LPAREN)
-            try paramClause(prefix = true) :: Nil
-            finally {
-              possibleTemplateStart()
-              if (!in.isNestedStart) syntaxErrorOrIncomplete("`{' expected")
+
+      def extensionDef() = {
+        in.nextToken()
+        val name =
+          if isIdent then
+            val id = ident()
+            accept(COLON)
+            id
+          else EmptyTermName
+        indentRegion(name) {
+          // TODO: accept type params here
+          val leadingParamss = if in.token == LPAREN then paramClause(prefix = true) :: Nil else Nil
+          // TODO: accept given params here
+          possibleTemplateStart()
+          val templ = templateBodyOpt(makeConstructor(Nil, leadingParamss), Nil, Nil)
+          ModuleDef(name, templ)
+        }
+      }
+
+      def regularDef() = {
+        val name =
+          if isIdent && !(newStyle && allowOldGiven && isIdent(nme.as)) then ident()
+          else EmptyTermName
+        indentRegion(name) {
+          val tparams = typeParamClauseOpt(ParamOwner.Def)
+          var leadingParamss =
+            if (in.token == LPAREN && allowOldExtension)
+              try paramClause(prefix = true) :: Nil
+              finally {
+                possibleTemplateStart()
+                if (!in.isNestedStart) syntaxErrorOrIncomplete("`{' expected")
+              }
+            else Nil
+          val parents =
+            if (!newStyle && in.token == FOR || isIdent(nme.as)) { // for the moment, accept both `given for` and `given as`
+              in.nextToken()
+              tokenSeparated(COMMA, constrApp)
             }
-          else Nil
-        val parents =
-          if (!newStyle && in.token == FOR || isIdent(nme.as)) { // for the moment, accept both `given for` and `given as`
-            in.nextToken()
-            tokenSeparated(COMMA, constrApp)
-          }
-          else Nil
-        val vparamss = paramClauses(ofInstance = true)
-        val instDef =
+            else Nil
+          val vparamss = paramClauses(ofInstance = true)
           if (in.token == EQUALS && parents.length == 1 && parents.head.isType) {
             in.nextToken()
             mods1 |= Final
@@ -3365,15 +3394,16 @@ object Parsers {
             if (tparams.isEmpty && vparamss1.isEmpty || leadingParamss.nonEmpty) ModuleDef(name, templ)
             else TypeDef(name.toTypeName, templ)
           }
-        finalizeDef(instDef, mods1, start)
+        }
       }
+
+      val gdef = if isIdent(nme.extension) then extensionDef() else regularDef()
+      finalizeDef(gdef, mods1, start)
     }
 
 /* -------- TEMPLATES ------------------------------------------- */
 
     /** SimpleConstrApp  ::=  AnnotType {ParArgumentExprs}
-     *  ConstrApp        ::=  SimpleConstrApp
-     *                     |  ‘(’ SimpleConstrApp {‘given’ (PrefixExpr | ParArgumentExprs)} ‘)’
      */
     val constrApp: () => Tree = () => {
 
@@ -3393,7 +3423,7 @@ object Parsers {
       def givenArgs(t: Tree): Tree =
         if (in.token == GIVEN) givenArgs(applyGiven(t, prefixExpr)) else t
 
-      if (in.token == LPAREN)
+      if (allowOldGiven && in.token == LPAREN)
         inParens {
           val t = toplevelTyp()
           if (isAnnotType(t))

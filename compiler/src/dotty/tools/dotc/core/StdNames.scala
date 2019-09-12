@@ -434,6 +434,7 @@ object StdNames {
     val eval: N                 = "eval"
     val eqlAny: N               = "eqlAny"
     val ex: N                   = "ex"
+    val extension: N            = "extension"
     val experimental: N         = "experimental"
     val f: N                    = "f"
     val false_ : N              = "false"

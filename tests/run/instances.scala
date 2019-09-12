@@ -8,15 +8,15 @@ object Test extends App {
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  given CircleOps {
+  given extension circleOps: {
     def (c: Circle) circumference: Double = c.radius * math.Pi * 2
   }
 
   val circle = new Circle(1, 1, 2.0)
 
-  assert(circle.circumference == CircleOps.circumference(circle))
+  assert(circle.circumference == circleOps.circumference(circle))
 
-  given StringOps {
+  given extension stringOps: {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
@@ -25,18 +25,18 @@ object Test extends App {
   val names = List("hi", "hello", "world")
   assert(names.longestStrings == List("hello", "world"))
 
-  given SeqOps {
+  given extension seqOps: {
     def (xs: Seq[T]) second[T] = xs.tail.head
   }
 
   assert(names.longestStrings.second == "world")
 
-  given ListListOps {
+  given extension listListOps: {
     def (xs: List[List[T]]) flattened[T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
   }
 
   // A right associative op
-  given Prepend {
+  given extension prepend: {
     def (x: T) ::[T] (xs: Seq[T]) = x +: xs
   }
   val ss: Seq[Int] = List(1, 2, 3)

@@ -3,14 +3,14 @@ import scala.deriving._
 object Test {
   object K0 {
     type Generic[T] = Mirror { type Scope = K0.type ; type MirroredType = T ; type MirroredElemTypes }
-    given Ops {
+    given extension {
       inline def (gen: Generic[T]) toRepr[T <: Product](t: T): gen.MirroredElemTypes = Tuple.fromProduct(t).asInstanceOf
     }
   }
 
   object K1 {
     type Generic[F[_]] = Mirror { type Scope = K1.type ; type MirroredType = F ; type MirroredElemTypes[_] }
-    given Ops {
+    given extension {
       inline def (gen: Generic[F]) toRepr[F[_] <: Product, T](t: F[T]): gen.MirroredElemTypes[T] = Tuple.fromProduct(t).asInstanceOf
     }
   }
