@@ -182,7 +182,7 @@ splicing the `Type` value `t`. This operation _is_ splice correct -- there
 is one quote and one splice between the use of `t` and its definition.
 
 To avoid clutter, the Scala implementation tries to convert any phase-incorrect
-reference to a type `T` to a type-splice, by rewriting `T` to `${ the[Type[T]] }`.
+reference to a type `T` to a type-splice, by rewriting `T` to `${ summon[Type[T]] }`.
 For instance, the user-level definition of `reflect`:
 
 ```scala
@@ -192,7 +192,7 @@ For instance, the user-level definition of `reflect`:
 would be rewritten to
 ```scala
     def reflect[T: Type, U: Type](f: Expr[T] => Expr[U]): Expr[T => U] =
-      '{ (x: ${ the[Type[T]] }) => ${ f('x) } }
+      '{ (x: ${ summon[Type[T]] }) => ${ f('x) } }
 ```
 The `the` query succeeds because there is a given instance of
 type `Type[T]` available (namely the given parameter corresponding
@@ -252,7 +252,7 @@ The `toExpr` extension method is defined in package `quoted`:
     package quoted
 
     given ExprOps {
-      def (x: T) toExpr[T: Liftable] given QuoteContext: Expr[T] = the[Liftable[T]].toExpr(x)
+      def (x: T) toExpr[T: Liftable] given QuoteContext: Expr[T] = summon[Liftable[T]].toExpr(x)
       ...
     }
 ```
@@ -334,12 +334,12 @@ that are not defined in the current stage? Here, we cannot construct
 the `Type[T]` tree directly, so we need to get it from a recursive
 implicit search. For instance, to implement
 ```scala
-    the[Type[List[T]]]
+    summon[Type[List[T]]]
 ```
 where `T` is not defined in the current stage, we construct the type constructor
 of `List` applied to the splice of the result of searching for a given instance for `Type[T]`:
 ```scala
-    '[ List[ ${ the[Type[T]] } ] ]
+    '[ List[ ${ summon[Type[T]] } ] ]
 ```
 This is exactly the algorithm that Scala 2 uses to search for type tags.
 In fact Scala 2's type tag feature can be understood as a more ad-hoc version of

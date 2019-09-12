@@ -8,7 +8,7 @@ object Test {
   {
     import Liftable._
 
-    '{ ${the[Liftable[Int]].toExpr(1)} }
+    '{ ${summon[Liftable[Int]].toExpr(1)} }
 
     '{ ${1.toExpr} }
 

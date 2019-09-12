@@ -13,8 +13,8 @@ object Test extends App {
   trait C {
     val x: TC
     given as TC = x
-    the[TC]
-    the[TC]
+    summon[TC]
+    summon[TC]
   }
   class D extends C {
     override val x = new TC
@@ -23,8 +23,8 @@ object Test extends App {
   locally{
     println("= new")
     given t as TC = new TC
-    the[TC]
-    the[TC]
+    summon[TC]
+    summon[TC]
   }
 
   locally {
@@ -35,8 +35,8 @@ object Test extends App {
   locally{
     println("= new VC")
     given t as TV = new TV(new TC)
-    the[TV]
-    the[TV]
+    summon[TV]
+    summon[TV]
   }
 
   class TCC {
@@ -47,21 +47,21 @@ object Test extends App {
   locally {
     println("= x.y")
     given t as TC = tcc.tc
-    the[TC]
-    the[TC]
+    summon[TC]
+    summon[TC]
   }
 
   locally {
     println("with given")
     given t as TC given TC1 = new TC
-    the[TC]
-    the[TC]
+    summon[TC]
+    summon[TC]
   }
 
   locally {
     println("with type params")
     given t[X] as TC = new TC
-    the[TC]
-    the[TC]
+    summon[TC]
+    summon[TC]
   }
 }

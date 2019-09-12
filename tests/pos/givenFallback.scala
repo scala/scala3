@@ -10,6 +10,6 @@ given as TC[Int] {
 }
 
 object Test extends App {
-  val z: 2 = the[TC[Int]].x
-  val _: 3 = the[TC[Int]].y
+  val z: 2 = summon[TC[Int]].x
+  val _: 3 = summon[TC[Int]].y
 }

@@ -20,8 +20,8 @@ object Test extends App {
   val x2: T = t
   val x3: D[Int] = d
 
-  assert(the[T].isInstanceOf[B])
-  assert(the[D[Int]].isInstanceOf[D[_]])
+  assert(summon[T].isInstanceOf[B])
+  assert(summon[D[Int]].isInstanceOf[D[_]])
 }
 
 class Ordering[T]
@@ -40,9 +40,9 @@ object Test2 {
   val x = intOrd
   val y = listOrd[Int]
   val z = ec
-  the[Ordering[Int]]
-  the[Ordering[List[Int]]]
-  the[ExecutionContext]
+  summon[Ordering[Int]]
+  summon[Ordering[List[Int]]]
+  summon[ExecutionContext]
 }
 
 object Test3 {
@@ -50,8 +50,8 @@ object Test3 {
   val x = intOrd
   val y = listOrd[Int]
   val z = im
-  the[Ordering[Int]]
-  the[Ordering[List[Int]]]
-  the[Monoid[Int]]
+  summon[Ordering[Int]]
+  summon[Ordering[List[Int]]]
+  summon[Monoid[Int]]
 }
 

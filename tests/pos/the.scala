@@ -7,6 +7,6 @@ object Test {
     val x = 3
   }
 
-  val y: Int = the[Foo].x
+  val y: Int = summon[Foo].x
 
 }

@@ -20,10 +20,10 @@ object NormalImplicits extends LowPriorityImplicits {
 
 def test1 = {
   import given NormalImplicits._
-  assert(the[E[String]].str == "low") // No Arg available, so only t1 applies
+  assert(summon[E[String]].str == "low") // No Arg available, so only t1 applies
 
   { given as Arg[String]
-    assert(the[E[String]].str == "norm")  // Arg available, t2 takes priority
+    assert(summon[E[String]].str == "norm")  // Arg available, t2 takes priority
   }
 }
 
@@ -44,10 +44,10 @@ object Impl2 {
 
 def test2 = {
   import given Impl2._
-  assert(the[E[String]].str == "low") // No Arg available, so only t1 applies
+  assert(summon[E[String]].str == "low") // No Arg available, so only t1 applies
 
   { given as Arg[String]
-    assert(the[E[String]].str == "norm") // Arg available, t2 takes priority
+    assert(summon[E[String]].str == "norm") // Arg available, t2 takes priority
   }
 }
 
@@ -68,7 +68,7 @@ def test2a = {
   import given Impl2a._
 
   given as Arg[String]
-  assert(the[E[String]].str == "hi")
+  assert(summon[E[String]].str == "hi")
 }
 
 /* If that solution is not applicable, we can define an override by refining the
@@ -86,11 +86,11 @@ object Override {
 
 def test3 = {
   import given Impl3._
-  assert(the[E[String]].str == "low")  // only t1 is available
+  assert(summon[E[String]].str == "low")  // only t1 is available
 
   { import given Override._
     import given Impl3._
-    assert(the[E[String]].str == "hi") // `over` takes priority since its result type is a subtype of t1's.
+    assert(summon[E[String]].str == "hi") // `over` takes priority since its result type is a subtype of t1's.
   }
 }
 
@@ -142,11 +142,11 @@ def test5 = {
 
   // All inferred terms go through the given instance in fallback5.
   // They differ in what implicit argument is synthesized for that instance.
-  assert(the[E[String]].str == "string")  // t1 is applicable
-  assert(the[E[Int]].str == "fallback")   // No applicable instances, pick the default
+  assert(summon[E[String]].str == "string")  // t1 is applicable
+  assert(summon[E[Int]].str == "fallback")   // No applicable instances, pick the default
 
   { given as Arg[Int]
-    assert(the[E[Int]].str == "generic")  // t2 is applicable
+    assert(summon[E[Int]].str == "generic")  // t2 is applicable
   }
 }
 

@@ -5,7 +5,7 @@ class C given (x: TC) {
 }
 class C2(n: Int) given (x: TC) given List[TC] {
   assert(x eq tc)
-  the[List[TC]].foreach(t => assert(t eq tc))
+  summon[List[TC]].foreach(t => assert(t eq tc))
 
   def this() given TC given List[TC] = this(1)
 }
@@ -14,7 +14,7 @@ class D extends (C given tc)
 class D2 extends (C2(1) given tc given Nil)
 
 class Foo given TC {
-  assert(the[TC] != null)
+  assert(summon[TC] != null)
 }
 
 object Test extends App {

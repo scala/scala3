@@ -16,12 +16,12 @@ object Test {
   }
 
   case class ISB(i: Int, s: String, b: Boolean)
-  val v0 = the[K0.Generic[ISB]]
+  val v0 = summon[K0.Generic[ISB]]
   val v1 = v0.toRepr(ISB(23, "foo", true))
   val v2: (Int, String, Boolean) = v1
 
   case class Box[T](t: T)
-  val v3 = the[K1.Generic[Box]]
+  val v3 = summon[K1.Generic[Box]]
   val v4 = v3.toRepr(Box(23))
   val v5: Tuple1[Int] = v4
 }

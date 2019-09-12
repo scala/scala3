@@ -7,7 +7,7 @@ import given scala.quoted.autolift._
 
 object Lifters {
   implicit def LiftedClassTag[T: Type: ClassTag]  given QuoteContext: Expr[ClassTag[T]] = {
-    '{ ClassTag(${the[ClassTag[T]].runtimeClass })}
+    '{ ClassTag(${summon[ClassTag[T]].runtimeClass })}
   }
 
   implicit def ArrayIsLiftable[T : Type: ClassTag](implicit l: Liftable[T]): Liftable[Array[T]] = new Liftable[Array[T]] {

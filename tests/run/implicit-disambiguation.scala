@@ -9,8 +9,8 @@ class C extends A {
 }
 object M {
   def f given B, C : String = {
-    given a as A = the[B]
-    the[A].show
+    given a as A = summon[B]
+    summon[A].show
   }
 }
 object Test extends App {

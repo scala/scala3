@@ -6,10 +6,10 @@ object Foo {
 
 opaque type Bar = Foo
 object Bar {
-  given as Monad[Bar] = the[Monad[Foo]]
+  given as Monad[Bar] = summon[Monad[Foo]]
 }
 
 object Test {
-  val mf = the[Monad[Foo]]
-  val mb = the[Monad[Bar]]
+  val mf = summon[Monad[Foo]]
+  val mb = summon[Monad[Bar]]
 }

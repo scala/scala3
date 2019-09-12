@@ -9,7 +9,7 @@ class Test extends App {
     case _                      => new HashSet[T]
   }
 
-  the[Ordering[String]]
+  summon[Ordering[String]]
 
   val sf = setFor[String]
 

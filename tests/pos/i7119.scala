@@ -1,6 +1,6 @@
 class Impl
 
-def (impl: Impl) prop given Int = ???//the[Int]
+def (impl: Impl) prop given Int = ???//summon[Int]
 
 
 def main(args: Array[String]): Unit = {

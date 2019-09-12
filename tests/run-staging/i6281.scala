@@ -30,7 +30,7 @@ object Test extends App {
     def reify[A] given Type[A]   = m => '{ k => ${ Effects[L].reify[E] {   m(   a =>    Effects[L].reflect[E]('k(a))) } }}
     def reflect[A] given Type[A] = m =>    k =>    Effects[L].reflect[E] { m('{ a => ${ Effects[L].reify[E](   k('a)) } })}
   }
-  def Effects[L <: HList] given Effects[L]: Effects[L] = the[Effects[L]]
+  def Effects[L <: HList] given Effects[L]: Effects[L] = summon[Effects[L]]
 
   type RS = Boolean :: RS2
   type RS2 = Int :: String :: HNil

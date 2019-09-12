@@ -4,7 +4,7 @@ object Test {
 
     type Contextual[T] = given Context => T
 
-    inline def f(): Contextual[Boolean] = the[Context].t
+    inline def f(): Contextual[Boolean] = summon[Context].t
 
     given ctx as Context = new Context(true)
 

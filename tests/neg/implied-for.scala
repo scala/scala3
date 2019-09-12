@@ -14,6 +14,6 @@ object Test extends App {
   val x: B = b // OK
   println(c) // error: not found
 
-  the[C] // error
+  summon[C] // error
 
 }

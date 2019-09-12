@@ -120,20 +120,20 @@ object Instances extends Common {
     def f() = {
       locally {
         given as Context = this.ctx
-        println(the[Context].value)
+        println(summon[Context].value)
       }
       locally {
         lazy val ctx1 = this.ctx
         given as Context = ctx1
-        println(the[Context].value)
+        println(summon[Context].value)
       }
       locally {
         given d[T] as D[T]
-        println(the[D[Int]])
+        println(summon[D[Int]])
       }
       locally {
         given as D[Int] given Context
-        println(the[D[Int]])
+        println(summon[D[Int]])
       }
     }
   }
@@ -205,7 +205,7 @@ object AnonymousInstances extends Common {
   }
 
   def sum[T: Monoid](xs: List[T]): T =
-      xs.foldLeft(the[Monoid[T]].unit)(_.combine(_))
+      xs.foldLeft(summon[Monoid[T]].unit)(_.combine(_))
 }
 
 object Implicits extends Common {

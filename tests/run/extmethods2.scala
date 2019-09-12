@@ -4,8 +4,8 @@ object Test extends App {
 
   given StringListOps given TC {
     type T = List[String]
-    def (x: T) foo (y: T) = (x ++ y, the[TC])
-    def (x: T) bar (y: Int) = (x(0)(y), the[TC])
+    def (x: T) foo (y: T) = (x ++ y, summon[TC])
+    def (x: T) bar (y: Int) = (x(0)(y), summon[TC])
   }
 
   def test given TC = {
