@@ -10,8 +10,8 @@ object test1 {
   given as Liftable[Int] = ???
   given as Liftable[String] = ???
 
-  def x = the[ToExpr[String]]
-  def y = the[Conversion[String, Expr[String]]]
+  def x = summon[ToExpr[String]]
+  def y = summon[Conversion[String, Expr[String]]]
 
   def a: Expr[String] = "abc"
 }

@@ -12,22 +12,22 @@ object Test extends App {
 
   case class AA[X >: Null <: AnyRef](x: X, y: X, z: String)
 
-  println(the[Mirror.ProductOf[A]].fromProduct(A(1, 2)))
-  assert(the[Mirror.SumOf[T]].ordinal(A(1, 2)) == 0)
-  assert(the[Mirror.Sum { type MirroredType = T }].ordinal(B) == 1)
-  the[Mirror.Of[A]] match {
+  println(summon[Mirror.ProductOf[A]].fromProduct(A(1, 2)))
+  assert(summon[Mirror.SumOf[T]].ordinal(A(1, 2)) == 0)
+  assert(summon[Mirror.Sum { type MirroredType = T }].ordinal(B) == 1)
+  summon[Mirror.Of[A]] match {
     case m: Mirror.Product =>
       println(m.fromProduct(A(1, 2)))
   }
-  the[Mirror.Of[B.type]] match {
+  summon[Mirror.Of[B.type]] match {
     case m: Mirror.Product =>
       println(m.fromProduct(EmptyProduct))
   }
-  the[Mirror.Of[T]] match {
+  summon[Mirror.Of[T]] match {
     case m: Mirror.SumOf[T] =>
       println(m.ordinal(B))
   }
-  the[Mirror.Of[U]] match {
+  summon[Mirror.Of[U]] match {
     case m: Mirror.SumOf[U] =>
       println(m.ordinal(C()))
   }

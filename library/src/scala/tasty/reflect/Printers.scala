@@ -927,7 +927,7 @@ trait Printers
           inBlock(printCases(cases, lineBreak()))
 
         case ImpliedMatch(cases) =>
-          this += highlightKeyword("delegate match")
+          this += highlightKeyword("delegate match")  // TODO: drop
           inBlock(printCases(cases, lineBreak()))
 
         case Try(body, cases, finallyOpt) =>

@@ -22,8 +22,8 @@ package p1 {
       import TextParser._
 
       val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
-      val tp_i = the[TokenParser[Char, Position[CharSequence]]]
-      val co_i = the[Conversion[Char, Position[CharSequence]]]
+      val tp_i = summon[TokenParser[Char, Position[CharSequence]]]
+      val co_i = summon[Conversion[Char, Position[CharSequence]]]
       val co_x : Position[CharSequence] = 'x'
 
       {
@@ -47,7 +47,7 @@ package p2 {
       import given TextParser._
 
       val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
-      val tp_i = the[TokenParser[Char, Position[CharSequence]]]
+      val tp_i = summon[TokenParser[Char, Position[CharSequence]]]
       val co_x : Position[CharSequence] = 'x'
     }
   }
@@ -65,11 +65,11 @@ package p3 {
       import given TextParser._
       import TextParser._
 
-      val co_i: Conversion[Char, Position[CharSequence]] = the[Conversion[Char, Position[CharSequence]]]
+      val co_i: Conversion[Char, Position[CharSequence]] = summon[Conversion[Char, Position[CharSequence]]]
 
       {
         val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
-        val tp_i = the[TokenParser[Char, Position[CharSequence]]]
+        val tp_i = summon[TokenParser[Char, Position[CharSequence]]]
         given as Conversion[Char, Position[CharSequence]] = co_i
         val co_x : Position[CharSequence] = 'x'
 

@@ -18,7 +18,7 @@ object Macros {
 
     object FromEnv {
       def unapply[T](id: Bind[T]) given Env: Option[Expr[R[T]]] =
-        the[Env].get(id).asInstanceOf[Option[Expr[R[T]]]] // We can only add binds that have the same type as the refs
+        summon[Env].get(id).asInstanceOf[Option[Expr[R[T]]]] // We can only add binds that have the same type as the refs
     }
 
     def lift[T: Type](e: Expr[T]) given (env: Env): Expr[R[T]] = ((e: Expr[Any]) match {
@@ -53,7 +53,7 @@ object Macros {
       case Bind(FromEnv(expr)) => expr.asInstanceOf[Expr[R[T]]]
 
       case _ =>
-        the[QuoteContext].error("Expected explicit value but got: " + e.show, e)
+        summon[QuoteContext].error("Expected explicit value but got: " + e.show, e)
         '{ ??? }
 
     })

@@ -56,7 +56,7 @@ enum Opt[+T] derives Eq {
 
 object Test extends App {
   import Opt._
-  val eqoi = the[Eq[Opt[Int]]]
+  val eqoi = summon[Eq[Opt[Int]]]
   assert(eqoi.eqv(Sm(23), Sm(23)))
   assert(!eqoi.eqv(Sm(23), Sm(13)))
   assert(!eqoi.eqv(Sm(23), Nn))

@@ -22,7 +22,7 @@ object Test extends App {
     export given printer._
     export Scanner.{scan => scanIt, _}
 
-    val config2 = the[Config]
+    val config2 = summon[Config]
   }
 
   Copier.print()

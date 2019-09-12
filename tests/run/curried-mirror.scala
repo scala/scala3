@@ -4,14 +4,14 @@ object Test extends App {
   case class Prod0(i: Int)
 
   {
-    val v0 = the[Mirror.Product { type MirroredType = [T] =>> Prod0 }]
+    val v0 = summon[Mirror.Product { type MirroredType = [T] =>> Prod0 }]
     val v1 = v0.fromProduct(Tuple1(13))
     val v2: Prod0 = v1
     assert(v2 == Prod0(13))
   }
 
   {
-    val v0 = the[Mirror.Product { type MirroredType = [T, U] =>> Prod0 }]
+    val v0 = summon[Mirror.Product { type MirroredType = [T, U] =>> Prod0 }]
     val v1 = v0.fromProduct(Tuple1(13))
     val v2: Prod0 = v1
     assert(v2 == Prod0(13))
@@ -20,7 +20,7 @@ object Test extends App {
   case class Prod1[A](a: A)
 
   {
-    val v0 = the[Mirror.Product { type MirroredType = [T, U] =>> Prod1[U] }]
+    val v0 = summon[Mirror.Product { type MirroredType = [T, U] =>> Prod1[U] }]
     val v1 = v0.fromProduct(Tuple1(13))
     val v2: Prod1[_] = v1
     assert(v2 == Prod1(13))
@@ -29,21 +29,21 @@ object Test extends App {
   case class Prod2[A, B](a: A, b: B)
 
   {
-    val v0 = the[Mirror.Product { type MirroredType = Prod2 }]
+    val v0 = summon[Mirror.Product { type MirroredType = Prod2 }]
     val v1 = v0.fromProduct((23, "foo"))
     val v2: Prod2[_, _] = v1
     assert(v2 == Prod2(23, "foo"))
   }
 
   {
-    val v0 = the[Mirror.Product { type MirroredType = [B] =>> Prod2[Int, B] }]
+    val v0 = summon[Mirror.Product { type MirroredType = [B] =>> Prod2[Int, B] }]
     val v1 = v0.fromProduct((23, "foo"))
     val v2: Prod2[Int, _] = v1
     assert(v2 == Prod2(23, "foo"))
   }
 
   {
-    val v0 = the[Mirror.Product { type MirroredType = Prod2[Int, String] }]
+    val v0 = summon[Mirror.Product { type MirroredType = Prod2[Int, String] }]
     val v1 = v0.fromProduct((23, "foo"))
     val v2: Prod2[Int, String] = v1
     assert(v2 == Prod2(23, "foo"))
@@ -52,7 +52,7 @@ object Test extends App {
   case class ProdV1[+A](a: A)
 
   {
-    val v0 = the[Mirror.Product { type MirroredType = [T, U] =>> ProdV1[U] }]
+    val v0 = summon[Mirror.Product { type MirroredType = [T, U] =>> ProdV1[U] }]
     val v1 = v0.fromProduct(Tuple1(13))
     val v2: ProdV1[_] = v1
     assert(v2 == ProdV1(13))
@@ -61,21 +61,21 @@ object Test extends App {
   case class ProdV2[+A, +B](a: A, b: B)
 
   {
-    val v0 = the[Mirror.Product { type MirroredType = ProdV2 }]
+    val v0 = summon[Mirror.Product { type MirroredType = ProdV2 }]
     val v1 = v0.fromProduct((23, "foo"))
     val v2: ProdV2[_, _] = v1
     assert(v2 == ProdV2(23, "foo"))
   }
 
   {
-    val v0 = the[Mirror.Product { type MirroredType = [B] =>> ProdV2[Int, B] }]
+    val v0 = summon[Mirror.Product { type MirroredType = [B] =>> ProdV2[Int, B] }]
     val v1 = v0.fromProduct((23, "foo"))
     val v2: ProdV2[Int, _] = v1
     assert(v2 == ProdV2(23, "foo"))
   }
 
   {
-    val v0 = the[Mirror.Product { type MirroredType = ProdV2[Int, String] }]
+    val v0 = summon[Mirror.Product { type MirroredType = ProdV2[Int, String] }]
     val v1 = v0.fromProduct((23, "foo"))
     val v2: ProdV2[Int, String] = v1
     assert(v2 == ProdV2(23, "foo"))
@@ -88,7 +88,7 @@ object Test extends App {
   }
 
   {
-    val v0 = the[Mirror.Sum { type MirroredType = [T] =>> Sum0 }]
+    val v0 = summon[Mirror.Sum { type MirroredType = [T] =>> Sum0 }]
     val v1 = v0.ordinal(Sum0.Some(13))
     assert(v1 == 0)
     val v2 = v0.ordinal(Sum0.None)
@@ -96,7 +96,7 @@ object Test extends App {
   }
 
   {
-    val v0 = the[Mirror.Sum { type MirroredType = [T, U] =>> Sum0 }]
+    val v0 = summon[Mirror.Sum { type MirroredType = [T, U] =>> Sum0 }]
     val v1 = v0.ordinal(Sum0.Some(13))
     assert(v1 == 0)
     val v2 = v0.ordinal(Sum0.None)
@@ -110,7 +110,7 @@ object Test extends App {
   }
 
   {
-    val v0 = the[Mirror.Sum { type MirroredType = [T, U] =>> Sum1[U] }]
+    val v0 = summon[Mirror.Sum { type MirroredType = [T, U] =>> Sum1[U] }]
     val v1 = v0.ordinal(Sum1.Some(13))
     assert(v1 == 0)
     val v2 = v0.ordinal(Sum1.None())
@@ -124,7 +124,7 @@ object Test extends App {
   }
 
   {
-    val v0 = the[Mirror.Sum { type MirroredType = Sum2 }]
+    val v0 = summon[Mirror.Sum { type MirroredType = Sum2 }]
     val v1 = v0.ordinal(Sum2.Left(23))
     assert(v1 == 0)
     val v2 = v0.ordinal(Sum2.Right("foo"))
@@ -132,7 +132,7 @@ object Test extends App {
   }
 
   {
-    val v0 = the[Mirror.Sum { type MirroredType = [B] =>> Sum2[Int, B] }]
+    val v0 = summon[Mirror.Sum { type MirroredType = [B] =>> Sum2[Int, B] }]
     val v1 = v0.ordinal(Sum2.Left(23))
     assert(v1 == 0)
     val v2 = v0.ordinal(Sum2.Right("foo"))
@@ -140,7 +140,7 @@ object Test extends App {
   }
 
   {
-    val v0 = the[Mirror.Sum { type MirroredType = Sum2[Int, String] }]
+    val v0 = summon[Mirror.Sum { type MirroredType = Sum2[Int, String] }]
     val v1 = v0.ordinal(Sum2.Left(23))
     assert(v1 == 0)
     val v2 = v0.ordinal(Sum2.Right("foo"))
@@ -154,7 +154,7 @@ object Test extends App {
   }
 
   {
-    val v0 = the[Mirror.Sum { type MirroredType = [T, U] =>> SumV1[U] }]
+    val v0 = summon[Mirror.Sum { type MirroredType = [T, U] =>> SumV1[U] }]
     val v1 = v0.ordinal(SumV1.Some(13))
     assert(v1 == 0)
     val v2 = v0.ordinal(SumV1.None)
@@ -168,7 +168,7 @@ object Test extends App {
   }
 
   {
-    val v0 = the[Mirror.Sum { type MirroredType = SumV2 }]
+    val v0 = summon[Mirror.Sum { type MirroredType = SumV2 }]
     val v1 = v0.ordinal(SumV2.Left(23))
     assert(v1 == 0)
     val v2 = v0.ordinal(SumV2.Right("foo"))
@@ -176,7 +176,7 @@ object Test extends App {
   }
 
   {
-    val v0 = the[Mirror.Sum { type MirroredType = [B] =>> SumV2[Int, B] }]
+    val v0 = summon[Mirror.Sum { type MirroredType = [B] =>> SumV2[Int, B] }]
     val v1 = v0.ordinal(SumV2.Left(23))
     assert(v1 == 0)
     val v2 = v0.ordinal(SumV2.Right("foo"))
@@ -184,7 +184,7 @@ object Test extends App {
   }
 
   {
-    val v0 = the[Mirror.Sum { type MirroredType = SumV2[Int, String] }]
+    val v0 = summon[Mirror.Sum { type MirroredType = SumV2[Int, String] }]
     val v1 = v0.ordinal(SumV2.Left(23))
     assert(v1 == 0)
     val v2 = v0.ordinal(SumV2.Right("foo"))

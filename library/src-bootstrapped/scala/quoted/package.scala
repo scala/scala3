@@ -7,7 +7,7 @@ package object quoted {
   }
 
   implicit object ExprOps {
-    def (x: T) toExpr[T: Liftable] given QuoteContext: Expr[T] = the[Liftable[T]].toExpr(x)
+    def (x: T) toExpr[T: Liftable] given QuoteContext: Expr[T] = summon[Liftable[T]].toExpr(x)
 
    /** Lifts this sequence of expressions into an expression of a sequence
     *

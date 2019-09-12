@@ -51,11 +51,11 @@ object Test extends App {
   assert(Foo[Int] == 0)
   assert(Foo[Bar[Int]] == 3)
   assert(Foo[Bar[Baz]] == 5)
-  assert(the[Bam].str == "hi")
-  assert(the[Bam2].str == "hi")
-  assert(the[Red].str == "reduced")
+  assert(summon[Bam].str == "hi")
+  assert(summon[Bam2].str == "hi")
+  assert(summon[Red].str == "reduced")
 
   { given as Arg2
-    assert(the[Red].str == "normal")
+    assert(summon[Red].str == "normal")
   }
 }

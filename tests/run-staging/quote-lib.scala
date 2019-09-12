@@ -117,7 +117,7 @@ package liftable {
   object Exprs {
     implicit class LiftExprOps[T](x: T) extends AnyVal {
       def toExpr given Liftable[T], QuoteContext: Expr[T] =
-        the[Liftable[T]].toExpr(x)
+        summon[Liftable[T]].toExpr(x)
     }
   }
 

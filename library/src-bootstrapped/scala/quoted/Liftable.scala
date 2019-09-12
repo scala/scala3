@@ -52,7 +52,7 @@ object Liftable {
 
   given ArrayIsLiftable[T: Type: Liftable: ClassTag] as Liftable[Array[T]] = new Liftable[Array[T]] {
     def toExpr(arr: Array[T]): given QuoteContext => Expr[Array[T]] =
-      '{ Array[T](${arr.toSeq.toExpr}: _*)(${the[ClassTag[T]].toExpr}) }
+      '{ Array[T](${arr.toSeq.toExpr}: _*)(${summon[ClassTag[T]].toExpr}) }
   }
 
   given ArrayOfBooleanIsLiftable as Liftable[Array[Boolean]] = new Liftable[Array[Boolean]] {
@@ -110,12 +110,12 @@ object Liftable {
 
   given [T: Type: Liftable] as Liftable[Seq[T]] = new Liftable[Seq[T]] {
     def toExpr(xs: Seq[T]): given QuoteContext => Expr[Seq[T]] =
-      xs.map(the[Liftable[T]].toExpr).toExprOfSeq
+      xs.map(summon[Liftable[T]].toExpr).toExprOfSeq
   }
 
   given [T: Type: Liftable] as Liftable[List[T]] = new Liftable[List[T]] {
     def toExpr(xs: List[T]): given QuoteContext => Expr[List[T]] =
-      xs.map(the[Liftable[T]].toExpr).toExprOfList
+      xs.map(summon[Liftable[T]].toExpr).toExprOfList
   }
 
   given [T: Type: Liftable] as Liftable[Set[T]] = new Liftable[Set[T]] {
@@ -290,7 +290,7 @@ object Liftable {
 
   given [H: Type: Liftable, T <: Tuple: Type: Liftable] as Liftable[H *: T] = new {
     def toExpr(tup: H *: T): given QuoteContext => Expr[H *: T] =
-      '{ ${the[Liftable[H]].toExpr(tup.head)} *: ${the[Liftable[T]].toExpr(tup.tail)} }
+      '{ ${summon[Liftable[H]].toExpr(tup.head)} *: ${summon[Liftable[T]].toExpr(tup.tail)} }
       // '{ ${tup.head.toExpr} *: ${tup.tail.toExpr} } // TODO figure out why this fails during CI documentation
   }
 

@@ -465,7 +465,7 @@ Consequently, if we summon an `Ordering[String]` the code above will return a
 new instance of `TreeSet[String]`.
 
 ```scala
-the[Ordering[String]]
+summon[Ordering[String]]
 
 println(setFor[String].getClass) // prints class scala.collection.immutable.TreeSet
 ```

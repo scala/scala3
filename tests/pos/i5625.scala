@@ -7,8 +7,8 @@ object Test {
     case AnyVal => X
   }
 
-  the[LeafElem[String] =:= Char]
-  the[LeafElem[Array[Int]] =:= Int]
-  the[LeafElem[Iterable[Int]] =:= Int]
-  the[LeafElem[Int] =:= Int]
+  summon[LeafElem[String] =:= Char]
+  summon[LeafElem[Array[Int]] =:= Int]
+  summon[LeafElem[Iterable[Int]] =:= Int]
+  summon[LeafElem[Int] =:= Int]
 }

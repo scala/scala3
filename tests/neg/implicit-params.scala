@@ -7,7 +7,7 @@ object Test {
 
   def g0(x: Int) given (c: C) (y: Int) = x + c.x + y  // error
 
-  def g(x: Int) given (c: C) given D = x + c.x + the[D].x  // OK
+  def g(x: Int) given (c: C) given D = x + c.x + summon[D].x  // OK
 
   def h(x: Int) given () = x // error
 

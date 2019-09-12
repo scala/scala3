@@ -17,8 +17,8 @@ object Testcase {
     import TextParser._
 
     val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
-    val tp_i = the[TokenParser[Char, Position[CharSequence]]] // error
-    val co_i = the[Conversion[Char, Position[CharSequence]]]  // error
+    val tp_i = summon[TokenParser[Char, Position[CharSequence]]] // error
+    val co_i = summon[Conversion[Char, Position[CharSequence]]]  // error
     val co_x : Position[CharSequence] = 'x'                   // error
 
     {

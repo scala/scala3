@@ -8,6 +8,6 @@ object Test extends App {
 
   given f as E(e) given (e: E)
 
-  assert(the[E].toString == "E(E(null))")
+  assert(summon[E].toString == "E(E(null))")
 
 }
