@@ -3,11 +3,6 @@ layout: doc-page
 title: Relationship with Scala 2 Implicits
 ---
 
-**Note** The syntax described in this section is currently under revision.
-[Here is the new version which will be implemented in Dotty 0.19](../contextual-new/relationship-implicits.html).
-
-
-
 Many, but not all, of the new contextual abstraction features in Scala 3 can be mapped to Scala 2's implicits. This page gives a rundown on the relationships between new and old features.
 
 ## Simulating Contextual Abstraction with Implicits
@@ -18,7 +13,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
 
  1. Given instances without parameters are mapped to implicit objects. E.g.,
     ```scala
-      given IntOrd as Ord[Int] { ... }
+      given intOrd: Ord[Int] { ... }
     ```
     maps to
     ```scala
@@ -26,7 +21,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
     ```
  2. Parameterized given instances are mapped to combinations of classes and implicit methods. E.g.,
     ```scala
-      given ListOrd[T] as Ord[List[T]] given (ord: Ord[T]) { ... }
+      given listOrd[T](given (ord: Ord[T]): Ord[List[T]] { ... }
     ```
     maps to
     ```scala
@@ -40,10 +35,10 @@ Given instances can be mapped to combinations of implicit objects, classes and i
  Examples:
 
     ```scala
-      given global as ExecutionContext = new ForkJoinContext()
+      given global: ExecutionContext = new ForkJoinContext()
 
       val ctx: Context
-      given as Context = ctx
+      given Context = ctx
     ```
     would map to
     ```scala
@@ -55,14 +50,14 @@ Given instances can be mapped to combinations of implicit objects, classes and i
 
 Anonymous given instances get compiler synthesized names, which are generated in a reproducible way from the implemented type(s). For example, if the names of the `IntOrd` and `ListOrd` givens above were left out, the following names would be synthesized instead:
 ```scala
-  given Ord_Int_given as Ord[Int] { ... }
-  given Ord_List_given[T] as Ord[List[T]] { ... }
+  given given_Ord_Int : Ord[Int] { ... }
+  given given_Ord_List[T] : Ord[List[T]] { ... }
 ```
 The synthesized type names are formed from
 
+ - the prefix `given_`,
  - the simple name(s) of the implemented type(s), leaving out any prefixes,
- - the simple name(s) of the toplevel argument type constructors to these types
- - the suffix `_given`.
+ - the simple name(s) of the toplevel argument type constructors to these types.
 
 Anonymous given instances that define extension methods without also implementing a type
 get their name from the name of the first extension method and the toplevel type
@@ -72,13 +67,13 @@ constructor of its first parameter. For example, the given instance
     def (xs: List[T]) second[T] = ...
   }
 ```
-gets the synthesized name `second_of_List_T_given`.
+gets the synthesized name `given_second_of_List_T`.
 
 ### Given Clauses
 
 Given clauses corresponds largely to Scala-2's implicit parameter clauses. E.g.
 ```scala
-  def max[T](x: T, y: T) given (ord: Ord[T]): T
+  def max[T](x: T, y: T)(given ord: Ord[T]): T
 ```
 would be written
 ```scala
@@ -86,7 +81,7 @@ would be written
 ```
 in Scala 2. The main difference concerns applications of such parameters.
 Explicit arguments to parameters of given clauses _must_ be written using `given`,
-mirroring the definition syntax. E.g, `max(2, 3) given IntOrd`.
+mirroring the definition syntax. E.g, `max(2, 3)(given IntOrd`).
 Scala 2 uses normal applications `max(2, 3)(IntOrd)` instead. The Scala 2 syntax has some inherent ambiguities and restrictions which are overcome by the new syntax. For instance, multiple implicit parameter lists are not available in the old syntax, even though they can be simulated using auxiliary objects in the "Aux" pattern.
 
 The `the` method corresponds to `implicitly` in Scala 2.
@@ -139,7 +134,7 @@ Implicit conversion methods in Scala 2 can be expressed as given instances of th
 ```
 one can write
 ```scala
-  given stringToToken as Conversion[String, Token] {
+  given stringToToken: Conversion[String, Token] {
     def apply(str: String): Token = new KeyWord(str)
   }
 ```
@@ -158,7 +153,7 @@ E.g., Scala 2's
 can be expressed in Dotty as
 ```scala
   lazy val pos: Position = tree.sourcePos
-  given as Position = pos
+  given Position = pos
 ```
 
 ### Abstract Implicits
@@ -170,7 +165,7 @@ An abstract implicit `val` or `def` in Scala 2 can be expressed in Dotty using a
 can be expressed in Dotty as
 ```scala
   def symDeco: SymDeco
-  given as SymDeco = symDeco
+  given SymDeco = symDeco
 ```
 
 ## Implementation Status and Timeline
