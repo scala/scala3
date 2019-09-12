@@ -25,47 +25,40 @@ object trace extends TraceSyntax {
 abstract class TraceSyntax {
   val isForced: Boolean
 
-  @forceInline
-  def onDebug[TD](question: => String)(op: => TD)(implicit ctx: Context): TD =
+  inline def onDebug[TD](question: => String)(op: => TD)(implicit ctx: Context): TD =
     conditionally(ctx.settings.YdebugTrace.value, question, false)(op)
 
-  @forceInline
-  def conditionally[TC](cond: Boolean, question: => String, show: Boolean)(op: => TC)(implicit ctx: Context): TC =
-    if (isForced || Config.tracingEnabled) {
+  inline def conditionally[TC](cond: Boolean, question: => String, show: Boolean)(op: => TC)(implicit ctx: Context): TC =
+    inline if (isForced || Config.tracingEnabled) {
       def op1 = op
       if (cond) apply[TC](question, Printers.default, show)(op1)
       else op1
     }
     else op
 
-  @forceInline
-  def apply[T](question: => String, printer: Printers.Printer, showOp: Any => String)(op: => T)(implicit ctx: Context): T =
-    if (isForced || Config.tracingEnabled) {
+  inline def apply[T](question: => String, printer: Printers.Printer, showOp: Any => String)(op: => T)(implicit ctx: Context): T =
+    inline if (isForced || Config.tracingEnabled) {
       def op1 = op
       if (!isForced && printer.eq(config.Printers.noPrinter)) op1
       else doTrace[T](question, printer, showOp)(op1)
     }
     else op
 
-  @forceInline
-  def apply[T](question: => String, printer: Printers.Printer, show: Boolean)(op: => T)(implicit ctx: Context): T =
-    if (isForced || Config.tracingEnabled) {
+  inline def apply[T](question: => String, printer: Printers.Printer, show: Boolean)(op: => T)(implicit ctx: Context): T =
+    inline if (isForced || Config.tracingEnabled) {
       def op1 = op
       if (!isForced && printer.eq(config.Printers.noPrinter)) op1
       else doTrace[T](question, printer, if (show) showShowable(_) else alwaysToString)(op1)
     }
     else op
 
-  @forceInline
-  def apply[T](question: => String, printer: Printers.Printer)(op: => T)(implicit ctx: Context): T =
+  inline def apply[T](question: => String, printer: Printers.Printer)(op: => T)(implicit ctx: Context): T =
     apply[T](question, printer, false)(op)
 
-  @forceInline
-  def apply[T](question: => String, show: Boolean)(op: => T)(implicit ctx: Context): T =
+  inline def apply[T](question: => String, show: Boolean)(op: => T)(implicit ctx: Context): T =
     apply[T](question, Printers.default, show)(op)
 
-  @forceInline
-  def apply[T](question: => String)(op: => T)(implicit ctx: Context): T =
+  inline def apply[T](question: => String)(op: => T)(implicit ctx: Context): T =
     apply[T](question, Printers.default, false)(op)
 
   private def showShowable(x: Any)(implicit ctx: Context) = x match {
