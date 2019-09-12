@@ -892,6 +892,23 @@ trait Applications extends Compatibility {
         case _ =>
           if originalProto.isDropped then fun1
           else if fun1.symbol == defn.Compiletime_summonFrom then
+            // Special handling of `summonFrom { ... }`.
+            // We currently cannot use a macro for that since unlike other inline methods
+            // summonFrom needs to expand lazily. For instance, in
+            //
+            //    summonFrom {
+            //      case given A[t] =>
+            //        summonFrom
+            //          case given `t` => ...
+            //        }
+            //    }
+            //
+            // the second `summonFrom` should expand only once the first `summonFrom` is
+            // evaluated and `t` is bound. But normal inline expansion does not behave that
+            // way: arguments to inline function are expanded before the function call.
+            // To make this work using regular inlining, we'd need a way to annotate
+            // an inline function that it should expand only if there are no enclosing
+            // applications of inline functions.
             tree.args match {
               case (arg @ Match(EmptyTree, cases)) :: Nil =>
                 typed(untpd.InlineMatch(EmptyTree, cases).withSpan(arg.span), pt)

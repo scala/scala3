@@ -4,7 +4,7 @@ class Test extends App {
   import scala.collection.immutable.{TreeSet, HashSet}
   import scala.compiletime.summonFrom
 
-  inline def setFor[T] <: Set[T] = compiletime.summonFrom {
+  inline def setFor[T] <: Set[T] = summonFrom {
     case given ord: Ordering[T] => new TreeSet[T]
     case _                      => new HashSet[T]
   }
