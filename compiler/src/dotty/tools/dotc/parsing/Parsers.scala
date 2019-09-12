@@ -1683,11 +1683,8 @@ object Parsers {
 
     def expr(location: Location.Value): Tree = {
       val start = in.offset
-      if (closureMods.contains(in.token)) {
-        val imods = modifiers(closureMods)
-        if (in.token == MATCH) impliedMatch(start, imods)
-        else implicitClosure(start, location, imods)
-      }
+      if (closureMods.contains(in.token))
+        implicitClosure(start, location, modifiers(closureMods))
       else {
         val saved = placeholderParams
         placeholderParams = Nil
@@ -1888,30 +1885,6 @@ object Parsers {
           mkMatch(t, inBracesOrIndented(caseClauses(caseClause)))
         }
       }
-
-    /**    `match' { ImplicitCaseClauses }
-     */
-    def impliedMatch(start: Int, imods: Modifiers) = {
-      def markFirstIllegal(mods: List[Mod]) = mods match {
-        case mod :: _ => syntaxError(em"illegal modifier for given match", mod.span)
-        case _ =>
-      }
-      imods.mods match {
-        case (Mod.Implicit() | Mod.Given()) :: mods => markFirstIllegal(mods)
-        case mods => markFirstIllegal(mods)
-      }
-      val result @ Match(t, cases) =
-        matchExpr(EmptyTree, start, InlineMatch)
-      for (CaseDef(pat, _, _) <- cases) {
-        def isImplicitPattern(pat: Tree) = pat match {
-          case Typed(pat1, _) => isVarPattern(pat1)
-          case pat => isVarPattern(pat)
-        }
-        if (!isImplicitPattern(pat))
-          syntaxError(em"not a legal pattern for a given match", pat.span)
-      }
-      result
-    }
 
     /**    `match' { TypeCaseClauses }
      */
@@ -3754,8 +3727,6 @@ object Parsers {
             var imods = modifiers(closureMods)
             if (isBindingIntro)
               stats += implicitClosure(start, Location.InBlock, imods)
-            else if (in.token == MATCH)
-              stats += impliedMatch(start, imods)
             else
               stats +++= localDef(start, imods)
           }

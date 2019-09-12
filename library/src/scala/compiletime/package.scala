@@ -50,7 +50,7 @@ package object compiletime {
    *
    *  the returned value would be `2`.
    */
-  inline def summonFrom(f: Nothing => Any) <: Any = ???
+  inline def summonFrom[T](f: Nothing => T) <: T = ???
 
   type S[X <: Int] <: Int
 }

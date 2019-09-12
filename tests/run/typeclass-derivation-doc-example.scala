@@ -1,7 +1,7 @@
 import scala.deriving._
-import scala.compiletime.erasedValue
+import scala.compiletime.{erasedValue, summonFrom}
 
-inline def summon[T]: T = given match {
+inline def summon[T]: T = summonFrom {
   case t: T => t
 }
 

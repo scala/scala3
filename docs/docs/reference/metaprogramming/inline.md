@@ -475,18 +475,17 @@ summon[Ordering[String]]
 println(setFor[String].getClass) // prints class scala.collection.immutable.TreeSet
 ```
 
-**Note** implicit matches can raise ambiguity errors. Consider the following
-code with two implicit values in scope of type `A`. The single pattern match
-case of the implicit match with type ascription of an `A` raises the ambiguity
-error.
+**Note** `summonFrom` applications can raise ambiguity errors. Consider the following
+code with two implicit values in scope of type `A`. The pattern match in `f` will raise
+an ambiguity error of `f` is applied.
 
 ```scala
 class A
 implicit val a1: A = new A
 implicit val a2: A = new A
 
-inline def f: Any = implicit match {
-  case _: A => ???  // error: ambiguous implicits
+inline def f: Any = summonFrom {
+  case given _: A => ???  // error: ambiguous implicits
 }
 ```
 
