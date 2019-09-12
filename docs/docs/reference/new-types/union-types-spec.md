@@ -136,6 +136,7 @@ exhaustive if all parts of the union are covered.
 The erased type for `A | B` is the _erased least upper bound_ of the erased
 types of `A` and `B`. Quoting from the documentation of `TypeErasure#erasedLub`,
 the erased lub is computed as follows:
+
 - if both argument are arrays of objects, an array of the erased lub of the element types
 - if both arguments are arrays of same primitives, an array of this primitive
 - if one argument is array of primitives and the other is array of objects, Object
