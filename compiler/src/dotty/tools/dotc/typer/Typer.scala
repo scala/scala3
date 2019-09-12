@@ -3222,9 +3222,6 @@ class Typer extends Namer
       *  Examples for these cases are found in run/implicitFuns.scala and neg/i2006.scala.
       */
     def adaptNoArgsUnappliedMethod(wtp: MethodType, functionExpected: Boolean, arity: Int): Tree = {
-      def isExpandableApply =
-        defn.isContextFunctionClass(tree.symbol.maybeOwner) && functionExpected
-
       /** Is reference to this symbol `f` automatically expanded to `f()`? */
       def isAutoApplied(sym: Symbol): Boolean =
         sym.isConstructor
@@ -3241,7 +3238,7 @@ class Typer extends Namer
           !tree.symbol.isConstructor &&
           !tree.symbol.isAllOf(InlineMethod) &&
           !ctx.mode.is(Mode.Pattern) &&
-          !(isSyntheticApply(tree) && !isExpandableApply)) {
+          !(isSyntheticApply(tree) && !functionExpected)) {
         if (!defn.isFunctionType(pt))
           pt match {
             case SAMType(_) if !pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot) =>
@@ -3266,9 +3263,18 @@ class Typer extends Namer
         defn.isContextFunctionClass(underlying.classSymbol)
     }
 
-    def adaptNoArgsOther(wtp: Type): Tree = {
-      if (isContextFunctionRef(wtp) &&
-          !untpd.isContextualClosure(tree) &&
+    def adaptNoArgsOther(wtp: Type, functionExpected: Boolean): Tree = {
+      val implicitFun = isContextFunctionRef(wtp) && !untpd.isContextualClosure(tree)
+      def caseCompanion =
+          functionExpected &&
+          tree.symbol.is(Module) &&
+          tree.symbol.companionClass.is(Case) &&
+          !tree.tpe.widen.classSymbol.asClass.classParents.exists(defn.isFunctionType(_)) && {
+            report.warning("The method `apply` is inserted. The auto insertion will be deprecated, please write `" + tree.show + ".apply` explicitly.", tree.sourcePos)
+            true
+          }
+
+      if ((implicitFun || caseCompanion) &&
           !isApplyProto(pt) &&
           pt != AssignProto &&
           !ctx.mode.is(Mode.Pattern) &&
@@ -3390,7 +3396,7 @@ class Typer extends Namer
             }
           adaptNoArgsUnappliedMethod(wtp, funExpected, arity)
         case _ =>
-          adaptNoArgsOther(wtp)
+          adaptNoArgsOther(wtp, functionExpected)
       }
     }
 
