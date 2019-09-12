@@ -11,7 +11,7 @@ object Macros {
     val buff = List.newBuilder[String]
     def printout(x: => String): Unit = {
 
-      buff += (try x catch { case ex => ex.getClass + ": " + ex.getMessage})
+      buff += (try x catch { case ex => ex.getClass.toString + ": " + ex.getMessage})
     }
 
     printout(defn.RootPackage.name)

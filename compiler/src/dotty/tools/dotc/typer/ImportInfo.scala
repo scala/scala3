@@ -16,7 +16,10 @@ import Decorators._
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
   def rootImport(refFn: () => TermRef, importGiven: Boolean = false)(implicit ctx: Context): ImportInfo = {
-    val selectors = untpd.Ident(nme.WILDCARD) :: Nil
+    // selectors: { _, any2stringadd => _ }
+    val selectors = untpd.Ident(nme.WILDCARD) ::
+                    Thicket(untpd.Ident(nme.any2stringadd) :: untpd.Ident(nme.WILDCARD) :: Nil) ::
+                    Nil
     def expr(implicit ctx: Context) = tpd.Ident(refFn())
     def imp(implicit ctx: Context) = tpd.Import(importGiven = importGiven, expr, selectors)
     new ImportInfo(imp.symbol, selectors, None, importGiven = importGiven, isRootImport = true)
