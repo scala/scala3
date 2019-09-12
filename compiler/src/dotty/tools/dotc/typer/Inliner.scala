@@ -222,9 +222,7 @@ object Inliner {
         case _ =>
           EmptyTree
       }
-
     }
-
   }
 }
 

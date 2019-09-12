@@ -322,9 +322,8 @@ class Typer extends Namer
           else {  // find import
             val outer = ctx.outer
             val curImport = ctx.importInfo
-            def updateUnimported() = {
+            def updateUnimported() =
               if (curImport.unimported.exists) unimported += curImport.unimported
-            }
             if (ctx.owner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
               previous // no more conflicts possible in this case
             else if (isPossibleImport(NamedImport) && (curImport ne outer.importInfo)) {

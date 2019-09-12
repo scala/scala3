@@ -454,8 +454,9 @@ object desugar {
         if (isCaseClass)
           ctx.error(CaseClassMissingParamList(cdef), namePos)
         ListOfNil
-      } else if (isCaseClass && originalVparamss.head.exists(_.mods.isOneOf(GivenOrImplicit))) {
-          ctx.error("Case classes should have a non-implicit parameter list", namePos)
+      }
+      else if (isCaseClass && originalVparamss.head.exists(_.mods.isOneOf(GivenOrImplicit))) {
+        ctx.error("Case classes should have a non-implicit parameter list", namePos)
         ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam(_, keepAnnotations = false))
@@ -717,12 +718,11 @@ object desugar {
       }
       else if (companionMembers.nonEmpty || companionDerived.nonEmpty || isEnum)
         companionDefs(anyRef, companionMembers)
-      else if (isValueClass) {
+      else if (isValueClass)
         impl.constr.vparamss match {
           case (_ :: Nil) :: _ => companionDefs(anyRef, Nil)
           case _ => Nil // error will be emitted in typer
         }
-      }
       else Nil
 
     enumCompanionRef match {
@@ -1133,12 +1133,11 @@ object desugar {
     case tree: MemberDef =>
       var tested: MemberDef = tree
       def fail(msg: String) = ctx.error(msg, tree.sourcePos)
-      def checkApplicable(flag: Flag, test: MemberDefTest): Unit = {
+      def checkApplicable(flag: Flag, test: MemberDefTest): Unit =
         if (tested.mods.is(flag) && !test.applyOrElse(tree, (md: MemberDef) => false)) {
           fail(i"modifier `${flag.flagsString}` is not allowed for this definition")
           tested = tested.withMods(tested.mods.withoutFlags(flag))
         }
-      }
       checkApplicable(Opaque, legalOpaque)
       tested
     case _ =>

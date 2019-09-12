@@ -212,10 +212,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           }
         case tree: TypeApply =>
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
-          if (fn.symbol != defn.ChildAnnot.primaryConstructor) {
+          if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
-          }
           fn match {
             case sel: Select =>
               val args1 = transform(args)
@@ -243,13 +242,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           processMemberDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
           val sym = tree.symbol
-          if (sym.isClass) {
+          if (sym.isClass)
             // Add SourceFile annotation to top-level classes
             if (sym.owner.is(Package) &&
               ctx.compilationUnit.source.exists &&
               sym != defn.SourceFileAnnot)
               sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
-          }
           processMemberDef(super.transform(tree))
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.posd)

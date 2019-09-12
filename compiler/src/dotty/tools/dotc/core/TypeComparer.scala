@@ -466,7 +466,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
       case _ =>
         val cls2 = tp2.symbol
-        if (cls2.isClass) {
+        if (cls2.isClass)
           if (cls2.typeParams.isEmpty) {
             if (cls2 eq AnyKindClass) return true
             if (tp1.isRef(NothingClass)) return true
@@ -485,7 +485,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           }
           else if (tp1.isLambdaSub && !tp1.isRef(AnyKindClass))
             return recur(tp1, EtaExpansion(cls2.typeRef))
-        }
         fourthTry
     }
 

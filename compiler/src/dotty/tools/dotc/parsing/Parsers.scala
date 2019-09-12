@@ -655,6 +655,7 @@ object Parsers {
         }
 
       def needsBraces(t: Any): Boolean = t match {
+        case Match(EmptyTree, _) => true
         case Block(stats, expr) =>
           stats.nonEmpty || needsBraces(expr)
         case expr: Tree =>
@@ -712,8 +713,9 @@ object Parsers {
       val (startOpening, endOpening) = startingElimRegion(colonRequired)
       val isOutermost = in.currentRegion.isOutermost
       def allBraces(r: Region): Boolean = r match {
+        case r: Indented => r.isOutermost || allBraces(r.enclosing)
         case r: InBraces => allBraces(r.enclosing)
-        case _ => r.isOutermost
+        case _ => false
       }
       var canRewrite = allBraces(in.currentRegion) && // test (1)
         !testChars(in.lastOffset - 3, " =>") // test(6)
@@ -1843,7 +1845,7 @@ object Parsers {
     def matchExpr(t: Tree, start: Offset, mkMatch: (Tree, List[CaseDef]) => Match) =
       indentRegion(MATCH) {
         atSpan(start, in.skipToken()) {
-          inBracesOrIndented(mkMatch(t, caseClauses(caseClause)))
+          mkMatch(t, inBracesOrIndented(caseClauses(caseClause)))
         }
       }
 

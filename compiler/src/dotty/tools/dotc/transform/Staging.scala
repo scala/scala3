@@ -37,7 +37,7 @@ class Staging extends MacroTransform {
 
   override def allowsImplicitSearch: Boolean = true
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
     if (ctx.phase <= ctx.reifyQuotesPhase) {
       // Recheck that PCP holds but do not heal any inconsistent types as they should already have been heald
       tree match {
@@ -71,11 +71,9 @@ class Staging extends MacroTransform {
           // OK
       }
     }
-  }
 
-  override def run(implicit ctx: Context): Unit = {
+  override def run(implicit ctx: Context): Unit =
     if (ctx.compilationUnit.needsStaging) super.run(freshStagingContext)
-  }
 
   protected def newTransformer(implicit ctx: Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree =

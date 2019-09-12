@@ -558,9 +558,8 @@ trait ImplicitRunInfo {
         }
 
         val comps = new TermRefSet
-        def addCompanion(pre: Type, companion: Symbol) = {
+        def addCompanion(pre: Type, companion: Symbol) =
           if (companion.exists && !companion.isAbsent()) comps += TermRef(pre, companion)
-        }
 
         def addPath(pre: Type): Unit = pre.dealias match {
           case pre: ThisType if pre.cls.is(Module) && pre.cls.isStaticOwner =>
@@ -735,12 +734,11 @@ trait Implicits { self: Typer =>
   lazy val synthesizedTupleFunction: SpecialHandler =
     (formal, span) => implicit ctx => formal match {
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
-        def functionTypeEqual(baseFun: Type, actualArgs: List[Type], actualRet: Type, expected: Type) = {
+        def functionTypeEqual(baseFun: Type, actualArgs: List[Type], actualRet: Type, expected: Type) =
           expected =:= defn.FunctionOf(actualArgs, actualRet, defn.isImplicitFunctionType(baseFun), defn.isErasedFunctionType(baseFun))
-        }
-        val arity: Int = {
+        val arity: Int =
           if (defn.isErasedFunctionType(fun) || defn.isErasedFunctionType(fun)) -1 // TODO support?
-          else if (defn.isFunctionType(fun)) {
+          else if (defn.isFunctionType(fun))
             // TupledFunction[(...) => R, ?]
             fun.dropDependentRefinement.dealias.argInfos match {
               case funArgs :+ funRet if functionTypeEqual(fun, defn.tupleType(funArgs) :: Nil, funRet, tupled) =>
@@ -748,7 +746,7 @@ trait Implicits { self: Typer =>
                 funArgs.size
               case _ => -1
             }
-          } else if (defn.isFunctionType(tupled)) {
+          else if (defn.isFunctionType(tupled))
             // TupledFunction[?, (...) => R]
             tupled.dropDependentRefinement.dealias.argInfos match {
               case tupledArgs :: funRet :: Nil =>
@@ -760,12 +758,9 @@ trait Implicits { self: Typer =>
                 }
               case _ => -1
             }
-          }
-          else {
+          else
             // TupledFunction[?, ?]
             -1
-          }
-        }
         if (arity == -1)
           EmptyTree
         else if (arity <= Definitions.MaxImplementedFunctionArity)
@@ -1003,7 +998,7 @@ trait Implicits { self: Typer =>
                   assert(caseClass.is(Case))
                   if (caseClass.is(Module))
                     caseClass.sourceModule.termRef
-                  else {
+                  else
                     caseClass.primaryConstructor.info match {
                       case info: PolyType =>
                         // Compute the the full child type by solving the subtype constraint
@@ -1031,7 +1026,6 @@ trait Implicits { self: Typer =>
                       case _ =>
                         caseClass.typeRef
                     }
-                  }
                 case child => child.termRef
               }
 
@@ -1054,7 +1048,8 @@ trait Implicits { self: Typer =>
                 if (cls.linkedClass.exists && !cls.is(Scala2x)) companionPath(mirroredType, span)
                 else anonymousMirror(monoType, ExtendsSumMirror, span)
               mirrorRef.cast(mirrorType)
-            } else EmptyTree
+            }
+            else EmptyTree
           case _ => EmptyTree
         }
     }
@@ -1109,10 +1104,9 @@ trait Implicits { self: Typer =>
             }
             val base = baseWithRefinements(formal)
             val result =
-              if (base <:< formal.widenExpr) {
+              if (base <:< formal.widenExpr)
                 // With the subtype test we enforce that the searched type `formal` is of the right form
                 handler(base, span)(ctx)
-              }
               else EmptyTree
             result.orElse(trySpecialCases(rest))
           case Nil =>
@@ -1303,9 +1297,9 @@ trait Implicits { self: Typer =>
         if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
         else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
       val result0 =
-        try {
+        try
           new ImplicitSearch(pt, argument, span).bestImplicit(contextual = true)
-        } catch {
+        catch {
           case ce: CyclicReference =>
             ce.inImplicitSearch = true
             throw ce
@@ -1322,7 +1316,7 @@ trait Implicits { self: Typer =>
           case result: SearchFailure if result.isAmbiguous =>
             val deepPt = pt.deepenProto
             if (deepPt ne pt) inferImplicit(deepPt, argument, span)
-            else if (ctx.scala2Mode && !ctx.mode.is(Mode.OldOverloadingResolution)) {
+            else if (ctx.scala2Mode && !ctx.mode.is(Mode.OldOverloadingResolution))
               inferImplicit(pt, argument, span)(ctx.addMode(Mode.OldOverloadingResolution)) match {
                 case altResult: SearchSuccess =>
                   ctx.migrationWarning(
@@ -1332,7 +1326,6 @@ trait Implicits { self: Typer =>
                 case _ =>
                   result
               }
-            }
             else result
           case NoMatchingImplicitsFailure =>
             SearchFailure(new NoMatchingImplicits(pt, argument, ctx.typerState.constraint))
@@ -1402,9 +1395,9 @@ trait Implicits { self: Typer =>
                 ctx.error(em"ambiguous implicit: $generated is eligible both as an implicit conversion and as an extension method container")
             }
             result
-            }
-            else tryConversion
           }
+          else tryConversion
+        }
       if (ctx.reporter.hasErrors) {
         ctx.reporter.removeBufferedMessages
         SearchFailure {
@@ -1497,7 +1490,7 @@ trait Implicits { self: Typer =>
        *    - otherwise add the failure to `rfailures` and continue testing the other candidates.
        */
       def rank(pending: List[Candidate], found: SearchResult, rfailures: List[SearchFailure]): SearchResult =
-        pending match  {
+        pending match {
           case cand :: remaining =>
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>

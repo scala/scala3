@@ -82,9 +82,8 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
     */
   def refClass(cls: Symbol, isVolatile: Boolean)(implicit ctx: Context): Symbol = {
     val refMap = if (isVolatile) refInfo.volatileRefClass else refInfo.refClass
-    if (cls.isClass)  {
+    if (cls.isClass) 
       refMap.getOrElse(cls, refMap(defn.ObjectClass))
-    }
     else refMap(defn.ObjectClass)
   }
 
@@ -108,7 +107,8 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
       cpy.ValDef(vdef)(
         rhs = boxMethod(nme.create).appliedTo(vdef.rhs),
         tpt = TypeTree(vble.info).withSpan(vdef.tpt.span))
-    } else vdef
+    }
+    else vdef
   }
 
   override def transformIdent(id: Ident)(implicit ctx: Context): Tree = {

@@ -27,12 +27,11 @@ class YCheckPositions extends Phases.Phase {
 
             // Check current context is correct
             assert(ctx.source == sources.head)
-            if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable) {
+            if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable)
               if (!tree.isType) { // TODO also check types, currently we do not add Inlined(EmptyTree, _, _) for types. We should.
                 val currentSource = sources.head
                 assert(tree.source == currentSource, i"wrong source set for $tree # ${tree.uniqueId} of ${tree.getClass}, set to ${tree.source} but context had $currentSource")
               }
-            }
 
             // Recursivlely check children while keeping track of current source
             tree match {

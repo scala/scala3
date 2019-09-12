@@ -1468,7 +1468,7 @@ object Trees {
             case _ =>
               foldMoreCases(x, tree)
           }
-      }
+        }
 
       def foldMoreCases(x: X, tree: Tree)(implicit ctx: Context): X = {
         assert(ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), tree)

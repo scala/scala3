@@ -22,9 +22,9 @@ import transform.TypeUtils._
 import transform.SymUtils._
 import reporting.diagnostic.messages._
 
-trait NamerContextOps { 
+trait NamerContextOps {
   this: Context =>
-  
+
   import NamerContextOps._
 
   def typer: Typer = ctx.typeAssigner match {
@@ -140,9 +140,8 @@ trait NamerContextOps {
           else (params.head.is(Given), params.head.is(Implicit), params.head.is(Erased))
         val make = MethodType.companion(isJava = isJava, isContextual = isContextual, isImplicit = isImplicit, isErased = isErased)
         if (isJava)
-          for (param <- params) {
+          for (param <- params)
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
-          }
         make.fromSymbols(params, resultType)
       }
     if (typeParams.nonEmpty) PolyType.fromParams(typeParams.asInstanceOf[List[TypeSymbol]], monotpe)
@@ -760,7 +759,8 @@ class Namer { typer: Typer =>
         try {
           val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
           ImportType(expr1)
-        } catch {
+        }
+        catch {
           case ex: CyclicReference =>
             typr.println(s"error while completing ${imp.expr}")
             throw ex
@@ -955,7 +955,7 @@ class Namer { typer: Typer =>
              other => cls.derivesFrom(other.owner) && !other.is(Deferred)) match {
                case Some(other) => i"overrides ${other.showLocated}, which is already a member of $cls"
                case None => ""
-             }
+            }
           else ""
         }
 
@@ -1022,8 +1022,10 @@ class Namer { typer: Typer =>
         }
 
         def addForwardersExcept(seen: List[TermName], span: Span): Unit =
-          for (mbr <- path.tpe.membersBasedOnFlags(
-              required = EmptyFlags, excluded = PrivateOrSynthetic)) {
+          for {
+            mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic)
+          }
+          {
             val alias = mbr.name.toTermName
             if (!seen.contains(alias)) addForwarder(alias, mbr, span)
           }

@@ -72,22 +72,21 @@ class Driver {
       // Resolve classpath and class names of tasty files
       val (classPaths, classNames) = fileNames0.flatMap { name =>
         val path = Paths.get(name)
-        if (name.endsWith(".jar")) {
+        if (name.endsWith(".jar"))
           new dotty.tools.io.Jar(File(name)).toList.collect {
             case e if e.getName.endsWith(".tasty") =>
               (name, e.getName.stripSuffix(".tasty").replace("/", "."))
           }
-        }
         else if (!name.endsWith(".tasty"))
           ("", name) :: Nil
-        else if (Files.exists(path)) {
+        else if (Files.exists(path))
           TastyFileUtil.getClassName(path) match {
             case Some(res) => res:: Nil
             case _ =>
               ctx0.error(s"Could not load classname from $name.")
               ("", name) :: Nil
           }
-        } else {
+        else {
           ctx0.error(s"File $name does not exist.")
           ("", name) :: Nil
         }

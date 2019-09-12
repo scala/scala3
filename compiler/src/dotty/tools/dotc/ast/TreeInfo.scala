@@ -42,7 +42,8 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
           if (param.info.isRepeatedParam) {
             for (arg <- args) f(param, arg)
             true
-          } else args match {
+          }
+          else args match {
             case Nil => false
             case arg :: args1 =>
               f(param, args.head)
