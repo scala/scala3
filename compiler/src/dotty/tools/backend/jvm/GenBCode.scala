@@ -32,8 +32,6 @@ import dotty.tools.io._
 
 class GenBCode extends Phase {
   def phaseName: String = GenBCode.name
-  private val entryPoints = new mutable.HashSet[Symbol]()
-  def registerEntryPoint(sym: Symbol): Unit = entryPoints += sym
 
   private val superCallsMap = newMutableSymbolMap[Set[ClassSymbol]]
   def registerSuperCall(sym: Symbol, calls: ClassSymbol): Unit = {
@@ -50,9 +48,8 @@ class GenBCode extends Phase {
   }
 
   def run(implicit ctx: Context): Unit = {
-    new GenBCodePipeline(entryPoints.toList,
-        new DottyBackendInterface(outputDir, superCallsMap.toMap)(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
-    entryPoints.clear()
+    new GenBCodePipeline(new DottyBackendInterface(
+      outputDir, superCallsMap.toMap)(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
   }
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
@@ -69,7 +66,7 @@ object GenBCode {
   val name: String = "genBCode"
 }
 
-class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInterface)(implicit val ctx: Context) extends BCodeSyncAndTry {
+class GenBCodePipeline(val int: DottyBackendInterface)(implicit val ctx: Context) extends BCodeSyncAndTry {
 
   private[this] var tree: Tree = _
 
@@ -474,7 +471,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
       // Statistics.stopTimer(BackendStats.bcodeInitTimer, initStart)
 
       // initBytecodeWriter invokes fullName, thus we have to run it before the typer-dependent thread is activated.
-      bytecodeWriter  = initBytecodeWriter(entryPoints)
+      bytecodeWriter  = initBytecodeWriter()
       mirrorCodeGen   = new JMirrorBuilder
 
       val needsOutfileForSymbol = bytecodeWriter.isInstanceOf[ClassBytecodeWriter]

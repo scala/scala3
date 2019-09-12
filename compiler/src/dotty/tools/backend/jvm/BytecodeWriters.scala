@@ -50,9 +50,7 @@ trait BytecodeWriters {
   }
 
   class DirectToJarfileWriter(jfile: JFile) extends BytecodeWriter {
-    val jarMainAttrs = mainClass.map(nm => List(Name.MAIN_CLASS -> nm)).getOrElse(Nil)
-
-    val writer = new Jar(jfile).jarWriter(jarMainAttrs: _*)
+    val writer = new Jar(jfile).jarWriter()
 
     def writeClass(label: String, jclassName: String, jclassBytes: Array[Byte], outfile: AbstractFile): Unit = {
       assert(outfile == null,

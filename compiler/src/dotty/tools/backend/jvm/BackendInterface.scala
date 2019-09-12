@@ -156,13 +156,11 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   /* various configuration options used by backend */
   def emitAsmp: Option[String]
   def dumpClasses: Option[String]
-  def mainClass: Option[String]
   def noForwarders: Boolean
   def debuglevel: Int
   def settings_debug: Boolean
   def targetPlatform: String
   def sourceFileFor(cu: CompilationUnit): String
-  def setMainClass(name: String): Unit
   def informProgress(msg: String): Unit
   def hasLabelDefs: Boolean // whether this compiler uses LabelDefs (i.e., scalac)
 
@@ -508,7 +506,6 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def isNonBottomSubClass(sym: Symbol): Boolean
     def hasAnnotation(sym: Symbol): Boolean
     def shouldEmitForwarders: Boolean
-    def isJavaEntryPoint: Boolean
     def isJavaDefaultMethod: Boolean
     def isClassConstructor: Boolean
     def isSerializable: Boolean
