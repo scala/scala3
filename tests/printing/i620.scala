@@ -22,7 +22,7 @@ class D {
   protected[D]    class H
   protected       class I
   protected[A]    class J
-                  class K
+  /* public */    class K
 
   protected[D] val a: Int = 0
   private[D]   val b: Int = 0

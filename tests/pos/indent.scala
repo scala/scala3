@@ -1,4 +1,4 @@
-object Test:
+object Test
 
   locally:
     var x = 0
@@ -56,7 +56,7 @@ object Test:
     x < 10
   do ()
 
-class Test2:
+class Test2
   self =>
   def foo = 1
 
@@ -67,15 +67,15 @@ class Test2:
   end x
 end Test2
 
-class Test3:
+class Test3
  self =>
   def foo = 1
 
 import collection.mutable.HashMap
 
-class Coder(words: List[String]):
+class Coder(words: List[String])
 
-  class Foo:
+  class Foo
     println()
   end Foo
 

@@ -1178,6 +1178,11 @@ object Parsers {
       newLineOptWhenFollowedBy(LBRACE)
     }
 
+    def possibleTemplateStart(): Unit = {
+      in.observeIndented()
+      newLineOptWhenFollowedBy(LBRACE)
+    }
+
     def indentRegion[T](tag: EndMarkerTag)(op: => T): T = {
       val iw = in.currentRegion.indentWidth
       val t = op
@@ -3330,7 +3335,7 @@ object Parsers {
           if (in.token == LPAREN)
             try paramClause(prefix = true) :: Nil
             finally {
-              possibleBracesStart()
+              possibleTemplateStart()
               if (!in.isNestedStart) syntaxErrorOrIncomplete("`{' expected")
             }
           else Nil
@@ -3348,7 +3353,7 @@ object Parsers {
             DefDef(name, tparams, vparamss, parents.head, expr())
           }
           else {
-            possibleBracesStart()
+            possibleTemplateStart()
             val (tparams1, vparamss1) =
               if (leadingParamss.nonEmpty)
                 (tparams, leadingParamss)
@@ -3448,7 +3453,7 @@ object Parsers {
      */
     def template(constr: DefDef, isEnum: Boolean = false): Template = {
       val (parents, derived) = inheritClauses()
-      possibleBracesStart()
+      possibleTemplateStart()
       if (isEnum) {
         val (self, stats) = withinEnum(templateBody())
         Template(constr, parents, derived, self, stats)
@@ -3458,13 +3463,15 @@ object Parsers {
 
     /** TemplateOpt = [Template]
      */
-    def templateOpt(constr: DefDef): Template = {
+    def templateOpt(constr: DefDef): Template =
       possibleBracesStart()
-      if (in.token == EXTENDS || isIdent(nme.derives) || in.isNestedStart)
+      if (in.token == EXTENDS || isIdent(nme.derives))
         template(constr)
-      else
-        Template(constr, Nil, Nil, EmptyValDef, Nil)
-    }
+      else {
+        possibleTemplateStart()
+        if (in.isNestedStart) template(constr)
+        else Template(constr, Nil, Nil, EmptyValDef, Nil)
+      }
 
     /** TemplateBody ::= [nl] `{' TemplateStatSeq `}'
      */
@@ -3496,7 +3503,7 @@ object Parsers {
     def packaging(start: Int): Tree = {
       val pkg = qualId()
       indentRegion(pkg) {
-        possibleBracesStart()
+        possibleTemplateStart()
         val stats = inDefScopeBraces(topStatSeq())
         makePackaging(start, pkg, stats)
       }
@@ -3702,7 +3709,7 @@ object Parsers {
           else {
             val pkg = qualId()
             indentRegion(pkg) {
-              possibleBracesStart()
+              possibleTemplateStart()
               if (in.token == EOF)
                 ts += makePackaging(start, pkg, List())
               else if (in.isNestedStart) {

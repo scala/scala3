@@ -31,19 +31,19 @@
    |                    final def status: => List[String] in class Copier at line 23 and
    |                    final def status: => List[String] in class Copier at line 24
    |                    have the same type after erasure.
--- Error: tests/neg/exports.scala:35:15 --------------------------------------------------------------------------------
-35 |  export this.{concat => ++}   // error: no eligible member
-   |               ^^^^^^
-   |               no eligible member concat at this
-   |               this.concat cannot be exported because it is already a member of trait IterableOps
--- Error: tests/neg/exports.scala:41:13 --------------------------------------------------------------------------------
-41 |  export foo.foo // error: no eligible member
-   |             ^^^
-   |             no eligible member foo at this.foo
-   |             this.foo.foo cannot be exported because it is already a member of class Foo
--- [E120] Duplicate Symbol Error: tests/neg/exports.scala:46:13 --------------------------------------------------------
-46 |  export bar._  // error: double definition
-   |             ^
-   |             Double definition:
-   |             val bar: Bar in class Baz at line 45 and
-   |             final def bar: => => Bar(Baz.this.bar.baz.bar)(Baz.this.bar.bar) in class Baz at line 46
+-- Error: tests/neg/exports.scala:35:17 --------------------------------------------------------------------------------
+35 |    export this.{concat => ++}   // error: no eligible member
+   |                 ^^^^^^
+   |                 no eligible member concat at this
+   |                 this.concat cannot be exported because it is already a member of trait IterableOps
+-- Error: tests/neg/exports.scala:41:15 --------------------------------------------------------------------------------
+41 |    export foo.foo // error: no eligible member
+   |               ^^^
+   |               no eligible member foo at this.foo
+   |               this.foo.foo cannot be exported because it is already a member of class Foo
+-- [E120] Duplicate Symbol Error: tests/neg/exports.scala:46:15 --------------------------------------------------------
+46 |    export bar._  // error: double definition
+   |               ^
+   |               Double definition:
+   |               val bar: Bar in class Baz at line 45 and
+   |               final def bar: => => Bar(Baz.this.bar.baz.bar)(Baz.this.bar.bar) in class Baz at line 46
