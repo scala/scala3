@@ -251,7 +251,7 @@ The `toExpr` extension method is defined in package `quoted`:
 ```scala
     package quoted
 
-    given extension {
+    given {
       def (x: T) toExpr[T: Liftable] given QuoteContext: Expr[T] = summon[Liftable[T]].toExpr(x)
       ...
     }

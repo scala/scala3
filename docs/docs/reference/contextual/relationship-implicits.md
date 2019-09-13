@@ -68,7 +68,7 @@ Anonymous given instances that define extension methods without also implementin
 get their name from the name of the first extension method and the toplevel type
 constructor of its first parameter. For example, the given extension
 ```scala
-  given extension {
+  given {
     def (xs: List[T]) second[T] = ...
   }
 ```

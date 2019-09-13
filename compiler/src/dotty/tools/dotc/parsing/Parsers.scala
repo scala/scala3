@@ -3322,6 +3322,22 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
+    /** Are the next tokens a prefix of a DefParam? */
+    def isDefParam() =
+      val lookahead = in.LookaheadScanner()
+      if lookahead.token == LPAREN then
+        lookahead.nextToken()
+        if lookahead.token == AT then true
+        else if lookahead.token == IDENTIFIER then
+          if lookahead.name == nme.inline then
+            lookahead.nextToken()
+          if lookahead.token == IDENTIFIER then
+            lookahead.nextToken()
+            lookahead.token == COLON
+          else false
+        else false
+      else false
+
     /** OLD:
      *  GivenDef       ::=  [id] [DefTypeParamClause] GivenBody
      *  GivenBody      ::=  [‘as ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
@@ -3338,11 +3354,7 @@ object Parsers {
       var mods1 = addMod(mods, instanceMod)
       var isExtension = false
       val name =
-        if isIdent(nme.extension) then
-          in.nextToken()
-          isExtension = true
-          EmptyTermName
-        else if newStyle && allowOldGiven && isIdent(nme.as) then EmptyTermName
+        if newStyle && allowOldGiven && isIdent(nme.as) then EmptyTermName
         else if isIdent then ident()
         else EmptyTermName
       indentRegion(name) {
@@ -3359,12 +3371,13 @@ object Parsers {
             tokenSeparated(COMMA, constrApp)
           else if in.token == COLON then
             in.nextToken()
-            if isIdent(nme.extension) then
+            if in.token == LBRACE
+               || in.token == LBRACKET
+               || in.token == LPAREN && isDefParam() then
               if tparams.nonEmpty then
-                syntaxError(i"no type parameters allowed before `extension`", tparams.head.span)
+                syntaxError(i"no type parameters allowed for extension", tparams.head.span)
               if leadingParamss.nonEmpty then
-                syntaxError(i"no parameters allowed before `extension`", leadingParamss.head.head.span)
-              in.nextToken()
+                syntaxError(i"no parameters allowed for extension", leadingParamss.head.head.span)
               parseParams()
               Nil
             else tokenSeparated(COMMA, constrApp)

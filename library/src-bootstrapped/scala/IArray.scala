@@ -8,7 +8,7 @@ object opaques {
   opaque type IArray[+T] = Array[_ <: T]
 
   /** Defines extension methods for immutable arrays */
-  given arrayOps: extension {
+  given arrayOps: {
 
     /** The selection operation on an immutable array.
       *

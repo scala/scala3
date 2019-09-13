@@ -48,14 +48,14 @@ object Instances extends Common {
     }
   }
 
-  given stringOps: extension {
+  given stringOps: {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  given extension {
+  given {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
@@ -152,14 +152,14 @@ object Instances extends Common {
 object PostConditions {
   opaque type WrappedResult[T] = T
 
-  private given WrappedResult: extension {
+  private given WrappedResult: {
     def apply[T](x: T): WrappedResult[T] = x
     def (x: WrappedResult[T]) unwrap[T]: T = x
   }
 
   def result[T] given (wrapped: WrappedResult[T]): T = wrapped.unwrap
 
-  given extension {
+  given {
     def (x: T) ensuring[T] (condition: given WrappedResult[T] => Boolean): T = {
       assert(condition given WrappedResult(x))
       x
@@ -184,14 +184,14 @@ object AnonymousInstances extends Common {
     }
   }
 
-  given extension {
+  given {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  given extension {
+  given {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 

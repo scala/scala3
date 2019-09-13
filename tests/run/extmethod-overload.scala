@@ -22,7 +22,7 @@ object Test extends App {
   // Test with extension methods in given object
   object test1 {
 
-    given Foo: extension {
+    given Foo: {
       def (x: Int) |+| (y: Int) = x + y
       def (x: Int) |+| (y: String) = x + y.length
 
@@ -97,7 +97,7 @@ object Test extends App {
     def (x: Int) yy (y: Int) = x + y
   }
 
-  given extension {
+  given {
     def (x: Int) yy (y: Int) = x - y
   }
 
