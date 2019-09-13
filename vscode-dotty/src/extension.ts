@@ -50,6 +50,18 @@ function isConfiguredProject() {
 }
 
 export function activate(context: ExtensionContext) {
+  // Override the language configuration from vscode-scala (doing this from
+  // package.json does not work)
+  vscode.languages.setLanguageConfiguration("scala", {
+    "indentationRules": {
+      // Auto-indent when pressing enter on a line matching this regexp
+      "increaseIndentPattern": /(((\b(then|else|do|catch|finally|yield|match|while|try|for|if|case)\b)|\bif\s*\(.*\)|=|=>|<-|=>>)\s*$)/,
+      // Auto-unindent disabled, because it doesn't work well with all
+      // indentation styles
+      "decreaseIndentPattern": /^.$/
+    }
+  })
+
   extensionContext = context
   outputChannel = vscode.window.createOutputChannel("Dotty")
   tracer = new Tracer({
