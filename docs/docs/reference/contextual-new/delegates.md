@@ -3,10 +3,6 @@ layout: doc-page
 title: "Given Instances"
 ---
 
-**Note** The syntax described in this section is currently under revision.
-[Here is the new version which will be implemented in Dotty 0.19](../contextual-new/delegates.html).
-
-
 Given instances (or, simply, "givens") define "canonical" values of certain types
 that serve for synthesizing arguments to [given clauses](./given-clauses.md). Example:
 
@@ -17,12 +13,12 @@ trait Ord[T] {
   def (x: T) > (y: T) = compare(x, y) > 0
 }
 
-given IntOrd as Ord[Int] {
+given intOrd: Ord[Int] {
   def compare(x: Int, y: Int) =
     if (x < y) -1 else if (x > y) +1 else 0
 }
 
-given ListOrd[T] as Ord[List[T]] given (ord: Ord[T]) {
+given listOrd[T](given ord: Ord[T]): Ord[List[T]] {
 
   def compare(xs: List[T], ys: List[T]): Int = (xs, ys) match {
     case (Nil, Nil) => 0
@@ -34,19 +30,19 @@ given ListOrd[T] as Ord[List[T]] given (ord: Ord[T]) {
   }
 }
 ```
-This code defines a trait `Ord` with two given instances. `IntOrd` defines
-a given for the type `Ord[Int]` whereas `ListOrd[T]` defines givens
+This code defines a trait `Ord` with two given instances. `intOrd` defines
+a given for the type `Ord[Int]` whereas `listOrd[T]` defines givens
 for `Ord[List[T]]` for all types `T` that come with a given instance for `Ord[T]` themselves.
-The `given (ord: Ord[T])` clause in `ListOrd` defines an implicit parameter.
-Given clauses are further explained in [given clauses](./given-clauses.md).
+The `(given ord: Ord[T])` clause in `listOrd` defines an implicit parameter.
+Given clauses are further explained in the [next section](./given-clauses.md).
 
 ## Anonymous Given Instances
 
 The name of a given instance can be left out. So the definitions
 of the last section can also be expressed like this:
 ```scala
-given as Ord[Int] { ... }
-given [T] as Ord[List[T]] given Ord[T] { ... }
+given Ord[Int] { ... }
+given [T](given Ord[T]): Ord[List[T]] { ... }
 ```
 If the name of a given is missing, the compiler will synthesize a name from
 the type(s) in the `as` clause.
@@ -55,7 +51,7 @@ the type(s) in the `as` clause.
 
 An alias can be used to define a given instance that is equal to some expression. E.g.:
 ```scala
-given global as ExecutionContext = new ForkJoinPool()
+given global: ExecutionContext = new ForkJoinPool()
 ```
 This creates a given `global` of type `ExecutionContext` that resolves to the right
 hand side `new ForkJoinPool()`.
@@ -64,8 +60,8 @@ returned for this and all subsequent accesses to `global`.
 
 Alias givens can be anonymous, e.g.
 ```scala
-given as Position = enclosingTree.position
-given as Context given (outer: Context) = outer.withOwner(currentOwner)
+given Position = enclosingTree.position
+given (given outer: Context): Context = outer.withOwner(currentOwner)
 ```
 An alias given can have type parameters and given clauses just like any other given instance, but it can only implement a single type.
 
@@ -82,14 +78,10 @@ Here is the new syntax of given instances, seen as a delta from the [standard co
 ```
 TmplDef          ::=  ...
                   |   ‘given’ GivenDef
-GivenDef         ::=  [id] [DefTypeParamClause] GivenBody
-GivenBody        ::=  [‘as’ ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
-                   |  ‘as’ Type {GivenParamClause} ‘=’ Expr
-ConstrApp        ::=  SimpleConstrApp
-                   |  ‘(’ SimpleConstrApp {‘given’ (PrefixExpr | ParArgumentExprs)} ‘)’
-SimpleConstrApp  ::=  AnnotType {ArgumentExprs}
-GivenParamClause ::=  ‘given’ (‘(’ [DefParams] ‘)’ | GivenTypes)
+GivenDef         ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
+                  |   [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
+GivenSig         ::=  [id] [DefTypeParamClause] {GivenParamClause}
+GivenParamClause ::=  ‘(’ ‘given’ (DefParams | GivenTypes) ‘)’
 GivenTypes       ::=  AnnotType {‘,’ AnnotType}
 ```
-The identifier `id` can be omitted only if either the `as` part or the template body is present.
-If the `as` part is missing, the template body must define at least one extension method.
+The identifier `id` can be omitted only if some types are implemented or the template body defines at least one extension method.
