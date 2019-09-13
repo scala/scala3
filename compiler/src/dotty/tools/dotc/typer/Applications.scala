@@ -40,7 +40,7 @@ object Applications {
   import tpd._
 
   def extractorMember(tp: Type, name: Name)(implicit ctx: Context): SingleDenotation =
-    tp.member(name).suchThat(_.info.isParameterless)
+    tp.member(name).suchThat(sym => sym.info.isParameterless && sym.info.widenExpr.isValueType)
 
   def extractorMemberType(tp: Type, name: Name, errorPos: SourcePosition)(implicit ctx: Context): Type = {
     val ref = extractorMember(tp, name)
