@@ -982,7 +982,8 @@ class Namer { typer: Typer =>
              */
             def fwdInfo(ref: Type, info: Type): Type = info match {
               case _: ClassInfo =>
-                HKTypeLambda.fromParams(info.typeParams, ref)
+                if (info.typeParams.isEmpty) TypeAlias(ref)
+                else HKTypeLambda.fromParams(info.typeParams, ref)
               case _: TypeBounds =>
                 TypeAlias(ref)
               case info: HKTypeLambda =>
