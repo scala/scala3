@@ -7,7 +7,7 @@ object Foo {
 }
 
 object Bar {
-  type Blue = Foo.Blue
+  export Foo.Blue
 }
 
 import Foo._
