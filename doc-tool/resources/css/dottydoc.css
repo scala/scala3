@@ -182,11 +182,10 @@ pre {
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-pre > code.language-none,
-pre > code.language-shell,
-pre > code.hljs {
+pre > code {
   display: block;
-  padding: 10px;
+  padding: 0.5rem;
+  overflow-x: auto;
   background: transparent;
 }
 
