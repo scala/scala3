@@ -171,7 +171,7 @@ class CommunityBuildTest {
     extraSbtArgs  = Seq("-Dscala.build.compileWithDotty=true")
   )
 
-  @Test def shapeless = test(
+  /*@Test*/ def shapeless = test(
     project       = "shapeless",
     testCommand   = "test",
     updateCommand = "update"
