@@ -7,8 +7,8 @@ trait TokenParser[Token, R]
 object TextParser {
   given TP as TokenParser[Char, Position[CharSequence]] {}
 
-  given FromCharToken as Conversion[Char, Position[CharSequence]] given
-    (T: TokenParser[Char, Position[CharSequence]]) = ???
+  given FromCharToken(given T: TokenParser[Char, Position[CharSequence]])
+    : Conversion[Char, Position[CharSequence]] = ???
 }
 
 

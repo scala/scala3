@@ -15,18 +15,18 @@ class Foo[T](val i: Int)
 object Foo {
   def apply[T] given (fooT: Foo[T]): Int = fooT.i
 
-  given foo[T]    as Foo[T](0)        given Low
-  given foobar[T] as Foo[Bar[T]](1)   given Low
-  given foobarbaz as Foo[Bar[Baz]](2) given Low
+  given foo[T](given Low)    : Foo[T](0)
+  given foobar[T](given Low) : Foo[Bar[T]](1)
+  given foobarbaz(given Low) : Foo[Bar[Baz]](2)
 }
 class Bar[T]
 object Bar {
-  given foobar[T] as Foo[Bar[T]](3)   given Medium
-  given foobarbaz as Foo[Bar[Baz]](4) given Medium
+  given foobar[T](given Medium): Foo[Bar[T]](3)
+  given foobarbaz(given Medium): Foo[Bar[Baz]](4)
 }
 class Baz
 object Baz {
-  given baz as Foo[Bar[Baz]](5) given High
+  given baz(given High): Foo[Bar[Baz]](5)
 }
 
 class Arg

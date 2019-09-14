@@ -196,7 +196,7 @@ object Test extends App {
   // Added operation: negation pushdown
   enum NCtx { case Pos, Neg }
 
-  given [T] as Exp[NCtx => T] given (e: Exp[T]) {
+  given [T](given e: Exp[T]): Exp[NCtx => T] {
     import NCtx._
     def lit(i: Int) = {
       case Pos => e.lit(i)
@@ -216,7 +216,7 @@ object Test extends App {
   println(pushNeg(tf1[NCtx => String]))
   println(pushNeg(pushNeg(pushNeg(tf1))): String)
 
-  given [T] as Mult[NCtx => T] given (e: Mult[T]) {
+  given [T](given e: Mult[T]) as Mult[NCtx => T] {
     import NCtx._
     def mul(l: NCtx => T, r: NCtx => T): NCtx => T = {
       case Pos => e.mul(l(Pos), r(Pos))

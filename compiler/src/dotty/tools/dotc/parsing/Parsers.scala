@@ -199,8 +199,12 @@ object Parsers {
 
     def isBindingIntro: Boolean = {
       in.token match {
-        case USCORE | LPAREN => true
+        case USCORE => true
         case IDENTIFIER | BACKQUOTED_IDENT => in.lookaheadIn(BitSet(COLON, ARROW))
+        case LPAREN =>
+          val lookahead = in.LookaheadScanner()
+          lookahead.skipParens()
+          lookahead.token == ARROW
         case _ => false
       }
     } && !in.isSoftModifierInModifierPosition
@@ -2108,11 +2112,13 @@ object Parsers {
     def exprsInParensOpt(): List[Tree] =
       if (in.token == RPAREN) Nil else commaSeparated(exprInParens)
 
-    /** ParArgumentExprs ::= `(' [ExprsInParens] `)'
+    /** ParArgumentExprs ::= `(' [‘given’] [ExprsInParens] `)'
      *                    |  `(' [ExprsInParens `,'] PostfixExpr `:' `_' `*' ')'
      */
-    def parArgumentExprs(): List[Tree] =
-      inParens(if (in.token == RPAREN) Nil else commaSeparated(argumentExpr))
+    def parArgumentExprs(): List[Tree] = inParens {
+      if in.token == RPAREN then Nil
+      else commaSeparated(argumentExpr)
+    }
 
     /** ArgumentExprs ::= ParArgumentExprs
      *                 |  [nl] BlockExpr

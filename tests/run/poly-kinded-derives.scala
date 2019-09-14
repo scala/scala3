@@ -5,9 +5,9 @@ object Test extends App {
     trait Show[T]
     object Show {
       given as Show[Int] {}
-      given [T] as Show[Tuple1[T]] given (st: Show[T]) {}
-      given t2 [T, U] as Show[(T, U)] given (st: Show[T], su: Show[U]) {}
-      given t3 [T, U, V] as Show[(T, U, V)] given (st: Show[T], su: Show[U], sv: Show[V]) {}
+      given [T](given st: Show[T]): Show[Tuple1[T]]
+      given t2[T, U](given st: Show[T], su: Show[U]): Show[(T, U)]
+      given t3 [T, U, V](given st: Show[T], su: Show[U], sv: Show[V]): Show[(T, U, V)]
 
       def derived[T] given (m: Mirror.Of[T], r: Show[m.MirroredElemTypes]): Show[T] = new Show[T] {}
     }

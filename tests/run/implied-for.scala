@@ -30,7 +30,8 @@ class Monoid[T]
 
 object Instances {
   given intOrd as Ordering[Int]
-  given listOrd[T] as Ordering[List[T]] given Ordering[T]
+
+  given listOrd[T](given Ordering[T]): Ordering[List[T]]
   given ec as ExecutionContext
   given im as Monoid[Int]
 }

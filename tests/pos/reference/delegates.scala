@@ -32,12 +32,12 @@ class Common {
 
 object Instances extends Common {
 
-  given IntOrd as Ord[Int] {
+  given intOrd: Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  given ListOrd[T] as Ord[List[T]] given Ord[T] {
+  given listOrd[T](given Ord[T]): Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -59,35 +59,35 @@ object Instances extends Common {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  given ListMonad as Monad[List] {
+  given listMonad: Monad[List] {
     def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  given ReaderMonad[Ctx] as Monad[[X] =>> Ctx => X] {
+  given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x
   }
 
-  def maximum[T](xs: List[T]) given Ord[T]: T =
+  def maximum[T](xs: List[T])(given Ord[T]): T =
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
-  def descending[T] given (asc: Ord[T]): Ord[T] = new Ord[T] {
+  def descending[T](given asc: Ord[T]): Ord[T] = new Ord[T] {
     def (x: T) compareTo (y: T) = asc.compareTo(y)(x)
   }
 
-  def minimum[T](xs: List[T]) given Ord[T] =
+  def minimum[T](xs: List[T])(given Ord[T]) =
     maximum(xs) given descending
 
   def test(): Unit = {
     val xs = List(1, 2, 3)
     println(maximum(xs))
     println(maximum(xs) given descending)
-    println(maximum(xs) given (descending given IntOrd))
+    println(maximum(xs) given (descending given intOrd))
     println(minimum(xs))
   }
 
@@ -105,7 +105,7 @@ object Instances extends Common {
       def (sym: Symbol) name: String
     }
     def symDeco: SymDeco
-    given as SymDeco = symDeco
+    given SymDeco = symDeco
   }
   object TastyImpl extends TastyAPI {
     type Symbol = String
@@ -116,23 +116,23 @@ object Instances extends Common {
 
   class D[T]
 
-  class C given (ctx: Context) {
+  class C(given ctx: Context) {
     def f() = {
       locally {
-        given as Context = this.ctx
+        given Context = this.ctx
         println(summon[Context].value)
       }
       locally {
         lazy val ctx1 = this.ctx
-        given as Context = ctx1
+        given Context = ctx1
         println(summon[Context].value)
       }
       locally {
-        given d[T] as D[T]
+        given d[T]: D[T]
         println(summon[D[Int]])
       }
       locally {
-        given as D[Int] given Context
+        given (given Context): D[Int]
         println(summon[D[Int]])
       }
     }
