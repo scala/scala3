@@ -1,9 +1,8 @@
 <nav class="sidebar">
     <ul class="toc">
         <!-- Redacted documents -->
-        {% assign parent = page.path | first %}
         {% for title in sidebar.titles %}
-            {% renderTitle title, parent %}
+            {% renderTitle title, page.url %}
         {% endfor %}
         <!-- API documentation -->
         {% if docs.size > 0 %}

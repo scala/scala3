@@ -69,7 +69,7 @@ case class DefaultParams(
 }
 
 case class PageInfo(url: String, date: String = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")).toString ) {
-  val path: Array[String] = url.split('/').reverse.drop(1)
+  val path: Array[String] = url.split('/').drop(1)
 }
 
 case class SiteInfo(

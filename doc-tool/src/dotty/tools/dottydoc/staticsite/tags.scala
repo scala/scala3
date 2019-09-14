@@ -157,20 +157,25 @@ object tags {
     * `Title`.
     *
     * ```html
-    * {% renderTitle title, parent %}
+    * {% renderTitle title, page.url %}
     * ```
-    *
-    * The rendering currently works on depths up to 2. This means that each
-    * title can have a subsection with its own titles.
     */
   case class RenderTitle(params: Map[String, AnyRef])(implicit ctx: Context)
   extends Tag("renderTitle") with ParamConverter {
-    private def renderTitle(t: Title, parent: String): String = {
+    private def isParent(t: Title, htmlPath: String): Boolean = {
+      t.url match {
+        case Some(url) => url == htmlPath
+        case None => t.subsection.exists(isParent(_, htmlPath))
+      }
+    }
+    private def renderTitle(t: Title, pageUrl: String): String = {
       if (!t.url.isDefined && t.subsection.nonEmpty) {
+        val htmlPath = pageUrl.replace(".md", ".html")
+        val marker = if (isParent(t, htmlPath)) "class=\"toggled\"" else ""
         s"""|<li class="section">
             |  <a onclick='toggleSection(this);'>${t.title}</a>
-            |  <ul id="${ if(parent == t.title.toLowerCase.split(" ").mkString("-")) "active-toc-entry" else "" }">
-            |    ${ t.subsection.map(renderTitle(_, parent)).mkString("\n") }
+            |  <ul $marker>
+            |    ${ t.subsection.map(renderTitle(_, htmlPath)).mkString("\n") }
             |  </ul>
             |</li>
             |""".stripMargin
@@ -188,13 +193,13 @@ object tags {
     }
 
     override def render(ctx: TemplateContext, nodes: LNode*): AnyRef =
-      (nodes(0).render(ctx), nodes(1).render(ctx)) match {
-        case (map: JMap[String, AnyRef] @unchecked, parent: String) =>
-          Title(map).map(renderTitle(_, parent)).getOrElse(null)
+      ((nodes(0).render(ctx), nodes(1).render(ctx)) match {
+        case (map: JMap[String, AnyRef] @unchecked, url: String) =>
+          Title(map).map(renderTitle(_, url))
         case (map: JMap[String, AnyRef] @unchecked, _) =>
-          Title(map).map(renderTitle(_, "./")).getOrElse(null) // file is in top dir
-        case _ => null
-      }
+          Title(map).map(renderTitle(_, "./")) // file is in top dir
+        case _ => None
+      }).orNull
   }
 
   /** Allows the extraction of docstrings from the given path. E.g:

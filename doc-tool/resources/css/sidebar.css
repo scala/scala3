@@ -41,6 +41,9 @@
   padding-left: 1em;
   display: none;
 }
+.sidebar li.section ul.toggled {
+  display: block;
+}
 
 .sidebar li.section.index-entities ul {
   padding-left: 0;
