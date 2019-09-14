@@ -1247,16 +1247,16 @@ object Parsers {
      *                |  HkTypeParamClause ‘=>>’ Type
      *                |  MatchType
      *                |  InfixType
-     *  FunType     ::=  { 'erased' | 'given' } (MonoFunType | PolyFunType)
+     *  FunType     ::=  (MonoFunType | PolyFunType)
      *  MonoFunType ::=  FunArgTypes ‘=>’ Type
      *  PolyFunType ::=  HKTypeParamClause '=>' Type
      *  FunArgTypes ::=  InfixType
-     *                |  `(' [ FunArgType {`,' FunArgType } ] `)'
-     *                |  '(' TypedFunParam {',' TypedFunParam } ')'
+     *                |  `(' [ [ ‘[given]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
+     *                |  '(' [ ‘[given]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
      */
     def typ(): Tree = {
       val start = in.offset
-      val imods = modifiers(funTypeMods)
+      var imods = Modifiers()
       def functionRest(params: List[Tree]): Tree =
         atSpan(start, accept(ARROW)) {
           val t = typ()
@@ -1282,6 +1282,7 @@ object Parsers {
           }
           else {
             openParens.change(LPAREN, 1)
+            imods = modifiers(funTypeArgMods)
             val paramStart = in.offset
             val ts = funArgType() match {
               case Ident(name) if name != tpnme.WILDCARD && in.token == COLON =>
@@ -1683,8 +1684,10 @@ object Parsers {
 
     def expr(location: Location.Value): Tree = {
       val start = in.offset
-      if (closureMods.contains(in.token))
+      if closureMods.contains(in.token) && allowOldGiven then
         implicitClosure(start, location, modifiers(closureMods))
+      else if in.token == LPAREN && in.lookaheadIn(funTypeArgMods) then
+        implicitClosure(start, location, modifiers())
       else {
         val saved = placeholderParams
         placeholderParams = Nil
@@ -1896,11 +1899,20 @@ object Parsers {
     /** FunParams         ::=  Bindings
      *                     |   id
      *                     |   `_'
-     *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
+     *  Bindings          ::=  `(' [[‘given’] [‘erased’] Binding {`,' Binding}] `)'
      */
     def funParams(mods: Modifiers, location: Location.Value): List[Tree] =
-      if (in.token == LPAREN)
-        inParens(if (in.token == RPAREN) Nil else commaSeparated(() => binding(mods)))
+      if in.token == LPAREN then
+        in.nextToken()
+        if in.token == RPAREN then
+          Nil
+        else
+          openParens.change(LPAREN, 1)
+          val mods1 = if mods.flags.isEmpty then modifiers(funTypeArgMods) else mods
+          try commaSeparated(() => binding(mods1))
+          finally
+            accept(RPAREN)
+            openParens.change(LPAREN, -1)
       else {
         val start = in.offset
         val name = bindingName()
@@ -2591,11 +2603,11 @@ object Parsers {
      */
     val closureMods: BitSet =
       if allowOldGiven then BitSet(GIVEN, IMPLIED, IMPLICIT, ERASED)
-      else BitSet(IMPLICIT)
+      else BitSet(IMPLICIT, ERASED)
 
-    val funTypeMods: BitSet =
-      if allowOldGiven then BitSet(IMPLIED, ERASED)
-      else BitSet()
+    val funTypeMods: BitSet = BitSet(IMPLIED, ERASED)
+
+    val funTypeArgMods: BitSet = BitSet(GIVEN, ERASED)
 
     /** Wrap annotation or constructor in New(...).<init> */
     def wrapNew(tpt: Tree): Select = Select(New(tpt), nme.CONSTRUCTOR)

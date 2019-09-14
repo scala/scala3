@@ -144,12 +144,11 @@ Type              ::=  FunType
                     |  HkTypeParamClause ‘=>>’ Type                             TypeLambda(ps, t)
                     |  MatchType
                     |  InfixType
-FunType           ::=  ['given'] (MonoFunType | PolyFunType)
-MonoFunType       ::=  FunArgTypes ‘=>’ Type                                    Function(ts, t)
-PolyFunType       :: = HKTypeParamClause '=>' Type                              PolyFunction(ps, t)
+FunType           ::=  FunArgTypes ‘=>’ Type                                    Function(ts, t)
+                    |  HKTypeParamClause '=>' Type                              PolyFunction(ps, t)
 FunArgTypes       ::=  InfixType
-                    |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
-                    |  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+                    |  ‘(’ [ ‘[given]’ FunArgType {‘,’ FunArgType } ] ‘)’
+                    |  ‘(’ ‘[given]’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
 MatchType         ::=  InfixType `match` TypeCaseClauses
 InfixType         ::=  RefinedType {id [cnl] RefinedType}                       InfixOp(t1, op, t2)
@@ -318,7 +317,7 @@ ClosureMods       ::=  { ‘implicit’ | ‘given’}
 
 ### Bindings and Imports
 ```ebnf
-Bindings          ::=  ‘(’ Binding {‘,’ Binding} ‘)’
+Bindings          ::=  ‘(’ [[‘given’] Binding {‘,’ Binding}] ‘)’
 Binding           ::=  (id | ‘_’) [‘:’ Type]                                    ValDef(_, id, tpe, EmptyTree)
 
 Modifier          ::=  LocalModifier
