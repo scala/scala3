@@ -19,14 +19,14 @@ The following issues encountered when compiling Scala 2 code as-is under Dotty:
 Implicit conversions must be applied explicitly:
 
 ```scala
-  implicit def IterablePath[T](s: Iterable[T])(implicit conv: T => RelPath): RelPath = {
-    s.foldLeft(rel){_ / conv(_)}
-  }
+implicit def IterablePath[T](s: Iterable[T])(implicit conv: T => RelPath): RelPath = {
+  s.foldLeft(rel){_ / conv(_)}
+}
 ```
 
 Stronger compile time guarantees on variance.  Scala 2 does not assert variance on default parameters to parameters of the function value type.  E.g. in geny:
 
-```Scala
+```scala
 # Dotty
 def count(f: A => Boolean = (a: A) => true): Int =
 |                                ^^^^^^^^^^^^^^
@@ -34,7 +34,7 @@ def count(f: A => Boolean = (a: A) => true): Int =
 ```
 
 Fix:
-```Scala
+```scala
 # Dotty
 def count[B >: A](f: B => Boolean = (_: B) => true): Int =
 ```

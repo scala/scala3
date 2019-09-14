@@ -28,10 +28,13 @@ type is explicitly given. This can be seen in the following REPL transcript:
 ```scala
 scala> val password = Password(123)
 val password: Password = Password(123)
+
 scala> val name = UserName("Eve")
 val name: UserName = UserName(Eve)
+
 scala> if (true) name else password
 val res2: Object & Product = UserName(Eve)
+
 scala> val either: Password | UserName = if (true) name else password
 val either: Password | UserName = UserName(Eve)
 ```
@@ -42,4 +45,3 @@ UserName`.  If we want the least supertype, we have to give it
 explicitly, as is done for the type of `either`.
 
 [More details](./union-types-spec.md)
-

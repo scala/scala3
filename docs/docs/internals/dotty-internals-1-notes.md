@@ -5,7 +5,7 @@ title: Dotty Internals 1: Trees & Symbols (Meeting Notes)
 
 These are meeting notes for the [Dotty Internals 1: Trees & Symbols](https://www.youtube.com/watch?v=yYd-zuDd3S8) talk by [Dmitry Petrashko](http://twitter.com/darkdimius) on Mar 21, 2017.
 
-# Entry point 
+# Entry point
 `dotc/Compiler.scala`
 
 The entry point to the compiler contains the list of phases and their order.
@@ -15,7 +15,7 @@ The entry point to the compiler contains the list of phases and their order.
 Some phases executed independently, but others (miniphases) are grouped for efficiency.
 See the paper "[Miniphases: Compilation using Modular and Efficient Tree Transformation](https://infoscience.epfl.ch/record/228518/files/paper.pdf)" for details.
 
-# Trees 
+# Trees
 `dotc/ast/Trees.scala`
 
 Trees represent code written by the user (e.g. methods, classes, expressions). There are two kinds of trees: untyped and typed.
@@ -43,7 +43,7 @@ Typed trees contain not only the user-written code, but also semantic informatio
     - `Select`: select (e.g. a field) from another tree (e.g. `a.foo` is represented as `Select(Ident(a), foo)`)
   * `This`: the this pointer
   * `Apply`: function application: e.g. `a.foo(1, 2)(3, 4)` becomes `Apply(Apply(Select(Ident(a), foo), List(1, 2)), List(3, 4))`
-  * `TypeApply`: type application: `def foo[T](a: T) = ??? foo[Int](1)` becomes `Apply(TypeApply(Ident(foo), List(Int)), List(1))` 
+  * `TypeApply`: type application: `def foo[T](a: T) = ??? foo[Int](1)` becomes `Apply(TypeApply(Ident(foo), List(Int)), List(1))`
   * `Literal`: constants (e.g. integer constant 1)
   * `Typed`: type ascription (e.g. for widening, as in `(1: Any)`)
   * `NamedArg`: named arguments (can appear out-of-order in untyped trees, but will appear in-order in typed ones)
@@ -77,7 +77,7 @@ the returned tree will be typed.
 
 ## Creating trees
 
-You should use the creation methods in `untpd.scala` and `tpd.scala` to instantiate tree objects (as opposed to 
+You should use the creation methods in `untpd.scala` and `tpd.scala` to instantiate tree objects (as opposed to
 creating them directly using the case classes in `Trees.scala`).
 
 ## Meaning of trees
@@ -100,7 +100,7 @@ Similarly, there exist `ErrorType` and `ErrorSymbol` classes.
 
 The closest in Dotty to what a programming language like C calls an "l-value" is a `RefTree` (so an `Ident` or a `Select`).
 However, keep in mind that arbitrarily complex expressions can appear in the lhs of an assignment: e.g.
-```
+```scala
 trait T {
   var s = 0
 }
@@ -126,14 +126,14 @@ Symbols can not only represent terms, but also types (hence the `isTerm`/`isType
 
 ## ClassSymbol
 
-`ClassSymbol` represents either a `class`, or an `trait`, or an `object`. For example, an object 
-```
+`ClassSymbol` represents either a `class`, or an `trait`, or an `object`. For example, an object
+```scala
 object O {
   val s = 1
 }
 ```
-is represented (after `Typer`) as 
-```
+is represented (after `Typer`) as
+```scala
 class O$ { this: O.type =>
   val s = 1
 }
@@ -150,6 +150,6 @@ Symbols contain `SymDenotation`s. The denotation, in turn, refers to:
   * the "owner" of the symbol:
     - if the symbol is a variable, the owner is the enclosing method
     - if it's a field, the owner is the enclosing class
-    - if it's a class, then the owner is the enclosing class 
+    - if it's a class, then the owner is the enclosing class
   * a set of flags that contain semantic information about the definition (e.g. whether it's a trait or mutable). Flags are defined in `Flags.scala`.
   * the type of the definition (through the `info` method)

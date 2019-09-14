@@ -4,14 +4,14 @@ title: "Implicit Function Types - More Details"
 ---
 
 ## Syntax
-
-    Type              ::=  ...
-                        |  FunArgTypes ‘=>’ Typee
-    FunArgTypes       ::=  InfixType
-                        |  ‘(’ [ ‘[given]’ FunArgType {‘,’ FunArgType } ] ‘)’
-                        |  ‘(’ ‘[given]’ TypedFunParam {‘,’ TypedFunParam } ‘)’
-    Bindings          ::=  ‘(’ [[‘given’] Binding {‘,’ Binding}] ‘)’
-
+```scala
+Type              ::=  ...
+                    |  FunArgTypes ‘=>’ Typee
+FunArgTypes       ::=  InfixType
+                    |  ‘(’ [ ‘[given]’ FunArgType {‘,’ FunArgType } ] ‘)’
+                    |  ‘(’ ‘[given]’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+Bindings          ::=  ‘(’ [[‘given’] Binding {‘,’ Binding}] ‘)’
+```
 Implicit function types associate to the right, e.g.
 `(given S) => (given T) => U` is the same as `(given S) => ((given T) => U)`.
 
@@ -53,8 +53,7 @@ new scala.ImplicitFunctionN[T1, ..., Tn, T] {
 An implicit parameter may also be a wildcard represented by an underscore `_`. In
 that case, a fresh name for the parameter is chosen arbitrarily.
 
-Note: The closing paragraph of the
-[Anonymous Functions section](https://www.scala-lang.org/files/archive/spec/2.12/06-expressions.html#anonymous-functions)
+Note: The closing paragraph of the [Anonymous Functions section](https://www.scala-lang.org/files/archive/spec/2.12/06-expressions.html#anonymous-functions)
 of Scala 2.12 is subsumed by implicit function types and should be removed.
 
 Implicit function literals `(given x1: T1, ..., xn: Tn) => e` are
@@ -68,9 +67,7 @@ documentation](../dropped-features/limit22.md).
 
 ## Examples
 
-See the section on Expressiveness from [Simplicitly: foundations and
-applications of implicit function
-types](https://dl.acm.org/citation.cfm?id=3158130).
+See the section on Expressiveness from [Simplicitly: foundations and applications of implicit function types](https://dl.acm.org/citation.cfm?id=3158130).
 
 ### Type Checking
 

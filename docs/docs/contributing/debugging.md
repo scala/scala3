@@ -45,7 +45,7 @@ Then, you can debug Dotty by compiling this file via `dotc ../issues/Playground.
 
 Then:
 
-```
+```shell
 dotc ../issues/Playground.scala
 ```
 
@@ -93,19 +93,19 @@ assertPositioned(tree.reporting(s"Tree is: $result"))
 ## Printing out trees after phases
 To print out the trees you are compiling after Frontend (scanner, parser, namer, typer) phase:
 
-```
+```shell
 dotc -Xprint:frontend ../issues/Playground.scala
 ```
 
 To print out the trees after Frontend and CollectSuperCalls phases:
 
-```
+```shell
 dotc -Xprint:frontend,collectSuperCalls ../issues/Playground.scala
 ```
 
 To print out the trees after all phases:
 
-```
+```shell
 dotc -Xprint:all ../issues/Playground.scala
 ```
 
@@ -203,7 +203,7 @@ package <empty>@<Playground.scala:1> {
 ### Via ID
 Every [Positioned](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Positioned.scala) (a parent class of `Tree`) object has a `uniqueId` field. It is an integer that is unique for that tree and doesn't change from compile run to compile run. You can output these IDs from any printer (such as the ones used by `.show` and `-Xprint`) via `-Yshow-tree-ids` flag, e.g.:
 
-```
+```shell
 dotc -Xprint:frontend -Yshow-tree-ids  ../issues/Playground.scala
 ```
 
@@ -228,7 +228,7 @@ package <empty>#1047 {
 
 You can then use these IDs to locate the creation site of a given tree using that ID via `-Ydebug-tree-with-id`, e.g.:
 
-```
+```shell
 dotc -Ydebug-tree-with-id 1049 ../issues/Playground.scala
 ```
 

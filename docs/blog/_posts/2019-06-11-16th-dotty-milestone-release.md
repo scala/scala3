@@ -188,7 +188,7 @@ object Delegates {
 }
 ```
 the import
-```
+```scala
 import delegate Delegates.{for Ordering[_], ExecutionContext}
 ```
 would import the `intOrd`, `listOrd`, and `ec` instances but leave out the `im`

@@ -3,8 +3,6 @@ layout: doc-page
 title: Getting Started: Users
 ---
 
-
-
 ## Trying out Dotty
 
 ### In your web browser
@@ -42,7 +40,7 @@ Releases are available for download on the [Releases Section](https://github.com
 of the Dotty repository. Releases include three executables: `dotc` the Dotty compiler,
 `dotd` the [Dotty Documentation tool](./dottydoc.md) and `dotr` the Dotty REPL.
 
-```
+```none
 .
 └── bin
     ├── dotc
@@ -67,12 +65,12 @@ scala>
 
 If you're a Mac user, we also provide a [homebrew](https://brew.sh/) package that can be installed by running:
 
-```
+```bash
 brew install lampepfl/brew/dotty
 ```
 
 In case you have already installed Dotty via brew, you should instead update it:
 
-```
+```bash
 brew upgrade dotty
 ```

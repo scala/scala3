@@ -9,14 +9,14 @@ title: "Macros Spec"
 
 Compared to the [Dotty reference grammar](../../internals/syntax.md)
 there are the following syntax changes:
-
-      SimpleExpr      ::=  ...
-                        |  ‘'’ ‘{’ Block ‘}’
-                        |  ‘'’ ‘[’ Type ‘]’
-                        |  ‘$’ ‘{’ Block ‘}’
-      SimpleType      ::=  ...
-                        |  ‘$’ ‘{’ Block ‘}’
-
+```none
+SimpleExpr      ::=  ...
+                  |  ‘'’ ‘{’ Block ‘}’
+                  |  ‘'’ ‘[’ Type ‘]’
+                  |  ‘$’ ‘{’ Block ‘}’
+SimpleType      ::=  ...
+                  |  ‘$’ ‘{’ Block ‘}’
+```
 In addition, an identifier `$x` starting with a `$` that appears inside
 a quoted expression or type is treated as a splice `${x}` and a quoted identifier
 `'x` that appears inside a splice is treated as a quote `'{x}`
@@ -56,106 +56,106 @@ extends simply-typed lambda calculus with quotes and splices.
 ### Syntax
 
 The syntax of terms, values, and types is given as follows:
+```none
+Terms         t  ::=  x                 variable
+                      (x: T) => t       lambda
+                      t t               application
+                      't                quote
+                      $t                splice
 
-    Terms         t  ::=  x                 variable
-                          (x: T) => t       lambda
-                          t t               application
-                          't                quote
-                          $t                splice
+Values        v  ::=  (x: T) => t       lambda
+                      'u                quote
 
-    Values        v  ::=  (x: T) => t       lambda
-                          'u                quote
+Simple terms  u  ::=  x  |  (x: T) => u  |  u u  |  't
 
-    Simple terms  u  ::=  x  |  (x: T) => u  |  u u  |  't
-
-    Types         T  ::=  A                 base type
-                          T -> T            function type
-                          expr T            quoted
-
+Types         T  ::=  A                 base type
+                      T -> T            function type
+                      expr T            quoted
+```
 Typing rules are formulated using a stack of environments
 `Es`. Individual environments `E` consist as usual of variable
 bindings `x: T`. Environments can be combined using the two
 combinators `'` and `$`.
+```none
+Environment   E  ::=  ()                empty
+                      E, x: T
 
-    Environment   E  ::=  ()                empty
-                          E, x: T
+Env. stack    Es ::=  ()                empty
+                      E                 simple
+                      Es * Es           combined
 
-    Env. stack    Es ::=  ()                empty
-                          E                 simple
-                          Es * Es           combined
-
-    Separator     *  ::=  '
-                          $
-
+Separator     *  ::=  '
+                      $
+```
 The two environment combinators are both associative with left and
 right identity `()`.
 
 ### Operational semantics:
 
 We define a small step reduction relation `-->` with the following rules:
+```none
+          ((x: T) => t) v  -->  [x := v]t
 
-                ((x: T) => t) v  -->  [x := v]t
+                    ${'u}  -->  u
 
-                          ${'u}  -->  u
-
-                             t1  -->  t2
-                          -----------------
-                          e[t1]  -->  e[t2]
-
+                       t1  -->  t2
+                    -----------------
+                    e[t1]  -->  e[t2]
+```
 The first rule is standard call-by-value beta-reduction. The second
 rule says that splice and quotes cancel each other out. The third rule
 is a context rule; it says that reduction is allowed in the hole `[ ]`
 position of an evaluation context.  Evaluation contexts `e` and
 splice evaluation context `e_s` are defined syntactically as follows:
-
-    Eval context    e    ::=  [ ]  |  e t  |  v e  |  'e_s[${e}]
-    Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  u e_s
-
+```none
+Eval context    e    ::=  [ ]  |  e t  |  v e  |  'e_s[${e}]
+Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  u e_s
+```
 ### Typing rules
 
 Typing judgments are of the form `Es |- t: T`. There are two
 substructural rules which express the fact that quotes and splices
 cancel each other out:
+```none
+                    Es1 * Es2 |- t: T
+               ---------------------------
+               Es1 $ E1 ' E2 * Es2 |- t: T
 
-                          Es1 * Es2 |- t: T
-                     ---------------------------
-                     Es1 $ E1 ' E2 * Es2 |- t: T
 
-
-                          Es1 * Es2 |- t: T
-                     ---------------------------
-                     Es1 ' E1 $ E2 * Es2 |- t: T
-
+                    Es1 * Es2 |- t: T
+               ---------------------------
+               Es1 ' E1 $ E2 * Es2 |- t: T
+```
 The lambda calculus fragment of the rules is standard, except that we
 use a stack of environments. The rules only interact with the topmost
 environment of the stack.
-
-                              x: T in E
-                            --------------
-                            Es * E |- x: T
-
-
-                        Es * E, x: T1 |- t: T2
-                    -------------------------------
-                    Es * E |- (x: T1) => t: T -> T2
+```none
+                          x: T in E
+                        --------------
+                        Es * E |- x: T
 
 
-                   Es |- t1: T2 -> T    Es |- t2: T2
-                   ---------------------------------
-                          Es |- t1 t2: T
+                    Es * E, x: T1 |- t: T2
+                -------------------------------
+                Es * E |- (x: T1) => t: T -> T2
 
+
+               Es |- t1: T2 -> T    Es |- t2: T2
+               ---------------------------------
+                      Es |- t1 t2: T
+```
 The rules for quotes and splices map between `expr T` and `T` by trading `'` and `$` between
 environments and terms.
+```none
+                     Es $ () |- t: expr T
+                     --------------------
+                         Es |- $t: T
 
-                         Es $ () |- t: expr T
-                         --------------------
-                             Es |- $t: T
 
-
-                           Es ' () |- t: T
-                           ----------------
-                           Es |- 't: expr T
-
+                       Es ' () |- t: T
+                       ----------------
+                       Es |- 't: expr T
+```
 The meta theory of a slightly simplified variant 2-stage variant of this calculus
 is studied [separately](./simple-smp.md).
 
@@ -171,18 +171,19 @@ version of `power` that generates the multiplications directly if the
 exponent is statically known and falls back to the dynamic
 implementation of power otherwise.
 ```scala
-    inline def power(n: Int, x: Double): Double = ${
-      'n match {
-        case Constant(n1) => powerCode(n1, 'x)
-        case _ => '{ dynamicPower(n, x) }
-      }
-    }
+inline def power(n: Int, x: Double): Double = ${
+  'n match {
+    case Constant(n1) => powerCode(n1, 'x)
+    case _ => '{ dynamicPower(n, x) }
+  }
+}
 
-    private def dynamicPower(n: Int, x: Double): Double =
-      if (n == 0) 1.0
-      else if (n % 2 == 0) dynamicPower(n / 2, x * x)
-      else x * dynamicPower(n - 1, x)
+private def dynamicPower(n: Int, x: Double): Double =
+  if (n == 0) 1.0
+  else if (n % 2 == 0) dynamicPower(n / 2, x * x)
+  else x * dynamicPower(n - 1, x)
 ```
+---
 This assumes a `Constant` extractor that maps tree nodes representing
 constants to their values.
 
@@ -190,19 +191,19 @@ With the right extractors, the "AsFunction" conversion
 that maps expressions over functions to functions over expressions can
 be implemented in user code:
 ```scala
-    given AsFunction1[T, U] : Conversion[Expr[T => U], Expr[T] => Expr[U]] {
-      def apply(f: Expr[T => U]): Expr[T] => Expr[U] =
-       (x: Expr[T]) => f match {
-         case Lambda(g) => g(x)
-         case _ => '{ ($f)($x) }
-       }
-    }
+given AsFunction1[T, U] : Conversion[Expr[T => U], Expr[T] => Expr[U]] {
+  def apply(f: Expr[T => U]): Expr[T] => Expr[U] =
+   (x: Expr[T]) => f match {
+     case Lambda(g) => g(x)
+     case _ => '{ ($f)($x) }
+   }
+}
 ```
 This assumes an extractor
 ```scala
-    object Lambda {
-      def unapply[T, U](x: Expr[T => U]): Option[Expr[T] => Expr[U]]
-    }
+object Lambda {
+  def unapply[T, U](x: Expr[T => U]): Option[Expr[T] => Expr[U]]
+}
 ```
 Once we allow inspection of code via extractors, it’s tempting to also
 add constructors that create typed trees directly without going
@@ -210,7 +211,7 @@ through quotes. Most likely, those constructors would work over `Expr`
 types which lack a known type argument. For instance, an `Apply`
 constructor could be typed as follows:
 ```scala
-    def Apply(fn: Expr[_], args: List[Expr[_]]): Expr[_]
+def Apply(fn: Expr[_], args: List[Expr[_]]): Expr[_]
 ```
 This would allow constructing applications from lists of arguments
 without having to match the arguments one-by-one with the
@@ -223,7 +224,7 @@ structure of `Expr` is a subtype of the type structure representing
 `T`.
 
 Before going down that route, we should evaluate in detail the tradeoffs it
-presents.  Constructing trees that are only verified _a posteriori_
+presents. Constructing trees that are only verified _a posteriori_
 to be type correct loses a lot of guidance for constructing the right
 trees.  So we should wait with this addition until we have more
 use-cases that help us decide whether the loss in type-safety is worth

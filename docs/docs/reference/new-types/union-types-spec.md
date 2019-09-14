@@ -12,15 +12,15 @@ Syntactically, unions follow the same rules as intersections, but have a lower p
 `|` is also used in pattern matching to separate pattern alternatives and has
 lower precedence than `:` as used in typed patterns, this means that:
 
-``` scala
+```scala
 case _: A | B => ...
 ```
 is still equivalent to:
-``` scala
+```scala
 case (_: A) | B => ...
 ```
 and not to:
-``` scala
+```scala
 case _: (A | B) => ...
 ```
 
@@ -149,4 +149,3 @@ the erased lub is computed as follows:
                   come after S.
   The reason to pick last is that we prefer classes over traits that way,
   which leads to more predictable bytecode and (?) faster dynamic dispatch.
-

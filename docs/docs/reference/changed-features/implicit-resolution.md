@@ -10,29 +10,29 @@ affect implicits on the language level.
  1. Types of implicit values and result types of implicit methods
     must be explicitly declared. Excepted are only values in local blocks
     where the type may still be inferred:
+    ```scala
+    class C {
 
-        class C {
+      val ctx: Context = ...        // ok
 
-          val ctx: Context = ...        // ok
+      /*!*/ implicit val x = ...    // error: type must be given explicitly
 
-          /*!*/ implicit val x = ...    // error: type must be given explicitly
+      /*!*/ implicit def y = ...    // error: type must be given explicitly
 
-          /*!*/ implicit def y = ...    // error: type must be given explicitly
-
-          val y = {
-            implicit val ctx = this.ctx // ok
-            ...
-          }
-
+      val y = {
+        implicit val ctx = this.ctx // ok
+        ...
+      }
+    ```
  2. Nesting is now taken into account for selecting an implicit.
     Consider for instance the following scenario:
-
-        def f(implicit i: C) = {
-          def g(implicit j: C) = {
-            implicitly[C]
-          }
-        }
-
+    ```scala
+    def f(implicit i: C) = {
+      def g(implicit j: C) = {
+        implicitly[C]
+      }
+    }
+    ```
     This will now resolve the `implicitly` call to `j`, because `j` is nested
     more deeply than `i`. Previously, this would have resulted in an
     ambiguity error. The previous possibility of an implicit search failure
@@ -41,15 +41,15 @@ affect implicits on the language level.
 
  3. Package prefixes no longer contribute to the implicit scope of a type.
     Example:
+    ```scala
+    package p
+    given a : A
 
-        package p
-        given a : A
-
-        object o {
-          given b : B
-          type C
-        }
-
+    object o {
+      given b : B
+      type C
+    }
+    ```
     Both `a` and `b` are visible as implicits at the point of the definition
     of `type C`. However, a reference to `p.o.C` outside of package `p` will
     have only `b` in its implicit scope but not `a`.
@@ -57,15 +57,15 @@ affect implicits on the language level.
  4. The treatment of ambiguity errors has changed. If an ambiguity is encountered
     in some recursive step of an implicit search, the ambiguity is propagated to the caller.
     Example: Say you have the following definitions:
-
-        class A
-        class B extends C
-        class C
-        implicit def a1: A
-        implicit def a2: A
-        implicit def b(implicit a: A): B
-        implicit def c: C
-
+    ```scala
+    class A
+    class B extends C
+    class C
+    implicit def a1: A
+    implicit def a2: A
+    implicit def b(implicit a: A): B
+    implicit def c: C
+    ```
     and the query `implicitly[C]`.
 
     This query would now be classified as ambiguous. This makes sense, after all
@@ -92,12 +92,12 @@ affect implicits on the language level.
  6. Scala-2 gives a lower level of priority to implicit conversions with call-by-name
     parameters relative to implicit conversions with call-by-value parameters. Dotty
     drops this distinction. So the following code snippet would be ambiguous in Dotty:
-
-        implicit def conv1(x: Int): A = new A(x)
-        implicit def conv2(x: => Int): A = new A(x)
-        def buzz(y: A) = ???
-        buzz(1)   // error: ambiguous
-
+    ```scala
+    implicit def conv1(x: Int): A = new A(x)
+    implicit def conv2(x: => Int): A = new A(x)
+    def buzz(y: A) = ???
+    buzz(1)   // error: ambiguous
+    ```
  7. The rule for picking a _most specific_ alternative among a set of overloaded or implicit
     alternatives is refined to take inferable parameters into account. All else
     being equal, an alternative that takes more inferable parameters is taken to be more specific

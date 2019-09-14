@@ -115,6 +115,7 @@ debuggers and to support runtime reflection. For example:
 ```scala
 scala> class Foo[T, U]
 // defined class Foo
+
 scala> classOf[Foo[_, _]].getTypeParameters.map(_.getName).mkString(", ")
 val res0: String = "T, U"
 ```

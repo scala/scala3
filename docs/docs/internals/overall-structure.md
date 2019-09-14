@@ -91,8 +91,8 @@ Seen from a temporal perspective, the `dotc` compiler consists of a list of
 phases. The current list of phases is specified in class [Compiler] as follows:
 
 ```scala
-    def phases: List[List[Phase]] =
-    frontendPhases ::: picklerPhases ::: transformPhases ::: backendPhases
+  def phases: List[List[Phase]] =
+  frontendPhases ::: picklerPhases ::: transformPhases ::: backendPhases
 
   /** Phases dealing with the frontend up to trees ready for TASTY pickling */
   protected def frontendPhases: List[List[Phase]] =

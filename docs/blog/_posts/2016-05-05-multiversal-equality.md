@@ -24,14 +24,14 @@ How can `==` be fixed? It looks much harder to do this than adding an alternate 
 
 The current status in Scala is that the compiler will give warnings for _some_ comparisons that are always `false`. But the coverage is weak. For instance this will give a warning:
 
-```
+```scala
 scala> 1 == "abc"
 <console>:12: warning: comparing values of types Int and String using `==' will always yield false
 ```
 
 But this will not:
 
-```
+```scala
 scala> "abc" == 1
 res2: Boolean = false
 ```
@@ -45,7 +45,7 @@ I believe to do better, we need to enlist the cooperation of developers. Ultimat
 
 The best known way to characterize such relationships is with type classes. Implicit values of a trait `Eq[T, U]` can capture the property that values of type `T` can be compared to values of type `U`. Here's the definition of `Eq`
 
-```
+```scala
 package scala
 
 trait Eq[-T, -U]
@@ -53,13 +53,13 @@ trait Eq[-T, -U]
 
 That is, `Eq` is a pure marker trait with two type parameters and without any members.  Developers can define equality classes by giving implicit `Eq` instances. Here is a simple one:
 
-```
+```scala
 implicit def eqString: Eq[String, String] = Eq
 ```
 
 This states that strings can be only compared to strings, not to values of other types.  Here's a more complicated `Eq` instance:
 
-```
+```scala
 implicit def eqOption[T, U](implicit _eq: Eq[T, U]): Eq[Option[T], Option[U]] = Eq
 ```
 
@@ -67,7 +67,7 @@ This states that `Option` values can be compared if their elements can be compar
 
 It's foreseen that such `Eq` instances can be generated automatically. If we add an annotation `@equalityClass` to `Option` like this
 
-```
+```scala
 @equalityClass class Option[+T] { ... }
 ```
 
