@@ -2486,6 +2486,7 @@ object Parsers {
       case ABSTRACT    => Mod.Abstract()
       case FINAL       => Mod.Final()
       case IMPLICIT    => Mod.Implicit()
+      case IMPLIED     => Mod.Given()
       case GIVEN       => Mod.Given()
       case ERASED      => Mod.Erased()
       case LAZY        => Mod.Lazy()
@@ -2589,11 +2590,11 @@ object Parsers {
      *  FunTypeMods ::=  { ‘erased’ | ‘given’}
      */
     val closureMods: BitSet =
-      if allowOldGiven then BitSet(GIVEN, IMPLICIT, ERASED)
+      if allowOldGiven then BitSet(GIVEN, IMPLIED, IMPLICIT, ERASED)
       else BitSet(IMPLICIT)
 
     val funTypeMods: BitSet =
-      if allowOldGiven then BitSet(GIVEN, ERASED)
+      if allowOldGiven then BitSet(GIVEN, IMPLIED, ERASED)
       else BitSet()
 
     /** Wrap annotation or constructor in New(...).<init> */
