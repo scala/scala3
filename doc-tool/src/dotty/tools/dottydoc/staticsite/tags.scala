@@ -168,9 +168,12 @@ object tags {
         case None => t.subsection.exists(isParent(_, htmlPath))
       }
     }
+    private def replaceSuffix(url: String, suffixes: Iterable[String]): String = {
+      suffixes.find(url.endsWith(_)).map(url.replace(_, ".html")).getOrElse(url)
+    }
     private def renderTitle(t: Title, pageUrl: String): String = {
       if (!t.url.isDefined && t.subsection.nonEmpty) {
-        val htmlPath = pageUrl.replace(".md", ".html")
+        val htmlPath = replaceSuffix(pageUrl, Seq("-spec.md", "-details.md", ".md"))
         val marker = if (isParent(t, htmlPath)) "class=\"toggled\"" else ""
         s"""|<li class="section">
             |  <a onclick='toggleSection(this);'>${t.title}</a>
