@@ -100,7 +100,7 @@ dotc -Xprint:frontend ../issues/Playground.scala
 To print out the trees after Frontend and CollectSuperCalls phases:
 
 ```
-dotc -Xprint:frontend,collectSuperCalls ../issues/Playground.scal
+dotc -Xprint:frontend,collectSuperCalls ../issues/Playground.scala
 ```
 
 To print out the trees after all phases:
