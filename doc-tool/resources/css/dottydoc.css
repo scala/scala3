@@ -162,7 +162,8 @@ footer img#author-img {
   padding-left: 1em;
   border-left: 3px solid transparent;/* table rows cannot have borders*/
   font-family: var(--font-family-monospace);
-  width: 0;
+  text-align: right;
+  width: 1px;
 }
 .api .member:hover .left-column {
   border-left: 3px solid var(--secondary);
