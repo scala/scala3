@@ -35,7 +35,7 @@ object ImportInfo {
  *  @param   isRootImport  true if this is one of the implicit imports of scala, java.lang,
  *                         scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */
-class ImportInfo(symf: given Context => Symbol, val selectors: List[untpd.Tree],
+class ImportInfo(symf: ImplicitFunction1[Context, Symbol], val selectors: List[untpd.Tree],
                  symNameOpt: Option[TermName],
                  val importGiven: Boolean,
                  val isRootImport: Boolean = false) extends Showable {

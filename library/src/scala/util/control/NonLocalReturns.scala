@@ -23,7 +23,7 @@ object NonLocalReturns {
     returner.throwReturn(result)
 
   /** Enable nonlocal returns in `op`. */
-  def returning[T](op: given ReturnThrowable[T] => T): T = {
+  def returning[T](op: ImplicitFunction1[ReturnThrowable[T], T]): T = {
     val returner = new ReturnThrowable[T]
     try op given returner
     catch {

@@ -2594,7 +2594,7 @@ object Parsers {
       else BitSet(IMPLICIT)
 
     val funTypeMods: BitSet =
-      if allowOldGiven then BitSet(GIVEN, IMPLIED, ERASED)
+      if allowOldGiven then BitSet(IMPLIED, ERASED)
       else BitSet()
 
     /** Wrap annotation or constructor in New(...).<init> */
@@ -3710,7 +3710,7 @@ object Parsers {
         setLastStatOffset()
         if (in.token == IMPORT)
           stats ++= importClause(IMPORT, Import)
-        else if (in.token == GIVEN) {
+        else if (in.token == IMPLIED || in.token == GIVEN) {
           val start = in.offset
           val mods = modifiers(closureMods)
           mods.mods match {

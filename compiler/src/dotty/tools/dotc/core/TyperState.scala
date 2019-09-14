@@ -96,7 +96,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
    *  typerstate. If it is unshared, run `op` in current typerState, restoring typerState
    *  to previous state afterwards.
    */
-  def test[T](op: given Context => T)(implicit ctx: Context): T =
+  def test[T](op: ImplicitFunction1[Context, T])(implicit ctx: Context): T =
     if (isShared)
       op given ctx.fresh.setExploreTyperState()
     else {

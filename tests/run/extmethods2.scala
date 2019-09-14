@@ -25,8 +25,6 @@ object Test extends App {
     given (xs: List[Int]) {
       def prod = (1 /: xs)(_ * _)
     }
-
-
   }
 
   object B {

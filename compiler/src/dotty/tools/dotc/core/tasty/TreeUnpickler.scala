@@ -1279,7 +1279,7 @@ class TreeUnpickler(reader: TastyReader,
         PickledQuotes.quotedTypeToTree(quotedType)
       }
       else {
-        val splice1 = splice.asInstanceOf[Seq[Any] => given scala.quoted.QuoteContext => quoted.Expr[?]]
+        val splice1 = splice.asInstanceOf[Seq[Any] => ImplicitFunction1[scala.quoted.QuoteContext, quoted.Expr[?]]]
         val quotedExpr = splice1(reifiedArgs) given dotty.tools.dotc.quoted.QuoteContext()
         PickledQuotes.quotedExprToTree(quotedExpr)
       }
