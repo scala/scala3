@@ -2,7 +2,7 @@ object Test {
 
   class C
 
-  def (str: String) foo: given C => Int = ???
+  def (str: String) foo: (given C) => Int = ???
 
   given as C = ???
 

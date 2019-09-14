@@ -6,17 +6,17 @@ object Test {
       "abc"
     }
 
-    fun2 { erased given (x: Int) =>
+    fun2 { (given erased x: Int) =>
       println("lambda2")
       "abc"
     }
   }
 
-  def fun(f: given erased Int => String): String = {
+  def fun(f: (given erased Int) => String): String = {
     f given 35
   }
 
-  def fun2(f: erased given Int => String): String = {
+  def fun2(f: (given erased Int) => String): String = {
     f given 35
   }
 }

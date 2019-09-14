@@ -117,7 +117,7 @@ object Test extends App {
   }
   import CanThrow._
 
-  type Maybe[T] = given CanThrow => T
+  type Maybe[T] = (given CanThrow) => T
 
   def show[T](op: Maybe[T]): Unit =
     println(_try(op.toString)(identity))
@@ -244,7 +244,7 @@ object Test extends App {
   }
 
   // Abstracting over multiple typeclasses
-  type Ring[T] = given Exp[T] => given Mult[T] => T
+  type Ring[T] = (given Exp[T]) => (given Mult[T]) => T
 
   def tfm1a[T]: Ring[T] = add(lit(7), neg(mul(lit(1), lit(2))))
   def tfm2a[T]: Ring[T] = mul(lit(7), tf1)

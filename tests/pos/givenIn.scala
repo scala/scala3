@@ -2,7 +2,7 @@ object Test {
   import scala.compiletime.constValue
 
   class Context {
-    inline def givenIn[T](op: => given Context => T) = {
+    inline def givenIn[T](op: => (given Context) => T) = {
       given as Context = this
       op
     }

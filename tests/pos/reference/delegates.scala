@@ -92,12 +92,12 @@ object Instances extends Common {
   }
 
   case class Context(value: String)
-  val c0: given Context => String = given ctx => ctx.value
-  val c1: (given Context => String) = given (ctx: Context) => ctx.value
+  val c0: (given Context) => String = (given ctx) => ctx.value
+  val c1: ((given Context) => String) = (given ctx: Context) => ctx.value
 
   class A
   class B
-  val ab: given (x: A, y: B) => Int = given (a: A, b: B) => 22
+  val ab: (given x: A, y: B) => Int = (given a: A, b: B) => 22
 
   trait TastyAPI {
     type Symbol
@@ -160,7 +160,7 @@ object PostConditions {
   def result[T] given (wrapped: WrappedResult[T]): T = wrapped.unwrap
 
   given {
-    def (x: T) ensuring[T] (condition: given WrappedResult[T] => Boolean): T = {
+    def (x: T) ensuring[T] (condition: (given WrappedResult[T]) => Boolean): T = {
       assert(condition given WrappedResult(x))
       x
     }

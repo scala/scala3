@@ -8,7 +8,7 @@ import given scala.quoted.autolift._
   */
 object Test {
 
-  type E[T] = given QuoteContext => Expr[T]
+  type E[T] = (given QuoteContext) => Expr[T]
 
   /*** Producer represents a linear production of values with a loop structure.
     *

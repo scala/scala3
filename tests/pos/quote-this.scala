@@ -6,7 +6,7 @@ class Foo {
    ${ this.a }
  }
 
-  def d given QuoteContext: Expr[given QuoteContext => Expr[Int]] = '{ '{1} }
+  def d given QuoteContext: Expr[(given QuoteContext) => Expr[Int]] = '{ '{1} }
 
  def foo[T](x: T): T = x
 

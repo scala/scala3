@@ -8,7 +8,7 @@ object Test {
 
   }
 
-  def fun(f: erased Int => String): String = {
+  def fun(f: (erased Int) => String): String = {
     f(35)
   }
 }

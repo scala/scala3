@@ -1,6 +1,6 @@
 object Test {
   trait T; trait Q
-  val a: given T => given Q => Int = 1
+  val a: (given T) => (given Q) => Int = 1
 
   given as Q = new Q {}
   val i1: Int = a given (new T{})

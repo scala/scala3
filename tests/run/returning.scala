@@ -14,7 +14,7 @@ object NonLocalReturns {
   def throwReturn[T](result: T)(implicit returner: ReturnThrowable[T]): Nothing =
     returner.throwReturn(result)
 
-  def returning[T](op: given ReturnThrowable[T] => T): T = {
+  def returning[T](op: (given ReturnThrowable[T]) => T): T = {
     val returner = new ReturnThrowable[T]
     try op given returner
     catch {

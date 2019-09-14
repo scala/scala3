@@ -35,7 +35,7 @@ object Imperative {
 }
 
 object Configs {
-  type Configured[T] = given Config => T
+  type Configured[T] = (given Config) => T
   def config: Configured[Config] = implicitly[Config]
 }
 
@@ -47,7 +47,7 @@ object Exceptions {
     private[Exceptions] def throwE() = throw new E
   }
 
-  type Possibly[T] = given CanThrow => T
+  type Possibly[T] = (given CanThrow) => T
 
   def require(p: Boolean)(implicit ct: CanThrow): Unit =
     if (!p) ct.throwE()
