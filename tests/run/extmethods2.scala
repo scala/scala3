@@ -2,7 +2,7 @@ object Test extends App {
 
   class TC
 
-  given StringListOps given TC {
+  given stringListOps(given TC): {
     type T = List[String]
     def (x: T) foo (y: T) = (x ++ y, summon[TC])
     def (x: T) bar (y: Int) = (x(0)(y), summon[TC])
@@ -16,7 +16,7 @@ object Test extends App {
   test given TC()
 
   object A {
-    given ListOps[T](xs: List[T]) {
+    given listOps: [T](xs: List[T]) {
       def second: T = xs.tail.head
       def third: T = xs.tail.tail.head
       def concat(ys: List[T]) = xs ++ ys
@@ -34,8 +34,8 @@ object Test extends App {
     val xs = List(1, 2, 3)
     assert(xs.second[Int] == 2)
     assert(xs.third == 3)
-    assert(A.ListOps.second[Int](xs) == 2)
-    assert(A.ListOps.third(xs) == 3)
+    assert(A.listOps.second[Int](xs) == 2)
+    assert(A.listOps.third(xs) == 3)
     assert(xs.prod == 6)
     assert(xs.concat(xs).length == 6)
     assert(xs.zipp(xs).map(_ + _).prod == 36)

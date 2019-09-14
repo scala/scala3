@@ -872,11 +872,14 @@ object Scanners {
         super.printState()
       }
 
-      final def skipParens(opening: Token): Unit = {
+      /** Skip matching pairs of `(...)` or `[...]` parentheses.
+       *  @pre  The current token is `(` or `[`
+       */
+      final def skipParens(): Unit = {
+        val opening = token
         nextToken()
         while token != EOF && token != opening + 1 do
-          if (token == opening) skipParens(opening)
-          else nextToken()
+          if token == opening then skipParens() else nextToken()
         nextToken()
       }
     }

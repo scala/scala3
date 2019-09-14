@@ -86,15 +86,15 @@ private[quoted] object Matcher {
       case _ => notMatched
     }
 
-    private given TreeListOps {
+    private given /*TreeListOps*/ {
 
       /** Check that all trees match with =?= and concatenate the results with && */
       def (scrutinees: List[Tree]) =?= (patterns: List[Tree]) given Context, Env: Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
 
     }
-    
-    private given TreeOps {
+
+    private given /*TreeOps*/ {
 
       /** Check that the trees match and return the contents from the pattern holes.
        *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
@@ -294,7 +294,7 @@ private[quoted] object Matcher {
       }
     }
 
-    private given PatternOps {
+    private given /*PatternOps*/ {
 
       /** Check that the pattern trees match and return the contents from the pattern holes.
        *  Return a tuple with the new environment containing the bindings defined in this pattern and a matching.
