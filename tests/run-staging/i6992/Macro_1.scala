@@ -3,7 +3,7 @@ import scala.quoted._, scala.quoted.matching._
 import scala.quoted.staging._
 import delegate scala.quoted._
 
-delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+given as Toolbox = Toolbox.make(getClass.getClassLoader)
 
 object macros {
   inline def mcr(x: => Any): Any = ${mcrImpl('x)}

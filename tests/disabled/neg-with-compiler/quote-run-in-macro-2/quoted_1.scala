@@ -5,7 +5,7 @@ object Macros {
 
   inline def foo(i: => Int): Int = ${ fooImpl('i) }
   def fooImpl(i: Expr[Int]) given QuoteContext: Expr[Int] = {
-    delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+    given as Toolbox = Toolbox.make(getClass.getClassLoader)
     val y: Int = run(i)
     y
   }

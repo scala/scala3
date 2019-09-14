@@ -25,7 +25,7 @@ object Macros {
 
 class Test {
 
-  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+  given as Toolbox = Toolbox.make(getClass.getClassLoader)
 
   run {
     val program = '{

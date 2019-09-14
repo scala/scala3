@@ -4,7 +4,7 @@ import given scala.quoted.autolift._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+    given as Toolbox = Toolbox.make(getClass.getClassLoader)
     def expr(i: Int) given QuoteContext = '{
       val a = 3 + ${i}
       2 + a

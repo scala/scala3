@@ -17,6 +17,6 @@ object Test {
     ${ assertImpl('{x != 0}) }
   }
 
-  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+  given as Toolbox = Toolbox.make(getClass.getClassLoader)
   run(program)
 }

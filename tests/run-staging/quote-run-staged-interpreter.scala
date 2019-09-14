@@ -28,7 +28,7 @@ object Test {
 
 
   def main(args: Array[String]): Unit = {
-    delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+    given as Toolbox = Toolbox.make(getClass.getClassLoader)
     val exp = Plus(Plus(Num(2), Var("x")), Num(4))
     val letExp = Let("x", Num(3), exp)
 
