@@ -4,7 +4,7 @@
 @import "node_modules/bootstrap/scss/mixins";
 
 // Web fonts
-@import url('https://fonts.googleapis.com/css?family=Roboto+Slab:300|Source+Code+Pro:400,600|Source+Sans+Pro:400,600|Lobster&display=swap');
+@import url('https://fonts.googleapis.com/css?family=Roboto+Slab:300|Source+Code+Pro:400,600|Source+Sans+Pro:400,600|Lobster&display=fallback');
 
 // Custom values that override the default variables of Bootstrap
 $theme-colors: (
@@ -21,9 +21,9 @@ $container-max-widths: (
 );
 
 $code-color: theme-color("secondary");
-$font-family-monospace: "Source Code Pro", monospace;
-$font-family-sans-serif: "Source Sans Pro", sans-serif;
-$font-family-serif: "Roboto Slab", serif;
+$font-family-monospace: "Source Code Pro", "Andale Mono", "Courier New", monospace;
+$font-family-sans-serif: "Source Sans Pro", "Tahoma", "Geneva", sans-serif;
+$font-family-serif: "Roboto Slab", "Georgia", serif;
 $font-family-base: $font-family-serif;
 $headings-font-family: $font-family-sans-serif;
 
