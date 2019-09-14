@@ -109,7 +109,7 @@ class Driver {
    *  The trade-off is that you can only pass a SimpleReporter to this method
    *  and not a normal Reporter which is more powerful.
    *
-   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/test/test/InterfaceEntryPointTest.scala]]
+   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/compiler/test/dotty/tools/dotc/InterfaceEntryPointTest.scala]]
    *
    *  @param args       Arguments to pass to the compiler.
    *  @param simple     Used to log errors, warnings, and info messages.
@@ -126,7 +126,7 @@ class Driver {
 
   /** Principal entry point to the compiler.
    *
-   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/test/test/OtherEntryPointsTest.scala]]
+   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/compiler/test/dotty/tools/dotc/EntryPointsTest.scala.disabled]]
    *  in method `runCompiler`
    *
    *  @param args       Arguments to pass to the compiler.
@@ -165,7 +165,7 @@ class Driver {
    *  the other overloads cannot be overridden, instead you
    *  should override this one which they call internally.
    *
-   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/test/test/OtherEntryPointsTest.scala]]
+   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/compiler/test/dotty/tools/dotc/EntryPointsTest.scala.disabled]]
    *  in method `runCompilerWithContext`
    *
    *  @param args       Arguments to pass to the compiler.
