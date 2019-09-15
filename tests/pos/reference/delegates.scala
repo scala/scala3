@@ -141,7 +141,7 @@ object Instances extends Common {
   class Token(str: String)
 
   object Token {
-    given StringToToken as Conversion[String, Token] {
+    given StringToToken : Conversion[String, Token] {
       def apply(str: String): Token = new Token(str)
     }
   }
@@ -168,12 +168,12 @@ object PostConditions {
 }
 
 object AnonymousInstances extends Common {
-  given as Ord[Int] {
+  given Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
   }
 
-  given [T: Ord] as Ord[List[T]] {
+  given [T: Ord] : Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -195,11 +195,11 @@ object AnonymousInstances extends Common {
     def (xs: List[T]) second[T] = xs.tail.head
   }
 
-  given [From, To] as Convertible[List[From], List[To]] given (c: Convertible[From, To]) {
+  given [From, To](given c: Convertible[From, To]) : Convertible[List[From], List[To]] {
     def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
 
-  given as Monoid[String] {
+  given Monoid[String] {
     def (x: String) combine (y: String): String = x.concat(y)
     def unit: String = ""
   }
@@ -274,9 +274,9 @@ object Completions {
     //
     //   CompletionArg.from(statusCode)
 
-    given fromString as Conversion[String, CompletionArg] = Error(_)
-    given fromFuture as Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    given fromStatusCode as Conversion[Future[StatusCode], CompletionArg] = Status(_)
+    given fromString : Conversion[String, CompletionArg] = Error(_)
+    given fromFuture : Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    given fromStatusCode : Conversion[Future[StatusCode], CompletionArg] = Status(_)
   }
   import CompletionArg._
 

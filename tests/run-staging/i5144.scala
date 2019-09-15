@@ -2,7 +2,7 @@ import scala.quoted._
 import scala.quoted.staging._
 
 object Test {
-  given as Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Toolbox = Toolbox.make(getClass.getClassLoader)
   def eval1(ff: Expr[Int => Int]) given QuoteContext: Expr[Int] = '{$ff(42)}
 
   def peval1() given QuoteContext: Expr[Unit] = '{

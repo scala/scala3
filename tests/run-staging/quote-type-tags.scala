@@ -2,7 +2,7 @@ import scala.quoted._
 import scala.quoted.staging._
 
 object Test {
-  given as Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = run {
     def asof[T: Type, U](x: Expr[T], t: Type[U]): Expr[U] =
       '{$x.asInstanceOf[$t]}

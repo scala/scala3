@@ -3,7 +3,7 @@ import scala.quoted.staging._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    given as Toolbox = Toolbox.make(getClass.getClassLoader)
+    given Toolbox = Toolbox.make(getClass.getClassLoader)
     def q given QuoteContext = f
     println(run(q))
     println(withQuoteContext(q.show))

@@ -1,14 +1,14 @@
 class Low
 object Low {
-  given low as Low
+  given low : Low
 }
 class Medium extends Low
 object Medium {
-  given medium as Medium
+  given medium : Medium
 }
 class High extends Medium
 object High {
-  given high as High
+  given high : High
 }
 
 class Foo[T](val i: Int)
@@ -31,21 +31,28 @@ object Baz {
 
 class Arg
 
-given as Arg
+given Arg
 
 class Bam(val str: String)
-given lo as Bam("lo") given Low
-given hi as Bam("hi") given High given Arg
+
+given lo(given Low): Bam("lo")
+
+given hi(given High)(given Arg): Bam("hi")
 
 class Bam2(val str: String)
-given lo2 as Bam2("lo") given Low
-given mid2 as Bam2("mid") given High given Arg
-given hi2 as Bam2("hi")
+
+given lo2(given Low) : Bam2("lo")
+
+given mid2(given High)(given Arg) : Bam2("mid")
+
+given hi2 : Bam2("hi")
 
 class Arg2
 class Red(val str: String)
-given normal as Red("normal") given Arg2
-given reduced as Red("reduced") given (ev: Arg2 | Low)
+
+given normal(given Arg2) : Red("normal")
+
+given reduced(given ev: Arg2 | Low) : Red("reduced")
 
 object Test extends App {
   assert(Foo[Int] == 0)
@@ -55,7 +62,7 @@ object Test extends App {
   assert(summon[Bam2].str == "hi")
   assert(summon[Red].str == "reduced")
 
-  { given as Arg2
+  { given Arg2
     assert(summon[Red].str == "normal")
   }
 }

@@ -5,7 +5,7 @@
     type PrinterType
     def print(bits: BitMap): Unit = ???
     def status: List[String] = ???
-    given bitmap as BitMap
+    given bitmap : BitMap
   }
 
   class Scanner {

@@ -6,7 +6,7 @@ object Test {
     }
 
   {
-    given as Int = 9
+    given Int = 9
     bar()
   }
 

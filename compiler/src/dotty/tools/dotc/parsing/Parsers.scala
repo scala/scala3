@@ -200,7 +200,7 @@ object Parsers {
     def isBindingIntro: Boolean = {
       in.token match {
         case USCORE => true
-        case IDENTIFIER | BACKQUOTED_IDENT => in.lookaheadIn(BitSet(COLON, ARROW))
+        case IDENTIFIER | BACKQUOTED_IDENT => in.lookaheadIn(BitSet(ARROW))
         case LPAREN =>
           val lookahead = in.LookaheadScanner()
           lookahead.skipParens()
@@ -3401,9 +3401,10 @@ object Parsers {
               checkExtensionParams(paramsStart, vparamss)
 
         parseParams(isExtension = !hasGivenSig)
-
+        var oldSyntax = false
         val parents =
           if allowOldGiven && (!newStyle && in.token == FOR || isIdent(nme.as)) then
+            oldSyntax = true
             // for the moment, accept both `delegate for` and `given as`
             in.nextToken()
             tokenSeparated(COMMA, constrApp)
@@ -3421,7 +3422,7 @@ object Parsers {
             tokenSeparated(COMMA, constrApp)
           else Nil
 
-        if allowOldGiven && vparamss.isEmpty then
+        if oldSyntax && vparamss.isEmpty then
           vparamss = paramClauses(ofInstance = true)
 
         val gdef =

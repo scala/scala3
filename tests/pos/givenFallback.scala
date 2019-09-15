@@ -1,10 +1,10 @@
 trait TC[T] { def x: Int; def y: Int = 0 }
 
-given [T] as TC[T] {
+given [T] : TC[T] {
   inline val x = 1
 }
 
-given as TC[Int] {
+given TC[Int] {
   inline val x = 2
   inline override val y = 3
 }

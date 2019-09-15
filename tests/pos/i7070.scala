@@ -4,7 +4,7 @@ object Test {
 
   def (str: String) foo: (given C) => Int = ???
 
-  given as C = ???
+  given C = ???
 
   val strFoo = "".foo
 }

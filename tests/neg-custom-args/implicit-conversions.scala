@@ -3,11 +3,11 @@ class B
 
 object A {
 
-  given as Conversion[A, B] {
+  given Conversion[A, B] {
     def apply(x: A): B = ???
   }
 
-  given as Conversion[B, A] {
+  given Conversion[B, A] {
     def apply(x: B): A = ???
   }
 }
@@ -15,7 +15,7 @@ object A {
 class C
 
 object D {
-  given as Conversion[A, C] {
+  given Conversion[A, C] {
     def apply(x: A): C = ???
   }
 }

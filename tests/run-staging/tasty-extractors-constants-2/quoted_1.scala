@@ -7,7 +7,7 @@ object Macros {
   inline def testMacro: Unit = ${impl}
 
   def impl given QuoteContext: Expr[Unit] = {
-    given as Toolbox = Toolbox.make(getClass.getClassLoader)
+    given Toolbox = Toolbox.make(getClass.getClassLoader)
     // 2 is a lifted constant
     val show1 = withQuoteContext(power(2, 3.0).show)
     val run1  = run(power(2, 3.0))

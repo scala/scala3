@@ -11,7 +11,7 @@ object Macros {
 
     type Env = Map[Any, Any]
 
-    given ev0 as Env = Map.empty
+    given ev0 : Env = Map.empty
 
     def envWith[T](id: Bind[T], ref: Expr[R[T]]) given (env: Env): Env =
       env.updated(id, ref)
@@ -41,11 +41,11 @@ object Macros {
         '{ $sym.ifThenElse[$t](${lift(cond)}, ${lift(thenp)}, ${lift(elsep)}) }.asInstanceOf[Expr[R[T]]]
 
       case '{ ($x0: Int) => $body: Any } =>
-        '{ $sym.lam((x: R[Int]) => ${given as Env = envWith(x0, 'x) given env; lift(body)}).asInstanceOf[R[T]] }
+        '{ $sym.lam((x: R[Int]) => ${given Env = envWith(x0, 'x) given env; lift(body)}).asInstanceOf[R[T]] }
       case '{ ($x0: Boolean) => $body: Any } =>
-        '{ $sym.lam((x: R[Boolean]) => ${given as Env = envWith(x0, 'x) given env; lift(body)}).asInstanceOf[R[T]] }
+        '{ $sym.lam((x: R[Boolean]) => ${given Env = envWith(x0, 'x) given env; lift(body)}).asInstanceOf[R[T]] }
       case '{ ($x0: Int => Int) => $body: Any } =>
-        '{ $sym.lam((x: R[Int => Int]) => ${given as Env = envWith(x0, 'x) given env; lift(body)}).asInstanceOf[R[T]] }
+        '{ $sym.lam((x: R[Int => Int]) => ${given Env = envWith(x0, 'x) given env; lift(body)}).asInstanceOf[R[T]] }
 
       case '{ Symantics.fix[$t, $u]($f) } =>
         '{ $sym.fix[$t, $u]((x: R[$t => $u]) => $sym.app(${lift(f)}, x)).asInstanceOf[R[T]] }

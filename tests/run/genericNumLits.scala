@@ -7,7 +7,7 @@ object Test extends App {
 
   case class Even(n: Int)
 
-  given as FromDigits[Even] {
+  given FromDigits[Even] {
     def fromDigits(digits: String): Even = {
       val intValue = digits.toInt
       if (intValue % 2 == 0) Even(intValue)

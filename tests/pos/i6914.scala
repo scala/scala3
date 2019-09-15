@@ -18,7 +18,7 @@ object test1 {
 
 object test2 {
 
-  given autoToExpr[T](given Liftable[T]) as Conversion[T, Expr[T]] {
+  given autoToExpr[T](given Liftable[T]) : Conversion[T, Expr[T]] {
     def apply(x: T): Expr[T] = ???
   }
 

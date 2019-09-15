@@ -12,12 +12,12 @@ class Foo {
   }
 
   inline def i(): Unit = ${ Foo.impl[Any]('{
-    given as QuoteContext = ???
+    given QuoteContext = ???
     'this // error
   }) }
 
   inline def j(that: Foo): Unit = ${ Foo.impl[Any]('{
-    given as QuoteContext = ???
+    given QuoteContext = ???
     'that // error
   }) }
 

@@ -4,11 +4,11 @@ def test given QuoteContext = {
 
   val a = '{1}
   '{
-    given as QuoteContext = ???
+    given QuoteContext = ???
     a // error
     $a
     '{$a} // error
-    '{ given as QuoteContext = ???; '{$a} } // error
+    '{ given QuoteContext = ???; '{$a} } // error
   }
 
 }

@@ -6,10 +6,10 @@ object A {
   class C extends T
   class D[T]
 
-  given b as B
-  given c as C
-  given t as T
-  given d as D[Int]
+  given b : B
+  given c : C
+  given t : T
+  given d : D[Int]
 }
 
 object Test extends App {
@@ -29,11 +29,11 @@ class ExecutionContext
 class Monoid[T]
 
 object Instances {
-  given intOrd as Ordering[Int]
+  given intOrd : Ordering[Int]
 
   given listOrd[T](given Ordering[T]): Ordering[List[T]]
-  given ec as ExecutionContext
-  given im as Monoid[Int]
+  given ec : ExecutionContext
+  given im : Monoid[Int]
 }
 
 object Test2 {

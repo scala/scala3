@@ -29,7 +29,7 @@ object Even {
     def fromDigits(digits: String) = evenFromDigits(digits)
   }
 
-  given as EvenFromDigits {
+  given EvenFromDigits {
     override inline def fromDigits(digits: String) = ${
       evenFromDigitsImpl('digits)
     }

@@ -3,7 +3,7 @@ object Test {
 
   class Context {
     inline def givenIn[T](op: => (given Context) => T) = {
-      given as Context = this
+      given Context = this
       op
     }
   }

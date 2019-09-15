@@ -25,7 +25,7 @@ object Macros {
 
 class Test {
 
-  given as Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Toolbox = Toolbox.make(getClass.getClassLoader)
 
   run {
     val program = '{

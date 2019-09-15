@@ -5,7 +5,7 @@ def test given QuoteContext = {
   val x: Int = 0
 
   '{
-    given as QuoteContext = ???
+    given QuoteContext = ???
 
     '{x + 1}  // error: wrong staging level
 
