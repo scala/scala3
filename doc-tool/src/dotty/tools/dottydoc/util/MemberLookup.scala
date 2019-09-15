@@ -81,7 +81,7 @@ trait MemberLookup {
   ): EntityLink = {
     val link =
       lookup(Some(entity), packages, query)
-      .map(LinkToEntity)
+      .map(LinkToEntity.apply)
       .getOrElse(Tooltip(query))
 
     EntityLink(title, link)
