@@ -311,7 +311,7 @@ DefParamClause    ::=  [nl] ‘(’ DefParams ‘)’
 GivenParamClause  ::=  ‘(’ ‘given’ (DefParams | GivenTypes) ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
-GivenTypes        ::=  AnnotType {‘,’ AnnotType}
+GivenTypes        ::=  Type {‘,’ Type}
 ClosureMods       ::=  { ‘implicit’ | ‘given’}
 ```
 

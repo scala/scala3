@@ -81,13 +81,13 @@ object Instances extends Common {
   }
 
   def minimum[T](xs: List[T])(given Ord[T]) =
-    maximum(xs) given descending
+    maximum(xs)(given descending)
 
   def test(): Unit = {
     val xs = List(1, 2, 3)
     println(maximum(xs))
-    println(maximum(xs) given descending)
-    println(maximum(xs) given (descending given intOrd))
+    println(maximum(xs)(given descending))
+    println(maximum(xs)(given descending(given intOrd)))
     println(minimum(xs))
   }
 
@@ -157,11 +157,11 @@ object PostConditions {
     def (x: WrappedResult[T]) unwrap[T]: T = x
   }
 
-  def result[T] given (wrapped: WrappedResult[T]): T = wrapped.unwrap
+  def result[T](given wrapped: WrappedResult[T]): T = wrapped.unwrap
 
   given {
     def (x: T) ensuring[T] (condition: (given WrappedResult[T]) => Boolean): T = {
-      assert(condition given WrappedResult(x))
+      assert(condition(given WrappedResult(x)))
       x
     }
   }

@@ -2,7 +2,7 @@
 import Predef.{$conforms => _}
 trait A {
   given id[X] : (X => X) = x => x
-  def trans[X](x: X) given (f: X => X) = f(x)  // (2)
+  def trans[X](x: X)(given f: X => X) = f(x)  // (2)
 }
 object Test extends A with App{
   given succ : (Int => Int) = x => x + 1     // (3)

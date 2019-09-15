@@ -163,7 +163,7 @@ object Annotations {
       }
 
       /** A regular, non-deferred Child annotation */
-      def apply(sym: Symbol, span: Span)(implicit ctx: Context): Annotation = later(given _ => sym, span)
+      def apply(sym: Symbol, span: Span)(implicit ctx: Context): Annotation = later(sym, span)
 
       def unapply(ann: Annotation)(implicit ctx: Context): Option[Symbol] =
         if (ann.symbol == defn.ChildAnnot) {

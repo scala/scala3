@@ -8,7 +8,7 @@ object Macro {
 }
 
 object FIntepolator {
-  def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]]) given (qctx: QuoteContext): Expr[String] = {
+  def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(given qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
     error("there are no args", argsExpr.unseal.underlyingArgument.pos)
     '{ ($strCtxExpr).s($argsExpr: _*) }

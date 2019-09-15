@@ -3,7 +3,7 @@ import delegate scala.quoted._
 
 inline def mcr(body: => Any): Unit = ${mcrImpl('body)}
 
-def mcrImpl[T](body: Expr[Any]) given (ctx: QuoteContext): Expr[Any] = {
+def mcrImpl[T](body: Expr[Any])(given ctx: QuoteContext): Expr[Any] = {
   import ctx.tasty._
 
   val bTree = body.unseal

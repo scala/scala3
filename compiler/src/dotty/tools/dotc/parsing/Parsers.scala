@@ -943,7 +943,7 @@ object Parsers {
     def applyGiven(t: Tree, operand: () => Tree): Tree =
       atSpan(startOffset(t), in.offset) {
         in.nextToken()
-        val args = if (in.token == LPAREN) parArgumentExprs() else operand() :: Nil
+        val args = if (in.token == LPAREN) parArgumentExprs()._1 else operand() :: Nil
         Apply(t, args)
       }.setGivenApply()
 
@@ -2070,7 +2070,7 @@ object Parsers {
           val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
           simpleExprRest(tapp, canApply = true)
         case LPAREN | LBRACE | INDENT if canApply =>
-          val app = atSpan(startOffset(t), in.offset) { Apply(t, argumentExprs()) }
+          val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
           simpleExprRest(app, canApply = true)
         case USCORE =>
           atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
@@ -2115,16 +2115,26 @@ object Parsers {
     /** ParArgumentExprs ::= `(' [‘given’] [ExprsInParens] `)'
      *                    |  `(' [ExprsInParens `,'] PostfixExpr `:' `_' `*' ')'
      */
-    def parArgumentExprs(): List[Tree] = inParens {
-      if in.token == RPAREN then Nil
-      else commaSeparated(argumentExpr)
+    def parArgumentExprs(): (List[Tree], Boolean) = inParens {
+      if in.token == RPAREN then
+        (Nil, false)
+      else if in.token == GIVEN then
+        in.nextToken()
+        (commaSeparated(argumentExpr), true)
+      else
+        (commaSeparated(argumentExpr), false)
     }
 
     /** ArgumentExprs ::= ParArgumentExprs
      *                 |  [nl] BlockExpr
      */
-    def argumentExprs(): List[Tree] =
-      if (in.isNestedStart) blockExpr() :: Nil else parArgumentExprs()
+    def argumentExprs(): (List[Tree], Boolean) =
+      if (in.isNestedStart) (blockExpr() :: Nil, false) else parArgumentExprs()
+
+    def mkApply(fn: Tree, args: (List[Tree], Boolean)): Tree =
+      val res = Apply(fn, args._1)
+      if args._2 then res.setGivenApply()
+      res
 
     val argumentExpr: () => Tree = () => exprInParens() match {
       case arg @ Assign(Ident(id), rhs) => cpy.NamedArg(arg)(id, rhs)
@@ -2135,7 +2145,7 @@ object Parsers {
      */
     def argumentExprss(fn: Tree): Tree = {
       possibleBracesStart()
-      if (in.token == LPAREN || in.isNestedStart) argumentExprss(Apply(fn, argumentExprs()))
+      if (in.token == LPAREN || in.isNestedStart) argumentExprss(mkApply(fn, argumentExprs()))
       else fn
     }
 
@@ -2162,7 +2172,7 @@ object Parsers {
       }
       if (in.token == LPAREN && (!inClassConstrAnnots || isLegalAnnotArg))
         parArgumentExprss(
-          atSpan(startOffset(fn)) { Apply(fn, parArgumentExprs()) }
+          atSpan(startOffset(fn)) { mkApply(fn, parArgumentExprs()) }
         )
       else fn
     }
@@ -2696,10 +2706,11 @@ object Parsers {
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
-    /** GivenTypes   ::=  AnnotType {‘,’ AnnotType}
+    /** OLD: GivenTypes   ::=  AnnotType {‘,’ AnnotType}
+     *  NEW: GivenTypes   ::=  Type {‘,’ Type}
      */
-    def givenTypes(nparams: Int, ofClass: Boolean): List[ValDef] =
-      val tps = commaSeparated(() => annotType())
+    def givenTypes(newStyle: Boolean, nparams: Int, ofClass: Boolean): List[ValDef] =
+      val tps = commaSeparated(() => if newStyle then typ() else annotType())
       var counter = nparams
       def nextIdx = { counter += 1; counter }
       val paramFlags = if ofClass then Private | Local | ParamAccessor else Param
@@ -2799,7 +2810,7 @@ object Parsers {
                 || startParamTokens.contains(in.token)
                 || isIdent && (in.name == nme.inline || in.lookaheadIn(BitSet(COLON)))
               if isParams then commaSeparated(() => param())
-              else givenTypes(nparams, ofClass)
+              else givenTypes(true, nparams, ofClass)
           checkVarArgsRules(clause)
           clause
       }
@@ -2889,7 +2900,7 @@ object Parsers {
           val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
           params :: (if (lastClause) Nil else recur(firstClause = false, nparams + params.length, isGiven))
         else if isGiven then
-          val params = givenTypes(nparams, ofClass)
+          val params = givenTypes(false, nparams, ofClass)
           params :: recur(firstClause = false, nparams + params.length, isGiven)
         else Nil
       }
@@ -3186,7 +3197,7 @@ object Parsers {
     def selfInvocation(): Tree =
       atSpan(accept(THIS)) {
         possibleBracesStart()
-        argumentExprss(Apply(Ident(nme.CONSTRUCTOR), argumentExprs()))
+        argumentExprss(mkApply(Ident(nme.CONSTRUCTOR), argumentExprs()))
       }
 
     /** TypeDcl ::=  id [TypeParamClause] TypeBounds [‘=’ Type]

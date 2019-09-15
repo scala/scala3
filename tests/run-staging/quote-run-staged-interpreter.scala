@@ -12,7 +12,7 @@ enum Exp {
 object Test {
   import Exp._
 
-  def compile(e: Exp, env: Map[String, Expr[Int]], keepLets: Boolean) given QuoteContext: Expr[Int] = {
+  def compile(e: Exp, env: Map[String, Expr[Int]], keepLets: Boolean)(given QuoteContext): Expr[Int] = {
     def compileImpl(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
       case Num(n) => n
       case Plus(e1, e2) => '{${compileImpl(e1, env)} + ${compileImpl(e2, env)}}
@@ -32,7 +32,7 @@ object Test {
     val exp = Plus(Plus(Num(2), Var("x")), Num(4))
     val letExp = Let("x", Num(3), exp)
 
-    def res1 given QuoteContext = '{ (x: Int) => ${compile(exp, Map("x" -> 'x), false)} }
+    def res1(given QuoteContext) = '{ (x: Int) => ${compile(exp, Map("x" -> 'x), false)} }
 
 
     println(withQuoteContext(res1.show))
@@ -44,13 +44,13 @@ object Test {
 
     println("---")
 
-    def res2 given QuoteContext = compile(letExp, Map(), false)
+    def res2(given QuoteContext) = compile(letExp, Map(), false)
     println(withQuoteContext(res2.show))
     println(run(res2))
 
     println("---")
 
-    def res3 given QuoteContext = compile(letExp, Map(), true)
+    def res3(given QuoteContext) = compile(letExp, Map(), true)
     println(withQuoteContext(res3.show))
     println(run(res3))
   }

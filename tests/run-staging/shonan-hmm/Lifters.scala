@@ -6,7 +6,7 @@ import scala.quoted._
 import given scala.quoted.autolift._
 
 object Lifters {
-  implicit def LiftedClassTag[T: Type: ClassTag]  given QuoteContext: Expr[ClassTag[T]] = {
+  implicit def LiftedClassTag[T: Type: ClassTag] (given QuoteContext): Expr[ClassTag[T]] = {
     '{ ClassTag(${summon[ClassTag[T]].runtimeClass })}
   }
 
@@ -24,7 +24,7 @@ object Lifters {
     }
   }
 
-  private def initArray[T : Liftable : Type](arr: Array[T], array: Expr[Array[T]]) given QuoteContext: Expr[Array[T]] = {
+  private def initArray[T : Liftable : Type](arr: Array[T], array: Expr[Array[T]])(given QuoteContext): Expr[Array[T]] = {
     UnrolledExpr.block(
       arr.zipWithIndex.map {
         case (x, i) => '{ $array(${i}) = ${x} }

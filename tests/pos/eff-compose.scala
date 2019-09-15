@@ -36,7 +36,7 @@ object Test {
         }
     }
 
-  implicit def combine[E1 <: Effect, E2 <: Effect] given (x: E1, y: E2): E1 & E2 = ???
+  implicit def combine[E1 <: Effect, E2 <: Effect](given x: E1, y: E2): E1 & E2 = ???
 
   // def compose(f: A => B)(g: B => C)(x: A): C
   def compose[A, B, C, E1 <: Effect, E2 <: Effect]

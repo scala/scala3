@@ -29,8 +29,8 @@ object Imperative {
     ).onError(None)
 
   def main(args: Array[String]) = {
-    println(readPerson given Config("John Doe", 20))
-    println(readPerson given Config("Incognito", 99))
+    println(readPerson(given Config("John Doe", 20)))
+    println(readPerson(given Config("Incognito", 99)))
   }
 }
 
@@ -56,7 +56,7 @@ object Exceptions {
 
   class OnError[T](op: Possibly[T]) {
     def onError(fallback: => T): T =
-      try op given (new CanThrow)
+      try op(given new CanThrow)
       catch { case ex: E => fallback }
   }
 }

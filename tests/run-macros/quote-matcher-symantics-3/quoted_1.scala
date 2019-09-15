@@ -7,13 +7,13 @@ object Macros {
   inline def lift[R[_]](sym: Symantics { type Repr = R })(a: => Int): R[Int] = ${impl('sym, 'a)}
 
 
-  private def impl[R[_]: Type](sym: Expr[Symantics { type Repr[X] = R[X] }], expr: Expr[Int]) given QuoteContext: Expr[R[Int]] = {
+  private def impl[R[_]: Type](sym: Expr[Symantics { type Repr[X] = R[X] }], expr: Expr[Int])(given QuoteContext): Expr[R[Int]] = {
 
     type Env = Map[Any, Any]
 
     given ev0 : Env = Map.empty
 
-    def envWith[T](id: Bind[T], ref: Expr[R[T]]) given (env: Env): Env =
+    def envWith[T](id: Bind[T], ref: Expr[R[T]])(given env: Env): Env =
       env.updated(id, ref)
 
     object FromEnv {
@@ -21,7 +21,7 @@ object Macros {
         summon[Env].get(id).asInstanceOf[Option[Expr[R[T]]]] // We can only add binds that have the same type as the refs
     }
 
-    def lift[T: Type](e: Expr[T]) given (env: Env): Expr[R[T]] = ((e: Expr[Any]) match {
+    def lift[T: Type](e: Expr[T])(given env: Env): Expr[R[T]] = ((e: Expr[Any]) match {
       case Const(e: Int) => '{ $sym.int(${e.toExpr}).asInstanceOf[R[T]] }
       case Const(e: Boolean) => '{ $sym.bool(${e.toExpr}).asInstanceOf[R[T]] }
 

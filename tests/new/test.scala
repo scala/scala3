@@ -12,4 +12,11 @@ trait T {
   class C[T]
 
   given t2[T](given C[T]): C[T]
+
+  try ??? : List[Int] match
+    case Nil => 1
+    case x :: xs => 2
+  catch
+    case java.io.IOException => 3
+    case java.lang.Error => 4
 }

@@ -30,7 +30,7 @@ object BigFloat extends App {
     BigFloat(BigInt(intPart), exponent)
   }
 
-  private def fromDigitsImpl(digits: Expr[String]) given (ctx: QuoteContext): Expr[BigFloat] =
+  private def fromDigitsImpl(digits: Expr[String])(given ctx: QuoteContext): Expr[BigFloat] =
     digits match {
       case Const(ds) =>
         try {

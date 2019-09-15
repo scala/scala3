@@ -137,8 +137,8 @@ package liftable {
   }
 
   object Loops {
-    def liftedWhile(cond: Expr[Boolean])(body: Expr[Unit]) given QuoteContext: Expr[Unit] = '{ while ($cond) $body }
-    def liftedDoWhile(body: Expr[Unit])(cond: Expr[Boolean]) given QuoteContext: Expr[Unit] = '{ while { $body ; $cond } do () }
+    def liftedWhile(cond: Expr[Boolean])(body: Expr[Unit])(given QuoteContext): Expr[Unit] = '{ while ($cond) $body }
+    def liftedDoWhile(body: Expr[Unit])(cond: Expr[Boolean])(given QuoteContext): Expr[Unit] = '{ while { $body ; $cond } do () }
   }
 
 
@@ -147,7 +147,7 @@ package liftable {
     implicit class LiftedOps[T: Liftable](list: Expr[List[T]])(implicit t: Type[T]) {
       def foldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U], qctx: QuoteContext): Expr[U] =
         '{ ($list).foldLeft[$u]($acc)($f) }
-      def foreach(f: Expr[T => Unit]) given QuoteContext: Expr[Unit] =
+      def foreach(f: Expr[T => Unit])(given QuoteContext): Expr[Unit] =
         '{ ($list).foreach($f) }
     }
 

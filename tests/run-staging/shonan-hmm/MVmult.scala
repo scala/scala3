@@ -22,7 +22,7 @@ object MVmult {
     MV.mvmult(vout_, a_, v_)
   }
 
-  def mvmult_c given QuoteContext: Expr[(Array[Int], Array[Array[Int]], Array[Int]) => Unit] = '{
+  def mvmult_c(given QuoteContext): Expr[(Array[Int], Array[Array[Int]], Array[Int]) => Unit] = '{
     (vout, a, v) => {
       val n = vout.length
       val m = v.length
@@ -37,7 +37,7 @@ object MVmult {
     }
   }
 
-  def mvmult_mc(n: Int, m: Int) given QuoteContext: Expr[(Array[Int], Array[Array[Int]], Array[Int]) => Unit] = {
+  def mvmult_mc(n: Int, m: Int)(given QuoteContext): Expr[(Array[Int], Array[Array[Int]], Array[Int]) => Unit] = {
     val MV = new MVmult[Int, Expr[Int], Expr[Unit]](new RingIntExpr, new VecRStaDim(new RingIntExpr))
     '{
       (vout, a, v) => {
@@ -54,7 +54,7 @@ object MVmult {
     }
   }
 
-  def mvmult_ac(a: Array[Array[Int]]) given QuoteContext: Expr[(Array[Int], Array[Int]) => Unit] = {
+  def mvmult_ac(a: Array[Array[Int]])(given QuoteContext): Expr[(Array[Int], Array[Int]) => Unit] = {
     import Lifters._
     '{
       val arr = ${a}
@@ -65,7 +65,7 @@ object MVmult {
     }
   }
 
-  def mvmult_opt(a: Array[Array[Int]]) given QuoteContext: Expr[(Array[Int], Array[Int]) => Unit] = {
+  def mvmult_opt(a: Array[Array[Int]])(given QuoteContext): Expr[(Array[Int], Array[Int]) => Unit] = {
     import Lifters._
     '{
       val arr = ${a}
@@ -76,7 +76,7 @@ object MVmult {
     }
   }
 
-  def mvmult_roll(a: Array[Array[Int]]) given QuoteContext: Expr[(Array[Int], Array[Int]) => Unit] = {
+  def mvmult_roll(a: Array[Array[Int]])(given QuoteContext): Expr[(Array[Int], Array[Int]) => Unit] = {
     import Lifters._
     '{
       val arr = ${a}
@@ -87,19 +87,19 @@ object MVmult {
     }
   }
 
-  def mvmult_let1(a: Array[Array[Int]]) given QuoteContext: Expr[(Array[Int], Array[Int]) => Unit] = {
+  def mvmult_let1(a: Array[Array[Int]])(given QuoteContext): Expr[(Array[Int], Array[Int]) => Unit] = {
     val (n, m, a2) = amatCopy(a, copy_row1)
     mvmult_abs0(new RingIntOPExpr, new VecRStaOptDynInt(new RingIntPExpr))(n, m, a2)
   }
 
-  def mvmult_let(a: Array[Array[Int]]) given QuoteContext: Expr[(Array[Int], Array[Int]) => Unit] = {
+  def mvmult_let(a: Array[Array[Int]])(given QuoteContext): Expr[(Array[Int], Array[Int]) => Unit] = {
     initRows(a) { rows =>
       val (n, m, a2) = amat2(a, rows)
       mvmult_abs0(new RingIntOPExpr, new VecRStaOptDynInt(new RingIntPExpr))(n, m, a2)
     }
   }
 
-  def initRows[T: Type](a: Array[Array[Int]])(cont: Array[Expr[Array[Int]]] => Expr[T]) given QuoteContext: Expr[T] = {
+  def initRows[T: Type](a: Array[Array[Int]])(cont: Array[Expr[Array[Int]]] => Expr[T])(given QuoteContext): Expr[T] = {
     import Lifters._
     def loop(i: Int, acc: List[Expr[Array[Int]]]): Expr[T] = {
       if (i >= a.length) cont(acc.toArray.reverse)
@@ -114,7 +114,7 @@ object MVmult {
     loop(0, Nil)
   }
 
-  def amat1(a: Array[Array[Int]], aa: Expr[Array[Array[Int]]]) given QuoteContext: (Int, Int, Vec[PV[Int], Vec[PV[Int], PV[Int]]]) = {
+  def amat1(a: Array[Array[Int]], aa: Expr[Array[Array[Int]]])(given QuoteContext): (Int, Int, Vec[PV[Int], Vec[PV[Int], PV[Int]]]) = {
     val n = a.length
     val m = a(0).length
     val vec: Vec[PV[Int], Vec[PV[Int], PV[Int]]] = Vec(Sta(n), i => Vec(Sta(m), j => (i, j) match {
@@ -125,7 +125,7 @@ object MVmult {
     (n, m, vec)
   }
 
-  def amat2(a: Array[Array[Int]], refs: Array[Expr[Array[Int]]]) given QuoteContext: (Int, Int, Vec[PV[Int], Vec[PV[Int], PV[Int]]]) = {
+  def amat2(a: Array[Array[Int]], refs: Array[Expr[Array[Int]]])(given QuoteContext): (Int, Int, Vec[PV[Int], Vec[PV[Int], PV[Int]]]) = {
     val n = a.length
     val m = a(0).length
     val vec: Vec[PV[Int], Vec[PV[Int], PV[Int]]] = Vec(Sta(n), i => Vec(Sta(m), j => (i, j) match {
@@ -135,7 +135,7 @@ object MVmult {
     (n, m, vec)
   }
 
-  def amatCopy(a: Array[Array[Int]], copyRow: Array[Int] => (Expr[Int] => Expr[Int])) given QuoteContext: (Int, Int, Vec[PV[Int], Vec[PV[Int], PV[Int]]]) = {
+  def amatCopy(a: Array[Array[Int]], copyRow: Array[Int] => (Expr[Int] => Expr[Int]))(given QuoteContext): (Int, Int, Vec[PV[Int], Vec[PV[Int], PV[Int]]]) = {
     val n = a.length
     val m = a(0).length
     val vec: Vec[PV[Int], Vec[PV[Int], PV[Int]]] = Vec(Sta(n), i => Vec(Sta(m), j => (i, j) match {
@@ -148,19 +148,19 @@ object MVmult {
     (n, m, vec)
   }
 
-  def copy_row1 given QuoteContext: Array[Int] => (Expr[Int] => Expr[Int]) = v => {
+  def copy_row1(given QuoteContext): Array[Int] => (Expr[Int] => Expr[Int]) = v => {
     import Lifters._
     val arr = v
     i => '{ ($arr).apply($i) }
   }
 
-  def copy_row_let given QuoteContext: Array[Int] => (Expr[Int] => Expr[Int]) = v => {
+  def copy_row_let(given QuoteContext): Array[Int] => (Expr[Int] => Expr[Int]) = v => {
     import Lifters._
     val arr: Expr[Array[Int]] = ??? // FIXME used genlet v
     i => '{ ($arr).apply($i) }
   }
 
-  private def mvmult_abs0(ring: Ring[PV[Int]], vecOp: VecROp[PV[Int], PV[Int], Expr[Unit]])(n: Int, m: Int, a: Vec[PV[Int], Vec[PV[Int], PV[Int]]]) given QuoteContext: Expr[(Array[Int], Array[Int]) => Unit] = {
+  private def mvmult_abs0(ring: Ring[PV[Int]], vecOp: VecROp[PV[Int], PV[Int], Expr[Unit]])(n: Int, m: Int, a: Vec[PV[Int], Vec[PV[Int], PV[Int]]])(given QuoteContext): Expr[(Array[Int], Array[Int]) => Unit] = {
     '{
       (vout, v) => {
         if (${n} != vout.length) throw new IndexOutOfBoundsException(${n.toString})

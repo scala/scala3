@@ -107,7 +107,7 @@ object Impl4 {
 }
 
 object fallback4 {
-  def withFallback[T] given (ev: E[T] = new E[T]("fallback")): E[T] = ev
+  def withFallback[T](given ev: E[T] = new E[T]("fallback")): E[T] = ev
 }
 
 def test4 = {

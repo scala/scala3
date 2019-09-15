@@ -6,7 +6,7 @@ object Macros {
 
   inline def matches[A, B]: Unit = ${ matchesExpr('[A], '[B]) }
 
-  private def matchesExpr[A, B](a: Type[A], b: Type[B]) given (qctx: QuoteContext): Expr[Unit] = {
+  private def matchesExpr[A, B](a: Type[A], b: Type[B])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty.{Bind => _, _}
 
     val res = scala.internal.quoted.Type.unapply[Tuple, Tuple](a)(b, true, qctx).map { tup =>

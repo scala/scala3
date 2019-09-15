@@ -13,7 +13,7 @@ object High {
 
 class Foo[T](val i: Int)
 object Foo {
-  def apply[T] given (fooT: Foo[T]): Int = fooT.i
+  def apply[T](given fooT: Foo[T]): Int = fooT.i
 
   given foo[T](given Low)    : Foo[T](0)
   given foobar[T](given Low) : Foo[Bar[T]](1)

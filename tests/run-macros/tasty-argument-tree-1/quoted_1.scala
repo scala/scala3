@@ -5,7 +5,7 @@ object Macros {
 
   inline def inspect[T](x: T): Unit = ${ impl('x) }
 
-  def impl[T](x: Expr[T]) given (qctx: QuoteContext): Expr[Unit] = {
+  def impl[T](x: Expr[T])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty._
     val tree = x.unseal
     '{

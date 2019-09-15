@@ -6,7 +6,7 @@ object Macros {
   implicit inline def printOwners[T](x: => T): Unit =
     ${ impl('x) }
 
-  def impl[T](x: Expr[T]) given (qctx: QuoteContext): Expr[Unit] = {
+  def impl[T](x: Expr[T])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty._
 
     val buff = new StringBuilder

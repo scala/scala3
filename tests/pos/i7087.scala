@@ -7,7 +7,7 @@ type F[T] = T match {
 }
 
 given {
-  def (tup: T) g[T] given (Foo: F[T]) = ???
+  def (tup: T) g[T](given Foo: F[T]) = ???
 }
 
-def f(x: G[Int]) given (Foo: String) = x.g
+def f(x: G[Int])(given Foo: String) = x.g

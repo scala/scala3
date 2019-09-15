@@ -6,7 +6,7 @@ object Foo {
   inline def inspectBody(i: => Int): String =
     ${ inspectBodyImpl('i) }
 
-  def inspectBodyImpl(x: Expr[Int]) given (qctx: QuoteContext): Expr[String] = {
+  def inspectBodyImpl(x: Expr[Int])(given qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
 
     def definitionString(tree: Tree): Expr[String] = tree.symbol match {

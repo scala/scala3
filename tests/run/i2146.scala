@@ -7,7 +7,7 @@ object Test {
   def foo[A, B]: (given A) => (given B) => (A, B) =
     (implicitly[A], implicitly[B])
 
-  def bar[A, B]: (given A) => (given B) => (A, B) = { given (a: A) =>
+  def bar[A, B]: (given A) => (given B) => (A, B) = {(given a: A) =>
     (implicitly[A], implicitly[B])
   }
 
@@ -16,8 +16,8 @@ object Test {
 
   def main(args: Array[String]) = {
     println(foo[A, B])
-    println(foo[A, B] given a)
-    println(foo given a given b)
+    println(foo[A, B](given a))
+    println(foo(given a)(given b))
     val s: (given A) => A = simple[A]
     println(s)
     val x0: (given A) => (given B) => (A, B) = foo[A, B]
@@ -26,7 +26,7 @@ object Test {
     println(x1)
 
     println(bar[A, B])
-    println(bar[A, B] given a)
-    println(bar given a given b)
+    println(bar[A, B](given a))
+    println(bar(given a)(given b))
   }
 }

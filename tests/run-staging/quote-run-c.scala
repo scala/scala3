@@ -5,13 +5,13 @@ import scala.quoted.staging._
 object Test {
   def main(args: Array[String]): Unit = {
     given Toolbox = Toolbox.make(getClass.getClassLoader)
-    def classExpr given QuoteContext = '{
+    def classExpr(given QuoteContext) = '{
       class A {
         override def toString: String = "Foo"
       }
       new A
     }
-    def classExpr2 given QuoteContext = '{
+    def classExpr2(given QuoteContext) = '{
       class A {
         override def toString: String = "Bar"
       }

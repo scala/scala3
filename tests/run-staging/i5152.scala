@@ -3,7 +3,7 @@ import scala.quoted.staging._
 
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def eval1(ff: Expr[Int => Int]) given QuoteContext: Expr[Int => Int] = '{identity}
+  def eval1(ff: Expr[Int => Int])(given QuoteContext): Expr[Int => Int] = '{identity}
 
   def peval1()given QuoteContext: Expr[Unit] = '{
     lazy val f: Int => Int = ${eval1('{(y: Int) => f(y)})}

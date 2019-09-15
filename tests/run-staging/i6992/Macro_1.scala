@@ -10,7 +10,7 @@ object macros {
 
   class Foo { val x = 10 }
 
-  def mcrImpl(body: Expr[Any]) given (ctx: QuoteContext): Expr[Any] = {
+  def mcrImpl(body: Expr[Any])(given ctx: QuoteContext): Expr[Any] = {
     import ctx.tasty._
     try {
       body match {

@@ -8,7 +8,7 @@ object Foo {
   implicit inline def foo: String =
     ${fooImpl}
 
-  def fooImpl given QuoteContext: (given QuoteContext) => Tastier[(given QuoteContext) => Macro[String]] = {
+  def fooImpl(given QuoteContext): (given QuoteContext) => Tastier[(given QuoteContext) => Macro[String]] = {
     '{"abc"}
   }
 

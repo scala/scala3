@@ -1,6 +1,6 @@
 import scala.quoted._
 class Foo {
-  def test given QuoteContext = '{
+  def test(given QuoteContext) = '{
     ${3} // error
     ${new Object} // error
     ${"abc"} // error

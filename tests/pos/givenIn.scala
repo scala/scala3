@@ -9,7 +9,7 @@ object Test {
   }
 
   def ctx: Context = new Context
-  def g given Context = ()
+  def g(given Context) = ()
   ctx.givenIn(g)
 
 /* The last three statements shoudl generate the following code:

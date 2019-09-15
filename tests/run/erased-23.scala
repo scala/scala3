@@ -1,7 +1,7 @@
 object Test {
 
   def main(args: Array[String]): Unit = {
-    fun { given erased (x: Int) =>
+    fun { (given erased x: Int) =>
       println("lambda1")
       "abc"
     }
@@ -13,10 +13,10 @@ object Test {
   }
 
   def fun(f: (given erased Int) => String): String = {
-    f given 35
+    f(given 35)
   }
 
   def fun2(f: (given erased Int) => String): String = {
-    f given 35
+    f(given 35)
   }
 }

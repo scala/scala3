@@ -205,7 +205,7 @@ object Test {
       * @return     a new stream consisting of all elements of the input stream that do satisfy the given
       *             predicate `pred`.
       */
-    def filter(pred: (Expr[A] => Expr[Boolean])) given QuoteContext: Stream[A] = {
+    def filter(pred: (Expr[A] => Expr[Boolean]))(given QuoteContext): Stream[A] = {
       val filterStream = (a: Expr[A]) =>
         new Producer[Expr[A]] {
 
@@ -305,7 +305,7 @@ object Test {
       * @tparam A      the type of the producer's elements.
       * @return        a linear or nested stream aware of the variable reference to decrement.
       */
-    private def takeRaw[A: Type](n: Expr[Int], stream: StagedStream[A]) given QuoteContext: StagedStream[A] = {
+    private def takeRaw[A: Type](n: Expr[Int], stream: StagedStream[A])(given QuoteContext): StagedStream[A] = {
       stream match {
         case linear: Linear[A] => {
           val enhancedProducer: Producer[(Var[Int], A)] = addCounter[A](n, linear.producer)
@@ -334,9 +334,9 @@ object Test {
      }
 
     /** A stream containing the first `n` elements of this stream. */
-    def take(n: Expr[Int]) given QuoteContext: Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
+    def take(n: Expr[Int])(given QuoteContext): Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
 
-    private def zipRaw[A: Type, B: Type](stream1: StagedStream[Expr[A]], stream2: StagedStream[B]) given QuoteContext: StagedStream[(Expr[A], B)] = {
+    private def zipRaw[A: Type, B: Type](stream1: StagedStream[Expr[A]], stream2: StagedStream[B])(given QuoteContext): StagedStream[(Expr[A], B)] = {
       (stream1, stream2) match {
 
         case (Linear(producer1), Linear(producer2)) =>
@@ -404,7 +404,7 @@ object Test {
       * @tparam A
       * @return
       */
-    private def makeLinear[A: Type](stream: StagedStream[Expr[A]]) given QuoteContext: Producer[Expr[A]] = {
+    private def makeLinear[A: Type](stream: StagedStream[Expr[A]])(given QuoteContext): Producer[Expr[A]] = {
       stream match {
         case Linear(producer) => producer
         case Nested(producer, nestedf) => {
@@ -507,7 +507,7 @@ object Test {
       }
     }
 
-    private def pushLinear[A, B, C](producer: Producer[A], nestedProducer: Producer[B], nestedf: (B => StagedStream[C])) given QuoteContext: StagedStream[(A, C)] = {
+    private def pushLinear[A, B, C](producer: Producer[A], nestedProducer: Producer[B], nestedf: (B => StagedStream[C]))(given QuoteContext): StagedStream[(A, C)] = {
       val newProducer = new Producer[(Var[Boolean], producer.St, B)] {
 
         type St = (Var[Boolean], producer.St, nestedProducer.St)
@@ -565,14 +565,14 @@ object Test {
     }
 
     /** zip **/
-    def zip[B: Type, C: Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B]) given QuoteContext: Stream[C] = {
+    def zip[B: Type, C: Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B])(given QuoteContext): Stream[C] = {
       val Stream(stream_b) = stream2
       Stream(mapRaw[(Expr[A], Expr[B]), Expr[C]]((t => k => k(f(t._1)(t._2))), zipRaw[A, Expr[B]](stream, stream_b)))
     }
   }
 
   object Stream {
-    def of[A: Type](arr: Expr[Array[A]]) given QuoteContext: Stream[A] = {
+    def of[A: Type](arr: Expr[Array[A]])(given QuoteContext): Stream[A] = {
       val prod = new Producer[Expr[A]] {
         type St = (Var[Int], Var[Int], Expr[Array[A]])
 
@@ -607,52 +607,52 @@ object Test {
     }
   }
 
-  def test1() given QuoteContext = Stream
+  def test1()(given QuoteContext) = Stream
     .of('{Array(1, 2, 3)})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test2() given QuoteContext = Stream
+  def test2()(given QuoteContext) = Stream
     .of('{Array(1, 2, 3)})
     .map((a: Expr[Int]) => '{ $a * 2 })
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test3() given QuoteContext = Stream
+  def test3()(given QuoteContext) = Stream
     .of('{Array(1, 2, 3)})
     .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d * $dp }))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test4() given QuoteContext = Stream
+  def test4()(given QuoteContext) = Stream
     .of('{Array(1, 2, 3)})
     .filter((d: Expr[Int]) => '{ $d % 2 == 0 })
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test5() given QuoteContext = Stream
+  def test5()(given QuoteContext) = Stream
     .of('{Array(1, 2, 3)})
     .take('{2})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test6() given QuoteContext = Stream
+  def test6()(given QuoteContext) = Stream
     .of('{Array(1, 1, 1)})
     .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).take('{2}))
     .take('{5})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test7() given QuoteContext = Stream
+  def test7()(given QuoteContext) = Stream
     .of('{Array(1, 2, 3)})
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test8() given QuoteContext = Stream
+  def test8()(given QuoteContext) = Stream
     .of('{Array(1, 2, 3)})
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test9() given QuoteContext = Stream
+  def test9()(given QuoteContext) = Stream
     .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}) )
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test10() given QuoteContext = Stream
+  def test10()(given QuoteContext) = Stream
     .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })) )
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))

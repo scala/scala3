@@ -24,19 +24,19 @@ object Test extends App {
   }
 
   // An example tree
-  def tf0[T] given (e: Exp[T]): T =
+  def tf0[T](given e: Exp[T]): T =
     e.add(e.lit(8), e.neg(e.add(e.lit(1), e.lit(2))))
 
   // Typeclass-style Exp syntax
   object ExpSyntax {
-    def lit[T](i: Int)     given (e: Exp[T]): T = e.lit(i)
-    def neg[T](t: T)       given (e: Exp[T]): T = e.neg(t)
-    def add[T](l: T, r: T) given (e: Exp[T]): T = e.add(l, r)
+    def lit[T](i: Int)    (given e: Exp[T]): T = e.lit(i)
+    def neg[T](t: T)      (given e: Exp[T]): T = e.neg(t)
+    def add[T](l: T, r: T)(given e: Exp[T]): T = e.add(l, r)
   }
   import ExpSyntax._ // It's safe to always have these in scope
 
   // Another tree
-  def tf1[T] given Exp[T]: T =
+  def tf1[T](given Exp[T]): T =
     add(lit(8), neg(add(lit(1), lit(2))))
 
   // Base operations as typeclasses
@@ -60,7 +60,7 @@ object Test extends App {
     def mul(l: T, r: T): T
   }
   object MultSyntax {
-    def mul[T](l: T, r: T) given (e: Mult[T]): T = e.mul(l, r)
+    def mul[T](l: T, r: T)(given e: Mult[T]): T = e.mul(l, r)
   }
   import MultSyntax._
 
@@ -106,7 +106,7 @@ object Test extends App {
 
   object CanThrow {
     private class Exc(msg: String) extends Exception(msg)
-    def _throw(msg: String) given CanThrow: Nothing = throw new Exc(msg)
+    def _throw(msg: String)(given CanThrow): Nothing = throw new Exc(msg)
     def _try[T](op: Maybe[T])(handler: String => T): T = {
       given CanThrow
       try op
@@ -138,7 +138,7 @@ object Test extends App {
   show(readInt("2"))
   show(readInt("X"))
 
-  def fromTree[T](t: Tree) given Exp[T]: Maybe[T] = t match {
+  def fromTree[T](t: Tree)(given Exp[T]): Maybe[T] = t match {
     case Node("Lit", Leaf(n)) => lit(readInt(n))
     case Node("Neg", t) => neg(fromTree(t))
     case Node("Add", l , r) => add(fromTree(l), fromTree(r))
@@ -150,18 +150,18 @@ object Test extends App {
   show(fromTree[Tree](tf1Tree))
 
   trait Wrapped {
-    def value[T] given Exp[T]: T
+    def value[T](given Exp[T]): T
   }
 
   given Exp[Wrapped] {
     def lit(i: Int) = new Wrapped {
-      def value[T] given (e: Exp[T]): T = e.lit(i)
+      def value[T](given e: Exp[T]): T = e.lit(i)
     }
     def neg(t: Wrapped) = new Wrapped {
-      def value[T] given (e: Exp[T]): T = e.neg(t.value)
+      def value[T](given e: Exp[T]): T = e.neg(t.value)
     }
     def add(l: Wrapped, r: Wrapped) = new Wrapped {
-      def value[T] given (e: Exp[T]): T = e.add(l.value, r.value)
+      def value[T](given e: Exp[T]): T = e.add(l.value, r.value)
     }
   }
 
@@ -170,7 +170,7 @@ object Test extends App {
     s"${t.value[Int]}\n${t.value[String]}"
 
   }
-  def fromTreeExt[T](recur: => Tree => Maybe[T]) given Exp[T]: Tree => Maybe[T] = {
+  def fromTreeExt[T](recur: => Tree => Maybe[T])(given Exp[T]): Tree => Maybe[T] = {
     case Node("Lit", Leaf(n)) => lit(readInt(n))
     case Node("Neg", t) => neg(recur(t))
     case Node("Add", l , r) => add(recur(l), recur(r))
@@ -181,7 +181,7 @@ object Test extends App {
 
   def fromTree2[T: Exp](t: Tree): Maybe[T] = fix(fromTreeExt[T])(t)
 
-  def fromTreeExt2[T](recur: => Tree => Maybe[T]) given Exp[T], Mult[T]: Tree => Maybe[T] = {
+  def fromTreeExt2[T](recur: => Tree => Maybe[T])(given Exp[T], Mult[T]): Tree => Maybe[T] = {
     case Node("Mult", l , r) => mul(recur(l), recur(r))
     case t => fromTreeExt(recur)(t)
   }
@@ -237,7 +237,7 @@ object Test extends App {
   }
 
   // Going from ADT encoding to type class encoding
-  def finalize[T](i: IExp) given (e: Exp[T]): T = i match {
+  def finalize[T](i: IExp)(given e: Exp[T]): T = i match {
     case Lit(l) => e.lit(l)
     case Neg(n) => e.neg(finalize[T](n))
     case Add(l, r) => e.add(finalize[T](l), finalize[T](r))
