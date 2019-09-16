@@ -60,13 +60,13 @@ Standard-Section: "ASTs" TopLevelStat*
   Stat          = Term
                   ValOrDefDef
                   TYPEDEF        Length NameRef (type_Term | Template) Modifier*   -- modifiers type name (= type | bounds)  |  moifiers class name template
-                  IMPORT         Length [GIVEN] qual_Term Selector*                -- import given? qual selectors
+                  IMPORT         Length qual_Term Selector*                        -- import qual selectors
   ValOrDefDef   = VALDEF         Length NameRef type_Term rhs_Term? Modifier*      -- modifiers val name : type (= rhs)?
                   DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
                                         Modifier*                                  -- modifiers def name [typeparams] paramss : returnType (= rhs)?
-  Selector      = IMPORTED              name_NameRef                               -- name
+  Selector      = IMPORTED              name_NameRef                               -- name, "_" for normal wildcards, "" for given wildcards
                   RENAMED               to_NameRef                                 -- => name
-                  BOUNDED               type_Term?                                 -- for type
+                  BOUNDED               type_Term                                  -- type bound
 
   TypeParam     = TYPEPARAM      Length NameRef type_Term Modifier*                -- modifiers name bounds
   Params        = PARAMS         Length Param*

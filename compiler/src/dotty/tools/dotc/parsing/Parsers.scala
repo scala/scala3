@@ -2912,14 +2912,14 @@ object Parsers {
     def finalizeDef(md: MemberDef, mods: Modifiers, start: Int): md.ThisTree[Untyped] =
       md.withMods(mods).setComment(in.getDocComment(start))
 
-    type ImportConstr = (Boolean, Tree, List[Tree]) => Tree
+    type ImportConstr = (Tree, List[ImportSelector]) => Tree
 
     /** Import  ::= `import' [`given'] [ImportExpr {`,' ImportExpr}
      *  Export  ::= `export' [`given'] [ImportExpr {`,' ImportExpr}
      */
     def importClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
-      val importGiven = in.token == IMPLIED || in.token == GIVEN
+      val importGiven = allowOldGiven && in.token == IMPLIED || in.token == GIVEN
       if (importGiven) in.nextToken()
       commaSeparated(importExpr(importGiven, mkTree)) match {
         case t :: rest =>
@@ -2932,88 +2932,79 @@ object Parsers {
       }
     }
 
-    /**  ImportExpr ::= StableId `.' (id | `_' | ImportSelectors)
+    /**  ImportExpr ::= StableId ‘.’ ImportSpec
+     *   ImportSpec  ::=  id
+     *                 | ‘_’
+     *                 | ‘given’
+     *                 | ‘{’ ImportSelectors) ‘}’
      */
     def importExpr(importGiven: Boolean, mkTree: ImportConstr): () => Tree = {
 
-      /** ImportSelectors ::= `{' {ImportSelector `,'} FinalSelector ‘}’
-       *  FinalSelector   ::=  ImportSelector
-       *                    |  ‘_’ [‘:’ Type]
+      /** '_' | 'given'
        */
-      def importSelectors(): List[Tree] = in.token match {
-        case USCORE =>
-          atSpan(in.skipToken()) {
-            val id = Ident(nme.WILDCARD)
-            if (in.token == COLON) {
-              in.nextToken()
-              TypeBoundsTree(EmptyTree, typ())
-            }
-            else id
-          } :: Nil
-        case FOR =>
-          if (!importGiven)
-              syntaxError(em"`for` qualifier only allowed in `import given`")
-          atSpan(in.skipToken()) {
-            var t = infixType()
-            while (in.token == COMMA) {
-              val op = atSpan(in.skipToken()) { Ident(tpnme.raw.BAR) }
-              t = InfixOp(t, op, infixType())
-            }
-            TypeBoundsTree(EmptyTree, t)
-          } :: Nil
-        case _ =>
-          importSelector() :: {
-            if (in.token == COMMA) {
-              in.nextToken()
-              importSelectors()
-            }
-            else Nil
-          }
-      }
+      def wildcardSelectorId() =
+        val name = if importGiven || in.token == GIVEN then nme.EMPTY else nme.WILDCARD
+        atSpan(in.skipToken()) { Ident(name) }
 
-      /** ImportSelector ::= id [`=>' id | `=>' `_']
+      /** ImportSelectors  ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
+       *                     |  WildCardSelector {‘,’ WildCardSelector}
+       *  WildCardSelector ::=  ‘given’ [InfixType]
+       *                     |  ‘_' [‘:’ InfixType]
        */
-      def importSelector(): Tree = {
-        val from = termIdent()
-        if (in.token == ARROW)
-          atSpan(startOffset(from), in.skipToken()) {
-            val start = in.offset
-            val to = if (in.token == USCORE) wildcardIdent() else termIdent()
-            val toWithPos =
-              if (to.name == nme.ERROR)
-                // error identifiers don't consume any characters, so atSpan(start)(id) wouldn't set a span.
-                // Some testcases would then fail in Positioned.checkPos. Set a span anyway!
-                atSpan(start, start, in.lastOffset)(to)
+      def importSelectors(idOK: Boolean): List[ImportSelector] =
+        val selToken = in.token
+        val isWildcard = selToken == USCORE || selToken == GIVEN
+        val selector =
+          if isWildcard then
+            val id = wildcardSelectorId()
+            val bound =
+              if selToken == USCORE && in.token == COLON then
+                in.nextToken()
+                infixType()
+              else if selToken == GIVEN && in.token != RBRACE && in.token != COMMA then
+                infixType()
               else
-                to
-            Thicket(from, toWithPos)
-          }
-        else from
-      }
+                EmptyTree
+            ImportSelector(id, bound = bound)
+          else
+            val from = termIdent()
+            if !idOK then syntaxError(i"named imports cannot follow wildcard imports")
+            if in.token == ARROW then
+              atSpan(startOffset(from), in.skipToken()) {
+                val to = if in.token == USCORE then wildcardIdent() else termIdent()
+                ImportSelector(from, if to.name == nme.ERROR then EmptyTree else to)
+              }
+            else ImportSelector(from)
 
-      val handleImport: Tree => Tree = { (tree: Tree) =>
-        if (in.token == USCORE) mkTree(importGiven, tree, wildcardIdent() :: Nil)
-        else if (in.token == LBRACE) mkTree(importGiven, tree, inBraces(importSelectors()))
-        else tree
-      }
+        val rest =
+          if in.token == COMMA then
+            in.nextToken()
+            importSelectors(idOK = idOK && !isWildcard)
+          else
+            Nil
+        selector :: rest
 
-      def derived(impExp: Tree, qual: Tree, selectors: List[Tree]) =
-        mkTree(importGiven, qual, selectors).withSpan(impExp.span)
+      val handleImport: Tree => Tree = tree =>
+        in.token match
+          case USCORE | GIVEN =>
+            mkTree(tree, ImportSelector(wildcardSelectorId()) :: Nil)
+          case LBRACE =>
+            mkTree(tree, inBraces(importSelectors(idOK = true)))
+          case _ =>
+            tree
 
       () => {
         val p = path(thisOK = false, handleImport)
-        p match {
+        p match
           case _: Import | _: Export => p
           case sel @ Select(qual, name) =>
-            val selector = atSpan(pointOffset(sel)) { Ident(name) }
-            mkTree(importGiven, qual, selector :: Nil).withSpan(sel.span)
+            val selector = ImportSelector(atSpan(pointOffset(sel)) { Ident(name) })
+            mkTree(qual, selector :: Nil).withSpan(sel.span)
           case t =>
             accept(DOT)
-            mkTree(importGiven, t, Ident(nme.WILDCARD) :: Nil)
-        }
+            mkTree(t, ImportSelector(Ident(nme.WILDCARD)) :: Nil)
       }
     }
-
 
     def posMods(start: Int, mods: Modifiers): Modifiers = {
       in.nextToken()

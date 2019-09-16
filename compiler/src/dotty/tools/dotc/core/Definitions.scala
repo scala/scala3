@@ -10,6 +10,7 @@ import scala.collection.mutable
 import collection.mutable
 import Denotations.SingleDenotation
 import util.SimpleIdentityMap
+import typer.ImportInfo.RootRef
 
 import scala.annotation.tailrec
 
@@ -1028,23 +1029,23 @@ class Definitions {
   def isPredefClass(cls: Symbol): Boolean =
     (cls.owner eq ScalaPackageClass) && predefClassNames.contains(cls.name)
 
-  val StaticRootImportFns: List[() => TermRef] = List[() => TermRef](
-    () => JavaLangPackageVal.termRef,
-    () => ScalaPackageVal.termRef
+  val StaticRootImportFns: List[RootRef] = List[RootRef](
+    (() => JavaLangPackageVal.termRef, false),
+    (() => ScalaPackageVal.termRef, false)
   )
 
-  val PredefImportFns: List[() => TermRef] = List[() => TermRef](
-    () => ScalaPredefModule.termRef,
-    () => DottyPredefModule.termRef
+  val PredefImportFns: List[RootRef] = List[RootRef](
+    (() => ScalaPredefModule.termRef, true),
+    (() => DottyPredefModule.termRef, false)
   )
 
-  @tu lazy val RootImportFns: List[() => TermRef] =
-    if (ctx.settings.YnoImports.value) List.empty[() => TermRef]
+  @tu lazy val RootImportFns: List[RootRef] =
+    if (ctx.settings.YnoImports.value) Nil
     else if (ctx.settings.YnoPredef.value) StaticRootImportFns
     else StaticRootImportFns ++ PredefImportFns
 
   @tu lazy val ShadowableImportNames: Set[TermName] = Set("Predef", "DottyPredef").map(_.toTermName)
-  @tu lazy val RootImportTypes: List[TermRef] = RootImportFns.map(_())
+  @tu lazy val RootImportTypes: List[TermRef] = RootImportFns.map(_._1())
 
   /** Modules whose members are in the default namespace and their module classes */
   @tu lazy val UnqualifiedOwnerTypes: Set[NamedType] =

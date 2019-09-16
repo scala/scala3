@@ -476,9 +476,9 @@ object desugar {
           stat
       }
       // The Identifiers defined by a case
-      def caseIds(tree: Tree) = tree match {
+      def caseIds(tree: Tree): List[Ident] = tree match {
         case tree: MemberDef => Ident(tree.name.toTermName) :: Nil
-        case PatDef(_, ids, _, _) => ids
+        case PatDef(_, ids: List[Ident] @ unchecked, _, _) => ids
       }
       val stats = impl.body.map(expandConstructor)
       if (isEnum) {
@@ -486,7 +486,8 @@ object desugar {
         if (enumCases.isEmpty)
           ctx.error("Enumerations must constain at least one case", namePos)
         val enumCompanionRef = TermRefTree()
-        val enumImport = Import(importGiven = false, enumCompanionRef, enumCases.flatMap(caseIds))
+        val enumImport =
+          Import(enumCompanionRef, enumCases.flatMap(caseIds).map(ImportSelector(_)))
         (enumImport :: enumStats, enumCases, enumCompanionRef)
       }
       else (stats, Nil, EmptyTree)

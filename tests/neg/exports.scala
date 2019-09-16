@@ -20,7 +20,7 @@
 
     export scanUnit.scanIt          // error: no eligible member
     export scanUnit.{scanAll => foo} // error: no eligible member
-    export printUnit.{stat => _, _} // error: double definition
+    export printUnit.{stat => _, _} // error: double definition // error: double definition
     export scanUnit._               // error: double definition
     export printUnit.bitmap         // error: no eligible member
     export given printUnit.status   // error: no eligible member

@@ -37,16 +37,15 @@ trait TreeOps extends Core {
   }
 
   object Import {
-    def apply(importImplied: Boolean, expr: Term, selectors: List[ImportSelector]) given (ctx: Context): Import =
-      internal.Import_apply(importImplied, expr, selectors)
-    def copy(original: Import)(importImplied: Boolean, expr: Term, selectors: List[ImportSelector]) given (ctx: Context): Import =
-      internal.Import_copy(original)(importImplied, expr, selectors)
-    def unapply(tree: Tree) given (ctx: Context): Option[(Boolean, Term, List[ImportSelector])] =
-      internal.matchImport(tree).map(x => (x.importImplied, x.expr, x.selectors))
+    def apply(expr: Term, selectors: List[ImportSelector]) given (ctx: Context): Import =
+      internal.Import_apply(expr, selectors)
+    def copy(original: Import)(expr: Term, selectors: List[ImportSelector]) given (ctx: Context): Import =
+      internal.Import_copy(original)(expr, selectors)
+    def unapply(tree: Tree) given (ctx: Context): Option[(Term, List[ImportSelector])] =
+      internal.matchImport(tree).map(x => (x.expr, x.selectors))
   }
 
   implicit class ImportAPI(self: Import)  {
-    def importImplied: Boolean = internal.Import_implied(self)
     def expr given (ctx: Context): Term = internal.Import_expr(self)
     def selectors given (ctx: Context): List[ImportSelector] =
       internal.Import_selectors(self)

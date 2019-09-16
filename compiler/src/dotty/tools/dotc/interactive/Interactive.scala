@@ -121,7 +121,7 @@ object Interactive {
       case _ :: (_:  New) :: (select: Select) :: _ =>
         List(select.symbol)
 
-      case (_: Thicket) :: (imp: Import) :: _ =>
+      case (_: untpd.ImportSelector) :: (imp: Import) :: _ =>
         importedSymbols(imp, _.span.contains(pos.span))
 
       case (imp: Import) :: _ =>

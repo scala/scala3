@@ -108,7 +108,25 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class GenAlias(pat: Tree, expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit @constructorOnly src: SourceFile) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
-  case class Export(impliedOnly: Boolean, expr: Tree, selectors: List[Tree])(implicit @constructorOnly src: SourceFile) extends Tree
+  case class Export(expr: Tree, selectors: List[ImportSelector])(implicit @constructorOnly src: SourceFile) extends Tree
+
+  case class ImportSelector(imported: Ident, renamed: Tree = EmptyTree, bound: Tree = EmptyTree)(implicit @constructorOnly src: SourceFile) extends Tree {
+
+    /** It's a `given` selector */
+    val isGiven: Boolean = imported.name.isEmpty
+
+    /** It's a `given` or `_` selector */
+    val isWildcard: Boolean = isGiven || imported.name == nme.WILDCARD
+
+    /** The imported name, EmptyTermName if it's a given selector */
+    val name: TermName = imported.name.asInstanceOf[TermName]
+
+    /** The renamed part (which might be `_`), if present, or `name`, if missing */
+    val rename: TermName = renamed match
+      case Ident(rename: TermName) => rename
+      case _ => name
+  }
+
   case class Number(digits: String, kind: NumberKind)(implicit @constructorOnly src: SourceFile) extends TermTree
 
   enum NumberKind {
@@ -344,7 +362,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Template(constr: DefDef, parents: List[Tree], derived: List[Tree], self: ValDef, body: LazyTreeList)(implicit src: SourceFile): Template =
     if (derived.isEmpty) new Template(constr, parents, self, body)
     else new DerivingTemplate(constr, parents ++ derived, self, body, derived.length)
-  def Import(importGiven: Boolean, expr: Tree, selectors: List[Tree])(implicit src: SourceFile): Import = new Import(importGiven, expr, selectors)
+  def Import(expr: Tree, selectors: List[ImportSelector])(implicit src: SourceFile): Import = new Import(expr, selectors)
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit src: SourceFile): PackageDef = new PackageDef(pid, stats)
   def Annotated(arg: Tree, annot: Tree)(implicit src: SourceFile): Annotated = new Annotated(arg, annot)
 
@@ -561,9 +579,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: PatDef if (mods eq tree.mods) && (pats eq tree.pats) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
       case _ => finalize(tree, untpd.PatDef(mods, pats, tpt, rhs)(tree.source))
     }
-    def Export(tree: Tree)(impliedOnly: Boolean, expr: Tree, selectors: List[Tree])(implicit ctx: Context): Tree = tree match {
-      case tree: Export if (impliedOnly == tree.impliedOnly) && (expr eq tree.expr) && (selectors eq tree.selectors) => tree
-      case _ => finalize(tree, untpd.Export(impliedOnly, expr, selectors)(tree.source))
+    def Export(tree: Tree)(expr: Tree, selectors: List[ImportSelector])(implicit ctx: Context): Tree = tree match {
+      case tree: Export if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
+      case _ => finalize(tree, untpd.Export(expr, selectors)(tree.source))
+    }
+    def ImportSelector(tree: Tree)(imported: Ident, renamed: Tree, bound: Tree)(implicit ctx: Context): Tree = tree match {
+      case tree: ImportSelector if (imported eq tree.imported) && (renamed eq tree.renamed) && (bound eq tree.bound) => tree
+      case _ => finalize(tree, untpd.ImportSelector(imported, renamed, bound)(tree.source))
     }
     def Number(tree: Tree)(digits: String, kind: NumberKind)(implicit ctx: Context): Tree = tree match {
       case tree: Number if (digits == tree.digits) && (kind == tree.kind) => tree
@@ -621,8 +643,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.ContextBounds(tree)(transformSub(bounds), transform(cxBounds))
       case PatDef(mods, pats, tpt, rhs) =>
         cpy.PatDef(tree)(mods, transform(pats), transform(tpt), transform(rhs))
-      case Export(impliedOnly, expr, selectors) =>
-        cpy.Export(tree)(impliedOnly, transform(expr), selectors)
+      case Export(expr, selectors) =>
+        cpy.Export(tree)(transform(expr), selectors)
+      case ImportSelector(imported, renamed, bound) =>
+        cpy.ImportSelector(tree)(transformSub(imported), transform(renamed), transform(bound))
       case Number(_, _) | TypedSplice(_) =>
         tree
       case _ =>
@@ -676,8 +700,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(this(x, bounds), cxBounds)
       case PatDef(mods, pats, tpt, rhs) =>
         this(this(this(x, pats), tpt), rhs)
-      case Export(_, expr, _) =>
+      case Export(expr, _) =>
         this(x, expr)
+      case ImportSelector(imported, renamed, bound) =>
+        this(this(this(x, imported), renamed), bound)
       case Number(_, _) =>
         x
       case TypedSplice(splice) =>

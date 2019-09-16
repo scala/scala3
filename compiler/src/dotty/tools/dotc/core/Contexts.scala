@@ -214,7 +214,7 @@ object Contexts {
         implicitsCache = {
           val implicitRefs: List[ImplicitRef] =
             if (isClassDefContext)
-              try owner.thisType.implicitMembers(GivenOrImplicit)
+              try owner.thisType.implicitMembers
               catch {
                 case ex: CyclicReference => Nil
               }
@@ -405,8 +405,7 @@ object Contexts {
         case ref: RefTree[?] => Some(ref.name.asTermName)
         case _               => None
       }
-      ctx.fresh.setImportInfo(
-        ImportInfo(sym, imp.selectors, impNameOpt, imp.importGiven))
+      ctx.fresh.setImportInfo(ImportInfo(sym, imp.selectors, impNameOpt))
     }
 
     /** Does current phase use an erased types interpretation? */

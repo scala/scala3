@@ -222,9 +222,9 @@ trait CompilerInterface {
   def Import_expr(self: Import) given (ctx: Context): Term
   def Import_selectors(self: Import) given (ctx: Context): List[ImportSelector]
 
-  def Import_apply(importImplied: Boolean, expr: Term, selectors: List[ImportSelector]) given (ctx: Context): Import
+  def Import_apply(iexpr: Term, selectors: List[ImportSelector]) given (ctx: Context): Import
 
-  def Import_copy(original: Import)(importImplied: Boolean, expr: Term, selectors: List[ImportSelector]) given (ctx: Context): Import
+  def Import_copy(original: Import)(expr: Term, selectors: List[ImportSelector]) given (ctx: Context): Import
 
   /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
   type Definition <: Statement
@@ -1093,7 +1093,7 @@ trait CompilerInterface {
 
   def matchOmitSelector(self: ImportSelector) given (ctx: Context): Option[OmitSelector]
 
-  def SimpleSelector_omited(self: OmitSelector) given (ctx: Context): Id
+  def SimpleSelector_omitted(self: OmitSelector) given (ctx: Context): Id
 
   //
   // IDENTIFIERS

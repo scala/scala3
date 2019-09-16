@@ -341,9 +341,9 @@ ImportSpec        ::=  id
                     | ‘_’
                     | ‘given’
                     | ‘{’ ImportSelectors) ‘}’
-ImportSelectors   ::=  [‘given’] id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
+ImportSelectors   ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
                     |  WildCardSelector {‘,’ WildCardSelector}
-WildCardSelector  ::=  ‘given’ [‘as’ InfixType]
+WildCardSelector  ::=  ‘given’ [InfixType]
                     |  ‘_' [‘:’ InfixType]
 Export            ::=  ‘export’ [‘given’] ImportExpr {‘,’ ImportExpr}
 ```

@@ -14,7 +14,7 @@ object A {
 
 object Test extends App {
   import A._
-  import given A.{t, for B, D[_]}
+  import A.{t, given B, given D[_]}
 
   val x1: B = b
   val x2: T = t
@@ -37,7 +37,7 @@ object Instances {
 }
 
 object Test2 {
-  import given Instances.{for Ordering[_], ExecutionContext}
+  import Instances.{given Ordering[_], given ExecutionContext}
   val x = intOrd
   val y = listOrd[Int]
   val z = ec
@@ -47,7 +47,7 @@ object Test2 {
 }
 
 object Test3 {
-  import given Instances.{im, for Ordering[_]}
+  import Instances.{im, given Ordering[_]}
   val x = intOrd
   val y = listOrd[Int]
   val z = im

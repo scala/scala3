@@ -17,7 +17,7 @@ import scala.util.control.NonFatal
 import scala.io.Codec
 
 import dotc._
-import ast.{Trees, tpd}
+import ast.{Trees, tpd, untpd}
 import core._, core.Decorators._
 import Annotations.AnnotInfo
 import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
@@ -394,7 +394,7 @@ class DottyLanguageServer extends LanguageServer
     val refs =
       path match {
         // Selected a renaming in an import node
-        case Thicket(_ :: (rename: Ident) :: Nil) :: (_: Import) :: rest if rename.span.contains(pos.span) =>
+        case untpd.ImportSelector(_, rename: Ident, _) :: (_: Import) :: rest if rename.span.contains(pos.span) =>
           findRenamedReferences(uriTrees, syms, rename.name)
 
         // Selected a reference that has been renamed

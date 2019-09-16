@@ -733,6 +733,18 @@ class Namer { typer: Typer =>
     try index(tree :: Nil) finally lateCompile = saved
   }
 
+  /** The type bound on wildcard imports of an import list, with special values
+   *    Nothing  if no wildcard imports of this kind exist
+   *    Any      if there are unbounded wildcard imports of this kind
+   */
+  def importBound(sels: List[untpd.ImportSelector], isGiven: Boolean)(implicit ctx: Context): Type =
+    sels.foldLeft(defn.NothingType: Type) { (bound, sel) =>
+      if sel.isWildcard && sel.isGiven == isGiven then
+        if sel.bound.isEmpty then defn.AnyType
+        else bound | typedAheadType(sel.bound).tpe
+      else bound
+    }
+
   def missingType(sym: Symbol, modifier: String)(implicit ctx: Context): Unit = {
     ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.sourcePos)
     sym.resetFlag(GivenOrImplicit)
@@ -939,14 +951,15 @@ class Namer { typer: Typer =>
        */
       def exportForwarders(exp: Export): List[tpd.MemberDef] = {
         val buf = new mutable.ListBuffer[tpd.MemberDef]
-        val Export(_, expr, selectors) = exp
+        val Export(expr, selectors) = exp
         val path = typedAheadExpr(expr, AnySelectionProto)
         checkLegalImportPath(path)
+        lazy val wildcardBound = importBound(selectors, isGiven = false)
+        lazy val givenBound = importBound(selectors, isGiven = true)
 
         def whyNoForwarder(mbr: SingleDenotation): String = {
           val sym = mbr.symbol
-          if (sym.isOneOf(GivenOrImplicit) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}a given instance"
-          else if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
+          if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
           else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) SKIP
           else if (cls.derivesFrom(sym.owner) &&
                    (sym.owner == cls || !sym.is(Deferred))) i"is already a member of $cls"
@@ -1021,35 +1034,30 @@ class Namer { typer: Typer =>
           }
         }
 
-        def addForwardersExcept(seen: List[TermName], span: Span): Unit =
-          for {
-            mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic)
-          }
-          {
+        def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
+          for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
             val alias = mbr.name.toTermName
-            if (!seen.contains(alias)) addForwarder(alias, mbr, span)
-          }
+            if !seen.contains(alias)
+               && mbr.matchesImportBound(if mbr.symbol.is(Given) then givenBound else wildcardBound)
+            then addForwarder(alias, mbr, span)
 
-        def recur(seen: List[TermName], sels: List[untpd.Tree]): Unit = sels match {
-          case (sel @ Ident(nme.WILDCARD)) :: _ =>
-            addForwardersExcept(seen, sel.span)
-          case (sel @ Ident(name: TermName)) :: rest =>
-            addForwardersNamed(name, name, sel.span)
-            recur(name :: seen, rest)
-          case Thicket((sel @ Ident(fromName: TermName)) :: Ident(toName: TermName) :: Nil) :: rest =>
-            if (toName != nme.WILDCARD) addForwardersNamed(fromName, toName, sel.span)
-            recur(fromName :: seen, rest)
+        def addForwarders(sels: List[untpd.ImportSelector], seen: List[TermName]): Unit = sels match
+          case sel :: sels1 =>
+            if sel.isWildcard then
+              addWildcardForwarders(seen, sel.span)
+            else
+              addForwardersNamed(sel.name, sel.rename, sel.span)
+              addForwarders(sels1, sel.name :: seen)
           case _ =>
-        }
 
-        recur(Nil, selectors)
+        addForwarders(selectors, Nil)
         val forwarders = buf.toList
         exp.pushAttachment(ExportForwarders, forwarders)
         forwarders
       }
 
       val forwarderss =
-        for (exp @ Export(_, _, _) <- rest) yield exportForwarders(exp)
+        for (exp @ Export(_, _) <- rest) yield exportForwarders(exp)
       forwarderss.foreach(_.foreach(fwdr => fwdr.symbol.entered))
     }
 

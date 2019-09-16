@@ -9,7 +9,7 @@ object A {
 
 object Test extends App {
   import A._
-  import given A.{for B}
+  import A.{given B}
 
   val x: B = b // OK
   println(c) // error: not found

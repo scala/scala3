@@ -333,19 +333,26 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => tree
     }
 
-    def importText(givenOnly: Boolean, expr: Tree, selectors: List[Tree]) = {
-      def selectorText(sel: Tree): Text = sel match {
-        case Thicket(l :: r :: Nil) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
-        case _: Ident => toTextGlobal(sel)
-        case TypeBoundsTree(_, tpt) => "_: " ~ toTextGlobal(tpt)
-      }
-      val selectorsText: Text = selectors match {
-        case id :: Nil => toText(id)
-        case _ => "{" ~ Text(selectors map selectorText, ", ") ~ "}"
-      }
-      keywordText("given ").provided(givenOnly)
-      ~ toTextLocal(expr) ~ "." ~ selectorsText
-    }
+    def importText(expr: Tree, selectors: List[untpd.ImportSelector]) =
+
+      def selectorText(sel: untpd.ImportSelector): Text =
+        val id: Text =
+          if sel.isGiven then keywordText("given") else toText(sel.imported)
+        val rename: Text =
+          if sel.renamed.isEmpty then "" else Str(" => ") ~ toText(sel.renamed)
+        val bound: Text =
+          if sel.bound.isEmpty then ""
+          else if sel.isGiven then Str(" ") ~ toText(sel.bound)
+          else Str(" : ") ~ toText(sel.bound)
+        id ~ rename ~ bound
+
+      val selectorsText: Text = selectors match
+        case (sel @ untpd.ImportSelector(name, EmptyTree, EmptyTree)) :: Nil =>
+          selectorText(sel)
+        case _ =>
+          "{" ~ Text(selectors.map(selectorText), ", ") ~ "}"
+
+      toTextLocal(expr) ~ "." ~ selectorsText
 
     tree match {
       case id: Trees.SearchFailureIdent[?] =>
@@ -528,10 +535,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))
         }
         recur(rhs, "")
-      case Import(deleg, expr, selectors) =>
-        keywordText("import ") ~ importText(deleg, expr, selectors)
-      case Export(deleg, expr, selectors) =>
-        keywordText("export ") ~ importText(deleg, expr, selectors)
+      case Import(expr, selectors) =>
+        keywordText("import ") ~ importText(expr, selectors)
+      case Export(expr, selectors) =>
+        keywordText("export ") ~ importText(expr, selectors)
       case packageDef: PackageDef =>
         packageDefText(packageDef)
       case tree: Template =>

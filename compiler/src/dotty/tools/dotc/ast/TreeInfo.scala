@@ -360,7 +360,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def statPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
     case EmptyTree
        | TypeDef(_, _)
-       | Import(_, _, _)
+       | Import(_, _)
        | DefDef(_, _, _, _, _) =>
       Pure
     case vdef @ ValDef(_, _, _) =>

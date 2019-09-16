@@ -54,8 +54,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       .setTyperState(new TyperState(ctx.typerState))
       .setFreshNames(new FreshNameCreator.Default)
     ctx.initialize()(start) // re-initialize the base context with start
-    def addImport(ctx: Context, refFn: () => TermRef) =
-      ctx.fresh.setImportInfo(ImportInfo.rootImport(refFn)(ctx))
+    def addImport(ctx: Context, rootRef: ImportInfo.RootRef) =
+      ctx.fresh.setImportInfo(ImportInfo.rootImport(rootRef)(ctx))
     defn.RootImportFns.foldLeft(start.setRun(this))(addImport)
   }
 
