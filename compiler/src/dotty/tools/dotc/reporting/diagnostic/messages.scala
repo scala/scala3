@@ -2174,7 +2174,8 @@ object messages {
       def symLocation(sym: Symbol) = {
         val lineDesc =
           if (sym.span.exists && sym.span != sym.owner.span)
-            s" at line ${sym.sourcePos.line + 1}" else ""
+            s" at line ${sym.sourcePos.line + 1}"
+          else ""
         i"in ${sym.owner}${lineDesc}"
       }
       val clashDescription =

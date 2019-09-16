@@ -254,7 +254,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
     def setters(mixin: ClassSymbol): List[Tree] =
       for (setter <- mixin.info.decls.filter(setr => setr.isSetter && !wasOneOf(setr, Deferred)))
-        yield transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
+      yield transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
 
     def mixinForwarders(mixin: ClassSymbol): List[Tree] =
       for (meth <- mixin.info.decls.toList if needsMixinForwarder(meth))

@@ -1234,6 +1234,9 @@ object Parsers {
       case _ => op
     }
 
+    def observeIndentedUnlessFollowedBy(followers: BitSet): Unit =
+      if !followers.contains(in.token) then in.observeIndented()
+
 /* ------------- TYPES ------------------------------------------------------ */
 
     /** Same as [[typ]], but if this results in a wildcard it emits a syntax error and
@@ -1637,7 +1640,7 @@ object Parsers {
           in.nextToken()
         }
         else
-          in.observeIndented()
+          observeIndentedUnlessFollowedBy(BitSet(THEN, DO))
           if (rewriteToNewSyntax(t.span))
             dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
         t
@@ -2298,7 +2301,7 @@ object Parsers {
                 dropParensOrBraces(start, if (in.token == YIELD || in.token == DO) "" else "do")
               }
             }
-            in.observeIndented()
+            observeIndentedUnlessFollowedBy(BitSet(YIELD, DO))
             res
           }
           else {
