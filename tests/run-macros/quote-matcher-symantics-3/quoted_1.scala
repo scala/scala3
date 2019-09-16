@@ -17,7 +17,7 @@ object Macros {
       env.updated(id, ref)
 
     object FromEnv {
-      def unapply[T](id: Bind[T])(given Env: Option[Expr[R[T]]]) =
+      def unapply[T](id: Bind[T])(given Env): Option[Expr[R[T]]] =
         summon[Env].get(id).asInstanceOf[Option[Expr[R[T]]]] // We can only add binds that have the same type as the refs
     }
 
