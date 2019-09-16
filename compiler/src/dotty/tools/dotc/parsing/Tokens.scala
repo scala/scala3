@@ -254,7 +254,7 @@ object Tokens extends TokensCommon {
     AT, CASE)
 
   final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(
-    TYPE, RPAREN, RBRACE, RBRACKET, OUTDENT)
+    TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT)
 
   /** Tokens that stop a lookahead scan search for a `<-`, `then`, or `do`.
    *  Used for disambiguating between old and new syntax.
