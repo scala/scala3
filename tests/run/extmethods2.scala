@@ -8,12 +8,12 @@ object Test extends App {
     def (x: T) bar (y: Int) = (x(0)(y), summon[TC])
   }
 
-  def test given TC = {
+  def test(given TC) = {
     assert(List("abc").foo(List("def"))._1 == List("abc", "def"))
     assert(List("abc").bar(2)._1 == 'c')
   }
 
-  test given TC()
+  test(given TC())
 
   object A {
     given listOps: [T](xs: List[T]) {
@@ -28,7 +28,7 @@ object Test extends App {
   }
 
   object B {
-    import given A._
+    import A.given
     val xs = List(1, 2, 3)
     assert(xs.second[Int] == 2)
     assert(xs.third == 3)

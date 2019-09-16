@@ -249,7 +249,7 @@ object Implicits extends Common {
 object Test extends App {
   Instances.test()
   import PostConditions.result
-  import given PostConditions._
+  import PostConditions.given
   val s = List(1, 2, 3).sum
   s.ensuring(result == 6)
 }

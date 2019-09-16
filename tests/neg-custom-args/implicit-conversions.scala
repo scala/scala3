@@ -21,7 +21,7 @@ object D {
 }
 
 object Test {
-  import given D._
+  import D.given
 
   val x1: A = new B
   val x2: B = new A  // error under -Xfatal-warnings -feature

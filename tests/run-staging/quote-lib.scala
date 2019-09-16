@@ -1,7 +1,7 @@
 
 import scala.quoted._
 import scala.quoted.staging._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 import liftable.Units._
 import liftable.Lets._
@@ -116,7 +116,7 @@ package liftable {
 
   object Exprs {
     implicit class LiftExprOps[T](x: T) extends AnyVal {
-      def toExpr given Liftable[T], QuoteContext: Expr[T] =
+      def toExpr(given Liftable[T], QuoteContext): Expr[T] =
         summon[Liftable[T]].toExpr(x)
     }
   }

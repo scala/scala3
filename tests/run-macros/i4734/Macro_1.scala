@@ -1,6 +1,6 @@
 import scala.annotation.tailrec
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 object Macros {
   inline def unrolledForeach(seq: IndexedSeq[Int], f: => Int => Unit, inline unrollSize: Int): Unit = // or f: Int => Unit

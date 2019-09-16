@@ -85,7 +85,7 @@ object Contextual {
 
   def runOn(f: java.io.File): Ctx[Int] = {
     val options = List("-verbose", "-explaintypes")
-    process(f).apply given ctx.withBinding(Options, options)
+    process(f).apply(given ctx.withBinding(Options, options))
   }
 
   def process(f: java.io.File): Ctx[Int] =

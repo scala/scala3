@@ -1,5 +1,5 @@
 import scala.annotation.tailrec
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 import scala.quoted._
 

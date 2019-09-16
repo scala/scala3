@@ -3,7 +3,7 @@ import UnrolledExpr._
 
 import scala.reflect.ClassTag
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 object Lifters {
   implicit def LiftedClassTag[T: Type: ClassTag] (given QuoteContext): Expr[ClassTag[T]] = {

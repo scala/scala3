@@ -1,6 +1,6 @@
 
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 import scala.quoted.matching._
 
 object Macro {

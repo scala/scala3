@@ -1,5 +1,5 @@
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 class LineNumber(val value: Int) {
   override def toString: String = value.toString

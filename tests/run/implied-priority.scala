@@ -19,7 +19,7 @@ object NormalImplicits extends LowPriorityImplicits {
 }
 
 def test1 = {
-  import given NormalImplicits._
+  import NormalImplicits.given
   assert(summon[E[String]].str == "low") // No Arg available, so only t1 applies
 
   { given Arg[String]
@@ -43,7 +43,7 @@ object Impl2 {
 }
 
 def test2 = {
-  import given Impl2._
+  import Impl2.given
   assert(summon[E[String]].str == "low") // No Arg available, so only t1 applies
 
   { given Arg[String]
@@ -64,8 +64,8 @@ object Impl2a {
 }
 
 def test2a = {
-  import given Impl2._
-  import given Impl2a._
+  import Impl2.given
+  import Impl2a.given
 
   given Arg[String]
   assert(summon[E[String]].str == "hi")
@@ -85,11 +85,11 @@ object Override {
 }
 
 def test3 = {
-  import given Impl3._
+  import Impl3.given
   assert(summon[E[String]].str == "low")  // only t1 is available
 
-  { import given Override._
-    import given Impl3._
+  { import Override.given
+    import Impl3.given
     assert(summon[E[String]].str == "hi") // `over` takes priority since its result type is a subtype of t1's.
   }
 }
@@ -111,7 +111,7 @@ object fallback4 {
 }
 
 def test4 = {
-  import given Impl4._
+  import Impl4.given
   import fallback4._
   assert(withFallback[String].str == "string")  // t1 is applicable
   assert(withFallback[Int].str == "fallback")   // No applicable instances, pick the default
@@ -138,8 +138,8 @@ object fallback5 {
 }
 
 def test5 = {
-  import given Impl4._
-  import given fallback5._
+  import Impl4.given
+  import fallback5.given
 
   // All inferred terms go through the given instance in fallback5.
   // They differ in what implicit argument is synthesized for that instance.

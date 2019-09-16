@@ -1,5 +1,5 @@
 import scala.quoted._, scala.deriving._
-import given scala.quoted._
+import scala.quoted.given
 
 inline def mcr: Any = ${mcrImpl}
 def mcrImpl(given ctx: QuoteContext): Expr[Any] = {

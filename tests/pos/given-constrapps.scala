@@ -13,7 +13,7 @@ class C2(n: Int)(given x: TC)(given List[TC]) {
 class D extends C(given tc)
 class D2 extends C2(1)(given tc)(given Nil)
 
-class Foo given TC {
+class Foo(given TC) {
   assert(summon[TC] != null)
 }
 

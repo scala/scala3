@@ -1,5 +1,5 @@
 
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 import scala.quoted._
 import scala.quoted.staging._

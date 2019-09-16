@@ -23,7 +23,7 @@
     export printUnit.{stat => _, _} // error: double definition // error: double definition
     export scanUnit._               // error: double definition
     export printUnit.bitmap         // error: no eligible member
-    export given printUnit.status   // error: no eligible member
+    export printUnit.status         // error: double definition
 
     def status: List[String] = printUnit.status ++ scanUnit.status
   }

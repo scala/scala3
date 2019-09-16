@@ -5,7 +5,7 @@ object Test {
 
     def testO(): Unit = {
       import AsObject.LineNo
-      summon[LineNo] given LineNo.x
+      summon[LineNo](given LineNo.x)
     }
   }
 }
