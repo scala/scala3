@@ -1636,8 +1636,10 @@ object Parsers {
           if (rewriteToOldSyntax()) revertToParens(t)
           in.nextToken()
         }
-        else if (rewriteToNewSyntax(t.span))
-          dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
+        else
+          in.observeIndented()
+          if (rewriteToNewSyntax(t.span))
+            dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
         t
       }
       else {
@@ -2296,6 +2298,7 @@ object Parsers {
                 dropParensOrBraces(start, if (in.token == YIELD || in.token == DO) "" else "do")
               }
             }
+            in.observeIndented()
             res
           }
           else {
