@@ -388,7 +388,7 @@ ObjectDef         ::=  id [Template]                                            
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
 GivenDef          ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
                     |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
-                    |  [id ‘:’] [ExtParamClause] TemplateBody
+                    |  [GivenSig ‘:’] [ExtParamClause] TemplateBody
 GivenSig          ::=  [id] [DefTypeParamClause] {GivenParamClause}
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’ {GivenParamClause}
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)

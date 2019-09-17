@@ -80,10 +80,10 @@ So `circle.circumference` translates to `CircleOps.circumference(circle)`, provi
 
 ### Given Instances for Extension Methods
 
-Given instances that define extension methods can also be defined without an `as` clause. E.g.,
+Given instances that define extension methods can also be defined without a parent. E.g.,
 
 ```scala
-given StringOps {
+given stringOps: {
   def (xs: Seq[String]) longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
@@ -98,18 +98,18 @@ If such given instances are anonymous (as in the second clause), their name is s
 
 ### Given Instances with Collective Parameters
 
-If a given instance has several extension methods one can pull out the left parameter section
+If a given instance has no parent but several extension methods one can pull out the left parameter section
 as well as any type parameters of these extension methods into the given instance itself.
 For instance, here is a given instance with two extension methods.
 ```scala
-given ListOps {
+given listOps: {
   def (xs: List[T]) second[T]: T = xs.tail.head
   def (xs: List[T]) third[T]: T = xs.tail.tail.head
 }
 ```
 The repetition in the parameters can be avoided by moving the parameters into the given instance itself. The following version is a shorthand for the code above.
 ```scala
-given ListOps[T](xs: List[T]) {
+given listOps: [T](xs: List[T]) {
   def second: T = xs.tail.head
   def third: T = xs.tail.tail.head
 }
@@ -168,6 +168,7 @@ to the [current syntax](../../internals/syntax.md).
 ```
 DefSig            ::=  ...
                     |  ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] DefParamClauses
-GivenBody         ::=  ...
-                    |  ‘(’ DefParam ‘)’ TemplateBody
+GivenDef          ::=  ...
+                       [GivenSig ‘:’] [ExtParamClause] TemplateBody
+ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’ {GivenParamClause}
 ```
