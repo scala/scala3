@@ -286,7 +286,7 @@ trait TreeUtils
   /** Bind the `rhs` to a `val` and use it in `body` */
   def let(rhs: Term)(body: Ident => Term): Term = {
     import scala.quoted.QuoteContext
-    given as QuoteContext = new QuoteContext(this)
+    given QuoteContext = new QuoteContext(this)
     val expr = (rhs.seal: @unchecked) match {
       case '{ $rhsExpr: $t } =>
         '{

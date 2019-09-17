@@ -1,5 +1,5 @@
 import scala.quoted._
-import delegate scala.quoted._
+import scala.quoted.given
 
 inline def seq = ${fooImpl}
 

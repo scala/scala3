@@ -10,7 +10,7 @@ import util.Spans.Span
 
 object Annotations {
 
-  def annotClass(tree: Tree) given Context =
+  def annotClass(tree: Tree)(given Context) =
     if (tree.symbol.isConstructor) tree.symbol.owner
     else tree.tpe.typeSymbol
 

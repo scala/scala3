@@ -86,7 +86,7 @@ It will create a project with the necessary dependencies and some examples.
 Now take exactly the same example as in [Macros](./macros.md). Assume that we
 do not want to pass an array statically but generated code at run-time and pass
 the value, also at run-time. Note, how we make a future-stage function of type
-`Expr[Array[Int] => Int]` in line 4 below. Using `run { ... }` we can evaluate an 
+`Expr[Array[Int] => Int]` in line 4 below. Using `run { ... }` we can evaluate an
 expression at runtime. Within the scope of `run` we can also invoke `show` on an expression
 to get a source-like representation of the expression.
 
@@ -94,7 +94,7 @@ to get a source-like representation of the expression.
 import scala.quoted.staging._
 
 // make available the necessary toolbox for runtime code generation
-given as Toolbox = Toolbox.make(getClass.getClassLoader)
+given Toolbox = Toolbox.make(getClass.getClassLoader)
 
 val f: Array[Int] => Int = run {
   val stagedSum: Expr[Array[Int] => Int] = '{ (arr: Array[Int]) => ${sum('arr)}}

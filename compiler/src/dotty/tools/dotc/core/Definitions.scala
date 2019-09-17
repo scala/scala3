@@ -403,7 +403,7 @@ class Definitions {
 
   @tu lazy val CollectionSeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
   @tu lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.immutable.Seq")
-  def SeqClass given Context: ClassSymbol = SeqType.symbol.asClass
+  def SeqClass(given Context): ClassSymbol = SeqType.symbol.asClass
     @tu lazy val Seq_apply        : Symbol = SeqClass.requiredMethod(nme.apply)
     @tu lazy val Seq_head         : Symbol = SeqClass.requiredMethod(nme.head)
     @tu lazy val Seq_drop         : Symbol = SeqClass.requiredMethod(nme.drop)
@@ -412,7 +412,7 @@ class Definitions {
     @tu lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
 
   @tu lazy val ArrayType: TypeRef = ctx.requiredClassRef("scala.Array")
-  def ArrayClass given Context: ClassSymbol = ArrayType.symbol.asClass
+  def ArrayClass(given Context): ClassSymbol = ArrayType.symbol.asClass
     @tu lazy val Array_apply     : Symbol = ArrayClass.requiredMethod(nme.apply)
     @tu lazy val Array_update    : Symbol = ArrayClass.requiredMethod(nme.update)
     @tu lazy val Array_length    : Symbol = ArrayClass.requiredMethod(nme.length)
@@ -422,10 +422,10 @@ class Definitions {
   @tu lazy val ArrayModule: Symbol = ctx.requiredModule("scala.Array")
 
   @tu lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", java.lang.Void.TYPE, UnitEnc, nme.specializedTypeNames.Void)
-  def UnitClass given Context: ClassSymbol = UnitType.symbol.asClass
-  def UnitModuleClass given Context: Symbol = UnitType.symbol.asClass.linkedClass
+  def UnitClass(given Context): ClassSymbol = UnitType.symbol.asClass
+  def UnitModuleClass(given Context): Symbol = UnitType.symbol.asClass.linkedClass
   @tu lazy val BooleanType: TypeRef = valueTypeRef("scala.Boolean", java.lang.Boolean.TYPE, BooleanEnc, nme.specializedTypeNames.Boolean)
-  def BooleanClass given Context: ClassSymbol = BooleanType.symbol.asClass
+  def BooleanClass(given Context): ClassSymbol = BooleanType.symbol.asClass
     @tu lazy val Boolean_!  : Symbol = BooleanClass.requiredMethod(nme.UNARY_!)
     @tu lazy val Boolean_&& : Symbol = BooleanClass.requiredMethod(nme.ZAND) // ### harmonize required... calls
     @tu lazy val Boolean_|| : Symbol = BooleanClass.requiredMethod(nme.ZOR)
@@ -441,13 +441,13 @@ class Definitions {
       }).symbol
 
   @tu lazy val ByteType: TypeRef = valueTypeRef("scala.Byte", java.lang.Byte.TYPE, ByteEnc, nme.specializedTypeNames.Byte)
-  def ByteClass given Context: ClassSymbol = ByteType.symbol.asClass
+  def ByteClass(given Context): ClassSymbol = ByteType.symbol.asClass
   @tu lazy val ShortType: TypeRef = valueTypeRef("scala.Short", java.lang.Short.TYPE, ShortEnc, nme.specializedTypeNames.Short)
-  def ShortClass given Context: ClassSymbol = ShortType.symbol.asClass
+  def ShortClass(given Context): ClassSymbol = ShortType.symbol.asClass
   @tu lazy val CharType: TypeRef = valueTypeRef("scala.Char", java.lang.Character.TYPE, CharEnc, nme.specializedTypeNames.Char)
-  def CharClass given Context: ClassSymbol = CharType.symbol.asClass
+  def CharClass(given Context): ClassSymbol = CharType.symbol.asClass
   @tu lazy val IntType: TypeRef = valueTypeRef("scala.Int", java.lang.Integer.TYPE, IntEnc, nme.specializedTypeNames.Int)
-  def IntClass given Context: ClassSymbol = IntType.symbol.asClass
+  def IntClass(given Context): ClassSymbol = IntType.symbol.asClass
     @tu lazy val Int_-  : Symbol = IntClass.requiredMethod(nme.MINUS, List(IntType))
     @tu lazy val Int_+  : Symbol = IntClass.requiredMethod(nme.PLUS, List(IntType))
     @tu lazy val Int_/  : Symbol = IntClass.requiredMethod(nme.DIV, List(IntType))
@@ -456,18 +456,18 @@ class Definitions {
     @tu lazy val Int_>= : Symbol = IntClass.requiredMethod(nme.GE, List(IntType))
     @tu lazy val Int_<= : Symbol = IntClass.requiredMethod(nme.LE, List(IntType))
   @tu lazy val LongType: TypeRef = valueTypeRef("scala.Long", java.lang.Long.TYPE, LongEnc, nme.specializedTypeNames.Long)
-  def LongClass given Context: ClassSymbol = LongType.symbol.asClass
+  def LongClass(given Context): ClassSymbol = LongType.symbol.asClass
     @tu lazy val Long_+ : Symbol = LongClass.requiredMethod(nme.PLUS, List(LongType))
     @tu lazy val Long_* : Symbol = LongClass.requiredMethod(nme.MUL, List(LongType))
     @tu lazy val Long_/ : Symbol = LongClass.requiredMethod(nme.DIV, List(LongType))
 
   @tu lazy val FloatType: TypeRef = valueTypeRef("scala.Float", java.lang.Float.TYPE, FloatEnc, nme.specializedTypeNames.Float)
-  def FloatClass given Context: ClassSymbol = FloatType.symbol.asClass
+  def FloatClass(given Context): ClassSymbol = FloatType.symbol.asClass
   @tu lazy val DoubleType: TypeRef = valueTypeRef("scala.Double", java.lang.Double.TYPE, DoubleEnc, nme.specializedTypeNames.Double)
-  def DoubleClass given Context: ClassSymbol = DoubleType.symbol.asClass
+  def DoubleClass(given Context): ClassSymbol = DoubleType.symbol.asClass
 
   @tu lazy val BoxedUnitClass: ClassSymbol = ctx.requiredClass("scala.runtime.BoxedUnit")
-    def BoxedUnit_UNIT given Context: TermSymbol = BoxedUnitClass.linkedClass.requiredValue("UNIT")
+    def BoxedUnit_UNIT(given Context): TermSymbol = BoxedUnitClass.linkedClass.requiredValue("UNIT")
 
   @tu lazy val BoxedBooleanClass: ClassSymbol = ctx.requiredClass("java.lang.Boolean")
   @tu lazy val BoxedByteClass   : ClassSymbol = ctx.requiredClass("java.lang.Byte")
@@ -533,9 +533,9 @@ class Definitions {
   // in scalac modified to have Any as parent
 
   @tu lazy val ThrowableType: TypeRef          = ctx.requiredClassRef("java.lang.Throwable")
-  def ThrowableClass given Context: ClassSymbol = ThrowableType.symbol.asClass
+  def ThrowableClass(given Context): ClassSymbol = ThrowableType.symbol.asClass
   @tu lazy val SerializableType: TypeRef       = JavaSerializableClass.typeRef
-  def SerializableClass given Context: ClassSymbol = SerializableType.symbol.asClass
+  def SerializableClass(given Context): ClassSymbol = SerializableType.symbol.asClass
 
    @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = ctx.requiredClass("java.lang.Enum")

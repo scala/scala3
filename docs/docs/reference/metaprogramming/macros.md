@@ -269,7 +269,7 @@ in the sense that they could all be defined in a user program without
 knowing anything about the representation of `Expr` trees. For
 instance, here is a possible instance of `Liftable[Boolean]`:
 ```scala
-    given as Liftable[Boolean] {
+    given Liftable[Boolean] {
       def toExpr(b: Boolean) given QuoteContext: Expr[Boolean] =
         if (b) '{ true } else '{ false }
     }
@@ -278,7 +278,7 @@ Once we can lift bits, we can work our way up. For instance, here is a
 possible implementation of `Liftable[Int]` that does not use the underlying
 tree machinery:
 ```scala
-    given as Liftable[Int] {
+    given Liftable[Int] {
       def toExpr(n: Int) given QuoteContext: Expr[Int] = n match {
         case Int.MinValue    => '{ Int.MinValue }
         case _ if n < 0      => '{ - ${ toExpr(-n) } }
@@ -291,7 +291,7 @@ tree machinery:
 Since `Liftable` is a type class, its instances can be conditional. For example,
 a `List` is liftable if its element type is:
 ```scala
-    given [T: Liftable] as Liftable[List[T]] {
+    given [T: Liftable] : Liftable[List[T]] {
       def toExpr(xs: List[T]) given QuoteContext: Expr[List[T]] = xs match {
         case head :: tail => '{ ${ toExpr(head) } :: ${ toExpr(tail) } }
         case Nil => '{ Nil: List[T] }

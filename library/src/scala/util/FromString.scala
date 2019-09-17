@@ -13,35 +13,35 @@ trait FromString[T] {
 
 object FromString {
 
-  given as FromString[String] {
+  given FromString[String] {
     def fromString(s: String) = s
   }
 
-  given as FromString[Boolean] {
+  given FromString[Boolean] {
     def fromString(s: String) = s.toBoolean
   }
 
-  given as FromString[Byte] {
+  given FromString[Byte] {
     def fromString(s: String) = s.toByte
   }
 
-  given as FromString[Short] {
+  given FromString[Short] {
     def fromString(s: String) = s.toShort
   }
 
-  given as FromString[Int] {
+  given FromString[Int] {
     def fromString(s: String) = s.toInt
   }
 
-  given as FromString[Long] {
+  given FromString[Long] {
     def fromString(s: String) = s.toLong
   }
 
-  given as FromString[Float] {
+  given FromString[Float] {
     def fromString(s: String) = s.toFloat
   }
 
-  given as FromString[Double] {
+  given FromString[Double] {
     def fromString(s: String) = s.toDouble
   }
 }

@@ -6,7 +6,7 @@ import scala.quoted.staging.{run, Toolbox}
 
 object Main {
 
-  given as Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Toolbox = Toolbox.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = {
 

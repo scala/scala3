@@ -89,7 +89,7 @@ private[quoted] object Matcher {
     private given /*TreeListOps*/ {
 
       /** Check that all trees match with =?= and concatenate the results with && */
-      def (scrutinees: List[Tree]) =?= (patterns: List[Tree]) given Context, Env: Matching =
+      def (scrutinees: List[Tree]) =?= (patterns: List[Tree])(given Context, Env): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
 
     }
@@ -104,7 +104,7 @@ private[quoted] object Matcher {
        *  @param `the[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
        *  @return `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
        */
-      def (scrutinee0: Tree) =?= (pattern0: Tree) given Context, Env: Matching = {
+      def (scrutinee0: Tree) =?= (pattern0: Tree)(given Context, Env): Matching = {
 
         /** Normalize the tree */
         def normalize(tree: Tree): Tree = tree match {
@@ -277,7 +277,7 @@ private[quoted] object Matcher {
       }
     }
 
-    private def treeOptMatches(scrutinee: Option[Tree], pattern: Option[Tree]) given Context, Env: Matching = {
+    private def treeOptMatches(scrutinee: Option[Tree], pattern: Option[Tree])(given Context, Env): Matching = {
       (scrutinee, pattern) match {
         case (Some(x), Some(y)) => x =?= y
         case (None, None) => matched
@@ -285,7 +285,7 @@ private[quoted] object Matcher {
       }
     }
 
-    private def caseMatches(scrutinee: CaseDef, pattern: CaseDef) given Context, Env: Matching = {
+    private def caseMatches(scrutinee: CaseDef, pattern: CaseDef)(given Context, Env): Matching = {
       val (caseEnv, patternMatch) = scrutinee.pattern =?= pattern.pattern
       withEnv(caseEnv) {
         patternMatch &&
@@ -306,7 +306,7 @@ private[quoted] object Matcher {
        *  @return The new environment containing the bindings defined in this pattern tuppled with
        *          `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
        */
-      def (scrutinee: Pattern) =?= (pattern: Pattern) given Context, Env: (Env, Matching) = (scrutinee, pattern) match {
+      def (scrutinee: Pattern) =?= (pattern: Pattern)(given Context, Env): (Env, Matching) = (scrutinee, pattern) match {
         case (Pattern.Value(v1), Pattern.Unapply(TypeApply(Select(patternHole @ Ident("patternHole"), "unapply"), List(tpt)), Nil, Nil))
           if patternHole.symbol.owner.fullName == "scala.runtime.quoted.Matcher$" =>
           (the[Env], matched(v1.seal))
@@ -354,7 +354,7 @@ private[quoted] object Matcher {
 
     }
 
-    private def foldPatterns(patterns1: List[Pattern], patterns2: List[Pattern]) given Context, Env: (Env, Matching) = {
+    private def foldPatterns(patterns1: List[Pattern], patterns2: List[Pattern])(given Context, Env): (Env, Matching) = {
       if (patterns1.size != patterns2.size) (the[Env], notMatched)
       else patterns1.zip(patterns2).foldLeft((the[Env], matched)) { (acc, x) =>
         val (env, res) = (x._1 =?= x._2) given (the[Context], acc._1)

@@ -55,7 +55,7 @@ extends simply-typed lambda calculus with quotes and splices.
 
 ### Syntax
 
-The syntax of terms, values, and types is given as follows:
+The syntax of terms, values, and types is given follows:
 
     Terms         t  ::=  x                 variable
                           (x: T) => t       lambda
@@ -190,7 +190,7 @@ With the right extractors, the "AsFunction" conversion
 that maps expressions over functions to functions over expressions can
 be implemented in user code:
 ```scala
-    given AsFunction1[T, U] as Conversion[Expr[T => U], Expr[T] => Expr[U]] {
+    given AsFunction1[T, U] : Conversion[Expr[T => U], Expr[T] => Expr[U]] {
       def apply(f: Expr[T => U]): Expr[T] => Expr[U] =
        (x: Expr[T]) => f match {
          case Lambda(g) => g(x)

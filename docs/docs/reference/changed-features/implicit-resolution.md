@@ -43,10 +43,10 @@ affect implicits on the language level.
     Example:
 
         package p
-        given a as A
+        given a : A
 
         object o {
-          given b as B
+          given b : B
           type C
         }
 

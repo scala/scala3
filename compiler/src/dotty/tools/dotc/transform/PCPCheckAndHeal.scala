@@ -210,7 +210,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         levelError(sym, tp, pos, "")
     }
 
-  private def levelError(sym: Symbol, tp: Type, pos: SourcePosition, errMsg: String) given Context = {
+  private def levelError(sym: Symbol, tp: Type, pos: SourcePosition, errMsg: String)(given Context) = {
     def symStr =
       if (!tp.isInstanceOf[ThisType]) sym.show
       else if (sym.is(ModuleClass)) sym.sourceModule.show

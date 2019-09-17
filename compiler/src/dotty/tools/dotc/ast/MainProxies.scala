@@ -26,7 +26,7 @@ import ast.Trees._
  */
 object MainProxies {
 
-  def mainProxies(stats: List[tpd.Tree]) given Context: List[untpd.Tree] = {
+  def mainProxies(stats: List[tpd.Tree])(given Context): List[untpd.Tree] = {
     import tpd._
     def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap {
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>

@@ -17,47 +17,47 @@ package quoted {
   /** Some basic type tags, currently incomplete */
   object Type {
 
-    given UnitTag as Type[Unit] given (qctx: QuoteContext) = {
+    given UnitTag(given qctx: QuoteContext): Type[Unit] = {
       import qctx.tasty._
       defn.UnitType.seal.asInstanceOf[quoted.Type[Unit]]
     }
 
-    given BooleanTag as Type[Boolean] given (qctx: QuoteContext) = {
+    given BooleanTag(given qctx: QuoteContext): Type[Boolean] = {
       import qctx.tasty._
       defn.BooleanType.seal.asInstanceOf[quoted.Type[Boolean]]
     }
 
-    given ByteTag as Type[Byte] given (qctx: QuoteContext) = {
+    given ByteTag(given qctx: QuoteContext): Type[Byte] = {
       import qctx.tasty._
       defn.ByteType.seal.asInstanceOf[quoted.Type[Byte]]
     }
 
-    given CharTag as Type[Char] given (qctx: QuoteContext) = {
+    given CharTag(given qctx: QuoteContext): Type[Char] = {
       import qctx.tasty._
       defn.CharType.seal.asInstanceOf[quoted.Type[Char]]
     }
 
-    given ShortTag as Type[Short] given (qctx: QuoteContext) = {
+    given ShortTag(given qctx: QuoteContext): Type[Short] = {
       import qctx.tasty._
       defn.ShortType.seal.asInstanceOf[quoted.Type[Short]]
     }
 
-    given IntTag as Type[Int] given (qctx: QuoteContext) = {
+    given IntTag(given qctx: QuoteContext): Type[Int] = {
       import qctx.tasty._
       defn.IntType.seal.asInstanceOf[quoted.Type[Int]]
     }
 
-    given LongTag as Type[Long] given (qctx: QuoteContext) = {
+    given LongTag(given qctx: QuoteContext): Type[Long] = {
       import qctx.tasty._
       defn.LongType.seal.asInstanceOf[quoted.Type[Long]]
     }
 
-    given FloatTag as Type[Float] given (qctx: QuoteContext) = {
+    given FloatTag(given qctx: QuoteContext): Type[Float] = {
       import qctx.tasty._
       defn.FloatType.seal.asInstanceOf[quoted.Type[Float]]
     }
 
-    given DoubleTag as Type[Double] given (qctx: QuoteContext) = {
+    given DoubleTag(given qctx: QuoteContext): Type[Double] = {
       import qctx.tasty._
       defn.DoubleType.seal.asInstanceOf[quoted.Type[Double]]
     }

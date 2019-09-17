@@ -933,7 +933,7 @@ trait CompilerInterface {
   def matchTypeRef(tpe: TypeOrBounds) given (ctx: Context): Option[TypeRef]
 
   def TypeRef_qualifier(self: TypeRef) given (ctx: Context): TypeOrBounds
-  def TypeRef_name(self: TypeRef) given Context: String
+  def TypeRef_name(self: TypeRef)(given Context): String
 
   /** Type of a `super` refernce */
   type SuperType <: Type
