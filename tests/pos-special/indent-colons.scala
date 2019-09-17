@@ -1,6 +1,6 @@
 object Test
 
-  locally {
+  locally:
     var x = 0
     while x < 10 do x += 1
     val f = 10
@@ -8,7 +8,6 @@ object Test
       x += 1
       x < 10
     do ()
-  }
 
   def f(x: Int): Int =
     val y =
@@ -26,17 +25,15 @@ object Test
 
   val xs = List(1, 2, 3)
 
-  xs.map {
+  xs.map:
     x =>
       val y = x * x
       y * y
-  }
 
-  xs.map {
+  xs.map:
     x =>
     val y = x * x
     y + y
-  }
 
   xs.map { x =>
     val y = x * x
@@ -64,9 +61,9 @@ class Test2
   def foo = 1
 
   val x =
-    new Test2 {
+    new Test2:
       override def foo = 2
-    }
+    end new
   end x
 end Test2
 
@@ -110,13 +107,11 @@ class Coder(words: List[String])
   /** Invert the mnemonics map to give a map from chars 'A' ... 'Z' to '2' ... '9' */
   private val charCode0: Map[Char, Char] =
     mnemonics
-      .withFilter {
+      .withFilter:
         case (digit, str) => true
         case _ => false
-      }
-      .flatMap {
+      .flatMap:
         case (digit, str) => str map (ltr => ltr -> digit)
-      }
 end Coder
 
 object Test22

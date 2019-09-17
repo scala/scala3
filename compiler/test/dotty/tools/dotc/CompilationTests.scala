@@ -56,7 +56,8 @@ class CompilationTests extends ParallelTesting {
         "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",
         defaultOptions.and("-nowarn", "-Xfatal-warnings")
       ),
-      compileFile("tests/pos-special/typeclass-scaling.scala", defaultOptions.and("-Xmax-inlines", "40"))
+      compileFile("tests/pos-special/typeclass-scaling.scala", defaultOptions.and("-Xmax-inlines", "40")),
+      compileFile("tests/pos-special/indent-colons.scala", defaultOptions.and("-Yindent-colons"))
     ).checkCompile()
   }
 
