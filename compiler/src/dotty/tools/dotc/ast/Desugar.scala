@@ -933,7 +933,7 @@ object desugar {
 
   /** Invent a name for an anonympus given of type or template `impl`. */
   def inventGivenName(impl: Tree)(implicit ctx: Context): SimpleName =
-    avoidIllegalChars(s"${inventName(impl)}_given".toTermName.asSimpleName)
+    avoidIllegalChars(s"given_${inventName(impl)}".toTermName.asSimpleName)
 
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.

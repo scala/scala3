@@ -226,13 +226,13 @@ object Implicits extends Common {
   }
   implicit def ListOrd[T: Ord]: Ord[List[T]] = new ListOrd[T]
 
-  class Convertible_List_List_given[From, To](implicit c: Convertible[From, To])
+  class given_Convertible_List_List[From, To](implicit c: Convertible[From, To])
   extends Convertible[List[From], List[To]] {
     def (x: List[From]) convert: List[To] = x.map(c.convert)
   }
-  implicit def Convertible_List_List_given[From, To](implicit c: Convertible[From, To])
+  implicit def given_Convertible_List_List[From, To](implicit c: Convertible[From, To])
     : Convertible[List[From], List[To]] =
-    new Convertible_List_List_given[From, To]
+    new given_Convertible_List_List[From, To]
 
   def maximum[T](xs: List[T])
                 (implicit cmp: Ord[T]): T =

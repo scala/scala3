@@ -43,7 +43,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
     would map to
     ```scala
       final implicit lazy val global: ExecutionContext = new ForkJoinContext()
-      final implicit def Context_given = ctx
+      final implicit def given_Context = ctx
     ```
 
 ### Anonymous Given Instances
