@@ -281,6 +281,10 @@ object Tokens extends TokensCommon {
    */
   final val startParamOrGivenTypeTokens: BitSet = startParamTokens | BitSet(GIVEN, ERASED)
 
+  final val noIndentTemplateTokens = BitSet(EXTENDS)
+  final val noIndentAfterConditionTokens = BitSet(THEN, DO)
+  final val noIndentAfterEnumeratorTokens = BitSet(YIELD, DO)
+
   final val scala3keywords = BitSet(ENUM, ERASED, GIVEN, IMPLIED)
 
   final val softModifierNames = Set(nme.inline, nme.opaque)

@@ -535,10 +535,11 @@ object Scanners {
       }
     }
 
-    def observeIndented(): Unit =
+    def observeIndented(unless: BitSet, unlessSoftKW: TermName = EmptyTermName): Unit =
       if (indentSyntax && isAfterLineEnd && token != INDENT) {
         val newLineInserted = token == NEWLINE || token == NEWLINES
         val nextOffset = if (newLineInserted) next.offset else offset
+        val nextToken = if (newLineInserted) next.token else token
         val nextWidth = indentWidth(nextOffset)
         val lastWidth = currentRegion match {
           case r: Indented => r.width
@@ -546,12 +547,13 @@ object Scanners {
           case _ => nextWidth
         }
 
-        if (lastWidth < nextWidth) {
+        if lastWidth < nextWidth
+           && !unless.contains(nextToken)
+           && (unlessSoftKW.isEmpty || token != IDENTIFIER || name != unlessSoftKW) then
           currentRegion = Indented(nextWidth, Set(), COLONEOL, currentRegion)
           if (!newLineInserted) next.copyFrom(this)
           offset = nextOffset
           token = INDENT
-        }
       }
 
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL

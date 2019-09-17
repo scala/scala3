@@ -717,7 +717,6 @@ object Parsers {
      */
     def bracesToIndented[T](body: => T): T = {
       val colonRequired = possibleColonOffset == in.lastOffset
-      if colonRequired && !in.colonSyntax then return body
       val (startOpening, endOpening) = startingElimRegion(colonRequired)
       val isOutermost = in.currentRegion.isOutermost
       def allBraces(r: Region): Boolean = r match {
@@ -736,7 +735,7 @@ object Parsers {
         }
       })
       canRewrite &= (in.isAfterLineEnd || statCtdTokens.contains(in.token)) // test (5)
-      if (canRewrite) {
+      if (canRewrite && (!colonRequired || in.colonSyntax)) {
         val openingPatchStr =
           if (!colonRequired) ""
           else if (testChar(startOpening - 1, Chars.isOperatorPart(_))) " :"
@@ -1219,7 +1218,7 @@ object Parsers {
     }
 
     def possibleTemplateStart(): Unit = {
-      in.observeIndented()
+      in.observeIndented(noIndentTemplateTokens, nme.derives)
       newLineOptWhenFollowedBy(LBRACE)
     }
 
@@ -1234,9 +1233,6 @@ object Parsers {
       case pid: RefTree => indentRegion(pid.name.toTermName)(op)
       case _ => op
     }
-
-    def observeIndentedUnlessFollowedBy(followers: BitSet): Unit =
-      if !followers.contains(in.token) then in.observeIndented()
 
 /* ------------- TYPES ------------------------------------------------------ */
 
@@ -1641,7 +1637,7 @@ object Parsers {
           in.nextToken()
         }
         else
-          observeIndentedUnlessFollowedBy(BitSet(THEN, DO))
+          in.observeIndented(noIndentAfterConditionTokens)
           if (rewriteToNewSyntax(t.span))
             dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
         t
@@ -2302,7 +2298,7 @@ object Parsers {
                 dropParensOrBraces(start, if (in.token == YIELD || in.token == DO) "" else "do")
               }
             }
-            observeIndentedUnlessFollowedBy(BitSet(YIELD, DO))
+            in.observeIndented(noIndentAfterEnumeratorTokens)
             res
           }
           else {
@@ -3547,11 +3543,10 @@ object Parsers {
     /** TemplateOpt = [Template]
      */
     def templateOpt(constr: DefDef): Template =
-      possibleBracesStart()
+      possibleTemplateStart()
       if (in.token == EXTENDS || isIdent(nme.derives))
         template(constr)
       else {
-        possibleTemplateStart()
         if (in.isNestedStart) template(constr)
         else Template(constr, Nil, Nil, EmptyValDef, Nil)
       }
