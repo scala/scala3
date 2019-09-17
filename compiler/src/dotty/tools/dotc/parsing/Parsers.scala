@@ -868,8 +868,6 @@ object Parsers {
       while lookahead.token == LPAREN || lookahead.token == LBRACKET do
         lookahead.skipParens()
       lookahead.token == COLON
-      || lookahead.token == FOR
-      || lookahead.token == IDENTIFIER && lookahead.name == nme.as
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -2830,50 +2828,10 @@ object Parsers {
                      ofCaseClass: Boolean = false,
                      ofInstance: Boolean = false): List[List[ValDef]] = {
 
-      /** For given instance definitions we have a disambiguation problem:
-       *    given A as B
-       *    given C ...
-       *  Is the second line a parameter `given C` for the first `given` definition, or is it
-       *  a second `given` definition? We only know if we find a `for` or `as` in `...`
-       *  The same problem arises for
-       *    class A
-       *    given C ...
-       *  For method definitions we do not have this problem since a parameter clause
-       *  in a method definition is always followed by something else. So in
-       *    def m(...)
-       *    given C ...
-       *  we know that `given` must start a parameter list. It cannot be a new given` definition.
-       */
-      def followingIsInstanceDef =
-        (ofClass || ofInstance) && {
-          val lookahead = in.LookaheadScanner() // skips newline on startup
-          lookahead.nextToken()  // skip the `given`
-          if (lookahead.token == LBRACKET) true
-          else {
-            if (lookahead.token == IDENTIFIER && lookahead.name != nme.as ||
-                   lookahead.token == BACKQUOTED_IDENT) {
-              lookahead.nextToken()
-              if (lookahead.token == LBRACKET) {
-                lookahead.nextToken()
-                var openBrackets = 1
-                while (openBrackets > 0 && lookahead.token != EOF) {
-                  if (lookahead.token == LBRACKET) openBrackets += 1
-                  else if (lookahead.token == RBRACKET) openBrackets -= 1
-                  lookahead.nextToken()
-                }
-              }
-            }
-            lookahead.token == FOR ||
-            lookahead.token == IDENTIFIER && lookahead.name == nme.as
-          }
-        }
-
       def recur(firstClause: Boolean, nparams: Int, contextualOnly: Boolean): List[List[ValDef]] = {
         var initialMods = EmptyModifiers
         val isNewLine = in.token == NEWLINE
         newLineOptWhenFollowedBy(LPAREN)
-        if (in.token == NEWLINE && in.next.token == GIVEN && allowOldGiven && !followingIsInstanceDef)
-          in.nextToken()
         if (in.token == GIVEN && allowOldGiven) {
           in.nextToken()
           initialMods |= Given
@@ -3406,14 +3364,8 @@ object Parsers {
               checkExtensionParams(paramsStart, vparamss)
 
         parseParams(isExtension = !hasGivenSig)
-        var oldSyntax = false
         val parents =
-          if allowOldGiven && isIdent(nme.as) then
-            oldSyntax = true
-            // for the moment, accept both `delegate for` and `given as`
-            in.nextToken()
-            tokenSeparated(COMMA, constrApp)
-          else if in.token == COLON then
+          if in.token == COLON then
             in.nextToken()
             if in.token == LBRACE
                || in.token == LBRACKET
@@ -3426,9 +3378,6 @@ object Parsers {
           else if name.isEmpty && in.token != LBRACE then
             tokenSeparated(COMMA, constrApp)
           else Nil
-
-        if oldSyntax && vparamss.isEmpty then
-          vparamss = paramClauses(ofInstance = true)
 
         val gdef =
           if in.token == EQUALS && parents.length == 1 && parents.head.isType then
