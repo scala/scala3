@@ -1252,7 +1252,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
            |""".stripMargin
       ctx.error(msg, inlinedFrom.sourcePos)
       EmptyTree
-    } else {
+    }
+    else {
       val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)(ctx1)
 
       val inlinedNormailizer = new TreeMap {
@@ -1270,10 +1271,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** Return the set of symbols that are refered at level -1 by the tree and defined in the current run.
    *  This corresponds to the symbols that will need to be interpreted.
    */
-  private def macroDependencies(tree: Tree)(implicit ctx: Context) = {
+  private def macroDependencies(tree: Tree)(implicit ctx: Context) =
     new TreeAccumulator[Set[Symbol]] {
       private[this] var level = -1
-      override def apply(syms: Set[Symbol], tree: tpd.Tree)(implicit ctx: Context): Set[Symbol] = {
+      override def apply(syms: Set[Symbol], tree: tpd.Tree)(implicit ctx: Context): Set[Symbol] =
         if (level != -1) foldOver(syms, tree)
         else tree match {
           case tree: RefTree if level == -1 && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
@@ -1289,8 +1290,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           case _ =>
             foldOver(syms, tree)
         }
-      }
     }.apply(Set.empty, tree)
-  }
 }
 

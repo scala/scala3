@@ -890,8 +890,8 @@ trait Applications extends Compatibility {
         case err: ErrorType => cpy.Apply(tree)(fun1, proto.unforcedTypedArgs).withType(err)
         case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
-          if originalProto.isDropped then fun1
-          else if fun1.symbol == defn.Compiletime_summonFrom then
+          if (originalProto.isDropped) fun1
+          else if (fun1.symbol == defn.Compiletime_summonFrom)
             // Special handling of `summonFrom { ... }`.
             // We currently cannot use a macro for that since unlike other inline methods
             // summonFrom needs to expand lazily. For instance, in

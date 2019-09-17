@@ -735,7 +735,7 @@ object Parsers {
         }
       })
       canRewrite &= (in.isAfterLineEnd || statCtdTokens.contains(in.token)) // test (5)
-      if (canRewrite) {
+      if (canRewrite && (!colonRequired || in.colonSyntax)) {
         val openingPatchStr =
           if (!colonRequired) ""
           else if (testChar(startOpening - 1, Chars.isOperatorPart(_))) " :"
@@ -1218,7 +1218,7 @@ object Parsers {
     }
 
     def possibleTemplateStart(): Unit = {
-      in.observeIndented()
+      in.observeIndented(noIndentTemplateTokens, nme.derives)
       newLineOptWhenFollowedBy(LBRACE)
     }
 
@@ -1636,8 +1636,11 @@ object Parsers {
           if (rewriteToOldSyntax()) revertToParens(t)
           in.nextToken()
         }
-        else if (rewriteToNewSyntax(t.span))
-          dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
+        else {
+          in.observeIndented(noIndentAfterConditionTokens)
+          if (rewriteToNewSyntax(t.span))
+            dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
+        }
         t
       }
       else {
@@ -2296,6 +2299,7 @@ object Parsers {
                 dropParensOrBraces(start, if (in.token == YIELD || in.token == DO) "" else "do")
               }
             }
+            in.observeIndented(noIndentAfterEnumeratorTokens)
             res
           }
           else {
@@ -3539,15 +3543,14 @@ object Parsers {
 
     /** TemplateOpt = [Template]
      */
-    def templateOpt(constr: DefDef): Template =
-      possibleBracesStart()
+    def templateOpt(constr: DefDef): Template = {
+      possibleTemplateStart()
       if (in.token == EXTENDS || isIdent(nme.derives))
         template(constr)
-      else {
-        possibleTemplateStart()
+      else
         if (in.isNestedStart) template(constr)
         else Template(constr, Nil, Nil, EmptyValDef, Nil)
-      }
+    }
 
     /** TemplateBody ::= [nl] `{' TemplateStatSeq `}'
      */

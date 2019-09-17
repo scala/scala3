@@ -152,12 +152,15 @@ object Scanners {
     val rewriteNoIndent = ctx.settings.noindent.value && rewrite
 
     val noindentSyntax =
-      ctx.settings.noindent.value ||
-      ctx.settings.oldSyntax.value ||
-      isScala2Mode
+      ctx.settings.noindent.value
+      || ctx.settings.oldSyntax.value
+      || isScala2Mode
     val indentSyntax =
-      (if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value) ||
-      rewriteNoIndent
+      (if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value)
+      || rewriteNoIndent
+    val colonSyntax =
+      ctx.settings.YindentColons.value
+      || rewriteNoIndent
 
     if (rewrite) {
       val s = ctx.settings
@@ -532,10 +535,11 @@ object Scanners {
       }
     }
 
-    def observeIndented(): Unit =
+    def observeIndented(unless: BitSet, unlessSoftKW: TermName = EmptyTermName): Unit =
       if (indentSyntax && isAfterLineEnd && token != INDENT) {
         val newLineInserted = token == NEWLINE || token == NEWLINES
         val nextOffset = if (newLineInserted) next.offset else offset
+        val nextToken = if (newLineInserted) next.token else token
         val nextWidth = indentWidth(nextOffset)
         val lastWidth = currentRegion match {
           case r: Indented => r.width
@@ -543,7 +547,9 @@ object Scanners {
           case _ => nextWidth
         }
 
-        if (lastWidth < nextWidth) {
+        if (lastWidth < nextWidth
+           && !unless.contains(nextToken)
+           && (unlessSoftKW.isEmpty || token != IDENTIFIER || name != unlessSoftKW)) {
           currentRegion = Indented(nextWidth, Set(), COLONEOL, currentRegion)
           if (!newLineInserted) next.copyFrom(this)
           offset = nextOffset
@@ -590,7 +596,7 @@ object Scanners {
           lookahead()
           val atEOL = isAfterLineEnd
           reset()
-          if (atEOL) token = COLONEOL
+          if (colonSyntax && atEOL) token = COLONEOL
         case EOF | RBRACE =>
           currentRegion match {
             case r: Indented if !r.isOutermost =>
