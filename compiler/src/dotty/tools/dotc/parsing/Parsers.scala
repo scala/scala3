@@ -1636,10 +1636,11 @@ object Parsers {
           if (rewriteToOldSyntax()) revertToParens(t)
           in.nextToken()
         }
-        else
+        else {
           in.observeIndented(noIndentAfterConditionTokens)
           if (rewriteToNewSyntax(t.span))
             dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
+        }
         t
       }
       else {
@@ -3542,14 +3543,14 @@ object Parsers {
 
     /** TemplateOpt = [Template]
      */
-    def templateOpt(constr: DefDef): Template =
+    def templateOpt(constr: DefDef): Template = {
       possibleTemplateStart()
       if (in.token == EXTENDS || isIdent(nme.derives))
         template(constr)
-      else {
+      else
         if (in.isNestedStart) template(constr)
         else Template(constr, Nil, Nil, EmptyValDef, Nil)
-      }
+    }
 
     /** TemplateBody ::= [nl] `{' TemplateStatSeq `}'
      */

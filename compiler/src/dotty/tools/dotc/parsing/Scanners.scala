@@ -547,13 +547,14 @@ object Scanners {
           case _ => nextWidth
         }
 
-        if lastWidth < nextWidth
+        if (lastWidth < nextWidth
            && !unless.contains(nextToken)
-           && (unlessSoftKW.isEmpty || token != IDENTIFIER || name != unlessSoftKW) then
+           && (unlessSoftKW.isEmpty || token != IDENTIFIER || name != unlessSoftKW)) {
           currentRegion = Indented(nextWidth, Set(), COLONEOL, currentRegion)
           if (!newLineInserted) next.copyFrom(this)
           offset = nextOffset
           token = INDENT
+        }
       }
 
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
@@ -595,7 +596,7 @@ object Scanners {
           lookahead()
           val atEOL = isAfterLineEnd
           reset()
-          if colonSyntax && atEOL then token = COLONEOL
+          if (colonSyntax && atEOL) token = COLONEOL
         case EOF | RBRACE =>
           currentRegion match {
             case r: Indented if !r.isOutermost =>
