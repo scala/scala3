@@ -2,7 +2,7 @@ import scala.quoted._
 
 def test(given QuoteContext) = {
 
-  given QuoteContext = ???
+ (given QuoteContext) = ???
 
   implicit def IntIsLiftable: Liftable[Int] = new {
     def toExpr(n: Int) = n match {

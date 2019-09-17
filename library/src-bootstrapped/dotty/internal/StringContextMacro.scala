@@ -59,7 +59,7 @@ object StringContextMacro {
    *  @return a list of Expr containing Strings, each corresponding to one parts of the given StringContext
    *  quotes an error if the given Expr does not correspond to a StringContext
    */
-  def getPartsExprs(strCtxExpr : Expr[scala.StringContext]) given (qctx: QuoteContext): Option[(List[Expr[String]], List[String])] = {
+  def getPartsExprs(strCtxExpr: Expr[scala.StringContext])(given qctx: QuoteContext): Option[(List[Expr[String]], List[String])] = {
     def notStatic = {
       qctx.error("Expected statically known String Context", strCtxExpr)
       None
@@ -81,7 +81,7 @@ object StringContextMacro {
    *  @return a list of Expr containing arguments
    *  quotes an error if the given Expr does not contain a list of arguments
    */
-  def getArgsExprs(argsExpr: Expr[Seq[Any]]) given (qctx: QuoteContext): Option[List[Expr[Any]]] = {
+  def getArgsExprs(argsExpr: Expr[Seq[Any]])(given qctx: QuoteContext): Option[List[Expr[Any]]] = {
     import qctx.tasty._
     argsExpr.unseal.underlyingArgument match {
       case Typed(Repeated(args, _), _) =>
@@ -98,7 +98,7 @@ object StringContextMacro {
    *  @param args the Expr that holds the sequence of arguments to interpolate to the String in the correct format
    *  @return the Expr containing the formatted and interpolated String or an error/warning if the parameters are not correct
    */
-  private def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]]) given (qctx: QuoteContext): Expr[String] = {
+  private def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(given qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
     val sourceFile = strCtxExpr.unseal.pos.sourceFile
 
@@ -164,7 +164,7 @@ object StringContextMacro {
    *  @param reporter the reporter to return any error/warning when a problem is encountered
    *  @return the Expr containing the formatted and interpolated String or an error/warning report if the parameters are not correct
    */
-  def interpolate(parts0 : List[String], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter) given (qctx: QuoteContext) : Expr[String] = {
+  def interpolate(parts0 : List[String], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter)(given qctx: QuoteContext) : Expr[String] = {
     import qctx.tasty._
 
     /** Checks if the number of arguments are the same as the number of formatting strings

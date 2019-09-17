@@ -40,7 +40,7 @@ object MainProxies {
   }
 
   import untpd._
-  def mainProxy(mainFun: Symbol) given (ctx: Context): List[TypeDef] = {
+  def mainProxy(mainFun: Symbol)(given ctx: Context): List[TypeDef] = {
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
     def pos = mainFun.sourcePos
     val argsRef = Ident(nme.args)

@@ -6,7 +6,7 @@ import dotty.tools.dotc.tastyreflect.ReflectionImpl
 object QuoteContext {
 
   def apply()(given Context): scala.quoted.QuoteContext =
-    new scala.quoted.QuoteContext(ReflectionImpl(the[Context]))
+    new scala.quoted.QuoteContext(ReflectionImpl(summon[Context]))
 
   type ScopeId = Int
 
@@ -17,5 +17,5 @@ object QuoteContext {
   // TODO Explore more fine grained scope ids.
   //      This id can only differentiate scope extrusion from one compiler instance to another.
   private[dotty] def scopeId(given Context): ScopeId =
-    the[Context].outersIterator.toList.last.hashCode()
+    summon[Context].outersIterator.toList.last.hashCode()
 }

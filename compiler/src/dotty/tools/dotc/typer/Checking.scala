@@ -1131,7 +1131,7 @@ trait Checking {
   }
 
   /** check that annotation `annot` is applicable to symbol `sym` */
-  def checkAnnotApplicable(annot: Tree, sym: Symbol) given (ctx: Context): Boolean =
+  def checkAnnotApplicable(annot: Tree, sym: Symbol)(given ctx: Context): Boolean =
     !ctx.reporter.reportsErrorsFor { implicit ctx =>
       val annotCls = Annotations.annotClass(annot)
       val pos = annot.sourcePos
@@ -1165,7 +1165,7 @@ trait ReChecking extends Checking {
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(implicit ctx: Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(implicit ctx: Context): Unit = ()
   override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = ()
-  override def checkAnnotApplicable(annot: Tree, sym: Symbol) given (ctx: Context): Boolean = true
+  override def checkAnnotApplicable(annot: Tree, sym: Symbol)(given ctx: Context): Boolean = true
 }
 
 trait NoChecking extends ReChecking {

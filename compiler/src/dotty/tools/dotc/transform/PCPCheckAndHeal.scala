@@ -40,7 +40,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       case tree: DefDef if tree.symbol.is(Inline) && level > 0 => EmptyTree
       case tree: DefTree =>
         for (annot <- tree.symbol.annotations)
-          transform(annot.tree) given ctx.withOwner(tree.symbol)
+          transform(annot.tree)(given ctx.withOwner(tree.symbol))
         checkLevel(super.transform(tree))
       case _ => checkLevel(super.transform(tree))
     }
@@ -215,7 +215,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       if (!tp.isInstanceOf[ThisType]) sym.show
       else if (sym.is(ModuleClass)) sym.sourceModule.show
       else i"${sym.name}.this"
-    the[Context].error(
+    summon[Context].error(
       em"""access to $symStr from wrong staging level:
           | - the definition is at level ${levelOf(sym).getOrElse(0)},
           | - but the access is at level $level.$errMsg""", pos)

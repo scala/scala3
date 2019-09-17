@@ -47,14 +47,14 @@ def notMatched = None
 def matched = Some(()) // aka Some(Tuple0())
 def matched[T](x: T) = Some(Tuple1(x))
 def (x: Matching) && (y: Matching) = if (x == None || y == None) None else Some(x.get ++ y.get)
-def fold[T](m: Mattching*) given Env: Matching = m.fold(matched)(_ && _)
+def fold[T](m: Mattching*)(given Env): Matching = m.fold(matched)(_ && _)
 
 // `a =#= b` stands for `a` matches `b`
-def (scrutinee: Tree) =#= pattern: Tree) given Env: Matching // described by cases in the tables below
+def (scrutinee: Tree) =#= pattern: Tree)(given Env): Matching // described by cases in the tables below
 
-def envWith(equiv: (Symbol, Symbol)*) given Env: Env // Adds to the current environment the fact that s1 from the scrutinee is equivalent to s2 in the pattern
+def envWith(equiv: (Symbol, Symbol)*)(given Env): Env // Adds to the current environment the fact that s1 from the scrutinee is equivalent to s2 in the pattern
 
-def equivalent(s1: Symbol, s2: Symbol) given Env: Env
+def equivalent(s1: Symbol, s2: Symbol)(given Env): Env
 ```
 
 The implementation of `=#=`

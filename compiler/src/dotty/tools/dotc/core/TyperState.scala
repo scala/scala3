@@ -98,7 +98,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
    */
   def test[T](op: ImplicitFunction1[Context, T])(implicit ctx: Context): T =
     if (isShared)
-      op given ctx.fresh.setExploreTyperState()
+      op(given ctx.fresh.setExploreTyperState())
     else {
       val savedConstraint = myConstraint
       val savedReporter = myReporter
@@ -113,7 +113,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
         testReporter.inUse = true
         testReporter
       }
-      try op given ctx
+      try op(given ctx)
       finally {
         testReporter.inUse = false
         resetConstraintTo(savedConstraint)

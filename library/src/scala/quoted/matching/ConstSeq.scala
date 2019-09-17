@@ -5,7 +5,7 @@ package matching
 object ConstSeq {
 
   /** Matches literal sequence of literal constant value expressions */
-  def unapply[T](expr: Expr[Seq[T]]) given (qctx: QuoteContext): Option[Seq[T]] = expr match {
+  def unapply[T](expr: Expr[Seq[T]])(given qctx: QuoteContext): Option[Seq[T]] = expr match {
     case ExprSeq(elems) =>
       elems.foldRight(Option(List.empty[T])) { (elem, acc) =>
         (elem, acc) match {

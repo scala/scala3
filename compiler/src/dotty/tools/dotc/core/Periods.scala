@@ -22,7 +22,7 @@ abstract class Periods { self: Context =>
 
   /** Execute `op` at given phase id */
   def atPhase[T](pid: PhaseId)(op: ImplicitFunction1[Context, T]): T =
-    op given ctx.withPhase(pid)
+    op(given ctx.withPhase(pid))
 
   /** The period containing the current period where denotations do not change.
    *  We compute this by taking as first phase the first phase less or equal to

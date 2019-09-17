@@ -61,16 +61,16 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   // REPORTING
   //
 
-  def error(msg: => String, pos: Position) given (ctx: Context): Unit =
+  def error(msg: => String, pos: Position)(given ctx: Context): Unit =
     ctx.error(msg, pos)
 
-  def error(msg: => String, sourceFile: SourceFile, start: Int, end: Int) given (ctx: Context): Unit =
+  def error(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(given ctx: Context): Unit =
     ctx.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
 
-  def warning(msg: => String, pos: Position) given (ctx: Context): Unit =
+  def warning(msg: => String, pos: Position)(given ctx: Context): Unit =
     ctx.warning(msg, pos)
 
-  def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int) given (ctx: Context): Unit =
+  def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(given ctx: Context): Unit =
     ctx.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
 
   //
@@ -589,10 +589,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Return_expr(self: Return)(given Context): Term = self.expr
 
-  def Return_apply(expr: Term) given (ctx: Context): Return =
+  def Return_apply(expr: Term)(given ctx: Context): Return =
     withDefaultPos(tpd.Return(expr, ctx.owner))
 
-  def Return_copy(original: Tree)(expr: Term) given (ctx: Context): Return =
+  def Return_copy(original: Tree)(expr: Term)(given ctx: Context): Return =
     tpd.cpy.Return(original)(expr, tpd.ref(ctx.owner))
 
   type Repeated = tpd.SeqLiteral
@@ -1001,7 +1001,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Pattern_TypeTest_tpt(self: TypeTest)(given Context): TypeTree = self.tpt
 
-  def Pattern_TypeTest_module_apply(tpt: TypeTree) given (ctx: Context): TypeTest =
+  def Pattern_TypeTest_module_apply(tpt: TypeTree)(given ctx: Context): TypeTest =
     withDefaultPos(tpd.Typed(untpd.Ident(nme.WILDCARD)(ctx.source).withType(tpt.tpe), tpt))
 
   def Pattern_TypeTest_module_copy(original: TypeTest)(tpt: TypeTree)(given Context): TypeTest =
@@ -1047,7 +1047,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     case _ => Some(x)
   }
 
-  def Type_apply(clazz: Class[?]) given (ctx: Context): Type =
+  def Type_apply(clazz: Class[?])(given ctx: Context): Type =
     if (clazz.isPrimitive)
       if (clazz == classOf[Boolean]) defn.BooleanType
       else if (clazz == classOf[Byte]) defn.ByteType
@@ -1476,11 +1476,11 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Symbol_pos(self: Symbol)(given Context): Position = self.sourcePos
 
-  def Symbol_localContext(self: Symbol) given (ctx: Context): Context =
+  def Symbol_localContext(self: Symbol)(given ctx: Context): Context =
     if (self.exists) ctx.withOwner(self)
     else ctx
 
-  def Symbol_comment(self: Symbol) given (ctx: Context): Option[Comment] = {
+  def Symbol_comment(self: Symbol)(given ctx: Context): Option[Comment] = {
     import dotty.tools.dotc.core.Comments.CommentsContext
     val docCtx = ctx.docCtx.getOrElse {
       throw new RuntimeException(
@@ -1583,7 +1583,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   private def isField(sym: Symbol)(given Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
 
-  def ClassDefSymbol_of(fullName: String) given (ctx: Context): ClassDefSymbol = ctx.requiredClass(fullName)
+  def ClassDefSymbol_of(fullName: String)(given ctx: Context): ClassDefSymbol = ctx.requiredClass(fullName)
 
   type TypeDefSymbol = core.Symbols.TypeSymbol
 
@@ -1713,7 +1713,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     PickledQuotes.quotedTypeToTree(self)
 
   /** Convert `Term` to an `quoted.Expr[Any]`  */
-  def QuotedExpr_seal(self: Term) given (ctx: Context): scala.quoted.Expr[Any] = {
+  def QuotedExpr_seal(self: Term)(given ctx: Context): scala.quoted.Expr[Any] = {
     def etaExpand(term: Term): Term = term.tpe.widen match {
       case mtpe: Types.MethodType if !mtpe.isParamDependent =>
         val closureResType = mtpe.resType match {
@@ -1729,7 +1729,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   }
 
   /** Checked cast to a `quoted.Expr[U]` */
-  def QuotedExpr_cast[U](self: scala.quoted.Expr[?]) given (tp: scala.quoted.Type[U], ctx: Context): scala.quoted.Expr[U] = {
+  def QuotedExpr_cast[U](self: scala.quoted.Expr[?])(given tp: scala.quoted.Type[U], ctx: Context): scala.quoted.Expr[U] = {
     val tree = QuotedExpr_unseal(self)
     val expectedType = QuotedType_unseal(tp).tpe
     if (tree.tpe <:< expectedType)
@@ -1743,7 +1743,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   }
 
   /** Convert `Type` to an `quoted.Type[?]` */
-  def QuotedType_seal(self: Type) given (ctx: Context): scala.quoted.Type[?] = {
+  def QuotedType_seal(self: Type)(given ctx: Context): scala.quoted.Type[?] = {
     val dummySpan = ctx.owner.span // FIXME
     new scala.internal.quoted.TreeType(tpd.TypeTree(self).withSpan(dummySpan), compilerId)
   }
@@ -1832,7 +1832,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   type ImplicitSearchResult = Tree
 
-  def searchImplicit(tpe: Type) given (ctx: Context): ImplicitSearchResult =
+  def searchImplicit(tpe: Type)(given ctx: Context): ImplicitSearchResult =
     ctx.typer.inferImplicitArg(tpe, rootPosition.span)
 
   type ImplicitSearchSuccess = Tree
@@ -1868,7 +1868,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     case _ => None
   }
 
-  def betaReduce(fn: Term, args: List[Term]) given (ctx: Context): Term = {
+  def betaReduce(fn: Term, args: List[Term])(given ctx: Context): Term = {
     val (argVals0, argRefs0) = args.foldLeft((List.empty[ValDef], List.empty[Tree])) { case ((acc1, acc2), arg) => arg.tpe match {
       case tpe: SingletonType if isIdempotentExpr(arg) => (acc1, arg :: acc2)
       case _ =>
@@ -1904,8 +1904,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   private def optional[T <: Trees.Tree[?]](tree: T): Option[tree.type] =
     if (tree.isEmpty) None else Some(tree)
 
-  private def withDefaultPos[T <: Tree](fn: ImplicitFunction1[Context, T]) given (ctx: Context): T =
-    (fn given ctx.withSource(rootPosition.source)).withSpan(rootPosition.span)
+  private def withDefaultPos[T <: Tree](fn: ImplicitFunction1[Context, T])(given ctx: Context): T =
+    (fn(given ctx.withSource(rootPosition.source)).withSpan(rootPosition.span))
 
   private def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()
 }

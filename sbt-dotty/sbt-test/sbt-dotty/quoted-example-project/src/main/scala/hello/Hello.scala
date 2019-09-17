@@ -41,7 +41,7 @@ object Main {
     code
   }
 
-  def powerCode(n: Int, x: Expr[Double]) given QuoteContext: Expr[Double] =
+  def powerCode(n: Int, x: Expr[Double])(given QuoteContext): Expr[Double] =
     if (n == 0) '{1.0}
     else if (n == 1) x
     else if (n < 0) throw new Exception("Negative powers not implemented. Left as a small exercise. Dont be shy, try it out.")

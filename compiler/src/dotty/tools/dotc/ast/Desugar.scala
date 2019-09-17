@@ -893,7 +893,7 @@ object desugar {
    *  If the given member `mdef` is not of this form, flag it as an error.
    */
 
-  def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef]) given (ctx: Context): Tree = {
+  def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef])(given ctx: Context): Tree = {
     val allowed = "allowed here, since collective parameters are given"
     mdef match {
       case mdef: DefDef =>

@@ -167,7 +167,7 @@ object Signature {
           y match {
             case y: TypeName =>
               // `Ordering[TypeName]` doesn't work due to `Ordering` still being invariant
-              the[Ordering[Name]].compare(x, y)
+              summon[Ordering[Name]].compare(x, y)
             case y: Int =>
               1
           }
@@ -184,7 +184,7 @@ object Signature {
       import scala.math.Ordering.Implicits.seqOrdering
       val paramsOrdering = seqOrdering(paramSigOrdering).compare(x.paramsSig, y.paramsSig)
       if (paramsOrdering != 0) paramsOrdering
-      else the[Ordering[Name]].compare(x.resSig, y.resSig)
+      else summon[Ordering[Name]].compare(x.resSig, y.resSig)
     }
   }
 }
