@@ -2518,7 +2518,6 @@ object Parsers {
       case ABSTRACT    => Mod.Abstract()
       case FINAL       => Mod.Final()
       case IMPLICIT    => Mod.Implicit()
-      case IMPLIED     => Mod.Given()
       case GIVEN       => Mod.Given()
       case ERASED      => Mod.Erased()
       case LAZY        => Mod.Lazy()
@@ -2622,10 +2621,10 @@ object Parsers {
      *  FunTypeMods ::=  { ‘erased’ | ‘given’}
      */
     val closureMods: BitSet =
-      if allowOldGiven then BitSet(GIVEN, IMPLIED, IMPLICIT, ERASED)
+      if allowOldGiven then BitSet(GIVEN, IMPLICIT, ERASED)
       else BitSet(IMPLICIT, ERASED)
 
-    val funTypeMods: BitSet = BitSet(IMPLIED, ERASED)
+    val funTypeMods: BitSet = BitSet(ERASED)
 
     val funTypeArgMods: BitSet = BitSet(GIVEN, ERASED)
 
@@ -2923,7 +2922,7 @@ object Parsers {
      */
     def importClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
-      val importGiven = allowOldGiven && in.token == IMPLIED || in.token == GIVEN
+      val importGiven = allowOldGiven && in.token == GIVEN
       if (importGiven) in.nextToken()
       commaSeparated(importExpr(importGiven, mkTree)) match {
         case t :: rest =>
@@ -3267,8 +3266,8 @@ object Parsers {
           objectDef(start, posMods(start, mods | Case | Module))
         case ENUM =>
           enumDef(start, posMods(start, mods | Enum))
-        case IMPLIED | GIVEN =>
-          instanceDef(in.token == GIVEN, start, mods, atSpan(in.skipToken()) { Mod.Given() })
+        case GIVEN =>
+          instanceDef(start, mods, atSpan(in.skipToken()) { Mod.Given() })
         case _ =>
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
           EmptyTree
@@ -3384,7 +3383,7 @@ object Parsers {
      *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
      *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause {GivenParamClause}
      */
-    def instanceDef(newStyle: Boolean, start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
+    def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
       val hasGivenSig = followingIsGivenSig()
       val name = if isIdent && hasGivenSig then ident() else EmptyTermName
@@ -3409,7 +3408,7 @@ object Parsers {
         parseParams(isExtension = !hasGivenSig)
         var oldSyntax = false
         val parents =
-          if allowOldGiven && (!newStyle && in.token == FOR || isIdent(nme.as)) then
+          if allowOldGiven && isIdent(nme.as) then
             oldSyntax = true
             // for the moment, accept both `delegate for` and `given as`
             in.nextToken()
@@ -3734,12 +3733,12 @@ object Parsers {
         setLastStatOffset()
         if (in.token == IMPORT)
           stats ++= importClause(IMPORT, Import)
-        else if (in.token == IMPLIED || in.token == GIVEN) {
+        else if (in.token == GIVEN) {
           val start = in.offset
           val mods = modifiers(closureMods)
           mods.mods match {
             case givenMod :: Nil if !isBindingIntro =>
-              stats += instanceDef(true, start, EmptyModifiers, Mod.Given().withSpan(givenMod.span))
+              stats += instanceDef(start, EmptyModifiers, Mod.Given().withSpan(givenMod.span))
             case _ =>
               stats += implicitClosure(in.offset, Location.InBlock, mods)
           }

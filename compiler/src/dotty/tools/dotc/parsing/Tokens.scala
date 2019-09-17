@@ -182,10 +182,9 @@ object Tokens extends TokensCommon {
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val ENUM = 62;             enter(ENUM, "enum")
   final val ERASED = 63;           enter(ERASED, "erased")
-  final val IMPLIED = 64;          enter(IMPLIED, "delegate")
-  final val GIVEN = 65;            enter(GIVEN, "given")
-  final val EXPORT = 66;           enter(EXPORT, "export")
-  final val MACRO = 67;            enter(MACRO, "macro") // TODO: remove
+  final val GIVEN = 64;            enter(GIVEN, "given")
+  final val EXPORT = 65;           enter(EXPORT, "export")
+  final val MACRO = 66;            enter(MACRO, "macro") // TODO: remove
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -221,14 +220,14 @@ object Tokens extends TokensCommon {
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, QUOTEID, XMLSTART)
 
   final val canStartExpressionTokens: TokenSet = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, INDENT, QUOTE, IF, DO, WHILE, FOR, NEW, TRY, THROW, GIVEN)
+    LBRACE, LPAREN, INDENT, QUOTE, IF, DO, WHILE, FOR, NEW, TRY, THROW)
 
   final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)
 
   final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
 
-  final val dclIntroTokens: TokenSet = BitSet(DEF, VAL, VAR, TYPE, IMPLIED, GIVEN)
+  final val dclIntroTokens: TokenSet = BitSet(DEF, VAL, VAR, TYPE, GIVEN)
 
   final val defIntroTokens: TokenSet = templateIntroTokens | dclIntroTokens
 
@@ -244,8 +243,6 @@ object Tokens extends TokensCommon {
   final val modifierTokensOrCase: TokenSet = modifierTokens | BitSet(CASE)
 
   final val modifierFollowers = modifierTokens | defIntroTokens
-
-  final val paramIntroTokens: TokenSet = modifierTokens | identifierTokens | BitSet(AT, VAL, VAR, IMPLICIT)
 
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens: TokenSet = defIntroTokens | modifierTokens | BitSet(IMPORT, EXPORT, PACKAGE)
@@ -268,7 +265,7 @@ object Tokens extends TokensCommon {
 
   final val canStartIndentTokens: BitSet =
     statCtdTokens | BitSet(COLONEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR)
-      // `if` is excluded because it often comes after `else` which makes for awkward indentation rules
+      // `if` is excluded because it often comes after `else` which makes for awkward indentation rules  TODO: try to do without the exception
 
   /** Faced with the choice between a type and a formal parameter, the following
    *  tokens determine it's a formal parameter.
@@ -285,7 +282,7 @@ object Tokens extends TokensCommon {
   final val noIndentAfterConditionTokens = BitSet(THEN, DO)
   final val noIndentAfterEnumeratorTokens = BitSet(YIELD, DO)
 
-  final val scala3keywords = BitSet(ENUM, ERASED, GIVEN, IMPLIED)
+  final val scala3keywords = BitSet(ENUM, ERASED, GIVEN)
 
   final val softModifierNames = Set(nme.inline, nme.opaque)
 }
