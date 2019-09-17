@@ -42,7 +42,7 @@ Some of these changes will end up in Scala 3, some of them will be deemed not wo
 Keeping that in mind, let us proceed to the nitty-gritty!
 
 ## Switch to Standard Library 2.13
-Dotty is now using the standard library 2.13 instead of the previous 2.12.8. This fact is reflected in the patch version 1 in 0.18.1-RC1 which Dotty will be using from now on.
+Dotty is now using the standard library 2.13 instead of the previous 2.12.8.
 
 ## `@main` functions
 Bootstrapping a new Scala application is as hard as a new Java application. How do you write a main method? Normally, something like that:
