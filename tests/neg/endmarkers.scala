@@ -1,6 +1,6 @@
 object Test
 
-  locally:
+  locally {
     var x = 0
     while x < 10 do x += 1
     end while    // error: end of statement expected but while found // error: not found: end
@@ -9,7 +9,8 @@ object Test
       x += 1
       x < 10
     do ()
-  end while      // error: misaligned end marker
+  end while      // error: misaligned end marker // error: not found : end
+  }              // error: ';' expected, but '}' found
 
   def f(x: Int): Int =
     val y =
@@ -23,21 +24,11 @@ object Test
 
     val z = 22
     x + y + z
-  end f          // error: misaligned end marker
+  end f
 
   def g = "!"
 
   val xs = List(1, 2, 3)
-
-  xs.map:
-    x =>
-      val y = x * x
-      y * y
-
-  xs.map:
-    x =>
-    val y = x * x
-    y + y
 
   println(f(2) + g)
 
@@ -57,10 +48,11 @@ class Test2
   def foo = 1
 
   object x
-    new Test2:
+    new Test2 {
       override def foo = 2
       end new               // error: end of statement expected but new found  // error: not found: end
-    def bar = 2             // error: ';' expected, but unindent found
+    }                       // error: ';' expected, but '}' found
+    def bar = 2
   end Test2                 // error: misaligned end marker
 end Test2
 
@@ -102,9 +94,11 @@ class Coder(words: List[String])
   /** Invert the mnemonics map to give a map from chars 'A' ... 'Z' to '2' ... '9' */
   private val charCode0: Map[Char, Char] =
     mnemonics
-      .withFilter:
+      .withFilter {
         case (digit, str) => true
         case _ => false
-      .flatMap:
+      }
+      .flatMap {
         case (digit, str) => str map (ltr => ltr -> digit)
+      }
  end Coder    // error: The start of this line does not match any of the previous indentation widths.
