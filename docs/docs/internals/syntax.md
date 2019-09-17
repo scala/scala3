@@ -180,9 +180,9 @@ TypeParamBounds   ::=  SubtypeBounds {‘:’ Type}                             
 
 ### Expressions
 ```ebnf
-Expr              ::=  [ClosureMods] FunParams ‘=>’ Expr                        Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
+Expr              ::=  [‘implicit’] FunParams ‘=>’ Expr                                     Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
                     |  Expr1
-BlockResult       ::=  [ClosureMods] FunParams ‘=>’ Block
+BlockResult       ::=  [‘implicit’] FunParams ‘=>’ Block
                     |  Expr1
 FunParams         ::=  Bindings
                     |  id

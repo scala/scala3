@@ -1,7 +1,7 @@
 object Test {
 
   def main(args: Array[String]): Unit = {
-    fun { erased (x: Int) =>
+    fun {(erased x: Int) =>
       println("lambda")
       "abc"
     }
