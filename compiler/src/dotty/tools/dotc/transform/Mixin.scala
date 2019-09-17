@@ -263,7 +263,6 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         transformFollowing(polyDefDef(mkForwarderSym(meth.asTerm, Bridge), forwarderRhsFn(meth)))
       }
 
-
     cpy.Template(impl)(
       constr =
         if (cls.is(Trait)) cpy.DefDef(impl.constr)(vparamss = Nil :: Nil)

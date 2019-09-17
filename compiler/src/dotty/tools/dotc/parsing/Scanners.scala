@@ -152,12 +152,15 @@ object Scanners {
     val rewriteNoIndent = ctx.settings.noindent.value && rewrite
 
     val noindentSyntax =
-      ctx.settings.noindent.value ||
-      ctx.settings.oldSyntax.value ||
-      isScala2Mode
+      ctx.settings.noindent.value
+      || ctx.settings.oldSyntax.value
+      || isScala2Mode
     val indentSyntax =
-      (if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value) ||
-      rewriteNoIndent
+      (if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value)
+      || rewriteNoIndent
+    val colonSyntax =
+      ctx.settings.YindentColons.value
+      || rewriteNoIndent
 
     if (rewrite) {
       val s = ctx.settings
@@ -590,7 +593,7 @@ object Scanners {
           lookahead()
           val atEOL = isAfterLineEnd
           reset()
-          if (atEOL) token = COLONEOL
+          if colonSyntax && atEOL then token = COLONEOL
         case EOF | RBRACE =>
           currentRegion match {
             case r: Indented if !r.isOutermost =>

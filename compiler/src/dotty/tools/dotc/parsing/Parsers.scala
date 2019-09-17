@@ -717,6 +717,7 @@ object Parsers {
      */
     def bracesToIndented[T](body: => T): T = {
       val colonRequired = possibleColonOffset == in.lastOffset
+      if colonRequired && !in.colonSyntax then return body
       val (startOpening, endOpening) = startingElimRegion(colonRequired)
       val isOutermost = in.currentRegion.isOutermost
       def allBraces(r: Region): Boolean = r match {

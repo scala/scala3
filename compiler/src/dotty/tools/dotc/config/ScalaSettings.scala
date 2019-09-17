@@ -52,6 +52,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val oldSyntax: Setting[Boolean] = BooleanSetting("-old-syntax", "Require `(...)` around conditions")
   val indent: Setting[Boolean] = BooleanSetting("-indent", "allow significant indentation")
   val noindent: Setting[Boolean] = BooleanSetting("-noindent", "require classical {...} syntax, indentation is not significant")
+  val YindentColons: Setting[Boolean] = BooleanSetting("-Yindent-colons", "allow colons at ends-of-lines to start indentation blocks")
 
   /** Decompiler settings */
   val printTasty: Setting[Boolean] = BooleanSetting("-print-tasty", "Prints the raw tasty.") withAbbreviation "--print-tasty"
