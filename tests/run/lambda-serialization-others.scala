@@ -31,16 +31,16 @@ class C1 {
 
   val depfun: (x1: Int) => List[x1.type] = x1 => List(x1)
 
-  val erasedfun: erased Int => Int = erased (x1) => 0
+  val erasedfun: (erased Int) => Int = (erased x1) => 0
 }
 
 class C2
     extends Serializable /* Needed because of #5866 */ {
-  val impfun: given Int => Int = given x1 => x1
+  val impfun: (given Int) => Int = (given x1) => x1
 
-  val impdepfun: given (x1: Int) => List[x1.type] = given x1 => List(x1)
+  val impdepfun: (given x1: Int) => List[x1.type] = (given x1) => List(x1)
 
-  val erasedimpfun: given erased Int => Int = given erased (x1) => 0
+  val erasedimpfun: (given erased Int) => Int = (given erased x1) => 0
 }
 
 object Test {
@@ -50,10 +50,10 @@ object Test {
     serializeDeserialize(c1.erasedfun)
 
     val c2 = new C2
-    serializeDeserialize[given Int => Int](c2.impfun)
+    serializeDeserialize[(given Int) => Int](c2.impfun)
     // Won't compile until #5841 is merged
-    // serializeDeserialize[given Int => Int](c2.impdepfun)
-    serializeDeserialize[given Int => Int](c2.erasedimpfun)
+    // serializeDeserialize[(given Int) => Int](c2.impdepfun)
+    serializeDeserialize[(given Int) => Int](c2.erasedimpfun)
   }
 
   def serializeDeserialize[T <: AnyRef](obj: T): Unit = {

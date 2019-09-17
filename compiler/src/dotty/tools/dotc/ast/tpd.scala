@@ -333,8 +333,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Block(cdef :: Nil, New(cls.typeRef, Nil))
   }
 
-  def Import(importGiven: Boolean, expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
-    ta.assignType(untpd.Import(importGiven, expr, selectors), ctx.newImportSymbol(ctx.owner, expr))
+  def Import(expr: Tree, selectors: List[untpd.ImportSelector])(implicit ctx: Context): Import =
+    ta.assignType(untpd.Import(expr, selectors), ctx.newImportSymbol(ctx.owner, expr))
 
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef =
     ta.assignType(untpd.PackageDef(pid, stats), pid)
@@ -1292,16 +1292,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    * @return The symbols imported.
    */
   def importedSymbols(imp: Import,
-                      selectorPredicate: untpd.Tree => Boolean = util.common.alwaysTrue)
+                      selectorPredicate: untpd.ImportSelector => Boolean = util.common.alwaysTrue)
                      (implicit ctx: Context): List[Symbol] =
-    imp.selectors.find(selectorPredicate) match {
-      case Some(id: untpd.Ident) =>
-        importedSymbols(imp.expr, id.name)
-      case Some(Thicket((id: untpd.Ident) :: (_: untpd.Ident) :: Nil)) =>
-        importedSymbols(imp.expr, id.name)
-      case _ =>
-        Nil
-    }
+    imp.selectors.find(selectorPredicate) match
+      case Some(sel) => importedSymbols(imp.expr, sel.name)
+      case _ => Nil
 
   /**
    * The list of select trees that resolve to the same symbols as the ones that are imported
@@ -1326,16 +1321,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    imp.selectors.flatMap {
-      case Ident(nme.WILDCARD) =>
-        Nil
-      case id: untpd.Ident =>
-        importedSymbols(imp.expr, id.name).flatMap { sym =>
-          imported(sym, id, None)
-        }
-      case Thicket((id: untpd.Ident) :: (newName: untpd.Ident) :: Nil) =>
-        importedSymbols(imp.expr, id.name).flatMap { sym =>
-          imported(sym, id, Some(newName))
+    imp.selectors.flatMap { sel =>
+      if sel.isWildcard then Nil
+      else
+        val renamedOpt = sel.renamed match
+          case renamed: untpd.Ident => Some(renamed)
+          case untpd.EmptyTree => None
+        importedSymbols(imp.expr, sel.name).flatMap { sym =>
+          imported(sym, sel.imported, renamedOpt)
         }
     }
   }

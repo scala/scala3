@@ -36,10 +36,10 @@ class CheckReentrant extends MiniPhase {
   private[this] var seen: Set[ClassSymbol] = Set()
   private[this] var indent: Int = 0
 
-  private val sharableAnnot = new CtxLazy(given ctx =>
-    ctx.requiredClass("scala.annotation.internal.sharable"))
-  private val unsharedAnnot = new CtxLazy(given ctx =>
-    ctx.requiredClass("scala.annotation.internal.unshared"))
+  private val sharableAnnot = new CtxLazy(
+    summon[Context].requiredClass("scala.annotation.internal.sharable"))
+  private val unsharedAnnot = new CtxLazy(
+    summon[Context].requiredClass("scala.annotation.internal.unshared"))
 
   def isIgnored(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||

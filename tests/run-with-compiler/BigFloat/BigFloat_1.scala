@@ -30,7 +30,7 @@ object BigFloat extends App {
     BigFloat(BigInt(intPart), exponent)
   }
 
-  private def fromDigitsImpl(digits: Expr[String]) given (ctx: QuoteContext): Expr[BigFloat] =
+  private def fromDigitsImpl(digits: Expr[String])(given ctx: QuoteContext): Expr[BigFloat] =
     digits match {
       case Const(ds) =>
         try {
@@ -50,7 +50,7 @@ object BigFloat extends App {
     def fromDigits(digits: String) = apply(digits)
   }
 
-  given as BigFloatFromDigits {
+  given BigFloatFromDigits {
     override inline def fromDigits(digits: String) = ${
       fromDigitsImpl('digits)
     }
@@ -58,7 +58,7 @@ object BigFloat extends App {
 
   // Should be in StdLib:
 
-  given as Liftable[BigInt] {
+  given Liftable[BigInt] {
     def toExpr(x: BigInt) =
       '{BigInt(${x.toString.toExpr})}
   }

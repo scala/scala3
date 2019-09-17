@@ -20,7 +20,7 @@ object Logarithms {
   }
 
   // Extension methods define opaque types' public APIs
-  given LogarithmOps {
+  given logarithmOps: {
     def (x: Logarithm) toDouble: Double = math.exp(x)
     def (x: Logarithm) + (y: Logarithm): Logarithm = Logarithm(math.exp(x) + math.exp(y))
     def (x: Logarithm) * (y: Logarithm): Logarithm = Logarithm(x + y)
@@ -57,7 +57,7 @@ But the following operations would lead to type errors:
   l / l2                  // error: `/` is not a member fo Logarithm
 ```
 
-Aside: the `any2stringadd => _` import suppression is necessary since otherwise the universal `+` operation in `Predef` would take precedence over the `+` extension method in `LogarithmOps`. We plan to resolve this wart by eliminating `any2stringadd`.
+Aside: the `any2stringadd => _` import suppression is necessary since otherwise the universal `+` operation in `Predef` would take precedence over the `+` extension method in `logarithmOps`. We plan to resolve this wart by eliminating `any2stringadd`.
 
 ### Bounds For Opaque Type Aliases
 

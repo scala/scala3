@@ -3,11 +3,11 @@ package scala
 package object quoted {
 
   object autolift {
-    given autoToExpr[T] as Conversion[T, Expr[T]] given Liftable[T], QuoteContext = _.toExpr
+    given autoToExpr[T](given Liftable[T], QuoteContext): Conversion[T, Expr[T]] = _.toExpr
   }
 
   implicit object ExprOps {
-    def (x: T) toExpr[T: Liftable] given QuoteContext: Expr[T] = summon[Liftable[T]].toExpr(x)
+    def (x: T) toExpr[T: Liftable](given QuoteContext): Expr[T] = summon[Liftable[T]].toExpr(x)
 
    /** Lifts this sequence of expressions into an expression of a sequence
     *
@@ -21,7 +21,7 @@ package object quoted {
     *  '{ List(${List(1, 2, 3).toExprOfSeq}: _*) } // equvalent to '{ List(1, 2, 3) }
     *  ```
     */
-    def (seq: Seq[Expr[T]]) toExprOfSeq[T] given (tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = {
+    def (seq: Seq[Expr[T]]) toExprOfSeq[T](given tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = {
       import qctx.tasty._
       Repeated(seq.map(_.unseal).toList, tp.unseal).seal.asInstanceOf[Expr[Seq[T]]]
     }
@@ -33,7 +33,7 @@ package object quoted {
      *  to an expression equivalent to
      *    `'{ List($e1, $e2, ...) }` typed as an `Expr[List[T]]`
      */
-    def (list: List[Expr[T]]) toExprOfList[T] given Type[T], QuoteContext: Expr[List[T]] =
+    def (list: List[Expr[T]]) toExprOfList[T](given Type[T], QuoteContext): Expr[List[T]] =
       if (list.isEmpty) '{ Nil } else '{ List(${list.toExprOfSeq}: _*) }
 
     /** Lifts this sequence of expressions into an expression of a tuple
@@ -43,7 +43,7 @@ package object quoted {
      *  to an expression equivalent to
      *    `'{ ($e1, $e2, ...) }` typed as an `Expr[Tuple]`
      */
-    def (seq: Seq[Expr[_]]) toExprOfTuple given QuoteContext: Expr[Tuple] = {
+    def (seq: Seq[Expr[_]]) toExprOfTuple(given QuoteContext): Expr[Tuple] = {
       seq match {
         case Seq() =>
           Expr.unitExpr
@@ -97,7 +97,7 @@ package object quoted {
     }
 
     /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
-    def (tup: T) toExprOfTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type] given (ctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
+    def (tup: T) toExprOfTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](given ctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
       import ctx.tasty._
       tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[_]]].toExprOfTuple
         .cast[Tuple.InverseMap[T, Expr]]

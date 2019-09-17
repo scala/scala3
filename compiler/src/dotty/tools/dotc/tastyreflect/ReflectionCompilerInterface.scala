@@ -120,15 +120,15 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     case _ => None
   }
 
-  def Import_implied(self: Import): Boolean = self.importGiven
+  def Import_implied(self: Import): Boolean = false // TODO: adapt to new import scheme
   def Import_expr(self: Import) given Context: Tree = self.expr
   def Import_selectors(self: Import) given Context: List[ImportSelector] = self.selectors
 
-  def Import_apply(importImplied: Boolean, expr: Term, selectors: List[ImportSelector]) given Context: Import =
-    withDefaultPos(tpd.Import(importImplied, expr, selectors))
+  def Import_apply(expr: Term, selectors: List[ImportSelector]) given Context: Import =
+    withDefaultPos(tpd.Import(expr, selectors))
 
-  def Import_copy(original: Import)(importImplied: Boolean, expr: Term, selectors: List[ImportSelector]) given Context: Import =
-    tpd.cpy.Import(original)(importImplied, expr, selectors)
+  def Import_copy(original: Import)(expr: Term, selectors: List[ImportSelector]) given Context: Import =
+    tpd.cpy.Import(original)(expr, selectors)
 
   type Definition = tpd.Tree
 
@@ -1328,38 +1328,34 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   // IMPORT SELECTORS
   //
 
-  type ImportSelector = untpd.Tree
+  type ImportSelector = untpd.ImportSelector
 
-  type SimpleSelector = untpd.Ident
+  type SimpleSelector = untpd.ImportSelector
 
-  def matchSimpleSelector(self: ImportSelector) given Context: Option[SimpleSelector] = self match {
-    case self: untpd.Ident => Some(self)
-    case _ => None
-  }
+  def matchSimpleSelector(self: ImportSelector) given Context: Option[SimpleSelector] =
+    if self.renamed.isEmpty then Some(self) else None // TODO: handle import bounds
 
-  def SimpleSelector_selection(self: SimpleSelector) given Context: Id = self
+  def SimpleSelector_selection(self: SimpleSelector) given Context: Id = self.imported
 
-  type RenameSelector = untpd.Thicket
+  type RenameSelector = untpd.ImportSelector
 
-  def matchRenameSelector(self: ImportSelector) given Context: Option[RenameSelector] = self match {
-    case self @ Trees.Thicket((id1: untpd.Ident) :: (id2: untpd.Ident) :: Nil) if id2.name != nme.WILDCARD => Some(self)
-    case _ => None
-  }
+  def matchRenameSelector(self: ImportSelector) given Context: Option[RenameSelector] =
+    if self.renamed.isEmpty then None else Some(self)
 
   def RenameSelector_from(self: RenameSelector) given Context: Id =
-    self.trees.head.asInstanceOf[untpd.Ident]
+    self.imported
   def RenameSelector_to(self: RenameSelector) given Context: Id =
-    self.trees.last.asInstanceOf[untpd.Ident]
+    self.renamed.asInstanceOf[untpd.Ident]
 
-  type OmitSelector = untpd.Thicket
+  type OmitSelector = untpd.ImportSelector
 
-  def matchOmitSelector(self: ImportSelector) given Context: Option[OmitSelector] = self match {
-    case self @ Trees.Thicket((id: untpd.Ident) :: Trees.Ident(nme.WILDCARD) :: Nil) => Some(self)
-    case _ => None
-  }
+  def matchOmitSelector(self: ImportSelector) given Context: Option[OmitSelector] =
+    self.renamed match
+      case Trees.Ident(nme.WILDCARD) => Some(self)
+      case _ => None
 
-  def SimpleSelector_omited(self: OmitSelector) given Context: Id =
-    self.trees.head.asInstanceOf[untpd.Ident]
+  def SimpleSelector_omitted(self: OmitSelector) given Context: Id =
+    self.imported
 
   //
   // IDENTIFIERS
@@ -1908,7 +1904,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   private def optional[T <: Trees.Tree[?]](tree: T): Option[tree.type] =
     if (tree.isEmpty) None else Some(tree)
 
-  private def withDefaultPos[T <: Tree](fn: given Context => T) given (ctx: Context): T =
+  private def withDefaultPos[T <: Tree](fn: ImplicitFunction1[Context, T]) given (ctx: Context): T =
     (fn given ctx.withSource(rootPosition.source)).withSpan(rootPosition.span)
 
   private def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()

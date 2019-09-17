@@ -144,12 +144,11 @@ Type              ::=  FunType
                     |  HkTypeParamClause ‘=>>’ Type                             TypeLambda(ps, t)
                     |  MatchType
                     |  InfixType
-FunType           ::=  ['given'] (MonoFunType | PolyFunType)
-MonoFunType       ::=  FunArgTypes ‘=>’ Type                                    Function(ts, t)
-PolyFunType       :: = HKTypeParamClause '=>' Type                              PolyFunction(ps, t)
+FunType           ::=  FunArgTypes ‘=>’ Type                                    Function(ts, t)
+                    |  HKTypeParamClause '=>' Type                              PolyFunction(ps, t)
 FunArgTypes       ::=  InfixType
-                    |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
-                    |  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+                    |  ‘(’ [ ‘[given]’ FunArgType {‘,’ FunArgType } ] ‘)’
+                    |  ‘(’ ‘[given]’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
 MatchType         ::=  InfixType `match` TypeCaseClauses
 InfixType         ::=  RefinedType {id [cnl] RefinedType}                       InfixOp(t1, op, t2)
@@ -312,13 +311,13 @@ DefParamClause    ::=  [nl] ‘(’ DefParams ‘)’
 GivenParamClause  ::=  ‘(’ ‘given’ (DefParams | GivenTypes) ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
-GivenTypes        ::=  AnnotType {‘,’ AnnotType}
+GivenTypes        ::=  Type {‘,’ Type}
 ClosureMods       ::=  { ‘implicit’ | ‘given’}
 ```
 
 ### Bindings and Imports
 ```ebnf
-Bindings          ::=  ‘(’ Binding {‘,’ Binding} ‘)’
+Bindings          ::=  ‘(’ [[‘given’] Binding {‘,’ Binding}] ‘)’
 Binding           ::=  (id | ‘_’) [‘:’ Type]                                    ValDef(_, id, tpe, EmptyTree)
 
 Modifier          ::=  LocalModifier
@@ -342,9 +341,9 @@ ImportSpec        ::=  id
                     | ‘_’
                     | ‘given’
                     | ‘{’ ImportSelectors) ‘}’
-ImportSelectors   ::=  [‘given’] id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
+ImportSelectors   ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
                     |  WildCardSelector {‘,’ WildCardSelector}
-WildCardSelector  ::=  ‘given’ [‘as’ InfixType]
+WildCardSelector  ::=  ‘given’ [InfixType]
                     |  ‘_' [‘:’ InfixType]
 Export            ::=  ‘export’ [‘given’] ImportExpr {‘,’ ImportExpr}
 ```
@@ -389,13 +388,14 @@ ObjectDef         ::=  id [Template]                                            
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
 GivenDef          ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
                     |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
-                    |  [GivenSig ‘:’] [DefTypeParamClause] DefParamClause TemplateBody
+                    |  [GivenSig ‘:’] [ExtParamClause] TemplateBody
 GivenSig          ::=  [id] [DefTypeParamClause] {GivenParamClause}
+ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’ {GivenParamClause}
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
                     |  ConstrApp {‘,’ ConstrApp}
-ConstrApp         ::=  AnnotType {ArgumentExprs}                                Apply(tp, args)
+ConstrApp         ::=  AnnotType {ParArgumentExprs}                             Apply(tp, args)
 ConstrExpr        ::=  SelfInvocation
                     |  ‘{’ SelfInvocation {semi BlockStat} ‘}’
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}

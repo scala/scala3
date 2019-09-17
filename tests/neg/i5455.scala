@@ -11,7 +11,7 @@ object Library {
     def toInt(n: Nat): Int = n
 
   }
-  given NatOps {
+  given {
     def (x: Nat) * (y: Nat): Nat = x * y
     def (x: Nat) toInt: Int = x
   }

@@ -4,7 +4,7 @@ object lib {
 
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition, '{""}) }
 
-  def assertImpl(cond: Expr[Boolean], clue: Expr[Any]) given (qctx: QuoteContext): Expr[Unit] = {
+  def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty._
     import util._
 

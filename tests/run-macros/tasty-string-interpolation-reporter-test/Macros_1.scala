@@ -1,5 +1,5 @@
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 import scala.quoted.matching._
 
 import scala.language.implicitConversions
@@ -19,7 +19,7 @@ object TestFooErrors { // Defined in tests
 
 object Macro {
 
-  def foo(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]]) given (qctx: QuoteContext): Expr[String] = {
+  def foo(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(given qctx: QuoteContext): Expr[String] = {
     (sc, argsExpr) match {
       case ('{ StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
         val reporter = new Reporter {
@@ -32,7 +32,7 @@ object Macro {
     }
   }
 
-  def fooErrors(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]]) given (qctx: QuoteContext): Expr[List[(Int, Int, Int, String)]] = {
+  def fooErrors(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(given qctx: QuoteContext): Expr[List[(Int, Int, Int, String)]] = {
     (sc, argsExpr) match {
       case ('{ StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
         val errors = List.newBuilder[Expr[(Int, Int, Int, String)]]
@@ -51,7 +51,7 @@ object Macro {
   }
 
 
-  private def fooCore(parts: Seq[Expr[String]], args: Seq[Expr[Any]], reporter: Reporter) given QuoteContext: Expr[String] = {
+  private def fooCore(parts: Seq[Expr[String]], args: Seq[Expr[Any]], reporter: Reporter)(given QuoteContext): Expr[String] = {
     for ((part, idx) <- parts.zipWithIndex) {
       val Const(v: String) = part
       if (v.contains("#"))

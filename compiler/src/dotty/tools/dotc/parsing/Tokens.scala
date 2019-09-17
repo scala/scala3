@@ -254,7 +254,7 @@ object Tokens extends TokensCommon {
     AT, CASE)
 
   final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(
-    TYPE, RPAREN, RBRACE, RBRACKET, OUTDENT)
+    TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT)
 
   /** Tokens that stop a lookahead scan search for a `<-`, `then`, or `do`.
    *  Used for disambiguating between old and new syntax.
@@ -269,6 +269,17 @@ object Tokens extends TokensCommon {
   final val canStartIndentTokens: BitSet =
     statCtdTokens | BitSet(COLONEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR)
       // `if` is excluded because it often comes after `else` which makes for awkward indentation rules
+
+  /** Faced with the choice between a type and a formal parameter, the following
+   *  tokens determine it's a formal parameter.
+   */
+  final val startParamTokens: BitSet = modifierTokens | BitSet(VAL, VAR, AT)
+
+  /** Faced with the choice of a type `(...)` or a parameter or given type list
+   *  in `(...)`, the following tokens after the opening `(` determine it's
+   *  a parameter or given type list.
+   */
+  final val startParamOrGivenTypeTokens: BitSet = startParamTokens | BitSet(GIVEN, ERASED)
 
   final val scala3keywords = BitSet(ENUM, ERASED, GIVEN, IMPLIED)
 

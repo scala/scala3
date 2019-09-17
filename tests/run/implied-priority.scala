@@ -11,18 +11,18 @@ class Arg[T]  // An argument that we use as a given for some given instances bel
  * Traditional scheme: prioritize with location in class hierarchy
  */
 class LowPriorityImplicits {
-  given t1[T] as E[T]("low")
+  given t1[T] : E[T]("low")
 }
 
 object NormalImplicits extends LowPriorityImplicits {
-  given t2[T]as E[T]("norm") given Arg[T]
+  given t2[T](given Arg[T]): E[T]("norm")
 }
 
 def test1 = {
-  import given NormalImplicits._
+  import NormalImplicits.given
   assert(summon[E[String]].str == "low") // No Arg available, so only t1 applies
 
-  { given as Arg[String]
+  { given Arg[String]
     assert(summon[E[String]].str == "norm")  // Arg available, t2 takes priority
   }
 }
@@ -31,22 +31,22 @@ def test1 = {
  */
 object Priority {
   class Low
-  object Low { given as Low }
+  object Low { given Low }
 
   class High extends Low
-  object High { given as High }
+  object High { given High }
 }
 
 object Impl2 {
-  given t1[T] as E[T]("low") given Priority.Low
-  given t2[T] as E[T]("norm") given Priority.High given Arg[T]
+  given t1[T](given Priority.Low): E[T]("low")
+  given t2[T](given Priority.High)(given Arg[T]): E[T]("norm")
 }
 
 def test2 = {
-  import given Impl2._
+  import Impl2.given
   assert(summon[E[String]].str == "low") // No Arg available, so only t1 applies
 
-  { given as Arg[String]
+  { given Arg[String]
     assert(summon[E[String]].str == "norm") // Arg available, t2 takes priority
   }
 }
@@ -60,14 +60,14 @@ def test2 = {
  * an alternative without implicit arguments would override all of them.
  */
 object Impl2a {
-  given t3[T] as E[T]("hi")
+  given t3[T] : E[T]("hi")
 }
 
 def test2a = {
-  import given Impl2._
-  import given Impl2a._
+  import Impl2.given
+  import Impl2a.given
 
-  given as Arg[String]
+  given Arg[String]
   assert(summon[E[String]].str == "hi")
 }
 
@@ -75,21 +75,21 @@ def test2a = {
  * result type of the given instance, e.g. like this:
  */
 object Impl3 {
-  given t1[T] as E[T]("low")
+  given t1[T] : E[T]("low")
 }
 
 object Override {
   trait HighestPriority  // A marker trait to indicate a higher priority
 
-  given over[T] as E[T]("hi"), HighestPriority
+  given over[T] : E[T]("hi"), HighestPriority
 }
 
 def test3 = {
-  import given Impl3._
+  import Impl3.given
   assert(summon[E[String]].str == "low")  // only t1 is available
 
-  { import given Override._
-    import given Impl3._
+  { import Override.given
+    import Impl3.given
     assert(summon[E[String]].str == "hi") // `over` takes priority since its result type is a subtype of t1's.
   }
 }
@@ -101,21 +101,22 @@ def test3 = {
  * with a default argument.
  */
 object Impl4 {
-  given t1 as E[String]("string")
-  given t2[T] as E[T]("generic") given Arg[T]
+  given t1 : E[String]("string")
+
+  given t2[T](given Arg[T]): E[T]("generic")
 }
 
 object fallback4 {
-  def withFallback[T] given (ev: E[T] = new E[T]("fallback")): E[T] = ev
+  def withFallback[T](given ev: E[T] = new E[T]("fallback")): E[T] = ev
 }
 
 def test4 = {
-  import given Impl4._
+  import Impl4.given
   import fallback4._
   assert(withFallback[String].str == "string")  // t1 is applicable
   assert(withFallback[Int].str == "fallback")   // No applicable instances, pick the default
 
-  { given as Arg[Int]
+  { given Arg[Int]
     assert(withFallback[Int].str == "generic")  // t2 is applicable
   }
 }
@@ -133,19 +134,19 @@ object HigherPriority {
 }
 
 object fallback5 {
-  given [T] as (E[T] & HigherPriority.Type) given (ev: E[T] = new E[T]("fallback")) = HigherPriority.inject(ev)
+  given [T](given ev: E[T] = new E[T]("fallback")): (E[T] & HigherPriority.Type) = HigherPriority.inject(ev)
 }
 
 def test5 = {
-  import given Impl4._
-  import given fallback5._
+  import Impl4.given
+  import fallback5.given
 
   // All inferred terms go through the given instance in fallback5.
   // They differ in what implicit argument is synthesized for that instance.
   assert(summon[E[String]].str == "string")  // t1 is applicable
   assert(summon[E[Int]].str == "fallback")   // No applicable instances, pick the default
 
-  { given as Arg[Int]
+  { given Arg[Int]
     assert(summon[E[Int]].str == "generic")  // t2 is applicable
   }
 }

@@ -799,10 +799,10 @@ object Types {
      *  @param kind   A subset of {Implicit, Given} that specifies what kind of implicit should
      *                be returned
      */
-    final def implicitMembers(kind: FlagSet)(implicit ctx: Context): List[TermRef] = {
+    final def implicitMembers(implicit ctx: Context): List[TermRef] = {
       record("implicitMembers")
       memberDenots(implicitFilter,
-          (name, buf) => buf ++= member(name).altsWith(_.isOneOf(GivenOrImplicitVal & kind)))
+          (name, buf) => buf ++= member(name).altsWith(_.isOneOf(GivenOrImplicitVal)))
         .toList.map(d => TermRef(this, d.symbol.asTerm))
     }
 

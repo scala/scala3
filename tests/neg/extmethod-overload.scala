@@ -1,8 +1,8 @@
 object Test {
-  given A {
+  given A: {
     def (x: Int) |+| (y: Int) = x + y
   }
-  given B {
+  given B: {
     def (x: Int) |+| (y: String) = x + y.length
   }
   assert((1 |+| 2) == 3)  // error ambiguous

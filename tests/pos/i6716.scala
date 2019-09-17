@@ -1,12 +1,12 @@
 trait Monad[T]
 class Foo
 object Foo {
-  given as Monad[Foo]
+  given Monad[Foo]
 }
 
 opaque type Bar = Foo
 object Bar {
-  given as Monad[Bar] = summon[Monad[Foo]]
+  given Monad[Bar] = summon[Monad[Foo]]
 }
 
 object Test {

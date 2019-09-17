@@ -6,15 +6,15 @@ object A {
   class C extends T
   class D[T]
 
-  given b as B
-  given c as C
-  given t as T
-  given d as D[Int]
+  given b : B
+  given c : C
+  given t : T
+  given d : D[Int]
 }
 
 object Test extends App {
   import A._
-  import given A.{t, for B, D[_]}
+  import A.{t, given B, given D[_]}
 
   val x1: B = b
   val x2: T = t
@@ -29,14 +29,15 @@ class ExecutionContext
 class Monoid[T]
 
 object Instances {
-  given intOrd as Ordering[Int]
-  given listOrd[T] as Ordering[List[T]] given Ordering[T]
-  given ec as ExecutionContext
-  given im as Monoid[Int]
+  given intOrd : Ordering[Int]
+
+  given listOrd[T](given Ordering[T]): Ordering[List[T]]
+  given ec : ExecutionContext
+  given im : Monoid[Int]
 }
 
 object Test2 {
-  import given Instances.{for Ordering[_], ExecutionContext}
+  import Instances.{given Ordering[_], given ExecutionContext}
   val x = intOrd
   val y = listOrd[Int]
   val z = ec
@@ -46,7 +47,7 @@ object Test2 {
 }
 
 object Test3 {
-  import given Instances.{im, for Ordering[_]}
+  import Instances.{im, given Ordering[_]}
   val x = intOrd
   val y = listOrd[Int]
   val z = im

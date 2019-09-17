@@ -140,7 +140,7 @@ object Scanners {
     val keepComments = !ctx.settings.YdropComments.value
 
     /** A switch whether operators at the start of lines can be infix operators */
-    private var allowLeadingInfixOperators = true
+    private[Scanners] var allowLeadingInfixOperators = true
 
     val isScala2Mode: Boolean = ctx.scala2Setting
 
@@ -326,7 +326,7 @@ object Scanners {
      */
     private def handleEndMarkers(width: IndentWidth): Unit =
       if (next.token == IDENTIFIER && next.name == nme.end && width == currentRegion.indentWidth) {
-        val lookahead = lookaheadScanner
+        val lookahead = LookaheadScanner()
         lookahead.nextToken() // skip the `end`
 
         def handle(tag: EndMarkerTag) = {
@@ -378,7 +378,7 @@ object Scanners {
       && ch == ' '
       && !pastBlankLine
       && {
-        val lookahead = lookaheadScanner
+        val lookahead = LookaheadScanner()
         lookahead.allowLeadingInfixOperators = false
           // force a NEWLINE a after current token if it is on its own line
         lookahead.nextToken()
@@ -865,18 +865,28 @@ object Scanners {
 
 // Lookahead ---------------------------------------------------------------
 
-    /** A new Scanner that starts at the current token offset */
-    def lookaheadScanner: Scanner = new Scanner(source, offset) {
+    class LookaheadScanner extends Scanner(source, offset) {
       override val indentSyntax = false
       override protected def printState() = {
         print("la:")
         super.printState()
       }
+
+      /** Skip matching pairs of `(...)` or `[...]` parentheses.
+       *  @pre  The current token is `(` or `[`
+       */
+      final def skipParens(): Unit = {
+        val opening = token
+        nextToken()
+        while token != EOF && token != opening + 1 do
+          if token == opening then skipParens() else nextToken()
+        nextToken()
+      }
     }
 
     /** Is the token following the current one in `tokens`? */
     def lookaheadIn(tokens: BitSet): Boolean = {
-      val lookahead = lookaheadScanner
+      val lookahead = LookaheadScanner()
       while ({
         lookahead.nextToken()
         lookahead.token == NEWLINE || lookahead.token == NEWLINES
@@ -887,7 +897,7 @@ object Scanners {
 
     /** Is the current token in a position where a modifier is allowed? */
     def inModifierPosition(): Boolean = {
-      val lookahead = lookaheadScanner
+      val lookahead = LookaheadScanner()
       while ({
         lookahead.nextToken()
         lookahead.token == NEWLINE || lookahead.token == NEWLINES || lookahead.isSoftModifier

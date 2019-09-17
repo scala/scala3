@@ -51,12 +51,12 @@ object Test {
     // type A = (b: Box) => b.T
     // assert(isDependentFunctionType[A])
 
-    assert(isImplicitFunctionType[given Int => Int])
+    assert(isImplicitFunctionType[(given Int) => Int])
     assert(!isImplicitFunctionType[Int => Int])
     // type B = given Set[Int] => Int
     // assert(isImplicitFunctionType[B])
 
-    assert(isErasedFunctionType[erased Int => Int])
+    assert(isErasedFunctionType[(erased Int) => Int])
     assert(!isErasedFunctionType[Int => Int])
     // type C = erased Set[Int] => Int
     // assert(isErasedFunctionType[C])

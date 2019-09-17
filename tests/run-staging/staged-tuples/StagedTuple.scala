@@ -12,7 +12,7 @@ object StagedTuple {
 
   private final val specialize = true
 
-  def toArrayStaged(tup: Expr[Tuple], size: Option[Int]) given QuoteContext: Expr[Array[Object]] = {
+  def toArrayStaged(tup: Expr[Tuple], size: Option[Int])(given QuoteContext): Expr[Array[Object]] = {
     if (!specialize) '{dynamicToArray($tup)}
     else size match {
       case Some(0) =>
@@ -34,7 +34,7 @@ object StagedTuple {
     }
   }
 
-  def fromArrayStaged[T <: Tuple : Type](xs: Expr[Array[Object]], size: Option[Int]) given QuoteContext: Expr[T] = {
+  def fromArrayStaged[T <: Tuple : Type](xs: Expr[Array[Object]], size: Option[Int])(given QuoteContext): Expr[T] = {
     if (!specialize) '{dynamicFromArray[T]($xs)}
     else xs.bind { xs =>
       val tup: Expr[Any] = size match {
@@ -68,7 +68,7 @@ object StagedTuple {
     }
   }
 
-  def sizeStaged[Res <: Int : Type](tup: Expr[Tuple], size: Option[Int]) given QuoteContext: Expr[Res] = {
+  def sizeStaged[Res <: Int : Type](tup: Expr[Tuple], size: Option[Int])(given QuoteContext): Expr[Res] = {
     val res =
       if (!specialize) '{dynamicSize($tup)}
       else size match {
@@ -78,7 +78,7 @@ object StagedTuple {
     res.as[Res]
   }
 
-  def headStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int]) given QuoteContext: Expr[Head[Tup]] = {
+  def headStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int])(given QuoteContext): Expr[Head[Tup]] = {
     if (!specialize) '{dynamicApply($tup, 0)}
     else {
       val resVal = size match {
@@ -101,7 +101,7 @@ object StagedTuple {
     }
   }
 
-  def tailStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int]) given QuoteContext: Expr[Tail[Tup]] = {
+  def tailStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int])(given QuoteContext): Expr[Tail[Tup]] = {
     if (!specialize) '{dynamicTail[Tup]($tup)}
     else {
       val res = size match {
@@ -125,7 +125,7 @@ object StagedTuple {
     }
   }
 
-  def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int]) given (qctx: QuoteContext): Expr[Elem[Tup, N]] = {
+  def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int])(given qctx: QuoteContext): Expr[Elem[Tup, N]] = {
     import reflect._
 
     if (!specialize) '{dynamicApply($tup, $n)}
@@ -185,7 +185,7 @@ object StagedTuple {
     }
   }
 
-  def consStaged[T <: Tuple & Singleton : Type, H : Type](self: Expr[T], x: Expr[H], tailSize: Option[Int]) given QuoteContext: Expr[H *: T] =
+  def consStaged[T <: Tuple & Singleton : Type, H : Type](self: Expr[T], x: Expr[H], tailSize: Option[Int])(given QuoteContext): Expr[H *: T] =
   if (!specialize) '{dynamicCons[H, T]($x, $self)}
   else {
     val res = tailSize match {
@@ -207,7 +207,7 @@ object StagedTuple {
     res.as[H *: T]
   }
 
-  def concatStaged[Self <: Tuple & Singleton : Type, That <: Tuple & Singleton : Type](self: Expr[Self], selfSize: Option[Int], that: Expr[That], thatSize: Option[Int]) given QuoteContext: Expr[Concat[Self, That]] = {
+  def concatStaged[Self <: Tuple & Singleton : Type, That <: Tuple & Singleton : Type](self: Expr[Self], selfSize: Option[Int], that: Expr[That], thatSize: Option[Int])(given QuoteContext): Expr[Concat[Self, That]] = {
     if (!specialize) '{dynamicConcat[Self, That]($self, $that)}
     else {
       def genericConcat(xs: Expr[Tuple], ys: Expr[Tuple]): Expr[Tuple] =
@@ -258,9 +258,9 @@ object StagedTuple {
 
   private implicit class ExprOps[U: Type](expr: Expr[U]) {
 
-    def as[T: Type] given QuoteContext: Expr[T] = '{ $expr.asInstanceOf[T] }
+    def as[T: Type](given QuoteContext): Expr[T] = '{ $expr.asInstanceOf[T] }
 
-    def bind[T: Type](in: Expr[U] => Expr[T]) given QuoteContext: Expr[T] = '{
+    def bind[T: Type](in: Expr[U] => Expr[T])(given QuoteContext): Expr[T] = '{
       val t: U = $expr
       ${in('t)}
     }

@@ -3,6 +3,7 @@ package dotty.tools.dotc.interactive
 import java.nio.charset.Charset
 
 import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.config.Printers.interactiv
 import dotty.tools.dotc.core.Contexts.{Context, NoContext}
 import dotty.tools.dotc.core.CheckRealizable
@@ -63,11 +64,11 @@ object Completion {
         else if (ref.name.isTypeName) Mode.Type
         else Mode.None
 
-      case Thicket(name :: _ :: Nil) :: (_: Import) :: _ =>
-        if (name.span.contains(pos.span)) Mode.Import
+      case (sel: untpd.ImportSelector) :: _ =>
+        if sel.imported.span.contains(pos.span) then Mode.Import
         else Mode.None // Can't help completing the renaming
 
-      case Import(_, _, _) :: _ =>
+      case Import(_, _) :: _ =>
         Mode.Import
 
       case _ =>
@@ -78,14 +79,14 @@ object Completion {
    * Inspect `path` to determine the completion prefix. Only symbols whose name start with the
    * returned prefix should be considered.
    */
-  private def completionPrefix(path: List[Tree], pos: SourcePosition): String =
+  private def completionPrefix(path: List[untpd.Tree], pos: SourcePosition): String =
     path match {
-      case Thicket(name :: _ :: Nil) :: (_: Import) :: _ =>
-        completionPrefix(name :: Nil, pos)
+      case (sel: untpd.ImportSelector) :: _ =>
+        completionPrefix(sel.imported :: Nil, pos)
 
-      case Import(_, expr, selectors) :: _ =>
+      case Import(expr, selectors) :: _ =>
         selectors.find(_.span.contains(pos.span)).map { selector =>
-          completionPrefix(selector.asInstanceOf[Tree] :: Nil, pos)
+          completionPrefix(selector :: Nil, pos)
         }.getOrElse("")
 
       case (ref: RefTree) :: _ =>
@@ -117,10 +118,10 @@ object Completion {
 
     if (buffer.mode != Mode.None)
       path match {
-        case Select(qual, _) :: _                    => buffer.addMemberCompletions(qual)
-        case Import(_, expr, _) :: _                 => buffer.addMemberCompletions(expr) // TODO: distinguish given from plain imports
-        case (_: Thicket) :: Import(_, expr, _) :: _ => buffer.addMemberCompletions(expr)
-        case _                                       => buffer.addScopeCompletions
+        case Select(qual, _) :: _                              => buffer.addMemberCompletions(qual)
+        case Import(expr, _) :: _                              => buffer.addMemberCompletions(expr) // TODO: distinguish given from plain imports
+        case (_: untpd.ImportSelector) :: Import(expr, _) :: _ => buffer.addMemberCompletions(expr)
+        case _                                                 => buffer.addScopeCompletions
       }
 
     val completionList = buffer.getCompletions

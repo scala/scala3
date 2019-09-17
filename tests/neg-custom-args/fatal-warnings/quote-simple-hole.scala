@@ -1,6 +1,6 @@
 import scala.quoted.QuoteContext
 
-def test given QuoteContext = {
+def test(given QuoteContext) = {
   val x = '{0}
   val y = '{ // error: Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.
     $x

@@ -6,9 +6,11 @@ title: "Implicit Function Types - More Details"
 ## Syntax
 
     Type              ::=  ...
-                        |  `(' `given' FunArgTypes `)' `=>' Type
-    Expr              ::=  ...
-                        |  `(' `given' FunParams `)' `=>' Expr
+                        |  FunArgTypes ‘=>’ Typee
+    FunArgTypes       ::=  InfixType
+                        |  ‘(’ [ ‘[given]’ FunArgType {‘,’ FunArgType } ] ‘)’
+                        |  ‘(’ ‘[given]’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+    Bindings          ::=  ‘(’ [[‘given’] Binding {‘,’ Binding}] ‘)’
 
 Implicit function types associate to the right, e.g.
 `(given S) => (given T) => U` is the same as `(given S) => ((given T) => U)`.

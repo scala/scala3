@@ -1,9 +1,9 @@
 object Macros {
   import scala.quoted._
-  import given scala.quoted.autolift._
+  import scala.quoted.autolift.given
 
   inline def go[T](t: => T) = ${ impl('t) }
-  def impl[T](expr: Expr[T]) given (qctx: QuoteContext): Expr[Unit] = {
+  def impl[T](expr: Expr[T])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty._
 
     val tree = expr.unseal

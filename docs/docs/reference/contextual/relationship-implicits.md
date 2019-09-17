@@ -66,7 +66,7 @@ The synthesized type names are formed from
 
 Anonymous given instances that define extension methods without also implementing a type
 get their name from the name of the first extension method and the toplevel type
-constructor of its first parameter. For example, the given instance
+constructor of its first parameter. For example, the given extension
 ```scala
   given {
     def (xs: List[T]) second[T] = ...

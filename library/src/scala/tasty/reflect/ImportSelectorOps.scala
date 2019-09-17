@@ -28,7 +28,7 @@ trait ImportSelectorOps extends Core {
 
   implicit class OmitSelectorAPI(self: OmitSelector) {
     def omitted given (ctx: Context): Id =
-      internal.SimpleSelector_omited(self)
+      internal.SimpleSelector_omitted(self)
   }
 
   object OmitSelector {

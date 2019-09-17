@@ -233,8 +233,8 @@ trait Printers
           this += ", " += self += ", " ++= body += ")"
         case PackageDef(name, owner) =>
           this += "PackageDef(\"" += name += "\", " += owner += ")"
-        case Import(importImplied, expr, selectors) =>
-          this += "Import(" += importImplied += ", " += expr += ", " ++= selectors += ")"
+        case Import(expr, selectors) =>
+          this += "Import(" += expr += ", " ++= selectors += ")"
         case PackageClause(pid, stats) =>
           this += "PackageClause(" += pid += ", " ++= stats += ")"
         case Inferred() =>
@@ -559,7 +559,7 @@ trait Printers
           val stats1 = stats.collect {
             case IsPackageClause(stat) => stat
             case IsDefinition(stat) if !(stat.symbol.flags.is(Flags.Object) && stat.symbol.flags.is(Flags.Lazy)) => stat
-            case stat @ Import(_, _, _) => stat
+            case stat @ Import(_, _) => stat
           }
           name match {
             case Ident("<empty>") =>
@@ -570,9 +570,8 @@ trait Printers
               inBlock(printTrees(stats1, lineBreak()))
           }
 
-        case Import(importImplied, expr, selectors) =>
+        case Import(expr, selectors) =>
           this += "import "
-          if (importImplied) this += "delegate "
           printTree(expr)
           this += "."
           printImportSelectors(selectors)
@@ -665,7 +664,7 @@ trait Printers
           }
           val stats1 = stats.collect {
             case IsDefinition(stat) if keepDefinition(stat) => stat
-            case stat @ Import(_, _, _) => stat
+            case stat @ Import(_, _) => stat
             case IsTerm(stat) => stat
           }
 

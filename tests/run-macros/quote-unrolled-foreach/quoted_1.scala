@@ -1,13 +1,13 @@
 import scala.annotation.tailrec
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 object Macro {
 
   inline def unrolledForeach(inline unrollSize: Int, seq: Array[Int])(f: => Int => Unit): Unit = // or f: Int => Unit
     ${unrolledForeachImpl(unrollSize, 'seq, 'f)}
 
-  private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit]) given QuoteContext: Expr[Unit] = '{
+  private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit])(given QuoteContext): Expr[Unit] = '{
     val size = $seq.length
     assert(size % (${unrollSize}) == 0) // for simplicity of the implementation
     var i = 0

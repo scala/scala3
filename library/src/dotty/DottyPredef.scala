@@ -1,6 +1,7 @@
 package dotty
 
 object DottyPredef {
+  import compiletime.summonFrom
 
   @forceInline final def assert(assertion: => Boolean, message: => Any): Unit = {
     if (!assertion)
@@ -32,7 +33,7 @@ object DottyPredef {
    * }}}
    * @group utilities
    */
-  inline def valueOf[T]: T = implicit match {
+  inline def valueOf[T]: T = summonFrom {
     case ev: ValueOf[T] => ev.value
   }
 

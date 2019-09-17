@@ -5,7 +5,7 @@ class Foo {
      c0: T, c1: T, c2: T, c3: T, c4: T, c5: T, c6: T, c7: T, c8: T, c9: T) => 0
 
   // #6946
-  def baz = (x: given String => Unit) => x given ""
+  def baz = (x: (given String) => Unit) => x(given "")
 }
 
 object Test {

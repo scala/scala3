@@ -29,13 +29,13 @@ object Imperative {
     ).onError(None)
 
   def main(args: Array[String]) = {
-    println(readPerson given Config("John Doe", 20))
-    println(readPerson given Config("Incognito", 99))
+    println(readPerson(given Config("John Doe", 20)))
+    println(readPerson(given Config("Incognito", 99)))
   }
 }
 
 object Configs {
-  type Configured[T] = given Config => T
+  type Configured[T] = (given Config) => T
   def config: Configured[Config] = implicitly[Config]
 }
 
@@ -47,7 +47,7 @@ object Exceptions {
     private[Exceptions] def throwE() = throw new E
   }
 
-  type Possibly[T] = given CanThrow => T
+  type Possibly[T] = (given CanThrow) => T
 
   def require(p: Boolean)(implicit ct: CanThrow): Unit =
     if (!p) ct.throwE()
@@ -56,7 +56,7 @@ object Exceptions {
 
   class OnError[T](op: Possibly[T]) {
     def onError(fallback: => T): T =
-      try op given (new CanThrow)
+      try op(given new CanThrow)
       catch { case ex: E => fallback }
   }
 }

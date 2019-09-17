@@ -2,32 +2,36 @@ case class Show[T](val i: Int)
 object Show {
   def apply[T](implicit st: Show[T]): Int = st.i
 
-  given showInt as Show[Int] = new Show[Int](0)
-  given fallback[T] as Show[T] = new Show[T](1)
+  given showInt : Show[Int] = new Show[Int](0)
+  given fallback[T] : Show[T] = new Show[T](1)
 }
 
 class Generic
 object Generic {
-  given gen as Generic = new Generic
-  given showGen[T] as Show[T] given Generic = new Show[T](2)
+  given gen : Generic = new Generic
+  given showGen[T](given Generic): Show[T] = new Show[T](2)
 }
 
 class Generic2
 object Generic2 {
   opaque type HiPriority = AnyRef
-  given showGen[T] as (Show[T] & HiPriority) = new Show[T](2).asInstanceOf
+  given showGen[T] : (Show[T] & HiPriority) = new Show[T](2).asInstanceOf
 }
 
 class SubGen extends Generic
 object SubGen {
-  given as SubGen
+  given SubGen
 }
 object Contextual {
   trait Context
-  given ctx as Context
-  given showGen[T] as Show[T] given Generic = new Show[T](2)
-  given showGen[T] as Show[T] given Generic, Context = new Show[T](3)
-  given showGen[T] as Show[T] given SubGen = new Show[T](4)
+
+  given ctx: Context
+
+  given showGen[T](given Generic): Show[T] = new Show[T](2)
+
+  given showGen[T](given Generic, Context): Show[T] = new Show[T](3)
+
+  given showGen[T](given SubGen): Show[T] = new Show[T](4)
 }
 
 object Test extends App {

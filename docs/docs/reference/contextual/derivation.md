@@ -165,7 +165,7 @@ worked out example of such a library, see [shapeless 3](https://github.com/miles
 #### How to write a type class `derived` method using low level mechanisms
 
 The low-level method we will use to implement a type class `derived` method in this example exploits three new
-type-level constructs in Dotty: inline methods, inline matches, and given matches. Given this definition of the
+type-level constructs in Dotty: inline methods, inline matches, and implicit searches via `summonFrom`. Given this definition of the
 `Eq` type class,
 
 

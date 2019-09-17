@@ -3,7 +3,7 @@ import scala.quoted.matching._
 
 inline def f: Any = ${ fImpl }
 
-private def fImpl given (qctx: QuoteContext): Expr[Unit] = {
+private def fImpl(given qctx: QuoteContext): Expr[Unit] = {
   import qctx.tasty._
   searchImplicit(('[A]).unseal.tpe) match {
     case IsImplicitSearchSuccess(x) =>

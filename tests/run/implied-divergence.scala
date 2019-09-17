@@ -2,11 +2,11 @@
 // recursions.
 case class E(x: E | Null)
 
-given e as E(null)
+given e : E(null)
 
 object Test extends App {
 
-  given f as E(e) given (e: E)
+  given f(given e: E): E(e)
 
   assert(summon[E].toString == "E(E(null))")
 

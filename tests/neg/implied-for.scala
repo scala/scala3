@@ -3,13 +3,13 @@ class B extends T
 class C extends T
 
 object A {
-  given b as B
-  given c as C
+  given b : B
+  given c : C
 }
 
 object Test extends App {
   import A._
-  import given A.{for B}
+  import A.{given B}
 
   val x: B = b // OK
   println(c) // error: not found

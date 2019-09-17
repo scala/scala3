@@ -135,22 +135,30 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def toTextTuple(args: List[Type]): Text =
       "(" ~ argsText(args) ~ ")"
 
-    def toTextFunction(args: List[Type], isContextual: Boolean, isErased: Boolean): Text =
+    def toTextFunction(args: List[Type], isGiven: Boolean, isErased: Boolean): Text =
       changePrec(GlobalPrec) {
         val argStr: Text =
-          if (args.length == 2 && !defn.isTupleType(args.head))
+          if args.length == 2
+             && !defn.isTupleType(args.head)
+             && !isGiven && !isErased
+          then
             atPrec(InfixPrec) { argText(args.head) }
           else
-            toTextTuple(args.init)
-        (keywordText("given ") provided isContextual) ~
-        (keywordText("erased ") provided isErased) ~
+            "("
+            ~ keywordText("given ").provided(isGiven)
+            ~ keywordText("erased ").provided(isErased)
+            ~ argsText(args.init)
+            ~ ")"
         argStr ~ " => " ~ argText(args.last)
       }
 
     def toTextDependentFunction(appType: MethodType): Text =
-      (keywordText("given ") provided appType.isImplicitMethod) ~
-      (keywordText("erased ") provided appType.isErasedMethod) ~
-      "(" ~ paramsText(appType) ~ ") => " ~ toText(appType.resultType)
+      "("
+      ~ keywordText("given ").provided(appType.isImplicitMethod)
+      ~ keywordText("erased ").provided(appType.isErasedMethod)
+      ~ paramsText(appType)
+      ~ ") => "
+      ~ toText(appType.resultType)
 
     def isInfixType(tp: Type): Boolean = tp match {
       case AppliedType(tycon, args) =>
@@ -238,7 +246,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case dummyTreeOfType(tp) :: Nil if !(tp isRef defn.NullClass) => "null: " ~ toText(tp)
           case _ => toTextGlobal(args, ", ")
         }
-        "[applied to " ~ (Str("given ") provided tp.isContextualMethod) ~ (Str("erased ") provided tp.isErasedMethod) ~ "(" ~ argsText ~ ") returning " ~ toText(resultType) ~ "]"
+        "[applied to ("
+        ~ keywordText("given ").provided(tp.isContextualMethod)
+        ~ keywordText("erased ").provided(tp.isErasedMethod)
+        ~ argsText
+        ~ ") returning "
+        ~ toText(resultType)
+        ~ "]"
       case IgnoredProto(ignored) =>
         "?" ~ (("(ignored: " ~ toText(ignored) ~ ")") provided printDebug)
       case tp @ PolyProto(targs, resType) =>
@@ -319,19 +333,26 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => tree
     }
 
-    def importText(givenOnly: Boolean, expr: Tree, selectors: List[Tree]) = {
-      def selectorText(sel: Tree): Text = sel match {
-        case Thicket(l :: r :: Nil) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
-        case _: Ident => toTextGlobal(sel)
-        case TypeBoundsTree(_, tpt) => "_: " ~ toTextGlobal(tpt)
-      }
-      val selectorsText: Text = selectors match {
-        case id :: Nil => toText(id)
-        case _ => "{" ~ Text(selectors map selectorText, ", ") ~ "}"
-      }
-      (keywordText("given ") provided givenOnly) ~
+    def importText(expr: Tree, selectors: List[untpd.ImportSelector]) =
+
+      def selectorText(sel: untpd.ImportSelector): Text =
+        val id: Text =
+          if sel.isGiven then keywordText("given") else toText(sel.imported)
+        val rename: Text =
+          if sel.renamed.isEmpty then "" else Str(" => ") ~ toText(sel.renamed)
+        val bound: Text =
+          if sel.bound.isEmpty then ""
+          else if sel.isGiven then Str(" ") ~ toText(sel.bound)
+          else Str(" : ") ~ toText(sel.bound)
+        id ~ rename ~ bound
+
+      val selectorsText: Text = selectors match
+        case (sel @ untpd.ImportSelector(name, EmptyTree, EmptyTree)) :: Nil =>
+          selectorText(sel)
+        case _ =>
+          "{" ~ Text(selectors.map(selectorText), ", ") ~ "}"
+
       toTextLocal(expr) ~ "." ~ selectorsText
-    }
 
     tree match {
       case id: Trees.SearchFailureIdent[?] =>
@@ -369,13 +390,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else if (!printDebug && fun.hasType && fun.symbol == defn.InternalQuoted_exprSplice)
           keywordStr("${") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
-        else if (app.isGivenApply && !homogenizedView)
-          changePrec(InfixPrec) {
-            toTextLocal(fun) ~ " given " ~
-            (if (args.length == 1) toTextLocal(args.head) else "(" ~ toTextGlobal(args, ", ") ~ ")")
-          }
         else
-          toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
+          toTextLocal(fun)
+          ~ "("
+          ~ keywordText("given ").provided(app.isGivenApply && !homogenizedView)
+          ~ toTextGlobal(args, ", ")
+          ~ ")"
       case tree: TypeApply =>
         typeApplyText(tree)
       case Literal(c) =>
@@ -479,7 +499,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (lo eq hi) optText(lo)(" = " ~ _)
         else optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _)
       case Bind(name, body) =>
-        ("given ": Text).provided(tree.symbol.isOneOf(GivenOrImplicit) && !homogenizedView) ~ // Used for scala.quoted.Type in quote patterns (not pickled)
+        keywordText("given ").provided(tree.symbol.isOneOf(GivenOrImplicit) && !homogenizedView) ~ // Used for scala.quoted.Type in quote patterns (not pickled)
         changePrec(InfixPrec) { toText(name) ~ " @ " ~ toText(body) }
       case Alternative(trees) =>
         changePrec(OrPrec) { toText(trees, " | ") }
@@ -515,10 +535,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))
         }
         recur(rhs, "")
-      case Import(deleg, expr, selectors) =>
-        keywordText("import ") ~ importText(deleg, expr, selectors)
-      case Export(deleg, expr, selectors) =>
-        keywordText("export ") ~ importText(deleg, expr, selectors)
+      case Import(expr, selectors) =>
+        keywordText("import ") ~ importText(expr, selectors)
+      case Export(expr, selectors) =>
+        keywordText("export ") ~ importText(expr, selectors)
       case packageDef: PackageDef =>
         packageDefText(packageDef)
       case tree: Template =>
@@ -546,12 +566,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(id) ~ "\"" ~ Text(segments map segmentText, "") ~ "\""
       case Function(args, body) =>
         var implicitSeen: Boolean = false
-        var contextual: Boolean = false
+        var isGiven: Boolean = false
         var isErased: Boolean = false
         def argToText(arg: Tree) = arg match {
           case arg @ ValDef(name, tpt, _) =>
             val implicitText =
-              if ((arg.mods.is(Given))) { contextual = true; "" }
+              if ((arg.mods.is(Given))) { isGiven = true; "" }
               else if ((arg.mods.is(Erased))) { isErased = true; "" }
               else if ((arg.mods.is(Implicit)) && !implicitSeen) { implicitSeen = true; keywordStr("implicit ") }
               else ""
@@ -561,13 +581,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
         val argsText = args match {
           case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg)
-          case _ => "(" ~ Text(args map argToText, ", ") ~ ")"
+          case _ =>
+            "("
+            ~ keywordText("given ").provided(isGiven)
+            ~ keywordText("erased ").provided(isErased)
+            ~ Text(args.map(argToText), ", ")
+            ~ ")"
         }
-        changePrec(GlobalPrec) {
-          (keywordText("given ") provided contextual) ~
-          (keywordText("erased ") provided isErased) ~
-          argsText ~ " => " ~ toText(body)
-        }
+        argsText ~ " => " ~ toText(body)
       case PolyFunction(targs, body) =>
         val targsText = "[" ~ Text(targs.map((arg: Tree) => toText(arg)), ", ") ~ "]"
         changePrec(GlobalPrec) {
@@ -747,6 +768,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       txt ~
       (Str(" given ") provided params.nonEmpty && params.head.mods.is(Given)) ~
       paramsText(params))
+
   protected def valDefToText[T >: Untyped](tree: ValDef[T]): Text = {
     import untpd.{modsDeco => _}
     dclTextOr(tree) {
@@ -756,7 +778,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
   }
 
-  private def paramsText[T>: Untyped](params: List[ValDef[T]]) = "(" ~ toText(params, ", ") ~ ")"
+  private def paramsText[T>: Untyped](params: List[ValDef[T]]) =
+    "("
+    ~ keywordText("given ").provided(params.nonEmpty && params.head.mods.is(Given))
+    ~ toText(params, ", ")
+    ~ ")"
 
   protected def defDefToText[T >: Untyped](tree: DefDef[T]): Text = {
     import untpd.{modsDeco => _}

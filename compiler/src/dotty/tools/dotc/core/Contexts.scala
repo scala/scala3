@@ -214,7 +214,7 @@ object Contexts {
         implicitsCache = {
           val implicitRefs: List[ImplicitRef] =
             if (isClassDefContext)
-              try owner.thisType.implicitMembers(GivenOrImplicit)
+              try owner.thisType.implicitMembers
               catch {
                 case ex: CyclicReference => Nil
               }
@@ -315,7 +315,7 @@ object Contexts {
     /** Run `op` as if it was run in a fresh explore typer state, but possibly
      *  optimized to re-use the current typer state.
      */
-    final def test[T](op: given Context => T): T = typerState.test(op)(this)
+    final def test[T](op: ImplicitFunction1[Context, T]): T = typerState.test(op)(this)
 
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =
@@ -405,8 +405,7 @@ object Contexts {
         case ref: RefTree[?] => Some(ref.name.asTermName)
         case _               => None
       }
-      ctx.fresh.setImportInfo(
-        ImportInfo(sym, imp.selectors, impNameOpt, imp.importGiven))
+      ctx.fresh.setImportInfo(ImportInfo(sym, imp.selectors, impNameOpt))
     }
 
     /** Does current phase use an erased types interpretation? */

@@ -1,6 +1,6 @@
 
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 
 import scala.language.implicitConversions
@@ -14,7 +14,7 @@ object XmlQuote {
   }
   implicit inline def SCOps(ctx: => StringContext): SCOps = new SCOps(ctx)
 
-  def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]]) given (qctx: QuoteContext): Expr[Xml] = {
+  def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(given qctx: QuoteContext): Expr[Xml] = {
     import qctx.tasty._
 
     // for debugging purpose

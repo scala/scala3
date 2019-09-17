@@ -1,13 +1,13 @@
 import scala.quoted._
 import scala.quoted.staging._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 object Macros {
 
   inline def testMacro: Unit = ${impl}
 
-  def impl given QuoteContext: Expr[Unit] = {
-    delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+  def impl(given QuoteContext): Expr[Unit] = {
+    given Toolbox = Toolbox.make(getClass.getClassLoader)
     // 2 is a lifted constant
     val show1 = withQuoteContext(power(2, 3.0).show)
     val run1  = run(power(2, 3.0))
@@ -22,7 +22,7 @@ object Macros {
     val run3 =  run(power('{2}, 5.0))
 
     // n2 is not a constant
-    def n2 given QuoteContext = '{ println("foo"); 2 }
+    def n2(given QuoteContext) = '{ println("foo"); 2 }
     val show4 = withQuoteContext(power(n2, 6.0).show)
     val run4  = run(power(n2, 6.0))
 
@@ -41,7 +41,7 @@ object Macros {
     }
   }
 
-  def power(n: Expr[Int], x: Expr[Double]) given QuoteContext: Expr[Double] = {
+  def power(n: Expr[Int], x: Expr[Double])(given QuoteContext): Expr[Double] = {
     import quoted.matching.Const
     n match {
       case Const(n1) => powerCode(n1, x)
@@ -49,7 +49,7 @@ object Macros {
     }
   }
 
-  def powerCode(n: Int, x: Expr[Double]) given QuoteContext: Expr[Double] =
+  def powerCode(n: Int, x: Expr[Double])(given QuoteContext): Expr[Double] =
     if (n == 0) '{1.0}
     else if (n == 1) x
     else if (n % 2 == 0) '{ { val y = $x * $x; ${powerCode(n / 2, 'y)} } }

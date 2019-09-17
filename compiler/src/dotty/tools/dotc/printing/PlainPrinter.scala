@@ -539,16 +539,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
       }
   }
 
-  def toText(importInfo: ImportInfo): Text = {
+  def toText(importInfo: ImportInfo): Text =
     val siteStr = importInfo.site.show
-    val exprStr = if (siteStr endsWith ".type") siteStr dropRight 5 else siteStr
-    val selectorStr = importInfo.selectors match {
-      case Ident(name) :: Nil => name.show
+    val exprStr = if siteStr.endsWith(".type") then siteStr.dropRight(5) else siteStr
+    val selectorStr = importInfo.selectors match
+      case sel :: Nil if sel.renamed.isEmpty && sel.bound.isEmpty =>
+        if sel.isGiven then "given" else sel.name.show
       case _ => "{...}"
-    }
     s"import $exprStr.$selectorStr"
-  }
-
 
   private[this] var maxSummarized = Int.MaxValue
 

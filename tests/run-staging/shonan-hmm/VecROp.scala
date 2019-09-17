@@ -1,6 +1,6 @@
 
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 trait VecROp[Idx, T, Unt] extends VecOp[Idx, Unt] {
   def reduce: ((T, T) => T, T, Vec[Idx, T]) => T
@@ -17,7 +17,7 @@ class StaticVecR[T](r: Ring[T]) extends VecSta with VecROp[Int, T, Unit] {
   override def toString(): String = s"StaticVecR($r)"
 }
 
-class VecRDyn[T: Type] given QuoteContext extends VecDyn with VecROp[Expr[Int], Expr[T], Expr[Unit]] {
+class VecRDyn[T: Type](given QuoteContext) extends VecDyn with VecROp[Expr[Int], Expr[T], Expr[Unit]] {
   def reduce: ((Expr[T], Expr[T]) => Expr[T], Expr[T], Vec[Expr[Int], Expr[T]]) => Expr[T] = {
     (plus, zero, vec) => '{
       var sum = $zero
@@ -32,7 +32,7 @@ class VecRDyn[T: Type] given QuoteContext extends VecDyn with VecROp[Expr[Int], 
   override def toString(): String = s"VecRDyn"
 }
 
-class VecRStaDim[T: Type](r: Ring[T]) given QuoteContext extends VecROp[Int, T, Expr[Unit]]  {
+class VecRStaDim[T: Type](r: Ring[T])(given QuoteContext) extends VecROp[Int, T, Expr[Unit]]  {
   val M = new StaticVecR[T](r)
   def reduce: ((T, T) => T, T, Vec[Int, T]) => T = M.reduce
   val seq: (Expr[Unit], Expr[Unit]) => Expr[Unit] = (e1, e2) => '{ $e1; $e2 }
@@ -46,7 +46,7 @@ class VecRStaDim[T: Type](r: Ring[T]) given QuoteContext extends VecROp[Int, T, 
   override def toString(): String = s"VecRStaDim($r)"
 }
 
-class VecRStaDyn[T : Type : Liftable](r: Ring[PV[T]]) given QuoteContext extends VecROp[PV[Int], PV[T], Expr[Unit]] {
+class VecRStaDyn[T : Type : Liftable](r: Ring[PV[T]])(given QuoteContext) extends VecROp[PV[Int], PV[T], Expr[Unit]] {
   val VSta: VecROp[Int, PV[T], Expr[Unit]] = new VecRStaDim(r)
   val VDyn = new VecRDyn
   val dyn = Dyns.dyn[T]
@@ -74,7 +74,7 @@ object VecRStaOptDynInt {
   val threshold = 3
 }
 
-class VecRStaOptDynInt(r: Ring[PV[Int]])  given QuoteContext extends VecRStaDyn(r) {
+class VecRStaOptDynInt(r: Ring[PV[Int]]) (given QuoteContext) extends VecRStaDyn(r) {
   val M: VecROp[PV[Int], PV[Int], Expr[Unit]] = new VecRStaDyn(r)
 
   override def reduce: ((PV[Int], PV[Int]) => PV[Int], PV[Int], Vec[PV[Int], PV[Int]]) => PV[Int] = (plus, zero, vec) => vec match {

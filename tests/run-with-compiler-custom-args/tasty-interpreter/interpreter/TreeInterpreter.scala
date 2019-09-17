@@ -13,15 +13,15 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   /** Representation of objects and values in the interpreter */
   type AbstractAny
 
-  type Result = given Env => AbstractAny
+  type Result = (given Env) => AbstractAny
 
   def localValue(sym: Symbol)(implicit env: Env): LocalValue = env(sym)
 
-  def withLocalValue[T](sym: Symbol, value: LocalValue)(in: given Env => T)(implicit env: Env): T =
+  def withLocalValue[T](sym: Symbol, value: LocalValue)(in: (given Env) => T)(implicit env: Env): T =
     in given env.updated(sym, value)
 
-  def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: given Env => T)(implicit env: Env): T =
-    in given (env ++ syms.zip(values))
+  def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: (given Env) => T)(implicit env: Env): T =
+    in(given env ++ syms.zip(values))
 
   def interpretCall(inst: AbstractAny, sym: DefDefSymbol, args: List[AbstractAny]): Result = {
     // TODO

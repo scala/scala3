@@ -3,7 +3,7 @@
 object Test {
   @deprecated def foo = ???
 
-  given as Conversion[String, Int] = _.length
+  given Conversion[String, Int] = _.length
 
   foo    // error
 

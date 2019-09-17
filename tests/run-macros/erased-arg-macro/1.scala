@@ -10,12 +10,12 @@ object Macro {
   inline def foo7(i: Int) = $ { case7('{ i })(1)('{ i }) }
   inline def foo8(i: Int) = $ { case8('{ i })('{ i })(1) }
 
-  def case1 erased (i: Expr[Int]) given (QuoteContext): Expr[Int] = '{ 0 }
-  def case2 (i: Int) erased (j: Expr[Int]) given (QuoteContext): Expr[Int] = '{ 0 }
-  def case3 erased (i: Expr[Int]) (j: Int) given (QuoteContext): Expr[Int] = '{ 0 }
-  def case4 (h: Int) erased (i: Expr[Int], j: Expr[Int]) given (QuoteContext): Expr[Int] = '{ 0 }
-  def case5 erased (i: Expr[Int], j: Expr[Int]) (h: Int) given (QuoteContext): Expr[Int] = '{ 0 }
-  def case6 (h: Int) erased (i: Expr[Int]) erased (j: Expr[Int]) given (QuoteContext): Expr[Int] = '{ 0 }
-  def case7 erased (i: Expr[Int]) (h: Int) erased (j: Expr[Int]) given (QuoteContext): Expr[Int] = '{ 0 }
-  def case8 erased (i: Expr[Int]) erased (j: Expr[Int]) (h: Int) given (QuoteContext): Expr[Int] = '{ 0 }
+  def case1 erased (i: Expr[Int])(given QuoteContext): Expr[Int] = '{ 0 }
+  def case2 (i: Int) erased (j: Expr[Int])(given QuoteContext): Expr[Int] = '{ 0 }
+  def case3 erased (i: Expr[Int]) (j: Int)(given QuoteContext): Expr[Int] = '{ 0 }
+  def case4 (h: Int) erased (i: Expr[Int], j: Expr[Int])(given QuoteContext): Expr[Int] = '{ 0 }
+  def case5 erased (i: Expr[Int], j: Expr[Int]) (h: Int)(given QuoteContext): Expr[Int] = '{ 0 }
+  def case6 (h: Int) erased (i: Expr[Int]) erased (j: Expr[Int])(given QuoteContext): Expr[Int] = '{ 0 }
+  def case7 erased (i: Expr[Int]) (h: Int) erased (j: Expr[Int])(given QuoteContext): Expr[Int] = '{ 0 }
+  def case8 erased (i: Expr[Int]) erased (j: Expr[Int]) (h: Int)(given QuoteContext): Expr[Int] = '{ 0 }
 }

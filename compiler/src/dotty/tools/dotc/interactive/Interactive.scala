@@ -121,7 +121,7 @@ object Interactive {
       case _ :: (_:  New) :: (select: Select) :: _ =>
         List(select.symbol)
 
-      case (_: Thicket) :: (imp: Import) :: _ =>
+      case (_: untpd.ImportSelector) :: (imp: Import) :: _ =>
         importedSymbols(imp, _.span.contains(pos.span))
 
       case (imp: Import) :: _ =>
@@ -378,7 +378,7 @@ object Interactive {
    */
   def localize(symbol: Symbol, sourceDriver: InteractiveDriver, targetDriver: InteractiveDriver): Symbol = {
 
-    def in[T](driver: InteractiveDriver)(fn: given Context => T): T =
+    def in[T](driver: InteractiveDriver)(fn: ImplicitFunction1[Context, T]): T =
       fn given driver.currentCtx
 
     if (sourceDriver == targetDriver) symbol

@@ -118,14 +118,14 @@ object Annotations {
       apply(New(atp, args))
 
     /** Create an annotation where the tree is computed lazily. */
-    def deferred(sym: Symbol)(treeFn: given Context => Tree)(implicit ctx: Context): Annotation =
+    def deferred(sym: Symbol)(treeFn: ImplicitFunction1[Context, Tree])(implicit ctx: Context): Annotation =
       new LazyAnnotation {
         override def symbol(implicit ctx: Context): Symbol = sym
         def complete(implicit ctx: Context) = treeFn given ctx
       }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
-    def deferredSymAndTree(symf: given Context => Symbol)(treeFn: given Context => Tree)(implicit ctx: Context): Annotation =
+    def deferredSymAndTree(symf: ImplicitFunction1[Context, Symbol])(treeFn: ImplicitFunction1[Context, Tree])(implicit ctx: Context): Annotation =
       new LazyAnnotation {
         private[this] var mySym: Symbol = _
 
@@ -153,7 +153,7 @@ object Annotations {
     object Child {
 
       /** A deferred annotation to the result of a given child computation */
-      def later(delayedSym: given Context => Symbol, span: Span)(implicit ctx: Context): Annotation = {
+      def later(delayedSym: ImplicitFunction1[Context, Symbol], span: Span)(implicit ctx: Context): Annotation = {
         def makeChildLater(implicit ctx: Context) = {
           val sym = delayedSym
           New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
@@ -163,7 +163,7 @@ object Annotations {
       }
 
       /** A regular, non-deferred Child annotation */
-      def apply(sym: Symbol, span: Span)(implicit ctx: Context): Annotation = later(given _ => sym, span)
+      def apply(sym: Symbol, span: Span)(implicit ctx: Context): Annotation = later(sym, span)
 
       def unapply(ann: Annotation)(implicit ctx: Context): Option[Symbol] =
         if (ann.symbol == defn.ChildAnnot) {
