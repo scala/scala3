@@ -3,7 +3,7 @@ scala> import scala.quoted.staging._
 scala> implicit def toolbox: Toolbox = Toolbox.make(getClass.getClassLoader)
 def toolbox: quoted.staging.Toolbox
 scala> def v(given QuoteContext) = '{ (if true then Some(1) else None).map(v => v+1) }
-def v given (x$1: quoted.QuoteContext): quoted.Expr[Option[Int]]
+def v(given x$1: quoted.QuoteContext): quoted.Expr[Option[Int]]
 scala> scala.quoted.staging.withQuoteContext(v.show)
 val res0: String = (if (true) scala.Some.apply[scala.Int](1) else scala.None).map[scala.Int](((v: scala.Int) => v.+(1)))
 scala> scala.quoted.staging.run(v)
