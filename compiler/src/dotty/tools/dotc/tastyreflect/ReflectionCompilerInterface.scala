@@ -1904,8 +1904,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   private def optional[T <: Trees.Tree[?]](tree: T): Option[tree.type] =
     if (tree.isEmpty) None else Some(tree)
 
-  private def withDefaultPos[T <: Tree](fn: ImplicitFunction1[Context, T])(given ctx: Context): T =
-    (fn(given ctx.withSource(rootPosition.source)).withSpan(rootPosition.span))
+  private def withDefaultPos[T <: Tree](fn: (given Context) => T)(given ctx: Context): T =
+    fn(given ctx.withSource(rootPosition.source)).withSpan(rootPosition.span)
 
   private def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()
 }

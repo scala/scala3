@@ -172,7 +172,7 @@ object Decorators {
 
   implicit object reportDeco {
     def (x: T) reporting[T](
-        op: ImplicitFunction1[WrappedResult[T], String],
+        op: (given WrappedResult[T]) => String,
         printer: config.Printers.Printer = config.Printers.default): T = {
       printer.println(op(given WrappedResult(x)))
       x
