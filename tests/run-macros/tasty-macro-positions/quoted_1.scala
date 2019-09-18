@@ -29,7 +29,7 @@ object Macros {
   }
 
   def posStr(qctx: QuoteContext)(pos: qctx.tasty.Position): Expr[String] = {
-   (given QuoteContext) = qctx
+    given QuoteContext = qctx
     import qctx.tasty._
     s"${pos.sourceFile.jpath.getFileName.toString}:[${pos.start}..${pos.end}]".toExpr
   }
