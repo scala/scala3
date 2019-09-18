@@ -119,10 +119,10 @@ object language {
    *      class A
    *      class B
    *      object B {
-   *        given a2b as Conversion[A, B] { ... }
+   *        given a2b : Conversion[A, B] { ... }
    *      }
    *      object C {
-   *        given b2a as Conversion[B, A] { ... }
+   *        given b2a : Conversion[B, A] { ... }
    *      }
    *      import given B._
    *      import given C._

@@ -195,7 +195,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         //}
         assert(!ctx.settings.YnoDeepSubtypes.value)
         if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
-          ctx.log(TypeComparer.explained(the[Context].typeComparer.isSubType(tp1, tp2, approx)))
+          ctx.log(TypeComparer.explained(summon[Context].typeComparer.isSubType(tp1, tp2, approx)))
       }
       // Eliminate LazyRefs before checking whether we have seen a type before
       val normalize = new TypeMap {
@@ -2309,7 +2309,7 @@ object TypeComparer {
   /** Show trace of comparison operations when performing `op` */
   def explaining[T](say: String => Unit)(op: ImplicitFunction1[Context, T])(implicit ctx: Context): T = {
     val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(_))
-    val res = try { op given nestedCtx } finally { say(nestedCtx.typeComparer.lastTrace()) }
+    val res = try { op(given nestedCtx) } finally { say(nestedCtx.typeComparer.lastTrace()) }
     res
   }
 

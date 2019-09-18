@@ -1125,7 +1125,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     override def newLikeThis: Typer = new InlineTyper(initialErrorCount)
 
     /** Suppress further inlining if this inline typer has already issued errors */
-    override def suppressInline given (ctx: Context) =
+    override def suppressInline(given ctx: Context) =
       ctx.reporter.errorCount > initialErrorCount || super.suppressInline
   }
 

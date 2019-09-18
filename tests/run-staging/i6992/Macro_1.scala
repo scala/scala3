@@ -1,7 +1,7 @@
 
 import scala.quoted._, scala.quoted.matching._
 import scala.quoted.staging._
-import delegate scala.quoted._
+import scala.quoted.given
 
 given Toolbox = Toolbox.make(getClass.getClassLoader)
 

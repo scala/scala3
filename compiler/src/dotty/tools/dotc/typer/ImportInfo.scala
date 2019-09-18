@@ -52,7 +52,7 @@ class ImportInfo(symf: ImplicitFunction1[Context, Symbol],
   // that we cannot use one for `DottyPredefModuleRef`.
   def sym(implicit ctx: Context): Symbol = {
     if (mySym == null) {
-      mySym = symf given ctx
+      mySym = symf(given ctx)
       assert(mySym != null)
     }
     mySym

@@ -21,116 +21,116 @@ trait Printers
   /** Adds `show` as an extension method of a `Tree` */
   implicit class TreeShowDeco(tree: Tree) {
     /** Shows the tree as extractors */
-    def showExtractors given (ctx: Context): String = new ExtractorsPrinter().showTree(tree)
+    def showExtractors(given ctx: Context): String = new ExtractorsPrinter().showTree(tree)
 
     /** Shows the tree as fully typed source code */
-    def show given (ctx: Context): String = show(SyntaxHighlight.plain)
+    def show(given ctx: Context): String = show(SyntaxHighlight.plain)
 
     /** Shows the tree as fully typed source code */
-    def show(syntaxHighlight: SyntaxHighlight) given (ctx: Context): String =
+    def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
       new SourceCodePrinter(syntaxHighlight).showTree(tree)
   }
 
   /** Adds `show` as an extension method of a `TypeOrBounds` */
   implicit class TypeOrBoundsShowDeco(tpe: TypeOrBounds) {
     /** Shows the tree as extractors */
-    def showExtractors given (ctx: Context): String = new ExtractorsPrinter().showTypeOrBounds(tpe)
+    def showExtractors(given ctx: Context): String = new ExtractorsPrinter().showTypeOrBounds(tpe)
 
     /** Shows the tree as fully typed source code */
-    def show given (ctx: Context): String = show(SyntaxHighlight.plain)
+    def show(given ctx: Context): String = show(SyntaxHighlight.plain)
 
     /** Shows the tree as fully typed source code */
-    def show(syntaxHighlight: SyntaxHighlight) given (ctx: Context): String =
+    def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
       new SourceCodePrinter(syntaxHighlight).showTypeOrBounds(tpe)
   }
 
   /** Adds `show` as an extension method of a `Pattern` */
   implicit class PatternShowDeco(pattern: Pattern) {
     /** Shows the tree as extractors */
-    def showExtractors given (ctx: Context): String = new ExtractorsPrinter().showPattern(pattern)
+    def showExtractors(given ctx: Context): String = new ExtractorsPrinter().showPattern(pattern)
 
     /** Shows the tree as fully typed source code */
-    def show given (ctx: Context): String = show(SyntaxHighlight.plain)
+    def show(given ctx: Context): String = show(SyntaxHighlight.plain)
 
     /** Shows the tree as fully typed source code */
-    def show(syntaxHighlight: SyntaxHighlight) given (ctx: Context): String =
+    def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
       new SourceCodePrinter(syntaxHighlight).showPattern(pattern)
   }
 
   /** Adds `show` as an extension method of a `Constant` */
   implicit class ConstantShowDeco(const: Constant) {
     /** Shows the tree as extractors */
-    def showExtractors given (ctx: Context): String = new ExtractorsPrinter().showConstant(const)
+    def showExtractors(given ctx: Context): String = new ExtractorsPrinter().showConstant(const)
 
     /** Shows the tree as fully typed source code */
-    def show given (ctx: Context): String = show(SyntaxHighlight.plain)
+    def show(given ctx: Context): String = show(SyntaxHighlight.plain)
 
     /** Shows the tree as fully typed source code */
-    def show(syntaxHighlight: SyntaxHighlight) given (ctx: Context): String =
+    def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
       new SourceCodePrinter(syntaxHighlight).showConstant(const)
   }
 
   /** Adds `show` as an extension method of a `Symbol` */
   implicit class SymbolShowDeco(symbol: Symbol) {
     /** Shows the tree as extractors */
-    def showExtractors given (ctx: Context): String = new ExtractorsPrinter().showSymbol(symbol)
+    def showExtractors(given ctx: Context): String = new ExtractorsPrinter().showSymbol(symbol)
 
     /** Shows the tree as fully typed source code */
-    def show given (ctx: Context): String = show(SyntaxHighlight.plain)
+    def show(given ctx: Context): String = show(SyntaxHighlight.plain)
 
     /** Shows the tree as fully typed source code */
-    def show(syntaxHighlight: SyntaxHighlight) given (ctx: Context): String =
+    def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
       new SourceCodePrinter(syntaxHighlight).showSymbol(symbol)
   }
 
   /** Adds `show` as an extension method of a `Flags` */
   implicit class FlagsShowDeco(flags: Flags) {
     /** Shows the tree as extractors */
-    def showExtractors given (ctx: Context): String = new ExtractorsPrinter().showFlags(flags)
+    def showExtractors(given ctx: Context): String = new ExtractorsPrinter().showFlags(flags)
 
     /** Shows the tree as fully typed source code */
-    def show given (ctx: Context): String = show(SyntaxHighlight.plain)
+    def show(given ctx: Context): String = show(SyntaxHighlight.plain)
 
     /** Shows the tree as fully typed source code */
-    def show(syntaxHighlight: SyntaxHighlight) given (ctx: Context): String =
+    def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
       new SourceCodePrinter(syntaxHighlight).showFlags(flags)
   }
 
 
   abstract class Printer {
 
-    def showTree(tree: Tree) given (ctx: Context): String
+    def showTree(tree: Tree)(given ctx: Context): String
 
-    def showPattern(pattern: Pattern) given (ctx: Context): String
+    def showPattern(pattern: Pattern)(given ctx: Context): String
 
-    def showTypeOrBounds(tpe: TypeOrBounds) given (ctx: Context): String
+    def showTypeOrBounds(tpe: TypeOrBounds)(given ctx: Context): String
 
-    def showConstant(const: Constant) given (ctx: Context): String
+    def showConstant(const: Constant)(given ctx: Context): String
 
-    def showSymbol(symbol: Symbol) given (ctx: Context): String
+    def showSymbol(symbol: Symbol)(given ctx: Context): String
 
-    def showFlags(flags: Flags) given (ctx: Context): String
+    def showFlags(flags: Flags)(given ctx: Context): String
 
   }
 
   class ExtractorsPrinter extends Printer {
 
-    def showTree(tree: Tree) given (ctx: Context): String =
+    def showTree(tree: Tree)(given ctx: Context): String =
       new Buffer().visitTree(tree).result()
 
-    def showPattern(pattern: Pattern) given (ctx: Context): String =
+    def showPattern(pattern: Pattern)(given ctx: Context): String =
       new Buffer().visitPattern(pattern).result()
 
-    def showTypeOrBounds(tpe: TypeOrBounds) given (ctx: Context): String =
+    def showTypeOrBounds(tpe: TypeOrBounds)(given ctx: Context): String =
       new Buffer().visitType(tpe).result()
 
-    def showConstant(const: Constant) given (ctx: Context): String =
+    def showConstant(const: Constant)(given ctx: Context): String =
       new Buffer().visitConstant(const).result()
 
-    def showSymbol(symbol: Symbol) given (ctx: Context): String =
+    def showSymbol(symbol: Symbol)(given ctx: Context): String =
       new Buffer().visitSymbol(symbol).result()
 
-    def showFlags(flags: Flags) given (ctx: Context): String = {
+    def showFlags(flags: Flags)(given ctx: Context): String = {
       val flagList = List.newBuilder[String]
       if (flags.is(Flags.Private)) flagList += "Flags.Private"
       if (flags.is(Flags.Protected)) flagList += "Flags.Protected"
@@ -168,7 +168,7 @@ trait Printers
       flagList.result().mkString(" | ")
     }
 
-    private class Buffer given (ctx: Context) { self =>
+    private class Buffer(given ctx: Context) { self =>
 
       private val sb: StringBuilder = new StringBuilder
 
@@ -457,22 +457,22 @@ trait Printers
   class SourceCodePrinter(syntaxHighlight: SyntaxHighlight) extends Printer {
     import syntaxHighlight._
 
-    def showTree(tree: Tree) given (ctx: Context): String =
+    def showTree(tree: Tree)(given ctx: Context): String =
       (new Buffer).printTree(tree).result()
 
-    def showPattern(pattern: Pattern) given (ctx: Context): String =
+    def showPattern(pattern: Pattern)(given ctx: Context): String =
       (new Buffer).printPattern(pattern).result()
 
-    def showTypeOrBounds(tpe: TypeOrBounds) given (ctx: Context): String =
-      ((new Buffer).printTypeOrBound(tpe) given None).result()
+    def showTypeOrBounds(tpe: TypeOrBounds)(given ctx: Context): String =
+      (new Buffer).printTypeOrBound(tpe)(given None).result()
 
-    def showConstant(const: Constant) given (ctx: Context): String =
+    def showConstant(const: Constant)(given ctx: Context): String =
       (new Buffer).printConstant(const).result()
 
-    def showSymbol(symbol: Symbol) given (ctx: Context): String =
+    def showSymbol(symbol: Symbol)(given ctx: Context): String =
       symbol.fullName
 
-    def showFlags(flags: Flags) given (ctx: Context): String = {
+    def showFlags(flags: Flags)(given ctx: Context): String = {
       val flagList = List.newBuilder[String]
       if (flags.is(Flags.Private)) flagList += "private"
       if (flags.is(Flags.Protected)) flagList += "protected"
@@ -510,7 +510,7 @@ trait Printers
       flagList.result().mkString("/*", " ", "*/")
     }
 
-    private class Buffer given (ctx: Context) {
+    private class Buffer(given ctx: Context) {
 
       private[this] val sb: StringBuilder = new StringBuilder
 
@@ -547,7 +547,7 @@ trait Printers
       def lineBreak(): String = "\n" + ("  " * indent)
       def doubleLineBreak(): String = "\n\n" + ("  " * indent)
 
-      def printTree(tree: Tree) given (elideThis: Option[Symbol] = None): Buffer = tree match {
+      def printTree(tree: Tree)(given elideThis: Option[Symbol] = None): Buffer = tree match {
         case PackageObject(body)=>
           printTree(body) // Print package object
 
@@ -612,19 +612,19 @@ trait Printers
 
           def printParent(parent: Tree /* Term | TypeTree */, needEmptyParens: Boolean = false): Unit = parent match {
             case IsTypeTree(parent) =>
-              printTypeTree(parent) given Some(cdef.symbol)
+              printTypeTree(parent)(given Some(cdef.symbol))
             case IsTerm(TypeApply(fun, targs)) =>
               printParent(fun)
             case IsTerm(Apply(fun@Apply(_,_), args)) =>
               printParent(fun, true)
               if (!args.isEmpty || needEmptyParens)
-                inParens(printTrees(args, ", ") given Some(cdef.symbol))
+                inParens(printTrees(args, ", ")(given Some(cdef.symbol)))
             case IsTerm(Apply(fun, args)) =>
               printParent(fun)
               if (!args.isEmpty || needEmptyParens)
-                inParens(printTrees(args, ", ") given Some(cdef.symbol))
+                inParens(printTrees(args, ", ")(given Some(cdef.symbol)))
             case IsTerm(Select(IsNew(newTree), _)) =>
-              printType(newTree.tpe) given Some(cdef.symbol)
+              printType(newTree.tpe)(given Some(cdef.symbol))
             case IsTerm(parent) =>
               throw new MatchError(parent.showExtractors)
           }
@@ -676,7 +676,7 @@ trait Printers
                 indented {
                   val name1 = if (name == "_") "this" else name
                   this += " " += highlightValDef(name1) += ": "
-                  printTypeTree(tpt) given Some(cdef.symbol)
+                  printTypeTree(tpt)(given Some(cdef.symbol))
                   this += " =>"
                 }
               }
@@ -1016,7 +1016,7 @@ trait Printers
         (flatStats.result(), flatExpr)
       }
 
-      def printFlatBlock(stats: List[Statement], expr: Term) given (elideThis: Option[Symbol]): Buffer = {
+      def printFlatBlock(stats: List[Statement], expr: Term)(given elideThis: Option[Symbol]): Buffer = {
         val (stats1, expr1) = flatBlock(stats, expr)
         val stats2 = stats1.filter {
           case IsTypeDef(tree) => !tree.symbol.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.quoteTypeTag")
@@ -1033,7 +1033,7 @@ trait Printers
         }
       }
 
-      def printStats(stats: List[Tree], expr: Tree) given (elideThis: Option[Symbol]): Unit = {
+      def printStats(stats: List[Tree], expr: Tree)(given eliseThis: Option[Symbol]): Unit = {
         def printSeparator(next: Tree): Unit = {
           // Avoid accidental application of opening `{` on next line with a double break
           def rec(next: Tree): Unit = next match {
@@ -1081,13 +1081,13 @@ trait Printers
         this
       }
 
-      def printTrees(trees: List[Tree], sep: String) given (elideThis: Option[Symbol]): Buffer =
+      def printTrees(trees: List[Tree], sep: String)(given elideThis: Option[Symbol]): Buffer =
         printList(trees, sep, (t: Tree) => printTree(t))
 
-      def printTypeTrees(trees: List[TypeTree], sep: String) given (elideThis: Option[Symbol] = None): Buffer =
+      def printTypeTrees(trees: List[TypeTree], sep: String)(given elideThis: Option[Symbol] = None): Buffer =
         printList(trees, sep, (t: TypeTree) => printTypeTree(t))
 
-      def printTypes(trees: List[Type], sep: String) given (elideThis: Option[Symbol]): Buffer = {
+      def printTypes(trees: List[Type], sep: String)(given elideThis: Option[Symbol]): Buffer = {
         def printSeparated(list: List[Type]): Unit = list match {
           case Nil =>
           case x :: Nil => printType(x)
@@ -1153,7 +1153,7 @@ trait Printers
         this
       }
 
-      def printTypesOrBounds(types: List[TypeOrBounds], sep: String) given (elideThis: Option[Symbol]): Buffer = {
+      def printTypesOrBounds(types: List[TypeOrBounds], sep: String)(given elideThis: Option[Symbol]): Buffer = {
         def printSeparated(list: List[TypeOrBounds]): Unit = list match {
           case Nil =>
           case x :: Nil => printTypeOrBound(x)
@@ -1166,7 +1166,7 @@ trait Printers
         this
       }
 
-      def printTargsDefs(targs: List[(TypeDef, TypeDef)], isDef:Boolean = true) given (elideThis: Option[Symbol]): Unit = {
+      def printTargsDefs(targs: List[(TypeDef, TypeDef)], isDef:Boolean = true)(given elideThis: Option[Symbol]): Unit = {
         if (!targs.isEmpty) {
           def printSeparated(list: List[(TypeDef, TypeDef)]): Unit = list match {
             case Nil =>
@@ -1181,7 +1181,7 @@ trait Printers
         }
       }
 
-      def printTargDef(arg: (TypeDef, TypeDef), isMember: Boolean = false, isDef:Boolean = true) given (elideThis: Option[Symbol]): Buffer = {
+      def printTargDef(arg: (TypeDef, TypeDef), isMember: Boolean = false, isDef:Boolean = true)(given elideThis: Option[Symbol]): Buffer = {
         val (argDef, argCons) = arg
 
         if (isDef) {
@@ -1231,7 +1231,7 @@ trait Printers
         }
       }
 
-      def printArgsDefs(args: List[ValDef]) given (elideThis: Option[Symbol]): Unit = {
+      def printArgsDefs(args: List[ValDef])(given elideThis: Option[Symbol]): Unit = {
         val argFlags = args match {
           case Nil => Flags.EmptyFlags
           case arg :: _ => arg.symbol.flags
@@ -1257,7 +1257,7 @@ trait Printers
         }
       }
 
-      def printAnnotations(trees: List[Term]) given (elideThis: Option[Symbol]): Buffer = {
+      def printAnnotations(trees: List[Term])(given elideThis: Option[Symbol]): Buffer = {
         def printSeparated(list: List[Term]): Unit = list match {
           case Nil =>
           case x :: Nil => printAnnotation(x)
@@ -1270,7 +1270,7 @@ trait Printers
         this
       }
 
-      def printParamDef(arg: ValDef) given (elideThis: Option[Symbol]): Unit = {
+      def printParamDef(arg: ValDef)(given elideThis: Option[Symbol]): Unit = {
         val name = arg.name
         arg.symbol.owner match {
           case IsDefDefSymbol(sym) if sym.name == "<init>" =>
@@ -1308,7 +1308,7 @@ trait Printers
         indented {
           caseDef.rhs match {
             case Block(stats, expr) =>
-              printStats(stats, expr) given None
+              printStats(stats, expr)(given None)
             case body =>
               this += lineBreak()
               printTree(body)
@@ -1390,7 +1390,7 @@ trait Printers
           inSquare(printType(v))
       }
 
-      def printTypeOrBoundsTree(tpt: Tree) given (elideThis: Option[Symbol] = None): Buffer = tpt match {
+      def printTypeOrBoundsTree(tpt: Tree)(given elideThis: Option[Symbol] = None): Buffer = tpt match {
         case TypeBoundsTree(lo, hi) =>
           this += "_ >: "
           printTypeTree(lo)
@@ -1410,7 +1410,7 @@ trait Printers
        *   Self type annotation and types in parent list should elide current class
        *   prefix `C.this` to avoid type checking errors.
        */
-      def printTypeTree(tree: TypeTree) given (elideThis: Option[Symbol] = None): Buffer = tree match {
+      def printTypeTree(tree: TypeTree)(given elideThis: Option[Symbol] = None): Buffer = tree match {
         case Inferred() =>
           // TODO try to move this logic into `printType`
           def printTypeAndAnnots(tpe: Type): Buffer = tpe match {
@@ -1496,7 +1496,7 @@ trait Printers
 
       }
 
-      def printTypeOrBound(tpe: TypeOrBounds) given (elideThis: Option[Symbol]): Buffer = tpe match {
+      def printTypeOrBound(tpe: TypeOrBounds)(given elideThis: Option[Symbol]): Buffer = tpe match {
         case tpe@TypeBounds(lo, hi) =>
           this += "_ >: "
           printType(lo)
@@ -1513,7 +1513,7 @@ trait Printers
        *   Self type annotation and types in parent list should elide current class
        *   prefix `C.this` to avoid type checking errors.
        */
-      def printType(tpe: Type) given (elideThis: Option[Symbol] = None): Buffer = tpe match {
+      def printType(tpe: Type)(given elideThis: Option[Symbol] = None): Buffer = tpe match {
         case Type.ConstantType(const) =>
           printConstant(const)
 
@@ -1673,7 +1673,7 @@ trait Printers
         case PackageDef(name, _) => this += highlightTypeDef(name)
       }
 
-      def printAnnotation(annot: Term) given (elideThis: Option[Symbol]): Buffer = {
+      def printAnnotation(annot: Term)(given elideThis: Option[Symbol]): Buffer = {
         val Annotation(ref, args) = annot
         this += "@"
         printTypeTree(ref)
@@ -1683,7 +1683,7 @@ trait Printers
           inParens(printTrees(args, ", "))
       }
 
-      def printDefAnnotations(definition: Definition) given (elideThis: Option[Symbol]): Buffer = {
+      def printDefAnnotations(definition: Definition)(given elideThis: Option[Symbol]): Buffer = {
         val annots = definition.symbol.annots.filter {
           case Annotation(annot, _) =>
             annot.tpe match {
@@ -1699,7 +1699,7 @@ trait Printers
         else this
       }
 
-      def printRefinement(tpe: Type) given (elideThis: Option[Symbol]): Buffer = {
+      def printRefinement(tpe: Type)(given elideThis: Option[Symbol]): Buffer = {
         def printMethodicType(tp: TypeOrBounds): Unit = tp match {
           case tp @ Type.MethodType(paramNames, params, res) =>
             inParens(printMethodicTypeParams(paramNames, params))
@@ -1739,7 +1739,7 @@ trait Printers
         this += lineBreak() += "}"
       }
 
-      def printMethodicTypeParams(paramNames: List[String], params: List[TypeOrBounds]) given (elideThis: Option[Symbol]): Unit = {
+      def printMethodicTypeParams(paramNames: List[String], params: List[TypeOrBounds])(given elideThis: Option[Symbol]): Unit = {
         def printInfo(info: TypeOrBounds) = info match {
           case IsTypeBounds(info) => printBounds(info)
           case IsType(info) =>
@@ -1760,7 +1760,7 @@ trait Printers
         printSeparated(paramNames.zip(params))
       }
 
-      def printBoundsTree(bounds: TypeBoundsTree) given (elideThis: Option[Symbol]): Buffer = {
+      def printBoundsTree(bounds: TypeBoundsTree)(given elideThis: Option[Symbol]): Buffer = {
         bounds.low match {
           case Inferred() =>
           case low =>
@@ -1775,7 +1775,7 @@ trait Printers
         }
       }
 
-      def printBounds(bounds: TypeBounds) given (elideThis: Option[Symbol]): Buffer = {
+      def printBounds(bounds: TypeBounds)(given elideThis: Option[Symbol]): Buffer = {
         this += " >: "
         printType(bounds.low)
         this += " <: "
@@ -1848,7 +1848,7 @@ trait Printers
     }
 
     private object SpecialOp {
-      def unapply(arg: Tree) given (ctx: Context): Option[(String, List[Term])] = arg match {
+      def unapply(arg: Tree)(given ctx: Context): Option[(String, List[Term])] = arg match {
         case IsTerm(arg @ Apply(fn, args)) =>
           fn.tpe match {
             case tpe @ Type.TermRef(Type.ThisType(Type.TypeRef(_, name)), name2) if name == "<special-ops>" =>
@@ -1860,7 +1860,7 @@ trait Printers
     }
 
     private object Annotation {
-      def unapply(arg: Tree) given (ctx: Context): Option[(TypeTree, List[Term])] = arg match {
+      def unapply(arg: Tree)(given ctx: Context): Option[(TypeTree, List[Term])] = arg match {
         case New(annot) => Some((annot, Nil))
         case Apply(Select(New(annot), "<init>"), args) => Some((annot, args))
         case Apply(TypeApply(Select(New(annot), "<init>"), targs), args) => Some((annot, args))
@@ -1872,14 +1872,14 @@ trait Printers
     private object Types {
 
       object JavaLangObject {
-        def unapply(tpe: Type) given (ctx: Context): Boolean = tpe match {
+        def unapply(tpe: Type)(given ctx: Context): Boolean = tpe match {
           case Type.TypeRef(Type.IsTermRef(prefix), "Object") => prefix.typeSymbol.fullName == "java.lang"
           case _ => false
         }
       }
 
       object Sequence {
-        def unapply(tpe: Type) given (ctx: Context): Option[Type] = tpe match {
+        def unapply(tpe: Type)(given ctx: Context): Option[Type] = tpe match {
           case Type.AppliedType(Type.TypeRef(Type.IsTermRef(prefix), "Seq"), IsType(tp) :: Nil) if prefix.termSymbol.fullName == "scala.collection" => Some(tp)
           case Type.AppliedType(Type.TypeRef(Type.IsTypeRef(prefix), "Seq"), IsType(tp) :: Nil) if prefix.typeSymbol.fullName == "scala.collection" => Some(tp)
           case _ => None
@@ -1887,7 +1887,7 @@ trait Printers
       }
 
       object RepeatedAnnotation {
-        def unapply(tpe: Type) given (ctx: Context): Boolean = tpe match {
+        def unapply(tpe: Type)(given ctx: Context): Boolean = tpe match {
           case Type.TypeRef(Type.IsTermRef(prefix), "Repeated") => prefix.termSymbol.fullName == "scala.annotation.internal"
           case Type.TypeRef(Type.IsTypeRef(prefix), "Repeated") => prefix.typeSymbol.fullName == "scala.annotation.internal"
           case _ => false
@@ -1895,14 +1895,14 @@ trait Printers
       }
 
       object Repeated {
-        def unapply(tpe: Type) given (ctx: Context): Option[Type] = tpe match {
+        def unapply(tpe: Type)(given ctx: Context): Option[Type] = tpe match {
           case Type.AppliedType(Type.TypeRef(ScalaPackage(), "<repeated>"), IsType(tp) :: Nil) => Some(tp)
           case _ => None
         }
       }
 
       object ScalaPackage {
-        def unapply(tpe: TypeOrBounds) given (ctx: Context): Boolean = tpe match {
+        def unapply(tpe: TypeOrBounds)(given ctx: Context): Boolean = tpe match {
           case Type.IsTermRef(tpe) => tpe.termSymbol == defn.ScalaPackage
           case _ => false
         }
@@ -1911,7 +1911,7 @@ trait Printers
     }
 
     object PackageObject {
-      def unapply(tree: Tree) given (ctx: Context): Option[Tree] = tree match {
+      def unapply(tree: Tree)(given ctx: Context): Option[Tree] = tree match {
         case PackageClause(_, ValDef("package", _, _) :: body :: Nil) => Some(body)
         case _ => None
       }

@@ -20,55 +20,55 @@ object Test {
     summon[TupledFunction[(given T, T, T) => R, ((T, T, T)) =>R]] // error
 
     summon[TupledFunction[(erased T) => R, erased Tuple1[T] => R]] // error
-    summon[TupledFunction[erased (T, T) => R, erased ((T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T) => R, erased ((T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T) => R, erased ((T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T) => R, erased ((T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, erased ((T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T) => R,(erased (T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T) => R,(erased (T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T) => R,(erased (T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T) => R,(erased (T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R,(erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
 
     summon[TupledFunction[(given erased T) => R, (given erased Tuple1[T]) => R]] // error
-    summon[TupledFunction[(given erased T, T) => R, (given erased (T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T) => R, (given erased (T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T) => R, (given erased (T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T) => R, (given erased (T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
-    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased (T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T)) => R]] // error
+    summon[TupledFunction[(given erased T, T) => R, (given erased T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T) => R, (given erased T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T) => R, (given erased T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T) => R, (given erased T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
+    summon[TupledFunction[(given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R, (given erased T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) => R]] // error
   }
 }

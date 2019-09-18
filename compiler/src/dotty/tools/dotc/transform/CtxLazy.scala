@@ -16,7 +16,7 @@ class CtxLazy[T](expr: ImplicitFunction1[Context, T]) {
   private[this] var forced = false
   def apply()(implicit ctx: Context): T = {
     if (!forced) {
-      myValue = expr given ctx
+      myValue = expr(given ctx)
       forced = true
     }
     myValue

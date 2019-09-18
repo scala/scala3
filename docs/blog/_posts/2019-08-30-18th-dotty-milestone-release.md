@@ -90,7 +90,7 @@ If you run the above with command line arguments "Jack 25", the output will be "
 ```scala
 case class Address(city: String, street: String)
 
-given as scala.util.FromString[Address] {
+given scala.util.FromString[Address] {
   /** Can throw java.lang.IllegalArgumentException */
   def fromString(s: String): T =
     s.split(",").toList match {

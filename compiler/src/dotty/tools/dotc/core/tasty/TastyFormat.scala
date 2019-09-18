@@ -167,7 +167,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   METHODtype     Length result_Type NamesTypes                     -- A method type `(NamesTypes)result`, needed for refinements
                   ERASEDMETHODtype      Length result_Type NamesTypes              -- A method type `erased (NamesTypes)result`, needed for refinements
                   GIVENMETHODtype       Length result_Type NamesTypes              -- A method type `given (NamesTypes)result`, needed for refinements
-                  ERASEDGIVENMETHODtype Length result_Type NamesTypes              -- A method type `given erased (NamesTypes)result`, needed for refinements
+                  ERASEDGIVENMETHODtype Length result_Type NamesTypes              -- A method type `given(erased NamesTypes)result`, needed for refinements
                   IMPLICITMETHODtype    Length result_Type NamesTypes              -- A method type `(implicit NamesTypes)result`, needed for refinements
   // TODO: remove ERASEDIMPLICITMETHODtype
                   TYPELAMBDAtype Length result_Type NamesTypes                     -- A type lambda `[NamesTypes] => result`, variance encoded using VARIANT names

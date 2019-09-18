@@ -72,18 +72,18 @@ object Splicer {
     case _ =>
       type Env = Set[Symbol]
 
-      def checkValidStat(tree: Tree) given Env: Env = tree match {
+      def checkValidStat(tree: Tree)(given Env): Env = tree match {
         case tree: ValDef if tree.symbol.is(Synthetic) =>
           // Check val from `foo(j = x, i = y)` which it is expanded to
           // `val j$1 = x; val i$1 = y; foo(i = i$1, j = j$1)`
           checkIfValidArgument(tree.rhs)
-          the[Env] + tree.symbol
+          summon[Env] + tree.symbol
         case _ =>
           ctx.error("Macro should not have statements", tree.sourcePos)
-          the[Env]
+          summon[Env]
       }
 
-      def checkIfValidArgument(tree: Tree) given Env: Unit = tree match {
+      def checkIfValidArgument(tree: Tree)(given Env): Unit = tree match {
         case Block(Nil, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
@@ -111,7 +111,7 @@ object Splicer {
         case SeqLiteral(elems, _) =>
           elems.foreach(checkIfValidArgument)
 
-        case tree: Ident if tree.symbol.is(Inline) || the[Env].contains(tree.symbol) =>
+        case tree: Ident if tree.symbol.is(Inline) || summon[Env].contains(tree.symbol) =>
           // OK
 
         case _ =>
@@ -125,13 +125,13 @@ object Splicer {
               |""".stripMargin, tree.sourcePos)
       }
 
-      def checkIfValidStaticCall(tree: Tree) given Env: Unit = tree match {
+      def checkIfValidStaticCall(tree: Tree)(given Env): Unit = tree match {
         case closureDef(ddef @ DefDef(_, Nil, (ev :: Nil) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
-          checkIfValidStaticCall(ddef.rhs) given (the[Env] + ev.symbol)
+          checkIfValidStaticCall(ddef.rhs)(given summon[Env] + ev.symbol)
 
         case Block(stats, expr) =>
-          val newEnv = stats.foldLeft(the[Env])((env, stat) => checkValidStat(stat) given env)
-          checkIfValidStaticCall(expr) given newEnv
+          val newEnv = stats.foldLeft(summon[Env])((env, stat) => checkValidStat(stat)(given env))
+          checkIfValidStaticCall(expr)(given newEnv)
 
         case Typed(expr, _) =>
           checkIfValidStaticCall(expr)
@@ -152,7 +152,7 @@ object Splicer {
               |""".stripMargin, tree.sourcePos)
       }
 
-      checkIfValidStaticCall(tree) given Set.empty
+      checkIfValidStaticCall(tree)(given Set.empty)
   }
 
   /** Tree interpreter that evaluates the tree */
@@ -217,7 +217,7 @@ object Splicer {
           unexpectedTree(tree)
 
       case closureDef((ddef @ DefDef(_, _, (arg :: Nil) :: Nil, _, _))) =>
-        (obj: AnyRef) => interpretTree(ddef.rhs) given env.updated(arg.symbol, obj)
+        (obj: AnyRef) => interpretTree(ddef.rhs)(given env.updated(arg.symbol, obj))
 
       // Interpret `foo(j = x, i = y)` which it is expanded to
       // `val j$1 = x; val i$1 = y; foo(i = i$1, j = j$1)`

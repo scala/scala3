@@ -1,7 +1,7 @@
 package playground
 
 import scala.quoted._, scala.quoted.matching._
-import delegate scala.quoted._
+import scala.quoted.given
 import scala.tasty._
 
 object macros {

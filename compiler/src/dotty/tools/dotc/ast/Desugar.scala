@@ -893,7 +893,7 @@ object desugar {
    *  If the given member `mdef` is not of this form, flag it as an error.
    */
 
-  def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef]) given (ctx: Context): Tree = {
+  def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef])(given ctx: Context): Tree = {
     val allowed = "allowed here, since collective parameters are given"
     mdef match {
       case mdef: DefDef =>
@@ -933,7 +933,7 @@ object desugar {
 
   /** Invent a name for an anonympus given of type or template `impl`. */
   def inventGivenName(impl: Tree)(implicit ctx: Context): SimpleName =
-    avoidIllegalChars(s"${inventName(impl)}_given".toTermName.asSimpleName)
+    avoidIllegalChars(s"given_${inventName(impl)}".toTermName.asSimpleName)
 
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.

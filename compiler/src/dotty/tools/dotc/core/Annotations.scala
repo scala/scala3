@@ -10,7 +10,7 @@ import util.Spans.Span
 
 object Annotations {
 
-  def annotClass(tree: Tree) given Context =
+  def annotClass(tree: Tree)(given Context) =
     if (tree.symbol.isConstructor) tree.symbol.owner
     else tree.tpe.typeSymbol
 
@@ -121,7 +121,7 @@ object Annotations {
     def deferred(sym: Symbol)(treeFn: ImplicitFunction1[Context, Tree])(implicit ctx: Context): Annotation =
       new LazyAnnotation {
         override def symbol(implicit ctx: Context): Symbol = sym
-        def complete(implicit ctx: Context) = treeFn given ctx
+        def complete(implicit ctx: Context) = treeFn(given ctx)
       }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
@@ -131,12 +131,12 @@ object Annotations {
 
         override def symbol(implicit ctx: Context): Symbol = {
           if (mySym == null || mySym.defRunId != ctx.runId) {
-            mySym = symf given ctx
+            mySym = symf(given ctx)
             assert(mySym != null)
           }
           mySym
         }
-        def complete(implicit ctx: Context) = treeFn given ctx
+        def complete(implicit ctx: Context) = treeFn(given ctx)
       }
 
     def deferred(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =

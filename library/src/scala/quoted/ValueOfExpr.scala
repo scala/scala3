@@ -8,7 +8,7 @@ trait ValueOfExpr[T] {
    *  Returns `None` if the expression does not contain a value or contains side effects.
    *  Otherwise returns the `Some` of the value.
    */
-  def apply(x: Expr[T]) given QuoteContext: Option[T]
+  def apply(x: Expr[T])(given QuoteContext): Option[T]
 
 }
 
@@ -27,7 +27,7 @@ object ValueOfExpr {
 
   private class PrimitiveValueOfExpr[T <: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends ValueOfExpr[T] {
     /** Lift a quoted primitive value `'{ n }` into `n` */
-    def apply(x: Expr[T]) given QuoteContext: Option[T] = matching.Const.unapply(x)
+    def apply(x: Expr[T])(given QuoteContext): Option[T] = matching.Const.unapply(x)
   }
 
 }

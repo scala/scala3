@@ -85,8 +85,8 @@ object Test extends App {
   val config1 = Config("John Doe", 20)
   val config2 = Config("Incognito", 99)
 
-  println(readPerson given config1)
-  println(readPerson given config2)
+  println(readPerson(given config1))
+  println(readPerson(given config2))
 }
 
 object OptionTest extends App {

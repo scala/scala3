@@ -759,7 +759,7 @@ class Typer extends Namer
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context): Tree = {
     val localCtx = ctx.retractMode(Mode.Pattern)
-    val (exprCtx, stats1) = typedBlockStats(tree.stats) given localCtx
+    val (exprCtx, stats1) = typedBlockStats(tree.stats)(given localCtx)
     val expr1 = typedExpr(tree.expr, pt.dropIfProto)(exprCtx)
     ensureNoLocalRefs(
       cpy.Block(tree)(stats1, expr1).withType(expr1.tpe), pt, localSyms(stats1))
@@ -2246,7 +2246,7 @@ class Typer extends Namer
 
   def tryEither[T](op: ImplicitFunction1[Context, T])(fallBack: (T, TyperState) => T)(implicit ctx: Context): T = {
     val nestedCtx = ctx.fresh.setNewTyperState()
-    val result = op given nestedCtx
+    val result = op(given nestedCtx)
     if (nestedCtx.reporter.hasErrors && !nestedCtx.reporter.hasStickyErrors) {
       record("tryEither.fallBack")
       fallBack(result, nestedCtx.typerState)
@@ -2288,7 +2288,7 @@ class Typer extends Namer
     def tryWithType(tpt: untpd.Tree): Tree =
       tryEither {
         val tycon = typed(tpt)
-        if (the[Context].reporter.hasErrors)
+        if (summon[Context].reporter.hasErrors)
           EmptyTree // signal that we should return the error in fallBack
         else {
           def recur(tpt: Tree, pt: Type): Tree = pt.revealIgnored match {
@@ -2403,7 +2403,7 @@ class Typer extends Namer
         val qualProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
         tryEither {
           val qual1 = adapt(qual, qualProto, locked)
-          if ((qual eq qual1) || the[Context].reporter.hasErrors) None
+          if ((qual eq qual1) || summon[Context].reporter.hasErrors) None
           else Some(typed(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt, locked))
         } { (_, _) => None
         }
@@ -3050,7 +3050,7 @@ class Typer extends Namer
   }
 
   // Overridden in InlineTyper
-  def suppressInline given (ctx: Context): Boolean = ctx.isAfterTyper
+  def suppressInline(given ctx: Context): Boolean = ctx.isAfterTyper
 
   /** Does the "contextuality" of the method type `methType` match the one of the prototype `pt`?
    *  This is the case if

@@ -3,7 +3,7 @@ object Test {
   type UU[T] = (erased T) => Int
 
   def main(args: Array[String]): Unit = {
-    fun { erased x =>
+    fun { (erased x) =>
       println("lambda")
       42
     }

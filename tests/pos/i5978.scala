@@ -10,7 +10,7 @@ package p1 {
     given TP : TokenParser[Char, Position[CharSequence]] {}
 
     def f
-      given TokenParser[Char, Position[CharSequence]] = ???
+      (given TokenParser[Char, Position[CharSequence]]) = ???
 
     given FromCharToken(given T: TokenParser[Char, Position[CharSequence]])
       : Conversion[Char, Position[CharSequence]] = ???

@@ -254,7 +254,7 @@ object Formatting {
     */
   def explained(op: ImplicitFunction1[Context, String])(implicit ctx: Context): String = {
     val seen = new Seen
-    val msg = op given explainCtx(seen)
+    val msg = op(given explainCtx(seen))
     val addendum = explanations(seen)
     if (addendum.isEmpty) msg else msg ++ "\n\n" ++ addendum
   }

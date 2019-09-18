@@ -37,7 +37,7 @@ trait Phases {
   def atNextPhase[T](op: ImplicitFunction1[Context, T]): T = atPhase(phase.next)(op)
 
   def atPhaseNotLaterThan[T](limit: Phase)(op: ImplicitFunction1[Context, T]): T =
-    if (!limit.exists || phase <= limit) op given this else atPhase(limit)(op)
+    if (!limit.exists || phase <= limit) op(given this) else atPhase(limit)(op)
 
   def isAfterTyper: Boolean = base.isAfterTyper(phase)
 }

@@ -85,7 +85,7 @@ Then the following calls are all valid (and normalize to the last one)
 ```scala
 f
 (f given global)
-(f given global) given ctx
+(f given global)(given ctx)
 ```
 But `f given ctx` would give a type error.
 
