@@ -13,7 +13,7 @@ def test(given QuoteContext) = {
       b // error
       ${b}
       ${ '{b} } // error
-      '{(given QuoteContext) = ???; '{$b} } // error
+      '{ given QuoteContext =???; '{$b} } // error
     }
 
   }

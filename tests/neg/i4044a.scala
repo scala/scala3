@@ -8,7 +8,7 @@ def test(given QuoteContext) = {
     a // error
     $a
     '{$a} // error
-    '{(given QuoteContext) = ???; '{$a} } // error
+    '{ given QuoteContext =???; '{$a} } // error
   }
 
 }

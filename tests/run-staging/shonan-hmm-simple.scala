@@ -35,13 +35,13 @@ class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]] {
 }
 
 sealed trait PV[T] {
-  def expr given Liftable[T], QuoteContext: Expr[T]
+  def expr(given Liftable[T], QuoteContext): Expr[T]
 }
 case class Sta[T](x: T) extends PV[T] {
-  def expr given Liftable[T], QuoteContext: Expr[T] = x
+  def expr(given Liftable[T], QuoteContext): Expr[T] = x
 }
 case class Dyn[T](x: Expr[T]) extends PV[T] {
-  def expr given Liftable[T], QuoteContext: Expr[T] = x
+  def expr(given Liftable[T], QuoteContext): Expr[T] = x
 }
 
 class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]])(given QuoteContext) extends Ring[PV[U]] {
