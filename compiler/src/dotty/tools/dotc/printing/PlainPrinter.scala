@@ -187,9 +187,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: MethodType =>
         changePrec(GlobalPrec) {
           "("
-          ~ Str("given ").provided(tp.isContextualMethod)
-          ~ Str("erased ").provided(tp.isErasedMethod)
-          ~ Str("implicit ").provided(tp.isImplicitMethod && !tp.isContextualMethod)
+          ~ keywordText("given ").provided(tp.isContextualMethod)
+          ~ keywordText("erased ").provided(tp.isErasedMethod)
+          ~ keywordText("implicit ").provided(tp.isImplicitMethod && !tp.isContextualMethod)
           ~ paramsText(tp)
           ~ (if tp.resultType.isInstanceOf[MethodType] then ")" else "): ")
           ~ toText(tp.resultType)
