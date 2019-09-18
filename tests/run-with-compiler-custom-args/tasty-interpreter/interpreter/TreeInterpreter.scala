@@ -18,7 +18,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def localValue(sym: Symbol)(implicit env: Env): LocalValue = env(sym)
 
   def withLocalValue[T](sym: Symbol, value: LocalValue)(in: (given Env) => T)(implicit env: Env): T =
-    in given env.updated(sym, value)
+    in(given env.updated(sym, value))
 
   def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: (given Env) => T)(implicit env: Env): T =
     in(given env ++ syms.zip(values))
