@@ -55,7 +55,7 @@ extends simply-typed lambda calculus with quotes and splices.
 
 ### Syntax
 
-The syntax of terms, values, and types is given follows:
+The syntax of terms, values, and types is given as follows:
 
     Terms         t  ::=  x                 variable
                           (x: T) => t       lambda
