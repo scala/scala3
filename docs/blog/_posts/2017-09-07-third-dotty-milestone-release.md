@@ -19,7 +19,7 @@ You can learn more about Dotty on our [website](http://dotty.epfl.ch).
 
 <!--more-->
 
-This is our third scheduled release according to our [6-week release schedule](http://dotty.epfl.ch/docs/usage/version-numbers.html).
+This is our third scheduled release according to our [6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
 The [previous technology preview](/blog/2017/07/12/second-dotty-milestone-release.html) improved
 stability and reliability:
 
@@ -44,7 +44,7 @@ This technology preview further improves stability and reliability. Some highlig
 ## How can you try it out?
 We ship with tools that help you try out the Dotty platform:
 
- - [IDE features for Visual Studio Code](http://dotty.epfl.ch/docs/usage/ide-support.html)
+ - [IDE features for Visual Studio Code](https://dotty.epfl.ch/docs/usage/ide-support.html)
  - [sbt support, including retro-compatibility with Scala 2](https://github.com/lampepfl/dotty-example-project)
 
 
@@ -120,7 +120,7 @@ According to `git shortlog -sn --no-merges 0.2.0-RC1..0.3.0-RC2` these are:
 ```
 
 If you want to get your hands dirty with any of this, now is a good moment to get involved!
-You can have a look at our [Getting Started page](http://dotty.epfl.ch/docs/contributing/getting-started.html),
+You can have a look at our [Getting Started page](https://dotty.epfl.ch/docs/contributing/getting-started.html),
 our [Awesome Error Messages](http://scala-lang.org/blog/2016/10/14/dotty-errors.html) or some of
 the simple [Dotty issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry-points into hacking on the compiler.

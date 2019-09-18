@@ -2035,7 +2035,7 @@ object Parsers {
           // since we want to be able to compile the standard library.
           if (call `ne` nme.???)
             syntaxError(
-              "Scala 2 macros are not supported, see http://dotty.epfl.ch/docs/reference/dropped-features/macros.html",
+              "Scala 2 macros are not supported, see https://dotty.epfl.ch/docs/reference/dropped-features/macros.html",
               start)
           unimplementedExpr
         case COLONEOL =>

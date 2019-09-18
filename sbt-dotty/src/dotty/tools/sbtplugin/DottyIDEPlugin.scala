@@ -364,7 +364,7 @@ object DottyIDEPlugin extends AutoPlugin {
           val log = streams.value.log
           log.error(
             """Could not find Visual Studio Code on your system.
-              |Follow the instructions at http://dotty.epfl.ch/docs/usage/ide-support.html
+              |Follow the instructions at https://dotty.epfl.ch/docs/usage/ide-support.html
               |to install it.""".stripMargin)
           throw new FeedbackProvidedException {
             override def toString = "Could not find Visual Studio Code on your system."

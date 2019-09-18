@@ -28,7 +28,7 @@ object DottyPlugin extends AutoPlugin {
 
       val nightly = try {
         // get majorVersion from dotty.epfl.ch
-        val source0 = Source.fromURL("http://dotty.epfl.ch/versions/latest-nightly-base")
+        val source0 = Source.fromURL("https://dotty.epfl.ch/versions/latest-nightly-base")
         val majorVersionFromWebsite = source0.getLines().toSeq.head
         source0.close()
 

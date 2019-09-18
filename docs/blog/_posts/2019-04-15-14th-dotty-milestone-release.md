@@ -68,7 +68,7 @@ The motivation for this change is to promote composition over inheritance. In OO
 
 With the `export` feature, making the `Copier` behave as the `Printer` and the `Scanner` became much more ergonomic. Also, note the fine-grained control over which methods are exposed in cases of the possible method collision, as shown with the `status` method example.
 
-For more information, please read more in the [documentation](http://dotty.epfl.ch/docs/reference/other-new-features/export.html).
+For more information, please read more in the [documentation](https://dotty.epfl.ch/docs/reference/other-new-features/export.html).
 
 
 ## An immutable array type
@@ -118,14 +118,14 @@ Given a function call `f(args)`,
 
  - otherwise, if `f` is syntactically a stable identifier, and `new f` where `f` is interpreted as a type identifier is applicable to `args`, continue with `new f(args)`.
 
-For more information, please see the [documentation](http://dotty.epfl.ch/docs/reference/other-new-features/creator-applications.html).
+For more information, please see the [documentation](https://dotty.epfl.ch/docs/reference/other-new-features/creator-applications.html).
 
 ## Other changes
 
 Some of the other changes include:
 
-- `infer` method renamed to `the`, the semantics of which is now the same as that of the `the` method of Shapeless. Namely, the implicits are resolved more precisely – see this [gist](https://gist.github.com/milessabin/8833a1dbf7e8245b30f8) for an example in Shapeless, and the Dotty [documentation](http://dotty.epfl.ch/docs/reference/contextual/given-clauses.html#querying-implied-instances) for more details.
-- The syntax of quoting and splicing was changed. Now the quoting is expressed via `'{ ... }` and `'[...]` and splicing – via `${...}` and `$id`. Please see the [documentation](http://dotty.epfl.ch/docs/reference/other-new-features/principled-meta-programming.html) for more details on these features.
+- `infer` method renamed to `the`, the semantics of which is now the same as that of the `the` method of Shapeless. Namely, the implicits are resolved more precisely – see this [gist](https://gist.github.com/milessabin/8833a1dbf7e8245b30f8) for an example in Shapeless, and the Dotty [documentation](https://dotty.epfl.ch/docs/reference/contextual/given-clauses.html#querying-implied-instances) for more details.
+- The syntax of quoting and splicing was changed. Now the quoting is expressed via `'{ ... }` and `'[...]` and splicing – via `${...}` and `$id`. Please see the [documentation](https://dotty.epfl.ch/docs/reference/other-new-features/principled-meta-programming.html) for more details on these features.
 
 # Let us know what you think!
 
