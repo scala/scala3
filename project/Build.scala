@@ -977,7 +977,7 @@ object Build {
         val dir = fetchScalaJSSource.value / "test-suite"
         (
           (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** (("IntTest.scala": FileFilter) || "BooleanTest.scala" || "ByteTest.scala" || "CharTest.scala" || "DoubleTest.scala" || "FloatTest.scala" || "ShortTest.scala" || "UnitTest.scala")).get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** (("IntegerTest.scala": FileFilter) || "ObjectTest.scala" || "BooleanTest.scala" || "ByteTest.scala" || "CharacterTest.scala" || "DoubleTest.scala" || "FloatTest.scala" || "WrappedStringCharSequence.scala" || "ThrowablesTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** (("IntegerTest.scala": FileFilter) || "ObjectTest.scala" || "BooleanTest.scala" || "ByteTest.scala" || "CharacterTest.scala" || "DoubleTest.scala" || "FloatTest.scala" || "WrappedStringCharSequence.scala" || "ThrowablesTest.scala" || "ThreadTest.scala")).get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/util" ** (("Base64Test.scala": FileFilter) || "OptionalTest.scala" || "SplittableRandom.scala" || "ObjectsTestOnJDK8.scala" || "ComparatorTestOnJDK8.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
