@@ -22,8 +22,8 @@ object Macros {
     }
 
     def lift[T: Type](e: Expr[T])(given env: Env): Expr[R[T]] = ((e: Expr[Any]) match {
-      case Const(e: Int) => '{ $sym.int(${e.toExpr}).asInstanceOf[R[T]] }
-      case Const(e: Boolean) => '{ $sym.bool(${e.toExpr}).asInstanceOf[R[T]] }
+      case Const(e: Int) => '{ $sym.int(${Expr(e)}).asInstanceOf[R[T]] }
+      case Const(e: Boolean) => '{ $sym.bool(${Expr(e)}).asInstanceOf[R[T]] }
 
       case '{ ($x: Int) + ($y: Int) } =>
         '{ $sym.add(${lift(x)}, ${lift(y)}).asInstanceOf[R[T]] }

@@ -6,5 +6,5 @@ inline def foo = ${fooImpl}
 def fooImpl(given qctx: QuoteContext) = {
   import qctx.tasty._
   val res = Expr.ofList(List('{"One"}))
-  res.show.toExpr
+  Expr(res.show)
 }

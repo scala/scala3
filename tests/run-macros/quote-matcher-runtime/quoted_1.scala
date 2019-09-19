@@ -21,9 +21,9 @@ object Macros {
     }
 
     '{
-      println("Scrutinee: " + ${a.unseal.show.toExpr})
-      println("Pattern: " + ${b.unseal.show.toExpr})
-      println("Result: " + ${res.toString.toExpr})
+      println("Scrutinee: " + ${Expr(a.unseal.show)})
+      println("Pattern: " + ${Expr(b.unseal.show)})
+      println("Result: " + ${Expr(res.toString)})
       println()
     }
   }

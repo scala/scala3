@@ -68,7 +68,7 @@ The method `qctx.tasty.Term.seal[T]` provides a way to go back to a
 `quoted.Expr[Any]`. Note that the type is `Expr[Any]`. Consequently, the type
 must be set explicitly with a checked `cast` call. If the type does not conform
 to it an exception will be thrown. In the code above, we could have replaced
-`n.toExpr` by `xTree.seal.cast[Int]`.
+`Expr(n)` by `xTree.seal.cast[Int]`.
 
 ### Obtaining the underlying argument
 

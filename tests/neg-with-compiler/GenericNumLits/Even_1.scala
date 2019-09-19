@@ -20,7 +20,7 @@ object Even {
             ctx.error(ex.getMessage)
             Even(0)
         }
-      '{Even(${ev.n.toExpr})}
+      '{Even(${Expr(ev.n)})}
     case _ =>
       '{evenFromDigits($digits)}
   }

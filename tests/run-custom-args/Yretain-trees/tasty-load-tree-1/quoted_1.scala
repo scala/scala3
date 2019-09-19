@@ -10,9 +10,9 @@ object Foo {
     import qctx.tasty._
 
     def definitionString(tree: Tree): Expr[String] = tree.symbol match {
-      case IsClassDefSymbol(sym) => sym.tree.showExtractors.toExpr
-      case IsDefDefSymbol(sym) => sym.tree.showExtractors.toExpr
-      case IsValDefSymbol(sym) => sym.tree.showExtractors.toExpr
+      case IsClassDefSymbol(sym) => Expr(sym.tree.showExtractors)
+      case IsDefDefSymbol(sym) => Expr(sym.tree.showExtractors)
+      case IsValDefSymbol(sym) => Expr(sym.tree.showExtractors)
       case _ => '{"NO DEFINTION"}
     }
 

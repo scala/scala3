@@ -751,6 +751,6 @@ object StringContextMacro {
     }
 
     // macro expansion
-    '{(${parts.mkString.toExpr}).format(${argsExpr}: _*)}
+    '{(${Expr(parts.mkString)}).format(${argsExpr}: _*)}
   }
 }

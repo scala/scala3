@@ -65,6 +65,9 @@ package quoted {
       Block(statements.map(_.unseal), expr.unseal).seal.asInstanceOf[Expr[T]]
     }
 
+    /** Lift a value into an expression containing the construction of that value */
+    def apply[T: Liftable](x: T)(given QuoteContext): Expr[T] = summon[Liftable[T]].toExpr(x)
+
     /** Lifts this sequence of expressions into an expression of a sequence
      *
      *  Transforms a sequence of expression

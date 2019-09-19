@@ -10,7 +10,7 @@ object Test {
 
     '{ ${summon[Liftable[Int]].toExpr(1)} }
 
-    '{ ${1.toExpr} }
+    '{ ${Expr(1)} }
 
   }
 

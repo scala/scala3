@@ -9,7 +9,7 @@ object TypeToolbox {
   private def tpEqImpl[A, B](a: Type[A], b: Type[B])(given qctx: QuoteContext): Expr[Boolean] = {
     import qctx.tasty._
     val res = a.unseal.tpe =:= b.unseal.tpe
-    res.toExpr
+    Expr(res)
   }
 
   /** is `tp1` a subtype of `tp2` */
@@ -17,7 +17,7 @@ object TypeToolbox {
   private def tpLEqImpl[A, B](a: Type[A], b: Type[B])(given qctx: QuoteContext): Expr[Boolean] = {
     import qctx.tasty._
     val res = a.unseal.tpe <:< b.unseal.tpe
-    res.toExpr
+    Expr(res)
   }
 
   /** type associated with the tree */
@@ -25,7 +25,7 @@ object TypeToolbox {
   private def typeOfImpl(a: Expr[_], expected: Type[_])(given qctx: QuoteContext): Expr[Boolean] = {
     import qctx.tasty._
     val res = a.unseal.tpe =:= expected.unseal.tpe
-    res.toExpr
+    Expr(res)
   }
 
   /** does the type refer to a case class? */
@@ -36,7 +36,7 @@ object TypeToolbox {
       case IsClassDefSymbol(sym) => sym.flags.is(Flags.Case)
       case _ => false
     }
-    res.toExpr
+    Expr(res)
   }
 
   /** val fields of a case class Type -- only the ones declared in primary constructor */
@@ -44,59 +44,59 @@ object TypeToolbox {
   private def caseFieldsImpl(tp: Type[_])(given qctx: QuoteContext): Expr[List[String]] = {
     import qctx.tasty._
     val fields = tp.unseal.symbol.asClassDef.caseFields.map(_.name)
-    fields.toExpr
+    Expr(fields)
   }
 
   inline def fieldIn[T](inline mem: String): String = ${fieldInImpl('[T], mem)}
   private def fieldInImpl(t: Type[_], mem: String)(given qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
     val field = t.unseal.symbol.asClassDef.field(mem)
-    field.map(_.name).getOrElse("").toExpr
+    Expr(field.map(_.name).getOrElse(""))
   }
 
   inline def fieldsIn[T]: Seq[String] = ${fieldsInImpl('[T])}
   private def fieldsInImpl(t: Type[_])(given qctx: QuoteContext): Expr[Seq[String]] = {
     import qctx.tasty._
     val fields = t.unseal.symbol.asClassDef.fields
-    fields.map(_.name).toList.toExpr
+    Expr(fields.map(_.name).toList)
   }
 
   inline def methodIn[T](inline mem: String): Seq[String] = ${methodInImpl('[T], mem)}
   private def methodInImpl(t: Type[_], mem: String)(given qctx: QuoteContext): Expr[Seq[String]] = {
     import qctx.tasty._
-    t.unseal.symbol.asClassDef.classMethod(mem).map(_.name).toExpr
+    Expr(t.unseal.symbol.asClassDef.classMethod(mem).map(_.name))
   }
 
   inline def methodsIn[T]: Seq[String] = ${methodsInImpl('[T])}
   private def methodsInImpl(t: Type[_])(given qctx: QuoteContext): Expr[Seq[String]] = {
     import qctx.tasty._
-    t.unseal.symbol.asClassDef.classMethods.map(_.name).toExpr
+    Expr(t.unseal.symbol.asClassDef.classMethods.map(_.name))
   }
 
   inline def method[T](inline mem: String): Seq[String] = ${methodImpl('[T], mem)}
   private def methodImpl(t: Type[_], mem: String)(given qctx: QuoteContext): Expr[Seq[String]] = {
     import qctx.tasty._
-    t.unseal.symbol.asClassDef.method(mem).map(_.name).toExpr
+    Expr(t.unseal.symbol.asClassDef.method(mem).map(_.name))
   }
 
   inline def methods[T]: Seq[String] = ${methodsImpl('[T])}
   private def methodsImpl(t: Type[_])(given qctx: QuoteContext): Expr[Seq[String]] = {
     import qctx.tasty._
-    t.unseal.symbol.asClassDef.methods.map(_.name).toExpr
+    Expr(t.unseal.symbol.asClassDef.methods.map(_.name))
   }
 
   inline def typeTag[T](x: T): String = ${typeTagImpl('[T])}
   private def typeTagImpl(tp: Type[_])(given qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
     val res = tp.unseal.tpe.show
-    res.toExpr
+    Expr(res)
   }
 
   inline def companion[T1, T2]: Boolean = ${companionImpl('[T1], '[T2])}
   private def companionImpl(t1: Type[_], t2: Type[_])(given qctx: QuoteContext): Expr[Boolean] = {
     import qctx.tasty._
     val res = t1.unseal.symbol.asClassDef.companionModule.contains(t2.unseal.symbol)
-    res.toExpr
+    Expr(res)
   }
 
   inline def companionName[T1]: String = ${companionNameImpl('[T1])}
@@ -107,7 +107,7 @@ object TypeToolbox {
       case IsValDefSymbol(sym) => sym.companionClass
       case _ => None
     }
-    companionClassOpt.map(_.fullName).getOrElse("").toExpr
+    Expr(companionClassOpt.map(_.fullName).getOrElse(""))
   }
 
 }
