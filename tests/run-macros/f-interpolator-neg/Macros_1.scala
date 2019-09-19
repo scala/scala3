@@ -69,6 +69,6 @@ object Macro {
     }
     val parts = parts0.map { case Const(s) => s }
     dotty.internal.StringContextMacro.interpolate(parts.toList, args.toList, argsExpr, reporter) // Discard result
-    errors.result().toExprOfList
+    Expr.ofList(errors.result())
   }
 }

@@ -44,7 +44,7 @@ object Macro {
           }
         }
         fooCore(parts, args, reporter) // Discard result
-        errors.result().toExprOfList
+        Expr.ofList(errors.result())
     }
 
 
@@ -58,7 +58,7 @@ object Macro {
         reporter.errorOnPart("Cannot use #", idx)
     }
 
-    '{ StringContext(${parts.toList.toExprOfList}: _*).s(${args.toList.toExprOfList}: _*) }
+    '{ StringContext(${Expr.ofList(parts)}: _*).s(${Expr.ofList(args)}: _*) }
   }
 
 

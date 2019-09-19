@@ -19,6 +19,6 @@ object Macros {
     }
 
     val tps = unpackTuple(typeOf[T])
-    tps.map(_.show.toExpr).toExprOfSeq
+    Expr.ofSeq(tps.map(_.show.toExpr))
   }
 }

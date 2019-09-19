@@ -15,17 +15,17 @@ object Macro {
 
 object SIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]])(given QuoteContext): Expr[String] =
-    '{(${strCtx}).s(${args.toExprOfList}: _*)}
+    '{(${strCtx}).s(${Expr.ofList(args)}: _*)}
 }
 
 object RawIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]])(given QuoteContext): Expr[String] =
-    '{(${strCtx}).raw(${args.toExprOfList}: _*)}
+    '{(${strCtx}).raw(${Expr.ofList(args)}: _*)}
 }
 
 object FooIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]])(given QuoteContext): Expr[String] =
-    '{(${strCtx}).s(${args.map(_ => '{"foo"}).toExprOfList}: _*)}
+    '{(${strCtx}).s(${Expr.ofList(args.map(_ => '{"foo"}))}: _*)}
 }
 
 // TODO put this class in the stdlib or separate project?
