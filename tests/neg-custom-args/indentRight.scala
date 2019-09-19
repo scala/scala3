@@ -17,6 +17,10 @@ object Test {
 
   }
 
+  trait A
+    case class B() extends A  // error: Line is indented too far to the right
+    case object C extends A   // error: Line is indented too far to the right
+
   if (true)   // OK
     println("hi")
   }

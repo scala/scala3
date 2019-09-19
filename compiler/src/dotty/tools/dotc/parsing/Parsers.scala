@@ -619,6 +619,16 @@ object Parsers {
         else body()
       case _ => body()
 
+    /** If indentation is not significant, check that this is not the start of a
+     *  statement that's indented relative to the current region.
+     */
+    def checkNextNotIndented(): Unit = in.currentRegion match
+      case r: InBraces if in.token == NEWLINE || in.token == NEWLINES =>
+        val nextIndentWidth = in.indentWidth(in.next.offset)
+        if r.indentWidth < nextIndentWidth then
+          warning(i"Line is indented too far to the right, or a `{' is missing", in.next.offset)
+      case _ =>
+
 /* -------- REWRITES ----------------------------------------------------------- */
 
     /** The last offset where a colon at the end of line would be required if a subsequent { ... }
@@ -3460,22 +3470,27 @@ object Parsers {
 
     /** TemplateOpt = [Template]
      */
-    def templateOpt(constr: DefDef): Template = {
+    def templateOpt(constr: DefDef): Template =
       possibleTemplateStart()
-      if (in.token == EXTENDS || isIdent(nme.derives))
+      if in.token == EXTENDS || isIdent(nme.derives) then
         template(constr)
       else
-        if (in.isNestedStart) template(constr)
-        else Template(constr, Nil, Nil, EmptyValDef, Nil)
-    }
+        if in.isNestedStart then
+          template(constr)
+        else
+          checkNextNotIndented()
+          Template(constr, Nil, Nil, EmptyValDef, Nil)
 
     /** TemplateBody ::= [nl] `{' TemplateStatSeq `}'
      */
-    def templateBodyOpt(constr: DefDef, parents: List[Tree], derived: List[Tree]): Template = {
+    def templateBodyOpt(constr: DefDef, parents: List[Tree], derived: List[Tree]): Template =
       val (self, stats) =
-        if (in.isNestedStart) templateBody() else (EmptyValDef, Nil)
+        if in.isNestedStart then
+          templateBody()
+        else
+          checkNextNotIndented()
+          (EmptyValDef, Nil)
       Template(constr, parents, derived, self, stats)
-    }
 
     def templateBody(): (ValDef, List[Tree]) = {
       val r = inDefScopeBraces { templateStatSeq() }
