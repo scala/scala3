@@ -43,7 +43,7 @@ These constructs replace existing constructs with the aim of making the language
  - [Opaque Type Aliases](other-new-features/opaques.md) replace most uses
    of value classes while guaranteeing absence of boxing.
  - [Toplevel definitions](dropped-features/package-objects.md) replace package objects, dropping syntactic boilerplate.
- - [Export clauses](new-features/export.md)
+ - [Export clauses](other-new-features/export.md)
  provide a simple and general way to express aggregation, which can replace the
  previous facade pattern of package objects inheriting from classes.
  - [Vararg patterns](changed-features/vararg-patterns.md) now use the form `: _*` instead of `@ _*`, mirroring vararg expressions,

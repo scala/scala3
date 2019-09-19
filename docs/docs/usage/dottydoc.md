@@ -109,7 +109,7 @@ To be rendered as templates, each blog post should have front-matter and a
 
 The posts are also available in the variable `site.posts` throughout the site.
 The fields of these objects are the same as in
-[BlogPost](dotty.tools.dottydoc.staticsite.BlogPost).
+`[BlogPost](dotty.tools.dottydoc.staticsite.BlogPost)`.
 
 Includes
 ========
@@ -247,7 +247,7 @@ api-page.html
 -------------
 The last two layouts are special, in that they are treated specially by
 Dottydoc. The input to the API page is a documented
-[Entity](dotty.tools.dottydoc.model.Entity). As such, this page can be changed
+`[Entity](dotty.tools.dottydoc.model.Entity)`. As such, this page can be changed
 to alter the way Dottydoc renders API documentation.
 
 blog-page.html

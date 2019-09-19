@@ -28,7 +28,7 @@ You can learn more about Dotty on our [website](https://dotty.epfl.ch).
 <!--more-->
 
 This is our 18th scheduled release according to our
-[6-week release schedule](https://dotty.epfl.ch/docs/contributing/release.html).
+[6-week release schedule](https://dotty.epfl.ch/docs/contributing/procedures/release.html).
 
 # What’s new in the 0.18.1-RC1 technology preview?
 The hottest change of this release is a series of experiments with the language syntax. Some of them are controversial, some of them are almost unanimously considered useful. Regardless, the underlying motivation for all of them is something all of us want, we believe d: to make programming in Scala easier to write and read, drop unnecessary boilerplate, facilitate idiomatic programming.

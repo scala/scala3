@@ -157,7 +157,7 @@ environments and terms.
                            Es |- 't: expr T
 
 The meta theory of a slightly simplified variant 2-stage variant of this calculus
-is studied [separately](../simple-smp.md).
+is studied [separately](./simple-smp.md).
 
 ## Going Further
 
