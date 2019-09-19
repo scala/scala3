@@ -70,8 +70,9 @@ class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]])(given QuoteContext) ext
 case class Complex[T](re: T, im: T)
 
 object Complex
-  implicit def isLiftable[T: Type: Liftable]: Liftable[Complex[T]] = new Liftable[Complex[T]]
-  def toExpr(comp: Complex[T]) = '{Complex(${comp.re}, ${comp.im})}
+  implicit def isLiftable[T: Type: Liftable]: Liftable[Complex[T]] = new Liftable[Complex[T]] {
+    def toExpr(comp: Complex[T]) = '{Complex(${comp.re}, ${comp.im})}
+  }
 
 case class Vec[Idx, T](size: Idx, get: Idx => T) {
   def map[U](f: T => U): Vec[Idx, U] = Vec(size, i => f(get(i)))
