@@ -979,6 +979,7 @@ object Build {
           (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** (("IntTest.scala": FileFilter) || "BooleanTest.scala" || "ByteTest.scala" || "CharTest.scala" || "DoubleTest.scala" || "FloatTest.scala" || "ShortTest.scala" || "UnitTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** (("IntegerTest.scala": FileFilter) || "ObjectTest.scala" || "BooleanTest.scala" || "ByteTest.scala" || "CharacterTest.scala" || "DoubleTest.scala" || "FloatTest.scala" || "WrappedStringCharSequence.scala" || "ThrowablesTest.scala" || "ThreadTest.scala" || "SystemTest.scala" || "SystemPropertiesTest.scala" || "StringBuilderTest.scala" || "StringBufferTest.scala" || "StackTraceElementTest.scala" || "ShortTest.scala" || "MathTest.scala" || "LongTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang/ref" ** ("ReferenceTest.scala": FileFilter)).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang/reflect" ** ("ReflectArrayTest.scala": FileFilter)).get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/util" ** (("Base64Test.scala": FileFilter) || "OptionalTest.scala" || "SplittableRandom.scala" || "ObjectsTestOnJDK8.scala" || "ComparatorTestOnJDK8.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
