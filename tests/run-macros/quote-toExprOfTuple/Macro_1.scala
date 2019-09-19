@@ -8,7 +8,7 @@ object Macro {
     import util._
 
     val seq = List(t0, t1)
-    val res = seq.toExprOfTuple
+    val res = Expr.ofTuple(seq)
     res.cast[(T0, T1)]
   }
 }
