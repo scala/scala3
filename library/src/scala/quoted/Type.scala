@@ -7,10 +7,10 @@ package quoted {
     type `$splice` = T
 
     /** Show a source code like representation of this type without syntax highlight */
-    def show(implicit qctx: QuoteContext): String = qctx.show(this, SyntaxHighlight.plain)
+    def show(given qctx: QuoteContext): String = qctx.show(this, SyntaxHighlight.plain)
 
     /** Show a source code like representation of this type */
-    def show(syntaxHighlight: SyntaxHighlight)(implicit qctx: QuoteContext): String = qctx.show(this, syntaxHighlight)
+    def show(syntaxHighlight: SyntaxHighlight)(given qctx: QuoteContext): String = qctx.show(this, syntaxHighlight)
 
   }
 
