@@ -61,7 +61,7 @@ Elem[Nil]          =:=  Nothing
 Here `=:=` is understood to mean that left and right hand sides are mutually subtypes of each other.
 
 This feature is still experimental and subject to changes. For more information, visit the
-[Match Types](http://dotty.epfl.ch/docs/reference/match-types.html) section of our documentation.
+[Match Types](https://dotty.epfl.ch/docs/reference/match-types.html) section of our documentation.
 
 ### Documentation in the REPL
 

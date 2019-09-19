@@ -3,13 +3,14 @@ Dotty
 [![Build Status](http://dotty-ci.epfl.ch/api/badges/lampepfl/dotty/status.svg)](http://dotty-ci.epfl.ch/lampepfl/dotty)
 [![Join the chat at https://gitter.im/lampepfl/dotty](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/lampepfl/dotty?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Log Knowledge](https://img.shields.io/badge/log-knowledge-blueviolet.svg)](https://github.com/lampepfl/dotty-knowledge/issues/new/choose)
+[![Build Status](https://travis-ci.org/nicolasstucki/dotty-website-linkcheck.svg?branch=master)](https://travis-ci.org/nicolasstucki/dotty-website-linkcheck)
 
 * [Homepage](http://dotty.epfl.ch)
-* [Documentation](http://dotty.epfl.ch/docs)
+* [Documentation](https://dotty.epfl.ch/docs)
 
 Try it out
 ==========
-To try it in your project see also the [Getting Started User Guide](http://dotty.epfl.ch/#getting-started).
+To try it in your project see also the [Getting Started User Guide](https://dotty.epfl.ch/#getting-started).
 
 Code of Conduct
 ===============
@@ -19,7 +20,7 @@ other more direct lines of communication such as email.
 
 How to Contribute
 =================
-* [Getting Started as Contributor](http://dotty.epfl.ch/docs/contributing/getting-started.html)
+* [Getting Started as Contributor](https://dotty.epfl.ch/docs/contributing/getting-started.html)
 * [Awesome Error Messages](http://scala-lang.org/blog/2016/10/14/dotty-errors.html)
 * [Issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
 

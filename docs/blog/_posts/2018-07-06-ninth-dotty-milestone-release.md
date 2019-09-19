@@ -99,7 +99,7 @@ more important.
 Starting with 1.1.5 Dotty compiler plugins can be used with `sbt`. Please refer to the `sbt`
 [documentation](https://www.scala-sbt.org/1.x/docs/Compiler-Plugins.html) for more information.
 
-For more information, visit the [Compiler Plugin](http://dotty.epfl.ch/docs/reference/changed/compiler-plugins.html)
+For more information, visit the [Compiler Plugin](https://dotty.epfl.ch/docs/reference/changed/compiler-plugins.html)
 section of our documentation.
 
 ## Trying out Dotty
