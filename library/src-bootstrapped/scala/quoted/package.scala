@@ -2,10 +2,6 @@ package scala
 
 package object quoted {
 
-  object autolift {
-    given autoToExpr[T](given Liftable[T], QuoteContext): Conversion[T, Expr[T]] = _.toExpr
-  }
-
   implicit object ExprOps {
     def (x: T) toExpr[T: Liftable](given QuoteContext): Expr[T] = summon[Liftable[T]].toExpr(x)
 
