@@ -15,7 +15,7 @@ the `underlying` method, other types are called _ground_ types and inherit
 
 Here's a diagram, copied from [dotty/tools/dotc/core/Types.scala][1]:
 
-```none
+```
 Type -+- ProxyType --+- NamedType ----+--- TypeRef
       |              |                 \
       |              +- SingletonType-+-+- TermRef

@@ -10,8 +10,7 @@ import java.nio.file.Path
 import java.nio.charset.StandardCharsets
 import java.io.File.{ separator => sep }
 
-import com.vladsch.flexmark.parser.ParserEmulationProfile
-import com.vladsch.flexmark.parser.Parser
+import com.vladsch.flexmark.parser.{ Parser, ParserEmulationProfile }
 import com.vladsch.flexmark.ext.gfm.tables.TablesExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
 import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
@@ -19,6 +18,7 @@ import com.vladsch.flexmark.ext.emoji.EmojiExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.yaml.front.matter.YamlFrontMatterExtension
+import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
 
 import dotc.core.Contexts.Context
@@ -447,6 +447,8 @@ object Site {
     new MutableDataSet()
       .setFrom(ParserEmulationProfile.KRAMDOWN.getOptions)
       .set(Parser.INDENTED_CODE_BLOCK_PARSER, false)
+      .set(HtmlRenderer.FENCED_CODE_LANGUAGE_CLASS_PREFIX, "")
+      .set(HtmlRenderer.FENCED_CODE_NO_LANGUAGE_CLASS, "nohighlight")
       .set(AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
       .set(AnchorLinkExtension.ANCHORLINKS_ANCHOR_CLASS, "anchor")
       .set(EmojiExtension.ROOT_IMAGE_PATH, "https://github.global.ssl.fastly.net/images/icons/emoji/")

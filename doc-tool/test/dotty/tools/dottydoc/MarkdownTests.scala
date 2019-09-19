@@ -211,7 +211,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
         .trim
 
       assertEquals(
-        """|<pre><code class="language-scala">val x = 1 + 5
+        """|<pre><code class="scala">val x = 1 + 5
             |</code></pre>""".stripMargin, traitCmt)
     }
   }
@@ -242,7 +242,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
         .trim
 
       assertEquals(
-        """|<pre><code class="language-scala">val x = 1 + 5
+        """|<pre><code class="scala">val x = 1 + 5
             |</code></pre>""".stripMargin, traitCmt)
     }
   }

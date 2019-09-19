@@ -40,7 +40,7 @@ Releases are available for download on the [Releases Section](https://github.com
 of the Dotty repository. Releases include three executables: `dotc` the Dotty compiler,
 `dotd` the [Dotty Documentation tool](./dottydoc.md) and `dotr` the Dotty REPL.
 
-```none
+```
 .
 └── bin
     ├── dotc

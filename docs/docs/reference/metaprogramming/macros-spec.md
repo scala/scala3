@@ -9,7 +9,7 @@ title: "Macros Spec"
 
 Compared to the [Dotty reference grammar](../../internals/syntax.md)
 there are the following syntax changes:
-```none
+```
 SimpleExpr      ::=  ...
                   |  ‘'’ ‘{’ Block ‘}’
                   |  ‘'’ ‘[’ Type ‘]’
@@ -56,7 +56,7 @@ extends simply-typed lambda calculus with quotes and splices.
 ### Syntax
 
 The syntax of terms, values, and types is given as follows:
-```none
+```
 Terms         t  ::=  x                 variable
                       (x: T) => t       lambda
                       t t               application
@@ -76,7 +76,7 @@ Typing rules are formulated using a stack of environments
 `Es`. Individual environments `E` consist as usual of variable
 bindings `x: T`. Environments can be combined using the two
 combinators `'` and `$`.
-```none
+```
 Environment   E  ::=  ()                empty
                       E, x: T
 
@@ -93,7 +93,7 @@ right identity `()`.
 ### Operational semantics:
 
 We define a small step reduction relation `-->` with the following rules:
-```none
+```
           ((x: T) => t) v  -->  [x := v]t
 
                     ${'u}  -->  u
@@ -107,7 +107,7 @@ rule says that splice and quotes cancel each other out. The third rule
 is a context rule; it says that reduction is allowed in the hole `[ ]`
 position of an evaluation context.  Evaluation contexts `e` and
 splice evaluation context `e_s` are defined syntactically as follows:
-```none
+```
 Eval context    e    ::=  [ ]  |  e t  |  v e  |  'e_s[${e}]
 Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  u e_s
 ```
@@ -116,7 +116,7 @@ Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  u e_s
 Typing judgments are of the form `Es |- t: T`. There are two
 substructural rules which express the fact that quotes and splices
 cancel each other out:
-```none
+```
                     Es1 * Es2 |- t: T
                ---------------------------
                Es1 $ E1 ' E2 * Es2 |- t: T
@@ -129,7 +129,7 @@ cancel each other out:
 The lambda calculus fragment of the rules is standard, except that we
 use a stack of environments. The rules only interact with the topmost
 environment of the stack.
-```none
+```
                           x: T in E
                         --------------
                         Es * E |- x: T
@@ -146,7 +146,7 @@ environment of the stack.
 ```
 The rules for quotes and splices map between `expr T` and `T` by trading `'` and `$` between
 environments and terms.
-```none
+```
                      Es $ () |- t: expr T
                      --------------------
                          Es |- $t: T
