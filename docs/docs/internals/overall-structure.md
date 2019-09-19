@@ -6,7 +6,7 @@ title: "Dotty Overall Structure"
 The compiler code is found in package [dotty.tools]. It spans the
 following three sub-packages:
 
-```none
+```
 backend     Compiler backends (currently for JVM and JS)
    dotc     The main compiler
      io     Helper modules for file access and classpath handling.
@@ -23,7 +23,7 @@ Package Structure
 Most functionality of `dotc` is implemented in subpackages of `dotc`. Here's a
 list of sub-packages and their focus.
 
-```none
+```
 .
 ├── ast                 // Abstract syntax trees
 ├── config              // Compiler configuration, settings, platform specific definitions.
@@ -91,8 +91,8 @@ Seen from a temporal perspective, the `dotc` compiler consists of a list of
 phases. The current list of phases is specified in class [Compiler] as follows:
 
 ```scala
-    def phases: List[List[Phase]] =
-    frontendPhases ::: picklerPhases ::: transformPhases ::: backendPhases
+  def phases: List[List[Phase]] =
+  frontendPhases ::: picklerPhases ::: transformPhases ::: backendPhases
 
   /** Phases dealing with the frontend up to trees ready for TASTY pickling */
   protected def frontendPhases: List[List[Phase]] =

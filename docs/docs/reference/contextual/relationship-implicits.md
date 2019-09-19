@@ -18,20 +18,20 @@ Given instances can be mapped to combinations of implicit objects, classes and i
 
  1. Given instances without parameters are mapped to implicit objects. E.g.,
     ```scala
-      given IntOrd as Ord[Int] { ... }
+    given IntOrd as Ord[Int] { ... }
     ```
     maps to
     ```scala
-      implicit object IntOrd extends Ord[Int] { ... }
+    implicit object IntOrd extends Ord[Int] { ... }
     ```
  2. Parameterized given instances are mapped to combinations of classes and implicit methods. E.g.,
     ```scala
-      given ListOrd[T] as Ord[List[T]] given (ord: Ord[T]) { ... }
+    given ListOrd[T] as Ord[List[T]] given (ord: Ord[T]) { ... }
     ```
     maps to
     ```scala
-      class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
-      final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
+    class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
+    final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
     ```
  3. Alias givens map to implicit methods or implicit lazy vals. If an alias has neither type parameters nor a given clause,
     it is treated as a lazy val, unless the right hand side is a simple reference, in which case we can use a forwarder to that
@@ -40,23 +40,23 @@ Given instances can be mapped to combinations of implicit objects, classes and i
  Examples:
 
     ```scala
-      given global as ExecutionContext = new ForkJoinContext()
+    given global as ExecutionContext = new ForkJoinContext()
 
-      val ctx: Context
-      given as Context = ctx
+    val ctx: Context
+    given as Context = ctx
     ```
     would map to
     ```scala
-      final implicit lazy val global: ExecutionContext = new ForkJoinContext()
-      final implicit def Context_given = ctx
+    final implicit lazy val global: ExecutionContext = new ForkJoinContext()
+    final implicit def Context_given = ctx
     ```
 
 ### Anonymous Given Instances
 
 Anonymous given instances get compiler synthesized names, which are generated in a reproducible way from the implemented type(s). For example, if the names of the `IntOrd` and `ListOrd` givens above were left out, the following names would be synthesized instead:
 ```scala
-  given Ord_Int_given as Ord[Int] { ... }
-  given Ord_List_given[T] as Ord[List[T]] { ... }
+given Ord_Int_given as Ord[Int] { ... }
+given Ord_List_given[T] as Ord[List[T]] { ... }
 ```
 The synthesized type names are formed from
 
@@ -68,9 +68,9 @@ Anonymous given instances that define extension methods without also implementin
 get their name from the name of the first extension method and the toplevel type
 constructor of its first parameter. For example, the given extension
 ```scala
-  given {
-    def (xs: List[T]) second[T] = ...
-  }
+given {
+  def (xs: List[T]) second[T] = ...
+}
 ```
 gets the synthesized name `second_of_List_T_given`.
 
@@ -78,11 +78,11 @@ gets the synthesized name `second_of_List_T_given`.
 
 Given clauses corresponds largely to Scala-2's implicit parameter clauses. E.g.
 ```scala
-  def max[T](x: T, y: T) given (ord: Ord[T]): T
+def max[T](x: T, y: T) given (ord: Ord[T]): T
 ```
 would be written
 ```scala
-  def max[T](x: T, y: T)(implicit ord: Ord[T]): T
+def max[T](x: T, y: T)(implicit ord: Ord[T]): T
 ```
 in Scala 2. The main difference concerns applications of such parameters.
 Explicit arguments to parameters of given clauses _must_ be written using `given`,
@@ -107,13 +107,13 @@ will map to given clauses instead.
 
 Extension methods have no direct counterpart in Scala 2, but they can be simulated with implicit classes. For instance, the extension method
 ```scala
-  def (c: Circle) circumference: Double = c.radius * math.Pi * 2
+def (c: Circle) circumference: Double = c.radius * math.Pi * 2
 ```
 could be simulated to some degree by
 ```scala
-  implicit class CircleDeco(c: Circle) extends AnyVal {
-    def circumference: Double = c.radius * math.Pi * 2
-  }
+implicit class CircleDeco(c: Circle) extends AnyVal {
+  def circumference: Double = c.radius * math.Pi * 2
+}
 ```
 Extension methods in given instances have no direct counterpart in Scala-2. The only way to simulate these is to make implicit classes available through imports. The Simulacrum macro library can automate this process in some cases.
 
@@ -135,13 +135,13 @@ Implicit by-name parameters are not supported in Scala 2, but can be emulated to
 
 Implicit conversion methods in Scala 2 can be expressed as given instances of the `scala.Conversion` class in Dotty. E.g. instead of
 ```scala
-  implicit def stringToToken(str: String): Token = new Keyword(str)
+implicit def stringToToken(str: String): Token = new Keyword(str)
 ```
 one can write
 ```scala
-  given stringToToken as Conversion[String, Token] {
-    def apply(str: String): Token = new KeyWord(str)
-  }
+given stringToToken as Conversion[String, Token] {
+  def apply(str: String): Token = new KeyWord(str)
+}
 ```
 
 ### Implicit Classes
@@ -153,24 +153,24 @@ Implicit classes in Scala 2 are often used to define extension methods, which ar
 Implicit `val` definitions in Scala 2 can be expressed in Dotty using a regular `val` definition and an alias given.
 E.g., Scala 2's
 ```scala
-  lazy implicit val pos: Position = tree.sourcePos
+lazy implicit val pos: Position = tree.sourcePos
 ```
 can be expressed in Dotty as
 ```scala
-  lazy val pos: Position = tree.sourcePos
-  given as Position = pos
+lazy val pos: Position = tree.sourcePos
+given as Position = pos
 ```
 
 ### Abstract Implicits
 
 An abstract implicit `val` or `def` in Scala 2 can be expressed in Dotty using a regular abstract definition and an alias given. E.g., Scala 2's
 ```scala
-  implicit def symDeco: SymDeco
+implicit def symDeco: SymDeco
 ```
 can be expressed in Dotty as
 ```scala
-  def symDeco: SymDeco
-  given as SymDeco = symDeco
+def symDeco: SymDeco
+given as SymDeco = symDeco
 ```
 
 ## Implementation Status and Timeline

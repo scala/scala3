@@ -1,261 +1,138 @@
-@import url(https://fonts.googleapis.com/css?family=Titillium+Web:200,300,400,600);
-
-div#content-wrapper div.index-wrapper {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    font-family: "Titillium Web", sans-serif;
-    font-weight: 300;
-    padding-left: 14px;
-    padding-bottom: 75px;
+.sidebar {
+  position: fixed;
+  top: 50px;
+  left: 0;
+  z-index: 1000;
+  width: 100%;
+  height: 100%;
+  overflow: hidden auto;
+  font-family: var(--font-family-sans-serif);
+  font-weight: 400;
+  background: var(--primary);
+  border-top: 1px solid black;
+  /* hidden by default, shown by toggle (on small screens) */
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility .25s ease-out, opacity .25s ease-out;
 }
 
-/** Mobile (x < 576px) sidebar: Defaults closed with 60% wide sidebar */
-div#content-wrapper div#content-body { left: 0; }
-div#content-wrapper div.index-wrapper { width: 60%; }
-
-div#content-wrapper.toggled div#content-body { left: 60%; }
-div#content-wrapper.toggled div.index-wrapper {}
-
-ul.index-entities {
-    list-style-type: none;
-    padding-left: 0;
+.sidebar.toggled {
+  visibility: visible;
+  opacity: 1;
 }
 
-ul.index-entities > li > input#search-api-input {
-    border: 0;
-    margin-left: 22px;
-    outline: none;
-    line-height: 35px;
-    box-shadow: inset 0 0px 0 white, inset 0 -0.5px 0 rgba(0, 0, 0, 0.5);
+.sidebar ul.toc {
+  padding-bottom: 60px; /* avoids unreachable elements at the end of toc */
+  padding-left: 1em;
+  padding-top: 1em;
+  margin-bottom: 0;
 }
 
-ul.toc {
-    list-style-type: none;
-    padding-top: 18px;
-    padding-left: 0;
+.sidebar ul {
+  list-style-type: none;
+  padding-left: 0;
 }
 
-ul.toc ul {
-    padding-left: 0;
+.sidebar li {
+  margin-top: .5em;
 }
 
-ul.toc > li,
-ul.toc ul > li {
-    padding-left: 24px;
+.sidebar li.section ul {
+  padding-left: 1em;
+  display: none;
 }
-
-ul.toc > li:hover {
-    background-color: transparent;
-}
-
-ul.toc > li.toc-title {
-    margin-top: 1rem;
-}
-
-ul.toc > li.toc-title > a {
-    font-size: 16px;
-    font-weight: bold;
-}
-
-ul.toc > li > a#home-button,
-ul.toc > li > a#home-button:hover {
-    text-align: center;
-    background: transparent;
-}
-
-ul.toc > li,
-ul.index-entities > li {
-    line-height: 40px;
-    display: inline-block;
-    width: 100%;
-    border-left: 1px solid #fff;
-}
-
-ul.toc > li.logo-li > a {
-    margin: 0;
-    padding: 0;
-    float: none;
-}
-
-ul.toc > li > a,
-ul.toc li > a.toggle-children {
-    font-size: 13px;
-    display: block;
-    padding: 0;
-    width: 100%;
-    color: rgba(0, 0, 0, 0.87);
-    background: transparent;
-    cursor: pointer;
-    float: left;
-    text-transform: uppercase;
-}
-
-ul.toc > li ul {
-    list-style-type: none;
-    font-size: 13px;
-    display: none;
-}
-
-ul.index-entities > li.index-title > span {
-    font-size: 16px;
-    font-weight: bold;
-    color: rgba(0, 0, 0, 0.87);
-    padding: 0 24px;
-    text-transform: uppercase;
-}
-
-ul.index-entities > li.index-title:hover {
-    background-color: transparent;
-}
-
-li.index-entity > a:focus {
-    text-decoration: none;
-}
-
-ul.toc > li > a:hover {
-    text-decoration: none;
-}
-
-ul.toc > li:hover {
-  border-left: 1px solid #0fa00f;
-}
-
-li.index-entity.entity-package:hover {
-  background: transparent;
-}
-
-li.entity-package > h1 > a.entity-name {
-    color: #ff4081;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 300;
-    padding-left: 24px;
-}
-
-li.entity-package > ul.package-entities {
-    list-style-type: none;
-    border-left: 2px solid gray;
-    margin-left: 24px;
-    padding-left: 12px;
-}
-
-li.entity-package > ul.package-entities > li {
-    margin-left: -52px;
-    transition: all 0.2s ease;
-}
-
-li.entity-package > ul.package-entities > li#hide-hidden-by-default,
-li.entity-package > ul.package-entities > li#show-hidden-by-default {
-  margin-left: 0;
-  color: #ff4081;
-  font-size: 13px;
-}
-
-li.entity-package > ul.package-entities > li#hide-hidden-by-default:hover,
-li.entity-package > ul.package-entities > li#show-hidden-by-default:hover {
-  cursor: pointer;
-}
-
-li.entity-package > ul.package-entities > li#show-hidden-by-default,
-li.entity-package > ul.package-entities > li#hide-hidden-by-default.toggled,
-li.entity-package > ul.package-entities > li.hidden-by-default.toggled {
+.sidebar li.section ul.toggled {
   display: block;
 }
 
-li.entity-package > ul.package-entities > li.hidden-by-default,
-li.entity-package > ul.package-entities > li#show-hidden-by-default.toggled,
-li.entity-package > ul.package-entities > li#hide-hidden-by-default {
-  display: none;
+.sidebar li.section.index-entities ul {
+  padding-left: 0;
 }
 
-li.entity-package > ul.package-entities > li.with-companion {
-  margin-left: -92px;
+.sidebar .toc > li {
+  border-left: 2px solid var(--accent);
+  padding-left: 1em;
 }
 
-li.entity-package > ul.package-entities > li:hover {
-    margin-left: -12px;
+.sidebar > ul > li.leaf > a, .sidebar li.section > a {
+  color: white;
+  font-size: 18px;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
-li.entity-package > ul.package-entities > li > a.entity-name {
-    color: rgba(0, 0, 0, 0.87);
-    cursor: pointer;
-    font-size: 13px;
+.sidebar .entity-package > .entity-name {
+  text-transform: none;
 }
 
-ul.package-entities {
-  position: relative;
+.sidebar a {
+  width: 100%;
+  color: var(--contrast);
+  transition: color .2s ease-out;
 }
-ul.package-entities > li > div.entity-kinds {
-    float: left;
-    margin-right: 12px;
-}
-
-ul.package-entities > li > div.entity-kinds > a.letter-anchor {
-    float: left;
-    width: 40px;
-    height: 40px;
-    color: white;
-    display: block;
-    text-align: center;
-    text-decoration: none;
+.sidebar a:hover {
+  color: var(--accent) !important;
 }
 
-ul.package-entities > li > a.entity-name:focus,
-ul.package-entities > li > a.entity-name:hover,
-ul.package-entities > li > div.entity-kinds > a.letter-anchor:focus,
-ul.package-entities > li > div.entity-kinds > a.letter-anchor:hover {
-    text-decoration: none;
+/* API Documentation */
+.package-toggle i.fas {
+  font-size: 15px;
+  margin-right: 5px;
 }
 
-ul.package-entities > li > div.entity-kinds > a.letter-anchor.object {
-    background-color: rgb(44, 108, 141);
+.entity-kinds {
+  display: inline-flex;
+  /* so that it is aligned with the text AND allows to select the type
+     and its companion if any. */
 }
 
-ul.package-entities > li > div.entity-kinds > a.letter-anchor.class {
-    background-color: rgb(68, 173, 125);
+.entity-kinds > a.letter-anchor {
+  float: left;
+  width: 1.5em;
+  height: 1.5em;
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  margin-right: 5px;
+  border-radius: 1em;
 }
 
-ul.package-entities > li > div.entity-kinds > a.letter-anchor.trait {
-    background-color: rgb(25, 170, 207);
+.entity-kinds a.object {
+  background: #2c6c8d;
+}
+.entity-kinds a.class {
+  background: #44ad7d;
+}
+.entity-kinds a.trait {
+  background: #19aacf;
 }
 
-/** Cover block used to hide where the kind blocks come from */
-div#cover-block {
-    position: absolute;
-    background: #fff;
-    border-right: 2px solid gray;
-    width: 41px;
-    height: 100%;
-    left: -41px;
-    top: 0;
+.with-companion .entity-kinds:not(:hover) a.object {
+  display:none;
+}
+.with-companion .entity-kinds:not(:hover) a.class {
+  background: linear-gradient(45deg, #2c6c8d 49%, #44ad7d 51%);
+}
+.with-companion .entity-kinds:not(:hover) a.trait {
+  background: linear-gradient(45deg, #2c6c8d 49%, #19aacf 51%);
 }
 
-/** Tablet (576px <= x < 768px) sidebar: Defaults closed with 250px wide sidebar */
-@media screen and (max-width: 899px) {
-    div#content-wrapper {}
-    div#content-wrapper div#content-body {}
-    div#content-wrapper div#content-body.doc-page-body { padding-right: 0; }
-    div#content-wrapper div.index-wrapper { display: none; }
-
-    div#content-wrapper.toggled {}
-    div#content-wrapper.toggled div#content-body { left: 250px; }
-    div#content-wrapper.toggled div.index-wrapper {}
-}
-
-/** Desktop (x >= 768px) sidebar: Defaults open with 250px wide sidebar  */
-@media screen and (min-width: 900px) {
-    div#content-wrapper { padding-left: 250px; }
-    div#content-wrapper div#content-body {}
-    div#content-wrapper div.index-wrapper {
-        width: 250px;
-        display: block;
-    }
-
-    div#content-wrapper.toggled { padding-left: 0; }
-    div#content-wrapper.toggled div#content-body { left: 0; }
-    div#content-wrapper.toggled div.index-wrapper {}
+@media (min-width: 768px) {
+  .sidebar { /* visible by default, hidden by toggle */
+    width: 320px;
+    visibility: visible;
+    opacity: 1;
+    margin-left: 0;
+    transition: margin .25s ease-out;
+  }
+  .sidebar.toggled {
+    margin-left: -320px;
+  }
+  #content-wrapper {
+    margin-left: 320px !important;
+    transition: margin .25s ease-out;
+  }
+  .sidebar.toggled ~ #content-wrapper {
+    margin-left: 0 !important;
+  }
 }

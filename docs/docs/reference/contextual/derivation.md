@@ -45,37 +45,37 @@ They also provide minimal term level infrastructure to allow higher level librar
 derivation support.
 
 ```scala
-  sealed trait Mirror {
+sealed trait Mirror {
 
-    /** the type being mirrored */
-    type MirroredType
- 
-    /** the type of the elements of the mirrored type */
-    type MirroredElemTypes
+  /** the type being mirrored */
+  type MirroredType
 
-    /** The mirrored *-type */
-    type MirroredMonoType
+  /** the type of the elements of the mirrored type */
+  type MirroredElemTypes
 
-    /** The name of the type */
-    type MirroredLabel <: String
+  /** The mirrored *-type */
+  type MirroredMonoType
 
-    /** The names of the elements of the type */
-    type MirroredElemLabels <: Tuple
+  /** The name of the type */
+  type MirroredLabel <: String
+
+  /** The names of the elements of the type */
+  type MirroredElemLabels <: Tuple
+}
+
+object Mirror {
+  /** The Mirror for a product type */
+  trait Product extends Mirror {
+
+    /** Create a new instance of type `T` with elements taken from product `p`. */
+    def fromProduct(p: scala.Product): MirroredMonoType
   }
 
-  object Mirror {
-    /** The Mirror for a product type */
-    trait Product extends Mirror {
-
-      /** Create a new instance of type `T` with elements taken from product `p`. */
-      def fromProduct(p: scala.Product): MirroredMonoType
-    }
-
-    trait Sum extends Mirror { self =>
-      /** The ordinal number of the case class of `x`. For enums, `ordinal(x) == x.ordinal` */
-      def ordinal(x: MirroredMonoType): Int
-    }
+  trait Sum extends Mirror { self =>
+    /** The ordinal number of the case class of `x`. For enums, `ordinal(x) == x.ordinal` */
+    def ordinal(x: MirroredMonoType): Int
   }
+}
 ```
 
 Product types (i.e. case classes and objects, and enum cases) have mirrors which are subtypes of `Mirror.Product`. Sum
@@ -134,7 +134,7 @@ Note the following properties of `Mirror` types,
   possibly parameterized, tuple type. Dotty's metaprogramming facilities can be used to work with these tuple types
   as-is, and higher level libraries can be built on top of them.
 + The methods `ordinal` and `fromProduct` are defined in terms of `MirroredMonoType` which is the type of kind-`*`
-  which is obtained from `MirroredType` by wildcarding its type parameters. 
+  which is obtained from `MirroredType` by wildcarding its type parameters.
 
 ### Type classes supporting automatic deriving
 
@@ -143,7 +143,7 @@ signature and implementation of a `derived` method for a type class `TC[_]` are 
 following form,
 
 ```scala
-  def derived[T] given Mirror.Of[T]: TC[T] = ...
+def derived[T] given Mirror.Of[T]: TC[T] = ...
 ```
 
 That is, the `derived` method takes a given parameter of (some subtype of) type `Mirror` which defines the shape of

@@ -26,7 +26,7 @@ $ dotr -d Test
 
 Third, start JDB:
 
-```
+```shell
 $ jdb -attach 5005 -sourcepath tests/debug/
 ```
 
@@ -57,7 +57,7 @@ object Test {
 
 The debugging information is annotated as comments to the code in brackets:
 
-```Scala
+```scala
 val x = f(3) // [break] [next: line=5]
 val y = 5
 ```
@@ -74,7 +74,7 @@ Note that JDB uses line number starts from 1.
 
 Now we can run the following command to generate an expect file:
 
-```
+```shell
 compiler/test/debug/Gen tests/debug/while.scala > robot
 ```
 
@@ -82,19 +82,19 @@ compiler/test/debug/Gen tests/debug/while.scala > robot
 
 First, compile the file `tests/debug/while.scala`:
 
-```
+```shell
 $ dotc tests/debug/while.scala
 ```
 
 Second, run the compiled class with debugging enabled:
 
-```
+```shell
 $ dotr -d Test
 ```
 
 Finally, run the expect script:
 
-```
+```shell
 expect robot
 ```
 
@@ -107,7 +107,7 @@ run by the test infrastructure.
 
 ### Run All Debug Tests
 
-```
+```shell
 ./compiler/test/debug/test
 ```
 

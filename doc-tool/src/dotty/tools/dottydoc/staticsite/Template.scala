@@ -36,6 +36,7 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
   Filter.registerFilter(new Reverse)
   Filter.registerFilter(new First)
   Filter.registerFilter(new Json)
+  Filter.registerFilter(new EscapeCSS)
 
   // For some reason, liqp rejects a straight conversion using `.asJava`
   private def toJavaMap(map: Map[String, AnyRef]): HashMap[String, Object] =

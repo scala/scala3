@@ -18,8 +18,8 @@ def (c: Circle) circumference: Double = c.radius * math.Pi * 2
 Like regular methods, extension methods can be invoked with infix `.`:
 
 ```scala
-  val circle = Circle(0, 0, 1)
-  circle.circumference
+val circle = Circle(0, 0, 1)
+circle.circumference
 ```
 
 ### Translation of Extension Methods
@@ -132,16 +132,16 @@ The extension method syntax also applies to the definition of operators.
 In each case the definition syntax mirrors the way the operator is applied.
 Examples:
 ```scala
-  def (x: String) < (y: String) = ...
-  def (x: Elem) +: (xs: Seq[Elem]) = ...
+def (x: String) < (y: String) = ...
+def (x: Elem) +: (xs: Seq[Elem]) = ...
 
-  "ab" + "c"
-  1 +: List(2, 3)
+"ab" + "c"
+1 +: List(2, 3)
 ```
 The two definitions above translate to
 ```scala
-  def < (x: String)(y: String) = ...
-  def +: (xs: Seq[Elem])(x: Elem) = ...
+def < (x: String)(y: String) = ...
+def +: (xs: Seq[Elem])(x: Elem) = ...
 ```
 Note that swap of the two parameters `x` and `xs` when translating
 the right-binding operator `+:` to an extension method. This is analogous

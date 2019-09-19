@@ -382,6 +382,7 @@ object Build {
         "-project", "Dotty",
         "-project-version", dottyVersion,
         "-project-url", dottyGithubUrl,
+        "-project-logo", "dotty-logo.svg",
         "-classpath", dottydocClasspath.value
       )
       (runMain in Compile).toTask(

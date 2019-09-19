@@ -6,13 +6,14 @@ title: "Implicit Function Types - More Details"
 Initial implementation in (#1775)[https://github.com/lampepfl/dotty/pull/1775].
 
 ## Syntax
-
-    Type              ::=  [`implicit'] FunArgTypes `=>' Type
-                        |  HkTypeParamClause `=>' Type
-                        |  InfixType
-    Expr              ::=  [`implicit'] FunParams `=>' Expr
-    BlockResult       ::=  [`implicit'] FunParams `=>' Block
-                        |  Expr1
+```
+Type              ::=  ['implicit'] FunArgTypes '=>' Type
+                    |  HkTypeParamClause '=>' Type
+                    |  InfixType
+Expr              ::=  ['implicit'] FunParams '=>' Expr
+BlockResult       ::=  ['implicit'] FunParams '=>' Block
+                    |  Expr1
+```
 
 Implicit function types associate to the right, e.g.
 `implicit S ⇒ implicit T ⇒ U` is the same as `implicit S ⇒ (implicit T ⇒ U)`.
@@ -25,10 +26,12 @@ methods with implicit parameters. Specifically, the `N`-ary function type
 `ImplicitFunctionN[T1 , ... , TN, R]`. Such class types are defined in the
 Scala library for `N` between 1 and 22 as follows.
 
-    package scala
-    trait ImplicitFunctionN[-T1 , ... , -TN, +R] {
-      def apply(implicit x1: T1 , ... , xN: TN): R
-    }
+```scala
+package scala
+trait ImplicitFunctionN[-T1 , ... , -TN, +R] {
+  def apply(implicit x1: T1 , ... , xN: TN): R
+}
+```
 
 Anonymous implicit functions `implicit (x1: T1, ..., xn: Tn) => e` map
 implicit parameters `xi` of types `Ti` to a result given by expression `e`.
@@ -47,11 +50,11 @@ the implicit parameters `xi`.
 
 The anonymous implicit function is evaluated as the instance creation
 expression:
-
-    new scala.ImplicitFunctionN[T1, ..., Tn, T] {
-      def apply(implicit x1: T1, ..., xn: Tn): T = e
-    }
-
+```scala
+new scala.ImplicitFunctionN[T1, ..., Tn, T] {
+  def apply(implicit x1: T1, ..., xn: Tn): T = e
+}
+```
 In the case of a single untyped implicit parameter, `implicit (x) => e` can be
 abbreviated to `implicit x => e`. If an anonymous implicit function `implicit
 (x: T) => e` with a single typed parameter appears as the result expression of
@@ -76,9 +79,7 @@ documentation](../dropped-features/limit22.md).
 
 ## Examples
 
-See the section on Expressiveness from [Simplicitly: foundations and
-applications of implicit function
-types](https://dl.acm.org/citation.cfm?id=3158130).
+See the section on Expressiveness from [Simplicitly: foundations and applications of implicit function types](https://dl.acm.org/citation.cfm?id=3158130).
 
 ### Type Checking
 

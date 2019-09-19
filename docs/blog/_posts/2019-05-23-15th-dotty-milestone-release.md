@@ -116,9 +116,9 @@ We changed this to reduce confusion when calling functions with mixed explicit a
 
 ## Type-safe Pattern Bindings
 ```scala
-  val xs: List[Any] = List(1, 2, 3)
-  val (x: String) :: _ = xs   // error: pattern's type String is more specialized
-                              // than the right hand side expression's type Any
+val xs: List[Any] = List(1, 2, 3)
+val (x: String) :: _ = xs   // error: pattern's type String is more specialized
+                            // than the right hand side expression's type Any
 ```
 
 The above code will fail with a compile-time error in Scala 3.1 and in Scala 3 with the `-strict` flag. In contrast, in Scala 2, the above would have compiled fine but failed on runtime with an exception.
@@ -126,15 +126,15 @@ The above code will fail with a compile-time error in Scala 3.1 and in Scala 3 w
 Dotty compiler will allow such a pattern binding only if the pattern is *irrefutable* – that is, if the right-hand side conforms to the pattern's type. E.g. the following is OK:
 
 ```scala
-  val pair = (1, true)
-  val (x, y) = pair
+val pair = (1, true)
+val (x, y) = pair
 ```
 
 If we want to force the pattern binding if the pattern is not irrefutable, we can do so with an annotation:
 
 ```scala
-  val xs: List[Any] = List("1", "2", "3")
-  val (x: String) :: _: @unchecked = xs
+val xs: List[Any] = List("1", "2", "3")
+val (x: String) :: _: @unchecked = xs
 ```
 
 The same is implemented for pattern bindings in `for` expressions:

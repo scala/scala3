@@ -34,7 +34,7 @@ installation, or try it online on [Scastie].
 ### sbt
 Using sbt 0.13.13 or newer, do:
 
-```
+```shell
 sbt new lampepfl/dotty.g8
 ```
 
@@ -50,7 +50,7 @@ https://github.com/lampepfl/dotty/releases
 
 We also provide a [homebrew](https://brew.sh/) package that can be installed by running
 
-```
+```shell
 brew install lampepfl/brew/dotty
 ```
 

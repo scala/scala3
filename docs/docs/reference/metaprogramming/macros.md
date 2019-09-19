@@ -31,18 +31,18 @@ a boolean expression tree as argument. `assertImpl` evaluates the expression and
 prints it again in an error message if it evaluates to `false`.
 
 ```scala
-    import scala.quoted._
+import scala.quoted._
 
-    inline def assert(expr: => Boolean): Unit =
-      ${ assertImpl('expr) }
+inline def assert(expr: => Boolean): Unit =
+  ${ assertImpl('expr) }
 
-    def assertImpl(expr: Expr[Boolean]) = '{
-      if (!$expr)
-        throw new AssertionError(s"failed assertion: ${${ showExpr(expr) }}")
-    }
+def assertImpl(expr: Expr[Boolean]) = '{
+  if (!$expr)
+    throw new AssertionError(s"failed assertion: ${${ showExpr(expr) }}")
+}
 
-    def showExpr(expr: Expr[Boolean]): Expr[String] =
-      '{ "<some source code>" } // Better implementation later in this document
+def showExpr(expr: Expr[Boolean]): Expr[String] =
+  '{ "<some source code>" } // Better implementation later in this document
 ```
 
 If `e` is an expression, then `'{e}` represents the typed
@@ -65,12 +65,12 @@ is treated as a quote `'{x}`. See the Syntax section below for details.
 
 Quotes and splices are duals of each other. For arbitrary
 expressions `e` and types `T` we have:
-
-    ${'{e}} = e
-    '{${e}} = e
-    ${'[T]} = T
-    '[${T}] = T
-
+```
+${'{e}} = e
+'{${e}} = e
+${'[T]} = T
+'[${T}] = T
+```
 ### Types for Quotations
 
 The type signatures of quotes and splices can be described using
@@ -86,10 +86,10 @@ takes expressions of type `Type[T]` to types `T`.
 
 The two types can be defined in package `scala.quoted` as follows:
 ```scala
-    package scala.quoted
+package scala.quoted
 
-    sealed abstract class Expr[+T]
-    sealed abstract class Type[T]
+sealed abstract class Expr[+T]
+sealed abstract class Type[T]
 ```
 Both `Expr` and `Type` are abstract and sealed, so all constructors for
 these types are provided by the system. One way to construct values of
@@ -138,10 +138,10 @@ expressiveness.
 The `Expr` companion object contains an implicit `AsFunction` conversion that turns a tree
 describing a function into a function mapping trees to trees.
 ```scala
-    object Expr {
-      ...
-      implicit class AsFunction[...](...) { ... }
-    }
+object Expr {
+  ...
+  implicit class AsFunction[...](...) { ... }
+}
 ```
 This decorator gives `Expr` the `apply` operation of an applicative functor, where `Expr`s
 over function types can be applied to `Expr` arguments. The definition
@@ -152,13 +152,13 @@ result of beta-reducing `f(x)` if `f` is a known lambda expression.
 The `AsFunction` decorator distributes applications of `Expr` over function
 arrows:
 ```scala
-    AsFunction(_).apply: Expr[S => T] => (Expr[S] => Expr[T])
+AsFunction(_).apply: Expr[S => T] => (Expr[S] => Expr[T])
 ```
 Its dual, let’s call it `reflect`, can be defined as follows:
 ```scala
-    def reflect[T, U](f: Expr[T] => Expr[U]): Expr[T => U] = '{
-      (x: T) => ${ f('x) }
-    }
+def reflect[T, U](f: Expr[T] => Expr[U]): Expr[T => U] = '{
+  (x: T) => ${ f('x) }
+}
 ```
 Note how the fundamental phase consistency principle works in two
 different directions here for `f` and `x`.  The reference to `f` is
@@ -174,8 +174,8 @@ quote but no splice between the parameter binding of `T` and its
 usage. But the code can be made phase correct by adding a binding
 of a `Type[T]` tag:
 ```scala
-    def reflect[T, U](f: Expr[T] => Expr[U]) given (t: Type[T]): Expr[T => U] =
-      '{ (x: $t) => ${ f('x) } }
+def reflect[T, U](f: Expr[T] => Expr[U]) given (t: Type[T]): Expr[T => U] =
+  '{ (x: $t) => ${ f('x) } }
 ```
 In this version of `reflect`, the type of `x` is now the result of
 splicing the `Type` value `t`. This operation _is_ splice correct -- there
@@ -186,13 +186,13 @@ reference to a type `T` to a type-splice, by rewriting `T` to `${ summon[Type[T]
 For instance, the user-level definition of `reflect`:
 
 ```scala
-    def reflect[T: Type, U: Type](f: Expr[T] => Expr[U]): Expr[T => U] =
-      '{ (x: T) => ${ f('x) } }
+def reflect[T: Type, U: Type](f: Expr[T] => Expr[U]): Expr[T => U] =
+  '{ (x: T) => ${ f('x) } }
 ```
 would be rewritten to
 ```scala
-    def reflect[T: Type, U: Type](f: Expr[T] => Expr[U]): Expr[T => U] =
-      '{ (x: ${ summon[Type[T]] }) => ${ f('x) } }
+def reflect[T: Type, U: Type](f: Expr[T] => Expr[U]): Expr[T => U] =
+  '{ (x: ${ summon[Type[T]] }) => ${ f('x) } }
 ```
 The `the` query succeeds because there is a given instance of
 type `Type[T]` available (namely the given parameter corresponding
@@ -205,41 +205,41 @@ phase-correct. If that was not the case, the phase inconsistency for
 Consider the following implementation of a staged interpreter that implements
 a compiler through staging.
 ```scala
-    import scala.quoted._
+import scala.quoted._
 
-    enum Exp {
-      case Num(n: Int)
-      case Plus(e1: Exp, e2: Exp)
-      case Var(x: String)
-      case Let(x: String, e: Exp, in: Exp)
-    }
+enum Exp {
+  case Num(n: Int)
+  case Plus(e1: Exp, e2: Exp)
+  case Var(x: String)
+  case Let(x: String, e: Exp, in: Exp)
+}
 ```
 The interpreted language consists of numbers `Num`, addition `Plus`, and variables
 `Var` which are bound by `Let`. Here are two sample expressions in the language:
 ```scala
-    val exp = Plus(Plus(Num(2), Var("x")), Num(4))
-    val letExp = Let("x", Num(3), exp)
+val exp = Plus(Plus(Num(2), Var("x")), Num(4))
+val letExp = Let("x", Num(3), exp)
 ```
 Here’s a compiler that maps an expression given in the interpreted
 language to quoted Scala code of type `Expr[Int]`.
 The compiler takes an environment that maps variable names to Scala `Expr`s.
 ```scala
-    import given scala.quoted._
+import given scala.quoted._
 
-    def compile(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
-      case Num(n) =>
-        n.toExpr
-      case Plus(e1, e2) =>
-        '{ ${ compile(e1, env) } + ${ compile(e2, env) } }
-      case Var(x) =>
-        env(x)
-      case Let(x, e, body) =>
-        '{ val y = ${ compile(e, env) }; ${ compile(body, env + (x -> 'y)) } }
-    }
+def compile(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
+  case Num(n) =>
+    n.toExpr
+  case Plus(e1, e2) =>
+    '{ ${ compile(e1, env) } + ${ compile(e2, env) } }
+  case Var(x) =>
+    env(x)
+  case Let(x, e, body) =>
+    '{ val y = ${ compile(e, env) }; ${ compile(body, env + (x -> 'y)) } }
+}
 ```
 Running `compile(letExp, Map())` would yield the following Scala code:
 ```scala
-    '{ val y = 3; (2 + y) + 4 }
+'{ val y = 3; (2 + y) + 4 }
 ```
 The body of the first clause, `case Num(n) => n.toExpr`, looks suspicious. `n`
 is declared as an `Int`, yet it is converted to an `Expr[Int]` with `toExpr`.
@@ -249,12 +249,12 @@ correct.
 
 The `toExpr` extension method is defined in package `quoted`:
 ```scala
-    package quoted
+package quoted
 
-    given {
-      def (x: T) toExpr[T: Liftable](given QuoteContext): Expr[T] = summon[Liftable[T]].toExpr(x)
-      ...
-    }
+given {
+  def (x: T) toExpr[T: Liftable](given QuoteContext): Expr[T] = summon[Liftable[T]].toExpr(x)
+  ...
+}
 ```
 The extension says that values of types implementing the `Liftable` type class can be
 converted ("lifted") to `Expr` values using `toExpr`, provided a given import of `scala.quoted._` is in scope.
@@ -269,34 +269,34 @@ in the sense that they could all be defined in a user program without
 knowing anything about the representation of `Expr` trees. For
 instance, here is a possible instance of `Liftable[Boolean]`:
 ```scala
-    given Liftable[Boolean] {
-      def toExpr(b: Boolean)(given QuoteContext): Expr[Boolean] =
-        if (b) '{ true } else '{ false }
-    }
+given Liftable[Boolean] {
+  def toExpr(b: Boolean)(given QuoteContext): Expr[Boolean] =
+    if (b) '{ true } else '{ false }
+}
 ```
 Once we can lift bits, we can work our way up. For instance, here is a
 possible implementation of `Liftable[Int]` that does not use the underlying
 tree machinery:
 ```scala
-    given Liftable[Int] {
-      def toExpr(n: Int)(given QuoteContext): Expr[Int] = n match {
-        case Int.MinValue    => '{ Int.MinValue }
-        case _ if n < 0      => '{ - ${ toExpr(-n) } }
-        case 0               => '{ 0 }
-        case _ if n % 2 == 0 => '{ ${ toExpr(n / 2) } * 2 }
-        case _               => '{ ${ toExpr(n / 2) } * 2 + 1 }
-      }
-    }
+given Liftable[Int] {
+  def toExpr(n: Int)(given QuoteContext): Expr[Int] = n match {
+    case Int.MinValue    => '{ Int.MinValue }
+    case _ if n < 0      => '{ - ${ toExpr(-n) } }
+    case 0               => '{ 0 }
+    case _ if n % 2 == 0 => '{ ${ toExpr(n / 2) } * 2 }
+    case _               => '{ ${ toExpr(n / 2) } * 2 + 1 }
+  }
+}
 ```
 Since `Liftable` is a type class, its instances can be conditional. For example,
 a `List` is liftable if its element type is:
 ```scala
-    given [T: Liftable] : Liftable[List[T]] {
-      def toExpr(xs: List[T])(given QuoteContext): Expr[List[T]] = xs match {
-        case head :: tail => '{ ${ toExpr(head) } :: ${ toExpr(tail) } }
-        case Nil => '{ Nil: List[T] }
-      }
-    }
+given [T: Liftable] : Liftable[List[T]] {
+  def toExpr(xs: List[T])(given QuoteContext): Expr[List[T]] = xs match {
+    case head :: tail => '{ ${ toExpr(head) } :: ${ toExpr(tail) } }
+    case Nil => '{ Nil: List[T] }
+  }
+}
 ```
 In the end, `Liftable` resembles very much a serialization
 framework. Like the latter it can be derived systematically for all
@@ -306,10 +306,10 @@ analogue of lifting.
 
 Using lifting, we can now give the missing definition of `showExpr` in the introductory example:
 ```scala
-    def showExpr[T](expr: Expr[T]): Expr[String] = {
-      val code: String = expr.show
-      code.toExpr
-    }
+def showExpr[T](expr: Expr[T]): Expr[String] = {
+  val code: String = expr.show
+  code.toExpr
+}
 ```
 That is, the `showExpr` method converts its `Expr` argument to a string (`code`), and lifts
 the result back to an `Expr[String]` using the `toExpr` method.
@@ -334,12 +334,12 @@ that are not defined in the current stage? Here, we cannot construct
 the `Type[T]` tree directly, so we need to get it from a recursive
 implicit search. For instance, to implement
 ```scala
-    summon[Type[List[T]]]
+summon[Type[List[T]]]
 ```
 where `T` is not defined in the current stage, we construct the type constructor
 of `List` applied to the splice of the result of searching for a given instance for `Type[T]`:
 ```scala
-    '[ List[ ${ summon[Type[T]] } ] ]
+'[ List[ ${ summon[Type[T]] } ] ]
 ```
 This is exactly the algorithm that Scala 2 uses to search for type tags.
 In fact Scala 2's type tag feature can be understood as a more ad-hoc version of
@@ -356,28 +356,28 @@ a macro library and a quoted program. For instance, here’s the `assert` macro
 again together with a program that calls `assert`.
 
 ```scala
-    object Macros {
+object Macros {
 
-      inline def assert(expr: => Boolean): Unit =
-        ${ assertImpl('expr) }
+  inline def assert(expr: => Boolean): Unit =
+    ${ assertImpl('expr) }
 
-      def assertImpl(expr: Expr[Boolean]) =
-        '{ if !($expr) then throw new AssertionError(s"failed assertion: ${$expr}") }
-    }
+  def assertImpl(expr: Expr[Boolean]) =
+    '{ if !($expr) then throw new AssertionError(s"failed assertion: ${$expr}") }
+}
 
-    object App {
-      val program = {
-        val x = 1
-        Macros.assert(x != 0)
-      }
-    }
+object App {
+  val program = {
+    val x = 1
+    Macros.assert(x != 0)
+  }
+}
 ```
 Inlining the `assert` function would give the following program:
 ```scala
-    val program = {
-      val x = 1
-      ${ Macros.assertImpl('{ x != 0) } }
-    }
+val program = {
+  val x = 1
+  ${ Macros.assertImpl('{ x != 0) } }
+}
 ```
 The example is only phase correct because Macros is a global value and
 as such not subject to phase consistency checking. Conceptually that’s
@@ -395,10 +395,10 @@ definitions, reflecting the fact that macros have to be defined and
 compiled before they are used. Hence, conceptually the program part
 should be treated by the compiler as if it was quoted:
 ```scala
-    val program = '{
-      val x = 1
-      ${ Macros.assertImpl('{ x != 0 }) }
-    }
+val program = '{
+  val x = 1
+  ${ Macros.assertImpl('{ x != 0 }) }
+}
 ```
 If `program` is treated as a quoted expression, the call to
 `Macro.assertImpl` becomes phase correct even if macro library and
@@ -420,13 +420,13 @@ aspect is also important for macro expansion.  To illustrate this,
 consider an implementation of the `power` function that makes use of a
 statically known exponent:
 ```scala
-    inline def power(inline n: Int, x: Double) = ${ powerCode(n, 'x) }
+inline def power(inline n: Int, x: Double) = ${ powerCode(n, 'x) }
 
-    private def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
-      if (n == 0) '{ 1.0 }
-      else if (n == 1) x
-      else if (n % 2 == 0) '{ val y = $x * $x; ${ powerCode(n / 2, 'y) } }
-      else '{ $x * ${ powerCode(n - 1, x) } }
+private def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
+  if (n == 0) '{ 1.0 }
+  else if (n == 1) x
+  else if (n % 2 == 0) '{ val y = $x * $x; ${ powerCode(n / 2, 'y) } }
+  else '{ $x * ${ powerCode(n - 1, x) } }
 ```
 The reference to `n` as an argument in `${ powerCode(n, 'x) }` is not
 phase-consistent, since `n` appears in a splice without an enclosing
@@ -452,8 +452,8 @@ soundness: code in splices must be free of side effects. The restriction
 prevents code like this:
 
 ```scala
-  var x: Expr[T] = ...
-  '{ (y: T) => ${ x = 'y; 1 } }
+var x: Expr[T] = ...
+'{ (y: T) => ${ x = 'y; 1 } }
 ```
 
 This code, if it was accepted, would _extrude_ a reference to a quoted variable
@@ -471,13 +471,13 @@ you can expand code at runtime with a method `run`. There is also a problem with
 that invokation of `run` in splices. Consider the following expression:
 
 ```scala
-    '{ (x: Int) => ${ run('x); 1 } }
+'{ (x: Int) => ${ run('x); 1 } }
 ```
 This is again phase correct, but will lead us into trouble. Indeed, evaluating
 the splice will reduce the expression `('x).run` to `x`. But then the result
 
 ```scala
-    '{ (x: Int) => ${ x; 1 } }
+'{ (x: Int) => ${ x; 1 } }
 ```
 
 is no longer phase correct. To prevent this soundness hole it seems easiest to

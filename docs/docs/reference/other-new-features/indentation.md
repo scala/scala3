@@ -20,7 +20,7 @@ There are two rules:
 
      The following tokens can start an indentation region:
     ```
-      :  =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match
+    :  =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match
     ```
 
      If an `<indent>` is inserted, the indentation width of the token on the next line
@@ -65,16 +65,16 @@ Indentatation can be mixed freely with braces. For interpreting  indentation ins
 A colon `:` at the end of a line is one of the possible tokens that opens an indentation region. Examples:
 
 ```scala
-  times(10):
-    println("ah")
-    println("ha")
+times(10):
+  println("ah")
+  println("ha")
 ```
 or
 ```scala
-  xs.map:
-    x =>
-        val y = x - 1
-        y * y
+xs.map:
+  x =>
+      val y = x - 1
+      y * y
 ```
 Colons at the end of lines are their own token, distinct from normal `:`.
 The Scala grammar is changed so that colons at end of lines are accepted at all points
@@ -120,7 +120,7 @@ end largeMethod
 ```
 An `end` marker consists of the identifier `end` which follows an `<outdent>` token, and is in turn followed on the same line by exactly one other token, which is either an identifier or one of the reserved words
 ```scala
-  if  while  for  match  try  new
+if  while  for  match  try  new
 ```
 If `end` is followed by a reserved word, the compiler checks that the marker closes an indentation region belonging to a construct that starts with the reserved word. If it is followed by an identifier _id_, the compiler checks that the marker closes a definition
 that defines _id_ or a package clause that refers to _id_.

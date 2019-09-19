@@ -3,7 +3,6 @@ layout: doc-page
 title: "Algebraic Data Types"
 ---
 
-
 The `enum` concept is general enough to also support algebraic data
 types (ADTs) and their generalized version (GADTs). Here's an example
 how an `Option` type can be represented as an ADT:
@@ -44,6 +43,7 @@ unless the definitions are "pulled out" with an import:
 ```scala
 scala> Option.Some("hello")
 val res1: t2.Option[String] = Some(hello)
+
 scala> Option.None
 val res2: t2.Option[Nothing] = None
 ```
@@ -100,17 +100,17 @@ Changes to the syntax fall in two categories: enum definitions and cases inside 
 The changes are specified below as deltas with respect to the Scala syntax given [here](../../internals/syntax.md)
 
  1. Enum definitions are defined as follows:
-
-        TmplDef   ::=  `enum' EnumDef
-        EnumDef   ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody
-        EnumBody  ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
-        EnumStat  ::=  TemplateStat
-                    |  {Annotation [nl]} {Modifier} EnumCase
-
+    ```
+    TmplDef   ::=  `enum' EnumDef
+    EnumDef   ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody
+    EnumBody  ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+    EnumStat  ::=  TemplateStat
+                |  {Annotation [nl]} {Modifier} EnumCase
+    ```
  2. Cases of enums are defined as follows:
-
-        EnumCase  ::=  `case' (id ClassConstr [`extends' ConstrApps]] | ids)
-
+    ```
+    EnumCase  ::=  `case' (id ClassConstr [`extends' ConstrApps]] | ids)
+    ```
 ### Reference
 
 For more info, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970).
