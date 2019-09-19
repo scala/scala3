@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 import scala.quoted.autolift.given
 
 case class Position(path: String, start: Int, end: Int,

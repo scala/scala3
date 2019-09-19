@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 object Macro {
   inline def foo[X](x: X): Unit = ${fooImpl('x)}
   def fooImpl[X: quoted.Type](x: Expr[X])(given QuoteContext): Expr[Unit] = '{}

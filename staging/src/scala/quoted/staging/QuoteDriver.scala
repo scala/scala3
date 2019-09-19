@@ -8,7 +8,7 @@ import dotty.tools.dotc.tastyreflect.ReflectionImpl
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.reporting._
-import scala.quoted._
+import scala.quoted.{_, given}
 import scala.quoted.staging.Toolbox
 import java.net.URLClassLoader
 

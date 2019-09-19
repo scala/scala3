@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.{_, given}
 import scala.quoted.autolift.given
 
 class MVmult[Idx, T, Unt](tring: Ring[T], vec: VecROp[Idx, T, Unt]) {

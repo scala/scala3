@@ -1,7 +1,7 @@
 package hello
 
 // Import `Expr` and some extension methods
-import scala.quoted._
+import scala.quoted.{_, given}
 import scala.quoted.staging.{run, Toolbox}
 
 object Main {

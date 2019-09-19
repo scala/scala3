@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.{_, given}
 
 object Test {
   def matchX[T](x: Expr[T])(given Type[T], QuoteContext): Expr[T] = '{

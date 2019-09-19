@@ -3,7 +3,7 @@ abstract class MatcherFactory1[A] {
 }
 
 object MatcherFactory1 {
-  import scala.quoted._
+  import scala.quoted.{_, given}
 
   def impl[T](self: Expr[MatcherFactory1[T]#AndNotWord])(given QuoteContext) =
     '{ val a: Any = $self } // error: access to type T from wrong staging level

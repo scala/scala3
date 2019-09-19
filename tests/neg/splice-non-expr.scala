@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 class Foo {
   def test(given QuoteContext) = '{
     ${3} // error

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 
 case class Vec[Idx, T](size: Idx, get: Idx => T) {
   def apply(idx: Idx): T = get(idx)

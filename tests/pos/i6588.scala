@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 
 inline def foo[T:Type]: Int = 10
 

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 def test(given QuoteContext) = {
   val q = '[String]
   '[String]

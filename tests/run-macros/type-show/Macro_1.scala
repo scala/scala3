@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 
 object TypeToolbox {
   inline def show[A]: String = ${ showImpl('[A]) }

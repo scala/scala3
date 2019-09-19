@@ -1,5 +1,5 @@
 
-import scala.quoted._, scala.quoted.matching._
+import scala.quoted.{_, given}, scala.quoted.matching._
 import scala.quoted.staging._
 import scala.quoted.given
 

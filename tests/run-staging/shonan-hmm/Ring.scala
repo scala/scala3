@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.{_, given}
 
 trait Ring[T] {
   def zero: T

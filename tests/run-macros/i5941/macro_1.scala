@@ -3,7 +3,7 @@ trait Lens[S, T] {
   def set(t: T, s: S) :S
 }
 
-import scala.quoted._
+import scala.quoted.{_, given}
 
 object Lens {
   def apply[S, T](_get: S => T)(_set: T => S => S): Lens[S, T] = new Lens {

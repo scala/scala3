@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.{_, given}
 
 object Macros {
   def impl(foo: Any)(given QuoteContext): Expr[String] = foo.getClass.getCanonicalName.toExpr

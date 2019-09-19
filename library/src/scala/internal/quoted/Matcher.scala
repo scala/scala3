@@ -2,7 +2,7 @@ package scala.internal.quoted
 
 import scala.annotation.internal.sharable
 
-import scala.quoted._
+import scala.quoted.{_, given}
 import scala.quoted.matching.Bind
 
 private[quoted] object Matcher {

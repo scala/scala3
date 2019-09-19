@@ -1,6 +1,6 @@
 package test
 import scala.util.FromDigits
-import scala.quoted._
+import scala.quoted.{_, given}
 import scala.quoted.matching._
 
 case class BigFloat(mantissa: BigInt, exponent: Int) {

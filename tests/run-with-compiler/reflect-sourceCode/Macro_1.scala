@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 
 object api {
   inline def (x: => T) reflect[T] : String =

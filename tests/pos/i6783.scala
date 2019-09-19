@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 
 def testImpl(f: Expr[(Int, Int) => Int])(given QuoteContext): Expr[Int] = f('{1}, '{2})
 

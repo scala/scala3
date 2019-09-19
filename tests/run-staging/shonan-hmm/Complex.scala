@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.{_, given}
 
 case class Complex[T](re: T, im: T)
 

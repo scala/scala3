@@ -2,7 +2,7 @@
 
 package dotty.internal
 
-import scala.quoted._
+import scala.quoted.{_, given}
 import scala.quoted.matching._
 import reflect._
 

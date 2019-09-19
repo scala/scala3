@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 import scala.deriving._
 
 case class Box[A](x: A)

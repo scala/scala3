@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 object Test {
 
   def x(given QuoteContext) = '{1 + 2}

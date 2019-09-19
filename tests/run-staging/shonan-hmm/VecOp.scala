@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 
 trait VecOp[Idx, Unt] {
   def iter: Vec[Idx, Unt] => Unt

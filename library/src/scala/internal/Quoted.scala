@@ -1,7 +1,7 @@
 package scala.internal
 
 import scala.annotation.{Annotation, compileTimeOnly}
-import scala.quoted._
+import scala.quoted.{_, given}
 
 object Quoted {
 

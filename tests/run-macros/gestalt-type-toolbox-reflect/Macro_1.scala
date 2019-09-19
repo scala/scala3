@@ -1,7 +1,7 @@
 // Port of https://github.com/liufengyun/gestalt/blob/master/macros/src/main/scala/gestalt/macros/TypeToolbox.scala
 // using staging reflection
 
-import scala.quoted._
+import scala.quoted.{_, given}
 
 object TypeToolbox {
   /** are the two types equal? */

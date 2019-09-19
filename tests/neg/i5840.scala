@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 object Test {
 
   type Contextual[T] = (given QuoteContext) => T

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 
 object scalatest {
   inline def assert1(condition: => Boolean): Unit =

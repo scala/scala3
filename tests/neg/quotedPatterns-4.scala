@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 object Test {
   def impl(receiver: Expr[StringContext])(given qctx: scala.quoted.QuoteContext) = {
     import qctx.tasty.Repeated

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 object Foo {
   def program(given QuoteContext) = '{
     val tpe: quoted.Type[Int] = ???

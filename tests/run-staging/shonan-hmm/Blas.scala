@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.{_, given}
 
 class Blas1[Idx, T, Unt](tring: Ring[T], vec: VecOp[Idx, Unt]) {
   import tring._

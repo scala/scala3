@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 object Test {
   def test(x: quoted.Expr[Int])(given QuoteContext) = x match {
     case '{ type $t; poly[$t]($x); 4 } => ??? // error: duplicate pattern variable: $t

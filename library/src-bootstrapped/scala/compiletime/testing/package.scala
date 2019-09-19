@@ -1,6 +1,6 @@
 package scala.compiletime
 
-import scala.quoted._
+import scala.quoted.{_, given}
 
 package object testing {
 

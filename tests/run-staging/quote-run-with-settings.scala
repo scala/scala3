@@ -1,7 +1,7 @@
 
 import java.nio.file.{Files, Paths}
 
-import scala.quoted._
+import scala.quoted.{_, given}
 import scala.quoted.staging._
 
 object Test {

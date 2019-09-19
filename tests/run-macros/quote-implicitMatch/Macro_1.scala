@@ -1,6 +1,6 @@
 import collection.immutable.TreeSet
 import collection.immutable.HashSet
-import scala.quoted._
+import scala.quoted.{_, given}
 import scala.quoted.matching._
 
 inline def f1[T]() = ${ f1Impl[T] }

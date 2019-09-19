@@ -1,5 +1,5 @@
 object Macros {
-  import scala.quoted._
+  import scala.quoted.{_, given}
   import scala.quoted.autolift.given
 
   inline def go[T](t: => T) = ${ impl('t) }

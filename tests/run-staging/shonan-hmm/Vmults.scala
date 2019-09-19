@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 
 class Vmult[Idx, T, Unt](tring: Ring[T], vec: VecOp[Idx, Unt]) {
   private[this] val blas = new Blas1(tring, vec)

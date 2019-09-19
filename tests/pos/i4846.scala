@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 
 object Test {
   inline def foo(inline x: Int): Int = ${fooImpl(x, 'x, '{ 'x }, '{ '{ 'x } })}

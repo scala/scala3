@@ -1,7 +1,7 @@
 import scala.annotation.tailrec
 import scala.quoted.autolift.given
 
-import scala.quoted._
+import scala.quoted.{_, given}
 
 object Macro {
 

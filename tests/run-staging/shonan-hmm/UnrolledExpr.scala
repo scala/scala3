@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 import Lifters._
 
 object UnrolledExpr {

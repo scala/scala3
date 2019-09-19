@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 
 def makeMatch[A: Type](head : Expr[A])(given qctx : QuoteContext) : Expr[Unit] = {
   import qctx.tasty._

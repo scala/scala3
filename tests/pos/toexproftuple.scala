@@ -1,4 +1,4 @@
-import scala.quoted._, scala.deriving._
+import scala.quoted.{_, given}, scala.deriving._
 import scala.quoted.given
 
 inline def mcr: Any = ${mcrImpl}

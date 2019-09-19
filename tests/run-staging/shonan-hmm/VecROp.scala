@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.{_, given}
 import scala.quoted.autolift.given
 
 trait VecROp[Idx, T, Unt] extends VecOp[Idx, Unt] {

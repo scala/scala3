@@ -1,4 +1,4 @@
-scala> import scala.quoted._
+scala> import scala.quoted.{_, given}
 scala> def assertImpl(expr: Expr[Boolean])(given qctx: QuoteContext) = '{ if !($expr) then throw new AssertionError("failed assertion")}
 def assertImpl
   (expr: quoted.Expr[Boolean])

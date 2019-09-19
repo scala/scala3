@@ -1,5 +1,5 @@
 import scala.annotation.tailrec
-import scala.quoted._
+import scala.quoted.{_, given}
 
 object Macros {
   inline def unrolledForeach(f: Int => Int): Int =

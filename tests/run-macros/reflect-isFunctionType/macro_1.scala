@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 
 
 inline def isFunctionType[T:Type]: Boolean = ${ isFunctionTypeImpl('[T]) }

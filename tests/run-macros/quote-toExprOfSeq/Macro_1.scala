@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 import scala.quoted.given
 
 inline def seq = ${fooImpl}

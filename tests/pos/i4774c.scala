@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.{_, given}
 
 object Test {
   def loop[T](x: Expr[T])(implicit t: Type[T], qctx: QuoteContext): Expr[T] = '{ val y = $x; ${loop('y)} }

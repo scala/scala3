@@ -3,7 +3,7 @@ package hello
 import org.junit.Test
 
 // Import Expr and some extension methods
-import scala.quoted._
+import scala.quoted.{_, given}
 
 class Tests {
 

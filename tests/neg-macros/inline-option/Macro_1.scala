@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.{_, given}
 
 object Macro {
   def impl(opt: Option[Int])(given QuoteContext): Expr[Int] = opt match {

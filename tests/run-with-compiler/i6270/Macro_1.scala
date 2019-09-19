@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.{_, given}
 import scala.quoted.show.SyntaxHighlight.ANSI
 
 object api {

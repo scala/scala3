@@ -24,7 +24,7 @@ parameter of type `scala.quoted.QuoteContext` and import `tasty._` from it in
 the scope where it is used.
 
 ```scala
-import scala.quoted._
+import scala.quoted.{_, given}
 
 inline def natConst(x: => Int): Int = ${natConstImpl('{x})}
 

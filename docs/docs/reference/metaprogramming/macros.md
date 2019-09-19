@@ -31,7 +31,7 @@ a boolean expression tree as argument. `assertImpl` evaluates the expression and
 prints it again in an error message if it evaluates to `false`.
 
 ```scala
-    import scala.quoted._
+    import scala.quoted.{_, given}
 
     inline def assert(expr: => Boolean): Unit =
       ${ assertImpl('expr) }
@@ -205,7 +205,7 @@ phase-correct. If that was not the case, the phase inconsistency for
 Consider the following implementation of a staged interpreter that implements
 a compiler through staging.
 ```scala
-    import scala.quoted._
+    import scala.quoted.{_, given}
 
     enum Exp {
       case Num(n: Int)
@@ -224,7 +224,7 @@ Here’s a compiler that maps an expression given in the interpreted
 language to quoted Scala code of type `Expr[Int]`.
 The compiler takes an environment that maps variable names to Scala `Expr`s.
 ```scala
-    import given scala.quoted._
+    import scala.quoted.{_, given}
 
     def compile(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
       case Num(n) =>
