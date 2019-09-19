@@ -512,8 +512,8 @@ object Scanners {
                 currentRegion = r.enclosing
                 insert(OUTDENT, offset)
                 handleEndMarkers(nextWidth)
-              case r: InBraces if token != RBRACE && !statCtdTokens.contains(token) =>
-                ctx.warning("Line is indented too far to the left or a `}' is missing",
+              case r: InBraces if !closingRegionTokens.contains(token) =>
+                ctx.warning("Line is indented too far to the left, or a `}' is missing",
                   source.atSpan(Span(offset)))
               case _ =>
 
@@ -523,10 +523,7 @@ object Scanners {
             currentRegion = Indented(nextWidth, Set(), lastToken, currentRegion)
             insert(INDENT, offset)
         else if (lastWidth != nextWidth)
-          errorButContinue(
-            i"""Incompatible combinations of tabs and spaces in indentation prefixes.
-                |Previous indent : $lastWidth
-                |Latest indent   : $nextWidth""")
+          errorButContinue(spaceTabMismatchMsg(lastWidth, nextWidth))
       currentRegion match {
         case Indented(curWidth, others, prefix, outer) if curWidth < nextWidth && !others.contains(nextWidth) =>
           if (token == OUTDENT)
@@ -539,6 +536,11 @@ object Scanners {
         case _ =>
       }
     }
+
+    def spaceTabMismatchMsg(lastWidth: IndentWidth, nextWidth: IndentWidth) =
+      i"""Incompatible combinations of tabs and spaces in indentation prefixes.
+         |Previous indent : $lastWidth
+         |Latest indent   : $nextWidth"""
 
     def observeIndented(unless: BitSet, unlessSoftKW: TermName = EmptyTermName): Unit =
       if (indentSyntax && isAfterLineEnd && token != INDENT) {
