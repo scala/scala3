@@ -208,8 +208,8 @@ class ReifyQuotes extends MacroTransform {
 
       def pickleAsLiteral(lit: Literal) =
         lit.const.tag match {
-          case Constants.NullTag => ref(defn.QuotedExprModule).select(nme.nullExpr)
-          case Constants.UnitTag => ref(defn.QuotedExprModule).select(nme.unitExpr)
+          case Constants.NullTag => ref(defn.QuotedExprModule_nullExpr)
+          case Constants.UnitTag => ref(defn.QuotedExprModule_unitExpr)
           case _ => // Lifted literal
             val ltp = defn.LiftableClass.typeRef.appliedTo(ConstantType(lit.const))
             val liftable = ctx.typer.inferImplicitArg(ltp, body.span)
