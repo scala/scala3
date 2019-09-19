@@ -110,12 +110,12 @@ object Liftable {
 
   given [T: Type: Liftable] : Liftable[Seq[T]] = new Liftable[Seq[T]] {
     def toExpr(xs: Seq[T]): (given QuoteContext) => Expr[Seq[T]] =
-      xs.map(summon[Liftable[T]].toExpr).toExprOfSeq
+      Expr.ofSeq(xs.map(summon[Liftable[T]].toExpr))
   }
 
   given [T: Type: Liftable] : Liftable[List[T]] = new Liftable[List[T]] {
     def toExpr(xs: List[T]): (given QuoteContext) => Expr[List[T]] =
-      xs.map(summon[Liftable[T]].toExpr).toExprOfList
+      Expr.ofList(xs.map(summon[Liftable[T]].toExpr))
   }
 
   given [T: Type: Liftable] : Liftable[Set[T]] = new Liftable[Set[T]] {

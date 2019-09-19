@@ -65,6 +65,34 @@ package quoted {
       Block(statements.map(_.unseal), expr.unseal).seal.asInstanceOf[Expr[T]]
     }
 
+    /** Lifts this sequence of expressions into an expression of a sequence
+     *
+     *  Transforms a sequence of expression
+     *    `Seq(e1, e2, ...)` where `ei: Expr[T]`
+     *  to an expression equivalent to
+     *    `'{ Seq($e1, $e2, ...) }` typed as an `Expr[Seq[T]]`
+     *
+     *  Usage:
+     *  ```scala
+     *  '{ List(${Expr.ofSeq(List(1, 2, 3))}: _*) } // equvalent to '{ List(1, 2, 3) }
+     *  ```
+     */
+    def ofSeq[T](xs: Seq[Expr[T]])(given tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = {
+      import qctx.tasty._
+      Repeated(xs.map(_.unseal).toList, tp.unseal).seal.asInstanceOf[Expr[Seq[T]]]
+    }
+
+
+    /** Lifts this list of expressions into an expression of a list
+     *
+     *  Transforms a list of expression
+     *    `List(e1, e2, ...)` where `ei: Expr[T]`
+     *  to an expression equivalent to
+     *    `'{ List($e1, $e2, ...) }` typed as an `Expr[List[T]]`
+     */
+    def  ofList[T](xs: Seq[Expr[T]])(given Type[T], QuoteContext): Expr[List[T]] =
+      if (xs.isEmpty) '{ Nil } else '{ List(${ofSeq(xs)}: _*) }
+
   }
 
 }
