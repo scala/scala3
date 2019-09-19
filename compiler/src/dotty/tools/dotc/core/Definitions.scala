@@ -635,6 +635,7 @@ class Definitions {
   @tu lazy val QuoteContextModule: Symbol = QuoteContextClass.companionModule
     @tu lazy val QuoteContext_macroContext: Symbol = QuoteContextModule.requiredMethod("macroContext")
 
+  @tu lazy val LiftableClass: ClassSymbol = ctx.requiredClass("scala.quoted.Liftable")
   @tu lazy val LiftableModule: Symbol = ctx.requiredModule("scala.quoted.Liftable")
 
   @tu lazy val InternalQuotedModule: Symbol = ctx.requiredModule("scala.internal.Quoted")

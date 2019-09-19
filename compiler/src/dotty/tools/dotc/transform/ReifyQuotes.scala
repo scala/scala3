@@ -206,24 +206,19 @@ class ReifyQuotes extends MacroTransform {
         qctx
       }
 
-      def liftedValue[T](value: T, name: TermName) =
-        ref(defn.LiftableModule)
-          .select(name).appliedToType(originalTp)
-          .select("toExpr".toTermName).appliedTo(Literal(Constant(value)))
+      def liftedValue[T](const: Constant) = {
+        val ltp = defn.LiftableClass.typeRef.appliedTo(ConstantType(const))
+        val liftable = ctx.typer.inferImplicitArg(ltp, body.span)
+        if (liftable.tpe.isInstanceOf[SearchFailureType])
+          ctx.error(ctx.typer.missingArgMsg(liftable, ltp, "Could no optimize constant in quote"), ctx.source.atSpan(body.span))
+        liftable.select("toExpr".toTermName).appliedTo(Literal(const))
+      }
 
       def pickleAsValue[T](value: T) =
         value match {
           case null => ref(defn.QuotedExprModule).select("nullExpr".toTermName)
           case _: Unit => ref(defn.QuotedExprModule).select("unitExpr".toTermName)
-          case _: Boolean => liftedValue(value, "Liftable_Boolean_delegate".toTermName)
-          case _: Byte => liftedValue(value, "Liftable_Byte_delegate".toTermName)
-          case _: Short => liftedValue(value, "Liftable_Short_delegate".toTermName)
-          case _: Int => liftedValue(value, "Liftable_Int_delegate".toTermName)
-          case _: Long => liftedValue(value, "Liftable_Long_delegate".toTermName)
-          case _: Float => liftedValue(value, "Liftable_Float_delegate".toTermName)
-          case _: Double => liftedValue(value, "Liftable_Double_delegate".toTermName)
-          case _: Char => liftedValue(value, "Liftable_Char_delegate".toTermName)
-          case _: String => liftedValue(value, "Liftable_String_delegate".toTermName)
+          case _ => liftedValue(Constant(value))
         }
 
       def pickleAsTasty() = {
