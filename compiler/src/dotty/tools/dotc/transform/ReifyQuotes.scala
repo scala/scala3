@@ -206,19 +206,16 @@ class ReifyQuotes extends MacroTransform {
         qctx
       }
 
-      def liftedValue[T](const: Constant) = {
-        val ltp = defn.LiftableClass.typeRef.appliedTo(ConstantType(const))
-        val liftable = ctx.typer.inferImplicitArg(ltp, body.span)
-        if (liftable.tpe.isInstanceOf[SearchFailureType])
-          ctx.error(ctx.typer.missingArgMsg(liftable, ltp, "Could no optimize constant in quote"), ctx.source.atSpan(body.span))
-        liftable.select("toExpr".toTermName).appliedTo(Literal(const))
-      }
-
-      def pickleAsValue[T](value: T) =
-        value match {
-          case null => ref(defn.QuotedExprModule).select("nullExpr".toTermName)
-          case _: Unit => ref(defn.QuotedExprModule).select("unitExpr".toTermName)
-          case _ => liftedValue(Constant(value))
+      def pickleAsLiteral(lit: Literal) =
+        lit.const.tag match {
+          case Constants.NullTag => ref(defn.QuotedExprModule).select("nullExpr".toTermName)
+          case Constants.UnitTag => ref(defn.QuotedExprModule).select("unitExpr".toTermName)
+          case _ => // Lifted literal
+            val ltp = defn.LiftableClass.typeRef.appliedTo(ConstantType(lit.const))
+            val liftable = ctx.typer.inferImplicitArg(ltp, body.span)
+            if (liftable.tpe.isInstanceOf[SearchFailureType])
+              ctx.error(ctx.typer.missingArgMsg(liftable, ltp, "Could no optimize constant in quote"), ctx.source.atSpan(body.span))
+            liftable.select("toExpr".toTermName).appliedTo(lit)
         }
 
       def pickleAsTasty() = {
@@ -238,8 +235,8 @@ class ReifyQuotes extends MacroTransform {
         if (splices.isEmpty && body.symbol.isPrimitiveValueClass) tag(s"${body.symbol.name}Tag")
         else pickleAsTasty().select(nme.apply).appliedTo(qctx)
       }
-      else toValue(body) match {
-        case Some(value) => pickleAsValue(value)
+      else getLiteral(body) match {
+        case Some(lit) => pickleAsLiteral(lit)
         case _ => pickleAsTasty()
       }
     }
@@ -424,10 +421,10 @@ object ReifyQuotes {
 
   val name: String = "reifyQuotes"
 
-  def toValue(tree: tpd.Tree): Option[Any] = tree match {
-    case Literal(Constant(c)) => Some(c)
-    case Block(Nil, e) => toValue(e)
-    case Inlined(_, Nil, e) => toValue(e)
+  def getLiteral(tree: tpd.Tree): Option[Literal] = tree match {
+    case tree: Literal => Some(tree)
+    case Block(Nil, e) => getLiteral(e)
+    case Inlined(_, Nil, e) => getLiteral(e)
     case _ => None
   }
 
