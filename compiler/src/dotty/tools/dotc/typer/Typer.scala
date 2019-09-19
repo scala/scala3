@@ -2213,16 +2213,20 @@ class Typer extends Namer
             traverse(xtree :: rest, facts)
           case none =>
             import untpd.modsDeco
-            val ctx1 = if (ctx.explicitNulls) {
-              mdef match {
-                case mdef: untpd.ValDef if ctx.owner.is(Method) && !mdef.mods.isOneOf(Lazy | Implicit) =>
-                  ctx.fresh.addFlowFacts(facts)
-                case _ => ctx
-              }
-            } else {
-              ctx
+            val ctx2 = mdef match {
+              case mdef: untpd.ValDef
+                if ctx.explicitNulls && ctx.owner.is(Method) && !mdef.mods.isOneOf(Lazy | Implicit) =>
+                val ctx1 = ctx.fresh.addFlowFacts(facts)
+                val sym = ctx1.effectiveScope.lookup(mdef.name)
+                sym.infoOrCompleter match {
+                  case completer: Namer#Completer =>
+                    completer.completeInContext(sym, ctx1)
+                  case _ =>
+                }
+                ctx1
+              case _ => ctx
             }
-            typed(mdef)(ctx1) match {
+            typed(mdef)(ctx2) match {
               case mdef1: DefDef if !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
                 buf += inlineExpansion(mdef1)
                   // replace body with expansion, because it will be used as inlined body

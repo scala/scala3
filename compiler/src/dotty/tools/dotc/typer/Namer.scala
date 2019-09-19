@@ -376,17 +376,6 @@ class Namer { typer: Typer =>
           case tree: TypeDef =>
             if (flags.is(Opaque) && ctx.owner.isClass) ctx.owner.setFlag(Opaque)
             new TypeDefCompleter(tree)(cctx)
-          case tree: ValDef if ctx.explicitNulls && ctx.owner.is(Method) && !tree.mods.isOneOf(Lazy | Implicit) =>
-            // Use a completer that completes itself with the completion text, so
-            // we can use flow typing for `ValDef`s.
-            // Don't use this special kind of completer for `lazy` or `implicit` symbols,
-            // because those could be completed through a forward reference:
-            // e.g.
-            //   val x: String|Null = ???
-            //   y /* y is completed through a forward reference! */
-            //   if (x == null) throw new NullPointerException()
-            //   lazy val y: Int = x.length
-            new ValDefInBlockCompleter(tree)(cctx)
           case _ =>
             new Completer(tree)(cctx)
         }
@@ -758,18 +747,19 @@ class Namer { typer: Typer =>
     /** The context in which the completer should be typed: usually it's the creation context,
      *  but could also be the completion context.
      */
-    protected def typingContext(owner: Symbol, completionCtx: Context): FreshContext = localContext(owner)
+    protected def typingContext(owner: Symbol, ctx: Context): FreshContext =
+      ctx.fresh.setOwner(owner).setTree(original)
 
     /** The context with which this completer was created */
     def creationContext: Context = ctx
     ctx.typerState.markShared()
 
-    protected def typeSig(sym: Symbol, completionCtx: Context): Type = original match {
+    protected def typeSig(sym: Symbol, ctx: Context): Type = original match {
       case original: ValDef =>
         if (sym.is(Module)) moduleValSig(sym)
-        else valOrDefDefSig(original, sym, Nil, Nil, identity)(typingContext(sym, completionCtx).setNewScope)
+        else valOrDefDefSig(original, sym, Nil, Nil, identity)(typingContext(sym, ctx).setNewScope)
       case original: DefDef =>
-        val typer1 = ctx.typer.newLikeThis
+        val typer1 = this.ctx.typer.newLikeThis
         nestedTyper(sym) = typer1
         typer1.defDefSig(original, sym)(localContext(sym).setTyper(typer1))
       case imp: Import =>
@@ -797,7 +787,7 @@ class Namer { typer: Typer =>
         denot.info = UnspecifiedErrorType
       }
       else {
-        completeInContext(denot, ctx)
+        completeInContext(denot, this.ctx)
         if (denot.isCompleted) registerIfChild(denot)
       }
     }
@@ -884,42 +874,15 @@ class Namer { typer: Typer =>
      *  to pick up the context at the point where the completer was created.
      *
      *  If -Yexplicit-nulls, is enabled, we sometimes use the completion context.
-     *  See `ValDefInBlockCompleter`.
      */
-    def completeInContext(denot: SymDenotation, completionContext: Context): Unit = {
+    def completeInContext(denot: SymDenotation, ctx: Context): Unit = {
       val sym = denot.symbol
       addAnnotations(sym)
       addInlineInfo(sym)
-      denot.info = typeSig(sym, completionContext)
+      denot.info = typeSig(sym, ctx)
       invalidateIfClashingSynthetic(denot)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym)
-    }
-  }
-
-  /** A completer that uses its completion context (as opposed to the creation context)
-   *  to complete itself. This is used so that flow typing can handle `ValDef`s that appear within a block.
-   *
-   *  Example:
-   *  Suppose we have a block containing
-   *
-   *    1. val x: String|Null = ???
-   *    2. if (x == null) throw NPE
-   *    3. val y = x
-   *
-   *  We want to infer y: String on line 3, but if the completer for `y` uses its creation context,
-   *  then we won't have the additional flow facts that say that `y` is not null.
-   *
-   *  The solution is to use a completer that completes itself using the context at completion time,
-   *  as opposed to creation time. Normally, we need to use the creation context, because a completer
-   *  can be completed at any point in the future. However, for `ValDef`s within a block, we know they'll
-   *  be completed immediately after the symbols are created, so it's safe to use this new kind of completer.
-   */
-  class ValDefInBlockCompleter(original: ValDef)(implicit ctx: Context) extends Completer(original)(ctx) {
-    assert(ctx.explicitNulls)
-
-    override def typingContext(owner: Symbol, completionCtx: Context): FreshContext = {
-      completionCtx.fresh.setOwner(owner).setTree(original)
     }
   }
 
