@@ -606,7 +606,7 @@ object Parsers {
           if (in.token == NEWLINE || in.token == NEWLINES)
             && !(nextIndentWidth < startIndentWidth)
           then
-            syntaxError(
+            warning(
               if startIndentWidth <= nextIndentWidth then
                 i"""Line is indented too far to the right, or a `{' is missing before:
                    |

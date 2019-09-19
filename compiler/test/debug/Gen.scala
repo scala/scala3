@@ -126,38 +126,38 @@ object Gen {
             |""".stripMargin
     }).mkString("\n\n")
 
-s"""|#!/usr/bin/expect
-    |
-    |# log_user 1
-    |# exp_internal 1
-    |# set timeout 5
-    |
-    |send_user "spawning job...\\n"
-    |
-    |spawn jdb -attach 5005 -sourcepath $source
-    |
-    |send_user "interacting...\\n"
-    |
-    |expect {
-    |  "*VM Started*" { send_user "success - connected to server \\n" }
-    |  timeout {
-    |      send_user "timeout while waiting for: *VM Started*\\n"
-    |      exit 1
-    |  }
-    |}
-    |
-    |send_user "setting breakpoints...\\n"
-    |
-    |# breakpoints
-    |$breakpoints
-    |
-    |# run
-    |send_user "run program...\\n"
-    |send "run\\r"
-    |expect "Breakpoint hit"
-    |
-    |# interactions
-    |$commands""".stripMargin
+  s"""|#!/usr/bin/expect
+      |
+      |# log_user 1
+      |# exp_internal 1
+      |# set timeout 5
+      |
+      |send_user "spawning job...\\n"
+      |
+      |spawn jdb -attach 5005 -sourcepath $source
+      |
+      |send_user "interacting...\\n"
+      |
+      |expect {
+      |  "*VM Started*" { send_user "success - connected to server \\n" }
+      |  timeout {
+      |      send_user "timeout while waiting for: *VM Started*\\n"
+      |      exit 1
+      |  }
+      |}
+      |
+      |send_user "setting breakpoints...\\n"
+      |
+      |# breakpoints
+      |$breakpoints
+      |
+      |# run
+      |send_user "run program...\\n"
+      |send "run\\r"
+      |expect "Breakpoint hit"
+      |
+      |# interactions
+      |$commands""".stripMargin
   }
 
   def main(args: Array[String]): Unit = {
