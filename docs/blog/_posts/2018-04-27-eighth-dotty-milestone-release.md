@@ -91,7 +91,7 @@ f[[X] =>> String]
 ```
 
 **Note**: This feature is considered experimental and is only enabled under a compiler flag
-(i.e. `-Ykind-polymorphism`). For more information, visit the [Kind Polymorphism](https://dotty.epfl.ch/docs/reference/kind-polymorphism.html)
+(i.e. `-Ykind-polymorphism`). For more information, visit the [Kind Polymorphism](https://dotty.epfl.ch/docs/reference/other-new-features/kind-polymorphism.html)
 section of our documentation.
 
 ### Improved support for SAM type [#4152](https://github.com/lampepfl/dotty/pull/4152)

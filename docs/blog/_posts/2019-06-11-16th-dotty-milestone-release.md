@@ -34,7 +34,7 @@ You can learn more about Dotty on our [website](https://dotty.epfl.ch).
 <!--more-->
 
 This is our 16th scheduled release according to our
-[6-week release schedule](https://dotty.epfl.ch/docs/contributing/release.html).
+[6-week release schedule](https://dotty.epfl.ch/docs/contributing/procedures/release.html).
 
 # What’s new in the 0.16.0-RC3 technology preview?
 
