@@ -284,7 +284,7 @@ If you have questions or any sort of feedback, feel free to send us a message on
 
 Thank you to all the contributors who made this release possible!
 
-According to `git shortlog -sn --no-merges 0.17.0-RC1..0.18.0-RC1` these are:
+According to `git shortlog -sn --no-merges 0.17.0-RC1..0.18.1-RC1` these are:
 
 ```
    106  Nicolas Stucki
