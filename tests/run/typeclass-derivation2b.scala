@@ -121,7 +121,7 @@ object Eq {
                 0)
           }
         else eqlCases[T, alts1](x, y, genSum, ord, n + 1)
-     case _: Unit =>
+      case _: Unit =>
         false
     }
 

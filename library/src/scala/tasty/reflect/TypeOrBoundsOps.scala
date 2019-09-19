@@ -96,7 +96,7 @@ trait TypeOrBoundsOps extends Core {
         internal.matchTermRef(typeOrBounds).map(x => (x.qualifier, x.name))
     }
 
-   object IsTypeRef {
+    object IsTypeRef {
       /** Matches any TypeRef and returns it */
       def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[TypeRef] =
         internal.matchTypeRef(tpe)

@@ -492,31 +492,36 @@ object Scanners {
           indentPrefix = LBRACE
         case _ =>
       }
+      def isMatchCatchFollow(prev: Token) =
+        nextWidth == lastWidth
+        && (prev == MATCH || prev == CATCH)
+        && token != CASE
       if (newlineIsSeparating &&
           canEndStatTokens.contains(lastToken) &&
           canStartStatTokens.contains(token) &&
           !isLeadingInfixOperator())
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
-      else if (indentIsSignificant)
-        if (nextWidth < lastWidth
-            || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE)
-          currentRegion match {
-            case r: Indented
-            if !r.isOutermost &&
-               !isLeadingInfixOperator() &&
-               !statCtdTokens.contains(lastToken) =>
-              currentRegion = r.enclosing
-              insert(OUTDENT, offset)
-              handleEndMarkers(nextWidth)
-            case _ =>
-          }
-        else if (lastWidth < nextWidth ||
-                 lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE) {
-          if (canStartIndentTokens.contains(lastToken)) {
+      else if indentIsSignificant then
+        if nextWidth < lastWidth
+           || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
+          if !currentRegion.isOutermost &&
+             !isLeadingInfixOperator() &&
+             !statCtdTokens.contains(lastToken) then
+            currentRegion match
+              case r: Indented =>
+                currentRegion = r.enclosing
+                insert(OUTDENT, offset)
+                handleEndMarkers(nextWidth)
+              case r: InBraces if token != RBRACE && !statCtdTokens.contains(token) =>
+                ctx.warning("Line is indented too far to the left or a `}' is missing",
+                  source.atSpan(Span(offset)))
+              case _ =>
+
+        else if lastWidth < nextWidth
+             || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
+          if canStartIndentTokens.contains(lastToken) then
             currentRegion = Indented(nextWidth, Set(), lastToken, currentRegion)
             insert(INDENT, offset)
-          }
-        }
         else if (lastWidth != nextWidth)
           errorButContinue(
             i"""Incompatible combinations of tabs and spaces in indentation prefixes.

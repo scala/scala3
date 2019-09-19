@@ -57,7 +57,7 @@ object AA
         }
     }
 
-  def foo[T](x: T) = { object A; false }
+    def foo[T](x: T) = { object A; false }
 }
 
 // issue 3325
