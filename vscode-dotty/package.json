@@ -2,7 +2,7 @@
   "name": "dotty",
   "displayName": "Dotty Language Server",
   "description": "IDE integration for Dotty, the experimental Scala compiler",
-  "version": "0.1.16",
+  "version": "0.1.17-snapshot",
   "license": "BSD-3-Clause",
   "publisher": "lampepfl",
   "repository": {
