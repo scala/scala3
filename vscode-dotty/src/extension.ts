@@ -54,8 +54,12 @@ export function activate(context: ExtensionContext) {
   // package.json does not work)
   vscode.languages.setLanguageConfiguration("scala", {
     "indentationRules": {
-      // Auto-indent when pressing enter on a line matching this regexp
-      "increaseIndentPattern": /(((\b(then|else|do|catch|finally|yield|match|while|try|for|if|case)\b)|\bif\s*\(.*\)|=|=>|<-|=>>)\s*$)/,
+      // Auto-indent when pressing enter on a line matching this regexp, in details:
+      // 1. If they're not preceded by `end`, auto-indent after `while`, `for`, `match`, `try`, `if`
+      // 2. Auto-indent after `if ...` as long as it doesn't match `if ... then ...`
+      // 3. Auto-indent after `then`, `else`, `do`, `catch`, `finally`, `yield`, `case`, `=`, `=>`, `<-`, `=>>`x
+      "increaseIndentPattern":
+        /(((?<!\bend\b\s*?)\b(if|while|for|match|try))|(\bif\s+(?!.*?\bthen\b.*?$)[^\s]*?)|(\b(then|else|do|catch|finally|yield|case))|=|=>|<-|=>>)\s*?$/,
       // Auto-unindent disabled, because it doesn't work well with all
       // indentation styles
       "decreaseIndentPattern": /^.$/
