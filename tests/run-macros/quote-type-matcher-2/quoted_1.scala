@@ -12,7 +12,7 @@ object Macros {
       case '[Function1[$t, $u]] => s"%${lift(t)} => ${lift(u)}%"
       case _ => tp.show
     }
-    lift(tp).toExpr
+    Expr(lift(tp))
   }
 
 }

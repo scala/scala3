@@ -228,7 +228,7 @@ import given scala.quoted._
 
 def compile(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
   case Num(n) =>
-    n.toExpr
+    Expr(n)
   case Plus(e1, e2) =>
     '{ ${ compile(e1, env) } + ${ compile(e2, env) } }
   case Var(x) =>
@@ -241,7 +241,7 @@ Running `compile(letExp, Map())` would yield the following Scala code:
 ```scala
 '{ val y = 3; (2 + y) + 4 }
 ```
-The body of the first clause, `case Num(n) => n.toExpr`, looks suspicious. `n`
+The body of the first clause, `case Num(n) => Expr(n)`, looks suspicious. `n`
 is declared as an `Int`, yet it is converted to an `Expr[Int]` with `toExpr`.
 Shouldn’t `n` be quoted? In fact this would not
 work since replacing `n` by `'n` in the clause would not be phase
@@ -308,7 +308,7 @@ Using lifting, we can now give the missing definition of `showExpr` in the intro
 ```scala
 def showExpr[T](expr: Expr[T]): Expr[String] = {
   val code: String = expr.show
-  code.toExpr
+  Expr(code)
 }
 ```
 That is, the `showExpr` method converts its `Expr` argument to a string (`code`), and lifts

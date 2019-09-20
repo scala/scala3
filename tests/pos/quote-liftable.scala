@@ -21,20 +21,20 @@ def test(given QuoteContext) = {
 
   implicit def ListIsLiftable[T: Liftable: Type]: Liftable[List[T]] = new {
     def toExpr(xs: List[T]) = xs match {
-      case x :: xs1 => '{ ${ implicitly[Liftable[T]].toExpr(x) } :: ${ toExpr(xs1) } }
+      case x :: xs1 => '{ ${ Expr(x) } :: ${ toExpr(xs1) } }
       case Nil => '{Nil: List[T]}
     }
   }
 
-  true.toExpr
-  1.toExpr
-  'a'.toExpr
-  1.toExpr
-  1.toExpr
-  1L.toExpr
-  1.0f.toExpr
-  1.0.toExpr
-  "abc".toExpr
+  Expr(true)
+  Expr(1)
+  Expr('a')
+  Expr(1)
+  Expr(1)
+  Expr(1L)
+  Expr(1.0f)
+  Expr(1.0)
+  Expr("abc")
 
-  val xs: Expr[List[Int]] = (1 :: 2 :: 3 :: Nil).toExpr
+  val xs: Expr[List[Int]] = Expr(1 :: 2 :: 3 :: Nil)
 }

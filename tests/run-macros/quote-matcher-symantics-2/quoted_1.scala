@@ -69,7 +69,7 @@ trait Symantics[Num] {
 }
 
 object StringNum extends Symantics[String] {
-  def value(x: Int)(given QuoteContext): Expr[String] = x.toString.toExpr
+  def value(x: Int)(given QuoteContext): Expr[String] = Expr(x.toString)
   def plus(x: Expr[String], y: Expr[String])(given QuoteContext): Expr[String] = '{ s"${$x} + ${$y}" } // '{ x + " + " + y }
   def times(x: Expr[String], y: Expr[String])(given QuoteContext): Expr[String] = '{ s"${$x} * ${$y}" }
   def app(f: Expr[String => String], x: Expr[String])(given QuoteContext): Expr[String] = f(x) // functions are beta reduced
@@ -77,7 +77,7 @@ object StringNum extends Symantics[String] {
 }
 
 object ComputeNum extends Symantics[Int] {
-  def value(x: Int)(given QuoteContext): Expr[Int] = x.toExpr
+  def value(x: Int)(given QuoteContext): Expr[Int] = Expr(x)
   def plus(x: Expr[Int], y: Expr[Int])(given QuoteContext): Expr[Int] = '{ $x + $y }
   def times(x: Expr[Int], y: Expr[Int])(given QuoteContext): Expr[Int] = '{ $x * $y }
   def app(f: Expr[Int => Int], x: Expr[Int])(given QuoteContext): Expr[Int] = '{ $f($x) }
@@ -85,7 +85,7 @@ object ComputeNum extends Symantics[Int] {
 }
 
 object ASTNum extends Symantics[ASTNum] {
-  def value(x: Int)(given QuoteContext): Expr[ASTNum] = '{ LitAST(${x.toExpr}) }
+  def value(x: Int)(given QuoteContext): Expr[ASTNum] = '{ LitAST(${Expr(x)}) }
   def plus(x: Expr[ASTNum], y: Expr[ASTNum])(given QuoteContext): Expr[ASTNum] = '{ PlusAST($x, $y) }
   def times(x: Expr[ASTNum], y: Expr[ASTNum])(given QuoteContext): Expr[ASTNum] = '{ TimesAST($x, $y) }
   def app(f: Expr[ASTNum => ASTNum], x: Expr[ASTNum])(given QuoteContext): Expr[ASTNum] = '{ AppAST($f, $x) }

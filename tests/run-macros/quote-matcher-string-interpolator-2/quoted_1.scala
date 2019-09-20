@@ -11,7 +11,7 @@ object Macros {
       case ('{ StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args1)) =>
         val strParts = parts.map { case Const(str) => str.reverse }
         val strArgs = args1.map { case Const(str) => str }
-        StringContext(strParts: _*).s(strArgs: _*).toExpr
+        Expr(StringContext(strParts: _*).s(strArgs: _*))
       case _ => ???
     }
 

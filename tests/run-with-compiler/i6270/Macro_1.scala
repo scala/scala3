@@ -7,7 +7,7 @@ object api {
 
   private def reflImpl(x: Expr[String])(given qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
-    x.show.toExpr
+    Expr(x.show)
   }
 
   inline def (x: => String) reflectColor : String =
@@ -15,6 +15,6 @@ object api {
 
   private def reflImplColor(x: Expr[String])(given qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
-    x.show(ANSI).toExpr
+    Expr(x.show(ANSI))
   }
 }

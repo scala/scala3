@@ -144,8 +144,8 @@ object Test {
 
     def blasStaticIntExpr(given QuoteContext) = new Blas1(new RingIntExpr, new StaticVecOps)
     def resCode1(given QuoteContext) = blasStaticIntExpr.dot(
-      vec1.map(_.toExpr),
-      vec2.map(_.toExpr)
+      vec1.map(Expr(_)),
+      vec2.map(Expr(_))
     )
     println(withQuoteContext(resCode1.show))
     println(run(resCode1))
