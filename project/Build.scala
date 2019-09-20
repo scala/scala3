@@ -982,6 +982,7 @@ object Build {
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang/ref" ** ("ReferenceTest.scala": FileFilter)).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang/reflect" ** ("ReflectArrayTest.scala": FileFilter)).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/io" ** (("ThrowablesTest.scala": FileFilter) || "SerializableTest.scala" || "PrintWriterTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/math" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/net" ** ("URLDecoderTest.scala": FileFilter)).get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/util" ** (("Base64Test.scala": FileFilter) || "OptionalTest.scala" || "SplittableRandom.scala" || "ObjectsTestOnJDK8.scala" || "ComparatorTestOnJDK8.scala")).get
