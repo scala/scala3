@@ -2213,14 +2213,36 @@ class Typer extends Namer
             traverse(xtree :: rest, facts)
           case none =>
             import untpd.modsDeco
+            // Force completer to use calling context (as opposed to the creation context)
+            // to complete itself. This approach is used so that flow typing can handle `ValDef`s
+            // that appear within a block.
+            //
+            // Example:
+            // Suppose we have a block containing
+            // 1. val x: String|Null = ???
+            // 2. if (x == null) throw NPE
+            // 3. val y = x
+            //
+            // We want to infer y: String on line 3, but if the completer for `y` uses its creation context,
+            // then we won't have the additional flow facts that say that `y` is not null.
+            //
+            // The solution is to use the context containing more information about the statements above.
+            // We use creation context whenever we need to force a completer from some different context,
+            // but use calling context if we get to a definition in a statement sequence that has not been
+            // completed yet. For `ValDef`s within a block, we know they'll be completed immediately after
+            // the symbols are created, so it's safe to complete it using calling context.
             val ctx2 = mdef match {
-              case mdef: untpd.ValDef
-                if ctx.explicitNulls && ctx.owner.is(Method) && !mdef.mods.isOneOf(Lazy | Implicit) =>
+              case mdef: untpd.ValDef if ctx.explicitNulls && ctx.owner.is(Method) && !mdef.mods.isOneOf(Lazy | Implicit) =>
                 val ctx1 = ctx.fresh.addFlowFacts(facts)
-                val sym = ctx1.effectiveScope.lookup(mdef.name)
-                sym.infoOrCompleter match {
-                  case completer: Namer#Completer =>
-                    completer.completeInContext(sym, ctx1)
+                // we cannot use mdef.symbol to get the symbol of the tree here
+                // since the tree has not been completed and doesn't have a denotation
+                mdef.getAttachment(SymOfTree) match {
+                  case Some(sym) =>
+                    sym.infoOrCompleter match {
+                      case completer: Namer#Completer =>
+                        completer.completeInContext(sym, ctx1)
+                      case _ =>
+                    }
                   case _ =>
                 }
                 ctx1

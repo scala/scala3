@@ -744,12 +744,6 @@ class Namer { typer: Typer =>
 
     protected def localContext(owner: Symbol): FreshContext = ctx.fresh.setOwner(owner).setTree(original)
 
-    /** The context in which the completer should be typed: usually it's the creation context,
-     *  but could also be the completion context.
-     */
-    protected def typingContext(owner: Symbol, ctx: Context): FreshContext =
-      ctx.fresh.setOwner(owner).setTree(original)
-
     /** The context with which this completer was created */
     def creationContext: Context = ctx
     ctx.typerState.markShared()
@@ -757,7 +751,10 @@ class Namer { typer: Typer =>
     protected def typeSig(sym: Symbol, ctx: Context): Type = original match {
       case original: ValDef =>
         if (sym.is(Module)) moduleValSig(sym)
-        else valOrDefDefSig(original, sym, Nil, Nil, identity)(typingContext(sym, ctx).setNewScope)
+        else {
+          val newScope = ctx.fresh.setOwner(sym).setTree(original).setNewScope
+          valOrDefDefSig(original, sym, Nil, Nil, identity)(newScope)
+        }
       case original: DefDef =>
         val typer1 = this.ctx.typer.newLikeThis
         nestedTyper(sym) = typer1
