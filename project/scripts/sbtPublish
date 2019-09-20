@@ -29,4 +29,5 @@ echo "$PGP_SECRET" > "$HOME/.sbt/gpg/secring.asc"
 
 # run sbt with the supplied arg
 SBT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/sbt"
-"$SBT" -DSBT_PGP_USE_GPG=false "$RELEASE_CMD"
+export SBT_PGP_USE_GPG=false
+"$SBT" "$RELEASE_CMD"
