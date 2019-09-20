@@ -604,7 +604,7 @@ object Parsers {
           // Therefore, make sure there would be a matching <outdent>
           def nextIndentWidth = in.indentWidth(in.next.offset)
           if (in.token == NEWLINE || in.token == NEWLINES)
-            && !(nextIndentWidth < startIndentWidth)
+             && !(nextIndentWidth < startIndentWidth)
           then
             warning(
               if startIndentWidth <= nextIndentWidth then
@@ -632,7 +632,7 @@ object Parsers {
 /* -------- REWRITES ----------------------------------------------------------- */
 
     /** The last offset where a colon at the end of line would be required if a subsequent { ... }
-     *  block would be converted to an indentation reg`ion.
+     *  block would be converted to an indentation region.
      */
     var possibleColonOffset: Int = -1
 

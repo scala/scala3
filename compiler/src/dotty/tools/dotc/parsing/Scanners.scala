@@ -492,10 +492,6 @@ object Scanners {
           indentPrefix = LBRACE
         case _ =>
       }
-      def isMatchCatchFollow(prev: Token) =
-        nextWidth == lastWidth
-        && (prev == MATCH || prev == CATCH)
-        && token != CASE
       if (newlineIsSeparating &&
           canEndStatTokens.contains(lastToken) &&
           canStartStatTokens.contains(token) &&
