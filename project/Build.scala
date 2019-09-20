@@ -1063,7 +1063,7 @@ object Build {
   lazy val `vscode-dotty` = project.in(file("vscode-dotty")).
     settings(commonSettings).
     settings(
-      version := "0.1.16", // Keep in sync with package.json
+      version := "0.1.17-snapshot", // Keep in sync with package.json
       autoScalaLibrary := false,
       publishArtifact := false,
       includeFilter in unmanagedSources := NothingFilter | "*.ts" | "**.json",
