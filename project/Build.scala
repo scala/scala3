@@ -984,6 +984,8 @@ object Build {
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/io" ** (("ThrowablesTest.scala": FileFilter) || "SerializableTest.scala" || "PrintWriterTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/math" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/net" ** ("URLDecoderTest.scala": FileFilter)).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/security" ** "*.scala").get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/util" ** (("ArraysTest.scala": FileFilter) || "UUIDTest.scala" || "ThrowablesTest.scala" || "RandomTest.scala" || "PropertiesTest.scala" || "PriorityQueueTest.scala" || "HashtableTest.scala" || "DateTest.scala")).get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/util" ** (("Base64Test.scala": FileFilter) || "OptionalTest.scala" || "SplittableRandom.scala" || "ObjectsTestOnJDK8.scala" || "ComparatorTestOnJDK8.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
