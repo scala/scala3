@@ -60,9 +60,8 @@ export function activate(context: ExtensionContext) {
       // 3. Auto-indent after `then`, `else`, `do`, `catch`, `finally`, `yield`, `case`, `=`, `=>`, `<-`, `=>>`x
       "increaseIndentPattern":
         /(((?<!\bend\b\s*?)\b(if|while|for|match|try))|(\bif\s+(?!.*?\bthen\b.*?$)[^\s]*?)|(\b(then|else|do|catch|finally|yield|case))|=|=>|<-|=>>)\s*?$/,
-      // Auto-unindent disabled, because it doesn't work well with all
-      // indentation styles
-      "decreaseIndentPattern": /^.$/
+      // Only auto-unindent completed `end` folowed by `while`, `for`, `match`, `try`, `if`
+      "decreaseIndentPattern": /(^\s*end\b\s*)\b(if|while|for|match|try)$/
     }
   })
 
