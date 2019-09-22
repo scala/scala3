@@ -61,7 +61,7 @@ export function activate(context: ExtensionContext) {
       "increaseIndentPattern":
         /(((?<!\bend\b\s*?)\b(if|while|for|match|try))|(\bif\s+(?!.*?\bthen\b.*?$)[^\s]*?)|(\b(then|else|do|catch|finally|yield|case))|=|=>|<-|=>>)\s*?$/,
       // Only auto-unindent completed `end` folowed by `while`, `for`, `match`, `try`, `if`
-      "decreaseIndentPattern": /(\bend\b\s*)\b(if|while|for|match|try)$/
+      "decreaseIndentPattern": /(^\s*end\b\s*)\b(if|while|for|match|try)$/
     }
   })
 
