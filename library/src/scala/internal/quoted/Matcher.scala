@@ -17,7 +17,7 @@ private[quoted] object Matcher {
 
     private type Env = Set[(Symbol, Symbol)]
 
-    inline private def withEnv[T](env: Env)(body: => ImplicitFunction1[Env, T]): T = body(given env)
+    inline private def withEnv[T](env: Env)(body: => (given Env) => T): T = body(given env)
 
     class SymBinding(val sym: Symbol, val fromAbove: Boolean)
 

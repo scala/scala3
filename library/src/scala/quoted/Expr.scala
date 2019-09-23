@@ -26,7 +26,7 @@ package quoted {
     import scala.internal.quoted._
 
     /** Converts a tuple `(T1, ..., Tn)` to `(Expr[T1], ..., Expr[Tn])` */
-    type TupleOfExpr[Tup <: Tuple] = Tuple.Map[Tup, [X] =>> ImplicitFunction1[QuoteContext, Expr[X]]]
+    type TupleOfExpr[Tup <: Tuple] = Tuple.Map[Tup, [X] =>> (given QuoteContext) => Expr[X]]
 
     implicit class AsFunction[F, Args <: Tuple, R](f: Expr[F])(given tf: TupledFunction[F, Args => R], qctx: QuoteContext) {
       /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
@@ -36,7 +36,7 @@ package quoted {
       }
     }
 
-    implicit class AsContextualFunction[F, Args <: Tuple, R](f: Expr[F])(given tf: TupledFunction[F, ImplicitFunction1[Args, R]], qctx: QuoteContext) {
+    implicit class AsContextualFunction[F, Args <: Tuple, R](f: Expr[F])(given tf: TupledFunction[F, (given Args) => R], qctx: QuoteContext) {
       /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
       def apply[G](given tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]]): G = {
         import qctx.tasty._
@@ -45,13 +45,13 @@ package quoted {
     }
 
     /** Returns a null expresssion equivalent to `'{null}` */
-    def nullExpr: ImplicitFunction1[QuoteContext, Expr[Null]] = (given qctx) => {
+    def nullExpr: (given QuoteContext) => Expr[Null] = (given qctx) => {
       import qctx.tasty._
       Literal(Constant(null)).seal.asInstanceOf[Expr[Null]]
     }
 
     /** Returns a unit expresssion equivalent to `'{}` or `'{()}` */
-    def unitExpr: ImplicitFunction1[QuoteContext, Expr[Unit]] = (given qctx) => {
+    def unitExpr: (given QuoteContext) => Expr[Unit] = (given qctx) => {
       import qctx.tasty._
       Literal(Constant(())).seal.asInstanceOf[Expr[Unit]]
     }

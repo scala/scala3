@@ -1,1 +1,0 @@
-The contents of this page have [moved](./implicit-by-name-parameters.md).

@@ -3,11 +3,6 @@ layout: doc-page
 title: "Implicit Conversions"
 ---
 
-**Note** The syntax described in this section is currently under revision.
-[Here is the new version which will be implemented in Dotty 0.19](../contextual-new/conversions.html).
-
-
-
 Implicit conversions are defined by given instances of the `scala.Conversion` class.
 This class is defined in package `scala` as follows:
 ```scala
@@ -15,13 +10,13 @@ abstract class Conversion[-T, +U] extends (T => U)
 ```
 For example, here is an implicit conversion from `String` to `Token`:
 ```scala
-given as Conversion[String, Token] {
+given Conversion[String, Token] {
   def apply(str: String): Token = new KeyWord(str)
 }
 ```
 Using an alias this can be expressed more concisely as:
 ```scala
-given as Conversion[String, Token] = new KeyWord(_)
+given Conversion[String, Token] = new KeyWord(_)
 ```
 An implicit conversion is applied automatically by the compiler in three situations:
 
@@ -42,7 +37,7 @@ If such an instance `C` is given, the expression `e` is replaced by `C.apply(e)`
 primitive number types to subclasses of `java.lang.Number`. For instance, the
 conversion from `Int` to `java.lang.Integer` can be defined as follows:
 ```scala
-given int2Integer as Conversion[Int, java.lang.Integer] =
+given int2Integer: Conversion[Int, java.lang.Integer] =
  java.lang.Integer.valueOf(_)
 ```
 
@@ -64,9 +59,9 @@ object Completions {
     //
     //   CompletionArg.fromStatusCode(statusCode)
 
-    given fromString     as Conversion[String, CompletionArg]               = Error(_)
-    given fromFuture     as Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    given fromStatusCode as Conversion[Future[StatusCode], CompletionArg]   = Status(_)
+    given fromString     : Conversion[String, CompletionArg]               = Error(_)
+    given fromFuture     : Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    given fromStatusCode : Conversion[Future[StatusCode], CompletionArg]   = Status(_)
   }
   import CompletionArg._
 
