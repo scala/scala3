@@ -353,6 +353,7 @@ object Parsers {
           case `altEnd` =>
           case NEWLINE | NEWLINES => in.nextToken()
           case SEMI => in.nextToken()
+          case EQUALS => equalsExpr()
           case _ =>
             syntaxError(i"end of statement expected but $in found")
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
