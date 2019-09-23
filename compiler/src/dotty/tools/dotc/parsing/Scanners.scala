@@ -385,7 +385,7 @@ object Scanners {
         lookahead.allowLeadingInfixOperators = false
           // force a NEWLINE a after current token if it is on its own line
         lookahead.nextToken()
-        canStartExpressionTokens.contains(lookahead.token)
+        canStartExprTokens.contains(lookahead.token)
       }
       && {
         if isScala2Mode || oldSyntax && !rewrite then
@@ -495,10 +495,11 @@ object Scanners {
           indentPrefix = LBRACE
         case _ =>
       }
-      if (newlineIsSeparating &&
-          canEndStatTokens.contains(lastToken) &&
-          canStartStatTokens.contains(token) &&
-          !isLeadingInfixOperator())
+      if newlineIsSeparating
+         && canEndStatTokens.contains(lastToken)
+         && canStartStatTokens.contains(token)
+         && !isLeadingInfixOperator()
+      then
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
       else if indentIsSignificant then
         if nextWidth < lastWidth
@@ -541,29 +542,19 @@ object Scanners {
          |Previous indent : $lastWidth
          |Latest indent   : $nextWidth"""
 
-    def observeIndented(
-      unless: BitSet = BitSet.empty,
-      unlessSoftKW: TermName = EmptyTermName): Unit
-    =
-      if (indentSyntax && isAfterLineEnd && token != INDENT) {
-        val nextOffset = if (isNewLine) next.offset else offset
-        val nextToken = if (isNewLine) next.token else token
-        val nextWidth = indentWidth(nextOffset)
-        val lastWidth = currentRegion match {
+    def observeIndented(): Unit =
+      if indentSyntax && isNewLine then
+        val nextWidth = indentWidth(next.offset)
+        val lastWidth = currentRegion match
           case r: Indented => r.width
           case r: InBraces => r.width
           case _ => nextWidth
-        }
 
-        if (lastWidth < nextWidth
-           && !unless.contains(nextToken)
-           && (unlessSoftKW.isEmpty || token != IDENTIFIER || name != unlessSoftKW)) {
+        if lastWidth < nextWidth then
           currentRegion = Indented(nextWidth, Set(), COLONEOL, currentRegion)
-          if (!isNewLine) next.copyFrom(this)
-          offset = nextOffset
+          offset = next.offset
           token = INDENT
-        }
-      }
+    end observeIndented
 
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
      *  - Insert missing OUTDENTs at EOF
@@ -1010,6 +1001,12 @@ object Scanners {
 
     def isNestedStart = token == LBRACE || token == INDENT
     def isNestedEnd = token == RBRACE || token == OUTDENT
+
+    def canStartStatTokens =
+      if isScala2Mode then canStartStatTokens2 else canStartStatTokens3
+
+    def canStartExprTokens =
+      if isScala2Mode then canStartExprTokens2 else canStartExprTokens3
 
 // Literals -----------------------------------------------------------------
 

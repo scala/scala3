@@ -207,7 +207,7 @@ object Parsers {
     } && !in.isSoftModifierInModifierPosition
 
     def isExprIntro: Boolean =
-      canStartExpressionTokens.contains(in.token) && !in.isSoftModifierInModifierPosition
+      in.canStartExprTokens.contains(in.token) && !in.isSoftModifierInModifierPosition
 
     def isDefIntro(allowedMods: BitSet, excludedSoftModifiers: Set[TermName] = Set.empty): Boolean =
       in.token == AT ||
@@ -1231,6 +1231,10 @@ object Parsers {
       // note: next is defined here because current == NEWLINE
       if (in.token == NEWLINE && in.next.token == token) in.nextToken()
 
+    def newLinesOptWhenFollowedBy(name: Name): Unit =
+      if in.isNewLine && in.next.token == IDENTIFIER && in.next.name == name then
+        in.nextToken()
+
     def newLineOptWhenFollowing(p: Int => Boolean): Unit =
       // note: next is defined here because current == NEWLINE
       if (in.token == NEWLINE && p(in.next.token)) newLineOpt()
@@ -1246,7 +1250,7 @@ object Parsers {
     }
 
     def possibleTemplateStart(): Unit = {
-      in.observeIndented(unless = noIndentTemplateTokens, unlessSoftKW = nme.derives)
+      in.observeIndented()
       newLineOptWhenFollowedBy(LBRACE)
     }
 
@@ -1651,7 +1655,7 @@ object Parsers {
     def toBeContinued(altToken: Token): Boolean =
       if in.token == altToken || in.isNewLine || in.isScala2Mode then
         false // a newline token means the expression is finished
-      else if !canStartStatTokens.contains(in.token)
+      else if !in.canStartStatTokens.contains(in.token)
               || in.isLeadingInfixOperator(inConditional = true)
       then
         true
@@ -1852,20 +1856,20 @@ object Parsers {
           }
         }
       case _ =>
-        if (isIdent(nme.inline) && !in.inModifierPosition() && in.lookaheadIn(canStartExpressionTokens)) {
+        if isIdent(nme.inline)
+           && !in.inModifierPosition()
+           && in.lookaheadIn(in.canStartExprTokens)
+        then
           val start = in.skipToken()
-          in.token match {
+          in.token match
             case IF =>
               ifExpr(start, InlineIf)
             case _ =>
               val t = postfixExpr()
               if (in.token == MATCH) matchExpr(t, start, InlineMatch)
-              else {
+              else
                 syntaxErrorOrIncomplete(i"`match` or `if` expected but ${in.token} found")
                 t
-              }
-          }
-        }
         else expr1Rest(postfixExpr(), location)
     }
 
@@ -2012,7 +2016,7 @@ object Parsers {
     def postfixExpr(): Tree = postfixExprRest(prefixExpr())
 
     def postfixExprRest(t: Tree): Tree =
-      infixOps(t, canStartExpressionTokens, prefixExpr, maybePostfix = true)
+      infixOps(t, in.canStartExprTokens, prefixExpr, maybePostfix = true)
 
     /** PrefixExpr   ::= [`-' | `+' | `~' | `!'] SimpleExpr
     */
@@ -2209,7 +2213,7 @@ object Parsers {
             lookahead.nextToken()
             lookahead.token != COLON
           }
-          else canStartExpressionTokens.contains(lookahead.token)
+          else in.canStartExprTokens.contains(lookahead.token)
         }
       }
       if (in.token == LPAREN && (!inClassConstrAnnots || isLegalAnnotArg))
@@ -2338,7 +2342,7 @@ object Parsers {
                 dropParensOrBraces(start, if (in.token == YIELD || in.token == DO) "" else "do")
               }
             }
-            in.observeIndented(unless = noIndentAfterEnumeratorTokens)
+            in.observeIndented()
             res
           }
           else {
@@ -2484,7 +2488,7 @@ object Parsers {
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
-      infixOps(simplePattern(), canStartExpressionTokens, simplePattern, isOperator = in.name != nme.raw.BAR)
+      infixOps(simplePattern(), in.canStartExprTokens, simplePattern, isOperator = in.name != nme.raw.BAR)
 
     /** SimplePattern    ::= PatVar
      *                    |  Literal
@@ -3470,6 +3474,7 @@ object Parsers {
     /** Template          ::=  InheritClauses [TemplateBody]
      */
     def template(constr: DefDef, isEnum: Boolean = false): Template = {
+      newLinesOptWhenFollowedBy(nme.derives)
       val (parents, derived) = inheritClauses()
       possibleTemplateStart()
       if (isEnum) {
@@ -3482,10 +3487,11 @@ object Parsers {
     /** TemplateOpt = [Template]
      */
     def templateOpt(constr: DefDef): Template =
-      possibleTemplateStart()
+      newLinesOptWhenFollowedBy(nme.derives)
       if in.token == EXTENDS || isIdent(nme.derives) then
         template(constr)
       else
+        possibleTemplateStart()
         if in.isNestedStart then
           template(constr)
         else

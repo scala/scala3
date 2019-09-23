@@ -22,3 +22,14 @@ object testindent
     val y = x
     println(y)
 
+  while true
+  do println(1)
+
+  for i <- List(1, 2, 3)
+  do println(i)
+
+  while (true)
+  do println(1)
+
+  for (i <- List(1, 2, 3))
+  do println(i)

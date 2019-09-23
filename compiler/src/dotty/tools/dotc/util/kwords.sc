@@ -13,6 +13,6 @@ object kwords {
                                                   //| atch, lazy, then, forSome, _, :, =, <-, =>, ';', ';', <:, >:, #, @, <%)
   keywords.toList.filter(kw => tokenString(kw) == null)
                                                   //> res1: List[Int] = List()
-    canStartStatTokens contains CASE              //> res2: Boolean = false
-                                                  
+  canStartStatTokens3 contains CASE               //> res2: Boolean = false
+
 }
