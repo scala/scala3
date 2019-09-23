@@ -13,9 +13,9 @@ object Macros {
     while (i < size) {
       ${
         for (j <- new UnrolledRange(0, unrollSize)) '{
-          val index = i + ${j}
+          val index = i + $j
           val element = ($seq)(index)
-          ${ f('element) } // or `($f)(element)` if `f` should not be inlined
+          ${ Expr.reduce(f)('element) } // or `($f)(element)` if `f` should not be inlined
         }
       }
       i += ${unrollSize}

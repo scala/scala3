@@ -17,7 +17,7 @@ object Macro {
       ${
         for (j <- new UnrolledRange(0, unrollSize)) '{
           val element = ($seq)(i + ${j})
-          ${f('element)} // or `($f)(element)` if `f` should not be inlined
+          ${Expr.reduce(f)('element)} // or `($f)(element)` if `f` should not be inlined
         }
       }
       i += ${unrollSize}

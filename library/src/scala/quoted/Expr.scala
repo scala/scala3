@@ -28,20 +28,16 @@ package quoted {
     /** Converts a tuple `(T1, ..., Tn)` to `(Expr[T1], ..., Expr[Tn])` */
     type TupleOfExpr[Tup <: Tuple] = Tuple.Map[Tup, [X] =>> (given QuoteContext) => Expr[X]]
 
-    implicit class AsFunction[F, Args <: Tuple, R](f: Expr[F])(given tf: TupledFunction[F, Args => R], qctx: QuoteContext) {
-      /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
-      def apply[G](given tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]]): G = {
-        import qctx.tasty._
-        tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
-      }
+    /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
+    def reduce[F, Args <: Tuple, R, G](f: Expr[F])(given tf: TupledFunction[F, Args => R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G = {
+      import qctx.tasty._
+      tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
     }
 
-    implicit class AsContextualFunction[F, Args <: Tuple, R](f: Expr[F])(given tf: TupledFunction[F, (given Args) => R], qctx: QuoteContext) {
-      /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
-      def apply[G](given tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]]): G = {
-        import qctx.tasty._
-        tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
-      }
+    /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
+    def reduceGiven[F, Args <: Tuple, R, G](f: Expr[F])(given tf: TupledFunction[F, (given Args) => R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G = {
+      import qctx.tasty._
+      tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
     }
 
     /** Returns a null expresssion equivalent to `'{null}` */

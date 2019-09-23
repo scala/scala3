@@ -15,7 +15,7 @@ object Macro {
       println("<log> start loop")
       ${
         @tailrec def loop(j: Int, acc: Expr[Unit]): Expr[Unit] =
-        if (j >= 0) loop(j - 1, '{ ${f('{$seq(i + ${j})})}; $acc })
+        if (j >= 0) loop(j - 1, '{ ${Expr.reduce(f)('{$seq(i + ${j})})}; $acc })
         else acc
         loop(unrollSize - 1, '{})
       }
