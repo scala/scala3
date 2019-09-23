@@ -181,7 +181,7 @@ object Parsers {
 
 /* -------------- TOKEN CLASSES ------------------------------------------- */
 
-    def isIdent = in.token == IDENTIFIER || in.token == BACKQUOTED_IDENT
+    def isIdent = in.isIdent
     def isIdent(name: Name) = in.token == IDENTIFIER && in.name == name
     def isSimpleLiteral = simpleLiteralTokens contains in.token
     def isLiteral = literalTokens contains in.token
@@ -215,8 +215,7 @@ object Parsers {
       (allowedMods `contains` in.token) ||
       in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
 
-    def isStatSep: Boolean =
-      in.token == NEWLINE || in.token == NEWLINES || in.token == SEMI
+    def isStatSep: Boolean = in.isNewLine || in.token == SEMI
 
     /** A '$' identifier is treated as a splice if followed by a `{`.
      *  A longer identifier starting with `$` is treated as a splice/id combination
@@ -341,10 +340,8 @@ object Parsers {
     /** semi = nl {nl} | `;'
      *  nl  = `\n' // where allowed
      */
-    def acceptStatSep(): Unit = in.token match {
-      case NEWLINE | NEWLINES => in.nextToken()
-      case _                  => accept(SEMI)
-    }
+    def acceptStatSep(): Unit =
+      if in.isNewLine then in.nextToken() else accept(SEMI)
 
     def acceptStatSepUnlessAtEnd(altEnd: Token = EOF): Unit =
       if (!isStatSeqEnd)
@@ -603,9 +600,7 @@ object Parsers {
           val t = body()
           // Therefore, make sure there would be a matching <outdent>
           def nextIndentWidth = in.indentWidth(in.next.offset)
-          if (in.token == NEWLINE || in.token == NEWLINES)
-             && !(nextIndentWidth < startIndentWidth)
-          then
+          if in.isNewLine && !(nextIndentWidth < startIndentWidth) then
             warning(
               if startIndentWidth <= nextIndentWidth then
                 i"""Line is indented too far to the right, or a `{' is missing before:
@@ -623,7 +618,7 @@ object Parsers {
      *  statement that's indented relative to the current region.
      */
     def checkNextNotIndented(): Unit = in.currentRegion match
-      case r: InBraces if in.token == NEWLINE || in.token == NEWLINES =>
+      case r: InBraces if in.isNewLine =>
         val nextIndentWidth = in.indentWidth(in.next.offset)
         if r.indentWidth < nextIndentWidth then
           warning(i"Line is indented too far to the right, or a `{' is missing", in.next.offset)
@@ -876,7 +871,7 @@ object Parsers {
       }
       if (lookahead.token == LARROW)
         false // it's a pattern
-      else if (lookahead.token != IDENTIFIER && lookahead.token != BACKQUOTED_IDENT)
+      else if (lookahead.isIdent)
         true // it's not a pattern since token cannot be an infix operator
       else
         followedByToken(LARROW) // `<-` comes before possible statement starts
@@ -904,7 +899,7 @@ object Parsers {
      */
     def followingIsGivenSig() =
       val lookahead = in.LookaheadScanner()
-      if lookahead.token == IDENTIFIER || lookahead.token == BACKQUOTED_IDENT then
+      if lookahead.isIdent then
         lookahead.nextToken()
       while lookahead.token == LPAREN || lookahead.token == LBRACKET do
         lookahead.skipParens()
@@ -1230,8 +1225,7 @@ object Parsers {
       if (in.token == NEWLINE) in.nextToken()
 
     def newLinesOpt(): Unit =
-      if (in.token == NEWLINE || in.token == NEWLINES)
-        in.nextToken()
+      if in.isNewLine then in.nextToken()
 
     def newLineOptWhenFollowedBy(token: Int): Unit =
       // note: next is defined here because current == NEWLINE
