@@ -1164,6 +1164,8 @@ object Build {
     publishMavenStyle := true,
     isSnapshot := version.value.contains("SNAPSHOT"),
     publishTo := sonatypePublishToBundle.value,
+    publishConfiguration ~= (_.withOverwrite(true)),
+    publishLocalConfiguration ~= (_.withOverwrite(true)),
     publishArtifact in Test := false,
     homepage := Some(url(dottyGithubUrl)),
     licenses += ("BSD New",
