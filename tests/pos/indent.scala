@@ -18,6 +18,25 @@ object Test
       else
         println("world")
         33
+    val y1 =
+      if x > 0
+        1
+      else
+        2
+    val y2 =
+      if (y > 0) && y < 0
+        1
+      else
+        2
+    def (x: Int) gt (y: Int) = x > y
+    val y3 =
+      if (1) max 10 gt 0
+
+      then
+        1
+      else
+        2
+    if (true) println (2)
     val z = 22
     x + y + z
   end f

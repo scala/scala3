@@ -220,7 +220,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       if (sym == NothingClass) RT_NOTHING
       else if (sym == NullClass) RT_NULL
       else {
-       val r = classBTypeFromSymbol(sym)
+        val r = classBTypeFromSymbol(sym)
         if (r.isNestedClass) innerClassBufferASM += r
         r
       }

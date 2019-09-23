@@ -374,8 +374,8 @@ object Scanners {
       *  If a leading infix operator is found and -language:Scala2 or -old-syntax is set,
       *  emit a change warning.
       */
-    def isLeadingInfixOperator() = (
-          allowLeadingInfixOperators
+    def isLeadingInfixOperator(inConditional: Boolean = true) = (
+      allowLeadingInfixOperators
       && (  token == BACKQUOTED_IDENT
          || token == IDENTIFIER && isOperatorPart(name(name.length - 1)))
       && ch == ' '
@@ -388,9 +388,12 @@ object Scanners {
         canStartExpressionTokens.contains(lookahead.token)
       }
       && {
-        if (isScala2Mode || oldSyntax && !rewrite)
-          ctx.warning(em"""Line starts with an operator;
-                          |it is now treated as a continuation of the expression on the previous line,
+        if isScala2Mode || oldSyntax && !rewrite then
+          val (what, previous) =
+            if inConditional then ("Rest of line", "previous expression in parentheses")
+            else ("Line", "expression on the previous line")
+          ctx.warning(em"""$what starts with an operator;
+                          |it is now treated as a continuation of the $previous,
                           |not as a separate statement.""",
                       source.atSpan(Span(offset)))
         true
@@ -538,11 +541,13 @@ object Scanners {
          |Previous indent : $lastWidth
          |Latest indent   : $nextWidth"""
 
-    def observeIndented(unless: BitSet, unlessSoftKW: TermName = EmptyTermName): Unit =
+    def observeIndented(
+      unless: BitSet = BitSet.empty,
+      unlessSoftKW: TermName = EmptyTermName): Unit
+    =
       if (indentSyntax && isAfterLineEnd && token != INDENT) {
-        val newLineInserted = token == NEWLINE || token == NEWLINES
-        val nextOffset = if (newLineInserted) next.offset else offset
-        val nextToken = if (newLineInserted) next.token else token
+        val nextOffset = if (isNewLine) next.offset else offset
+        val nextToken = if (isNewLine) next.token else token
         val nextWidth = indentWidth(nextOffset)
         val lastWidth = currentRegion match {
           case r: Indented => r.width
@@ -554,7 +559,7 @@ object Scanners {
            && !unless.contains(nextToken)
            && (unlessSoftKW.isEmpty || token != IDENTIFIER || name != unlessSoftKW)) {
           currentRegion = Indented(nextWidth, Set(), COLONEOL, currentRegion)
-          if (!newLineInserted) next.copyFrom(this)
+          if (!isNewLine) next.copyFrom(this)
           offset = nextOffset
           token = INDENT
         }
@@ -880,38 +885,35 @@ object Scanners {
         print("la:")
         super.printState()
       }
-
-      /** Skip matching pairs of `(...)` or `[...]` parentheses.
-       *  @pre  The current token is `(` or `[`
-       */
-      final def skipParens(): Unit = {
-        val opening = token
-        nextToken()
-        while token != EOF && token != opening + 1 do
-          if token == opening then skipParens() else nextToken()
-        nextToken()
-      }
     }
+
+    /** Skip matching pairs of `(...)` or `[...]` parentheses.
+     *  @pre  The current token is `(` or `[`
+     */
+    final def skipParens(multiple: Boolean = true): Unit =
+      val opening = token
+      nextToken()
+      while token != EOF && token != opening + 1 do
+        if token == opening && multiple then skipParens() else nextToken()
+      nextToken()
 
     /** Is the token following the current one in `tokens`? */
     def lookaheadIn(tokens: BitSet): Boolean = {
       val lookahead = LookaheadScanner()
-      while ({
+      while
         lookahead.nextToken()
-        lookahead.token == NEWLINE || lookahead.token == NEWLINES
-      })
-      ()
+        lookahead.isNewLine
+      do ()
       tokens.contains(lookahead.token)
     }
 
     /** Is the current token in a position where a modifier is allowed? */
     def inModifierPosition(): Boolean = {
       val lookahead = LookaheadScanner()
-      while ({
+      while
         lookahead.nextToken()
-        lookahead.token == NEWLINE || lookahead.token == NEWLINES || lookahead.isSoftModifier
-      })
-      ()
+        lookahead.isNewLine || lookahead.isSoftModifier
+      do ()
       modifierFollowers.contains(lookahead.token)
     }
 
@@ -1002,6 +1004,8 @@ object Scanners {
 
     def isSoftModifierInParamModifierPosition: Boolean =
       isSoftModifier && !lookaheadIn(BitSet(COLON))
+
+    def isNewLine = token == NEWLINE || token == NEWLINES
 
     def isNestedStart = token == LBRACE || token == INDENT
     def isNestedEnd = token == RBRACE || token == OUTDENT
@@ -1273,7 +1277,8 @@ object Scanners {
 
     override def toString: String =
       showTokenDetailed(token) + {
-        if ((identifierTokens contains token) || (literalTokens contains token)) " " + name
+        if identifierTokens.contains(token) then name
+        else if literalTokens.contains(token) then strVal
         else ""
       }
 
