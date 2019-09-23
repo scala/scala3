@@ -2232,7 +2232,8 @@ class Typer extends Namer
             // completed yet. For `ValDef`s within a block, we know they'll be completed immediately after
             // the symbols are created, so it's safe to complete it using calling context.
             val ctx2 = mdef match {
-              case mdef: untpd.ValDef if ctx.explicitNulls && ctx.owner.is(Method) && !mdef.mods.isOneOf(Lazy | Implicit) =>
+              // Lazy is checked here because lazy ValDef is allowed between forward references
+              case mdef: untpd.ValDef if ctx.explicitNulls && ctx.owner.is(Method) && !mdef.mods.isOneOf(Lazy) =>
                 val ctx1 = ctx.fresh.addFlowFacts(facts)
                 // we cannot use mdef.symbol to get the symbol of the tree here
                 // since the tree has not been completed and doesn't have a denotation

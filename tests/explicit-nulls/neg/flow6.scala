@@ -37,7 +37,7 @@ class Foo {
   def test4(): Unit = {
     val x: String|Null = ???
     if (x == null) return ()
-    implicit val y: Int = x.length // error: x: String|Null inferred
+    implicit val y: Int = x.length // ok: x: String inferred
   }
 
   // This case is different from #3 because the type of y doesn't need
