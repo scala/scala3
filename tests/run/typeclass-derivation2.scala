@@ -253,7 +253,7 @@ object Eq {
           case _ =>
             error("invalid call to eqlCases: one of Alts is not a subtype of T")
         }
-     case _: Unit =>
+      case _: Unit =>
         false
     }
 

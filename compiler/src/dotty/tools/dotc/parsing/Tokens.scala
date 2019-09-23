@@ -263,6 +263,8 @@ object Tokens extends TokensCommon {
 
   final val statCtdTokens: BitSet = BitSet(THEN, ELSE, DO, CATCH, FINALLY, YIELD, MATCH)
 
+  final val closingRegionTokens = BitSet(RBRACE, CASE) | statCtdTokens
+
   final val canStartIndentTokens: BitSet =
     statCtdTokens | BitSet(COLONEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR)
       // `if` is excluded because it often comes after `else` which makes for awkward indentation rules  TODO: try to do without the exception

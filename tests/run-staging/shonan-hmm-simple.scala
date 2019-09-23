@@ -2,29 +2,28 @@ import scala.quoted._
 import scala.quoted.staging._
 import scala.quoted.autolift.given
 
-trait Ring[T] {
+trait Ring[T]
   val zero: T
   val one: T
   val add: (x: T, y: T) => T
   val sub: (x: T, y: T) => T
   val mul: (x: T, y: T) => T
-}
+end Ring
 
-class RingInt extends Ring[Int] {
+class RingInt extends Ring[Int]
   val zero = 0
   val one  = 1
   val add  = (x, y) => x + y
   val sub  = (x, y) => x - y
   val mul  = (x, y) => x * y
-}
 
-class RingIntExpr(given QuoteContext) extends Ring[Expr[Int]] {
+
+class RingIntExpr(given QuoteContext) extends Ring[Expr[Int]]
   val zero = '{0}
   val one  = '{1}
   val add  = (x, y) => '{$x + $y}
   val sub  = (x, y) => '{$x - $y}
   val mul  = (x, y) => '{$x * $y}
-}
 
 class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]] {
   val zero = Complex(u.zero, u.zero)
@@ -34,15 +33,14 @@ class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]] {
   val mul  = (x, y) => Complex(u.sub(u.mul(x.re, y.re), u.mul(x.im, y.im)), u.add(u.mul(x.re, y.im), u.mul(x.im, y.re)))
 }
 
-sealed trait PV[T] {
+sealed trait PV[T]
   def expr(given Liftable[T], QuoteContext): Expr[T]
-}
-case class Sta[T](x: T) extends PV[T] {
+
+case class Sta[T](x: T) extends PV[T]
   def expr(given Liftable[T], QuoteContext): Expr[T] = x
-}
-case class Dyn[T](x: Expr[T]) extends PV[T] {
+
+case class Dyn[T](x: Expr[T]) extends PV[T]
   def expr(given Liftable[T], QuoteContext): Expr[T] = x
-}
 
 class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]])(given QuoteContext) extends Ring[PV[U]] {
   val zero: PV[U] = Sta(u.zero)
@@ -71,11 +69,10 @@ class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]])(given QuoteContext) ext
 
 case class Complex[T](re: T, im: T)
 
-object Complex {
+object Complex
   implicit def isLiftable[T: Type: Liftable]: Liftable[Complex[T]] = new Liftable[Complex[T]] {
     def toExpr(comp: Complex[T]) = '{Complex(${comp.re}, ${comp.im})}
   }
-}
 
 case class Vec[Idx, T](size: Idx, get: Idx => T) {
   def map[U](f: T => U): Vec[Idx, U] = Vec(size, i => f(get(i)))
@@ -99,17 +96,15 @@ class StaticVecOps[T] extends VecOps[Int, T] {
   }
 }
 
-class ExprVecOps[T: Type](given QuoteContext) extends VecOps[Expr[Int], Expr[T]] {
+class ExprVecOps[T: Type](given QuoteContext) extends VecOps[Expr[Int], Expr[T]]
   val reduce: ((Expr[T], Expr[T]) => Expr[T], Expr[T], Vec[Expr[Int], Expr[T]]) => Expr[T] = (plus, zero, vec) => '{
     var sum = $zero
     var i = 0
-    while (i < ${vec.size}) {
+    while i < ${vec.size} do
       sum = ${ plus('sum, vec.get('i)) }
       i += 1
-    }
     sum
   }
-}
 
 class Blas1[Idx, T](r: Ring[T], ops: VecOps[Idx, T]) {
   def dot(v1: Vec[Idx, T], v2: Vec[Idx, T]): T = ops.reduce(r.add, r.zero, v1.zipWith(v2, r.mul))

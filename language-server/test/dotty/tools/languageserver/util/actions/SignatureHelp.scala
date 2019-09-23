@@ -29,7 +29,7 @@ class SignatureHelp(override val marker: CodeMarker,
                     activeSignature: Option[Int],
                     activeParam: Int) extends ActionOnMarker {
 
-   val expectedSignatures = expected.map(DottyLanguageServer.signatureToSignatureInformation)
+  val expectedSignatures = expected.map(DottyLanguageServer.signatureToSignatureInformation)
 
   override def execute(): Exec[Unit] = {
     val results = server.signatureHelp(marker.toTextDocumentPositionParams).get()

@@ -20,7 +20,7 @@ object Test extends App {
     case _: Throwable => println("other")
   }
 
- def simpleTry: Unit = {
+  def simpleTry: Unit = {
     try {
       bla
     } catch {

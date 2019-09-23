@@ -240,7 +240,7 @@ object Eq {
       case _: (Shape.Case[alt, elems] *: alts1) =>
         if (xm.ordinal == n) eqlElems[elems](xm, ym, 0)
         else eqlCases[alts1](xm, ym, n + 1)
-     case _: Unit =>
+      case _: Unit =>
         false
     }
 
