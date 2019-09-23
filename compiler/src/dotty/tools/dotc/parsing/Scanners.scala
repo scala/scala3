@@ -546,8 +546,7 @@ object Scanners {
       if indentSyntax && isNewLine then
         val nextWidth = indentWidth(next.offset)
         val lastWidth = currentRegion match
-          case r: Indented => r.width
-          case r: InBraces => r.width
+          case r: IndentSignificantRegion => r.indentWidth
           case _ => nextWidth
 
         if lastWidth < nextWidth then
@@ -1331,12 +1330,16 @@ object Scanners {
     def enclosing: Region = outer.asInstanceOf[Region]
 
     /** If this is an InBraces or Indented region, its indentation width, or Zero otherwise */
-    def indentWidth = IndentWidth.Zero
+    def indentWidth: IndentWidth = IndentWidth.Zero
   }
 
   case class InString(multiLine: Boolean, outer: Region) extends Region
   case class InParens(prefix: Token, outer: Region) extends Region
-  case class InBraces(var width: IndentWidth | Null, outer: Region) extends Region {
+
+  abstract class IndentSignificantRegion extends Region
+
+  case class InBraces(var width: IndentWidth | Null, outer: Region)
+  extends IndentSignificantRegion {
     override def indentWidth = width
   }
 
@@ -1345,7 +1348,8 @@ object Scanners {
    *  @param others  Other indendation widths > width of lines in the same region
    *  @param prefix  The token before the initial <indent> of the region
    */
-  case class Indented(width: IndentWidth, others: Set[IndentWidth], prefix: Token, outer: Region | Null) extends Region {
+  case class Indented(width: IndentWidth, others: Set[IndentWidth], prefix: Token, outer: Region | Null)
+  extends IndentSignificantRegion {
     override def indentWidth = width
   }
 

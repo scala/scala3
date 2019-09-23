@@ -618,7 +618,7 @@ object Parsers {
      *  statement that's indented relative to the current region.
      */
     def checkNextNotIndented(): Unit = in.currentRegion match
-      case r: InBraces if in.isNewLine =>
+      case r: IndentSignificantRegion if in.isNewLine =>
         val nextIndentWidth = in.indentWidth(in.next.offset)
         if r.indentWidth < nextIndentWidth then
           warning(i"Line is indented too far to the right, or a `{' is missing", in.next.offset)
