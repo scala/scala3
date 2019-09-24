@@ -365,14 +365,13 @@ trait Printers
         case OmitSelector(id) => this += "OmitSelector(" += id += ")"
       }
 
-      def visitSymbol(x: Symbol): Buffer = x match {
-        case IsPackageDefSymbol(x) => this += "IsPackageDefSymbol(<" += x.fullName += ">)"
-        case IsClassDefSymbol(x) => this += "IsClassDefSymbol(<" += x.fullName += ">)"
-        case IsDefDefSymbol(x) => this += "IsDefDefSymbol(<" += x.fullName += ">)"
-        case IsValDefSymbol(x) => this += "IsValDefSymbol(<" += x.fullName += ">)"
-        case IsTypeDefSymbol(x) => this += "IsTypeDefSymbol(<" += x.fullName += ">)"
-        case NoSymbol() => this += "NoSymbol()"
-      }
+      def visitSymbol(x: Symbol): Buffer =
+        if x.isPackageDef  then this += "IsPackageDefSymbol(<" += x.fullName += ">)"
+        else if x.isClassDef then this += "IsClassDefSymbol(<" += x.fullName += ">)"
+        else if x.isDefDef then this += "IsDefDefSymbol(<" += x.fullName += ">)"
+        else if x.isValDef then this += "IsValDefSymbol(<" += x.fullName += ">)"
+        else if x.isTypeDef then this += "IsTypeDefSymbol(<" += x.fullName += ">)"
+        else { assert(x.isNoSymbol); this += "NoSymbol()" }
 
       def +=(x: Boolean): Buffer = { sb.append(x); this }
       def +=(x: Byte): Buffer = { sb.append(x); this }
@@ -1272,24 +1271,23 @@ trait Printers
 
       def printParamDef(arg: ValDef)(given elideThis: Option[Symbol]): Unit = {
         val name = arg.name
-        arg.symbol.owner match {
-          case IsDefDefSymbol(sym) if sym.name == "<init>" =>
-            val ClassDef(_, _, _, _, _, body) = sym.owner.tree
-            body.collectFirst {
-              case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.symbol.flags.is(Flags.ParamAccessor) =>
-                if (!vdef.symbol.flags.is(Flags.Local)) {
-                  var printedPrefix = false
-                  if (vdef.symbol.flags.is(Flags.Override)) {
-                    this += "override "
-                    printedPrefix = true
-                  }
-                  printedPrefix  |= printProtectedOrPrivate(vdef)
-                  if (vdef.symbol.flags.is(Flags.Mutable)) this += highlightValDef("var ")
-                  else if (printedPrefix || !vdef.symbol.flags.is(Flags.CaseAcessor)) this += highlightValDef("val ")
+        val sym = arg.symbol.owner
+        if sym.isDefDef && sym.name == "<init>" then
+          val ClassDef(_, _, _, _, _, body) = sym.owner.tree
+          body.collectFirst {
+            case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.symbol.flags.is(Flags.ParamAccessor) =>
+              if (!vdef.symbol.flags.is(Flags.Local)) {
+                var printedPrefix = false
+                if (vdef.symbol.flags.is(Flags.Override)) {
+                  this += "override "
+                  printedPrefix = true
                 }
-            }
-          case _ =>
-        }
+                printedPrefix  |= printProtectedOrPrivate(vdef)
+                if (vdef.symbol.flags.is(Flags.Mutable)) this += highlightValDef("var ")
+                else if (printedPrefix || !vdef.symbol.flags.is(Flags.CaseAcessor)) this += highlightValDef("val ")
+              }
+          }
+        end if
 
         this += highlightValDef(name) += ": "
         printTypeTree(arg.tpt)
@@ -1421,10 +1419,10 @@ trait Printers
             case Type.IsTypeRef(tpe) if tpe.typeSymbol.fullName == "scala.runtime.Null$" || tpe.typeSymbol.fullName == "scala.runtime.Nothing$" =>
               // scala.runtime.Null$ and scala.runtime.Nothing$ are not modules, those are their actual names
               printType(tpe)
-            case Type.IsTermRef(tpe) if tpe.termSymbol.isClass && tpe.termSymbol.name.endsWith("$") =>
+            case Type.IsTermRef(tpe) if tpe.termSymbol.isClassDef && tpe.termSymbol.name.endsWith("$") =>
               printType(tpe)
               this += ".type"
-            case Type.IsTypeRef(tpe) if tpe.typeSymbol.isClass && tpe.typeSymbol.name.endsWith("$") =>
+            case Type.IsTypeRef(tpe) if tpe.typeSymbol.isClassDef && tpe.typeSymbol.name.endsWith("$") =>
               printType(tpe)
               this += ".type"
             case tpe @ Type.TermRef(sym, _) =>
@@ -1528,10 +1526,10 @@ trait Printers
                 if (packagePath != "")
                   this += packagePath += "."
               }
-            case Type.IsTermRef(prefix) if prefix.termSymbol.isClass =>
+            case Type.IsTermRef(prefix) if prefix.termSymbol.isClassDef =>
               printType(prefix)
               this += "#"
-            case Type.IsTypeRef(prefix) if prefix.typeSymbol.isClass =>
+            case Type.IsTypeRef(prefix) if prefix.typeSymbol.isClassDef =>
               printType(prefix)
               this += "#"
             case IsType(Type.ThisType(Type.TermRef(cdef, _))) if elideThis.nonEmpty && cdef == elideThis.get =>

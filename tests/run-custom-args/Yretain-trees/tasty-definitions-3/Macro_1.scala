@@ -8,13 +8,11 @@ object Foo {
 
   def inspectBodyImpl(x: Expr[Int])(given qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
-    def definitionString(tree: Tree): Expr[String] = tree.symbol match {
-      case IsBindSymbol(sym) => sym.pattern.showExtractors
-      case sym => sym.tree.showExtractors
-    }
+    def definitionString(sym: Symbol): Expr[String] =
+      if sym.isBind then sym.pattern.showExtractors else sym.tree.showExtractors
     x.unseal match {
-      case Inlined(None, Nil, arg) => definitionString(arg)
-      case arg => definitionString(arg) // TODO should all by name parameters be in an inline node?
+      case Inlined(None, Nil, arg) => definitionString(arg.symbol)
+      case arg => definitionString(arg.symbol) // TODO should all by name parameters be in an inline node?
     }
   }
 }

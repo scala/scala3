@@ -8,35 +8,29 @@ object TypeToolbox {
   inline def =:=[A, B]: Boolean = ${tpEqImpl('[A], '[B])}
   private def tpEqImpl[A, B](a: Type[A], b: Type[B])(given qctx: QuoteContext): Expr[Boolean] = {
     import qctx.tasty._
-    val res = a.unseal.tpe =:= b.unseal.tpe
-    Expr(res)
+    Expr(a.unseal.tpe =:= b.unseal.tpe)
   }
 
   /** is `tp1` a subtype of `tp2` */
   inline def <:<[A, B]: Boolean = ${tpLEqImpl('[A], '[B])}
   private def tpLEqImpl[A, B](a: Type[A], b: Type[B])(given qctx: QuoteContext): Expr[Boolean] = {
     import qctx.tasty._
-    val res = a.unseal.tpe <:< b.unseal.tpe
-    Expr(res)
+    Expr(a.unseal.tpe <:< b.unseal.tpe)
   }
 
   /** type associated with the tree */
   inline def typeOf[T, Expected](a: T): Boolean = ${typeOfImpl('a, '[Expected])}
   private def typeOfImpl(a: Expr[_], expected: Type[_])(given qctx: QuoteContext): Expr[Boolean] = {
     import qctx.tasty._
-    val res = a.unseal.tpe =:= expected.unseal.tpe
-    Expr(res)
+    Expr(a.unseal.tpe =:= expected.unseal.tpe)
   }
 
   /** does the type refer to a case class? */
   inline def isCaseClass[A]: Boolean = ${isCaseClassImpl('[A])}
   private def isCaseClassImpl(tp: Type[_])(given qctx: QuoteContext): Expr[Boolean] = {
     import qctx.tasty._
-    val res = tp.unseal.symbol match {
-      case IsClassDefSymbol(sym) => sym.flags.is(Flags.Case)
-      case _ => false
-    }
-    Expr(res)
+    val sym = tp.unseal.symbol
+    Expr(sym.isClassDef && sym.flags.is(Flags.Case))
   }
 
   /** val fields of a case class Type -- only the ones declared in primary constructor */
@@ -102,11 +96,11 @@ object TypeToolbox {
   inline def companionName[T1]: String = ${companionNameImpl('[T1])}
   private def companionNameImpl(tp: Type[_])(given qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
-    val companionClassOpt = tp.unseal.symbol match {
-      case IsClassDefSymbol(sym) => sym.companionClass
-      case IsValDefSymbol(sym) => sym.companionClass
-      case _ => None
-    }
+    val sym = tp.unseal.symbol
+    val companionClassOpt =
+      if sym.isClassDef then sym.asClassDef.companionClass
+      else if sym.isValDef then sym.asValDef.companionClass
+      else None
     Expr(companionClassOpt.map(_.fullName).getOrElse(""))
   }
 

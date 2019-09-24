@@ -1252,16 +1252,16 @@ trait CompilerInterface {
   /** Symbol of a package definition */
   type PackageDefSymbol <: Symbol
 
-  def matchPackageDefSymbol(symbol: Symbol)(given ctx: Context): Option[PackageDefSymbol]
+  def isPackageDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   type TypeSymbol <: Symbol
 
-  def matchTypeSymbol(symbol: Symbol)(given ctx: Context): Option[TypeSymbol]
+  def isTypeSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** Symbol of a class definition. This includes anonymous class definitions and the class of a module object. */
   type ClassDefSymbol <: TypeSymbol
 
-  def matchClassDefSymbol(symbol: Symbol)(given ctx: Context): Option[ClassDefSymbol]
+  def isClassDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** Fields directly declared in the class */
   def ClassDefSymbol_fields(self: Symbol)(given ctx: Context): List[Symbol]
@@ -1298,23 +1298,23 @@ trait CompilerInterface {
   /** Symbol of a type (parameter or member) definition. */
   type TypeDefSymbol <: TypeSymbol
 
-  def matchTypeDefSymbol(symbol: Symbol)(given ctx: Context): Option[TypeDefSymbol]
+  def isTypeDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   def TypeDefSymbol_isTypeParam(self: TypeDefSymbol)(given ctx: Context): Boolean
 
   /** Symbol representing a bind definition. */
   type TypeBindSymbol <: TypeSymbol
 
-  def matchTypeBindSymbol(symbol: Symbol)(given ctx: Context): Option[TypeBindSymbol]
+  def isTypeBindSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   type TermSymbol <: Symbol
 
-  def matchTermSymbol(symbol: Symbol)(given ctx: Context): Option[TermSymbol]
+  def isTermSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** Symbol representing a method definition. */
   type DefDefSymbol <: TermSymbol
 
-  def matchDefDefSymbol(symbol: Symbol)(given ctx: Context): Option[DefDefSymbol]
+  def isDefDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** Signature of this definition */
   def DefDefSymbol_signature(self: DefDefSymbol)(given ctx: Context): Signature
@@ -1322,7 +1322,7 @@ trait CompilerInterface {
   /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
   type ValDefSymbol <: TermSymbol
 
-  def matchValDefSymbol(symbol: Symbol)(given ctx: Context): Option[ValDefSymbol]
+  def isValDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** The class symbol of the companion module class */
   def ValDefSymbol_moduleClass(self: ValDefSymbol)(given ctx: Context): Option[ClassDefSymbol]
@@ -1332,12 +1332,12 @@ trait CompilerInterface {
   /** Symbol representing a bind definition. */
   type BindSymbol <: TermSymbol
 
-  def matchBindSymbol(symbol: Symbol)(given ctx: Context): Option[BindSymbol]
+  def isBindSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** No symbol available. */
   type NoSymbol <: Symbol
 
-  def matchNoSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  def isNoSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   //
   // FLAGS

@@ -35,41 +35,35 @@ trait SymbolOps extends Core {
     /** The comment for this symbol, if any */
     def comment(given ctx: Context): Option[Comment] = internal.Symbol_comment(self)
 
-    /** Unsafe cast as to PackageSymbol. Use IsPackageSymbol to safely check and cast to PackageSymbol */
-    def asPackageDef(given ctx: Context): PackageDefSymbol = self match {
-      case IsPackageDefSymbol(self) => self
-      case _ => throw new Exception("not a PackageDefSymbol")
-    }
+    /** Unsafe cast as to PackageSymbol */
+    def asPackageDef(given ctx: Context): Symbol =
+      if self.isPackageDef then self
+      else throw new Exception("not a PackageDefSymbol")
 
-    /** Unsafe cast as to ClassSymbol. Use IsClassDefSymbol to safely check and cast to ClassSymbol */
-    def asClassDef(given ctx: Context): ClassDefSymbol = self match {
-      case IsClassDefSymbol(self) => self
-      case _ => throw new Exception("not a ClassDefSymbol")
-    }
+    /** Unsafe cast as to ClassSymbol */
+    def asClassDef(given ctx: Context): ClassDefSymbol =
+      if self.isClassDef then self.asInstanceOf[ClassDefSymbol]
+      else throw new Exception("not a ClassDefSymbol")
 
-    /** Unsafe cast as to DefSymbol. Use IsDefDefSymbol to safely check and cast to DefSymbol */
-    def asDefDef(given ctx: Context): DefDefSymbol = self match {
-      case IsDefDefSymbol(self) => self
-      case _ => throw new Exception("not a DefDefSymbol")
-    }
+    /** Unsafe cast as to DefSymbol */
+    def asDefDef(given ctx: Context): DefDefSymbol =
+      if self.isDefDef then self.asInstanceOf[DefDefSymbol]
+      else throw new Exception("not a DefDefSymbol")
 
-    /** Unsafe cast as to ValSymbol. Use IsValDefSymbol to safely check and cast to ValSymbol */
-    def asValDef(given ctx: Context): ValDefSymbol = self match {
-      case IsValDefSymbol(self) => self
-      case _ => throw new Exception("not a ValDefSymbol")
-    }
+    /** Unsafe cast as to ValSymbol */
+    def asValDef(given ctx: Context): ValDefSymbol =
+      if self.isValDef then self.asInstanceOf[ValDefSymbol]
+      else throw new Exception("not a ValDefSymbol")
 
-    /** Unsafe cast as to TypeSymbol. Use IsTypeDefSymbol to safely check and cast to TypeSymbol */
-    def asTypeDef(given ctx: Context): TypeDefSymbol = self match {
-      case IsTypeDefSymbol(self) => self
-      case _ => throw new Exception("not a TypeDefSymbol")
-    }
+    /** Unsafe cast as to TypeSymbol */
+    def asTypeDef(given ctx: Context): TypeDefSymbol =
+      if self.isTypeDef then self.asInstanceOf[TypeDefSymbol]
+      else throw new Exception("not a TypeDefSymbol")
 
-    /** Unsafe cast as to BindSymbol. Use IsBindSymbol to safely check and cast to BindSymbol */
-    def asBindDef(given ctx: Context): BindSymbol = self match {
-      case IsBindSymbol(self) => self
-      case _ => throw new Exception("not a BindSymbol")
-    }
+    /** Unsafe cast as to BindSymbol */
+    def asBindDef(given ctx: Context): BindSymbol =
+      if self.isBind then self.asInstanceOf[BindSymbol]
+      else throw new Exception("not a BindSymbol")
 
     /** Tree of this definition */
     def tree(given ctx: Context): Tree =
@@ -92,32 +86,15 @@ trait SymbolOps extends Core {
     def isAbstractType(given ctx: Context): Boolean = internal.Symbol_isAbstractType(self)
     def isClassConstructor(given ctx: Context): Boolean = internal.Symbol_isClassConstructor(self)
 
-    def isType(given ctx: Context): Boolean = internal.matchTypeSymbol(self).isDefined
-    def isTerm(given ctx: Context): Boolean = internal.matchTermSymbol(self).isDefined
-    def isValDef(given ctx: Context): Boolean = internal.matchValDefSymbol(self).isDefined
-    def isDefDef(given ctx: Context): Boolean = internal.matchDefDefSymbol(self).isDefined
-    def isClass(given ctx: Context): Boolean = internal.matchClassDefSymbol(self).isDefined
-  }
-
-  // PackageSymbol
-
-  object IsPackageDefSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[PackageDefSymbol] =
-      internal.matchPackageDefSymbol(symbol)
-  }
-
-  // TypeSymbol
-
-  object IsTypeSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[TypeSymbol] =
-      internal.matchTypeSymbol(symbol)
-  }
-
-  // ClassSymbol
-
-  object IsClassDefSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[ClassDefSymbol] =
-      internal.matchClassDefSymbol(symbol)
+    def isType(given ctx: Context): Boolean = internal.isTypeSymbol(self)
+    def isTerm(given ctx: Context): Boolean = internal.isTermSymbol(self)
+    def isValDef(given ctx: Context): Boolean = internal.isValDefSymbol(self)
+    def isDefDef(given ctx: Context): Boolean = internal.isDefDefSymbol(self)
+    def isTypeDef(given ctx: Context): Boolean = internal.isTypeDefSymbol(self)
+    def isClassDef(given ctx: Context): Boolean = internal.isClassDefSymbol(self)
+    def isBind(given ctx: Context): Boolean = internal.isBindSymbol(self)
+    def isPackageDef(given ctx: Context): Boolean = internal.isPackageDefSymbol(self)
+    def isNoSymbol(given ctx: Context): Boolean = internal.isNoSymbol(self)
   }
 
   object ClassDefSymbol {
@@ -169,50 +146,15 @@ trait SymbolOps extends Core {
       internal.ClassDefSymbol_moduleClass(self)
   }
 
-  // TypeSymbol
-
-  object IsTypeDefSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[TypeDefSymbol] =
-      internal.matchTypeDefSymbol(symbol)
-  }
-
   implicit class TypeDefSymbolAPI(self: TypeDefSymbol) {
     def isTypeParam(given ctx: Context): Boolean =
       internal.TypeDefSymbol_isTypeParam(self)
-  }
-
-  // TypeBindSymbol
-
-  object IsTypeBindSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[TypeBindSymbol] =
-      internal.matchTypeBindSymbol(symbol)
-  }
-
-  // TermSymbol
-
-  object IsTermSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[TermSymbol] =
-      internal.matchTermSymbol(symbol)
-  }
-
-  // DefSymbol
-
-  object IsDefDefSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[DefDefSymbol] =
-      internal.matchDefDefSymbol(symbol)
   }
 
   implicit class DefDefSymbolAPI(self: DefDefSymbol) {
     /** Signature of this defintion */
     def signature(given ctx: Context): Signature =
       internal.DefDefSymbol_signature(self)
-  }
-
-  // ValSymbol
-
-  object IsValDefSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[ValDefSymbol] =
-      internal.matchValDefSymbol(symbol)
   }
 
   implicit class ValDefSymbolAPI(self: ValDefSymbol) {
@@ -224,17 +166,4 @@ trait SymbolOps extends Core {
       internal.ValDefSymbol_companionClass(self)
   }
 
-  // BindSymbol
-
-  object IsBindSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[BindSymbol] =
-      internal.matchBindSymbol(symbol)
-  }
-
-  // NoSymbol
-
-  object NoSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Boolean =
-      internal.matchNoSymbol(symbol)
-  }
 }

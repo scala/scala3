@@ -134,12 +134,12 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
             def rhs = eval(argss.head.head)
             log("interpretPrivitiveDiv", tree)(interpretPrivitiveDiv(lhs, rhs))
           case _ =>
-            fn.symbol match {
-              case IsDefDefSymbol(sym) => log("interpretCall", tree)(interpretCall(fn, argss))
-              case _ =>
-                assert(argss.isEmpty)
-                log("interpretValGet", tree)(interpretValGet(fn))
-
+            val sym = fn.symbol
+            if (sym.isDefDef) {
+              log("interpretCall", tree)(interpretCall(fn, argss))
+            } else {
+              assert(argss.isEmpty)
+              log("interpretValGet", tree)(interpretValGet(fn))
             }
         }
 

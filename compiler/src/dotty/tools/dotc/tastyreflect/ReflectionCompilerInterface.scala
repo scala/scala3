@@ -1518,18 +1518,16 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   type PackageDefSymbol = core.Symbols.Symbol
 
-  def matchPackageDefSymbol(symbol: Symbol)(given Context): Option[PackageDefSymbol] =
-    if (symbol.is(core.Flags.Package)) Some(symbol) else None
+  def isPackageDefSymbol(symbol: Symbol)(given Context): Boolean =
+    symbol.is(core.Flags.Package)
 
   type TypeSymbol = core.Symbols.TypeSymbol
 
-  def matchTypeSymbol(symbol: Symbol)(given Context): Option[TypeSymbol] =
-    if (symbol.isType) Some(symbol.asType) else None
+  def isTypeSymbol(symbol: Symbol)(given Context): Boolean = symbol.isType
 
   type ClassDefSymbol = core.Symbols.ClassSymbol
 
-  def matchClassDefSymbol(symbol: Symbol)(given Context): Option[ClassDefSymbol] =
-    if (symbol.isClass) Some(symbol.asClass) else None
+  def isClassDefSymbol(symbol: Symbol)(given Context): Boolean = symbol.isClass
 
   def ClassDefSymbol_fields(self: Symbol)(given Context): List[Symbol] =
     self.unforcedDecls.filter(isField)
@@ -1591,34 +1589,33 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   type TypeDefSymbol = core.Symbols.TypeSymbol
 
-  def matchTypeDefSymbol(symbol: Symbol)(given Context): Option[TypeDefSymbol] =
-    if (symbol.isType) Some(symbol.asType) else None
+  def isTypeDefSymbol(symbol: Symbol)(given Context): Boolean =
+    symbol.isType && !symbol.is(core.Flags.Case)
 
   def TypeDefSymbol_isTypeParam(self: TypeDefSymbol)(given Context): Boolean =
     self.isTypeParam
 
   type TypeBindSymbol = core.Symbols.TypeSymbol
 
-  def matchTypeBindSymbol(symbol: Symbol)(given Context): Option[TypeBindSymbol] =
-    if (symbol.isType && symbol.is(core.Flags.Case)) Some(symbol.asType) else None
+  def isTypeBindSymbol(symbol: Symbol)(given Context): Boolean =
+    symbol.isType && symbol.is(core.Flags.Case)
 
   type TermSymbol = core.Symbols.TermSymbol
 
-  def matchTermSymbol(symbol: Symbol)(given Context): Option[TermSymbol] =
-    if (symbol.isTerm) Some(symbol.asTerm) else None
+  def isTermSymbol(symbol: Symbol)(given Context): Boolean = symbol.isTerm
 
   type DefDefSymbol = core.Symbols.TermSymbol
 
-  def matchDefDefSymbol(symbol: Symbol)(given Context): Option[DefDefSymbol] =
-    if (symbol.isTerm && symbol.is(core.Flags.Method)) Some(symbol.asTerm) else None
+  def isDefDefSymbol(symbol: Symbol)(given Context): Boolean =
+    symbol.isTerm && symbol.is(core.Flags.Method)
 
   def DefDefSymbol_signature(self: DefDefSymbol)(given Context): Signature =
     self.signature
 
   type ValDefSymbol = core.Symbols.TermSymbol
 
-  def matchValDefSymbol(symbol: Symbol)(given Context): Option[ValDefSymbol] =
-    if (symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case)) Some(symbol.asTerm) else None
+  def isValDefSymbol(symbol: Symbol)(given Context): Boolean =
+    symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case)
 
   def ValDefSymbol_moduleClass(self: ValDefSymbol)(given Context): Option[ClassDefSymbol] = {
     val sym = self.moduleClass
@@ -1632,12 +1629,12 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   type BindSymbol = core.Symbols.TermSymbol
 
-  def matchBindSymbol(symbol: Symbol)(given Context): Option[BindSymbol] =
-    if (symbol.isTerm && symbol.is(core.Flags.Case)) Some(symbol.asTerm) else None
+  def isBindSymbol(symbol: Symbol)(given Context): Boolean =
+    symbol.isTerm && symbol.is(core.Flags.Case)
 
   type NoSymbol = core.Symbols.NoSymbol.type
 
-  def matchNoSymbol(symbol: Symbol)(given Context): Boolean = symbol eq core.Symbols.NoSymbol
+  def isNoSymbol(symbol: Symbol)(given Context): Boolean = symbol eq core.Symbols.NoSymbol
 
   //
   // FLAGS
