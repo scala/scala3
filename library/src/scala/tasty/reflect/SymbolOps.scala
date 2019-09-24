@@ -6,6 +6,12 @@ trait SymbolOps extends Core {
 
   // Symbol
 
+  object Symbol {
+    /** The ClassSymbol of a global class definition */
+    def classSymbol(fullName: String)(given ctx: Context): ClassDefSymbol =
+      internal.ClassDefSymbol_of(fullName)
+  }
+
   implicit class SymbolAPI(self: Symbol) {
 
     /** Owner of this symbol. The owner is the symbol in which this symbol is defined */
@@ -95,12 +101,6 @@ trait SymbolOps extends Core {
     def isBind(given ctx: Context): Boolean = internal.isBindSymbol(self)
     def isPackageDef(given ctx: Context): Boolean = internal.isPackageDefSymbol(self)
     def isNoSymbol(given ctx: Context): Boolean = internal.isNoSymbol(self)
-  }
-
-  object ClassDefSymbol {
-    /** The ClassSymbol of a global class definition */
-    def of(fullName: String)(given ctx: Context): ClassDefSymbol =
-      internal.ClassDefSymbol_of(fullName)
   }
 
   implicit class ClassDefSymbolAPI(self: ClassDefSymbol) {
