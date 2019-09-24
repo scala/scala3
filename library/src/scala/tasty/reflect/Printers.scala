@@ -1274,7 +1274,7 @@ trait Printers
         val name = arg.name
         arg.symbol.owner match {
           case IsDefDefSymbol(sym) if sym.name == "<init>" =>
-            val ClassDef(_, _, _, _, _, body) = sym.owner.asClassDef.tree
+            val ClassDef(_, _, _, _, _, body) = sym.owner.tree
             body.collectFirst {
               case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.symbol.flags.is(Flags.ParamAccessor) =>
                 if (!vdef.symbol.flags.is(Flags.Local)) {

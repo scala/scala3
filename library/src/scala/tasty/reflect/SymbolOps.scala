@@ -20,6 +20,7 @@ trait SymbolOps extends Core {
     /** This symbol is protected within the resulting type */
     def protectedWithin(given ctx: Context): Option[Type] = internal.Symbol_protectedWithin(self)
 
+
     /** The name of this symbol */
     def name(given ctx: Context): String = internal.Symbol_name(self)
 
@@ -70,6 +71,14 @@ trait SymbolOps extends Core {
       case _ => throw new Exception("not a BindSymbol")
     }
 
+    /** Tree of this definition */
+    def tree(given ctx: Context): Tree =
+      internal.Symbol_tree(self)
+
+    /** Pattern of this definition */
+    def pattern(given ctx: Context): Pattern =
+      internal.Symbol_pattern(self)
+
     /** Annotations attached to this symbol */
     def annots(given ctx: Context): List[Term] = internal.Symbol_annots(self)
 
@@ -97,11 +106,6 @@ trait SymbolOps extends Core {
       internal.matchPackageDefSymbol(symbol)
   }
 
-  implicit class PackageDefSymbolAPI(self: PackageDefSymbol) {
-    def tree(given ctx: Context): PackageDef =
-      internal.PackageDefSymbol_tree(self)
-  }
-
   // TypeSymbol
 
   object IsTypeSymbol {
@@ -123,9 +127,6 @@ trait SymbolOps extends Core {
   }
 
   implicit class ClassDefSymbolAPI(self: ClassDefSymbol) {
-    /** ClassDef tree of this defintion */
-    def tree(given ctx: Context): ClassDef =
-      internal.ClassDefSymbol_tree(self)
 
     /** Fields directly declared in the class */
     def fields(given ctx: Context): List[Symbol] =
@@ -176,10 +177,6 @@ trait SymbolOps extends Core {
   }
 
   implicit class TypeDefSymbolAPI(self: TypeDefSymbol) {
-    /** TypeDef tree of this definition */
-    def tree(given ctx: Context): TypeDef =
-      internal.TypeDefSymbol_tree(self)
-
     def isTypeParam(given ctx: Context): Boolean =
       internal.TypeDefSymbol_isTypeParam(self)
   }
@@ -189,12 +186,6 @@ trait SymbolOps extends Core {
   object IsTypeBindSymbol {
     def unapply(symbol: Symbol)(given ctx: Context): Option[TypeBindSymbol] =
       internal.matchTypeBindSymbol(symbol)
-  }
-
-  implicit class TypeBindSymbolAPI(self: TypeBindSymbol) {
-    /** TypeBind pattern of this definition */
-    def tree(given ctx: Context): TypeBind =
-      internal.TypeBindSymbol_tree(self)
   }
 
   // TermSymbol
@@ -212,10 +203,6 @@ trait SymbolOps extends Core {
   }
 
   implicit class DefDefSymbolAPI(self: DefDefSymbol) {
-    /** DefDef tree of this defintion */
-    def tree(given ctx: Context): DefDef =
-      internal.DefDefSymbol_tree(self)
-
     /** Signature of this defintion */
     def signature(given ctx: Context): Signature =
       internal.DefDefSymbol_signature(self)
@@ -229,10 +216,6 @@ trait SymbolOps extends Core {
   }
 
   implicit class ValDefSymbolAPI(self: ValDefSymbol) {
-    /** ValDef tree of this defintion */
-    def tree(given ctx: Context): ValDef =
-      internal.ValDefSymbol_tree(self)
-
     /** The class symbol of the companion module class */
     def moduleClass(given ctx: Context): Option[ClassDefSymbol] =
       internal.ValDefSymbol_moduleClass(self)
@@ -246,12 +229,6 @@ trait SymbolOps extends Core {
   object IsBindSymbol {
     def unapply(symbol: Symbol)(given ctx: Context): Option[BindSymbol] =
       internal.matchBindSymbol(symbol)
-  }
-
-  implicit class BindSymbolAPI(self: BindSymbol) {
-    /** Bind pattern of this definition */
-    def tree(given ctx: Context): Bind =
-      internal.BindSymbol_tree(self)
   }
 
   // NoSymbol

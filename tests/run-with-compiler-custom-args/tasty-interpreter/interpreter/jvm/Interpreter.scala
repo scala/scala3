@@ -17,7 +17,8 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
       // Best effort to try to create a proxy
       fn.symbol.owner match {
         case IsClassDefSymbol(sym) =>
-          val parentSymbols = sym.tree.parents.tail.map(_.asInstanceOf[TypeTree].symbol).head
+          val IsClassDef(tree) = sym.tree
+          val parentSymbols = tree.parents.tail.map(_.asInstanceOf[TypeTree].symbol).head
           import java.lang.reflect._
           val handler: InvocationHandler = new InvocationHandler() {
 

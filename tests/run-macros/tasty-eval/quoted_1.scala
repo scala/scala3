@@ -22,7 +22,8 @@ object Macros {
 
       e.unseal.tpe match {
         case Type.IsTermRef(pre) if pre.termSymbol.isValDef =>
-          pre.termSymbol.asValDef.tree.tpt.tpe match {
+          val IsValDef(t) = pre.termSymbol.tree
+          t.tpt.tpe match {
             case Type.ConstantType(Constant(i: Int)) => Some(i)
             case _ => None
           }

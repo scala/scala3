@@ -26,9 +26,10 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def interpretCall(inst: AbstractAny, sym: DefDefSymbol, args: List[AbstractAny]): Result = {
     // TODO
     // withLocalValue(`this`, inst) {
-      val syms = sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
+      val IsDefDef(ddef) = sym.tree
+      val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
       withLocalValues(syms, args.map(LocalValue.valFrom(_))) {
-        eval(sym.tree.rhs.get)
+        eval(ddef.rhs.get)
       }
     // }
   }
@@ -41,10 +42,10 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
       case _ =>
     }
     val evaluatedArgs = argss.flatten.map(arg => LocalValue.valFrom(eval(arg)))
-    val IsDefDefSymbol(sym) = fn.symbol
-    val syms = sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
+    val IsDefDef(ddef) = fn.symbol.tree
+    val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
     withLocalValues(syms, evaluatedArgs) {
-      eval(sym.tree.rhs.get)
+      eval(ddef.rhs.get)
     }
   }
 

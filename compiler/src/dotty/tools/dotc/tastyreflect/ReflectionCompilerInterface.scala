@@ -1458,6 +1458,16 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Symbol_flags(self: Symbol)(given Context): Flags = self.flags
 
+  def Symbol_tree(self: Symbol)(given Context): Tree = {
+    assert(!self.is(Case))
+    FromSymbol.definitionFromSym(self)
+  }
+
+  def Symbol_pattern(self: Symbol)(given ctx: Context): Pattern = {
+    assert(self.is(Case))
+    FromSymbol.definitionFromSym(self)
+  }
+
   def Symbol_privateWithin(self: Symbol)(given Context): Option[Type] = {
     val within = self.privateWithin
     if (within.exists && !self.is(core.Flags.Protected)) Some(within.typeRef)
@@ -1511,9 +1521,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def matchPackageDefSymbol(symbol: Symbol)(given Context): Option[PackageDefSymbol] =
     if (symbol.is(core.Flags.Package)) Some(symbol) else None
 
-  def PackageDefSymbol_tree(self: PackageDefSymbol)(given Context): PackageDef =
-    FromSymbol.packageDefFromSym(self)
-
   type TypeSymbol = core.Symbols.TypeSymbol
 
   def matchTypeSymbol(symbol: Symbol)(given Context): Option[TypeSymbol] =
@@ -1523,9 +1530,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def matchClassDefSymbol(symbol: Symbol)(given Context): Option[ClassDefSymbol] =
     if (symbol.isClass) Some(symbol.asClass) else None
-
-  def ClassDefSymbol_tree(self: ClassDefSymbol)(given Context): ClassDef =
-    FromSymbol.classDef(self)
 
   def ClassDefSymbol_fields(self: Symbol)(given Context): List[Symbol] =
     self.unforcedDecls.filter(isField)
@@ -1590,8 +1594,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def matchTypeDefSymbol(symbol: Symbol)(given Context): Option[TypeDefSymbol] =
     if (symbol.isType) Some(symbol.asType) else None
 
-  def TypeDefSymbol_tree(self: TypeDefSymbol)(given Context): TypeDef =
-    FromSymbol.typeDefFromSym(self)
   def TypeDefSymbol_isTypeParam(self: TypeDefSymbol)(given Context): Boolean =
     self.isTypeParam
 
@@ -1599,9 +1601,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def matchTypeBindSymbol(symbol: Symbol)(given Context): Option[TypeBindSymbol] =
     if (symbol.isType && symbol.is(core.Flags.Case)) Some(symbol.asType) else None
-
-  def TypeBindSymbol_tree(self: TypeBindSymbol)(given Context): TypeBind =
-    FromSymbol.typeBindFromSym(self)
 
   type TermSymbol = core.Symbols.TermSymbol
 
@@ -1613,9 +1612,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def matchDefDefSymbol(symbol: Symbol)(given Context): Option[DefDefSymbol] =
     if (symbol.isTerm && symbol.is(core.Flags.Method)) Some(symbol.asTerm) else None
 
-  def DefDefSymbol_tree(self: DefDefSymbol)(given Context): DefDef =
-    FromSymbol.defDefFromSym(self)
-
   def DefDefSymbol_signature(self: DefDefSymbol)(given Context): Signature =
     self.signature
 
@@ -1623,9 +1619,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def matchValDefSymbol(symbol: Symbol)(given Context): Option[ValDefSymbol] =
     if (symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case)) Some(symbol.asTerm) else None
-
-  def ValDefSymbol_tree(self: ValDefSymbol)(given Context): ValDef =
-    FromSymbol.valDefFromSym(self)
 
   def ValDefSymbol_moduleClass(self: ValDefSymbol)(given Context): Option[ClassDefSymbol] = {
     val sym = self.moduleClass
@@ -1641,9 +1634,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def matchBindSymbol(symbol: Symbol)(given Context): Option[BindSymbol] =
     if (symbol.isTerm && symbol.is(core.Flags.Case)) Some(symbol.asTerm) else None
-
-  def BindSymbol_tree(self: BindSymbol)(given Context): Bind =
-    FromSymbol.bindFromSym(self)
 
   type NoSymbol = core.Symbols.NoSymbol.type
 

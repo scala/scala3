@@ -1206,6 +1206,10 @@ trait CompilerInterface {
   /** Flags of this symbol */
   def Symbol_flags(self: Symbol)(given ctx: Context): Flags
 
+  def Symbol_tree(self: Symbol)(given ctx: Context): Tree
+
+  def Symbol_pattern(self: Symbol)(given ctx: Context): Pattern
+
   def Symbol_isLocalDummy(self: Symbol)(given ctx: Context): Boolean
 
   def Symbol_isRefinementClass(self: Symbol)(given ctx: Context): Boolean
@@ -1250,8 +1254,6 @@ trait CompilerInterface {
 
   def matchPackageDefSymbol(symbol: Symbol)(given ctx: Context): Option[PackageDefSymbol]
 
-  def PackageDefSymbol_tree(self: PackageDefSymbol)(given ctx: Context): PackageDef
-
   type TypeSymbol <: Symbol
 
   def matchTypeSymbol(symbol: Symbol)(given ctx: Context): Option[TypeSymbol]
@@ -1260,9 +1262,6 @@ trait CompilerInterface {
   type ClassDefSymbol <: TypeSymbol
 
   def matchClassDefSymbol(symbol: Symbol)(given ctx: Context): Option[ClassDefSymbol]
-
-  /** ClassDef tree of this definition */
-  def ClassDefSymbol_tree(self: ClassDefSymbol)(given ctx: Context): ClassDef
 
   /** Fields directly declared in the class */
   def ClassDefSymbol_fields(self: Symbol)(given ctx: Context): List[Symbol]
@@ -1303,16 +1302,10 @@ trait CompilerInterface {
 
   def TypeDefSymbol_isTypeParam(self: TypeDefSymbol)(given ctx: Context): Boolean
 
-  /** TypeDef tree of this definition */
-  def TypeDefSymbol_tree(self: TypeDefSymbol)(given ctx: Context): TypeDef
-
   /** Symbol representing a bind definition. */
   type TypeBindSymbol <: TypeSymbol
 
   def matchTypeBindSymbol(symbol: Symbol)(given ctx: Context): Option[TypeBindSymbol]
-
-  /** TypeBind pattern of this definition */
-  def TypeBindSymbol_tree(self: TypeBindSymbol)(given ctx: Context): TypeBind
 
   type TermSymbol <: Symbol
 
@@ -1323,9 +1316,6 @@ trait CompilerInterface {
 
   def matchDefDefSymbol(symbol: Symbol)(given ctx: Context): Option[DefDefSymbol]
 
-  /** DefDef tree of this definition */
-  def DefDefSymbol_tree(self: DefDefSymbol)(given ctx: Context): DefDef
-
   /** Signature of this definition */
   def DefDefSymbol_signature(self: DefDefSymbol)(given ctx: Context): Signature
 
@@ -1333,9 +1323,6 @@ trait CompilerInterface {
   type ValDefSymbol <: TermSymbol
 
   def matchValDefSymbol(symbol: Symbol)(given ctx: Context): Option[ValDefSymbol]
-
-  /** ValDef tree of this definition */
-  def ValDefSymbol_tree(self: ValDefSymbol)(given ctx: Context): ValDef
 
   /** The class symbol of the companion module class */
   def ValDefSymbol_moduleClass(self: ValDefSymbol)(given ctx: Context): Option[ClassDefSymbol]
@@ -1346,9 +1333,6 @@ trait CompilerInterface {
   type BindSymbol <: TermSymbol
 
   def matchBindSymbol(symbol: Symbol)(given ctx: Context): Option[BindSymbol]
-
-  /** Bind pattern of this definition */
-  def BindSymbol_tree(self: BindSymbol)(given ctx: Context): Bind
 
   /** No symbol available. */
   type NoSymbol <: Symbol
