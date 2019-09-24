@@ -206,17 +206,23 @@ class ReifyQuotes extends MacroTransform {
         qctx
       }
 
-      def pickleAsLiteral(lit: Literal) =
+      def pickleAsLiteral(lit: Literal) = {
+        def liftedValue(lifter: Symbol) =
+          ref(lifter).appliedToType(originalTp).select(nme.toExpr).appliedTo(lit)
         lit.const.tag match {
           case Constants.NullTag => ref(defn.QuotedExprModule_nullExpr)
           case Constants.UnitTag => ref(defn.QuotedExprModule_unitExpr)
-          case _ => // Lifted literal
-            val ltp = defn.LiftableClass.typeRef.appliedTo(ConstantType(lit.const))
-            val liftable = ctx.typer.inferImplicitArg(ltp, body.span)
-            if (liftable.tpe.isInstanceOf[SearchFailureType])
-              ctx.error(ctx.typer.missingArgMsg(liftable, ltp, "Could no optimize constant in quote"), ctx.source.atSpan(body.span))
-            liftable.select(nme.toExpr).appliedTo(lit)
+          case Constants.BooleanTag => liftedValue(defn.LiftableModule_BooleanIsLiftable)
+          case Constants.ByteTag => liftedValue(defn.LiftableModule_ByteIsLiftable)
+          case Constants.ShortTag => liftedValue(defn.LiftableModule_ShortIsLiftable)
+          case Constants.IntTag => liftedValue(defn.LiftableModule_IntIsLiftable)
+          case Constants.LongTag => liftedValue(defn.LiftableModule_LongIsLiftable)
+          case Constants.FloatTag => liftedValue(defn.LiftableModule_FloatIsLiftable)
+          case Constants.DoubleTag => liftedValue(defn.LiftableModule_DoubleIsLiftable)
+          case Constants.CharTag => liftedValue(defn.LiftableModule_CharIsLiftable)
+          case Constants.StringTag => liftedValue(defn.LiftableModule_StringIsLiftable)
         }
+      }
 
       def pickleAsTasty() = {
         val meth =
