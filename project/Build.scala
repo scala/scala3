@@ -977,7 +977,7 @@ object Build {
       managedSources in Test ++= {
         val dir = fetchScalaJSSource.value / "test-suite"
         (
-          (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** (("IntTest.scala": FileFilter) || "BooleanTest.scala" || "ByteTest.scala" || "CharTest.scala" || "DoubleTest.scala" || "FloatTest.scala" || "ShortTest.scala" || "UnitTest.scala")).get
+          (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala":FileFilter) -- "RegressionTest.scala" -- "ReflectiveCallTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** (("*.scala": FileFilter) -- "ClassTest.scala" -- "StringTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/io" ** (("ThrowablesTest.scala": FileFilter) || "SerializableTest.scala" || "PrintWriterTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/math" ** "*.scala").get
