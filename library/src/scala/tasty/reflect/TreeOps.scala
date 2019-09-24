@@ -86,7 +86,7 @@ trait TreeOps extends Core {
     def derived(given ctx: Context): List[TypeTree] = internal.ClassDef_derived(self)
     def self(given ctx: Context): Option[ValDef] = internal.ClassDef_self(self)
     def body(given ctx: Context): List[Statement] = internal.ClassDef_body(self)
-    def symbol(given ctx: Context): ClassDefSymbol = internal.ClassDef_symbol(self)
+    def symbol(given ctx: Context): Symbol = internal.ClassDef_symbol(self)
   }
 
   // DefDef
@@ -96,7 +96,7 @@ trait TreeOps extends Core {
   }
 
   object DefDef {
-    def apply(symbol: DefDefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(given ctx: Context): DefDef =
+    def apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(given ctx: Context): DefDef =
       internal.DefDef_apply(symbol, rhsFn)
     def copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(given ctx: Context): DefDef =
       internal.DefDef_copy(original)(name, typeParams, paramss, tpt, rhs)
@@ -109,7 +109,7 @@ trait TreeOps extends Core {
     def paramss(given ctx: Context): List[List[ValDef]] = internal.DefDef_paramss(self)
     def returnTpt(given ctx: Context): TypeTree = internal.DefDef_returnTpt(self) // TODO rename to tpt
     def rhs(given ctx: Context): Option[Term] = internal.DefDef_rhs(self)
-    def symbol(given ctx: Context): DefDefSymbol = internal.DefDef_symbol(self)
+    def symbol(given ctx: Context): Symbol = internal.DefDef_symbol(self)
   }
 
   // ValDef
@@ -119,7 +119,7 @@ trait TreeOps extends Core {
   }
 
   object ValDef {
-    def apply(symbol: ValDefSymbol, rhs: Option[Term])(given ctx: Context): ValDef =
+    def apply(symbol: Symbol, rhs: Option[Term])(given ctx: Context): ValDef =
       internal.ValDef_apply(symbol, rhs)
     def copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(given ctx: Context): ValDef =
       internal.ValDef_copy(original)(name, tpt, rhs)
@@ -130,7 +130,7 @@ trait TreeOps extends Core {
   implicit class ValDefAPI(self: ValDef) {
     def tpt(given ctx: Context): TypeTree = internal.ValDef_tpt(self)
     def rhs(given ctx: Context): Option[Term] = internal.ValDef_rhs(self)
-    def symbol(given ctx: Context): ValDefSymbol = internal.ValDef_symbol(self)
+    def symbol(given ctx: Context): Symbol = internal.ValDef_symbol(self)
   }
 
   // TypeDef
@@ -140,7 +140,7 @@ trait TreeOps extends Core {
   }
 
   object TypeDef {
-    def apply(symbol: TypeDefSymbol)(given ctx: Context): TypeDef =
+    def apply(symbol: Symbol)(given ctx: Context): TypeDef =
       internal.TypeDef_apply(symbol)
     def copy(original: TypeDef)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeDef =
       internal.TypeDef_copy(original)(name, rhs)
@@ -150,7 +150,7 @@ trait TreeOps extends Core {
 
   implicit class TypeDefAPI(self: TypeDef) {
     def rhs(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeDef_rhs(self)
-    def symbol(given ctx: Context): TypeDefSymbol = internal.TypeDef_symbol(self)
+    def symbol(given ctx: Context): Symbol = internal.TypeDef_symbol(self)
   }
 
   // PackageDef
@@ -163,7 +163,7 @@ trait TreeOps extends Core {
   implicit class PackageDefAPI(self: PackageDef) {
     def owner(given ctx: Context): PackageDef = internal.PackageDef_owner(self)
     def members(given ctx: Context): List[Statement] = internal.PackageDef_members(self)
-    def symbol(given ctx: Context): PackageDefSymbol = internal.PackageDef_symbol(self)
+    def symbol(given ctx: Context): Symbol = internal.PackageDef_symbol(self)
   }
 
   object PackageDef {
@@ -332,7 +332,7 @@ trait TreeOps extends Core {
   object This {
 
     /** Create a `this[<id: Id]>` */
-    def apply(cls: ClassDefSymbol)(given ctx: Context): This =
+    def apply(cls: Symbol)(given ctx: Context): This =
       internal.This_apply(cls)
 
     def copy(original: Tree)(qual: Option[Id])(given ctx: Context): This =

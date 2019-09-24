@@ -23,7 +23,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: (given Env) => T)(implicit env: Env): T =
     in(given env ++ syms.zip(values))
 
-  def interpretCall(inst: AbstractAny, sym: DefDefSymbol, args: List[AbstractAny]): Result = {
+  def interpretCall(inst: AbstractAny, sym: Symbol, args: List[AbstractAny]): Result = {
     // TODO
     // withLocalValue(`this`, inst) {
       val IsDefDef(ddef) = sym.tree

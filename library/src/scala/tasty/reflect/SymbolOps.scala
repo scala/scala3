@@ -7,10 +7,11 @@ trait SymbolOps extends Core {
   // Symbol
 
   object Symbol {
-    /** The ClassSymbol of a global class definition */
-    def classSymbol(fullName: String)(given ctx: Context): ClassDefSymbol =
+    /** The class Symbol of a global class definition */
+    def classSymbol(fullName: String)(given ctx: Context): Symbol =
       internal.Symbol_of(fullName)
 
+    /** Definition not available */
     def noSymbol(given ctx: Context): Symbol =
       internal.Symbol_noSymbol
   }
@@ -49,29 +50,29 @@ trait SymbolOps extends Core {
       else throw new Exception("not a PackageDefSymbol")
 
     /** Unsafe cast as to ClassSymbol */
-    def asClassDef(given ctx: Context): ClassDefSymbol =
-      if self.isClassDef then self.asInstanceOf[ClassDefSymbol]
-      else throw new Exception("not a ClassDefSymbol")
+    def asClassDef(given ctx: Context): Symbol =
+      if self.isClassDef then self
+      else throw new Exception("not a class Symbol")
 
     /** Unsafe cast as to DefSymbol */
-    def asDefDef(given ctx: Context): DefDefSymbol =
-      if self.isDefDef then self.asInstanceOf[DefDefSymbol]
-      else throw new Exception("not a DefDefSymbol")
+    def asDefDef(given ctx: Context): Symbol =
+      if self.isDefDef then self
+      else throw new Exception("not a def Symbol")
 
     /** Unsafe cast as to ValSymbol */
-    def asValDef(given ctx: Context): ValDefSymbol =
-      if self.isValDef then self.asInstanceOf[ValDefSymbol]
-      else throw new Exception("not a ValDefSymbol")
+    def asValDef(given ctx: Context): Symbol =
+      if self.isValDef then self
+      else throw new Exception("not a val Symbol")
 
     /** Unsafe cast as to TypeSymbol */
-    def asTypeDef(given ctx: Context): TypeDefSymbol =
-      if self.isTypeDef then self.asInstanceOf[TypeDefSymbol]
-      else throw new Exception("not a TypeDefSymbol")
+    def asTypeDef(given ctx: Context): Symbol =
+      if self.isTypeDef then self
+      else throw new Exception("not a type Symbol")
 
     /** Unsafe cast as to BindSymbol */
-    def asBindDef(given ctx: Context): BindSymbol =
-      if self.isBind then self.asInstanceOf[BindSymbol]
-      else throw new Exception("not a BindSymbol")
+    def asBindDef(given ctx: Context): Symbol =
+      if self.isBind then self
+      else throw new Exception("not a bind Symbol")
 
     /** Tree of this definition */
     def tree(given ctx: Context): Tree =
@@ -113,23 +114,23 @@ trait SymbolOps extends Core {
       internal.Symbol_field(self)(name)
 
     /** Get non-private named methods defined directly inside the class */
-    def classMethod(name: String)(given ctx: Context): List[DefDefSymbol] =
+    def classMethod(name: String)(given ctx: Context): List[Symbol] =
       internal.Symbol_classMethod(self)(name)
 
     /** Get all non-private methods defined directly inside the class, exluding constructors */
-    def classMethods(given ctx: Context): List[DefDefSymbol] =
+    def classMethods(given ctx: Context): List[Symbol] =
       internal.Symbol_classMethods(self)
 
     /** Get named non-private methods declared or inherited */
-    def method(name: String)(given ctx: Context): List[DefDefSymbol] =
+    def method(name: String)(given ctx: Context): List[Symbol] =
       internal.Symbol_method(self)(name)
 
     /** Get all non-private methods declared or inherited */
-    def methods(given ctx: Context): List[DefDefSymbol] =
+    def methods(given ctx: Context): List[Symbol] =
       internal.Symbol_methods(self)
 
     /** Fields of a case class type -- only the ones declared in primary constructor */
-    def caseFields(given ctx: Context): List[ValDefSymbol] =
+    def caseFields(given ctx: Context): List[Symbol] =
       internal.Symbol_caseFields(self)
 
     def isTypeParam(given ctx: Context): Boolean =
