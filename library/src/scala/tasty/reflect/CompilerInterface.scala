@@ -1264,43 +1264,37 @@ trait CompilerInterface {
   def isClassDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** Fields directly declared in the class */
-  def ClassDefSymbol_fields(self: Symbol)(given ctx: Context): List[Symbol]
+  def Symbol_fields(self: Symbol)(given ctx: Context): List[Symbol]
 
   /** Field with the given name directly declared in the class */
-  def ClassDefSymbol_field(self: Symbol)(name: String)(given ctx: Context): Option[Symbol]
+  def Symbol_field(self: Symbol)(name: String)(given ctx: Context): Option[Symbol]
 
   /** Get non-private named methods defined directly inside the class */
-  def ClassDefSymbol_classMethod(self: Symbol)(name: String)(given ctx: Context): List[DefDefSymbol]
+  def Symbol_classMethod(self: Symbol)(name: String)(given ctx: Context): List[DefDefSymbol]
 
   /** Get all non-private methods defined directly inside the class, excluding constructors */
-  def ClassDefSymbol_classMethods(self: Symbol)(given ctx: Context): List[DefDefSymbol]
+  def Symbol_classMethods(self: Symbol)(given ctx: Context): List[DefDefSymbol]
 
   /** Get named non-private methods declared or inherited */
-  def ClassDefSymbol_method(self: Symbol)(name: String)(given ctx: Context): List[DefDefSymbol]
+  def Symbol_method(self: Symbol)(name: String)(given ctx: Context): List[DefDefSymbol]
 
   /** Get all non-private methods declared or inherited */
-  def ClassDefSymbol_methods(self: Symbol)(given ctx: Context): List[DefDefSymbol]
+  def Symbol_methods(self: Symbol)(given ctx: Context): List[DefDefSymbol]
 
   /** Fields of a case class type -- only the ones declared in primary constructor */
-  def ClassDefSymbol_caseFields(self: Symbol)(given ctx: Context): List[ValDefSymbol]
-
-  /** The class symbol of the companion module class */
-  def ClassDefSymbol_companionClass(self: Symbol)(given ctx: Context): Option[ClassDefSymbol]
+  def Symbol_caseFields(self: Symbol)(given ctx: Context): List[ValDefSymbol]
 
   /** The symbol of the companion module */
-  def ClassDefSymbol_companionModule(self: Symbol)(given ctx: Context): Option[ValDefSymbol]
+  def Symbol_companionModule(self: Symbol)(given ctx: Context): Option[ValDefSymbol]
 
-  /** The symbol of the class of the companion module */
-  def ClassDefSymbol_moduleClass(self: Symbol)(given ctx: Context): Option[Symbol]
-
-  def ClassDefSymbol_of(fullName: String)(given ctx: Context): ClassDefSymbol
+  def Symbol_of(fullName: String)(given ctx: Context): ClassDefSymbol
 
   /** Symbol of a type (parameter or member) definition. */
   type TypeDefSymbol <: TypeSymbol
 
   def isTypeDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
-  def TypeDefSymbol_isTypeParam(self: TypeDefSymbol)(given ctx: Context): Boolean
+  def Symbol_isTypeParam(self: Symbol)(given ctx: Context): Boolean
 
   /** Symbol representing a bind definition. */
   type TypeBindSymbol <: TypeSymbol
@@ -1317,7 +1311,7 @@ trait CompilerInterface {
   def isDefDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** Signature of this definition */
-  def DefDefSymbol_signature(self: DefDefSymbol)(given ctx: Context): Signature
+  def Symbol_signature(self: Symbol)(given ctx: Context): Signature
 
   /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
   type ValDefSymbol <: TermSymbol
@@ -1325,9 +1319,9 @@ trait CompilerInterface {
   def isValDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** The class symbol of the companion module class */
-  def ValDefSymbol_moduleClass(self: ValDefSymbol)(given ctx: Context): Option[ClassDefSymbol]
+  def Symbol_moduleClass(self: Symbol)(given ctx: Context): Option[ClassDefSymbol]
 
-  def ValDefSymbol_companionClass(self: ValDefSymbol)(given ctx: Context): Option[ClassDefSymbol]
+  def Symbol_companionClass(self: Symbol)(given ctx: Context): Option[ClassDefSymbol]
 
   /** Symbol representing a bind definition. */
   type BindSymbol <: TermSymbol
@@ -1336,6 +1330,8 @@ trait CompilerInterface {
 
   /** No symbol available. */
   type NoSymbol <: Symbol
+
+  def Symbol_noSymbol(given ctx: Context): NoSymbol
 
   def isNoSymbol(symbol: Symbol)(given ctx: Context): Boolean
 

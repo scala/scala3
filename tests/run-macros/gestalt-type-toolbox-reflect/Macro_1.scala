@@ -98,7 +98,7 @@ object TypeToolbox {
     import qctx.tasty._
     val sym = tp.unseal.symbol
     val companionClassOpt =
-      if sym.isClassDef then sym.asClassDef.companionClass
+      if sym.isClassDef then sym.asClassDef.companionModule.getOrElse(Symbol.noSymbol).companionClass
       else if sym.isValDef then sym.asValDef.companionClass
       else None
     Expr(companionClassOpt.map(_.fullName).getOrElse(""))

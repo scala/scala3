@@ -9,7 +9,10 @@ trait SymbolOps extends Core {
   object Symbol {
     /** The ClassSymbol of a global class definition */
     def classSymbol(fullName: String)(given ctx: Context): ClassDefSymbol =
-      internal.ClassDefSymbol_of(fullName)
+      internal.Symbol_of(fullName)
+
+    def noSymbol(given ctx: Context): Symbol =
+      internal.Symbol_noSymbol
   }
 
   implicit class SymbolAPI(self: Symbol) {
@@ -101,69 +104,52 @@ trait SymbolOps extends Core {
     def isBind(given ctx: Context): Boolean = internal.isBindSymbol(self)
     def isPackageDef(given ctx: Context): Boolean = internal.isPackageDefSymbol(self)
     def isNoSymbol(given ctx: Context): Boolean = internal.isNoSymbol(self)
-  }
-
-  implicit class ClassDefSymbolAPI(self: ClassDefSymbol) {
 
     /** Fields directly declared in the class */
     def fields(given ctx: Context): List[Symbol] =
-      internal.ClassDefSymbol_fields(self)
+      internal.Symbol_fields(self)
 
     /** Field with the given name directly declared in the class */
     def field(name: String)(given ctx: Context): Option[Symbol] =
-      internal.ClassDefSymbol_field(self)(name)
+      internal.Symbol_field(self)(name)
 
     /** Get non-private named methods defined directly inside the class */
     def classMethod(name: String)(given ctx: Context): List[DefDefSymbol] =
-      internal.ClassDefSymbol_classMethod(self)(name)
+      internal.Symbol_classMethod(self)(name)
 
     /** Get all non-private methods defined directly inside the class, exluding constructors */
     def classMethods(given ctx: Context): List[DefDefSymbol] =
-      internal.ClassDefSymbol_classMethods(self)
+      internal.Symbol_classMethods(self)
 
     /** Get named non-private methods declared or inherited */
     def method(name: String)(given ctx: Context): List[DefDefSymbol] =
-      internal.ClassDefSymbol_method(self)(name)
+      internal.Symbol_method(self)(name)
 
     /** Get all non-private methods declared or inherited */
     def methods(given ctx: Context): List[DefDefSymbol] =
-      internal.ClassDefSymbol_methods(self)
+      internal.Symbol_methods(self)
 
     /** Fields of a case class type -- only the ones declared in primary constructor */
     def caseFields(given ctx: Context): List[ValDefSymbol] =
-      internal.ClassDefSymbol_caseFields(self)
-
-    /** The class symbol of the companion module class */
-    def companionClass(given ctx: Context): Option[ClassDefSymbol] =
-      internal.ClassDefSymbol_companionClass(self)
+      internal.Symbol_caseFields(self)
 
     /** The symbol of the companion module */
     def companionModule(given ctx: Context): Option[ValDefSymbol] =
-      internal.ClassDefSymbol_companionModule(self)
+      internal.Symbol_companionModule(self)
 
-    /** The symbol of the class of the companion module */
-    def moduleClass(given ctx: Context): Option[Symbol] =
-      internal.ClassDefSymbol_moduleClass(self)
-  }
-
-  implicit class TypeDefSymbolAPI(self: TypeDefSymbol) {
     def isTypeParam(given ctx: Context): Boolean =
-      internal.TypeDefSymbol_isTypeParam(self)
-  }
+      internal.Symbol_isTypeParam(self)
 
-  implicit class DefDefSymbolAPI(self: DefDefSymbol) {
     /** Signature of this defintion */
     def signature(given ctx: Context): Signature =
-      internal.DefDefSymbol_signature(self)
-  }
+      internal.Symbol_signature(self)
 
-  implicit class ValDefSymbolAPI(self: ValDefSymbol) {
     /** The class symbol of the companion module class */
     def moduleClass(given ctx: Context): Option[ClassDefSymbol] =
-      internal.ValDefSymbol_moduleClass(self)
+      internal.Symbol_moduleClass(self)
 
     def companionClass(given ctx: Context): Option[ClassDefSymbol] =
-      internal.ValDefSymbol_companionClass(self)
+      internal.Symbol_companionClass(self)
   }
 
 }

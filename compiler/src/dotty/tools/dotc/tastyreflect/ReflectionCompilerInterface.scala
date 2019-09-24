@@ -1529,32 +1529,32 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def isClassDefSymbol(symbol: Symbol)(given Context): Boolean = symbol.isClass
 
-  def ClassDefSymbol_fields(self: Symbol)(given Context): List[Symbol] =
+  def Symbol_fields(self: Symbol)(given Context): List[Symbol] =
     self.unforcedDecls.filter(isField)
 
-  def ClassDefSymbol_field(self: Symbol)(name: String)(given Context): Option[Symbol] = {
+  def Symbol_field(self: Symbol)(name: String)(given Context): Option[Symbol] = {
     val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
     if (sym.exists && isField(sym)) Some(sym) else None
   }
 
-  def ClassDefSymbol_classMethod(self: Symbol)(name: String)(given Context): List[DefDefSymbol] =
+  def Symbol_classMethod(self: Symbol)(name: String)(given Context): List[DefDefSymbol] =
     self.typeRef.decls.iterator.collect {
       case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
     }.toList
 
-  def ClassDefSymbol_classMethods(self: Symbol)(given Context): List[DefDefSymbol] =
+  def Symbol_classMethods(self: Symbol)(given Context): List[DefDefSymbol] =
     self.typeRef.decls.iterator.collect {
       case sym if isMethod(sym) => sym.asTerm
     }.toList
 
   private def appliedTypeRef(sym: Symbol): Type = sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef))
 
-  def ClassDefSymbol_method(self: Symbol)(name: String)(given Context): List[DefDefSymbol] =
+  def Symbol_method(self: Symbol)(name: String)(given Context): List[DefDefSymbol] =
     appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
     }.toList
 
-  def ClassDefSymbol_methods(self: Symbol)(given Context): List[DefDefSymbol] =
+  def Symbol_methods(self: Symbol)(given Context): List[DefDefSymbol] =
     appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) => sym.asTerm
     }.toList
@@ -1562,37 +1562,27 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   private def isMethod(sym: Symbol)(given Context): Boolean =
     sym.isTerm && sym.is(Flags.Method) && !sym.isConstructor
 
-  def ClassDefSymbol_caseFields(self: Symbol)(given Context): List[ValDefSymbol] =
+  def Symbol_caseFields(self: Symbol)(given Context): List[ValDefSymbol] =
     if (!self.isClass) Nil
     else self.asClass.paramAccessors.collect {
       case sym if sym.is(Flags.CaseAccessor) => sym.asTerm
     }
 
-  def ClassDefSymbol_companionClass(self: Symbol)(given Context): Option[ClassDefSymbol] = {
-    val sym = self.companionModule.companionClass
-    if (sym.exists) Some(sym.asClass) else None
-  }
-
-  def ClassDefSymbol_companionModule(self: Symbol)(given Context): Option[ValDefSymbol] = {
+  def Symbol_companionModule(self: Symbol)(given Context): Option[ValDefSymbol] = {
     val sym = self.companionModule
-    if (sym.exists) Some(sym.asTerm) else None
-  }
-
-  def ClassDefSymbol_moduleClass(self: Symbol)(given Context): Option[Symbol] = {
-    val sym = self.moduleClass
     if (sym.exists) Some(sym.asTerm) else None
   }
 
   private def isField(sym: Symbol)(given Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
 
-  def ClassDefSymbol_of(fullName: String)(given ctx: Context): ClassDefSymbol = ctx.requiredClass(fullName)
+  def Symbol_of(fullName: String)(given ctx: Context): ClassDefSymbol = ctx.requiredClass(fullName)
 
   type TypeDefSymbol = core.Symbols.TypeSymbol
 
   def isTypeDefSymbol(symbol: Symbol)(given Context): Boolean =
     symbol.isType && !symbol.is(core.Flags.Case)
 
-  def TypeDefSymbol_isTypeParam(self: TypeDefSymbol)(given Context): Boolean =
+  def Symbol_isTypeParam(self: Symbol)(given Context): Boolean =
     self.isTypeParam
 
   type TypeBindSymbol = core.Symbols.TypeSymbol
@@ -1609,7 +1599,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def isDefDefSymbol(symbol: Symbol)(given Context): Boolean =
     symbol.isTerm && symbol.is(core.Flags.Method)
 
-  def DefDefSymbol_signature(self: DefDefSymbol)(given Context): Signature =
+  def Symbol_signature(self: Symbol)(given Context): Signature =
     self.signature
 
   type ValDefSymbol = core.Symbols.TermSymbol
@@ -1617,12 +1607,12 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def isValDefSymbol(symbol: Symbol)(given Context): Boolean =
     symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case)
 
-  def ValDefSymbol_moduleClass(self: ValDefSymbol)(given Context): Option[ClassDefSymbol] = {
+  def Symbol_moduleClass(self: Symbol)(given Context): Option[ClassDefSymbol] = {
     val sym = self.moduleClass
     if (sym.exists) Some(sym.asClass) else None
   }
 
-  def ValDefSymbol_companionClass(self: ValDefSymbol)(given Context): Option[ClassDefSymbol] = {
+  def Symbol_companionClass(self: Symbol)(given Context): Option[ClassDefSymbol] = {
     val sym = self.companionClass
     if (sym.exists) Some(sym.asClass) else None
   }
@@ -1633,6 +1623,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     symbol.isTerm && symbol.is(core.Flags.Case)
 
   type NoSymbol = core.Symbols.NoSymbol.type
+
+  def Symbol_noSymbol(given ctx: Context): NoSymbol = core.Symbols.NoSymbol
 
   def isNoSymbol(symbol: Symbol)(given Context): Boolean = symbol eq core.Symbols.NoSymbol
 
