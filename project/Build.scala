@@ -989,6 +989,7 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/util" ** (("Base64Test.scala": FileFilter) || "OptionalTest.scala" || "SplittableRandom.scala" || "ObjectsTestOnJDK8.scala" || "ComparatorTestOnJDK8.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/junit" ** (("JUnitAnnotationsTest.scala": FileFilter) || "JUnitAssumptionsTest.scala" || "JUnitAssertionsTest.scala")).get
         )
       }
     )
