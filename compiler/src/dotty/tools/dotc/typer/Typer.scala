@@ -2227,10 +2227,6 @@ class Typer extends Namer
             // then we won't have the additional flow facts that say that `y` is not null.
             //
             // The solution is to use the context containing more information about the statements above.
-            // We use creation context whenever we need to force a completer from some different context,
-            // but use calling context if we get to a definition in a statement sequence that has not been
-            // completed yet. For `ValDef`s within a block, we know they'll be completed immediately after
-            // the symbols are created, so it's safe to complete it using calling context.
             val ctx2 = mdef match {
               // Lazy is checked here because lazy ValDef is allowed between forward references
               case mdef: untpd.ValDef if ctx.explicitNulls && ctx.owner.is(Method) && !mdef.mods.isOneOf(Lazy) =>

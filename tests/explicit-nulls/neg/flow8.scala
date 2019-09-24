@@ -1,6 +1,6 @@
 class Foo {
 
-  // This case is not valid but #4 in flow6 is valid, because non-lazy value definations
+  // This case is not valid but #4 in flow6 is valid, because non-lazy value definitions
   // exist between forward references
   def fr(): Unit = {
     val z = implicitly[Int] // error: forward reference is not allowed here
