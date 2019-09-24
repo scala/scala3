@@ -29,7 +29,6 @@ trait SymbolOps extends Core {
     /** This symbol is protected within the resulting type */
     def protectedWithin(given ctx: Context): Option[Type] = internal.Symbol_protectedWithin(self)
 
-
     /** The name of this symbol */
     def name(given ctx: Context): String = internal.Symbol_name(self)
 
@@ -110,7 +109,7 @@ trait SymbolOps extends Core {
       internal.Symbol_fields(self)
 
     /** Field with the given name directly declared in the class */
-    def field(name: String)(given ctx: Context): Option[Symbol] =
+    def field(name: String)(given ctx: Context): Symbol =
       internal.Symbol_field(self)(name)
 
     /** Get non-private named methods defined directly inside the class */
@@ -133,10 +132,6 @@ trait SymbolOps extends Core {
     def caseFields(given ctx: Context): List[ValDefSymbol] =
       internal.Symbol_caseFields(self)
 
-    /** The symbol of the companion module */
-    def companionModule(given ctx: Context): Option[ValDefSymbol] =
-      internal.Symbol_companionModule(self)
-
     def isTypeParam(given ctx: Context): Boolean =
       internal.Symbol_isTypeParam(self)
 
@@ -145,11 +140,16 @@ trait SymbolOps extends Core {
       internal.Symbol_signature(self)
 
     /** The class symbol of the companion module class */
-    def moduleClass(given ctx: Context): Option[ClassDefSymbol] =
+    def moduleClass(given ctx: Context): Symbol =
       internal.Symbol_moduleClass(self)
 
-    def companionClass(given ctx: Context): Option[ClassDefSymbol] =
+    /** The symbol of the companion class */
+    def companionClass(given ctx: Context): Symbol =
       internal.Symbol_companionClass(self)
+
+    /** The symbol of the companion module */
+    def companionModule(given ctx: Context): Symbol =
+      internal.Symbol_companionModule(self)
   }
 
 }

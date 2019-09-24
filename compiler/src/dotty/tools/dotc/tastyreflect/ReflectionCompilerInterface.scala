@@ -1532,9 +1532,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Symbol_fields(self: Symbol)(given Context): List[Symbol] =
     self.unforcedDecls.filter(isField)
 
-  def Symbol_field(self: Symbol)(name: String)(given Context): Option[Symbol] = {
+  def Symbol_field(self: Symbol)(name: String)(given Context): Symbol = {
     val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
-    if (sym.exists && isField(sym)) Some(sym) else None
+    if (isField(sym)) sym else core.Symbols.NoSymbol
   }
 
   def Symbol_classMethod(self: Symbol)(name: String)(given Context): List[DefDefSymbol] =
@@ -1567,11 +1567,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     else self.asClass.paramAccessors.collect {
       case sym if sym.is(Flags.CaseAccessor) => sym.asTerm
     }
-
-  def Symbol_companionModule(self: Symbol)(given Context): Option[ValDefSymbol] = {
-    val sym = self.companionModule
-    if (sym.exists) Some(sym.asTerm) else None
-  }
 
   private def isField(sym: Symbol)(given Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
 
@@ -1607,15 +1602,11 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def isValDefSymbol(symbol: Symbol)(given Context): Boolean =
     symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case)
 
-  def Symbol_moduleClass(self: Symbol)(given Context): Option[ClassDefSymbol] = {
-    val sym = self.moduleClass
-    if (sym.exists) Some(sym.asClass) else None
-  }
+  def Symbol_moduleClass(self: Symbol)(given Context): Symbol = self.moduleClass
 
-  def Symbol_companionClass(self: Symbol)(given Context): Option[ClassDefSymbol] = {
-    val sym = self.companionClass
-    if (sym.exists) Some(sym.asClass) else None
-  }
+  def Symbol_companionClass(self: Symbol)(given Context): Symbol = self.companionClass
+
+  def Symbol_companionModule(self: Symbol)(given Context): Symbol = self.companionModule
 
   type BindSymbol = core.Symbols.TermSymbol
 

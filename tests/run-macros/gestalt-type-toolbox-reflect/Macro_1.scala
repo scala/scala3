@@ -45,7 +45,7 @@ object TypeToolbox {
   private def fieldInImpl(t: Type[_], mem: String)(given qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
     val field = t.unseal.symbol.asClassDef.field(mem)
-    Expr(field.map(_.name).getOrElse(""))
+    Expr(if field.isNoSymbol then "" else field.name)
   }
 
   inline def fieldsIn[T]: Seq[String] = ${fieldsInImpl('[T])}
@@ -89,7 +89,7 @@ object TypeToolbox {
   inline def companion[T1, T2]: Boolean = ${companionImpl('[T1], '[T2])}
   private def companionImpl(t1: Type[_], t2: Type[_])(given qctx: QuoteContext): Expr[Boolean] = {
     import qctx.tasty._
-    val res = t1.unseal.symbol.asClassDef.companionModule.contains(t2.unseal.symbol)
+    val res = t1.unseal.symbol.asClassDef.companionModule == t2.unseal.symbol
     Expr(res)
   }
 
@@ -97,11 +97,11 @@ object TypeToolbox {
   private def companionNameImpl(tp: Type[_])(given qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
     val sym = tp.unseal.symbol
-    val companionClassOpt =
-      if sym.isClassDef then sym.asClassDef.companionModule.getOrElse(Symbol.noSymbol).companionClass
-      else if sym.isValDef then sym.asValDef.companionClass
-      else None
-    Expr(companionClassOpt.map(_.fullName).getOrElse(""))
+    val companionClass =
+      if sym.isClassDef then sym.companionModule.companionClass
+      else if sym.isValDef then sym.companionClass
+      else Symbol.noSymbol
+    Expr(if companionClass.isNoSymbol then "" else companionClass.fullName)
   }
 
 }

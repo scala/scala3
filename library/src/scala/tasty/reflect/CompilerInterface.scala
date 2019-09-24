@@ -1267,7 +1267,7 @@ trait CompilerInterface {
   def Symbol_fields(self: Symbol)(given ctx: Context): List[Symbol]
 
   /** Field with the given name directly declared in the class */
-  def Symbol_field(self: Symbol)(name: String)(given ctx: Context): Option[Symbol]
+  def Symbol_field(self: Symbol)(name: String)(given ctx: Context): Symbol
 
   /** Get non-private named methods defined directly inside the class */
   def Symbol_classMethod(self: Symbol)(name: String)(given ctx: Context): List[DefDefSymbol]
@@ -1283,9 +1283,6 @@ trait CompilerInterface {
 
   /** Fields of a case class type -- only the ones declared in primary constructor */
   def Symbol_caseFields(self: Symbol)(given ctx: Context): List[ValDefSymbol]
-
-  /** The symbol of the companion module */
-  def Symbol_companionModule(self: Symbol)(given ctx: Context): Option[ValDefSymbol]
 
   def Symbol_of(fullName: String)(given ctx: Context): ClassDefSymbol
 
@@ -1319,9 +1316,13 @@ trait CompilerInterface {
   def isValDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** The class symbol of the companion module class */
-  def Symbol_moduleClass(self: Symbol)(given ctx: Context): Option[ClassDefSymbol]
+  def Symbol_moduleClass(self: Symbol)(given ctx: Context): Symbol
 
-  def Symbol_companionClass(self: Symbol)(given ctx: Context): Option[ClassDefSymbol]
+  /** The symbol of the companion class */
+  def Symbol_companionClass(self: Symbol)(given ctx: Context): Symbol
+
+  /** The symbol of the companion module */
+  def Symbol_companionModule(self: Symbol)(given ctx: Context): Symbol
 
   /** Symbol representing a bind definition. */
   type BindSymbol <: TermSymbol
