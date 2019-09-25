@@ -148,7 +148,7 @@ The definition of `Expr.reduce(f)(x)` is assumed to be functionally the same as
 result of beta-reducing `f(x)` if `f` is a known lambda expression.
 `Expr.reduce` distributes applications of `Expr` over function arrows:
 ```scala
-Expr.reduce(_).apply: Expr[(T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
+Expr.reduce(_): Expr[(T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
 ```
 Its dual, let’s call it `reflect`, can be defined as follows:
 ```scala
