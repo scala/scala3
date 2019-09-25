@@ -278,11 +278,12 @@ object Checking {
   def checkValidOperator(sym: Symbol)(implicit ctx: Context): Unit =
     sym.name.toTermName match {
       case name: SimpleName
-      if name.exists(isOperatorPart) &&
-        !sym.getAnnotation(defn.AlphaAnnot).isDefined &&
-        !sym.is(Synthetic) &&
-        !name.isConstructorName &&
-        ctx.settings.strict.value =>
+      if name.exists(isOperatorPart)
+         && !name.isSetterName
+         && !name.isConstructorName
+         && !sym.getAnnotation(defn.AlphaAnnot).isDefined
+         && !sym.is(Synthetic)
+         && ctx.settings.strict.value =>
         ctx.deprecationWarning(
           i"$sym has an operator name; it should come with an @alpha annotation", sym.sourcePos)
       case _ =>
