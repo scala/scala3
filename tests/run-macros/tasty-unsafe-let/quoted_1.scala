@@ -12,7 +12,7 @@ object Macros {
 
     import qctx.tasty.{let => letTerm}
     letTerm(rhsTerm) { rhsId =>
-      body(rhsId.seal.asInstanceOf[Expr[T]]).unseal // Dangerous uncheked cast!
+      Expr.betaReduce(body)(rhsId.seal.asInstanceOf[Expr[T]]).unseal // Dangerous uncheked cast!
     }.seal.cast[Unit]
   }
 

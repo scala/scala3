@@ -8,7 +8,7 @@ object Test {
 
     def f(given QuoteContext): Expr[Int => Int] = '{ (x: Int) => x + x }
 
-    println(run(f(x)))
-    println(withQuoteContext(f(x).show))
+    println(run(Expr.betaReduce(f)(x)))
+    println(withQuoteContext(Expr.betaReduce(f)(x).show))
   }
 }

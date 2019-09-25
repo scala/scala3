@@ -28,20 +28,31 @@ package quoted {
     /** Converts a tuple `(T1, ..., Tn)` to `(Expr[T1], ..., Expr[Tn])` */
     type TupleOfExpr[Tup <: Tuple] = Tuple.Map[Tup, [X] =>> (given QuoteContext) => Expr[X]]
 
-    implicit class AsFunction[F, Args <: Tuple, R](f: Expr[F])(given tf: TupledFunction[F, Args => R], qctx: QuoteContext) {
-      /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
-      def apply[G](given tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]]): G = {
-        import qctx.tasty._
-        tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
-      }
+    /** `Expr.betaReduce(f)(x1, ..., xn)` is functionally the same as `'{($f)($x1, ..., $xn)}`, however it optimizes this call
+     *   by returning the result of beta-reducing `f(x1, ..., xn)` if `f` is a known lambda expression.
+     *
+     *  `Expr.betaReduce` distributes applications of `Expr` over function arrows
+     *   ```scala
+     *   Expr.betaReduce(_): Expr[(T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
+     *   ```
+     */
+    def betaReduce[F, Args <: Tuple, R, G](f: Expr[F])(given tf: TupledFunction[F, Args => R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G = {
+      import qctx.tasty._
+      tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
     }
 
-    implicit class AsContextualFunction[F, Args <: Tuple, R](f: Expr[F])(given tf: TupledFunction[F, (given Args) => R], qctx: QuoteContext) {
-      /** Beta-reduces the function appication. Generates the an expression only containing the body of the function */
-      def apply[G](given tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]]): G = {
-        import qctx.tasty._
-        tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
-      }
+    /** `Expr.betaReduceGiven(f)(x1, ..., xn)` is functionally the same as `'{($f)(given $x1, ..., $xn)}`, however it optimizes this call
+     *   by returning the result of beta-reducing `f(given x1, ..., xn)` if `f` is a known lambda expression.
+     *
+     *  `Expr.betaReduceGiven` distributes applications of `Expr` over function arrows
+     *   ```scala
+     *   Expr.betaReduceGiven(_): Expr[(given T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
+     *   ```
+     *  Note: The
+     */
+    def betaReduceGiven[F, Args <: Tuple, R, G](f: Expr[F])(given tf: TupledFunction[F, (given Args) => R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G = {
+      import qctx.tasty._
+      tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[_]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
     }
 
     /** Returns a null expresssion equivalent to `'{null}` */

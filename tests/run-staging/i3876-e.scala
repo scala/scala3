@@ -9,8 +9,8 @@ object Test {
     def f4(given QuoteContext): Expr[Int => Int] = '{
       inlineLambda
     }
-    println(run(f4(x)))
-    println(withQuoteContext(f4(x).show))
+    println(run(Expr.betaReduce(f4)(x)))
+    println(withQuoteContext(Expr.betaReduce(f4)(x).show))
   }
 
   inline def inlineLambda <: Int => Int = x => x + x
