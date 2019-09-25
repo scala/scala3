@@ -219,8 +219,10 @@ object Tokens extends TokensCommon {
   final val atomicExprTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, QUOTEID, XMLSTART)
 
-  final val canStartExpressionTokens: TokenSet = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, INDENT, QUOTE, IF, DO, WHILE, FOR, NEW, TRY, THROW)
+  final val canStartExprTokens3: TokenSet = atomicExprTokens | BitSet(
+    LBRACE, LPAREN, INDENT, QUOTE, IF, WHILE, FOR, NEW, TRY, THROW)
+
+  final val canStartExprTokens2: TokenSet = canStartExprTokens3 | BitSet(DO)
 
   final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)
@@ -247,7 +249,9 @@ object Tokens extends TokensCommon {
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens: TokenSet = defIntroTokens | modifierTokens | BitSet(IMPORT, EXPORT, PACKAGE)
 
-  final val canStartStatTokens: TokenSet = canStartExpressionTokens | mustStartStatTokens | BitSet(
+  final val canStartStatTokens2: TokenSet = canStartExprTokens2 | mustStartStatTokens | BitSet(
+    AT, CASE)
+  final val canStartStatTokens3: TokenSet = canStartExprTokens3 | mustStartStatTokens | BitSet(
     AT, CASE)
 
   final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(
@@ -279,10 +283,6 @@ object Tokens extends TokensCommon {
    *  a parameter or given type list.
    */
   final val startParamOrGivenTypeTokens: BitSet = startParamTokens | BitSet(GIVEN, ERASED)
-
-  final val noIndentTemplateTokens = BitSet(EXTENDS)
-  final val noIndentAfterConditionTokens = BitSet(THEN, DO)
-  final val noIndentAfterEnumeratorTokens = BitSet(YIELD, DO)
 
   final val scala3keywords = BitSet(ENUM, ERASED, GIVEN)
 

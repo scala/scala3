@@ -1,3 +1,7 @@
+trait A
+    case class B() extends A  // error: Line is indented too far to the right
+    case object C extends A   // error: Line is indented too far to the right
+
 object Test {
 
   if (true)
@@ -27,3 +31,4 @@ object Test {
 
   println("!")  // error: expected a toplevel definition
 }
+

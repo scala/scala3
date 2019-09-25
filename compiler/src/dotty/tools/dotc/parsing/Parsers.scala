@@ -69,7 +69,7 @@ object Parsers {
    *  if not, the AST will be supplemented.
    */
   def parser(source: SourceFile)(implicit ctx: Context): Parser =
-    if (source.isSelfContained) new ScriptParser(source)
+    if source.isSelfContained then new ScriptParser(source)
     else new Parser(source)
 
   abstract class ParserCommon(val source: SourceFile)(implicit ctx: Context) {
@@ -181,7 +181,7 @@ object Parsers {
 
 /* -------------- TOKEN CLASSES ------------------------------------------- */
 
-    def isIdent = in.token == IDENTIFIER || in.token == BACKQUOTED_IDENT
+    def isIdent = in.isIdent
     def isIdent(name: Name) = in.token == IDENTIFIER && in.name == name
     def isSimpleLiteral = simpleLiteralTokens contains in.token
     def isLiteral = literalTokens contains in.token
@@ -207,7 +207,7 @@ object Parsers {
     } && !in.isSoftModifierInModifierPosition
 
     def isExprIntro: Boolean =
-      canStartExpressionTokens.contains(in.token) && !in.isSoftModifierInModifierPosition
+      in.canStartExprTokens.contains(in.token) && !in.isSoftModifierInModifierPosition
 
     def isDefIntro(allowedMods: BitSet, excludedSoftModifiers: Set[TermName] = Set.empty): Boolean =
       in.token == AT ||
@@ -215,8 +215,7 @@ object Parsers {
       (allowedMods `contains` in.token) ||
       in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
 
-    def isStatSep: Boolean =
-      in.token == NEWLINE || in.token == NEWLINES || in.token == SEMI
+    def isStatSep: Boolean = in.isNewLine || in.token == SEMI
 
     /** A '$' identifier is treated as a splice if followed by a `{`.
      *  A longer identifier starting with `$` is treated as a splice/id combination
@@ -341,10 +340,8 @@ object Parsers {
     /** semi = nl {nl} | `;'
      *  nl  = `\n' // where allowed
      */
-    def acceptStatSep(): Unit = in.token match {
-      case NEWLINE | NEWLINES => in.nextToken()
-      case _                  => accept(SEMI)
-    }
+    def acceptStatSep(): Unit =
+      if in.isNewLine then in.nextToken() else accept(SEMI)
 
     def acceptStatSepUnlessAtEnd(altEnd: Token = EOF): Unit =
       if (!isStatSeqEnd)
@@ -354,7 +351,7 @@ object Parsers {
           case NEWLINE | NEWLINES => in.nextToken()
           case SEMI => in.nextToken()
           case _ =>
-            syntaxError(i"end of statement expected but $in found")
+            syntaxError(i"end of statement expected but ${showToken(in.token)} found")
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
             accept(SEMI)
         }
@@ -603,9 +600,7 @@ object Parsers {
           val t = body()
           // Therefore, make sure there would be a matching <outdent>
           def nextIndentWidth = in.indentWidth(in.next.offset)
-          if (in.token == NEWLINE || in.token == NEWLINES)
-             && !(nextIndentWidth < startIndentWidth)
-          then
+          if in.isNewLine && !(nextIndentWidth < startIndentWidth) then
             warning(
               if startIndentWidth <= nextIndentWidth then
                 i"""Line is indented too far to the right, or a `{' is missing before:
@@ -623,7 +618,7 @@ object Parsers {
      *  statement that's indented relative to the current region.
      */
     def checkNextNotIndented(): Unit = in.currentRegion match
-      case r: InBraces if in.token == NEWLINE || in.token == NEWLINES =>
+      case r: IndentSignificantRegion if in.isNewLine =>
         val nextIndentWidth = in.indentWidth(in.next.offset)
         if r.indentWidth < nextIndentWidth then
           warning(i"Line is indented too far to the right, or a `{' is missing", in.next.offset)
@@ -813,20 +808,20 @@ object Parsers {
       else span
     }
 
-    /** Drop current token, which is assumed to be `then` or `do`. */
-    def dropTerminator(): Unit = {
-      var startOffset = in.offset
-      var endOffset = in.lastCharOffset
-      if (in.isAfterLineEnd) {
-        if (testChar(endOffset, ' '))
-          endOffset += 1
-      }
-      else
-        if (testChar(startOffset - 1, ' ') &&
-            !overlapsPatch(source, Span(startOffset - 1, endOffset)))
-          startOffset -= 1
-      patch(source, widenIfWholeLine(Span(startOffset, endOffset)), "")
-    }
+    /** Drop current token, if it is a `then` or `do`. */
+    def dropTerminator(): Unit =
+      if in.token == THEN || in.token == DO then
+        var startOffset = in.offset
+        var endOffset = in.lastCharOffset
+        if (in.isAfterLineEnd) {
+          if (testChar(endOffset, ' '))
+            endOffset += 1
+        }
+        else
+          if (testChar(startOffset - 1, ' ') &&
+              !overlapsPatch(source, Span(startOffset - 1, endOffset)))
+            startOffset -= 1
+        patch(source, widenIfWholeLine(Span(startOffset, endOffset)), "")
 
     /** rewrite code with (...) around the source code of `t` */
     def revertToParens(t: Tree): Unit =
@@ -841,7 +836,8 @@ object Parsers {
     /** In the tokens following the current one, does `query` precede any of the tokens that
      *   - must start a statement, or
      *   - separate two statements, or
-     *   - continue a statement (e.g. `else`, catch`)?
+     *   - continue a statement (e.g. `else`, catch`), or
+     *   - terminate the current scope?
      */
     def followedByToken(query: Token): Boolean = {
       val lookahead = in.LookaheadScanner()
@@ -875,7 +871,7 @@ object Parsers {
       }
       if (lookahead.token == LARROW)
         false // it's a pattern
-      else if (lookahead.token != IDENTIFIER && lookahead.token != BACKQUOTED_IDENT)
+      else if (lookahead.isIdent)
         true // it's not a pattern since token cannot be an infix operator
       else
         followedByToken(LARROW) // `<-` comes before possible statement starts
@@ -903,7 +899,7 @@ object Parsers {
      */
     def followingIsGivenSig() =
       val lookahead = in.LookaheadScanner()
-      if lookahead.token == IDENTIFIER || lookahead.token == BACKQUOTED_IDENT then
+      if lookahead.isIdent then
         lookahead.nextToken()
       while lookahead.token == LPAREN || lookahead.token == LBRACKET do
         lookahead.skipParens()
@@ -1229,12 +1225,15 @@ object Parsers {
       if (in.token == NEWLINE) in.nextToken()
 
     def newLinesOpt(): Unit =
-      if (in.token == NEWLINE || in.token == NEWLINES)
-        in.nextToken()
+      if in.isNewLine then in.nextToken()
 
     def newLineOptWhenFollowedBy(token: Int): Unit =
       // note: next is defined here because current == NEWLINE
       if (in.token == NEWLINE && in.next.token == token) in.nextToken()
+
+    def newLinesOptWhenFollowedBy(name: Name): Unit =
+      if in.isNewLine && in.next.token == IDENTIFIER && in.next.name == name then
+        in.nextToken()
 
     def newLineOptWhenFollowing(p: Int => Boolean): Unit =
       // note: next is defined here because current == NEWLINE
@@ -1251,7 +1250,7 @@ object Parsers {
     }
 
     def possibleTemplateStart(): Unit = {
-      in.observeIndented(noIndentTemplateTokens, nme.derives)
+      in.observeIndented()
       newLineOptWhenFollowedBy(LBRACE)
     }
 
@@ -1650,35 +1649,51 @@ object Parsers {
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
 
+    /** Does the current conditional expression continue after
+     *  the initially parsed (...) region?
+     */
+    def toBeContinued(altToken: Token): Boolean =
+      if in.token == altToken || in.isNewLine || in.isScala2Mode then
+        false // a newline token means the expression is finished
+      else if !in.canStartStatTokens.contains(in.token)
+              || in.isLeadingInfixOperator(inConditional = true)
+      then
+        true
+      else
+        followedByToken(altToken) // scan ahead to see whether we find a `then` or `do`
+
     def condExpr(altToken: Token): Tree =
-      if (in.token == LPAREN) {
+      if in.token == LPAREN then
         var t: Tree = atSpan(in.offset) { Parens(inParens(exprInParens())) }
-        if (in.token != altToken && followedByToken(altToken))
-          t = inSepRegion(LPAREN, RPAREN) {
-            newLineOpt()
+        val enclosedInParens = !toBeContinued(altToken)
+        if !enclosedInParens then
+          t = inSepRegion(LBRACE, RBRACE) {
             expr1Rest(postfixExprRest(simpleExprRest(t)), Location.ElseWhere)
           }
-        if (in.token == altToken) {
-          if (rewriteToOldSyntax()) revertToParens(t)
+        if in.token == altToken then
+          if rewriteToOldSyntax() then revertToParens(t)
           in.nextToken()
-        }
-        else {
-          in.observeIndented(noIndentAfterConditionTokens)
+        else
+          if (altToken == THEN || enclosedInParens) && in.isNewLine then
+            in.observeIndented()
+          if !enclosedInParens && in.token != INDENT then accept(altToken)
           if (rewriteToNewSyntax(t.span))
             dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
-        }
         t
-      }
-      else {
+      else
         val t =
-          if (in.isNestedStart)
+          if in.isNestedStart then
             try expr() finally newLinesOpt()
           else
-            inSepRegion(LPAREN, RPAREN)(expr())
-        if (rewriteToOldSyntax(t.span.startPos)) revertToParens(t)
-        accept(altToken)
+            inSepRegion(LBRACE, RBRACE)(expr())
+        if rewriteToOldSyntax(t.span.startPos) then
+          revertToParens(t)
+        if altToken == THEN && in.isNewLine then
+          // don't require a `then` at the end of a line
+          in.observeIndented()
+        if in.token != INDENT then accept(altToken)
         t
-      }
+    end condExpr
 
     /** Expr              ::=  [`implicit'] FunParams =>' Expr
      *                      |  Expr1
@@ -1841,20 +1856,20 @@ object Parsers {
           }
         }
       case _ =>
-        if (isIdent(nme.inline) && !in.inModifierPosition() && in.lookaheadIn(canStartExpressionTokens)) {
+        if isIdent(nme.inline)
+           && !in.inModifierPosition()
+           && in.lookaheadIn(in.canStartExprTokens)
+        then
           val start = in.skipToken()
-          in.token match {
+          in.token match
             case IF =>
               ifExpr(start, InlineIf)
             case _ =>
               val t = postfixExpr()
               if (in.token == MATCH) matchExpr(t, start, InlineMatch)
-              else {
+              else
                 syntaxErrorOrIncomplete(i"`match` or `if` expected but ${in.token} found")
                 t
-              }
-          }
-        }
         else expr1Rest(postfixExpr(), location)
     }
 
@@ -2001,7 +2016,7 @@ object Parsers {
     def postfixExpr(): Tree = postfixExprRest(prefixExpr())
 
     def postfixExprRest(t: Tree): Tree =
-      infixOps(t, canStartExpressionTokens, prefixExpr, maybePostfix = true)
+      infixOps(t, in.canStartExprTokens, prefixExpr, maybePostfix = true)
 
     /** PrefixExpr   ::= [`-' | `+' | `~' | `!'] SimpleExpr
     */
@@ -2198,7 +2213,7 @@ object Parsers {
             lookahead.nextToken()
             lookahead.token != COLON
           }
-          else canStartExpressionTokens.contains(lookahead.token)
+          else in.canStartExprTokens.contains(lookahead.token)
         }
       }
       if (in.token == LPAREN && (!inClassConstrAnnots || isLegalAnnotArg))
@@ -2327,7 +2342,7 @@ object Parsers {
                 dropParensOrBraces(start, if (in.token == YIELD || in.token == DO) "" else "do")
               }
             }
-            in.observeIndented(noIndentAfterEnumeratorTokens)
+            in.observeIndented()
             res
           }
           else {
@@ -2473,7 +2488,7 @@ object Parsers {
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
-      infixOps(simplePattern(), canStartExpressionTokens, simplePattern, isOperator = in.name != nme.raw.BAR)
+      infixOps(simplePattern(), in.canStartExprTokens, simplePattern, isOperator = in.name != nme.raw.BAR)
 
     /** SimplePattern    ::= PatVar
      *                    |  Literal
@@ -3459,6 +3474,7 @@ object Parsers {
     /** Template          ::=  InheritClauses [TemplateBody]
      */
     def template(constr: DefDef, isEnum: Boolean = false): Template = {
+      newLinesOptWhenFollowedBy(nme.derives)
       val (parents, derived) = inheritClauses()
       possibleTemplateStart()
       if (isEnum) {
@@ -3471,10 +3487,11 @@ object Parsers {
     /** TemplateOpt = [Template]
      */
     def templateOpt(constr: DefDef): Template =
-      possibleTemplateStart()
+      newLinesOptWhenFollowedBy(nme.derives)
       if in.token == EXTENDS || isIdent(nme.derives) then
         template(constr)
       else
+        possibleTemplateStart()
         if in.isNestedStart then
           template(constr)
         else

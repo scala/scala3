@@ -3,11 +3,52 @@ layout: doc-page
 title: Optional Braces
 ---
 
-**Note** The syntax described in this section is currently under revision.
-[Here is the new version which will be implemented in Dotty 0.20](./indentation-new.html).
-
 As an experimental feature, Scala 3 treats indentation as significant and allows
 some occurrences of braces `{...}` to be optional.
+
+ - First, some badly indented programs are ruled out, which means they are flagged with warnings.
+ - Second, some occurrences of braces `{...}` are made optional. Generally, the rule
+   is that adding a pair of optional braces will not change the meaning of a well-indented program.
+
+### Indentation Rules
+
+The compiler enforces three rules for well-indented programs, flagging violations as warnings.
+
+ 1. In a brace-delimited region, no statement is allowed to start to the left
+    of the first statement after the opening brace that starts a new line.
+
+    This rule is helpful for finding missing closing braces. It prevents errors like:
+
+    ```scala
+    if (x < 0) {
+      println(1)
+      println(2)
+
+    println("done")  // error: indented too far to the left
+    ```
+
+ 2. If significant indentation is turned off (i.e. under Scala-2 mode or under `-noindent`) and we are at the  start of an indented sub-part of an expression, and the indented part ends in a newline, the next statement must start at an indentation width less than the sub-part. This prevents errors where an opening brace was forgotten, as in
+
+    ```scala
+    if (x < 0)
+      println(1)
+      println(2)   // error: missing `{`
+    ```
+
+ 3. If significant indentation is turned off, code that follows a class or object definition (or similar) lacking a `{...}` body may not be indented more than that definition. This prevents misleading situations like:
+
+    ```scala
+    trait A
+      case class B() extends A // error: indented too far to the right
+    ```
+   It requires that the case class `C` to be written instead at the same level of indentation as the trait `A`.
+
+These rules still leave a lot of leeway how programs should be indented. For instance, they do not impose
+any restrictions on indentation within expressions, nor do they require that all statements of an indentation block line up exactly.
+
+The rules are generally helpful in pinpointing the root cause of errors related to missing opening or closing braces. These errors are often quite hard to diagnose, in particular in large programs.
+
+### Optional Braces
 
 The compiler will insert `<indent>` or `<outdent>`
 tokens at certain line breaks. Grammatically, pairs of `<indent>` and `<outdent>` tokens have the same effect as pairs of braces `{` and `}`.
@@ -24,6 +65,7 @@ There are two rules:
 
     An indentation region can start
 
+     - after the condition of an `if-else`, or
      - at points where a set of definitions enclosed in braces is expected in a
        class, object, given, or enum definition, in an enum case, or after a package clause, or
      - after one of the following tokens:
@@ -47,7 +89,7 @@ There are two rules:
 It is an error if the indentation width of the token following an `<outdent>` does not
 match the indentation of some previous line in the enclosing indentation region. For instance, the following would be rejected.
 ```scala
-if x < 0 then
+if x < 0
     -x
   else   // error: `else` does not align correctly
      x
@@ -61,14 +103,13 @@ Indentation prefixes can consist of spaces and/or tabs. Indentation widths are t
 
 ### Indentation and Braces
 
-Indentatation can be mixed freely with braces. For interpreting  indentation inside braces, the following rules apply.
+Indentation can be mixed freely with braces. For interpreting indentation inside braces, the following rules apply.
 
  1. The assumed indentation width of a multiline region enclosed in braces is the
     indentation width of the first token that starts a new line after the opening brace.
 
  2. On encountering a closing brace `}`, as many `<outdent>` tokens as necessary are
     inserted to close all open indentation regions inside the pair of braces.
-
 
 ### Special Treatment of Case Clauses
 
@@ -161,9 +202,9 @@ object IndentWidth
   private val tabs = IArray.tabulate(MaxCached + 1)(new Run('\t', _))
 
   def Run(ch: Char, n: Int): Run =
-    if n <= MaxCached && ch == ' ' then
+    if n <= MaxCached && ch == ' '
       spaces(n)
-    else if n <= MaxCached && ch == '\t' then
+    else if n <= MaxCached && ch == '\t'
       tabs(n)
     else
       new Run(ch, n)
@@ -175,7 +216,7 @@ end IndentWidth
 
 ### Settings and Rewrites
 
-Significant indentation is enabled by default. It can be turned off by giving any of the options `-noindent`, `old-syntax` and `language:Scala2`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues an error (or, in the case of `-language:Scala2`, a migration warning).
+Significant indentation is enabled by default. It can be turned off by giving any of the options `-noindent`, `old-syntax` and `language:Scala2`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues a warning.
 
 The Dotty compiler can rewrite source code to indented code and back.
 When invoked with options `-rewrite -indent` it will rewrite braces to
