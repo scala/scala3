@@ -954,7 +954,7 @@ object Erasure {
       (stats2.filter(!_.isEmpty), finalCtx)
     }
 
-    override def adapt(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree =
+    override def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree =
       trace(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
         if ctx.phase != ctx.erasurePhase && ctx.phase != ctx.erasurePhase.next then
           // this can happen when reading annotations loaded during erasure,

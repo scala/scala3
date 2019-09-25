@@ -44,6 +44,7 @@ import transform.TypeUtils._
 import reporting.trace
 import Nullables.{NotNullInfo, given _}
 import NullOpsDecorator._
+import config.Printers.debug
 
 object Typer {
 
@@ -2771,20 +2772,23 @@ class Typer extends Namer
    *  If all this fails, error
    *  Parameters as for `typedUnadapted`.
    */
-  def adapt(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree =
-    trace(i"adapting $tree to $pt", typr, show = true) {
+  def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean = true)(using Context): Tree = {
+    val last = Thread.currentThread.getStackTrace()(2).toString;
+    trace/*.force*/(i"adapting (tryGadtHealing=$tryGadtHealing) $tree to $pt\n{callsite: $last}", typr, show = true) {
       record("adapt")
-      adapt1(tree, pt, locked)
+      adapt1(tree, pt, locked, tryGadtHealing)
     }
+  }
 
   final def adapt(tree: Tree, pt: Type)(using Context): Tree =
     adapt(tree, pt, ctx.typerState.ownedVars)
 
-  private def adapt1(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
+  private def adapt1(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree = {
+    // assert(pt.exists && !pt.isInstanceOf[ExprType])
     assert(pt.exists && !pt.isInstanceOf[ExprType] || ctx.reporter.errorsReported)
     def methodStr = err.refStr(methPart(tree).tpe)
 
-    def readapt(tree: Tree)(using Context) = adapt(tree, pt, locked)
+    def readapt(tree: Tree, shouldTryGadtHealing: Boolean = tryGadtHealing)(using Context) = adapt(tree, pt, locked, shouldTryGadtHealing)
     def readaptSimplified(tree: Tree)(using Context) = readapt(simplify(tree, pt, locked))
 
     def missingArgs(mt: MethodType) = {
@@ -3239,16 +3243,19 @@ class Typer extends Namer
     }
 
     def adaptToSubType(wtp: Type): Tree = {
+      debug.println("adaptToSubType")
+      debug.println("// try converting a constant to the target type")
       // try converting a constant to the target type
       val folded = ConstFold(tree, pt)
       if (folded ne tree)
         return adaptConstant(folded, folded.tpe.asInstanceOf[ConstantType])
 
-      // Try to capture wildcards in type
+      debug.println("// Try to capture wildcards in type")
       val captured = captureWildcards(wtp)
       if (captured `ne` wtp)
         return readapt(tree.cast(captured))
 
+      debug.println("// drop type if prototype is Unit")
       // drop type if prototype is Unit
       if (pt isRef defn.UnitClass) {
         // local adaptation makes sure every adapted tree conforms to its pt
@@ -3258,6 +3265,7 @@ class Typer extends Namer
         return tpd.Block(tree1 :: Nil, Literal(Constant(())))
       }
 
+      debug.println("// convert function literal to SAM closure")
       // convert function literal to SAM closure
       tree match {
         case closure(Nil, id @ Ident(nme.ANON_FUN), _)
@@ -3275,6 +3283,28 @@ class Typer extends Namer
         case _ =>
       }
 
+      debug.println("// try GADT approximation")
+      val foo = Inferencing.approximateGADT(wtp)
+      debug.println(
+        i"""
+        foo = $foo
+        pt.isInstanceOf[SelectionProto] = ${pt.isInstanceOf[SelectionProto]}
+        ctx.gadt.nonEmpty = ${ctx.gadt.nonEmpty}
+        pt.isMatchedBy = ${
+          if (pt.isInstanceOf[SelectionProto])
+            pt.asInstanceOf[SelectionProto].isMatchedBy(foo).toString
+          else
+            "<not a SelectionProto>"
+        }
+        """
+      )
+      pt match {
+        case pt: SelectionProto if ctx.gadt.nonEmpty && pt.isMatchedBy(foo) =>
+          return tpd.Typed(tree, TypeTree(foo))
+        case _ => ;
+      }
+
+      debug.println("// try an extension method in scope")
       // try an extension method in scope
       pt match {
         case SelectionProto(name, mbrType, _, _) =>
@@ -3292,17 +3322,33 @@ class Typer extends Namer
           val app = tryExtension(using nestedCtx)
           if (!app.isEmpty && !nestedCtx.reporter.hasErrors) {
             nestedCtx.typerState.commit()
+            debug.println("returning ext meth in scope")
             return ExtMethodApply(app)
           }
         case _ =>
       }
 
+      debug.println("// try an implicit conversion")
       // try an implicit conversion
       val prevConstraint = ctx.typerState.constraint
       def recover(failure: SearchFailureType) =
+        {
+          debug.println("recover")
         if (isFullyDefined(wtp, force = ForceDegree.all) &&
             ctx.typerState.constraint.ne(prevConstraint)) readapt(tree)
+        // else if ({
+        //   debug.println(i"tryGadtHealing=$tryGadtHealing && \n\tctx.gadt.nonEmpty=${ctx.gadt.nonEmpty}")
+        //   tryGadtHealing && ctx.gadt.nonEmpty
+        // })
+        //  {
+        //    debug.println("here")
+        //    readapt(
+        //    tree = tpd.Typed(tree, TypeTree(Inferencing.approximateGADT(wtp))),
+        //    shouldTryGadtHealing = false,
+        //    )
+        //  }
         else err.typeMismatch(tree, pt, failure)
+        }
       if ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType then
         if pt.isRef(defn.AnyValClass) || pt.isRef(defn.ObjectClass) then
           ctx.error(em"the result of an implicit conversion must be more specific than $pt", tree.sourcePos)

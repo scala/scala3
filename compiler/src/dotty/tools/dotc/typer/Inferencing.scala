@@ -19,6 +19,8 @@ import collection.mutable
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
+import config.Printers.debug
+
 object Inferencing {
 
   import tpd._
@@ -160,6 +162,73 @@ object Inferencing {
              process(tp)            // might have type uninstantiated variables themselves.
            }
       )
+  }
+
+  def approximateGADT(tp: Type)(implicit ctx: Context): Type = {
+    val map = new IsFullyDefinedAccumulator2
+    val res = map(tp)
+    assert(!map.failed)
+    debug.println(i"approximateGADT( $tp )  = $res  //  {${tp.toString}}")
+    res
+  }
+
+  private class IsFullyDefinedAccumulator2(implicit ctx: Context) extends TypeMap {
+
+    var failed = false
+
+    private def instantiate(tvar: TypeVar, fromBelow: Boolean): Type = {
+      val inst = tvar.instantiate(fromBelow)
+      typr.println(i"forced instantiation of ${tvar.origin} = $inst")
+      inst
+    }
+
+    private def instDirection2(sym: Symbol)(implicit ctx: Context): Int = {
+      val constrained = ctx.gadt.fullBounds(sym)
+      val original = sym.info.bounds
+      val cmp = ctx.typeComparer
+      val approxBelow =
+        if (!cmp.isSubTypeWhenFrozen(constrained.lo, original.lo)) 1 else 0
+      val approxAbove =
+        if (!cmp.isSubTypeWhenFrozen(original.hi, constrained.hi)) 1 else 0
+      approxAbove - approxBelow
+    }
+
+    private[this] var toMaximize: Boolean = false
+
+    def apply(tp: Type): Type = tp.dealias match {
+      case tp @ TypeRef(qual, nme) if (qual eq NoPrefix) && ctx.gadt.contains(tp.symbol) =>
+        val sym = tp.symbol
+        val res =
+          ctx.gadt.approximation(sym, fromBelow = variance < 0)
+
+        debug.println(i"approximated $tp  ~~  $res")
+
+        res
+
+      case _: WildcardType | _: ProtoType =>
+        failed = true
+        NoType
+
+      case tp =>
+        mapOver(tp)
+    }
+
+    // private class UpperInstantiator(implicit ctx: Context) extends TypeAccumulator[Unit] {
+    //   def apply(x: Unit, tp: Type): Unit = {
+    //     tp match {
+    //       case tvar: TypeVar if !tvar.isInstantiated =>
+    //         instantiate(tvar, fromBelow = false)
+    //       case _ =>
+    //     }
+    //     foldOver(x, tp)
+    //   }
+    // }
+
+    def process(tp: Type): Type = {
+      val res = apply(tp)
+      // if (res && toMaximize) new UpperInstantiator().apply((), tp)
+      res
+    }
   }
 
   /** For all type parameters occurring in `tp`:
