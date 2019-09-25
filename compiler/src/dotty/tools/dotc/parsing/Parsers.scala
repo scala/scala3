@@ -2849,7 +2849,7 @@ object Parsers {
                      ofCaseClass: Boolean = false,
                      ofInstance: Boolean = false): List[List[ValDef]] =
 
-      def recur(firstClause: Boolean, nparams: Int, contextualOnly: Boolean): List[List[ValDef]] =
+      def recur(firstClause: Boolean, nparams: Int): List[List[ValDef]] =
         newLineOptWhenFollowedBy(LPAREN)
         if in.token == LPAREN then
           val paramsStart = in.offset
@@ -2858,23 +2858,14 @@ object Parsers {
               ofClass = ofClass,
               ofCaseClass = ofCaseClass,
               firstClause = firstClause)
-          val isGiven = params match
-            case param :: _ if param.mods.flags.is(Given) => true
-            case _ =>
-              if contextualOnly then
-                syntaxError(
-                  if ofInstance then em"parameters of instance definitions must be `given' clauses"
-                  else em"normal parameters cannot come after `given' clauses",
-                  paramsStart)
-              false
           val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
           params :: (
             if lastClause then Nil
-            else recur(firstClause = false, nparams + params.length, isGiven))
+            else recur(firstClause = false, nparams + params.length))
         else Nil
       end recur
 
-      recur(firstClause = true, 0, ofInstance)
+      recur(firstClause = true, 0)
     end paramClauses
 
 /* -------- DEFS ------------------------------------------- */
