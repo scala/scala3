@@ -29,11 +29,11 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
             }
 
             // println(method)
-            val symbol = sym.asClassDef.methods.find(_.name == method.getName).get
+            val symbol = sym.methods.find(_.name == method.getName).get
 
             if (symbol.isDefinedInCurrentRun) {
               val argsList = if (args == null) Nil else args.toList
-              interpretCall(this, symbol.asDefDef, argsList).asInstanceOf[Object]
+              interpretCall(this, symbol, argsList).asInstanceOf[Object]
             }
             else {
               assert(method.getClass == classOf[Object])
@@ -73,7 +73,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
           jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
         case _ =>
           if (fn.symbol.flags.is(Flags.Object))
-            jvmReflection.loadModule(fn.symbol.asValDef.moduleClass)
+            jvmReflection.loadModule(fn.symbol.moduleClass)
           else
             jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
       }

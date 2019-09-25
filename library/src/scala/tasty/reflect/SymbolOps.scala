@@ -42,36 +42,6 @@ trait SymbolOps extends Core { selfSymbolOps: FlagsOps =>
     /** The comment for this symbol, if any */
     def comment(given ctx: Context): Option[Comment] = internal.Symbol_comment(self)
 
-    /** Unsafe cast as to PackageSymbol */
-    def asPackageDef(given ctx: Context): Symbol =
-      if self.isPackageDef then self
-      else throw new Exception("not a PackageDefSymbol")
-
-    /** Unsafe cast as to ClassSymbol */
-    def asClassDef(given ctx: Context): Symbol =
-      if self.isClassDef then self
-      else throw new Exception("not a class Symbol")
-
-    /** Unsafe cast as to DefSymbol */
-    def asDefDef(given ctx: Context): Symbol =
-      if self.isDefDef then self
-      else throw new Exception("not a def Symbol")
-
-    /** Unsafe cast as to ValSymbol */
-    def asValDef(given ctx: Context): Symbol =
-      if self.isValDef then self
-      else throw new Exception("not a val Symbol")
-
-    /** Unsafe cast as to TypeSymbol */
-    def asTypeDef(given ctx: Context): Symbol =
-      if self.isTypeDef then self
-      else throw new Exception("not a type Symbol")
-
-    /** Unsafe cast as to BindSymbol */
-    def asBindDef(given ctx: Context): Symbol =
-      if self.isBind then self
-      else throw new Exception("not a bind Symbol")
-
     /** Tree of this definition */
     def tree(given ctx: Context): Tree =
       internal.Symbol_tree(self)

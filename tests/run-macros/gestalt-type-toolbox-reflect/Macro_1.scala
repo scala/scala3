@@ -37,46 +37,46 @@ object TypeToolbox {
   inline def caseFields[T]: List[String] = ${caseFieldsImpl('[T])}
   private def caseFieldsImpl(tp: Type[_])(given qctx: QuoteContext): Expr[List[String]] = {
     import qctx.tasty._
-    val fields = tp.unseal.symbol.asClassDef.caseFields.map(_.name)
+    val fields = tp.unseal.symbol.caseFields.map(_.name)
     Expr(fields)
   }
 
   inline def fieldIn[T](inline mem: String): String = ${fieldInImpl('[T], mem)}
   private def fieldInImpl(t: Type[_], mem: String)(given qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
-    val field = t.unseal.symbol.asClassDef.field(mem)
+    val field = t.unseal.symbol.field(mem)
     Expr(if field.isNoSymbol then "" else field.name)
   }
 
   inline def fieldsIn[T]: Seq[String] = ${fieldsInImpl('[T])}
   private def fieldsInImpl(t: Type[_])(given qctx: QuoteContext): Expr[Seq[String]] = {
     import qctx.tasty._
-    val fields = t.unseal.symbol.asClassDef.fields
+    val fields = t.unseal.symbol.fields
     Expr(fields.map(_.name).toList)
   }
 
   inline def methodIn[T](inline mem: String): Seq[String] = ${methodInImpl('[T], mem)}
   private def methodInImpl(t: Type[_], mem: String)(given qctx: QuoteContext): Expr[Seq[String]] = {
     import qctx.tasty._
-    Expr(t.unseal.symbol.asClassDef.classMethod(mem).map(_.name))
+    Expr(t.unseal.symbol.classMethod(mem).map(_.name))
   }
 
   inline def methodsIn[T]: Seq[String] = ${methodsInImpl('[T])}
   private def methodsInImpl(t: Type[_])(given qctx: QuoteContext): Expr[Seq[String]] = {
     import qctx.tasty._
-    Expr(t.unseal.symbol.asClassDef.classMethods.map(_.name))
+    Expr(t.unseal.symbol.classMethods.map(_.name))
   }
 
   inline def method[T](inline mem: String): Seq[String] = ${methodImpl('[T], mem)}
   private def methodImpl(t: Type[_], mem: String)(given qctx: QuoteContext): Expr[Seq[String]] = {
     import qctx.tasty._
-    Expr(t.unseal.symbol.asClassDef.method(mem).map(_.name))
+    Expr(t.unseal.symbol.method(mem).map(_.name))
   }
 
   inline def methods[T]: Seq[String] = ${methodsImpl('[T])}
   private def methodsImpl(t: Type[_])(given qctx: QuoteContext): Expr[Seq[String]] = {
     import qctx.tasty._
-    Expr(t.unseal.symbol.asClassDef.methods.map(_.name))
+    Expr(t.unseal.symbol.methods.map(_.name))
   }
 
   inline def typeTag[T](x: T): String = ${typeTagImpl('[T])}
@@ -89,7 +89,7 @@ object TypeToolbox {
   inline def companion[T1, T2]: Boolean = ${companionImpl('[T1], '[T2])}
   private def companionImpl(t1: Type[_], t2: Type[_])(given qctx: QuoteContext): Expr[Boolean] = {
     import qctx.tasty._
-    val res = t1.unseal.symbol.asClassDef.companionModule == t2.unseal.symbol
+    val res = t1.unseal.symbol.companionModule == t2.unseal.symbol
     Expr(res)
   }
 

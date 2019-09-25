@@ -79,7 +79,7 @@ class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
   }
 
   private def paramsSig(sym: Symbol): List[Class[_]] = {
-    sym.asDefDef.signature.paramSigs.collect {
+    sym.signature.paramSigs.collect {
       case param: String =>
         def javaArraySig(name: String): String = {
           if (name.endsWith("[]")) "[" + javaArraySig(name.dropRight(2))
