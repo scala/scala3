@@ -12,11 +12,11 @@ object Macros {
       var i = $start
       val j = $end
       while (i < j) {
-        ${Expr.reduce(f)('i)}
+        ${Expr.betaReduce(f)('i)}
         i += 1
       }
       while {
-        ${Expr.reduce(f)('i)}
+        ${Expr.betaReduce(f)('i)}
         i += 1
         i < j
       } do ()

@@ -24,7 +24,7 @@ object Optional {
   // FIXME fix issue #5097 and enable private
   /*private*/ def mapImpl[A >: Null : Type, B >: Null : Type](opt: Expr[Optional[A]], f: Expr[A => B])(given QuoteContext): Expr[Optional[B]] = '{
     if ($opt.isEmpty) new Optional(null)
-    else new Optional(${Expr.reduce(f)('{$opt.value})})
+    else new Optional(${Expr.betaReduce(f)('{$opt.value})})
   }
 
 }

@@ -14,10 +14,10 @@ object Asserts {
         fn.tpe.widen match {
           case Type.IsMethodType(_) =>
             args.size match {
-              case 0 => Expr.reduce(fn.seal.cast[() => Int])()
-              case 1 => Expr.reduce(fn.seal.cast[Int => Int])('{0})
-              case 2 => Expr.reduce(fn.seal.cast[(Int, Int) => Int])('{0}, '{0})
-              case 3 => Expr.reduce(fn.seal.cast[(Int, Int, Int) => Int])('{0}, '{0}, '{0})
+              case 0 => Expr.betaReduce(fn.seal.cast[() => Int])()
+              case 1 => Expr.betaReduce(fn.seal.cast[Int => Int])('{0})
+              case 2 => Expr.betaReduce(fn.seal.cast[(Int, Int) => Int])('{0}, '{0})
+              case 3 => Expr.betaReduce(fn.seal.cast[(Int, Int, Int) => Int])('{0}, '{0}, '{0})
             }
         }
       case _ => x
@@ -35,10 +35,10 @@ object Asserts {
       case Apply(fn, args) =>
         val pre = rec(fn)
         args.size match {
-          case 0 => Expr.reduce(pre.seal.cast[() => Any])().unseal
-          case 1 => Expr.reduce(pre.seal.cast[Int => Any])('{0}).unseal
-          case 2 => Expr.reduce(pre.seal.cast[(Int, Int) => Any])('{0}, '{0}).unseal
-          case 3 => Expr.reduce(pre.seal.cast[(Int, Int, Int) => Any])('{0}, '{0}, '{0}).unseal
+          case 0 => Expr.betaReduce(pre.seal.cast[() => Any])().unseal
+          case 1 => Expr.betaReduce(pre.seal.cast[Int => Any])('{0}).unseal
+          case 2 => Expr.betaReduce(pre.seal.cast[(Int, Int) => Any])('{0}, '{0}).unseal
+          case 3 => Expr.betaReduce(pre.seal.cast[(Int, Int, Int) => Any])('{0}, '{0}, '{0}).unseal
         }
       case _ => term
     }

@@ -11,7 +11,7 @@ object Test {
       f
     }
 
-    println(run(Expr.reduce(f2)(x)))
-    println(withQuoteContext(Expr.reduce(f2)(x).show))
+    println(run(Expr.betaReduce(f2)(x)))
+    println(withQuoteContext(Expr.betaReduce(f2)(x).show))
   }
 }

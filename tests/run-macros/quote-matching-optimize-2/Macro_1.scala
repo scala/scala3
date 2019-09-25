@@ -11,13 +11,13 @@ object Macro {
 
     def optimize(x: Expr[Any]): Expr[Any] = x match {
       case '{ ($ls: List[$t]).filter($f).filter($g) } =>
-        optimize('{ $ls.filter(x => ${Expr.reduce(f)('x)} && ${Expr.reduce(g)('x)}) })
+        optimize('{ $ls.filter(x => ${Expr.betaReduce(f)('x)} && ${Expr.betaReduce(g)('x)}) })
 
       case '{ type $u; type $v; ($ls: List[$t]).map[`$u`]($f).map[`$v`]($g) } =>
-        optimize('{ $ls.map(x => ${Expr.reduce(g)(Expr.reduce(f)('x))}) })
+        optimize('{ $ls.map(x => ${Expr.betaReduce(g)(Expr.betaReduce(f)('x))}) })
 
       case '{ ($ls: List[$t]).filter($f).foreach[$u]($g) } =>
-        optimize('{ $ls.foreach[Any](x => if (${Expr.reduce(f)('x)}) ${Expr.reduce(g)('x)} else ()) })
+        optimize('{ $ls.foreach[Any](x => if (${Expr.betaReduce(f)('x)}) ${Expr.betaReduce(g)('x)} else ()) })
 
       case _ => x
     }

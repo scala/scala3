@@ -27,8 +27,8 @@ object Test extends App {
   }
   // for reify, we need type tags for E and also strangely for L.
   implicit def cons [E, L <: HList](given Effects[L])(given Type[E])(given Type[L])(given QuoteContext): Effects[E :: L] =  new Effects[E :: L] {
-    def reify[A](given Type[A])   = m => '{ k => ${ Effects[L].reify[E] {   m(   a =>    Effects[L].reflect[E](Expr.reduce('k)(a))) } }}
-    def reflect[A](given Type[A]) = m =>    k =>    Effects[L].reflect[E] { Expr.reduce(m)('{ a => ${ Effects[L].reify[E](   k('a)) } })}
+    def reify[A](given Type[A])   = m => '{ k => ${ Effects[L].reify[E] {   m(   a =>    Effects[L].reflect[E](Expr.betaReduce('k)(a))) } }}
+    def reflect[A](given Type[A]) = m =>    k =>    Effects[L].reflect[E] { Expr.betaReduce(m)('{ a => ${ Effects[L].reify[E](   k('a)) } })}
   }
   def Effects[L <: HList](given Effects[L]): Effects[L] = summon[Effects[L]]
 
@@ -45,7 +45,7 @@ object Test extends App {
      val effects = cons[Boolean, RS2](given cons[Int, String :: HNil](given cons[String, HNil](given empty)))
      println(effects.reify[Int] { m }.show)
 
-     val res : Expr[Stm[Int, RS]] = '{ k => ${ Effects[RS2].reify[Boolean] { m(a => Effects[RS2].reflect[Boolean](Expr.reduce('k)(a))) }}}
+     val res : Expr[Stm[Int, RS]] = '{ k => ${ Effects[RS2].reify[Boolean] { m(a => Effects[RS2].reflect[Boolean](Expr.betaReduce('k)(a))) }}}
      println(res.show)
   }
 
