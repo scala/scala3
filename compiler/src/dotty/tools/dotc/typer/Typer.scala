@@ -664,6 +664,14 @@ class Typer extends Namer
         val tpt1 = typedTpt
         if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
           ctx.addMode(Mode.GadtConstraintInference).typeComparer.constrainPatternType(tpt1.tpe, pt)
+          if (tpt1.tpe.typeSymbol.isOpaqueAlias || pt.typeSymbol.isOpaqueAlias)
+             && !(pt <:< tpt1.tpe)
+             && !tpt1.tpe.hasAnnotation(defn.UncheckedAnnot)
+          then
+            def tpStr(tp: Type) = if tp.typeSymbol.isOpaqueAlias then i"opaque type $tp" else i"type $tp"
+            ctx.warning(
+              em"type test of scrutinee of ${tpStr(pt)} against ${tpStr(tpt1.tpe)} cannot be checked at runtime",
+              tree.sourcePos)
         // special case for an abstract type that comes with a class tag
         tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
       }
