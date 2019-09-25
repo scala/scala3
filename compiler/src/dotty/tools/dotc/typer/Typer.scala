@@ -2227,24 +2227,23 @@ class Typer extends Namer
             // then we won't have the additional flow facts that say that `y` is not null.
             //
             // The solution is to use the context containing more information about the statements above.
-            val ctx2 = mdef match {
-              // Lazy is checked here because lazy ValDef is allowed between forward references
-              case mdef: untpd.ValDef if ctx.explicitNulls && ctx.owner.is(Method) && !mdef.mods.isOneOf(Lazy) =>
-                val ctx1 = ctx.fresh.addFlowFacts(facts)
-                // we cannot use mdef.symbol to get the symbol of the tree here
-                // since the tree has not been completed and doesn't have a denotation
-                mdef.getAttachment(SymOfTree) match {
-                  case Some(sym) =>
-                    sym.infoOrCompleter match {
-                      case completer: Namer#Completer =>
-                        completer.completeInContext(sym, ctx1)
-                      case _ =>
-                    }
-                  case _ =>
-                }
-                ctx1
-              case _ => ctx
+            val ctx2 = if (ctx.explicitNulls && ctx.owner.is(Method)) {
+              val ctx1 = ctx.fresh.addFlowFacts(facts)
+              // we cannot use mdef.symbol to get the symbol of the tree here
+              // since the tree has not been completed and doesn't have a denotation
+              mdef.getAttachment(SymOfTree) match {
+                case Some(sym) =>
+                  sym.infoOrCompleter match {
+                    case completer: Namer#Completer =>
+                      completer.completeInContext(sym, ctx1)
+                    case _ =>
+                  }
+                case _ =>
+              }
+              ctx1
             }
+            else ctx
+
             typed(mdef)(ctx2) match {
               case mdef1: DefDef if !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
                 buf += inlineExpansion(mdef1)
