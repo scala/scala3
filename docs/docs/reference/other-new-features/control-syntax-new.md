@@ -3,7 +3,7 @@ layout: doc-page
 title: New Control Syntax
 ---
 
-Scala 3 has a new "quiet" syntax for control expressions that does not rely in
+Scala 3 has a new "quiet" syntax for control expressions that does not rely on
 enclosing the condition in parentheses, and also allows to drop parentheses or braces
 around the generators of a `for`-expression. Examples:
 ```scala

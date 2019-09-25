@@ -1665,8 +1665,8 @@ object Parsers {
     def condExpr(altToken: Token): Tree =
       if in.token == LPAREN then
         var t: Tree = atSpan(in.offset) { Parens(inParens(exprInParens())) }
-        val newSyntax = toBeContinued(altToken)
-        if newSyntax then
+        val enclosedInParens = !toBeContinued(altToken)
+        if !enclosedInParens then
           t = inSepRegion(LBRACE, RBRACE) {
             expr1Rest(postfixExprRest(simpleExprRest(t)), Location.ElseWhere)
           }
@@ -1674,9 +1674,9 @@ object Parsers {
           if rewriteToOldSyntax() then revertToParens(t)
           in.nextToken()
         else
-          if (altToken == THEN || !newSyntax) && in.isNewLine then
+          if (altToken == THEN || enclosedInParens) && in.isNewLine then
             in.observeIndented()
-          if newSyntax && in.token != INDENT then accept(altToken)
+          if !enclosedInParens && in.token != INDENT then accept(altToken)
           if (rewriteToNewSyntax(t.span))
             dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
         t
