@@ -1108,7 +1108,7 @@ object desugar {
 
   /** Expand variable identifier x to x @ _ */
   def patternVar(tree: Tree)(implicit ctx: Context): Bind = {
-    val Ident(name) = tree
+    val Ident(name) = unsplice(tree)
     Bind(name, Ident(nme.WILDCARD)).withSpan(tree.span)
   }
 
