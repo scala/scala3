@@ -95,15 +95,15 @@ trait SymbolOps extends Core {
     def isAbstractType(given ctx: Context): Boolean = internal.Symbol_isAbstractType(self)
     def isClassConstructor(given ctx: Context): Boolean = internal.Symbol_isClassConstructor(self)
 
-    def isType(given ctx: Context): Boolean = internal.isTypeSymbol(self)
-    def isTerm(given ctx: Context): Boolean = internal.isTermSymbol(self)
-    def isValDef(given ctx: Context): Boolean = internal.isValDefSymbol(self)
-    def isDefDef(given ctx: Context): Boolean = internal.isDefDefSymbol(self)
-    def isTypeDef(given ctx: Context): Boolean = internal.isTypeDefSymbol(self)
-    def isClassDef(given ctx: Context): Boolean = internal.isClassDefSymbol(self)
-    def isBind(given ctx: Context): Boolean = internal.isBindSymbol(self)
-    def isPackageDef(given ctx: Context): Boolean = internal.isPackageDefSymbol(self)
-    def isNoSymbol(given ctx: Context): Boolean = internal.isNoSymbol(self)
+    def isType(given ctx: Context): Boolean = internal.Symbol_isTypeSymbol(self)
+    def isTerm(given ctx: Context): Boolean = internal.Symbol_isTermSymbol(self)
+    def isValDef(given ctx: Context): Boolean = internal.Symbol_isValDefSymbol(self)
+    def isDefDef(given ctx: Context): Boolean = internal.Symbol_isDefDefSymbol(self)
+    def isTypeDef(given ctx: Context): Boolean = internal.Symbol_isTypeDefSymbol(self)
+    def isClassDef(given ctx: Context): Boolean = internal.Symbol_isClassDefSymbol(self)
+    def isBind(given ctx: Context): Boolean = internal.Symbol_isBindSymbol(self)
+    def isPackageDef(given ctx: Context): Boolean = internal.Symbol_isPackageDefSymbol(self)
+    def isNoSymbol(given ctx: Context): Boolean = internal.Symbol_isNoSymbol(self)
 
     /** Fields directly declared in the class */
     def fields(given ctx: Context): List[Symbol] =

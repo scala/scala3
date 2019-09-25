@@ -1516,12 +1516,14 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Symbol_isAbstractType(self: Symbol)(given Context): Boolean = self.isAbstractType
   def Symbol_isClassConstructor(self: Symbol)(given Context): Boolean = self.isClassConstructor
 
-  def isPackageDefSymbol(symbol: Symbol)(given Context): Boolean =
+  def Symbol_isPackageDefSymbol(symbol: Symbol)(given Context): Boolean =
     symbol.is(core.Flags.Package)
 
-  def isTypeSymbol(symbol: Symbol)(given Context): Boolean = symbol.isType
+  def Symbol_isTypeSymbol(symbol: Symbol)(given Context): Boolean =
+    symbol.isType
 
-  def isClassDefSymbol(symbol: Symbol)(given Context): Boolean = symbol.isClass
+  def Symbol_isClassDefSymbol(symbol: Symbol)(given Context): Boolean =
+    symbol.isClass
 
   def Symbol_fields(self: Symbol)(given Context): List[Symbol] =
     self.unforcedDecls.filter(isField)
@@ -1564,26 +1566,28 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   private def isField(sym: Symbol)(given Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
 
-  def Symbol_of(fullName: String)(given ctx: Context): Symbol = ctx.requiredClass(fullName)
+  def Symbol_of(fullName: String)(given ctx: Context): Symbol =
+    ctx.requiredClass(fullName)
 
-  def isTypeDefSymbol(symbol: Symbol)(given Context): Boolean =
+  def Symbol_isTypeDefSymbol(symbol: Symbol)(given Context): Boolean =
     symbol.isType && !symbol.is(core.Flags.Case)
 
   def Symbol_isTypeParam(self: Symbol)(given Context): Boolean =
     self.isTypeParam
 
-  def isTypeBindSymbol(symbol: Symbol)(given Context): Boolean =
+  def Symbol_isTypeBindSymbol(symbol: Symbol)(given Context): Boolean =
     symbol.isType && symbol.is(core.Flags.Case)
 
-  def isTermSymbol(symbol: Symbol)(given Context): Boolean = symbol.isTerm
+  def Symbol_isTermSymbol(symbol: Symbol)(given Context): Boolean =
+    symbol.isTerm
 
-  def isDefDefSymbol(symbol: Symbol)(given Context): Boolean =
+  def Symbol_isDefDefSymbol(symbol: Symbol)(given Context): Boolean =
     symbol.isTerm && symbol.is(core.Flags.Method)
 
   def Symbol_signature(self: Symbol)(given Context): Signature =
     self.signature
 
-  def isValDefSymbol(symbol: Symbol)(given Context): Boolean =
+  def Symbol_isValDefSymbol(symbol: Symbol)(given Context): Boolean =
     symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case)
 
   def Symbol_moduleClass(self: Symbol)(given Context): Symbol = self.moduleClass
@@ -1592,12 +1596,12 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Symbol_companionModule(self: Symbol)(given Context): Symbol = self.companionModule
 
-  def isBindSymbol(symbol: Symbol)(given Context): Boolean =
+  def Symbol_isBindSymbol(symbol: Symbol)(given Context): Boolean =
     symbol.isTerm && symbol.is(core.Flags.Case)
 
   def Symbol_noSymbol(given ctx: Context): Symbol = core.Symbols.NoSymbol
 
-  def isNoSymbol(symbol: Symbol)(given Context): Boolean = symbol eq core.Symbols.NoSymbol
+  def Symbol_isNoSymbol(symbol: Symbol)(given Context): Boolean = symbol eq core.Symbols.NoSymbol
 
   //
   // FLAGS

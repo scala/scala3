@@ -1239,11 +1239,11 @@ trait CompilerInterface {
 
   def Symbol_isDefinedInCurrentRun(self: Symbol)(given ctx: Context): Boolean
 
-  def isPackageDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  def Symbol_isPackageDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
-  def isTypeSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  def Symbol_isTypeSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
-  def isClassDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  def Symbol_isClassDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** Fields directly declared in the class */
   def Symbol_fields(self: Symbol)(given ctx: Context): List[Symbol]
@@ -1268,20 +1268,20 @@ trait CompilerInterface {
 
   def Symbol_of(fullName: String)(given ctx: Context): Symbol
 
-  def isTypeDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  def Symbol_isTypeDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   def Symbol_isTypeParam(self: Symbol)(given ctx: Context): Boolean
 
-  def isTypeBindSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  def Symbol_isTypeBindSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
-  def isTermSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  def Symbol_isTermSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
-  def isDefDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  def Symbol_isDefDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** Signature of this definition */
   def Symbol_signature(self: Symbol)(given ctx: Context): Signature
 
-  def isValDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  def Symbol_isValDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** The class symbol of the companion module class */
   def Symbol_moduleClass(self: Symbol)(given ctx: Context): Symbol
@@ -1292,11 +1292,11 @@ trait CompilerInterface {
   /** The symbol of the companion module */
   def Symbol_companionModule(self: Symbol)(given ctx: Context): Symbol
 
-  def isBindSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  def Symbol_isBindSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   def Symbol_noSymbol(given ctx: Context): Symbol
 
-  def isNoSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  def Symbol_isNoSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   //
   // FLAGS
