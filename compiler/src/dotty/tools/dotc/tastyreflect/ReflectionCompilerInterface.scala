@@ -1569,9 +1569,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Symbol_of(fullName: String)(given ctx: Context): Symbol =
     ctx.requiredClass(fullName)
 
-  def Symbol_isTypeDefSymbol(symbol: Symbol)(given Context): Boolean =
-    symbol.isType && !symbol.is(core.Flags.Case)
-
   def Symbol_isTypeParam(self: Symbol)(given Context): Boolean =
     self.isTypeParam
 
@@ -1596,12 +1593,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Symbol_companionModule(self: Symbol)(given Context): Symbol = self.companionModule
 
-  def Symbol_isBindSymbol(symbol: Symbol)(given Context): Boolean =
-    symbol.isTerm && symbol.is(core.Flags.Case)
-
   def Symbol_noSymbol(given ctx: Context): Symbol = core.Symbols.NoSymbol
-
-  def Symbol_isNoSymbol(symbol: Symbol)(given Context): Boolean = symbol eq core.Symbols.NoSymbol
 
   //
   // FLAGS

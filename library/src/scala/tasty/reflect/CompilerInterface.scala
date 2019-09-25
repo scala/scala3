@@ -1268,8 +1268,6 @@ trait CompilerInterface {
 
   def Symbol_of(fullName: String)(given ctx: Context): Symbol
 
-  def Symbol_isTypeDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
-
   def Symbol_isTypeParam(self: Symbol)(given ctx: Context): Boolean
 
   def Symbol_isTypeBindSymbol(symbol: Symbol)(given ctx: Context): Boolean
@@ -1292,11 +1290,7 @@ trait CompilerInterface {
   /** The symbol of the companion module */
   def Symbol_companionModule(self: Symbol)(given ctx: Context): Symbol
 
-  def Symbol_isBindSymbol(symbol: Symbol)(given ctx: Context): Boolean
-
   def Symbol_noSymbol(given ctx: Context): Symbol
-
-  def Symbol_isNoSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   //
   // FLAGS

@@ -2,9 +2,7 @@ package scala.tasty
 package reflect
 
 /** Tasty reflect symbol */
-trait SymbolOps extends Core {
-
-  // Symbol
+trait SymbolOps extends Core { selfSymbolOps: FlagsOps =>
 
   object Symbol {
     /** The class Symbol of a global class definition */
@@ -99,11 +97,12 @@ trait SymbolOps extends Core {
     def isTerm(given ctx: Context): Boolean = internal.Symbol_isTermSymbol(self)
     def isValDef(given ctx: Context): Boolean = internal.Symbol_isValDefSymbol(self)
     def isDefDef(given ctx: Context): Boolean = internal.Symbol_isDefDefSymbol(self)
-    def isTypeDef(given ctx: Context): Boolean = internal.Symbol_isTypeDefSymbol(self)
+    def isTypeDef(given ctx: Context): Boolean = self.isType && !self.flags.is(Flags.Case)
     def isClassDef(given ctx: Context): Boolean = internal.Symbol_isClassDefSymbol(self)
-    def isBind(given ctx: Context): Boolean = internal.Symbol_isBindSymbol(self)
+    def isBind(given ctx: Context): Boolean = self.isTerm && self.flags.is(Flags.Case)
+    def isTypeBind(given ctx: Context): Boolean = self.isType && self.flags.is(Flags.Case)
     def isPackageDef(given ctx: Context): Boolean = internal.Symbol_isPackageDefSymbol(self)
-    def isNoSymbol(given ctx: Context): Boolean = internal.Symbol_isNoSymbol(self)
+    def isNoSymbol(given ctx: Context): Boolean = self == Symbol.noSymbol
 
     /** Fields directly declared in the class */
     def fields(given ctx: Context): List[Symbol] =
