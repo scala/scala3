@@ -979,8 +979,8 @@ object Build {
         (
           (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** (("IntTest.scala": FileFilter) || "BooleanTest.scala" || "ByteTest.scala" || "CharTest.scala" || "DoubleTest.scala" || "FloatTest.scala" || "ShortTest.scala" || "UnitTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** (("IntegerTest.scala": FileFilter) || "ObjectTest.scala" || "BooleanTest.scala" || "ByteTest.scala" || "CharacterTest.scala" || "DoubleTest.scala" || "FloatTest.scala" || "WrappedStringCharSequence.scala" || "ThrowablesTest.scala" || "ThreadTest.scala" || "SystemTest.scala" || "SystemPropertiesTest.scala" || "StringBuilderTest.scala" || "StringBufferTest.scala" || "StackTraceElementTest.scala" || "ShortTest.scala" || "MathTest.scala" || "LongTest.scala")).get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang/ref" ** ("ReferenceTest.scala": FileFilter)).get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang/reflect" ** ("ReflectArrayTest.scala": FileFilter)).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang/ref" ** "*.scala").get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang/reflect" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/io" ** (("ThrowablesTest.scala": FileFilter) || "SerializableTest.scala" || "PrintWriterTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/math" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/net" ** ("URLDecoderTest.scala": FileFilter)).get
