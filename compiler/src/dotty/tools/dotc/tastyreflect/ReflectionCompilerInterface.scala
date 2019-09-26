@@ -1579,7 +1579,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     symbol.isType && !symbol.isClass && !symbol.is(Flags.Case)
 
   def Symbol_isValDef(symbol: Symbol)(given Context): Boolean =
-    symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case)
+    symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case/*, FIXME add this check and fix sourcecode butNot = Enum | Module*/)
 
   def Symbol_isDefDef(symbol: Symbol)(given Context): Boolean =
     symbol.is(core.Flags.Method)
