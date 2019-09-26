@@ -215,6 +215,8 @@ object StdNames {
     final val Type : N               = "Type"
     final val TypeTree: N            = "TypeTree"
 
+    final val Typeable: N             = "Typeable"
+
     // Annotation simple names, used in Namer
     final val BeanPropertyAnnot: N = "BeanProperty"
     final val BooleanBeanPropertyAnnot: N = "BooleanBeanProperty"

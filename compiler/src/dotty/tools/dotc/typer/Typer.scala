@@ -678,17 +678,27 @@ class Typer extends Namer
    *  exists, rewrite to `ctag(e)`.
    *  @pre We are in pattern-matching mode (Mode.Pattern)
    */
-  def tryWithClassTag(tree: Typed, pt: Type)(implicit ctx: Context): Tree = tree.tpt.tpe.dealias match {
-    case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper =>
-      require(ctx.mode.is(Mode.Pattern))
-      inferImplicit(defn.ClassTagClass.typeRef.appliedTo(tref),
-                    EmptyTree, tree.tpt.span)(ctx.retractMode(Mode.Pattern)) match {
-        case SearchSuccess(clsTag, _, _) =>
-          typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt)
-        case _ =>
-          tree
-      }
-    case _ => tree
+  def tryWithClassTag(tree: Typed, pt: Type)(implicit ctx: Context): Tree =  {
+    tree.tpt.tpe.dealias match {
+      case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper =>
+        require(ctx.mode.is(Mode.Pattern))
+        inferImplicit(defn.TypeableClass.typeRef.appliedTo(pt, tref),
+        EmptyTree, tree.tpt.span)(ctx.retractMode(Mode.Pattern)) match {
+          case SearchSuccess(clsTag, _, _) =>
+            typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt)
+          case _ =>
+            inferImplicit(defn.ClassTagClass.typeRef.appliedTo(tref),
+              EmptyTree, tree.tpt.span)(ctx.retractMode(Mode.Pattern)) match {
+                case SearchSuccess(clsTag, _, _) =>
+                  typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt)
+                case _ =>
+
+                  tree
+              }
+        }
+
+      case _ => tree
+    }
   }
 
   def typedNamedArg(tree: untpd.NamedArg, pt: Type)(implicit ctx: Context): NamedArg = {
@@ -1467,7 +1477,7 @@ class Typer extends Namer
     val body1 = typed(tree.body, pt1)
     body1 match {
       case UnApply(fn, Nil, arg :: Nil)
-      if fn.symbol.exists && fn.symbol.owner == defn.ClassTagClass && !body1.tpe.isError =>
+      if fn.symbol.exists && (fn.symbol.owner == defn.ClassTagClass || fn.symbol.owner.derivesFrom(defn.TypeableClass)) && !body1.tpe.isError =>
         // A typed pattern `x @ (e: T)` with an implicit `ctag: ClassTag[T]`
         // was rewritten to `x @ ctag(e)` by `tryWithClassTag`.
         // Rewrite further to `ctag(x @ e)`
