@@ -1459,12 +1459,12 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Symbol_flags(self: Symbol)(given Context): Flags = self.flags
 
   def Symbol_tree(self: Symbol)(given Context): Tree = {
-    assert(!self.is(Case))
+    assert(!self.is(Case, butNot = Enum | Module))
     FromSymbol.definitionFromSym(self)
   }
 
   def Symbol_pattern(self: Symbol)(given ctx: Context): Pattern = {
-    assert(self.is(Case))
+    assert(self.is(Case, butNot = Enum | Module))
     FromSymbol.definitionFromSym(self)
   }
 
