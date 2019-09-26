@@ -42,7 +42,14 @@ trait SymbolOps extends Core { selfSymbolOps: FlagsOps =>
     /** The comment for this symbol, if any */
     def comment(given ctx: Context): Option[Comment] = internal.Symbol_comment(self)
 
-    /** Tree of this definition */
+    /** Tree of this definition
+     *
+     * if this symbol `isPackageDef` it will return a `PackageDef`,
+     * if this symbol `isClassDef` it will return a `ClassDef`,
+     * if this symbol `isTypeDef` it will return a `TypeDef`,
+     * if this symbol `isValDef` it will return a `ValDef`,
+     * if this symbol `isDefDef` it will return a `DefDef`
+     */
     def tree(given ctx: Context): Tree =
       internal.Symbol_tree(self)
 
