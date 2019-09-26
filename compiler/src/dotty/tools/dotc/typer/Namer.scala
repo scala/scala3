@@ -7,6 +7,7 @@ import ast._
 import Trees._, StdNames._, Scopes._, Denotations._, Comments._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import NameKinds.DefaultGetterName
+import TypeApplications.TypeParamInfo
 import ast.desugar, ast.desugar._
 import ProtoTypes._
 import util.Spans._
@@ -977,35 +978,25 @@ class Namer { typer: Typer =>
          */
         def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit =
           if (whyNoForwarder(mbr) == "") {
-
-            /** The info of a forwarder to type `ref` which has info `info`
-             */
-            def fwdInfo(ref: Type, info: Type): Type = info match {
-              case _: ClassInfo =>
-                HKTypeLambda.fromParams(info.typeParams, ref)
-              case _: TypeBounds =>
-                TypeAlias(ref)
-              case info: HKTypeLambda =>
-                info.derivedLambdaType(info.paramNames, info.paramInfos,
-                  fwdInfo(ref.appliedTo(info.paramRefs), info.resultType))
-              case info => // should happen only in error cases
-                info
-            }
-
+            val sym = mbr.symbol
             val forwarder =
               if (mbr.isType)
                 ctx.newSymbol(
                   cls, alias.toTypeName,
                   Exported | Final,
-                  fwdInfo(path.tpe.select(mbr.symbol), mbr.info),
+                  TypeAlias(path.tpe.select(sym)),
                   coord = span)
+                // Note: This will always create unparameterzied aliases. So even if the original type is
+                // a parameterized class, say `C[X]` the alias will read `type C = d.C`. We currently do
+                // allow such type aliases. If we forbid them at some point (requiring the referred type to be
+                // fully applied), we'd have to change the scheme here as well.
               else {
                 val (maybeStable, mbrInfo) =
-                  if (mbr.symbol.isStableMember && mbr.symbol.isPublic)
-                    (StableRealizable, ExprType(path.tpe.select(mbr.symbol)))
+                  if (sym.isStableMember && sym.isPublic)
+                    (StableRealizable, ExprType(path.tpe.select(sym)))
                   else
                     (EmptyFlags, mbr.info.ensureMethodic)
-                val mbrFlags = Exported | Method | Final | maybeStable | mbr.symbol.flags & RetainedExportFlags
+                val mbrFlags = Exported | Method | Final | maybeStable | sym.flags & RetainedExportFlags
                 ctx.newSymbol(cls, alias, mbrFlags, mbrInfo, coord = span)
               }
             forwarder.info = avoidPrivateLeaks(forwarder)
@@ -1013,7 +1004,7 @@ class Namer { typer: Typer =>
               if (forwarder.isType) tpd.TypeDef(forwarder.asType)
               else {
                 import tpd._
-                val ref = path.select(mbr.symbol.asTerm)
+                val ref = path.select(sym.asTerm)
                 tpd.polyDefDef(forwarder.asTerm, targs => prefss =>
                   ref.appliedToTypes(targs).appliedToArgss(prefss)
                 )
