@@ -6,7 +6,7 @@ import core.Annotations.Annotation
 import core.Contexts.Context
 import core.Definitions
 import core.Flags._
-import core.Names.Name
+import core.Names.{DerivedName, Name, SimpleName, TypeName}
 import core.Symbols._
 import core.TypeApplications.TypeParamInfo
 import core.TypeErasure.erasure
@@ -16,6 +16,8 @@ import ast.Trees._
 import SymUtils._
 import TypeUtils._
 import java.lang.StringBuilder
+
+import scala.annotation.tailrec
 
 /** Helper object to generate generic java signatures, as defined in
  *  the Java Virtual Machine Specification, §4.3.4
@@ -161,7 +163,7 @@ object GenericSignatures {
 
             // TODO revisit this. Does it align with javac for code that can be expressed in both languages?
             val delimiter = if (builder.charAt(builder.length() - 1) == '>') '.' else '$'
-            builder.append(delimiter).append(sanitizeName(sym.name.asSimpleName))
+            builder.append(delimiter).append(sanitizeName(sym.name))
           }
           else fullNameInSig(sym)
         }
