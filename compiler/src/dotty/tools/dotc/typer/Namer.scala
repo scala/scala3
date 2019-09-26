@@ -752,8 +752,8 @@ class Namer { typer: Typer =>
       case original: ValDef =>
         if (sym.is(Module)) moduleValSig(sym)
         else {
-          val newScope = ctx.fresh.setOwner(sym).setTree(original).setNewScope
-          valOrDefDefSig(original, sym, Nil, Nil, identity)(newScope)
+          val withNewScope = ctx.fresh.setOwner(sym).setTree(original).setNewScope
+          valOrDefDefSig(original, sym, Nil, Nil, identity)(withNewScope)
         }
       case original: DefDef =>
         val typer1 = ctx.typer.newLikeThis
@@ -785,6 +785,7 @@ class Namer { typer: Typer =>
         denot.info = UnspecifiedErrorType
       }
       else {
+        // the default behaviour is to complete using creation context
         completeInContext(denot, this.ctx)
         if (denot.isCompleted) registerIfChild(denot)
       }
@@ -868,10 +869,12 @@ class Namer { typer: Typer =>
       }
     }
 
-    /** Intentionally left without `implicit ctx` parameter. We need
-     *  to pick up the context at the point where the completer was created.
+    /** Intentionally left without `implicit ctx` parameter.
+     *  We use the given ctx to complete this Completer.
      *
-     *  If -Yexplicit-nulls, is enabled, we sometimes use the completion context.
+     *  Normally, the creation context is passed, as passed in the complete method.
+     *  However, if -Yexplicit-nulls, is enabled, we pass in the current context
+     *  so that flow typing works with blocks.
      */
     def completeInContext(denot: SymDenotation, ctx: Context): Unit = {
       val sym = denot.symbol
@@ -912,7 +915,7 @@ class Namer { typer: Typer =>
       myTypeParams
     }
 
-    override protected def typeSig(sym: Symbol, completionContext: Context): Type =
+    override protected def typeSig(sym: Symbol, ctx: Context): Type =
       typeDefSig(original, sym, completerTypeParams(sym)(ictx))(nestedCtx)
   }
 
@@ -1094,7 +1097,7 @@ class Namer { typer: Typer =>
     }
 
     /** The type signature of a ClassDef with given symbol */
-    override def completeInContext(denot: SymDenotation, completionContext: Context): Unit = {
+    override def completeInContext(denot: SymDenotation, ctx: Context): Unit = {
       val parents = impl.parents
 
       /* The type of a parent constructor. Types constructor arguments
@@ -1130,26 +1133,26 @@ class Namer { typer: Typer =>
        *  (4) If the class is sealed, it is defined in the same compilation unit as the current class
        */
       def checkedParentType(parent: untpd.Tree): Type = {
-        val ptype = parentType(parent)(ctx.superCallContext).dealiasKeepAnnots
+        val ptype = parentType(parent)(this.ctx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
           val pt = checkClassType(ptype, parent.sourcePos,
               traitReq = parent ne parents.head, stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
-              case Select(qual: Super, _) if ctx.scala2Mode =>
+              case Select(qual: Super, _) if this.ctx.scala2Mode =>
                 "\n(Note that inheriting a class of the same name is no longer allowed)"
               case _ => ""
             }
-            ctx.error(CyclicInheritance(cls, addendum), parent.sourcePos)
+            this.ctx.error(CyclicInheritance(cls, addendum), parent.sourcePos)
             defn.ObjectType
           }
           else {
             val pclazz = pt.typeSymbol
             if (pclazz.is(Final))
-              ctx.error(ExtendFinalClass(cls, pclazz), cls.sourcePos)
+              this.ctx.error(ExtendFinalClass(cls, pclazz), cls.sourcePos)
             if (pclazz.is(Sealed) && pclazz.associatedFile != cls.associatedFile)
-              ctx.error(UnableToExtendSealedClass(pclazz), cls.sourcePos)
+              this.ctx.error(UnableToExtendSealedClass(pclazz), cls.sourcePos)
             pt
           }
         }

@@ -2214,8 +2214,8 @@ class Typer extends Namer
           case none =>
             import untpd.modsDeco
             // Force completer to use calling context (as opposed to the creation context)
-            // to complete itself. This approach is used so that flow typing can handle `ValDef`s
-            // that appear within a block.
+            // to complete itself. This approach is used so that flow typing can handle definitions
+            // appearing within a block.
             //
             // Example:
             // Suppose we have a block containing
@@ -2223,24 +2223,23 @@ class Typer extends Namer
             // 2. if (x == null) throw NPE
             // 3. val y = x
             //
-            // We want to infer y: String on line 3, but if the completer for `y` uses its creation context,
-            // then we won't have the additional flow facts that say that `y` is not null.
+            // We want to infer y: String on line 3, but if the completer for `y` uses its creation
+            // context, then we won't have the additional flow facts that say that `y` is not null.
             //
             // The solution is to use the context containing more information about the statements above.
             val ctx2 = if (ctx.explicitNulls && ctx.owner.is(Method)) {
-              val ctx1 = ctx.fresh.addFlowFacts(facts)
-              // we cannot use mdef.symbol to get the symbol of the tree here
-              // since the tree has not been completed and doesn't have a denotation
-              mdef.getAttachment(SymOfTree) match {
-                case Some(sym) =>
-                  sym.infoOrCompleter match {
-                    case completer: Namer#Completer =>
-                      completer.completeInContext(sym, ctx1)
-                    case _ =>
-                  }
+              // We cannot use mdef.symbol to get the symbol of the tree here,
+              // since the tree has not been completed and doesn't have a denotation.
+              mdef.getAttachment(SymOfTree).map(s => (s, s.infoOrCompleter)) match {
+                case Some((sym, completer: Namer#Completer)) =>
+                  val ctx1 = ctx.fresh.addFlowFacts(facts)
+                  completer.completeInContext(sym, ctx1)
+                  ctx1
                 case _ =>
+                  // If it has been completed, we use the default context
+                  // The flow typing will not be applied to definitions forwardly referred.
+                  ctx
               }
-              ctx1
             }
             else ctx
 
