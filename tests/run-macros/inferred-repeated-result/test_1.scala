@@ -11,7 +11,8 @@ object Macros {
     val methods =
       tree.tpe.classSymbol.get.classMethods.map { m =>
         val name = m.show
-        val returnType = m.tree.returnTpt.tpe.show
+        val IsDefDef(ddef) = m.tree
+        val returnType = ddef.returnTpt.tpe.show
         s"$name : $returnType"
       }.sorted
 

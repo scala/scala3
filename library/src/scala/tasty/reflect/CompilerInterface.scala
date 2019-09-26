@@ -104,17 +104,7 @@ import scala.runtime.quoted.Unpickler
  *
  *  +- Constant
  *
- *  +- Symbol --+- PackageDefSymbol
- *              |
- *              +- TypeSymbol -+- ClassDefSymbol
- *              |              +- TypeDefSymbol
- *              |              +- TypeBindSymbol
- *              |
- *              +- TermSymbol -+- DefDefSymbol
- *              |              +- ValDefSymbol
- *              |              +- BindSymbol
- *              |
- *              +- NoSymbol
+ *  +- Symbol
  *
  *  +- Flags
  *
@@ -240,7 +230,7 @@ trait CompilerInterface {
 
   def PackageDef_owner(self: PackageDef)(given ctx: Context): PackageDef
   def PackageDef_members(self: PackageDef)(given ctx: Context): List[Statement]
-  def PackageDef_symbol(self: PackageDef)(given ctx: Context): PackageDefSymbol
+  def PackageDef_symbol(self: PackageDef)(given ctx: Context): Symbol
 
   /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
   type ClassDef <: Definition
@@ -252,7 +242,7 @@ trait CompilerInterface {
   def ClassDef_derived(self: ClassDef)(given ctx: Context): List[TypeTree]
   def ClassDef_self(self: ClassDef)(given ctx: Context): Option[ValDef]
   def ClassDef_body(self: ClassDef)(given ctx: Context): List[Statement]
-  def ClassDef_symbol(self: ClassDef)(given ctx: Context): ClassDefSymbol
+  def ClassDef_symbol(self: ClassDef)(given ctx: Context): Symbol
 
   def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree/* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(given ctx: Context): ClassDef
 
@@ -262,9 +252,9 @@ trait CompilerInterface {
   def matchTypeDef(tree: Tree)(given ctx: Context): Option[TypeDef]
 
   def TypeDef_rhs(self: TypeDef)(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
-  def TypeDef_symbol(self: TypeDef)(given ctx: Context): TypeDefSymbol
+  def TypeDef_symbol(self: TypeDef)(given ctx: Context): Symbol
 
-  def TypeDef_apply(symbol: TypeDefSymbol)(given ctx: Context): TypeDef
+  def TypeDef_apply(symbol: Symbol)(given ctx: Context): TypeDef
   def TypeDef_copy(original: TypeDef)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeDef
 
   /** Tree representing a method definition in the source code */
@@ -276,9 +266,9 @@ trait CompilerInterface {
   def DefDef_paramss(self: DefDef)(given ctx: Context): List[List[ValDef]]
   def DefDef_returnTpt(self: DefDef)(given ctx: Context): TypeTree
   def DefDef_rhs(self: DefDef)(given ctx: Context): Option[Term]
-  def DefDef_symbol(self: DefDef)(given ctx: Context): DefDefSymbol
+  def DefDef_symbol(self: DefDef)(given ctx: Context): Symbol
 
-  def DefDef_apply(symbol: DefDefSymbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(given ctx: Context): DefDef
+  def DefDef_apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(given ctx: Context): DefDef
   def DefDef_copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(given ctx: Context): DefDef
 
   /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter definitions. */
@@ -288,9 +278,9 @@ trait CompilerInterface {
 
   def ValDef_tpt(self: ValDef)(given ctx: Context): TypeTree
   def ValDef_rhs(self: ValDef)(given ctx: Context): Option[Term]
-  def ValDef_symbol(self: ValDef)(given ctx: Context): ValDefSymbol
+  def ValDef_symbol(self: ValDef)(given ctx: Context): Symbol
 
-  def ValDef_apply(symbol: ValDefSymbol, rhs: Option[Term])(given ctx: Context): ValDef
+  def ValDef_apply(symbol: Symbol, rhs: Option[Term])(given ctx: Context): ValDef
   def ValDef_copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(given ctx: Context): ValDef
 
   /** Tree representing an expression in the source code */
@@ -352,7 +342,7 @@ trait CompilerInterface {
 
   def This_id(self: This)(given ctx: Context): Option[Id]
 
-  def This_apply(cls: ClassDefSymbol)(given ctx: Context): This
+  def This_apply(cls: Symbol)(given ctx: Context): This
   def This_copy(original: Tree)(qual: Option[Id])(given ctx: Context): This
 
   /** Tree representing `new` in the source code */
@@ -867,7 +857,7 @@ trait CompilerInterface {
 
   def Type_simplified(self: Type)(given ctx: Context): Type
 
-  def Type_classSymbol(self: Type)(given ctx: Context): Option[ClassDefSymbol] // TODO remove Option and use NoSymbol
+  def Type_classSymbol(self: Type)(given ctx: Context): Option[Symbol] // TODO remove Option and use NoSymbol
 
   def Type_typeSymbol(self: Type)(given ctx: Context): Symbol
 
@@ -878,7 +868,7 @@ trait CompilerInterface {
   def Type_memberType(self: Type)(member: Symbol)(given ctx: Context): Type
 
   /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
-  def Type_derivesFrom(self: Type)(cls: ClassDefSymbol)(given ctx: Context): Boolean
+  def Type_derivesFrom(self: Type)(cls: Symbol)(given ctx: Context): Boolean
 
   /** Is this type a function type?
    *
@@ -1206,6 +1196,10 @@ trait CompilerInterface {
   /** Flags of this symbol */
   def Symbol_flags(self: Symbol)(given ctx: Context): Flags
 
+  def Symbol_tree(self: Symbol)(given ctx: Context): Tree
+
+  def Symbol_pattern(self: Symbol)(given ctx: Context): Pattern
+
   def Symbol_isLocalDummy(self: Symbol)(given ctx: Context): Boolean
 
   def Symbol_isRefinementClass(self: Symbol)(given ctx: Context): Boolean
@@ -1245,115 +1239,67 @@ trait CompilerInterface {
 
   def Symbol_isDefinedInCurrentRun(self: Symbol)(given ctx: Context): Boolean
 
-  /** Symbol of a package definition */
-  type PackageDefSymbol <: Symbol
-
-  def matchPackageDefSymbol(symbol: Symbol)(given ctx: Context): Option[PackageDefSymbol]
-
-  def PackageDefSymbol_tree(self: PackageDefSymbol)(given ctx: Context): PackageDef
-
-  type TypeSymbol <: Symbol
-
-  def matchTypeSymbol(symbol: Symbol)(given ctx: Context): Option[TypeSymbol]
-
-  /** Symbol of a class definition. This includes anonymous class definitions and the class of a module object. */
-  type ClassDefSymbol <: TypeSymbol
-
-  def matchClassDefSymbol(symbol: Symbol)(given ctx: Context): Option[ClassDefSymbol]
-
-  /** ClassDef tree of this definition */
-  def ClassDefSymbol_tree(self: ClassDefSymbol)(given ctx: Context): ClassDef
-
   /** Fields directly declared in the class */
-  def ClassDefSymbol_fields(self: Symbol)(given ctx: Context): List[Symbol]
+  def Symbol_fields(self: Symbol)(given ctx: Context): List[Symbol]
 
   /** Field with the given name directly declared in the class */
-  def ClassDefSymbol_field(self: Symbol)(name: String)(given ctx: Context): Option[Symbol]
+  def Symbol_field(self: Symbol)(name: String)(given ctx: Context): Symbol
 
   /** Get non-private named methods defined directly inside the class */
-  def ClassDefSymbol_classMethod(self: Symbol)(name: String)(given ctx: Context): List[DefDefSymbol]
+  def Symbol_classMethod(self: Symbol)(name: String)(given ctx: Context): List[Symbol]
 
   /** Get all non-private methods defined directly inside the class, excluding constructors */
-  def ClassDefSymbol_classMethods(self: Symbol)(given ctx: Context): List[DefDefSymbol]
+  def Symbol_classMethods(self: Symbol)(given ctx: Context): List[Symbol]
 
   /** Get named non-private methods declared or inherited */
-  def ClassDefSymbol_method(self: Symbol)(name: String)(given ctx: Context): List[DefDefSymbol]
+  def Symbol_method(self: Symbol)(name: String)(given ctx: Context): List[Symbol]
 
   /** Get all non-private methods declared or inherited */
-  def ClassDefSymbol_methods(self: Symbol)(given ctx: Context): List[DefDefSymbol]
+  def Symbol_methods(self: Symbol)(given ctx: Context): List[Symbol]
 
   /** Fields of a case class type -- only the ones declared in primary constructor */
-  def ClassDefSymbol_caseFields(self: Symbol)(given ctx: Context): List[ValDefSymbol]
+  def Symbol_caseFields(self: Symbol)(given ctx: Context): List[Symbol]
 
-  /** The class symbol of the companion module class */
-  def ClassDefSymbol_companionClass(self: Symbol)(given ctx: Context): Option[ClassDefSymbol]
+  def Symbol_of(fullName: String)(given ctx: Context): Symbol
 
-  /** The symbol of the companion module */
-  def ClassDefSymbol_companionModule(self: Symbol)(given ctx: Context): Option[ValDefSymbol]
+  def Symbol_isTypeParam(self: Symbol)(given ctx: Context): Boolean
 
-  /** The symbol of the class of the companion module */
-  def ClassDefSymbol_moduleClass(self: Symbol)(given ctx: Context): Option[Symbol]
+  def Symbol_isPackageDef(symbol: Symbol)(given ctx: Context): Boolean
 
-  def ClassDefSymbol_of(fullName: String)(given ctx: Context): ClassDefSymbol
+  /** Is this the definition of a type? */
+  def Symbol_isType(symbol: Symbol)(given ctx: Context): Boolean
 
-  /** Symbol of a type (parameter or member) definition. */
-  type TypeDefSymbol <: TypeSymbol
+  /** Is this the definition of a term? */
+  def Symbol_isTerm(symbol: Symbol)(given ctx: Context): Boolean
 
-  def matchTypeDefSymbol(symbol: Symbol)(given ctx: Context): Option[TypeDefSymbol]
+  /** Is this the definition of a ClassDef tree? */
+  def Symbol_isClassDef(symbol: Symbol)(given ctx: Context): Boolean
 
-  def TypeDefSymbol_isTypeParam(self: TypeDefSymbol)(given ctx: Context): Boolean
+  /** Is this the definition of a TypeDef tree? */
+  def Symbol_isTypeDef(symbol: Symbol)(given ctx: Context): Boolean
 
-  /** TypeDef tree of this definition */
-  def TypeDefSymbol_tree(self: TypeDefSymbol)(given ctx: Context): TypeDef
+  /** Is this the definition of a DefDef tree? */
+  def Symbol_isDefDef(symbol: Symbol)(given ctx: Context): Boolean
 
-  /** Symbol representing a bind definition. */
-  type TypeBindSymbol <: TypeSymbol
+  /** Is this the definition of a ValDef tree? */
+  def Symbol_isValDef(symbol: Symbol)(given ctx: Context): Boolean
 
-  def matchTypeBindSymbol(symbol: Symbol)(given ctx: Context): Option[TypeBindSymbol]
-
-  /** TypeBind pattern of this definition */
-  def TypeBindSymbol_tree(self: TypeBindSymbol)(given ctx: Context): TypeBind
-
-  type TermSymbol <: Symbol
-
-  def matchTermSymbol(symbol: Symbol)(given ctx: Context): Option[TermSymbol]
-
-  /** Symbol representing a method definition. */
-  type DefDefSymbol <: TermSymbol
-
-  def matchDefDefSymbol(symbol: Symbol)(given ctx: Context): Option[DefDefSymbol]
-
-  /** DefDef tree of this definition */
-  def DefDefSymbol_tree(self: DefDefSymbol)(given ctx: Context): DefDef
+  /** Is this the definition of a Bind pattern? */
+  def Symbol_isBind(symbol: Symbol)(given ctx: Context): Boolean
 
   /** Signature of this definition */
-  def DefDefSymbol_signature(self: DefDefSymbol)(given ctx: Context): Signature
-
-  /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
-  type ValDefSymbol <: TermSymbol
-
-  def matchValDefSymbol(symbol: Symbol)(given ctx: Context): Option[ValDefSymbol]
-
-  /** ValDef tree of this definition */
-  def ValDefSymbol_tree(self: ValDefSymbol)(given ctx: Context): ValDef
+  def Symbol_signature(self: Symbol)(given ctx: Context): Signature
 
   /** The class symbol of the companion module class */
-  def ValDefSymbol_moduleClass(self: ValDefSymbol)(given ctx: Context): Option[ClassDefSymbol]
+  def Symbol_moduleClass(self: Symbol)(given ctx: Context): Symbol
 
-  def ValDefSymbol_companionClass(self: ValDefSymbol)(given ctx: Context): Option[ClassDefSymbol]
+  /** The symbol of the companion class */
+  def Symbol_companionClass(self: Symbol)(given ctx: Context): Symbol
 
-  /** Symbol representing a bind definition. */
-  type BindSymbol <: TermSymbol
+  /** The symbol of the companion module */
+  def Symbol_companionModule(self: Symbol)(given ctx: Context): Symbol
 
-  def matchBindSymbol(symbol: Symbol)(given ctx: Context): Option[BindSymbol]
-
-  /** Bind pattern of this definition */
-  def BindSymbol_tree(self: BindSymbol)(given ctx: Context): Bind
-
-  /** No symbol available. */
-  type NoSymbol <: Symbol
-
-  def matchNoSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  def Symbol_noSymbol(given ctx: Context): Symbol
 
   //
   // FLAGS
@@ -1469,7 +1415,7 @@ trait CompilerInterface {
   def Definitions_Array_length: Symbol
   def Definitions_Array_update: Symbol
 
-  def Definitions_RepeatedParamClass: ClassDefSymbol
+  def Definitions_RepeatedParamClass: Symbol
 
   def Definitions_OptionClass: Symbol
   def Definitions_NoneModule: Symbol

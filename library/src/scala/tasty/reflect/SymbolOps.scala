@@ -2,9 +2,17 @@ package scala.tasty
 package reflect
 
 /** Tasty reflect symbol */
-trait SymbolOps extends Core {
+trait SymbolOps extends Core { selfSymbolOps: FlagsOps =>
 
-  // Symbol
+  object Symbol {
+    /** The class Symbol of a global class definition */
+    def classSymbol(fullName: String)(given ctx: Context): Symbol =
+      internal.Symbol_of(fullName)
+
+    /** Definition not available */
+    def noSymbol(given ctx: Context): Symbol =
+      internal.Symbol_noSymbol
+  }
 
   implicit class SymbolAPI(self: Symbol) {
 
@@ -34,41 +42,20 @@ trait SymbolOps extends Core {
     /** The comment for this symbol, if any */
     def comment(given ctx: Context): Option[Comment] = internal.Symbol_comment(self)
 
-    /** Unsafe cast as to PackageSymbol. Use IsPackageSymbol to safely check and cast to PackageSymbol */
-    def asPackageDef(given ctx: Context): PackageDefSymbol = self match {
-      case IsPackageDefSymbol(self) => self
-      case _ => throw new Exception("not a PackageDefSymbol")
-    }
+    /** Tree of this definition
+     *
+     * if this symbol `isPackageDef` it will return a `PackageDef`,
+     * if this symbol `isClassDef` it will return a `ClassDef`,
+     * if this symbol `isTypeDef` it will return a `TypeDef`,
+     * if this symbol `isValDef` it will return a `ValDef`,
+     * if this symbol `isDefDef` it will return a `DefDef`
+     */
+    def tree(given ctx: Context): Tree =
+      internal.Symbol_tree(self)
 
-    /** Unsafe cast as to ClassSymbol. Use IsClassDefSymbol to safely check and cast to ClassSymbol */
-    def asClassDef(given ctx: Context): ClassDefSymbol = self match {
-      case IsClassDefSymbol(self) => self
-      case _ => throw new Exception("not a ClassDefSymbol")
-    }
-
-    /** Unsafe cast as to DefSymbol. Use IsDefDefSymbol to safely check and cast to DefSymbol */
-    def asDefDef(given ctx: Context): DefDefSymbol = self match {
-      case IsDefDefSymbol(self) => self
-      case _ => throw new Exception("not a DefDefSymbol")
-    }
-
-    /** Unsafe cast as to ValSymbol. Use IsValDefSymbol to safely check and cast to ValSymbol */
-    def asValDef(given ctx: Context): ValDefSymbol = self match {
-      case IsValDefSymbol(self) => self
-      case _ => throw new Exception("not a ValDefSymbol")
-    }
-
-    /** Unsafe cast as to TypeSymbol. Use IsTypeDefSymbol to safely check and cast to TypeSymbol */
-    def asTypeDef(given ctx: Context): TypeDefSymbol = self match {
-      case IsTypeDefSymbol(self) => self
-      case _ => throw new Exception("not a TypeDefSymbol")
-    }
-
-    /** Unsafe cast as to BindSymbol. Use IsBindSymbol to safely check and cast to BindSymbol */
-    def asBindDef(given ctx: Context): BindSymbol = self match {
-      case IsBindSymbol(self) => self
-      case _ => throw new Exception("not a BindSymbol")
-    }
+    /** Pattern of this definition */
+    def pattern(given ctx: Context): Pattern =
+      internal.Symbol_pattern(self)
 
     /** Annotations attached to this symbol */
     def annots(given ctx: Context): List[Term] = internal.Symbol_annots(self)
@@ -83,181 +70,82 @@ trait SymbolOps extends Core {
     def isAbstractType(given ctx: Context): Boolean = internal.Symbol_isAbstractType(self)
     def isClassConstructor(given ctx: Context): Boolean = internal.Symbol_isClassConstructor(self)
 
-    def isType(given ctx: Context): Boolean = internal.matchTypeSymbol(self).isDefined
-    def isTerm(given ctx: Context): Boolean = internal.matchTermSymbol(self).isDefined
-    def isValDef(given ctx: Context): Boolean = internal.matchValDefSymbol(self).isDefined
-    def isDefDef(given ctx: Context): Boolean = internal.matchDefDefSymbol(self).isDefined
-    def isClass(given ctx: Context): Boolean = internal.matchClassDefSymbol(self).isDefined
-  }
+    /** Is this the definition of a type? */
+    def isType(given ctx: Context): Boolean = internal.Symbol_isType(self)
 
-  // PackageSymbol
+    /** Is this the definition of a term? */
+    def isTerm(given ctx: Context): Boolean = internal.Symbol_isTerm(self)
 
-  object IsPackageDefSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[PackageDefSymbol] =
-      internal.matchPackageDefSymbol(symbol)
-  }
+    /** Is this the definition of a PackageDef tree? */
+    def isPackageDef(given ctx: Context): Boolean = internal.Symbol_isPackageDef(self)
 
-  implicit class PackageDefSymbolAPI(self: PackageDefSymbol) {
-    def tree(given ctx: Context): PackageDef =
-      internal.PackageDefSymbol_tree(self)
-  }
+    /** Is this the definition of a ClassDef tree? */
+    def isClassDef(given ctx: Context): Boolean = internal.Symbol_isClassDef(self)
 
-  // TypeSymbol
+    /** Is this the definition of a TypeDef tree */
+    def isTypeDef(given ctx: Context): Boolean = internal.Symbol_isTypeDef(self)
 
-  object IsTypeSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[TypeSymbol] =
-      internal.matchTypeSymbol(symbol)
-  }
+    /** Is this the definition of a ValDef tree? */
+    def isValDef(given ctx: Context): Boolean = internal.Symbol_isValDef(self)
 
-  // ClassSymbol
+    /** Is this the definition of a DefDef tree? */
+    def isDefDef(given ctx: Context): Boolean = internal.Symbol_isDefDef(self)
 
-  object IsClassDefSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[ClassDefSymbol] =
-      internal.matchClassDefSymbol(symbol)
-  }
+    /** Is this the definition of a Bind pattern? */
+    def isBind(given ctx: Context): Boolean = internal.Symbol_isBind(self)
 
-  object ClassDefSymbol {
-    /** The ClassSymbol of a global class definition */
-    def of(fullName: String)(given ctx: Context): ClassDefSymbol =
-      internal.ClassDefSymbol_of(fullName)
-  }
+    /** Does this symbol represent a no definition? */
+    def isNoSymbol(given ctx: Context): Boolean = self == Symbol.noSymbol
 
-  implicit class ClassDefSymbolAPI(self: ClassDefSymbol) {
-    /** ClassDef tree of this defintion */
-    def tree(given ctx: Context): ClassDef =
-      internal.ClassDefSymbol_tree(self)
+    /** Does this symbol represent a definition? */
+    def exists(given ctx: Context): Boolean = self != Symbol.noSymbol
 
     /** Fields directly declared in the class */
     def fields(given ctx: Context): List[Symbol] =
-      internal.ClassDefSymbol_fields(self)
+      internal.Symbol_fields(self)
 
     /** Field with the given name directly declared in the class */
-    def field(name: String)(given ctx: Context): Option[Symbol] =
-      internal.ClassDefSymbol_field(self)(name)
+    def field(name: String)(given ctx: Context): Symbol =
+      internal.Symbol_field(self)(name)
 
     /** Get non-private named methods defined directly inside the class */
-    def classMethod(name: String)(given ctx: Context): List[DefDefSymbol] =
-      internal.ClassDefSymbol_classMethod(self)(name)
+    def classMethod(name: String)(given ctx: Context): List[Symbol] =
+      internal.Symbol_classMethod(self)(name)
 
     /** Get all non-private methods defined directly inside the class, exluding constructors */
-    def classMethods(given ctx: Context): List[DefDefSymbol] =
-      internal.ClassDefSymbol_classMethods(self)
+    def classMethods(given ctx: Context): List[Symbol] =
+      internal.Symbol_classMethods(self)
 
     /** Get named non-private methods declared or inherited */
-    def method(name: String)(given ctx: Context): List[DefDefSymbol] =
-      internal.ClassDefSymbol_method(self)(name)
+    def method(name: String)(given ctx: Context): List[Symbol] =
+      internal.Symbol_method(self)(name)
 
     /** Get all non-private methods declared or inherited */
-    def methods(given ctx: Context): List[DefDefSymbol] =
-      internal.ClassDefSymbol_methods(self)
+    def methods(given ctx: Context): List[Symbol] =
+      internal.Symbol_methods(self)
 
     /** Fields of a case class type -- only the ones declared in primary constructor */
-    def caseFields(given ctx: Context): List[ValDefSymbol] =
-      internal.ClassDefSymbol_caseFields(self)
-
-    /** The class symbol of the companion module class */
-    def companionClass(given ctx: Context): Option[ClassDefSymbol] =
-      internal.ClassDefSymbol_companionClass(self)
-
-    /** The symbol of the companion module */
-    def companionModule(given ctx: Context): Option[ValDefSymbol] =
-      internal.ClassDefSymbol_companionModule(self)
-
-    /** The symbol of the class of the companion module */
-    def moduleClass(given ctx: Context): Option[Symbol] =
-      internal.ClassDefSymbol_moduleClass(self)
-  }
-
-  // TypeSymbol
-
-  object IsTypeDefSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[TypeDefSymbol] =
-      internal.matchTypeDefSymbol(symbol)
-  }
-
-  implicit class TypeDefSymbolAPI(self: TypeDefSymbol) {
-    /** TypeDef tree of this definition */
-    def tree(given ctx: Context): TypeDef =
-      internal.TypeDefSymbol_tree(self)
+    def caseFields(given ctx: Context): List[Symbol] =
+      internal.Symbol_caseFields(self)
 
     def isTypeParam(given ctx: Context): Boolean =
-      internal.TypeDefSymbol_isTypeParam(self)
-  }
-
-  // TypeBindSymbol
-
-  object IsTypeBindSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[TypeBindSymbol] =
-      internal.matchTypeBindSymbol(symbol)
-  }
-
-  implicit class TypeBindSymbolAPI(self: TypeBindSymbol) {
-    /** TypeBind pattern of this definition */
-    def tree(given ctx: Context): TypeBind =
-      internal.TypeBindSymbol_tree(self)
-  }
-
-  // TermSymbol
-
-  object IsTermSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[TermSymbol] =
-      internal.matchTermSymbol(symbol)
-  }
-
-  // DefSymbol
-
-  object IsDefDefSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[DefDefSymbol] =
-      internal.matchDefDefSymbol(symbol)
-  }
-
-  implicit class DefDefSymbolAPI(self: DefDefSymbol) {
-    /** DefDef tree of this defintion */
-    def tree(given ctx: Context): DefDef =
-      internal.DefDefSymbol_tree(self)
+      internal.Symbol_isTypeParam(self)
 
     /** Signature of this defintion */
     def signature(given ctx: Context): Signature =
-      internal.DefDefSymbol_signature(self)
-  }
-
-  // ValSymbol
-
-  object IsValDefSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[ValDefSymbol] =
-      internal.matchValDefSymbol(symbol)
-  }
-
-  implicit class ValDefSymbolAPI(self: ValDefSymbol) {
-    /** ValDef tree of this defintion */
-    def tree(given ctx: Context): ValDef =
-      internal.ValDefSymbol_tree(self)
+      internal.Symbol_signature(self)
 
     /** The class symbol of the companion module class */
-    def moduleClass(given ctx: Context): Option[ClassDefSymbol] =
-      internal.ValDefSymbol_moduleClass(self)
+    def moduleClass(given ctx: Context): Symbol =
+      internal.Symbol_moduleClass(self)
 
-    def companionClass(given ctx: Context): Option[ClassDefSymbol] =
-      internal.ValDefSymbol_companionClass(self)
+    /** The symbol of the companion class */
+    def companionClass(given ctx: Context): Symbol =
+      internal.Symbol_companionClass(self)
+
+    /** The symbol of the companion module */
+    def companionModule(given ctx: Context): Symbol =
+      internal.Symbol_companionModule(self)
   }
 
-  // BindSymbol
-
-  object IsBindSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Option[BindSymbol] =
-      internal.matchBindSymbol(symbol)
-  }
-
-  implicit class BindSymbolAPI(self: BindSymbol) {
-    /** Bind pattern of this definition */
-    def tree(given ctx: Context): Bind =
-      internal.BindSymbol_tree(self)
-  }
-
-  // NoSymbol
-
-  object NoSymbol {
-    def unapply(symbol: Symbol)(given ctx: Context): Boolean =
-      internal.matchNoSymbol(symbol)
-  }
 }

@@ -15,37 +15,35 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
   def interpretNew(fn: Tree, argss: List[List[Term]]): Result = {
     if (fn.symbol.isDefinedInCurrentRun) {
       // Best effort to try to create a proxy
-      fn.symbol.owner match {
-        case IsClassDefSymbol(sym) =>
-          val parentSymbols = sym.tree.parents.tail.map(_.asInstanceOf[TypeTree].symbol).head
-          import java.lang.reflect._
-          val handler: InvocationHandler = new InvocationHandler() {
+      val sym = fn.symbol.owner
+      if (sym.isClassDef) {
+        val IsClassDef(tree) = sym.tree
+        val parentSymbols = tree.parents.tail.map(_.asInstanceOf[TypeTree].symbol).head
+        import java.lang.reflect._
+        val handler: InvocationHandler = new InvocationHandler() {
 
-            def invoke(proxy: Object, method: Method, args: scala.Array[Object]): Object = {
-              if (LOG) {
-                val proxyString = if (method.getName == "toString") method.invoke(this) else proxy.toString
-                println(s"%> proxy call `$method` on `$proxyString` with args=${if (args == null) Nil else args.toList}")
-              }
-
-              // println(method)
-              val symbol = sym.methods.find(_.name == method.getName).get
-
-              if (symbol.isDefinedInCurrentRun) {
-                val argsList = if (args == null) Nil else args.toList
-                symbol match {
-                  case IsDefDefSymbol(symbol) =>
-                    interpretCall(this, symbol, argsList).asInstanceOf[Object]
-                }
-              }
-              else {
-                assert(method.getClass == classOf[Object])
-                method.invoke(this, args: _*)
-              }
+          def invoke(proxy: Object, method: Method, args: scala.Array[Object]): Object = {
+            if (LOG) {
+              val proxyString = if (method.getName == "toString") method.invoke(this) else proxy.toString
+              println(s"%> proxy call `$method` on `$proxyString` with args=${if (args == null) Nil else args.toList}")
             }
 
+            // println(method)
+            val symbol = sym.methods.find(_.name == method.getName).get
+
+            if (symbol.isDefinedInCurrentRun) {
+              val argsList = if (args == null) Nil else args.toList
+              interpretCall(this, symbol, argsList).asInstanceOf[Object]
+            }
+            else {
+              assert(method.getClass == classOf[Object])
+              method.invoke(this, args: _*)
+            }
           }
-          val proxyClass: Class[_] = Proxy.getProxyClass(getClass.getClassLoader, jvmReflection.loadClass(parentSymbols.fullName))
-          proxyClass.getConstructor(classOf[InvocationHandler]).newInstance(handler);
+
+        }
+        val proxyClass: Class[_] = Proxy.getProxyClass(getClass.getClassLoader, jvmReflection.loadClass(parentSymbols.fullName))
+        proxyClass.getConstructor(classOf[InvocationHandler]).newInstance(handler);
       }
     }
     else jvmReflection.interpretNew(fn.symbol, evaluatedArgss(argss))
@@ -56,12 +54,10 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
     else {
       fn match {
         case Select(prefix, _) =>
-          val IsDefDefSymbol(sym) = fn.symbol
           val pre = eval(prefix).asInstanceOf[Object]
           val argss2 = evaluatedArgss(argss)
           jvmReflection.interpretMethodCall(pre, fn.symbol, argss2)
         case _ =>
-          val IsDefDefSymbol(sym) = fn.symbol
           val argss2 = evaluatedArgss(argss)
           jvmReflection.interpretStaticMethodCall(fn.symbol.owner, fn.symbol, argss2)
       }
@@ -77,7 +73,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
           jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
         case _ =>
           if (fn.symbol.flags.is(Flags.Object))
-            jvmReflection.loadModule(fn.symbol.asValDef.moduleClass.get)
+            jvmReflection.loadModule(fn.symbol.moduleClass)
           else
             jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
       }

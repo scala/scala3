@@ -23,12 +23,13 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def withLocalValues[T](syms: List[Symbol], values: List[LocalValue])(in: (given Env) => T)(implicit env: Env): T =
     in(given env ++ syms.zip(values))
 
-  def interpretCall(inst: AbstractAny, sym: DefDefSymbol, args: List[AbstractAny]): Result = {
+  def interpretCall(inst: AbstractAny, sym: Symbol, args: List[AbstractAny]): Result = {
     // TODO
     // withLocalValue(`this`, inst) {
-      val syms = sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
+      val IsDefDef(ddef) = sym.tree
+      val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
       withLocalValues(syms, args.map(LocalValue.valFrom(_))) {
-        eval(sym.tree.rhs.get)
+        eval(ddef.rhs.get)
       }
     // }
   }
@@ -41,10 +42,10 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
       case _ =>
     }
     val evaluatedArgs = argss.flatten.map(arg => LocalValue.valFrom(eval(arg)))
-    val IsDefDefSymbol(sym) = fn.symbol
-    val syms = sym.tree.paramss.headOption.getOrElse(Nil).map(_.symbol)
+    val IsDefDef(ddef) = fn.symbol.tree
+    val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
     withLocalValues(syms, evaluatedArgs) {
-      eval(sym.tree.rhs.get)
+      eval(ddef.rhs.get)
     }
   }
 
@@ -133,12 +134,12 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
             def rhs = eval(argss.head.head)
             log("interpretPrivitiveDiv", tree)(interpretPrivitiveDiv(lhs, rhs))
           case _ =>
-            fn.symbol match {
-              case IsDefDefSymbol(sym) => log("interpretCall", tree)(interpretCall(fn, argss))
-              case _ =>
-                assert(argss.isEmpty)
-                log("interpretValGet", tree)(interpretValGet(fn))
-
+            val sym = fn.symbol
+            if (sym.isDefDef) {
+              log("interpretCall", tree)(interpretCall(fn, argss))
+            } else {
+              assert(argss.isEmpty)
+              log("interpretValGet", tree)(interpretValGet(fn))
             }
         }
 

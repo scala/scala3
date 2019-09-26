@@ -101,17 +101,7 @@ package scala.tasty.reflect
  *
  *  +- Constant
  *
- *  +- Symbol --+- PackageDefSymbol
- *              |
- *              +- TypeSymbol -+- ClassDefSymbol
- *              |              +- TypeDefSymbol
- *              |              +- TypeBindSymbol
- *              |
- *              +- TermSymbol -+- DefDefSymbol
- *              |              +- ValDefSymbol
- *              |              +- BindSymbol
- *              |
- *              +- NoSymbol
+ *  +- Symbol
  *
  *  +- Flags
  *
@@ -419,36 +409,6 @@ trait Core {
    *  Then can be compared with == to know if the definition is the same.
    */
   type Symbol = internal.Symbol
-
-    /** Symbol of a package definition */
-    type PackageDefSymbol = internal.PackageDefSymbol
-
-    /** Symbol representing a type definition. */
-    type TypeSymbol = internal.TypeSymbol
-
-      /** Symbol of a class definition. This includes anonymous class definitions and the class of a module object. */
-      type ClassDefSymbol = internal.ClassDefSymbol
-
-      /** Symbol of a type (parameter or member) definition. */
-      type TypeDefSymbol = internal.TypeDefSymbol
-
-      /** Symbol representing a type bind definition. */
-      type TypeBindSymbol = internal.TypeBindSymbol
-
-    /** Symbol representing a term definition. */
-    type TermSymbol = internal.TermSymbol
-
-      /** Symbol representing a method definition. */
-      type DefDefSymbol = internal.DefDefSymbol
-
-      /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
-      type ValDefSymbol = internal.ValDefSymbol
-
-      /** Symbol representing a bind definition. */
-      type BindSymbol = internal.BindSymbol
-
-    /** No symbol available. */
-    type NoSymbol = internal.NoSymbol
 
   /** FlagSet of a Symbol */
   type Flags = internal.Flags

@@ -23,14 +23,14 @@ trait TypeOrBoundsOps extends Core {
      */
     def simplified(given ctx: Context): Type = internal.Type_simplified(self)
 
-    def classSymbol(given ctx: Context): Option[ClassDefSymbol] = internal.Type_classSymbol(self)
+    def classSymbol(given ctx: Context): Option[Symbol] = internal.Type_classSymbol(self)
     def typeSymbol(given ctx: Context): Symbol = internal.Type_typeSymbol(self)
     def termSymbol(given ctx: Context): Symbol = internal.Type_termSymbol(self)
     def isSingleton(given ctx: Context): Boolean = internal.Type_isSingleton(self)
     def memberType(member: Symbol)(given ctx: Context): Type = internal.Type_memberType(self)(member)
 
     /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
-    def derivesFrom(cls: ClassDefSymbol)(given ctx: Context): Boolean =
+    def derivesFrom(cls: Symbol)(given ctx: Context): Boolean =
       internal.Type_derivesFrom(self)(cls)
 
     /** Is this type a function type?
