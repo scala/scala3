@@ -30,23 +30,30 @@ class Driver {
 
   protected def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
     if (fileNames.nonEmpty)
-      try {
+      try
         val run = compiler.newRun
         run.compile(fileNames)
-        run.printSummary()
-      }
-      catch {
+
+        def finish(run: Run): Unit =
+          run.printSummary()
+          if !ctx.reporter.errorsReported && run.suspendedUnits.nonEmpty then
+            val run1 = compiler.newRun
+            for unit <- run.suspendedUnits do unit.suspended = false
+            run1.compileUnits(run.suspendedUnits.toList)
+            finish(run1)
+
+        finish(run)
+      catch
         case ex: FatalError  =>
           ctx.error(ex.getMessage) // signals that we should fail compilation.
-          ctx.reporter
         case ex: TypeError =>
           println(s"${ex.toMessage} while compiling ${fileNames.mkString(", ")}")
           throw ex
         case ex: Throwable =>
           println(s"$ex while compiling ${fileNames.mkString(", ")}")
           throw ex
-      }
-    else ctx.reporter
+    ctx.reporter
+  end doCompile
 
   protected def initCtx: Context = (new ContextBase).initialCtx
 
