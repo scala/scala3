@@ -70,6 +70,10 @@ object Inliner {
    */
   def inlineCall(tree: Tree)(implicit ctx: Context): Tree = {
     if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
+    if tree.symbol.is(Macro) && tree.symbol.isDefinedInCurrentRun then
+      if ctx.compilationUnit.source.file == tree.symbol.associatedFile then
+        ctx.error("Cannot call macro defined in the same source file", tree.sourcePos)
+      ctx.compilationUnit.suspend()
 
    /** Set the position of all trees logically contained in the expansion of
     *  inlined call `call` to the position of `call`. This transform is necessary

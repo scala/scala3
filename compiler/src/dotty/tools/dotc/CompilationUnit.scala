@@ -31,9 +31,19 @@ class CompilationUnit protected (val source: SourceFile) {
 
   /** A structure containing a temporary map for generating inline accessors */
   val inlineAccessors: InlineAccessors = new InlineAccessors
+
+  var suspended: Boolean = false
+
+  def suspend()(given ctx: Context): Nothing =
+    if !suspended then
+      suspended = true
+      ctx.run.suspendedUnits += this
+    throw CompilationUnit.SuspendException()
 }
 
 object CompilationUnit {
+
+  class SuspendException extends Exception
 
   /** Make a compilation unit for top class `clsd` with the contents of the `unpickled` tree */
   def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =
