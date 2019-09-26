@@ -9,7 +9,7 @@ trait SignatureOps extends Core {
       Some((sig.paramSigs, sig.resultSig))
   }
 
-  implicit class SignatureAPI(sig: Signature) {
+  given (sig: Signature) {
 
     /** The signatures of the method parameters.
       *
