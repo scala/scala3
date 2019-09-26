@@ -1516,15 +1516,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Symbol_isAbstractType(self: Symbol)(given Context): Boolean = self.isAbstractType
   def Symbol_isClassConstructor(self: Symbol)(given Context): Boolean = self.isClassConstructor
 
-  def Symbol_isPackageDefSymbol(symbol: Symbol)(given Context): Boolean =
-    symbol.is(core.Flags.Package)
-
-  def Symbol_isTypeSymbol(symbol: Symbol)(given Context): Boolean =
-    symbol.isType
-
-  def Symbol_isClassDefSymbol(symbol: Symbol)(given Context): Boolean =
-    symbol.isClass
-
   def Symbol_fields(self: Symbol)(given Context): List[Symbol] =
     self.unforcedDecls.filter(isField)
 
@@ -1572,20 +1563,33 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Symbol_isTypeParam(self: Symbol)(given Context): Boolean =
     self.isTypeParam
 
-  def Symbol_isTypeBindSymbol(symbol: Symbol)(given Context): Boolean =
-    symbol.isType && symbol.is(core.Flags.Case)
+  def Symbol_isType(symbol: Symbol)(given Context): Boolean =
+    symbol.isType
 
-  def Symbol_isTermSymbol(symbol: Symbol)(given Context): Boolean =
+  def Symbol_isTerm(symbol: Symbol)(given Context): Boolean =
     symbol.isTerm
 
-  def Symbol_isDefDefSymbol(symbol: Symbol)(given Context): Boolean =
-    symbol.isTerm && symbol.is(core.Flags.Method)
+  def Symbol_isPackageDef(symbol: Symbol)(given ctx: Context): Boolean =
+    symbol.is(Flags.Package)
+
+  def Symbol_isClassDef(symbol: Symbol)(given Context): Boolean =
+    symbol.isClass
+
+  def Symbol_isTypeDef(symbol: Symbol)(given ctx: Context): Boolean =
+    symbol.isType && !symbol.isClass && !symbol.is(Flags.Case)
+
+  def Symbol_isValDef(symbol: Symbol)(given Context): Boolean =
+    symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case)
+
+  def Symbol_isDefDef(symbol: Symbol)(given Context): Boolean =
+    symbol.is(core.Flags.Method)
+
+  def Symbol_isBind(symbol: Symbol)(given Context): Boolean =
+    symbol.is(core.Flags.Case, butNot = Enum | Module) && !symbol.isClass
 
   def Symbol_signature(self: Symbol)(given Context): Signature =
     self.signature
 
-  def Symbol_isValDefSymbol(symbol: Symbol)(given Context): Boolean =
-    symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case)
 
   def Symbol_moduleClass(self: Symbol)(given Context): Symbol = self.moduleClass
 

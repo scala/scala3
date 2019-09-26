@@ -63,16 +63,35 @@ trait SymbolOps extends Core { selfSymbolOps: FlagsOps =>
     def isAbstractType(given ctx: Context): Boolean = internal.Symbol_isAbstractType(self)
     def isClassConstructor(given ctx: Context): Boolean = internal.Symbol_isClassConstructor(self)
 
-    def isType(given ctx: Context): Boolean = internal.Symbol_isTypeSymbol(self)
-    def isTerm(given ctx: Context): Boolean = internal.Symbol_isTermSymbol(self)
-    def isValDef(given ctx: Context): Boolean = internal.Symbol_isValDefSymbol(self)
-    def isDefDef(given ctx: Context): Boolean = internal.Symbol_isDefDefSymbol(self)
-    def isTypeDef(given ctx: Context): Boolean = self.isType && !self.flags.is(Flags.Case)
-    def isClassDef(given ctx: Context): Boolean = internal.Symbol_isClassDefSymbol(self)
-    def isBind(given ctx: Context): Boolean = self.isTerm && self.flags.is(Flags.Case)
-    def isTypeBind(given ctx: Context): Boolean = self.isType && self.flags.is(Flags.Case)
-    def isPackageDef(given ctx: Context): Boolean = internal.Symbol_isPackageDefSymbol(self)
+    /** Is this the definition of a type? */
+    def isType(given ctx: Context): Boolean = internal.Symbol_isType(self)
+
+    /** Is this the definition of a term? */
+    def isTerm(given ctx: Context): Boolean = internal.Symbol_isTerm(self)
+
+    /** Is this the definition of a PackageDef tree? */
+    def isPackageDef(given ctx: Context): Boolean = internal.Symbol_isPackageDef(self)
+
+    /** Is this the definition of a ClassDef tree? */
+    def isClassDef(given ctx: Context): Boolean = internal.Symbol_isClassDef(self)
+
+    /** Is this the definition of a TypeDef tree */
+    def isTypeDef(given ctx: Context): Boolean = internal.Symbol_isTypeDef(self)
+
+    /** Is this the definition of a ValDef tree? */
+    def isValDef(given ctx: Context): Boolean = internal.Symbol_isValDef(self)
+
+    /** Is this the definition of a DefDef tree? */
+    def isDefDef(given ctx: Context): Boolean = internal.Symbol_isDefDef(self)
+
+    /** Is this the definition of a Bind pattern? */
+    def isBind(given ctx: Context): Boolean = internal.Symbol_isBind(self)
+
+    /** Does this symbol represent a no definition? */
     def isNoSymbol(given ctx: Context): Boolean = self == Symbol.noSymbol
+
+    /** Does this symbol represent a definition? */
+    def exists(given ctx: Context): Boolean = self != Symbol.noSymbol
 
     /** Fields directly declared in the class */
     def fields(given ctx: Context): List[Symbol] =

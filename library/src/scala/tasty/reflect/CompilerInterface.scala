@@ -1239,12 +1239,6 @@ trait CompilerInterface {
 
   def Symbol_isDefinedInCurrentRun(self: Symbol)(given ctx: Context): Boolean
 
-  def Symbol_isPackageDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
-
-  def Symbol_isTypeSymbol(symbol: Symbol)(given ctx: Context): Boolean
-
-  def Symbol_isClassDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
-
   /** Fields directly declared in the class */
   def Symbol_fields(self: Symbol)(given ctx: Context): List[Symbol]
 
@@ -1270,16 +1264,31 @@ trait CompilerInterface {
 
   def Symbol_isTypeParam(self: Symbol)(given ctx: Context): Boolean
 
-  def Symbol_isTypeBindSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  def Symbol_isPackageDef(symbol: Symbol)(given ctx: Context): Boolean
 
-  def Symbol_isTermSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  /** Is this the definition of a type? */
+  def Symbol_isType(symbol: Symbol)(given ctx: Context): Boolean
 
-  def Symbol_isDefDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
+  /** Is this the definition of a term? */
+  def Symbol_isTerm(symbol: Symbol)(given ctx: Context): Boolean
+
+  /** Is this the definition of a ClassDef tree? */
+  def Symbol_isClassDef(symbol: Symbol)(given ctx: Context): Boolean
+
+  /** Is this the definition of a TypeDef tree? */
+  def Symbol_isTypeDef(symbol: Symbol)(given ctx: Context): Boolean
+
+  /** Is this the definition of a DefDef tree? */
+  def Symbol_isDefDef(symbol: Symbol)(given ctx: Context): Boolean
+
+  /** Is this the definition of a ValDef tree? */
+  def Symbol_isValDef(symbol: Symbol)(given ctx: Context): Boolean
+
+  /** Is this the definition of a Bind pattern? */
+  def Symbol_isBind(symbol: Symbol)(given ctx: Context): Boolean
 
   /** Signature of this definition */
   def Symbol_signature(self: Symbol)(given ctx: Context): Signature
-
-  def Symbol_isValDefSymbol(symbol: Symbol)(given ctx: Context): Boolean
 
   /** The class symbol of the companion module class */
   def Symbol_moduleClass(self: Symbol)(given ctx: Context): Symbol
