@@ -24,7 +24,7 @@ object scalatest {
             }
           }
         }.seal.cast[Unit]
-      case Apply(f @ Apply(IsSelect(sel @ Select(Apply(qual, lhs :: Nil), op)), rhs :: Nil), implicits)
+      case Apply(f @ Apply(sel @ Select(Apply(qual, lhs :: Nil), op), rhs :: Nil), implicits)
       if isImplicitMethodType(f.tpe) =>
         let(lhs) { left =>
           let(rhs) { right =>

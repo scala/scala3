@@ -120,72 +120,95 @@ trait Core {
 
     /** Tree representing a pacakage clause in the source code */
     type PackageClause = internal.PackageClause
+    given (given ctx: Context): Typeable[Tree, PackageClause] = internal.matchPackageClause(_)
 
     /** Tree representing a statement in the source code */
     type Statement = internal.Statement
+    given (given ctx: Context): Typeable[Tree, Statement] = internal.matchStatement(_)
 
       /** Tree representing an import in the source code */
       type Import = internal.Import
+      given (given ctx: Context): Typeable[Tree, Import] = internal.matchImport(_)
 
       /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
       type Definition = internal.Definition
+      given (given ctx: Context): Typeable[Tree, Definition] = internal.matchDefinition(_)
 
         /** Tree representing a package definition. This includes definitions in all source files */
         type PackageDef = internal.PackageDef
+        given (given ctx: Context): Typeable[Tree, PackageDef] = internal.matchPackageDef(_)
 
         /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
         type ClassDef = internal.ClassDef
+        given (given ctx: Context): Typeable[Tree, ClassDef] = internal.matchClassDef(_)
 
         /** Tree representing a type (paramter or member) definition in the source code */
         type TypeDef = internal.TypeDef
+        given (given ctx: Context): Typeable[Tree, TypeDef] = internal.matchTypeDef(_)
 
         /** Tree representing a method definition in the source code */
         type DefDef = internal.DefDef
+        given (given ctx: Context): Typeable[Tree, DefDef] = internal.matchDefDef(_)
 
         /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
         type ValDef = internal.ValDef
+        given (given ctx: Context): Typeable[Tree, ValDef] = internal.matchValDef(_)
 
       /** Tree representing an expression in the source code */
       type Term = internal.Term
+      given (given ctx: Context): Typeable[Tree, Term] = internal.matchTerm(_)
 
         /** Tree representing a reference to definition */
         type Ref = internal.Ref
+        given (given ctx: Context): Typeable[Tree, Ref] = internal.matchRef(_)
 
           /** Tree representing a reference to definition with a given name */
           type Ident = internal.Ident
+          given (given ctx: Context): Typeable[Tree, Ident] = internal.matchIdent(_)
 
           /** Tree representing a selection of definition with a given name on a given prefix */
           type Select = internal.Select
+          given (given ctx: Context): Typeable[Tree, Select] = internal.matchSelect(_)
 
         /** Tree representing a literal value in the source code */
         type Literal = internal.Literal
+        given (given ctx: Context): Typeable[Tree, Literal] = internal.matchLiteral(_)
 
         /** Tree representing `this` in the source code */
         type This = internal.This
+        given (given ctx: Context): Typeable[Tree, This] = internal.matchThis(_)
 
         /** Tree representing `new` in the source code */
         type New = internal.New
+        given (given ctx: Context): Typeable[Tree, New] = internal.matchNew(_)
 
         /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
         type NamedArg = internal.NamedArg
+        given (given ctx: Context): Typeable[Tree, NamedArg] = internal.matchNamedArg(_)
 
         /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s  */
         type Apply = internal.Apply
+        given (given ctx: Context): Typeable[Tree, Apply] = internal.matchApply(_)
 
         /** Tree an application of type arguments */
         type TypeApply = internal.TypeApply
+        given (given ctx: Context): Typeable[Tree, TypeApply] = internal.matchTypeApply(_)
 
         /** Tree representing `super` in the source code */
         type Super = internal.Super
+        given (given ctx: Context): Typeable[Tree, Super] = internal.matchSuper(_)
 
         /** Tree representing a type ascription `x: T` in the source code */
         type Typed = internal.Typed
+        given (given ctx: Context): Typeable[Tree, Typed] = internal.matchTyped(_)
 
         /** Tree representing an assignment `x = y` in the source code */
         type Assign = internal.Assign
+        given (given ctx: Context): Typeable[Tree, Assign] = internal.matchAssign(_)
 
         /** Tree representing a block `{ ... }` in the source code */
         type Block = internal.Block
+        given (given ctx: Context): Typeable[Tree, Block] = internal.matchBlock(_)
 
         /** A lambda `(...) => ...` in the source code is represented as
          *  a local method and a closure:
@@ -197,87 +220,114 @@ trait Core {
          *
          */
         type Closure = internal.Closure
+        given (given ctx: Context): Typeable[Tree, Closure] = internal.matchClosure(_)
 
         /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
         type If = internal.If
+        given (given ctx: Context): Typeable[Tree, If] = internal.matchIf(_)
 
         /** Tree representing a pattern match `x match  { ... }` in the source code */
         type Match = internal.Match
+        given (given ctx: Context): Typeable[Tree, Match] = internal.matchMatch(_)
 
         /** Tree representing a pattern match `delegate match { ... }` in the source code */  // TODO: drop
         type ImpliedMatch = internal.ImpliedMatch
+        given (given ctx: Context): Typeable[Tree, ImpliedMatch] = internal.matchImplicitMatch(_)
 
         /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */
         type Try = internal.Try
+        given (given ctx: Context): Typeable[Tree, Try] = internal.matchTry(_)
 
         /** Tree representing a `return` in the source code */
         type Return = internal.Return
+        given (given ctx: Context): Typeable[Tree, Return] = internal.matchReturn(_)
 
         /** Tree representing a variable argument list in the source code */
         type Repeated = internal.Repeated
+        given (given ctx: Context): Typeable[Tree, Repeated] = internal.matchRepeated(_)
 
         /** Tree representing the scope of an inlined tree */
         type Inlined = internal.Inlined
+        given (given ctx: Context): Typeable[Tree, Inlined] = internal.matchInlined(_)
 
         /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
         type SelectOuter = internal.SelectOuter
+        given (given ctx: Context): Typeable[Tree, SelectOuter] = internal.matchSelectOuter(_)
 
         /** Tree representing a while loop */
         type While = internal.While
+        given (given ctx: Context): Typeable[Tree, While] = internal.matchWhile(_)
 
       /** Type tree representing a type written in the source */
       type TypeTree = internal.TypeTree
+      given (given ctx: Context): Typeable[Tree, TypeTree] = internal.matchTypeTree(_)
 
         /** Type tree representing an inferred type */
         type Inferred = internal.Inferred
+        given (given ctx: Context): Typeable[Tree, Inferred] = internal.matchInferred(_)
 
         /** Type tree representing a reference to definition with a given name */
         type TypeIdent = internal.TypeIdent
+        given (given ctx: Context): Typeable[Tree, TypeIdent] = internal.matchTypeIdent(_)
 
         /** Type tree representing a selection of definition with a given name on a given term prefix */
         type TypeSelect = internal.TypeSelect
+        given (given ctx: Context): Typeable[Tree, TypeSelect] = internal.matchTypeSelect(_)
 
         /** Type tree representing a selection of definition with a given name on a given type prefix */
         type Projection = internal.Projection
+        given (given ctx: Context): Typeable[Tree, Projection] = internal.matchProjection(_)
 
         /** Type tree representing a singleton type */
         type Singleton = internal.Singleton
+        given (given ctx: Context): Typeable[Tree, Singleton] = internal.matchSingleton(_)
 
         /** Type tree representing a type refinement */
         type Refined = internal.Refined
+        given (given ctx: Context): Typeable[Tree, Refined] = internal.matchRefined(_)
 
         /** Type tree representing a type application */
         type Applied = internal.Applied
+        given (given ctx: Context): Typeable[Tree, Applied] = internal.matchApplied(_)
 
         /** Type tree representing an annotated type */
         type Annotated = internal.Annotated
+        given (given ctx: Context): Typeable[Tree, Annotated] = internal.matchAnnotated(_)
 
         /** Type tree representing a type match */
         type MatchTypeTree = internal.MatchTypeTree
+        given (given ctx: Context): Typeable[Tree, MatchTypeTree] = internal.matchMatchTypeTree(_)
 
         /** Type tree representing a by name parameter */
         type ByName = internal.ByName
+        given (given ctx: Context): Typeable[Tree, ByName] = internal.matchByName(_)
 
         /** Type tree representing a lambda abstraction type */
         type LambdaTypeTree = internal.LambdaTypeTree
+        given (given ctx: Context): Typeable[Tree, LambdaTypeTree] = internal.matchLambdaTypeTree(_)
 
         /** Type tree representing a type binding */
         type TypeBind = internal.TypeBind
+        given (given ctx: Context): Typeable[Tree, TypeBind] = internal.matchTypeBind(_)
 
         /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
         type TypeBlock = internal.TypeBlock
+        given (given ctx: Context): Typeable[Tree, TypeBlock] = internal.matchTypeBlock(_)
 
       /** Type tree representing a type bound written in the source */
       type TypeBoundsTree = internal.TypeBoundsTree
+      given (given ctx: Context): Typeable[Tree, TypeBoundsTree] = internal.matchTypeBoundsTree(_)
 
       /** Type tree representing wildcard type bounds written in the source.
        *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
        *  represents a type but has `TypeBound`a inside.
        */
       type WildcardTypeTree = internal.WildcardTypeTree
+      given (given ctx: Context): Typeable[Tree, WildcardTypeTree] = internal.matchWildcardTypeTree(_)
 
   /** Branch of a pattern match or catch clause */
   type CaseDef = internal.CaseDef
+  given (given ctx: Context): Typeable[Tree, CaseDef] = internal.matchCaseDef(_)
 
   /** Branch of a type pattern match */
   type TypeCaseDef = internal.TypeCaseDef
