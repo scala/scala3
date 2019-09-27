@@ -70,10 +70,6 @@ object Inliner {
    */
   def inlineCall(tree: Tree)(implicit ctx: Context): Tree = {
     if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
-    if tree.symbol.is(Macro) && tree.symbol.isDefinedInCurrentRun then
-      if ctx.compilationUnit.source.file == tree.symbol.associatedFile then
-        ctx.error("Cannot call macro defined in the same source file", tree.sourcePos)
-      ctx.compilationUnit.suspend()
 
    /** Set the position of all trees logically contained in the expansion of
     *  inlined call `call` to the position of `call`. This transform is necessary
@@ -1241,35 +1237,25 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     assert(level == 0)
     val inlinedFrom = enclosingInlineds.last
     val ctx1 = tastyreflect.MacroExpansion.context(inlinedFrom)
-
     val dependencies = macroDependencies(body)
 
-    if (dependencies.nonEmpty) {
-      var location = inlinedFrom.symbol
-      if (location.isLocalDummy) location = location.owner
+    if dependencies.nonEmpty then
+      for sym <- dependencies do
+        if ctx.compilationUnit.source.file == sym.associatedFile then
+          ctx.error(em"Cannot call macro $sym defined in the same source file", body.sourcePos)
+      ctx.compilationUnit.suspend() // this throws a SuspendException
 
-      val msg =
-        em"""Failed to expand macro. This macro depends on an implementation that is defined in the same project and not yet compiled.
-           |In particular ${inlinedFrom.symbol} depends on ${dependencies.map(_.show).mkString(", ")}.
-           |
-           |Moving ${dependencies.map(_.show).mkString(", ")} to a different project would fix this.
-           |""".stripMargin
-      ctx.error(msg, inlinedFrom.sourcePos)
-      EmptyTree
-    }
-    else {
-      val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)(ctx1)
+    val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)(ctx1)
 
-      val inlinedNormailizer = new TreeMap {
-        override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-          case Inlined(EmptyTree, Nil, expr) if enclosingInlineds.isEmpty => transform(expr)
-          case _ => super.transform(tree)
-        }
+    val inlinedNormailizer = new TreeMap {
+      override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+        case Inlined(EmptyTree, Nil, expr) if enclosingInlineds.isEmpty => transform(expr)
+        case _ => super.transform(tree)
       }
-      val normalizedSplice = inlinedNormailizer.transform(evaluatedSplice)
-      if (normalizedSplice.isEmpty) normalizedSplice
-      else normalizedSplice.withSpan(span)
     }
+    val normalizedSplice = inlinedNormailizer.transform(evaluatedSplice)
+    if (normalizedSplice.isEmpty) normalizedSplice
+    else normalizedSplice.withSpan(span)
   }
 
   /** Return the set of symbols that are refered at level -1 by the tree and defined in the current run.
