@@ -1276,13 +1276,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    *  This corresponds to the symbols that will need to be interpreted.
    */
   private def macroDependencies(tree: Tree)(implicit ctx: Context) =
-    new TreeAccumulator[Set[Symbol]] {
+    new TreeAccumulator[List[Symbol]] {
       private var level = -1
-      override def apply(syms: Set[Symbol], tree: tpd.Tree)(implicit ctx: Context): Set[Symbol] =
+      override def apply(syms: List[Symbol], tree: tpd.Tree)(implicit ctx: Context): List[Symbol] =
         if (level != -1) foldOver(syms, tree)
         else tree match {
           case tree: RefTree if level == -1 && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
-            foldOver(syms + tree.symbol, tree)
+            foldOver(tree.symbol :: syms, tree)
           case Quoted(body) =>
             level += 1
             try apply(syms, body)
@@ -1294,6 +1294,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           case _ =>
             foldOver(syms, tree)
         }
-    }.apply(Set.empty, tree)
+    }.apply(Nil, tree)
 }
 
