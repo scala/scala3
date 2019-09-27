@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.SymUtils._
 import util.{NoSource, SourceFile}
+import core.Decorators._
 
 class CompilationUnit protected (val source: SourceFile) {
 
@@ -36,6 +37,7 @@ class CompilationUnit protected (val source: SourceFile) {
 
   def suspend()(given ctx: Context): Nothing =
     if !suspended then
+      println(i"suspended: $this")
       suspended = true
       ctx.run.suspendedUnits += this
     throw CompilationUnit.SuspendException()
