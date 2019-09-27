@@ -125,7 +125,9 @@ class FrontEnd extends Phase {
       ctx.error(em"""Cyclic macro dependencies $where
                     |Compilation stopped since no further progress can be made.
                     |
-                    |To fix this, place macros in one set of files and their callers in another.""")
+                    |To fix this, place macros in one set of files and their callers in another.
+                    |
+                    |Compiling with  -XprintSuspension   gives more information.""")
     newUnits
   }
 

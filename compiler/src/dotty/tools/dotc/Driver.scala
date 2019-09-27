@@ -10,6 +10,7 @@ import core.{MacroClassLoader, Mode, TypeError}
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.io.File
 import reporting._
+import core.Decorators._
 
 import scala.util.control.NonFatal
 import fromtasty.{TASTYCompiler, TastyFileUtil}
@@ -37,9 +38,12 @@ class Driver {
         def finish(run: Run): Unit =
           run.printSummary()
           if !ctx.reporter.errorsReported && run.suspendedUnits.nonEmpty then
+            val suspendedUnits = run.suspendedUnits.toList
+            if (ctx.settings.XprintSuspension.value)
+              ctx.echo(i"compiling suspended $suspendedUnits%, %")
             val run1 = compiler.newRun
-            for unit <- run.suspendedUnits do unit.suspended = false
-            run1.compileUnits(run.suspendedUnits.toList)
+            for unit <- suspendedUnits do unit.suspended = false
+            run1.compileUnits(suspendedUnits)
             finish(run1)
 
         finish(run)

@@ -37,7 +37,8 @@ class CompilationUnit protected (val source: SourceFile) {
 
   def suspend()(given ctx: Context): Nothing =
     if !suspended then
-      println(i"suspended: $this")
+      if (ctx.settings.XprintSuspension.value)
+        ctx.echo(i"suspended: $this")
       suspended = true
       ctx.run.suspendedUnits += this
     throw CompilationUnit.SuspendException()
