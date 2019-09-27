@@ -907,7 +907,7 @@ object Parsers {
         lookahead.nextToken()
       while lookahead.token == LPAREN || lookahead.token == LBRACKET do
         lookahead.skipParens()
-      lookahead.token == COLON
+      lookahead.token == COLON || lookahead.token == SUBTYPE
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -3232,7 +3232,7 @@ object Parsers {
         case ENUM =>
           enumDef(start, posMods(start, mods | Enum))
         case GIVEN =>
-          instanceDef(start, mods, atSpan(in.skipToken()) { Mod.Given() })
+          givenDef(start, mods, atSpan(in.skipToken()) { Mod.Given() })
         case _ =>
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
           EmptyTree
@@ -3336,19 +3336,13 @@ object Parsers {
         syntaxError(em"extension clause must start with a single regular parameter", start)
 
 
-    /** OLD:
-     *  GivenDef       ::=  [id] [DefTypeParamClause] GivenBody
-     *  GivenBody      ::=  [‘as ConstrApp {‘,’ ConstrApp }] {GivenParamClause} [TemplateBody]
-     *                   |  ‘as’ Type {GivenParamClause} ‘=’ Expr
-     *                   |  ‘(’ DefParam ‘)’ TemplateBody
-     *  NEW:
-     *  GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
+    /** GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
      *                   |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
      *                   |  [id ‘:’] [ExtParamClause] TemplateBody
      *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
      *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause {GivenParamClause}
      */
-    def instanceDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
+    def givenDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
       val hasGivenSig = followingIsGivenSig()
       val name = if isIdent && hasGivenSig then ident() else EmptyTermName
@@ -3382,6 +3376,11 @@ object Parsers {
               Nil
             else
               tokenSeparated(COMMA, constrApp)
+          else if in.token == SUBTYPE then
+            if !mods.is(Inline) then
+              syntaxError("`<:' is only allowed for given with `inline' modifier")
+            in.nextToken()
+            TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
           else if name.isEmpty && in.token != LBRACE then
             tokenSeparated(COMMA, constrApp)
           else Nil
@@ -3392,7 +3391,9 @@ object Parsers {
             mods1 |= Final
             DefDef(name, tparams, vparamss, parents.head, subExpr())
           else
-            //println(i"given $name $hasExtensionParams $hasGivenSig")
+            parents match
+              case TypeBoundsTree(_, _) :: _ => syntaxError("`=' expected")
+              case _ =>
             possibleTemplateStart()
             if !hasExtensionParams then
               tparams = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
