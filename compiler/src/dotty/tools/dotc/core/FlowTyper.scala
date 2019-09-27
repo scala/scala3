@@ -18,7 +18,7 @@ object FlowTyper {
   type FlowFacts = Set[TermRef]
 
   /** The initial state where no `TermRef`s are known to be non-null */
-  @sharable val emptyFlowFacts = Set.empty[TermRef]
+  val emptyFlowFacts = Set.empty[TermRef]
 
   /** Tries to improve the precision of `tpe` using flow-sensitive type information.
    *  For nullability, is `tpe` is a `TermRef` declared as nullable but known to be non-nullable because of the
@@ -28,7 +28,7 @@ object FlowTyper {
   def refineType(tpe: Type)(implicit ctx: Context): Type = {
     assert(ctx.explicitNulls)
     tpe match {
-      case tref: TermRef if ctx.flowFacts.contains(tref) => NonNullTermRef.apply(tref.prefix, tref.designator)
+      case tref: TermRef if ctx.flowFacts.contains(tref) => NonNullTermRef(tref.prefix, tref.designator)
       case _ => tpe
     }
   }
@@ -55,14 +55,6 @@ object FlowTyper {
 
     /** The inferred facts for the negation of this condition. */
     def negate: Inferred = Inferred(ifFalse, ifTrue)
-  }
-
-  object Inferred {
-    /** Create a singleton inferred fact containing `tref`. */
-    def apply(tref: TermRef, ifTrue: Boolean): Inferred = {
-      if (ifTrue) Inferred(Set(tref), emptyFlowFacts)
-      else Inferred(emptyFlowFacts, Set(tref))
-    }
   }
 
   /** Analyze the tree for a condition `cond` to learn new flow facts.
@@ -160,7 +152,8 @@ object FlowTyper {
         case Some(tref) =>
           // If `isEq`, then the condition is of the form `lhs == null`,
           // in which case we know `lhs` is non-null if the condition is false.
-          Inferred(tref, ifTrue = !isEq)
+          if (!isEq) Inferred(Set(tref), emptyFlowFacts)
+          else Inferred(emptyFlowFacts, Set(tref))
         case _ => emptyFacts
       }
     }
