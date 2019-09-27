@@ -57,16 +57,13 @@ import scala.runtime.quoted.Unpickler
  *           |
  *           +- TypeBoundsTree
  *           +- WildcardTypeTree
+*            |
  *           +- CaseDef
  *           +- TypeCaseDef
- *
- *  +- Pattern --+- Value
- *               +- Bind
- *               +- Unapply
- *               +- Alternatives
- *               +- TypeTest
- *               +- WildcardPattern
- *
+ *           |
+ *           +- Bind
+ *           +- Unapply
+ *           +- Alternatives
  *
  *                   +- NoPrefix
  *  +- TypeOrBounds -+- TypeBounds
@@ -718,12 +715,12 @@ trait CompilerInterface {
 
   def matchCaseDef(tree: Tree)(given ctx: Context): Option[CaseDef]
 
-  def CaseDef_pattern(self: CaseDef)(given ctx: Context): Pattern
+  def CaseDef_pattern(self: CaseDef)(given ctx: Context): Tree
   def CaseDef_guard(self: CaseDef)(given ctx: Context): Option[Term]
   def CaseDef_rhs(self: CaseDef)(given ctx: Context): Term
 
-  def CaseDef_module_apply(pattern: Pattern, guard: Option[Term], body: Term)(given ctx: Context): CaseDef
-  def CaseDef_module_copy(original: CaseDef)(pattern: Pattern, guard: Option[Term], body: Term)(given ctx: Context): CaseDef
+  def CaseDef_module_apply(pattern: Tree, guard: Option[Term], body: Term)(given ctx: Context): CaseDef
+  def CaseDef_module_copy(original: CaseDef)(pattern: Tree, guard: Option[Term], body: Term)(given ctx: Context): CaseDef
 
   /** Branch of a type pattern match */
   type TypeCaseDef <: Tree
@@ -740,73 +737,40 @@ trait CompilerInterface {
   // PATTERNS
   //
 
-  /** Pattern tree of the pattern part of a CaseDef */
-  type Pattern <: AnyRef
+  /** Tree representing a binding pattern `_ @ _` */
+  type Bind <: Tree
 
-  def Pattern_pos(self: Pattern)(given ctx: Context): Position
-  def Pattern_tpe(self: Pattern)(given ctx: Context): Type
-  def Pattern_symbol(self: Pattern)(given ctx: Context): Symbol
+  def matchTree_Bind(x: Tree)(given ctx: Context): Option[Bind]
 
-  /** Pattern representing a value. This includes `1`, ```x``` and `_` */
-  type Value <: Pattern
+  def Tree_Bind_name(self: Bind)(given ctx: Context): String
 
-  def matchPattern_Value(pattern: Pattern): Option[Value]
+  def Tree_Bind_pattern(self: Bind)(given ctx: Context): Tree
 
-  def Pattern_Value_value(self: Value)(given ctx: Context): Term
+  def Tree_Bind_module_copy(original: Bind)(name: String, pattern: Tree)(given ctx: Context): Bind
 
-  def Pattern_Value_module_apply(term: Term)(given ctx: Context): Value
-  def Pattern_Value_module_copy(original: Value)(term: Term)(given ctx: Context): Value
+  /** Tree representing an unapply pattern `Xyz(...)` */
+  type Unapply <: Tree
 
-  /** Pattern representing a `_ @ _` binding. */
-  type Bind <: Pattern
+  def matchTree_Unapply(pattern: Tree)(given ctx: Context): Option[Unapply]
 
-  def matchPattern_Bind(x: Pattern)(given ctx: Context): Option[Bind]
+  def Tree_Unapply_fun(self: Unapply)(given ctx: Context): Term
 
-  def Pattern_Bind_name(self: Bind)(given ctx: Context): String
+  def Tree_Unapply_implicits(self: Unapply)(given ctx: Context): List[Term]
 
-  def Pattern_Bind_pattern(self: Bind)(given ctx: Context): Pattern
+  def Tree_Unapply_patterns(self: Unapply)(given ctx: Context): List[Tree]
 
-  def Pattern_Bind_module_copy(original: Bind)(name: String, pattern: Pattern)(given ctx: Context): Bind
+  def Tree_Unapply_module_copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply
 
-  /** Pattern representing a `Xyz(...)` unapply. */
-  type Unapply <: Pattern
+  /** Tree representing pattern alternatives `X | Y | ...` */
+  type Alternatives <: Tree
 
-  def matchPattern_Unapply(pattern: Pattern)(given ctx: Context): Option[Unapply]
+  def matchTree_Alternatives(pattern: Tree)(given ctx: Context): Option[Alternatives]
 
-  def Pattern_Unapply_fun(self: Unapply)(given ctx: Context): Term
+  def Tree_Alternatives_patterns(self: Alternatives)(given ctx: Context): List[Tree]
 
-  def Pattern_Unapply_implicits(self: Unapply)(given ctx: Context): List[Term]
+  def Tree_Alternatives_module_apply(patterns: List[Tree])(given ctx: Context): Alternatives
+  def Tree_Alternatives_module_copy(original: Alternatives)(patterns: List[Tree])(given ctx: Context): Alternatives
 
-  def Pattern_Unapply_patterns(self: Unapply)(given ctx: Context): List[Pattern]
-
-  def Pattern_Unapply_module_copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Pattern])(given ctx: Context): Unapply
-
-  /** Pattern representing `X | Y | ...` alternatives. */
-  type Alternatives <: Pattern
-
-  def matchPattern_Alternatives(pattern: Pattern)(given ctx: Context): Option[Alternatives]
-
-  def Pattern_Alternatives_patterns(self: Alternatives)(given ctx: Context): List[Pattern]
-
-  def Pattern_Alternatives_module_apply(patterns: List[Pattern])(given ctx: Context): Alternatives
-  def Pattern_Alternatives_module_copy(original: Alternatives)(patterns: List[Pattern])(given ctx: Context): Alternatives
-
-  /** Pattern representing a `x: Y` type test. */
-  type TypeTest <: Pattern
-
-  def matchPattern_TypeTest(pattern: Pattern)(given ctx: Context): Option[TypeTest]
-
-  def Pattern_TypeTest_tpt(self: TypeTest)(given ctx: Context): TypeTree
-
-  def Pattern_TypeTest_module_apply(tpt: TypeTree)(given ctx: Context): TypeTest
-  def Pattern_TypeTest_module_copy(original: TypeTest)(tpt: TypeTree)(given ctx: Context): TypeTest
-
-  /** Pattern representing a `_` pattern */
-  type WildcardPattern <: Pattern
-
-  def matchPattern_WildcardPattern(pattern: Pattern)(given ctx: Context): Option[WildcardPattern]
-
-  def Pattern_WildcardPattern_module_apply(tpe: TypeOrBounds)(given ctx: Context): WildcardPattern
 
   //
   // TYPES
@@ -1197,8 +1161,6 @@ trait CompilerInterface {
   def Symbol_flags(self: Symbol)(given ctx: Context): Flags
 
   def Symbol_tree(self: Symbol)(given ctx: Context): Tree
-
-  def Symbol_pattern(self: Symbol)(given ctx: Context): Pattern
 
   def Symbol_isLocalDummy(self: Symbol)(given ctx: Context): Boolean
 

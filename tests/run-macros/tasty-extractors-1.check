@@ -37,40 +37,40 @@ Type.ConstantType(Constant(3))
 Inlined(None, Nil, If(Typed(Literal(Constant(true)), TypeIdent("Boolean")), Literal(Constant(1)), Literal(Constant(2))))
 Type.OrType(Type.ConstantType(Constant(1)), Type.ConstantType(Constant(2)))
 
-Inlined(None, Nil, Match(Literal(Constant("a")), List(CaseDef(Pattern.Value(Literal(Constant("a"))), None, Block(Nil, Literal(Constant(())))))))
+Inlined(None, Nil, Match(Literal(Constant("a")), List(CaseDef(Literal(Constant("a")), None, Block(Nil, Literal(Constant(())))))))
 Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Match(Literal(Constant("b")), List(CaseDef(Pattern.Bind("n", Pattern.WildcardPattern()), None, Block(Nil, Literal(Constant(())))))))
+Inlined(None, Nil, Match(Literal(Constant("b")), List(CaseDef(Bind("n", Ident("_")), None, Block(Nil, Literal(Constant(())))))))
 Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Match(Literal(Constant("c")), List(CaseDef(Pattern.Bind("n", Pattern.TypeTest(TypeIdent("String"))), None, Block(Nil, Literal(Constant(())))))))
+Inlined(None, Nil, Match(Literal(Constant("c")), List(CaseDef(Bind("n", Typed(Ident("_"), TypeIdent("String"))), None, Block(Nil, Literal(Constant(())))))))
 Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Match(Literal(Constant("e")), List(CaseDef(Pattern.WildcardPattern(), None, Block(Nil, Literal(Constant(())))))))
+Inlined(None, Nil, Match(Literal(Constant("e")), List(CaseDef(Ident("_"), None, Block(Nil, Literal(Constant(())))))))
 Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Match(Literal(Constant("f")), List(CaseDef(Pattern.TypeTest(TypeIdent("String")), None, Block(Nil, Literal(Constant(())))))))
+Inlined(None, Nil, Match(Literal(Constant("f")), List(CaseDef(Typed(Ident("_"), TypeIdent("String")), None, Block(Nil, Literal(Constant(())))))))
 Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Match(Typed(Literal(Constant("g")), TypeIdent("Any")), List(CaseDef(Pattern.Alternative(List(Pattern.TypeTest(TypeIdent("String")), Pattern.TypeTest(TypeIdent("Int")))), None, Block(Nil, Literal(Constant(())))))))
+Inlined(None, Nil, Match(Typed(Literal(Constant("g")), TypeIdent("Any")), List(CaseDef(Alternative(List(Typed(Ident("_"), TypeIdent("String")), Typed(Ident("_"), TypeIdent("Int")))), None, Block(Nil, Literal(Constant(())))))))
 Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Match(Literal(Constant("h")), List(CaseDef(Pattern.WildcardPattern(), Some(Literal(Constant(false))), Block(Nil, Literal(Constant(())))))))
+Inlined(None, Nil, Match(Literal(Constant("h")), List(CaseDef(Ident("_"), Some(Literal(Constant(false))), Block(Nil, Literal(Constant(())))))))
 Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Block(List(ValDef("a", Inferred(), Some(Literal(Constant("o"))))), Match(Literal(Constant("i")), List(CaseDef(Pattern.Bind("a", Pattern.WildcardPattern()), None, Block(Nil, Literal(Constant(()))))))))
+Inlined(None, Nil, Block(List(ValDef("a", Inferred(), Some(Literal(Constant("o"))))), Match(Literal(Constant("i")), List(CaseDef(Bind("a", Ident("_")), None, Block(Nil, Literal(Constant(()))))))))
 Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Match(Ident("Nil"), List(CaseDef(Pattern.Unapply(TypeApply(Select(Ident("List"), "unapplySeq"), List(Inferred())), Nil, List(Pattern.Bind("a", Pattern.WildcardPattern()), Pattern.Bind("b", Pattern.WildcardPattern()), Pattern.Bind("c", Pattern.WildcardPattern()))), None, Block(Nil, Literal(Constant(())))))))
+Inlined(None, Nil, Match(Ident("Nil"), List(CaseDef(Unapply(TypeApply(Select(Ident("List"), "unapplySeq"), List(Inferred())), Nil, List(Bind("a", Ident("_")), Bind("b", Ident("_")), Bind("c", Ident("_")))), None, Block(Nil, Literal(Constant(())))))))
 Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Try(Literal(Constant(1)), List(CaseDef(Pattern.WildcardPattern(), None, Block(Nil, Literal(Constant(()))))), None))
+Inlined(None, Nil, Try(Literal(Constant(1)), List(CaseDef(Ident("_"), None, Block(Nil, Literal(Constant(()))))), None))
 Type.OrType(Type.ConstantType(Constant(1)), Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit"))
 
 Inlined(None, Nil, Try(Literal(Constant(2)), Nil, Some(Literal(Constant(())))))
 Type.ConstantType(Constant(2))
 
-Inlined(None, Nil, Try(Literal(Constant(3)), List(CaseDef(Pattern.WildcardPattern(), None, Block(Nil, Literal(Constant(()))))), Some(Literal(Constant(())))))
+Inlined(None, Nil, Try(Literal(Constant(3)), List(CaseDef(Ident("_"), None, Block(Nil, Literal(Constant(()))))), Some(Literal(Constant(())))))
 Type.OrType(Type.ConstantType(Constant(3)), Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit"))
 
 Inlined(None, Nil, Apply(Select(Literal(Constant("a")), "=="), List(Literal(Constant("b")))))

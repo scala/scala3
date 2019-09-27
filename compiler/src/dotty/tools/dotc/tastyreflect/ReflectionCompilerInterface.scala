@@ -109,6 +109,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   type Statement = tpd.Tree
 
   def matchStatement(tree: Tree)(given Context): Option[Statement] = tree match {
+    case _: PatternTree => None
     case tree if tree.isTerm => Some(tree)
     case _ => matchDefinition(tree)
   }
@@ -231,6 +232,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   type Term = tpd.Tree
 
   def matchTerm(tree: Tree)(given Context): Option[Term] = tree match {
+    case _: PatternTree => None
     case x: tpd.SeqLiteral => Some(tree)
     case _ if tree.isTerm => Some(tree)
     case _ => None
@@ -884,14 +886,14 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     case _ => None
   }
 
-  def CaseDef_pattern(self: CaseDef)(given Context): Pattern = self.pat
+  def CaseDef_pattern(self: CaseDef)(given Context): Tree = self.pat
   def CaseDef_guard(self: CaseDef)(given Context): Option[Term] = optional(self.guard)
   def CaseDef_rhs(self: CaseDef)(given Context): Term = self.body
 
-  def CaseDef_module_apply(pattern: Pattern, guard: Option[Term], body: Term)(given Context): CaseDef =
+  def CaseDef_module_apply(pattern: Tree, guard: Option[Term], body: Term)(given Context): CaseDef =
     tpd.CaseDef(pattern, guard.getOrElse(tpd.EmptyTree), body)
 
-  def CaseDef_module_copy(original: CaseDef)(pattern: Pattern, guard: Option[Term], body: Term)(given Context): CaseDef =
+  def CaseDef_module_copy(original: CaseDef)(pattern: Tree, guard: Option[Term], body: Term)(given Context): CaseDef =
     tpd.cpy.CaseDef(original)(pattern, guard.getOrElse(tpd.EmptyTree), body)
 
   type TypeCaseDef = tpd.CaseDef
@@ -910,113 +912,54 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def TypeCaseDef_module_copy(original: TypeCaseDef)(pattern: TypeTree, body: TypeTree)(given Context): TypeCaseDef =
     tpd.cpy.CaseDef(original)(pattern, tpd.EmptyTree, body)
 
-  //
-  // PATTERNS
-  //
-
-  type Pattern = tpd.Tree
-
-  def Pattern_pos(self: Pattern)(given Context): Position = self.sourcePos
-  def Pattern_tpe(self: Pattern)(given Context): Type = self.tpe.stripTypeVar
-  def Pattern_symbol(self: Pattern)(given Context): Symbol = self.symbol
-
-  type Value = tpd.Tree
-
-  def matchPattern_Value(pattern: Pattern): Option[Value] = pattern match {
-    case lit: tpd.Literal => Some(lit)
-    case ref: tpd.RefTree if ref.isTerm && !tpd.isWildcardArg(ref) => Some(ref)
-    case ths: tpd.This => Some(ths)
-    case _ => None
-  }
-
-  def Pattern_Value_value(self: Value)(given Context): Term = self
-
-  def Pattern_Value_module_apply(term: Term)(given Context): Value = term match {
-    case lit: tpd.Literal => lit
-    case ref: tpd.RefTree if ref.isTerm => ref
-    case ths: tpd.This => ths
-  }
-  def Pattern_Value_module_copy(original: Value)(term: Term)(given Context): Value = term match {
-    case lit: tpd.Literal => tpd.cpy.Literal(original)(lit.const)
-    case ref: tpd.RefTree if ref.isTerm => tpd.cpy.Ref(original.asInstanceOf[tpd.RefTree])(ref.name)
-    case ths: tpd.This => tpd.cpy.This(original)(ths.qual)
-  }
-
   type Bind = tpd.Bind
 
-  def matchPattern_Bind(x: Pattern)(given Context): Option[Bind] = x match {
+  def matchTree_Bind(x: Tree)(given Context): Option[Bind] = x match {
     case x: tpd.Bind if x.name.isTermName => Some(x)
     case _ => None
   }
 
-  def Pattern_Bind_name(self: Bind)(given Context): String = self.name.toString
+  def Tree_Bind_name(self: Bind)(given Context): String = self.name.toString
 
-  def Pattern_Bind_pattern(self: Bind)(given Context): Pattern = self.body
+  def Tree_Bind_pattern(self: Bind)(given Context): Tree = self.body
 
-  def Pattern_Bind_module_copy(original: Bind)(name: String, pattern: Pattern)(given Context): Bind =
+  def Tree_Bind_module_copy(original: Bind)(name: String, pattern: Tree)(given Context): Bind =
     withDefaultPos(tpd.cpy.Bind(original)(name.toTermName, pattern))
 
   type Unapply = tpd.UnApply
 
-  def matchPattern_Unapply(pattern: Pattern)(given Context): Option[Unapply] = pattern match {
+  def matchTree_Unapply(pattern: Tree)(given Context): Option[Unapply] = pattern match {
     case pattern @ Trees.UnApply(_, _, _) => Some(pattern)
     case Trees.Typed(pattern @ Trees.UnApply(_, _, _), _) => Some(pattern)
     case _ => None
   }
 
-  def Pattern_Unapply_fun(self: Unapply)(given Context): Term = self.fun
-  def Pattern_Unapply_implicits(self: Unapply)(given Context): List[Term] = self.implicits
-  def Pattern_Unapply_patterns(self: Unapply)(given Context): List[Pattern] = effectivePatterns(self.patterns)
+  def Tree_Unapply_fun(self: Unapply)(given Context): Term = self.fun
+  def Tree_Unapply_implicits(self: Unapply)(given Context): List[Term] = self.implicits
+  def Tree_Unapply_patterns(self: Unapply)(given Context): List[Tree] = effectivePatterns(self.patterns)
 
-  def Pattern_Unapply_module_copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Pattern])(given Context): Unapply =
+  def Tree_Unapply_module_copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Tree])(given Context): Unapply =
     withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits, patterns))
 
-  private def effectivePatterns(patterns: List[Pattern]): List[Pattern] = patterns match {
+  private def effectivePatterns(patterns: List[Tree]): List[Tree] = patterns match {
     case patterns0 :+ Trees.SeqLiteral(elems, _) => patterns0 ::: elems
     case _ => patterns
   }
 
   type Alternatives = tpd.Alternative
 
-  def matchPattern_Alternatives(pattern: Pattern)(given Context): Option[Alternatives] = pattern match {
+  def matchTree_Alternatives(pattern: Tree)(given Context): Option[Alternatives] = pattern match {
     case pattern: tpd.Alternative => Some(pattern)
     case _ => None
   }
 
-  def Pattern_Alternatives_patterns(self: Alternatives)(given Context): List[Pattern] = self.trees
+  def Tree_Alternatives_patterns(self: Alternatives)(given Context): List[Tree] = self.trees
 
-  def Pattern_Alternatives_module_apply(patterns: List[Pattern])(given Context): Alternatives =
+  def Tree_Alternatives_module_apply(patterns: List[Tree])(given Context): Alternatives =
     withDefaultPos(tpd.Alternative(patterns))
 
-  def Pattern_Alternatives_module_copy(original: Alternatives)(patterns: List[Pattern])(given Context): Alternatives =
+  def Tree_Alternatives_module_copy(original: Alternatives)(patterns: List[Tree])(given Context): Alternatives =
     tpd.cpy.Alternative(original)(patterns)
-
-  type TypeTest = tpd.Typed
-
-  def matchPattern_TypeTest(pattern: Pattern)(given Context): Option[TypeTest] = pattern match {
-    case Trees.Typed(_: tpd.UnApply, _) => None
-    case pattern: tpd.Typed => Some(pattern)
-    case _ => None
-  }
-
-  def Pattern_TypeTest_tpt(self: TypeTest)(given Context): TypeTree = self.tpt
-
-  def Pattern_TypeTest_module_apply(tpt: TypeTree)(given ctx: Context): TypeTest =
-    withDefaultPos(tpd.Typed(untpd.Ident(nme.WILDCARD)(ctx.source).withType(tpt.tpe), tpt))
-
-  def Pattern_TypeTest_module_copy(original: TypeTest)(tpt: TypeTree)(given Context): TypeTest =
-    tpd.cpy.Typed(original)(untpd.Ident(nme.WILDCARD).withSpan(original.span).withType(tpt.tpe), tpt)
-
-  type WildcardPattern = tpd.Ident
-
-  def matchPattern_WildcardPattern(pattern: Pattern)(given Context): Option[WildcardPattern] =
-    pattern match {
-      case pattern: tpd.Ident if tpd.isWildcardArg(pattern) => Some(pattern)
-      case _ => None
-    }
-
-  def Pattern_WildcardPattern_module_apply(tpe: TypeOrBounds)(given Context): WildcardPattern =
-    untpd.Ident(nme.WILDCARD).withType(tpe)
 
   //
   // TYPES
@@ -1459,9 +1402,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Symbol_flags(self: Symbol)(given Context): Flags = self.flags
 
   def Symbol_tree(self: Symbol)(given Context): Tree =
-    FromSymbol.definitionFromSym(self)
-
-  def Symbol_pattern(self: Symbol)(given ctx: Context): Pattern =
     FromSymbol.definitionFromSym(self)
 
   def Symbol_privateWithin(self: Symbol)(given Context): Option[Type] = {

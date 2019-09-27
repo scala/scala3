@@ -1125,7 +1125,7 @@ trait TreeOps extends Core {
   // ----- CaseDefs ------------------------------------------------
 
   implicit class CaseDefAPI(caseDef: CaseDef) {
-    def pattern(given ctx: Context): Pattern = internal.CaseDef_pattern(caseDef)
+    def pattern(given ctx: Context): Tree = internal.CaseDef_pattern(caseDef)
     def guard(given ctx: Context): Option[Term] = internal.CaseDef_guard(caseDef)
     def rhs(given ctx: Context): Term = internal.CaseDef_rhs(caseDef)
   }
@@ -1136,13 +1136,13 @@ trait TreeOps extends Core {
   }
 
   object CaseDef {
-    def apply(pattern: Pattern, guard: Option[Term], rhs: Term)(given ctx: Context): CaseDef =
+    def apply(pattern: Tree, guard: Option[Term], rhs: Term)(given ctx: Context): CaseDef =
       internal.CaseDef_module_apply(pattern, guard, rhs)
 
-    def copy(original: CaseDef)(pattern: Pattern, guard: Option[Term], rhs: Term)(given ctx: Context): CaseDef =
+    def copy(original: CaseDef)(pattern: Tree, guard: Option[Term], rhs: Term)(given ctx: Context): CaseDef =
       internal.CaseDef_module_copy(original)(pattern, guard, rhs)
 
-    def unapply(tree: Tree)(given ctx: Context): Option[(Pattern, Option[Term], Term)] =
+    def unapply(tree: Tree)(given ctx: Context): Option[(Tree, Option[Term], Term)] =
       internal.matchCaseDef(tree).map( x => (x.pattern, x.guard, x.rhs))
   }
 
@@ -1166,4 +1166,63 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(given ctx: Context): Option[(TypeTree, TypeTree)] =
       internal.matchTypeCaseDef(tree).map( x => (x.pattern, x.rhs))
   }
+
+  // ----- Trees ------------------------------------------------
+
+  object IsBind {
+    def unapply(pattern: Tree)(given ctx: Context): Option[Bind] =
+      internal.matchTree_Bind(pattern)
+  }
+
+  object Bind {
+    // TODO def apply(name: String, pattern: Tree)(given ctx: Context): Bind
+    def copy(original: Bind)(name: String, pattern: Tree)(given ctx: Context): Bind =
+      internal.Tree_Bind_module_copy(original)(name, pattern)
+    def unapply(pattern: Tree)(given ctx: Context): Option[(String, Tree)] =
+      internal.matchTree_Bind(pattern).map(x => (x.name, x.pattern))
+  }
+
+  implicit class BindAPI(bind: Bind) {
+    def name(given ctx: Context): String = internal.Tree_Bind_name(bind)
+    def pattern(given ctx: Context): Tree = internal.Tree_Bind_pattern(bind)
+  }
+
+  object IsUnapply {
+    def unapply(pattern: Tree)(given ctx: Context): Option[Unapply] =
+      internal.matchTree_Unapply(pattern)
+  }
+
+  object Unapply {
+    // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply
+    def copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply =
+      internal.Tree_Unapply_module_copy(original)(fun, implicits, patterns)
+    def unapply(pattern: Tree)(given ctx: Context): Option[(Term, List[Term], List[Tree])] =
+      internal.matchTree_Unapply(pattern).map(x => (x.fun, x.implicits, x.patterns))
+  }
+
+  implicit class UnapplyAPI(unapply: Unapply) {
+    def fun(given ctx: Context): Term = internal.Tree_Unapply_fun(unapply)
+    def implicits(given ctx: Context): List[Term] = internal.Tree_Unapply_implicits(unapply)
+    def patterns(given ctx: Context): List[Tree] = internal.Tree_Unapply_patterns(unapply)
+  }
+
+  object IsAlternatives {
+    def unapply(pattern: Tree)(given ctx: Context): Option[Alternatives] =
+      internal.matchTree_Alternatives(pattern)
+  }
+
+  object Alternatives {
+    def apply(patterns: List[Tree])(given ctx: Context): Alternatives =
+      internal.Tree_Alternatives_module_apply(patterns)
+    def copy(original: Alternatives)(patterns: List[Tree])(given ctx: Context): Alternatives =
+      internal.Tree_Alternatives_module_copy(original)(patterns)
+    def unapply(pattern: Tree)(given ctx: Context): Option[List[Tree]] =
+      internal.matchTree_Alternatives(pattern).map(_.patterns)
+  }
+
+  implicit class AlternativesAPI(alternatives: Alternatives) {
+    def patterns(given ctx: Context): List[Tree] = internal.Tree_Alternatives_patterns(alternatives)
+  }
+
+
 }
