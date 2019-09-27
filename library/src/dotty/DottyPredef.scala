@@ -1,7 +1,7 @@
 package dotty
 
 object DottyPredef {
-  import compiletime.summonFrom
+  import compiletime.{ summonFrom, erasedValue }
 
   @forceInline final def assert(assertion: => Boolean, message: => Any): Unit = {
     if (!assertion)
@@ -38,4 +38,10 @@ object DottyPredef {
   }
 
   inline def summon[T](given x: T): x.type = x
+
+  inline def summonInline[T] = summonFrom { case x: T => x }
+
+  inline def summonAll[T <: Tuple]: List[?] = inline erasedValue[T] match
+    case _: Unit => Nil
+    case _: (t *: ts) => summonInline[t] :: summonAll[ts]
 }

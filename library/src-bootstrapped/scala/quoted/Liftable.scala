@@ -1,6 +1,7 @@
 package scala.quoted
 
 import scala.reflect.ClassTag
+import scala.deriving._
 
 /** A typeclass for types that can be turned to `quoted.Expr[T]`
  *  without going through an explicit `'{...}` operation.
@@ -303,6 +304,29 @@ object Liftable {
   given Liftable[BigDecimal] = new Liftable[BigDecimal] {
     def toExpr(x: BigDecimal): (given QuoteContext) => Expr[BigDecimal] =
       '{ BigDecimal(${Expr(x.toString)}) }
+  }
+
+  inline given productLiftable[T <: Product: Type](given
+      m : Mirror.ProductOf[T],
+      em: Expr[Mirror.ProductOf[T]]): Liftable[T] = new Liftable[T] {
+    def toExpr(x: T) =
+      val genRepr = Tuple.fromProductTyped(x)
+      val liftables = summonAll[Tuple.Map[m.MirroredElemTypes, Liftable]]
+      val elemsWithLiftables = liftables.zip(genRepr.asInstanceOf[Product].productIterator.toList)
+      val tupleOfExprs = elemsWithLiftables.map {
+        case (l: Liftable[a], x) => l.toExpr(x.asInstanceOf[a])
+      }
+      val exprOfTuple = Expr.ofTuple(tupleOfExprs)
+      '{$em.fromProduct($exprOfTuple.asInstanceOf[Product])}
+  }
+
+  inline given sumLiftable[T: Type](given m: Mirror.SumOf[T]): Liftable[T] = new Liftable[T] {
+    def toExpr(x: T) =
+      val liftables = summonAll[Tuple.Map[m.MirroredElemTypes, Liftable]]
+      val tags = summonAll[Tuple.Map[m.MirroredElemTypes, ClassTag]]
+      tags.zip(liftables).flatMap { case (t: ClassTag[a], l: Liftable[?]) =>
+        t.unapply(x).map(xa => l.asInstanceOf[Liftable[a]].toExpr(xa)) }
+        .head.asInstanceOf[Expr[T]]
   }
 
 }
