@@ -19,4 +19,7 @@ object Nullable {
 
   val s1: Nullable[String] = "hello"
   val s2: Nullable[String] = null
+
+  s1.isEmpty
+  s1.flatMap((x) => true)
 }
