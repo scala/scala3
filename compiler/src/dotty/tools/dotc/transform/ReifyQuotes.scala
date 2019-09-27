@@ -134,7 +134,7 @@ class ReifyQuotes extends MacroTransform {
     private def addTags(expr: Tree)(implicit ctx: Context): Tree = {
 
       def mkTagSymbolAndAssignType(spliced: TermRef): TypeDef = {
-        val splicedTree = tpd.ref(spliced)
+        val splicedTree = tpd.ref(spliced).withSpan(spliced.termSymbol.coord.toSpan)
         val rhs = transform(splicedTree.select(tpnme.splice))
         val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
         val local = ctx.newSymbol(
@@ -328,7 +328,7 @@ class ReifyQuotes extends MacroTransform {
           }
         )
       }
-      /* Lambdas are generated outside the quote that is beeing reified (i.e. in outer.owner).
+      /* Lambdas are generated outside the quote that is being reified (i.e. in outer.owner).
        * In case the case that level == -1 the code is not in a quote, it is in an inline method,
        * hence we should take that as owner directly.
        */
