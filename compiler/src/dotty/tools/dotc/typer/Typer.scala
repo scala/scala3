@@ -2236,8 +2236,9 @@ class Typer extends Namer
                   completer.completeInContext(sym, ctx1)
                   ctx1
                 case _ =>
-                  // If it has been completed, we use the default context
-                  // The flow typing will not be applied to definitions forwardly referred.
+                  // If it has been completed, then it must be because there is a forward reference
+                  // to the definition in the program. We use the default (creation) context, and flow
+                  // typing will not be applied.
                   ctx
               }
             }
