@@ -371,9 +371,8 @@ object Comments {
                 superComment(sym) foreach { sc =>
                   val superSections = tagIndex(sc)
                   replaceWith(sc.substring(3, startTag(sc, superSections)))
-                  for (sec @ (start, end) <- superSections) {
+                  for (sec @ (start, end) <- superSections)
                     if (!isMovable(sc, sec)) out append sc.substring(start, end)
-                  }
                 }
               case "" => idx += 1
               case vname  =>

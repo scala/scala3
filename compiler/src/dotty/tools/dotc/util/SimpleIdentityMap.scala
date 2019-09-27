@@ -163,9 +163,8 @@ object SimpleIdentityMap {
           return {
             if (size == CompactifyThreshold) {
               var m: SimpleIdentityMap[K, V] = Empty[K]
-              for (j <- 0 until bindings.length by 2) {
+              for (j <- 0 until bindings.length by 2)
                 if (j != i) m = m.updated(key(j), value(j))
-              }
               m
             }
             else {

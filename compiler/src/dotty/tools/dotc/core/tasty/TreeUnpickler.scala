@@ -945,35 +945,35 @@ class TreeUnpickler(reader: TastyReader,
       assert(sourcePathAt(start).isEmpty)
       readByte()
       readEnd()
-      val importGiven = nextByte == GIVEN
+      val importGiven = nextByte == GIVEN  // TODO: drop the next time we bump Tasty versions
       if (importGiven) readByte()
       val expr = readTerm()
-      setSpan(start, Import(importGiven, expr, readSelectors()))
+      setSpan(start, Import(expr, readSelectors(importGiven)))
     }
-
-    def readSelectors()(implicit ctx: Context): List[untpd.Tree] = nextByte match {
-      case IMPORTED =>
+    def readSelectors(givenPrefix: Boolean)(implicit ctx: Context): List[untpd.ImportSelector] =
+      if nextByte == IMPORTED then
         val start = currentAddr
         assert(sourcePathAt(start).isEmpty)
         readByte()
-        val from = setSpan(start, untpd.Ident(readName()))
-        nextByte match {
+        var name = readName()
+        if givenPrefix && name == nme.WILDCARD then name = EmptyTermName
+        val from = setSpan(start, untpd.Ident(name))
+        val selector = nextByte match
           case RENAMED =>
             val start2 = currentAddr
             readByte()
             val to = setSpan(start2, untpd.Ident(readName()))
-            untpd.Thicket(from, to) :: readSelectors()
+            untpd.ImportSelector(from, to, EmptyTree)
+          case BOUNDED =>
+            val start2 = currentAddr
+            readByte()
+            val bound = setSpan(start2, untpd.TypedSplice(readTpt()))
+            untpd.ImportSelector(from, EmptyTree, bound)
           case _ =>
-            from :: readSelectors()
-        }
-      case BOUNDED =>
-        val start = currentAddr
-        readByte()
-        val bounded = setSpan(start, untpd.TypeBoundsTree(untpd.EmptyTree, untpd.TypedSplice(readTpt())))
-        bounded :: readSelectors()
-      case _ =>
+            untpd.ImportSelector(from)
+        selector :: readSelectors(givenPrefix)
+      else
         Nil
-    }
 
     def readIndexedStats(exprOwner: Symbol, end: Addr)(implicit ctx: Context): List[Tree] =
       until(end)(readIndexedStat(exprOwner))
@@ -1271,7 +1271,7 @@ class TreeUnpickler(reader: TastyReader,
       val args = until(end)(readTerm())
       val splice = splices(idx)
       def wrap(arg: Tree) =
-        if (arg.isTerm) given (qctx: scala.quoted.QuoteContext) => new TastyTreeExpr(arg, QuoteContext.scopeId)
+        if (arg.isTerm) (given qctx: scala.quoted.QuoteContext) => new TastyTreeExpr(arg, QuoteContext.scopeId)
         else new TreeType(arg, QuoteContext.scopeId)
       val reifiedArgs = args.map(wrap)
       val filled = if (isType) {
@@ -1279,8 +1279,8 @@ class TreeUnpickler(reader: TastyReader,
         PickledQuotes.quotedTypeToTree(quotedType)
       }
       else {
-        val splice1 = splice.asInstanceOf[Seq[Any] => given scala.quoted.QuoteContext => quoted.Expr[?]]
-        val quotedExpr = splice1(reifiedArgs) given dotty.tools.dotc.quoted.QuoteContext()
+        val splice1 = splice.asInstanceOf[Seq[Any] => (given scala.quoted.QuoteContext) => quoted.Expr[?]]
+        val quotedExpr = splice1(reifiedArgs)(given dotty.tools.dotc.quoted.QuoteContext())
         PickledQuotes.quotedExprToTree(quotedExpr)
       }
       // We need to make sure a hole is created with the source file of the surrounding context, even if

@@ -222,9 +222,7 @@ object Inliner {
         case _ =>
           EmptyTree
       }
-
     }
-
   }
 }
 
@@ -413,7 +411,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** Register type of leaf node */
   private def registerLeaf(tree: Tree): Unit = tree match {
     case _: This | _: Ident | _: TypeTree =>
-      tree.tpe.foreachPart(registerType, stopAtStatic = true)
+      tree.typeOpt.foreachPart(registerType, stopAtStatic = true)
     case _ =>
   }
 
@@ -433,11 +431,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** The Inlined node representing the inlined call */
   def inlined(sourcePos: SourcePosition): Tree = {
 
+  	// Special handling of `constValue[T]` and `constValueOpt[T]`
     if (callTypeArgs.length == 1)
       if (inlinedMethod == defn.Compiletime_constValue) {
         val constVal = tryConstValue
         if (!constVal.isEmpty) return constVal
-        ctx.error(i"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.sourcePos)
+        ctx.error(em"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.sourcePos)
       }
       else if (inlinedMethod == defn.Compiletime_constValueOpt) {
         val constVal = tryConstValue
@@ -795,9 +794,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     /** Reduce an inline match
      *   @param     mtch          the match tree
      *   @param     scrutinee     the scrutinee expression, assumed to be pure, or
-     *                            EmptyTree for a delegate match
+     *                            EmptyTree for a summonFrom
      *   @param     scrutType     its fully defined type, or
-     *                            ImplicitScrutineeTypeRef for a delegate match
+     *                            ImplicitScrutineeTypeRef for a summonFrom
      *   @param     typer         The current inline typer
      *   @return    optionally, if match can be reduced to a matching case: A pair of
      *              bindings for all pattern-bound variables and the RHS of the case.
@@ -1071,11 +1070,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree =
       constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
-        case res: Apply
-        if res.symbol == defn.InternalQuoted_exprSplice &&
-           level == 0 &&
-           call.symbol.is(Macro) &&
-           !suppressInline =>
+        case res: Apply if res.symbol == defn.InternalQuoted_exprSplice
+                        && level == 0
+                        && call.symbol.is(Macro)
+                        && !suppressInline =>
           expandMacro(res.args.head, tree.span)
         case res => res
       }
@@ -1114,7 +1112,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"
             val msg =
               if (tree.selector.isEmpty)
-                em"""cannot reduce delegate match with
+                em"""cannot reduce summonFrom with
                    | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
               else
                 em"""cannot reduce inline match with
@@ -1127,7 +1125,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     override def newLikeThis: Typer = new InlineTyper(initialErrorCount)
 
     /** Suppress further inlining if this inline typer has already issued errors */
-    override def suppressInline given (ctx: Context) =
+    override def suppressInline(given ctx: Context) =
       ctx.reporter.errorCount > initialErrorCount || super.suppressInline
   }
 
@@ -1254,7 +1252,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
            |""".stripMargin
       ctx.error(msg, inlinedFrom.sourcePos)
       EmptyTree
-    } else {
+    }
+    else {
       val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)(ctx1)
 
       val inlinedNormailizer = new TreeMap {
@@ -1272,10 +1271,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** Return the set of symbols that are refered at level -1 by the tree and defined in the current run.
    *  This corresponds to the symbols that will need to be interpreted.
    */
-  private def macroDependencies(tree: Tree)(implicit ctx: Context) = {
+  private def macroDependencies(tree: Tree)(implicit ctx: Context) =
     new TreeAccumulator[Set[Symbol]] {
       private[this] var level = -1
-      override def apply(syms: Set[Symbol], tree: tpd.Tree)(implicit ctx: Context): Set[Symbol] = {
+      override def apply(syms: Set[Symbol], tree: tpd.Tree)(implicit ctx: Context): Set[Symbol] =
         if (level != -1) foldOver(syms, tree)
         else tree match {
           case tree: RefTree if level == -1 && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
@@ -1291,8 +1290,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           case _ =>
             foldOver(syms, tree)
         }
-      }
     }.apply(Set.empty, tree)
-  }
 }
 

@@ -1,30 +1,29 @@
 import scala.quoted._
 import scala.quoted.staging._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
-trait Ring[T] {
+trait Ring[T]
   val zero: T
   val one: T
   val add: (x: T, y: T) => T
   val sub: (x: T, y: T) => T
   val mul: (x: T, y: T) => T
-}
+end Ring
 
-class RingInt extends Ring[Int] {
+class RingInt extends Ring[Int]
   val zero = 0
   val one  = 1
   val add  = (x, y) => x + y
   val sub  = (x, y) => x - y
   val mul  = (x, y) => x * y
-}
 
-class RingIntExpr given QuoteContext extends Ring[Expr[Int]] {
+
+class RingIntExpr(given QuoteContext) extends Ring[Expr[Int]]
   val zero = '{0}
   val one  = '{1}
   val add  = (x, y) => '{$x + $y}
   val sub  = (x, y) => '{$x - $y}
   val mul  = (x, y) => '{$x * $y}
-}
 
 class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]] {
   val zero = Complex(u.zero, u.zero)
@@ -34,17 +33,16 @@ class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]] {
   val mul  = (x, y) => Complex(u.sub(u.mul(x.re, y.re), u.mul(x.im, y.im)), u.add(u.mul(x.re, y.im), u.mul(x.im, y.re)))
 }
 
-sealed trait PV[T] {
-  def expr given Liftable[T], QuoteContext: Expr[T]
-}
-case class Sta[T](x: T) extends PV[T] {
-  def expr given Liftable[T], QuoteContext: Expr[T] = x
-}
-case class Dyn[T](x: Expr[T]) extends PV[T] {
-  def expr given Liftable[T], QuoteContext: Expr[T] = x
-}
+sealed trait PV[T]
+  def expr(given Liftable[T], QuoteContext): Expr[T]
 
-class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]]) given QuoteContext extends Ring[PV[U]] {
+case class Sta[T](x: T) extends PV[T]
+  def expr(given Liftable[T], QuoteContext): Expr[T] = x
+
+case class Dyn[T](x: Expr[T]) extends PV[T]
+  def expr(given Liftable[T], QuoteContext): Expr[T] = x
+
+class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]])(given QuoteContext) extends Ring[PV[U]] {
   val zero: PV[U] = Sta(u.zero)
   val one: PV[U] = Sta(u.one)
   val add = (x: PV[U], y: PV[U]) => (x, y) match {
@@ -71,11 +69,10 @@ class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]]) given QuoteContext exte
 
 case class Complex[T](re: T, im: T)
 
-object Complex {
+object Complex
   implicit def isLiftable[T: Type: Liftable]: Liftable[Complex[T]] = new Liftable[Complex[T]] {
     def toExpr(comp: Complex[T]) = '{Complex(${comp.re}, ${comp.im})}
   }
-}
 
 case class Vec[Idx, T](size: Idx, get: Idx => T) {
   def map[U](f: T => U): Vec[Idx, U] = Vec(size, i => f(get(i)))
@@ -99,17 +96,15 @@ class StaticVecOps[T] extends VecOps[Int, T] {
   }
 }
 
-class ExprVecOps[T: Type] given QuoteContext extends VecOps[Expr[Int], Expr[T]] {
+class ExprVecOps[T: Type](given QuoteContext) extends VecOps[Expr[Int], Expr[T]]
   val reduce: ((Expr[T], Expr[T]) => Expr[T], Expr[T], Vec[Expr[Int], Expr[T]]) => Expr[T] = (plus, zero, vec) => '{
     var sum = $zero
     var i = 0
-    while (i < ${vec.size}) {
+    while i < ${vec.size} do
       sum = ${ plus('sum, vec.get('i)) }
       i += 1
-    }
     sum
   }
-}
 
 class Blas1[Idx, T](r: Ring[T], ops: VecOps[Idx, T]) {
   def dot(v1: Vec[Idx, T], v2: Vec[Idx, T]): T = ops.reduce(r.add, r.zero, v1.zipWith(v2, r.mul))
@@ -117,7 +112,7 @@ class Blas1[Idx, T](r: Ring[T], ops: VecOps[Idx, T]) {
 
 object Test {
 
-  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = {
     val arr1 = Array(0, 1, 2, 4, 8)
     val arr2 = Array(1, 0, 1, 0, 1)
@@ -142,17 +137,17 @@ object Test {
     println(res2)
     println()
 
-    def blasStaticIntExpr given QuoteContext = new Blas1(new RingIntExpr, new StaticVecOps)
-    def resCode1 given QuoteContext = blasStaticIntExpr.dot(
-      vec1.map(_.toExpr),
-      vec2.map(_.toExpr)
+    def blasStaticIntExpr(given QuoteContext) = new Blas1(new RingIntExpr, new StaticVecOps)
+    def resCode1(given QuoteContext) = blasStaticIntExpr.dot(
+      vec1.map(Expr(_)),
+      vec2.map(Expr(_))
     )
     println(withQuoteContext(resCode1.show))
     println(run(resCode1))
     println()
 
-    def blasExprIntExpr given QuoteContext = new Blas1(new RingIntExpr, new ExprVecOps)
-    def resCode2 given QuoteContext: Expr[(Array[Int], Array[Int]) => Int] = '{
+    def blasExprIntExpr(given QuoteContext) = new Blas1(new RingIntExpr, new ExprVecOps)
+    def resCode2(given QuoteContext): Expr[(Array[Int], Array[Int]) => Int] = '{
       (arr1, arr2) =>
         if (arr1.length != arr2.length) throw new Exception("...")
         ${
@@ -166,8 +161,8 @@ object Test {
     println(run(resCode2).apply(arr1, arr2))
     println()
 
-    def blasStaticIntPVExpr given QuoteContext = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
-    def resCode3 given QuoteContext = blasStaticIntPVExpr.dot(
+    def blasStaticIntPVExpr(given QuoteContext) = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
+    def resCode3(given QuoteContext) = blasStaticIntPVExpr.dot(
       vec1.map(i => Dyn(i)),
       vec2.map(i => Sta(i))
     ).expr
@@ -175,8 +170,8 @@ object Test {
     println(run(resCode3))
     println()
 
-    def blasExprIntPVExpr given QuoteContext = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
-    def resCode4 given QuoteContext: Expr[Array[Int] => Int] = '{
+    def blasExprIntPVExpr(given QuoteContext) = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
+    def resCode4(given QuoteContext): Expr[Array[Int] => Int] = '{
       arr =>
         if (arr.length != ${vec2.size}) throw new Exception("...")
         ${
@@ -192,8 +187,8 @@ object Test {
     println()
 
     import Complex.isLiftable
-    def blasExprComplexPVInt given QuoteContext = new Blas1[Int, Complex[PV[Int]]](new RingComplex(new RingPV[Int](new RingInt, new RingIntExpr)), new StaticVecOps)
-    def resCode5 given QuoteContext: Expr[Array[Complex[Int]] => Complex[Int]] = '{
+    def blasExprComplexPVInt(given QuoteContext) = new Blas1[Int, Complex[PV[Int]]](new RingComplex(new RingPV[Int](new RingInt, new RingIntExpr)), new StaticVecOps)
+    def resCode5(given QuoteContext): Expr[Array[Complex[Int]] => Complex[Int]] = '{
       arr =>
         if (arr.length != ${cmpxVec2.size}) throw new Exception("...")
         ${
@@ -208,12 +203,12 @@ object Test {
     println(run(resCode5).apply(cmpxArr1))
     println()
 
-    def RingPVInt given QuoteContext = new RingPV[Int](new RingInt, new RingIntExpr)
+    def RingPVInt(given QuoteContext) = new RingPV[Int](new RingInt, new RingIntExpr)
     // Staged loop of dot product on vectors of Int or Expr[Int]
-    def dotIntOptExpr given QuoteContext = new Blas1(RingPVInt, new StaticVecOps).dot
+    def dotIntOptExpr(given QuoteContext) = new Blas1(RingPVInt, new StaticVecOps).dot
     // will generate the code '{ ((arr: scala.Array[scala.Int]) => arr.apply(1).+(arr.apply(3))) }
-    def staticVec given QuoteContext = Vec[Int, PV[Int]](5, i => Sta((i % 2)))
-    def code given QuoteContext = '{(arr: Array[Int]) => ${dotIntOptExpr(Vec(5, i => Dyn('{arr(${i})})), staticVec).expr} }
+    def staticVec(given QuoteContext) = Vec[Int, PV[Int]](5, i => Sta((i % 2)))
+    def code(given QuoteContext) = '{(arr: Array[Int]) => ${dotIntOptExpr(Vec(5, i => Dyn('{arr(${i})})), staticVec).expr} }
     println(withQuoteContext(code.show))
     println()
   }

@@ -5,7 +5,7 @@ object Macros {
 
   inline def swapFandG(x: => Unit): Unit = ${impl('x)}
 
-  private def impl(x: Expr[Unit]) given QuoteContext: Expr[Unit] = {
+  private def impl(x: Expr[Unit])(given QuoteContext): Expr[Unit] = {
     x match {
       case '{ DSL.f[$t]($x) } => '{ DSL.g[$t]($x) }
       case '{ DSL.g[$t]($x) } => '{ DSL.f[$t]($x) }

@@ -3,7 +3,7 @@ package staging
 
 import scala.annotation.implicitNotFound
 
-@implicitNotFound("Could not find implicit scala.quoted.staging.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `delegate for scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)`\n\n")
+@implicitNotFound("Could not find implicit scala.quoted.staging.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `given scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)`\n\n")
 trait Toolbox {
   def run[T](expr: QuoteContext => Expr[T]): T
 }
@@ -15,7 +15,7 @@ object Toolbox {
    * Usuage:
    * ```
    * import scala.quoted.staging._
-   * delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+   * given Toolbox = Toolbox.make(getClass.getClassLoader)
    * ```
    *
    * @param appClassloader classloader of the application that generated the quotes

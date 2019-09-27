@@ -107,7 +107,8 @@ class CheckRealizable(implicit ctx: Context) {
           if (tp.info.isStable && tpInfoRealizable == Realizable) {
             sym.setFlag(StableRealizable)
             Realizable
-          } else r
+          }
+          else r
         }
       }
     case _: SingletonType | NoPrefix =>

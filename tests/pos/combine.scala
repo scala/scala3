@@ -1,8 +1,8 @@
 trait Semigroup[A] {
   def (x: A) combine (y: A): A
 }
-given as Semigroup[Int] = ???
-given [A, B] as Semigroup[(A, B)] given Semigroup[A], Semigroup[B] = ???
+given Semigroup[Int] = ???
+given [A, B](given Semigroup[A], Semigroup[B]): Semigroup[(A, B)]  = ???
 object Test extends App {
   ((1, 1)) combine ((2, 2)) // doesn't compile
   ((1, 1): (Int, Int)) combine (2, 2) // compiles

@@ -2,7 +2,7 @@ object This extends App {
   trait A {
     def foo(): Unit
   }
- abstract class C { self: A =>
+  abstract class C { self: A =>
     def bar() = this.foo()
   }
   class D extends C with A {

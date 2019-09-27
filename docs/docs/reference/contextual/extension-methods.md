@@ -14,8 +14,8 @@ def (c: Circle) circumference: Double = c.radius * math.Pi * 2
 Like regular methods, extension methods can be invoked with infix `.`:
 
 ```scala
-  val circle = Circle(0, 0, 1)
-  circle.circumference
+val circle = Circle(0, 0, 1)
+circle.circumference
 ```
 
 ### Translation of Extension Methods
@@ -50,7 +50,7 @@ trait StringSeqOps {
 ```
 We can make the extension method available by defining a given `StringSeqOps` instance, like this:
 ```scala
-given ops1 as StringSeqOps
+given ops1: StringSeqOps
 ```
 Then
 ```scala
@@ -80,10 +80,10 @@ So `circle.circumference` translates to `CircleOps.circumference(circle)`, provi
 
 ### Given Instances for Extension Methods
 
-Given instances that define extension methods can also be defined without an `as` clause. E.g.,
+Given instances that define extension methods can also be defined without a parent. E.g.,
 
 ```scala
-given StringOps {
+given stringOps: {
   def (xs: Seq[String]) longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
@@ -98,18 +98,18 @@ If such given instances are anonymous (as in the second clause), their name is s
 
 ### Given Instances with Collective Parameters
 
-If a given instance has several extension methods one can pull out the left parameter section
+If a given instance has no parent but several extension methods one can pull out the left parameter section
 as well as any type parameters of these extension methods into the given instance itself.
 For instance, here is a given instance with two extension methods.
 ```scala
-given ListOps {
+given listOps: {
   def (xs: List[T]) second[T]: T = xs.tail.head
   def (xs: List[T]) third[T]: T = xs.tail.tail.head
 }
 ```
-The repetition in the parameters can be avoided by moving the parameters into the given instance itself. The following version is a shorthand for the code above.
+The repetition in the parameters can be avoided by hoisting the parameters up into the given instance itself. The following version is a shorthand for the code above.
 ```scala
-given ListOps[T](xs: List[T]) {
+given listOps: [T](xs: List[T]) {
   def second: T = xs.tail.head
   def third: T = xs.tail.tail.head
 }
@@ -128,16 +128,16 @@ The extension method syntax also applies to the definition of operators.
 In each case the definition syntax mirrors the way the operator is applied.
 Examples:
 ```scala
-  def (x: String) < (y: String) = ...
-  def (x: Elem) +: (xs: Seq[Elem]) = ...
+def (x: String) < (y: String) = ...
+def (x: Elem) +: (xs: Seq[Elem]) = ...
 
-  "ab" + "c"
-  1 +: List(2, 3)
+"ab" + "c"
+1 +: List(2, 3)
 ```
 The two definitions above translate to
 ```scala
-  def < (x: String)(y: String) = ...
-  def +: (xs: Seq[Elem])(x: Elem) = ...
+def < (x: String)(y: String) = ...
+def +: (xs: Seq[Elem])(x: Elem) = ...
 ```
 Note that swap of the two parameters `x` and `xs` when translating
 the right-binding operator `+:` to an extension method. This is analogous
@@ -155,7 +155,7 @@ def (xs: List[List[T]]) flattened [T] =
   xs.foldLeft[List[T]](Nil)(_ ++ _)
 
 def (x: T) + [T : Numeric](y: T): T =
-  the[Numeric[T]].plus(x, y)
+  summon[Numeric[T]].plus(x, y)
 ```
 
 As usual, type parameters of the extension method follow the defined method name. Nevertheless, such type parameters can already be used in the preceding parameter clause.
@@ -168,6 +168,7 @@ to the [current syntax](../../internals/syntax.md).
 ```
 DefSig            ::=  ...
                     |  ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] DefParamClauses
-GivenBody         ::=  ...
-                    |  ‘(’ DefParam ‘)’ TemplateBody
+GivenDef          ::=  ...
+                       [GivenSig ‘:’] [ExtParamClause] TemplateBody
+ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’ {GivenParamClause}
 ```

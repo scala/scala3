@@ -42,7 +42,8 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
           if (param.info.isRepeatedParam) {
             for (arg <- args) f(param, arg)
             true
-          } else args match {
+          }
+          else args match {
             case Nil => false
             case arg :: args1 =>
               f(param, args.head)
@@ -359,7 +360,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def statPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
     case EmptyTree
        | TypeDef(_, _)
-       | Import(_, _, _)
+       | Import(_, _)
        | DefDef(_, _, _, _, _) =>
       Pure
     case vdef @ ValDef(_, _, _) =>

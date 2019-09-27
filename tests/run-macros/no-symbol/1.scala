@@ -10,10 +10,9 @@ object Macro {
 
   def fooImpl[T](implicit t: Type[T], q: QuoteContext): Expr[String] = {
     import q.tasty._
-    t.unseal.symbol match {
-      case IsClassDefSymbol(self) => '{ "symbol" }
-      case NoSymbol() => '{ "no symbol" }
-      case _ => '{ "match error" }
-    }
+    val sym = t.unseal.symbol
+    if sym.isClassDef then '{ "symbol" }
+    else if sym.isNoSymbol then '{ "no symbol" }
+    else  '{ "match error" }
   }
 }

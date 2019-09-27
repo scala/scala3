@@ -1,7 +1,7 @@
 import scala.deriving._
-import scala.compiletime.erasedValue
+import scala.compiletime.{erasedValue, summonFrom}
 
-inline def summon[T]: T = given match {
+inline def summon[T]: T = summonFrom {
   case t: T => t
 }
 
@@ -15,7 +15,7 @@ trait Eq[T] {
 }
 
 object Eq {
-  given as Eq[Int] {
+  given Eq[Int] {
     def eqv(x: Int, y: Int) = x == y
   }
 
@@ -40,7 +40,7 @@ object Eq {
         }
     }
 
-  inline given derived[T] as Eq[T] given (m: Mirror.Of[T]) = {
+  inline given derived[T](given m: Mirror.Of[T]): Eq[T] = {
     val elemInstances = summonAll[m.MirroredElemTypes]
     inline m match {
       case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
@@ -56,7 +56,7 @@ enum Opt[+T] derives Eq {
 
 object Test extends App {
   import Opt._
-  val eqoi = the[Eq[Opt[Int]]]
+  val eqoi = summon[Eq[Opt[Int]]]
   assert(eqoi.eqv(Sm(23), Sm(23)))
   assert(!eqoi.eqv(Sm(23), Sm(13)))
   assert(!eqoi.eqv(Sm(23), Nn))

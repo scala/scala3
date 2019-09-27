@@ -905,6 +905,30 @@ trait Applications extends Compatibility {
         case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
           if (originalProto.isDropped) fun1
+          else if (fun1.symbol == defn.Compiletime_summonFrom)
+            // Special handling of `summonFrom { ... }`.
+            // We currently cannot use a macro for that since unlike other inline methods
+            // summonFrom needs to expand lazily. For instance, in
+            //
+            //    summonFrom {
+            //      case given A[t] =>
+            //        summonFrom
+            //          case given `t` => ...
+            //        }
+            //    }
+            //
+            // the second `summonFrom` should expand only once the first `summonFrom` is
+            // evaluated and `t` is bound. But normal inline expansion does not behave that
+            // way: arguments to inline function are expanded before the function call.
+            // To make this work using regular inlining, we'd need a way to annotate
+            // an inline function that it should expand only if there are no enclosing
+            // applications of inline functions.
+            tree.args match {
+              case (arg @ Match(EmptyTree, cases)) :: Nil =>
+                typed(untpd.InlineMatch(EmptyTree, cases).withSpan(arg.span), pt)
+              case _ =>
+                errorTree(tree, em"argument to summonFrom must be a pattern matching closure")
+            }
           else
             tryEither {
               simpleApply(fun1, proto)
@@ -996,13 +1020,12 @@ trait Applications extends Compatibility {
       case typedFn =>
         typedFn.tpe.widen match {
           case pt: PolyType =>
-            if (typedArgs.length <= pt.paramInfos.length && !isNamed) {
+            if (typedArgs.length <= pt.paramInfos.length && !isNamed)
               if (typedFn.symbol == defn.Predef_classOf && typedArgs.nonEmpty) {
                 val arg = typedArgs.head
                 if (!arg.symbol.is(Module)) // Allow `classOf[Foo.type]` if `Foo` is an object
                   checkClassType(arg.tpe, arg.sourcePos, traitReq = false, stablePrefixReq = false)
               }
-            }
           case _ =>
         }
         def tryDynamicTypeApply(): Tree = typedFn match {
@@ -1312,8 +1335,7 @@ trait Applications extends Compatibility {
         tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
       case tp1: PolyType => // (2)
         val nestedCtx = ctx.fresh.setExploreTyperState()
-
-        {
+        locally {
           implicit val ctx = nestedCtx
 
           // Fully define the PolyType parameters so that the infos of the
@@ -1393,7 +1415,7 @@ trait Applications extends Compatibility {
     /** Widen the result type of synthetic given methods from the implementation class to the
      *  type that's implemented. Example
      *
-     *      given I[X] as T { ... }
+     *      given I[X] : T { ... }
      *
      *  This desugars to
      *
@@ -1403,7 +1425,7 @@ trait Applications extends Compatibility {
      *  To compare specificity we should compare with `T`, not with its implementation `I[X]`.
      *  No such widening is performed for given aliases, which are not synthetic. E.g.
      *
-     *      given J[X] as T = rhs
+     *      given J[X] : T = rhs
      *
      *  already has the right result type `T`. Neither is widening performed for given
      *  objects, since these are anyway taken to be more specific than methods

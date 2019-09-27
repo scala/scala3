@@ -278,11 +278,12 @@ object Checking {
   def checkValidOperator(sym: Symbol)(implicit ctx: Context): Unit =
     sym.name.toTermName match {
       case name: SimpleName
-      if name.exists(isOperatorPart) &&
-        !sym.getAnnotation(defn.AlphaAnnot).isDefined &&
-        !sym.is(Synthetic) &&
-        !name.isConstructorName &&
-        ctx.settings.strict.value =>
+      if name.exists(isOperatorPart)
+         && !name.isSetterName
+         && !name.isConstructorName
+         && !sym.getAnnotation(defn.AlphaAnnot).isDefined
+         && !sym.is(Synthetic)
+         && ctx.settings.strict.value =>
         ctx.deprecationWarning(
           i"$sym has an operator name; it should come with an @alpha annotation", sym.sourcePos)
       case _ =>
@@ -1122,8 +1123,8 @@ trait Checking {
         }
         val cases =
           for (stat <- impl.body if isCase(stat))
-          yield untpd.Ident(stat.symbol.name.toTermName)
-        val caseImport: Import = Import(importGiven = false, ref(cdef.symbol), cases)
+          yield untpd.ImportSelector(untpd.Ident(stat.symbol.name.toTermName))
+        val caseImport: Import = Import(ref(cdef.symbol), cases)
         val caseCtx = enumCtx.importContext(caseImport, caseImport.symbol)
         for (stat <- impl.body) checkCaseOrDefault(stat, caseCtx)
       case _ =>
@@ -1131,7 +1132,7 @@ trait Checking {
   }
 
   /** check that annotation `annot` is applicable to symbol `sym` */
-  def checkAnnotApplicable(annot: Tree, sym: Symbol) given (ctx: Context): Boolean =
+  def checkAnnotApplicable(annot: Tree, sym: Symbol)(given ctx: Context): Boolean =
     !ctx.reporter.reportsErrorsFor { implicit ctx =>
       val annotCls = Annotations.annotClass(annot)
       val pos = annot.sourcePos
@@ -1165,7 +1166,7 @@ trait ReChecking extends Checking {
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(implicit ctx: Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(implicit ctx: Context): Unit = ()
   override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = ()
-  override def checkAnnotApplicable(annot: Tree, sym: Symbol) given (ctx: Context): Boolean = true
+  override def checkAnnotApplicable(annot: Tree, sym: Symbol)(given ctx: Context): Boolean = true
 }
 
 trait NoChecking extends ReChecking {

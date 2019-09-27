@@ -1,6 +1,6 @@
 import scala.quoted._
 import scala.tasty.Tasty
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 import scala.language.implicitConversions
 

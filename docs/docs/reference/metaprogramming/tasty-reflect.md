@@ -28,7 +28,7 @@ import scala.quoted._
 
 inline def natConst(x: => Int): Int = ${natConstImpl('{x})}
 
-def natConstImpl(x: Expr[Int]) given (qctx: QuoteContext): Expr[Int] = {
+def natConstImpl(x: Expr[Int])(given qctx: QuoteContext): Expr[Int] = {
   import qctx.tasty._
   ...
 }
@@ -43,7 +43,7 @@ respectively. It will also import all extractors and methods on TASTy Reflect
 trees. For example the `Literal(_)` extractor used below.
 
 ```scala
-def natConstImpl(x: Expr[Int]) given (qctx: QuoteContext): Expr[Int] = {
+def natConstImpl(x: Expr[Int])(given qctx: QuoteContext): Expr[Int] = {
   import qctx.tasty._
   val xTree: Term = x.unseal
   xTree match {
@@ -68,7 +68,7 @@ The method `qctx.tasty.Term.seal[T]` provides a way to go back to a
 `quoted.Expr[Any]`. Note that the type is `Expr[Any]`. Consequently, the type
 must be set explicitly with a checked `cast` call. If the type does not conform
 to it an exception will be thrown. In the code above, we could have replaced
-`n.toExpr` by `xTree.seal.cast[Int]`.
+`Expr(n)` by `xTree.seal.cast[Int]`.
 
 ### Obtaining the underlying argument
 
@@ -80,7 +80,7 @@ operation expression passed while calling the `macro` below.
 ```scala
 inline def macro(param: => Boolean): Unit = ${ macroImpl('param) }
 
-def macroImpl(param: Expr[Boolean]) given (qctx: QuoteContext): Expr[Unit] = {
+def macroImpl(param: Expr[Boolean])(given qctx: QuoteContext): Expr[Unit] = {
   import qctx.tasty._
   import util._
 

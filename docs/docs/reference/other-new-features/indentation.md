@@ -1,11 +1,15 @@
 ---
 layout: doc-page
-title: Significant Indentation
+title: Optional Braces
 ---
 
-As an experimental feature, Scala 3 treats indentation as significant. Indentation is significant everywhere except inside regions delineated by brackets `[...]` or parentheses `(...)`.
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.20](./indentation-new.html).
 
-Where indentation is significant, the compiler will insert `<indent>` or `<outdent>`
+As an experimental feature, Scala 3 treats indentation as significant and allows
+some occurrences of braces `{...}` to be optional.
+
+The compiler will insert `<indent>` or `<outdent>`
 tokens at certain line breaks. Grammatically, pairs of `<indent>` and `<outdent>` tokens have the same effect as pairs of braces `{` and `}`.
 
 The algorithm makes use of a stack `IW` of previously encountered indentation widths. The stack initially holds a single element with a zero indentation width. The _current indentation width_ is the indentation width of the top of the stack.
@@ -14,17 +18,20 @@ There are two rules:
 
  1. An `<indent>` is inserted at a line break, if
 
+     - An indentation region can start at the current position in the source, and
      - the first token on the next line has an indentation width strictly greater
-       than the current indentation width, and
-     - the last token on the previous line can start an indentation region.
+       than the current indentation width
 
-     The following tokens can start an indentation region:
-    ```
-      :  =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match
-    ```
+    An indentation region can start
 
-     If an `<indent>` is inserted, the indentation width of the token on the next line
-     is pushed onto `IW`, which makes it the new current indentation width.
+     - at points where a set of definitions enclosed in braces is expected in a
+       class, object, given, or enum definition, in an enum case, or after a package clause, or
+     - after one of the following tokens:
+    ```
+    =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match
+    ```
+    If an `<indent>` is inserted, the indentation width of the token on the next line
+    is pushed onto `IW`, which makes it the new current indentation width.
 
  2. An `<outdent>` is inserted at a line break, if
 
@@ -45,6 +52,8 @@ if x < 0 then
   else   // error: `else` does not align correctly
      x
 ```
+Indentation tokens are only inserted in regions where newline statement separators are also inferred:
+at the toplevel, inside braces `{...}`, but not inside parentheses `(...)`, patterns or types.
 
 ### Spaces vs Tabs
 
@@ -60,26 +69,6 @@ Indentatation can be mixed freely with braces. For interpreting  indentation ins
  2. On encountering a closing brace `}`, as many `<outdent>` tokens as necessary are
     inserted to close all open indentation regions inside the pair of braces.
 
-### Indentation Marker `:`
-
-A colon `:` at the end of a line is one of the possible tokens that opens an indentation region. Examples:
-
-```scala
-  times(10):
-    println("ah")
-    println("ha")
-```
-or
-```scala
-  xs.map:
-    x =>
-        val y = x - 1
-        y * y
-```
-Colons at the end of lines are their own token, distinct from normal `:`.
-The Scala grammar is changed so that colons at end of lines are accepted at all points
-where an opening brace is legal, except if the previous token can already start an
-indentation region. Special provisions are taken so that method result types can still use a colon on the end of a line, followed by the actual type on the next.
 
 ### Special Treatment of Case Clauses
 
@@ -120,7 +109,7 @@ end largeMethod
 ```
 An `end` marker consists of the identifier `end` which follows an `<outdent>` token, and is in turn followed on the same line by exactly one other token, which is either an identifier or one of the reserved words
 ```scala
-  if  while  for  match  try  new
+if  while  for  match  try  new
 ```
 If `end` is followed by a reserved word, the compiler checks that the marker closes an indentation region belonging to a construct that starts with the reserved word. If it is followed by an identifier _id_, the compiler checks that the marker closes a definition
 that defines _id_ or a package clause that refers to _id_.
@@ -135,7 +124,7 @@ It is recommended that `end` markers are used for code where the extent of an in
 Here is a (somewhat meta-circular) example of code using indentation. It provides a concrete representation of indentation widths as defined above together with efficient operations for constructing and comparing indentation widths.
 
 ```scala
-enum IndentWidth:
+enum IndentWidth
   case Run(ch: Char, n: Int)
   case Conc(l: IndentWidth, r: Run)
 
@@ -150,7 +139,8 @@ enum IndentWidth:
           case Conc(l2, r2) => l1 == l2 && r1 <= r2
           case _            => false
 
-  def < (that: IndentWidth): Boolean = this <= that && !(that <= this)
+  def < (that: IndentWidth): Boolean =
+    this <= that && !(that <= this)
 
   override def toString: String =
     this match
@@ -164,13 +154,11 @@ enum IndentWidth:
       case Conc(l, r) =>
         s"$l, $r"
 
-object IndentWidth:
+object IndentWidth
   private inline val MaxCached = 40
 
-  private val spaces = IArray.tabulate(MaxCached + 1):
-    new Run(' ', _)
-  private val tabs = IArray.tabulate(MaxCached + 1):
-    new Run('\t', _)
+  private val spaces = IArray.tabulate(MaxCached + 1)(new Run(' ', _))
+  private val tabs = IArray.tabulate(MaxCached + 1)(new Run('\t', _))
 
   def Run(ch: Char, n: Int): Run =
     if n <= MaxCached && ch == ' ' then
@@ -182,6 +170,7 @@ object IndentWidth:
   end Run
 
   val Zero = Run(' ', 0)
+end IndentWidth
 ```
 
 ### Settings and Rewrites
@@ -193,3 +182,27 @@ When invoked with options `-rewrite -indent` it will rewrite braces to
 indented regions where possible. When invoked with with options `-rewrite -noindent` it will rewrite in the reverse direction, inserting braces for indentation regions.
 The `-indent` option only works on [new-style syntax](./control-syntax.html). So to go from old-style syntax to new-style indented code one has to invoke the compiler twice, first with options `-rewrite -new-syntax`, then again with options
 `-rewrite-indent`. To go in the opposite direction, from indented code to old-style syntax, it's `-rewrite -noindent`, followed by `-rewrite -old-syntax`.
+
+### Variant: Indentation Marker `:`
+
+Generally, the possible indentation regions coincide with those regions where braces `{...}` are also legal, no matter whether the braces enclose an expression or a set of definitions. There is one exception, though: Arguments to function can be enclosed in braces but they cannot be simply indented instead. Making indentation always significant for function arguments would be too restrictive and fragile.
+
+To allow such arguments to be written without braces, a variant of the indentation scheme is implemented under
+option `-Yindent-colons`. This variant is more contentious and less stable than the rest of the significant indentation scheme. In this variant, a colon `:` at the end of a line is also one of the possible tokens that opens an indentation region. Examples:
+
+```scala
+times(10):
+  println("ah")
+  println("ha")
+```
+or
+```scala
+xs.map:
+  x =>
+      val y = x - 1
+      y * y
+```
+Colons at the end of lines are their own token, distinct from normal `:`.
+The Scala grammar is changed in this variant so that colons at end of lines are accepted at all points
+where an opening brace enclosing a function argument is legal. Special provisions are taken so that method result types can still use a colon on the end of a line, followed by the actual type on the next.
+

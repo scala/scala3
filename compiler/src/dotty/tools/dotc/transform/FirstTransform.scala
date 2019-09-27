@@ -48,7 +48,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
 
   override protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isClass
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
     tree match {
       case Select(qual, name) if !name.is(OuterSelectName) && tree.symbol.exists =>
         val qualTpe = if (ctx.explicitNulls) {
@@ -76,7 +76,6 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
         assert(false, i"illegal tree: $tree")
       case _ =>
     }
-  }
 
   /** Reorder statements so that module classes always come after their companion classes */
   private def reorderAndComplete(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
@@ -95,7 +94,8 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
           singleClassDefs -= stat.name.stripModuleClassSuffix
           val stats1r = reorder(stats1, Nil)
           pushOnTop(revPrefix, if (moduleClassDefs contains stat.name) stat :: stats1r else stats1r)
-        } else {
+        }
+        else
           reorder(
             stats1,
             moduleClassDefs remove stat.name.moduleClassName match {
@@ -106,7 +106,6 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
                 stat :: revPrefix
             }
           )
-        }
       case stat :: stats1 => reorder(stats1, stat :: revPrefix)
       case Nil => revPrefix.reverse
     }
@@ -115,9 +114,8 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   /** eliminate self in Template */
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Tree = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context): Tree =
     cpy.Template(impl)(self = EmptyValDef)
-  }
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context): Tree = {
     val meth = ddef.symbol.asTerm
@@ -126,8 +124,8 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
       polyDefDef(meth,
         _ => _ => ref(defn.Sys_error.termRef).withSpan(ddef.span)
           .appliedTo(Literal(Constant(s"native method stub"))))
-
     }
+
     else ddef
   }
 

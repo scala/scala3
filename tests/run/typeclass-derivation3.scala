@@ -28,11 +28,11 @@ object typeclasses {
   }
 
   object Eq {
-    import scala.compiletime.erasedValue
+    import scala.compiletime.{erasedValue, summonFrom}
     import compiletime._
     import scala.deriving._
 
-    inline def tryEql[TT](x: TT, y: TT): Boolean = delegate match {
+    inline def tryEql[TT](x: TT, y: TT): Boolean = summonFrom {
       case eq: Eq[TT] => eq.eql(x, y)
     }
 
@@ -52,7 +52,7 @@ object typeclasses {
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
-            delegate match {
+            summonFrom {
               case m: Mirror.ProductOf[`alt`] => eqlElems[m.MirroredElemTypes](0)(x, y)
             }
           else eqlCases[alts1](n + 1)(x, y, ord)
@@ -83,13 +83,13 @@ object typeclasses {
   }
 
   object Pickler {
-    import scala.compiletime.{erasedValue, constValue}
+    import scala.compiletime.{erasedValue, constValue, summonFrom}
     import compiletime._
     import deriving._
 
     def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
-    inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = delegate match {
+    inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = summonFrom {
       case pkl: Pickler[T] => pkl.pickle(buf, x)
     }
 
@@ -105,14 +105,14 @@ object typeclasses {
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
-            delegate match {
+            summonFrom {
               case m: Mirror.ProductOf[`alt`] => pickleElems[m.MirroredElemTypes](0)(buf, x)
             }
           else pickleCases[alts1](n + 1)(buf, x, ord)
         case _: Unit =>
       }
 
-    inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = delegate match {
+    inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = summonFrom {
       case pkl: Pickler[T] => pkl.unpickle(buf)
     }
 
@@ -139,7 +139,7 @@ object typeclasses {
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
-            delegate match {
+            summonFrom {
               case m: Mirror.ProductOf[`alt` & T] =>
                 unpickleCase[`alt` & T, m.MirroredElemTypes](buf, m)
             }
@@ -179,11 +179,11 @@ object typeclasses {
     def show(x: T): String
   }
   object Show {
-    import scala.compiletime.erasedValue
+    import scala.compiletime.{erasedValue, summonFrom}
     import compiletime._
     import deriving._
 
-    inline def tryShow[T](x: T): String = delegate match {
+    inline def tryShow[T](x: T): String = summonFrom {
       case s: Show[T] => s.show(x)
     }
 
@@ -212,7 +212,7 @@ object typeclasses {
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
-            delegate match {
+            summonFrom {
               case m: Mirror.ProductOf[`alt`] =>
                 showCase(x, m)
             }

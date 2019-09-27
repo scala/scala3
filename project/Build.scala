@@ -2,7 +2,7 @@ import java.io.File
 import java.nio.file._
 
 import Modes._
-import com.typesafe.sbt.pgp.PgpKeys
+import com.jsuereth.sbtpgp.PgpKeys
 import sbt.Keys._
 import sbt._
 import complete.DefaultParsers._
@@ -58,9 +58,9 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "0.18.1-RC1"
+  val referenceVersion = "0.19.0-RC1"
 
-  val baseVersion = "0.19.0"
+  val baseVersion = "0.20.0"
   val baseSbtDottyVersion = "0.3.5"
 
   // Versions used by the vscode extension to create a new project
@@ -77,8 +77,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.0"
-    case Bootstrapped => "2.13.0"
+    case NonBootstrapped => "2.13.1"
+    case Bootstrapped => "2.13.1"
   }
 
   val dottyOrganization = "ch.epfl.lamp"
@@ -221,6 +221,9 @@ object Build {
 
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
 
+    // If someone puts a source file at the root (e.g., for manual testing),
+    // don't pick it up as part of any project.
+    sourcesInBase := false,
   )
 
   // Settings used for projects compiled only with Java
@@ -379,6 +382,7 @@ object Build {
         "-project", "Dotty",
         "-project-version", dottyVersion,
         "-project-url", dottyGithubUrl,
+        "-project-logo", "dotty-logo.svg",
         "-classpath", dottydocClasspath.value
       )
       (runMain in Compile).toTask(
@@ -974,10 +978,17 @@ object Build {
         val dir = fetchScalaJSSource.value / "test-suite"
         (
           (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** (("IntTest.scala": FileFilter) || "BooleanTest.scala" || "ByteTest.scala" || "CharTest.scala" || "DoubleTest.scala" || "FloatTest.scala" || "ShortTest.scala" || "UnitTest.scala")).get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** (("IntegerTest.scala": FileFilter) || "ObjectTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** (("*.scala": FileFilter) -- "ClassTest.scala" -- "StringTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/io" ** (("ThrowablesTest.scala": FileFilter) || "SerializableTest.scala" || "PrintWriterTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/math" ** "*.scala").get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/net" ** ("URLDecoderTest.scala": FileFilter)).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/security" ** "*.scala").get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/util" ** (("ArraysTest.scala": FileFilter) || "UUIDTest.scala" || "ThrowablesTest.scala" || "RandomTest.scala" || "PropertiesTest.scala" || "PriorityQueueTest.scala" || "HashtableTest.scala" || "DateTest.scala")).get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/util" ** (("Base64Test.scala": FileFilter) || "OptionalTest.scala" || "SplittableRandom.scala" || "ObjectsTestOnJDK8.scala" || "ComparatorTestOnJDK8.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/junit" ** (("JUnitAnnotationsTest.scala": FileFilter) || "JUnitAssumptionsTest.scala" || "JUnitAssertionsTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/niobuffer" ** (("ByteBufferFactories.scala": FileFilter) || "BufferFactory.scala" || "BufferAdapter.scala" || "BaseBufferTest.scala" || "ShortBufferTest.scala" || "LongBufferTest.scala" || "IntBufferTest.scala" || "FloatBufferTest.scala" || "DoubleBufferTest.scala" || "CharBufferTest.scala")).get
         )
       }
     )
@@ -1052,7 +1063,7 @@ object Build {
   lazy val `vscode-dotty` = project.in(file("vscode-dotty")).
     settings(commonSettings).
     settings(
-      version := "0.1.15-snapshot", // Keep in sync with package.json
+      version := "0.1.17-snapshot", // Keep in sync with package.json
       autoScalaLibrary := false,
       publishArtifact := false,
       includeFilter in unmanagedSources := NothingFilter | "*.ts" | "**.json",
@@ -1153,6 +1164,8 @@ object Build {
     publishMavenStyle := true,
     isSnapshot := version.value.contains("SNAPSHOT"),
     publishTo := sonatypePublishToBundle.value,
+    publishConfiguration ~= (_.withOverwrite(true)),
+    publishLocalConfiguration ~= (_.withOverwrite(true)),
     publishArtifact in Test := false,
     homepage := Some(url(dottyGithubUrl)),
     licenses += ("BSD New",

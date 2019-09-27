@@ -6,7 +6,7 @@ title: "Backend Internals"
 The code for the backend is split up by functionality and assembled in the
 object `GenBCode`.
 
-```none
+```
 object GenBCode    --- [defines] -->        PlainClassBuilder       GenBCode also defines class BCodePhase, the compiler phase
      |                                              |
  [extends]                                      [extends]

@@ -1,7 +1,7 @@
 package scala
 
 /** This module defines extension methods for working with explicit nulls. */
-delegate ExplicitNullsOps {
+given ExplicitNullsOps: {
 
   /** Strips away the nullability from a value.
    *  e.g.

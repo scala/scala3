@@ -3,7 +3,7 @@ import scala.tasty.Reflection
 
 object Lib {
 
-  def impl[T: Type](arg: Expr[T]) given QuoteContext: Expr[T] = {
+  def impl[T: Type](arg: Expr[T])(given QuoteContext): Expr[T] = {
     arg match {
       case e @ '{ $x: Boolean } =>
         e: Expr[T & Boolean]

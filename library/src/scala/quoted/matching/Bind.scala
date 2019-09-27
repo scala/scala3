@@ -19,7 +19,7 @@ class Bind[T <: AnyKind] private[scala](val name: String, private[Bind] val id: 
 
 object Bind {
 
-  def unapply[T](expr: Expr[T]) given (qctx: QuoteContext): Option[Bind[T]] = {
+  def unapply[T](expr: Expr[T])(given qctx: QuoteContext): Option[Bind[T]] = {
     import qctx.tasty.{Bind => BindPattern, _}
     expr.unseal match {
       case IsIdent(ref) =>

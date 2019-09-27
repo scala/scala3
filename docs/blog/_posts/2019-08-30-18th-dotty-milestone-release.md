@@ -28,7 +28,7 @@ You can learn more about Dotty on our [website](https://dotty.epfl.ch).
 <!--more-->
 
 This is our 18th scheduled release according to our
-[6-week release schedule](https://dotty.epfl.ch/docs/contributing/release.html).
+[6-week release schedule](https://dotty.epfl.ch/docs/contributing/procedures/release.html).
 
 # What’s new in the 0.18.1-RC1 technology preview?
 The hottest change of this release is a series of experiments with the language syntax. Some of them are controversial, some of them are almost unanimously considered useful. Regardless, the underlying motivation for all of them is something all of us want, we believe d: to make programming in Scala easier to write and read, drop unnecessary boilerplate, facilitate idiomatic programming.
@@ -42,7 +42,7 @@ Some of these changes will end up in Scala 3, some of them will be deemed not wo
 Keeping that in mind, let us proceed to the nitty-gritty!
 
 ## Switch to Standard Library 2.13
-Dotty is now using the standard library 2.13 instead of the previous 2.12.8. This fact is reflected in the patch version 1 in 0.18.1-RC1 which Dotty will be using from now on.
+Dotty is now using the standard library 2.13 instead of the previous 2.12.8.
 
 ## `@main` functions
 Bootstrapping a new Scala application is as hard as a new Java application. How do you write a main method? Normally, something like that:
@@ -90,7 +90,7 @@ If you run the above with command line arguments "Jack 25", the output will be "
 ```scala
 case class Address(city: String, street: String)
 
-given as scala.util.FromString[Address] {
+given scala.util.FromString[Address] {
   /** Can throw java.lang.IllegalArgumentException */
   def fromString(s: String): T =
     s.split(",").toList match {
@@ -105,7 +105,7 @@ given as scala.util.FromString[Address] {
 
 The motivation for the `@main` functions is to make Scala scripting friendly. So far we do not plan to support something more complex than the above – we believe if a user needs a complex command line parsing capability, they can always fall back to the conventional `def main(args: Array[String])` syntax plus a dedicated library like [scopt](https://github.com/scopt/scopt). The changes described above, however, are already enough to make script development much less tedious than before.
 
-To learn more, see the [documentation](http://dotty.epfl.ch/docs/reference/changed-features/main-functions.html).
+To learn more, see the [documentation](https://dotty.epfl.ch/docs/reference/changed-features/main-functions.html).
 
 ## Allow infix operators at the start of the line
 A small change yet relevant to many. Now, you can write the following code:
@@ -251,7 +251,7 @@ given as FromDigits[Digits] = (digits: String) => Digits(digits.toList)
 
 If a number is written in place where a non-numeric type is expected and there is an `FromDigits` given in scope, this given will be used to convert the number (presented as `String`) to that type.
 
-For precise rules, semantics and a larger example of `BigFloat`, see [the documentation](http://dotty.epfl.ch/docs/reference/changed-features/numeric-literals.html).
+For precise rules, semantics and a larger example of `BigFloat`, see [the documentation](https://dotty.epfl.ch/docs/reference/changed-features/numeric-literals.html).
 
 ## Metaprogramming Progress
 We are making steady progress with the language metaprogramming features. The metaprogramming spotlights of this release are as follows:
@@ -265,13 +265,13 @@ We are making steady progress with the language metaprogramming features. The me
 - Runtime staging factored out to a separate library in [#7080](https://github.com/lampepfl/dotty/pull/7080).
 
 ## Type class Derivation
-Type class derivation has received a major rework and an [updated documentation](http://dotty.epfl.ch/docs/reference/contextual/derivation.html). We have dropped the usage of the `Shape` type to describe the shape of a type. Instead, all the relevant information is now encoded in the `Mirror` type and its subtypes as tuples.
+Type class derivation has received a major rework and an [updated documentation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html). We have dropped the usage of the `Shape` type to describe the shape of a type. Instead, all the relevant information is now encoded in the `Mirror` type and its subtypes as tuples.
 
-For more information, see the [documentation](http://dotty.epfl.ch/docs/reference/contextual/derivation.html).
+For more information, see the [documentation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html).
 
 ## Other
 - This release also features the new version of the SBT Dotty Plugin – 0.3.4. It contains some bug fixes – see [#7120](https://github.com/lampepfl/dotty/pull/7120) for details.
-- Scala Days 2019 talks related to Dotty are now [mentioned](http://dotty.epfl.ch/docs/resources/talks.html) at our website – this allows to systematize the knowledge about the next generation of Scala in one place – see [#6984](https://github.com/lampepfl/dotty/pull/6984).
+- Scala Days 2019 talks related to Dotty are now [mentioned](https://dotty.epfl.ch/docs/resources/talks.html) at our website – this allows to systematize the knowledge about the next generation of Scala in one place – see [#6984](https://github.com/lampepfl/dotty/pull/6984).
 - ScalaJS needs your help! We would like to have robust support for ScalaJS in Dotty, which unfortunately is not the case so far. If you are interested in contributing, please see [the getting started tutorial](https://gist.github.com/sjrd/e0823a5bddbcef43999cdaa032b1220c) and [the discussion](https://github.com/lampepfl/dotty/issues/7113).
 
 # Let us know what you think!
@@ -284,7 +284,7 @@ If you have questions or any sort of feedback, feel free to send us a message on
 
 Thank you to all the contributors who made this release possible!
 
-According to `git shortlog -sn --no-merges 0.17.0-RC1..0.18.0-RC1` these are:
+According to `git shortlog -sn --no-merges 0.17.0-RC1..0.18.1-RC1` these are:
 
 ```
    106  Nicolas Stucki

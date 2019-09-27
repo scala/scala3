@@ -484,12 +484,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   def foreachTypeVar(op: TypeVar => Unit): Unit =
     boundsMap.foreachBinding { (poly, entries) =>
-      for (i <- 0 until paramCount(entries)) {
+      for (i <- 0 until paramCount(entries))
         typeVar(entries, i) match {
           case tv: TypeVar if !tv.inst.exists => op(tv)
           case _ =>
         }
-      }
     }
 
   def & (other: Constraint, otherHasErrors: Boolean)(implicit ctx: Context): OrderingConstraint = {

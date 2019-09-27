@@ -529,10 +529,9 @@ class TreePickler(pickler: TastyPickler) {
             }
             pickleStats(tree.constr :: rest)
           }
-        case Import(importGiven, expr, selectors) =>
+        case Import(expr, selectors) =>
           writeByte(IMPORT)
           withLength {
-            if (importGiven) writeByte(GIVEN)
             pickleTree(expr)
             pickleSelectors(selectors)
           }
@@ -592,18 +591,18 @@ class TreePickler(pickler: TastyPickler) {
       }
   }
 
-  def pickleSelectors(selectors: List[untpd.Tree])(implicit ctx: Context): Unit =
-    selectors foreach {
-      case Thicket((from @ Ident(_)) :: (to @ Ident(_)) :: Nil) =>
-        pickleSelector(IMPORTED, from)
-        pickleSelector(RENAMED, to)
-      case id @ Ident(_) =>
-        pickleSelector(IMPORTED, id)
-      case bounded @ TypeBoundsTree(untpd.EmptyTree, untpd.TypedSplice(tpt)) =>
-        registerTreeAddr(bounded)
-        writeByte(BOUNDED)
-        pickleTree(tpt)
-    }
+  def pickleSelectors(selectors: List[untpd.ImportSelector])(implicit ctx: Context): Unit =
+    for sel <- selectors do
+      pickleSelector(IMPORTED, sel.imported)
+      sel.renamed match
+        case to @ Ident(_) => pickleSelector(RENAMED, to)
+        case _ =>
+      sel.bound match
+        case bound @ untpd.TypedSplice(tpt) =>
+          registerTreeAddr(bound)
+          writeByte(BOUNDED)
+          pickleTree(tpt)
+        case _ =>
 
   def pickleSelector(tag: Int, id: untpd.Ident)(implicit ctx: Context): Unit = {
     registerTreeAddr(id)

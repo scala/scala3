@@ -8,7 +8,7 @@ object opaques {
   opaque type IArray[+T] = Array[_ <: T]
 
   /** Defines extension methods for immutable arrays */
-  given arrayOps {
+  given arrayOps: {
 
     /** The selection operation on an immutable array.
       *
@@ -60,7 +60,7 @@ object IArray {
 
   /** An immutable array with given elements.
    */
-  inline def apply[T](xs: =>T*) given (ct: =>ClassTag[T]): IArray[T] = Array(xs: _*).asInstanceOf
+  inline def apply[T](xs: =>T*)(given ct: => ClassTag[T]): IArray[T] = Array(xs: _*).asInstanceOf
   inline def apply(x: Boolean, xs: =>Boolean*): IArray[Boolean] = Array(x, xs: _*).asInstanceOf
   inline def apply(x: Byte, xs: =>Byte*): IArray[Byte] = Array(x, xs: _*).asInstanceOf
   inline def apply(x: Short, xs: =>Short*): IArray[Short] = Array(x, xs: _*).asInstanceOf

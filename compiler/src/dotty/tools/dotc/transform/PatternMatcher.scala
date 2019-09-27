@@ -904,7 +904,7 @@ object PatternMatcher {
         case TypeTest(tpt, trusted) => i"TypeTest($tpt, trusted=$trusted)"
         case _ => test.toString
       }
-      def showPlan(plan: Plan): Unit = {
+      def showPlan(plan: Plan): Unit =
         if (!seen.contains(plan.id)) {
           seen += plan.id
           sb append s"\n${plan.id}: "
@@ -930,7 +930,6 @@ object PatternMatcher {
               sb.append(tree.show)
           }
         }
-      }
       showPlan(plan)
       sb.toString
     }

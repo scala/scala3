@@ -5,8 +5,8 @@ trait Parsers {
   type Input = List[Char]
 
   sealed class ParseResult[+t](val next: Input)
-    case class Success[+t](override val next: Input, result: t) extends ParseResult[t](next)
-    case class Failure(override val next: Input, msg: String) extends ParseResult[Nothing](next)
+  case class Success[+t](override val next: Input, result: t) extends ParseResult[t](next)
+  case class Failure(override val next: Input, msg: String) extends ParseResult[Nothing](next)
 
   abstract class Parser[+t] {
     def apply(in: Input): ParseResult[t]

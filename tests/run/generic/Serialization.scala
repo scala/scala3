@@ -92,10 +92,10 @@ object Serialization {
         ev1.write(x.fst, out)
         ev2.write(x.snd, out)
       }
-    def read(in: DataInputStream) = {
-      Prod(ev1.read(in), ev2.read(in))
+      def read(in: DataInputStream) = {
+        Prod(ev1.read(in), ev2.read(in))
+      }
     }
-  }
 
   implicit def IterableSerializable[I[X] <: Iterable[X], Elem](implicit
     ev1: IterableFactory[I],

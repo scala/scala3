@@ -50,20 +50,20 @@ Parameters of methods and functions can be declared as erased, placing `erased`
 in front of a parameter list (like `given`).
 
 ```scala
-def methodWithErasedEv erased (ev: Ev): Int = 42
+def methodWithErasedEv(erased ev: Ev): Int = 42
 
 val lambdaWithErasedEv: erased Ev => Int =
-  erased (ev: Ev) => 42
+ (erased ev: Ev) => 42
 ```
 
 `erased` parameters will not be usable for computations, though they can be used
 as arguments to other `erased` parameters.
 
 ```scala
-def methodWithErasedInt1 erased (i: Int): Int =
+def methodWithErasedInt1(erased i: Int): Int =
   i + 42 // ERROR: can not use i
 
-def methodWithErasedInt2 erased (i: Int): Int =
+def methodWithErasedInt2(erased i: Int): Int =
   methodWithErasedInt1(i) // OK
 ```
 
@@ -83,7 +83,7 @@ erased.
 
 ```scala
 // becomes def methodWithErasedEv(): Int at runtime
-def methodWithErasedEv erased (ev: Ev): Int = ...
+def methodWithErasedEv(erased ev: Ev): Int = ...
 
 def evidence1: Ev = ...
 erased def erasedEvidence2: Ev = ... // does not exist at runtime
@@ -134,8 +134,8 @@ object IsOn {
 
 class Machine[S <: State] private {
   // ev will disappear from both functions
-  def turnedOn given erased (ev: IsOff[S]): Machine[On] = new Machine[On]
-  def turnedOff given erased (ev: IsOn[S]): Machine[Off] = new Machine[Off]
+  def turnedOn(given erased ev: IsOff[S]): Machine[On] = new Machine[On]
+  def turnedOff(given erased ev: IsOn[S]): Machine[Off] = new Machine[Off]
 }
 
 object Machine {

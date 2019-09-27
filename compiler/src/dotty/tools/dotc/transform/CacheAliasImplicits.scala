@@ -27,7 +27,7 @@ object CacheAliasImplicits {
  *  is cached. It applies to all alias implicits that have neither type parameters
  *  nor a given clause. Example: The alias
  *
- *      given a as TC = rhs
+ *      TC = rhs
  *
  *  is expanded before this phase to:
  *

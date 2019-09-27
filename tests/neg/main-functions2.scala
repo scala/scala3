@@ -10,4 +10,4 @@ class Foo {
 
 @main def h[T: util.FromString](x: T) = () // error: @main method cannot have type parameters
 
-@main def i(x: Int) given Foo = () // error: @main method cannot have implicit parameters
+@main def i(x: Int)(given Foo) = () // error: @main method cannot have implicit parameters

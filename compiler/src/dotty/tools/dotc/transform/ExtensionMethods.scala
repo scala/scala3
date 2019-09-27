@@ -108,10 +108,9 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       }
       // Drop the Local flag from all private[this] and protected[this] members
       // that will be moved to the companion object.
-      if (ref.is(Local) && isDerivedValueClass(ref.owner)) {
+      if (ref.is(Local) && isDerivedValueClass(ref.owner))
         if (ref1 ne ref) ref1.resetFlag(Local)
         else ref1 = ref1.copySymDenotation(initFlags = ref1.flags &~ Local)
-      }
       ref1
     case _ =>
       ref.info match {
@@ -145,13 +144,13 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
   // TODO: this is state and should be per-run
   // todo: check that when transformation finished map is empty
 
-  override def transformTemplate(tree: tpd.Template)(implicit ctx: Context): tpd.Tree = {
-    if (isDerivedValueClass(ctx.owner)) {
+  override def transformTemplate(tree: tpd.Template)(implicit ctx: Context): tpd.Tree =
+    if (isDerivedValueClass(ctx.owner))
       /* This is currently redundant since value classes may not
          wrap over other value classes anyway.
         checkNonCyclic(ctx.owner.pos, Set(), ctx.owner) */
       tree
-    } else if (ctx.owner.isStaticOwner) {
+    else if (ctx.owner.isStaticOwner)
       extensionDefs remove tree.symbol.owner match {
         case Some(defns) if defns.nonEmpty =>
           cpy.Template(tree)(body = tree.body ++
@@ -159,10 +158,9 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
         case _ =>
           tree
       }
-    } else tree
-  }
+    else tree
 
-  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree = {
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree =
     if (isMethodWithExtension(tree.symbol)) {
       val origMeth = tree.symbol
       val origClass = ctx.owner.asClass
@@ -173,8 +171,8 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       val store = extensionDefs.getOrElseUpdate(staticClass, new mutable.ListBuffer[Tree])
       store += fullyParameterizedDef(extensionMeth, tree)
       cpy.DefDef(tree)(rhs = forwarder(extensionMeth, tree))
-    } else tree
-  }
+    }
+    else tree
 }
 
 object ExtensionMethods {

@@ -1,24 +1,15 @@
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 object Macros {
 
   implicit inline def printOwners[T](x: => T): Unit =
     ${ impl('x) }
 
-  def impl[T](x: Expr[T]) given (qctx: QuoteContext): Expr[Unit] = {
+  def impl[T](x: Expr[T])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty._
 
     val buff = new StringBuilder
-
-    implicit class SymOps(sym: Symbol) {
-      def treeOpt: Option[Tree] = sym match {
-        case IsClassDefSymbol(sym) => Some(sym.tree)
-        case IsDefDefSymbol(sym) => Some(sym.tree)
-        case IsValDefSymbol(sym) => Some(sym.tree)
-        case _ => None
-      }
-    }
 
     val output = new TreeTraverser {
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
@@ -26,12 +17,12 @@ object Macros {
           case IsDefinition(tree @ DefDef(name, _, _, _, _)) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(tree.symbol.owner.treeOpt.get.showExtractors)
+            buff.append(tree.symbol.owner.tree.showExtractors)
             buff.append("\n\n")
           case IsDefinition(tree @ ValDef(name, _, _)) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(tree.symbol.owner.treeOpt.get.showExtractors)
+            buff.append(tree.symbol.owner.tree.showExtractors)
             buff.append("\n\n")
           case _ =>
         }

@@ -1,6 +1,6 @@
-object Test:
+object Test
 
-  locally:
+  locally {
     var x = 0
     while x < 10 do x += 1
     val f = 10
@@ -8,6 +8,7 @@ object Test:
       x += 1
       x < 10
     do ()
+  }
 
   def f(x: Int): Int =
     val y =
@@ -17,6 +18,25 @@ object Test:
       else
         println("world")
         33
+    val y1 =
+      if x > 0
+        1
+      else
+        2
+    val y2 =
+      if (y > 0) && y < 0
+        1
+      else
+        2
+    def (x: Int) gt (y: Int) = x > y
+    val y3 =
+      if (1) max 10 gt 0
+
+      then
+        1
+      else
+        2
+    if (true) println (2)
     val z = 22
     x + y + z
   end f
@@ -25,15 +45,17 @@ object Test:
 
   val xs = List(1, 2, 3)
 
-  xs.map:
+  xs.map {
     x =>
       val y = x * x
       y * y
+  }
 
-  xs.map:
+  xs.map {
     x =>
     val y = x * x
     y + y
+  }
 
   xs.map { x =>
     val y = x * x
@@ -56,26 +78,26 @@ object Test:
     x < 10
   do ()
 
-class Test2:
+class Test2
   self =>
   def foo = 1
 
   val x =
-    new Test2:
+    new Test2 {
       override def foo = 2
-    end new
+    }
   end x
 end Test2
 
-class Test3:
+class Test3
  self =>
   def foo = 1
 
 import collection.mutable.HashMap
 
-class Coder(words: List[String]):
+class Coder(words: List[String])
 
-  class Foo:
+  class Foo
     println()
   end Foo
 
@@ -107,11 +129,13 @@ class Coder(words: List[String]):
   /** Invert the mnemonics map to give a map from chars 'A' ... 'Z' to '2' ... '9' */
   private val charCode0: Map[Char, Char] =
     mnemonics
-      .withFilter:
+      .withFilter {
         case (digit, str) => true
         case _ => false
-      .flatMap:
+      }
+      .flatMap {
         case (digit, str) => str map (ltr => ltr -> digit)
+      }
 end Coder
 
 object Test22

@@ -48,7 +48,7 @@ object Test {
         new C2().f3
       }
 //    }
-    /*new C1().*/f2
+      /*new C1().*/f2
   }
 
   def f1b(x: Int) = {

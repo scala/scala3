@@ -3,8 +3,6 @@ layout: doc-page
 title: Getting Started: Users
 ---
 
-
-
 ## Trying out Dotty
 
 ### In your web browser
@@ -67,12 +65,12 @@ scala>
 
 If you're a Mac user, we also provide a [homebrew](https://brew.sh/) package that can be installed by running:
 
-```
+```bash
 brew install lampepfl/brew/dotty
 ```
 
 In case you have already installed Dotty via brew, you should instead update it:
 
-```
+```bash
 brew upgrade dotty
 ```

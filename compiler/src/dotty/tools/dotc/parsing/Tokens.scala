@@ -182,10 +182,9 @@ object Tokens extends TokensCommon {
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val ENUM = 62;             enter(ENUM, "enum")
   final val ERASED = 63;           enter(ERASED, "erased")
-  final val IMPLIED = 64;          enter(IMPLIED, "delegate")
-  final val GIVEN = 65;            enter(GIVEN, "given")
-  final val EXPORT = 66;           enter(EXPORT, "export")
-  final val MACRO = 67;            enter(MACRO, "macro") // TODO: remove
+  final val GIVEN = 64;            enter(GIVEN, "given")
+  final val EXPORT = 65;           enter(EXPORT, "export")
+  final val MACRO = 66;            enter(MACRO, "macro") // TODO: remove
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -220,15 +219,17 @@ object Tokens extends TokensCommon {
   final val atomicExprTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, QUOTEID, XMLSTART)
 
-  final val canStartExpressionTokens: TokenSet = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, INDENT, QUOTE, IF, DO, WHILE, FOR, NEW, TRY, THROW, IMPLIED, GIVEN)
+  final val canStartExprTokens3: TokenSet = atomicExprTokens | BitSet(
+    LBRACE, LPAREN, INDENT, QUOTE, IF, WHILE, FOR, NEW, TRY, THROW)
+
+  final val canStartExprTokens2: TokenSet = canStartExprTokens3 | BitSet(DO)
 
   final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)
 
   final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
 
-  final val dclIntroTokens: TokenSet = BitSet(DEF, VAL, VAR, TYPE, IMPLIED, GIVEN)
+  final val dclIntroTokens: TokenSet = BitSet(DEF, VAL, VAR, TYPE, GIVEN)
 
   final val defIntroTokens: TokenSet = templateIntroTokens | dclIntroTokens
 
@@ -245,16 +246,16 @@ object Tokens extends TokensCommon {
 
   final val modifierFollowers = modifierTokens | defIntroTokens
 
-  final val paramIntroTokens: TokenSet = modifierTokens | identifierTokens | BitSet(AT, VAL, VAR, IMPLICIT)
-
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens: TokenSet = defIntroTokens | modifierTokens | BitSet(IMPORT, EXPORT, PACKAGE)
 
-  final val canStartStatTokens: TokenSet = canStartExpressionTokens | mustStartStatTokens | BitSet(
+  final val canStartStatTokens2: TokenSet = canStartExprTokens2 | mustStartStatTokens | BitSet(
+    AT, CASE)
+  final val canStartStatTokens3: TokenSet = canStartExprTokens3 | mustStartStatTokens | BitSet(
     AT, CASE)
 
   final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(
-    TYPE, RPAREN, RBRACE, RBRACKET, OUTDENT)
+    TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT)
 
   /** Tokens that stop a lookahead scan search for a `<-`, `then`, or `do`.
    *  Used for disambiguating between old and new syntax.
@@ -266,11 +267,24 @@ object Tokens extends TokensCommon {
 
   final val statCtdTokens: BitSet = BitSet(THEN, ELSE, DO, CATCH, FINALLY, YIELD, MATCH)
 
+  final val closingRegionTokens = BitSet(RBRACE, CASE) | statCtdTokens
+
   final val canStartIndentTokens: BitSet =
     statCtdTokens | BitSet(COLONEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR)
-      // `if` is excluded because it often comes after `else` which makes for awkward indentation rules
+      // `if` is excluded because it often comes after `else` which makes for awkward indentation rules  TODO: try to do without the exception
 
-  final val scala3keywords = BitSet(ENUM, ERASED, GIVEN, IMPLIED)
+  /** Faced with the choice between a type and a formal parameter, the following
+   *  tokens determine it's a formal parameter.
+   */
+  final val startParamTokens: BitSet = modifierTokens | BitSet(VAL, VAR, AT)
+
+  /** Faced with the choice of a type `(...)` or a parameter or given type list
+   *  in `(...)`, the following tokens after the opening `(` determine it's
+   *  a parameter or given type list.
+   */
+  final val startParamOrGivenTypeTokens: BitSet = startParamTokens | BitSet(GIVEN, ERASED)
+
+  final val scala3keywords = BitSet(ENUM, ERASED, GIVEN)
 
   final val softModifierNames = Set(nme.inline, nme.opaque)
 }

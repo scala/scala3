@@ -1,5 +1,5 @@
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 
 import scala.language.implicitConversions
@@ -13,7 +13,7 @@ object XmlQuote {
   }
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
-           given (qctx: QuoteContext): Expr[Xml] = {
+          (given qctx: QuoteContext): Expr[Xml] = {
     import qctx.tasty._
 
     // for debugging purpose

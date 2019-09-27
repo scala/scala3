@@ -26,7 +26,7 @@ class NonLocalReturns extends MiniPhase {
     if (tree.tpe <:< pt) tree
     else Erasure.Boxing.adaptToType(tree, pt)
 
-  private def nonLocalReturnControl given Context = defn.NonLocalReturnControlClass.typeRef
+  private def nonLocalReturnControl(given Context) = defn.NonLocalReturnControlClass.typeRef
 
   /** The type of a non-local return expression with given argument type */
   private def nonLocalReturnExceptionType(argtype: Type)(implicit ctx: Context) =

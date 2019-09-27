@@ -31,5 +31,5 @@ package object tools {
   }
   type WrappedResult[T] = resultWrapper.WrappedResult[T]
   def WrappedResult[T](x: T) = resultWrapper.wrap(x)
-  def result[T] given (x: WrappedResult[T]): T = resultWrapper.unwrap(x)
+  def result[T](given x: WrappedResult[T]): T = resultWrapper.unwrap(x)
 }

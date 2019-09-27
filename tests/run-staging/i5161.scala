@@ -2,7 +2,7 @@ import scala.quoted._
 import scala.quoted.staging._
 
 object Test {
-  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Toolbox = Toolbox.make(getClass.getClassLoader)
 
   enum Exp {
     case Int2(x: Int)
@@ -10,8 +10,8 @@ object Test {
   }
   import Exp._
 
-  def evalTest(e: Exp) given QuoteContext: Expr[Option[Int]] = e match {
-    case Int2(x) => '{ Some(${x.toExpr}) }
+  def evalTest(e: Exp)(given QuoteContext): Expr[Option[Int]] = e match {
+    case Int2(x) => '{ Some(${Expr(x)}) }
     case Add(e1, e2) =>
      '{
         (${evalTest(e1)}, ${evalTest(e2)}) match {
@@ -25,7 +25,7 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     val test = Add(Int2(1), Int2(1))
-    def res given QuoteContext = evalTest(test)
+    def res(given QuoteContext) = evalTest(test)
     println("run : " + run(res))
     println("show : " + withQuoteContext(res.show))
   }

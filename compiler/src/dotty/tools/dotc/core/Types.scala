@@ -651,9 +651,8 @@ object Types {
             else tp
           rt.opened = true
           try go(rt.parent).mapInfo(_.substRecThis(rt, pre))
-          finally {
+          finally
             if (!rt.openedTwice) rt.opened = false
-          }
         }
 
       def goRefined(tp: RefinedType) = {
@@ -805,10 +804,10 @@ object Types {
      *  @param kind   A subset of {Implicit, Given} that specifies what kind of implicit should
      *                be returned
      */
-    final def implicitMembers(kind: FlagSet)(implicit ctx: Context): List[TermRef] = {
+    final def implicitMembers(implicit ctx: Context): List[TermRef] = {
       record("implicitMembers")
       memberDenots(implicitFilter,
-          (name, buf) => buf ++= member(name).altsWith(_.isOneOf(GivenOrImplicitVal & kind)))
+          (name, buf) => buf ++= member(name).altsWith(_.isOneOf(GivenOrImplicitVal)))
         .toList.map(d => TermRef(this, d.symbol.asTerm))
     }
 
@@ -1373,11 +1372,10 @@ object Types {
       case tp @ AppliedType(tycon, args) if tycon.typeSymbol.isClass =>
         tycon.parents.map(_.subst(tycon.typeSymbol.typeParams, args))
       case tp: TypeRef =>
-        if (tp.info.isInstanceOf[TempClassInfo]) {
+        if (tp.info.isInstanceOf[TempClassInfo])
           tp.recomputeDenot()
             // We usually should have `!tp.info.isInstanceOf[TempClassInfo]` here, but
             // this can be falsified for code with illegal cyclic references. See neg/i7107.scala.
-        }
         tp.info.parents
       case tp: TypeProxy =>
         tp.superType.parents
@@ -2127,9 +2125,9 @@ object Types {
         try {
           ctx.pendingUnderlying += this
           op
-        } finally {
-          ctx.pendingUnderlying -= this
         }
+        finally
+          ctx.pendingUnderlying -= this
     }
     finally
       ctx.base.underlyingRecursions -= 1
@@ -4837,7 +4835,7 @@ object Types {
             case _ =>
               tp.derivedRefinedType(parent, tp.refinedName, info)
           }
-        }
+      }
 
     override protected def derivedRecType(tp: RecType, parent: Type): Type =
       if (parent eq tp.parent) tp
@@ -4871,7 +4869,7 @@ object Types {
         case Range(tyconLo, tyconHi) =>
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
         case _ =>
-          if (args.exists(isRange)) {
+          if (args.exists(isRange))
             if (variance > 0) tp.derivedAppliedType(tycon, args.map(rangeToBounds))
             else {
               val loBuf, hiBuf = new mutable.ListBuffer[Type]
@@ -4903,7 +4901,6 @@ object Types {
               else range(defn.NothingType, defn.AnyType)
                 // TODO: can we give a better bound than `topType`?
             }
-          }
           else tp.derivedAppliedType(tycon, args)
       }
 

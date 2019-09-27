@@ -175,55 +175,48 @@ class Typer extends Namer
         }
 
       def selection(imp: ImportInfo, name: Name, checkBounds: Boolean) =
-        if (imp.sym.isCompleting) {
+        if imp.sym.isCompleting then
           ctx.warning(i"cyclic ${imp.sym}, ignored", posd.sourcePos)
           NoType
-        }
-        else if (unimported.nonEmpty && unimported.contains(imp.site.termSymbol))
+        else if unimported.nonEmpty && unimported.contains(imp.site.termSymbol) then
           NoType
-        else {
+        else
           val pre = imp.site
-          var reqd = required
-          var excl = EmptyFlags
-          if (imp.importGiven) reqd |= Given else excl |= Given
-          var denot = pre.memberBasedOnFlags(name, reqd, excl).accessibleFrom(pre)(refctx)
-          if (checkBounds && imp.wildcardBound.exists)
-            denot = denot.filterWithPredicate(mbr =>
-              NoViewsAllowed.normalizedCompatible(mbr.info, imp.wildcardBound, keepConstraint = false))
-
+          var denot = pre.memberBasedOnFlags(name, required, EmptyFlags).accessibleFrom(pre)(refctx)
             // Pass refctx so that any errors are reported in the context of the
-            // reference instead of the
-          if (reallyExists(denot)) pre.select(name, denot) else NoType
-        }
+            // reference instead of the context of the import scope
+          if checkBounds && denot.exists then
+            denot = denot.filterWithPredicate { mbr =>
+              mbr.matchesImportBound(if mbr.symbol.is(Given) then imp.givenBound else imp.wildcardBound)
+            }
+          if reallyExists(denot) then pre.select(name, denot) else NoType
 
       /** The type representing a named import with enclosing name when imported
        *  from given `site` and `selectors`.
        */
       def namedImportRef(imp: ImportInfo)(implicit ctx: Context): Type = {
-        val Name = name.toTermName
-        def recur(selectors: List[untpd.Tree]): Type = selectors match {
+        val termName = name.toTermName
+
+        def recur(selectors: List[untpd.ImportSelector]): Type = selectors match
           case selector :: rest =>
-            def checkUnambiguous(found: Type) = {
+            def checkUnambiguous(found: Type) =
               val other = recur(selectors.tail)
-              if (other.exists && found.exists && (found != other))
+              if other.exists && found.exists && found != other then
                 refctx.error(em"reference to `$name` is ambiguous; it is imported twice", posd.sourcePos)
               found
-            }
 
-            def unambiguousSelection(name: Name) =
-              checkUnambiguous(selection(imp, name, checkBounds = false))
+            if selector.rename == termName then
+              val memberName =
+                if selector.name == termName then name
+                else if name.isTypeName then selector.name.toTypeName
+                else selector.name
+              checkUnambiguous(selection(imp, memberName, checkBounds = false))
+            else
+              recur(rest)
 
-            selector match {
-              case Thicket(Ident(from) :: Ident(Name) :: _) =>
-                unambiguousSelection(if (name.isTypeName) from.toTypeName else from)
-              case Ident(Name) =>
-                unambiguousSelection(name)
-              case _ =>
-                recur(rest)
-            }
           case nil =>
             NoType
-        }
+
         recur(imp.selectors)
       }
 
@@ -323,9 +316,8 @@ class Typer extends Namer
           else {  // find import
             val outer = ctx.outer
             val curImport = ctx.importInfo
-            def updateUnimported() = {
+            def updateUnimported() =
               if (curImport.unimported.exists) unimported += curImport.unimported
-            }
             if (ctx.owner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
               previous // no more conflicts possible in this case
             else if (isPossibleImport(NamedImport) && (curImport ne outer.importInfo)) {
@@ -475,7 +467,7 @@ class Typer extends Namer
       case _                  => errorTree(tree, "cannot convert to type selection") // will never be printed due to fallback
     }
 
-    def selectWithFallback(fallBack: given Context => Tree) =
+    def selectWithFallback(fallBack: (given Context) => Tree) =
       tryAlternatively(typeSelectOnTerm)(fallBack)
 
     if (tree.qualifier.isType) {
@@ -775,7 +767,7 @@ class Typer extends Namer
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context): Tree = {
     val localCtx = ctx.retractMode(Mode.Pattern)
-    val (exprCtx, stats1) = typedBlockStats(tree.stats) given localCtx
+    val (exprCtx, stats1) = typedBlockStats(tree.stats)(given localCtx)
     val expr1 = typedExpr(tree.expr, pt.dropIfProto)(exprCtx)
     ensureNoLocalRefs(
       cpy.Block(tree)(stats1, expr1).withType(expr1.tpe), pt, localSyms(stats1))
@@ -1108,7 +1100,7 @@ class Typer extends Namer
     tree.selector match {
       case EmptyTree =>
         if (tree.isInline) {
-          checkInInlineContext("delegate match", tree.posd)
+          checkInInlineContext("summonFrom", tree.posd)
           val cases1 = tree.cases.mapconserve {
             case cdef @ CaseDef(pat @ Typed(Ident(nme.WILDCARD), _), _, _) =>
               // case _ : T  -->  case evidence$n : T
@@ -1502,18 +1494,23 @@ class Typer extends Namer
         tpd.cpy.UnApply(body1)(fn, Nil,
             typed(untpd.Bind(tree.name, untpd.TypedSplice(arg)).withSpan(tree.span), arg.tpe) :: Nil)
       case _ =>
-        if (tree.name == nme.WILDCARD) body1
+        var name = tree.name
+        if (name == nme.WILDCARD && tree.mods.is(Given)) {
+          val Typed(_, tpt): @unchecked = tree.body
+          name = desugar.inventGivenName(tpt)
+        }
+        if (name == nme.WILDCARD) body1
         else {
           // for a singleton pattern like `x @ Nil`, `x` should get the type from the scrutinee
           // see tests/neg/i3200b.scala and SI-1503
           val symTp =
             if (body1.tpe.isInstanceOf[TermRef]) pt1
             else body1.tpe.underlyingIfRepeated(isJava = false)
-          val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.span)
-          if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Given)
+          val sym = ctx.newPatternBoundSymbol(name, symTp, tree.span)
+          if (pt == defn.ImplicitScrutineeTypeRef || tree.mods.is(Given)) sym.setFlag(Given)
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.sourcePos)
-          assignType(cpy.Bind(tree)(tree.name, body1), sym)
+          assignType(cpy.Bind(tree)(name, body1), sym)
         }
     }
   }
@@ -1860,12 +1857,13 @@ class Typer extends Namer
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
     checkLegalImportPath(expr1)
-    val selectors1: List[untpd.Tree] = imp.selectors map {
-      case sel @ TypeBoundsTree(_, tpt) =>
-        untpd.cpy.TypeBoundsTree(sel)(sel.lo, untpd.TypedSplice(typedType(tpt)))
-      case sel => sel
+    val selectors1: List[untpd.ImportSelector] = imp.selectors.mapConserve { sel =>
+      if sel.bound.isEmpty then sel
+      else cpy.ImportSelector(sel)(
+        sel.imported, sel.renamed, untpd.TypedSplice(typedType(sel.bound)))
+        .asInstanceOf[untpd.ImportSelector]
     }
-    assignType(cpy.Import(imp)(imp.importGiven, expr1, selectors1), sym)
+    assignType(cpy.Import(imp)(expr1, selectors1), sym)
   }
 
   def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = {
@@ -2296,9 +2294,9 @@ class Typer extends Namer
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, selType)(ctx addMode Mode.Pattern)
 
-  def tryEither[T](op: given Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context): T = {
+  def tryEither[T](op: (given Context) => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context): T = {
     val nestedCtx = ctx.fresh.setNewTyperState()
-    val result = op given nestedCtx
+    val result = op(given nestedCtx)
     if (nestedCtx.reporter.hasErrors && !nestedCtx.reporter.hasStickyErrors) {
       record("tryEither.fallBack")
       fallBack(result, nestedCtx.typerState)
@@ -2313,7 +2311,7 @@ class Typer extends Namer
   /** Try `op1`, if there are errors, try `op2`, if `op2` also causes errors, fall back
    *  to errors and result of `op1`.
    */
-  def tryAlternatively[T](op1: given Context => T)(op2: given Context => T)(implicit ctx: Context): T =
+  def tryAlternatively[T](op1: (given Context) => T)(op2: (given Context) => T)(implicit ctx: Context): T =
     tryEither(op1) { (failedVal, failedState) =>
       tryEither(op2) { (_, _) =>
         failedState.commit()
@@ -2340,7 +2338,7 @@ class Typer extends Namer
     def tryWithType(tpt: untpd.Tree): Tree =
       tryEither {
         val tycon = typed(tpt)
-        if (the[Context].reporter.hasErrors)
+        if (summon[Context].reporter.hasErrors)
           EmptyTree // signal that we should return the error in fallBack
         else {
           def recur(tpt: Tree, pt: Type): Tree = pt.revealIgnored match {
@@ -2455,7 +2453,7 @@ class Typer extends Namer
         val qualProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
         tryEither {
           val qual1 = adapt(qual, qualProto, locked)
-          if ((qual eq qual1) || the[Context].reporter.hasErrors) None
+          if ((qual eq qual1) || summon[Context].reporter.hasErrors) None
           else Some(typed(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt, locked))
         } { (_, _) => None
         }
@@ -2805,18 +2803,18 @@ class Typer extends Namer
           // a call to dotty.internal.StringContext.f which we can implement using the new macros.
           // As the macro is implemented in the bootstrapped library, it can only be used from the bootstrapped compiler.
           val Apply(TypeApply(Select(sc, _), _), args) = tree
-          val newCall = ref(defn.InternalStringContextMacroModule_f).appliedTo(sc).appliedToArgs(args)
+          val newCall = ref(defn.InternalStringContextMacroModule_f).appliedTo(sc).appliedToArgs(args).withSpan(tree.span)
           readaptSimplified(Inliner.inlineCall(newCall))
         }
         else if (ctx.settings.XignoreScala2Macros.value) {
-          ctx.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See http://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.sourcePos.startPos)
+          ctx.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See https://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.sourcePos.startPos)
           Throw(New(defn.MatchErrorClass.typeRef, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil))
             .withType(tree.tpe)
             .withSpan(tree.span)
         }
         else {
           ctx.error(
-            """Scala 2 macro cannot be used in Dotty. See http://dotty.epfl.ch/docs/reference/dropped-features/macros.html\n"
+            """Scala 2 macro cannot be used in Dotty. See https://dotty.epfl.ch/docs/reference/dropped-features/macros.html\n"
               |To turn this error into a warning, pass -Xignore-scala2-macros to the compiler""".stripMargin, tree.sourcePos.startPos)
           tree
         }
@@ -3102,7 +3100,7 @@ class Typer extends Namer
   }
 
   // Overridden in InlineTyper
-  def suppressInline given (ctx: Context): Boolean = ctx.isAfterTyper
+  def suppressInline(given ctx: Context): Boolean = ctx.isAfterTyper
 
   /** Does the "contextuality" of the method type `methType` match the one of the prototype `pt`?
    *  This is the case if

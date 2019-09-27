@@ -15,7 +15,7 @@ mill utest.jvm[2.12.8].test
 
 To get mill of the most recent version, first, find it in https://github.com/lihaoyi/mill/releases (e.g. `0.4.2-1-020e28`). Copy the download link and substitute it in the following command instead of `https://github.com/lihaoyi/mill/releases/download/0.4.1/0.4.1`:
 
-```
+```bash
 # From http://www.lihaoyi.com/mill/
 sudo sh -c '(echo "#!/usr/bin/env sh" && curl -L https://github.com/lihaoyi/mill/releases/download/0.4.1/0.4.1) > /usr/local/bin/mill && chmod +x /usr/local/bin/mill'
 ```

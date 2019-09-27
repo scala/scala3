@@ -54,7 +54,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         if (paramTypes.nonEmpty && paramTypes.last.isRepeatedParam) {
           val last = paramTypes.last.underlyingIfRepeated(tp.isJavaMethod)
           paramTypes.init :+ last
-        } else paramTypes
+        }
+        else paramTypes
       tp.derivedLambdaType(paramNames, paramTypes1, resultType1)
     case tp: PolyType =>
       tp.derivedLambdaType(tp.paramNames, tp.paramInfos, elimRepeated(tp.resultType))

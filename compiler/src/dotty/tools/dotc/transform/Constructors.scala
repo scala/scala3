@@ -74,7 +74,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
             }
             else retain()
           case _ => retain()
-        }
+      }
     }
   }
 
@@ -159,14 +159,12 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
           if (noDirectRefsFrom(tree)) tree else super.transform(tree)
       }
 
-      def apply(tree: Tree, prevOwner: Symbol)(implicit ctx: Context): Tree = {
+      def apply(tree: Tree, prevOwner: Symbol)(implicit ctx: Context): Tree =
         transform(tree).changeOwnerAfter(prevOwner, constr.symbol, thisPhase)
-      }
     }
 
-    def isRetained(acc: Symbol) = {
+    def isRetained(acc: Symbol) =
       !mightBeDropped(acc) || retainedPrivateVals(acc)
-    }
 
     val constrStats, clsStats = new mutable.ListBuffer[Tree]
 
@@ -223,7 +221,8 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       if (!isRetained(acc)) {
         dropped += acc
         Nil
-      } else {
+      }
+      else {
         if (acc.hasAnnotation(defn.TransientParamAnnot))
           ctx.error(em"transient parameter $acc is retained as field in class ${acc.owner}", acc.sourcePos)
         val target = if (acc.is(Method)) acc.field else acc
@@ -250,7 +249,6 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       cls.copy(
         info = clsInfo.derivedClassInfo(
           decls = clsInfo.decls.filteredScope(!dropped.contains(_))))
-
       // TODO: this happens to work only because Constructors is the last phase in group
     }
 

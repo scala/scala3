@@ -109,20 +109,20 @@ The purpose of the `@infix` annotation is to achieve consistency across a code b
 
  3. `@infix` annotations can be given to method definitions. The first non-receiver parameter list of an `@infix` method must define exactly one parameter. Examples:
 
-      ```scala
-      @infix def op(x: S): R                  // ok
-      @infix def op[T](x: T)(y: S): R         // ok
-      @infix def op[T](x: T, y: S): R         // error: two parameters
+    ```scala
+    @infix def op(x: S): R                  // ok
+    @infix def op[T](x: T)(y: S): R         // ok
+    @infix def op[T](x: T, y: S): R         // error: two parameters
 
-      @infix def (x: A) op (y: B): R          // ok
-      @infix def (x: A) op (y1: B, y2: B): R  // error: two parameters
-      ```
+    @infix def (x: A) op (y: B): R          // ok
+    @infix def (x: A) op (y1: B, y2: B): R  // error: two parameters
+    ```
 
  4. @infix annotations can also be given to type, trait or class definitions that have exactly two type parameters. An infix type like
 
-      ```scala
-      @infix type op[X, Y]
-      ```
+    ```scala
+    @infix type op[X, Y]
+    ```
 
     can be applied using infix syntax, i.e. `A op B`.
 
@@ -174,7 +174,3 @@ Another example:
 ```
 This code is recognized as three different statements. `???` is syntactically a symbolic identifier, but
 neither of its occurrences is followed by a space and a token that can start an expression.
-
-
-
-

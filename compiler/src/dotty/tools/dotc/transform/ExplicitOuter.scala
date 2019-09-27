@@ -80,7 +80,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
     if (clsHasOuter || cls.mixins.exists(needsOuterIfReferenced)) {
       val newDefs = new mutable.ListBuffer[Tree]
 
-      if (clsHasOuter) {
+      if (clsHasOuter)
         if (isTrait)
           newDefs += DefDef(outerAccessor(cls).asTerm, EmptyTree)
         else {
@@ -88,22 +88,19 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
           newDefs += ValDef(outerParamAcc, EmptyTree)
           newDefs += DefDef(outerAccessor(cls).asTerm, ref(outerParamAcc))
         }
-      }
 
-      for (parentTrait <- cls.mixins) {
+      for (parentTrait <- cls.mixins)
         if (needsOuterIfReferenced(parentTrait)) {
           val parentTp = cls.denot.thisType.baseType(parentTrait)
           val outerAccImpl = newOuterAccessor(cls, parentTrait).enteredAfter(thisPhase)
           newDefs += DefDef(outerAccImpl, singleton(fixThis(outerPrefix(parentTp))))
         }
-      }
 
       val parents1 =
         for (parent <- impl.parents) yield {
           val parentCls = parent.tpe.classSymbol.asClass
-          if (parentCls.is(Trait)) {
+          if (parentCls.is(Trait))
             parent
-          }
           else parent match { // ensure class parent is a constructor
             case parent: TypeTree => New(parent.tpe, Nil).withSpan(impl.span)
             case _ => parent

@@ -36,10 +36,10 @@ class CheckReentrant extends MiniPhase {
   private[this] var seen: Set[ClassSymbol] = Set()
   private[this] var indent: Int = 0
 
-  private val sharableAnnot = new CtxLazy(given ctx =>
-    ctx.requiredClass("scala.annotation.internal.sharable"))
-  private val unsharedAnnot = new CtxLazy(given ctx =>
-    ctx.requiredClass("scala.annotation.internal.unshared"))
+  private val sharableAnnot = new CtxLazy(
+    summon[Context].requiredClass("scala.annotation.internal.sharable"))
+  private val unsharedAnnot = new CtxLazy(
+    summon[Context].requiredClass("scala.annotation.internal.unshared"))
 
   def isIgnored(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
@@ -55,12 +55,12 @@ class CheckReentrant extends MiniPhase {
     finally indent -= 1
   }
 
-  def addVars(cls: ClassSymbol)(implicit ctx: Context): Unit = {
+  def addVars(cls: ClassSymbol)(implicit ctx: Context): Unit =
     if (!seen.contains(cls) && !isIgnored(cls)) {
       seen += cls
       scanning(cls) {
-        for (sym <- cls.classInfo.decls) {
-          if (sym.isTerm && !sym.isSetter && !isIgnored(sym)) {
+        for (sym <- cls.classInfo.decls)
+          if (sym.isTerm && !sym.isSetter && !isIgnored(sym))
             if (sym.is(Mutable)) {
               ctx.error(
                 i"""possible data race involving globally reachable ${sym.showLocated}: ${sym.info}
@@ -71,13 +71,10 @@ class CheckReentrant extends MiniPhase {
               scanning(sym) {
                 sym.info.widenExpr.classSymbols.foreach(addVars)
               }
-          }
-        }
         for (parent <- cls.classInfo.classParents)
           addVars(parent.classSymbol.asClass)
       }
     }
-  }
 
   override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = {
     if (ctx.settings.YcheckReentrant.value && tree.symbol.owner.isStaticOwner)

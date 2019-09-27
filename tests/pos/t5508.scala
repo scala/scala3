@@ -13,7 +13,7 @@ object Base1 {
     private[this] var _st : Int = 0
     def close : PartialFunction[Any,Any] = {
       case x : Int =>
-  _st = identity(_st)
+        _st = identity(_st)
     }
   }
 }
@@ -31,7 +31,7 @@ object Base2 {
     private[this] var _st : Int = 0
     def close : PartialFunction[Any,Any] = {
       case x : Int =>
-  _st = 1
+        _st = 1
     }
   }
 }
@@ -41,7 +41,7 @@ class Base3 {
     private[this] var _st : Int = 0
     def close : PartialFunction[Any,Any] = {
       case x : Int =>
-  _st = 1
+        _st = 1
     }
   }
 }

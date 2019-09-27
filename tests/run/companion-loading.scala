@@ -19,10 +19,12 @@ implicit object FooAssoc extends Assoc[Foo] {
   def foo(t: Foo): Int = t.i
 }
 
+import compiletime.summonFrom
+
 inline def link[T] <: Any =
-  delegate match {
+  summonFrom {
     case _: Link[T, s] =>
-      delegate match {
+      summonFrom {
         case stuff: s => stuff
       }
   }

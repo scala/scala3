@@ -92,7 +92,7 @@ object LambdaLift {
     /** Set `liftedOwner(sym)` to `owner` if `owner` is more deeply nested
      *  than the previous value of `liftedowner(sym)`.
      */
-    def narrowLiftedOwner(sym: Symbol, owner: Symbol)(implicit ctx: Context): Unit = {
+    def narrowLiftedOwner(sym: Symbol, owner: Symbol)(implicit ctx: Context): Unit =
       if (sym.maybeOwner.isTerm &&
         owner.isProperlyContainedIn(liftedOwner(sym)) &&
         owner != sym) {
@@ -100,7 +100,6 @@ object LambdaLift {
           changedLiftedOwner = true
           liftedOwner(sym) = owner
       }
-    }
 
     /** Mark symbol `sym` as being free in `enclosure`, unless `sym` is defined
      *  in `enclosure` or there is an intermediate class properly containing `enclosure`
@@ -156,17 +155,15 @@ object LambdaLift {
           else if (enclosure.isConstructor) markFree(sym, enclosure.owner.enclosure)
           else markFree(sym, enclosure.enclosure)
         if (intermediate.exists) narrowLiftedOwner(enclosure, intermediate)
-        if (!intermediate.isRealClass || enclosure.isConstructor) {
+        if (!intermediate.isRealClass || enclosure.isConstructor)
           // Constructors and methods nested inside traits get the free variables
           // of the enclosing trait or class.
           // Conversely, local traits do not get free variables.
-          if (!enclosure.is(Trait)) {
+          if (!enclosure.is(Trait))
             if (symSet(free, enclosure).add(sym)) {
               changedFreeVars = true
               ctx.log(i"$sym is free in $enclosure")
             }
-          }
-        }
         if (intermediate.isRealClass) intermediate
         else if (enclosure.isRealClass) enclosure
         else if (intermediate.isClass) intermediate
@@ -203,10 +200,9 @@ object LambdaLift {
 
         tree match {
           case tree: Ident =>
-            if (isLocal(sym)) {
+            if (isLocal(sym))
               if (sym is Method) markCalled(sym, enclosure)
               else if (sym.isTerm) markFree(sym, enclosure)
-            }
             def captureImplicitThis(x: Type): Unit =
               x match {
                 case tr@TermRef(x, _) if (!tr.termSymbol.isStatic) => captureImplicitThis(x)
@@ -361,10 +357,9 @@ object LambdaLift {
           initFlags = initFlags,
           info = liftedInfo(local)).installAfter(thisPhase)
       }
-      for (local <- free.keys) {
+      for (local <- free.keys)
         if (!liftedOwner.contains(local))
           local.copySymDenotation(info = liftedInfo(local)).installAfter(thisPhase)
-      }
     }
 
     // initialization

@@ -2,14 +2,14 @@ object Test {
   import scala.compiletime.constValue
 
   class Context {
-    inline def givenIn[T](op: => given Context => T) = {
-      given as Context = this
+    inline def givenIn[T](op: => (given Context) => T) = {
+      given Context = this
       op
     }
   }
 
   def ctx: Context = new Context
-  def g given Context = ()
+  def g(given Context) = ()
   ctx.givenIn(g)
 
 /* The last three statements shoudl generate the following code:

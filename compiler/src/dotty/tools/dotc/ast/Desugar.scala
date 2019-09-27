@@ -454,8 +454,9 @@ object desugar {
         if (isCaseClass)
           ctx.error(CaseClassMissingParamList(cdef), namePos)
         ListOfNil
-      } else if (isCaseClass && originalVparamss.head.exists(_.mods.isOneOf(GivenOrImplicit))) {
-          ctx.error("Case classes should have a non-implicit parameter list", namePos)
+      }
+      else if (isCaseClass && originalVparamss.head.exists(_.mods.isOneOf(GivenOrImplicit))) {
+        ctx.error("Case classes should have a non-implicit parameter list", namePos)
         ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam(_, keepAnnotations = false))
@@ -475,9 +476,9 @@ object desugar {
           stat
       }
       // The Identifiers defined by a case
-      def caseIds(tree: Tree) = tree match {
+      def caseIds(tree: Tree): List[Ident] = tree match {
         case tree: MemberDef => Ident(tree.name.toTermName) :: Nil
-        case PatDef(_, ids, _, _) => ids
+        case PatDef(_, ids: List[Ident] @ unchecked, _, _) => ids
       }
       val stats = impl.body.map(expandConstructor)
       if (isEnum) {
@@ -485,7 +486,8 @@ object desugar {
         if (enumCases.isEmpty)
           ctx.error("Enumerations must constain at least one case", namePos)
         val enumCompanionRef = TermRefTree()
-        val enumImport = Import(importGiven = false, enumCompanionRef, enumCases.flatMap(caseIds))
+        val enumImport =
+          Import(enumCompanionRef, enumCases.flatMap(caseIds).map(ImportSelector(_)))
         (enumImport :: enumStats, enumCases, enumCompanionRef)
       }
       else (stats, Nil, EmptyTree)
@@ -717,12 +719,11 @@ object desugar {
       }
       else if (companionMembers.nonEmpty || companionDerived.nonEmpty || isEnum)
         companionDefs(anyRef, companionMembers)
-      else if (isValueClass) {
+      else if (isValueClass)
         impl.constr.vparamss match {
           case (_ :: Nil) :: _ => companionDefs(anyRef, Nil)
           case _ => Nil // error will be emitted in typer
         }
-      }
       else Nil
 
     enumCompanionRef match {
@@ -892,7 +893,7 @@ object desugar {
    *  If the given member `mdef` is not of this form, flag it as an error.
    */
 
-  def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef]) given (ctx: Context): Tree = {
+  def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef])(given ctx: Context): Tree = {
     val allowed = "allowed here, since collective parameters are given"
     mdef match {
       case mdef: DefDef =>
@@ -930,6 +931,10 @@ object desugar {
     else tree
   }
 
+  /** Invent a name for an anonympus given of type or template `impl`. */
+  def inventGivenName(impl: Tree)(implicit ctx: Context): SimpleName =
+    avoidIllegalChars(s"given_${inventName(impl)}".toTermName.asSimpleName)
+
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
    *      If it does redefine, issue an error and return a mangled name instead of the original one.
@@ -937,7 +942,7 @@ object desugar {
    */
   def normalizeName(mdef: MemberDef, impl: Tree)(implicit ctx: Context): Name = {
     var name = mdef.name
-    if (name.isEmpty) name = name.likeSpaced(avoidIllegalChars(s"${inventName(impl)}_given".toTermName.asSimpleName))
+    if (name.isEmpty) name = name.likeSpaced(inventGivenName(impl))
     if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
       def kind = if (name.isTypeName) "class" else "object"
       ctx.error(em"illegal redefinition of standard $kind $name", mdef.sourcePos)
@@ -1103,7 +1108,7 @@ object desugar {
 
   /** Expand variable identifier x to x @ _ */
   def patternVar(tree: Tree)(implicit ctx: Context): Bind = {
-    val Ident(name) = tree
+    val Ident(name) = unsplice(tree)
     Bind(name, Ident(nme.WILDCARD)).withSpan(tree.span)
   }
 
@@ -1129,12 +1134,11 @@ object desugar {
     case tree: MemberDef =>
       var tested: MemberDef = tree
       def fail(msg: String) = ctx.error(msg, tree.sourcePos)
-      def checkApplicable(flag: Flag, test: MemberDefTest): Unit = {
+      def checkApplicable(flag: Flag, test: MemberDefTest): Unit =
         if (tested.mods.is(flag) && !test.applyOrElse(tree, (md: MemberDef) => false)) {
           fail(i"modifier `${flag.flagsString}` is not allowed for this definition")
           tested = tested.withMods(tested.mods.withoutFlags(flag))
         }
-      }
       checkApplicable(Opaque, legalOpaque)
       tested
     case _ =>

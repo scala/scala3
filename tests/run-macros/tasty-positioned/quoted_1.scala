@@ -1,5 +1,5 @@
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 case class Position(path: String, start: Int, end: Int,
     startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)

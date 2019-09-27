@@ -19,6 +19,7 @@ import printing.Printer
 import io.AbstractFile
 import config.Config
 import util.common._
+import typer.ProtoTypes.NoViewsAllowed
 import collection.mutable.ListBuffer
 
 /** Denotations represent the meaning of symbols and named types.
@@ -28,7 +29,7 @@ import collection.mutable.ListBuffer
  *  "symbol" and "deref". Both methods are parameterized by the current context,
  *  and are effectively indexed by current period.
  *
- *  Lines ending in a horizontal line mean subtying (right is a subtype of left).
+ *  Lines ending in a horizontal line mean subtyping (right is a subtype of left).
  *
  *  NamedType
  *    |                                          Symbol---------ClassSymbol
@@ -765,6 +766,11 @@ object Denotations {
         (if (relaxed) Signature.ParamMatch else Signature.FullMatch).ordinal
       if (matches) this else NoDenotation
     }
+
+    def matchesImportBound(bound: Type)(implicit ctx: Context): Boolean =
+      if bound.isRef(defn.NothingClass) then false
+      else if bound.isRef(defn.AnyClass) then true
+      else NoViewsAllowed.normalizedCompatible(info, bound, keepConstraint = false)
 
     // ------ Transformations -----------------------------------------
 

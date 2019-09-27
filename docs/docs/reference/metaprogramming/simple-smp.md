@@ -4,7 +4,7 @@ title: "The Meta-theory of Symmetric Meta-programming"
 ---
 
 This note presents a simplified variant of
-[principled meta-programming](./principled-meta-programming.md)
+[principled meta-programming](./macros.md)
 and sketches its soundness proof. The variant treats only dialogues
 between two stages. A program can have quotes which can contain
 splices (which can contain quotes, which can contain splices, and so
@@ -22,91 +22,91 @@ replace evaluation contexts with contextual typing rules. While this
 is more verbose, it makes it easier to set up the meta theory.
 
 ## Syntax
+```
+Terms         t  ::=  x                 variable
+                      (x: T) => t       lambda
+                      t t               application
+                      ’t                quote
+                      ~t                splice
 
-    Terms         t  ::=  x                 variable
-                          (x: T) => t       lambda
-                          t t               application
-                          ’t                quote
-                          ~t                splice
+Simple terms  u  ::=  x  |  (x: T) => u  |  u u
 
-    Simple terms  u  ::=  x  |  (x: T) => u  |  u u
+Values        v  ::=  (x: T) => t       lambda
+                      ’u                quoted value
 
-    Values        v  ::=  (x: T) => t       lambda
-                          ’u                quoted value
-
-    Types         T  ::=  A                 base type
-                          T -> T            function type
-                          ’T                quoted type
-
+Types         T  ::=  A                 base type
+                      T -> T            function type
+                      ’T                quoted type
+```
 ## Operational semantics
 
 ### Evaluation
+```
+            ((x: T) => t) v  -->  [x := v]t
 
-                ((x: T) => t) v  -->  [x := v]t
+                         t1  -->  t2
+                       ---------------
+                       t1 t  -->  t2 t
 
-                             t1  -->  t2
-                           ---------------
-                           t1 t  -->  t2 t
+                         t1  -->  t2
+                       ---------------
+                       v t1  -->  v t2
 
-                             t1  -->  t2
-                           ---------------
-                           v t1  -->  v t2
-
-                             t1  ==>  t2
-                            -------------
-                            ’t1  -->  ’t2
-
+                         t1  ==>  t2
+                        -------------
+                        ’t1  -->  ’t2
+```
 
 ### Splicing
+```
+                        ~’u  ==>  u
 
-                            ~’u  ==>  u
+                         t1  ==>  t2
+               -------------------------------
+               (x: T) => t1  ==>  (x: T) => t2
 
-                             t1  ==>  t2
-                   -------------------------------
-                   (x: T) => t1  ==>  (x: T) => t2
+                         t1  ==>  t2
+                       ---------------
+                       t1 t  ==>  t2 t
 
-                             t1  ==>  t2
-                           ---------------
-                           t1 t  ==>  t2 t
+                         t1  ==>  t2
+                       ---------------
+                       u t1  ==>  u t2
 
-                             t1  ==>  t2
-                           ---------------
-                           u t1  ==>  u t2
+                         t1  -->  t2
+                        -------------
+                        ~t1  ==>  ~t2
 
-                             t1  -->  t2
-                            -------------
-                            ~t1  ==>  ~t2
-
-
+```
 ## Typing Rules
 
 Typing judgments are of the form  `E1 * E2 |- t: T` where `E1, E2` are environments and
 `*` is one of `~` and `’`.
-
-                              x: T in E2
-                           ---------------
-                           E1 * E2 |- x: T
-
-
-                       E1 * E2, x: T1 |- t: T2
-                   --------------------------------
-                   E1 * E2 |- (x: T1) => t: T -> T2
+```
+                          x: T in E2
+                       ---------------
+                       E1 * E2 |- x: T
 
 
-             E1 * E2 |- t1: T2 -> T    E1 * E2 |- t2: T2
-             -------------------------------------------
-                         E1 * E2 |- t1 t2: T
+                   E1 * E2, x: T1 |- t: T2
+               --------------------------------
+               E1 * E2 |- (x: T1) => t: T -> T2
 
 
-                           E2 ’ E1 |- t: T
-                          -----------------
-                          E1 ~ E2 |- ’t: ’T
+         E1 * E2 |- t1: T2 -> T    E1 * E2 |- t2: T2
+         -------------------------------------------
+                     E1 * E2 |- t1 t2: T
 
 
-                           E2 ~ E1 |- t: ’T
-                           ----------------
-                           E1 ’ E2 |- ~t: T
+                       E2 ’ E1 |- t: T
+                      -----------------
+                      E1 ~ E2 |- ’t: ’T
 
+
+                       E2 ~ E1 |- t: ’T
+                       ----------------
+                       E1 ’ E2 |- ~t: T
+```
 
 (Curiously, this looks a bit like a Christmas tree).
 
@@ -161,20 +161,20 @@ need to swap lambda bindings with the bound variable `x`). The
 arguments that link the two hypotheses are as follows.
 
 To prove (1), let `t = ’t1`. Then `T = ’T1` for some type `T1` and the last typing rule is
-
-                        E2, x: S ’ E1 |- t1: T1
-                       -------------------------
-                       E1 ~ E2, x: S |- ’t1: ’T1
-
+```
+                    E2, x: S ’ E1 |- t1: T1
+                   -------------------------
+                   E1 ~ E2, x: S |- ’t1: ’T1
+```
 By the second I.H. `E2 ’ E1 |- [x := s]t1: T1`.  By typing, `E1 ~ E2 |- ’[x := s]t1: ’T1`.
 Since `[x := s]t = [x := s](’t1) = ’[x := s]t1` we get `[x := s]t: ’T1`.
 
 To prove (2), let `t = ~t1`. Then the last typing rule is
-
-                        E1 ~ E2, x: S |- t1: ’T
-                        -----------------------
-                        E2, x: S ’ E1 |- ~t1: T
-
+```
+                    E1 ~ E2, x: S |- t1: ’T
+                    -----------------------
+                    E2, x: S ’ E1 |- ~t1: T
+```
 By the first I.H., `E1 ~ E2 |- [x := s]t1: ’T`. By typing, `E2 ’ E1 |- ~[x := s]t1: T`.
 Since `[x := s]t = [x := s](~t1) = ~[x := s]t1` we get `[x := s]t: T`.
 
@@ -188,11 +188,11 @@ The proof is by structural induction on evaluation derivations. The proof of (1)
 to the proof for STL, using the substitution lemma for the beta reduction case, with the addition of reduction of quoted terms, which goes as follows:
 
  - Assume the last rule was
-
-                             t1  ==>  t2
-                            -------------
-                            ’t1  -->  ’t2
-
+   ```
+                       t1  ==>  t2
+                      -------------
+                      ’t1  -->  ’t2
+   ```
    By inversion of typing rules, we must have `T = ’T1` for some type `T1` such that `t1: T1`.
    By the second I.H., `t2: T1`, hence `’t2: `T1`.
 
@@ -201,32 +201,31 @@ To prove (2):
 
  - Assume the last rule was `~’u ==> u`. The typing proof of `~’u` must have the form
 
-
-                            E1 ’ E2 |- u: T
-                           -----------------
-                           E1 ~ E2 |- ’u: ’T
-                           -----------------
-                           E1 ’ E2 |- ~’u: T
-
+    ```
+                      E1 ’ E2 |- u: T
+                     -----------------
+                     E1 ~ E2 |- ’u: ’T
+                     -----------------
+                     E1 ’ E2 |- ~’u: T
+    ```
     Hence, `E1 ’ E2 |- u: T`.
 
  - Assume the last rule was
-
-                             t1  ==>  t2
-                   -------------------------------
-                   (x: S) => t1  ==>  (x: T) => t2
-
+   ```
+                         t1  ==>  t2
+               -------------------------------
+               (x: S) => t1  ==>  (x: T) => t2
+   ```
    By typing inversion, `E1 ' E2, x: S |- t1: T1` for some type `T1` such that `T = S -> T1`.
    By the I.H, `t2: T1`. By the typing rule for lambdas the result follows.
 
  - The context rules for applications are equally straightforward.
 
  - Assume the last rule was
-
-                             t1  ==>  t2
-                            -------------
-                            ~t1  ==>  ~t2
-
+   ```
+                         t1  ==>  t2
+                        -------------
+                        ~t1  ==>  ~t2
+   ```
    By inversion of typing rules, we must have `t1: ’T`.
    By the first I.H., `t2: ’T`, hence `~t2: T`.
-

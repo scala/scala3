@@ -1,6 +1,6 @@
 
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 object Macro {
 
@@ -9,7 +9,7 @@ object Macro {
 
     inline def plus(inline n: Int, m: Int): Int = ${ plus(n, 'm) }
 
-    def plus(n: Int, m: Expr[Int]) given QuoteContext: Expr[Int] =
+    def plus(n: Int, m: Expr[Int])(given QuoteContext): Expr[Int] =
       if (n == 0) m
       else '{ ${n} + $m }
 
@@ -17,7 +17,7 @@ object Macro {
 
       inline def plus(inline n: Int, m: Int): Int = ${ plus(n, 'm) }
 
-      def plus(n: Int, m: Expr[Int]) given QuoteContext: Expr[Int] =
+      def plus(n: Int, m: Expr[Int])(given QuoteContext): Expr[Int] =
         if (n == 0) m
         else '{ ${n} + $m }
     }

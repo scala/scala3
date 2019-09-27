@@ -6,7 +6,7 @@ import core.Annotations.Annotation
 import core.Contexts.Context
 import core.Definitions
 import core.Flags._
-import core.Names.Name
+import core.Names.{DerivedName, Name, SimpleName, TypeName}
 import core.Symbols._
 import core.TypeApplications.TypeParamInfo
 import core.TypeErasure.erasure
@@ -16,6 +16,8 @@ import ast.Trees._
 import SymUtils._
 import TypeUtils._
 import java.lang.StringBuilder
+
+import scala.annotation.tailrec
 
 /** Helper object to generate generic java signatures, as defined in
  *  the Java Virtual Machine Specification, §4.3.4
@@ -79,13 +81,12 @@ object GenericSignatures {
       boundsSig(hiBounds(param.paramInfo.bounds))
     }
 
-    def polyParamSig(tparams: List[LambdaParam]): Unit = {
+    def polyParamSig(tparams: List[LambdaParam]): Unit =
       if (tparams.nonEmpty) {
         builder.append('<')
         tparams.foreach(paramSig)
         builder.append('>')
       }
-    }
 
     def typeParamSig(name: Name): Unit = {
       builder.append(ClassfileConstants.TVAR_TAG)
@@ -162,7 +163,7 @@ object GenericSignatures {
 
             // TODO revisit this. Does it align with javac for code that can be expressed in both languages?
             val delimiter = if (builder.charAt(builder.length() - 1) == '>') '.' else '$'
-            builder.append(delimiter).append(sanitizeName(sym.name.asSimpleName))
+            builder.append(delimiter).append(sanitizeName(sym.name))
           }
           else fullNameInSig(sym)
         }
@@ -270,7 +271,7 @@ object GenericSignatures {
           jsig(intersectionDominator(tp1 :: tp2 :: Nil), primitiveOK = primitiveOK)
 
         case ci: ClassInfo =>
-          def polyParamSig(tparams: List[TypeParamInfo]): Unit = {
+          def polyParamSig(tparams: List[TypeParamInfo]): Unit =
             if (tparams.nonEmpty) {
               builder.append('<')
               tparams.foreach { tp =>
@@ -279,7 +280,6 @@ object GenericSignatures {
               }
               builder.append('>')
             }
-          }
           val tParams = tp.typeParams
           if (toplevel) polyParamSig(tParams)
           superSig(ci.typeSymbol, ci.parents)
