@@ -1243,6 +1243,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       for sym <- dependencies do
         if ctx.compilationUnit.source.file == sym.associatedFile then
           ctx.error(em"Cannot call macro $sym defined in the same source file", body.sourcePos)
+        println(i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}")
       ctx.compilationUnit.suspend() // this throws a SuspendException
 
     val evaluatedSplice = Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)(ctx1)
