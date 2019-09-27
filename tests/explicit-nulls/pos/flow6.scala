@@ -60,7 +60,9 @@ class Foo {
     ()
   }
 
-  // This test checks facts from outer blocks are remembered.
+  // This test checks that flow facts are forgotten for defs, but only
+  // the facts gathered within the current block are forgotten.
+  // Other facts from outer blocks are remembered.
   def test9(): Unit = {
     val x: String|Null = ???
     if (x == null) {

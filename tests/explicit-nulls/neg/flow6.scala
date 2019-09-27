@@ -29,8 +29,8 @@ class Foo {
     ()
   }
 
-  // This case is not valid but the test1 above is, because
-  // non-lazy value definitions exist between forward references.
+  // This case is invalid because z has an implicit forward reference to y,
+  // but x, y and z aren't lazy (only forward references to lazy vals are allowed).
   // Since y is referred (by z) before definition, flow typing is not used here.
   // Only the typing error is shown because reference check is after typing.
   def test4(): Unit = {
