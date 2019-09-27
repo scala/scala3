@@ -14,22 +14,22 @@ object Test {
     case '{ 1 + ($y: Int)} => y
     case '{ val a = 1 + ($y: Int); 3 } => y
     case '{ val $y: Int = $z; println(`$y`); 1 } =>
-      val a: quoted.matching.Bind[Int] = y
+      val a: quoted.matching.Sym[Int] = y
       z
     case '{ (($y: Int) => 1 + `$y` + ($z: Int))(2) } =>
-      val a: quoted.matching.Bind[Int] = y
+      val a: quoted.matching.Sym[Int] = y
       z
     case '{ def $ff: Int = $z; `$ff` } =>
-      val a: quoted.matching.Bind[Int] = ff
+      val a: quoted.matching.Sym[Int] = ff
       z
     case '{ def $ff(i: Int): Int = $z; 2 } =>
-      val a: quoted.matching.Bind[Int => Int] = ff
+      val a: quoted.matching.Sym[Int => Int] = ff
       z
     case '{ def $ff(i: Int)(j: Int): Int = $z; 2 } =>
-      val a: quoted.matching.Bind[Int => Int => Int] = ff
+      val a: quoted.matching.Sym[Int => Int => Int] = ff
       z
     case '{ def $ff[T](i: T): Int = $z; 2 } =>
-      val a: quoted.matching.Bind[[T] =>> T => Int] = ff
+      val a: quoted.matching.Sym[[T] =>> T => Int] = ff
       z
     case '{ poly[$t]($x); 4 } => ???
     case '{ poly[${Foo(t)}]($x); 4 } => ???
