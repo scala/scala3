@@ -1269,7 +1269,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       override def apply(syms: List[Symbol], tree: tpd.Tree)(implicit ctx: Context): List[Symbol] =
         if (level != -1) foldOver(syms, tree)
         else tree match {
-          case tree: RefTree if level == -1 && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
+          case tree: RefTree
+          if level == -1
+             && tree.symbol.isDefinedInCurrentRun
+             && tree.symbol.isRealMethod
+             && !tree.symbol.isLocal =>
             foldOver(tree.symbol :: syms, tree)
           case Quoted(body) =>
             level += 1
