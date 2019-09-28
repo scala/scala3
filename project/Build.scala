@@ -979,7 +979,7 @@ object Build {
         (
           (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** (("IntTest.scala": FileFilter) || "BooleanTest.scala" || "ByteTest.scala" || "CharTest.scala" || "DoubleTest.scala" || "FloatTest.scala" || "ShortTest.scala" || "UnitTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** (("*.scala": FileFilter) -- "ClassTest.scala" -- "StringTest.scala")).get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/io" ** (("ThrowablesTest.scala": FileFilter) || "SerializableTest.scala" || "PrintWriterTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/io" ** (("*.scala": FileFilter) -- "ByteArrayInputStreamTest.scala" -- "ByteArrayOutputStreamTest.scala" -- "DataInputStreamTest.scala" -- "DataOutputStreamTest.scala" -- "InputStreamTest.scala" -- "OutputStreamWriterTest.scala" -- "PrintStreamTest.scala" -- "ReadersTest.scala" -- "CommonStreamsTests.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/math" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/net" ** ("URLDecoderTest.scala": FileFilter)).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/security" ** "*.scala").get
