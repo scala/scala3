@@ -127,7 +127,7 @@ class FrontEnd extends Phase {
                     |
                     |To fix this, place macros in one set of files and their callers in another.
                     |
-                    |Compiling with  -XprintSuspension   gives more information.""")
+                    |Compiling with  -Xprint-suspension   gives more information.""")
     newUnits
   }
 
