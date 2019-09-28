@@ -58,7 +58,7 @@ def factorial(n: BigInt): BigInt = {
 }
 ```
 
-If `Config.logging == false`, this will be rewritten (simplified) to
+If `Config.logging == false`, this will be rewritten (simplified) to:
 
 ```scala
 def factorial(n: BigInt): BigInt = {
@@ -120,7 +120,7 @@ inline def power(x: Double, n: Int): Double = {
 }
 ```
 
-Parameters of inline methods can be marked `inline`. This means
+Parameters of inline methods can have an `inline` modifier as well. This means
 that actual arguments to these parameters must be constant expressions.
 For example:
 
