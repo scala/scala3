@@ -221,9 +221,9 @@ final val one: 1 = zero() + 1
 
 ## Inline Conditionals
 
-If the condition of an if-then-else expressions is a constant, the expression simplifies to
-the selected branch. Prefixing an if-then-else expression with `inline` forces
-the condition to be a constant, and thus guarantees that the conditional will always
+If the condition of an if-then-else expressions is a constant expression then it simplifies to
+the selected branch. Prefixing an if-then-else expression with `inline` enforces that
+the condition has to be a constant expression, and thus guarantees that the conditional will always
 simplify.
 
 Example:
