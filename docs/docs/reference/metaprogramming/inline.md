@@ -33,8 +33,8 @@ object Logger {
 The `Config` object contains a definition of the **inline value** `logging`.
 This means that `logging` is treated as a _constant value_, equivalent to its
 right-hand side `false`. The right-hand side of such an `inline val` must itself
-be a [constant expression](https://scala-lang.org/files/archive/spec/2.12/06-expressions.html#constant-expressions). Used in this
-way, `inline` is equivalent to Java and Scala 2's `final`. Note that `final`, meaning
+be a [constant expression](https://scala-lang.org/files/archive/spec/2.12/06-expressions.html#constant-expressions). 
+Used in this way, `inline` is equivalent to Java and Scala 2's `final`. Note that `final`, meaning
 _inlined constant_, is still supported in Dotty, but will be phased out.
 
 The `Logger` object contains a definition of the **inline method** `log`. This
@@ -272,8 +272,8 @@ The scrutinee `x` is examined statically and the inline match is reduced
 accordingly returning the corresponding value (with the type specialized due to
 the `<:` in the return type). This example performs a simple type test over the
 scrutinee. The type can have a richer structure like the simple ADT below.
-`toInt` matches the structure of a number in Church-encoding and _computes_ the
-corresponding integer.
+`toInt` matches the structure of a number in [Church-encoding](https://en.wikipedia.org/wiki/Church_encoding)
+and _computes_ the corresponding integer.
 
 ```scala
 trait Nat
@@ -319,11 +319,11 @@ the singleton type `2`.
 
 #### `erasedValue`
 
-We have seen so far inline methods that take terms (tuples and integers) as
+So far we have seen inline methods that take terms (tuples and integers) as
 parameters. What if we want to base case distinctions on types instead? For
 instance, one would like to be able to write a function `defaultValue`, that,
-given a type `T` returns optionally the default value of `T`, if it exists. In
-fact, we can already express this using rewrite match expressions and a simple
+given a type `T`, returns optionally the default value of `T`, if it exists. 
+We can already express this using rewrite match expressions and a simple
 helper function, `scala.compiletime.erasedValue`, which is defined as follows:
 
 ```scala
@@ -333,7 +333,7 @@ erased def erasedValue[T]: T = ???
 The `erasedValue` function _pretends_ to return a value of its type argument
 `T`. In fact, it would always raise a `NotImplementedError` exception when
 called. But the function can in fact never be called, since it is declared
-`erased`, so can be only used at compile-time during type checking.
+`erased`, so can only be used at compile-time during type checking.
 
 Using `erasedValue`, we can then define `defaultValue` as follows:
 
@@ -360,10 +360,11 @@ Then:
   val dAny: None.type = defaultValue[Any]
 ```
 
-As another example, consider the type-level version of `toNat` above the we call
-`toIntT`: given a _type_ representing a Peano number, return the integer _value_
-corresponding to it. Consider the definitions of numbers as in the _Inline
-Match_ section aboce. Here's how `toIntT` can be defined:
+As another example, consider the type-level version of `toInt` below: 
+given a _type_ representing a [Peano number](https://wiki.haskell.org/Peano_numbers),
+return the integer _value_ corresponding to it. 
+Consider the definitions of numbers as in the _Inline
+Match_ section above. Here is how `toIntT` can be defined:
 
 ```scala
 inline def toIntT[N <: Nat] <: Int = inline scala.compiletime.erasedValue[N] match {
