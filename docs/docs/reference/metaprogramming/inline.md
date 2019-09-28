@@ -216,7 +216,7 @@ type `1`.
 ```scala
 inline def zero() <: Int = 0
 
-final val one: 1 = zero() + 1
+val one: 1 = zero() + 1
 ```
 
 ## Inline Conditionals
@@ -285,7 +285,7 @@ inline def toInt(n: Nat) <: Int = inline n match {
   case Succ(n1) => toInt(n1) + 1
 }
 
-final val natTwo = toInt(Succ(Succ(Zero)))
+val natTwo = toInt(Succ(Succ(Zero)))
 val intTwo: 2 = natTwo
 ```
 
@@ -309,7 +309,7 @@ inline def toIntC[N] <: Int =
     case _: S[n1] => 1 + toIntC[n1]
   }
 
-final val ctwo = toIntC[2]
+val ctwo = toIntC[2]
 ```
 
 `constValueOpt` is the same as `constValue`, however returning an `Option[T]`
@@ -338,6 +338,8 @@ called. But the function can in fact never be called, since it is declared
 Using `erasedValue`, we can then define `defaultValue` as follows:
 
 ```scala
+import scala.compiletime.erasedValue
+
 inline def defaultValue[T] = inline erasedValue[T] match {
   case _: Byte => Some(0: Byte)
   case _: Char => Some(0: Char)
@@ -372,7 +374,7 @@ inline def toIntT[N <: Nat] <: Int = inline scala.compiletime.erasedValue[N] mat
   case _: Succ[n] => toIntT[n] + 1
 }
 
-final val two = toIntT[Succ[Succ[Zero.type]]]
+val two = toIntT[Succ[Succ[Zero.type]]]
 ```
 
 `erasedValue` is an `erased` method so it cannot be used and has no runtime
@@ -392,6 +394,8 @@ If an inline expansion results in a call `error(msgStr)` the compiler
 produces an error message containing the given `msgStr`.
 
 ```scala
+import scala.compiletime.error
+
 inline def fail() = {
   error("failed for a reason")
 }
@@ -404,7 +408,7 @@ or
 inline def fail(p1: => Any) = {
   error(code"failed on: $p1")
 }
-fail(indentity("foo")) // error: failed on: indentity("foo")
+fail(identity("foo")) // error: failed on: identity("foo")
 ```
 
 ## Summoning Implicits Selectively
