@@ -363,7 +363,7 @@ Then:
 ```
 
 As another example, consider the type-level version of `toInt` below: 
-given a _type_ representing a [Peano number](https://wiki.haskell.org/Peano_numbers),
+given a _type_ representing a Peano number,
 return the integer _value_ corresponding to it. 
 Consider the definitions of numbers as in the _Inline
 Match_ section above. Here is how `toIntT` can be defined:
