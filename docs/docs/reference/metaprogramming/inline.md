@@ -374,7 +374,7 @@ inline def toIntT[N <: Nat] <: Int = inline scala.compiletime.erasedValue[N] mat
   case _: Succ[n] => toIntT[n] + 1
 }
 
-val two = toIntT[Succ[Succ[Zero.type]]]
+final val two = toIntT[Succ[Succ[Zero.type]]]
 ```
 
 `erasedValue` is an `erased` method so it cannot be used and has no runtime
