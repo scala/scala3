@@ -394,7 +394,7 @@ If an inline expansion results in a call `error(msgStr)` the compiler
 produces an error message containing the given `msgStr`.
 
 ```scala
-import scala.compiletime.error
+import scala.compiletime.{error, code}
 
 inline def fail() = {
   error("failed for a reason")
