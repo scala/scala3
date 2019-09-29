@@ -22,6 +22,9 @@ object Bench {
     val iterations = if (intArgs.length > 1) intArgs(1).toInt else 20
     val forks = if (intArgs.length > 2) intArgs(2).toInt else 1
 
+    val benchmarks = if (args1.length > 0) args1(0) else ".*"
+    val outputFile = if (args1.length > 1) args1(1) else "output.csv"
+
     val opts = new OptionsBuilder()
                .shouldFailOnError(true)
                .jvmArgs("-Xms2G", "-Xmx2G")
@@ -30,81 +33,12 @@ object Bench {
                .warmupIterations(warmup)
                .measurementIterations(iterations)
                .forks(forks)
+               .include(benchmarks)
+               .resultFormat(ResultFormatType.CSV)
+               .result("results/" ++ outputFile)
                .build
 
     val runner = new Runner(opts) // full access to all JMH features, you can also provide a custom output Format here
     runner.run() // actually run the benchmarks
   }
-}
-
-@State(Scope.Thread)
-class ConsConcatBenchmarks {
-  @Param(Array("10", "20"))
-  var size: Int = _
-  var tuple: Tuple = _
-
-  @Setup
-  def setup(): Unit = {
-    tuple = ()
-
-    for (i <- 1 to size)
-      tuple = "string" *: tuple
-  }
-
-  @Benchmark
-  def baseline(): Unit = {}
-
-  // Cons benchmarks
-  @Benchmark
-  def tupleCons(): Tuple = {
-    "string" *: tuple
-  }
-
-  @Benchmark
-  def dynamicTupleCons(): Tuple = {
-    DynamicTuple.dynamicCons("string", tuple)
-  }
-
-  // Concat benchmarks
-  @Benchmark
-  def tupleConcat(): Tuple = {
-   tuple ++ tuple
-  }
-
-  @Benchmark
-  def dynamicTupleConcat(): Tuple = {
-    DynamicTuple.dynamicConcat(tuple, tuple)
-  }
-
-  // Interesting behaviour : I expect the two following to be the same because of TupleOptimizations.scala
-  @Benchmark
-  def tupleConcat2(): Tuple = {
-    ("string", "string") ++ ("string", "string")
-  }
-
-  @Benchmark
-  def tupleNoConcat(): Tuple = {
-    ("string", "string", "string", "string")
-  }
-}
-
-@State(Scope.Thread)
-class ApplyBenchmarks {
-  val size: Int = 100
-
-  val tuple: NonEmptyTuple = {
-    var t = ()
-    for (i <- 1 to size)
-      t = "string" *: t
-    t.asInstanceOf[NonEmptyTuple]
-  }
-
-  @Param(Array("1", "10", "25", "50", "75", "99"))
-  var index: Int = _
-
-  // Apply benchmarks, doesn't work for some reason
-  // @Benchmark
-  // def tupleApply(): Unit = {
-  //   DynamicTuple.dynamicApply(tuple, index)
-  // }
 }
