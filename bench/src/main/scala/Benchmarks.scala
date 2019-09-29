@@ -30,7 +30,6 @@ object Bench {
     val iterations = if (intArgs.length > 1) intArgs(1).toInt else 20
     val forks = if (intArgs.length > 2) intArgs(2).toInt else 1
 
-
     import File.{ separator => sep }
 
     val args2 = args1.map { arg =>

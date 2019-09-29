@@ -1,10 +1,5 @@
 package dotty.tools.benchmarks
 
-import dotty.tools.dotc._
-import core.Contexts.Context
-import dotty.tools.FatalError
-import reporting._
-
 import org.openjdk.jmh.results.RunResult
 import org.openjdk.jmh.runner.Runner
 import org.openjdk.jmh.runner.options.OptionsBuilder
@@ -12,7 +7,7 @@ import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.results.format._
 import java.util.concurrent.TimeUnit
 
-import scala.runtime.DynamicTuple
+import scala.io.Source
 
 object Bench {
   def main(args: Array[String]): Unit = {
@@ -23,9 +18,9 @@ object Bench {
     val forks = if (intArgs.length > 2) intArgs(2).toInt else 1
 
     val benchmarks = if (args1.length > 0) args1(0) else ".*"
-    val outputFile = if (args1.length > 1) args1(1) else "output.csv"
+    val outputFile = if (args1.length > 2) args1(2) else "output.csv"
 
-    val opts = new OptionsBuilder()
+    var builder = new OptionsBuilder()
                .shouldFailOnError(true)
                .jvmArgs("-Xms2G", "-Xmx2G")
                .mode(Mode.AverageTime)
@@ -35,10 +30,21 @@ object Bench {
                .forks(forks)
                .include(benchmarks)
                .resultFormat(ResultFormatType.CSV)
-               .result("results/" ++ outputFile)
-               .build
+               .result(outputFile)
 
-    val runner = new Runner(opts) // full access to all JMH features, you can also provide a custom output Format here
-    runner.run() // actually run the benchmarks
+    if (args1.length > 1) {
+      for ((param, values) <- paramsFromFile(args1(1)))
+        builder = builder.param(param, values: _*)
+    }
+
+    val runner = new Runner(builder.build) // full access to all JMH features, you can also provide a custom output Format here
+    runner.run // actually run the benchmarks
+  }
+
+  def paramsFromFile(file: String): Array[(String, Array[String])] = {
+    Source.fromFile(file).getLines.toArray.map { l =>
+      val Array(param, values) = l split ':'
+      (param, values split ',')
+    }
   }
 }
