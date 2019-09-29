@@ -285,7 +285,7 @@ inline def toInt(n: Nat) <: Int = inline n match {
   case Succ(n1) => toInt(n1) + 1
 }
 
-val natTwo = toInt(Succ(Succ(Zero)))
+final val natTwo = toInt(Succ(Succ(Zero)))
 val intTwo: 2 = natTwo
 ```
 
