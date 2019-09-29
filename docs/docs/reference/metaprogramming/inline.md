@@ -309,7 +309,7 @@ inline def toIntC[N] <: Int =
     case _: S[n1] => 1 + toIntC[n1]
   }
 
-val ctwo = toIntC[2]
+final val ctwo = toIntC[2]
 ```
 
 `constValueOpt` is the same as `constValue`, however returning an `Option[T]`
