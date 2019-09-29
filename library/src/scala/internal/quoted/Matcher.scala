@@ -3,7 +3,7 @@ package scala.internal.quoted
 import scala.annotation.internal.sharable
 
 import scala.quoted._
-import scala.quoted.matching.Bind
+import scala.quoted.matching.Sym
 
 private[quoted] object Matcher {
 
@@ -12,7 +12,7 @@ private[quoted] object Matcher {
 
     private final val debug = false
 
-    import qctx.tasty.{Bind => BindPattern, _}
+    import qctx.tasty._
     import Matching._
 
     private type Env = Set[(Symbol, Symbol)]
@@ -126,7 +126,7 @@ private[quoted] object Matcher {
         }
 
         def bindingMatch(sym: Symbol) =
-          matched(new Bind(sym.name, sym))
+          matched(new Sym(sym.name, sym))
 
         (scrutinee, pattern) match {
 
