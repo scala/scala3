@@ -24,6 +24,7 @@ import util.SimpleIdentitySet
 import reporting.diagnostic.Message
 import ast.tpd._
 import ast.TreeTypeMap
+import ast.untpd
 import printing.Texts._
 import printing.Printer
 import Hashable._
@@ -39,6 +40,7 @@ import java.lang.ref.WeakReference
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
+import dotty.tools.dotc.ast.Trees.Untyped
 
 import dotty.tools.dotc.transform.SymUtils._
 
@@ -1113,7 +1115,7 @@ object Types {
      *  re-lubbing it while allowing type parameters to be constrained further.
      *  Any remaining union types are replaced by their joins.
      *
-	   *  For instance, if `A` is an unconstrained type variable, then
+	 *  For instance, if `A` is an unconstrained type variable, then
   	 *
   	 * 	      ArrayBuffer[Int] | ArrayBuffer[A]
   	 *
@@ -1122,6 +1124,8 @@ object Types {
      *
      *  Exception (if `-YexplicitNulls` is set): if this type is a nullable union (i.e. of the form `T | Null`),
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
+     *
+     *  Another exception is when there is an explicit type ascription, then the union isn't widened.
      */
     def widenUnion(implicit ctx: Context): Type = widen match {
       case tp @ OrNull(tp1): OrType =>
@@ -1136,7 +1140,14 @@ object Types {
     def widenUnionWithoutNull(implicit ctx: Context): Type = widen match {
       case tp @ OrType(lhs, rhs) =>
         ctx.typeComparer.lub(lhs.widenUnionWithoutNull, rhs.widenUnionWithoutNull, canConstrain = true) match {
-          case union: OrType => union.join
+          case union: OrType =>
+                val keepUnion = ctx.tree match {
+                  case DefDef(_, _, _, untpd.TypedSplice(_), _)   => true
+                  case ValDef(name, untpd.InfixOp(_, op, _), _)   => op.symbol == ctx.definitions.orType
+                  case _                                          => false
+                }
+                if (keepUnion) union else union.join
+
           case res => res
         }
       case tp @ AndType(tp1, tp2) =>
