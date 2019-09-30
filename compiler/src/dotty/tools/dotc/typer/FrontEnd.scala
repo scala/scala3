@@ -122,12 +122,13 @@ class FrontEnd extends Phase {
                 |
                 |  ${suspendedUnits.toList}%, %
                 |"""
+      val enableXprintSuspensionHint =
+        if (ctx.settings.XprintSuspension.value) ""
+        else "\n\nCompiling with  -Xprint-suspension   gives more information."
       ctx.error(em"""Cyclic macro dependencies $where
                     |Compilation stopped since no further progress can be made.
                     |
-                    |To fix this, place macros in one set of files and their callers in another.
-                    |
-                    |Compiling with  -Xprint-suspension   gives more information.""")
+                    |To fix this, place macros in one set of files and their callers in another.$enableXprintSuspensionHint""")
     newUnits
   }
 
