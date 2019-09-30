@@ -361,6 +361,10 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       case _ =>
     }
 
+    if (tree.isDef && tree.symbol.isTopLevelClass) // FIXME do not add these dependencies if no macro was used in this file
+      for (name <- core.MacroClassLoader.loadedClasses)
+        ctx.sbtCallback.classDependency(name, tree.symbol.showFullName, DependencyContext.LocalDependencyByInheritance)
+
     tree match {
       case Inlined(call, _, _) if !call.isEmpty =>
         // The inlined call is normally ignored by TreeTraverser but we need to
