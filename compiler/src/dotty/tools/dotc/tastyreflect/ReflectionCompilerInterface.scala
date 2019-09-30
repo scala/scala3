@@ -1458,15 +1458,11 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Symbol_flags(self: Symbol)(given Context): Flags = self.flags
 
-  def Symbol_tree(self: Symbol)(given Context): Tree = {
-    assert(!self.is(Case, butNot = Enum | Module))
+  def Symbol_tree(self: Symbol)(given Context): Tree =
     FromSymbol.definitionFromSym(self)
-  }
 
-  def Symbol_pattern(self: Symbol)(given ctx: Context): Pattern = {
-    assert(self.is(Case, butNot = Enum | Module))
+  def Symbol_pattern(self: Symbol)(given ctx: Context): Pattern =
     FromSymbol.definitionFromSym(self)
-  }
 
   def Symbol_privateWithin(self: Symbol)(given Context): Option[Type] = {
     val within = self.privateWithin
