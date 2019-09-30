@@ -630,12 +630,23 @@ class Definitions {
 
   @tu lazy val QuotedExprClass: ClassSymbol = ctx.requiredClass("scala.quoted.Expr")
   @tu lazy val QuotedExprModule: Symbol = QuotedExprClass.companionModule
+    @tu lazy val QuotedExprModule_nullExpr: Symbol = QuotedExprModule.requiredMethod(nme.nullExpr)
+    @tu lazy val QuotedExprModule_unitExpr: Symbol = QuotedExprModule.requiredMethod(nme.unitExpr)
 
   @tu lazy val QuoteContextClass: ClassSymbol = ctx.requiredClass("scala.quoted.QuoteContext")
   @tu lazy val QuoteContextModule: Symbol = QuoteContextClass.companionModule
     @tu lazy val QuoteContext_macroContext: Symbol = QuoteContextModule.requiredMethod("macroContext")
 
   @tu lazy val LiftableModule: Symbol = ctx.requiredModule("scala.quoted.Liftable")
+    @tu lazy val LiftableModule_BooleanIsLiftable: Symbol = LiftableModule.requiredMethod("BooleanIsLiftable")
+    @tu lazy val LiftableModule_ByteIsLiftable: Symbol = LiftableModule.requiredMethod("ByteIsLiftable")
+    @tu lazy val LiftableModule_ShortIsLiftable: Symbol = LiftableModule.requiredMethod("ShortIsLiftable")
+    @tu lazy val LiftableModule_IntIsLiftable: Symbol = LiftableModule.requiredMethod("IntIsLiftable")
+    @tu lazy val LiftableModule_LongIsLiftable: Symbol = LiftableModule.requiredMethod("LongIsLiftable")
+    @tu lazy val LiftableModule_FloatIsLiftable: Symbol = LiftableModule.requiredMethod("FloatIsLiftable")
+    @tu lazy val LiftableModule_DoubleIsLiftable: Symbol = LiftableModule.requiredMethod("DoubleIsLiftable")
+    @tu lazy val LiftableModule_CharIsLiftable: Symbol = LiftableModule.requiredMethod("CharIsLiftable")
+    @tu lazy val LiftableModule_StringIsLiftable: Symbol = LiftableModule.requiredMethod("StringIsLiftable")
 
   @tu lazy val InternalQuotedModule: Symbol = ctx.requiredModule("scala.internal.Quoted")
     @tu lazy val InternalQuoted_exprQuote  : Symbol = InternalQuotedModule.requiredMethod("exprQuote")
