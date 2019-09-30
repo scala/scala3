@@ -324,7 +324,7 @@ object Splicer {
       try classLoader.loadClass(name)
       catch {
         case _: ClassNotFoundException =>
-          val msg = s"Could not find class $name in classpath$extraMsg"
+          val msg = s"Could not find class $name in classpath"
           throw new StopInterpretation(msg, pos)
       }
 
@@ -332,11 +332,9 @@ object Splicer {
       try clazz.getMethod(name.toString, paramClasses: _*)
       catch {
         case _: NoSuchMethodException =>
-          val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)$extraMsg"
+          val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)"
           throw new StopInterpretation(msg, pos)
       }
-
-    private def extraMsg = ". The most common reason for that is that you apply macros in the compilation run that defines them"
 
     private def stopIfRuntimeException[T](thunk: => T, method: Method): T =
       try thunk
@@ -351,7 +349,7 @@ object Splicer {
           throw new StopInterpretation(sw.toString, pos)
         case ex: InvocationTargetException =>
           ex.getTargetException match {
-            case ClassDefinedInCurrentRun(sym) =>
+            case MissingClassDefinedInCurrentRun(sym) =>
               if (ctx.settings.XprintSuspension.value)
                 ctx.echo(i"suspension triggered by a dependency on $sym", pos)
               ctx.compilationUnit.suspend() // this throws a SuspendException
@@ -371,7 +369,7 @@ object Splicer {
           }
       }
 
-    private object ClassDefinedInCurrentRun {
+    private object MissingClassDefinedInCurrentRun {
       def unapply(targetException: NoClassDefFoundError)(given ctx: Context): Option[Symbol] = {
         val className = targetException.getMessage
         val sym = ctx.base.staticRef(className.toTypeName).symbol
