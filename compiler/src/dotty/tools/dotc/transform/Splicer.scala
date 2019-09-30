@@ -47,6 +47,8 @@ object Splicer {
         interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContext())))
       }
       catch {
+        case ex: CompilationUnit.SuspendException =>
+          throw ex
         case ex: StopInterpretation =>
           ctx.error(ex.msg, ex.pos)
           EmptyTree
@@ -348,19 +350,26 @@ object Splicer {
           sw.write("\n")
           throw new StopInterpretation(sw.toString, pos)
         case ex: InvocationTargetException =>
-          val sw = new StringWriter()
-          sw.write("Exception occurred while executing macro expansion.\n")
-          val targetException = ex.getTargetException
-          if (!ctx.settings.Ydebug.value) {
-            val end = targetException.getStackTrace.lastIndexWhere { x =>
-              x.getClassName == method.getDeclaringClass.getCanonicalName && x.getMethodName == method.getName
-            }
-            val shortStackTrace = targetException.getStackTrace.take(end + 1)
-            targetException.setStackTrace(shortStackTrace)
+          ex.getTargetException match {
+            case targetException: NoClassDefFoundError => // FIXME check that the class is beeining compiled now
+              val className = targetException.getMessage
+              if (ctx.settings.XprintSuspension.value)
+                ctx.echo(i"suspension triggered by NoClassDefFoundError($className)", pos) // TODO improve message
+              ctx.compilationUnit.suspend() // this throws a SuspendException
+            case targetException =>
+              val sw = new StringWriter()
+              sw.write("Exception occurred while executing macro expansion.\n")
+              if (!ctx.settings.Ydebug.value) {
+                val end = targetException.getStackTrace.lastIndexWhere { x =>
+                  x.getClassName == method.getDeclaringClass.getCanonicalName && x.getMethodName == method.getName
+                }
+                val shortStackTrace = targetException.getStackTrace.take(end + 1)
+                targetException.setStackTrace(shortStackTrace)
+              }
+              targetException.printStackTrace(new PrintWriter(sw))
+              sw.write("\n")
+              throw new StopInterpretation(sw.toString, pos)
           }
-          targetException.printStackTrace(new PrintWriter(sw))
-          sw.write("\n")
-          throw new StopInterpretation(sw.toString, pos)
       }
 
     /** List of classes of the parameters of the signature of `sym` */
