@@ -351,10 +351,9 @@ object Splicer {
           throw new StopInterpretation(sw.toString, pos)
         case ex: InvocationTargetException =>
           ex.getTargetException match {
-            case targetException: NoClassDefFoundError => // FIXME check that the class is beeining compiled now
-              val className = targetException.getMessage
+            case ClassDefinedInCurrentRun(sym) =>
               if (ctx.settings.XprintSuspension.value)
-                ctx.echo(i"suspension triggered by NoClassDefFoundError($className)", pos) // TODO improve message
+                ctx.echo(i"suspension triggered by a dependency on $sym", pos)
               ctx.compilationUnit.suspend() // this throws a SuspendException
             case targetException =>
               val sw = new StringWriter()
@@ -371,6 +370,14 @@ object Splicer {
               throw new StopInterpretation(sw.toString, pos)
           }
       }
+
+    private object ClassDefinedInCurrentRun {
+      def unapply(targetException: NoClassDefFoundError)(given ctx: Context): Option[Symbol] = {
+        val className = targetException.getMessage
+        val sym = ctx.base.staticRef(className.toTypeName).symbol
+        if (sym.isDefinedInCurrentRun) Some(sym) else None
+      }
+    }
 
     /** List of classes of the parameters of the signature of `sym` */
     private def paramsSig(sym: Symbol): List[Class[?]] = {
