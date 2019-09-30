@@ -985,7 +985,7 @@ object Build {
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/security" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/util" ** (("ArraysTest.scala": FileFilter) || "UUIDTest.scala" || "ThrowablesTest.scala" || "RandomTest.scala" || "PropertiesTest.scala" || "PriorityQueueTest.scala" || "HashtableTest.scala" || "DateTest.scala")).get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
-          ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/util" ** (("Base64Test.scala": FileFilter) || "OptionalTest.scala" || "SplittableRandom.scala" || "ObjectsTestOnJDK8.scala" || "ComparatorTestOnJDK8.scala")).get
+          ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/util" ** (("*.scala": FileFilter) -- "CollectionsOnCopyOnWriteArrayListTestOnJDK8.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/junit" ** (("JUnitAnnotationsTest.scala": FileFilter) || "JUnitAssumptionsTest.scala" || "JUnitAssertionsTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/niobuffer" ** (("ByteBufferFactories.scala": FileFilter) || "BufferFactory.scala" || "BufferAdapter.scala" || "BaseBufferTest.scala" || "ShortBufferTest.scala" || "LongBufferTest.scala" || "IntBufferTest.scala" || "FloatBufferTest.scala" || "DoubleBufferTest.scala" || "CharBufferTest.scala")).get
