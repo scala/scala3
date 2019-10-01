@@ -62,11 +62,6 @@ package scala.tasty.reflect
  *           +- Unapply
  *           +- Alternatives
  *
- *  +- Pattern --+- Value
-
- *               +- TypeTest
- *               +- WildcardPattern
- *
  *
  *                   +- NoPrefix
  *  +- TypeOrBounds -+- TypeBounds
