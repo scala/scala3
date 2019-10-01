@@ -25,7 +25,7 @@ class Concat {
     val size1 = sizes.split(' ')(0).toInt
     val size2 = sizes.split(' ')(1).toInt
     tuple1 = tupleOfSize(size1)
-    tuple1 = tupleOfSize(size2)
+    tuple2 = tupleOfSize(size2)
     array1 = Array.fill(size1)("elem")
     array2 = Array.fill(size2)("elem")
   }
