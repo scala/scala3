@@ -54,15 +54,13 @@ package scala.tasty.reflect
  *           |
  *           +- TypeBoundsTree
  *           +- WildcardTypeTree
+ *           |
  *           +- CaseDef
+ *           |
  *           +- TypeCaseDef
- *
- *  +- Pattern --+- Value
- *               +- Bind
- *               +- Unapply
- *               +- Alternatives
- *               +- TypeTest
- *               +- WildcardPattern
+ *           +- Bind
+ *           +- Unapply
+ *           +- Alternatives
  *
  *
  *                   +- NoPrefix
@@ -284,26 +282,14 @@ trait Core {
   /** Branch of a type pattern match */
   type TypeCaseDef = internal.TypeCaseDef
 
-  /** Pattern tree of the pattern part of a CaseDef */
-  type Pattern = internal.Pattern
+  /** Pattern representing a `_ @ _` binding. */
+  type Bind = internal.Bind
 
-    /** Pattern representing a value. This includes `1`, ```x``` and `_` */
-    type Value = internal.Value
+  /** Pattern representing a `Xyz(...)` unapply. */
+  type Unapply = internal.Unapply
 
-    /** Pattern representing a `_ @ _` binding. */
-    type Bind = internal.Bind
-
-    /** Pattern representing a `Xyz(...)` unapply. */
-    type Unapply = internal.Unapply
-
-    /** Pattern representing `X | Y | ...` alternatives. */
-    type Alternatives = internal.Alternatives
-
-    /** Pattern representing a `x: Y` type test. */
-    type TypeTest = internal.TypeTest
-
-    /** Pattern representing a `_` pattern */
-    type WildcardPattern = internal.WildcardPattern
+  /** Pattern representing `X | Y | ...` alternatives. */
+  type Alternatives = internal.Alternatives
 
   /** Type or bounds */
   type TypeOrBounds = internal.TypeOrBounds

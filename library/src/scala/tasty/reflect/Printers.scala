@@ -10,7 +10,6 @@ trait Printers
   with FlagsOps
   with IdOps
   with ImportSelectorOps
-  with PatternOps
   with PositionOps
   with SignatureOps
   with StandardDefinitions
@@ -42,19 +41,6 @@ trait Printers
     /** Shows the tree as fully typed source code */
     def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
       new SourceCodePrinter(syntaxHighlight).showTypeOrBounds(tpe)
-  }
-
-  /** Adds `show` as an extension method of a `Pattern` */
-  implicit class PatternShowDeco(pattern: Pattern) {
-    /** Shows the tree as extractors */
-    def showExtractors(given ctx: Context): String = new ExtractorsPrinter().showPattern(pattern)
-
-    /** Shows the tree as fully typed source code */
-    def show(given ctx: Context): String = show(SyntaxHighlight.plain)
-
-    /** Shows the tree as fully typed source code */
-    def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
-      new SourceCodePrinter(syntaxHighlight).showPattern(pattern)
   }
 
   /** Adds `show` as an extension method of a `Constant` */
@@ -101,8 +87,6 @@ trait Printers
 
     def showTree(tree: Tree)(given ctx: Context): String
 
-    def showPattern(pattern: Pattern)(given ctx: Context): String
-
     def showTypeOrBounds(tpe: TypeOrBounds)(given ctx: Context): String
 
     def showConstant(const: Constant)(given ctx: Context): String
@@ -117,9 +101,6 @@ trait Printers
 
     def showTree(tree: Tree)(given ctx: Context): String =
       new Buffer().visitTree(tree).result()
-
-    def showPattern(pattern: Pattern)(given ctx: Context): String =
-      new Buffer().visitPattern(pattern).result()
 
     def showTypeOrBounds(tpe: TypeOrBounds)(given ctx: Context): String =
       new Buffer().visitType(tpe).result()
@@ -271,21 +252,12 @@ trait Printers
           this += "CaseDef(" += pat += ", " += guard += ", " += body += ")"
         case TypeCaseDef(pat, body) =>
           this += "TypeCaseDef(" += pat += ", " += body += ")"
-      }
-
-      def visitPattern(x: Pattern): Buffer = x match {
-        case Pattern.Value(v) =>
-          this += "Pattern.Value(" += v += ")"
-        case Pattern.Bind(name, body) =>
-          this += "Pattern.Bind(\"" += name += "\", " += body += ")"
-        case Pattern.Unapply(fun, implicits, patterns) =>
-          this += "Pattern.Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
-        case Pattern.Alternatives(patterns) =>
-          this += "Pattern.Alternative(" ++= patterns += ")"
-        case Pattern.TypeTest(tpt) =>
-          this += "Pattern.TypeTest(" += tpt += ")"
-        case Pattern.WildcardPattern() =>
-          this += "Pattern.WildcardPattern()"
+        case Bind(name, body) =>
+          this += "Bind(\"" += name += "\", " += body += ")"
+        case Unapply(fun, implicits, patterns) =>
+          this += "Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
+        case Alternatives(patterns) =>
+          this += "Alternative(" ++= patterns += ")"
       }
 
       def visitConstant(x: Constant): Buffer = x match {
@@ -392,11 +364,6 @@ trait Printers
         def +++=(x: List[List[Tree]]): Buffer = { visitList(x, ++=); buff }
       }
 
-      private implicit class PatternOps(buff: Buffer) {
-        def +=(x: Pattern): Buffer = { visitPattern(x); buff }
-        def ++=(x: List[Pattern]): Buffer = { visitList(x, visitPattern); buff }
-      }
-
       private implicit class ConstantOps(buff: Buffer) {
         def +=(x: Constant): Buffer = { visitConstant(x); buff }
       }
@@ -458,9 +425,6 @@ trait Printers
 
     def showTree(tree: Tree)(given ctx: Context): String =
       (new Buffer).printTree(tree).result()
-
-    def showPattern(pattern: Pattern)(given ctx: Context): String =
-      (new Buffer).printPattern(pattern).result()
 
     def showTypeOrBounds(tpe: TypeOrBounds)(given ctx: Context): String =
       (new Buffer).printTypeOrBound(tpe)(given None).result()
@@ -1139,8 +1103,8 @@ trait Printers
         this
       }
 
-      def printPatterns(cases: List[Pattern], sep: String): Buffer = {
-        def printSeparated(list: List[Pattern]): Unit = list match {
+      def printPatterns(cases: List[Tree], sep: String): Buffer = {
+        def printSeparated(list: List[Tree]): Unit = list match {
           case Nil =>
           case x :: Nil => printPattern(x)
           case x :: xs =>
@@ -1323,25 +1287,22 @@ trait Printers
         this
       }
 
-      def printPattern(pattern: Pattern): Buffer = pattern match {
-        case Pattern.Value(v) =>
-          printTree(v)
-
-        case Pattern.WildcardPattern() =>
+      def printPattern(pattern: Tree): Buffer = pattern match {
+        case Ident("_") =>
           this += "_"
 
-        case Pattern.Bind(name, Pattern.WildcardPattern()) =>
+        case Bind(name, Ident("_")) =>
           this += name
 
-        case Pattern.Bind(name, Pattern.TypeTest(tpt)) =>
+        case Bind(name, Typed(Ident("_"), tpt)) =>
           this += highlightValDef(name) += ": "
           printTypeTree(tpt)
 
-        case Pattern.Bind(name, pattern) =>
+        case Bind(name, pattern) =>
           this += name += " @ "
           printPattern(pattern)
 
-        case Pattern.Unapply(fun, implicits, patterns) =>
+        case Unapply(fun, implicits, patterns) =>
           val fun2 = fun match {
             case TypeApply(fun2, _) => fun2
             case _ => fun
@@ -1356,12 +1317,15 @@ trait Printers
           }
           inParens(printPatterns(patterns, ", "))
 
-        case Pattern.Alternatives(trees) =>
+        case Alternatives(trees) =>
           inParens(printPatterns(trees, " | "))
 
-        case Pattern.TypeTest(tpt) =>
+        case Typed(Ident("_"), tpt) =>
           this += "_: "
           printTypeOrBoundsTree(tpt)
+
+        case IsTerm(v) =>
+          printTree(v)
 
         case _ =>
           throw new MatchError(pattern.showExtractors)
