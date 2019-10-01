@@ -5,6 +5,8 @@ Dotty
 [![Log Knowledge](https://img.shields.io/badge/log-knowledge-blueviolet.svg)](https://github.com/lampepfl/dotty-knowledge/issues/new/choose)
 
 
+Community build: [![Community Build Status](https://travis-ci.org/lampepfl/dotty-community-build.svg?branch=master)](https://travis-ci.org/lampepfl/dotty-community-build)
+
 * [Homepage](http://dotty.epfl.ch)
 * [Documentation](https://dotty.epfl.ch/docs) [![Deadlink Status](https://travis-ci.org/nicolasstucki/dotty-website-linkcheck.svg?branch=master)](https://travis-ci.org/nicolasstucki/dotty-website-linkcheck)
 
