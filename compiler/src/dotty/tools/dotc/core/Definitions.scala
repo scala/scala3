@@ -340,11 +340,10 @@ class Definitions {
 
   /** Method representing a throw */
   @tu lazy val throwMethod: TermSymbol = {
-    enterMethod(OpsPackageClass, nme.THROWkw, MethodType(List(mayNull(ThrowableType)), NothingType))
+    enterMethod(OpsPackageClass, nme.THROWkw, MethodType(List(maybeNull(ThrowableType)), NothingType))
   }
 
-  // TODO: where ?
-  def mayNull(typ: Type): Type = if (ctx.explicitNulls) OrType(typ, NullType) else typ
+  def maybeNull(typ: Type): Type = if (ctx.explicitNulls) OrType(typ, NullType) else typ
 
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
@@ -811,8 +810,7 @@ class Definitions {
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
   def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
-  def methOfAnyRefOrNull(tp: Type): MethodType =
-    if (ctx.explicitNulls) MethodType(List(OrType(ObjectType, NullType)), tp) else MethodType(List(ObjectType), tp)
+  def methOfAnyRefOrNull(tp: Type): MethodType = MethodType(List(maybeNull(ObjectType)), tp)
 
   // Derived types
 

@@ -4,7 +4,6 @@ package typer
 
 import core._
 import ast.{Trees, tpd, untpd}
-import util.Property
 import util.Spans._
 import util.Stats.record
 import util.{SourcePosition, NoSourcePosition, SourceFile}
@@ -37,8 +36,6 @@ import annotation.{constructorOnly, threadUnsafe}
 
 object Applications {
   import tpd._
-
-  private val FlowFactsOnTree = new Property.Key[FlowTyper.FlowFacts]
 
   def extractorMember(tp: Type, name: Name)(implicit ctx: Context): SingleDenotation =
     tp.member(name).suchThat(_.info.isParameterless)
@@ -862,14 +859,12 @@ trait Applications extends Compatibility {
       /** Type application where arguments come from prototype, and no implicits are inserted */
       def simpleApply(fun1: Tree, proto: FunProto)(implicit ctx: Context): Tree = {
         val ctx1 = if (ctx.explicitNulls) {
-          // TODO(abeln): we're re-doing work here by recomputing what's implies by the lhs of the comparison.
-          // e.g. in `A && B && C && D`, we'll recompute the facts implied by `A && B` twice.
-          // Find a more-efficient way to do this.
-          val facts = fun1.getAttachment(FlowFactsOnTree) match {
+          // The flow facts of lhs are cached in the FlowFactsOnTree attachment
+          val facts = fun1.getAttachment(Typer.FlowFactsOnTree) match {
             case Some(fs) => fs
             case None =>
               val fs = FlowTyper.inferWithinCond(fun1)
-              fun1.putAttachment(FlowFactsOnTree, fs)
+              fun1.putAttachment(Typer.FlowFactsOnTree, fs)
               fs
           }
           if (facts.isEmpty) ctx else ctx.fresh.addFlowFacts(facts)

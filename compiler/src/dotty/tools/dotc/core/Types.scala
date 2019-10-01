@@ -422,14 +422,7 @@ object Types {
         else if (rsym isSubClass lsym) rsym
         else NoSymbol
       case tp: OrType =>
-        if (ctx.explicitNulls && this.isNullableUnion) {
-          val OrType(left, _) = this.normNullableUnion
-          // If `left` is a reference type, then the class LUB of `left | Null` is `Any`.
-          // This is another one-of case that keeps this method sound, but not complete.
-          if (left.classSymbol derivesFrom defn.ObjectClass) defn.AnyClass
-          else NoSymbol
-        }
-        else tp.join.classSymbol
+        tp.join.classSymbol
       case _ =>
         NoSymbol
     }

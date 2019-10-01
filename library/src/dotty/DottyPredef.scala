@@ -39,7 +39,7 @@ object DottyPredef {
 
   inline def summon[T](given x: T): x.type = x
 
-  // extension methods for working with explicit nulls
+  // Extension methods for working with explicit nulls
 
   /** Strips away the nullability from a value.
    *  e.g.
