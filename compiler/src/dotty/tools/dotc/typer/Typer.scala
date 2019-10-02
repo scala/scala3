@@ -78,6 +78,11 @@ object Typer {
    *  search was tried on a tree. This will in some cases be reported in error messages
    */
   private[typer] val HiddenSearchFailure = new Property.Key[SearchFailure]
+
+  /** An attachment that indicates the flow-sensitive type information
+   *  inside a condition.
+   */
+  private[typer] val FlowFactsOnTree = new Property.Key[FlowFacts]
 }
 
 

@@ -300,14 +300,12 @@ class Definitions {
     @tu lazy val Object_eq: TermSymbol = {
       // If explicit nulls is enabled, then we want to allow `(x: String).eq(null)`, so we need
       // to adjust the signature of `eq` accordingly.
-      val tpe = if (ctx.explicitNulls) methOfAnyRefOrNull(BooleanType) else methOfAnyRef(BooleanType)
-      enterMethod(ObjectClass, nme.eq, tpe, Final)
+      enterMethod(ObjectClass, nme.eq, methOfAnyRefOrNull(BooleanType), Final)
     }
     @tu lazy val Object_ne: TermSymbol = {
       // If explicit nulls is enabled, then we want to allow `(x: String).ne(null)`, so we need
       // to adjust the signature of `ne` accordingly.
-      val tpe = if (ctx.explicitNulls) methOfAnyRefOrNull(BooleanType) else methOfAnyRef(BooleanType)
-      enterMethod(ObjectClass, nme.ne, tpe, Final)
+      enterMethod(ObjectClass, nme.ne, methOfAnyRefOrNull(BooleanType), Final)
     }
     @tu lazy val Object_synchronized: TermSymbol = enterPolyMethod(ObjectClass, nme.synchronized_, 1,
         pt => MethodType(List(pt.paramRefs(0)), pt.paramRefs(0)), Final)
@@ -342,8 +340,7 @@ class Definitions {
 
   /** Method representing a throw */
   @tu lazy val throwMethod: TermSymbol = {
-    val argTpe = if (ctx.explicitNulls) OrType(ThrowableType, NullType) else ThrowableType
-    enterMethod(OpsPackageClass, nme.THROWkw, MethodType(List(argTpe), NothingType))
+    enterMethod(OpsPackageClass, nme.THROWkw, MethodType(List(ThrowableType.maybeNullable), NothingType))
   }
 
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
@@ -351,8 +348,8 @@ class Definitions {
   def NothingType: TypeRef = NothingClass.typeRef
   @tu lazy val RuntimeNothingModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Nothing")
   @tu lazy val NullClass: ClassSymbol = {
-    val parents = List(if (ctx.explicitNulls) AnyType else ObjectType)
-    enterCompleteClassSymbol(ScalaPackageClass, tpnme.Null, AbstractFinal, parents)
+    val parent = if (ctx.explicitNulls) AnyType else ObjectType
+    enterCompleteClassSymbol(ScalaPackageClass, tpnme.Null, AbstractFinal, parent :: Nil)
   }
   def NullType: TypeRef = NullClass.typeRef
   @tu lazy val RuntimeNullModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Null")
@@ -371,10 +368,7 @@ class Definitions {
     assert(ctx.explicitNulls)
     enterAliasType(tpnme.JavaNull, NullType)
   }
-  def JavaNullAliasType: TypeRef = {
-    assert(ctx.explicitNulls)
-    JavaNullAlias.typeRef
-  }
+  def JavaNullAliasType: TypeRef = JavaNullAlias.typeRef
 
   @tu lazy val ImplicitScrutineeTypeSym =
     newSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
@@ -814,8 +808,7 @@ class Definitions {
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
   def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
-  def methOfAnyRef(tp: Type): MethodType = MethodType(List(ObjectType), tp)
-  def methOfAnyRefOrNull(tp: Type): MethodType = MethodType(List(OrType(ObjectType, NullType)), tp)
+  def methOfAnyRefOrNull(tp: Type): MethodType = MethodType(List(ObjectType.maybeNullable), tp)
 
   // Derived types
 
@@ -975,23 +968,18 @@ class Definitions {
       name.length > prefix.length &&
       name.drop(prefix.length).forall(_.isDigit))
 
-  def isBottomClass(cls: Symbol): Boolean = {
+  def isBottomClass(cls: Symbol): Boolean =
     if (ctx.explicitNulls && !ctx.phase.erasedTypes) cls == NothingClass
     else isBottomClassAfterErasure(cls)
-  }
 
-  def isBottomClassAfterErasure(cls: Symbol): Boolean = {
-    cls == NothingClass || cls == NullClass
-  }
+  def isBottomClassAfterErasure(cls: Symbol): Boolean = cls == NothingClass || cls == NullClass
 
-  def isBottomType(tp: Type): Boolean = {
+  def isBottomType(tp: Type): Boolean =
     if (ctx.explicitNulls && !ctx.phase.erasedTypes) tp.derivesFrom(NothingClass)
     else isBottomTypeAfterErasure(tp)
-  }
 
-  def isBottomTypeAfterErasure(tp: Type): Boolean = {
+  def isBottomTypeAfterErasure(tp: Type): Boolean =
     tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
-  }
 
   /** Is a function class.
    *   - FunctionXXL
@@ -1087,10 +1075,7 @@ class Definitions {
 
   val PredefImportFns: List[RootRef] = List[RootRef](
     (() => ScalaPredefModule.termRef, true),
-    (() => DottyPredefModule.termRef, false),
-    // TODO(abeln): is this in the right place?
-    // And is it ok to import this unconditionally?
-    (() => ctx.requiredModuleRef("scala.ExplicitNullsOps"), false)
+    (() => DottyPredefModule.termRef, false)
   )
 
   @tu lazy val RootImportFns: List[RootRef] =

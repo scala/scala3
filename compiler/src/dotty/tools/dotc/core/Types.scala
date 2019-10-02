@@ -422,14 +422,7 @@ object Types {
         else if (rsym isSubClass lsym) rsym
         else NoSymbol
       case tp: OrType =>
-        if (ctx.explicitNulls && this.isNullableUnion) {
-          val OrType(left, _) = this.normNullableUnion
-          // If `left` is a reference type, then the class LUB of `left | Null` is `Any`.
-          // This is another one-of case that keeps this method sound, but not complete.
-          if (left.classSymbol isSubClass defn.ObjectClass) defn.AnyClass
-          else NoSymbol
-        }
-        else tp.join.classSymbol
+        tp.join.classSymbol
       case _ =>
         NoSymbol
     }
@@ -1807,9 +1800,6 @@ object Types {
     def isType: Boolean = isInstanceOf[TypeRef]
     def isTerm: Boolean = isInstanceOf[TermRef]
 
-    /** Is this type known to be non-null from flow typing (only applicable to TermRefs) ? */
-    def isNonNull: Boolean = isInstanceOf[NonNullTermRef]
-
     /** If designator is a name, this name. Otherwise, the original name
      *  of the designator symbol.
      */
@@ -1903,24 +1893,18 @@ object Types {
       else computeDenot
     }
 
-    private def computeDenot(implicit ctx: Context): Denotation = {
+    protected def finish(d: Denotation)(implicit ctx: Context): Denotation = {
+      if (d.exists)
+        // Avoid storing NoDenotations in the cache - we will not be able to recover from
+        // them. The situation might arise that a type has NoDenotation in some later
+        // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
+        // is undefined after erasure.) We need to be able to do time travel back and
+        // forth also in these cases.
+        setDenot(d)
+      d
+    }
 
-      def finish(d: Denotation): Denotation = {
-        if (d.exists) {
-          val d1 = if (ctx.explicitNulls && isNonNull) {
-            // If the denotation is computed for the first time, or if it's ever updated, make sure
-            // that the `info` is non-null.
-            d.mapInfo(_.stripNull)
-          } else d
-          // Avoid storing NoDenotations in the cache - we will not be able to recover from
-          // them. The situation might arise that a type has NoDenotation in some later
-          // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
-          // is undefined after erasure.) We need to be able to do time travel back and
-          // forth also in these cases.
-          setDenot(d1)
-          d1
-        } else d
-      }
+    private def computeDenot(implicit ctx: Context): Denotation = {
 
       def fromDesignator = designator match {
         case name: Name =>
@@ -2220,7 +2204,7 @@ object Types {
 
     /** A reference like this one, but with the given symbol, if it exists */
     final def withSym(sym: Symbol)(implicit ctx: Context): ThisType =
-      if ((designator ne sym) && sym.exists) namedType(prefix, sym, isNonNull).asInstanceOf[ThisType]
+      if ((designator ne sym) && sym.exists) newLikeThis(prefix, sym).asInstanceOf[ThisType]
       else this
 
     /** A reference like this one, but with the given denotation, if it exists.
@@ -2267,10 +2251,10 @@ object Types {
           d = disambiguate(d,
                 if (lastSymbol.signature == Signature.NotAMethod) Signature.NotAMethod
                 else lastSymbol.asSeenFrom(prefix).signature)
-        namedType(prefix, name, d, isNonNull)
+        newLikeThis(prefix, name, d)
       }
       if (prefix eq this.prefix) this
-      else if (lastDenotation == null) namedType(prefix, designator, isNonNull)
+      else if (lastDenotation == null) newLikeThis(prefix, designator)
       else designator match {
         case sym: Symbol =>
           if (infoDependsOnPrefix(sym, prefix) && !prefix.isArgPrefixOf(sym)) {
@@ -2279,10 +2263,10 @@ object Types {
               // A false override happens if we rebind an inner class to another type with the same name
               // in an outer subclass. This is wrong, since classes do not override. We need to
               // return a type with the existing class info as seen from the new prefix instead.
-            if (falseOverride) namedType(prefix, sym.name, denot.asSeenFrom(prefix), isNonNull)
+            if (falseOverride) newLikeThis(prefix, sym.name, denot.asSeenFrom(prefix))
             else candidate
           }
-          else namedType(prefix, sym, isNonNull)
+          else newLikeThis(prefix, sym)
         case name: Name => reload()
       }
     }
@@ -2306,17 +2290,11 @@ object Types {
 
     override def eql(that: Type): Boolean = this eq that // safe because named types are hash-consed separately
 
-    /** Like `NamedType.apply`, but can create `NonNullTermRef`s. */
-    private def namedType(prefix: Type, designator: Designator, isNonNull: Boolean)(implicit ctx: Context): NamedType = {
-      if (ctx.explicitNulls && isNonNull) NonNullTermRef.apply(prefix, designator)
-      else NamedType.apply(prefix, designator)
-    }
+    protected def newLikeThis(prefix: Type, designator: Designator)(implicit ctx: Context): NamedType =
+      NamedType(prefix, designator)
 
-    /** Like `NamedType.apply`, but can create `NonNullTermRef`s. */
-    private def namedType(prefix: Type, designator: Name, denot: Denotation, isNonNull: Boolean)(implicit ctx: Context): NamedType = {
-      if (ctx.explicitNulls && isNonNull) NonNullTermRef.apply(prefix, designator.asTermName, denot)
-      else NamedType.apply(prefix, designator, denot)
-    }
+    protected def newLikeThis(prefix: Type, designator: Name, denot: Denotation)(implicit ctx: Context): NamedType =
+      NamedType(prefix, designator, denot)
   }
 
   /** A reference to an implicit definition. This can be either a TermRef or a
@@ -2399,8 +2377,21 @@ object Types {
   final class NonNullTermRef(prefix: Type, designator: Designator) extends TermRef(prefix, designator) {
     override type ThisType = NonNullTermRef
 
-    // This class has no custom members: it's just used as a marker (via `isInstanceOf`) within
-    // `NamedType` to identify `TermRef`s that are non-nullable.
+    override protected def finish(d: Denotation)(implicit ctx: Context): Denotation =
+      // If the denotation is computed for the first time, or if it's ever updated, make sure
+      // that the `info` is non-null.
+      super.finish(d.mapInfo(_.stripNull))
+
+    override protected def newLikeThis(prefix: Type, designator: Designator)(implicit ctx: Context): NamedType =
+      NonNullTermRef(prefix, designator)
+
+    override protected def newLikeThis(prefix: Type, designator: Name, denot: Denotation)(implicit ctx: Context): NamedType =
+      NonNullTermRef(prefix, designator.asTermName, denot)
+
+    override def eql(that: Type): Boolean = that match {
+      case that: NonNullTermRef => (this.prefix eq that.prefix) && (this.designator eq that.designator)
+      case _ => false
+    }
   }
 
   final class CachedTypeRef(prefix: Type, designator: Designator, hc: Int) extends TypeRef(prefix, designator) {

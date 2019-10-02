@@ -680,9 +680,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     def doShow(s: Space, mergeList: Boolean = false): String = s match {
       case Empty => ""
-      case Typ(c: ConstantType, _) =>
-        val v = c.value.value
-        if (v == null) "null" else "" + v
+      case Typ(c: ConstantType, _) => "" + c.value.value
       case Typ(tp: TermRef, _) => tp.symbol.showName
       case Typ(tp, decomposed) =>
         val sym = tp.widen.classSymbol
@@ -784,9 +782,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     if (!redundancyCheckable(sel)) return
 
     val targetSpace =
-      if (ctx.explicitNulls) Typ(selTyp, true)
-      else if (selTyp.classSymbol.isPrimitiveValueClass) Typ(selTyp, true)
-      else Or(Typ(selTyp, true) :: constantNullSpace :: Nil)
+      if (ctx.explicitNulls || selTyp.classSymbol.isPrimitiveValueClass)
+        Typ(selTyp, true)
+      else
+        Or(Typ(selTyp, true) :: constantNullSpace :: Nil)
 
     // in redundancy check, take guard as false in order to soundly approximate
     def projectPrevCases(cases: List[CaseDef]): Space =
@@ -821,8 +820,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         // If explicit nulls are enabled, this check isn't needed because most of the cases
         // that would trigger it would also trigger unreachability warnings.
         if (!ctx.explicitNulls && i == cases.length - 1 && !isNullLit(pat) ) {
-          val simpl = simplify(minus(covered, prevs))
-          simpl match {
+          simplify(minus(covered, prevs)) match {
             case Typ(`constantNullType`, _) =>
               ctx.warning(MatchCaseOnlyNullWarning(), pat.sourcePos)
             case _ =>
