@@ -1000,6 +1000,7 @@ object Build {
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/junit" ** (("*.scala": FileFilter) -- "JUnitAnnotationsParamTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/niobuffer" ** (("*.scala": FileFilter)  -- "ByteBufferTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/niocharset" ** (("*.scala": FileFilter)  -- "BaseCharsetTest.scala" -- "Latin1Test.scala" -- "USASCIITest.scala" -- "UTF16Test.scala" -- "UTF8Test.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/scalalib" ** (("*.scala": FileFilter)  -- "ArrayBuilderTest.scala" -- "ClassTagTest.scala" -- "EnumerationTest.scala" -- "RangesTest.scala" -- "SymbolTest.scala")).get
           ++ (dir / "shared/src/test/require-sam" ** (("*.scala": FileFilter) -- "SAMTest.scala")).get
         )
