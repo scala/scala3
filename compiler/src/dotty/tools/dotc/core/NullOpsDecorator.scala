@@ -56,7 +56,7 @@ object NullOpsDecorator {
       case _ => false
     }
 
-    def maybeNull(implicit ctx: Context): Type =
+    def maybeNullable(implicit ctx: Context): Type =
       if (ctx.explicitNulls) OrType(self, defn.NullType) else self
 
     /** Normalizes unions so that all `Null`s (or aliases to `Null`) appear to the right of all other types.
