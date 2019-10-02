@@ -1077,13 +1077,17 @@ object Types {
           }
         if (ctx.explicitNulls) {
           // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
-          val (ttp, hasNull, hasJavaNull) = tp.findAndStripNull
-          if (hasNull || hasJavaNull) {
-            val ttp1 = ttp.widenUnion
-            val ttp2 = if (hasNull) OrType(ttp1, defn.NullType) else ttp1
-            if (hasJavaNull) OrType(ttp2, defn.JavaNullAliasType) else ttp2
+          tp.normNullableUnion match {
+            // If it is a nullable union
+            case OrType(lhs, rhs) if rhs.isNullType =>
+              lhs match {
+                case OrType(llhs, lrhs) if lrhs.isNullType =>
+                  OrType(OrType(llhs.widenUnion, lrhs), rhs)
+                case _ =>
+                  OrType(lhs.widenUnion, rhs)
+              }
+            case _ => defaultp
           }
-          else defaultp
         }
         else defaultp
       case tp @ AndType(tp1, tp2) =>
