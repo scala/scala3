@@ -4,6 +4,6 @@ class Foo {
   def foo1: Unit = {
     val x: Null | Null | Null = ???
     if (x == null) return ()
-    val y = x.length
+    val y = x.length // error: x: Null is inferred
   }
 }
