@@ -372,8 +372,11 @@ object Splicer {
     private object MissingClassDefinedInCurrentRun {
       def unapply(targetException: NoClassDefFoundError)(given ctx: Context): Option[Symbol] = {
         val className = targetException.getMessage
-        val sym = ctx.base.staticRef(className.toTypeName).symbol
-        if (sym.isDefinedInCurrentRun) Some(sym) else None
+        if (className eq null) None
+        else {
+          val sym = ctx.base.staticRef(className.toTypeName).symbol
+          if (sym.isDefinedInCurrentRun) Some(sym) else None
+        }
       }
     }
 
