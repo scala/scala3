@@ -1068,18 +1068,24 @@ object Types {
      *  Exception (if `-YexplicitNulls` is set): if this type is a nullable union (i.e. of the form `T | Null`),
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
-    def widenUnion(implicit ctx: Context): Type = widen match {
+     def widenUnion(implicit ctx: Context): Type = widen match {
       case tp @ OrType(tp1, tp2) =>
-        if (ctx.explicitNulls && tp.isNullableUnion) {
-          // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
-          val OrType(leftTpe, nullTpe) = tp.normNullableUnion
-          OrType(leftTpe.widenUnion, nullTpe)
-        } else {
+        lazy val defaultp =
           ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
             case union: OrType => union.join
             case res => res
           }
+        if (ctx.explicitNulls) {
+          // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
+          val (ttp, hasNull, hasJavaNull) = tp.findAndStripNull
+          if (hasNull || hasJavaNull) {
+            val ttp1 = ttp.widenUnion
+            val ttp2 = if (hasNull) OrType(ttp1, defn.NullType) else ttp1
+            if (hasJavaNull) OrType(ttp2, defn.JavaNullAliasType) else ttp2
+          }
+          else defaultp
         }
+        else defaultp
       case tp @ AndType(tp1, tp2) =>
         tp derived_& (tp1.widenUnion, tp2.widenUnion)
       case tp: RefinedType =>

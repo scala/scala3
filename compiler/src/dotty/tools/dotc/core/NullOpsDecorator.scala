@@ -8,16 +8,35 @@ import dotty.tools.dotc.core.Types.{AndType, ClassInfo, ConstantType, OrType, Ty
 object NullOpsDecorator {
 
   implicit class NullOps(val self: Type) {
+    def findAndStripNull(implicit ctx: Context): (Type, Boolean, Boolean) = {
+      var hasNull = false
+      var hasJavaNull = false
+      def strip(tp: Type): Type = tp match {
+        case OrType(lhs, rhs) =>
+          val llhs = strip(lhs)
+          val rrhs = strip(rhs)
+          if (rrhs.isNullType) llhs
+          else if (llhs.isNullType) rrhs
+          else if ((lhs eq llhs) && (rhs eq rrhs)) tp
+          else OrType(llhs, rrhs)
+        case _ =>
+          if (tp.isNullType) {
+            if (tp.isJavaNullType) hasJavaNull = true
+            else hasNull = true
+          }
+          tp
+      }
+      (strip(self), hasNull, hasJavaNull)
+    }
+
     /** Is this type a reference to `Null`, possibly after aliasing? */
     def isNullType(implicit ctx: Context): Boolean = self.isRef(defn.NullClass)
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */
     def isNullableUnion(implicit ctx: Context): Boolean = {
       assert(ctx.explicitNulls)
-      self.widenDealias.normNullableUnion match {
-        case OrType(_, right) => right.isNullType
-        case _ => false
-      }
+      val (_, hasNull, hasJavaNull) = self.widenDealias.findAndStripNull
+      hasNull || hasJavaNull
     }
 
     /** Is this type exactly `JavaNull` (no vars, aliases, refinements etc allowed)? */
@@ -32,17 +51,8 @@ object NullOpsDecorator {
     /** Is self (after widening and dealiasing) a type of the form `T | JavaNull`? */
     def isJavaNullableUnion(implicit ctx: Context): Boolean = {
       assert(ctx.explicitNulls)
-      def peelOff(tpe: Type): Boolean = tpe match {
-        case OrType(left, right) =>
-          right.isJavaNullType || right.isNullType && peelOff(left)
-        case _ => false
-      }
-      val norm = self.widenDealias.normNullableUnion
-      // We can't just look at the r.h.s of the normalized union.
-      // The problem is that after normalizing we could get a type like `(String | JavaNull) | Null`,
-      // where the r.h.s of the union isn't a `JavaNull`, but if we keep peeling nulls off starting
-      // from the right we'll eventually get to the `JavaNull`.
-      peelOff(norm)
+      val (_, _, hasJavaNull) = self.widenDealias.findAndStripNull
+      hasJavaNull
     }
 
     /** Is this type guaranteed not to have `null` as a value? */
@@ -63,46 +73,52 @@ object NullOpsDecorator {
      *  In the process, it also flattens the type so that there are no nested unions at the top level.
      *  e.g. `Null | (T1 | Null) | T2` => `T1 | T2 | Null | Null`
      */
+    // def normNullableUnion(implicit ctx: Context): Type = {
+    //   assert(ctx.explicitNulls)
+    //   def split(tp: Type, nonNull: List[Type], nll: List[Type]): (List[Type], List[Type]) = {
+    //     tp match {
+    //       case OrType(left, right) =>
+    //         // Recurse on the right first so we get the types in pre-order.
+    //         val (nonNull1, nll1) = split(right, nonNull, nll)
+    //         split(left, nonNull1, nll1)
+    //       case _ =>
+    //         if (tp.isNullType) (nonNull, tp :: nll) else (tp :: nonNull, nll)
+    //     }
+    //   }
+    //   val (nonNull, nll) = split(self, Nil, Nil)
+    //   val all = nonNull ++ nll
+    //   assert(all.nonEmpty)
+    //   all.tail.foldLeft(all.head)(OrType.apply)
+    // }
+
     def normNullableUnion(implicit ctx: Context): Type = {
-      assert(ctx.explicitNulls)
-      def split(tp: Type, nonNull: List[Type], nll: List[Type]): (List[Type], List[Type]) = {
-        tp match {
-          case OrType(left, right) =>
-            // Recurse on the right first so we get the types in pre-order.
-            val (nonNull1, nll1) = split(right, nonNull, nll)
-            split(left, nonNull1, nll1)
-          case _ =>
-            if (tp.isNullType) (nonNull, tp :: nll) else (tp :: nonNull, nll)
-        }
-      }
-      val (nonNull, nll) = split(self, Nil, Nil)
-      val all = nonNull ++ nll
-      assert(all.nonEmpty)
-      all.tail.foldLeft(all.head)(OrType.apply)
+      val (tp, hasNull, hasJavaNull) = findAndStripNull
+      val tp1 = if (hasNull) OrType(tp, defn.NullType) else tp
+      if (hasJavaNull) OrType(tp1, defn.JavaNullAliasType) else tp1
     }
 
     /** Strips `Null` from type unions in this type.
      *  @param onlyJavaNull if true, we delete only `JavaNull` and not vanilla `Null`.
      */
-    private def stripNullImpl(onlyJavaNull: Boolean)(implicit ctx: Context): Type = {
-      assert(ctx.explicitNulls)
-      def strip(tp: Type, changed: Boolean): (Type, Boolean) = {
-        tp match {
-          case OrType(left, right) if right.isNullType =>
-            if (!onlyJavaNull || right.isJavaNullType) strip(left, changed = true)
-            else {
-              val (tp1, changed1) = strip(left, changed)
-              (OrType(tp1, right), changed1)
-            }
-          case _ => (tp, changed)
-        }
-      }
-      // If there are no `Null`s to strip off, try to keep the method a no-op
-      // by keeping track of whether the result has changed.
-      // Otherwise, we would widen and dealias as a side effect.
-      val (tp, diff) = strip(self.widenDealias.normNullableUnion, changed = false)
-      if (diff) tp else self
-    }
+    // private def stripNullImpl(onlyJavaNull: Boolean)(implicit ctx: Context): Type = {
+    //   assert(ctx.explicitNulls)
+    //   def strip(tp: Type, changed: Boolean): (Type, Boolean) = {
+    //     tp match {
+    //       case OrType(left, right) if right.isNullType =>
+    //         if (!onlyJavaNull || right.isJavaNullType) strip(left, changed = true)
+    //         else {
+    //           val (tp1, changed1) = strip(left, changed)
+    //           (OrType(tp1, right), changed1)
+    //         }
+    //       case _ => (tp, changed)
+    //     }
+    //   }
+    //   // If there are no `Null`s to strip off, try to keep the method a no-op
+    //   // by keeping track of whether the result has changed.
+    //   // Otherwise, we would widen and dealias as a side effect.
+    //   val (tp, diff) = strip(self.widenDealias.normNullableUnion, changed = false)
+    //   if (diff) tp else self
+    // }
 
     /** Syntactically strips the nullability from this type. If the normalized form (as per `normNullableUnion`)
      *  of this type is `T1 | ... | Tk | ... | Tn`, and all types in the range `Tk ... Tn` are references to `Null`,
@@ -111,13 +127,15 @@ object NullOpsDecorator {
      */
     def stripNull(implicit ctx: Context): Type = {
       assert(ctx.explicitNulls)
-      stripNullImpl(onlyJavaNull = false)
+      val (tp, _, _) = self.widenDealias.findAndStripNull
+      tp
     }
 
     /** Like `stripNull`, but removes only the `JavaNull`s. */
     def stripJavaNull(implicit ctx: Context): Type = {
       assert(ctx.explicitNulls)
-      stripNullImpl(onlyJavaNull = true)
+      val (tp, hasNull, _) = self.widenDealias.findAndStripNull
+      if (hasNull) OrType(tp, defn.NullType) else tp
     }
 
     /** Collapses all `JavaNull` unions within this type, and not just the outermost ones (as `stripJavaNull` does).
