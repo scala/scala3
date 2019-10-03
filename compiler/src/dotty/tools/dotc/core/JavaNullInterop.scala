@@ -56,53 +56,28 @@ object JavaNullInterop {
     assert(ctx.explicitNulls)
     assert(sym.is(JavaDefined), "can only nullify java-defined members")
 
-    // A list of "policies" that special-case certain members.
-    // The policies should be disjoint: we use the first one that is applicable.
-    val whitelist: Seq[NullifyPolicy] = Seq(
-      // The `TYPE` field in every class: don't nullify.
-      NoOpPolicy(_.name == nme.TYPE_),
-      // The `toString` method: don't nullify the return type.
-      paramsOnlyPolicy(_.name == nme.toString_),
-      // Constructors: params are nullified, but the result type isn't.
-      paramsOnlyPolicy(_.isConstructor),
-      // Java enum instances: don't nullify.
-      NoOpPolicy(_.isAllOf(Flags.JavaEnumValue))
-    )
-
-    whitelist.find(_.isApplicable(sym)) match {
-      case Some(pol) => pol(tp)
-      case None => nullifyType(tp) // default case: nullify everything
-    }
+    // Some special cases when nullifying the type
+    if (sym.name == nme.TYPE_ || sym.isAllOf(Flags.JavaEnumValue))
+      // Don't nullify the `TYPE` field in every class and Java enum instances
+      tp
+    else if (sym.name == nme.toString_ || sym.isConstructor)
+      // Don't nullify the return type of the `toString` method and constructors
+      nullifyParamsOnly(tp)
+    else
+      // Otherwise, nullify everything
+      nullifyType(tp)
   }
 
-  /** A policy that special cases the handling of some symbol. */
-  private sealed trait NullifyPolicy {
-    /** Whether the policy applies to `sym`. */
-    def isApplicable(sym: Symbol): Boolean
-    /** Nullifies `tp` according to the policy. Should call `isApplicable` first. */
-    def apply(tp: Type): Type
-  }
-
-  /** A policy that leaves the passed-in type unchanged. */
-  private case class NoOpPolicy(trigger: Symbol => Boolean) extends NullifyPolicy {
-    override def isApplicable(sym: Symbol): Boolean = trigger(sym)
-
-    override def apply(tp: Type): Type = tp
-  }
-
-  /** A policy for handling a method or poly.
-   *  @param trigger determines whether the policy applies to a given symbol.
-   *  @param nnParams the indices of the method parameters that should be considered "non-null" (should not be nullified).
+  /** A Nullifier for handling a method or poly.
+   *  @param nnParams the indices of the method parameters that should be considered
+   *    "non-null" (should not be nullified).
    *  @param nnRes whether the result type should be nullified.
    *
    *  For the purposes of both `nnParams` and `nnRes`, when a parameter or return type is not nullified,
    *  this applies only at the top level. e.g. suppose we have a Java result type `Array[String]` and `nnRes` is set.
    *  Scala will see `Array[String|JavaNull]`; the array element type is still nullified.
    */
-  private case class MethodPolicy(trigger: Symbol => Boolean,
-                                  nnParams: Seq[Int],
-                                  nnRes: Boolean)(implicit ctx: Context) extends TypeMap with NullifyPolicy {
-    override def isApplicable(sym: Symbol): Boolean = trigger(sym)
+  private case class MethodNullifier(nnParams: Seq[Int], nnRes: Boolean)(implicit ctx: Context) extends TypeMap {
 
     private def spare(tp: Type): Type = {
       nullifyType(tp).stripNull
@@ -125,10 +100,9 @@ object JavaNullInterop {
     }
   }
 
-  /** A policy that nullifies only method parameters (but not result types). */
-  private def paramsOnlyPolicy(trigger: Symbol => Boolean)(implicit ctx: Context): MethodPolicy = {
-    MethodPolicy(trigger, nnParams = Seq.empty, nnRes = true)
-  }
+  /** Only nullify method parameters (but not result types). */
+  private def nullifyParamsOnly(tp: Type)(implicit ctx: Context): Type =
+    MethodNullifier(nnParams = Seq.empty, nnRes = true)(ctx)(tp)
 
   /** Nullifies a Java type by adding `| JavaNull` in the relevant places. */
   private def nullifyType(tpe: Type)(implicit ctx: Context): Type = {
