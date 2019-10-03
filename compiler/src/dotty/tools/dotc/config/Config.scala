@@ -160,6 +160,9 @@ object Config {
   /** Assume -indent by default */
   final val defaultIndent = true
 
+  /** Assume indentation is significant after a class, object, ... signature */
+  final val silentTemplateIdent = true
+
   /** If set, prints a trace of all symbol completions */
   final val showCompletions = false
 

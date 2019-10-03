@@ -26,6 +26,7 @@ import Decorators._
 import scala.internal.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
+import config.Config.silentTemplateIdent
 
 object Parsers {
 
@@ -616,6 +617,7 @@ object Parsers {
 
     /** If indentation is not significant, check that this is not the start of a
      *  statement that's indented relative to the current region.
+     *  TODO: Drop if `with` is required before indented template definitions.
      */
     def checkNextNotIndented(): Unit = in.currentRegion match
       case r: IndentSignificantRegion if in.isNewLine =>
@@ -1249,10 +1251,14 @@ object Parsers {
       newLineOptWhenFollowedBy(LBRACE)
     }
 
-    def possibleTemplateStart(): Unit = {
-      in.observeIndented()
+    def possibleTemplateStart(): Unit =
+      if in.token == WITH then
+        in.nextToken()
+        if in.token != LBRACE && in.token != INDENT then
+          syntaxError(i"indented definitions or `{' expected")
+      else if silentTemplateIdent then
+        in.observeIndented()
       newLineOptWhenFollowedBy(LBRACE)
-    }
 
     def indentRegion[T](tag: EndMarkerTag)(op: => T): T = {
       val iw = in.currentRegion.indentWidth
@@ -2125,7 +2131,8 @@ object Parsers {
       }
     }
 
-    /** SimpleExpr    ::= ‘new’ (ConstrApp {`with` ConstrApp} [TemplateBody] | TemplateBody)
+    /** SimpleExpr    ::=  ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
+     *                  |  ‘new’ TemplateBody
      */
     def newExpr(): Tree =
       indentRegion(NEW) {
@@ -2133,17 +2140,11 @@ object Parsers {
         def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
         possibleBracesStart()
         val parents =
-          if (in.isNestedStart) Nil
-          else constrApp() :: {
-            if (in.token == WITH) {
-              // Enable this for 3.1, when we drop `with` for inheritance:
-              //   in.errorUnlessInScala2Mode(
-              //     "anonymous class with multiple parents is no longer supported; use a named class instead")
-              in.nextToken()
-              tokenSeparated(WITH, constrApp)
-            }
-            else Nil
-          }
+          if in.token == WITH then
+            possibleTemplateStart()
+            Nil
+          else if in.token == LBRACE then Nil
+          else constrApps(commaOK = false, templateCanFollow = true)
         possibleBracesStart()
         parents match {
           case parent :: Nil if !in.isNestedStart =>
@@ -3325,7 +3326,7 @@ object Parsers {
       val parents =
         if (in.token == EXTENDS) {
           in.nextToken()
-          tokenSeparated(WITH, constrApp)
+          constrApps(commaOK = true, templateCanFollow = false)
         }
         else Nil
       Template(constr, parents, Nil, EmptyValDef, Nil)
@@ -3375,6 +3376,7 @@ object Parsers {
           if in.token == COLON then
             in.nextToken()
             if in.token == LBRACE
+               || in.token == WITH
                || in.token == LBRACKET
                || in.token == LPAREN && followingIsParamOrGivenType()
             then
@@ -3387,7 +3389,7 @@ object Parsers {
               syntaxError("`<:' is only allowed for given with `inline' modifier")
             in.nextToken()
             TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
-          else if name.isEmpty && in.token != LBRACE then
+          else if name.isEmpty && in.token != LBRACE && in.token != WITH then
             tokenSeparated(COMMA, constrApp)
           else Nil
 
@@ -3423,23 +3425,29 @@ object Parsers {
       if in.token == LPAREN then parArgumentExprss(wrapNew(t)) else t
     }
 
-    /** ConstrApps ::=  ConstrApp {‘with’ ConstrApp}  (to be deprecated in 3.1)
-     *               |  ConstrApp {‘,’ ConstrApp}
+    /** ConstrApps  ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
      */
-    def constrApps(): List[Tree] = {
+    def constrApps(commaOK: Boolean, templateCanFollow: Boolean): List[Tree] =
       val t = constrApp()
       val ts =
-        if (in.token == WITH) {
+        if in.token == WITH then
           in.nextToken()
-          tokenSeparated(WITH, constrApp)
-        }
-        else if (in.token == COMMA) {
+          if templateCanFollow && (in.token == LBRACE || in.token == INDENT) then Nil
+          else
+            if (in.isScala2Mode || in.oldSyntax) && in.isAfterLineEnd then
+              // Disallow
+              //
+              // extends p1 with
+              //         p2
+              //
+              // since that means something else under significant indentation
+              in.errorOrMigrationWarning("`with` cannot be followed by new line, place at beginning of next line instead")
+            constrApps(commaOK, templateCanFollow)
+        else if commaOK && in.token == COMMA then
           in.nextToken()
-          tokenSeparated(COMMA, constrApp)
-        }
+          constrApps(commaOK, templateCanFollow)
         else Nil
       t :: ts
-    }
 
     /** InheritClauses ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
      */
@@ -3451,7 +3459,7 @@ object Parsers {
             in.errorOrMigrationWarning("`extends' must be followed by at least one parent")
             Nil
           }
-          else constrApps()
+          else constrApps(commaOK = true, templateCanFollow = true)
         }
         else Nil
       val derived =
@@ -3490,7 +3498,8 @@ object Parsers {
           checkNextNotIndented()
           Template(constr, Nil, Nil, EmptyValDef, Nil)
 
-    /** TemplateBody ::= [nl] `{' TemplateStatSeq `}'
+    /** TemplateBody ::= [nl | `with'] `{' TemplateStatSeq `}'
+     *  EnumBody     ::=  [nl | ‘with’] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
      */
     def templateBodyOpt(constr: DefDef, parents: List[Tree], derived: List[Tree]): Template =
       val (self, stats) =
@@ -3518,7 +3527,7 @@ object Parsers {
       case x: RefTree => atSpan(start, pointOffset(pkg))(PackageDef(x, stats))
     }
 
-    /** Packaging ::= package QualId [nl] `{' TopStatSeq `}'
+    /** Packaging ::= package QualId [nl | `with'] `{' TopStatSeq `}'
      */
     def packaging(start: Int): Tree = {
       val pkg = qualId()

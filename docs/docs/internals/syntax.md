@@ -219,7 +219,8 @@ SimpleExpr        ::=  Path
                     |  ‘$’ ‘{’ Block ‘}’
                     |  Quoted
                     |  quoteId     // only inside splices
-                    |  ‘new’ (ConstrApp [TemplateBody] | TemplateBody)          New(constr | templ)
+                    |  ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]        New(constr | templ)
+                    |  ‘new’ TemplateBody
                     |  ‘(’ ExprsInParens ‘)’                                    Parens(exprs)
                     |  SimpleExpr ‘.’ id                                        Select(expr, id)
                     |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
@@ -393,14 +394,14 @@ GivenSig          ::=  [id] [DefTypeParamClause] {GivenParamClause}
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’ {GivenParamClause}
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
-ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
-                    |  ConstrApp {‘,’ ConstrApp}
+ConstrApps        ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
 ConstrApp         ::=  AnnotType {ParArgumentExprs}                             Apply(tp, args)
 ConstrExpr        ::=  SelfInvocation
                     |  ‘{’ SelfInvocation {semi BlockStat} ‘}’
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
 
-TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’ (self, stats)
+TemplateBody      ::=  [nl | ‘with’]
+                       ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’      (self, stats)
 TemplateStat      ::=  Import
                     |  Export
                     |  {Annotation [nl]} {Modifier} Def
@@ -410,7 +411,7 @@ TemplateStat      ::=  Import
 SelfType          ::=  id [‘:’ InfixType] ‘=>’                                  ValDef(_, name, tpt, _)
                     |  ‘this’ ‘:’ InfixType ‘=>’
 
-EnumBody          ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+EnumBody          ::=  [nl | ‘with’] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
 EnumStat          ::=  TemplateStat
                     |  {Annotation [nl]} {Modifier} EnumCase
 EnumCase          ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps]] | ids)
@@ -422,7 +423,7 @@ TopStat           ::=  Import
                     |  Packaging
                     |  PackageObject
                     |
-Packaging         ::=  ‘package’ QualId [nl] ‘{’ TopStatSeq ‘}’                 Package(qid, stats)
+Packaging         ::=  ‘package’ QualId [nl | ‘with’] ‘{’ TopStatSeq ‘}’        Package(qid, stats)
 PackageObject     ::=  ‘package’ ‘object’ ObjectDef                             object with package in mods.
 
 CompilationUnit   ::=  {‘package’ QualId (semi | cnl)} TopStatSeq               Package(qid, stats)
