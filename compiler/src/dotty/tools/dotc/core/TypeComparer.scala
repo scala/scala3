@@ -2152,7 +2152,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   def provablyEmpty(tp: Type): Boolean =
     tp.dealias match {
       case tp if tp.isBottomType => true
-      case AndType(tp1, tp2) => disjoint(tp1, tp2)
+      case AndType(tp1, tp2) => provablyDisjoint(tp1, tp2)
       case OrType(tp1, tp2) => provablyEmpty(tp1) && provablyEmpty(tp2)
       case at @ AppliedType(tycon, args) =>
         args.lazyZip(tycon.typeParams).exists { (arg, tparam) =>
@@ -2166,7 +2166,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     }
 
 
-  /** Are `tp1` and `tp2` disjoint types?
+  /** Are `tp1` and `tp2` provablyDisjoint types?
    *
    *  `true` implies that we found a proof; uncertainty default to `false`.
    *
@@ -2181,8 +2181,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  property that in all possible contexts, a same match type expression
    *  is either stuck or reduces to the same case.
    */
-  def disjoint(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = {
-    // println(s"disjoint(${tp1.show}, ${tp2.show})")
+  def provablyDisjoint(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = {
+    // println(s"provablyDisjoint(${tp1.show}, ${tp2.show})")
     /** Can we enumerate all instantiations of this type? */
     def isClosedSum(tp: Symbol): Boolean =
       tp.is(Sealed) && tp.isOneOf(AbstractOrTrait) && !tp.hasAnonymousChild
@@ -2215,9 +2215,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             // of classes.
             true
           else if (isClosedSum(cls1))
-            decompose(cls1, tp1).forall(x => disjoint(x, tp2))
+            decompose(cls1, tp1).forall(x => provablyDisjoint(x, tp2))
           else if (isClosedSum(cls2))
-            decompose(cls2, tp2).forall(x => disjoint(x, tp1))
+            decompose(cls2, tp2).forall(x => provablyDisjoint(x, tp1))
           else
             false
       case (AppliedType(tycon1, args1), AppliedType(tycon2, args2)) if tycon1 == tycon2 =>
@@ -2227,7 +2227,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         // (Type parameter disjointness is not enough by itself as it could
         // lead to incorrect conclusions for phantom type parameters).
         def covariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean =
-          disjoint(tp1, tp2) && typeparamCorrespondsToField(tycon1, tparam)
+          provablyDisjoint(tp1, tp2) && typeparamCorrespondsToField(tycon1, tparam)
 
         args1.lazyZip(args2).lazyZip(tycon1.typeParams).exists {
           (arg1, arg2, tparam) =>
@@ -2256,29 +2256,29 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               }
         }
       case (tp1: HKLambda, tp2: HKLambda) =>
-        disjoint(tp1.resType, tp2.resType)
+        provablyDisjoint(tp1.resType, tp2.resType)
       case (_: HKLambda, _) =>
-        // The intersection of these two types would be ill kinded, they are therefore disjoint.
+        // The intersection of these two types would be ill kinded, they are therefore provablyDisjoint.
         true
       case (_, _: HKLambda) =>
         true
       case (tp1: OrType, _)  =>
-        disjoint(tp1.tp1, tp2) && disjoint(tp1.tp2, tp2)
+        provablyDisjoint(tp1.tp1, tp2) && provablyDisjoint(tp1.tp2, tp2)
       case (_, tp2: OrType)  =>
-        disjoint(tp1, tp2.tp1) && disjoint(tp1, tp2.tp2)
+        provablyDisjoint(tp1, tp2.tp1) && provablyDisjoint(tp1, tp2.tp2)
       case (tp1: AndType, tp2: AndType) =>
-        (disjoint(tp1.tp1, tp2.tp1) || disjoint(tp1.tp2, tp2.tp2)) &&
-        (disjoint(tp1.tp1, tp2.tp2) || disjoint(tp1.tp2, tp2.tp1))
+        (provablyDisjoint(tp1.tp1, tp2.tp1) || provablyDisjoint(tp1.tp2, tp2.tp2)) &&
+        (provablyDisjoint(tp1.tp1, tp2.tp2) || provablyDisjoint(tp1.tp2, tp2.tp1))
       case (tp1: AndType, _) =>
-        disjoint(tp1.tp2, tp2) || disjoint(tp1.tp1, tp2)
+        provablyDisjoint(tp1.tp2, tp2) || provablyDisjoint(tp1.tp1, tp2)
       case (_, tp2: AndType) =>
-        disjoint(tp1, tp2.tp2) || disjoint(tp1, tp2.tp1)
+        provablyDisjoint(tp1, tp2.tp2) || provablyDisjoint(tp1, tp2.tp1)
       case (tp1: TypeProxy, tp2: TypeProxy) =>
-        disjoint(tp1.underlying, tp2) || disjoint(tp1, tp2.underlying)
+        provablyDisjoint(tp1.underlying, tp2) || provablyDisjoint(tp1, tp2.underlying)
       case (tp1: TypeProxy, _) =>
-        disjoint(tp1.underlying, tp2)
+        provablyDisjoint(tp1.underlying, tp2)
       case (_, tp2: TypeProxy) =>
-        disjoint(tp1, tp2.underlying)
+        provablyDisjoint(tp1, tp2.underlying)
       case _ =>
         false
     }
@@ -2453,7 +2453,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         }
       else if (isSubType(widenAbstractTypes(scrut), widenAbstractTypes(pat)))
         Some(NoType)
-      else if (disjoint(scrut, pat))
+      else if (provablyDisjoint(scrut, pat))
         // We found a proof that `scrut` and `pat` are incompatible.
         // The search continues.
         None
@@ -2479,7 +2479,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       // `!provablyNonEmpty` instead of `provablyEmpty`, that would be
       // obviously sound, but quite restrictive. With the current formulation,
       // we need to be careful that `provablyEmpty` covers all the conditions
-      // used to conclude disjointness in `disjoint`.
+      // used to conclude disjointness in `provablyDisjoint`.
       if (provablyEmpty(scrut))
         NoType
       else
