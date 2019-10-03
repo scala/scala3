@@ -3716,23 +3716,23 @@ object Parsers {
               ts ++= topStatSeq()
             }
           }
-          else {
+          else
             val pkg = qualId()
+            var continue = false
             indentRegion(pkg) {
               possibleTemplateStart()
-              if (in.token == EOF)
+              if in.token == EOF then
                 ts += makePackaging(start, pkg, List())
-              else if (in.isNestedStart) {
+              else if in.isNestedStart then
                 ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()))
-                acceptStatSepUnlessAtEnd()
-                ts ++= topStatSeq()
-              }
-              else {
+                continue = true
+              else
                 acceptStatSep()
                 ts += makePackaging(start, pkg, topstats())
-              }
             }
-          }
+            if continue then
+              acceptStatSepUnlessAtEnd()
+              ts ++= topStatSeq()
         }
         else
           ts ++= topStatSeq()
