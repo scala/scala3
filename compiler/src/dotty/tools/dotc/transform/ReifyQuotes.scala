@@ -134,7 +134,7 @@ class ReifyQuotes extends MacroTransform {
     private def addTags(expr: Tree)(implicit ctx: Context): Tree = {
 
       def mkTagSymbolAndAssignType(spliced: TermRef): TypeDef = {
-        val splicedTree = tpd.ref(spliced)
+        val splicedTree = tpd.ref(spliced).withSpan(expr.span)
         val rhs = transform(splicedTree.select(tpnme.splice))
         val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
         val local = ctx.newSymbol(
