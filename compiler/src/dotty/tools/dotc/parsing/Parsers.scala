@@ -357,6 +357,21 @@ object Parsers {
             accept(SEMI)
         }
 
+    def acceptNested(): Unit =
+      if in.token != LBRACE && in.token != INDENT then
+        syntaxError(i"indented definitions or `{' expected")
+
+    /** Under -language:Scala2 or -old-syntax, flag
+     *
+     *    extends p1 with       new p1 with      t1 with
+     *            p2                p2           t2
+     *
+     *  as a migration warning or error since that means something else under significant indentation.
+     */
+    def checkNotWithAtEOL(): Unit =
+      if (in.isScala2Mode || in.oldSyntax) && in.isAfterLineEnd then
+        in.errorOrMigrationWarning("`with` cannot be followed by new line, place at beginning of next line instead")
+
     def rewriteNotice(additionalOption: String = "") = {
       val optionStr = if (additionalOption.isEmpty) "" else " " ++ additionalOption
       i"\nThis construct can be rewritten automatically under$optionStr -rewrite."
@@ -1254,8 +1269,7 @@ object Parsers {
     def possibleTemplateStart(): Unit =
       if in.token == WITH then
         in.nextToken()
-        if in.token != LBRACE && in.token != INDENT then
-          syntaxError(i"indented definitions or `{' expected")
+        acceptNested()
       else if silentTemplateIdent then
         in.observeIndented()
       newLineOptWhenFollowedBy(LBRACE)
@@ -1402,7 +1416,7 @@ object Parsers {
       makeParameter(name, typ(), mods | Param)
     }
 
-    /** InfixType ::= RefinedType {id [nl] refinedType}
+    /** InfixType ::= RefinedType {id [nl] RefinedType}
      */
     def infixType(): Tree = infixTypeRest(refinedType())
 
@@ -1413,7 +1427,7 @@ object Parsers {
     def infixTypeRest(t: Tree): Tree =
       infixOps(t, canStartTypeTokens, refinedType, isType = true, isOperator = !isPostfixStar)
 
-    /** RefinedType        ::=  WithType {Annotation | [nl] Refinement}
+    /** RefinedType   ::=  WithType {[nl | `with'] Refinement}
      */
     val refinedType: () => Tree = () => refinedTypeRest(withType())
 
@@ -1429,12 +1443,16 @@ object Parsers {
     def withType(): Tree = withTypeRest(annotType())
 
     def withTypeRest(t: Tree): Tree =
-      if (in.token == WITH) {
-        if (ctx.settings.strict.value)
-          deprecationWarning(DeprecatedWithOperator())
+      if in.token == WITH then
+        val withOffset = in.offset
         in.nextToken()
-        makeAndType(t, withType())
-      }
+        if in.token == LBRACE || in.token == INDENT then
+          t
+        else
+          checkNotWithAtEOL()
+          if (ctx.settings.strict.value)
+            deprecationWarning(DeprecatedWithOperator(), withOffset)
+          makeAndType(t, withType())
       else t
 
     /** AnnotType ::= SimpleType {Annotation}
@@ -3434,14 +3452,7 @@ object Parsers {
           in.nextToken()
           if templateCanFollow && (in.token == LBRACE || in.token == INDENT) then Nil
           else
-            if (in.isScala2Mode || in.oldSyntax) && in.isAfterLineEnd then
-              // Disallow
-              //
-              // extends p1 with
-              //         p2
-              //
-              // since that means something else under significant indentation
-              in.errorOrMigrationWarning("`with` cannot be followed by new line, place at beginning of next line instead")
+            checkNotWithAtEOL()
             constrApps(commaOK, templateCanFollow)
         else if commaOK && in.token == COMMA then
           in.nextToken()
