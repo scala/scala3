@@ -84,7 +84,6 @@ comment          ::=  ‘/*’ “any sequence of characters; nested comments ar
                    |  ‘//’ “any sequence of characters up to end of line”
 
 nl               ::=  “new line character”
-cnl              ::=  nl | "colon at eol"
 semi             ::=  ‘;’ |  nl {nl}
 ```
 
@@ -151,8 +150,8 @@ FunArgTypes       ::=  InfixType
                     |  ‘(’ ‘[given]’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
 MatchType         ::=  InfixType `match` TypeCaseClauses
-InfixType         ::=  RefinedType {id [cnl] RefinedType}                       InfixOp(t1, op, t2)
-RefinedType       ::=  WithType {[cnl] Refinement}                              RefinedTypeTree(t, ds)
+InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
+RefinedType       ::=  WithType {[nl] Refinement}                               RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
 SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
@@ -426,5 +425,5 @@ TopStat           ::=  Import
 Packaging         ::=  ‘package’ QualId [nl | ‘with’] ‘{’ TopStatSeq ‘}’        Package(qid, stats)
 PackageObject     ::=  ‘package’ ‘object’ ObjectDef                             object with package in mods.
 
-CompilationUnit   ::=  {‘package’ QualId (semi | cnl)} TopStatSeq               Package(qid, stats)
+CompilationUnit   ::=  {‘package’ QualId semi} TopStatSeq                       Package(qid, stats)
 ```
