@@ -10,4 +10,6 @@ object Test extends App {
   println("tuple2 ++ emptyTuple = " + (tuple2 ++ emptyTuple))
   println("emptyTuple ++ tuple2 = " + (emptyTuple ++ tuple2))
   println("tuple1 ++ tuple2 = " + (tuple1 ++ tuple2))
+  assert((tuple1 ++ emptyTuple) eq tuple1)
+  assert((emptyTuple ++tuple1) eq tuple1)
 }
