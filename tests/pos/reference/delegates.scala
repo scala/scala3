@@ -39,13 +39,14 @@ object Instances extends Common with
         if (fst != 0) fst else xs1.compareTo(ys1)
   end listOrd
 
-  given stringOps: (xs: Seq[String]) with
+  given stringOps: (xs: Seq[String])
     def longestStrings: Seq[String] =
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
 
-  given [T](xs: List[T]) with
+  given [T](xs: List[T])
     def second = xs.tail.head
+    def third = xs.tail.tail.head
 
   given listMonad: Monad[List] with
     def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
@@ -132,7 +133,7 @@ object PostConditions with
 
   def result[T](given x: WrappedResult[T]): T = x
 
-  given [T](x: T) with
+  given [T](x: T)
     def ensuring(condition: (given WrappedResult[T]) => Boolean): T =
       assert(condition(given x))
       x

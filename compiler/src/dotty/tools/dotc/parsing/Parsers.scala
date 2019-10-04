@@ -125,13 +125,13 @@ object Parsers {
 
     /* ------------- ERROR HANDLING ------------------------------------------- */
     /** The offset where the last syntax error was reported, or if a skip to a
-      *  safepoint occurred afterwards, the offset of the safe point.
-      */
+     *  safepoint occurred afterwards, the offset of the safe point.
+     */
     protected var lastErrorOffset : Int = -1
 
     /** Issue an error at given offset if beyond last error offset
-      *  and update lastErrorOffset.
-      */
+     *  and update lastErrorOffset.
+     */
     def syntaxError(msg: => Message, offset: Int = in.offset): Unit =
       if (offset > lastErrorOffset) {
         val length = if (offset == in.offset && in.name != null) in.name.show.length else 0
@@ -3360,12 +3360,20 @@ object Parsers {
       case _ =>
         syntaxError(em"extension clause must start with a single regular parameter", start)
 
+    def checkExtensionMethod(stat: Tree): Unit = stat match {
+      case stat: DefDef =>
+        if stat.mods.is(Extension) then
+          syntaxError(i"no extension method allowed here since leading parameter was already given", stat.span)
+      case _ =>
+        syntaxError(i"extension clause can only define methods", stat.span)
+    }
 
     /** GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
      *                   |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
-     *                   |  [id ‘:’] [ExtParamClause] TemplateBody
+     *                   |  [id ‘:’] ExtParamClause ExtMethods
      *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
      *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause {GivenParamClause}
+     *  ExtMethods     ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
      */
     def givenDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
@@ -3407,8 +3415,10 @@ object Parsers {
               syntaxError("`<:' is only allowed for given with `inline' modifier")
             in.nextToken()
             TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
-          else if name.isEmpty && in.token != LBRACE && in.token != WITH then
-            tokenSeparated(COMMA, constrApp)
+          else if name.isEmpty
+                  && in.token != LBRACE && in.token != WITH
+                  && !hasExtensionParams
+          then tokenSeparated(COMMA, constrApp)
           else Nil
 
         val gdef =
@@ -3421,12 +3431,17 @@ object Parsers {
               case TypeBoundsTree(_, _) :: _ => syntaxError("`=' expected")
               case _ =>
             possibleTemplateStart()
-            if !hasExtensionParams then
+            if hasExtensionParams then
+              in.observeIndented()
+            else
               tparams = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
               vparamss = vparamss.map(_.map(vparam =>
                 vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
             val templ = templateBodyOpt(makeConstructor(tparams, vparamss), parents, Nil)
-            if tparams.isEmpty && vparamss.isEmpty || hasExtensionParams then ModuleDef(name, templ)
+            if hasExtensionParams then
+              templ.body.foreach(checkExtensionMethod)
+              ModuleDef(name, templ)
+            else if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
             else TypeDef(name.toTypeName, templ)
 
         finalizeDef(gdef, mods1, start)
