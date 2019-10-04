@@ -8,7 +8,6 @@ import dotty.tools.dotc.core.Types.{AndType, ClassInfo, ConstantType, OrType, Ty
 object NullOpsDecorator {
 
   implicit class NullOps(val self: Type) {
-
     /** Is this type a reference to `Null`, possibly after aliasing? */
     def isNullType(implicit ctx: Context): Boolean = self.isRef(defn.NullClass)
 
@@ -24,16 +23,15 @@ object NullOpsDecorator {
     /** Normalizes unions so that all `Null`s (or aliases to `Null`) appear to the right of
      *  all other types.
      *  e.g. `Null | (T1 | Null) | T2` => `T1 | T2 | Null`
-     *  e.g. `JavaNull | (T1 | Null) | Null` => `T1 | Null | JavaNull`
+     *  e.g. `JavaNull | (T1 | Null) | Null` => `T1 | JavaNull`
      *
-     *  1. If self is not a union type, the result is not a union type.
-     *  2. If self is a union type,
-     *    (1) If it only contains `Null` (or `JavaNull`) types, the result is still a union
-              only contains `Null` types.
-     *    (2) If it contains multiple Null types, at most 2 different Null types
-     *        will appear at the right of result.
-     *    (3) If it contains both `Null` and `JavaNull`, the result is `(tp | Null) | JavaNull`.
-     *    (4) If it onlt contains `Null` or `JavaNull`, the result is `tp | Null` or `tp | JavaNull`.
+     *  Let `self` denote the current type:
+     *  1. If `self` is not a union, then the result is not a union and equal to `self`.
+     *  2. If `self` is a union then
+     *    2.1 If `self` does not contain `Null` as part of the union, then the result is `self`.
+     *    2.2 If `self` contains `Null` (resp `JavaNull`) as part of the union, let `self2` denote
+     *      the same type as `self`, but where all instances of `Null` (`JavaNull`) in the union
+     *      have been removed. Then the result is `self2 | Null` (`self2 | JavaNull`).
      */
      def normNullableUnion(implicit ctx: Context): Type = {
       var isUnion = false
@@ -56,10 +54,9 @@ object NullOpsDecorator {
       }
       val tp = strip(self)
       if (!isUnion) self
-      else {
-        val tp1 = if (hasNull) OrType(tp, defn.NullType) else tp
-        if (hasJavaNull) OrType(tp1, defn.JavaNullAliasType) else tp1
-      }
+      else if (hasJavaNull) OrType(tp, defn.JavaNullAliasType)
+      else if (hasNull) OrType(tp, defn.NullType)
+      else self
     }
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */
@@ -97,20 +94,13 @@ object NullOpsDecorator {
 
     /** Syntactically strips the nullability from this type.
      *  If the normalized form (as per `normNullableUnion`) of this type is `T1 | ... | Tn-1 | Tn`,
-     *  and `Tn-1` `Tn` are references to `Null`, then return `T1 | ... | Tn-2`.
+     *  and `Tn` references to `Null` (or `JavaNull`), then return `T1 | ... | Tn-1`.
      *  If this type isn't (syntactically) nullable, then returns the type unchanged.
      */
     def stripNull(implicit ctx: Context): Type = {
       assert(ctx.explicitNulls)
       self.widenDealias.normNullableUnion match {
-        case OrType(lhs, rhs) if rhs.isNullType =>
-          lhs match {
-            case OrType(llhs, lrhs) if lrhs.isNullType =>
-              // The result type contains at most 2 `Null` (or aliases to `Null`) type.
-              llhs
-            case _ =>
-              lhs
-          }
+        case OrType(lhs, rhs) if rhs.isNullType => lhs
         case _ => self
       }
     }
@@ -135,7 +125,6 @@ object NullOpsDecorator {
       object RemoveNulls extends TypeMap {
         override def apply(tp: Type): Type =
           tp.normNullableUnion match {
-            // It it is JavaNullable Union
             case OrType(lhs, rhs) if rhs.isJavaNullType =>
               diff = true
               mapOver(lhs)

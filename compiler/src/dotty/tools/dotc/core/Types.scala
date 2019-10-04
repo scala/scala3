@@ -1078,15 +1078,10 @@ object Types {
         if (ctx.explicitNulls) {
           // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
           tp.normNullableUnion match {
-            // If it is a nullable union
-            case OrType(lhs, rhs) if rhs.isNullType =>
-              lhs match {
-                case OrType(llhs, lrhs) if lrhs.isNullType =>
-                  OrType(OrType(llhs.widenUnion, lrhs), rhs)
-                case _ =>
-                  OrType(lhs.widenUnion, rhs)
-              }
-            case _ => defaultp
+            case tp @ OrType(lhs, rhs) if rhs.isNullType =>
+              tp.derivedOrType(lhs.widenUnion, rhs)
+            case _ =>
+              defaultp
           }
         }
         else defaultp
