@@ -1068,31 +1068,36 @@ object Types {
      *  Exception (if `-YexplicitNulls` is set): if this type is a nullable union (i.e. of the form `T | Null`),
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
-    def widenUnion(implicit ctx: Context): Type = widen match {
-      case tp @ OrType(tp1, tp2) =>
-        lazy val defaultp =
-          ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
+    def widenUnion(implicit ctx: Context): Type = {
+      def joinOrUnion(tp: Type): Type = tp match {
+        case OrType(tp1, tp2) =>
+          ctx.typeComparer.lub(joinOrUnion(tp1), joinOrUnion(tp2), canConstrain = true) match {
             case union: OrType => union.join
             case res => res
           }
-        if (ctx.explicitNulls) {
-          // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
-          tp.normNullableUnion match {
-            case tp @ OrType(lhs, rhs) if rhs.isNullType =>
-              tp.derivedOrType(lhs.widenUnion, rhs)
-            case _ =>
-              defaultp
-          }
-        }
-        else defaultp
-      case tp @ AndType(tp1, tp2) =>
-        tp derived_& (tp1.widenUnion, tp2.widenUnion)
-      case tp: RefinedType =>
-        tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
-      case tp: RecType =>
-        tp.rebind(tp.parent.widenUnion)
-      case tp =>
-        tp
+        case tp =>
+          tp.widenUnion
+      }
+      widen match {
+        case tp: OrType =>
+          if (ctx.explicitNulls)
+            // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
+            tp.normNullableUnion match {
+              case tpn @ OrType(lhs, rhs) if rhs.isNullType =>
+                tpn.derivedOrType(joinOrUnion(lhs), rhs)
+              case _ =>
+                joinOrUnion(tp)
+            }
+          else joinOrUnion(tp)
+        case tp @ AndType(tp1, tp2) =>
+          tp derived_& (tp1.widenUnion, tp2.widenUnion)
+        case tp: RefinedType =>
+          tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
+        case tp: RecType =>
+          tp.rebind(tp.parent.widenUnion)
+        case tp =>
+          tp
+      }
     }
 
     /** Widen all top-level singletons reachable by dealiasing
