@@ -2,9 +2,9 @@ package dotty.tools.benchmarks
 
 import org.openjdk.jmh.results.RunResult
 import org.openjdk.jmh.runner.Runner
-import org.openjdk.jmh.runner.options.OptionsBuilder
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.results.format._
+import org.openjdk.jmh.runner.options._
 import java.util.concurrent.TimeUnit
 
 import scala.io.Source
@@ -13,7 +13,7 @@ object Bench {
   def main(args: Array[String]): Unit = {
     val (intArgs, args1) = args.span(x => try { x.toInt; true } catch { case _: Throwable => false } )
 
-    val warmup = if (intArgs.length > 0) intArgs(0).toInt else 30
+    val warmup = if (intArgs.length > 0) intArgs(0).toInt else 20
     val iterations = if (intArgs.length > 1) intArgs(1).toInt else 20
     val forks = if (intArgs.length > 2) intArgs(2).toInt else 1
 
@@ -26,7 +26,9 @@ object Bench {
                .mode(Mode.AverageTime)
                .timeUnit(TimeUnit.NANOSECONDS)
                .warmupIterations(warmup)
+               .warmupTime(TimeValue.milliseconds(750))
                .measurementIterations(iterations)
+               .measurementTime(TimeValue.milliseconds(500))
                .forks(forks)
                .include(benchmarks)
                .resultFormat(ResultFormatType.CSV)
