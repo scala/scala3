@@ -345,6 +345,18 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
   def bodyKind(body: List[Tree])(implicit ctx: Context): FlagSet =
     body.foldLeft(NoInitsInterface)((fs, stat) => fs & defKind(stat))
 
+  /** Info of a variable in a pattern: The named tree and its type */
+  type VarInfo = (NameTree, Tree)
+
+  /** An extractor for trees of the form `id` or `id: T` */
+  object IdPattern {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[VarInfo] = tree match {
+      case id: Ident if id.name != nme.WILDCARD => Some(id, TypeTree())
+      case Typed(id: Ident, tpt) => Some((id, tpt))
+      case _ => None
+    }
+  }
+
   // todo: fill with other methods from TreeInfo that only apply to untpd.Tree's
 }
 
