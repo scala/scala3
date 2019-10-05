@@ -26,7 +26,7 @@ import Decorators._
 import scala.internal.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
-import config.Config.silentTemplateIdent
+import config.Config.silentTemplateIndent
 
 object Parsers {
 
@@ -338,6 +338,9 @@ object Parsers {
       offset
     }
 
+    def reportMissing(expected: Token): Unit =
+      syntaxError(ExpectedTokenButFound(expected, in.token))
+
     /** semi = nl {nl} | `;'
      *  nl  = `\n' // where allowed
      */
@@ -356,10 +359,6 @@ object Parsers {
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
             accept(SEMI)
         }
-
-    def acceptNested(): Unit =
-      if in.token != LBRACE && in.token != INDENT then
-        syntaxError(i"indented definitions or `{' expected")
 
     /** Under -language:Scala2 or -old-syntax, flag
      *
@@ -1266,13 +1265,14 @@ object Parsers {
       newLineOptWhenFollowedBy(LBRACE)
     }
 
-    def possibleTemplateStart(): Unit =
+    def possibleTemplateStart(isNew: Boolean = false): Unit =
       if in.token == WITH then
         in.nextToken()
-        acceptNested()
-      else if silentTemplateIdent then
-        in.observeIndented()
-      newLineOptWhenFollowedBy(LBRACE)
+        if in.token != LBRACE && in.token != INDENT then
+          syntaxError(i"indented definitions or `{' expected")
+      else
+        if silentTemplateIndent && !isNew then in.observeIndented()
+        newLineOptWhenFollowedBy(LBRACE)
 
     def indentRegion[T](tag: EndMarkerTag)(op: => T): T = {
       val iw = in.currentRegion.indentWidth
@@ -1700,7 +1700,7 @@ object Parsers {
         else
           if (altToken == THEN || enclosedInParens) && in.isNewLine then
             in.observeIndented()
-          if !enclosedInParens && in.token != INDENT then accept(altToken)
+          if !enclosedInParens && in.token != INDENT then reportMissing(altToken)
           if (rewriteToNewSyntax(t.span))
             dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
         t
@@ -2158,12 +2158,10 @@ object Parsers {
         def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
         possibleBracesStart()
         val parents =
-          if in.token == WITH then
-            possibleTemplateStart()
-            Nil
-          else if in.token == LBRACE then Nil
+          if in.token == LBRACE || in.token == WITH then Nil
           else constrApps(commaOK = false, templateCanFollow = true)
-        possibleBracesStart()
+        colonAtEOLOpt()
+        possibleTemplateStart(isNew = true)
         parents match {
           case parent :: Nil if !in.isNestedStart =>
             reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
@@ -3470,9 +3468,12 @@ object Parsers {
       val t = constrApp()
       val ts =
         if in.token == WITH then
-          in.nextToken()
-          if templateCanFollow && (in.token == LBRACE || in.token == INDENT) then Nil
+          val lookahead = in.LookaheadScanner(indent = true)
+          lookahead.nextToken()
+          if templateCanFollow && (lookahead.token == LBRACE || lookahead.token == INDENT) then
+            Nil
           else
+            in.nextToken()
             checkNotWithAtEOL()
             constrApps(commaOK, templateCanFollow)
         else if commaOK && in.token == COMMA then
@@ -3481,10 +3482,11 @@ object Parsers {
         else Nil
       t :: ts
 
-    /** InheritClauses ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
+    /** Template          ::=  InheritClauses [TemplateBody]
+     *  InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
      */
-    def inheritClauses(): (List[Tree], List[Tree]) = {
-      val extended =
+    def template(constr: DefDef, isEnum: Boolean = false): Template = {
+      val parents =
         if (in.token == EXTENDS) {
           in.nextToken()
           if (in.token == LBRACE || in.token == COLONEOL) {
@@ -3494,20 +3496,13 @@ object Parsers {
           else constrApps(commaOK = true, templateCanFollow = true)
         }
         else Nil
+      newLinesOptWhenFollowedBy(nme.derives)
       val derived =
         if (isIdent(nme.derives)) {
           in.nextToken()
           tokenSeparated(COMMA, () => convertToTypeId(qualId()))
         }
         else Nil
-      (extended, derived)
-    }
-
-    /** Template          ::=  InheritClauses [TemplateBody]
-     */
-    def template(constr: DefDef, isEnum: Boolean = false): Template = {
-      newLinesOptWhenFollowedBy(nme.derives)
-      val (parents, derived) = inheritClauses()
       possibleTemplateStart()
       if (isEnum) {
         val (self, stats) = withinEnum(templateBody())
