@@ -3076,6 +3076,8 @@ object Parsers {
           if (isBackquoted(id)) vdef.pushAttachment(Backquoted, ())
           finalizeDef(vdef, mods, start)
         case _ =>
+          if rhs.isEmpty then
+            syntaxError(ExpectedTokenButFound(EQUALS, in.token), Span(in.lastOffset))
           PatDef(mods, lhs, tpt, rhs)
       }
     }
