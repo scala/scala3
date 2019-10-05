@@ -28,7 +28,7 @@ There are two rules:
        class, object, given, or enum definition, in an enum case, or after a package clause, or
      - after one of the following tokens:
     ```
-    =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match  return
+    =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match
     ```
     If an `<indent>` is inserted, the indentation width of the token on the next line
     is pushed onto `IW`, which makes it the new current indentation width.
