@@ -31,34 +31,12 @@ class Concat {
   }
 
   @Benchmark
-  def baseline(): Unit = {}
-
-  @Benchmark
-  def normal(): Tuple = {
-   tuple1 ++ tuple2
-  }
-
-  @Benchmark
-  def inlined(): Tuple = {
+  def tupleConcat(): Tuple = {
     DynamicTuple.dynamicConcat(tuple1, tuple2)
-  }
-
-  // This part is here to try and measure the overhead of tranforming tuples to arrays, then concatenating
-  // the array, and then transforming back to a tuple
-  @Benchmark
-  def toArray(bh: Blackhole): Unit = {
-    bh.consume(DynamicTuple.dynamicToArray(tuple1))
-    bh.consume(DynamicTuple.dynamicToArray(tuple2))
   }
 
   @Benchmark
   def arrayConcat(): Array[Object] = {
     array1 ++ array2
-  }
-
-  @Benchmark
-  def fromArray(bh: Blackhole): Unit = {
-    bh.consume(DynamicTuple.dynamicFromArray[Tuple](array1))
-    bh.consume(DynamicTuple.dynamicFromArray[Tuple](array2))
   }
 }

@@ -21,15 +21,12 @@ class Apply {
   }
 
   @Benchmark
-  def baseline(): Unit = {}
-
-  @Benchmark
-  def normal(): Any = {
-    tuple(index)
+  def tupleApply(): Any = {
+    DynamicTuple.dynamicApply(tuple, index)
   }
 
   @Benchmark
-  def inlined(): Any = {
-    DynamicTuple.dynamicApply(tuple, index)
+  def productElement(): Any = {
+    tuple.asInstanceOf[Product].productElement(index)
   }
 }

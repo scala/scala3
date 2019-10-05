@@ -23,25 +23,27 @@ class ArrayOps {
   }
 
   @Benchmark
-  def baseline(): Unit = {}
-
-  @Benchmark
-  def toArray(): Array[Object] = {
+  def tupleToArray(): Array[Object] = {
     DynamicTuple.dynamicToArray(tuple)
   }
 
   @Benchmark
-  def toIArray(): IArray[Object] = {
+  def tupleToIArray(): IArray[Object] = {
     DynamicTuple.dynamicToIArray(tuple)
   }
 
   @Benchmark
-  def fromArray(): Tuple = {
+  def tupleFromArray(): Tuple = {
     DynamicTuple.dynamicFromArray(array)
   }
 
   @Benchmark
-  def fromIArray(): Tuple = {
+  def tupleFromIArray(): Tuple = {
     DynamicTuple.dynamicFromIArray(iarray)
+  }
+
+  @Benchmark
+  def productToArray(): Array[Object] = {
+    DynamicTuple.productToArray(tuple.asInstanceOf[Product])
   }
 }
