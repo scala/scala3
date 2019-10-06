@@ -78,6 +78,12 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
         val impl = implMethod(sel.symbol)
         if (impl.exists) Apply(ref(impl), This(currentClass) :: args).withSpan(app.span)
         else app // could have been an abstract method in a trait linked to from a super constructor
+      case Apply(sel @ Select(Super(a, b), _), args)
+      if sel.symbol.owner.is(Scala2x) && currentClass.mixins.contains(sel.symbol.owner) && sel.symbol.isConstructor =>
+        val impl = implMethod(sel.symbol)
+        if (impl.exists)
+        Apply(ref(impl), This(currentClass) :: args).withSpan(app.span)
+        else app // could have been an abstract method in a trait linked to from a super constructor
       case _ =>
         app
     }
@@ -88,8 +94,13 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
     val implName = ImplMethName(meth.name.asTermName)
     val cls = meth.owner
     if (cls.isAllOf(Scala2xTrait))
-      if (meth.isConstructor)
+      if (meth.isConstructor) {
+        if (ctx.settings.scalajs.value) {
+        // Is this the static call?
         cls.info.decl(nme.TRAIT_CONSTRUCTOR).symbol
+      } else
+        cls.info.decl(nme.TRAIT_CONSTRUCTOR).symbol
+      }
       else
         cls.info.decl(implName)
           .suchThat(c => FullParameterization.memberSignature(c.info) == meth.signature)
