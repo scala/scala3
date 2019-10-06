@@ -7,6 +7,7 @@ import ast._
 import Trees._, StdNames._, Scopes._, Denotations._, Comments._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import NameKinds.DefaultGetterName
+import TypeApplications.TypeParamInfo
 import ast.desugar, ast.desugar._
 import ProtoTypes._
 import util.Spans._
@@ -22,9 +23,9 @@ import transform.TypeUtils._
 import transform.SymUtils._
 import reporting.diagnostic.messages._
 
-trait NamerContextOps { 
+trait NamerContextOps {
   this: Context =>
-  
+
   import NamerContextOps._
 
   def typer: Typer = ctx.typeAssigner match {
@@ -140,9 +141,8 @@ trait NamerContextOps {
           else (params.head.is(Given), params.head.is(Implicit), params.head.is(Erased))
         val make = MethodType.companion(isJava = isJava, isContextual = isContextual, isImplicit = isImplicit, isErased = isErased)
         if (isJava)
-          for (param <- params) {
+          for (param <- params)
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
-          }
         make.fromSymbols(params, resultType)
       }
     if (typeParams.nonEmpty) PolyType.fromParams(typeParams.asInstanceOf[List[TypeSymbol]], monotpe)
@@ -734,6 +734,18 @@ class Namer { typer: Typer =>
     try index(tree :: Nil) finally lateCompile = saved
   }
 
+  /** The type bound on wildcard imports of an import list, with special values
+   *    Nothing  if no wildcard imports of this kind exist
+   *    Any      if there are unbounded wildcard imports of this kind
+   */
+  def importBound(sels: List[untpd.ImportSelector], isGiven: Boolean)(implicit ctx: Context): Type =
+    sels.foldLeft(defn.NothingType: Type) { (bound, sel) =>
+      if sel.isWildcard && sel.isGiven == isGiven then
+        if sel.bound.isEmpty then defn.AnyType
+        else bound | typedAheadType(sel.bound).tpe
+      else bound
+    }
+
   def missingType(sym: Symbol, modifier: String)(implicit ctx: Context): Unit = {
     ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.sourcePos)
     sym.resetFlag(GivenOrImplicit)
@@ -760,7 +772,8 @@ class Namer { typer: Typer =>
         try {
           val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
           ImportType(expr1)
-        } catch {
+        }
+        catch {
           case ex: CyclicReference =>
             typr.println(s"error while completing ${imp.expr}")
             throw ex
@@ -939,14 +952,15 @@ class Namer { typer: Typer =>
        */
       def exportForwarders(exp: Export): List[tpd.MemberDef] = {
         val buf = new mutable.ListBuffer[tpd.MemberDef]
-        val Export(_, expr, selectors) = exp
+        val Export(expr, selectors) = exp
         val path = typedAheadExpr(expr, AnySelectionProto)
         checkLegalImportPath(path)
+        lazy val wildcardBound = importBound(selectors, isGiven = false)
+        lazy val givenBound = importBound(selectors, isGiven = true)
 
         def whyNoForwarder(mbr: SingleDenotation): String = {
           val sym = mbr.symbol
-          if (sym.isOneOf(GivenOrImplicit) != exp.impliedOnly) s"is ${if (exp.impliedOnly) "not " else ""}a given instance"
-          else if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
+          if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
           else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) SKIP
           else if (cls.derivesFrom(sym.owner) &&
                    (sym.owner == cls || !sym.is(Deferred))) i"is already a member of $cls"
@@ -955,7 +969,7 @@ class Namer { typer: Typer =>
              other => cls.derivesFrom(other.owner) && !other.is(Deferred)) match {
                case Some(other) => i"overrides ${other.showLocated}, which is already a member of $cls"
                case None => ""
-             }
+            }
           else ""
         }
 
@@ -964,35 +978,25 @@ class Namer { typer: Typer =>
          */
         def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit =
           if (whyNoForwarder(mbr) == "") {
-
-            /** The info of a forwarder to type `ref` which has info `info`
-             */
-            def fwdInfo(ref: Type, info: Type): Type = info match {
-              case _: ClassInfo =>
-                HKTypeLambda.fromParams(info.typeParams, ref)
-              case _: TypeBounds =>
-                TypeAlias(ref)
-              case info: HKTypeLambda =>
-                info.derivedLambdaType(info.paramNames, info.paramInfos,
-                  fwdInfo(ref.appliedTo(info.paramRefs), info.resultType))
-              case info => // should happen only in error cases
-                info
-            }
-
+            val sym = mbr.symbol
             val forwarder =
               if (mbr.isType)
                 ctx.newSymbol(
                   cls, alias.toTypeName,
                   Exported | Final,
-                  fwdInfo(path.tpe.select(mbr.symbol), mbr.info),
+                  TypeAlias(path.tpe.select(sym)),
                   coord = span)
+                // Note: This will always create unparameterzied aliases. So even if the original type is
+                // a parameterized class, say `C[X]` the alias will read `type C = d.C`. We currently do
+                // allow such type aliases. If we forbid them at some point (requiring the referred type to be
+                // fully applied), we'd have to change the scheme here as well.
               else {
                 val (maybeStable, mbrInfo) =
-                  if (mbr.symbol.isStableMember && mbr.symbol.isPublic)
-                    (StableRealizable, ExprType(path.tpe.select(mbr.symbol)))
+                  if (sym.isStableMember && sym.isPublic)
+                    (StableRealizable, ExprType(path.tpe.select(sym)))
                   else
                     (EmptyFlags, mbr.info.ensureMethodic)
-                val mbrFlags = Exported | Method | Final | maybeStable | mbr.symbol.flags & RetainedExportFlags
+                val mbrFlags = Exported | Method | Final | maybeStable | sym.flags & RetainedExportFlags
                 ctx.newSymbol(cls, alias, mbrFlags, mbrInfo, coord = span)
               }
             forwarder.info = avoidPrivateLeaks(forwarder)
@@ -1000,7 +1004,7 @@ class Namer { typer: Typer =>
               if (forwarder.isType) tpd.TypeDef(forwarder.asType)
               else {
                 import tpd._
-                val ref = path.select(mbr.symbol.asTerm)
+                val ref = path.select(sym.asTerm)
                 tpd.polyDefDef(forwarder.asTerm, targs => prefss =>
                   ref.appliedToTypes(targs).appliedToArgss(prefss)
                 )
@@ -1021,33 +1025,30 @@ class Namer { typer: Typer =>
           }
         }
 
-        def addForwardersExcept(seen: List[TermName], span: Span): Unit =
-          for (mbr <- path.tpe.membersBasedOnFlags(
-              required = EmptyFlags, excluded = PrivateOrSynthetic)) {
+        def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
+          for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
             val alias = mbr.name.toTermName
-            if (!seen.contains(alias)) addForwarder(alias, mbr, span)
-          }
+            if !seen.contains(alias)
+               && mbr.matchesImportBound(if mbr.symbol.is(Given) then givenBound else wildcardBound)
+            then addForwarder(alias, mbr, span)
 
-        def recur(seen: List[TermName], sels: List[untpd.Tree]): Unit = sels match {
-          case (sel @ Ident(nme.WILDCARD)) :: _ =>
-            addForwardersExcept(seen, sel.span)
-          case (sel @ Ident(name: TermName)) :: rest =>
-            addForwardersNamed(name, name, sel.span)
-            recur(name :: seen, rest)
-          case Thicket((sel @ Ident(fromName: TermName)) :: Ident(toName: TermName) :: Nil) :: rest =>
-            if (toName != nme.WILDCARD) addForwardersNamed(fromName, toName, sel.span)
-            recur(fromName :: seen, rest)
+        def addForwarders(sels: List[untpd.ImportSelector], seen: List[TermName]): Unit = sels match
+          case sel :: sels1 =>
+            if sel.isWildcard then
+              addWildcardForwarders(seen, sel.span)
+            else
+              addForwardersNamed(sel.name, sel.rename, sel.span)
+              addForwarders(sels1, sel.name :: seen)
           case _ =>
-        }
 
-        recur(Nil, selectors)
+        addForwarders(selectors, Nil)
         val forwarders = buf.toList
         exp.pushAttachment(ExportForwarders, forwarders)
         forwarders
       }
 
       val forwarderss =
-        for (exp @ Export(_, _, _) <- rest) yield exportForwarders(exp)
+        for (exp @ Export(_, _) <- rest) yield exportForwarders(exp)
       forwarderss.foreach(_.foreach(fwdr => fwdr.symbol.entered))
     }
 

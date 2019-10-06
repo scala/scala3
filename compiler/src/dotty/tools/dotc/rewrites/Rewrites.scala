@@ -75,7 +75,7 @@ object Rewrites {
     patch(ctx.compilationUnit.source, span, replacement)
 
   /** Does `span` overlap with a patch region of `source`? */
-  def overlapsPatch(source: SourceFile, span: Span) given (ctx: Context): Boolean =
+  def overlapsPatch(source: SourceFile, span: Span)(given ctx: Context): Boolean =
     ctx.settings.rewrite.value.exists(rewrites =>
       rewrites.patched.get(source).exists(patches =>
         patches.pbuf.exists(patch => patch.span.overlaps(span))))

@@ -104,9 +104,10 @@ object Inferencing {
     def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
       case _: WildcardType | _: ProtoType =>
         false
-      case tvar: TypeVar
-      if !tvar.isInstantiated && ctx.typerState.constraint.contains(tvar) =>
-        force.appliesTo(tvar) && {
+      case tvar: TypeVar if !tvar.isInstantiated =>
+        force.appliesTo(tvar)
+        && ctx.typerState.constraint.contains(tvar)
+        && {
           val direction = instDirection(tvar.origin)
           def avoidBottom =
             !force.allowBottom &&
@@ -193,7 +194,7 @@ object Inferencing {
     @tailrec def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
       case Apply(fn, _) => boundVars(fn, acc)
       case TypeApply(fn, targs) =>
-        val tvars = targs.filter(_.isInstanceOf[TypeVarBinder[_]]).tpes.collect {
+        val tvars = targs.filter(_.isInstanceOf[TypeVarBinder[?]]).tpes.collect {
           case tvar: TypeVar
           if !tvar.isInstantiated &&
              ctx.typerState.ownedVars.contains(tvar) &&

@@ -56,7 +56,9 @@ class CompilationTests extends ParallelTesting {
         "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",
         defaultOptions.and("-nowarn", "-Xfatal-warnings")
       ),
-      compileFile("tests/pos-special/typeclass-scaling.scala", defaultOptions.and("-Xmax-inlines", "40"))
+      compileFile("tests/pos-special/typeclass-scaling.scala", defaultOptions.and("-Xmax-inlines", "40")),
+      compileFile("tests/pos-special/indent-colons.scala", defaultOptions.and("-Yindent-colons")),
+      compileFile("tests/pos-special/i7296.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings"))
     ).checkCompile()
   }
 
@@ -138,7 +140,8 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/i6300.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/infix.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/missing-alpha.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/wildcards.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings"))
+      compileFile("tests/neg-custom-args/wildcards.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings")),
+      compileFile("tests/neg-custom-args/indentRight.scala", defaultOptions.and("-noindent", "-Xfatal-warnings"))
     ).checkExpectedErrors()
   }
 

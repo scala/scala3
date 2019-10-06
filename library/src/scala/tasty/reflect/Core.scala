@@ -54,15 +54,13 @@ package scala.tasty.reflect
  *           |
  *           +- TypeBoundsTree
  *           +- WildcardTypeTree
+ *           |
  *           +- CaseDef
+ *           |
  *           +- TypeCaseDef
- *
- *  +- Pattern --+- Value
- *               +- Bind
- *               +- Unapply
- *               +- Alternatives
- *               +- TypeTest
- *               +- WildcardPattern
+ *           +- Bind
+ *           +- Unapply
+ *           +- Alternatives
  *
  *
  *                   +- NoPrefix
@@ -101,17 +99,7 @@ package scala.tasty.reflect
  *
  *  +- Constant
  *
- *  +- Symbol --+- PackageDefSymbol
- *              |
- *              +- TypeSymbol -+- ClassDefSymbol
- *              |              +- TypeDefSymbol
- *              |              +- TypeBindSymbol
- *              |
- *              +- TermSymbol -+- DefDefSymbol
- *              |              +- ValDefSymbol
- *              |              +- BindSymbol
- *              |
- *              +- NoSymbol
+ *  +- Symbol
  *
  *  +- Flags
  *
@@ -216,7 +204,7 @@ trait Core {
         /** Tree representing a pattern match `x match  { ... }` in the source code */
         type Match = internal.Match
 
-        /** Tree representing a pattern match `delegate match { ... }` in the source code */
+        /** Tree representing a pattern match `delegate match { ... }` in the source code */  // TODO: drop
         type ImpliedMatch = internal.ImpliedMatch
 
         /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */
@@ -294,26 +282,14 @@ trait Core {
   /** Branch of a type pattern match */
   type TypeCaseDef = internal.TypeCaseDef
 
-  /** Pattern tree of the pattern part of a CaseDef */
-  type Pattern = internal.Pattern
+  /** Pattern representing a `_ @ _` binding. */
+  type Bind = internal.Bind
 
-    /** Pattern representing a value. This includes `1`, ```x``` and `_` */
-    type Value = internal.Value
+  /** Pattern representing a `Xyz(...)` unapply. */
+  type Unapply = internal.Unapply
 
-    /** Pattern representing a `_ @ _` binding. */
-    type Bind = internal.Bind
-
-    /** Pattern representing a `Xyz(...)` unapply. */
-    type Unapply = internal.Unapply
-
-    /** Pattern representing `X | Y | ...` alternatives. */
-    type Alternatives = internal.Alternatives
-
-    /** Pattern representing a `x: Y` type test. */
-    type TypeTest = internal.TypeTest
-
-    /** Pattern representing a `_` pattern */
-    type WildcardPattern = internal.WildcardPattern
+  /** Pattern representing `X | Y | ...` alternatives. */
+  type Alternatives = internal.Alternatives
 
   /** Type or bounds */
   type TypeOrBounds = internal.TypeOrBounds
@@ -419,36 +395,6 @@ trait Core {
    *  Then can be compared with == to know if the definition is the same.
    */
   type Symbol = internal.Symbol
-
-    /** Symbol of a package definition */
-    type PackageDefSymbol = internal.PackageDefSymbol
-
-    /** Symbol representing a type definition. */
-    type TypeSymbol = internal.TypeSymbol
-
-      /** Symbol of a class definition. This includes anonymous class definitions and the class of a module object. */
-      type ClassDefSymbol = internal.ClassDefSymbol
-
-      /** Symbol of a type (parameter or member) definition. */
-      type TypeDefSymbol = internal.TypeDefSymbol
-
-      /** Symbol representing a type bind definition. */
-      type TypeBindSymbol = internal.TypeBindSymbol
-
-    /** Symbol representing a term definition. */
-    type TermSymbol = internal.TermSymbol
-
-      /** Symbol representing a method definition. */
-      type DefDefSymbol = internal.DefDefSymbol
-
-      /** Symbol representing a value definition. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
-      type ValDefSymbol = internal.ValDefSymbol
-
-      /** Symbol representing a bind definition. */
-      type BindSymbol = internal.BindSymbol
-
-    /** No symbol available. */
-    type NoSymbol = internal.NoSymbol
 
   /** FlagSet of a Symbol */
   type Flags = internal.Flags

@@ -96,12 +96,11 @@ trait Plugins {
 
   private var _plugins: List[Plugin] = _
   def plugins(implicit ctx: Context): List[Plugin] =
-  if (_plugins == null) {
-    _plugins = loadPlugins
-    _plugins
-  }
-  else _plugins
-
+    if (_plugins == null) {
+      _plugins = loadPlugins
+      _plugins
+    }
+    else _plugins
 
   /** A description of all the plugins that are loaded */
   def pluginDescriptions: String =

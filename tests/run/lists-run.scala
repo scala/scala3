@@ -69,10 +69,10 @@ min cardinality(ys, e)))
       }, "obey min cardinality")
     assert({
         val intersection = xs intersect ys
-    val unconsumed = xs.foldLeft(intersection){(rest, e) =>
-      if (! rest.isEmpty && e == rest.head) rest.tail else rest
-    }
-    unconsumed.isEmpty
+        val unconsumed = xs.foldLeft(intersection){(rest, e) =>
+          if (! rest.isEmpty && e == rest.head) rest.tail else rest
+        }
+        unconsumed.isEmpty
       }, "maintain order")
     assert(xs == (xs intersect xs),
       "has the list as again intersection")
@@ -87,47 +87,47 @@ object Test1 {
     val xs4 = List(2, 4, 6, 8)
     val xs5 = List(List(3, 4), List(3), List(4, 5))
 
-  {
-    val n1 = xs1 count { e => e % 2 != 0 }
-    val n2 = xs4 count { e => e < 5 }
-    assert(4 == (n1 + n2), "check_count")
-  }
-  {
-    val b1 = xs1 exists { e => e % 2 == 0 }
-    val b2 = xs4 exists { e => e == 5 }
-    assert(!(b1 & b2), "check_exists")
-  }
-  {
-    val ys1 = xs1 filter { e => e % 2 == 0 }
-    val ys2 = xs4 filter { e => e < 5 }
-    assert(3 == ys1.length + ys2.length, "check_filter")
-  }
-  {
-    val n1 = xs1.foldLeft(0)((e1, e2) => e1 + e2)
-    val ys1 = xs4.foldLeft(List[Int]())((e1, e2) => e2 :: e1)
-    assert(10 == n1 + ys1.length, "check_foldLeft")
-  }
-  {
-    val b1 = xs1 forall { e => e < 10}
-    val b2 = xs4 forall { e => e % 2 == 0 }
-    assert(b1 & b2, "check_forall")
-  }
-  {
-    val ys1 = xs1 filterNot { e => e % 2 != 0 }
-    val ys2 = xs4 filterNot { e => e < 5 }
-    assert(3 == ys1.length + ys2.length, "check_remove")
-  }
-  {
-    val ys1 = xs1 zip xs2
-    val ys2 = xs1 zip xs3
-    assert(4 == ys1.length + ys2.length, "check_zip")
-  }
-  {
-    val ys1 = xs1.zipAll(xs2, 0, '_')
-    val ys2 = xs2.zipAll(xs1, '_', 0)
-    val ys3 = xs1.zipAll(xs3, 0, List(-1))
-    assert(9 == ys1.length + ys2.length + ys3.length, "check_zipAll")
-  }
+    {
+      val n1 = xs1 count { e => e % 2 != 0 }
+      val n2 = xs4 count { e => e < 5 }
+      assert(4 == (n1 + n2), "check_count")
+    }
+    {
+      val b1 = xs1 exists { e => e % 2 == 0 }
+      val b2 = xs4 exists { e => e == 5 }
+      assert(!(b1 & b2), "check_exists")
+    }
+    {
+      val ys1 = xs1 filter { e => e % 2 == 0 }
+      val ys2 = xs4 filter { e => e < 5 }
+      assert(3 == ys1.length + ys2.length, "check_filter")
+    }
+    {
+      val n1 = xs1.foldLeft(0)((e1, e2) => e1 + e2)
+      val ys1 = xs4.foldLeft(List[Int]())((e1, e2) => e2 :: e1)
+      assert(10 == n1 + ys1.length, "check_foldLeft")
+    }
+    {
+      val b1 = xs1 forall { e => e < 10}
+      val b2 = xs4 forall { e => e % 2 == 0 }
+      assert(b1 & b2, "check_forall")
+    }
+    {
+      val ys1 = xs1 filterNot { e => e % 2 != 0 }
+      val ys2 = xs4 filterNot { e => e < 5 }
+      assert(3 == ys1.length + ys2.length, "check_remove")
+    }
+    {
+      val ys1 = xs1 zip xs2
+      val ys2 = xs1 zip xs3
+      assert(4 == ys1.length + ys2.length, "check_zip")
+    }
+    {
+      val ys1 = xs1.zipAll(xs2, 0, '_')
+      val ys2 = xs2.zipAll(xs1, '_', 0)
+      val ys3 = xs1.zipAll(xs3, 0, List(-1))
+      assert(9 == ys1.length + ys2.length + ys3.length, "check_zipAll")
+    }
   }
 }
 

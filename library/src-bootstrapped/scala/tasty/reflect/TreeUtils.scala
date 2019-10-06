@@ -4,20 +4,17 @@ package reflect
 /** Tasty reflect case definition */
 trait TreeUtils
     extends Core
-    with PatternOps
     with SymbolOps
     with TreeOps { self: Reflection =>
 
   abstract class TreeAccumulator[X] {
 
     // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
-    def foldTree(x: X, tree: Tree) given (ctx: Context): X
-    def foldPattern(x: X, tree: Pattern) given (ctx: Context): X
+    def foldTree(x: X, tree: Tree)(given ctx: Context): X
 
-    def foldTrees(x: X, trees: Iterable[Tree]) given (ctx: Context): X = trees.foldLeft(x)(foldTree)
-    def foldPatterns(x: X, trees: Iterable[Pattern]) given (ctx: Context): X = trees.foldLeft(x)(foldPattern)
+    def foldTrees(x: X, trees: Iterable[Tree])(given ctx: Context): X = trees.foldLeft(x)(foldTree)
 
-    def foldOverTree(x: X, tree: Tree) given (ctx: Context): X = {
+    def foldOverTree(x: X, tree: Tree)(given ctx: Context): X = {
       def localCtx(definition: Definition): Context = definition.symbol.localContext
       tree match {
         case Ident(_) =>
@@ -72,10 +69,10 @@ trait TreeUtils
         case IsDefinition(cdef @ ClassDef(_, constr, parents, derived, self, body)) =>
           implicit val ctx = localCtx(cdef)
           foldTrees(foldTrees(foldTrees(foldTrees(foldTree(x, constr), parents), derived), self), body)
-        case Import(_, expr, _) =>
+        case Import(expr, _) =>
           foldTree(x, expr)
         case IsPackageClause(clause @ PackageClause(pid, stats)) =>
-          foldTrees(foldTree(x, pid), stats) given clause.symbol.localContext
+          foldTrees(foldTree(x, pid), stats)(given clause.symbol.localContext)
         case Inferred() => x
         case TypeIdent(_) => x
         case TypeSelect(qualifier, _) => foldTree(x, qualifier)
@@ -92,43 +89,33 @@ trait TreeUtils
           foldTrees(foldTree(boundopt.fold(x)(foldTree(x, _)), selector), cases)
         case WildcardTypeTree() => x
         case TypeBoundsTree(lo, hi) => foldTree(foldTree(x, lo), hi)
-        case CaseDef(pat, guard, body) => foldTree(foldTrees(foldPattern(x, pat), guard), body)
+        case CaseDef(pat, guard, body) => foldTree(foldTrees(foldTree(x, pat), guard), body)
         case TypeCaseDef(pat, body) => foldTree(foldTree(x, pat), body)
+        case Bind(_, body) => foldTree(x, body)
+        case Unapply(fun, implicits, patterns) => foldTrees(foldTrees(foldTree(x, fun), implicits), patterns)
+        case Alternatives(patterns) => foldTrees(x, patterns)
       }
     }
-
-    def foldOverPattern(x: X, tree: Pattern) given (ctx: Context): X = tree match {
-      case Pattern.Value(v) => foldTree(x, v)
-      case Pattern.Bind(_, body) => foldPattern(x, body)
-      case Pattern.Unapply(fun, implicits, patterns) => foldPatterns(foldTrees(foldTree(x, fun), implicits), patterns)
-      case Pattern.Alternatives(patterns) => foldPatterns(x, patterns)
-      case Pattern.TypeTest(tpt) => foldTree(x, tpt)
-      case Pattern.WildcardPattern() => x
-    }
-
   }
 
   abstract class TreeTraverser extends TreeAccumulator[Unit] {
 
-    def traverseTree(tree: Tree) given (ctx: Context): Unit = traverseTreeChildren(tree)
-    def traversePattern(tree: Pattern) given (ctx: Context): Unit = traversePatternChildren(tree)
+    def traverseTree(tree: Tree)(given ctx: Context): Unit = traverseTreeChildren(tree)
 
-    def foldTree(x: Unit, tree: Tree) given (ctx: Context): Unit = traverseTree(tree)
-    def foldPattern(x: Unit, tree: Pattern) given (ctx: Context) = traversePattern(tree)
+    def foldTree(x: Unit, tree: Tree)(given ctx: Context): Unit = traverseTree(tree)
 
-    protected def traverseTreeChildren(tree: Tree) given (ctx: Context): Unit = foldOverTree((), tree)
-    protected def traversePatternChildren(tree: Pattern) given (ctx: Context): Unit = foldOverPattern((), tree)
+    protected def traverseTreeChildren(tree: Tree)(given ctx: Context): Unit = foldOverTree((), tree)
 
   }
 
   abstract class TreeMap { self =>
 
-    def transformTree(tree: Tree) given (ctx: Context): Tree = {
+    def transformTree(tree: Tree)(given ctx: Context): Tree = {
       tree match {
         case IsPackageClause(tree) =>
-          PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats) given tree.symbol.localContext)
+          PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(given tree.symbol.localContext))
         case IsImport(tree) =>
-          Import.copy(tree)(tree.importImplied, transformTerm(tree.expr), tree.selectors)
+          Import.copy(tree)(transformTerm(tree.expr), tree.selectors)
         case IsStatement(tree) =>
           transformStatement(tree)
         case IsTypeTree(tree) => transformTypeTree(tree)
@@ -138,10 +125,16 @@ trait TreeUtils
           transformCaseDef(tree)
         case IsTypeCaseDef(tree) =>
           transformTypeCaseDef(tree)
+        case IsBind(pattern) =>
+          Bind.copy(pattern)(pattern.name, pattern.pattern)
+        case IsUnapply(pattern) =>
+          Unapply.copy(pattern)(transformTerm(pattern.fun), transformSubTrees(pattern.implicits), transformTrees(pattern.patterns))
+        case IsAlternatives(pattern) =>
+          Alternatives.copy(pattern)(transformTrees(pattern.patterns))
       }
     }
 
-    def transformStatement(tree: Statement) given (ctx: Context): Statement = {
+    def transformStatement(tree: Statement)(given ctx: Context): Statement = {
       def localCtx(definition: Definition): Context = definition.symbol.localContext
       tree match {
         case IsTerm(tree) =>
@@ -160,11 +153,11 @@ trait TreeUtils
         case IsClassDef(tree) =>
           ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
         case IsImport(tree) =>
-          Import.copy(tree)(tree.importImplied, transformTerm(tree.expr), tree.selectors)
+          Import.copy(tree)(transformTerm(tree.expr), tree.selectors)
       }
     }
 
-    def transformTerm(tree: Term) given (ctx: Context): Term = {
+    def transformTerm(tree: Term)(given ctx: Context): Term = {
       tree match {
         case Ident(name) =>
           tree
@@ -209,7 +202,7 @@ trait TreeUtils
       }
     }
 
-    def transformTypeTree(tree: TypeTree) given (ctx: Context): TypeTree = tree match {
+    def transformTypeTree(tree: TypeTree)(given ctx: Context): TypeTree = tree match {
       case Inferred() => tree
       case IsTypeIdent(tree) => tree
       case IsTypeSelect(tree) =>
@@ -229,56 +222,40 @@ trait TreeUtils
       case IsByName(tree) =>
         ByName.copy(tree)(transformTypeTree(tree.result))
       case IsLambdaTypeTree(tree) =>
-        LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams), transformTree(tree.body)) given tree.symbol.localContext
+        LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams), transformTree(tree.body))(given tree.symbol.localContext)
       case IsTypeBind(tree) =>
         TypeBind.copy(tree)(tree.name, tree.body)
       case IsTypeBlock(tree) =>
         TypeBlock.copy(tree)(tree.aliases, tree.tpt)
     }
 
-    def transformCaseDef(tree: CaseDef) given (ctx: Context): CaseDef = {
-      CaseDef.copy(tree)(transformPattern(tree.pattern), tree.guard.map(transformTerm), transformTerm(tree.rhs))
+    def transformCaseDef(tree: CaseDef)(given ctx: Context): CaseDef = {
+      CaseDef.copy(tree)(transformTree(tree.pattern), tree.guard.map(transformTerm), transformTerm(tree.rhs))
     }
 
-    def transformTypeCaseDef(tree: TypeCaseDef) given (ctx: Context): TypeCaseDef = {
+    def transformTypeCaseDef(tree: TypeCaseDef)(given ctx: Context): TypeCaseDef = {
       TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern), transformTypeTree(tree.rhs))
     }
 
-    def transformPattern(pattern: Pattern) given (ctx: Context): Pattern = pattern match {
-      case Pattern.Value(_) | Pattern.WildcardPattern() =>
-        pattern
-      case Pattern.IsTypeTest(pattern) =>
-        Pattern.TypeTest.copy(pattern)(transformTypeTree(pattern.tpt))
-      case Pattern.IsUnapply(pattern) =>
-        Pattern.Unapply.copy(pattern)(transformTerm(pattern.fun), transformSubTrees(pattern.implicits), transformPatterns(pattern.patterns))
-      case Pattern.IsAlternatives(pattern) =>
-        Pattern.Alternatives.copy(pattern)(transformPatterns(pattern.patterns))
-      case Pattern.IsBind(pattern) =>
-        Pattern.Bind.copy(pattern)(pattern.name, transformPattern(pattern.pattern))
-    }
-
-    def transformStats(trees: List[Statement]) given (ctx: Context): List[Statement] =
+    def transformStats(trees: List[Statement])(given ctx: Context): List[Statement] =
       trees mapConserve (transformStatement(_))
 
-    def transformTrees(trees: List[Tree]) given (ctx: Context): List[Tree] =
+    def transformTrees(trees: List[Tree])(given ctx: Context): List[Tree] =
       trees mapConserve (transformTree(_))
 
-    def transformTerms(trees: List[Term]) given (ctx: Context): List[Term] =
+    def transformTerms(trees: List[Term])(given ctx: Context): List[Term] =
       trees mapConserve (transformTerm(_))
 
-    def transformTypeTrees(trees: List[TypeTree]) given (ctx: Context): List[TypeTree] =
+    def transformTypeTrees(trees: List[TypeTree])(given ctx: Context): List[TypeTree] =
       trees mapConserve (transformTypeTree(_))
 
-    def transformCaseDefs(trees: List[CaseDef]) given (ctx: Context): List[CaseDef] =
+    def transformCaseDefs(trees: List[CaseDef])(given ctx: Context): List[CaseDef] =
       trees mapConserve (transformCaseDef(_))
 
-    def transformTypeCaseDefs(trees: List[TypeCaseDef]) given (ctx: Context): List[TypeCaseDef] =
+    def transformTypeCaseDefs(trees: List[TypeCaseDef])(given ctx: Context): List[TypeCaseDef] =
       trees mapConserve (transformTypeCaseDef(_))
 
-    def transformPatterns(trees: List[Pattern]) given (ctx: Context): List[Pattern] =
-      trees mapConserve (transformPattern(_))
-
-    def transformSubTrees[Tr <: Tree](trees: List[Tr]) given (ctx: Context): List[Tr] =
+    def transformSubTrees[Tr <: Tree](trees: List[Tr])(given ctx: Context): List[Tr] =
       transformTrees(trees).asInstanceOf[List[Tr]]
 
   }
@@ -286,7 +263,7 @@ trait TreeUtils
   /** Bind the `rhs` to a `val` and use it in `body` */
   def let(rhs: Term)(body: Ident => Term): Term = {
     import scala.quoted.QuoteContext
-    given as QuoteContext = new QuoteContext(this)
+    given QuoteContext = new QuoteContext(this)
     val expr = (rhs.seal: @unchecked) match {
       case '{ $rhsExpr: $t } =>
         '{

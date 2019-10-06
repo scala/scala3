@@ -1,0 +1,5 @@
+tuple1 ++ emptyTuple = (e1,e2,e3)
+emptyTuple ++ tuple1 = (e1,e2,e3)
+tuple2 ++ emptyTuple = (e4,e5,e6)
+emptyTuple ++ tuple2 = (e4,e5,e6)
+tuple1 ++ tuple2 = (e1,e2,e3,e4,e5,e6)

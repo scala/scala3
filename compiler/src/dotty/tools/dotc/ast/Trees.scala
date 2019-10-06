@@ -119,14 +119,14 @@ object Trees {
      *   - errors were reported
      */
     private def checkChildrenTyped(it: Iterator[Any])(implicit ctx: Context): Unit =
-      if (!this.isInstanceOf[Import[_]])
+      if (!this.isInstanceOf[Import[?]])
         while (it.hasNext)
           it.next() match {
-            case x: Ident[_] => // untyped idents are used in a number of places in typed trees
-            case x: Tree[_] =>
+            case x: Ident[?] => // untyped idents are used in a number of places in typed trees
+            case x: Tree[?] =>
               assert(x.hasType || ctx.reporter.errorsReported,
                      s"$this has untyped child $x")
-            case xs: List[_] => checkChildrenTyped(xs.iterator)
+            case xs: List[?] => checkChildrenTyped(xs.iterator)
             case _ =>
           }
 
@@ -188,8 +188,8 @@ object Trees {
     def treeSize: Int = {
       var s = 1
       def addSize(elem: Any): Unit = elem match {
-        case t: Tree[_] => s += t.treeSize
-        case ts: List[_] => ts foreach addSize
+        case t: Tree[?] => s += t.treeSize
+        case ts: List[?] => ts foreach addSize
         case _ =>
       }
       productIterator foreach addSize
@@ -203,18 +203,18 @@ object Trees {
 
     override def toText(printer: Printer): Text = printer.toText(this)
 
-    def sameTree(that: Tree[_]): Boolean = {
+    def sameTree(that: Tree[?]): Boolean = {
       def isSame(x: Any, y: Any): Boolean =
         x.asInstanceOf[AnyRef].eq(y.asInstanceOf[AnyRef]) || {
           x match {
-            case x: Tree[_] =>
+            case x: Tree[?] =>
               y match {
-                case y: Tree[_] => x.sameTree(y)
+                case y: Tree[?] => x.sameTree(y)
                 case _ => false
               }
-            case x: List[_] =>
+            case x: List[?] =>
               y match {
-                case y: List[_] => x.corresponds(y)(isSame)
+                case y: List[?] => x.corresponds(y)(isSame)
                 case _ => false
               }
             case _ =>
@@ -308,24 +308,11 @@ object Trees {
   /** Tree defines a new symbol */
   trait DefTree[-T >: Untyped] extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] <: DefTree[T]
-    override def isDef: Boolean = true
-    def namedType: NamedType = tpe.asInstanceOf[NamedType]
-  }
-
-  /** Tree defines a new symbol and carries modifiers.
-   *  The position of a MemberDef contains only the defined identifier or pattern.
-   *  The envelope of a MemberDef contains the whole definition and has its point
-   *  on the opening keyword (or the next token after that if keyword is missing).
-   */
-  abstract class MemberDef[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NameTree[T] with DefTree[T] {
-    type ThisTree[-T >: Untyped] <: MemberDef[T]
 
     private[this] var myMods: untpd.Modifiers = null
 
     private[dotc] def rawMods: untpd.Modifiers =
       if (myMods == null) untpd.EmptyModifiers else myMods
-
-    def rawComment: Option[Comment] = getAttachment(DocComment)
 
     def withAnnotations(annots: List[untpd.Tree]): ThisTree[Untyped] = withMods(rawMods.withAnnotations(annots))
 
@@ -338,13 +325,27 @@ object Trees {
     def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(untpd.Modifiers(flags))
     def withAddedFlags(flags: FlagSet): ThisTree[Untyped] = withMods(rawMods | flags)
 
+    /** Destructively update modifiers. To be used with care. */
+    def setMods(mods: untpd.Modifiers): Unit = myMods = mods
+
+    override def isDef: Boolean = true
+    def namedType: NamedType = tpe.asInstanceOf[NamedType]
+  }
+
+  /** Tree defines a new symbol and carries modifiers.
+   *  The position of a MemberDef contains only the defined identifier or pattern.
+   *  The envelope of a MemberDef contains the whole definition and has its point
+   *  on the opening keyword (or the next token after that if keyword is missing).
+   */
+  abstract class MemberDef[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NameTree[T] with DefTree[T] {
+    type ThisTree[-T >: Untyped] <: MemberDef[T]
+
+    def rawComment: Option[Comment] = getAttachment(DocComment)
+
     def setComment(comment: Option[Comment]): this.type = {
       comment.map(putAttachment(DocComment, _))
       this
     }
-
-    /** Destructively update modifiers. To be used with care. */
-    def setMods(mods: untpd.Modifiers): Unit = myMods = mods
 
     /** The position of the name defined by this definition.
      *  This is a point position if the definition is synthetic, or a range position
@@ -361,16 +362,13 @@ object Trees {
           val nameStart =
             if (point != span.start) point
             else {
-              // Use an immutable ArraySeq to work around https://github.com/scala/bug/issues/11708
-              val content = collection.immutable.ArraySeq.unsafeWrapArray(source.content())
-
               // Point might be too far away from start to be recorded. In this case we fall back to scanning
               // forwards from the start offset for the name.
               // Note: This might be inaccurate since scanning might hit accidentally the same
               // name (e.g. in a comment) before finding the real definition.
               // To make this behavior more robust we'd have to change the trees for definitions to contain
               // a fully positioned Ident in place of a name.
-              val idx = content.indexOfSlice(realName, point)
+              val idx = source.content().indexOfSlice(realName, point)
               if (idx >= 0) idx
               else point // use `point` anyway. This is important if no source exists so scanning fails
             }
@@ -771,7 +769,7 @@ object Trees {
     type ThisTree[-T >: Untyped] = TypeDef[T]
 
     /** Is this a definition of a class? */
-    def isClassDef: Boolean = rhs.isInstanceOf[Template[_]]
+    def isClassDef: Boolean = rhs.isInstanceOf[Template[?]]
 
     def isBackquoted: Boolean = hasAttachment(Backquoted)
   }
@@ -802,7 +800,7 @@ object Trees {
    *  where a selector is either an untyped `Ident`, `name` or
    *  an untyped thicket consisting of `name` and `rename`.
    */
-  case class Import[-T >: Untyped] private[ast] (importGiven: Boolean, expr: Tree[T], selectors: List[Tree[Untyped]])(implicit @constructorOnly src: SourceFile)
+  case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[untpd.ImportSelector])(implicit @constructorOnly src: SourceFile)
     extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] = Import[T]
   }
@@ -1190,9 +1188,9 @@ object Trees {
         case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (derived eq tree.derived) && (self eq tree.self) && (body eq tree.unforcedBody) => tree
         case tree => finalize(tree, untpd.Template(constr, parents, derived, self, body)(sourceFile(tree)))
       }
-      def Import(tree: Tree)(importGiven: Boolean, expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import = tree match {
-        case tree: Import if (importGiven == tree.importGiven) && (expr eq tree.expr) && (selectors eq tree.selectors) => tree
-        case _ => finalize(tree, untpd.Import(importGiven, expr, selectors)(sourceFile(tree)))
+      def Import(tree: Tree)(expr: Tree, selectors: List[untpd.ImportSelector])(implicit ctx: Context): Import = tree match {
+        case tree: Import if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
+        case _ => finalize(tree, untpd.Import(expr, selectors)(sourceFile(tree)))
       }
       def PackageDef(tree: Tree)(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef = tree match {
         case tree: PackageDef if (pid eq tree.pid) && (stats eq tree.stats) => tree
@@ -1334,8 +1332,8 @@ object Trees {
             cpy.TypeDef(tree)(name, transform(rhs))
           case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
             cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body))
-          case Import(importGiven, expr, selectors) =>
-            cpy.Import(tree)(importGiven, transform(expr), selectors)
+          case Import(expr, selectors) =>
+            cpy.Import(tree)(transform(expr), selectors)
           case PackageDef(pid, stats) =>
             cpy.PackageDef(tree)(transformSub(pid), transformStats(stats)(localCtx))
           case Annotated(arg, annot) =>
@@ -1454,7 +1452,7 @@ object Trees {
               this(x, rhs)
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
               this(this(this(this(x, constr), parents), self), tree.body)
-            case Import(_, expr, _) =>
+            case Import(expr, _) =>
               this(x, expr)
             case PackageDef(pid, stats) =>
               this(this(x, pid), stats)(localCtx)
@@ -1467,7 +1465,7 @@ object Trees {
             case _ =>
               foldMoreCases(x, tree)
           }
-      }
+        }
 
       def foldMoreCases(x: X, tree: Tree)(implicit ctx: Context): X = {
         assert(ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), tree)

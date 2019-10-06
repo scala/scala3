@@ -39,7 +39,8 @@ case class DefaultParams(
         "posts" -> site.posts.map(_.toMap),
         "project" -> site.projectTitle,
         "version" -> site.projectVersion,
-        "projectUrl" -> site.projectUrl,
+        "projectUrl" -> site.projectUrl.orNull,
+        "logo" -> site.projectLogo.orNull,
         "root" -> site.root
       ).asJava,
 
@@ -56,7 +57,8 @@ case class DefaultParams(
 
   def withPosts(posts: Array[BlogPost]): DefaultParams =
     copy(site = SiteInfo(
-      site.baseurl, site.projectTitle, site.projectVersion, site.projectUrl, posts, site.root))
+      site.baseurl, site.projectTitle, site.projectVersion, site.projectUrl, site.projectLogo,
+      posts, site.root))
 
   def withUrl(url: String): DefaultParams =
     copy(page = PageInfo(url))
@@ -67,14 +69,15 @@ case class DefaultParams(
 }
 
 case class PageInfo(url: String, date: String = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")).toString ) {
-  val path: Array[String] = url.split('/').reverse.drop(1)
+  val path: Array[String] = url.split('/').drop(1)
 }
 
 case class SiteInfo(
   baseurl: String,
   projectTitle: String,
   projectVersion: String,
-  projectUrl: String,
+  projectUrl: Option[String],
+  projectLogo: Option[String],
   posts: Array[BlogPost],
   root: String
 )

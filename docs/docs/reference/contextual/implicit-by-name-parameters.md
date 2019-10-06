@@ -10,16 +10,16 @@ trait Codec[T] {
   def write(x: T): Unit
 }
 
-given intCodec as Codec[Int] = ???
+given intCodec: Codec[Int] = ???
 
-given optionCodec[T] as Codec[Option[T]] given (ev: => Codec[T]) {
+given optionCodec[T](given ev: => Codec[T]): Codec[Option[T]] {
   def write(xo: Option[T]) = xo match {
     case Some(x) => ev.write(x)
     case None =>
   }
 }
 
-val s = the[Codec[Option[Int]]]
+val s = summon[Codec[Option[Int]]]
 
 s.write(Some(33))
 s.write(None)
@@ -36,7 +36,7 @@ The precise steps for synthesizing an argument for an implicit by-name parameter
  1. Create a new given instance of type `T`:
 
     ```scala
-    given lv as T = ???
+    given lv: T = ???
     ```
     where `lv` is an arbitrary fresh name.
 
@@ -46,7 +46,7 @@ The precise steps for synthesizing an argument for an implicit by-name parameter
 
 
     ```scala
-    { given lv as T = E; lv }
+    { given lv: T = E; lv }
     ```
 
     Otherwise, return `E` unchanged.
@@ -54,7 +54,7 @@ The precise steps for synthesizing an argument for an implicit by-name parameter
 In the example above, the definition of `s` would be expanded as follows.
 
 ```scala
-val s = the[Test.Codec[Option[Int]]](
+val s = summon[Test.Codec[Option[Int]]](
   optionCodec[Int](intCodec)
 )
 ```

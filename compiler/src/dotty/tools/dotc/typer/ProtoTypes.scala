@@ -313,10 +313,9 @@ object ProtoTypes {
           if (!args1.exists(arg => isUndefined(arg.tpe))) state.typedArgs = args1
           args1
         }
-        finally {
+        finally
           if (this.ctx.typerState.constraint ne prevConstraint)
             ctx.typerState.mergeConstraintWith(this.ctx.typerState)
-        }
       }
 
     /** Type single argument and remember the unadapted result in `myTypedArg`.

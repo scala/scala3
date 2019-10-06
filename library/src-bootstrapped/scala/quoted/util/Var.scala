@@ -7,10 +7,10 @@ package util
 sealed trait Var[T] {
 
   // Retrieves the value of the variable
-  def get given QuoteContext: Expr[T]
+  def get(given QuoteContext): Expr[T]
 
   // Update the variable with the expression of a value (`e` corresponds to the RHS of variable assignment `x = e`)
-  def update(e: Expr[T]) given QuoteContext: Expr[Unit]
+  def update(e: Expr[T])(given QuoteContext): Expr[Unit]
 }
 
 object Var {
@@ -34,13 +34,13 @@ object Var {
    *    x
    *  }
    */
-  def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U]) given QuoteContext: Expr[U] = '{
+  def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U])(given QuoteContext): Expr[U] = '{
     var x = $init
     ${
       body(
         new Var[T] {
-          def get given QuoteContext: Expr[T] = 'x
-          def update(e: Expr[T]) given QuoteContext: Expr[Unit] = '{ x = $e }
+          def get(given QuoteContext): Expr[T] = 'x
+          def update(e: Expr[T])(given QuoteContext): Expr[Unit] = '{ x = $e }
         }
       )
     }

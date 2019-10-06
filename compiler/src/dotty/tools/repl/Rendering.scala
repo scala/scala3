@@ -65,7 +65,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
   private[this] def valueOf(sym: Symbol)(implicit ctx: Context): Option[String] = {
     val defn = ctx.definitions
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
-    val resObj: Class[_] = Class.forName(objectName, true, classLoader())
+    val resObj: Class[?] = Class.forName(objectName, true, classLoader())
     val value =
       resObj
         .getDeclaredMethods.find(_.getName == sym.name.encode.toString)

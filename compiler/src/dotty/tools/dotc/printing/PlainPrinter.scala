@@ -103,7 +103,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     (refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
   protected def argText(arg: Type): Text = homogenizeArg(arg) match {
-    case arg: TypeBounds => "_" ~ toText(arg)
+    case arg: TypeBounds => "?" ~ toText(arg)
     case arg => toText(arg)
   }
 
@@ -186,12 +186,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
         "<noprefix>"
       case tp: MethodType =>
         changePrec(GlobalPrec) {
-          (if (tp.isContextualMethod) " given" else "") ~
-          (if (tp.isErasedMethod) " erased" else "") ~~
-          ("(" + (if (tp.isImplicitMethod && !tp.isContextualMethod) "implicit " else "")) ~
-          paramsText(tp) ~
-          (if (tp.resultType.isInstanceOf[MethodType]) ")" else "): ") ~
-          toText(tp.resultType)
+          "("
+          ~ keywordText("given ").provided(tp.isContextualMethod)
+          ~ keywordText("erased ").provided(tp.isErasedMethod)
+          ~ keywordText("implicit ").provided(tp.isImplicitMethod && !tp.isContextualMethod)
+          ~ paramsText(tp)
+          ~ (if tp.resultType.isInstanceOf[MethodType] then ")" else "): ")
+          ~ toText(tp.resultType)
         }
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
@@ -505,7 +506,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toText[T >: Untyped](tree: Tree[T]): Text = {
     def toTextElem(elem: Any): Text = elem match {
       case elem: Showable => elem.toText(this)
-      case elem: List[_] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
+      case elem: List[?] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
       case elem => elem.toString
     }
     val nodeName = tree.productPrefix
@@ -539,16 +540,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
       }
   }
 
-  def toText(importInfo: ImportInfo): Text = {
+  def toText(importInfo: ImportInfo): Text =
     val siteStr = importInfo.site.show
-    val exprStr = if (siteStr endsWith ".type") siteStr dropRight 5 else siteStr
-    val selectorStr = importInfo.selectors match {
-      case Ident(name) :: Nil => name.show
+    val exprStr = if siteStr.endsWith(".type") then siteStr.dropRight(5) else siteStr
+    val selectorStr = importInfo.selectors match
+      case sel :: Nil if sel.renamed.isEmpty && sel.bound.isEmpty =>
+        if sel.isGiven then "given" else sel.name.show
       case _ => "{...}"
-    }
     s"import $exprStr.$selectorStr"
-  }
-
 
   private[this] var maxSummarized = Int.MaxValue
 

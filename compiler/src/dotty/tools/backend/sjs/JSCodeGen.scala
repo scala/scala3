@@ -2588,7 +2588,8 @@ class JSCodeGen()(implicit ctx: Context) {
       sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten)
 
     val wereRepeated = ctx.atPhase(ctx.elimRepeatedPhase) {
-      val list = for ((name, tpe) <- paramNamesAndTypes)
+      val list =
+        for ((name, tpe) <- paramNamesAndTypes)
         yield (name -> tpe.isRepeatedParam)
       list.toMap
     }

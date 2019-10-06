@@ -33,7 +33,7 @@ class T derives Eql
 ```
 Alternatively, one can also provide an `Eql` given instance directly, like this:
 ```scala
-given as Eql[T, T] = Eql.derived
+given Eql[T, T] = Eql.derived
 ```
 This definition effectively says that values of type `T` can (only) be
 compared to other values of type `T` when using `==` or `!=`. The definition
@@ -59,10 +59,10 @@ definitions below make values of type `A` and type `B` comparable with
 each other, but not comparable to anything else:
 
 ```scala
-given as Eql[A, A] = Eql.derived
-given as Eql[B, B] = Eql.derived
-given as Eql[A, B] = Eql.derived
-given as Eql[B, A] = Eql.derived
+given Eql[A, A] = Eql.derived
+given Eql[B, B] = Eql.derived
+given Eql[A, B] = Eql.derived
+given Eql[B, A] = Eql.derived
 ```
 The `scala.Eql` object defines a number of `Eql` givens that together
 define a rule book for what standard types can be compared (more details below).
@@ -97,7 +97,7 @@ class Box[T](x: T) derives Eql
 By the usual rules if [typeclass derivation](./derivation.md),
 this generates the following `Eql` instance in the companion object of `Box`:
 ```scala
-given [T, U] as Eql[Box[T], Box[U]] given Eql[T, U] = Eql.derived
+given [T, U](given Eql[T, U]) : Eql[Box[T], Box[U]] = Eql.derived
 ```
 That is, two boxes are comparable with `==` or `!=` if their elements are. Examples:
 ```scala
@@ -112,24 +112,21 @@ The precise rules for equality checking are as follows.
 
 If the `strictEquality` feature is enabled then
 a comparison using `x == y` or `x != y` between values `x: T` and `y: U`
-is legal if
-
- 1. there is a given instance for `Eql[T, U]`, or
- 2. one of `T`, `U` is `Null`.
+is legal if there is a given instance for `Eql[T, U]`.
 
 In the default case where the `strictEquality` feature is not enabled the comparison is
 also legal if
 
- 1. `T` and `U` the same, or
- 2. one of `T` and `U`is a subtype of the _lifted_ version of the other type, or
- 3. neither `T` nor `U` have a _reflexive `Eql` given.
+ 1. `T` and `U` are the same, or
+ 2. one of `T`, `U` is a subtype of the _lifted_ version of the other type, or
+ 3. neither `T` nor `U` have a _reflexive_ `Eql` given.
 
 Explanations:
 
  - _lifting_ a type `S` means replacing all references to  abstract types
    in covariant positions of `S` by their upper bound, and to replacing
    all refinement types in covariant positions of `S` by their parent.
- - a type `T` has a _reflexive `Eql` given if the implicit search for `Eql[T, T]`
+ - a type `T` has a _reflexive_ `Eql` given if the implicit search for `Eql[T, T]`
    succeeds.
 
 ## Predefined Eql Instances
@@ -139,7 +136,7 @@ The `Eql` object defines givens for comparing
  - `java.lang.Number`, `java.lang.Boolean`, and `java.lang.Character`,
  - `scala.collection.Seq`, and `scala.collection.Set`.
 
-Given instances are defined so that every one of these types has a reflexive `Eql` given, and the following holds:
+Given instances are defined so that every one of these types has a _reflexive_ `Eql` given, and the following holds:
 
  - Primitive numeric types can be compared with each other.
  - Primitive numeric types can be compared with subtypes of `java.lang.Number` (and _vice versa_).
@@ -178,7 +175,7 @@ This generic version of `contains` is the one used in the current (Scala 2.12) v
 It looks different but it admits exactly the same applications as the `contains(x: Any)` definition we started with.
 However, we can make it more useful (i.e. restrictive) by adding an `Eql` parameter:
 ```scala
-  def contains[U >: T](x: U) given Eql[T, U]: Boolean // (1)
+  def contains[U >: T](x: U)(given Eql[T, U]): Boolean // (1)
 ```
 This version of `contains` is equality-safe! More precisely, given
 `x: T`, `xs: List[T]` and `y: U`, then `xs.contains(y)` is type-correct if and only if
@@ -186,7 +183,7 @@ This version of `contains` is equality-safe! More precisely, given
 
 Unfortunately, the crucial ability to "lift" equality type checking from simple equality and pattern matching to arbitrary user-defined operations gets lost if we restrict ourselves to an equality class with a single type parameter. Consider the following signature of `contains` with a hypothetical `Eql1[T]` type class:
 ```scala
-  def contains[U >: T](x: U) given Eql1[U]: Boolean   // (2)
+  def contains[U >: T](x: U)(given Eql1[U]): Boolean   // (2)
 ```
 This version could be applied just as widely as the original `contains(x: Any)` method,
 since the `Eql1[Any]` fallback is always available! So we have gained nothing. What got lost in the transition to a single parameter type class was the original rule that `Eql[A, B]` is available only if neither `A` nor `B` have a reflexive `Eql` given. That rule simply cannot be expressed if there is a single type parameter for `Eql`.

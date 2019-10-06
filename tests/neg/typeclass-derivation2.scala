@@ -210,10 +210,10 @@ trait Show[T] {
   def show(x: T): String
 }
 object Show {
-  import scala.compiletime.{erasedValue, error}
+  import scala.compiletime.{erasedValue, error, summonFrom}
   import TypeLevel._
 
-  inline def tryShow[T](x: T): String = delegate match {
+  inline def tryShow[T](x: T): String = summonFrom {
     case s: Show[T] => s.show(x)
   }
 

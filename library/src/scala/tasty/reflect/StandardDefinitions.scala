@@ -109,7 +109,7 @@ trait StandardDefinitions extends Core {
     /** A dummy class symbol that is used to indicate repeated parameters
       *  compiled by the Scala compiler.
       */
-    def RepeatedParamClass: ClassDefSymbol = internal.Definitions_RepeatedParamClass
+    def RepeatedParamClass: Symbol = internal.Definitions_RepeatedParamClass
 
     /** The class symbol of class `scala.Option`. */
     def OptionClass: Symbol = internal.Definitions_OptionClass

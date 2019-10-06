@@ -14,35 +14,35 @@ type Elem[X] = X match {
 ```
 This defines a type that, depending on the scrutinee type `X`, can reduce to one of its right hand sides. For instance,
 ```scala
-   Elem[String]       =:=  Char
-   Elem[Array[Int]]   =:=  Int
-   Elem[List[Float]]  =:=  Float
-   Elem[Nil.type]     =:=  Nothing
+Elem[String]       =:=  Char
+Elem[Array[Int]]   =:=  Int
+Elem[List[Float]]  =:=  Float
+Elem[Nil.type]     =:=  Nothing
 ```
 Here `=:=` is understood to mean that left and right hand sides are mutually subtypes of each other.
 
 In general, a match type is of the form
 ```scala
-   S match { P1 => Tn ... Pn => Tn }
+S match { P1 => Tn ... Pn => Tn }
 ```
 where `S`, `T1`, ..., `Tn` are types and `P1`, ..., `Pn` are type patterns. Type variables
 in patterns start as usual with a lower case letter.
 
 Match types can form part of recursive type definitions. Example:
 ```scala
-  type LeafElem[X] = X match {
-    case String => Char
-    case Array[t] => LeafElem[t]
-    case Iterable[t] => LeafElem[t]
-    case AnyVal => X
-  }
+type LeafElem[X] = X match {
+  case String => Char
+  case Array[t] => LeafElem[t]
+  case Iterable[t] => LeafElem[t]
+  case AnyVal => X
+}
 ```
 Recursive match type definitions can also be given an upper bound, like this:
 ```scala
-  type Concat[+Xs <: Tuple, +Ys <: Tuple] <: Tuple = Xs match {
-    case Unit => Ys
-    case x *: xs => x *: Concat[xs, Ys]
-  }
+type Concat[+Xs <: Tuple, +Ys <: Tuple] <: Tuple = Xs match {
+  case Unit => Ys
+  case x *: xs => x *: Concat[xs, Ys]
+}
 ```
 In this definition, every instance of `Concat[A, B]`, whether reducible or not, is known to be a subtype of `Tuple`. This is necessary to make the recursive invocation `x *: Concat[xs, Ys]` type check, since `*:` demands a `Tuple` as its right operand.
 
@@ -50,11 +50,11 @@ In this definition, every instance of `Concat[A, B]`, whether reducible or not, 
 
 The internal representation of a match type
 ```
-  S match { P1 => Tn ... Pn => Tn }
+S match { P1 => Tn ... Pn => Tn }
 ```
 is `Match(S, C1, ..., Cn) <: B` where each case `Ci` is of the form
 ```
-  [Xs] => P => T
+[Xs] => P => T
 ```
 Here, `[Xs]` is a type parameter clause of the variables bound in pattern `Pi`. If there are no bound type variables in a case, the type parameter clause is omitted and only the function type `P => T` is kept. So each case is either a unary function type or a type lambda over a unary function type.
 
@@ -66,12 +66,12 @@ We will leave it out in places where it does not matter for the discussion. Scru
 We define match type reduction in terms of an auxiliary relation, `can-reduce`:
 
 ```
-  Match(S, C1, ..., Cn)  can-reduce  i, T'
+Match(S, C1, ..., Cn)  can-reduce  i, T'
 ```
 if `Ci = [Xs] => P => T` and there are minimal instantiations `Is` of the type variables `Xs` such that
 ```
-  S <: [Xs := Is] P
-  T' = [Xs := Is] T
+S <: [Xs := Is] P
+T' = [Xs := Is] T
 ```
 An instantiation `Is` is _minimal_ for `Xs` if all type variables in `Xs` that appear
 covariantly and nonvariantly in `Is` are as small as possible and all type variables in `Xs` that appear contravariantly in `Is` are as large as possible. Here, "small" and "large" are understood with respect to  `<:`.
@@ -82,11 +82,11 @@ in the input constraint unchanged, i.e. existing variables in the constraint can
 
 Using `can-reduce`, we can now define match type reduction proper in the `reduces-to` relation:
 ```
-  Match(S, C1, ..., Cn)  reduces-to  T
+Match(S, C1, ..., Cn)  reduces-to  T
 ```
 if
 ```
-  Match(S, C1, ..., Cn)  can-reduce  i, T
+Match(S, C1, ..., Cn)  can-reduce  i, T
 ```
 and, for `j` in `1..i-1`: `Cj` is disjoint from `Ci`, or else `S` cannot possibly match `Cj`.
 See the section on [overlapping patterns](#overlapping-patterns) for an elaboration of "disjoint" and "cannot possibly match".
@@ -97,11 +97,11 @@ The following rules apply to match types. For simplicity, we omit environments a
 
 The first rule is a structural comparison between two match types:
 ```
-  Match(S, C1, ..., Cm) <: Match(T, D1, ..., Dn)
+Match(S, C1, ..., Cm) <: Match(T, D1, ..., Dn)
 ```
-`    `if
+if
 ```
-  S <: T,  m >= n,  Ci <: Di for i in 1..n
+S <: T,  m >= n,  Ci <: Di for i in 1..n
 ```
 I.e. scrutinees and corresponding cases must be subtypes, no case re-ordering is allowed, but the subtype can have more cases than the supertype.
 
@@ -110,7 +110,7 @@ The second rule states that a match type and its redux are mutual subtypes
   Match(S, Cs) <: T
   T <: Match(S, Cs)
 ```
-`     `if
+if
 ```
   Match(S, Cs)  reduces-to  T
 ```
@@ -129,27 +129,27 @@ Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count
 Typing rules for match expressions are tricky. First, they need some new form of GADT matching for value parameters.
 Second, they have to account for the difference between sequential match on the term level and parallel match on the type level. As a running example consider:
 ```scala
-  type M[+X] = X match {
-    case A => 1
-    case B => 2
-  }
+type M[+X] = X match {
+  case A => 1
+  case B => 2
+}
 ```
 We'd like to be able to typecheck
 ```scala
-  def m[X](x: X): M[X] = x match {
-    case _: A => 1 // type error
-    case _: B => 2 // type error
-  }
+def m[X](x: X): M[X] = x match {
+  case _: A => 1 // type error
+  case _: B => 2 // type error
+}
 ```
 Unfortunately, this goes nowhere. Let's try the first case. We have: `x.type <: A` and `x.type <: X`. This tells
 us nothing useful about `X`, so we cannot reduce `M` in order to show that the right hand side of the case is valid.
 
 The following variant is more promising:
 ```scala
-  def m(x: Any): M[x.type] = x match {
-    case _: A => 1
-    case _: B => 2
-  }
+def m(x: Any): M[x.type] = x match {
+  case _: A => 1
+  case _: B => 2
+}
 ```
 To make this work, we'd need a new form of GADT checking: If the scrutinee is a term variable `s`, we can make use of
 the fact that `s.type` must conform to the pattern's type and derive a GADT constraint from that. For the first case above,
@@ -189,10 +189,10 @@ there are workable ways to enforce that recursion is primitive.
 Note that, since reduction is linked to subtyping, we already have a cycle dectection mechanism in place.
 So the following will already give a reasonable error message:
 ```scala
-  type L[X] = X match {
-    case Int => L[X]
-  }
-  def g[X]: L[X] = ???
+type L[X] = X match {
+  case Int => L[X]
+}
+def g[X]: L[X] = ???
 ```
 
 ```
@@ -204,10 +204,10 @@ So the following will already give a reasonable error message:
 
 The subtype cycle test can be circumvented by producing larger types in each recursive invocation, as in the following definitions:
 ```scala
-  type LL[X] = X match {
-    case Int => LL[LL[X]]
-  }
-  def gg[X]: LL[X] = ???
+type LL[X] = X match {
+  case Int => LL[LL[X]]
+}
+def gg[X]: LL[X] = ???
 ```
 In this case subtyping enters into an infinite recursion. This is not as bad as it looks, however, because
 `dotc` turns selected stack overflows into type errors. If there is a stackoverflow during subtyping,
@@ -246,5 +246,3 @@ Match types are also similar to Typescript's [conditional types](https://github.
  - Match types support direct recursion.
 
 Conditional types in Typescript distribute through union types. We should evaluate whether match types should support this as well.
-
-

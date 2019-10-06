@@ -83,7 +83,7 @@ class InitChecker extends PluginPhase with StandardPlugin {
         ctx.warning("tree: " + tree.symbol.defTree.show)
       }
       else {
-        ctx.warning(tree.symbol + " is neither in lib nor hello, owner = " + enclosingPkg, tree.sourcePos)
+        ctx.warning(tree.symbol.toString + " is neither in lib nor hello, owner = " + enclosingPkg, tree.sourcePos)
       }
       tree
     }

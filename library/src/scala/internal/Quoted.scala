@@ -7,11 +7,11 @@ object Quoted {
 
   /** A term quote is desugared by the compiler into a call to this method */
   @compileTimeOnly("Illegal reference to `scala.internal.Quoted.exprQuote`")
-  def exprQuote[T](x: T): given QuoteContext => Expr[T] = ???
+  def exprQuote[T](x: T): (given QuoteContext) => Expr[T] = ???
 
   /** A term splice is desugared by the compiler into a call to this method */
   @compileTimeOnly("Illegal reference to `scala.internal.Quoted.exprSplice`")
-  def exprSplice[T](x: given QuoteContext => Expr[T]): T = ???
+  def exprSplice[T](x: (given QuoteContext) => Expr[T]): T = ???
 
   /** A type quote is desugared by the compiler into a call to this method */
   @compileTimeOnly("Illegal reference to `scala.internal.Quoted.typeQuote`")
@@ -27,6 +27,9 @@ object Quoted {
 
   /** A splice of a name in a quoted pattern is that marks the definition of a type splice */
   class patternType extends Annotation
+
+  /** A type pattern that must be aproximated from above */
+  class fromAbove extends Annotation
 
   /** Artifact of pickled type splices
    *

@@ -1,41 +1,35 @@
 ---
 layout: main
-extraCSS:
-    - css/toolbar.css
-    - css/sidebar.css
 ---
-
-{% include "toolbar" %}
-
-<div id="content-wrapper">
-    {% assign sidebarTop = "75px" %}
-    {% include "sidebar" %}
-
-    <div id="content-body" class="doc-page-body">
-        <div id="post-title">
-            <h3 id="post-date">
-                {{ page.date | date: '%B %d, %Y' }}
-            </h3>
-            <h1 id="main-title">{{ page.title }}</h1>
-            {% if page.subTitle %}
-            <h2 id="sub-title">{{ page.subTitle }}</h2>
-            {% endif %}
-        </div>
-
-        <div id="blog-post-container">
-            {{ content }}
-        </div>
-
-        {% if page.author %}
-        <div id="post-footer">
-            {% if page.authorImg %}
-            <img id="author-image" src="{{ site.baseurl }}/{{ page.authorImg }}">
-            {% endif %}
-            <span id="post-author">
-                {% if page.authorImg == null %}- {% endif %}{{ page.author }}
+<main class="container">
+    <header>
+        <h1>{{ page.title }}</h1>
+        <div class="byline">
+            <time class="date">
+                <i class="far fa-calendar-alt"></i>
+                {{ page.date | date: "%Y-%m-%d" }}
+            </time>
+            <span class="author">
+                <i class="fas fa-pen-nib"></i>
+                {{ page.author }}
             </span>
         </div>
+        {% if page.subTitle %}
+        <div class="subtitle">
+            {{ page.subTitle }}
+        </div>
         {% endif %}
+    </header>
 
-    </div><!-- end content-body -->
-</div><!-- end content-wrapper -->
+    {{ content }}
+
+    {% if page.author and page.authorImg %}
+    <hr/>
+    <footer>
+        <img id="author-img" src="{{ site.baseurl }}/{{ page.authorImg }}">
+        <span id="author-signature">
+            {{ page.author }}
+        </span>
+    </footer>
+    {% endif %}
+</main>

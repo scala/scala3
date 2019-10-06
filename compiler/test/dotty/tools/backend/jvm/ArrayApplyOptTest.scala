@@ -127,7 +127,7 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
 
   @Test def testArrayInlined3 = test(
     """{
-      |  inline def array[T](xs: =>T*) given (ct: =>scala.reflect.ClassTag[T]): Array[T] = Array(xs: _*)
+      |  inline def array[T](xs: =>T*)(given ct: =>scala.reflect.ClassTag[T]): Array[T] = Array(xs: _*)
       |  array(1, 2)
       |}""".stripMargin,
     newArray2Opcodes(T_INT, List(Op(DUP), Op(ICONST_0), Op(ICONST_1), Op(IASTORE), Op(DUP), Op(ICONST_1), Op(ICONST_2), Op(IASTORE), TypeOp(CHECKCAST, "[I")))

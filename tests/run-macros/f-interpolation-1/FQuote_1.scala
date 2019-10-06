@@ -1,5 +1,5 @@
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 import scala.language.implicitConversions
 
@@ -9,7 +9,7 @@ object FQuote {
     inline def ff(args: => Any*): String = ${impl('this, 'args)}
   }
 
-  /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]]) given (qctx: QuoteContext): Expr[String] = {
+  /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(given qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {

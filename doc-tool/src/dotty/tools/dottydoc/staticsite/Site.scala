@@ -10,8 +10,7 @@ import java.nio.file.Path
 import java.nio.charset.StandardCharsets
 import java.io.File.{ separator => sep }
 
-import com.vladsch.flexmark.parser.ParserEmulationProfile
-import com.vladsch.flexmark.parser.Parser
+import com.vladsch.flexmark.parser.{ Parser, ParserEmulationProfile }
 import com.vladsch.flexmark.ext.gfm.tables.TablesExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
 import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
@@ -19,6 +18,7 @@ import com.vladsch.flexmark.ext.emoji.EmojiExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.yaml.front.matter.YamlFrontMatterExtension
+import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
 
 import dotc.core.Contexts.Context
@@ -33,7 +33,8 @@ case class Site(
   root: JFile,
   projectTitle: String,
   projectVersion: String,
-  projectUrl: String,
+  projectUrl: Option[String],
+  projectLogo: Option[String],
   documentation: Map[String, Package]
 ) extends ResourceFinder {
   /** Documentation serialized to java maps */
@@ -144,16 +145,20 @@ case class Site(
         "css/toolbar.css" -> "/css/toolbar.css",
         "css/search.css" -> "/css/search.css",
         "css/sidebar.css" -> "/css/sidebar.css",
-        "css/api-page.css" -> "/css/api-page.css",
         "css/dottydoc.css" -> "/css/dottydoc.css",
         "css/color-brewer.css" -> "/css/color-brewer.css",
-        "css/font-awesome.min.css" -> "/css/font-awesome.min.css",
         "css/bootstrap.min.css" -> "/css/bootstrap.min.css",
+        "js/toolbar.js" -> "/js/toolbar.js",
+        "js/sidebar.js" -> "/js/sidebar.js",
+        "js/dottydoc.js" -> "/js/dottydoc.js",
         "js/api-search.js" -> "/js/api-search.js",
         "js/bootstrap.min.js" -> "/js/bootstrap.min.js",
         "js/jquery.min.js" -> "/js/jquery.min.js",
-        "js/tether.min.js" -> "/js/tether.min.js",
-        "js/highlight.pack.js" -> "/js/highlight.pack.js"
+        "js/highlight.pack.js" -> "/js/highlight.pack.js",
+        "images/dotty-logo.svg" -> "/images/dotty-logo.svg",
+        "images/scala-logo.svg" -> "/images/scala-logo.svg",
+        "images/dotty-logo-white.svg" -> "/images/dotty-logo-white.svg",
+        "images/scala-logo-white.svg" -> "/images/scala-logo-white.svg"
       )
       .transform((_, v) => getResource(v))
       .foreach { case (path, resource) =>
@@ -169,13 +174,14 @@ case class Site(
     val baseUrl: String = {
       val rootLen = root.toPath.toAbsolutePath.normalize.getNameCount
       val assetLen = pageLocation.toPath.toAbsolutePath.normalize.getNameCount
-      "../" * (assetLen - rootLen + additionalDepth) + "."
+      "../" * (assetLen - rootLen - 1 + additionalDepth) + "."
+      // -1 because for root/index.html the root is the current directory (.) not its parent (../.)
     }
 
     DefaultParams(
       docs, docsFlattened, documentation, PageInfo(pathFromRoot),
       SiteInfo(
-        baseUrl, projectTitle, projectVersion, projectUrl, Array(),
+        baseUrl, projectTitle, projectVersion, projectUrl, projectLogo, Array(),
         root.toString
       ),
       sidebar
@@ -365,6 +371,7 @@ case class Site(
       .toMap
 
     val defaultLayouts: Map[String, Layout] = Map(
+      "base" -> "/_layouts/base.html",
       "main" -> "/_layouts/main.html",
       "search" -> "/_layouts/search.html",
       "doc-page" -> "/_layouts/doc-page.html",
@@ -403,7 +410,6 @@ case class Site(
 
     val defaultIncludes: Map[String, Include] = Map(
       "header.html" -> "/_includes/header.html",
-      "scala-logo.svg" -> "/_includes/scala-logo.svg",
       "toolbar.html" -> "/_includes/toolbar.html",
       "sidebar.html" -> "/_includes/sidebar.html"
     ).map {
@@ -440,6 +446,12 @@ object Site {
   val markdownOptions: DataHolder =
     new MutableDataSet()
       .setFrom(ParserEmulationProfile.KRAMDOWN.getOptions)
+      .set(Parser.INDENTED_CODE_BLOCK_PARSER, false)
+      .set(HtmlRenderer.FENCED_CODE_LANGUAGE_CLASS_PREFIX, "")
+      .set(HtmlRenderer.FENCED_CODE_NO_LANGUAGE_CLASS, "nohighlight")
+      .set(AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
+      .set(AnchorLinkExtension.ANCHORLINKS_ANCHOR_CLASS, "anchor")
+      .set(EmojiExtension.ROOT_IMAGE_PATH, "https://github.global.ssl.fastly.net/images/icons/emoji/")
       .set(Parser.EXTENSIONS, Arrays.asList(
         TablesExtension.create(),
         TaskListExtension.create(),
@@ -449,6 +461,4 @@ object Site {
         YamlFrontMatterExtension.create(),
         StrikethroughExtension.create()
       ))
-      .set(EmojiExtension.ROOT_IMAGE_PATH,
-        "https://github.global.ssl.fastly.net/images/icons/emoji/")
 }

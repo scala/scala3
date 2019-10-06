@@ -1,7 +1,7 @@
 
 import scala.quoted._
 import scala.quoted.staging._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 import liftable.Units._
 import liftable.Lets._
@@ -10,7 +10,7 @@ import liftable.Lists._
 import liftable.Exprs._
 
 object Test {
-  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuoteContext {
     val liftedUnit: Expr[Unit] = '{}
 
@@ -25,28 +25,28 @@ object Test {
     val t2: Expr[(Int, Int)] = (2, 3)
     val t3: Expr[(Int, Int, Int)] = (2, 3, 4)
     val t4: Expr[(Int, Int, Int, Int)] = (2, 3, 4, 5)
-    (1, 2, 3, 4).toExpr
-    (1, 2, 3, 4, 5).toExpr
-    (1, 2, 3, 4, 5, 6).toExpr
-    (1, 2, 3, 4, 5, 6, 7).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24).toExpr
-    (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25).toExpr
+    Expr((1, 2, 3, 4))
+    Expr((1, 2, 3, 4, 5))
+    Expr((1, 2, 3, 4, 5, 6))
+    Expr((1, 2, 3, 4, 5, 6, 7))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24))
+    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25))
 
     val list: List[Int] = List(1, 2, 3)
     val liftedList: Expr[List[Int]] = list
@@ -70,30 +70,30 @@ object Test {
     val liftedIArray: Expr[IArray[Int]] = iarray
 
     val iarray2: IArray[String] = IArray("a", "b", "c")
-    iarray2.toExpr
+    Expr(iarray2)
 
-    IArray(false).toExpr
-    IArray(1: Byte).toExpr
-    IArray(1: Short).toExpr
-    IArray(1).toExpr
-    IArray(1L).toExpr
-    IArray(1.1f).toExpr
-    IArray(1.1d).toExpr
-    IArray('a').toExpr
-    IArray((1, 3)).toExpr
+    Expr(IArray(false))
+    Expr(IArray(1: Byte))
+    Expr(IArray(1: Short))
+    Expr(IArray(1))
+    Expr(IArray(1L))
+    Expr(IArray(1.1f))
+    Expr(IArray(1.1d))
+    Expr(IArray('a'))
+    Expr(IArray((1, 3)))
 
     val array: Array[Int] = Array(1, 2, 3)
     val liftedArray: Expr[Array[Int]] = array
 
-    Array(false).toExpr
-    Array(1: Byte).toExpr
-    Array(1: Short).toExpr
-    Array(1).toExpr
-    Array(1L).toExpr
-    Array(1.1f).toExpr
-    Array(1.1d).toExpr
-    Array('a').toExpr
-    Array((1, 3)).toExpr
+    Expr(Array(false))
+    Expr(Array(1: Byte))
+    Expr(Array(1: Short))
+    Expr(Array(1))
+    Expr(Array(1L))
+    Expr(Array(1.1f))
+    Expr(Array(1.1d))
+    Expr(Array('a'))
+    Expr(Array((1, 3)))
 
     val some: Option[Int] = Some(2)
     val none: Option[Int] = Some(2)
@@ -102,8 +102,8 @@ object Test {
 
     val left: Either[Int, Long] = Left(1)
     val right: Either[Int, Long] = Right(2L)
-    left.toExpr
-    right.toExpr
+    Expr(left)
+    Expr(right)
 
     println("quote lib ok")
   }
@@ -116,8 +116,8 @@ package liftable {
 
   object Exprs {
     implicit class LiftExprOps[T](x: T) extends AnyVal {
-      def toExpr given Liftable[T], QuoteContext: Expr[T] =
-        the[Liftable[T]].toExpr(x)
+      def toExpr(given Liftable[T], QuoteContext): Expr[T] =
+        summon[Liftable[T]].toExpr(x)
     }
   }
 
@@ -137,8 +137,8 @@ package liftable {
   }
 
   object Loops {
-    def liftedWhile(cond: Expr[Boolean])(body: Expr[Unit]) given QuoteContext: Expr[Unit] = '{ while ($cond) $body }
-    def liftedDoWhile(body: Expr[Unit])(cond: Expr[Boolean]) given QuoteContext: Expr[Unit] = '{ while { $body ; $cond } do () }
+    def liftedWhile(cond: Expr[Boolean])(body: Expr[Unit])(given QuoteContext): Expr[Unit] = '{ while ($cond) $body }
+    def liftedDoWhile(body: Expr[Unit])(cond: Expr[Boolean])(given QuoteContext): Expr[Unit] = '{ while { $body ; $cond } do () }
   }
 
 
@@ -147,7 +147,7 @@ package liftable {
     implicit class LiftedOps[T: Liftable](list: Expr[List[T]])(implicit t: Type[T]) {
       def foldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U], qctx: QuoteContext): Expr[U] =
         '{ ($list).foldLeft[$u]($acc)($f) }
-      def foreach(f: Expr[T => Unit]) given QuoteContext: Expr[Unit] =
+      def foreach(f: Expr[T => Unit])(given QuoteContext): Expr[Unit] =
         '{ ($list).foreach($f) }
     }
 

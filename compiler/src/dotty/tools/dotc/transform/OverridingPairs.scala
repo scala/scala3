@@ -102,7 +102,7 @@ object OverridingPairs {
      *     overriding = curEntry.sym
      */
     private def nextOverriding(): Unit = {
-      @tailrec def loop(): Unit = {
+      @tailrec def loop(): Unit =
         if (curEntry ne null) {
           overriding = curEntry.sym
           if (visited.contains(overriding)) {
@@ -110,7 +110,6 @@ object OverridingPairs {
             loop()
           }
         }
-      }
       loop()
       nextEntry = curEntry
     }
@@ -120,7 +119,7 @@ object OverridingPairs {
      *    overriding = overriding member of the pair, provided hasNext is true
      *    overridden = overridden member of the pair, provided hasNext is true
      */
-    @tailrec final def next(): Unit = {
+    @tailrec final def next(): Unit =
       if (nextEntry ne null) {
         nextEntry = decls.lookupNextEntry(nextEntry)
         if (nextEntry ne null)
@@ -143,7 +142,6 @@ object OverridingPairs {
         }
         next()
       }
-    }
 
     nextOverriding()
     next()

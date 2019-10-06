@@ -2,8 +2,7 @@ import java.io.File
 import java.nio.file._
 
 import Modes._
-import com.typesafe.sbt.pgp.PgpKeys
-import com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys
+import com.jsuereth.sbtpgp.PgpKeys
 import sbt.Keys._
 import sbt._
 import complete.DefaultParsers._
@@ -14,6 +13,7 @@ import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
 import xerial.sbt.pack.PackPlugin
 import xerial.sbt.pack.PackPlugin.autoImport._
+import xerial.sbt.Sonatype.autoImport._
 
 import dotty.tools.sbtplugin.DottyPlugin.autoImport._
 import dotty.tools.sbtplugin.DottyPlugin.makeScalaInstance
@@ -58,9 +58,9 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "0.18.1-RC1"
+  val referenceVersion = "0.19.0-RC1"
 
-  val baseVersion = "0.19.1"
+  val baseVersion = "0.20.0"
   val baseSbtDottyVersion = "0.3.5"
 
   // Versions used by the vscode extension to create a new project
@@ -77,8 +77,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.0"
-    case Bootstrapped => "2.13.0"
+    case NonBootstrapped => "2.13.1"
+    case Bootstrapped => "2.13.1"
   }
 
   val dottyOrganization = "ch.epfl.lamp"
@@ -165,10 +165,6 @@ object Build {
     // published version.
     runCode := (run in `dotty-language-server`).toTask("").value,
 
-    // include sources in eclipse (downloads source code for all dependencies)
-    //http://stackoverflow.com/questions/10472840/how-to-attach-sources-to-sbt-managed-dependencies-in-scala-ide#answer-11683728
-    EclipseKeys.withSource := true,
-
     // Avoid various sbt craziness involving classloaders and parallelism
     fork in run := true,
     fork in Test := true,
@@ -203,7 +199,8 @@ object Build {
         password <- sys.env.get("SONATYPE_PW")
       } yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password)
     ).toList,
-    PgpKeys.pgpPassphrase := sys.env.get("PGP_PW").map(_.toCharArray())
+    PgpKeys.pgpPassphrase := sys.env.get("PGP_PW").map(_.toCharArray()),
+    PgpKeys.useGpgPinentry := true,
   )
 
   lazy val commonSettings = publishSettings ++ Seq(
@@ -224,6 +221,9 @@ object Build {
 
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
 
+    // If someone puts a source file at the root (e.g., for manual testing),
+    // don't pick it up as part of any project.
+    sourcesInBase := false,
   )
 
   // Settings used for projects compiled only with Java
@@ -382,6 +382,7 @@ object Build {
         "-project", "Dotty",
         "-project-version", dottyVersion,
         "-project-url", dottyGithubUrl,
+        "-project-logo", "dotty-logo.svg",
         "-classpath", dottydocClasspath.value
       )
       (runMain in Compile).toTask(
@@ -976,11 +977,32 @@ object Build {
       managedSources in Test ++= {
         val dir = fetchScalaJSSource.value / "test-suite"
         (
-          (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** (("IntTest.scala": FileFilter) || "BooleanTest.scala" || "ByteTest.scala" || "CharTest.scala" || "DoubleTest.scala" || "FloatTest.scala" || "ShortTest.scala" || "UnitTest.scala")).get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** (("IntegerTest.scala": FileFilter) || "ObjectTest.scala")).get
+          (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala":FileFilter) -- "RegressionTest.scala" -- "ReflectiveCallTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** (("*.scala": FileFilter) -- "ClassTest.scala" -- "StringTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/io" ** (("*.scala": FileFilter) -- "ByteArrayInputStreamTest.scala" -- "ByteArrayOutputStreamTest.scala" -- "DataInputStreamTest.scala" -- "DataOutputStreamTest.scala" -- "InputStreamTest.scala" -- "OutputStreamWriterTest.scala" -- "PrintStreamTest.scala" -- "ReadersTest.scala" -- "CommonStreamsTests.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/math" ** "*.scala").get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/net" ** (("*.scala": FileFilter) -- "URITest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/security" ** "*.scala").get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/util/regex" ** "*.scala").get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/util/concurrent" ** (("*.scala": FileFilter) -- "ConcurrentHashMapTest.scala" -- "ConcurrentLinkedQueueTest.scala" -- "ConcurrentMapTest.scala" -- "ConcurrentSkipListSetTest.scala" -- "CopyOnWriteArrayListTest.scala")).get
+
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/util" * (("*.scala": FileFilter)
+            -- "AbstractCollectionTest.scala" -- "AbstractListTest.scala" -- "AbstractMapTest.scala" -- "AbstractSetTest.scala" -- "ArrayDequeTest.scala" -- "ArrayListTest.scala"
+            -- "CollectionTest.scala" -- "CollectionsOnCheckedCollectionTest.scala" -- "CollectionsOnCheckedListTest.scala" -- "CollectionsOnCheckedMapTest.scala" -- "CollectionsOnCheckedSetTest.scala"
+            -- "CollectionsOnCollectionsTest.scala" -- "CollectionsOnListsTest.scala" -- "CollectionsOnMapsTest.scala" -- "CollectionsOnSetFromMapTest.scala" -- "CollectionsOnSetsTest.scala"
+            -- "CollectionsOnSynchronizedCollectionTest.scala" -- "CollectionsOnSynchronizedListTest.scala" -- "CollectionsOnSynchronizedMapTest.scala" -- "CollectionsOnSynchronizedSetTest.scala" -- "CollectionsTest.scala"
+            -- "DequeTest.scala" -- "EventObjectTest.scala" -- "FormatterTest.scala" -- "HashMapTest.scala" -- "HashSetTest.scala"
+            -- "LinkedHashMapTest.scala" -- "LinkedHashSetTest.scala" -- "LinkedListTest.scala" -- "ListTest.scala" -- "MapTest.scala"
+            -- "NavigableSetTest.scala" -- "SetTest.scala" -- "SortedMapTest.scala" -- "SortedSetTest.scala" -- "TreeSetTest.scala")).get
+
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
-          ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/util" ** (("Base64Test.scala": FileFilter) || "OptionalTest.scala" || "SplittableRandom.scala" || "ObjectsTestOnJDK8.scala" || "ComparatorTestOnJDK8.scala")).get
+          ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/util" ** (("*.scala": FileFilter) -- "CollectionsOnCopyOnWriteArrayListTestOnJDK8.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/junit" ** (("*.scala": FileFilter) -- "JUnitAnnotationsParamTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/niobuffer" ** (("*.scala": FileFilter)  -- "ByteBufferTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/niocharset" ** (("*.scala": FileFilter)  -- "BaseCharsetTest.scala" -- "Latin1Test.scala" -- "USASCIITest.scala" -- "UTF16Test.scala" -- "UTF8Test.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/scalalib" ** (("*.scala": FileFilter)  -- "ArrayBuilderTest.scala" -- "ClassTagTest.scala" -- "EnumerationTest.scala" -- "RangesTest.scala" -- "SymbolTest.scala")).get
+          ++ (dir / "shared/src/test/require-sam" ** (("*.scala": FileFilter) -- "SAMTest.scala")).get
         )
       }
     )
@@ -1055,8 +1077,7 @@ object Build {
   lazy val `vscode-dotty` = project.in(file("vscode-dotty")).
     settings(commonSettings).
     settings(
-      EclipseKeys.skipProject := true,
-      version := "0.1.15-snapshot", // Keep in sync with package.json
+      version := "0.1.17-snapshot", // Keep in sync with package.json
       autoScalaLibrary := false,
       publishArtifact := false,
       includeFilter in unmanagedSources := NothingFilter | "*.ts" | "**.json",
@@ -1156,12 +1177,9 @@ object Build {
   lazy val publishSettings = Seq(
     publishMavenStyle := true,
     isSnapshot := version.value.contains("SNAPSHOT"),
-    publishTo := Some(
-      if (isSnapshot.value)
-        Opts.resolver.sonatypeSnapshots
-      else
-        Opts.resolver.sonatypeStaging
-    ),
+    publishTo := sonatypePublishToBundle.value,
+    publishConfiguration ~= (_.withOverwrite(true)),
+    publishLocalConfiguration ~= (_.withOverwrite(true)),
     publishArtifact in Test := false,
     homepage := Some(url(dottyGithubUrl)),
     licenses += ("BSD New",

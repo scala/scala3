@@ -1,5 +1,5 @@
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 
 object Macros {
@@ -7,7 +7,7 @@ object Macros {
   implicit inline def printOwners[T](x: => T): Unit =
     ${ impl('x) }
 
-  def impl[T](x: Expr[T]) given (qctx: QuoteContext): Expr[Unit] = {
+  def impl[T](x: Expr[T])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty._
 
     val buff = new StringBuilder
@@ -38,11 +38,10 @@ object Macros {
     '{print(${buff.result()})}
   }
 
-  def dummyShow given (qctx: QuoteContext): qctx.tasty.Printer = {
+  def dummyShow(given qctx: QuoteContext): qctx.tasty.Printer = {
     import qctx.tasty._
     new Printer {
       def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
-      def showPattern(pattern: Pattern)(implicit ctx: Context): String = "Pattern"
       def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = "TypeOrBounds"
       def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"
       def showSymbol(symbol: Symbol)(implicit ctx: Context): String = "Symbol"

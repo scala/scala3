@@ -45,7 +45,7 @@ object Test extends App {
     def unit: T
   }
 
-  given as Monoid[String] {
+  given Monoid[String] {
     def (x: String) combine (y: String): String = x.concat(y)
     def unit: String = ""
   }
@@ -63,13 +63,13 @@ object Test extends App {
     val minimum: T
   }
 
-  given as Ord[Int] {
+  given Ord[Int] {
     def (x: Int) compareTo (y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
   }
 
-  given [T: Ord] as Ord[List[T]] {
+  given [T: Ord] : Ord[List[T]] {
     def (xs: List[T]) compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -101,14 +101,14 @@ object Test extends App {
     def pure[A](x: A): F[A]
   }
 
-  given as Monad[List] {
+  given Monad[List] {
     def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  given [Ctx] as Monad[[X] =>> Ctx => X] {
+  given [Ctx] : Monad[[X] =>> Ctx => X] {
     def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =

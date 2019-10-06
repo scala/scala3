@@ -1,13 +1,13 @@
 
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 import scala.quoted._
 import scala.quoted.staging._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
-    def runAndPrint[T](expr: given QuoteContext => Expr[T]): Unit = println(run(expr))
+    given Toolbox = Toolbox.make(getClass.getClassLoader)
+    def runAndPrint[T](expr: (given QuoteContext) => Expr[T]): Unit = println(run(expr))
 
     runAndPrint(true)
     runAndPrint('a')

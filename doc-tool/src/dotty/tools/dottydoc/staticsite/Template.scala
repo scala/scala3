@@ -36,6 +36,7 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
   Filter.registerFilter(new Reverse)
   Filter.registerFilter(new First)
   Filter.registerFilter(new Json)
+  Filter.registerFilter(new EscapeCSS)
 
   // For some reason, liqp rejects a straight conversion using `.asJava`
   private def toJavaMap(map: Map[String, AnyRef]): HashMap[String, Object] =
@@ -63,21 +64,21 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
           val unexpected = LiquidTemplate.token(mm.getUnexpectedType)
           val expected = LiquidTemplate.token(mm.expecting)
 
+          // mm.index is incorrect, let's compute the index manually
+          // mm.line starts at 1, not 0
+          val index = content.lineToOffset(mm.line-1) + mm.charPositionInLine
           ctx.error(
             if (unexpected == "EOF")
-              s"unexpected end of file, expected: '$expected'"
+              s"unexpected end of file, expected $expected"
             else
-              s"unexpected token '$unexpected', expected: '$expected'",
-            content atSpan Span(mm.index)
+              s"unexpected $unexpected, expected $expected",
+            content atSpan Span(index)
           )
 
           None
         }
-        case ex => {
-          if (true || ctx.settings.Ydebug.value)
+        case _ => {
             throw ex
-
-          None
         }
       }
     }
@@ -97,17 +98,37 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
 
 object LiquidTemplate {
   import liqp.parser.LiquidParser
+  import scala.collection.mutable.HashMap
 
-  private val _tokens: Map[String, String] = Map(
+  final val TokenSymbols = HashMap(
     "TagStart" -> "{%",
-    "TagEnd"   -> "%}"
-  )
+    "TagEnd"   -> "%}",
+    "OutStart" -> "{{",
+    "OutEnd"   -> "}}",
+    "Pipe"     -> "|",
+    "DotDot"   -> "..",
+    "Dot"      -> ".",
+    "Eq"       -> "==",
+    "EqSign"   -> "=",
+    "Gt"       -> ">",
+    "GtEq"     -> ">=",
+    "Lt"       -> "<",
+    "LtEq"     -> "<=",
+    "Minus"    -> "-",
+    "Col"      -> ":",
+    "Comma"    -> ",",
+    "OPar"     -> "(",
+    "CPar"     -> ")",
+    "OBr"      -> "[",
+    "CBr"      -> "]",
+    "QMark"    -> "?"
+  ).mapValuesInPlace((k,v) => s"'$v' ($k)")
 
   def token(i: Int): String =
     if (i == -1) "EOF"
-    else if (i >= LiquidParser.tokenNames.length)
-      "non-existing token"
-    else _tokens
-      .get(LiquidParser.tokenNames(i))
-      .getOrElse(s"token  $i")
+    else if (i >= LiquidParser.tokenNames.length) "non-existing token"
+    else {
+      val name = LiquidParser.tokenNames(i)
+      TokenSymbols.getOrElse(name, name)
+    }
 }

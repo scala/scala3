@@ -1,276 +1,256 @@
-@import url(https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,600,700);
-@import url(https://fonts.googleapis.com/css?family=Titillium+Web:200,300,400,600);
-@import url(https://fonts.googleapis.com/css?family=Roboto+Slab:100,300,400,700);
-
 html, body {
-    overflow-x: hidden;
-    font-family: "Roboto Slab", serif;
-    font-weight: 300;
+  font-weight: 300;
+  height: 100%;
 }
 
-html {
-    height: 100%;
+main.container {
+  min-height: 100vh;
+  padding: 15px 15px;
+  padding-bottom: 45px; /* prevents the content to be hidden by the gitter sidecar */
 }
 
-body {
-    min-height: 100%;
-}
-
-div#content-wrapper {
-    min-height: 100vh;
-    padding-left: 0;
-}
-
-div#content-wrapper div#content-body {
-    padding: 20px 1px 1px 1px;
-    position: relative;
-    min-height: 100vh;
-}
-
-/** Animations: Easing for content body slide on toggle  */
-div#content-wrapper,
-div#content-wrapper div#content-body {
-    -webkit-transition: all .25s ease-out;
-         -o-transition: all .25s ease-out;
-            transition: all .25s ease-out;
-}
-
-div#content-body > a#edit-on-github {
-    border-left: 1px solid #fff;
-    position: absolute;
-    top: 47px;
-    padding-left: 10px;
-    right: 250px;
-    font-size: 14px;
-    color: #373a3c;
-    font-family: "Titillium Web", sans-serif;
-    text-transform: uppercase;
-}
-
-div#content-body > a#edit-on-github:hover,
-div#content-body > a#edit-on-github:focus {
-    text-decoration: none;
-    border-left: 1px solid #0fa00f;
-}
-
-div#content-wrapper button#menu-toggle {
-    background: rgba(244, 243, 244, 0.4) none;
-    border: 1px solid transparent;
-    color: #837f84;
-    margin: -30px 0 0 10px;
-    padding: 9px 10px;
-    position: absolute;
-}
-
-div#content-wrapper button#menu-toggle:hover {
-    cursor: pointer;
-}
-
-div#content-wrapper button#menu-toggle:focus {
-    outline: none;
-}
-
-div#content-wrapper button#menu-toggle span.icon-bar {
-    background-color: #837f84;
-    border-radius: 2px;
-    border-color: #837f84;
-    color: #837f84;
-    display: block;
-    margin: 3px 0;
-    width: 15px;
-    height: 2px;
-}
-
-div#doc-page-container > h1 {
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.3em;
-}
-
-div#doc-page-container > h1 {
-    margin: 3rem 0 0.5rem 0;
-}
-
-div#doc-page-container > h3 {
-    font-size: 1.5rem;
-}
-
-div#doc-page-container > h4 {
-    font-size: 1.25rem;
-}
-
-div#doc-page-container > h5 {
-    font-size: 1rem;
-}
-
-div#entity-container h1 > a,
-div#entity-container h2 > a,
-div#entity-container h3 > a,
-div#entity-container h4 > a,
-div#entity-container h5 > a,
-div#entity-container h6 > a,
-div#blog-post-container h1 > a,
-div#blog-post-container h2 > a,
-div#blog-post-container h3 > a,
-div#blog-post-container h4 > a,
-div#blog-post-container h5 > a,
-div#blog-post-container h6 > a,
-div#doc-page-container > h1 > a,
-div#doc-page-container > h2 > a,
-div#doc-page-container > h3 > a,
-div#doc-page-container > h4 > a,
-div#doc-page-container > h5 > a,
-div#doc-page-container > h6 > a {
-    text-decoration: none;
-    color: #373a3c;
-    font-family: "Source Sans Pro", sans-serif;
-    font-weight: 400;
-}
-
-div#entity-container h1 > a:hover,
-div#entity-container h2 > a:hover,
-div#entity-container h3 > a:hover,
-div#entity-container h4 > a:hover,
-div#entity-container h5 > a:hover,
-div#entity-container h6 > a:hover,
-div#blog-post-container h1 > a:hover,
-div#blog-post-container h2 > a:hover,
-div#blog-post-container h3 > a:hover,
-div#blog-post-container h4 > a:hover,
-div#blog-post-container h5 > a:hover,
-div#blog-post-container h6 > a:hover,
-div#doc-page-container > h1 > a:hover,
-div#doc-page-container > h2 > a:hover,
-div#doc-page-container > h3 > a:hover,
-div#doc-page-container > h4 > a:hover,
-div#doc-page-container > h5 > a:hover,
-div#doc-page-container > h6 > a:hover {
-    text-decoration: underline;
-}
-
-div#entity-container h1 > a:focus,
-div#entity-container h2 > a:focus,
-div#entity-container h3 > a:focus,
-div#entity-container h4 > a:focus,
-div#entity-container h5 > a:focus,
-div#entity-container h6 > a:focus,
-div#doc-page-container > h1 > a:focus,
-div#doc-page-container > h2 > a:focus,
-div#doc-page-container > h3 > a:focus,
-div#doc-page-container > h4 > a:focus,
-div#doc-page-container > h5 > a:focus,
-div#doc-page-container > h6 > a:focus {
-    outline: none;
-}
-
-.darken {
-    background-color: rgba(0, 0, 0, 0.2);
-}
-
-div#post-title,
-div#post-footer,
-h1#doc-page-title {
-    margin: 10px 0 40px 10px;
-    font-family: "Source Sans Pro", sans-serif;
-    font-weight: 400;
-    display: -webkit-flex;
-    display: flex;
-    width: 550px;
-}
-
-div#post-title > h2#sub-title {
-    font-weight: 100;
-    font-size: 24px;
-}
-
-div#post-title > h3#post-date {
-    font-weight: 100;
-    font-size: 20px;
-    margin-bottom: 2px;
-}
-
-div#content-wrapper div#content-body.doc-page-body {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding-right: 250px; /** account for sidebar */
-}
-
-div#content-body.doc-page-body > hr {
-  margin-left: 10px;
-}
-
-div#blog-post-container,
-div#doc-page-container {
-    background-color: #fff;
-    padding: 10px;
-    border-radius: 4px;
-}
-
-div#doc-page-container > p + h1 {
-    margin-bottom: 20px;
-}
-
-div#post-footer > img#author-image {
-    width: auto;
-    height: auto;
-    max-width:100px;
-    max-height:100px;
-    border-radius: 50%;
-}
-
-div#post-footer > span#post-author {
-    margin-left: 10px;
-    font-weight: 100;
-}
-
-pre {
-    padding: 0;
-    font-size: 13px;
-    background: rgba(244, 243, 244, 0.6);
-    border-radius: 2px;
-    margin-top: 20px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-p > img {
-  /** Make sure images adhere to container rules */
+.container img {
   width: 100%;
   height: auto;
 }
 
-pre > code.language-none,
-pre > code.language-shell,
-pre > code.hljs {
-    display: block;
-    padding: 10px;
-    background: transparent;
+/* headers */
+main header {
+  border-bottom: 1px solid rgba(0,0,0,.1);
+  margin-bottom: 16px;
+  padding-bottom: 16px;
 }
 
+main > h1 {
+  margin-bottom: 20px;
+}
+
+.byline, .byline a {
+  color: grey;
+}
+.byline .author {
+  display: block;
+}
+
+/* indexes */
+ul.post-list {
+  list-style: none;
+  padding-left: 0;
+}
+.post-list h2 {
+  margin-bottom: 0;
+}
+
+/* headings anchors */
+a.anchor {
+  color: white;
+  margin-left: -23px;
+  padding-right: 3px;
+  transition: color .4s ease-out;
+}
+
+a.anchor::before {
+	content: "\f0c1";
+	font-family: "Font Awesome 5 Free";
+	font-weight: 900;
+	font-size: 20px;
+}
+
+h1:hover a.anchor,
+h2:hover a.anchor,
+h3:hover a.anchor,
+h4:hover a.anchor,
+h5:hover a.anchor {
+  color: lightgrey;
+  text-decoration: none;
+}
+
+h1:hover a.anchor:hover,
+h2:hover a.anchor:hover,
+h3:hover a.anchor:hover,
+h4:hover a.anchor:hover,
+h5:hover a.anchor:hover {
+  color: var(--secondary);
+}
+
+
+/* footer */
+footer {
+  color: grey;
+}
+footer img#author-img {
+  width: auto;
+  height: auto;
+  max-width:100px;
+  max-height:100px;
+  border-radius: 50%;
+}
+
+/* api docs */
+.api span.letter-anchor {
+  float: left;
+  width: 50px;
+  height: 50px;
+  border-radius: 50px;
+  color: white;
+  margin-top: 6px;
+  margin-right: 8px;
+  line-height: 50px;
+  text-align: center;
+  text-decoration: none;
+  font-size: 42px;
+  font-family: var(--font-family-sans-serif);
+}
+
+.letter-anchor.object {
+  background: #2c6c8d;
+}
+.letter-anchor.class {
+  background: #44ad7d;
+}
+.letter-anchor.trait {
+  background: #19aacf;
+}
+.letter-anchor.enum {
+  background: #7803fc;
+}
+.letter-anchor.package {
+  background: #2c6c8d;
+}
+
+.api header {
+  font-family: var(--font-family-sans-serif);
+}
+.api header .name-prefix {
+  display: block;
+}
+.api header .name-suffix {
+  display: inline-block;
+}
+
+.api header h1 {
+  margin: -13px 8px 0 0;
+  display: inline-block;
+}
+.api h2 {
+  margin-top: 1rem;
+}
+.api h3 {
+  display: inline;
+  margin: 0;
+  font: inherit;
+  font-weight: bold;
+}
+
+/* improved display and wrapping of parameters */
+.api .params, .api .type-params {
+  display: inline-flex;
+  flex-flow: wrap;
+}
+
+/* api layout */
+.wide-table {
+  display: table;
+  width: 100%;
+}
+.api .member:hover {
+  background: var(--secondary-lite);
+  cursor: pointer;
+}
+.api .left-column {
+  white-space: nowrap;
+  padding-left: 1em;
+  border-left: 3px solid transparent;/* table rows cannot have borders*/
+  font-family: var(--font-family-monospace);
+  text-align: right;
+  width: 1px;
+}
+.api .member:hover .left-column {
+  border-left: 3px solid var(--secondary);
+}
+.api .right-column {
+  display: inline;
+  text-align: right;
+  font-family: var(--font-family-monospace);
+}
+
+/* code */
+pre {
+  padding: 0;
+  font-size: 13px;
+  background: rgba(244, 243, 244, 0.6);
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+pre > code {
+  display: block;
+  padding: 0.5rem;
+  overflow-x: auto;
+  background: transparent;
+}
+
+/* admonitions */
 blockquote {
-    padding: 0 1em;
-    color: #777;
-    border-left: 0.25em solid #ddd;
+  padding: 0 1em;
+  color: #777;
+  border-left: 0.25em solid #ddd;
 }
 
 aside {
-    padding: 15px;
-    margin: 10px 0;
+  padding: 15px;
+  margin: 10px 0;
 }
 
 aside.warning {
-    border-left: 3px solid #d62c2c;
-    background-color: #ffe4e4;
+  border-left: 3px solid #d62c2c;
+  background-color: #ffe4e4;
 }
 
 aside.notice {
-    border-left: 3px solid #4c97e4;
-    background-color: #e4ebff;
+  border-left: 3px solid #4c97e4;
+  background-color: #e4ebff;
 }
 
 aside.success {
-    border-left: 3px solid #36bf1d;
-    background-color: #ebfddd;
+  border-left: 3px solid #36bf1d;
+  background-color: #ebfddd;
 }
 
+/* gitter chat */
 .gitter-open-chat-button {
-  background-color: gray;
+  background-color: grey;
+}
+.gitter-open-chat-button:focus, .gitter-open-chat-button:hover {
+  background-color: var(--secondary);
+}
+.gitter-open-chat-button:focus {
+  box-shadow: 0 0 8px var(--secondary);
+}
+.gitter-chat-embed {
+  top: 40px; /* 50px (navbar) - 10px (aside's margin) */
+  bottom: -10px;
+}
+
+/* media queries for bigger screens (dottydoc is mobile-first) */
+@media (min-width: 576px) {
+  .byline .author {
+    display: inline;
+    margin-left: 1em;
+  }
+  main.container {
+    padding: 15px 30px;
+  }
+}
+@media (min-width: 768px) {
+  .api .member {
+    display: table-row;
+  }
+  .api .left-column {
+    display: table-cell;
+  }
+  .api .right-column {
+    display: flex;
+    flex-flow: wrap;
+  }
 }

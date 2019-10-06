@@ -31,13 +31,13 @@ trait Phases {
     }
 
   /** Execute `op` at given phase */
-  def atPhase[T](phase: Phase)(op: given Context => T): T =
+  def atPhase[T](phase: Phase)(op: (given Context) => T): T =
     atPhase(phase.id)(op)
 
-  def atNextPhase[T](op: given Context => T): T = atPhase(phase.next)(op)
+  def atNextPhase[T](op: (given Context) => T): T = atPhase(phase.next)(op)
 
-  def atPhaseNotLaterThan[T](limit: Phase)(op: given Context => T): T =
-    if (!limit.exists || phase <= limit) op given this else atPhase(limit)(op)
+  def atPhaseNotLaterThan[T](limit: Phase)(op: (given Context) => T): T =
+    if (!limit.exists || phase <= limit) op(given this) else atPhase(limit)(op)
 
   def isAfterTyper: Boolean = base.isAfterTyper(phase)
 }
@@ -252,7 +252,7 @@ object Phases {
     final def genBCodePhase: Phase = myGenBCodePhase
 
     private def setSpecificPhases() = {
-      def phaseOfClass(pclass: Class[_]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
+      def phaseOfClass(pclass: Class[?]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
 
       myTyperPhase = phaseOfClass(classOf[FrontEnd])
       myPostTyperPhase = phaseOfClass(classOf[PostTyper])
@@ -420,7 +420,7 @@ object Phases {
   /** Replace all instances of `oldPhaseClass` in `current` phases
    *  by the result of `newPhases` applied to the old phase.
    */
-  def replace(oldPhaseClass: Class[_ <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
+  def replace(oldPhaseClass: Class[? <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
     current.map(_.flatMap(phase =>
       if (oldPhaseClass.isInstance(phase)) newPhases(phase) else phase :: Nil))
 }

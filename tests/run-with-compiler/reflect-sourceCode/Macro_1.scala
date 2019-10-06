@@ -6,6 +6,6 @@ object api {
 
   private def reflImpl[T](x: Expr[T])(implicit qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
-    x.unseal.pos.sourceCode.toExpr
+    Expr(x.unseal.pos.sourceCode)
   }
 }

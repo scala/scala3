@@ -10,7 +10,7 @@ import xsbti.api
  *  that may be evaluated once.
  */
 private[sbt] trait ThunkHolder {
-  private[this] val thunks = new ListBuffer[api.Lazy[_]]
+  private[this] val thunks = new ListBuffer[api.Lazy[?]]
 
   /** Force all unevaluated thunks to prevent space leaks. */
   @tailrec protected final def forceThunks(): Unit = if (!thunks.isEmpty) {

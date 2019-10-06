@@ -11,16 +11,14 @@ class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
   final val MODULE_INSTANCE_FIELD      = "MODULE$"
 
   def loadModule(sym: Symbol): Object = {
-
-    sym.owner match {
-      case IsPackageDefSymbol(_) =>
-        val moduleClass = getClassOf(sym)
-        moduleClass.getField(MODULE_INSTANCE_FIELD).get(null)
-      case _ =>
-        // nested object in an object
-        // val clazz = loadClass(sym.fullNameSeparated(FlatName))
-        // clazz.getConstructor().newInstance().asInstanceOf[Object]
-        ???
+    if (sym.owner.isPackageDef) {
+      val moduleClass = getClassOf(sym)
+      moduleClass.getField(MODULE_INSTANCE_FIELD).get(null)
+    } else {
+      // nested object in an object
+      // val clazz = loadClass(sym.fullNameSeparated(FlatName))
+      // clazz.getConstructor().newInstance().asInstanceOf[Object]
+      ???
     }
   }
 
@@ -81,7 +79,7 @@ class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
   }
 
   private def paramsSig(sym: Symbol): List[Class[_]] = {
-    sym.asDefDef.signature.paramSigs.collect {
+    sym.signature.paramSigs.collect {
       case param: String =>
         def javaArraySig(name: String): String = {
           if (name.endsWith("[]")) "[" + javaArraySig(name.dropRight(2))

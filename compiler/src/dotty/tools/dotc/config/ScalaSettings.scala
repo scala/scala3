@@ -52,6 +52,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val oldSyntax: Setting[Boolean] = BooleanSetting("-old-syntax", "Require `(...)` around conditions")
   val indent: Setting[Boolean] = BooleanSetting("-indent", "allow significant indentation")
   val noindent: Setting[Boolean] = BooleanSetting("-noindent", "require classical {...} syntax, indentation is not significant")
+  val YindentColons: Setting[Boolean] = BooleanSetting("-Yindent-colons", "allow colons at ends-of-lines to start indentation blocks")
 
   /** Decompiler settings */
   val printTasty: Setting[Boolean] = BooleanSetting("-print-tasty", "Prints the raw tasty.") withAbbreviation "--print-tasty"
@@ -77,7 +78,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val XprintDiffDel: Setting[Boolean] = BooleanSetting("-Xprint-diff-del", "Print changed parts of the tree since last print including deleted parts.")
   val XprintInline: Setting[Boolean] = BooleanSetting("-Xprint-inline", "Show  where inlined code comes from")
   val Xprompt: Setting[Boolean] = BooleanSetting("-Xprompt", "Display a prompt after each error (debugging option).")
-  val XmainClass: Setting[String] = StringSetting("-Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
   val XnoValueClasses: Setting[Boolean] = BooleanSetting("-Xno-value-classes", "Do not use value classes. Helps debugging.")
   val XreplLineWidth: Setting[Int] = IntSetting("-Xrepl-line-width", "Maximal number of columns per line for REPL output", 390)
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Xfatal-warnings", "Fail the compilation if there are any warnings.")
@@ -159,7 +159,7 @@ class ScalaSettings extends Settings.SettingGroup {
       //.withPostSetHook( _ => YprofileEnabled.value = true )
 
   // Extremely experimental language features
-  val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting("-Yno-kind-polymorphism", "Enable kind polymorphism (see http://dotty.epfl.ch/docs/reference/kind-polymorphism.html). Potentially unsound.")
+  val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting("-Yno-kind-polymorphism", "Enable kind polymorphism (see https://dotty.epfl.ch/docs/reference/kind-polymorphism.html). Potentially unsound.")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
@@ -198,6 +198,13 @@ class ScalaSettings extends Settings.SettingGroup {
     "-project-url",
     "project repository homepage",
     "The source repository of your project",
+    ""
+  )
+  
+  val projectLogo: Setting[String] = StringSetting(
+    "-project-logo",
+    "project logo filename",
+    "The file that contains the project's logo (in /images)",
     ""
   )
 

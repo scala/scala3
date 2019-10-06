@@ -1,0 +1,4 @@
+%Int%
+%List[%Int%]%
+%Option[%Int%]%
+%%Int% => scala.Double%

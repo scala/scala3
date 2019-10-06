@@ -646,9 +646,8 @@ object Types {
             else tp
           rt.opened = true
           try go(rt.parent).mapInfo(_.substRecThis(rt, pre))
-          finally {
+          finally
             if (!rt.openedTwice) rt.opened = false
-          }
         }
 
       def goRefined(tp: RefinedType) = {
@@ -663,7 +662,7 @@ object Types {
         }
         else
           pdenot & (
-            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)),
+            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre),
             pre,
             safeIntersection = ctx.base.pendingMemberSearches.contains(name))
       }
@@ -701,7 +700,7 @@ object Types {
       def goSuper(tp: SuperType) = go(tp.underlying) match {
         case d: JointRefDenotation =>
           typr.println(i"redirecting super.$name from $tp to ${d.symbol.showLocated}")
-          new UniqueRefDenotation(d.symbol, tp.memberInfo(d.symbol), d.validFor)
+          new UniqueRefDenotation(d.symbol, tp.memberInfo(d.symbol), d.validFor, pre)
         case d => d
       }
 
@@ -800,10 +799,10 @@ object Types {
      *  @param kind   A subset of {Implicit, Given} that specifies what kind of implicit should
      *                be returned
      */
-    final def implicitMembers(kind: FlagSet)(implicit ctx: Context): List[TermRef] = {
+    final def implicitMembers(implicit ctx: Context): List[TermRef] = {
       record("implicitMembers")
       memberDenots(implicitFilter,
-          (name, buf) => buf ++= member(name).altsWith(_.isOneOf(GivenOrImplicitVal & kind)))
+          (name, buf) => buf ++= member(name).altsWith(_.isOneOf(GivenOrImplicitVal)))
         .toList.map(d => TermRef(this, d.symbol.asTerm))
     }
 
@@ -1066,7 +1065,7 @@ object Types {
   	 * 	      ArrayBuffer[Int] | ArrayBuffer[A]
   	 *
      *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
-     *  instead of `ArrayBuffer[_ >: Int | A <: Int & A]`
+     *  instead of `ArrayBuffer[? >: Int | A <: Int & A]`
      */
     def widenUnion(implicit ctx: Context): Type = widen match {
       case OrType(tp1, tp2) =>
@@ -1359,11 +1358,10 @@ object Types {
       case tp @ AppliedType(tycon, args) if tycon.typeSymbol.isClass =>
         tycon.parents.map(_.subst(tycon.typeSymbol.typeParams, args))
       case tp: TypeRef =>
-        if (tp.info.isInstanceOf[TempClassInfo]) {
+        if (tp.info.isInstanceOf[TempClassInfo])
           tp.recomputeDenot()
             // We usually should have `!tp.info.isInstanceOf[TempClassInfo]` here, but
             // this can be falsified for code with illegal cyclic references. See neg/i7107.scala.
-        }
         tp.info.parents
       case tp: TypeProxy =>
         tp.superType.parents
@@ -2104,9 +2102,9 @@ object Types {
         try {
           ctx.pendingUnderlying += this
           op
-        } finally {
-          ctx.pendingUnderlying -= this
         }
+        finally
+          ctx.pendingUnderlying -= this
     }
     finally
       ctx.base.underlyingRecursions -= 1
@@ -4092,7 +4090,8 @@ object Types {
         // Note: Taking a normal typeRef does not work here. A normal ref might contain
         // also other information about the named type (e.g. bounds).
         contains(
-          TypeRef(tp.prefix, cls).withDenot(new UniqueRefDenotation(cls, tp, cls.validFor)))
+          TypeRef(tp.prefix, cls)
+            .withDenot(new UniqueRefDenotation(cls, tp, cls.validFor, tp.prefix)))
       case _ =>
         lo <:< tp && tp <:< hi
     }
@@ -4381,11 +4380,11 @@ object Types {
               // Given a SAM type such as:
               //
               //     import java.util.function.Function
-              //     Function[_ >: String, _ <: Int]
+              //     Function[? >: String, ? <: Int]
               //
               // the single abstract method will have type:
               //
-              //     (x: Function[_ >: String, _ <: Int]#T): Function[_ >: String, _ <: Int]#R
+              //     (x: Function[? >: String, ? <: Int]#T): Function[? >: String, ? <: Int]#R
               //
               // which is not implementable outside of the scope of Function.
               //
@@ -4701,7 +4700,7 @@ object Types {
             // hence we can replace with U under all variances
             reapply(alias.rewrapAnnots(tp1))
           case tp: TypeBounds =>
-            // If H#T = _ >: S <: U, then for any x in L..H, S <: x.T <: U,
+            // If H#T = ? >: S <: U, then for any x in L..H, S <: x.T <: U,
             // hence we can replace with S..U under all variances
             expandBounds(tp)
           case info: SingletonType =>
@@ -4767,7 +4766,7 @@ object Types {
             case _ =>
               tp.derivedRefinedType(parent, tp.refinedName, info)
           }
-        }
+      }
 
     override protected def derivedRecType(tp: RecType, parent: Type): Type =
       if (parent eq tp.parent) tp
@@ -4801,7 +4800,7 @@ object Types {
         case Range(tyconLo, tyconHi) =>
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
         case _ =>
-          if (args.exists(isRange)) {
+          if (args.exists(isRange))
             if (variance > 0) tp.derivedAppliedType(tycon, args.map(rangeToBounds))
             else {
               val loBuf, hiBuf = new mutable.ListBuffer[Type]
@@ -4833,7 +4832,6 @@ object Types {
               else range(defn.NothingType, defn.AnyType)
                 // TODO: can we give a better bound than `topType`?
             }
-          }
           else tp.derivedAppliedType(tycon, args)
       }
 

@@ -1,11 +1,11 @@
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 object Macros {
 
   implicit inline def withSource(arg: Any): (String, Any) = ${ impl('arg) }
 
-  private def impl(arg: Expr[Any]) given (qctx: QuoteContext): Expr[(String, Any)] = {
+  private def impl(arg: Expr[Any])(given qctx: QuoteContext): Expr[(String, Any)] = {
     import qctx.tasty._
     val source = arg.unseal.underlyingArgument.pos.sourceCode.toString
     '{Tuple2($source, $arg)}

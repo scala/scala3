@@ -140,7 +140,7 @@ object Tuple {
   def fromProduct(product: Product): Tuple =
     runtime.DynamicTuple.dynamicFromProduct[Tuple](product)
 
-  def fromProductTyped[P <: Product](p: P) given (m: scala.deriving.Mirror.ProductOf[P]): m.MirroredElemTypes =
+  def fromProductTyped[P <: Product](p: P)(given m: scala.deriving.Mirror.ProductOf[P]): m.MirroredElemTypes =
     Tuple.fromArray(p.productIterator.toArray).asInstanceOf[m.MirroredElemTypes] // TODO use toIArray of Object to avoid double/triple array copy
 }
 

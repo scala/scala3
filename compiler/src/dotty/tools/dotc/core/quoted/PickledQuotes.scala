@@ -42,7 +42,7 @@ object PickledQuotes {
   }
 
   /** Transform the expression into its fully spliced TypeTree */
-  def quotedTypeToTree(tpe: quoted.Type[_])(implicit ctx: Context): Tree = {
+  def quotedTypeToTree(tpe: quoted.Type[?])(implicit ctx: Context): Tree = {
     val tpe1 = tpe.asInstanceOf[TreeType[Tree]]
     QuoteContext.checkScopeId(tpe1.scopeId)
     healOwner(tpe1.typeTree)
@@ -80,8 +80,13 @@ object PickledQuotes {
     val unpickled = unpickle(tastyBytes, args, isType = true)(ctx.addMode(Mode.ReadPositions))
     val tpt = unpickled match {
       case Block(aliases, tpt) =>
-        // `@quoteTypeTag type` aliasses are not required after unpickling
-        tpt
+        // `@quoteTypeTag type` aliases are not required after unpickling.
+        // Type definitions are placeholders for type holes in the pickled quote, at this point
+        // those holes have been filled. As we already dealias al references to them in `dealiasTypeTags`
+        // there is no need to keep their definitions in the tree. As artifacts of quote reification
+        // they also do not have a meaningful position in the source.
+        val aliases1 = aliases.filter(!_.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot))
+        seq(aliases1, tpt)
       case tpt => tpt
     }
     tpt.withType(dealiasTypeTags(tpt.tpe))

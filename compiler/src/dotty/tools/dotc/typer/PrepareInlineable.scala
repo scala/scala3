@@ -259,9 +259,9 @@ object PrepareInlineable {
         case Block(DefDef(nme.ANON_FUN, _, _, _, _) :: Nil, Closure(_, fn, _)) if fn.symbol.info.isImplicitMethod =>
           // TODO Support this pattern
           ctx.error(
-            """Macros using a return type of the form `foo(): given X => Y` are not yet supported.
+            """Macros using a return type of the form `foo(): (given X) => Y` are not yet supported.
               |
-              |Place the implicit as an argument (`foo() given X: Y`) to overcome this limitation.
+              |Place the implicit as an argument (`foo()(given X): Y`) to overcome this limitation.
               |""".stripMargin, tree.sourcePos)
         case _ =>
           ctx.error(

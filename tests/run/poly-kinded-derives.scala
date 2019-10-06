@@ -4,12 +4,12 @@ object Test extends App {
   {
     trait Show[T]
     object Show {
-      given as Show[Int] {}
-      given [T] as Show[Tuple1[T]] given (st: Show[T]) {}
-      given t2 [T, U] as Show[(T, U)] given (st: Show[T], su: Show[U]) {}
-      given t3 [T, U, V] as Show[(T, U, V)] given (st: Show[T], su: Show[U], sv: Show[V]) {}
+      given Show[Int] {}
+      given [T](given st: Show[T]): Show[Tuple1[T]]
+      given t2[T, U](given st: Show[T], su: Show[U]): Show[(T, U)]
+      given t3 [T, U, V](given st: Show[T], su: Show[U], sv: Show[V]): Show[(T, U, V)]
 
-      def derived[T] given (m: Mirror.Of[T], r: Show[m.MirroredElemTypes]): Show[T] = new Show[T] {}
+      def derived[T](given m: Mirror.Of[T], r: Show[m.MirroredElemTypes]): Show[T] = new Show[T] {}
     }
 
     case class Mono(i: Int) derives Show
@@ -22,12 +22,12 @@ object Test extends App {
   {
     trait Functor[F[_]]
     object Functor {
-      given [C] as Functor[[T] =>> C] {}
-      given as Functor[[T] =>> Tuple1[T]] {}
-      given t2 [T] as Functor[[U] =>> (T, U)] {}
-      given t3 [T, U] as Functor[[V] =>> (T, U, V)] {}
+      given [C] : Functor[[T] =>> C] {}
+      given Functor[[T] =>> Tuple1[T]] {}
+      given t2 [T] : Functor[[U] =>> (T, U)] {}
+      given t3 [T, U] : Functor[[V] =>> (T, U, V)] {}
 
-      def derived[F[_]] given (m: Mirror { type MirroredType = F ; type MirroredElemTypes[_] }, r: Functor[m.MirroredElemTypes]): Functor[F] = new Functor[F] {}
+      def derived[F[_]](given m: Mirror { type MirroredType = F ; type MirroredElemTypes[_] }, r: Functor[m.MirroredElemTypes]): Functor[F] = new Functor[F] {}
     }
 
     case class Mono(i: Int) derives Functor
@@ -40,10 +40,10 @@ object Test extends App {
   {
     trait FunctorK[F[_[_]]]
     object FunctorK {
-      given [C] as FunctorK[[F[_]] =>> C] {}
-      given [T] as FunctorK[[F[_]] =>> Tuple1[F[T]]]
+      given [C] : FunctorK[[F[_]] =>> C] {}
+      given [T] : FunctorK[[F[_]] =>> Tuple1[F[T]]]
 
-      def derived[F[_[_]]] given (m: Mirror { type MirroredType = F ; type MirroredElemTypes[_[_]] }, r: FunctorK[m.MirroredElemTypes]): FunctorK[F] = new FunctorK[F] {}
+      def derived[F[_[_]]](given m: Mirror { type MirroredType = F ; type MirroredElemTypes[_[_]] }, r: FunctorK[m.MirroredElemTypes]): FunctorK[F] = new FunctorK[F] {}
     }
 
     case class Mono(i: Int) derives FunctorK
@@ -56,12 +56,12 @@ object Test extends App {
   {
     trait Bifunctor[F[_, _]]
     object Bifunctor {
-      given [C] as Bifunctor[[T, U] =>> C] {}
-      given as Bifunctor[[T, U] =>> Tuple1[U]] {}
-      given t2 as Bifunctor[[T, U] =>> (T, U)] {}
-      given t3 [T] as Bifunctor[[U, V] =>> (T, U, V)] {}
+      given [C] : Bifunctor[[T, U] =>> C] {}
+      given Bifunctor[[T, U] =>> Tuple1[U]] {}
+      given t2 : Bifunctor[[T, U] =>> (T, U)] {}
+      given t3 [T] : Bifunctor[[U, V] =>> (T, U, V)] {}
 
-      def derived[F[_, _]] given (m: Mirror { type MirroredType = F ; type MirroredElemTypes[_, _] }, r: Bifunctor[m.MirroredElemTypes]): Bifunctor[F] = ???
+      def derived[F[_, _]](given m: Mirror { type MirroredType = F ; type MirroredElemTypes[_, _] }, r: Bifunctor[m.MirroredElemTypes]): Bifunctor[F] = ???
     }
 
     case class Mono(i: Int) derives Bifunctor

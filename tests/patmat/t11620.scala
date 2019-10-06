@@ -1,6 +1,6 @@
 sealed trait A[+T]
- case class A1[+T](t : T       ) extends A[T]
- case class A2[+T](t1: T, t2: T) extends A[T]
+case class A1[+T](t : T       ) extends A[T]
+case class A2[+T](t1: T, t2: T) extends A[T]
 
 sealed trait B[+T] {
   type AA[+U] <: A[U]

@@ -1,5 +1,5 @@
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 
 object Macros {
@@ -7,7 +7,7 @@ object Macros {
   inline def printComment[T](t: => T): Unit =
     ${ impl('t) }
 
-  def impl[T](x: Expr[T]) given (qctx: QuoteContext): Expr[Unit] = {
+  def impl[T](x: Expr[T])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty._
 
     val tree = x.unseal

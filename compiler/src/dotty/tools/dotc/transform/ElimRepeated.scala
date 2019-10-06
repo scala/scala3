@@ -54,7 +54,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         if (paramTypes.nonEmpty && paramTypes.last.isRepeatedParam) {
           val last = paramTypes.last.underlyingIfRepeated(tp.isJavaMethod)
           paramTypes.init :+ last
-        } else paramTypes
+        }
+        else paramTypes
       tp.derivedLambdaType(paramNames, paramTypes1, resultType1)
     case tp: PolyType =>
       tp.derivedLambdaType(tp.paramNames, tp.paramInfos, elimRepeated(tp.resultType))
@@ -128,9 +129,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *
    *  A bridge is necessary because the following hold
    *    - the varargs in `ddef` will change from `RepeatedParam[T]` to `Seq[T]` after this phase
-   *    - _but_ the callers of `ddef` expect its varargs to be changed to `Array[_ <: T]`, since it overrides
+   *    - _but_ the callers of `ddef` expect its varargs to be changed to `Array[? <: T]`, since it overrides
    *      a Java varargs
-   *  The solution is to add a "bridge" method that converts its argument from `Array[_ <: T]` to `Seq[T]` and
+   *  The solution is to add a "bridge" method that converts its argument from `Array[? <: T]` to `Seq[T]` and
    *  forwards it to `ddef`.
    */
   private def addVarArgsBridge(ddef: DefDef)(implicit ctx: Context): Tree = {
@@ -141,7 +142,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     val bridgeDef = polyDefDef(bridge, trefs => vrefss => {
       val (vrefs :+ varArgRef) :: vrefss1 = vrefss
       // Can't call `.argTypes` here because the underlying array type is of the
-      // form `Array[_ <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
+      // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
       val elemtp = varArgRef.tpe.widen.argInfos.head
       ref(original.termRef)
         .appliedToTypes(trefs)

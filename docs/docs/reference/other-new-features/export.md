@@ -5,45 +5,45 @@ title: "Export Clauses"
 
 An export clause defines aliases for selected members of an object. Example:
 ```scala
-  class BitMap
-  class InkJet
+class BitMap
+class InkJet
 
-  class Printer {
-    type PrinterType
-    def print(bits: BitMap): Unit = ???
-    def status: List[String] = ???
-  }
+class Printer {
+  type PrinterType
+  def print(bits: BitMap): Unit = ???
+  def status: List[String] = ???
+}
 
-  class Scanner {
-    def scan(): BitMap = ???
-    def status: List[String] = ???
-  }
+class Scanner {
+  def scan(): BitMap = ???
+  def status: List[String] = ???
+}
 
-  class Copier {
-    private val printUnit = new Printer { type PrinterType = InkJet }
-    private val scanUnit = new Scanner
+class Copier {
+  private val printUnit = new Printer { type PrinterType = InkJet }
+  private val scanUnit = new Scanner
 
-    export scanUnit.scan
-    export printUnit.{status => _, _}
+  export scanUnit.scan
+  export printUnit.{status => _, _}
 
-    def status: List[String] = printUnit.status ++ scanUnit.status
-  }
+  def status: List[String] = printUnit.status ++ scanUnit.status
+}
 ```
 The two `export` clauses define the following _export aliases_ in class `Copier`:
 ```scala
-  final def scan(): BitMap            = scanUnit.scan()
-  final def print(bits: BitMap): Unit = printUnit.print(bits)
-  final type PrinterType              = printUnit.PrinterType
+final def scan(): BitMap            = scanUnit.scan()
+final def print(bits: BitMap): Unit = printUnit.print(bits)
+final type PrinterType              = printUnit.PrinterType
 ```
 They can be accessed inside `Copier` as well as from outside:
 ```scala
-  val copier = new Copier
-  copier.print(copier.scan())
+val copier = new Copier
+copier.print(copier.scan())
 ```
 An export clause has the same format as an import clause. Its general form is:
 ```scala
-  export path . { sel_1, ..., sel_n }
-  export given path . { sel_1, ..., sel_n }
+export path . { sel_1, ..., sel_n }
+export given path . { sel_1, ..., sel_n }
 ```
 It consists of a qualifier expression `path`, which must be a stable identifier, followed by
 one or more selectors `sel_i` that identify what gets an alias. Selectors can be
@@ -58,7 +58,7 @@ of one of the following forms:
 
 A member is _eligible_ if all of the following holds:
 
- - its owner is not a base class of the class(*) containing the export clause,
+ - its owner is not a base class of the class(\*) containing the export clause,
  - the member does not override a concrete definition that has as owner
    a base class of the class containing the export clause.
  - it is accessible at the export clause,
@@ -79,15 +79,15 @@ Export aliases are always `final`. Aliases of given instances are again defined 
 
 Export aliases for public value definitions are marked by the compiler as "stable" and their result types are the singleton types of the aliased definitions. This means that they can be used as parts of stable identifier paths, even though they are technically methods. For instance, the following is OK:
 ```scala
-  class C { type T }
-  object O { val c: C = ... }
-  export O.c
-  def f: c.T = ...
+class C { type T }
+object O { val c: C = ... }
+export O.c
+def f: c.T = ...
 ```
 
 Export clauses can appear in classes or they can appear at the top-level. An export clause cannot appear as a statement in a block.
 
-(*) Note: Unless otherwise stated, the term "class" in this discussion also includes object and trait definitions.
+(\*) Note: Unless otherwise stated, the term "class" in this discussion also includes object and trait definitions.
 
 ### Motivation
 
@@ -115,16 +115,16 @@ Export         ::=  ‘export’ [‘given’] ImportExpr {‘,’ ImportExpr}
 Export clauses raise questions about the order of elaboration during type checking.
 Consider the following example:
 ```scala
-  class B { val c: Int }
-  object a { val b = new B }
-  export a._
-  export b._
+class B { val c: Int }
+object a { val b = new B }
+export a._
+export b._
 }
 ```
 Is the `export b._` clause legal? If yes, what does it export? Is it equivalent to `export a.b._`? What about if we swap the last two clauses?
 ```
-  export b._
-  export a._
+export b._
+export a._
 ```
 To avoid tricky questions like these, we fix the elaboration order of exports as follows.
 

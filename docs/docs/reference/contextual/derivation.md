@@ -19,9 +19,9 @@ The `derives` clause generates the following given instances for the `Eq`, `Orde
 companion object of `Tree`,
 
 ```scala
-given [T: Eq]       as Eq[Tree[T]]    = Eq.derived
-given [T: Ordering] as Ordering[Tree] = Ordering.derived
-given [T: Show]     as Show[Tree]     = Show.derived
+given [T: Eq]       : Eq[Tree[T]]    = Eq.derived
+given [T: Ordering] : Ordering[Tree] = Ordering.derived
+given [T: Show]     : Show[Tree]     = Show.derived
 ```
 
 We say that `Tree` is the _deriving type_ and that the `Eq`, `Ordering` and `Show` instances are _derived instances_.
@@ -41,37 +41,37 @@ They also provide minimal term level infrastructure to allow higher level librar
 derivation support.
 
 ```scala
-  sealed trait Mirror {
+sealed trait Mirror {
 
-    /** the type being mirrored */
-    type MirroredType
- 
-    /** the type of the elements of the mirrored type */
-    type MirroredElemTypes
+  /** the type being mirrored */
+  type MirroredType
 
-    /** The mirrored *-type */
-    type MirroredMonoType
+  /** the type of the elements of the mirrored type */
+  type MirroredElemTypes
 
-    /** The name of the type */
-    type MirroredLabel <: String
+  /** The mirrored *-type */
+  type MirroredMonoType
 
-    /** The names of the elements of the type */
-    type MirroredElemLabels <: Tuple
+  /** The name of the type */
+  type MirroredLabel <: String
+
+  /** The names of the elements of the type */
+  type MirroredElemLabels <: Tuple
+}
+
+object Mirror {
+  /** The Mirror for a product type */
+  trait Product extends Mirror {
+
+    /** Create a new instance of type `T` with elements taken from product `p`. */
+    def fromProduct(p: scala.Product): MirroredMonoType
   }
 
-  object Mirror {
-    /** The Mirror for a product type */
-    trait Product extends Mirror {
-
-      /** Create a new instance of type `T` with elements taken from product `p`. */
-      def fromProduct(p: scala.Product): MirroredMonoType
-    }
-
-    trait Sum extends Mirror { self =>
-      /** The ordinal number of the case class of `x`. For enums, `ordinal(x) == x.ordinal` */
-      def ordinal(x: MirroredMonoType): Int
-    }
+  trait Sum extends Mirror { self =>
+    /** The ordinal number of the case class of `x`. For enums, `ordinal(x) == x.ordinal` */
+    def ordinal(x: MirroredMonoType): Int
   }
+}
 ```
 
 Product types (i.e. case classes and objects, and enum cases) have mirrors which are subtypes of `Mirror.Product`. Sum
@@ -130,7 +130,7 @@ Note the following properties of `Mirror` types,
   possibly parameterized, tuple type. Dotty's metaprogramming facilities can be used to work with these tuple types
   as-is, and higher level libraries can be built on top of them.
 + The methods `ordinal` and `fromProduct` are defined in terms of `MirroredMonoType` which is the type of kind-`*`
-  which is obtained from `MirroredType` by wildcarding its type parameters. 
+  which is obtained from `MirroredType` by wildcarding its type parameters.
 
 ### Type classes supporting automatic deriving
 
@@ -139,7 +139,7 @@ signature and implementation of a `derived` method for a type class `TC[_]` are 
 following form,
 
 ```scala
-  def derived[T] given Mirror.Of[T]: TC[T] = ...
+def derived[T](given Mirror.Of[T]): TC[T] = ...
 ```
 
 That is, the `derived` method takes a given parameter of (some subtype of) type `Mirror` which defines the shape of
@@ -161,7 +161,7 @@ worked out example of such a library, see [shapeless 3](https://github.com/miles
 #### How to write a type class `derived` method using low level mechanisms
 
 The low-level method we will use to implement a type class `derived` method in this example exploits three new
-type-level constructs in Dotty: inline methods, inline matches, and given matches. Given this definition of the
+type-level constructs in Dotty: inline methods, inline matches, and implicit searches via `summonFrom`. Given this definition of the
 `Eq` type class,
 
 
@@ -175,7 +175,7 @@ we need to implement a method `Eq.derived` on the companion object of `Eq` that 
 a `Mirror[T]`. Here is a possible implementation,
 
 ```scala
-inline given derived[T] as Eq[T] given (m: Mirror.Of[T]) = {
+inline given derived[T](given m: Mirror.Of[T]): Eq[T] = {
   val elemInstances = summonAll[m.MirroredElemTypes]           // (1)
   inline m match {                                             // (2)
     case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
@@ -256,7 +256,7 @@ trait Eq[T] {
 }
 
 object Eq {
-  given as Eq[Int] {
+  given Eq[Int] {
     def eqv(x: Int, y: Int) = x == y
   }
 
@@ -281,7 +281,7 @@ object Eq {
         }
     }
 
-  inline given derived[T] as Eq[T] given (m: Mirror.Of[T]) = {
+  inline given derived[T](given m: Mirror.Of[T]): Eq[T] = {
     val elemInstances = summonAll[m.MirroredElemTypes]
     inline m match {
       case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
@@ -301,7 +301,7 @@ enum Opt[+T] derives Eq {
 
 object Test extends App {
   import Opt._
-  val eqoi = the[Eq[Opt[Int]]]
+  val eqoi = summon[Eq[Opt[Int]]]
   assert(eqoi.eqv(Sm(23), Sm(23)))
   assert(!eqoi.eqv(Sm(23), Sm(13)))
   assert(!eqoi.eqv(Sm(23), Nn))
@@ -312,11 +312,11 @@ In this case the code that is generated by the inline expansion for the derived 
 following, after a little polishing,
 
 ```scala
-given derived$Eq[T] as Eq[Opt[T]] given (eqT: Eq[T]) =
-  eqSum(the[Mirror[Opt[T]]],
+given derived$Eq[T](given eqT: Eq[T]): Eq[Opt[T]] =
+  eqSum(summon[Mirror[Opt[T]]],
     List(
-      eqProduct(the[Mirror[Sm[T]]], List(the[Eq[T]]))
-      eqProduct(the[Mirror[Nn.type]], Nil)     
+      eqProduct(summon[Mirror[Sm[T]]], List(summon[Eq[T]]))
+      eqProduct(summon[Mirror[Nn.type]], Nil)
     )
   )
 ```
@@ -329,20 +329,20 @@ As a third example, using a higher level library such as shapeless the type clas
 `derived` method as,
 
 ```scala
-given eqSum[A] as Eq[A] given (inst: => K0.CoproductInstances[Eq, A]) {
+given eqSum[A](given inst: => K0.CoproductInstances[Eq, A]): Eq[A] {
   def eqv(x: A, y: A): Boolean = inst.fold2(x, y)(false)(
     [t] => (eqt: Eq[t], t0: t, t1: t) => eqt.eqv(t0, t1)
   )
 }
 
-given eqProduct[A] as Eq[A] given (inst: K0.ProductInstances[Eq, A]) {
+given eqProduct[A](given inst: K0.ProductInstances[Eq, A]): Eq[A] {
   def eqv(x: A, y: A): Boolean = inst.foldLeft2(x, y)(true: Boolean)(
     [t] => (acc: Boolean, eqt: Eq[t], t0: t, t1: t) => Complete(!eqt.eqv(t0, t1))(false)(true)
   )
 }
 
 
-inline def derived[A] given (gen: K0.Generic[A]): Eq[A] = gen.derive(eqSum, eqProduct)
+inline def derived[A](given gen: K0.Generic[A]): Eq[A] = gen.derive(eqSum, eqProduct)
 ```
 
 The framework described here enables all three of these approaches without mandating any of them.
@@ -354,7 +354,7 @@ change the code of the ADT itself.  To do this, simply define an instance using 
 as right-hand side. E.g, to implement `Ordering` for `Option` define,
 
 ```scala
-given [T: Ordering] as Ordering[Option[T]] = Ordering.derived
+given [T: Ordering] : Ordering[Option[T]] = Ordering.derived
 ```
 
 Assuming the `Ordering.derived` method has a given parameter of type `Mirror[T]` it will be satisfied by the

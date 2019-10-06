@@ -368,7 +368,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /** Erase pattern bound types with WildcardType
    *
-   *  For example, the type `C[T$1]` should match any `C[_]`, thus
+   *  For example, the type `C[T$1]` should match any `C[?]`, thus
    *  `v` should be `WildcardType` instead of `T$1`:
    *
    *     sealed trait B
@@ -377,7 +377,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *        case C(v) =>      //    case C.unapply[T$1 @ T$1](v @ _):C[T$1]
    *     }
    *
-   *  However, we cannot use WildcardType for Array[_], due to that
+   *  However, we cannot use WildcardType for Array[?], due to that
    *  `Array[WildcardType] <: Array[Array[WildcardType]]`, which may
    *  cause false unreachable warnings. See tests/patmat/t2425.scala
    *

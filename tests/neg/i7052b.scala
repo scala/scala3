@@ -1,7 +1,7 @@
 import scala.quoted._
 class Test {
-  def foo(str: String) given QuoteContext = '{
-    delegate for QuoteContext = ???
+  def foo(str: String)(given QuoteContext) = '{
+    given QuoteContext = ???
     '{
       @deprecated(str, "") // error
       def bar = ???

@@ -3,5 +3,5 @@ trait Foo[A]
 
 
 trait Qux {
-  given as Foo[Int] = new Foo[Int] {}
+  given Foo[Int] = new Foo[Int] {}
 }

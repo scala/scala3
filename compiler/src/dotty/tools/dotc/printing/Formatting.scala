@@ -38,7 +38,7 @@ object Formatting {
     }
 
     private def treatArg(arg: Any, suffix: String)(implicit ctx: Context): (Any, String) = arg match {
-      case arg: Seq[_] if suffix.nonEmpty && suffix.head == '%' =>
+      case arg: Seq[?] if suffix.nonEmpty && suffix.head == '%' =>
         val (rawsep, rest) = suffix.tail.span(_ != '%')
         val sep = StringContext.processEscapes(rawsep)
         if (rest.nonEmpty) (arg.map(showArg).mkString(sep), rest.tail)
@@ -252,9 +252,9 @@ object Formatting {
     * ex"disambiguate $tpe1 and $tpe2"
     * ```
     */
-  def explained(op: given Context => String)(implicit ctx: Context): String = {
+  def explained(op: (given Context) => String)(implicit ctx: Context): String = {
     val seen = new Seen
-    val msg = op given explainCtx(seen)
+    val msg = op(given explainCtx(seen))
     val addendum = explanations(seen)
     if (addendum.isEmpty) msg else msg ++ "\n\n" ++ addendum
   }

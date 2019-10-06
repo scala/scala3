@@ -38,6 +38,8 @@ class Test {
     case _: Succ[n] => toIntT[n] + 1
   }
 
+  inline def summonFrom(f: Nothing => Any) <: Any = ???
+
   final val two = toIntT[Succ[Succ[Zero.type]]]
 
 }

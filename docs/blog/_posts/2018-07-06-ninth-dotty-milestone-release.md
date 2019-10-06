@@ -89,7 +89,7 @@ The compiler will now desugar the former into the latter. Special thanks to
 compiler!
 
 
-### Support for compiler plugins [#3438](https://github.com/lampepfl/dotty/pull/#3438)
+### Support for compiler plugins [#3438](https://github.com/lampepfl/dotty/pull/3438)
 Dotty now supports Compiler plugins. Compiler plugins let you customize the compiler pipeline
 without having to modify the compiler source code. A major difference compared to Scala 2 is
 that Dotty plugins must run after the type checker. Being able to influence normal type checking
@@ -99,7 +99,7 @@ more important.
 Starting with 1.1.5 Dotty compiler plugins can be used with `sbt`. Please refer to the `sbt`
 [documentation](https://www.scala-sbt.org/1.x/docs/Compiler-Plugins.html) for more information.
 
-For more information, visit the [Compiler Plugin](http://dotty.epfl.ch/docs/reference/changed/compiler-plugins.html)
+For more information, visit the [Compiler Plugin](https://dotty.epfl.ch/docs/reference/changed-features/compiler-plugins.html)
 section of our documentation.
 
 ## Trying out Dotty

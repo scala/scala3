@@ -1,34 +1,36 @@
 ---
 layout: main
 title: Search
-extraCSS:
-    - css/toolbar.css
-    - css/search.css
 ---
-
-{% include "toolbar" %}
-
-<div id="back-container">
-    <span>
-        <a id="back-anchor" href="">Back</a>
-    </span>
-</div>
-
-<div id="search-container">
+<link rel="stylesheet" href="{{site.baseurl}}/css/search.css">
+<main class="container">
+    <!-- Search terms -->
     <h1 id="searching-for"></h1>
-    <div id="result-container">
-        <div class="results">
-            <h1>Entity Results</h1>
-            <ul id="entity-results">
-            </ul>
+    <!-- Tabs for small screens -->
+    <ul class="nav nav-tabs d-md-none" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" href="#entities" aria-controls="entities" data-toggle="tab">
+                Entity Results
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#members" aria-controls="members" data-toggle="tab">
+                Member Results
+            </a>
+        </li>
+    </ul>
+    <!-- Content -->
+    <div class="tab-content row">
+        <div id="entities" class="tab-pane active col-12 col-md-6" role="tabpanel">
+            <h2 class="d-none d-md-block">Entity Results</h2>
+            <ul id="entity-results"></ul>
         </div>
-        <div class="results">
-            <h1>Member Results</h1>
-            <ul id="member-results">
-            </ul>
+        <div id="members" class="tab-pane col-12 col-md-6" role="tabpanel">
+            <h2 class="d-none d-md-block">Member Results</h2>
+            <ul id="member-results"></ul>
         </div>
     </div>
-</div>
+</main>
 
 <script>
     // Parse parameters from URL:
@@ -43,10 +45,9 @@ extraCSS:
         }
     })();
 
-    // Set search term and back button:
+    // Set search term and title:
     var searchTerm = decodeURIComponent(parameters["searchTerm"]);
     document.getElementById("searching-for").innerHTML = 'Search results for "' + searchTerm + '"';
-    document.getElementById("back-anchor").href = parameters["previousUrl"];
     document.title = searchTerm + ' - Search results';
 
     if (!window.Worker) {
@@ -75,20 +76,13 @@ extraCSS:
                         var packageLi = document.createElement("li");
                         entityResultsNode.appendChild(packageLi);
 
-                        packageLi.innerHTML =
-                            "<h1 class=\"package-name\">" +
-                                "<a href=\"{{ site.baseurl }}/api/" + parent.path.join('/') + "/index.html\">" +
-                                    parent.name +
-                                "</a>" +
-                            "</h1>";
+                        var href = "{{ site.baseurl }}/api/" + parent.path.join('/') + "/index.html";
+                        packageLi.innerHTML = "<h3 class=\"package-name\"><a href=\"" + href + "\">" + parent.name + "</a></h3>";
 
                         var entityUl = document.createElement("ul");
                         entityUl.classList.add("entity-ul");
                         packageLi.appendChild(entityUl);
                         entityResults[parent.name] = entityUl;
-                        var coverBlock = document.createElement("div");
-                        coverBlock.classList.add("cover-block");
-                        entityUl.appendChild(coverBlock);
                     }
 
                     // Insert into list of results in package, no need to sort -
@@ -119,9 +113,9 @@ extraCSS:
                                 companion +
                                 letter +
                             '</div>' +
-                            "<a class=\"entity-name\" href=\"{{ site.baseurl }}/api/" + entity.path.join('/') + ".html\">" +
+                            "<h4><a class=\"entity-name\" href=\"{{ site.baseurl }}/api/" + entity.path.join('/') + ".html\">" +
                             entity.name +
-                            "</a>"
+                            "</a></h4>"
                         );
                         entityUl.appendChild(entityLi);
                     }
@@ -134,13 +128,13 @@ extraCSS:
             };
         };
 
-        var insertMember = function(member, li) {
+        var insertMember = function(member, li, parentLink) {
             var div = document.createElement("div");
             div.classList.add("member-result");
 
             var renderParamList = function(plist) {
                 var start = plist.isImplicit ? "(implicit " : "(";
-                var args = plist.list.join(', ');
+                var args = plist.list.map(x=>x.ref.title).join(', ');
                 return start + args + ")";
             };
 
@@ -149,18 +143,24 @@ extraCSS:
             var paramLists = !member.paramLists ? "" : (
                 member.paramLists
                     .map(renderParamList)
-                    .reduce(concatenateStrings, "") + ': '
+                    .reduce(concatenateStrings, "") + ':'
             );
 
             var returnValue = !member.returnValue ? "" : (
-                member.returnValue
+                member.returnValue.title
             );
 
+            var sigObject = member.kind == "object" ? "$" : "";
+            var sigParams = !member.paramLists ? "" : (
+                member.paramLists.map(l => "(" + l.list.map(x=>x.title).join(",") + ")").reduce(concatenateStrings, "")
+            );
+            var signature = member.name + sigObject + sigParams;
+            var memberLink = parentLink + "#" + signature;
             div.innerHTML =
-                '<div class="member-kind">'+ member.kind +'</div>' +
-                '<div class="member-name">'+ member.name +'</div>' +
-                '<div class="member-param-lists">' + paramLists + '</div>' +
-                '<div class="member-return">'+ returnValue +'</div>'
+                '<span class="member-kind">'+ member.kind +'</span>&nbsp;' +
+                '<span class="member-name"><a href=\"' + memberLink + '\">' + member.name +'</a></span>' +
+                '<span class="member-param-lists">' + paramLists + '</span>&nbsp;' +
+                '<span class="member-return">'+ returnValue +'</span>'
 
             li.appendChild(div);
         };
@@ -183,8 +183,9 @@ extraCSS:
                     var member = res.data.member;
                     var parent = res.data.parent;
                     //console.log("got member: " + member.name + ", in entity: " + parent.name);
+                    var parentLink = "{{ site.baseurl }}/api/" + parent.path.join('/') + ".html";
                     var li = insertEntity(memberResultsNode, memberResults, "member")(parent, package);
-                    if (li) insertMember(member, li);
+                    if (li) insertMember(member, li, parentLink);
                     break;
                 }
                 default: {

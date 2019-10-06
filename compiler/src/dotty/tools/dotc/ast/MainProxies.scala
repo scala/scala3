@@ -26,7 +26,7 @@ import ast.Trees._
  */
 object MainProxies {
 
-  def mainProxies(stats: List[tpd.Tree]) given Context: List[untpd.Tree] = {
+  def mainProxies(stats: List[tpd.Tree])(given Context): List[untpd.Tree] = {
     import tpd._
     def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap {
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
@@ -40,7 +40,7 @@ object MainProxies {
   }
 
   import untpd._
-  def mainProxy(mainFun: Symbol) given (ctx: Context): List[TypeDef] = {
+  def mainProxy(mainFun: Symbol)(given ctx: Context): List[TypeDef] = {
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
     def pos = mainFun.sourcePos
     val argsRef = Ident(nme.args)

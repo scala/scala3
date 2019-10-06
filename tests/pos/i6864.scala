@@ -1,17 +1,17 @@
 class A
 class B
 
-given as A
-given as B
+given A
+given B
 
 trait Foo
 trait Bar
 
-given as Foo
-given as Bar
+given Foo
+given Bar
 
 trait C
 trait Baz[A]
 
-given as C
-given [A] as Baz[A]
+given C
+given [A] : Baz[A]

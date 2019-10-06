@@ -1,11 +1,11 @@
 import scala.quoted._
-import given scala.quoted.autolift._
+import scala.quoted.autolift.given
 
 object Macros {
 
   implicit inline def printType[T]: Unit = ${ impl('[T]) }
 
-  def impl[T](x: Type[T]) given (qctx: QuoteContext): Expr[Unit] = {
+  def impl[T](x: Type[T])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty._
 
     val tree = x.unseal

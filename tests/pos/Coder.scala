@@ -15,14 +15,16 @@ class Coder(words: List[String]) {
   }
 
   /** Invert the mnemonics map to give a map from chars 'A' ... 'Z' to '2' ... '9' */
-  private val charCode0: Map[Char, Char] = mnemonics withFilter {
-    case (digit, str) => true
-    case _ => false
-  } flatMap { x$1 =>
-    x$1 match {
-      case (digit, str) => str map (ltr => ltr -> digit)
+  private val charCode0: Map[Char, Char] = mnemonics
+    .withFilter {
+      case (digit, str) => true
+      case _ => false
     }
-  }
+    .flatMap { x$1 =>
+      x$1 match {
+        case (digit, str) => str map (ltr => ltr -> digit)
+      }
+    }
 
   private val charCode: Map[Char, Char] =
     for ((digit, str) <- mnemonics; ltr <- str) yield ltr -> digit
@@ -42,12 +44,12 @@ class Coder(words: List[String]) {
         splitPoint <- 1 to number.length
         word <- wordsForNum(number take splitPoint)
         rest <- encode(number drop splitPoint)
-      } yield word :: rest
+      }
+      yield word :: rest
     }.toSet
 
   /** Maps a number to a list of all word phrases that can represent it */
   def translate(number: String): Set[String] = encode(number) map (_ mkString " ")
-
 }
 
 object Coder {

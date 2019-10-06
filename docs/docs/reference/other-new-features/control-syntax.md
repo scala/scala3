@@ -3,6 +3,9 @@ layout: doc-page
 title: New Control Syntax
 ---
 
+**Note** The syntax described in this section is currently under revision.
+[Here is the new version which will be implemented in Dotty 0.20](./control-syntax-new.html).
+
 Scala 3 has a new "quiet" syntax for control expressions that does not rely in
 enclosing the condition in parentheses, and also allows to drop parentheses or braces
 around the generators of a `for`-expression. Examples:

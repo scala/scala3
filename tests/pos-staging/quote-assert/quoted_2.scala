@@ -10,13 +10,13 @@ object Test {
     ${ assertImpl('expr) }
 
 
-  def program given QuoteContext = '{
+  def program(given QuoteContext) = '{
     val x = 1
     assert(x != 0)
 
     ${ assertImpl('{x != 0}) }
   }
 
-  delegate for Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Toolbox = Toolbox.make(getClass.getClassLoader)
   run(program)
 }

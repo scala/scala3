@@ -53,16 +53,16 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
     def alwaysNeedsPos(x: Positioned) = x match {
       case
           // initialSpan is inaccurate for trees with lazy field
-          _: WithLazyField[_]
+          _: WithLazyField[?]
 
           // A symbol is created before the corresponding tree is unpickled,
           // and its position cannot be changed afterwards.
           // so we cannot use the tree initialSpan to set the symbol position.
           // Instead, we always pickle the position of definitions.
-          | _: Trees.DefTree[_]
+          | _: Trees.DefTree[?]
 
           // package defs might be split into several Tasty files
-          | _: Trees.PackageDef[_]
+          | _: Trees.PackageDef[?]
           // holes can change source files when filled, which means
           // they might lose their position
           | _: TreePickler.Hole => true

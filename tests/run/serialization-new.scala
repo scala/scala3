@@ -482,8 +482,8 @@ class WithTransient extends Serializable {
 }
 
 object Test8 {
-    val x = new WithTransient
-    x.test
+  val x = new WithTransient
+  x.test
   try {
     val y:WithTransient = read(write(x))
     y.test
