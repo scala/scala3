@@ -160,8 +160,8 @@ trait Printers
           this += "Ident(\"" += name += "\")"
         case Select(qualifier, name) =>
           this += "Select(" += qualifier += ", \"" += name += "\")"
-        case This(qual) =>
-          this += "This(" += qual += ")"
+        case ThisRef(qual) =>
+          this += "ThisRef(" += qual += ")"
         case Super(qual, mix) =>
           this += "Super(" += qual += ", " += mix += ")"
         case Apply(fun, args) =>
@@ -746,7 +746,7 @@ trait Printers
         case Literal(const) =>
           printConstant(const)
 
-        case This(id) =>
+        case ThisRef(id) =>
           id match {
             case Some(x) =>
               this += x.name.stripSuffix("$") += "."
@@ -793,7 +793,7 @@ trait Printers
 
         case Apply(fn, args) =>
           fn match {
-            case Select(This(_), "<init>") => this += "this" // call to constructor inside a constructor
+            case Select(ThisRef(_), "<init>") => this += "this" // call to constructor inside a constructor
             case Select(qual, "apply") if qual.tpe.isImplicitFunctionType =>
               printTree(qual) += " given "
             case _ => printQualTree(fn)
@@ -817,8 +817,8 @@ trait Printers
 
         case Super(qual, idOpt) =>
           qual match {
-            case This(Some(Id(name))) => this += name += "."
-            case This(None) =>
+            case ThisRef(Some(Id(name))) => this += name += "."
+            case ThisRef(None) =>
           }
           this += "super"
           for (id <- idOpt)

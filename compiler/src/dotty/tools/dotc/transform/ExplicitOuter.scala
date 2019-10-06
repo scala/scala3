@@ -274,7 +274,7 @@ object ExplicitOuter {
       case _ => false
     }
     tree match {
-      case _: This | _: Ident => isOuterRef(tree.tpe)
+      case _: ThisRef | _: Ident => isOuterRef(tree.tpe)
       case nw: New =>
         val newCls = nw.tpe.classSymbol
         isOuterSym(newCls.owner.enclosingClass) ||
@@ -364,7 +364,7 @@ object ExplicitOuter {
         def outerArg(receiver: Tree): Tree = receiver match {
           case New(_) | Super(_, _) =>
             singleton(fixThis(outerPrefix(receiver.tpe)))
-          case This(_) =>
+          case ThisRef(_) =>
             ref(outerParamAccessor(cls)) // will be rewired to outer argument of secondary constructor in phase Constructors
           case TypeApply(Select(r, nme.asInstanceOf_), args) =>
             outerArg(r) // cast was inserted, skip
@@ -386,7 +386,7 @@ object ExplicitOuter {
      *   - if the initial `count` parameter is negative: where the class symbol of
      *     the type of the reached tree matches `toCls`.
      */
-    def path(start: Tree = This(ctx.owner.lexicallyEnclosingClass.asClass),
+    def path(start: Tree = ThisRef(ctx.owner.lexicallyEnclosingClass.asClass),
              toCls: Symbol = NoSymbol,
              count: Int = -1): Tree = try {
       @tailrec def loop(tree: Tree, count: Int): Tree = {

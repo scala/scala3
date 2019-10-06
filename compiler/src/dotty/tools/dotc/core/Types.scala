@@ -2968,7 +2968,7 @@ object Types {
   trait LambdaType extends BindingType with TermType { self =>
     type ThisName <: Name
     type PInfo <: Type
-    type This <: LambdaType{type PInfo = self.PInfo}
+    type ThisLambda <: LambdaType{type PInfo = self.PInfo}
     type ParamRefType <: ParamRef
 
     def paramNames: List[ThisName]
@@ -3002,7 +3002,7 @@ object Types {
       if (isResultDependent) resultType.substParams(this, argTypes)
       else resultType
 
-    def companion: LambdaTypeCompanion[ThisName, PInfo, This]
+    def companion: LambdaTypeCompanion[ThisName, PInfo, ThisLambda]
 
     /** The type `[tparams := paramRefs] tp`, where `tparams` can be
      *  either a list of type parameter symbols or a list of lambda parameters
@@ -3019,7 +3019,7 @@ object Types {
       if ((paramNames eq this.paramNames) && (paramInfos eq this.paramInfos) && (resType eq this.resType)) this
       else newLikeThis(paramNames, paramInfos, resType)
 
-    final def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): This =
+    final def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(implicit ctx: Context): ThisLambda =
       companion(paramNames)(
           x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
           x => resType.subst(this, x))
@@ -3077,7 +3077,7 @@ object Types {
     import DepStatus._
     type ThisName = TermName
     type PInfo = Type
-    type This <: TermLambda
+    type ThisLambda <: TermLambda
     type ParamRefType = TermParamRef
 
     override def resultType(implicit ctx: Context): Type =
@@ -3188,7 +3188,7 @@ object Types {
       resultTypeExp: MethodType => Type)
     extends MethodOrPoly with TermLambda with NarrowCached { thisMethodType =>
 
-    type This = MethodType
+    type ThisLambda = MethodType
 
     val paramInfos: List[Type] = paramInfosExp(this)
     val resType: Type = resultTypeExp(this)
@@ -3331,7 +3331,7 @@ object Types {
   trait TypeLambda extends LambdaType {
     type ThisName = TypeName
     type PInfo = TypeBounds
-    type This <: TypeLambda
+    type ThisLambda <: TypeLambda
     type ParamRefType = TypeParamRef
 
     def isResultDependent(implicit ctx: Context): Boolean = true
@@ -3369,7 +3369,7 @@ object Types {
   class HKTypeLambda(val paramNames: List[TypeName])(
       paramInfosExp: HKTypeLambda => List[TypeBounds], resultTypeExp: HKTypeLambda => Type)
   extends HKLambda with TypeLambda {
-    type This = HKTypeLambda
+    type ThisLambda = HKTypeLambda
     def companion: HKTypeLambda.type = HKTypeLambda
 
     val paramInfos: List[TypeBounds] = paramInfosExp(this)
@@ -3388,7 +3388,7 @@ object Types {
       paramInfosExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
   extends MethodOrPoly with TypeLambda {
 
-    type This = PolyType
+    type ThisLambda = PolyType
     def companion: PolyType.type = PolyType
 
     val paramInfos: List[TypeBounds] = paramInfosExp(this)

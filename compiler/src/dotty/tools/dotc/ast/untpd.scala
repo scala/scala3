@@ -322,7 +322,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def SearchFailureIdent(name: Name)(implicit src: SourceFile): SearchFailureIdent = new SearchFailureIdent(name)
   def Select(qualifier: Tree, name: Name)(implicit src: SourceFile): Select = new Select(qualifier, name)
   def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit src: SourceFile): Select = new SelectWithSig(qualifier, name, sig)
-  def This(qual: Ident)(implicit src: SourceFile): This = new This(qual)
+  def ThisRef(qual: Ident)(implicit src: SourceFile): ThisRef = new ThisRef(qual)
   def Super(qual: Tree, mix: Ident)(implicit src: SourceFile): Super = new Super(qual, mix)
   def Apply(fun: Tree, args: List[Tree])(implicit src: SourceFile): Apply = new Apply(fun, args)
   def TypeApply(fun: Tree, args: List[Tree])(implicit src: SourceFile): TypeApply = new TypeApply(fun, args)

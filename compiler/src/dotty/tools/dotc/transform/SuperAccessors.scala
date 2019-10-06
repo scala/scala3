@@ -88,7 +88,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         acc
     }
 
-    This(clazz).select(superAcc).withSpan(sel.span)
+    ThisRef(clazz).select(superAcc).withSpan(sel.span)
   }
 
   /** Check selection `super.f` for conforming to rules. If necessary,
@@ -176,7 +176,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       ProtectedAccessors.needsAccessorIfNotInSubclass(sym) &&
       AccessProxies.hostForAccessorOf(sym).is(Trait)
     qual match {
-      case _: This if needsSuperAccessor =>
+      case _: ThisRef if needsSuperAccessor =>
         /*
           * A trait which extends a class and accesses a protected member
           *  of that class cannot implement the necessary accessor method

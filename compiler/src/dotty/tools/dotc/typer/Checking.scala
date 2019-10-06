@@ -327,12 +327,12 @@ object Checking {
         case tree: MemberDef =>
           foldOver(x, tree)
           seen += tree.symbol
-        case tree @ Select(This(_), _) =>
+        case tree @ Select(ThisRef(_), _) =>
           checkRef(tree, tree.symbol)
         case tree: RefTree =>
           checkRef(tree, tree.symbol)
           foldOver(x, tree)
-        case tree: This =>
+        case tree: ThisRef =>
           selfRef(tree)
         case tree: TypeTree =>
           val checkType = new TypeAccumulator[Unit] {
@@ -1027,8 +1027,8 @@ trait Checking {
             }
         val sym = t.symbol
         t match {
-          case Ident(_) | Select(This(_), _) => check(sym.maybeOwner, sym)
-          case This(_) => check(sym, sym)
+          case Ident(_) | Select(ThisRef(_), _) => check(sym.maybeOwner, sym)
+          case ThisRef(_) => check(sym, sym)
           case _ => traverseChildren(t)
         }
       }

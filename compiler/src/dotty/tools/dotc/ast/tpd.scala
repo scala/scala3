@@ -32,8 +32,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Select(qualifier: Tree, tp: NamedType)(implicit ctx: Context): Select =
     untpd.Select(qualifier, tp.name).withType(tp)
 
-  def This(cls: ClassSymbol)(implicit ctx: Context): This =
-    untpd.This(untpd.Ident(cls.name)).withType(cls.thisType)
+  def ThisRef(cls: ClassSymbol)(implicit ctx: Context): ThisRef =
+    untpd.ThisRef(untpd.Ident(cls.name)).withType(cls.thisType)
 
   def Super(qual: Tree, mix: untpd.Ident, inConstrCall: Boolean, mixinClass: Symbol)(implicit ctx: Context): Super =
     ta.assignType(untpd.Super(qual, mix), qual, inConstrCall, mixinClass)
@@ -376,7 +376,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (tp.isType) TypeTree(tp)
     else if (prefixIsElidable(tp)) Ident(tp)
     else if (tp.symbol.is(Module) && ctx.owner.isContainedIn(tp.symbol.moduleClass))
-      followOuterLinks(This(tp.symbol.moduleClass.asClass))
+      followOuterLinks(ThisRef(tp.symbol.moduleClass.asClass))
     else if (tp.symbol hasAnnotation defn.ScalaStaticAnnot)
       Ident(tp)
     else {
@@ -389,7 +389,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
 
   private def followOuterLinks(t: Tree)(implicit ctx: Context) = t match {
-    case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
+    case t: ThisRef if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
       // after erasure outer paths should be respected
       ExplicitOuter.OuterOps(ctx).path(toCls = t.tpe.widen.classSymbol)
     case t =>
@@ -398,7 +398,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def singleton(tp: Type)(implicit ctx: Context): Tree = tp match {
     case tp: TermRef => ref(tp)
-    case tp: ThisType => This(tp.cls)
+    case tp: ThisType => ThisRef(tp.cls)
     case tp: SkolemType => singleton(tp.narrow)
     case SuperType(qual, _) => singleton(qual)
     case ConstantType(value) => Literal(value)
@@ -1260,7 +1260,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case TermRef(prefix: TermRef, _) =>
       ref(prefix)
     case TermRef(prefix: ThisType, _) =>
-      This(prefix.cls)
+      ThisRef(prefix.cls)
     case _ =>
       EmptyTree
   }

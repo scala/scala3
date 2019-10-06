@@ -1197,7 +1197,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case THIStree =>
         setSym()
         val name = readTypeNameRef()
-        This(symbol.asClass)
+        ThisRef(symbol.asClass)
 
       case SELECTtree =>
         setSym()

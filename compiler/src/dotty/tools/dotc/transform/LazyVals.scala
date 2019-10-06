@@ -308,7 +308,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val computeState = Literal(Constant(1))
     val computedState = Literal(Constant(3))
 
-    val thiz = This(claz)
+    val thiz = ThisRef(claz)
     val fieldId = Literal(Constant(ord))
 
     val flagSymbol = ctx.newSymbol(methodSymbol, lazyNme.flag, Synthetic, defn.LongType)

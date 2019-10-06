@@ -103,7 +103,7 @@ class Erasure extends Phase with DenotTransformer {
   override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {
     assertErased(tree)
     tree match {
-      case res: tpd.This =>
+      case res: tpd.ThisRef =>
         assert(!ExplicitOuter.referencesOuter(ctx.owner.lexicallyEnclosingClass, res),
           i"Reference to $res from ${ctx.owner.showLocated}")
       case ret: tpd.Return =>
@@ -171,7 +171,7 @@ object Erasure {
      *  when enclosed in a box, the unboxed argument, otherwise EmptyTree.
      *  Note that one can't always remove a Box(Unbox(x)) combination because the
      *  process of unboxing x may lead to throwing an exception.
-     *  This is important for specialization: calls to the super constructor should not box/unbox specialized
+     *  ThisRef is important for specialization: calls to the super constructor should not box/unbox specialized
      *  fields (see TupleX). (ID)
      */
     private def safelyRemovableUnboxArg(tree: Tree)(implicit ctx: Context): Tree = tree match {
@@ -376,13 +376,13 @@ object Erasure {
     }
 
     /** When erasing most TypeTrees we should not semi-erase value types.
-     *  This is not the case for [[DefDef#tpt]], [[ValDef#tpt]] and [[Typed#tpt]], they
+     *  ThisRef is not the case for [[DefDef#tpt]], [[ValDef#tpt]] and [[Typed#tpt]], they
      *  are handled separately by [[typedDefDef]], [[typedValDef]] and [[typedTyped]].
      */
     override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree =
       tree.withType(erasure(tree.tpe))
 
-    /** This override is only needed to semi-erase type ascriptions */
+    /** ThisRef override is only needed to semi-erase type ascriptions */
     override def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = {
       val Typed(expr, tpt) = tree
       val tpt1 = tpt match {
@@ -500,7 +500,7 @@ object Erasure {
       checkValue(checkNotErased(recur(qual1)), pt)
     }
 
-    override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
+    override def typedThis(tree: untpd.ThisRef)(implicit ctx: Context): Tree =
       if (tree.symbol == ctx.owner.lexicallyEnclosingClass || tree.symbol.isStaticOwner) promote(tree)
       else {
         ctx.log(i"computing outer path from ${ctx.owner.ownersIterator.toList}%, % to ${tree.symbol}, encl class = ${ctx.owner.enclosingClass}")
@@ -571,7 +571,7 @@ object Erasure {
 
     // The following four methods take as the proto-type the erasure of the pre-existing type,
     // if the original proto-type is not a value type.
-    // This makes all branches be adapted to the correct type.
+    // ThisRef makes all branches be adapted to the correct type.
     override def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral =
       super.typedSeqLiteral(tree, erasure(tree.typeOpt))
         // proto type of typed seq literal is original type;

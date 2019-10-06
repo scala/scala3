@@ -29,12 +29,12 @@ class ExplicitSelf extends MiniPhase {
   override def transformIdent(tree: Ident)(implicit ctx: Context): Tree = tree.tpe match {
     case tp: ThisType =>
       ctx.debuglog(s"owner = ${ctx.owner}, context = ${ctx}")
-      This(tp.cls).withSpan(tree.span)
+      ThisRef(tp.cls).withSpan(tree.span)
     case _ => tree
   }
 
   override def transformSelect(tree: Select)(implicit ctx: Context): Tree = tree match {
-    case Select(thiz: This, name) if name.isTermName =>
+    case Select(thiz: ThisRef, name) if name.isTermName =>
       val cls = thiz.symbol.asClass
       if (cls.givenSelfType.exists && !cls.derivesFrom(tree.symbol.owner))
         cpy.Select(tree)(thiz.cast(AndType(cls.classInfo.selfType, thiz.tpe)), name)

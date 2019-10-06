@@ -415,10 +415,10 @@ object Trees {
   }
 
   /** qual.this */
-  case class This[-T >: Untyped] private[ast] (qual: untpd.Ident)(implicit @constructorOnly src: SourceFile)
+  case class ThisRef[-T >: Untyped] private[ast] (qual: untpd.Ident)(implicit @constructorOnly src: SourceFile)
     extends DenotingTree[T] with TermTree[T] {
-    type ThisTree[-T >: Untyped] = This[T]
-    // Denotation of a This tree is always the underlying class; needs correction for modules.
+    type ThisTree[-T >: Untyped] = ThisRef[T]
+    // Denotation of a ThisRef tree is always the underlying class; needs correction for modules.
     override def denot(implicit ctx: Context): Denotation =
       typeOpt match {
         case tpe @ TermRef(pre, _) if tpe.symbol.is(Module) =>
@@ -949,7 +949,7 @@ object Trees {
     type SearchFailureIdent = Trees.SearchFailureIdent[T]
     type Select = Trees.Select[T]
     type SelectWithSig = Trees.SelectWithSig[T]
-    type This = Trees.This[T]
+    type ThisRef = Trees.ThisRef[T]
     type Super = Trees.Super[T]
     type Apply = Trees.Apply[T]
     type TypeApply = Trees.TypeApply[T]
@@ -1046,9 +1046,9 @@ object Trees {
         case Ident(_) => Ident(tree)(name)
         case Select(qual, _) => Select(tree)(qual, name)
       }
-      def This(tree: Tree)(qual: untpd.Ident)(implicit ctx: Context): This = tree match {
-        case tree: This if (qual eq tree.qual) => tree
-        case _ => finalize(tree, untpd.This(qual)(sourceFile(tree)))
+      def ThisRef(tree: Tree)(qual: untpd.Ident)(implicit ctx: Context): ThisRef = tree match {
+        case tree: ThisRef if (qual eq tree.qual) => tree
+        case _ => finalize(tree, untpd.ThisRef(qual)(sourceFile(tree)))
       }
       def Super(tree: Tree)(qual: Tree, mix: untpd.Ident)(implicit ctx: Context): Super = tree match {
         case tree: Super if (qual eq tree.qual) && (mix eq tree.mix) => tree
@@ -1254,7 +1254,7 @@ object Trees {
             tree
           case Select(qualifier, name) =>
             cpy.Select(tree)(transform(qualifier), name)
-          case This(qual) =>
+          case ThisRef(qual) =>
             tree
           case Super(qual, mix) =>
             cpy.Super(tree)(transform(qual), mix)
@@ -1378,7 +1378,7 @@ object Trees {
               x
             case Select(qualifier, name) =>
               this(x, qualifier)
-            case This(qual) =>
+            case ThisRef(qual) =>
               x
             case Super(qual, mix) =>
               this(x, qual)

@@ -112,7 +112,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         coord = clazz.coord).enteredAfter(thisPhase).asTerm
 
       def forwardToRuntime(vrefs: List[Tree]): Tree =
-        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefs)
+        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(ThisRef(clazz) :: vrefs)
 
       def ownName: Tree =
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString))
@@ -127,7 +127,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.productPrefix => ownName
         case nme.productElement => productElementBody(accessors.length, vrefss.head.head)
         case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
-        case nme.ordinal => Select(This(clazz), nme.ordinalDollar)
+        case nme.ordinal => Select(ThisRef(clazz), nme.ordinalDollar)
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
       synthesizeDef(synthetic, treess => ctx => syntheticRHS(treess)(ctx))
@@ -152,7 +152,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def productElementBody(arity: Int, index: Tree)(implicit ctx: Context): Tree = {
       // case N => _${N + 1}
       val cases = 0.until(arity).map { i =>
-        CaseDef(Literal(Constant(i)), EmptyTree, Select(This(clazz), nme.selectorName(i)))
+        CaseDef(Literal(Constant(i)), EmptyTree, Select(ThisRef(clazz), nme.selectorName(i)))
       }
 
       Match(index, (cases :+ generateIOBECase(index)).toList)
@@ -227,7 +227,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       // compare primitive fields first, slow equality checks of non-primitive fields can be skipped when primitives differ
       val sortedAccessors = accessors.sortBy(accessor => if (accessor.info.typeSymbol.isPrimitiveValueClass) 0 else 1)
       val comparisons = sortedAccessors.map { accessor =>
-        This(clazz).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
+        ThisRef(clazz).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
       val rhs = // this.x == this$0.x && this.y == x$0.y
         if (comparisons.isEmpty) Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
       val matchingCase = CaseDef(pattern, EmptyTree, rhs) // case x$0 @ (_: C) => this.x == this$0.x && this.y == x$0.y
@@ -235,7 +235,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val matchExpr = Match(that, List(matchingCase, defaultCase))
       if (isDerivedValueClass(clazz)) matchExpr
       else {
-        val eqCompare = This(clazz).select(defn.Object_eq).appliedTo(that.cast(defn.ObjectType))
+        val eqCompare = ThisRef(clazz).select(defn.Object_eq).appliedTo(that.cast(defn.ObjectType))
         eqCompare or matchExpr
       }
     }
@@ -289,7 +289,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       else if (accessors.exists(_.info.finalResultType.classSymbol.isPrimitiveValueClass))
         caseHashCodeBody
       else
-        ref(defn.ScalaRuntime__hashCode).appliedTo(This(clazz))
+        ref(defn.ScalaRuntime__hashCode).appliedTo(ThisRef(clazz))
 
     /** The class
      *
@@ -313,7 +313,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val acc = ctx.newSymbol(ctx.owner, nme.acc, Mutable | Synthetic, defn.IntType, coord = ctx.owner.span)
       val accDef = ValDef(acc, Literal(Constant(0xcafebabe)))
       val mixPrefix = Assign(ref(acc),
-        ref(defn.staticsMethod("mix")).appliedTo(ref(acc), This(clazz).select(defn.Product_productPrefix).select(defn.Any_hashCode).appliedToNone))
+        ref(defn.staticsMethod("mix")).appliedTo(ref(acc), ThisRef(clazz).select(defn.Product_productPrefix).select(defn.Any_hashCode).appliedToNone))
       val mixes = for (accessor <- accessors) yield
         Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
       val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))

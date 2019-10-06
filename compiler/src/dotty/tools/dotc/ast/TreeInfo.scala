@@ -109,7 +109,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   /** Is tree a path? */
   def isPath(tree: Tree): Boolean = unsplice(tree) match {
-    case Ident(_) | This(_) | Super(_, _) => true
+    case Ident(_) | ThisRef(_) | Super(_, _) => true
     case Select(qual, _) => isPath(qual)
     case _ => false
   }
@@ -118,7 +118,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
    *  same object?
    */
   def isSelfConstrCall(tree: Tree): Boolean = methPart(tree) match {
-    case Ident(nme.CONSTRUCTOR) | Select(This(_), nme.CONSTRUCTOR) => true
+    case Ident(nme.CONSTRUCTOR) | Select(ThisRef(_), nme.CONSTRUCTOR) => true
     case _ => false
   }
 
@@ -136,7 +136,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   def isSelfOrSuperConstrCall(tree: Tree): Boolean = methPart(tree) match {
     case Ident(nme.CONSTRUCTOR)
-       | Select(This(_), nme.CONSTRUCTOR)
+       | Select(ThisRef(_), nme.CONSTRUCTOR)
        | Select(Super(_, _), nme.CONSTRUCTOR) => true
     case _ => false
   }
@@ -381,7 +381,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   def exprPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
     case EmptyTree
-       | This(_)
+       | ThisRef(_)
        | Super(_, _)
        | Literal(_) =>
       PurePath
@@ -557,7 +557,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** Is tree a `this` node which belongs to `enclClass`? */
   def isSelf(tree: Tree, enclClass: Symbol)(implicit ctx: Context): Boolean = unsplice(tree) match {
-    case This(_) => tree.symbol == enclClass
+    case ThisRef(_) => tree.symbol == enclClass
     case _ => false
   }
 
@@ -770,7 +770,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def qualifier(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case Select(qual, _) => qual
     case tree: Ident => desugarIdentPrefix(tree)
-    case _ => This(ctx.owner.enclosingClass.asClass)
+    case _ => ThisRef(ctx.owner.enclosingClass.asClass)
   }
 
   /** Is this a (potentially applied) selection of a member of a structural type

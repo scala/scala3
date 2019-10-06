@@ -166,7 +166,7 @@ object Inliner {
             tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))(ctx.withSource(curSource)) : Tree
           case tree: Ident => finalize(tree, untpd.Ident(tree.name)(curSource))
           case tree: Literal => finalize(tree, untpd.Literal(tree.const)(curSource))
-          case tree: This => finalize(tree, untpd.This(tree.qual)(curSource))
+          case tree: ThisRef => finalize(tree, untpd.ThisRef(tree.qual)(curSource))
           case tree: JavaSeqLiteral => finalize(tree, untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
           case tree: SeqLiteral => finalize(tree, untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
           case tree: TypeTree => tpd.TypeTree(tree.tpe)(ctx.withSource(curSource)).withSpan(tree.span)
@@ -238,7 +238,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private val (methPart, callTypeArgs, callValueArgss) = decomposeCall(call)
   private val inlinedMethod = methPart.symbol
   private val inlineCallPrefix =
-     qualifier(methPart).orElse(This(inlinedMethod.enclosingClass.asClass))
+     qualifier(methPart).orElse(ThisRef(inlinedMethod.enclosingClass.asClass))
 
   inlining.println(i"-----------------------\nInlining $call\nWith RHS $rhsToInline")
 
@@ -410,7 +410,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
   /** Register type of leaf node */
   private def registerLeaf(tree: Tree): Unit = tree match {
-    case _: This | _: Ident | _: TypeTree =>
+    case _: ThisRef | _: Ident | _: TypeTree =>
       tree.typeOpt.foreachPart(registerType, stopAtStatic = true)
     case _ =>
   }
@@ -481,7 +481,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           override def mapClassInfo(tp: ClassInfo) = mapFullClassInfo(tp)
         },
       treeMap = {
-        case tree: This =>
+        case tree: ThisRef =>
           tree.tpe match {
             case thistpe: ThisType =>
               thisProxy.get(thistpe.cls) match {

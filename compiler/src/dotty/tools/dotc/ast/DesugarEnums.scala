@@ -79,7 +79,7 @@ object DesugarEnums {
 
   private def registerCall(implicit ctx: Context): List[Tree] =
     if (enumClass.typeParams.nonEmpty) Nil
-    else Apply(valuesDot("register"), This(EmptyTypeIdent) :: Nil) :: Nil
+    else Apply(valuesDot("register"), ThisRef(EmptyTypeIdent) :: Nil) :: Nil
 
   /**  The following lists of definitions for an enum type E:
    *

@@ -1005,7 +1005,7 @@ class TreeUnpickler(reader: TastyReader,
         readType() match {
           case path: TypeRef => TypeTree(path)
           case path: TermRef => ref(path)
-          case path: ThisType => untpd.This(untpd.EmptyTypeIdent).withType(path)
+          case path: ThisType => untpd.ThisRef(untpd.EmptyTypeIdent).withType(path)
           case path: ConstantType => Literal(path.value)
         }
       }
@@ -1055,7 +1055,7 @@ class TreeUnpickler(reader: TastyReader,
           completeSelect(name, Signature.NotAMethod)
         case QUALTHIS =>
           val (qual, tref) = readQualId()
-          untpd.This(qual).withType(ThisType.raw(tref))
+          untpd.ThisRef(qual).withType(ThisType.raw(tref))
         case NEW =>
           New(readTpt())
         case THROW =>

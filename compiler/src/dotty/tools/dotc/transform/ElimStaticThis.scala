@@ -15,7 +15,7 @@ class ElimStaticThis extends MiniPhase {
   import ast.tpd._
   def phaseName: String = "elimStaticThis"
 
-  override def transformThis(tree: This)(implicit ctx: Context): Tree =
+  override def transformThis(tree: ThisRef)(implicit ctx: Context): Tree =
     if (!tree.symbol.is(Package) && ctx.owner.enclosingMethod.is(JavaStatic)) {
       assert(tree.symbol.is(ModuleClass))
       ref(tree.symbol.sourceModule)

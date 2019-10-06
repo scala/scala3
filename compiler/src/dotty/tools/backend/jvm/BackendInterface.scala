@@ -40,7 +40,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   type Typed      >: Null <: Tree
   type ArrayValue >: Null <: Tree
   type Match      >: Null <: Tree
-  type This       >: Null <: Tree
+  type ThisRef    >: Null <: Tree
   type CaseDef    >: Null <: Tree
   type Alternative >: Null <: Tree
   type DefDef     >: Null <: Tree
@@ -78,7 +78,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   implicit val ArrayValueTag: ClassTag[ArrayValue]
   implicit val MatchTag: ClassTag[Match]
   implicit val CaseDefTag: ClassTag[CaseDef]
-  implicit val ThisTag: ClassTag[This]
+  implicit val ThisTag: ClassTag[ThisRef]
   implicit val AlternativeTag: ClassTag[Alternative]
   implicit val DefDefTag: ClassTag[DefDef]
   implicit val ModuleDefTag: ClassTag[ModuleDef]
@@ -201,7 +201,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
   val Throw: ThrowDeconstructor
   val New: NewDeconstructor
   val ApplyDynamic: ApplyDynamicDeconstructor
-  val This: ThisDeconstructor
+  val ThisRef: ThisDeconstructor
   val Ident: IdentDeconstructor
   val Try: TryDeconstructor
   val Labeled: LabeledDeconstructor
@@ -287,7 +287,7 @@ abstract class BackendInterface extends BackendInterfaceDefinitions {
     def _3: Symbol // functionalInterface
   }
 
-  abstract class ThisDeconstructor extends Deconstructor1Common[This, Name]{
+  abstract class ThisDeconstructor extends Deconstructor1Common[ThisRef, Name]{
     def apply(s: Symbol): Tree
   }
 

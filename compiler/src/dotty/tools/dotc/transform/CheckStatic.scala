@@ -62,7 +62,7 @@ class CheckStatic extends MiniPhase {
       val symbolWhitelist = tree.symbol.ownersIterator.flatMap(x => if (x.is(Flags.Module)) List(x, x.companionModule) else List(x)).toSet
       def isSafeQual(t: Tree): Boolean = // follow the desugared paths created by typer
         t match {
-          case t: This => true
+          case t: ThisRef => true
           case t: Select => isSafeQual(t.qualifier) && symbolWhitelist.contains(t.symbol)
           case t: Ident => symbolWhitelist.contains(t.symbol)
           case t: Block => t.stats.forall(tpd.isPureExpr) && isSafeQual(t.expr)

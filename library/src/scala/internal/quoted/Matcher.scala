@@ -200,7 +200,7 @@ private[quoted] object Matcher {
           case (New(tpt1), New(tpt2)) =>
             tpt1 =?= tpt2
 
-          case (This(_), This(_)) if scrutinee.symbol == pattern.symbol =>
+          case (ThisRef(_), ThisRef(_)) if scrutinee.symbol == pattern.symbol =>
             matched
 
           case (Super(qual1, mix1), Super(qual2, mix2)) if mix1 == mix2 =>

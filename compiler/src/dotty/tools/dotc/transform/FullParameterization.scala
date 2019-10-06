@@ -208,7 +208,7 @@ trait FullParameterization {
           .subst(origTParams ++ origVParams, trefs ++ argRefs.map(_.tpe))
           .substThisUnlessStatic(origClass, thisRef.tpe),
         treeMap = {
-          case tree: This if tree.symbol == origClass => thisRef
+          case tree: ThisRef if tree.symbol == origClass => thisRef
           case tree => rewireTree(tree, Nil) orElse tree
         },
         oldOwners = origMeth :: Nil,
@@ -225,7 +225,7 @@ trait FullParameterization {
     val fun =
       ref(derived.termRef)
         .appliedToTypes(allInstanceTypeParams(originalDef, abstractOverClass).map(_.typeRef))
-        .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
+        .appliedTo(ThisRef(originalDef.symbol.enclosingClass.asClass))
 
     (if (!liftThisType)
       fun.appliedToArgss(originalDef.vparamss.nestedMap(vparam => ref(vparam.symbol)))

@@ -347,7 +347,7 @@ class TreePickler(pickler: TastyPickler) {
               pickleName(name)
               pickleType(tp)
           }
-        case This(qual) =>
+        case ThisRef(qual) =>
           if (qual.isEmpty) pickleType(tree.tpe)
           else {
             writeByte(QUALTHIS)

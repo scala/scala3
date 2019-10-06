@@ -60,7 +60,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   type Block           = tpd.Block
   type Typed           = tpd.Typed
   type Match           = tpd.Match
-  type This            = tpd.This
+  type ThisRef         = tpd.ThisRef
   type CaseDef         = tpd.CaseDef
   type Alternative     = tpd.Alternative
   type DefDef          = tpd.DefDef
@@ -198,7 +198,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit val ArrayValueTag: ClassTag[ArrayValue] = ClassTag[ArrayValue](classOf[ArrayValue])
   implicit val MatchTag: ClassTag[Match] = ClassTag[Match](classOf[Match])
   implicit val CaseDefTag: ClassTag[CaseDef] = ClassTag[CaseDef](classOf[CaseDef])
-  implicit val ThisTag: ClassTag[This] = ClassTag[This](classOf[This])
+  implicit val ThisTag: ClassTag[ThisRef] = ClassTag[ThisRef](classOf[ThisRef])
   implicit val AlternativeTag: ClassTag[Alternative] = ClassTag[Alternative](classOf[Alternative])
   implicit val DefDefTag: ClassTag[DefDef] = ClassTag[DefDef](classOf[DefDef])
   implicit val ModuleDefTag: ClassTag[ModuleDef] = ClassTag[ModuleDef](classOf[ModuleDef])
@@ -1053,9 +1053,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def get: Type = field.tpt.tpe
   }
 
-  object This extends ThisDeconstructor {
+  object ThisRef extends ThisDeconstructor {
     def get: Name = field.qual.name
-    def apply(s: Symbol): This = tpd.This(s.asClass)
+    def apply(s: Symbol): ThisRef = tpd.ThisRef(s.asClass)
   }
 
   object Labeled extends LabeledDeconstructor {

@@ -151,7 +151,7 @@ class TailRec extends MiniPhase {
             (param, local) => ValDef(local.asTerm, ref(param))
           }
           varForRewrittenThis match {
-            case Some(local) => ValDef(local.asTerm, This(enclosingClass)) :: initialParamVarDefs
+            case Some(local) => ValDef(local.asTerm, ThisRef(enclosingClass)) :: initialParamVarDefs
             case none => initialParamVarDefs
           }
         }
@@ -163,7 +163,7 @@ class TailRec extends MiniPhase {
               typeMap = _.substThisUnlessStatic(enclosingClass, thisRef)
                 .subst(rewrittenParamSyms, varsForRewrittenParamSyms.map(_.termRef)),
               treeMap = {
-                case tree: This if tree.symbol == enclosingClass => Ident(thisRef)
+                case tree: ThisRef if tree.symbol == enclosingClass => Ident(thisRef)
                 case tree => tree
               }
             ).transform(rhsSemiTransformed)
@@ -404,7 +404,7 @@ class TailRec extends MiniPhase {
           if (isMandatory) noTailTransform(tree.rhs)
           tree
 
-        case _: Super | _: This | _: Literal | _: TypeTree | _: TypeDef | EmptyTree =>
+        case _: Super | _: ThisRef | _: Literal | _: TypeTree | _: TypeDef | EmptyTree =>
           tree
 
         case Labeled(bind, expr) =>

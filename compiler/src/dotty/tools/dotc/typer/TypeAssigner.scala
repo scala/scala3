@@ -344,7 +344,7 @@ trait TypeAssigner {
       }
     }
 
-  def assignType(tree: untpd.This)(implicit ctx: Context): This = {
+  def assignType(tree: untpd.ThisRef)(implicit ctx: Context): ThisRef = {
     val cls = qualifyingClass(tree, tree.qual.name, packageOK = false)
     tree.withType(
         if (cls.isClass) cls.thisType

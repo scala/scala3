@@ -45,7 +45,7 @@ class ReTyper extends Typer with ReChecking {
   override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Tree =
     promote(tree)
 
-  override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
+  override def typedThis(tree: untpd.ThisRef)(implicit ctx: Context): Tree =
     promote(tree)
 
   override def typedSuper(tree: untpd.Super, pt: Type)(implicit ctx: Context): Tree =

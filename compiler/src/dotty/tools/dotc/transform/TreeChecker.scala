@@ -233,7 +233,7 @@ class TreeChecker extends Phase with SymTransformer {
       case Apply(fun, args) =>
         assertIdentNotJavaClass(fun)
         args.foreach(assertIdentNotJavaClass _)
-      // case tree: untpd.This =>
+      // case tree: untpd.ThisRef =>
       // case tree: untpd.Literal =>
       // case tree: untpd.New =>
       case Typed(expr, _) =>
@@ -374,7 +374,7 @@ class TreeChecker extends Phase with SymTransformer {
       checkNotRepeated(super.typedSelect(tree, pt))
     }
 
-    override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = {
+    override def typedThis(tree: untpd.ThisRef)(implicit ctx: Context): Tree = {
       val res = super.typedThis(tree)
       val cls = res.symbol
       assert(cls.isStaticOwner || ctx.owner.isContainedIn(cls), i"error while typing $tree, ${ctx.owner} is not contained in $cls")

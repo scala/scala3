@@ -102,7 +102,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     }
 
     def bridgeRhs(argss: List[List[Tree]]) = {
-      val ref = This(root).select(member)
+      val ref = ThisRef(root).select(member)
       if (member.info.isParameterless) ref // can happen if `member` is a module
       else ref.appliedToArgss(argss)
     }

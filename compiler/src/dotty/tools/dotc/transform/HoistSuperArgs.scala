@@ -109,11 +109,11 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
 
       /** Super call argument is complex, needs to be hoisted */
       def needsHoist(tree: Tree) = tree match {
-        case _: DefDef            => true
-        case _: Template          => true
-        case _: New               => !tree.tpe.typeSymbol.isStatic
-        case _: RefTree | _: This => refNeedsHoist(tree.tpe)
-        case _                    => false
+        case _: DefDef               => true
+        case _: Template             => true
+        case _: New                  => !tree.tpe.typeSymbol.isStatic
+        case _: RefTree | _: ThisRef => refNeedsHoist(tree.tpe)
+        case _                       => false
       }
 
       // begin hoistSuperArg

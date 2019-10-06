@@ -291,7 +291,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => false
     }
 
-    def optDotPrefix(tree: This) = optText(tree.qual)(_ ~ ".") provided !isLocalThis(tree)
+    def optDotPrefix(tree: ThisRef) = optText(tree.qual)(_ ~ ".") provided !isLocalThis(tree)
 
     def caseBlockText(tree: Tree): Text = tree match {
       case Block(stats, expr) => toText(stats :+ expr, "\n")
@@ -377,9 +377,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (!printDebug && tree.hasType && tree.symbol == defn.QuotedType_splice) typeText("${") ~ toTextLocal(qual) ~ typeText("}")
         else if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
         else toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided (name != nme.CONSTRUCTOR || printDebug))
-      case tree: This =>
+      case tree: ThisRef =>
         optDotPrefix(tree) ~ keywordStr("this") ~ idText(tree)
-      case Super(qual: This, mix) =>
+      case Super(qual: ThisRef, mix) =>
         optDotPrefix(qual) ~ keywordStr("super") ~ optText(mix)("[" ~ _ ~ "]")
       case app @ Apply(fun, args) =>
         if (fun.hasType && fun.symbol == defn.throwMethod)

@@ -62,7 +62,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       val owner = sym.owner.asClass
 
         tree match {
-          case Ident(_) | Select(This(_), _) =>
+          case Ident(_) | Select(ThisRef(_), _) =>
             def inConstructor = {
               val method = ctx.owner.enclosingMethod
               method.isPrimaryConstructor && ctx.owner.enclosingClass == owner
@@ -146,7 +146,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     //      drop the () when replacing by the parameter.
     object intoConstr extends TreeMap {
       override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-        case Ident(_) | Select(This(_), _) =>
+        case Ident(_) | Select(ThisRef(_), _) =>
           var sym = tree.symbol
           if (sym.is(ParamAccessor, butNot = Mutable)) sym = sym.subst(accessors, paramSyms)
           if (sym.owner.isConstructor) ref(sym).withSpan(tree.span) else tree

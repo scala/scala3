@@ -597,7 +597,7 @@ object desugar {
         val caseParams = derivedVparamss.head.toArray
         for (i <- List.range(0, arity) if nme.selectorName(i) `ne` caseParams(i).name)
         yield syntheticProperty(nme.selectorName(i), caseParams(i).tpt,
-          Select(This(EmptyTypeIdent), caseParams(i).name))
+          Select(ThisRef(EmptyTypeIdent), caseParams(i).name))
       }
       def ordinalMeths = if (isEnumCase) ordinalMethLit(nextOrdinal(CaseKind.Class)._1) :: Nil else Nil
       def copyMeths = {

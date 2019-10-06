@@ -15,7 +15,7 @@ import printing.Showable
  */
 abstract class Constraint extends Showable {
 
-  type This <: Constraint
+  type ThisConstraint <: Constraint
 
   /** Does the constraint's domain contain the type parameters of `tl`? */
   def contains(tl: TypeLambda): Boolean
@@ -77,7 +77,7 @@ abstract class Constraint extends Showable {
    *                 satisfiability but will solved to give instances of
    *                 type variables.
    */
-  def add(poly: TypeLambda, tvars: List[TypeVar])(implicit ctx: Context): This
+  def add(poly: TypeLambda, tvars: List[TypeVar])(implicit ctx: Context): ThisConstraint
 
   /** A new constraint which is derived from this constraint by updating
    *  the entry for parameter `param` to `tp`.
@@ -88,18 +88,18 @@ abstract class Constraint extends Showable {
    *
    * @pre  `this contains param`.
    */
-  def updateEntry(param: TypeParamRef, tp: Type)(implicit ctx: Context): This
+  def updateEntry(param: TypeParamRef, tp: Type)(implicit ctx: Context): ThisConstraint
 
   /** A constraint that includes the relationship `p1 <: p2`.
    *  `<:` relationships between parameters ("edges") are propagated, but
    *  non-parameter bounds are left alone.
    */
-  def addLess(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: Context): This
+  def addLess(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: Context): ThisConstraint
 
   /** A constraint resulting from adding p2 = p1 to this constraint, and at the same
    *  time transferring all bounds of p2 to p1
    */
-  def unify(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: Context): This
+  def unify(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: Context): ThisConstraint
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all top-level occurrences
@@ -107,7 +107,7 @@ abstract class Constraint extends Showable {
    *  approximation of it if that is needed to avoid cycles.
    *  Occurrences nested inside a refinement or prefix are not affected.
    */
-  def replace(param: TypeParamRef, tp: Type)(implicit ctx: Context): This
+  def replace(param: TypeParamRef, tp: Type)(implicit ctx: Context): ThisConstraint
 
   /** Is entry associated with `tl` removable? This is the case if
    *  all type parameters of the entry are associated with type variables
@@ -116,10 +116,10 @@ abstract class Constraint extends Showable {
   def isRemovable(tl: TypeLambda): Boolean
 
   /** A new constraint with all entries coming from `tl` removed. */
-  def remove(tl: TypeLambda)(implicit ctx: Context): This
+  def remove(tl: TypeLambda)(implicit ctx: Context): ThisConstraint
 
   /** A new constraint with entry `tl` renamed to a fresh type lambda */
-  def rename(tl: TypeLambda)(implicit ctx: Context): This
+  def rename(tl: TypeLambda)(implicit ctx: Context): ThisConstraint
 
   /** The given `tl` in case it is not contained in this constraint,
    *  a fresh copy of `tl` otherwise.

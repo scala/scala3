@@ -48,7 +48,7 @@ object MegaPhase {
 
     def prepareForIdent(tree: Ident)(implicit ctx: Context): Context = ctx
     def prepareForSelect(tree: Select)(implicit ctx: Context): Context = ctx
-    def prepareForThis(tree: This)(implicit ctx: Context): Context = ctx
+    def prepareForThis(tree: ThisRef)(implicit ctx: Context): Context = ctx
     def prepareForSuper(tree: Super)(implicit ctx: Context): Context = ctx
     def prepareForApply(tree: Apply)(implicit ctx: Context): Context = ctx
     def prepareForTypeApply(tree: TypeApply)(implicit ctx: Context): Context = ctx
@@ -82,7 +82,7 @@ object MegaPhase {
 
     def transformIdent(tree: Ident)(implicit ctx: Context): Tree = tree
     def transformSelect(tree: Select)(implicit ctx: Context): Tree = tree
-    def transformThis(tree: This)(implicit ctx: Context): Tree = tree
+    def transformThis(tree: ThisRef)(implicit ctx: Context): Tree = tree
     def transformSuper(tree: Super)(implicit ctx: Context): Tree = tree
     def transformApply(tree: Apply)(implicit ctx: Context): Tree = tree
     def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = tree
@@ -180,7 +180,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
           case tree: TypeTree => goTypeTree(tree, start)
           case tree: Thicket =>
             cpy.Thicket(tree)(tree.trees.mapConserve(transformNode(_, start)))
-          case tree: This => goThis(tree, start)
+          case tree: ThisRef => goThis(tree, start)
           case tree: Literal => goLiteral(tree, start)
           case tree: Block => goBlock(tree, start)
           case tree: TypeApply => goTypeApply(tree, start)
@@ -275,7 +275,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         goTypeTree(tree, start)
       case tree: Thicket =>
         cpy.Thicket(tree)(transformTrees(tree.trees, start))
-      case tree: This =>
+      case tree: ThisRef =>
         implicit val ctx = prepThis(tree, start)(outerCtx)
         goThis(tree, start)
       case tree: Literal =>
@@ -569,17 +569,17 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     }
   }
 
-  def prepThis(tree: This, start: Int)(implicit ctx: Context): Context = {
+  def prepThis(tree: ThisRef, start: Int)(implicit ctx: Context): Context = {
     val phase = nxThisPrepPhase(start)
     if (phase == null) ctx
     else prepThis(tree, phase.idxInGroup + 1)(phase.prepareForThis(tree))
   }
 
-  def goThis(tree: This, start: Int)(implicit ctx: Context): Tree = {
+  def goThis(tree: ThisRef, start: Int)(implicit ctx: Context): Tree = {
     val phase = nxThisTransPhase(start)
     if (phase == null) tree
     else phase.transformThis(tree)(ctx) match {
-      case tree1: This => goThis(tree1, phase.idxInGroup + 1)
+      case tree1: ThisRef => goThis(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }

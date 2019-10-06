@@ -324,18 +324,18 @@ trait TreeOps extends Core {
   }
 
   object IsThis {
-    /** Matches any This and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[This] = internal.matchThis(tree)
+    /** Matches any ThisRef and returns it */
+    def unapply(tree: Tree)(given ctx: Context): Option[ThisRef] = internal.matchThis(tree)
   }
 
   /** Scala `this` or `this[id]` */
-  object This {
+  object ThisRef {
 
     /** Create a `this[<id: Id]>` */
-    def apply(cls: Symbol)(given ctx: Context): This =
+    def apply(cls: Symbol)(given ctx: Context): ThisRef =
       internal.This_apply(cls)
 
-    def copy(original: Tree)(qual: Option[Id])(given ctx: Context): This =
+    def copy(original: Tree)(qual: Option[Id])(given ctx: Context): ThisRef =
       internal.This_copy(original)(qual)
 
     /** Matches `this[<id: Option[Id]>` */
@@ -344,7 +344,7 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class ThisAPI(self:  This) {
+  implicit class ThisAPI(self:  ThisRef) {
     def id(given ctx: Context): Option[Id] = internal.This_id(self)
   }
 

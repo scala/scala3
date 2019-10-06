@@ -340,7 +340,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
         case ApplyDynamic(qual, args) => sys.error("No invokedynamic support yet.")
 
-        case This(qual) =>
+        case ThisRef(qual) =>
           val symIsModuleClass = tree.symbol.isModuleClass
           assert(tree.symbol == claszSymbol || symIsModuleClass,
                  s"Trying to access the this of another class: tree.symbol = ${tree.symbol}, class symbol = $claszSymbol compilation unit: $cunit")
@@ -409,7 +409,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             genLoad(expr, expectedType)
           else genBlock(blck, expectedType)
 
-        case Typed(Super(_, _), _) => genLoad(This(claszSymbol), expectedType)
+        case Typed(Super(_, _), _) => genLoad(ThisRef(claszSymbol), expectedType)
 
         case Typed(expr, _) => genLoad(expr, expectedType)
 
@@ -1027,7 +1027,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         assert(args.length == params.length, s"Wrong number of arguments in call to label at: $gotoPos")
 
         def isTrivial(kv: (Tree, Symbol)) = kv match {
-          case (This(_), p) if p.name == nme_THIS     => true
+          case (ThisRef(_), p) if p.name == nme_THIS => true
           case (arg @ Ident(_), p) if arg.symbol == p => true
           case _                                      => false
         }

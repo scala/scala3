@@ -1050,14 +1050,14 @@ object Parsers {
       val start = in.offset
       def handleThis(qual: Ident) = {
         in.nextToken()
-        val t = atSpan(start) { This(qual) }
+        val t = atSpan(start) { ThisRef(qual) }
         if (!thisOK && in.token != DOT) syntaxError(DanglingThisInPath(), t.span)
         dotSelectors(t, finish)
       }
       def handleSuper(qual: Ident) = {
         in.nextToken()
         val mix = mixinQualifierOpt()
-        val t = atSpan(start) { Super(This(qual), mix) }
+        val t = atSpan(start) { Super(ThisRef(qual), mix) }
         accept(DOT)
         dotSelectors(selector(t), finish)
       }
@@ -1152,7 +1152,7 @@ object Parsers {
               val tok = in.toToken(in.name)
               tok match {
                 case TRUE | FALSE | NULL => literalOf(tok)
-                case THIS => This(EmptyTypeIdent)
+                case THIS => ThisRef(EmptyTypeIdent)
                 case _ => Ident(in.name)
               }
             }
@@ -1198,7 +1198,7 @@ object Parsers {
               }
               else if (in.token == THIS) {
                 in.nextToken()
-                This(EmptyTypeIdent)
+                ThisRef(EmptyTypeIdent)
               }
               else if (in.token == LBRACE)
                 if (inPattern) Block(Nil, inBraces(pattern()))
@@ -3582,7 +3582,7 @@ object Parsers {
         val first = expr1()
         if (in.token == ARROW) {
           first match {
-            case Typed(tree @ This(EmptyTypeIdent), tpt) =>
+            case Typed(tree @ ThisRef(EmptyTypeIdent), tpt) =>
               self = makeSelfDef(nme.WILDCARD, tpt).withSpan(first.span)
             case _ =>
               val ValDef(name, tpt, _) = convertToParam(first, "self type clause")

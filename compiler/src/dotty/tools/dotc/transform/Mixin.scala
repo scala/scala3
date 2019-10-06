@@ -239,7 +239,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
               if (getter.is(Lazy, butNot = Module))
                 initial
               else if (getter.is(Module))
-                New(getter.info.resultType, List(This(cls)))
+                New(getter.info.resultType, List(ThisRef(cls)))
               else
                 Underscore(getter.info.resultType)
             else

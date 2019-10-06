@@ -343,7 +343,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       Typ(erase(expr.tpe.stripAnnots), true)
     case Typed(pat, _) =>
       project(pat)
-    case This(_) =>
+    case ThisRef(_) =>
       Typ(pat.tpe.stripAnnots, false)
     case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala
       Typ(WildcardType, false)

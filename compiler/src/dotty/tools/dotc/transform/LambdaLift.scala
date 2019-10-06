@@ -212,7 +212,7 @@ object LambdaLift {
             captureImplicitThis(tree.tpe)
           case tree: Select =>
             if (sym.is(Method) && isLocal(sym)) markCalled(sym, enclosure)
-          case tree: This =>
+          case tree: ThisRef =>
             narrowTo(tree.symbol.asClass)
           case tree: DefDef =>
             if (sym.owner.isTerm)
@@ -324,7 +324,7 @@ object LambdaLift {
     private def liftLocals()(implicit ctx: Context): Unit = {
       for ((local, lOwner) <- liftedOwner) {
         val (newOwner, maybeStatic) =
-          if (lOwner is Package) { 
+          if (lOwner is Package) {
             val encClass = local.enclosingClass
             val topClass = local.topLevelClass
             val preferEncClass =

@@ -478,7 +478,7 @@ class Typer extends Namer
       typeSelectOnTerm(ctx)
   }
 
-  def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = {
+  def typedThis(tree: untpd.ThisRef)(implicit ctx: Context): Tree = {
     record("typedThis")
     assignType(tree)
   }
@@ -2059,7 +2059,7 @@ class Typer extends Namer
         def typedUnnamed(tree: untpd.Tree): Tree = tree match {
           case tree: untpd.Apply =>
             if (ctx.mode is Mode.Pattern) typedUnApply(tree, pt) else typedApply(tree, pt)
-          case tree: untpd.This => typedThis(tree)
+          case tree: untpd.ThisRef => typedThis(tree)
           case tree: untpd.Number => typedNumber(tree, pt)
           case tree: untpd.Literal => typedLiteral(tree)
           case tree: untpd.New => typedNew(tree, pt)

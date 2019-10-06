@@ -20,7 +20,7 @@ import scala.runtime.quoted.Unpickler
  *           |                             |       +- Select
  *           |                             |
  *           |                             +- Literal
- *           |                             +- This
+ *           |                             +- ThisRef
  *           |                             +- New
  *           |                             +- NamedArg
  *           |                             +- Apply
@@ -333,14 +333,14 @@ trait CompilerInterface {
   def Literal_copy(original: Tree)(constant: Constant)(given ctx: Context): Literal
 
   /** Tree representing `this` in the source code */
-  type This <: Term
+  type ThisRef <: Term
 
-  def matchThis(tree: Tree)(given ctx: Context): Option[This]
+  def matchThis(tree: Tree)(given ctx: Context): Option[ThisRef]
 
-  def This_id(self: This)(given ctx: Context): Option[Id]
+  def This_id(self: ThisRef)(given ctx: Context): Option[Id]
 
-  def This_apply(cls: Symbol)(given ctx: Context): This
-  def This_copy(original: Tree)(qual: Option[Id])(given ctx: Context): This
+  def This_apply(cls: Symbol)(given ctx: Context): ThisRef
+  def This_copy(original: Tree)(qual: Option[Id])(given ctx: Context): ThisRef
 
   /** Tree representing `new` in the source code */
   type New <: Term

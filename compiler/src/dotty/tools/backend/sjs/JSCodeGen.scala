@@ -784,7 +784,7 @@ class JSCodeGen()(implicit ctx: Context) {
     implicit def pos: SourcePosition = tree.sourcePos
 
     tree match {
-      case _: This =>
+      case _: ThisRef =>
         val sym = tree.symbol
         if (sym != currentClassSym.get && sym.is(Module))
           genLoadModuleOrGlobalScope(sym)
@@ -882,7 +882,7 @@ class JSCodeGen()(implicit ctx: Context) {
       /*case app: ApplyDynamic =>
         genApplyDynamic(app)*/
 
-      case tree: This =>
+      case tree: ThisRef =>
         val currentClass = currentClassSym.get
         val symIsModuleClass = tree.symbol.is(ModuleClass)
         assert(tree.symbol == currentClass || symIsModuleClass,
@@ -988,7 +988,7 @@ class JSCodeGen()(implicit ctx: Context) {
             def ctorAssignment = (
                 currentMethodSym.get.name == nme.CONSTRUCTOR &&
                 currentMethodSym.get.owner == qualifier.symbol &&
-                qualifier.isInstanceOf[This]
+                qualifier.isInstanceOf[ThisRef]
             )
             // TODO This fails for OFFSET$x fields. Re-enable when we can.
             /*if (!sym.is(Mutable) && !ctorAssignment)
@@ -1042,7 +1042,7 @@ class JSCodeGen()(implicit ctx: Context) {
     case fun: Ident =>
       fun.tpe match {
         case TermRef(prefix: TermRef, _) => tpd.ref(prefix)
-        case TermRef(prefix: ThisType, _) => tpd.This(prefix.cls)
+        case TermRef(prefix: ThisType, _) => tpd.ThisRef(prefix.cls)
       }
     case Select(qualifier, _) =>
       qualifier
@@ -2141,7 +2141,7 @@ class JSCodeGen()(implicit ctx: Context) {
       implicit val pos = value.span
       val formalIdent = value match {
         case Ident(name) => freshLocalIdent(name.toString)
-        case This(_)     => freshLocalIdent("this")
+        case ThisRef(_)  => freshLocalIdent("this")
         case _           => freshLocalIdent()
       }
       val formalCapture =

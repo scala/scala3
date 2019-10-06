@@ -312,20 +312,20 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Literal_copy(original: Tree)(constant: Constant)(given Context): Literal =
     tpd.cpy.Literal(original)(constant)
 
-  type This = tpd.This
+  type ThisRef = tpd.ThisRef
 
-  def matchThis(x: Term)(given Context): Option[This] = x match {
-    case x: tpd.This => Some(x)
+  def matchThis(x: Term)(given Context): Option[ThisRef] = x match {
+    case x: tpd.ThisRef => Some(x)
     case _ => None
   }
 
-  def This_id(self: This)(given Context): Option[Id] = optional(self.qual)
+  def This_id(self: ThisRef)(given Context): Option[Id] = optional(self.qual)
 
-  def This_apply(cls: Symbol)(given Context): This =
-    withDefaultPos(tpd.This(cls.asClass))
+  def This_apply(cls: Symbol)(given Context): ThisRef =
+    withDefaultPos(tpd.ThisRef(cls.asClass))
 
-  def This_copy(original: Tree)(qual: Option[Id])(given Context): This =
-    tpd.cpy.This(original)(qual.getOrElse(untpd.EmptyTypeIdent))
+  def This_copy(original: Tree)(qual: Option[Id])(given Context): ThisRef =
+    tpd.cpy.ThisRef(original)(qual.getOrElse(untpd.EmptyTypeIdent))
 
   type New = tpd.New
 

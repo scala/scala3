@@ -161,7 +161,7 @@ trait Core {
         type Literal = internal.Literal
 
         /** Tree representing `this` in the source code */
-        type This = internal.This
+        type ThisRef = internal.ThisRef
 
         /** Tree representing `new` in the source code */
         type New = internal.New

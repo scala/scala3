@@ -68,7 +68,7 @@ class InterceptedMethods extends MiniPhase {
           case TermRef(prefix: TermRef, _) =>
             tpd.ref(prefix)
           case TermRef(prefix: ThisType, _) =>
-            tpd.This(prefix.cls)
+            tpd.ThisRef(prefix.cls)
         }
     }
 

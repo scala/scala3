@@ -180,7 +180,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       try tree match {
         case tree: Ident if !tree.isType =>
           tree.tpe match {
-            case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
+            case tpe: ThisType => ThisRef(tpe.cls).withSpan(tree.span)
             case _ => tree
           }
         case tree @ Select(qual, name) =>
