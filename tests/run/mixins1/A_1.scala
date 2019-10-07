@@ -1,4 +1,4 @@
-trait A[This <: A[This] with B] { self: B =>
+trait A[Self <: A[Self] with B] { self: B =>
   var x = 3
   println("hi")
   val y = x * x

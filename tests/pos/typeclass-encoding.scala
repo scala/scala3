@@ -25,14 +25,14 @@
 object runtime {
 
   trait TypeClass {
-    type This
-    type StaticPart[This]
+    type ThisClass
+    type StaticPart[ThisClass]
   }
 
   trait Implementation[From] {
-    type This = From
+    type ThisClass = From
     type Implemented <: TypeClass
-    def inject(x: From): Implemented { type This = From }
+    def inject(x: From): Implemented { type ThisClass = From }
   }
 
   class CompanionOf[T] { type StaticPart[_] }
@@ -43,7 +43,7 @@ object runtime {
     ev1.asInstanceOf  // can we avoid the cast?
 
   implicit def inject[From](x: From)(
-      implicit ev1: Implementation[From]): ev1.Implemented { type This = From } =
+      implicit ev1: Implementation[From]): ev1.Implemented { type ThisClass = From } =
     ev1.inject(x)
 }
 
@@ -51,13 +51,13 @@ object semiGroups {
   import runtime._
 
   trait SemiGroup extends TypeClass {
-    def add(that: This): This
+    def add(that: ThisClass): ThisClass
   }
 
   trait Monoid extends SemiGroup {
-    type StaticPart[This] <: MonoidStatic[This]
+    type StaticPart[ThisClass] <: MonoidStatic[ThisClass]
   }
-  abstract class MonoidStatic[This] { def unit: This }
+  abstract class MonoidStatic[ThisClass] { def unit: ThisClass }
 
   implicit def companionOfMonoid: CompanionOf[Monoid] {
     type StaticPart[X] = MonoidStatic[X]
@@ -69,18 +69,18 @@ object semiGroups {
     type Implemented = Monoid
     def unit: Int = 0
     def inject($this: Int) = new Monoid {
-      type This = Int
-      def add(that: This): This = $this + that
+      type ThisClass = Int
+      def add(that: ThisClass): ThisClass = $this + that
     }
   }
 
   implicit object extend_String_Monoid extends MonoidStatic[String], Implementation[String] {
     type Implemented = Monoid
     def unit = ""
-    def inject($this: String): Monoid { type This = String } =
+    def inject($this: String): Monoid { type ThisClass = String } =
       new Monoid {
-        type This = String
-        def add(that: This): This = $this ++ that
+        type ThisClass = String
+        def add(that: ThisClass): ThisClass = $this ++ that
       }
   }
 

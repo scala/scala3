@@ -68,7 +68,7 @@ object definitions {
     case Ident(name: String, override val tpe: Type)
     case Select(prefix: Term, name: String, signature: Option[Signature])
     case Literal(value: Constant)
-    case This(id: Option[Id])
+    case Self(id: Option[Id])
     case New(tpt: TypeTree)
     case Throw(expr: Term)
     case NamedArg(name: String, arg: Term)
@@ -163,8 +163,8 @@ object definitions {
       }
     }
 
-    abstract class LambdaType[ParamInfo, This <: LambdaType[ParamInfo, This]](
-      val companion: LambdaTypeCompanion[ParamInfo, This]
+    abstract class LambdaType[ParamInfo, Self <: LambdaType[ParamInfo, Self]](
+      val companion: LambdaTypeCompanion[ParamInfo, Self]
     ) extends Type {
       private[Type] var _pinfos: List[ParamInfo]
       private[Type] var _restpe: Type
@@ -174,10 +174,10 @@ object definitions {
       def resultType: Type = _restpe
     }
 
-    abstract class LambdaTypeCompanion[ParamInfo, This <: LambdaType[ParamInfo, This]] {
-      def apply(pnames: List[String], ptypes: List[ParamInfo], restpe: Type): This
+    abstract class LambdaTypeCompanion[ParamInfo, Self <: LambdaType[ParamInfo, Self]] {
+      def apply(pnames: List[String], ptypes: List[ParamInfo], restpe: Type): Self
 
-      def apply(pnames: List[String], ptypesExp: This => List[ParamInfo], restpeExp: This => Type): This = {
+      def apply(pnames: List[String], ptypesExp: Self => List[ParamInfo], restpeExp: Self => Type): Self = {
         val lambda = apply(pnames, Nil, PlaceHolder)
         lambda._pinfos = ptypesExp(lambda)
         lambda._restpe = restpeExp(lambda)

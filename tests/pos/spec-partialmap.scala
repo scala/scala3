@@ -8,5 +8,5 @@ trait PartialMap[@specialized A,@specialized B] extends PartialFunction[A,B] wit
     for ((k,v) <- iterator; if f(k)) yield v
 
   // if this is commented, it compiles fine:
-  def apply[This <: Iterable[A]](keys : IterableOps[A, Iterable, This]): Iterable[B] = keys.map(apply)
+  def apply[Self <: Iterable[A]](keys : IterableOps[A, Iterable, Self]): Iterable[B] = keys.map(apply)
 }

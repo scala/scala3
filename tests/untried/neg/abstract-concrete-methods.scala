@@ -1,8 +1,8 @@
-trait Outer[This <: Outer[This]] {
-  self: This =>
+trait Outer[Self <: Outer[Self]] {
+  self: Self =>
 
   trait Inner
-  def score(i: This#Inner): Double
+  def score(i: Self#Inner): Double
 }
 class Outer2 extends Outer[Outer2] {
   class Inner extends super.Inner

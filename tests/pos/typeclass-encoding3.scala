@@ -34,7 +34,7 @@ object Test {
   Monomorphic:
 
   trait SemiGroup
-    def combine(that: This): This
+    def combine(that: ThisClass): ThisClass
   common
     type This
 
@@ -63,14 +63,14 @@ object Test {
     val common: SemiGroup.Common
     import common._
 
-    def combine(that: This): This
+    def combine(that: ThisClass): ThisClass
   }
   object SemiGroup {
     trait Common { self =>
-      type This
-      def inject(x: This): SemiGroup  { val common: self.type }
+      type ThisClass
+      def inject(x: ThisClass): SemiGroup  { val common: self.type }
     }
-    def by[A](implicit ev: SemiGroup.Common { type This = A }): ev.type = ev
+    def by[A](implicit ev: SemiGroup.Common { type ThisClass = A }): ev.type = ev
   }
 
   trait Monoid extends SemiGroup {
@@ -79,10 +79,10 @@ object Test {
   }
   object Monoid {
     trait Common extends SemiGroup.Common { self =>
-      def inject(x: This): Monoid { val common: self.type }
-      def unit: This
+      def inject(x: ThisClass): Monoid { val common: self.type }
+      def unit: ThisClass
     }
-    def by[A](implicit ev: Monoid.Common { type This = A }): ev.type = ev
+    def by[A](implicit ev: Monoid.Common { type ThisClass = A }): ev.type = ev
   }
 
   class Str(val s: String) extends Monoid {
@@ -90,28 +90,28 @@ object Test {
     def combine(that: Str): Str = new Str(this.s + that.s)
   }
   object Str extends Monoid.Common {
-    type This = Str
-    def inject(x: This): Str = x
+    type ThisClass = Str
+    def inject(x: ThisClass): Str = x
     def unit = new Str("")
   }
 
   class SubStr(s: String) extends Str(s)
 
   implicit object String_Monoid extends Monoid.Common { self =>
-    type This = String
-    class Impl(`this`: This) extends Monoid {
+    type ThisClass = String
+    class Impl(`this`: ThisClass) extends Monoid {
       val common: self.type = self
       def combine(that: String): String = `this` + that
     }
-    def inject(x: This): Impl = new Impl(x)
+    def inject(x: ThisClass): Impl = new Impl(x)
     def unit = ""
   }
 
-  def f[X](x: X)(implicit ev: Monoid.Common { type This = X }) = {
+  def f[X](x: X)(implicit ev: Monoid.Common { type ThisClass = X }) = {
     ev.inject(Monoid.by[X].unit).combine(x)
   }
 
-  def sum[A](xs: List[A])(implicit ev: Monoid.Common { type This = A }): A =
+  def sum[A](xs: List[A])(implicit ev: Monoid.Common { type ThisClass = A }): A =
     xs.foldLeft(Monoid.by[A].unit)(ev.inject(_).combine(_))
 
   f(new Str("abc"))(Str)
@@ -158,33 +158,33 @@ object Test {
     val common: Ord.Common
     import common._
 
-    def compareTo(that: This): Int
-    def < (that: This) = compareTo(that) < 0
-    def > (that: This) = compareTo(that) > 0
+    def compareTo(that: ThisClass): Int
+    def < (that: ThisClass) = compareTo(that) < 0
+    def > (that: ThisClass) = compareTo(that) > 0
   }
   object Ord {
     trait Common { self =>
-      type This
-      def inject(x: This): Ord  { val common: self.type }
-      val minimum: This
+      type ThisClass
+      def inject(x: ThisClass): Ord  { val common: self.type }
+      val minimum: ThisClass
     }
-    def by[A](implicit ev: Ord.Common { type This = A }): ev.type = ev
+    def by[A](implicit ev: Ord.Common { type ThisClass = A }): ev.type = ev
   }
 
   implicit object Int_Ord extends Ord.Common { self =>
-    type This = Int
-    class Impl(`this`: This) extends Ord {
+    type ThisClass = Int
+    class Impl(`this`: ThisClass) extends Ord {
       val common: self.type = self
       def compareTo(that: Int) =
         if (`this` < that) -1 else if (`this` > that) +1 else 0
     }
-    def inject(x: This): Impl = new Impl(x)
+    def inject(x: ThisClass): Impl = new Impl(x)
     val minimum = Int.MinValue
   }
 
-  class List_Ord[T](implicit ev: Ord.Common { type This = T }) extends Ord.Common { self =>
-    type This = List[T]
-    class Impl(`this`: This) extends Ord {
+  class List_Ord[T](implicit ev: Ord.Common { type ThisClass = T }) extends Ord.Common { self =>
+    type ThisClass = List[T]
+    class Impl(`this`: ThisClass) extends Ord {
       val common: self.type = self
       def compareTo(that: List[T]): Int = (`this`, that) match {
         case (Nil, Nil) => 0
@@ -195,16 +195,16 @@ object Test {
           if (fst != 0) fst else List_Ord[T].inject(xs).compareTo(ys)
       }
     }
-    def inject(x: This): Impl = new Impl(x)
+    def inject(x: ThisClass): Impl = new Impl(x)
     val minimum = Nil
   }
 
-  implicit def List_Ord[T](implicit ev: Ord.Common { type This = T }): List_Ord[T] =
+  implicit def List_Ord[T](implicit ev: Ord.Common { type ThisClass = T }): List_Ord[T] =
     new List_Ord[T]
 
-  def max[T](x: T, y: T)(implicit ev: Ord.Common { type This = T }) = if (ev.inject(x) < y) x else y
+  def max[T](x: T, y: T)(implicit ev: Ord.Common { type ThisClass = T }) = if (ev.inject(x) < y) x else y
 
-  def max[T](xs: List[T])(implicit ev: Ord.Common { type This = T }): T =
+  def max[T](xs: List[T])(implicit ev: Ord.Common { type ThisClass = T }): T =
     xs.foldLeft(Ord.by[T].minimum)(max(_, _))
 
   val x1 = max(1, 2)
@@ -243,48 +243,48 @@ object Test {
     val common: Functor.Common
     import common._
 
-    def map[B](f: A => B): This[B]
+    def map[B](f: A => B): ThisClass[B]
   }
 
   object Functor {
     trait Common { self =>
-      type This[A]
-      def inject[A](x: This[A]): Functor[A] { val common: self.type }
+      type ThisClass[A]
+      def inject[A](x: ThisClass[A]): Functor[A] { val common: self.type }
     }
-    inline def by[F[_]](implicit ev: Functor.Common { type This[A] = F[A] }): ev.type = ev
+    inline def by[F[_]](implicit ev: Functor.Common { type ThisClass[A] = F[A] }): ev.type = ev
   }
 
   trait Monad[A] extends Functor[A] { self =>
     val common: Monad.Common
     import common._
 
-    def flatMap[B](f: A => This[B]): This[B]
-    def map[B](f: A => B): This[B] = flatMap(f `andThen` pure)
+    def flatMap[B](f: A => ThisClass[B]): ThisClass[B]
+    def map[B](f: A => B): ThisClass[B] = flatMap(f `andThen` pure)
   }
   object Monad {
     trait Common extends Functor.Common { self =>
-      def pure[A](x: A): This[A]
-      def inject[A](x: This[A]): Monad[A] { val common: self.type }
+      def pure[A](x: A): ThisClass[A]
+      def inject[A](x: ThisClass[A]): Monad[A] { val common: self.type }
     }
-    def by[F[_]](implicit ev: Monad.Common { type This[A] = F[A] }): ev.type = ev
+    def by[F[_]](implicit ev: Monad.Common { type ThisClass[A] = F[A] }): ev.type = ev
   }
 
   implicit object List_Monad extends Monad.Common { self =>
-    type This[A] = List[A]
-    class Impl[A](`this`: This[A]) extends Monad[A] {
+    type ThisClass[A] = List[A]
+    class Impl[A](`this`: ThisClass[A]) extends Monad[A] {
       val common: self.type = self
-      def flatMap[B](f: A => This[B]): This[B] = `this`.flatMap(f)
+      def flatMap[B](f: A => ThisClass[B]): ThisClass[B] = `this`.flatMap(f)
     }
-    def pure[A](x: A): This[A] = x :: Nil
+    def pure[A](x: A): ThisClass[A] = x :: Nil
     def inject[A](x: List[A]): Impl[A] = new Impl[A](x)
   }
 
-  def g[F[_], A, B](x: A, f: A => B)(implicit ev: Monad.Common { type This[A] = F[A] })
-    : ev.This[B] =
+  def g[F[_], A, B](x: A, f: A => B)(implicit ev: Monad.Common { type ThisClass[A] = F[A] })
+    : ev.ThisClass[B] =
     ev.inject(Monad.by[F].pure(x)).map(f)
 
-  def h[F[_], A, B](x: A)(implicit ev: Monad.Common { type This[A] = F[A] })
-    : (A => ev.This[B]) => ev.This[B] =
+  def h[F[_], A, B](x: A)(implicit ev: Monad.Common { type ThisClass[A] = F[A] })
+    : (A => ev.ThisClass[B]) => ev.ThisClass[B] =
     f => ev.inject(Monad.by[F].pure(x)).flatMap(f)
 
   val r = g[F = List](1, _.toString)
@@ -302,15 +302,15 @@ object Test {
 * ---------------------------------------------------------------------------- */
 
   class $eq$gt_Monad[Ctx] extends Monad.Common { self =>
-    type This[A] = Ctx => A
-    class Impl[A](`this`: This[A]) extends Monad[A] {
+    type ThisClass[A] = Ctx => A
+    class Impl[A](`this`: ThisClass[A]) extends Monad[A] {
       val common: self.type = self
-      def flatMap[B](f: A => This[B]): This[B] =
+      def flatMap[B](f: A => ThisClass[B]): ThisClass[B] =
         ctx => f(`this`(ctx))(ctx)
     }
-    def pure[A](x: A): This[A] =
+    def pure[A](x: A): ThisClass[A] =
       ctx => x
-    def inject[A](x: This[A]): Impl[A] = new Impl[A](x)
+    def inject[A](x: ThisClass[A]): Impl[A] = new Impl[A](x)
   }
 
   implicit def $eq$gt_Monad[Ctx]: $eq$gt_Monad[Ctx] = new $eq$gt_Monad[Ctx]

@@ -5,27 +5,27 @@ package immutable
 import annotation.unchecked.uncheckedVariance
 
 trait Collection[T] { self =>
-  type This <: Collection { type This <: self.This }
-  def companion: CollectionCompanion[This]
+  type ThisCollection <: Collection { type ThisCollection <: self.ThisCollection }
+  def companion: CollectionCompanion[ThisCollection]
 }
 
 trait Iterable[T] extends Collection[T] { self =>
-  type This <: Iterable { type This <: self.This }
-  override def companion: IterableCompanion[This] = Iterable.asInstanceOf
+  type ThisCollection <: Iterable { type ThisCollection <: self.ThisCollection }
+  override def companion: IterableCompanion[ThisCollection] = Iterable.asInstanceOf
 
   def iterator: Iterator[T]
 }
 
 trait Seq[T] extends Iterable[T] { self =>
-  type This <: Seq { type This <: self.This }
-  override def companion: IterableCompanion[This] = Seq.asInstanceOf
+  type ThisCollection <: Seq { type ThisCollection <: self.ThisCollection }
+  override def companion: IterableCompanion[ThisCollection] = Seq.asInstanceOf
 
   def apply(x: Int): T
 }
 
-abstract class CollectionCompanion[+CC[X] <: Collection[X] { type This <: CC }]
+abstract class CollectionCompanion[+CC[X] <: Collection[X] { type ThisCollection <: CC }]
 
-abstract class IterableCompanion[+CC[X] <: Iterable[X] { type This <: CC }] extends CollectionCompanion[CC] {
+abstract class IterableCompanion[+CC[X] <: Iterable[X] { type ThisCollection <: CC }] extends CollectionCompanion[CC] {
   def fromIterator[T](it: Iterator[T]): CC[T]
   def map[T, U](xs: Iterable[T], f: T => U): CC[U] =
     fromIterator(xs.iterator.map(f))
@@ -37,7 +37,7 @@ abstract class IterableCompanion[+CC[X] <: Iterable[X] { type This <: CC }] exte
   implicit def transformOps[T](xs: CC[T] @uncheckedVariance): TransformOps[CC, T] = ??? // new TransformOps[CC, T](xs)
 }
 
-class TransformOps[+CC[X] <: Iterable[X] { type This <: CC }, T] (val xs: CC[T]) extends AnyVal {
+class TransformOps[+CC[X] <: Iterable[X] { type ThisCollection <: CC }, T] (val xs: CC[T]) extends AnyVal {
   def companion[T](xs: CC[T] @uncheckedVariance): IterableCompanion[CC] = xs.companion
   def map[U](f: T => U): CC[U] = companion(xs).map(xs, f)
   def filter(p: T => Boolean): CC[T] = companion(xs).filter(xs, p)

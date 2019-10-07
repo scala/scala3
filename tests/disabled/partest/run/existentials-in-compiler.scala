@@ -13,7 +13,7 @@ object Test extends CompilerTest {
   override def code = """
 package extest {
   trait Bippy[A <: AnyRef, B] { }     // wildcards
-  trait BippyLike[A <: AnyRef, B <: List[A], This <: BippyLike[A, B, This] with Bippy[A, B]]  // no wildcards
+  trait BippyLike[A <: AnyRef, B <: List[A], Self <: BippyLike[A, B, Self] with Bippy[A, B]]  // no wildcards
   trait BippyBud[A <: AnyRef, B, C <: List[A]]
 
   trait Cov01[+A <: AnyRef, +B] { }
@@ -67,7 +67,7 @@ package extest {
   trait Cov49[-A >: Null, -B] { }
 
   trait Covariant[+A <: AnyRef, +B] { }
-  trait CovariantLike[+A <: AnyRef, +B <: List[A], +This <: CovariantLike[A, B, This] with Covariant[A, B]]
+  trait CovariantLike[+A <: AnyRef, +B <: List[A], +Self <: CovariantLike[A, B, Self] with Covariant[A, B]]
 
   trait Contra[-A >: AnyRef, -B] { }
   trait ContraLike[-A >: AnyRef, -B >: List[A]]

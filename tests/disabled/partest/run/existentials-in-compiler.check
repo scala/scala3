@@ -4,8 +4,8 @@ abstract trait Bippy[A <: AnyRef, B] extends AnyRef
 abstract trait BippyBud[A <: AnyRef, B, C <: List[A]] extends AnyRef
     extest.BippyBud[A,B,C] forSome { A <: AnyRef; B; C <: List[A] }
 
-abstract trait BippyLike[A <: AnyRef, B <: List[A], This <: extest.BippyLike[A,B,This] with extest.Bippy[A,B]] extends AnyRef
-    extest.BippyLike[A,B,This] forSome { A <: AnyRef; B <: List[A]; This <: extest.BippyLike[A,B,This] with extest.Bippy[A,B] }
+abstract trait BippyLike[A <: AnyRef, B <: List[A], Self <: extest.BippyLike[A,B,Self] with extest.Bippy[A,B]] extends AnyRef
+    extest.BippyLike[A,B,Self] forSome { A <: AnyRef; B <: List[A]; Self <: extest.BippyLike[A,B,Self] with extest.Bippy[A,B] }
 
 abstract trait Contra[-A >: AnyRef, -B] extends AnyRef
     extest.Contra[AnyRef, _]
@@ -151,6 +151,6 @@ abstract trait Cov49[-A >: Null, -B] extends AnyRef
 abstract trait Covariant[+A <: AnyRef, +B] extends AnyRef
     extest.Covariant[AnyRef,Any]
 
-abstract trait CovariantLike[+A <: AnyRef, +B <: List[A], +This <: extest.CovariantLike[A,B,This] with extest.Covariant[A,B]] extends AnyRef
-    extest.CovariantLike[A,B,This] forSome { +A <: AnyRef; +B <: List[A]; +This <: extest.CovariantLike[A,B,This] with extest.Covariant[A,B] }
+abstract trait CovariantLike[+A <: AnyRef, +B <: List[A], +Self <: extest.CovariantLike[A,B,Self] with extest.Covariant[A,B]] extends AnyRef
+    extest.CovariantLike[A,B,Self] forSome { +A <: AnyRef; +B <: List[A]; +Self <: extest.CovariantLike[A,B,Self] with extest.Covariant[A,B] }
 

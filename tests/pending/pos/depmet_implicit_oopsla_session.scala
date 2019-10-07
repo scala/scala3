@@ -1,8 +1,8 @@
 object Sessions {
-  trait Session[This] {
+  trait Session[Self] {
     type Dual
-    type HasDual[D] = Session[This]{type Dual=D}
-    def run(p: This, dp: Dual): Unit
+    type HasDual[D] = Session[Self]{type Dual=D}
+    def run(p: Self, dp: Dual): Unit
   }
 
   implicit object StopSession extends Session[Stop] {

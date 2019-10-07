@@ -14,7 +14,7 @@ object Test {
   }
   trait TestConstructor4[D] {
     trait TestConstructor5[E] {
-      trait MSetLike[X <: D & E, This <: MSet[X] with MSetLike[X, This]]
+      trait MSetLike[X <: D & E, Self <: MSet[X] with MSetLike[X, Self]]
       trait MSet[X <: D & E] extends MSetLike[X, MSet[X]]
     }
   }
