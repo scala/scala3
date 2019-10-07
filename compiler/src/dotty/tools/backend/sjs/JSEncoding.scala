@@ -398,8 +398,17 @@ object JSEncoding {
     paramAndResultTypeNames.mkString(SignatureSep, SignatureSep, "")
 
   /** Computes the internal name for a type. */
-  private def internalName(tpe: Type)(implicit ctx: Context): String =
-    encodeTypeRef(toTypeRef(tpe))
+  private def internalName(tpe: Type)(implicit ctx: Context): String = {
+    val typeRef = toTypeRef(tpe)
+
+    val safeTypeRef: jstpe.TypeRef = typeRef match {
+      case jstpe.ClassRef("s_Null")    => jstpe.ClassRef(ir.Definitions.NullClass)
+      case jstpe.ClassRef("s_Nothing") => jstpe.ClassRef(ir.Definitions.NothingClass)
+      case otherTypeRef => otherTypeRef
+    }
+
+    encodeTypeRef(safeTypeRef)
+  }
 
   /** Encodes a [[Types.TypeRef]], such as in an encoded method signature.
    */
