@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package semanticdb
 
 import core._
@@ -11,6 +12,7 @@ import Flags._
 import Decorators._
 import Names.Name
 import StdNames.nme
+import util.SourcePosition
 import collection.mutable
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 
@@ -25,19 +27,25 @@ abstract class ExtractSemanticDB extends Phase {
   // Check not needed since it does not transform trees
   override def isCheckable: Boolean = false
 
-  override def run(implicit ctx: Context): Unit =
-    Extractor().traverse(ctx.compilationUnit.tpdTree)
+  //def genInfo(unit: CompilationUnit, occurrences: List[SymbolOccurrence])
+
+  override def run(implicit ctx: Context): Unit = {
+    val extract = Extractor()
+    val unit = ctx.compilationUnit
+    extract.traverse(unit.tpdTree)
+  }
 
   class Extractor extends TreeTraverser {
 
-    val locals = mutable.HashMap[Symbol, java.lang.Integer]()
+    private val locals = mutable.HashMap[Symbol, java.lang.Integer]()
+    val occurrences = new mutable.ListBuffer[SymbolOccurrence]()
 
     private var myLocalIdx: Int = -1
     private def nextLocalIdx() =
       myLocalIdx += 1
       myLocalIdx
 
-    def symbolName(sym: Symbol)(given ctx: Context): String =
+    private def symbolName(sym: Symbol)(given ctx: Context): String =
 
       def isJavaIdent(str: String) =
         isJavaIdentifierStart(str.head) && str.tail.forall(isJavaIdentifierPart)
@@ -83,23 +91,35 @@ abstract class ExtractSemanticDB extends Phase {
       else "local" + localIdx(sym)
     end symbolName
 
-    def registerUse(sym: Symbol) = ???
-    def registerDef(sym: Symbol) = ???
+    private def range(pos: SourcePosition)(given Context): Option[Range] =
+      val src = pos.source
+      def lineCol(offset: Int) = (src.offsetToLine(offset), src.column(offset))
+      val (startLine, startCol) = lineCol(pos.span.start)
+      val (endLine, endCol) = lineCol(pos.span.end)
+      Some(Range(startLine, startCol, endLine, endCol))
+
+    private def registerOccurrence(sym: Symbol, pos: SourcePosition, role: SymbolOccurrence.Role)(given Context): Unit =
+      occurrences += SymbolOccurrence(symbolName(sym), range(pos), role)
+
+    private def registerUse(sym: Symbol, pos: SourcePosition)(given Context) =
+      registerOccurrence(sym, pos, SymbolOccurrence.Role.REFERENCE)
+    private def registerDef(sym: Symbol, pos: SourcePosition)(given Context) =
+      registerOccurrence(sym, pos, SymbolOccurrence.Role.DEFINITION)
 
     override def traverse(tree: Tree)(given ctx: Context): Unit =
       tree match
         case tree: DefTree =>
-          registerDef(tree.symbol)
+          registerDef(tree.symbol, tree.sourcePos)
           traverseChildren(tree)
         case tree: RefTree =>
-          registerUse(tree.symbol)
+          registerUse(tree.symbol, tree.sourcePos)
           traverseChildren(tree)
         case tree: Import =>
           for sel <- tree.selectors do
             val imported = sel.imported.name
             if imported != nme.WILDCARD then
               for alt <- tree.expr.tpe.member(imported).alternatives do
-                registerUse(alt.symbol)
+                registerUse(alt.symbol, sel.imported.sourcePos)
         case _ =>
           traverseChildren(tree)
   }
