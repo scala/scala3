@@ -15,6 +15,7 @@ import StdNames.nme
 import util.SourcePosition
 import collection.mutable
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
+import java.nio.file.Paths
 
 abstract class ExtractSemanticDB extends Phase {
   import ast.tpd._
@@ -33,6 +34,17 @@ abstract class ExtractSemanticDB extends Phase {
     val extract = Extractor()
     val unit = ctx.compilationUnit
     extract.traverse(unit.tpdTree)
+    val targetRootSetting = ctx.settings.targetroot.value
+    val targetRoot =
+      if targetRootSetting.isEmpty then ctx.settings.outputDir.value.jpath
+      else Paths.get(targetRootSetting)
+    ExtractSemanticDB.write(
+      unit.source.file.jpath,
+      String(unit.source.content),
+      Paths.get(ctx.settings.sourceroot.value),
+      Paths.get(ctx.settings.targetroot.value),
+      extract.occurrences.toList
+    )
   }
 
   class Extractor extends TreeTraverser {
@@ -126,5 +138,40 @@ abstract class ExtractSemanticDB extends Phase {
 }
 
 object ExtractSemanticDB {
+  import java.nio.file.Path
+  import scala.collection.JavaConverters._
+  import java.nio.file.Files
+
   val name: String = "extractSemanticDB"
+
+  def write(
+    source: Path,
+    contents: String,
+    sourceroot: Path,
+    targetroot: Path,
+    occurrences: Seq[SymbolOccurrence]
+  ): Unit =
+    val relpath = sourceroot.relativize(source)
+    val reluri = relpath.iterator().asScala.mkString("/")
+    val outpath = targetroot
+      .resolve("META-INF")
+      .resolve("semanticdb")
+      .resolve(relpath)
+      .resolveSibling(source.getFileName().toString() + ".semanticdb")
+    Files.createDirectories(outpath.getParent())
+    val doc: TextDocument = TextDocument(
+      schema = Schema.SEMANTICDB4,
+      language = Language.SCALA,
+      uri = reluri,
+      md5 = MD5.compute(contents),
+      occurrences = occurrences
+    )
+    val docs = TextDocuments(List(doc))
+    val out = Files.newOutputStream(outpath)
+    try
+      val stream = SemanticdbOutputStream.newInstance(out)
+      docs.writeTo(stream)
+      stream.flush()
+    finally
+      out.close()
 }
