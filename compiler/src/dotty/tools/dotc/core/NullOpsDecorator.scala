@@ -72,7 +72,6 @@ object NullOpsDecorator {
     def isJavaNullableUnion(implicit ctx: Context): Boolean = {
       assert(ctx.explicitNulls)
       self.widenDealias.normNullableUnion match {
-        // If it a `JavaNull` Union, the most right type must be a `JavaNull`.
         case OrType(_, rhs) => rhs.isJavaNullType
         case _ => false
       }

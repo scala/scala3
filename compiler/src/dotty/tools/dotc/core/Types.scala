@@ -1069,26 +1069,40 @@ object Types {
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
     def widenUnion(implicit ctx: Context): Type = {
-      def joinOrUnion(tp: Type): Type = tp match {
-        case OrType(tp1, tp2) =>
-          ctx.typeComparer.lub(joinOrUnion(tp1), joinOrUnion(tp2), canConstrain = true) match {
-            case union: OrType => union.join
-            case res => res
-          }
-        case tp =>
-          tp.widenUnion
+      def normalizeRightOrNull(tp: OrType, lhs: Type, rhs: Type): Type = lhs match {
+        case tpp @ OrType(tpp1, tpp2) =>
+          if (tpp2.isJavaNullType) tpp
+          else tpp.derivedOrType(tpp1, rhs)
+        case tpp =>
+          tp.derivedOrType(tpp, rhs)
       }
+
       widen match {
-        case tp: OrType =>
-          if (ctx.explicitNulls)
-            // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
-            tp.normNullableUnion match {
-              case tpn @ OrType(lhs, rhs) if rhs.isNullType =>
-                tpn.derivedOrType(joinOrUnion(lhs), rhs)
-              case _ =>
-                joinOrUnion(tp)
+        case tp @ OrType(lhs, rhs) =>
+          def defaultJoin(tp1: Type, tp2: Type) =
+            ctx.typeComparer.lub(tp1, tp2, canConstrain = true) match {
+              case union: OrType => union.join
+              case res => res
             }
-          else joinOrUnion(tp)
+          if (ctx.explicitNulls) {
+            // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
+            if (rhs.isNullType)
+              normalizeRightOrNull(tp, lhs.widenUnion, rhs)
+            else if (lhs.isNullType)
+              normalizeRightOrNull(tp, rhs.widenUnion, lhs)
+            else (lhs.widenUnion, rhs.widenUnion) match {
+              case (lhsp @ OrType(lhsp1, lhsp2), rhsp @ OrType(rhsp1, rhsp2)) =>
+                val nt = if (lhsp2.isJavaNullType) lhsp2 else rhsp2
+                lhsp.derivedOrType(defaultJoin(lhsp1, rhsp1), nt)
+              case (lhsp @ OrType(lhsp1, lhsp2), rhsp) =>
+                lhsp.derivedOrType(defaultJoin(lhsp1, rhsp), lhsp2)
+              case (lhsp, rhsp @ OrType(rhsp1, rhsp2)) =>
+                rhsp.derivedOrType(defaultJoin(lhsp, rhsp1), rhsp2)
+              case (lhsp, rhsp) =>
+                defaultJoin(lhsp, rhsp)
+            }
+          }
+          else defaultJoin(lhs.widenUnion, rhs.widenUnion)
         case tp @ AndType(tp1, tp2) =>
           tp derived_& (tp1.widenUnion, tp2.widenUnion)
         case tp: RefinedType =>
