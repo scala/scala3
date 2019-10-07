@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.show.showName
+import scala.internal.quoted.showName
 import scala.quoted.staging._
 import scala.reflect.ClassTag
 

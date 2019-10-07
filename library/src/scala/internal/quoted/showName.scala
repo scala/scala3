@@ -1,4 +1,4 @@
-package scala.quoted.show
+package scala.internal.quoted
 
 /** Annotation used inside a quote to give a custom name to a definition.
  *  The `name` argument must be a literal String.

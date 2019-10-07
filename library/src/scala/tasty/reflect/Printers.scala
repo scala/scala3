@@ -1642,7 +1642,7 @@ trait Printers
 
       def printAnnotation(annot: Term)(given elideThis: Option[Symbol]): Buffer = {
         val Annotation(ref, args) = annot
-        if (annot.symbol.owner.fullName == "scala.quoted.show.showName") this
+        if (annot.symbol.owner.fullName == "scala.internal.quoted.showName") this
         else {
           this += "@"
           printTypeTree(ref)
@@ -1818,7 +1818,7 @@ trait Printers
     }
 
     private def splicedName(sym: Symbol)(given ctx: Context): Option[String] = {
-      sym.annots.find(_.symbol.owner.fullName == "scala.quoted.show.showName").flatMap {
+      sym.annots.find(_.symbol.owner.fullName == "scala.internal.quoted.showName").flatMap {
         case Apply(_, Literal(Constant(c: String)) :: Nil) => Some(c)
         case Apply(_, Inlined(_, _, Literal(Constant(c: String))) :: Nil) => Some(c)
         case annot => None
