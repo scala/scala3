@@ -147,8 +147,15 @@ object JavaNullInterop {
       !alreadyNullable && (tp match {
         case tp: TypeRef =>
           // We don't modify value types because they're non-nullable even in Java.
+          !tp.symbol.isValueClass &&
           // We don't modify `Any` because it's already nullable.
-          !tp.symbol.isValueClass && !tp.isRef(defn.AnyClass)
+          !tp.isRef(defn.AnyClass) &&
+          // We don't nullify Java varargs at the top level.
+          // Example: if `setNames` is a Java method with signature `void setNames(String... names)`,
+          // then its Scala signature will be `def setNames(names: (String|JavaNull)*): Unit`.
+          // This is because `setNames(null)` passes as argument a single-element array containing the value `null`,
+          // and not a `null` array.
+          !tp.isRef(defn.RepeatedParamClass)
         case _ => true
       })
     }
@@ -167,7 +174,8 @@ object JavaNullInterop {
         case tp: TypeRef if needsTopLevelNull(tp) => tp.toJavaNullableUnion
         case appTp @ AppliedType(tycons, targs) =>
           val targs2 = if (needsNullArgs(appTp)) targs map this else targs
-          derivedAppliedType(appTp, tycons, targs2).toJavaNullableUnion
+          val appTp2 = derivedAppliedType(appTp, tycons, targs2)
+          if (needsTopLevelNull(tycons)) appTp2.toJavaNullableUnion else appTp2
         case tp: LambdaType => mapOver(tp)
         case tp: TypeAlias => mapOver(tp)
         case tp @ AndType(tp1, tp2) =>
