@@ -1328,7 +1328,7 @@ object SymDenotations {
     /** The type parameters of a class symbol, Nil for all other symbols */
     def typeParams(implicit ctx: Context): List[TypeSymbol] = Nil
 
-    /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
+    /** The type ThisType(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(implicit ctx: Context): Type = NoPrefix
 
     def typeRef(implicit ctx: Context): TypeRef =

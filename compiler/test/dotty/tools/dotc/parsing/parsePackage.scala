@@ -19,8 +19,8 @@ object parsePackage extends ParserTest {
       tree match {
         case Ident(name) =>
           Ident(name)
-        case This(name) =>
-          This(name)
+        case ThisRef(name) =>
+          ThisRef(name)
         case TypedSplice(t) =>
           TypedSplice(t)
         case SymbolLit(str) =>

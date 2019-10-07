@@ -23,7 +23,7 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
 
   def this() = this(initialCapacity = WeakHashSet.defaultInitialCapacity, loadFactor = WeakHashSet.defaultLoadFactor)
 
-  type This = WeakHashSet[A]
+  type ThisType = WeakHashSet[A]
 
   /**
    * queue of Entries that hold elements scheduled for GC
@@ -252,7 +252,7 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
   }
 
   // true if this set is empty
-  override def empty: This = new WeakHashSet[A](initialCapacity, loadFactor)
+  override def empty: ThisType = new WeakHashSet[A](initialCapacity, loadFactor)
 
   // the number of elements in this set
   override def size: Int = {
