@@ -2508,11 +2508,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         !(tp2 <:< tp1)
         && (provablyDisjoint(tp1, tp2.tp2) || provablyDisjoint(tp1, tp2.tp1))
       case (tp1: TypeProxy, tp2: TypeProxy) =>
-        provablyDisjoint(tp1.underlying, tp2) || provablyDisjoint(tp1, tp2.underlying)
+        provablyDisjoint(tp1.superType, tp2) || provablyDisjoint(tp1, tp2.superType)
       case (tp1: TypeProxy, _) =>
-        provablyDisjoint(tp1.underlying, tp2)
+        provablyDisjoint(tp1.superType, tp2)
       case (_, tp2: TypeProxy) =>
-        provablyDisjoint(tp1, tp2.underlying)
+        provablyDisjoint(tp1, tp2.superType)
       case _ =>
         false
     }
