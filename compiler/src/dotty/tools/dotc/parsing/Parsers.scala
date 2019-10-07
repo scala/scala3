@@ -3052,11 +3052,17 @@ object Parsers {
           }
         else EmptyTree
       lhs match {
-        case (id @ Ident(name: TermName)) :: Nil if name != nme.WILDCARD =>
-          val vdef = ValDef(name, tpt, rhs)
+        case IdPattern(id, t) :: Nil if t.isEmpty =>
+          val vdef = ValDef(id.name.asTermName, tpt, rhs)
           if (isBackquoted(id)) vdef.pushAttachment(Backquoted, ())
           finalizeDef(vdef, mods, start)
         case _ =>
+          def isAllIds = lhs.forall {
+            case IdPattern(id, t) => t.isEmpty
+            case _ => false
+          }
+          if rhs.isEmpty && !isAllIds then
+            syntaxError(ExpectedTokenButFound(EQUALS, in.token), Span(in.lastOffset))
           PatDef(mods, lhs, tpt, rhs)
       }
     }
