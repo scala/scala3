@@ -28,8 +28,6 @@ class ExtractSemanticDB extends Phase {
   // Check not needed since it does not transform trees
   override def isCheckable: Boolean = false
 
-  //def genInfo(unit: CompilationUnit, occurrences: List[SymbolOccurrence])
-
   override def run(implicit ctx: Context): Unit = {
     val extract = Extractor()
     val unit = ctx.compilationUnit
@@ -37,19 +35,23 @@ class ExtractSemanticDB extends Phase {
     ExtractSemanticDB.write(unit.source, extract.occurrences.toList)
   }
 
+  /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser {
 
+    private var nextLocalIdx: Int = 0
+
+    /** The index of a local symbol */
     private val locals = mutable.HashMap[Symbol, Int]()
 
+    /** The local symbol(s) starting at given offset */
+    private val symsAtOffset = new mutable.HashMap[Int, Set[Symbol]]() {
+      override def default(key: Int) = Set[Symbol]()
+    }
+
+    /** The extracted symbol occurrences */
     val occurrences = new mutable.ListBuffer[SymbolOccurrence]()
 
-    val localIndex = mutable.HashMap[Int, Int]()
-
-    private var myLocalIdx: Int = -1
-    private def nextLocalIdx() =
-      myLocalIdx += 1
-      myLocalIdx
-
+    /** The semanticdb name of the given symbol */
     private def symbolName(sym: Symbol)(given ctx: Context): String =
 
       def isJavaIdent(str: String) =
@@ -59,6 +61,7 @@ class ExtractSemanticDB extends Phase {
         val str = name.toString
         if isJavaIdent(str) then str else "`" + str + "`"
 
+      /** Is symbol global? Non-global symbols get localX names */
       def isGlobal(sym: Symbol): Boolean =
         sym.is(Package)
         || (sym.is(Param) || sym.owner.isClass) && isGlobal(sym.owner)
@@ -87,8 +90,21 @@ class ExtractSemanticDB extends Phase {
           else if sym.isTerm then str + "."
           else throw new AssertionError(i"unhandled symbol: $sym: ${sym.info} with ${sym.flagsString}")
 
-      def localIdx(sym: Symbol)(given Context): Int =
-        localIndex.getOrElseUpdate(sym.span.start, nextLocalIdx())
+      /** The index of local symbol `sym`. Symbols with the same name and
+       *  the same starting position have the same index.
+       */
+      def localIdx(sym: Symbol)(given Context): Int = {
+        def computeLocalIdx(): Int =
+          symsAtOffset(sym.span.start).find(_.name == sym.name) match
+            case Some(other) => localIdx(other)
+            case None =>
+              val idx = nextLocalIdx
+              nextLocalIdx += 1
+              locals(sym) = idx
+              symsAtOffset(sym.span.start) += sym
+              idx
+        locals.getOrElseUpdate(sym, computeLocalIdx())
+      }
 
       if sym.isRoot then "_root_"
       else if sym.isEmptyPackage then "_empty_"
@@ -108,7 +124,6 @@ class ExtractSemanticDB extends Phase {
 
     private def registerOccurrence(sym: Symbol, pos: SourcePosition, role: SymbolOccurrence.Role)(given Context): Unit =
       if !excluded(sym) then
-        //println(i"register: ${symbolName(sym)}")
         occurrences += SymbolOccurrence(symbolName(sym), range(pos), role)
 
     private def registerUse(sym: Symbol, pos: SourcePosition)(given Context) =
