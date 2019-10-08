@@ -68,48 +68,21 @@ object JavaNullInterop {
       nullifyType(tp)
   }
 
-  /** A Nullifier for handling a method or poly.
-   *  @param nnParams the indices of the method parameters that should be considered
-   *    "non-null" (should not be nullified).
-   *  @param nnRes whether the result type should be nullified.
-   *
-   *  For the purposes of both `nnParams` and `nnRes`, when a parameter or return type is not nullified,
-   *  this applies only at the top level. e.g. suppose we have a Java result type `Array[String]` and `nnRes` is set.
-   *  Scala will see `Array[String|JavaNull]`; the array element type is still nullified.
-   */
-  private case class MethodNullifier(nnParams: Seq[Int], nnRes: Boolean)(implicit ctx: Context) extends TypeMap {
-
-    private def spare(tp: Type): Type = nullifyType(tp).stripNull
-
-    override def apply(tp: Type): Type = tp match {
-      case ptp: PolyType =>
-        derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
-      case mtp: MethodType =>
-        val paramTpes = mtp.paramInfos.zipWithIndex.map {
-          case (paramInfo, index) =>
-            // TODO(abeln): the sequence lookup can be optimized, because the indices
-            // in it appear in increasing order.
-            if (nnParams.contains(index)) spare(paramInfo) else nullifyType(paramInfo)
-        }
-        val resTpe = if (nnRes) spare(mtp.resType) else nullifyType(mtp.resType)
-        derivedLambdaType(mtp)(paramTpes, resTpe)
-    }
-  }
-
   /** Only nullify method parameters (but not result types). */
   private def nullifyParamsOnly(tp: Type)(implicit ctx: Context): Type =
-    MethodNullifier(nnParams = Seq.empty, nnRes = true)(ctx)(tp)
+    new JavaNullMap(alreadyNullable = false, nnRes = true)(ctx)(tp)
 
   /** Nullifies a Java type by adding `| JavaNull` in the relevant places. */
-  private def nullifyType(tpe: Type)(implicit ctx: Context): Type =
-    new JavaNullMap(alreadyNullable = false)(ctx)(tpe)
+  private def nullifyType(tp: Type)(implicit ctx: Context): Type =
+    new JavaNullMap(alreadyNullable = false, nnRes = false)(ctx)(tp)
 
   /** A type map that adds `| JavaNull`.
    *  @param alreadyNullable whether the type being mapped is already nullable (at the outermost level).
    *                         This is needed so that `JavaNullMap(A | B)` gives back `(A | B) | JavaNull`,
    *                         instead of `(A|JavaNull | B|JavaNull) | JavaNull`.
+   *  @param nnRes whether the result type should be nullified.
    */
-  private class JavaNullMap(var alreadyNullable: Boolean)(implicit ctx: Context) extends TypeMap {
+  private class JavaNullMap(var alreadyNullable: Boolean, nnRes: Boolean)(implicit ctx: Context) extends TypeMap {
     /** Should we nullify `tp` at the outermost level? */
     def needsTopLevelNull(tp: Type): Boolean =
       !alreadyNullable && (tp match {
@@ -136,13 +109,21 @@ object JavaNullInterop {
 
     override def apply(tp: Type): Type = {
       tp match {
-        case tp: TypeRef if needsTopLevelNull(tp) => tp.toJavaNullableUnion
+        case tp: TypeRef if needsTopLevelNull(tp) =>
+          tp.toJavaNullableUnion
         case appTp @ AppliedType(tycons, targs) =>
           val targs2 = if (needsNullArgs(appTp)) targs map this else targs
           val appTp2 = derivedAppliedType(appTp, tycons, targs2)
           if (needsTopLevelNull(tycons)) appTp2.toJavaNullableUnion else appTp2
-        case tp: LambdaType => mapOver(tp)
-        case tp: TypeAlias => mapOver(tp)
+        case ptp: PolyType =>
+          derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
+        case mtp: MethodType =>
+          val resTpe = if (nnRes) this(mtp.resType).stripNull else this(mtp.resType)
+          derivedLambdaType(mtp)(mtp.paramInfos map this, resTpe)
+        case tp: LambdaType =>
+          mapOver(tp)
+        case tp: TypeAlias =>
+          mapOver(tp)
         case tp @ AndType(tp1, tp2) =>
           // nullify(A & B) = (nullify(A) & nullify(B)) | JavaNull, but take care not to add
           // duplicate `JavaNull`s at the outermost level inside `A` and `B`.
