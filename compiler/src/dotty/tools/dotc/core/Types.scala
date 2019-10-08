@@ -1069,14 +1069,6 @@ object Types {
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
     def widenUnion(implicit ctx: Context): Type = {
-      def normalizeRightOrNull(tp: OrType, lhs: Type, rhs: Type): Type = lhs match {
-        case tpp @ OrType(tpp1, tpp2) =>
-          if (tpp2.isJavaNullType) tpp
-          else tpp.derivedOrType(tpp1, rhs)
-        case tpp =>
-          tp.derivedOrType(tpp, rhs)
-      }
-
       widen match {
         case tp @ OrType(lhs, rhs) =>
           def defaultJoin(tp1: Type, tp2: Type) =
@@ -1084,22 +1076,32 @@ object Types {
               case union: OrType => union.join
               case res => res
             }
+
+          // Given a type `tpe`, if it is already a nullable union, return it unchanged.
+          // Otherwise, construct a nullable union where `tpe` is the lhs (use `orig` to
+          // potentially avoid creating a new object for the union).
+          def ensureNullableUnion(tpe: Type, orig: OrType): Type = tpe match {
+            case orTpe: OrType if orTpe.tp2.isNullType => tpe
+            case _ => orig.derivedOrType(tpe, defn.NullType)
+          }
+
+          // Test for nullable union that assumes the type has already been normalized.
+          def isNullableUnionFast(tp: Type): Boolean = tp match {
+            case orTpe: OrType if orTpe.tp2.isNullType => true
+            case _ => false
+          }
+
           if (ctx.explicitNulls) {
             // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
-            if (rhs.isNullType)
-              normalizeRightOrNull(tp, lhs.widenUnion, rhs)
-            else if (lhs.isNullType)
-              normalizeRightOrNull(tp, rhs.widenUnion, lhs)
-            else (lhs.widenUnion, rhs.widenUnion) match {
-              case (lhsp @ OrType(lhsp1, lhsp2), rhsp @ OrType(rhsp1, rhsp2)) =>
-                val nt = if (lhsp2.isJavaNullType) lhsp2 else rhsp2
-                lhsp.derivedOrType(defaultJoin(lhsp1, rhsp1), nt)
-              case (lhsp @ OrType(lhsp1, lhsp2), rhsp) =>
-                lhsp.derivedOrType(defaultJoin(lhsp1, rhsp), lhsp2)
-              case (lhsp, rhsp @ OrType(rhsp1, rhsp2)) =>
-                rhsp.derivedOrType(defaultJoin(lhsp, rhsp1), rhsp2)
-              case (lhsp, rhsp) =>
-                defaultJoin(lhsp, rhsp)
+            if (rhs.isNullType) ensureNullableUnion(lhs.widenUnion, tp)
+            else if (lhs.isNullType) ensureNullableUnion(rhs.widenUnion, tp)
+            else {
+              val lhsWiden = lhs.widenUnion
+              val rhsWiden = rhs.widenUnion
+              val tmpRes = defaultJoin(lhs.widenUnion, rhs.widenUnion)
+              if (isNullableUnionFast(lhsWiden) || isNullableUnionFast(rhsWiden))
+                ensureNullableUnion(tmpRes, tp)
+              else tmpRes
             }
           }
           else defaultJoin(lhs.widenUnion, rhs.widenUnion)
