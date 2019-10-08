@@ -1093,6 +1093,8 @@ object Types {
 
           if (ctx.explicitNulls) {
             // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
+            // This part relies on the postcondition of widenUnion: the result is either a
+            // non-union type, or a nullable union type where the rhs is `Null` type.
             if (rhs.isNullType) ensureNullableUnion(lhs.widenUnion, tp)
             else if (lhs.isNullType) ensureNullableUnion(rhs.widenUnion, tp)
             else {
@@ -1100,6 +1102,8 @@ object Types {
               val rhsWiden = rhs.widenUnion
               val tmpRes = defaultJoin(lhs.widenUnion, rhs.widenUnion)
               if (isNullableUnionFast(lhsWiden) || isNullableUnionFast(rhsWiden))
+                // If either lhs or rhs is a nullable union,
+                // we need to ensure the result is also a nullable union.
                 ensureNullableUnion(tmpRes, tp)
               else tmpRes
             }
