@@ -862,10 +862,8 @@ class Typer extends Namer
       case tree: untpd.FunctionWithMods => tree.mods.flags
       case _ => EmptyFlags
     }
-    if (funFlags.is(Erased) && args.isEmpty) {
-      ctx.error("An empty function cannot not be erased", tree.sourcePos)
-      funFlags = funFlags &~ Erased
-    }
+
+    assert(!funFlags.is(Erased) || !args.isEmpty, "An empty function cannot not be erased")
 
     val funCls = defn.FunctionClass(args.length,
         isContextual = funFlags.is(Given), isErased = funFlags.is(Erased))
