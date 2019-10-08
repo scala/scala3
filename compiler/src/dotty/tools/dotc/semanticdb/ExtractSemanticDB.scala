@@ -12,6 +12,7 @@ import Flags._
 import Decorators._
 import Names.Name
 import StdNames.nme
+import util.Spans.Span
 import util.{SourceFile, SourcePosition}
 import collection.mutable
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
@@ -48,52 +49,57 @@ class ExtractSemanticDB extends Phase {
       override def default(key: Int) = Set[Symbol]()
     }
 
+    private val generated = new mutable.HashSet[SymbolOccurrence]
+
     /** The extracted symbol occurrences */
     val occurrences = new mutable.ListBuffer[SymbolOccurrence]()
 
-    /** The semanticdb name of the given symbol */
-    private def symbolName(sym: Symbol)(given ctx: Context): String =
+    /** Add semanticdb name of the given symbol to string builder */
+    private def addSymName(b: StringBuilder, sym: Symbol)(given ctx: Context): Unit =
 
       def isJavaIdent(str: String) =
         isJavaIdentifierStart(str.head) && str.tail.forall(isJavaIdentifierPart)
 
-      def nameToString(name: Name) =
+      def addName(name: Name) =
         val str = name.toString
-        if isJavaIdent(str) then str else "`" + str + "`"
+        if isJavaIdent(str) then b.append(str)
+        else b.append('`').append(str).append('`')
 
       /** Is symbol global? Non-global symbols get localX names */
       def isGlobal(sym: Symbol): Boolean =
         sym.is(Package)
         || (sym.is(Param) || sym.owner.isClass) && isGlobal(sym.owner)
 
-      def ownerString(owner: Symbol): String =
-        if owner.isRoot || owner.isEmptyPackage then "" else symbolName(owner)
+      def addOwner(owner: Symbol): Unit =
+        if !owner.isRoot && !owner.isEmptyPackage then addSymName(b, owner)
 
-      def overloadIdx(sym: Symbol): String =
+      def addOverloadIdx(sym: Symbol): Unit =
         val alts = sym.owner.info.decls.lookupAll(sym.name).toList
-        if alts.tail.isEmpty then ""
-        else
+        if alts.tail.nonEmpty then
           val idx = alts.indexOf(sym)
           assert(idx >= 0)
-          "+" + idx.toString
+          b.append('+').append(idx.toString)
 
-      def descriptor(sym: Symbol): String =
+      def addDescriptor(sym: Symbol): Unit =
         if sym.is(ModuleClass) then
-          descriptor(sym.sourceModule)
+          addDescriptor(sym.sourceModule)
+        else if sym.is(Param) || sym.is(ParamAccessor) then
+          b.append('('); addName(sym.name); b.append(')')
+        else if sym.is(TypeParam) then
+          b.append('['); addName(sym.name); b.append(']')
         else
-          val str = nameToString(sym.name)
-          if sym.is(Package) then str + "/"
-          else if sym.isType then str + "#"
-          else if sym.isRealMethod then str + "(" + overloadIdx(sym) + ")"
-          else if sym.is(TermParam) || sym.is(ParamAccessor) then "(" + str + ")"
-          else if sym.is(TypeParam) then "[" + str + "]"
-          else if sym.isTerm then str + "."
+          addName(sym.name)
+          if sym.is(Package) then b.append('/')
+          else if sym.isType then b.append('#')
+          else if sym.isRealMethod then
+            b.append('('); addOverloadIdx(sym); b.append(").")
+          else if sym.isTerm then b.append('.')
           else throw new AssertionError(i"unhandled symbol: $sym: ${sym.info} with ${sym.flagsString}")
 
       /** The index of local symbol `sym`. Symbols with the same name and
        *  the same starting position have the same index.
        */
-      def localIdx(sym: Symbol)(given Context): Int = {
+      def localIdx(sym: Symbol)(given Context): Int =
         def computeLocalIdx(): Int =
           symsAtOffset(sym.span.start).find(_.name == sym.name) match
             case Some(other) => localIdx(other)
@@ -104,47 +110,61 @@ class ExtractSemanticDB extends Phase {
               symsAtOffset(sym.span.start) += sym
               idx
         locals.getOrElseUpdate(sym, computeLocalIdx())
-      }
 
-      if sym.isRoot then "_root_"
-      else if sym.isEmptyPackage then "_empty_"
-      else if isGlobal(sym) then ownerString(sym.owner) + descriptor(sym)
-      else "local" + localIdx(sym)
-    end symbolName
+      if sym.isRoot then
+        b.append("_root_")
+      else if sym.isEmptyPackage then
+        b.append("_empty_")
+      else if isGlobal(sym) then
+        addOwner(sym.owner); addDescriptor(sym)
+      else
+        b.append("local").append(localIdx(sym))
+    end addSymName
 
-    private def range(pos: SourcePosition)(given Context): Option[Range] =
-      val src = pos.source
+    /** The semanticdb name of the given symbol */
+    private def symbolName(sym: Symbol)(given ctx: Context): String =
+      val b = StringBuilder()
+      addSymName(b, sym)
+      b.toString
+
+    private def range(span: Span)(given ctx: Context): Option[Range] =
+      val src = ctx.compilationUnit.source
       def lineCol(offset: Int) = (src.offsetToLine(offset), src.column(offset))
-      val (startLine, startCol) = lineCol(pos.span.start)
-      val (endLine, endCol) = lineCol(pos.span.end)
+      val (startLine, startCol) = lineCol(span.start)
+      val (endLine, endCol) = lineCol(span.end)
       Some(Range(startLine, startCol, endLine, endCol))
 
     private def excluded(sym: Symbol)(given Context): Boolean =
       !sym.exists || sym.isLocalDummy
 
-    private def registerOccurrence(sym: Symbol, pos: SourcePosition, role: SymbolOccurrence.Role)(given Context): Unit =
+    private def registerOccurrence(sym: Symbol, span: Span, role: SymbolOccurrence.Role)(given Context): Unit =
       if !excluded(sym) then
-        occurrences += SymbolOccurrence(symbolName(sym), range(pos), role)
+        val occ = SymbolOccurrence(symbolName(sym), range(span), role)
+        if !generated.contains(occ) then
+          occurrences += occ
+          generated += occ
 
-    private def registerUse(sym: Symbol, pos: SourcePosition)(given Context) =
-      registerOccurrence(sym, pos, SymbolOccurrence.Role.REFERENCE)
-    private def registerDef(sym: Symbol, pos: SourcePosition)(given Context) =
-      registerOccurrence(sym, pos, SymbolOccurrence.Role.DEFINITION)
+    private def registerUse(sym: Symbol, span: Span)(given Context) =
+      registerOccurrence(sym, span, SymbolOccurrence.Role.REFERENCE)
+    private def registerDef(sym: Symbol, span: Span)(given Context) =
+      registerOccurrence(sym, span, SymbolOccurrence.Role.DEFINITION)
 
     override def traverse(tree: Tree)(given ctx: Context): Unit =
       tree match
         case tree: DefTree =>
-          registerDef(tree.symbol, tree.sourcePos)
+          registerDef(tree.symbol, tree.span)
           traverseChildren(tree)
         case tree: RefTree =>
-          registerUse(tree.symbol, tree.sourcePos)
+          registerUse(tree.symbol, tree.span)
           traverseChildren(tree)
         case tree: Import =>
           for sel <- tree.selectors do
             val imported = sel.imported.name
             if imported != nme.WILDCARD then
               for alt <- tree.expr.tpe.member(imported).alternatives do
-                registerUse(alt.symbol, sel.imported.sourcePos)
+                registerUse(alt.symbol, sel.imported.span)
+        case tree: Inlined =>
+          traverse(tree.call)
         case _ =>
           traverseChildren(tree)
   }
