@@ -679,7 +679,8 @@ trait Printers
           if (vdef.symbol.flags.is(Flags.Mutable)) this += highlightKeyword("var ")
           else this += highlightKeyword("val ")
 
-          this += highlightValDef(name) += ": "
+          val name1 = splicedName(vdef.symbol).getOrElse(name)
+          this += highlightValDef(name1) += ": "
           printTypeTree(tpt)
           rhs match {
             case Some(tree) =>
@@ -714,7 +715,8 @@ trait Printers
 
           printProtectedOrPrivate(ddef)
 
-          this += highlightKeyword("def ") += highlightValDef((if (isConstructor) "this" else name))
+          val name1: String = if (isConstructor) "this" else splicedName(ddef.symbol).getOrElse(name)
+          this += highlightKeyword("def ") += highlightValDef(name1)
           printTargsDefs(targs.zip(targs))
           val it = argss.iterator
           while (it.hasNext)
@@ -734,8 +736,11 @@ trait Printers
         case Ident("_") =>
           this += "_"
 
-        case IsTerm(tree @ Ident(_)) =>
-          printType(tree.tpe)
+        case IsIdent(tree) =>
+          splicedName(tree.symbol) match {
+            case Some(name) => this += name
+            case _ => printType(tree.tpe)
+          }
 
         case Select(qual, name) =>
           printQualTree(qual)
@@ -1637,12 +1642,15 @@ trait Printers
 
       def printAnnotation(annot: Term)(given elideThis: Option[Symbol]): Buffer = {
         val Annotation(ref, args) = annot
-        this += "@"
-        printTypeTree(ref)
-        if (args.isEmpty)
-          this
-        else
-          inParens(printTrees(args, ", "))
+        if (annot.symbol.owner.fullName == "scala.internal.quoted.showName") this
+        else {
+          this += "@"
+          printTypeTree(ref)
+          if (args.isEmpty)
+            this
+          else
+            inParens(printTrees(args, ", "))
+        }
       }
 
       def printDefAnnotations(definition: Definition)(given elideThis: Option[Symbol]): Buffer = {
@@ -1807,6 +1815,14 @@ trait Printers
       }
 
       private def escapedString(str: String): String = str flatMap escapedChar
+    }
+
+    private def splicedName(sym: Symbol)(given ctx: Context): Option[String] = {
+      sym.annots.find(_.symbol.owner.fullName == "scala.internal.quoted.showName").flatMap {
+        case Apply(_, Literal(Constant(c: String)) :: Nil) => Some(c)
+        case Apply(_, Inlined(_, _, Literal(Constant(c: String))) :: Nil) => Some(c)
+        case annot => None
+      }
     }
 
     private object SpecialOp {
