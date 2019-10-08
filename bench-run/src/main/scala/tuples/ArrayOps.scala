@@ -5,7 +5,7 @@ import scala.runtime.DynamicTuple
 
 @State(Scope.Thread)
 class ArrayOps {
-  @Param(Array("0"))
+  @Param(Array("1"))
   var size: Int = _
   var tuple: Tuple = _
   var array: Array[Object] = _
@@ -45,5 +45,10 @@ class ArrayOps {
   @Benchmark
   def productToArray(): Array[Object] = {
     DynamicTuple.productToArray(tuple.asInstanceOf[Product])
+  }
+
+  @Benchmark
+  def cloneArray(): Array[Object] = {
+    array.clone()
   }
 }
