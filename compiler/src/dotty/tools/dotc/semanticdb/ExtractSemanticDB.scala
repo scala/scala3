@@ -17,13 +17,13 @@ import collection.mutable
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 import java.nio.file.Paths
 
-abstract class ExtractSemanticDB extends Phase {
+class ExtractSemanticDB extends Phase {
   import ast.tpd._
 
   override val phaseName: String = ExtractSemanticDB.name
 
   override def isRunnable(implicit ctx: Context) =
-    super.isRunnable && ctx.settings.YretainTrees.value
+    true || super.isRunnable && ctx.settings.YretainTrees.value
 
   // Check not needed since it does not transform trees
   override def isCheckable: Boolean = false
@@ -49,8 +49,11 @@ abstract class ExtractSemanticDB extends Phase {
 
   class Extractor extends TreeTraverser {
 
-    private val locals = mutable.HashMap[Symbol, java.lang.Integer]()
+    private val locals = mutable.HashMap[Symbol, Int]()
+
     val occurrences = new mutable.ListBuffer[SymbolOccurrence]()
+
+    val localIndex = mutable.HashMap[Int, Int]()
 
     private var myLocalIdx: Int = -1
     private def nextLocalIdx() =
@@ -61,6 +64,8 @@ abstract class ExtractSemanticDB extends Phase {
 
       def isJavaIdent(str: String) =
         isJavaIdentifierStart(str.head) && str.tail.forall(isJavaIdentifierPart)
+        || str == nme.CONSTRUCTOR.toString
+        || str == nme.STATIC_CONSTRUCTOR.toString
 
       def nameToString(name: Name) =
         val str = name.toString
@@ -71,7 +76,7 @@ abstract class ExtractSemanticDB extends Phase {
         || (sym.is(Param) || sym.owner.isClass) && isGlobal(sym.owner)
 
       def ownerString(owner: Symbol): String =
-        if owner.isRoot then "" else symbolName(owner) + "/"
+        if owner.isRoot || owner.isEmptyPackage then "" else symbolName(owner) + "/"
 
       def overloadIdx(sym: Symbol): String =
         val alts = sym.owner.info.decls.lookupAll(sym.name).toList
@@ -87,15 +92,15 @@ abstract class ExtractSemanticDB extends Phase {
         else
           val str = nameToString(sym.name)
           if sym.is(Package) then str
-          else if sym.is(Module) || sym.isGetter && !sym.is(Mutable) then str + "."
           else if sym.isType then str + "#"
-          else if sym.is(Method) then str + "(" + overloadIdx(sym) + ")"
-          else if sym.is(TermParam) then "(" + str + ")"
+          else if sym.isRealMethod then str + "(" + overloadIdx(sym) + ")"
+          else if sym.is(TermParam) || sym.is(ParamAccessor) then "(" + str + ")"
           else if sym.is(TypeParam) then "[" + str + "]"
-          else throw new AssertionError(i"unhandled symbol: $sym")
+          else if sym.isTerm then str + "."
+          else throw new AssertionError(i"unhandled symbol: $sym: ${sym.info} with ${sym.flagsString}")
 
-      def localIdx(sym: Symbol): Int =
-        locals.getOrElseUpdate(sym, nextLocalIdx())
+      def localIdx(sym: Symbol)(given Context): Int =
+        localIndex.getOrElseUpdate(sym.span.start, nextLocalIdx())
 
       if sym.isRoot then "_root_"
       else if sym.isEmptyPackage then "_empty_"
@@ -110,8 +115,13 @@ abstract class ExtractSemanticDB extends Phase {
       val (endLine, endCol) = lineCol(pos.span.end)
       Some(Range(startLine, startCol, endLine, endCol))
 
+    private def excluded(sym: Symbol)(given Context): Boolean =
+      !sym.exists || sym.isLocalDummy
+
     private def registerOccurrence(sym: Symbol, pos: SourcePosition, role: SymbolOccurrence.Role)(given Context): Unit =
-      occurrences += SymbolOccurrence(symbolName(sym), range(pos), role)
+      if !excluded(sym) then
+        //println(i"register: ${symbolName(sym)}")
+        occurrences += SymbolOccurrence(symbolName(sym), range(pos), role)
 
     private def registerUse(sym: Symbol, pos: SourcePosition)(given Context) =
       registerOccurrence(sym, pos, SymbolOccurrence.Role.REFERENCE)
