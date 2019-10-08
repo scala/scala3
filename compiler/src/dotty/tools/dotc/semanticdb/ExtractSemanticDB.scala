@@ -12,7 +12,7 @@ import Flags._
 import Decorators._
 import Names.Name
 import StdNames.nme
-import util.SourcePosition
+import util.{SourceFile, SourcePosition}
 import collection.mutable
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 import java.nio.file.Paths
@@ -34,17 +34,7 @@ class ExtractSemanticDB extends Phase {
     val extract = Extractor()
     val unit = ctx.compilationUnit
     extract.traverse(unit.tpdTree)
-    val targetRootSetting = ctx.settings.targetroot.value
-    val targetRoot =
-      if targetRootSetting.isEmpty then ctx.settings.outputDir.value.jpath
-      else Paths.get(targetRootSetting)
-    ExtractSemanticDB.write(
-      unit.source.file.jpath,
-      String(unit.source.content),
-      Paths.get(ctx.settings.sourceroot.value),
-      Paths.get(ctx.settings.targetroot.value),
-      extract.occurrences.toList
-    )
+    ExtractSemanticDB.write(unit.source, extract.occurrences.toList)
   }
 
   class Extractor extends TreeTraverser {
@@ -64,8 +54,6 @@ class ExtractSemanticDB extends Phase {
 
       def isJavaIdent(str: String) =
         isJavaIdentifierStart(str.head) && str.tail.forall(isJavaIdentifierPart)
-        || str == nme.CONSTRUCTOR.toString
-        || str == nme.STATIC_CONSTRUCTOR.toString
 
       def nameToString(name: Name) =
         val str = name.toString
@@ -76,7 +64,7 @@ class ExtractSemanticDB extends Phase {
         || (sym.is(Param) || sym.owner.isClass) && isGlobal(sym.owner)
 
       def ownerString(owner: Symbol): String =
-        if owner.isRoot || owner.isEmptyPackage then "" else symbolName(owner) + "/"
+        if owner.isRoot || owner.isEmptyPackage then "" else symbolName(owner)
 
       def overloadIdx(sym: Symbol): String =
         val alts = sym.owner.info.decls.lookupAll(sym.name).toList
@@ -84,14 +72,14 @@ class ExtractSemanticDB extends Phase {
         else
           val idx = alts.indexOf(sym)
           assert(idx >= 0)
-          idx.toString
+          "+" + idx.toString
 
       def descriptor(sym: Symbol): String =
         if sym.is(ModuleClass) then
           descriptor(sym.sourceModule)
         else
           val str = nameToString(sym.name)
-          if sym.is(Package) then str
+          if sym.is(Package) then str + "/"
           else if sym.isType then str + "#"
           else if sym.isRealMethod then str + "(" + overloadIdx(sym) + ")"
           else if sym.is(TermParam) || sym.is(ParamAccessor) then "(" + str + ")"
@@ -154,26 +142,28 @@ object ExtractSemanticDB {
 
   val name: String = "extractSemanticDB"
 
-  def write(
-    source: Path,
-    contents: String,
-    sourceroot: Path,
-    targetroot: Path,
-    occurrences: Seq[SymbolOccurrence]
-  ): Unit =
-    val relpath = sourceroot.relativize(source)
-    val reluri = relpath.iterator().asScala.mkString("/")
-    val outpath = targetroot
+  def write(source: SourceFile, occurrences: List[SymbolOccurrence])(given ctx: Context): Unit =
+    val sourcePath = source.file.jpath
+    val sourceRoot = Paths.get(ctx.settings.sourceroot.value)
+    val targetRoot =
+      val targetRootSetting = ctx.settings.targetroot.value
+      if targetRootSetting.isEmpty then ctx.settings.outputDir.value.jpath
+      else Paths.get(targetRootSetting)
+    println(i"extract from $sourcePath from $sourceRoot, targetRoot = $targetRoot")
+    val relPath = sourceRoot.relativize(sourcePath)
+    println(i"relPath = $relPath")
+    val relURI = relPath.iterator().asScala.mkString("/")
+    val outpath = targetRoot
       .resolve("META-INF")
       .resolve("semanticdb")
-      .resolve(relpath)
-      .resolveSibling(source.getFileName().toString() + ".semanticdb")
+      .resolve(relPath)
+      .resolveSibling(sourcePath.getFileName().toString() + ".semanticdb")
     Files.createDirectories(outpath.getParent())
     val doc: TextDocument = TextDocument(
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
-      uri = reluri,
-      md5 = MD5.compute(contents),
+      uri = relURI,
+      md5 = MD5.compute(String(source.content)),
       occurrences = occurrences
     )
     val docs = TextDocuments(List(doc))
