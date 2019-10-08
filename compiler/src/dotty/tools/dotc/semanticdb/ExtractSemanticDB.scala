@@ -158,15 +158,16 @@ object ExtractSemanticDB {
   val name: String = "extractSemanticDB"
 
   def write(source: SourceFile, occurrences: List[SymbolOccurrence])(given ctx: Context): Unit =
-    val sourcePath = source.file.jpath
-    val sourceRoot = Paths.get(ctx.settings.sourceroot.value)
+    def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
+    val sourcePath = absolutePath(source.file.jpath)
+    val sourceRoot = absolutePath(Paths.get(ctx.settings.sourceroot.value))
     val targetRoot =
       val targetRootSetting = ctx.settings.targetroot.value
-      if targetRootSetting.isEmpty then ctx.settings.outputDir.value.jpath
-      else Paths.get(targetRootSetting)
-    println(i"extract from $sourcePath from $sourceRoot, targetRoot = $targetRoot")
+      absolutePath(
+        if targetRootSetting.isEmpty then ctx.settings.outputDir.value.jpath
+        else Paths.get(targetRootSetting)
+      )
     val relPath = sourceRoot.relativize(sourcePath)
-    println(i"relPath = $relPath")
     val relURI = relPath.iterator().asScala.mkString("/")
     val outpath = targetRoot
       .resolve("META-INF")
