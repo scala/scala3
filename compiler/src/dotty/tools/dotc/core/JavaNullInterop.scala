@@ -79,24 +79,20 @@ object JavaNullInterop {
    */
   private case class MethodNullifier(nnParams: Seq[Int], nnRes: Boolean)(implicit ctx: Context) extends TypeMap {
 
-    private def spare(tp: Type): Type = {
-      nullifyType(tp).stripNull
-    }
+    private def spare(tp: Type): Type = nullifyType(tp).stripNull
 
-    override def apply(tp: Type): Type = {
-      tp match {
-        case ptp: PolyType =>
-          derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
-        case mtp: MethodType =>
-          val paramTpes = mtp.paramInfos.zipWithIndex.map {
-            case (paramInfo, index) =>
-              // TODO(abeln): the sequence lookup can be optimized, because the indices
-              // in it appear in increasing order.
-              if (nnParams.contains(index)) spare(paramInfo) else nullifyType(paramInfo)
-          }
-          val resTpe = if (nnRes) spare(mtp.resType) else nullifyType(mtp.resType)
-          derivedLambdaType(mtp)(paramTpes, resTpe)
-      }
+    override def apply(tp: Type): Type = tp match {
+      case ptp: PolyType =>
+        derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
+      case mtp: MethodType =>
+        val paramTpes = mtp.paramInfos.zipWithIndex.map {
+          case (paramInfo, index) =>
+            // TODO(abeln): the sequence lookup can be optimized, because the indices
+            // in it appear in increasing order.
+            if (nnParams.contains(index)) spare(paramInfo) else nullifyType(paramInfo)
+        }
+        val resTpe = if (nnRes) spare(mtp.resType) else nullifyType(mtp.resType)
+        derivedLambdaType(mtp)(paramTpes, resTpe)
     }
   }
 
@@ -105,10 +101,8 @@ object JavaNullInterop {
     MethodNullifier(nnParams = Seq.empty, nnRes = true)(ctx)(tp)
 
   /** Nullifies a Java type by adding `| JavaNull` in the relevant places. */
-  private def nullifyType(tpe: Type)(implicit ctx: Context): Type = {
-    val nullMap = new JavaNullMap(alreadyNullable = false)
-    nullMap(tpe)
-  }
+  private def nullifyType(tpe: Type)(implicit ctx: Context): Type =
+    new JavaNullMap(alreadyNullable = false)(ctx)(tpe)
 
   /** A type map that adds `| JavaNull`.
    *  @param alreadyNullable whether the type being mapped is already nullable (at the outermost level).
@@ -117,7 +111,7 @@ object JavaNullInterop {
    */
   private class JavaNullMap(var alreadyNullable: Boolean)(implicit ctx: Context) extends TypeMap {
     /** Should we nullify `tp` at the outermost level? */
-    def needsTopLevelNull(tp: Type): Boolean = {
+    def needsTopLevelNull(tp: Type): Boolean =
       !alreadyNullable && (tp match {
         case tp: TypeRef =>
           // We don't modify value types because they're non-nullable even in Java.
@@ -132,16 +126,13 @@ object JavaNullInterop {
           !tp.isRef(defn.RepeatedParamClass)
         case _ => true
       })
-    }
 
     /** Should we nullify the type arguments to the given generic `tp`?
      *  We only nullify the inside of Scala-defined generics.
      *  This is because Java classes are _all_ nullified, so both `java.util.List[String]` and
      *  `java.util.List[String|Null]` contain nullable elements.
      */
-    def needsNullArgs(tp: AppliedType): Boolean = {
-      !tp.classSymbol.is(JavaDefined)
-    }
+    def needsNullArgs(tp: AppliedType): Boolean = !tp.classSymbol.is(JavaDefined)
 
     override def apply(tp: Type): Type = {
       tp match {
