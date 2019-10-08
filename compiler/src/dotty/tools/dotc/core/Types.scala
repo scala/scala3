@@ -1068,26 +1068,56 @@ object Types {
      *  Exception (if `-YexplicitNulls` is set): if this type is a nullable union (i.e. of the form `T | Null`),
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
-    def widenUnion(implicit ctx: Context): Type = widen match {
-      case tp @ OrType(tp1, tp2) =>
-        if (ctx.explicitNulls && tp.isNullableUnion) {
-          // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
-          val OrType(leftTpe, nullTpe) = tp.normNullableUnion
-          OrType(leftTpe.widenUnion, nullTpe)
-        } else {
-          ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
-            case union: OrType => union.join
-            case res => res
+    def widenUnion(implicit ctx: Context): Type = {
+      widen match {
+        case tp @ OrType(lhs, rhs) =>
+          def defaultJoin(tp1: Type, tp2: Type) =
+            ctx.typeComparer.lub(tp1, tp2, canConstrain = true) match {
+              case union: OrType => union.join
+              case res => res
+            }
+
+          // Given a type `tpe`, if it is already a nullable union, return it unchanged.
+          // Otherwise, construct a nullable union where `tpe` is the lhs (use `orig` to
+          // potentially avoid creating a new object for the union).
+          def ensureNullableUnion(tpe: Type, orig: OrType): Type = tpe match {
+            case orTpe: OrType if orTpe.tp2.isNullType => tpe
+            case _ => orig.derivedOrType(tpe, defn.NullType)
           }
-        }
-      case tp @ AndType(tp1, tp2) =>
-        tp derived_& (tp1.widenUnion, tp2.widenUnion)
-      case tp: RefinedType =>
-        tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
-      case tp: RecType =>
-        tp.rebind(tp.parent.widenUnion)
-      case tp =>
-        tp
+
+          // Test for nullable union that assumes the type has already been normalized.
+          def isNullableUnionFast(tp: Type): Boolean = tp match {
+            case orTpe: OrType if orTpe.tp2.isNullType => true
+            case _ => false
+          }
+
+          if (ctx.explicitNulls) {
+            // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
+            // This part relies on the postcondition of widenUnion: the result is either a
+            // non-union type, or a nullable union type where the rhs is `Null` type.
+            if (rhs.isNullType) ensureNullableUnion(lhs.widenUnion, tp)
+            else if (lhs.isNullType) ensureNullableUnion(rhs.widenUnion, tp)
+            else {
+              val lhsWiden = lhs.widenUnion
+              val rhsWiden = rhs.widenUnion
+              val tmpRes = defaultJoin(lhs.widenUnion, rhs.widenUnion)
+              if (isNullableUnionFast(lhsWiden) || isNullableUnionFast(rhsWiden))
+                // If either lhs or rhs is a nullable union,
+                // we need to ensure the result is also a nullable union.
+                ensureNullableUnion(tmpRes, tp)
+              else tmpRes
+            }
+          }
+          else defaultJoin(lhs.widenUnion, rhs.widenUnion)
+        case tp @ AndType(tp1, tp2) =>
+          tp derived_& (tp1.widenUnion, tp2.widenUnion)
+        case tp: RefinedType =>
+          tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
+        case tp: RecType =>
+          tp.rebind(tp.parent.widenUnion)
+        case tp =>
+          tp
+      }
     }
 
     /** Widen all top-level singletons reachable by dealiasing
