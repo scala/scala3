@@ -564,6 +564,52 @@ while (i < arr.length) {
 }
 sum
 ```
+### Showing meaningful definition names in quotes
+
+In the `powerCode` example above there is a `'{ val y = $x * $x; ... }` which when printed
+may show several different `val y = ...`.
+
+For example
+```scala
+powerCode(16, '{7}).show
+```
+will show
+```scala
+val y: scala.Double = 7
+val y: scala.Double = y.*(y)
+val y: scala.Double = y.*(y)
+val y: scala.Double = y.*(y)
+val y: scala.Double = y.*(y)
+y
+```
+Even though there is no hygiene issue it may be hard to undestand the code. To overcome this inconvenience
+each `y` can be assigned a meaningful name using the `scala.quoted.util.let`.
+For example `let("y" + i)('{ $x * $x })(yi => ...)` will assign to each `y` a name
+`y{i}` where `{i}` is a known String, if `i == 3` then it would be named `y3`.
+
+The `powerCode` can be defined as follows using `showName`
+```scala
+def powerCodeD(n: Long, x: Expr[Double]))(given QuoteContext): Expr[Double] =
+  let("y1")(x)(y1 => powerCodeD(n, 2, y1))
+
+def powerCodeD(n: Long, i: Int, x: Expr[Double])(given QuoteContext): Expr[Double] =
+  if (n == 0) '{1.0}
+  else if (n % 2 == 0) let("y" + i)('{ $x * $x })(ai => powerCodeD(n / 2, idx * 2, yi) }
+  else '{ $x * ${powerCodeD(n - 1, idx, x)} }
+```
+then
+```scala
+powerCodeD(16, '{7}).show
+```
+will show
+```scala
+val y1: scala.Double = 7
+val y2: scala.Double = y1.*(y1)
+val y4: scala.Double = y2.*(y2)
+val y8: scala.Double = y4.*(y4)
+val y16: scala.Double = y8.*(y8)
+a16
+```
 
 ### Find implicits within a macro
 

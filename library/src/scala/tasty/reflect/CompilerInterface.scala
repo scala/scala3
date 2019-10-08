@@ -117,6 +117,8 @@ trait CompilerInterface {
 
   def settings: Settings
 
+  def nextIndex(): Int
+
   //
   // QUOTE UNPICKLING
   //

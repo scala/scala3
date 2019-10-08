@@ -12,6 +12,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Types.SingletonType
 import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
+import dotty.tools.dotc.tastyreflect.QuoteContextState
 import dotty.tools.dotc.typer.Implicits.{AmbiguousImplicits, DivergingImplicit, NoMatchingImplicits, SearchFailure, SearchFailureType}
 import dotty.tools.dotc.util.{SourceFile, SourcePosition, Spans}
 
@@ -27,6 +28,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def rootPosition: util.SourcePosition =
     tastyreflect.MacroExpansion.position.getOrElse(SourcePosition(rootContext.source, Spans.NoSpan))
+
+  def nextIndex(): Int = QuoteContextState.nextIndex()
 
   //
   // QUOTE UNPICKLING

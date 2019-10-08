@@ -4,7 +4,7 @@ package staging
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase, FreshContext}
-import dotty.tools.dotc.tastyreflect.ReflectionImpl
+import dotty.tools.dotc.tastyreflect.{ReflectionImpl, QuoteContextState}
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.reporting._
@@ -32,7 +32,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver {
     }
 
     val (_, ctx0: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
-    val ctx = setToolboxSettings(ctx0.fresh.setSetting(ctx0.settings.outputDir, outDir), settings)
+    val ctx = setToolboxSettings(QuoteContextState.init(ctx0).fresh.setSetting(ctx0.settings.outputDir, outDir), settings)
 
     new QuoteCompiler().newRun(ctx).compileExpr(exprBuilder) match {
       case Right(value) =>

@@ -46,6 +46,12 @@ class QuoteContext(val tasty: scala.tasty.Reflection) {
     tasty.warning(msg, expr.unseal.pos)(given rootContext)
   }
 
+  /** Get a fresh index within the scope of this quote context.
+   *  Each `scala.quoted.staging.run` and macro expansion starts with the next index at 0.
+   */
+  def nextIndex(): Int =
+    tasty.internal.nextIndex()
+
 }
 
 object QuoteContext {

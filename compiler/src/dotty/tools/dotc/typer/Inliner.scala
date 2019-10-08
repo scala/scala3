@@ -1236,7 +1236,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private def expandMacro(body: Tree, span: Span)(implicit ctx: Context) = {
     assert(level == 0)
     val inlinedFrom = enclosingInlineds.last
-    val ctx1 = tastyreflect.MacroExpansion.context(inlinedFrom)
+    val ctx1 = tastyreflect.QuoteContextState.init(tastyreflect.MacroExpansion.context(inlinedFrom))
 
     val dependencies = macroDependencies(body)
 

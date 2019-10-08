@@ -1,0 +1,13 @@
+((x: scala.Double) => x.*({
+   val x$0: scala.Double = x.*(x)
+   val x$1: scala.Double = x$0.*(x$0)
+  x$1.*({
+     val x$2: scala.Double = x$1.*(x$1)
+    x$2.*({
+       val x$3: scala.Double = x$2.*(x$2)
+       val x$4: scala.Double = x$3.*(x$3)
+       val x$5: scala.Double = x$4.*(x$4)
+      x$5
+    })
+  })
+}))
