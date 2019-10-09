@@ -332,28 +332,17 @@ object Trees {
     def namedType: NamedType = tpe.asInstanceOf[NamedType]
   }
 
-  /** Tree defines a new symbol and carries modifiers.
-   *  The position of a MemberDef contains only the defined identifier or pattern.
-   *  The envelope of a MemberDef contains the whole definition and has its point
-   *  on the opening keyword (or the next token after that if keyword is missing).
-   */
-  abstract class MemberDef[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NameTree[T] with DefTree[T] {
-    type ThisTree[-T >: Untyped] <: MemberDef[T]
-
-    def rawComment: Option[Comment] = getAttachment(DocComment)
-
-    def setComment(comment: Option[Comment]): this.type = {
-      comment.map(putAttachment(DocComment, _))
-      this
-    }
+  abstract class NamedDefTree[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NameTree[T] with DefTree[T] {
+    type ThisTree[-T >: Untyped] <: NamedDefTree[T]
 
     /** The position of the name defined by this definition.
      *  This is a point position if the definition is synthetic, or a range position
      *  if the definition comes from source.
      *  It might also be that the definition does not have a position (for instance when synthesized by
      *  a calling chain from `viewExists`), in that case the return position is NoSpan.
+     *  Overridden in Bind
      */
-    def nameSpan: Span =
+     def nameSpan: Span =
       if (span.exists) {
         val point = span.point
         if (rawMods.is(Synthetic) || name.toTermName == nme.ERROR) Span(point)
@@ -377,6 +366,22 @@ object Trees {
         }
       }
       else span
+  }
+
+  /** Tree defines a new symbol and carries modifiers.
+   *  The position of a MemberDef contains only the defined identifier or pattern.
+   *  The envelope of a MemberDef contains the whole definition and has its point
+   *  on the opening keyword (or the next token after that if keyword is missing).
+   */
+  abstract class MemberDef[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NamedDefTree[T] {
+    type ThisTree[-T >: Untyped] <: MemberDef[T]
+
+    def rawComment: Option[Comment] = getAttachment(DocComment)
+
+    def setComment(comment: Option[Comment]): this.type = {
+      comment.map(putAttachment(DocComment, _))
+      this
+    }
   }
 
   /** A ValDef or DefDef tree */
@@ -705,10 +710,13 @@ object Trees {
 
   /** name @ body */
   case class Bind[-T >: Untyped] private[ast] (name: Name, body: Tree[T])(implicit @constructorOnly src: SourceFile)
-    extends NameTree[T] with DefTree[T] with PatternTree[T] {
+    extends NamedDefTree[T] with PatternTree[T] {
     type ThisTree[-T >: Untyped] = Bind[T]
     override def isType: Boolean = name.isTypeName
     override def isTerm: Boolean = name.isTermName
+
+    override def nameSpan: Span =
+      if span.exists then Span(span.start, span.start + name.toString.length) else span
   }
 
   /** tree_1 | ... | tree_n */
@@ -938,6 +946,7 @@ object Trees {
     type NameTree = Trees.NameTree[T]
     type RefTree = Trees.RefTree[T]
     type DefTree = Trees.DefTree[T]
+    type NamedDefTree = Trees.NamedDefTree[T]
     type MemberDef = Trees.MemberDef[T]
     type ValOrDefDef = Trees.ValOrDefDef[T]
     type LazyTree = Trees.LazyTree[T]

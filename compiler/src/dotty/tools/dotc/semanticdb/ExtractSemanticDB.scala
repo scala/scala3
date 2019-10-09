@@ -160,7 +160,7 @@ class ExtractSemanticDB extends Phase {
 
     override def traverse(tree: Tree)(given ctx: Context): Unit =
       tree match
-        case tree: DefTree
+        case tree: NamedDefTree
         if !excludeDef(tree.symbol) && tree.span.start != tree.span.end =>
           registerOccurrence(tree.symbol, tree.span, SymbolOccurrence.Role.DEFINITION)
           traverseChildren(tree)

@@ -40,7 +40,7 @@ class Compiler {
     List(new YCheckPositions) ::    // YCheck positions
     List(new Staging) ::            // Check PCP, heal quoted types and expand macros
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
-    List(new semanticdb.ExtractSemanticDB) ::
+    List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
