@@ -1,18 +1,18 @@
 scala.Nil
 List()
 
-scala.List.apply[java.lang.String]("#0": _*)
+scala.List.apply[java.lang.String]("#0")
 List(#0)
 
-scala.List.apply[java.lang.String]("#0", "#1": _*)
+scala.List.apply[java.lang.String]("#0", "#1")
 List(#0, #1)
 
-scala.List.apply[java.lang.String]("#0", "#1", "#2": _*)
+scala.List.apply[java.lang.String]("#0", "#1", "#2")
 List(#0, #1, #2)
 
-scala.List.apply[java.lang.String]("#0", "#1", "#2", "#3": _*)
+scala.List.apply[java.lang.String]("#0", "#1", "#2", "#3")
 List(#0, #1, #2, #3)
 
-scala.List.apply[java.lang.String]("#0", "#1", "#2", "#3", "#4": _*)
+scala.List.apply[java.lang.String]("#0", "#1", "#2", "#3", "#4")
 List(#0, #1, #2, #3, #4)
 
