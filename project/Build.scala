@@ -438,7 +438,7 @@ object Build {
     // packageAll should always be run before tests
     javaOptions ++= {
       val externalDeps = externalCompilerClasspathTask.value
-      val jars = packageAll.in(LocalProject("dotty-compiler-bootstrapped")).value
+      val jars = packageAll.in(LocalProject("dotty-compiler")).value
 
       List(
         "-Ddotty.tests.classes.dottyInterfaces=" + jars("dotty-interfaces"),
