@@ -1,6 +1,7 @@
 package dotty.tools.dotc.semanticdb
 
-trait SemanticdbMessage {
+trait SemanticdbMessage[A] {
   def serializedSize: Int
   def writeTo(out: SemanticdbOutputStream): Unit
+  def mergeFrom(in: SemanticdbInputStream): A
 }

@@ -28,6 +28,7 @@ object Main {
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
       uri = reluri,
+      text = "",
       md5 = MD5.compute(contents),
       occurrences = occurrences
     )

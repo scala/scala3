@@ -1,11 +1,14 @@
 package dotty.tools.dotc.semanticdb
 
+object Range {
+  def defaultInstance: Range = Range(0, 0, 0, 0)
+}
 case class Range(
     startLine: Int,
     startCharacter: Int,
     endLine: Int,
     endCharacter: Int
-) extends SemanticdbMessage {
+) extends SemanticdbMessage[Range] {
   @transient
   private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
   private[this] def __computeSerializedValue(): _root_.scala.Int = {
@@ -79,5 +82,33 @@ case class Range(
         _output__.writeInt32(4, __v)
       }
     };
+  }
+  def mergeFrom(`_input__`: SemanticdbInputStream): Range = {
+    var __startLine = this.startLine
+    var __startCharacter = this.startCharacter
+    var __endLine = this.endLine
+    var __endCharacter = this.endCharacter
+    var _done__ = false
+    while (!_done__) {
+      val _tag__ = _input__.readTag()
+      _tag__ match {
+        case 0 => _done__ = true
+        case 8 =>
+          __startLine = _input__.readInt32()
+        case 16 =>
+          __startCharacter = _input__.readInt32()
+        case 24 =>
+          __endLine = _input__.readInt32()
+        case 32 =>
+          __endCharacter = _input__.readInt32()
+        case tag => _input__.skipField(tag)
+      }
+    }
+    Range(
+        startLine = __startLine,
+        startCharacter = __startCharacter,
+        endLine = __endLine,
+        endCharacter = __endCharacter
+    )
   }
 }

@@ -1,12 +1,16 @@
 package dotty.tools.dotc.semanticdb
 
+object TextDocument {
+  def defaultInstance: TextDocument = TextDocument(Schema.LEGACY, Language.UNKNOWN_LANGUAGE, "", "", "", Nil)
+}
 case class TextDocument(
     schema: Schema,
     language: Language,
     uri: String,
+    text: String,
     md5: String,
     occurrences: Seq[SymbolOccurrence]
-) extends SemanticdbMessage {
+) extends SemanticdbMessage[TextDocument] {
   private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
   private[this] def __computeSerializedValue(): _root_.scala.Int = {
     var __size = 0
@@ -86,5 +90,38 @@ case class TextDocument(
         _output__.writeString(11, __v)
       }
     };
+  }
+  def mergeFrom(`_input__`: SemanticdbInputStream): TextDocument = {
+    var __schema = this.schema
+    var __uri = this.uri
+    var __md5 = this.md5
+    var __language = this.language
+    val __occurrences = (_root_.scala.collection.immutable.Vector.newBuilder[SymbolOccurrence] ++= this.occurrences)
+    var _done__ = false
+    while (!_done__) {
+      val _tag__ = _input__.readTag()
+      _tag__ match {
+        case 0 => _done__ = true
+        case 8 =>
+          __schema = Schema.fromValue(_input__.readEnum())
+        case 18 =>
+          __uri = _input__.readString()
+        case 90 =>
+          __md5 = _input__.readString()
+        case 80 =>
+          __language = Language.fromValue(_input__.readEnum())
+        case 50 =>
+          __occurrences += LiteParser.readMessage(_input__, SymbolOccurrence.defaultInstance)
+        case tag => _input__.skipField(tag)
+      }
+    }
+    TextDocument(
+        schema = __schema,
+        uri = __uri,
+        text = "",
+        md5 = __md5,
+        language = __language,
+        occurrences = __occurrences.result(),
+    )
   }
 }

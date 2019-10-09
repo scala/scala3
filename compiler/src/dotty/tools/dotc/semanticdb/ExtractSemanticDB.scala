@@ -162,7 +162,7 @@ class ExtractSemanticDB extends Phase {
       tree match
         case tree: NamedDefTree
         if !excludeDef(tree.symbol) && tree.span.start != tree.span.end =>
-          registerOccurrence(tree.symbol, tree.span, SymbolOccurrence.Role.DEFINITION)
+          registerOccurrence(tree.symbol, tree.nameSpan, SymbolOccurrence.Role.DEFINITION)
           traverseChildren(tree)
         case tree: Ident =>
           registerUse(tree.symbol, tree.span)
@@ -219,6 +219,7 @@ object ExtractSemanticDB {
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
       uri = relURI,
+      text = "",
       md5 = MD5.compute(String(source.content)),
       occurrences = occurrences
     )

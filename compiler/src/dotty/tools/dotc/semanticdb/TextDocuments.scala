@@ -1,6 +1,15 @@
 package dotty.tools.dotc.semanticdb
 
-case class TextDocuments(documents: Seq[TextDocument]) extends SemanticdbMessage {
+object TextDocuments {
+  def parseFrom(in: Array[Byte]): TextDocuments = {
+    parseFrom(SemanticdbInputStream.newInstance(in))
+  }
+  def parseFrom(in: SemanticdbInputStream): TextDocuments = {
+    defaultInstance.mergeFrom(in)
+  }
+  def defaultInstance: TextDocuments = TextDocuments(Nil)
+}
+case class TextDocuments(documents: Seq[TextDocument]) extends SemanticdbMessage[TextDocuments] {
   private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
   private[this] def __computeSerializedValue(): _root_.scala.Int = {
     var __size = 0
@@ -27,5 +36,21 @@ case class TextDocuments(documents: Seq[TextDocument]) extends SemanticdbMessage
       _output__.writeUInt32NoTag(__m.serializedSize)
       __m.writeTo(_output__)
     };
+  }
+  def mergeFrom(`_input__`: SemanticdbInputStream): TextDocuments = {
+    val __documents = (_root_.scala.collection.immutable.Vector.newBuilder[TextDocument] ++= this.documents)
+    var _done__ = false
+    while (!_done__) {
+      val _tag__ = _input__.readTag()
+      _tag__ match {
+        case 0 => _done__ = true
+        case 10 =>
+          __documents += LiteParser.readMessage(_input__, TextDocument.defaultInstance)
+        case tag => _input__.skipField(tag)
+      }
+    }
+    TextDocuments(
+        documents = __documents.result()
+    )
   }
 }
