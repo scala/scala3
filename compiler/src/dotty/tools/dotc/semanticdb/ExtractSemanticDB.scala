@@ -18,6 +18,11 @@ import collection.mutable
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 import java.nio.file.Paths
 
+/** Extract symbol references and uses to semanticdb files.
+ *  See https://scalameta.org/docs/semanticdb/specification.html#symbol-1
+ *  for a description of the format.
+ *  TODO: Also extract type information
+ */
 class ExtractSemanticDB extends Phase {
   import ast.tpd._
 
@@ -127,35 +132,48 @@ class ExtractSemanticDB extends Phase {
       addSymName(b, sym)
       b.toString
 
+    private def source(given ctx: Context) = ctx.compilationUnit.source
+
     private def range(span: Span)(given ctx: Context): Option[Range] =
-      val src = ctx.compilationUnit.source
-      def lineCol(offset: Int) = (src.offsetToLine(offset), src.column(offset))
+      def lineCol(offset: Int) = (source.offsetToLine(offset), source.column(offset))
       val (startLine, startCol) = lineCol(span.start)
       val (endLine, endCol) = lineCol(span.end)
       Some(Range(startLine, startCol, endLine, endCol))
 
-    private def excluded(sym: Symbol)(given Context): Boolean =
-      !sym.exists || sym.isLocalDummy
+    private def excludeDef(sym: Symbol)(given Context): Boolean =
+      !sym.exists || sym.isLocalDummy || sym.is(Synthetic)
+
+    private def excludeUse(sym: Symbol, span: Span)(given Context): Boolean =
+      excludeDef(sym) && span.start == span.end
 
     private def registerOccurrence(sym: Symbol, span: Span, role: SymbolOccurrence.Role)(given Context): Unit =
-      if !excluded(sym) then
-        val occ = SymbolOccurrence(symbolName(sym), range(span), role)
-        if !generated.contains(occ) then
-          occurrences += occ
-          generated += occ
+      val occ = SymbolOccurrence(symbolName(sym), range(span), role)
+      if !generated.contains(occ) then
+        occurrences += occ
+        generated += occ
 
     private def registerUse(sym: Symbol, span: Span)(given Context) =
-      registerOccurrence(sym, span, SymbolOccurrence.Role.REFERENCE)
-    private def registerDef(sym: Symbol, span: Span)(given Context) =
-      registerOccurrence(sym, span, SymbolOccurrence.Role.DEFINITION)
+      if !excludeUse(sym, span) then
+        registerOccurrence(sym, span, SymbolOccurrence.Role.REFERENCE)
 
     override def traverse(tree: Tree)(given ctx: Context): Unit =
+      //println(i"reg $tree")
       tree match
-        case tree: DefTree =>
-          registerDef(tree.symbol, tree.span)
+        case tree: DefTree if !excludeDef(tree.symbol) =>
+          registerOccurrence(tree.symbol, tree.span, SymbolOccurrence.Role.DEFINITION)
           traverseChildren(tree)
-        case tree: RefTree =>
+        case tree: Ident =>
           registerUse(tree.symbol, tree.span)
+        case tree: Select =>
+          if !excludeUse(tree.symbol, tree.span) then
+            val end = tree.span.end
+            val limit = tree.qualifier.span.end
+            val start =
+              if limit < end then
+                val len = tree.name.toString.length
+                if source.content()(end - 1) == '`' then end - len - 1 else end - len
+              else limit
+            registerUse(tree.symbol, Span(start max limit, end))
           traverseChildren(tree)
         case tree: Import =>
           for sel <- tree.selectors do
