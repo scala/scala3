@@ -157,8 +157,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     if (self.symbol.is(core.Flags.JavaDefined)) Nil // FIXME should also support java packages
     else self.symbol.info.decls.iterator.map(definitionFromSym).toList
 
-  def PackageDef_symbol(self: PackageDef)(given Context): Symbol = self.symbol
-
   type ClassDef = tpd.TypeDef
 
   def matchClassDef(tree: Tree)(given Context): Option[ClassDef] = tree match {
@@ -171,7 +169,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def ClassDef_derived(self: ClassDef)(given Context): List[TypeTree] = ClassDef_rhs(self).derived.asInstanceOf[List[TypeTree]]
   def ClassDef_self(self: ClassDef)(given Context): Option[ValDef] = optional(ClassDef_rhs(self).self)
   def ClassDef_body(self: ClassDef)(given Context): List[Statement] = ClassDef_rhs(self).body
-  def ClassDef_symbol(self: ClassDef)(given Context): Symbol = self.symbol.asClass
   private def ClassDef_rhs(self: ClassDef) = self.rhs.asInstanceOf[tpd.Template]
 
   def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Term | TypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(given Context): ClassDef = {
@@ -187,7 +184,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   }
 
   def TypeDef_rhs(self: TypeDef)(given Context): TypeTree | TypeBoundsTree = self.rhs
-  def TypeDef_symbol(self: TypeDef)(given Context): Symbol = self.symbol.asType
 
   def TypeDef_apply(symbol: Symbol)(given Context): TypeDef = withDefaultPos(tpd.TypeDef(symbol.asType))
   def TypeDef_copy(original: TypeDef)(name: String, rhs: TypeTree | TypeBoundsTree)(given Context): TypeDef =
@@ -204,7 +200,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def DefDef_paramss(self: DefDef)(given Context): List[List[ValDef]] = self.vparamss
   def DefDef_returnTpt(self: DefDef)(given Context): TypeTree = self.tpt
   def DefDef_rhs(self: DefDef)(given Context): Option[Tree] = optional(self.rhs)
-  def DefDef_symbol(self: DefDef)(given Context): Symbol = self.symbol.asTerm
 
   def DefDef_apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(given Context): DefDef =
     withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => rhsFn(tparams)(vparamss).getOrElse(tpd.EmptyTree)))
@@ -221,7 +216,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def ValDef_tpt(self: ValDef)(given Context): TypeTree = self.tpt
   def ValDef_rhs(self: ValDef)(given Context): Option[Tree] = optional(self.rhs)
-  def ValDef_symbol(self: ValDef)(given Context): Symbol = self.symbol.asTerm
 
   def ValDef_apply(symbol: Symbol, rhs: Option[Term])(given Context): ValDef =
     tpd.ValDef(symbol.asTerm, rhs.getOrElse(tpd.EmptyTree))
@@ -238,7 +232,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     case _ => None
   }
 
-  def Term_pos(self: Term)(given Context): Position = self.sourcePos
   def Term_tpe(self: Term)(given Context): Type = self.tpe
   def Term_underlyingArgument(self: Term)(given Context): Term = self.underlyingArgument
   def Term_underlying(self: Term)(given Context): Term = self.underlying
@@ -629,7 +622,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     val NameKinds.OuterSelectName(_, levels) = self.name
     levels
   }
-  def SelectOuter_tpe(self: SelectOuter)(given Context): Type = self.tpe.stripTypeVar
 
   def SelectOuter_apply(qualifier: Term, name: String, levels: Int)(given Context): SelectOuter =
     withDefaultPos(tpd.Select(qualifier, NameKinds.OuterSelectName(name.toTermName, levels)))
@@ -660,8 +652,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     case _ => if (x.isType) Some(x) else None
   }
 
-  def TypeTree_pos(self: TypeTree)(given Context): Position = self.sourcePos
-  def TypeTree_symbol(self: TypeTree)(given Context): Symbol = self.symbol
   def TypeTree_tpe(self: TypeTree)(given Context): Type = self.tpe.stripTypeVar
 
   type Inferred = tpd.TypeTree
