@@ -833,12 +833,10 @@ trait Printers
         case Typed(term, tpt) =>
           tpt.tpe match {
             case Types.Repeated(_) =>
+              printTree(term)
               term match {
-                case Repeated(_, _) =>
-                  printTree(term)
-                case _ =>
-                  printTree(term)
-                  this += ": " += highlightTypeDef("_*")
+                case Repeated(_, _) | Inlined(None, Nil, Repeated(_, _))  => this
+                case _ => this += ": " += highlightTypeDef("_*")
               }
             case _ =>
               inParens {
