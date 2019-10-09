@@ -35,8 +35,8 @@ class ExtractSemanticDB extends Phase {
   override def isCheckable: Boolean = false
 
   override def run(implicit ctx: Context): Unit = {
-    val extract = Extractor()
     val unit = ctx.compilationUnit
+    val extract = Extractor()
     extract.traverse(unit.tpdTree)
     ExtractSemanticDB.write(unit.source, extract.occurrences.toList)
   }
@@ -54,10 +54,11 @@ class ExtractSemanticDB extends Phase {
       override def default(key: Int) = Set[Symbol]()
     }
 
-    private val generated = new mutable.HashSet[SymbolOccurrence]
-
     /** The extracted symbol occurrences */
     val occurrences = new mutable.ListBuffer[SymbolOccurrence]()
+
+    /** The symbol occurrences generated so far, as a set */
+    private val generated = new mutable.HashSet[SymbolOccurrence]
 
     /** Add semanticdb name of the given symbol to string builder */
     private def addSymName(b: StringBuilder, sym: Symbol)(given ctx: Context): Unit =
@@ -83,7 +84,7 @@ class ExtractSemanticDB extends Phase {
         if alts.tail.nonEmpty then
           val idx = alts.indexOf(sym)
           assert(idx >= 0)
-          b.append('+').append(idx.toString)
+          b.append('+').append(idx)
 
       def addDescriptor(sym: Symbol): Unit =
         if sym.is(ModuleClass) then
@@ -98,8 +99,7 @@ class ExtractSemanticDB extends Phase {
           else if sym.isType then b.append('#')
           else if sym.isRealMethod then
             b.append('('); addOverloadIdx(sym); b.append(").")
-          else if sym.isTerm then b.append('.')
-          else throw new AssertionError(i"unhandled symbol: $sym: ${sym.info} with ${sym.flagsString}")
+          else b.append('.')
 
       /** The index of local symbol `sym`. Symbols with the same name and
        *  the same starting position have the same index.
@@ -140,9 +140,11 @@ class ExtractSemanticDB extends Phase {
       val (endLine, endCol) = lineCol(span.end)
       Some(Range(startLine, startCol, endLine, endCol))
 
+    /** Definitions of this symbol should be excluded from semanticdb */
     private def excludeDef(sym: Symbol)(given Context): Boolean =
       !sym.exists || sym.isLocalDummy || sym.is(Synthetic)
 
+    /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
     private def excludeUse(sym: Symbol, span: Span)(given Context): Boolean =
       excludeDef(sym) && span.start == span.end
 
@@ -157,7 +159,6 @@ class ExtractSemanticDB extends Phase {
         registerOccurrence(sym, span, SymbolOccurrence.Role.REFERENCE)
 
     override def traverse(tree: Tree)(given ctx: Context): Unit =
-      //println(i"reg $tree")
       tree match
         case tree: DefTree if !excludeDef(tree.symbol) =>
           registerOccurrence(tree.symbol, tree.span, SymbolOccurrence.Role.DEFINITION)
