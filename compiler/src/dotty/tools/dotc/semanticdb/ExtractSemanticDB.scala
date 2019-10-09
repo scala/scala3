@@ -34,12 +34,11 @@ class ExtractSemanticDB extends Phase {
   // Check not needed since it does not transform trees
   override def isCheckable: Boolean = false
 
-  override def run(implicit ctx: Context): Unit = {
+  override def run(implicit ctx: Context): Unit =
     val unit = ctx.compilationUnit
     val extract = Extractor()
     extract.traverse(unit.tpdTree)
     ExtractSemanticDB.write(unit.source, extract.occurrences.toList)
-  }
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser {
@@ -97,7 +96,7 @@ class ExtractSemanticDB extends Phase {
           addName(sym.name)
           if sym.is(Package) then b.append('/')
           else if sym.isType then b.append('#')
-          else if sym.isRealMethod then
+          else if sym.is(Method) && (!sym.is(Accessor) || sym.is(Mutable)) then
             b.append('('); addOverloadIdx(sym); b.append(").")
           else b.append('.')
 
@@ -116,14 +115,15 @@ class ExtractSemanticDB extends Phase {
               idx
         locals.getOrElseUpdate(sym, computeLocalIdx())
 
-      if sym.isRoot then
-        b.append("_root_")
-      else if sym.isEmptyPackage then
-        b.append("_empty_")
-      else if isGlobal(sym) then
-        addOwner(sym.owner); addDescriptor(sym)
-      else
-        b.append("local").append(localIdx(sym))
+      if sym.exists then
+        if sym.isRoot then
+          b.append("_root_")
+        else if sym.isEmptyPackage then
+          b.append("_empty_")
+        else if isGlobal(sym) then
+          addOwner(sym.owner); addDescriptor(sym)
+        else
+          b.append("local").append(localIdx(sym))
     end addSymName
 
     /** The semanticdb name of the given symbol */
