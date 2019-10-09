@@ -834,9 +834,9 @@ class Typer extends Namer
       case _ => untpd.TypeTree(tp)
     }
     def interpolateWildcards = new TypeMap {
-      def apply(t: Type) = t match
-        case WildcardType => newTypeVar(TypeBounds.empty)
-        case WildcardType(bounds: TypeBounds) => newTypeVar(bounds)
+      def apply(t: Type): Type = t match
+        case WildcardType(bounds: TypeBounds) =>
+          newTypeVar(apply(bounds.orElse(TypeBounds.empty)).bounds)
         case _ => mapOver(t)
     }
     pt.stripTypeVar.dealias match {
