@@ -81,7 +81,9 @@ object JavaNullInterop {
    *  @param alreadyNullable whether the type being mapped is already nullable (at the outermost level).
    *                         This is needed so that `JavaNullMap(A | B)` gives back `(A | B) | JavaNull`,
    *                         instead of `(A|JavaNull | B|JavaNull) | JavaNull`.
-   *  @param nonNullResultType whether the result type of the top function should be nullified.
+   *  @param nonNullResultType if true, then the current type is a method or generic method type,
+   *                           and we don't want to nullify its return type at the top level.
+   *                           This is useful e.g. for constructors.
    */
   private class JavaNullMap(var alreadyNullable: Boolean, var nonNullResultType: Boolean)(implicit ctx: Context) extends TypeMap {
     /** Should we nullify `tp` at the outermost level? */
@@ -109,15 +111,19 @@ object JavaNullInterop {
     def needsNullArgs(tp: AppliedType): Boolean = !tp.classSymbol.is(JavaDefined)
 
     override def apply(tp: Type): Type = {
+      // Fast version of Type::toJavaNullableUnion that doesn't check whether the type
+      // is already a union.
+      def toJavaNullableUnion(tpe: Type): Type = OrType(tpe, defn.JavaNullAliasType)
+
       tp match {
-        case tp: TypeRef if needsTopLevelNull(tp) => OrType(tp, defn.JavaNullAliasType)
+        case tp: TypeRef if needsTopLevelNull(tp) => toJavaNullableUnion(tp)
         case appTp @ AppliedType(tycons, targs) =>
           val oldAN = alreadyNullable
           alreadyNullable = false
           val targs2 = if (needsNullArgs(appTp)) targs map this else targs
           alreadyNullable = oldAN
           val appTp2 = derivedAppliedType(appTp, tycons, targs2)
-          if (needsTopLevelNull(tycons)) OrType(appTp2, defn.JavaNullAliasType) else appTp2
+          if (needsTopLevelNull(tycons)) toJavaNullableUnion(appTp2) else appTp2
         case ptp: PolyType =>
           derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
         case mtp: MethodType =>
@@ -133,8 +139,8 @@ object JavaNullInterop {
           // nullify(A & B) = (nullify(A) & nullify(B)) | JavaNull, but take care not to add
           // duplicate `JavaNull`s at the outermost level inside `A` and `B`.
           alreadyNullable = true
-          OrType(derivedAndType(tp, this(tp.tp1), this(tp.tp2)), defn.JavaNullAliasType)
-        case tp: TypeParamRef if needsTopLevelNull(tp) => OrType(tp, defn.JavaNullAliasType)
+          toJavaNullableUnion(derivedAndType(tp, this(tp.tp1), this(tp.tp2)))
+        case tp: TypeParamRef if needsTopLevelNull(tp) => toJavaNullableUnion(tp)
         case _ => tp
       }
     }
