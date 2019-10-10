@@ -26,6 +26,7 @@ import Decorators._
 import scala.internal.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
+import config.Config.silentTemplateIndent
 
 object Parsers {
 
@@ -124,13 +125,13 @@ object Parsers {
 
     /* ------------- ERROR HANDLING ------------------------------------------- */
     /** The offset where the last syntax error was reported, or if a skip to a
-      *  safepoint occurred afterwards, the offset of the safe point.
-      */
+     *  safepoint occurred afterwards, the offset of the safe point.
+     */
     protected var lastErrorOffset : Int = -1
 
     /** Issue an error at given offset if beyond last error offset
-      *  and update lastErrorOffset.
-      */
+     *  and update lastErrorOffset.
+     */
     def syntaxError(msg: => Message, offset: Int = in.offset): Unit =
       if (offset > lastErrorOffset) {
         val length = if (offset == in.offset && in.name != null) in.name.show.length else 0
@@ -337,6 +338,9 @@ object Parsers {
       offset
     }
 
+    def reportMissing(expected: Token): Unit =
+      syntaxError(ExpectedTokenButFound(expected, in.token))
+
     /** semi = nl {nl} | `;'
      *  nl  = `\n' // where allowed
      */
@@ -355,6 +359,17 @@ object Parsers {
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
             accept(SEMI)
         }
+
+    /** Under -language:Scala2 or -old-syntax, flag
+     *
+     *    extends p1 with       new p1 with      t1 with
+     *            p2                p2           t2
+     *
+     *  as a migration warning or error since that means something else under significant indentation.
+     */
+    def checkNotWithAtEOL(): Unit =
+      if (in.isScala2Mode || in.oldSyntax) && in.isAfterLineEnd then
+        in.errorOrMigrationWarning("`with` cannot be followed by new line, place at beginning of next line instead")
 
     def rewriteNotice(additionalOption: String = "") = {
       val optionStr = if (additionalOption.isEmpty) "" else " " ++ additionalOption
@@ -616,6 +631,7 @@ object Parsers {
 
     /** If indentation is not significant, check that this is not the start of a
      *  statement that's indented relative to the current region.
+     *  TODO: Drop if `with` is required before indented template definitions.
      */
     def checkNextNotIndented(): Unit = in.currentRegion match
       case r: IndentSignificantRegion if in.isNewLine =>
@@ -1249,10 +1265,14 @@ object Parsers {
       newLineOptWhenFollowedBy(LBRACE)
     }
 
-    def possibleTemplateStart(): Unit = {
-      in.observeIndented()
-      newLineOptWhenFollowedBy(LBRACE)
-    }
+    def possibleTemplateStart(isNew: Boolean = false): Unit =
+      if in.token == WITH then
+        in.nextToken()
+        if in.token != LBRACE && in.token != INDENT then
+          syntaxError(i"indented definitions or `{' expected")
+      else
+        if silentTemplateIndent && !isNew then in.observeIndented()
+        newLineOptWhenFollowedBy(LBRACE)
 
     def indentRegion[T](tag: EndMarkerTag)(op: => T): T = {
       val iw = in.currentRegion.indentWidth
@@ -1396,7 +1416,7 @@ object Parsers {
       makeParameter(name, typ(), mods | Param)
     }
 
-    /** InfixType ::= RefinedType {id [nl] refinedType}
+    /** InfixType ::= RefinedType {id [nl] RefinedType}
      */
     def infixType(): Tree = infixTypeRest(refinedType())
 
@@ -1407,7 +1427,7 @@ object Parsers {
     def infixTypeRest(t: Tree): Tree =
       infixOps(t, canStartTypeTokens, refinedType, isType = true, isOperator = !isPostfixStar)
 
-    /** RefinedType        ::=  WithType {Annotation | [nl] Refinement}
+    /** RefinedType   ::=  WithType {[nl | `with'] Refinement}
      */
     val refinedType: () => Tree = () => refinedTypeRest(withType())
 
@@ -1423,12 +1443,16 @@ object Parsers {
     def withType(): Tree = withTypeRest(annotType())
 
     def withTypeRest(t: Tree): Tree =
-      if (in.token == WITH) {
-        if (ctx.settings.strict.value)
-          deprecationWarning(DeprecatedWithOperator())
+      if in.token == WITH then
+        val withOffset = in.offset
         in.nextToken()
-        makeAndType(t, withType())
-      }
+        if in.token == LBRACE || in.token == INDENT then
+          t
+        else
+          checkNotWithAtEOL()
+          if (ctx.settings.strict.value)
+            deprecationWarning(DeprecatedWithOperator(), withOffset)
+          makeAndType(t, withType())
       else t
 
     /** AnnotType ::= SimpleType {Annotation}
@@ -1676,7 +1700,7 @@ object Parsers {
         else
           if (altToken == THEN || enclosedInParens) && in.isNewLine then
             in.observeIndented()
-          if !enclosedInParens && in.token != INDENT then accept(altToken)
+          if !enclosedInParens && in.token != INDENT then reportMissing(altToken)
           if (rewriteToNewSyntax(t.span))
             dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
         t
@@ -2125,7 +2149,8 @@ object Parsers {
       }
     }
 
-    /** SimpleExpr    ::= ‘new’ (ConstrApp {`with` ConstrApp} [TemplateBody] | TemplateBody)
+    /** SimpleExpr    ::=  ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
+     *                  |  ‘new’ TemplateBody
      */
     def newExpr(): Tree =
       indentRegion(NEW) {
@@ -2133,18 +2158,10 @@ object Parsers {
         def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
         possibleBracesStart()
         val parents =
-          if (in.isNestedStart) Nil
-          else constrApp() :: {
-            if (in.token == WITH) {
-              // Enable this for 3.1, when we drop `with` for inheritance:
-              //   in.errorUnlessInScala2Mode(
-              //     "anonymous class with multiple parents is no longer supported; use a named class instead")
-              in.nextToken()
-              tokenSeparated(WITH, constrApp)
-            }
-            else Nil
-          }
-        possibleBracesStart()
+          if in.token == LBRACE || in.token == WITH then Nil
+          else constrApps(commaOK = false, templateCanFollow = true)
+        colonAtEOLOpt()
+        possibleTemplateStart(isNew = true)
         parents match {
           case parent :: Nil if !in.isNestedStart =>
             reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
@@ -3331,7 +3348,7 @@ object Parsers {
       val parents =
         if (in.token == EXTENDS) {
           in.nextToken()
-          tokenSeparated(WITH, constrApp)
+          constrApps(commaOK = true, templateCanFollow = false)
         }
         else Nil
       Template(constr, parents, Nil, EmptyValDef, Nil)
@@ -3347,12 +3364,20 @@ object Parsers {
       case _ =>
         syntaxError(em"extension clause must start with a single regular parameter", start)
 
+    def checkExtensionMethod(stat: Tree): Unit = stat match {
+      case stat: DefDef =>
+        if stat.mods.is(Extension) then
+          syntaxError(i"no extension method allowed here since leading parameter was already given", stat.span)
+      case _ =>
+        syntaxError(i"extension clause can only define methods", stat.span)
+    }
 
     /** GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
      *                   |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
-     *                   |  [id ‘:’] [ExtParamClause] TemplateBody
+     *                   |  [id ‘:’] ExtParamClause ExtMethods
      *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
      *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause {GivenParamClause}
+     *  ExtMethods     ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
      */
     def givenDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
@@ -3381,6 +3406,7 @@ object Parsers {
           if in.token == COLON then
             in.nextToken()
             if in.token == LBRACE
+               || in.token == WITH
                || in.token == LBRACKET
                || in.token == LPAREN && followingIsParamOrGivenType()
             then
@@ -3393,8 +3419,10 @@ object Parsers {
               syntaxError("`<:' is only allowed for given with `inline' modifier")
             in.nextToken()
             TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
-          else if name.isEmpty && in.token != LBRACE then
-            tokenSeparated(COMMA, constrApp)
+          else if name.isEmpty
+                  && in.token != LBRACE && in.token != WITH
+                  && !hasExtensionParams
+          then tokenSeparated(COMMA, constrApp)
           else Nil
 
         val gdef =
@@ -3407,12 +3435,17 @@ object Parsers {
               case TypeBoundsTree(_, _) :: _ => syntaxError("`=' expected")
               case _ =>
             possibleTemplateStart()
-            if !hasExtensionParams then
+            if hasExtensionParams then
+              in.observeIndented()
+            else
               tparams = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
               vparamss = vparamss.map(_.map(vparam =>
                 vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
             val templ = templateBodyOpt(makeConstructor(tparams, vparamss), parents, Nil)
-            if tparams.isEmpty && vparamss.isEmpty || hasExtensionParams then ModuleDef(name, templ)
+            if hasExtensionParams then
+              templ.body.foreach(checkExtensionMethod)
+              ModuleDef(name, templ)
+            else if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
             else TypeDef(name.toTypeName, templ)
 
         finalizeDef(gdef, mods1, start)
@@ -3429,51 +3462,47 @@ object Parsers {
       if in.token == LPAREN then parArgumentExprss(wrapNew(t)) else t
     }
 
-    /** ConstrApps ::=  ConstrApp {‘with’ ConstrApp}  (to be deprecated in 3.1)
-     *               |  ConstrApp {‘,’ ConstrApp}
+    /** ConstrApps  ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
      */
-    def constrApps(): List[Tree] = {
+    def constrApps(commaOK: Boolean, templateCanFollow: Boolean): List[Tree] =
       val t = constrApp()
       val ts =
-        if (in.token == WITH) {
+        if in.token == WITH then
+          val lookahead = in.LookaheadScanner(indent = true)
+          lookahead.nextToken()
+          if templateCanFollow && (lookahead.token == LBRACE || lookahead.token == INDENT) then
+            Nil
+          else
+            in.nextToken()
+            checkNotWithAtEOL()
+            constrApps(commaOK, templateCanFollow)
+        else if commaOK && in.token == COMMA then
           in.nextToken()
-          tokenSeparated(WITH, constrApp)
-        }
-        else if (in.token == COMMA) {
-          in.nextToken()
-          tokenSeparated(COMMA, constrApp)
-        }
+          constrApps(commaOK, templateCanFollow)
         else Nil
       t :: ts
-    }
 
-    /** InheritClauses ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
+    /** Template          ::=  InheritClauses [TemplateBody]
+     *  InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
      */
-    def inheritClauses(): (List[Tree], List[Tree]) = {
-      val extended =
+    def template(constr: DefDef, isEnum: Boolean = false): Template = {
+      val parents =
         if (in.token == EXTENDS) {
           in.nextToken()
           if (in.token == LBRACE || in.token == COLONEOL) {
             in.errorOrMigrationWarning("`extends' must be followed by at least one parent")
             Nil
           }
-          else constrApps()
+          else constrApps(commaOK = true, templateCanFollow = true)
         }
         else Nil
+      newLinesOptWhenFollowedBy(nme.derives)
       val derived =
         if (isIdent(nme.derives)) {
           in.nextToken()
           tokenSeparated(COMMA, () => convertToTypeId(qualId()))
         }
         else Nil
-      (extended, derived)
-    }
-
-    /** Template          ::=  InheritClauses [TemplateBody]
-     */
-    def template(constr: DefDef, isEnum: Boolean = false): Template = {
-      newLinesOptWhenFollowedBy(nme.derives)
-      val (parents, derived) = inheritClauses()
       possibleTemplateStart()
       if (isEnum) {
         val (self, stats) = withinEnum(templateBody())
@@ -3496,7 +3525,8 @@ object Parsers {
           checkNextNotIndented()
           Template(constr, Nil, Nil, EmptyValDef, Nil)
 
-    /** TemplateBody ::= [nl] `{' TemplateStatSeq `}'
+    /** TemplateBody ::= [nl | `with'] `{' TemplateStatSeq `}'
+     *  EnumBody     ::=  [nl | ‘with’] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
      */
     def templateBodyOpt(constr: DefDef, parents: List[Tree], derived: List[Tree]): Template =
       val (self, stats) =
@@ -3524,7 +3554,7 @@ object Parsers {
       case x: RefTree => atSpan(start, pointOffset(pkg))(PackageDef(x, stats))
     }
 
-    /** Packaging ::= package QualId [nl] `{' TopStatSeq `}'
+    /** Packaging ::= package QualId [nl | `with'] `{' TopStatSeq `}'
      */
     def packaging(start: Int): Tree = {
       val pkg = qualId()
@@ -3713,23 +3743,23 @@ object Parsers {
               ts ++= topStatSeq()
             }
           }
-          else {
+          else
             val pkg = qualId()
+            var continue = false
             indentRegion(pkg) {
               possibleTemplateStart()
-              if (in.token == EOF)
+              if in.token == EOF then
                 ts += makePackaging(start, pkg, List())
-              else if (in.isNestedStart) {
+              else if in.isNestedStart then
                 ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()))
-                acceptStatSepUnlessAtEnd()
-                ts ++= topStatSeq()
-              }
-              else {
+                continue = true
+              else
                 acceptStatSep()
                 ts += makePackaging(start, pkg, topstats())
-              }
             }
-          }
+            if continue then
+              acceptStatSepUnlessAtEnd()
+              ts ++= topStatSeq()
         }
         else
           ts ++= topStatSeq()

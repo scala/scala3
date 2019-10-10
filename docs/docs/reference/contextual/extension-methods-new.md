@@ -3,9 +3,6 @@ layout: doc-page
 title: "Extension Methods"
 ---
 
-**Note** The syntax described in this section is currently under revision.
-[Here is the new version which will be implemented in Dotty 0.20](./extension-methods-new.html).
-
 Extension methods allow one to add methods to a type after the type is defined. Example:
 
 ```scala
@@ -83,47 +80,27 @@ So `circle.circumference` translates to `CircleOps.circumference(circle)`, provi
 
 ### Given Instances for Extension Methods
 
-Given instances that define extension methods can also be defined without a parent. E.g.,
+A special syntax allows to define a given instance for one or more extension methods without listing a parent type.
+Examples:
 
 ```scala
-given stringOps: {
-  def (xs: Seq[String]) longestStrings: Seq[String] = {
+given stringOps: (xs: Seq[String]) {
+  def longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
 
-given {
-  def (xs: List[T]) second[T] = xs.tail.head
+given [T](xs: List[T]) {
+  def second = xs.tail.head
+  def third[T]: T = xs.tail.tail.head
 }
 ```
+These given clauses define extension methods `longestStrings`, `second`, and `third`. All extension methods defined in such a given clause
+share the same leading parameters, which follow the `given`. The remainder of the extension methods is written as regular defs inside braces.
+
 If such given instances are anonymous (as in the second clause), their name is synthesized from the name of the first defined extension method.
 
-### Given Instances with Collective Parameters
-
-If a given instance has no parent but several extension methods one can pull out the left parameter section
-as well as any type parameters of these extension methods into the given instance itself.
-For instance, here is a given instance with two extension methods.
-```scala
-given listOps: {
-  def (xs: List[T]) second[T]: T = xs.tail.head
-  def (xs: List[T]) third[T]: T = xs.tail.tail.head
-}
-```
-The repetition in the parameters can be avoided by hoisting the parameters up into the given instance itself. The following version is a shorthand for the code above.
-```scala
-given listOps: [T](xs: List[T]) {
-  def second: T = xs.tail.head
-  def third: T = xs.tail.tail.head
-}
-```
-This syntax just adds convenience at the definition site. Applications of such extension methods are exactly the same as if their parameters were repeated in each extension method.
-Examples:
-```scala
-val xs = List(1, 2, 3)
-xs.second[Int]
-ListOps.third[T](xs)
-```
 
 ### Operators
 
@@ -172,6 +149,7 @@ to the [current syntax](../../internals/syntax.md).
 DefSig            ::=  ...
                     |  ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] DefParamClauses
 GivenDef          ::=  ...
-                       [GivenSig ‘:’] [ExtParamClause] TemplateBody
+                       [GivenSig ‘:’] [ExtParamClause] ExtMethods
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’ {GivenParamClause}
+ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 ```

@@ -36,7 +36,6 @@ The rules in detail are:
  - The enumerators of a `for`-expression can be written without enclosing parentheses or braces if they are followed by a `yield` or `do`.
  - A `do` in a `for`-expression expresses a `for`-loop.
 
-
 ### Rewrites
 
 The Dotty compiler can rewrite source code from old syntax and new syntax and back.

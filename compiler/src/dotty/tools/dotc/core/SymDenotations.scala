@@ -832,11 +832,12 @@ object SymDenotations {
                | Access to protected $this not permitted because enclosing ${ctx.owner.enclosingClass.showLocated}
                | is not a subclass of ${owner.showLocated} where target is defined""")
         else if
-          (!(  isType // allow accesses to types from arbitrary subclasses fixes #4737
+          !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
            || pre.derivesFrom(cls)
            || isConstructor
            || owner.is(ModuleClass) // don't perform this check for static members
-           ))
+           )
+        then
           fail(
             i"""
                | Access to protected ${symbol.show} not permitted because prefix type ${pre.widen.show}

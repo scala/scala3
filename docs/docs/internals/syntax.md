@@ -84,7 +84,6 @@ comment          ::=  ‘/*’ “any sequence of characters; nested comments ar
                    |  ‘//’ “any sequence of characters up to end of line”
 
 nl               ::=  “new line character”
-cnl              ::=  nl | "colon at eol"
 semi             ::=  ‘;’ |  nl {nl}
 ```
 
@@ -151,8 +150,8 @@ FunArgTypes       ::=  InfixType
                     |  ‘(’ ‘[given]’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
 MatchType         ::=  InfixType `match` TypeCaseClauses
-InfixType         ::=  RefinedType {id [cnl] RefinedType}                       InfixOp(t1, op, t2)
-RefinedType       ::=  WithType {[cnl] Refinement}                              RefinedTypeTree(t, ds)
+InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
+RefinedType       ::=  WithType {[nl | ‘with’] Refinement}                      RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
 SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
@@ -209,22 +208,23 @@ Ascription        ::=  ‘:’ InfixType                                        
 Catches           ::=  ‘catch’ Expr
 PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op)
 InfixExpr         ::=  PrefixExpr
-                    |  InfixExpr id [cnl] InfixExpr                              InfixOp(expr, op, expr)
+                    |  InfixExpr id [nl] InfixExpr                              InfixOp(expr, op, expr)
                     |  InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
-SimpleExpr        ::=  ‘new’ (ConstrApp [TemplateBody] | TemplateBody)          New(constr | templ)
+SimpleExpr        ::=  Path
+                    |  Literal
+                    |  ‘_’
                     |  BlockExpr
                     |  ‘$’ ‘{’ Block ‘}’
                     |  Quoted
                     |  quoteId     // only inside splices
-                    |  SimpleExpr1 [‘_’]                                        PostfixOp(expr, _)
-SimpleExpr1       ::=  Literal
-                    |  Path
-                    |  ‘_’
+                    |  ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]        New(constr | templ)
+                    |  ‘new’ TemplateBody
                     |  ‘(’ ExprsInParens ‘)’                                    Parens(exprs)
                     |  SimpleExpr ‘.’ id                                        Select(expr, id)
-                    |  SimpleExpr (TypeArgs | NamedTypeArgs)                    TypeApply(expr, args)
-                    |  SimpleExpr1 ArgumentExprs                                Apply(expr, args)
+                    |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
+                    |  SimpleExpr ArgumentExprs                                 Apply(expr, args)
+                    |  SimpleExpr ‘_’                                           PostfixOp(expr, _)
                     |  XmlExpr
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
                     |  ‘'’ ‘[’ Type ‘]’
@@ -234,8 +234,8 @@ ExprInParens      ::=  PostfixExpr ‘:’ Type                                 
 ParArgumentExprs  ::=  ‘(’ [‘given’] ExprsInParens ‘)’                          exprs
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’      exprs :+ Typed(expr, Ident(wildcardStar))
 ArgumentExprs     ::=  ParArgumentExprs
-                    |  [cnl] BlockExpr
-BlockExpr         ::=  ‘{’ CaseClauses | Block ‘}’
+                    |  [nl] BlockExpr
+BlockExpr         ::=  ‘{’ (CaseClauses | Block) ‘}’
 Block             ::=  {BlockStat semi} [BlockResult]                           Block(stats, expr?)
 BlockStat         ::=  Import
                     |  {Annotation [nl]} [‘implicit’ | ‘lazy’] Def
@@ -263,7 +263,7 @@ Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                            
 Pattern1          ::=  Pattern2 [‘:’ RefinedType]                               Bind(name, Typed(Ident(wildcard), tpe))
                     |  ‘given’ PatVar ‘:’ RefinedType
 Pattern2          ::=  [id ‘@’] InfixPattern                                    Bind(name, pat)
-InfixPattern      ::=  SimplePattern { id [cnl] SimplePattern }                 InfixOp(pat, op, pat)
+InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  InfixOp(pat, op, pat)
 SimplePattern     ::=  PatVar                                                   Ident(wildcard)
                     |  Literal                                                  Bind(name, Ident(wildcard))
                     |  ‘(’ [Patterns] ‘)’                                       Parens(pats) Tuple(pats)
@@ -388,19 +388,20 @@ ObjectDef         ::=  id [Template]                                            
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
 GivenDef          ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
                     |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
-                    |  [GivenSig ‘:’] [ExtParamClause] TemplateBody
+                    |  [GivenSig ‘:’] ExtParamClause ExtMethods
 GivenSig          ::=  [id] [DefTypeParamClause] {GivenParamClause}
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’ {GivenParamClause}
+ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 Template          ::=  InheritClauses [TemplateBody]                            Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
-ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
-                    |  ConstrApp {‘,’ ConstrApp}
+ConstrApps        ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
 ConstrApp         ::=  AnnotType {ParArgumentExprs}                             Apply(tp, args)
 ConstrExpr        ::=  SelfInvocation
                     |  ‘{’ SelfInvocation {semi BlockStat} ‘}’
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
 
-TemplateBody      ::=  [cnl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’ (self, stats)
+TemplateBody      ::=  [nl | ‘with’]
+                       ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’      (self, stats)
 TemplateStat      ::=  Import
                     |  Export
                     |  {Annotation [nl]} {Modifier} Def
@@ -410,7 +411,7 @@ TemplateStat      ::=  Import
 SelfType          ::=  id [‘:’ InfixType] ‘=>’                                  ValDef(_, name, tpt, _)
                     |  ‘this’ ‘:’ InfixType ‘=>’
 
-EnumBody          ::=  [cnl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+EnumBody          ::=  [nl | ‘with’] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
 EnumStat          ::=  TemplateStat
                     |  {Annotation [nl]} {Modifier} EnumCase
 EnumCase          ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps]] | ids)
@@ -422,8 +423,8 @@ TopStat           ::=  Import
                     |  Packaging
                     |  PackageObject
                     |
-Packaging         ::=  ‘package’ QualId [cnl] ‘{’ TopStatSeq ‘}’                 Package(qid, stats)
+Packaging         ::=  ‘package’ QualId [nl | ‘with’] ‘{’ TopStatSeq ‘}’        Package(qid, stats)
 PackageObject     ::=  ‘package’ ‘object’ ObjectDef                             object with package in mods.
 
-CompilationUnit   ::=  {‘package’ QualId (semi | cnl)} TopStatSeq               Package(qid, stats)
+CompilationUnit   ::=  {‘package’ QualId semi} TopStatSeq                       Package(qid, stats)
 ```

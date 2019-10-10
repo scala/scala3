@@ -3,7 +3,7 @@ layout: doc-page
 title: Optional Braces
 ---
 
-As an experimental feature, Scala 3 treats indentation as significant and allows
+As an experimental feature, Scala 3 enforces some rules on indentation and allows
 some occurrences of braces `{...}` to be optional.
 
  - First, some badly indented programs are ruled out, which means they are flagged with warnings.
@@ -12,7 +12,7 @@ some occurrences of braces `{...}` to be optional.
 
 ### Indentation Rules
 
-The compiler enforces three rules for well-indented programs, flagging violations as warnings.
+The compiler enforces two rules for well-indented programs, flagging violations as warnings.
 
  1. In a brace-delimited region, no statement is allowed to start to the left
     of the first statement after the opening brace that starts a new line.
@@ -34,14 +34,6 @@ The compiler enforces three rules for well-indented programs, flagging violation
       println(1)
       println(2)   // error: missing `{`
     ```
-
- 3. If significant indentation is turned off, code that follows a class or object definition (or similar) lacking a `{...}` body may not be indented more than that definition. This prevents misleading situations like:
-
-    ```scala
-    trait A
-      case class B() extends A // error: indented too far to the right
-    ```
-   It requires that the case class `C` to be written instead at the same level of indentation as the trait `A`.
 
 These rules still leave a lot of leeway how programs should be indented. For instance, they do not impose
 any restrictions on indentation within expressions, nor do they require that all statements of an indentation block line up exactly.
@@ -66,11 +58,10 @@ There are two rules:
     An indentation region can start
 
      - after the condition of an `if-else`, or
-     - at points where a set of definitions enclosed in braces is expected in a
-       class, object, given, or enum definition, in an enum case, or after a package clause, or
+     - after the leading parameter(s) of a given extension method clause, or
      - after one of the following tokens:
     ```
-    =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match
+    =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match  return  with
     ```
     If an `<indent>` is inserted, the indentation width of the token on the next line
     is pushed onto `IW`, which makes it the new current indentation width.
@@ -96,6 +87,66 @@ if x < 0
 ```
 Indentation tokens are only inserted in regions where newline statement separators are also inferred:
 at the toplevel, inside braces `{...}`, but not inside parentheses `(...)`, patterns or types.
+
+### New Role of With
+
+To make bracews optional for constructs like class bodies, the syntax of the language is changed so that a class body or similar construct may optionally be prefixed with `with`. Since `with` can start an indentation region, this means that all of the following syntaxes are allowed and are equivalent:
+```scala
+trait A {
+  def f: Any
+}
+class C(x: Int) extends A {
+  def f = x
+}
+type T = A {
+  def f: Int
+}
+```
+---
+```scala
+trait A with {
+  def f: Int
+}
+class C(x: Int) extends A with {
+  def f = x
+}
+type T = A with {
+  def f: Int
+}
+```
+---
+```scala
+trait A with
+  def f: Int
+
+class C(x: Int) extends A with
+  def f = x
+
+type T = A with
+  def f: Int
+```
+
+The syntax changes allowing this are as follows:
+```
+TemplateBody ::=  [‘with’] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’
+EnumBody     ::=  [‘with’] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+Packaging    ::=  ‘package’ QualId [‘with’] ‘{’ TopStatSeq ‘}’
+RefinedType  ::=  AnnotType {[‘with’] Refinement}
+```
+It is assumed here that braces following a `with` can be transparently replaced by an
+indentation region.
+
+With the new indentation rules, the previously allowed syntax
+```
+class A extends B with
+                C
+```
+becomes illegal since `C` above would be terated as a nested statement inside `A`. More generally, a `with` that separates parent constructors cannot be at the end of a line. One has to write
+```
+class A extends B
+           with C
+```
+instead (or replace the "`with`" by a "`,`"). When compiling in Scala-2 mode, a migration warning is issued for the illegal syntax and a (manual) rewrite is suggested.
 
 ### Spaces vs Tabs
 
@@ -165,46 +216,44 @@ It is recommended that `end` markers are used for code where the extent of an in
 Here is a (somewhat meta-circular) example of code using indentation. It provides a concrete representation of indentation widths as defined above together with efficient operations for constructing and comparing indentation widths.
 
 ```scala
-enum IndentWidth
+enum IndentWidth with
   case Run(ch: Char, n: Int)
   case Conc(l: IndentWidth, r: Run)
 
-  def <= (that: IndentWidth): Boolean =
-    this match
-      case Run(ch1, n1) =>
-        that match
-          case Run(ch2, n2) => n1 <= n2 && (ch1 == ch2 || n1 == 0)
-          case Conc(l, r)   => this <= l
-      case Conc(l1, r1) =>
-        that match
-          case Conc(l2, r2) => l1 == l2 && r1 <= r2
-          case _            => false
+  def <= (that: IndentWidth): Boolean = this match
+    case Run(ch1, n1) =>
+      that match
+        case Run(ch2, n2) => n1 <= n2 && (ch1 == ch2 || n1 == 0)
+        case Conc(l, r)   => this <= l
+    case Conc(l1, r1) =>
+      that match
+        case Conc(l2, r2) => l1 == l2 && r1 <= r2
+        case _            => false
 
   def < (that: IndentWidth): Boolean =
     this <= that && !(that <= this)
 
-  override def toString: String =
-    this match
-      case Run(ch, n) =>
-        val kind = ch match
-          case ' '  => "space"
-          case '\t' => "tab"
-          case _    => s"'$ch'-character"
-        val suffix = if n == 1 then "" else "s"
-        s"$n $kind$suffix"
-      case Conc(l, r) =>
-        s"$l, $r"
+  override def toString: String = this match
+    case Run(ch, n) =>
+      val kind = ch match
+        case ' '  => "space"
+        case '\t' => "tab"
+        case _    => s"'$ch'-character"
+      val suffix = if n == 1 then "" else "s"
+      s"$n $kind$suffix"
+    case Conc(l, r) =>
+      s"$l, $r"
 
-object IndentWidth
+object IndentWidth with
   private inline val MaxCached = 40
 
   private val spaces = IArray.tabulate(MaxCached + 1)(new Run(' ', _))
   private val tabs = IArray.tabulate(MaxCached + 1)(new Run('\t', _))
 
   def Run(ch: Char, n: Int): Run =
-    if n <= MaxCached && ch == ' '
+    if n <= MaxCached && ch == ' ' then
       spaces(n)
-    else if n <= MaxCached && ch == '\t'
+    else if n <= MaxCached && ch == '\t' then
       tabs(n)
     else
       new Run(ch, n)
