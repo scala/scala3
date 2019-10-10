@@ -12,7 +12,7 @@ object Test {
     fn(1)
   }
 
-  def fn[T : Type](v : T) = "ok"
+  def fn[T : TypeTag](v : T) = "ok"
 }
 
 object O

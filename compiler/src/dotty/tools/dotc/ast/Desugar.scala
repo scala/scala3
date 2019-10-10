@@ -292,7 +292,7 @@ object desugar {
     }
   }
 
-  /** Transforms a definition with a name starting with a `$` in a quoted pattern into a `quoted.binding.Binding` splice.
+  /** Transforms a definition with a name starting with a `$` in a quoted pattern into a `scala.quoted.binding.Binding` splice.
    *
    *  The desugaring consists in adding the `@patternBindHole` annotation. This annotation is used during typing to perform the full transformation.
    *

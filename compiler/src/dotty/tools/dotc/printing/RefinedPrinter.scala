@@ -374,7 +374,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else if (name.isTypeName) typeText(txt)
         else txt
       case tree @ Select(qual, name) =>
-        if (!printDebug && tree.hasType && tree.symbol == defn.QuotedType_splice) typeText("${") ~ toTextLocal(qual) ~ typeText("}")
+        if (!printDebug && tree.hasType && tree.symbol == defn.QuotedTypeTag_splice) typeText("${") ~ toTextLocal(qual) ~ typeText("}")
         else if (qual.isType) toTextLocal(qual) ~ "#" ~ typeText(toText(name))
         else toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided (name != nme.CONSTRUCTOR || printDebug))
       case tree: This =>
@@ -499,7 +499,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (lo eq hi) optText(lo)(" = " ~ _)
         else optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _)
       case Bind(name, body) =>
-        keywordText("given ").provided(tree.symbol.isOneOf(GivenOrImplicit) && !homogenizedView) ~ // Used for scala.quoted.Type in quote patterns (not pickled)
+        keywordText("given ").provided(tree.symbol.isOneOf(GivenOrImplicit) && !homogenizedView) ~ // Used for scala.quoted.TypeTag in quote patterns (not pickled)
         changePrec(InfixPrec) { toText(name) ~ " @ " ~ toText(body) }
       case Alternative(trees) =>
         changePrec(OrPrec) { toText(trees, " | ") }

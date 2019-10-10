@@ -34,7 +34,7 @@ object Var {
    *    x
    *  }
    */
-  def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U])(given QuoteContext): Expr[U] = '{
+  def apply[T: TypeTag, U: TypeTag](init: Expr[T])(body: Var[T] => Expr[U])(given QuoteContext): Expr[U] = '{
     var x = $init
     ${
       body(

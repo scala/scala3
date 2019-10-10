@@ -11,6 +11,6 @@ object Foo {
 
   def foo[T](t: T): Unit = ()
 
-  def bar[T: Type](t: Expr[T]): Boolean = true
+  def bar[T: TypeTag](t: Expr[T]): Boolean = true
 
 }

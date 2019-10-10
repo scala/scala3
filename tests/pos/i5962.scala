@@ -6,7 +6,7 @@ class MatchFactory1[T, S[_]] {
 
 object MatcherFactory1 {
 
-  def impl[T: Type, S[_], M >: MatchFactory1[T, S] <: MatchFactory1[T, S] : Type](self: Expr[M])(implicit qctx: QuoteContext, tpS: Type[S[T]]) =
+  def impl[T: TypeTag, S[_], M >: MatchFactory1[T, S] <: MatchFactory1[T, S] : TypeTag](self: Expr[M])(implicit qctx: QuoteContext, tpS: TypeTag[S[T]]) =
     '{ val a = ${self}; a.f }
 
 }

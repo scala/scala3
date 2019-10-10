@@ -4,7 +4,7 @@ import scala.quoted._
 case class Complex[T](re: T, im: T)
 
 object Complex {
-  implicit def complexIsLiftable[T: Type: Liftable]: Liftable[Complex[T]] = new Liftable {
+  implicit def complexIsLiftable[T: TypeTag: Liftable]: Liftable[Complex[T]] = new Liftable {
     def toExpr(c: Complex[T]) = '{ Complex(${Expr(c.re)}, ${Expr(c.im)}) }
   }
 
