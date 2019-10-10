@@ -16,6 +16,7 @@ import transform.TypeUtils._
 import transform.SymUtils._
 import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
+import typer.Applications.productSelectorTypes
 import reporting.trace
 
 final class AbsentContext
@@ -2136,19 +2137,52 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   /** Returns last check's debug mode, if explicitly enabled. */
   def lastTrace(): String = ""
 
-  /** Are `tp1` and `tp2` disjoint types?
+  private def typeparamCorrespondsToField(tycon: Type, tparam: TypeParamInfo): Boolean =
+    productSelectorTypes(tycon, null).exists {
+      case tp: TypeRef =>
+        tp.designator.eq(tparam) // Bingo!
+      case _ =>
+        false
+    }
+
+  /** Is `tp` an empty type?
    *
-   *  `true` implies that we found a proof; uncertainty default to `false`.
+   *  `true` implies that we found a proof; uncertainty defaults to `false`.
+   */
+  def provablyEmpty(tp: Type): Boolean =
+    tp.dealias match {
+      case tp if tp.isBottomType => true
+      case AndType(tp1, tp2) => provablyDisjoint(tp1, tp2)
+      case OrType(tp1, tp2) => provablyEmpty(tp1) && provablyEmpty(tp2)
+      case at @ AppliedType(tycon, args) =>
+        args.lazyZip(tycon.typeParams).exists { (arg, tparam) =>
+          tparam.paramVariance >= 0
+          && provablyEmpty(arg)
+          && typeparamCorrespondsToField(tycon, tparam)
+        }
+      case tp: TypeProxy =>
+        provablyEmpty(tp.underlying)
+      case _ => false
+    }
+
+
+  /** Are `tp1` and `tp2` provablyDisjoint types?
+   *
+   *  `true` implies that we found a proof; uncertainty defaults to `false`.
    *
    *  Proofs rely on the following properties of Scala types:
    *
    *  1. Single inheritance of classes
    *  2. Final classes cannot be extended
-   *  3. ConstantTypes with distinc values are non intersecting
+   *  3. ConstantTypes with distinct values are non intersecting
    *  4. There is no value of type Nothing
+   *
+   *  Note on soundness: the correctness of match types relies on on the
+   *  property that in all possible contexts, the same match type expression
+   *  is either stuck or reduces to the same case.
    */
-  def disjoint(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = {
-    // println(s"disjoint(${tp1.show}, ${tp2.show})")
+  def provablyDisjoint(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = {
+    // println(s"provablyDisjoint(${tp1.show}, ${tp2.show})")
     /** Can we enumerate all instantiations of this type? */
     def isClosedSum(tp: Symbol): Boolean =
       tp.is(Sealed) && tp.isOneOf(AbstractOrTrait) && !tp.hasAnonymousChild
@@ -2181,33 +2215,19 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             // of classes.
             true
           else if (isClosedSum(cls1))
-            decompose(cls1, tp1).forall(x => disjoint(x, tp2))
+            decompose(cls1, tp1).forall(x => provablyDisjoint(x, tp2))
           else if (isClosedSum(cls2))
-            decompose(cls2, tp2).forall(x => disjoint(x, tp1))
+            decompose(cls2, tp2).forall(x => provablyDisjoint(x, tp1))
           else
             false
       case (AppliedType(tycon1, args1), AppliedType(tycon2, args2)) if tycon1 == tycon2 =>
+        // It is possible to conclude that two types applies are disjoint by
+        // looking at covariant type parameters if the said type parameters
+        // are disjoin and correspond to fields.
+        // (Type parameter disjointness is not enough by itself as it could
+        // lead to incorrect conclusions for phantom type parameters).
         def covariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean =
-          disjoint(tp1, tp2) && {
-            // We still need to proof that `Nothing` is not a valid
-            // instantiation of this type parameter. We have two ways
-            // to get to that conclusion:
-            // 1. `Nothing` does not conform to the type parameter's lb
-            // 2. `tycon1` has a field typed with this type parameter.
-            //
-            // Because of separate compilation, the use of 2. is
-            // limited to case classes.
-            import dotty.tools.dotc.typer.Applications.productSelectorTypes
-            val lowerBoundedByNothing = tparam.paramInfo.bounds.lo eq NothingType
-            val typeUsedAsField =
-              productSelectorTypes(tycon1, null).exists {
-                case tp: TypeRef =>
-                  (tp.designator: Any) == tparam // Bingo!
-                case _ =>
-                  false
-              }
-            !lowerBoundedByNothing || typeUsedAsField
-          }
+          provablyDisjoint(tp1, tp2) && typeparamCorrespondsToField(tycon1, tparam)
 
         args1.lazyZip(args2).lazyZip(tycon1.typeParams).exists {
           (arg1, arg2, tparam) =>
@@ -2236,29 +2256,29 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
               }
         }
       case (tp1: HKLambda, tp2: HKLambda) =>
-        disjoint(tp1.resType, tp2.resType)
+        provablyDisjoint(tp1.resType, tp2.resType)
       case (_: HKLambda, _) =>
-        // The intersection of these two types would be ill kinded, they are therefore disjoint.
+        // The intersection of these two types would be ill kinded, they are therefore provablyDisjoint.
         true
       case (_, _: HKLambda) =>
         true
       case (tp1: OrType, _)  =>
-        disjoint(tp1.tp1, tp2) && disjoint(tp1.tp2, tp2)
+        provablyDisjoint(tp1.tp1, tp2) && provablyDisjoint(tp1.tp2, tp2)
       case (_, tp2: OrType)  =>
-        disjoint(tp1, tp2.tp1) && disjoint(tp1, tp2.tp2)
+        provablyDisjoint(tp1, tp2.tp1) && provablyDisjoint(tp1, tp2.tp2)
       case (tp1: AndType, tp2: AndType) =>
-        (disjoint(tp1.tp1, tp2.tp1) || disjoint(tp1.tp2, tp2.tp2)) &&
-        (disjoint(tp1.tp1, tp2.tp2) || disjoint(tp1.tp2, tp2.tp1))
+        (provablyDisjoint(tp1.tp1, tp2.tp1) || provablyDisjoint(tp1.tp2, tp2.tp2)) &&
+        (provablyDisjoint(tp1.tp1, tp2.tp2) || provablyDisjoint(tp1.tp2, tp2.tp1))
       case (tp1: AndType, _) =>
-        disjoint(tp1.tp2, tp2) || disjoint(tp1.tp1, tp2)
+        provablyDisjoint(tp1.tp2, tp2) || provablyDisjoint(tp1.tp1, tp2)
       case (_, tp2: AndType) =>
-        disjoint(tp1, tp2.tp2) || disjoint(tp1, tp2.tp1)
+        provablyDisjoint(tp1, tp2.tp2) || provablyDisjoint(tp1, tp2.tp1)
       case (tp1: TypeProxy, tp2: TypeProxy) =>
-        disjoint(tp1.underlying, tp2) || disjoint(tp1, tp2.underlying)
+        provablyDisjoint(tp1.underlying, tp2) || provablyDisjoint(tp1, tp2.underlying)
       case (tp1: TypeProxy, _) =>
-        disjoint(tp1.underlying, tp2)
+        provablyDisjoint(tp1.underlying, tp2)
       case (_, tp2: TypeProxy) =>
-        disjoint(tp1, tp2.underlying)
+        provablyDisjoint(tp1, tp2.underlying)
       case _ =>
         false
     }
@@ -2419,6 +2439,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       }.apply(tp)
 
       val defn.MatchCase(pat, body) = cas1
+
       if (isSubType(scrut, pat))
         // `scrut` is a subtype of `pat`: *It's a Match!*
         Some {
@@ -2432,8 +2453,8 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         }
       else if (isSubType(widenAbstractTypes(scrut), widenAbstractTypes(pat)))
         Some(NoType)
-      else if (disjoint(scrut, pat))
-        // We found a proof that `scrut` and  `pat` are incompatible.
+      else if (provablyDisjoint(scrut, pat))
+        // We found a proof that `scrut` and `pat` are incompatible.
         // The search continues.
         None
       else
@@ -2445,7 +2466,25 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       case Nil => NoType
     }
 
-    inFrozenConstraint(recur(cases))
+    inFrozenConstraint {
+      // Empty types break the basic assumption that if a scrutinee and a
+      // pattern are disjoint it's OK to reduce passed that pattern. Indeed,
+      // empty types viewed as a set of value is always a subset of any other
+      // types. As a result, we first check that the scrutinee isn't empty
+      // before proceeding with reduction. See `tests/neg/6570.scala` and
+      // `6570-1.scala` for examples that exploit emptiness to break match
+      // type soundness.
+
+      // If we revered the uncertainty case of this empty check, that is,
+      // `!provablyNonEmpty` instead of `provablyEmpty`, that would be
+      // obviously sound, but quite restrictive. With the current formulation,
+      // we need to be careful that `provablyEmpty` covers all the conditions
+      // used to conclude disjointness in `provablyDisjoint`.
+      if (provablyEmpty(scrut))
+        NoType
+      else
+        recur(cases)
+    }
   }
 }
 
