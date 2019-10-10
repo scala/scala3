@@ -9,16 +9,15 @@ trait PrinterOps extends Core { self: Reflection =>
   implicit class TreeShowDeco(tree: Tree) {
     /** Shows the tree as extractors */
     def showExtractors(given ctx: Context): String =
-      val printers = new Printers(self)
-      new printers.ExtractorsPrinter().showTree(tree)
+      new ExtractorsPrinter[self.type](self).showTree(tree)
 
     /** Shows the tree as fully typed source code */
-    def show(given ctx: Context): String = show(SyntaxHighlight.plain)
+    def show(given ctx: Context): String =
+      show(SyntaxHighlight.plain)
 
     /** Shows the tree as fully typed source code */
     def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
-      val printers = new Printers(self)
-      new printers.SourceCodePrinter(syntaxHighlight).showTree(tree)
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showTree(tree)
 
   }
 
@@ -26,64 +25,57 @@ trait PrinterOps extends Core { self: Reflection =>
   implicit class TypeOrBoundsShowDeco(tpe: TypeOrBounds) {
     /** Shows the tree as extractors */
     def showExtractors(given ctx: Context): String =
-      val printers = new Printers(self)
-      new printers.ExtractorsPrinter().showTypeOrBounds(tpe)
+      new ExtractorsPrinter[self.type](self).showTypeOrBounds(tpe)
 
     /** Shows the tree as fully typed source code */
-    def show(given ctx: Context): String = show(SyntaxHighlight.plain)
+    def show(given ctx: Context): String =
+      show(SyntaxHighlight.plain)
 
     /** Shows the tree as fully typed source code */
     def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
-      val printers = new Printers(self)
-      new printers.SourceCodePrinter(syntaxHighlight).showTypeOrBounds(tpe)
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showTypeOrBounds(tpe)
   }
 
   /** Adds `show` as an extension method of a `Constant` */
   implicit class ConstantShowDeco(const: Constant) {
     /** Shows the tree as extractors */
     def showExtractors(given ctx: Context): String =
-      val printers = new Printers(self)
-      new printers.ExtractorsPrinter().showConstant(const)
+      new ExtractorsPrinter[self.type](self).showConstant(const)
 
     /** Shows the tree as fully typed source code */
     def show(given ctx: Context): String = show(SyntaxHighlight.plain)
 
     /** Shows the tree as fully typed source code */
     def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
-      val printers = new Printers(self)
-      new printers.SourceCodePrinter(syntaxHighlight).showConstant(const)
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showConstant(const)
   }
 
   /** Adds `show` as an extension method of a `Symbol` */
   implicit class SymbolShowDeco(symbol: Symbol) {
     /** Shows the tree as extractors */
     def showExtractors(given ctx: Context): String =
-      val printers = new Printers(self)
-      new printers.ExtractorsPrinter().showSymbol(symbol)
+      new ExtractorsPrinter[self.type](self).showSymbol(symbol)
 
     /** Shows the tree as fully typed source code */
     def show(given ctx: Context): String = show(SyntaxHighlight.plain)
 
     /** Shows the tree as fully typed source code */
     def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
-      val printers = new Printers(self)
-      new printers.SourceCodePrinter(syntaxHighlight).showSymbol(symbol)
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showSymbol(symbol)
   }
 
   /** Adds `show` as an extension method of a `Flags` */
   implicit class FlagsShowDeco(flags: Flags) {
     /** Shows the tree as extractors */
     def showExtractors(given ctx: Context): String =
-      val printers = new Printers(self)
-      new printers.ExtractorsPrinter().showFlags(flags)
+      new ExtractorsPrinter[self.type](self).showFlags(flags)
 
     /** Shows the tree as fully typed source code */
     def show(given ctx: Context): String = show(SyntaxHighlight.plain)
 
     /** Shows the tree as fully typed source code */
     def show(syntaxHighlight: SyntaxHighlight)(given ctx: Context): String =
-      val printers = new Printers(self)
-      new printers.SourceCodePrinter(syntaxHighlight).showFlags(flags)
+      new SourceCodePrinter[self.type](self)(syntaxHighlight).showFlags(flags)
   }
 
 
