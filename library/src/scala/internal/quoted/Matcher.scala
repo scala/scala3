@@ -27,7 +27,7 @@ private[quoted] object Matcher {
         implicit val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
         val matchings = scrutineeTerm.underlyingArgument =?= patternTerm.underlyingArgument
         // After matching and doing all subtype checks, we have to aproximate all the type bindings
-        // that we have found and seal them in a quoted.Type
+        // that we have found and seal them in a quoted.TypeTag
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performace
             case x: SymBinding => internal.Context_GADT_approximation(summon[Context])(x.sym, !x.fromAbove).seal
@@ -47,7 +47,7 @@ private[quoted] object Matcher {
         implicit val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
         val matchings = scrutineeTypeTree =?= patternTypeTree
         // After matching and doing all subtype checks, we have to aproximate all the type bindings
-        // that we have found and seal them in a quoted.Type
+        // that we have found and seal them in a quoted.TypeTag
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performace
             case x: SymBinding => internal.Context_GADT_approximation(summon[Context])(x.sym, !x.fromAbove).seal

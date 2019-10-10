@@ -12,7 +12,7 @@ def mcrProxy(expr: Expr[Boolean])(given QuoteContext): Expr[Unit] = {
   res
 }
 
-def mcrImpl[T](func: Expr[Seq[Box[T]] => Unit], expr: Expr[T])(given ctx: QuoteContext, tt: Type[T]): Expr[Unit] = {
+def mcrImpl[T](func: Expr[Seq[Box[T]] => Unit], expr: Expr[T])(given ctx: QuoteContext, tt: TypeTag[T]): Expr[Unit] = {
   import ctx.tasty._
   val arg = Expr.ofSeq(Seq('{(Box($expr))}))
   Expr.betaReduce(func)(arg)

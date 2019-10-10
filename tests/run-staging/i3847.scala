@@ -3,7 +3,7 @@ import scala.quoted.staging._
 import scala.reflect.ClassTag
 
 object Arrays {
-  implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T], ct: Expr[ClassTag[T]]): Liftable[Array[T]] = {
+  implicit def ArrayIsLiftable[T: Liftable](implicit t: TypeTag[T], ct: Expr[ClassTag[T]]): Liftable[Array[T]] = {
     new Liftable[Array[T]] {
       def toExpr(arr: Array[T]) = '{
         new Array[$t](${Expr(arr.length)})($ct)

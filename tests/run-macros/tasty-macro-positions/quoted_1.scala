@@ -18,7 +18,7 @@ object Macros {
     }
   }
 
-  def impl2[T](x: quoted.Type[T])(given qctx: QuoteContext): Expr[Unit] = {
+  def impl2[T](x: TypeTag[T])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty.{_, given}
     val pos = x.unseal.pos
     val code = x.unseal.show

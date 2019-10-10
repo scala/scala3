@@ -5,7 +5,7 @@ import scala.quoted.matching._
 
 inline def f1[T]() = ${ f1Impl[T] }
 
-def f1Impl[T: Type](given QuoteContext) = {
+def f1Impl[T: TypeTag](given QuoteContext) = {
   searchImplicitExpr[Ordering[T]] match {
     case Some(ord) => '{ new TreeSet[T]()($ord) }
     case _ => '{ new HashSet[T] }
