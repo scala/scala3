@@ -53,15 +53,15 @@ trait TypeAssigner {
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
         parentType.findMember(decl.name, cls.thisType,
-          required = EmptyFlags, excluded = Private)
-          .suchThat(decl.matches(_))
+          required = EmptyFlags, excluded = Private
+        ).suchThat(decl.matches(_))
       val inheritedInfo = inherited.info
       val isPolyFunctionApply = decl.name == nme.apply && (parent <:< defn.PolyFunctionType)
       if isPolyFunctionApply
          || inheritedInfo.exists
+            && !decl.isClass
             && decl.info.widenExpr <:< inheritedInfo.widenExpr
             && !(inheritedInfo.widenExpr <:< decl.info.widenExpr)
-            && !decl.isClass
       then
         val r = RefinedType(parent, decl.name, decl.info)
         typr.println(i"add ref $parent $decl --> " + r)
