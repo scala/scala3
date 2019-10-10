@@ -32,7 +32,7 @@ object Liftable {
   private class PrimitiveLiftable[T <: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends Liftable[T] {
     /** Lift a primitive value `n` into `'{ n }` */
     def toExpr(x: T) = (given qctx) => {
-      import qctx.tasty._
+      import qctx.tasty.{_, given}
       Literal(Constant(x)).seal.asInstanceOf[Expr[T]]
     }
   }
@@ -40,7 +40,7 @@ object Liftable {
   given ClassIsLiftable[T] : Liftable[Class[T]] = new Liftable[Class[T]] {
     /** Lift a `Class[T]` into `'{ classOf[T] }` */
     def toExpr(x: Class[T]) = (given qctx) => {
-      import qctx.tasty._
+      import qctx.tasty.{_, given}
       Ref(defn.Predef_classOf).appliedToType(Type(x)).seal.asInstanceOf[Expr[Class[T]]]
     }
   }

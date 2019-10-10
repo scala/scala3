@@ -82,7 +82,7 @@ object StringContextMacro {
    *  quotes an error if the given Expr does not contain a list of arguments
    */
   def getArgsExprs(argsExpr: Expr[Seq[Any]])(given qctx: QuoteContext): Option[List[Expr[Any]]] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     argsExpr.unseal.underlyingArgument match {
       case Typed(Repeated(args, _), _) =>
         Some(args.map(_.seal))
@@ -99,7 +99,7 @@ object StringContextMacro {
    *  @return the Expr containing the formatted and interpolated String or an error/warning if the parameters are not correct
    */
   private def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(given qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     val sourceFile = strCtxExpr.unseal.pos.sourceFile
 
     val (partsExpr, parts) = getPartsExprs(strCtxExpr) match {
@@ -165,7 +165,7 @@ object StringContextMacro {
    *  @return the Expr containing the formatted and interpolated String or an error/warning report if the parameters are not correct
    */
   def interpolate(parts0 : List[String], args : List[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter)(given qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
 
     /** Checks if the number of arguments are the same as the number of formatting strings
      *

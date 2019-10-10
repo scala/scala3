@@ -9,7 +9,7 @@ object Macros {
   inline def fun3[T]: Unit = ${ impl2('[T]) }
 
   def impl(x: Expr[Any])(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     val pos = x.unseal.underlyingArgument.pos
     val code = x.unseal.underlyingArgument.show
     '{
@@ -19,7 +19,7 @@ object Macros {
   }
 
   def impl2[T](x: quoted.Type[T])(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     val pos = x.unseal.pos
     val code = x.unseal.show
     '{
@@ -30,7 +30,7 @@ object Macros {
 
   def posStr(qctx: QuoteContext)(pos: qctx.tasty.Position): Expr[String] = {
     given QuoteContext = qctx
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     Expr(s"${pos.sourceFile.jpath.getFileName.toString}:[${pos.start}..${pos.end}]")
   }
 }
