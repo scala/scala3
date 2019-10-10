@@ -2140,14 +2140,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   private def typeparamCorrespondsToField(tycon: Type, tparam: TypeParamInfo): Boolean =
     productSelectorTypes(tycon, null).exists {
       case tp: TypeRef =>
-        (tp.designator: Any) == tparam // Bingo!
+        tp.designator.eq(tparam) // Bingo!
       case _ =>
         false
     }
 
   /** Is `tp` an empty type?
    *
-   *  `true` implies that we found a proof; uncertainty default to `false`.
+   *  `true` implies that we found a proof; uncertainty defaults to `false`.
    */
   def provablyEmpty(tp: Type): Boolean =
     tp.dealias match {
@@ -2156,9 +2156,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
       case OrType(tp1, tp2) => provablyEmpty(tp1) && provablyEmpty(tp2)
       case at @ AppliedType(tycon, args) =>
         args.lazyZip(tycon.typeParams).exists { (arg, tparam) =>
-          tparam.paramVariance >= 0 &&
-          provablyEmpty(arg)        &&
-          typeparamCorrespondsToField(tycon, tparam)
+          tparam.paramVariance >= 0
+          && provablyEmpty(arg)
+          && typeparamCorrespondsToField(tycon, tparam)
         }
       case tp: TypeProxy =>
         provablyEmpty(tp.underlying)
@@ -2168,7 +2168,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
 
   /** Are `tp1` and `tp2` provablyDisjoint types?
    *
-   *  `true` implies that we found a proof; uncertainty default to `false`.
+   *  `true` implies that we found a proof; uncertainty defaults to `false`.
    *
    *  Proofs rely on the following properties of Scala types:
    *
@@ -2178,7 +2178,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  4. There is no value of type Nothing
    *
    *  Note on soundness: the correctness of match types relies on on the
-   *  property that in all possible contexts, a same match type expression
+   *  property that in all possible contexts, the same match type expression
    *  is either stuck or reduces to the same case.
    */
   def provablyDisjoint(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = {
@@ -2221,8 +2221,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
           else
             false
       case (AppliedType(tycon1, args1), AppliedType(tycon2, args2)) if tycon1 == tycon2 =>
-        // It is possible to conclude that two types applies are disjoints by
-        // looking at covariant type parameters if The said type parameters
+        // It is possible to conclude that two types applies are disjoint by
+        // looking at covariant type parameters if the said type parameters
         // are disjoin and correspond to fields.
         // (Type parameter disjointness is not enough by itself as it could
         // lead to incorrect conclusions for phantom type parameters).
