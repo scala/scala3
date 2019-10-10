@@ -18,8 +18,7 @@ object ReflectionImpl {
     val syntaxHighlight =
       if (ctx.settings.color.value == "always") SyntaxHighlight.ANSI
       else SyntaxHighlight.plain
-    val printers = new scala.tasty.reflect.Printers(refl)
-    new printers.SourceCodePrinter(syntaxHighlight).showTree(reflTree)(given reflCtx)
+    new scala.tasty.reflect.SourceCodePrinter[refl.type](refl)(syntaxHighlight).showTree(reflTree)(given reflCtx)
   }
 }
 
