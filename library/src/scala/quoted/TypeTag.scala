@@ -15,7 +15,8 @@ package quoted {
   }
 
   // TODO remove after reference compiler update
-  @deprecated("Replaced by scala.quoted.TypeTag", "")
+  @deprecated("scala.quoted.Type was replaced by scala.quoted.TypeTag", "")
+  @scala.annotation.implicitNotFound("Could not find scala.quoted.Type[${T}].\nscala.quoted.Type was replaced by scala.quoted.TypeTag")
   sealed trait Type[T <: AnyKind] extends TypeTag[T]
 
   /** Some basic type tags, currently incomplete */
