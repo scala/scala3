@@ -305,7 +305,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /** Does the given space contain just the value `null`? */
   def isNullSpace(space: Space): Boolean = space match {
-    case Typ(tpe, _) => tpe =:= constantNullType || tpe.isNullType
+    case Typ(tpe, _) => tpe.dealias == constantNullType || tpe.isNullType
     case Or(spaces) => spaces.forall(isNullSpace)
     case _ => false
   }
