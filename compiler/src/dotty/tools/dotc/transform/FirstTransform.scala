@@ -62,7 +62,6 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
           // must derive from the type of the owner of `length`, which is `String`. Because we don't
           // know which `JavaNull`s were used to find the `length` member, we conservatively remove
           // all of them.
-          // TODO(abeln): is it too expensive to call `stripAllJavaNull` for all selections?
           qual.tpe.stripAllJavaNull
         } else {
           qual.tpe

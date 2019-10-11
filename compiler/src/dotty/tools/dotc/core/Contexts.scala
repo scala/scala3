@@ -146,9 +146,6 @@ object Contexts {
     protected def gadt_=(gadt: GadtConstraint): Unit = _gadt = gadt
     final def gadt: GadtConstraint = _gadt
 
-    /** The terms currently known to be non-null (in spite of their declared type) */
-    def flowFacts: FlowFacts = store(flowFactsLoc)
-
     /** The history of implicit searches that are currently active */
     private[this] var _searchHistory: SearchHistory = null
     protected def searchHistory_= (searchHistory: SearchHistory): Unit = _searchHistory = searchHistory
@@ -212,6 +209,9 @@ object Contexts {
 
     /**  The current compiler-run profiler */
     def profiler: Profiler = store(profilerLoc)
+
+    /** The terms currently known to be non-null (in spite of their declared type) */
+    def flowFacts: FlowFacts = store(flowFactsLoc)
 
     /** The new implicit references that are introduced by this scope */
     protected var implicitsCache: ContextualImplicits = null
@@ -546,10 +546,6 @@ object Contexts {
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
     def setGadt(gadt: GadtConstraint): this.type = { this.gadt = gadt; this }
     def setFreshGADTBounds: this.type = setGadt(gadt.fresh)
-    def addFlowFacts(facts: FlowFacts): this.type = {
-      assert(settings.YexplicitNulls.value)
-      updateStore(flowFactsLoc, store(flowFactsLoc) ++ facts)
-    }
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
     def setSource(source: SourceFile): this.type = { this.source = source; this }
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
@@ -569,6 +565,10 @@ object Contexts {
     def setRun(run: Run): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
     def setFreshNames(freshNames: FreshNameCreator): this.type = updateStore(freshNamesLoc, freshNames)
+    def addFlowFacts(facts: FlowFacts): this.type = {
+      assert(settings.YexplicitNulls.value)
+      updateStore(flowFactsLoc, store(flowFactsLoc) ++ facts)
+    }
 
     def setProperty[T](key: Key[T], value: T): this.type =
       setMoreProperties(moreProperties.updated(key, value))

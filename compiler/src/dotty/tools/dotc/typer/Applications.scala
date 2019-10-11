@@ -858,22 +858,20 @@ trait Applications extends Compatibility {
 
       /** Type application where arguments come from prototype, and no implicits are inserted */
       def simpleApply(fun1: Tree, proto: FunProto)(implicit ctx: Context): Tree = {
-        val ctx1 = if (ctx.explicitNulls) {
+        implicit val ctxWithFacts: Context = if (ctx.explicitNulls) {
           // The flow facts of lhs are cached in the FlowFactsOnTree attachment
           val facts = fun1.getAttachment(Typer.FlowFactsOnTree) match {
             case Some(fs) => fs
             case None =>
-              val fs = FlowTyper.inferWithinCond(fun1)
+              val fs = FlowTyper.inferWithinCond(fun1)(ctx)
               fun1.putAttachment(Typer.FlowFactsOnTree, fs)
               fs
           }
           if (facts.isEmpty) ctx else ctx.fresh.addFlowFacts(facts)
-        } else {
-          ctx
         }
+        else ctx
 
-        // Separate into a function so we can pass the updated context.
-        def proc(implicit ctx: Context): tpd.Tree = methPart(fun1).tpe match {
+        methPart(fun1).tpe match {
           case funRef: TermRef =>
             val app =
               if (proto.allArgTypesAreCurrent())
@@ -884,8 +882,6 @@ trait Applications extends Compatibility {
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }
-
-        proc(ctx1)
       }
 
       /** Try same application with an implicit inserted around the qualifier of the function
