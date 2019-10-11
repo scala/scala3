@@ -4,8 +4,8 @@ title: "TASTy Reflect"
 ---
 
 TASTy Reflect enables inspection and construction of Typed Abstract Syntax Trees
-(Typed-AST). It may be used on quoted expressions (`scala.quoted.Expr`) and quoted
-types (`scala.quoted.TypeTag`) from [Macros](./macros.md) or on full TASTy files.
+(Typed-AST). It may be used on quoted expressions (`quoted.Expr`) and quoted
+types (`quoted.Type`) from [Macros](./macros.md) or on full TASTy files.
 
 If you are writing macros, please first read [Macros](./macros.md).
 You may find all you need without using TASTy Reflect.
@@ -13,7 +13,7 @@ You may find all you need without using TASTy Reflect.
 
 ## API: From quotes and splices to TASTy reflect trees and back
 
-With `scala.quoted.Expr` and `scala.quoted.TypeTag` we can compute code but also analyze code
+With `quoted.Expr` and `quoted.Type` we can compute code but also analyze code
 by inspecting the ASTs. [Macros](./macros.md) provides the guarantee that the
 generation of code will be type-correct. Using TASTy Reflect will break these
 guarantees and may fail at macro expansion time, hence additional explicit
@@ -36,8 +36,8 @@ def natConstImpl(x: Expr[Int])(given qctx: QuoteContext): Expr[Int] = {
 
 ### Sealing and Unsealing
 
-`import qctx.tasty.{_, given}` will provide an `unseal` extension method on `scala.quoted.Expr`
-and `scala.quoted.TypeTag` which returns a `qctx.tasty.Term` that represents the tree of
+`import qctx.tasty.{_, given}` will provide an `unseal` extension method on `quoted.Expr`
+and `quoted.Type` which returns a `qctx.tasty.Term` that represents the tree of
 the expression and `qctx.tasty.TypeTree` that represents the tree of the type
 respectively. It will also import all extractors and methods on TASTy Reflect
 trees. For example the `Literal(_)` extractor used below.
@@ -65,7 +65,7 @@ To easily know which extractors are needed, the `showExtractors` method on a
 `qctx.tasty.Term` returns the string representation of the extractors.
 
 The method `qctx.tasty.Term.seal[T]` provides a way to go back to a
-`scala.quoted.Expr[Any]`. Note that the type is `Expr[Any]`. Consequently, the type
+`quoted.Expr[Any]`. Note that the type is `Expr[Any]`. Consequently, the type
 must be set explicitly with a checked `cast` call. If the type does not conform
 to it an exception will be thrown. In the code above, we could have replaced
 `Expr(n)` by `xTree.seal.cast[Int]`.

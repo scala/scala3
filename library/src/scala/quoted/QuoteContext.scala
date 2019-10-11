@@ -17,7 +17,7 @@ class QuoteContext(val tasty: scala.tasty.Reflection) {
     expr.unseal.show(syntaxHighlight)
   }
 
-  def show(tpe: TypeTag[_], syntaxHighlight: SyntaxHighlight): String = {
+  def show(tpe: Type[_], syntaxHighlight: SyntaxHighlight): String = {
     import tasty.{_, given}
     tpe.unseal.show(syntaxHighlight)
   }

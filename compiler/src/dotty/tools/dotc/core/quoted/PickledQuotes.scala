@@ -35,14 +35,14 @@ object PickledQuotes {
     }
 
   /** Transform the expression into its fully spliced Tree */
-  def quotedExprToTree[T](expr: scala.quoted.Expr[T])(implicit ctx: Context): Tree = {
+  def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree = {
     val expr1 = expr.asInstanceOf[TastyTreeExpr[Tree]]
     QuoteContext.checkScopeId(expr1.scopeId)
     healOwner(expr1.tree)
   }
 
   /** Transform the expression into its fully spliced TypeTree */
-  def quotedTypeToTree(tpe: scala.quoted.TypeTag[?])(implicit ctx: Context): Tree = {
+  def quotedTypeToTree(tpe: quoted.Type[?])(implicit ctx: Context): Tree = {
     val tpe1 = tpe.asInstanceOf[TreeType[Tree]]
     QuoteContext.checkScopeId(tpe1.scopeId)
     healOwner(tpe1.typeTree)

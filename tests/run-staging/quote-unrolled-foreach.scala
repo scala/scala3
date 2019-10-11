@@ -54,7 +54,7 @@ object Test {
     }
   }
 
-  def foreach1Tpe1[T](arrRef: Expr[Array[T]], f: Expr[T => Unit])(implicit t: TypeTag[T], qctx: QuoteContext): Expr[Unit] = '{
+  def foreach1Tpe1[T](arrRef: Expr[Array[T]], f: Expr[T => Unit])(implicit t: Type[T], qctx: QuoteContext): Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     while (i < size) {
@@ -64,7 +64,7 @@ object Test {
     }
   }
 
-  def foreach1Tpe2[T: TypeTag](arrRef: Expr[Array[T]], f: Expr[T => Unit])(given QuoteContext): Expr[Unit] = '{
+  def foreach1Tpe2[T: Type](arrRef: Expr[Array[T]], f: Expr[T => Unit])(given QuoteContext): Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     while (i < size) {

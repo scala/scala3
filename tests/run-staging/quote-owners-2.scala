@@ -5,12 +5,12 @@ import scala.quoted.staging._
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = run {
-    val q = f(g(TypeTag.IntTag))
+    val q = f(g(Type.IntTag))
     println(q.show)
     '{ println($q) }
   }
 
-  def f(t: TypeTag[List[Int]])(given QuoteContext): Expr[Int] = '{
+  def f(t: Type[List[Int]])(given QuoteContext): Expr[Int] = '{
     def ff: Int = {
       val a: $t = {
         type T = $t
@@ -22,5 +22,5 @@ object Test {
     ff
   }
 
-  def g[T](a: TypeTag[T])(given QuoteContext): TypeTag[List[T]] = '[List[$a]]
+  def g[T](a: Type[T])(given QuoteContext): Type[List[T]] = '[List[$a]]
 }

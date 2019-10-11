@@ -1,6 +1,6 @@
 package scala.quoted
 
-/** A typeclass for types that can be turned from a `scala.quoted.Expr[T]` to a `T` */
+/** A typeclass for types that can be turned from a `quoted.Expr[T]` to a `T` */
 trait ValueOfExpr[T] {
 
   /** Return the value of the expression.

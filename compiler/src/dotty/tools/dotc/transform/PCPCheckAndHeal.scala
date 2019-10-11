@@ -82,7 +82,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  that are phase-incorrect can still be healed as follows:
    *
    *  If `T` is a reference to a type at the wrong level, try to heal it by replacing it with
-   *  `${implicitly[scala.quoted.TypeTag[T]]}`.
+   *  `${implicitly[quoted.Type[T]]}`.
    */
   protected def checkLevel(tree: Tree)(implicit ctx: Context): Tree = {
     def checkTp(tp: Type): Type = checkType(tree.sourcePos).apply(tp)
@@ -123,8 +123,8 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           if (tp.isTerm)
             ctx.error(i"splice outside quotes", pos)
           tp
-        case tp: TypeRef if tp.symbol == defn.QuotedTypeTagClass.typeParams.head =>
-          // Adapt direct references to the type of the type parameter T of a scala.quoted.TypeTag[T].
+        case tp: TypeRef if tp.symbol == defn.QuotedTypeClass.typeParams.head =>
+          // Adapt direct references to the type of the type parameter T of a quoted.Type[T].
           // Replace it with a properly encoded type splice. This is the normal for expected for type splices.
           tp.prefix.select(tpnme.splice)
         case tp: NamedType =>
@@ -147,7 +147,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  by which we refer to `sym`. If it is an inconsistent type try construct a healed type for it.
    *
    *  @return `None` if the phase is correct or cannot be healed
-   *          `Some(tree)` with the `tree` of the healed type tree for `${implicitly[scala.quoted.TypeTag[T]]}`
+   *          `Some(tree)` with the `tree` of the healed type tree for `${implicitly[quoted.Type[T]]}`
    */
   private def checkSymLevel(sym: Symbol, tp: Type, pos: SourcePosition)(implicit ctx: Context): Option[Tree] = {
     /** Is a reference to a class but not `this.type` */
@@ -196,7 +196,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           None
         }
         else {
-          val reqType = defn.QuotedTypeTagClass.typeRef.appliedTo(tp)
+          val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
           val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
           tag.tpe match {
             case _: TermRef =>

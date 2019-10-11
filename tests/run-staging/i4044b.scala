@@ -7,7 +7,7 @@ sealed abstract class VarRef[T] {
 }
 
 object VarRef {
-  def apply[T: TypeTag, U: TypeTag](init: Expr[T])(body: VarRef[T] => Expr[U])(given QuoteContext): Expr[U] = '{
+  def apply[T: Type, U: Type](init: Expr[T])(body: VarRef[T] => Expr[U])(given QuoteContext): Expr[U] = '{
     var x = $init
     ${body(
       new VarRef {

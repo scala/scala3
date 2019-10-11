@@ -1,6 +1,6 @@
 package scala.tasty.reflect // TODO move to scala.internal.tasty.reflect
 
-import scala.quoted.{Expr, QuoteContext, TypeTag}
+import scala.quoted.QuoteContext
 import scala.tasty.Reflection
 import scala.runtime.quoted.Unpickler
 
@@ -124,12 +124,12 @@ trait CompilerInterface {
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): Expr[_]
+  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): scala.quoted.Expr[_]
 
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): TypeTag[_]
+  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[_]
 
   //
   // CONTEXT
@@ -1310,21 +1310,21 @@ trait CompilerInterface {
   // QUOTED SEAL/UNSEAL
   //
 
-  /** View this expression `scala.quoted.Expr[_]` as a `Term` */
-  def QuotedExpr_unseal(self: Expr[_])(given ctx: Context): Term
+  /** View this expression `quoted.Expr[_]` as a `Term` */
+  def QuotedExpr_unseal(self: scala.quoted.Expr[_])(given ctx: Context): Term
 
-  /** Checked cast to a `scala.quoted.Expr[U]` */
-  def QuotedExpr_cast[U](self: Expr[_])(given tp: TypeTag[U], ctx: Context): Expr[U]
+  /** Checked cast to a `quoted.Expr[U]` */
+  def QuotedExpr_cast[U](self: scala.quoted.Expr[_])(given tp: scala.quoted.Type[U], ctx: Context): scala.quoted.Expr[U]
 
-  /** View this expression `scala.quoted.TypeTag[T]` as a `TypeTree` */
-  def QuotedType_unseal(self: TypeTag[_])(given ctx: Context): TypeTree
+  /** View this expression `quoted.Type[T]` as a `TypeTree` */
+  def QuotedType_unseal(self: scala.quoted.Type[_])(given ctx: Context): TypeTree
 
-  /** Convert `Term` to an `scala.quoted.Expr[Any]` */
-  def QuotedExpr_seal(self: Term)(given ctx: Context): Expr[Any]
+  /** Convert `Term` to an `quoted.Expr[Any]` */
+  def QuotedExpr_seal(self: Term)(given ctx: Context): scala.quoted.Expr[Any]
 
 
-  /** Convert `Type` to an `scala.quoted.TypeTag[_]` */
-  def QuotedType_seal(self: Type)(given ctx: Context): TypeTag[_]
+  /** Convert `Type` to an `quoted.Type[_]` */
+  def QuotedType_seal(self: Type)(given ctx: Context): scala.quoted.Type[_]
 
   //
   // DEFINITIONS

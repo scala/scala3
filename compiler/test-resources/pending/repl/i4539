@@ -1,7 +1,7 @@
 scala> val a = '[Int]
-val a: quoted.TypeTag[Int] = TypeTag(Int)
+val a: quoted.Type[Int] = Type(Int)
 scala> '[Int]
-val res0: quoted.TypeTag[Int] = TypeTag(Int)
+val res0: quoted.Type[Int] = Type(Int)
 scala> '[Int]; '[Int]
-val res1: quoted.TypeTag[Int] = TypeTag(Int)
-val res2: quoted.TypeTag[Int] = TypeTag(Int)
+val res1: quoted.Type[Int] = Type(Int)
+val res2: quoted.Type[Int] = Type(Int)

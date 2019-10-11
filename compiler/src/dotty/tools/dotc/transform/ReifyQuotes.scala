@@ -229,15 +229,15 @@ class ReifyQuotes extends MacroTransform {
           if (isType) ref(defn.Unpickler_unpickleType).appliedToType(originalTp)
           else ref(defn.Unpickler_unpickleExpr).appliedToType(originalTp.widen)
         val spliceResType =
-          if (isType) defn.QuotedTypeTagClass.typeRef.appliedTo(WildcardType)
-          else defn.FunctionType(1, isContextual = true).appliedTo(defn.QuoteContextClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)) | defn.QuotedTypeTagClass.typeRef.appliedTo(WildcardType)
+          if (isType) defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
+          else defn.FunctionType(1, isContextual = true).appliedTo(defn.QuoteContextClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)) | defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)
         val pickledQuoteStrings = liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType)
         val splicesList = liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), spliceResType))
         meth.appliedTo(pickledQuoteStrings, splicesList)
       }
 
       if (isType) {
-        def tag(tagName: String) = ref(defn.QuotedTypeTagModule).select(tagName.toTermName).appliedTo(qctx)
+        def tag(tagName: String) = ref(defn.QuotedTypeModule).select(tagName.toTermName).appliedTo(qctx)
         if (splices.isEmpty && body.symbol.isPrimitiveValueClass) tag(s"${body.symbol.name}Tag")
         else pickleAsTasty().select(nme.apply).appliedTo(qctx)
       }
@@ -311,7 +311,7 @@ class ReifyQuotes extends MacroTransform {
                 }
                 assert(tpw.isInstanceOf[ValueType])
                 val argTpe =
-                  if (tree.isType) defn.QuotedTypeTagClass.typeRef.appliedTo(tpw)
+                  if (tree.isType) defn.QuotedTypeClass.typeRef.appliedTo(tpw)
                   else defn.FunctionType(1, isContextual = true).appliedTo(defn.QuoteContextClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(tpw))
                 val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).cast(argTpe)
                 val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)

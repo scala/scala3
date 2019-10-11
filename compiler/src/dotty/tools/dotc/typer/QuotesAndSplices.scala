@@ -32,7 +32,7 @@ trait QuotesAndSplices {
 
   import tpd._
 
-  /** Translate `'{ t }` into `scala.quoted.Expr.apply(t)` and `'[T]` into `scala.quoted.TypeTag.apply[T]`
+  /** Translate `'{ t }` into `scala.quoted.Expr.apply(t)` and `'[T]` into `scala.quoted.Type.apply[T]`
    *  while tracking the quotation level in the context.
    */
   def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = {
@@ -113,7 +113,7 @@ trait QuotesAndSplices {
         }
         val typeSym = ctx.newSymbol(spliceOwner(ctx), name, EmptyFlags, TypeBounds.empty, NoSymbol, tree.expr.span)
         typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.expr.span)))
-        val pat = typedPattern(tree.expr, defn.QuotedTypeTagClass.typeRef.appliedTo(typeSym.typeRef))(
+        val pat = typedPattern(tree.expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
             spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
         pat.select(tpnme.splice)
       }
@@ -190,7 +190,7 @@ trait QuotesAndSplices {
             val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
             patBuf += pat1
           }
-        case Select(pat, _) if tree.symbol == defn.QuotedTypeTag_splice =>
+        case Select(pat, _) if tree.symbol == defn.QuotedType_splice =>
           val sym = tree.tpe.dealias.typeSymbol.asType
           val tdef = TypeDef(sym).withSpan(sym.span)
           freshTypeBindingsBuff += transformTypeBindingTypeDef(tdef, freshTypePatBuf)
@@ -232,7 +232,7 @@ trait QuotesAndSplices {
         if (variance == -1)
           tdef.symbol.addAnnotation(Annotation(New(ref(defn.InternalQuoted_fromAboveAnnot.typeRef)).withSpan(tdef.span)))
         val bindingType = getBinding(tdef.symbol).symbol.typeRef
-        val bindingTypeTpe = AppliedType(defn.QuotedTypeTagClass.typeRef, bindingType :: Nil)
+        val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)
         assert(tdef.name.startsWith("$"))
         val bindName = tdef.name.toString.stripPrefix("$").toTermName
         val sym = ctx0.newPatternBoundSymbol(bindName, bindingTypeTpe, tdef.span, flags = ImplicitTerm)
@@ -254,7 +254,7 @@ trait QuotesAndSplices {
         val isFreshTypeBindings = freshTypeBindings.map(_.symbol).toSet
         val typeMap = new TypeMap() {
           def apply(tp: Type): Type = tp match {
-            case tp: TypeRef if tp.typeSymbol == defn.QuotedTypeTag_splice =>
+            case tp: TypeRef if tp.typeSymbol == defn.QuotedType_splice =>
               val tp1 = tp.dealias
               if (isFreshTypeBindings(tp1.typeSymbol)) tp1
               else tp
@@ -331,7 +331,7 @@ trait QuotesAndSplices {
     class ReplaceBindings extends TypeMap() {
       override def apply(tp: Type): Type = tp match {
         case tp: TypeRef =>
-          val tp1 = if (tp.typeSymbol == defn.QuotedTypeTag_splice) tp.dealias else tp
+          val tp1 = if (tp.typeSymbol == defn.QuotedType_splice) tp.dealias else tp
           typeBindings.get(tp1.typeSymbol).fold(tp)(_.symbol.typeRef)
         case tp => mapOver(tp)
       }
@@ -364,8 +364,8 @@ trait QuotesAndSplices {
 
     val splicePat = typed(untpd.Tuple(splices.map(x => untpd.TypedSplice(replaceBindingsInTree.transform(x)))).withSpan(quoted.span), patType)
 
-    val unapplySym = if (tree.quoted.isTerm) defn.InternalQuotedExpr_unapply else defn.InternalQuotedTypeTag_unapply
-    val quoteClass = if (tree.quoted.isTerm) defn.QuotedExprClass else defn.QuotedTypeTagClass
+    val unapplySym = if (tree.quoted.isTerm) defn.InternalQuotedExpr_unapply else defn.InternalQuotedType_unapply
+    val quoteClass = if (tree.quoted.isTerm) defn.QuotedExprClass else defn.QuotedTypeClass
     val quotedPattern =
       if (tree.quoted.isTerm) ref(defn.InternalQuoted_exprQuote.termRef).appliedToType(defn.AnyType).appliedTo(shape).select(nme.apply).appliedTo(qctx)
       else ref(defn.InternalQuoted_typeQuote.termRef).appliedToTypeTrees(shape :: Nil)

@@ -11,7 +11,7 @@ object Lens {
     def set(t: T, s: S): S = _set(t)(s)
   }
 
-  def impl[S: TypeTag, T: TypeTag](getter: Expr[S => T])(given qctx: QuoteContext): Expr[Lens[S, T]] = {
+  def impl[S: Type, T: Type](getter: Expr[S => T])(given qctx: QuoteContext): Expr[Lens[S, T]] = {
     import qctx.tasty.{_, given}
     import util._
 
@@ -84,7 +84,7 @@ object Iso {
     def to(s: S): A = _to(s)
   }
 
-  def impl[S: TypeTag, A: TypeTag](given qctx: QuoteContext): Expr[Iso[S, A]] = {
+  def impl[S: Type, A: Type](given qctx: QuoteContext): Expr[Iso[S, A]] = {
     import qctx.tasty.{_, given}
     import util._
 
@@ -123,7 +123,7 @@ object Iso {
     }
   }
 
-  def implUnit[S: TypeTag](given qctx: QuoteContext): Expr[Iso[S, 1]] = {
+  def implUnit[S: Type](given qctx: QuoteContext): Expr[Iso[S, 1]] = {
     import qctx.tasty.{_, given}
     import util._
 
@@ -160,7 +160,7 @@ object Iso {
   }
 
   // TODO: require whitebox macro
-  def implFields[S: TypeTag](given qctx: QuoteContext): Expr[Iso[S, Any]] = ???
+  def implFields[S: Type](given qctx: QuoteContext): Expr[Iso[S, Any]] = ???
 }
 
 object GenIso {
@@ -195,7 +195,7 @@ object Prism {
     def apply(a: A): S = app(a)
   }
 
-  def impl[S: TypeTag, A <: S : TypeTag](given qctx: QuoteContext): Expr[Prism[S, A]] = {
+  def impl[S: Type, A <: S : Type](given qctx: QuoteContext): Expr[Prism[S, A]] = {
     import qctx.tasty.{_, given}
     import util._
 

@@ -2,7 +2,7 @@
 import scala.quoted._
 import scala.quoted.staging._
 
-class Foo[T: TypeTag] {
+class Foo[T: Type] {
   def q(given QuoteContext) = '{(null: Any).asInstanceOf[T]}
 }
 

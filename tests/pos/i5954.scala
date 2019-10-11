@@ -9,7 +9,7 @@ object MatcherFactory1 {
     '{ val a: Any = $self }
 
 
-  def impl2[T: TypeTag](a: MatcherFactory1)(self: Expr[T])(implicit ev: T =:= a.AndNotWord, qctx: QuoteContext) =
+  def impl2[T: Type](a: MatcherFactory1)(self: Expr[T])(implicit ev: T =:= a.AndNotWord, qctx: QuoteContext) =
     '{ val a: Any = $self }
 
 }
