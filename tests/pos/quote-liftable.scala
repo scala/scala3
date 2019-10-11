@@ -19,7 +19,7 @@ def test(given QuoteContext) = {
       if (b) '{true} else '{false}
   }
 
-  implicit def ListIsLiftable[T: Liftable: Type]: Liftable[List[T]] = new {
+  implicit def ListIsLiftable[T: Liftable: TypeTag]: Liftable[List[T]] = new {
     def toExpr(xs: List[T]) = xs match {
       case x :: xs1 => '{ ${ Expr(x) } :: ${ toExpr(xs1) } }
       case Nil => '{Nil: List[T]}

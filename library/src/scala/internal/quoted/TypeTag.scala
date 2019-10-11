@@ -2,7 +2,7 @@ package scala.internal.quoted
 
 import scala.quoted._
 
-object Type {
+object TypeTag {
 
   /** Pattern matches an the scrutineeType against the patternType and returns a tuple
    *  with the matched holes if successful.
@@ -17,7 +17,7 @@ object Type {
    *  @param qctx the current QuoteContext
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Type[Ti]``
    */
-  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeType: Type[_])(implicit patternType: Type[_],
+  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeType: TypeTag[_])(implicit patternType: TypeTag[_],
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
     import qctx.tasty.{_, given}
     new Matcher.QuoteMatcher[qctx.type].typeTreeMatch(scrutineeType.unseal, patternType.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]

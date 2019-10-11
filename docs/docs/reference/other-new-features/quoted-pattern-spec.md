@@ -29,7 +29,7 @@ def foo(x: Expr[Int]) given tasty.Reflect: Expr[Int] = x match {
 
 ## Runtime semantics
 
-At runtime to a `quoted.Expr` can be matched to another using `scala.internal.quoted.Expr.unapply`.
+At runtime to a `scala.quoted.Expr` can be matched to another using `scala.internal.quoted.Expr.unapply`.
 
 ```scala
 def unapply[Tup <: Tuple](scrutineeExpr: Expr[_])(implicit patternExpr: Expr[_], reflection: Reflection): Option[Tup]

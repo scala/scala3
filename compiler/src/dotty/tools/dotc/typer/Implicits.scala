@@ -705,7 +705,7 @@ trait Implicits { self: Typer =>
         EmptyTree
     }
 
-  /** Synthesize the tree for `'[T]` for an implicit `scala.quoted.Type[T]`.
+  /** Synthesize the tree for `'[T]` for an implicit `scala.quoted.TypeTag[T]`.
    *  `T` is deeply dealiased to avoid references to local type aliases.
    */
   lazy val synthesizedTypeTag: SpecialHandler = {
@@ -1076,7 +1076,7 @@ trait Implicits { self: Typer =>
     if (mySpecialHandlers == null)
       mySpecialHandlers = List(
         defn.ClassTagClass        -> synthesizedClassTag,
-        defn.QuotedTypeClass      -> synthesizedTypeTag,
+        defn.QuotedTypeTagClass   -> synthesizedTypeTag,
         defn.QuoteContextClass    -> synthesizedQuoteContext,
         defn.EqlClass             -> synthesizedEq,
         defn.TupledFunctionClass  -> synthesizedTupleFunction,

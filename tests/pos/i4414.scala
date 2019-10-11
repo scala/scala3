@@ -3,10 +3,10 @@ import scala.quoted._
 object Test {
   given QuoteContext = ???
 
-  def a[A: Type](): Unit = {
+  def a[A: TypeTag](): Unit = {
     b[Expr[A]]()
     a[A]()
   }
 
-  def b[A: Type](): Unit = ???
+  def b[A: TypeTag](): Unit = ???
 }

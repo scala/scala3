@@ -23,7 +23,7 @@ import dotty.tools.io.{Path, VirtualFile}
 
 import scala.annotation.tailrec
 import scala.concurrent.Promise
-import scala.quoted.{Expr, QuoteContext, Type}
+import scala.quoted.{Expr, QuoteContext, TypeTag}
 
 /** Compiler that takes the contents of a quoted expression `expr` and produces
  *  a class file with `class ' { def apply: Object = expr }`.
@@ -46,7 +46,7 @@ private class QuoteCompiler extends Compiler {
 
   def outputClassName: TypeName = "Generated$Code$From$Quoted".toTypeName
 
-  /** Frontend that receives a scala.quoted.Expr or scala.quoted.Type as input */
+  /** Frontend that receives a scala.quoted.Expr or scala.quoted.TypeTag as input */
   class QuotedFrontend extends Phase {
     import tpd._
 

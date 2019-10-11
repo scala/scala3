@@ -77,21 +77,21 @@ The type signatures of quotes and splices can be described using
 two fundamental types:
 
   - `Expr[T]`: abstract syntax trees representing expressions of type `T`
-  - `Type[T]`: type structures representing type `T`.
+  - `TypeTag[T]`: type structures representing type `T`.
 
 Quoting takes expressions of type `T` to expressions of type `Expr[T]`
-and it takes types `T` to expressions of type `Type[T]`. Splicing
+and it takes types `T` to expressions of type `TypeTag[T]`. Splicing
 takes expressions of type `Expr[T]` to expressions of type `T` and it
-takes expressions of type `Type[T]` to types `T`.
+takes expressions of type `TypeTag[T]` to types `T`.
 
 The two types can be defined in package `scala.quoted` as follows:
 ```scala
 package scala.quoted
 
-sealed abstract class Expr[+T]
-sealed abstract class Type[T]
+sealed trait Expr[+T]
+sealed trait TypeTag[T]
 ```
-Both `Expr` and `Type` are abstract and sealed, so all constructors for
+Both `Expr` and `TypeTag` are abstract and sealed, so all constructors for
 these types are provided by the system. One way to construct values of
 these types is by quoting, the other is by type-specific lifting
 operations that will be discussed later on.
@@ -168,31 +168,31 @@ as for expressions. This might seem too restrictive. Indeed, the
 definition of `reflect` above is not phase correct since there is a
 quote but no splice between the parameter binding of `T` and its
 usage. But the code can be made phase correct by adding a binding
-of a `Type[T]` tag:
+of a `TypeTag[T]` tag:
 ```scala
-def reflect[T, U](f: Expr[T] => Expr[U]) given (t: Type[T]): Expr[T => U] =
+def reflect[T, U](f: Expr[T] => Expr[U]) given (t: TypeTag[T]): Expr[T => U] =
   '{ (x: $t) => ${ f('x) } }
 ```
 In this version of `reflect`, the type of `x` is now the result of
-splicing the `Type` value `t`. This operation _is_ splice correct -- there
+splicing the `TypeTag` value `t`. This operation _is_ splice correct -- there
 is one quote and one splice between the use of `t` and its definition.
 
 To avoid clutter, the Scala implementation tries to convert any phase-incorrect
-reference to a type `T` to a type-splice, by rewriting `T` to `${ summon[Type[T]] }`.
+reference to a type `T` to a type-splice, by rewriting `T` to `${ summon[TypeTag[T]] }`.
 For instance, the user-level definition of `reflect`:
 
 ```scala
-def reflect[T: Type, U: Type](f: Expr[T] => Expr[U]): Expr[T => U] =
+def reflect[T: TypeTag, U: TypeTag](f: Expr[T] => Expr[U]): Expr[T => U] =
   '{ (x: T) => ${ f('x) } }
 ```
 would be rewritten to
 ```scala
-def reflect[T: Type, U: Type](f: Expr[T] => Expr[U]): Expr[T => U] =
-  '{ (x: ${ summon[Type[T]] }) => ${ f('x) } }
+def reflect[T: TypeTag, U: TypeTag](f: Expr[T] => Expr[U]): Expr[T => U] =
+  '{ (x: ${ summon[TypeTag[T]] }) => ${ f('x) } }
 ```
 The `the` query succeeds because there is a given instance of
-type `Type[T]` available (namely the given parameter corresponding
-to the context bound `: Type`), and the reference to that value is
+type `TypeTag[T]` available (namely the given parameter corresponding
+to the context bound `: TypeTag`), and the reference to that value is
 phase-correct. If that was not the case, the phase inconsistency for
 `T` would be reported as an error.
 
@@ -297,7 +297,7 @@ given [T: Liftable] : Liftable[List[T]] {
 In the end, `Liftable` resembles very much a serialization
 framework. Like the latter it can be derived systematically for all
 collections, case classes and enums. Note also that the synthesis
-of _type-tag_ values of type `Type[T]` is essentially the type-level
+of _type-tag_ values of type `TypeTag[T]` is essentially the type-level
 analogue of lifting.
 
 Using lifting, we can now give the missing definition of `showExpr` in the introductory example:
@@ -319,7 +319,7 @@ stages.
 
 The previous section has shown that the metaprogramming framework has
 to be able to take a type `T` and convert it to a type tree of type
-`Type[T]` that can be reified. This means that all free variables of
+`TypeTag[T]` that can be reified. This means that all free variables of
 the type tree refer to types and values defined in the current stage.
 
 For a reference to a global class, this is easy: Just issue the fully
@@ -327,19 +327,19 @@ qualified name of the class. Members of reifiable types are handled by
 just reifying the containing type together with the member name. But
 what to do for references to type parameters or local type definitions
 that are not defined in the current stage? Here, we cannot construct
-the `Type[T]` tree directly, so we need to get it from a recursive
+the `TypeTag[T]` tree directly, so we need to get it from a recursive
 implicit search. For instance, to implement
 ```scala
-summon[Type[List[T]]]
+summon[TypeTag[List[T]]]
 ```
 where `T` is not defined in the current stage, we construct the type constructor
-of `List` applied to the splice of the result of searching for a given instance for `Type[T]`:
+of `List` applied to the splice of the result of searching for a given instance for `TypeTag[T]`:
 ```scala
-'[ List[ ${ summon[Type[T]] } ] ]
+'[ List[ ${ summon[TypeTag[T]] } ] ]
 ```
 This is exactly the algorithm that Scala 2 uses to search for type tags.
 In fact Scala 2's type tag feature can be understood as a more ad-hoc version of
-`quoted.Type`. As was the case for type tags, the implicit search for a `quoted.Type`
+`scala.quoted.TypeTag`. As was the case for type tags, the implicit search for a `TypeTag`
 is handled by the compiler, using the algorithm sketched above.
 
 ### Relationship with Inline
@@ -489,7 +489,7 @@ function `f` and one `sum` that performs a sum by delegating to `map`.
 
 ```scala
 object Macros {
-  def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])(implicit t: Type[T]): Expr[Unit] = '{
+  def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])(implicit t: TypeTag[T]): Expr[Unit] = '{
     var i: Int = 0
     while (i < ($arr).length) {
       val element: $t = ($arr)(i)
@@ -573,7 +573,7 @@ in a quote context. For this we simply provide `scala.quoted.matching.searchImpl
 ```scala
 inline def setFor[T]: Set[T] = ${ setForExpr[T] }
 
-def setForExpr[T: Type](given QuoteContext): Expr[Set[T]] = {
+def setForExpr[T: TypeTag](given QuoteContext): Expr[Set[T]] = {
   searchImplicitExpr[Ordering[T]] match {
     case Some(ord) => '{ new TreeSet[T]()($ord) }
     case _ => '{ new HashSet[T] }
