@@ -18,8 +18,6 @@ import dotty.tools.dotc.util.{SourceFile, SourcePosition, Spans}
 import scala.runtime.quoted.Unpickler
 import scala.tasty.reflect.CompilerInterface
 
-import scala.quoted.{Expr, TypeTag}
-
 class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extends CompilerInterface {
   import tpd._
 
@@ -34,10 +32,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   // QUOTE UNPICKLING
   //
 
-  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): Expr[?] =
+  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledExprArgs): scala.quoted.Expr[?] =
     new scala.internal.quoted.TastyTreeExpr(PickledQuotes.unpickleExpr(repr, args), compilerId)
 
-  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): TypeTag[?] =
+  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledTypeArgs): scala.quoted.Type[?] =
     new scala.internal.quoted.TreeType(PickledQuotes.unpickleType(repr, args), compilerId)
 
   //
@@ -1582,16 +1580,16 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   // QUOTED SEAL/UNSEAL
   //
 
-  /** View this expression `scala.quoted.Expr[?]` as a `Term` */
-  def QuotedExpr_unseal(self: Expr[?])(given Context): Term =
+  /** View this expression `quoted.Expr[?]` as a `Term` */
+  def QuotedExpr_unseal(self: scala.quoted.Expr[?])(given Context): Term =
     PickledQuotes.quotedExprToTree(self)
 
-  /** View this expression `scala.quoted.TypeTag[?]` as a `TypeTree` */
-  def QuotedType_unseal(self: TypeTag[?])(given Context): TypeTree =
+  /** View this expression `quoted.Type[?]` as a `TypeTree` */
+  def QuotedType_unseal(self: scala.quoted.Type[?])(given Context): TypeTree =
     PickledQuotes.quotedTypeToTree(self)
 
-  /** Convert `Term` to an `scala.quoted.Expr[Any]`  */
-  def QuotedExpr_seal(self: Term)(given ctx: Context): Expr[Any] = {
+  /** Convert `Term` to an `quoted.Expr[Any]`  */
+  def QuotedExpr_seal(self: Term)(given ctx: Context): scala.quoted.Expr[Any] = {
     def etaExpand(term: Term): Term = term.tpe.widen match {
       case mtpe: Types.MethodType if !mtpe.isParamDependent =>
         val closureResType = mtpe.resType match {
@@ -1606,12 +1604,12 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     new scala.internal.quoted.TastyTreeExpr(etaExpand(self), compilerId)
   }
 
-  /** Checked cast to a `scala.quoted.Expr[U]` */
-  def QuotedExpr_cast[U](self: Expr[?])(given tp: TypeTag[U], ctx: Context): Expr[U] = {
+  /** Checked cast to a `quoted.Expr[U]` */
+  def QuotedExpr_cast[U](self: scala.quoted.Expr[?])(given tp: scala.quoted.Type[U], ctx: Context): scala.quoted.Expr[U] = {
     val tree = QuotedExpr_unseal(self)
-    val expectedType = QuotedType_unseal(tp.asInstanceOf[TypeTag[U]]).tpe
+    val expectedType = QuotedType_unseal(tp).tpe
     if (tree.tpe <:< expectedType)
-      self.asInstanceOf[Expr[U]]
+      self.asInstanceOf[scala.quoted.Expr[U]]
     else
       throw new scala.tasty.reflect.ExprCastError(
         s"""Expr: ${tree.show}
@@ -1620,8 +1618,8 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       )
   }
 
-  /** Convert `Type` to an `scala.quoted.TypeTag[?]` */
-  def QuotedType_seal(self: Type)(given ctx: Context): TypeTag[?] = {
+  /** Convert `Type` to an `quoted.Type[?]` */
+  def QuotedType_seal(self: Type)(given ctx: Context): scala.quoted.Type[?] = {
     val dummySpan = ctx.owner.span // FIXME
     new scala.internal.quoted.TreeType(tpd.TypeTree(self).withSpan(dummySpan), compilerId)
   }

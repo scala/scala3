@@ -70,7 +70,7 @@ class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]])(given QuoteContext) ext
 case class Complex[T](re: T, im: T)
 
 object Complex
-  implicit def isLiftable[T: TypeTag: Liftable]: Liftable[Complex[T]] = new Liftable[Complex[T]] {
+  implicit def isLiftable[T: Type: Liftable]: Liftable[Complex[T]] = new Liftable[Complex[T]] {
     def toExpr(comp: Complex[T]) = '{Complex(${comp.re}, ${comp.im})}
   }
 
@@ -96,7 +96,7 @@ class StaticVecOps[T] extends VecOps[Int, T] {
   }
 }
 
-class ExprVecOps[T: TypeTag](given QuoteContext) extends VecOps[Expr[Int], Expr[T]]
+class ExprVecOps[T: Type](given QuoteContext) extends VecOps[Expr[Int], Expr[T]]
   val reduce: ((Expr[T], Expr[T]) => Expr[T], Expr[T], Vec[Expr[Int], Expr[T]]) => Expr[T] = (plus, zero, vec) => '{
     var sum = $zero
     var i = 0

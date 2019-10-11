@@ -91,7 +91,7 @@ package quoted {
      *  '{ List(${Expr.ofSeq(List(1, 2, 3))}: _*) } // equvalent to '{ List(1, 2, 3) }
      *  ```
      */
-    def ofSeq[T](xs: Seq[Expr[T]])(given tp: TypeTag[T], qctx: QuoteContext): Expr[Seq[T]] = {
+    def ofSeq[T](xs: Seq[Expr[T]])(given tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = {
       import qctx.tasty.{_, given}
       Repeated(xs.map(_.unseal).toList, tp.unseal).seal.asInstanceOf[Expr[Seq[T]]]
     }
@@ -104,7 +104,7 @@ package quoted {
      *  to an expression equivalent to
      *    `'{ List($e1, $e2, ...) }` typed as an `Expr[List[T]]`
      */
-    def  ofList[T](xs: Seq[Expr[T]])(given TypeTag[T], QuoteContext): Expr[List[T]] =
+    def  ofList[T](xs: Seq[Expr[T]])(given Type[T], QuoteContext): Expr[List[T]] =
       if (xs.isEmpty) '{ Nil } else '{ List(${ofSeq(xs)}: _*) }
 
     /** Lifts this sequence of expressions into an expression of a tuple
@@ -168,10 +168,10 @@ package quoted {
     }
 
     /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
-    def ofTuple[T <: Tuple : Tuple.IsMappedBy[Expr]](tup: T) (given qctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
+    def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T) (given qctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
       import qctx.tasty.{_, given}
       val elems: Seq[Expr[_]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[_]]]
-      ofTuple(elems).asInstanceOf[Expr[Tuple.InverseMap[T, Expr]]]
+      ofTuple(elems).cast[Tuple.InverseMap[T, Expr]]
     }
   }
 

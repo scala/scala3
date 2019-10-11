@@ -24,7 +24,7 @@ object Test {
       }
     }
 
-    implicit def ValueOfExprList[T: ValueOfExpr: TypeTag]: ValueOfExpr[List[T]] = new {
+    implicit def ValueOfExprList[T: ValueOfExpr: Type]: ValueOfExpr[List[T]] = new {
       def apply(xs: Expr[List[T]])(given QuoteContext): Option[List[T]] = (xs: Expr[Any]) match {
         case '{ ($xs1: List[T]).::($x) } =>
           for { head <- x.getValue; tail <- xs1.getValue }
@@ -34,7 +34,7 @@ object Test {
       }
     }
 
-    implicit def ValueOfExprOption[T: ValueOfExpr: TypeTag]: ValueOfExpr[Option[T]] = new {
+    implicit def ValueOfExprOption[T: ValueOfExpr: Type]: ValueOfExpr[Option[T]] = new {
       def apply(expr: Expr[Option[T]])(given QuoteContext): Option[Option[T]] = expr match {
         case '{ Some[T]($x) } => for (v <- x.getValue) yield Some(v)
         case '{ None } => Some(None)

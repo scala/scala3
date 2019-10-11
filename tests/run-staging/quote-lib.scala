@@ -128,11 +128,11 @@ package liftable {
   }
 
   object Lets {
-    def letVal[T, U: TypeTag](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: TypeTag[T], qctx: QuoteContext): Expr[U] =
+    def letVal[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T], qctx: QuoteContext): Expr[U] =
       '{ val letVal: $t = $expr; ${ body('letVal) } }
-    def letLazyVal[T, U: TypeTag](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: TypeTag[T], qctx: QuoteContext): Expr[U] =
+    def letLazyVal[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T], qctx: QuoteContext): Expr[U] =
       '{ lazy val letLazyVal: $t = $expr; ${ body('letLazyVal) } }
-    def letDef[T, U: TypeTag](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: TypeTag[T], qctx: QuoteContext): Expr[U] =
+    def letDef[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T], qctx: QuoteContext): Expr[U] =
       '{ def letDef: $t = $expr; ${ body('letDef) } }
   }
 
@@ -144,15 +144,15 @@ package liftable {
 
   object Lists {
 
-    implicit class LiftedOps[T: Liftable](list: Expr[List[T]])(implicit t: TypeTag[T]) {
-      def foldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: TypeTag[U], qctx: QuoteContext): Expr[U] =
+    implicit class LiftedOps[T: Liftable](list: Expr[List[T]])(implicit t: Type[T]) {
+      def foldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U], qctx: QuoteContext): Expr[U] =
         '{ ($list).foldLeft[$u]($acc)($f) }
       def foreach(f: Expr[T => Unit])(given QuoteContext): Expr[Unit] =
         '{ ($list).foreach($f) }
     }
 
-    implicit class UnrolledOps[T: Liftable](list: List[T])(implicit t: TypeTag[T], qctx: QuoteContext) {
-      def unrolledFoldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: TypeTag[U]): Expr[U] = list match {
+    implicit class UnrolledOps[T: Liftable](list: List[T])(implicit t: Type[T], qctx: QuoteContext) {
+      def unrolledFoldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U]): Expr[U] = list match {
         case x :: xs => xs.unrolledFoldLeft('{ ($f).apply($acc, ${x}) })(f)
         case Nil => acc
       }

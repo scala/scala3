@@ -13,8 +13,8 @@ object Macros {
       tup.toArray.toList.map {
         case r: Expr[_] =>
           s"Expr(${r.unseal.show})"
-        case r: TypeTag[_] =>
-          s"TypeTag(${r.unseal.show})"
+        case r: quoted.Type[_] =>
+          s"Type(${r.unseal.show})"
         case r: Sym[_] =>
           s"Sym(${r.name})"
       }

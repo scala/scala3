@@ -9,7 +9,7 @@ object Macros {
 
   inline def liftAST(a: => DSL): ASTNum = ${impl(ASTNum, 'a)}
 
-  private def impl[T: TypeTag](sym: Symantics[T], a: Expr[DSL])(given qctx: QuoteContext): Expr[T] = {
+  private def impl[T: Type](sym: Symantics[T], a: Expr[DSL])(given qctx: QuoteContext): Expr[T] = {
 
     def lift(e: Expr[DSL])(implicit env: Map[Sym[DSL], Expr[T]]): Expr[T] = e match {
 

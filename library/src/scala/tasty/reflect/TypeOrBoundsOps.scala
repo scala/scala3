@@ -5,7 +5,7 @@ trait TypeOrBoundsOps extends Core {
 
   // ----- Types ----------------------------------------------------
 
-  def typeOf[T: scala.quoted.TypeTag]: Type
+  def typeOf[T: scala.quoted.Type]: Type
 
   given (self: Type) {
     def =:=(that: Type)(given ctx: Context): Boolean = internal.`Type_=:=`(self)(that)

@@ -1,10 +1,8 @@
 import scala.quoted._
 
-inline def foo[T:TypeTag]: Int = 10
+inline def foo[T:Type]: Int = 10
 
 def main = {
-  given QuoteContext = ???
-
   type S = Int
   foo[S]
   foo[Int]

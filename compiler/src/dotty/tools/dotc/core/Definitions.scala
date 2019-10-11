@@ -659,13 +659,13 @@ class Definitions {
   @tu lazy val InternalQuotedExprModule: Symbol = ctx.requiredModule("scala.internal.quoted.Expr")
     @tu lazy val InternalQuotedExpr_unapply: Symbol = InternalQuotedExprModule.requiredMethod(nme.unapply)
 
-  @tu lazy val InternalQuotedTypeTagModule: Symbol = ctx.requiredModule("scala.internal.quoted.TypeTag")
-    @tu lazy val InternalQuotedTypeTag_unapply: Symbol = InternalQuotedTypeTagModule.requiredMethod(nme.unapply)
+  @tu lazy val InternalQuotedTypeModule: Symbol = ctx.requiredModule("scala.internal.quoted.Type")
+    @tu lazy val InternalQuotedType_unapply: Symbol = InternalQuotedTypeModule.requiredMethod(nme.unapply)
 
-  @tu lazy val QuotedTypeTagClass: ClassSymbol = ctx.requiredClass("scala.quoted.TypeTag")
-    @tu lazy val QuotedTypeTag_splice: Symbol = QuotedTypeTagClass.requiredType(tpnme.splice)
+  @tu lazy val QuotedTypeClass: ClassSymbol = ctx.requiredClass("scala.quoted.Type")
+    @tu lazy val QuotedType_splice: Symbol = QuotedTypeClass.requiredType(tpnme.splice)
 
-  @tu lazy val QuotedTypeTagModule: Symbol = QuotedTypeTagClass.companionModule
+  @tu lazy val QuotedTypeModule: Symbol = QuotedTypeClass.companionModule
 
   @tu lazy val QuotedMatchingSymClass: ClassSymbol = ctx.requiredClass("scala.quoted.matching.Sym")
   @tu lazy val TastyReflectionClass: ClassSymbol = ctx.requiredClass("scala.tasty.Reflection")

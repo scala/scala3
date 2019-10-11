@@ -7,10 +7,10 @@ object Index {
 
   implicit inline def succ[K, H, T](implicit prev: => Index[K, T]): Index[K, (H, T)] = ${succImpl('[K], '[H], '[T])}
 
-  def succImpl[K, H, T](k: TypeTag[K], h: TypeTag[H], t: TypeTag[T])(given QuoteContext): Expr[Index[K, (H, T)]] = {
-    implicit val kk: TypeTag[K] = k
-    implicit val hh: TypeTag[H] = h
-    implicit val tt: TypeTag[T] = t
+  def succImpl[K, H, T](k: Type[K], h: Type[H], t: Type[T])(given QuoteContext): Expr[Index[K, (H, T)]] = {
+    implicit val kk: Type[K] = k
+    implicit val hh: Type[H] = h
+    implicit val tt: Type[T] = t
     '{new Index(0)}
   }
 }

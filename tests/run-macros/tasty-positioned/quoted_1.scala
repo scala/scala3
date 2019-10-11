@@ -10,7 +10,7 @@ object Positioned {
 
   implicit inline def apply[T](x: => T): Positioned[T] = ${impl('x)}
 
-  def impl[T](x: Expr[T])(implicit ev: TypeTag[T], qctx: QuoteContext): Expr[Positioned[T]] = {
+  def impl[T](x: Expr[T])(implicit ev: Type[T], qctx: QuoteContext): Expr[Positioned[T]] = {
     import qctx.tasty.{Position => _, _, given}
     val pos = rootPosition
 
