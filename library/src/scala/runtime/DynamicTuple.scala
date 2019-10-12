@@ -24,6 +24,13 @@ object DynamicTuple {
     elems1
   }
 
+  def concat$Array(a1: Array[Object], a2: Array[Object]): Array[Object] = {
+    val result = new Array[Object](a1.length + a2.length)
+    System.arraycopy(a1, 0, result, 0, a1.length)
+    System.arraycopy(a2, 0, result, a1.length, a2.length)
+    result
+  }
+
   def dynamicFromArray[T <: Tuple](xs: Array[Object]): T = xs.length match {
     case 0  => ().asInstanceOf[T]
     case 1  => Tuple1(xs(0)).asInstanceOf[T]
@@ -188,7 +195,11 @@ object DynamicTuple {
 
   def productToArray(self: Product): Array[Object] = {
     val arr = new Array[Object](self.productArity)
-    for (i <- 0 until arr.length) arr(i) = self.productElement(i).asInstanceOf[Object]
+    var i = 0
+    while (i < arr.length) {
+      arr(i) = self.productElement(i).asInstanceOf[Object]
+      i += 1
+    }
     arr
   }
 
@@ -220,7 +231,7 @@ object DynamicTuple {
       case that: Unit => return self.asInstanceOf[Result]
       case _ =>
     }
-    dynamicFromArray[Result](dynamicToArray(self) ++ dynamicToArray(that))
+    dynamicFromArray[Result](concat$Array(dynamicToArray(self), dynamicToArray(that)))
   }
 
   def dynamicSize[This <: Tuple](self: This): Size[This] = (self: Any) match {

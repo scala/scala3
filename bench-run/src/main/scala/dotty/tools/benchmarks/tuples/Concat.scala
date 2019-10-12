@@ -37,6 +37,6 @@ class Concat {
 
   @Benchmark
   def arrayConcat(): Array[Object] = {
-    array1 ++ array2
+    DynamicTuple.concat$Array(array1, array2)
   }
 }
