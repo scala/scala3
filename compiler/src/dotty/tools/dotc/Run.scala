@@ -39,7 +39,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *                 for type checking.
    *    imports      For each element of RootImports, an import context
    */
-  protected[this] def rootContext(implicit ctx: Context): Context = {
+  protected def rootContext(implicit ctx: Context): Context = {
     ctx.initialize()(ctx)
     ctx.base.setPhasePlan(comp.phases)
     val rootScope = new MutableScope
@@ -66,7 +66,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** The context created for this run */
   def runContext: Context = myCtx
 
-  protected[this] implicit def ctx: Context = myCtx
+  protected implicit def ctx: Context = myCtx
   assert(ctx.runId <= Periods.MaxPossibleRunId)
 
   private[this] var myUnits: List[CompilationUnit] = _

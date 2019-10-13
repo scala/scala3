@@ -351,7 +351,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     private[this] var _failureCount = 0
 
     /** Fail the current test */
-    protected[this] final def fail(failure: Failure = Generic): Unit = synchronized {
+    protected final def fail(failure: Failure = Generic): Unit = synchronized {
       _failures = _failures + failure
       _failureCount = _failureCount + 1
     }

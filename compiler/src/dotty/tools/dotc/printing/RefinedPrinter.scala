@@ -35,7 +35,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   private[this] var printPos = ctx.settings.YprintPos.value
   private[this] val printLines = ctx.settings.printLines.value
 
-  override protected[this] implicit def ctx: Context = myCtx
+  override protected implicit def ctx: Context = myCtx
 
   def withEnclosingDef(enclDef: Tree[? >: Untyped])(op: => Text): Text = {
     val savedCtx = myCtx

@@ -1668,7 +1668,7 @@ object Types {
 
   /**  Instances of this class are cached and are proxies. */
   abstract class CachedProxyType extends TypeProxy with CachedType {
-    protected[this] var myHash: Int = HashUnknown
+    protected var myHash: Int = HashUnknown
     final def hash: Int = {
       if (myHash == HashUnknown) {
         myHash = computeHash(null)
@@ -2894,8 +2894,8 @@ object Types {
 
   /** A trait that mixes in functionality for signature caching */
   trait SignatureCachingType extends TermType {
-    protected[this] var mySignature: Signature = _
-    protected[this] var mySignatureRunId: Int = NoRunId
+    protected var mySignature: Signature = _
+    protected var mySignatureRunId: Int = NoRunId
 
     protected def computeSignature(implicit ctx: Context): Signature
 

@@ -78,7 +78,7 @@ class ReplDriver(settings: Array[String],
    *  such, when the user enters `:reset` this method should be called to reset
    *  everything properly
    */
-  protected[this] def resetToInitial(): Unit = {
+  protected def resetToInitial(): Unit = {
     rootCtx = initialCtx
     if (rootCtx.settings.outputDir.isDefault(rootCtx))
       rootCtx = rootCtx.fresh
@@ -159,7 +159,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** Extract possible completions at the index of `cursor` in `expr` */
-  protected[this] final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
+  protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
     def makeCandidate(completion: Completion) = {
       val displ = completion.label
       new Candidate(
