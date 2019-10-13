@@ -18,7 +18,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected implicit def ctx: Context = _ctx.addMode(Mode.Printing)
   protected def printDebug = ctx.settings.YprintDebug.value
 
-  private[this] var openRecs: List[RecType] = Nil
+  private var openRecs: List[RecType] = Nil
 
   protected def maxToTextRecursions: Int = 100
 
@@ -124,7 +124,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** Direct references to these symbols are printed without their prefix for convenience.
    *  They are either aliased in scala.Predef or in the scala package object.
    */
-  private[this] lazy val printWithoutPrefix: Set[Symbol] =
+  private lazy val printWithoutPrefix: Set[Symbol] =
     (defn.ScalaPredefModule.termRef.typeAliasMembers
       ++ defn.ScalaPackageObject.termRef.typeAliasMembers).map(_.info.classSymbol).toSet
 
@@ -549,7 +549,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case _ => "{...}"
     s"import $exprStr.$selectorStr"
 
-  private[this] var maxSummarized = Int.MaxValue
+  private var maxSummarized = Int.MaxValue
 
   def summarized[T](depth: Int)(op: => T): T = {
     val saved = maxSummarized

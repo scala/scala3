@@ -23,7 +23,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
       case Some(x) => x
     }
   }
-  private[this] val packageIndex: collection.mutable.Map[String, Seq[ClassPath]] = collection.mutable.Map()
+  private val packageIndex: collection.mutable.Map[String, Seq[ClassPath]] = collection.mutable.Map()
   private def aggregatesForPackage(pkg: String): Seq[ClassPath] = packageIndex.synchronized {
     packageIndex.getOrElseUpdate(pkg, aggregates.filter(_.hasPackage(pkg)))
   }

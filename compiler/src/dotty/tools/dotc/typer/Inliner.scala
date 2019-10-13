@@ -1273,7 +1273,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    */
   private def macroDependencies(tree: Tree)(implicit ctx: Context) =
     new TreeAccumulator[Set[Symbol]] {
-      private[this] var level = -1
+      private var level = -1
       override def apply(syms: Set[Symbol], tree: tpd.Tree)(implicit ctx: Context): Set[Symbol] =
         if (level != -1) foldOver(syms, tree)
         else tree match {

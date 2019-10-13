@@ -91,12 +91,12 @@ object Contexts {
     }
 
     /** The outer context */
-    private[this] var _outer: Context = _
+    private var _outer: Context = _
     protected def outer_=(outer: Context): Unit = _outer = outer
     final def outer: Context = _outer
 
     /** The current context */
-    private[this] var _period: Period = _
+    private var _period: Period = _
     protected def period_=(period: Period): Unit = {
       assert(period.firstPhaseId == period.lastPhaseId, period)
       _period = period
@@ -104,54 +104,54 @@ object Contexts {
     final def period: Period = _period
 
     /** The scope nesting level */
-    private[this] var _mode: Mode = _
+    private var _mode: Mode = _
     protected def mode_=(mode: Mode): Unit = _mode = mode
     final def mode: Mode = _mode
 
     /** The current owner symbol */
-    private[this] var _owner: Symbol = _
+    private var _owner: Symbol = _
     protected def owner_=(owner: Symbol): Unit = _owner = owner
     final def owner: Symbol = _owner
 
     /** The current tree */
-    private[this] var _tree: Tree[? >: Untyped]= _
+    private var _tree: Tree[? >: Untyped]= _
     protected def tree_=(tree: Tree[? >: Untyped]): Unit = _tree = tree
     final def tree: Tree[? >: Untyped] = _tree
 
     /** The current scope */
-    private[this] var _scope: Scope = _
+    private var _scope: Scope = _
     protected def scope_=(scope: Scope): Unit = _scope = scope
     final def scope: Scope = _scope
 
     /** The current type comparer */
-    private[this] var _typerState: TyperState = _
+    private var _typerState: TyperState = _
     protected def typerState_=(typerState: TyperState): Unit = _typerState = typerState
     final def typerState: TyperState = _typerState
 
     /** The current type assigner or typer */
-    private[this] var _typeAssigner: TypeAssigner = _
+    private var _typeAssigner: TypeAssigner = _
     protected def typeAssigner_=(typeAssigner: TypeAssigner): Unit = _typeAssigner = typeAssigner
     final def typeAssigner: TypeAssigner = _typeAssigner
 
     /** The currently active import info */
-    private[this] var _importInfo: ImportInfo = _
+    private var _importInfo: ImportInfo = _
     protected def importInfo_=(importInfo: ImportInfo): Unit = _importInfo = importInfo
     final def importInfo: ImportInfo = _importInfo
 
     /** The current bounds in force for type parameters appearing in a GADT */
-    private[this] var _gadt: GadtConstraint = _
+    private var _gadt: GadtConstraint = _
     protected def gadt_=(gadt: GadtConstraint): Unit = _gadt = gadt
     final def gadt: GadtConstraint = _gadt
 
     /** The history of implicit searches that are currently active */
-    private[this] var _searchHistory: SearchHistory = null
+    private var _searchHistory: SearchHistory = null
     protected def searchHistory_= (searchHistory: SearchHistory): Unit = _searchHistory = searchHistory
     final def searchHistory: SearchHistory = _searchHistory
 
     /** The current type comparer. This ones updates itself automatically for
      *  each new context.
      */
-    private[this] var _typeComparer: TypeComparer = _
+    private var _typeComparer: TypeComparer = _
     protected def typeComparer_=(typeComparer: TypeComparer): Unit = _typeComparer = typeComparer
     def typeComparer: TypeComparer = {
       if (_typeComparer.ctx ne this)
@@ -160,14 +160,14 @@ object Contexts {
     }
 
     /** The current source file */
-    private[this] var _source: SourceFile = _
+    private var _source: SourceFile = _
     protected def source_=(source: SourceFile): Unit = _source = source
     final def source: SourceFile = _source
 
     /** A map in which more contextual properties can be stored
      *  Typically used for attributes that are read and written only in special situations.
      */
-    private[this] var _moreProperties: Map[Key[Any], Any] = _
+    private var _moreProperties: Map[Key[Any], Any] = _
     protected def moreProperties_=(moreProperties: Map[Key[Any], Any]): Unit = _moreProperties = moreProperties
     final def moreProperties: Map[Key[Any], Any] = _moreProperties
 
@@ -257,8 +257,8 @@ object Contexts {
       * phasedCtxs is array that uses phaseId's as indexes,
       * contexts are created only on request and cached in this array
       */
-    private[this] var phasedCtx: Context = this
-    private[this] var phasedCtxs: Array[Context] = _
+    private var phasedCtx: Context = this
+    private var phasedCtxs: Array[Context] = _
 
     /** This context at given phase.
      *  This method will always return a phase period equal to phaseId, thus will never return squashed phases
@@ -292,7 +292,7 @@ object Contexts {
     /** If -Ydebug is on, the top of the stack trace where this context
      *  was created, otherwise `null`.
      */
-    private[this] var creationTrace: Array[StackTraceElement] = _
+    private var creationTrace: Array[StackTraceElement] = _
 
     private def setCreationTrace() =
       if (this.settings.YtraceContextCreation.value)
@@ -640,7 +640,7 @@ object Contexts {
     val initialCtx: Context = new InitialContext(this, settings)
 
     /** The platform, initialized by `initPlatform()`. */
-    private[this] var _platform: Platform = _
+    private var _platform: Platform = _
 
     /** The platform */
     def platform: Platform = {
@@ -680,7 +680,7 @@ object Contexts {
     // Symbols state
 
     /** Counter for unique symbol ids */
-    private[this] var _nextSymId: Int = 0
+    private var _nextSymId: Int = 0
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
 
     /** Sources that were loaded */
@@ -766,7 +766,7 @@ object Contexts {
     // Test that access is single threaded
 
     /** The thread on which `checkSingleThreaded was invoked last */
-    @sharable private[this] var thread: Thread = null
+    @sharable private var thread: Thread = null
 
     /** Check that we are on the same thread as before */
     def checkSingleThreaded(): Unit =

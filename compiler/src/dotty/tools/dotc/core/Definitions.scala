@@ -375,7 +375,7 @@ class Definitions {
     }
     myDottyPredefModule
   }
-  private[this] var myDottyPredefModule: Symbol = _
+  private var myDottyPredefModule: Symbol = _
 
   @tu lazy val DottyArraysModule: Symbol = ctx.requiredModule("dotty.runtime.Arrays")
     def newGenericArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
@@ -1201,8 +1201,8 @@ class Definitions {
 
   /** This class would also be obviated by the implicit function type design */
   class PerRun[T](generate: Context => T) {
-    private[this] var current: RunId = NoRunId
-    private[this] var cached: T = _
+    private var current: RunId = NoRunId
+    private var cached: T = _
     def apply()(implicit ctx: Context): T = {
       if (current != ctx.runId) {
         cached = generate(ctx)
@@ -1315,7 +1315,7 @@ class Definitions {
 
   @tu lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
-  private[this] var isInitialized = false
+  private var isInitialized = false
 
   def init()(implicit ctx: Context): Unit = {
     this.ctx = ctx

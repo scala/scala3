@@ -39,7 +39,7 @@ import scala.annotation.threadUnsafe
 
 object Types {
 
-  @sharable private[this] var nextId = 0
+  @sharable private var nextId = 0
 
   implicit def eqType: Eql[Type, Type] = Eql.derived
 
@@ -1654,7 +1654,7 @@ object Types {
 
   /**  Instances of this class are cached and are not proxies. */
   abstract class CachedGroundType extends Type with CachedType {
-    private[this] var myHash = HashUnknown
+    private var myHash = HashUnknown
     final def hash: Int = {
       if (myHash == HashUnknown) {
         myHash = computeHash(null)
@@ -1759,7 +1759,7 @@ object Types {
 
   /** Implementations of this trait cache the results of `narrow`. */
   trait NarrowCached extends Type {
-    private[this] var myNarrow: TermRef = null
+    private var myNarrow: TermRef = null
     override def narrow(implicit ctx: Context): TermRef = {
       if (myNarrow eq null) myNarrow = super.narrow
       myNarrow
@@ -1779,11 +1779,11 @@ object Types {
 
     assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
 
-    private[this] var myName: Name = null
-    private[this] var lastDenotation: Denotation = null
-    private[this] var lastSymbol: Symbol = null
-    private[this] var checkedPeriod: Period = Nowhere
-    private[this] var myStableHash: Byte = 0
+    private var myName: Name = null
+    private var lastDenotation: Denotation = null
+    private var lastSymbol: Symbol = null
+    private var checkedPeriod: Period = Nowhere
+    private var myStableHash: Byte = 0
 
     // Invariants:
     // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
@@ -2501,8 +2501,8 @@ object Types {
   }
 
   case class LazyRef(private var refFn: Context => Type) extends UncachedProxyType with ValueType {
-    private[this] var myRef: Type = null
-    private[this] var computed = false
+    private var myRef: Type = null
+    private var computed = false
     def ref(implicit ctx: Context): Type = {
       if (computed) {
         if (myRef == null) {
@@ -2629,7 +2629,7 @@ object Types {
 
     val parent: Type = parentExp(this)
 
-    private[this] var myRecThis: RecThis = null
+    private var myRecThis: RecThis = null
 
     def recThis: RecThis = {
       if (myRecThis == null) myRecThis = new RecThisImpl(this)
@@ -2733,8 +2733,8 @@ object Types {
 
   abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
     def isAnd: Boolean = true
-    private[this] var myBaseClassesPeriod: Period = Nowhere
-    private[this] var myBaseClasses: List[ClassSymbol] = _
+    private var myBaseClassesPeriod: Period = Nowhere
+    private var myBaseClasses: List[ClassSymbol] = _
     /** Base classes of are the merge of the operand base classes. */
     override final def baseClasses(implicit ctx: Context): List[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
@@ -2798,8 +2798,8 @@ object Types {
 
   abstract case class OrType(tp1: Type, tp2: Type) extends AndOrType {
     def isAnd: Boolean = false
-    private[this] var myBaseClassesPeriod: Period = Nowhere
-    private[this] var myBaseClasses: List[ClassSymbol] = _
+    private var myBaseClassesPeriod: Period = Nowhere
+    private var myBaseClasses: List[ClassSymbol] = _
     /** Base classes of are the intersection of the operand base classes. */
     override final def baseClasses(implicit ctx: Context): List[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
@@ -2823,8 +2823,8 @@ object Types {
     assert(tp1.isValueTypeOrWildcard &&
            tp2.isValueTypeOrWildcard, s"$tp1 $tp2")
 
-    private[this] var myJoin: Type = _
-    private[this] var myJoinPeriod: Period = Nowhere
+    private var myJoin: Type = _
+    private var myJoinPeriod: Period = Nowhere
 
     /** Replace or type by the closest non-or type above it */
     def join(implicit ctx: Context): Type = {
@@ -2837,9 +2837,9 @@ object Types {
       myJoin
     }
 
-    private[this] var atomsRunId: RunId = NoRunId
-    private[this] var myAtoms: Set[Type] = _
-    private[this] var myWidened: Type = _
+    private var atomsRunId: RunId = NoRunId
+    private var myAtoms: Set[Type] = _
+    private var myWidened: Type = _
 
     private def ensureAtomsComputed()(implicit ctx: Context): Unit =
       if (atomsRunId != ctx.runId) {
@@ -2985,7 +2985,7 @@ object Types {
     final def isTypeLambda: Boolean = isInstanceOf[TypeLambda]
     final def isHigherKinded: Boolean = isInstanceOf[TypeProxy]
 
-    private[this] var myParamRefs: List[ParamRefType] = null
+    private var myParamRefs: List[ParamRefType] = null
 
     def paramRefs: List[ParamRefType] = {
       if (myParamRefs == null) myParamRefs = paramNames.indices.toList.map(newParamRef)
@@ -3097,8 +3097,8 @@ object Types {
       }
       else resType
 
-    private[this] var myDependencyStatus: DependencyStatus = Unknown
-    private[this] var myParamDependencyStatus: DependencyStatus = Unknown
+    private var myDependencyStatus: DependencyStatus = Unknown
+    private var myParamDependencyStatus: DependencyStatus = Unknown
 
     private def depStatus(initial: DependencyStatus, tp: Type)(implicit ctx: Context): DependencyStatus = {
       def combine(x: DependencyStatus, y: DependencyStatus) = {
@@ -3502,12 +3502,12 @@ object Types {
   abstract case class AppliedType(tycon: Type, args: List[Type])
   extends CachedProxyType with ValueType {
 
-    private[this] var validSuper: Period = Nowhere
-    private[this] var cachedSuper: Type = _
-    private[this] var myStableHash: Byte = 0
+    private var validSuper: Period = Nowhere
+    private var cachedSuper: Type = _
+    private var myStableHash: Byte = 0
 
-    private[this] var isGroundKnown: Boolean = false
-    private[this] var isGroundCache: Boolean = _
+    private var isGroundKnown: Boolean = false
+    private var isGroundCache: Boolean = _
 
     def isGround(acc: TypeAccumulator[Boolean])(implicit ctx: Context): Boolean = {
       if (!isGroundKnown) {
@@ -3735,7 +3735,7 @@ object Types {
 
     def withName(name: Name): this.type = { myRepr = name; this }
 
-    private[this] var myRepr: Name = null
+    private var myRepr: Name = null
     def repr(implicit ctx: Context): Name = {
       if (myRepr == null) myRepr = SkolemName.fresh()
       myRepr
@@ -3788,7 +3788,7 @@ object Types {
     def setOrigin(p: TypeParamRef) = _origin = p
 
     /** The permanent instance type of the variable, or NoType is none is given yet */
-    private[this] var myInst: Type = NoType
+    private var myInst: Type = NoType
 
     private[core] def inst: Type = myInst
     private[core] def inst_=(tp: Type): Unit = {
@@ -3887,8 +3887,8 @@ object Types {
     def alternatives(implicit ctx: Context): List[Type] = cases.map(caseType)
     def underlying(implicit ctx: Context): Type = bound
 
-    private[this] var myReduced: Type = null
-    private[this] var reductionContext: mutable.Map[Type, Type] = null
+    private var myReduced: Type = null
+    private var reductionContext: mutable.Map[Type, Type] = null
 
     override def tryNormalize(implicit ctx: Context): Type = reduced.normalized
 
@@ -3976,8 +3976,8 @@ object Types {
       decls: Scope,
       selfInfo: TypeOrSymbol) extends CachedGroundType with TypeType {
 
-    private[this] var selfTypeCache: Type = null
-    private[this] var appliedRefCache: Type = null
+    private var selfTypeCache: Type = null
+    private var appliedRefCache: Type = null
 
     /** The self type of a class is the conjunction of
      *   - the explicit self type if given (or the info of a given self symbol), and
@@ -4003,7 +4003,7 @@ object Types {
     }
 
     // cached because baseType needs parents
-    private[this] var parentsCache: List[Type] = null
+    private var parentsCache: List[Type] = null
 
     override def parents(implicit ctx: Context): List[Type] = {
       if (parentsCache == null)
@@ -4211,8 +4211,8 @@ object Types {
 
     override def stripAnnots(implicit ctx: Context): Type = parent.stripAnnots
 
-    private[this] var isRefiningKnown = false
-    private[this] var isRefiningCache: Boolean = _
+    private var isRefiningKnown = false
+    private var isRefiningCache: Boolean = _
 
     def isRefining(implicit ctx: Context): Boolean = {
       if (!isRefiningKnown) {

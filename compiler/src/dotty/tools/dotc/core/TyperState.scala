@@ -26,7 +26,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
   val id: Int = TyperState.nextId
   TyperState.nextId += 1
 
-  private[this] var myReporter =
+  private var myReporter =
     if (previous == null) new ConsoleReporter() else previous.reporter
 
   def reporter: Reporter = myReporter
@@ -34,7 +34,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
   /** A fresh type state with the same constraint as this one and the given reporter */
   def setReporter(reporter: Reporter): this.type = { myReporter = reporter; this }
 
-  private[this] var myConstraint: Constraint =
+  private var myConstraint: Constraint =
     if (previous == null) OrderingConstraint.empty
     else previous.constraint
 
@@ -53,7 +53,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
   private val previousConstraint =
     if (previous == null) constraint else previous.constraint
 
-  private[this] var myIsCommittable = true
+  private var myIsCommittable = true
 
   def isCommittable: Boolean = myIsCommittable
 
@@ -62,7 +62,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
   def isGlobalCommittable: Boolean =
     isCommittable && (previous == null || previous.isGlobalCommittable)
 
-  private[this] var isShared = false
+  private var isShared = false
 
   /** Mark typer state as shared (typically because it is the typer state of
    *  the creation context of a source definition that potentially still needs
@@ -70,7 +70,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
    */
   def markShared(): Unit = isShared = true
 
-  private[this] var isCommitted = false
+  private var isCommitted = false
 
   /** A fresh typer state with the same constraint as this one. */
   def fresh(): TyperState =
@@ -80,7 +80,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
   def uninstVars: collection.Seq[TypeVar] = constraint.uninstVars
 
   /** The set of uninstantiated type variables which have this state as their owning state */
-  private[this] var myOwnedVars: TypeVars = SimpleIdentitySet.empty
+  private var myOwnedVars: TypeVars = SimpleIdentitySet.empty
   def ownedVars: TypeVars = myOwnedVars
   def ownedVars_=(vs: TypeVars): Unit = myOwnedVars = vs
 
@@ -90,7 +90,7 @@ class TyperState(private val previous: TyperState /* | Null */) {
   def uncommittedAncestor: TyperState =
     if (isCommitted) previous.uncommittedAncestor else this
 
-  private[this] var testReporter: TestReporter = null
+  private var testReporter: TestReporter = null
 
   /** Test using `op`. If current typerstate is shared, run `op` in a fresh exploration
    *  typerstate. If it is unshared, run `op` in current typerState, restoring typerState

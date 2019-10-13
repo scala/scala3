@@ -102,14 +102,14 @@ class Typer extends Namer
    *  Note: It would be more proper to move importedFromRoot into typedIdent.
    *  We should check that this has no performance degradation, however.
    */
-  private[this] var unimported: Set[Symbol] = Set()
+  private var unimported: Set[Symbol] = Set()
 
   /** Temporary data item for single call to typed ident:
    *  This symbol would be found under Scala2 mode, but is not
    *  in dotty (because dotty conforms to spec section 2
    *  wrt to package member resolution but scalac doe not).
    */
-  private[this] var foundUnderScala2: Type = NoType
+  private var foundUnderScala2: Type = NoType
 
   // Overridden in derived typers
   def newLikeThis: Typer = new Typer

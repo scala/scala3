@@ -34,11 +34,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   def constraint: Constraint = state.constraint
   def constraint_=(c: Constraint): Unit = state.constraint = c
 
-  private[this] var pendingSubTypes: mutable.Set[(Type, Type)] = null
-  private[this] var recCount = 0
-  private[this] var monitored = false
+  private var pendingSubTypes: mutable.Set[(Type, Type)] = null
+  private var recCount = 0
+  private var monitored = false
 
-  private[this] var needsGc = false
+  private var needsGc = false
 
   /** Is a subtype check in progress? In that case we may not
    *  permanently instantiate type variables, because the corresponding
@@ -55,17 +55,17 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   }
 
   /** For statistics: count how many isSubTypes are part of successful comparisons */
-  private[this] var successCount = 0
-  private[this] var totalCount = 0
+  private var successCount = 0
+  private var totalCount = 0
 
-  private[this] var myAnyClass: ClassSymbol = null
-  private[this] var myAnyKindClass: ClassSymbol = null
-  private[this] var myNothingClass: ClassSymbol = null
-  private[this] var myNullClass: ClassSymbol = null
-  private[this] var myObjectClass: ClassSymbol = null
-  private[this] var myAnyType: TypeRef = null
-  private[this] var myAnyKindType: TypeRef = null
-  private[this] var myNothingType: TypeRef = null
+  private var myAnyClass: ClassSymbol = null
+  private var myAnyKindClass: ClassSymbol = null
+  private var myNothingClass: ClassSymbol = null
+  private var myNullClass: ClassSymbol = null
+  private var myObjectClass: ClassSymbol = null
+  private var myAnyType: TypeRef = null
+  private var myAnyKindType: TypeRef = null
+  private var myNothingType: TypeRef = null
 
   def AnyClass: ClassSymbol = {
     if (myAnyClass == null) myAnyClass = defn.AnyClass
@@ -133,7 +133,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   }
 
   /** The current approximation state. See `ApproxState`. */
-  private[this] var approx: ApproxState = FreshApprox
+  private var approx: ApproxState = FreshApprox
   protected def approxState: ApproxState = approx
 
   /** The original left-hand type of the comparison. Gets reset
@@ -147,7 +147,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  This flag is set when we're already in [[Mode.GadtConstraintInference]],
    *  to signify that we temporarily cannot record any GADT constraints.
    */
-  private[this] var frozenGadt = false
+  private var frozenGadt = false
 
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
     val savedApprox = approx
@@ -1889,7 +1889,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         NoType
     }
 
-  private[this] def andTypeGen(tp1: Type, tp2: Type, op: (Type, Type) => Type,
+  private def andTypeGen(tp1: Type, tp2: Type, op: (Type, Type) => Type,
       original: (Type, Type) => Type = _ & _, isErased: Boolean = ctx.erasedTypes): Type = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
     if (t1.exists) t1
@@ -2492,10 +2492,10 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   import TypeComparer._
 
-  private[this] var indent = 0
+  private var indent = 0
   private val b = new StringBuilder
 
-  private[this] var skipped = false
+  private var skipped = false
 
   override def traceIndented[T](str: String)(op: => T): T =
     if (skipped) op

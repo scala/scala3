@@ -1080,7 +1080,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   trait TreeProvider {
     protected def computeRootTrees(implicit ctx: Context): List[Tree]
 
-    private[this] var myTrees: List[Tree] = null
+    private var myTrees: List[Tree] = null
 
     /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
     def rootTrees(implicit ctx: Context): List[Tree] =

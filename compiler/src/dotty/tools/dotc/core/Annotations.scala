@@ -51,7 +51,7 @@ object Annotations {
     override def symbol(implicit ctx: Context): Symbol
     def complete(implicit ctx: Context): Tree
 
-    private[this] var myTree: Tree = null
+    private var myTree: Tree = null
     def tree(implicit ctx: Context): Tree = {
       if (myTree == null) myTree = complete(ctx)
       myTree
@@ -78,8 +78,8 @@ object Annotations {
 
   case class LazyBodyAnnotation(private var bodyExpr: Context => Tree) extends BodyAnnotation {
     // TODO: Make `bodyExpr` an IFT once #6865 os in bootstrap
-    private[this] var evaluated = false
-    private[this] var myBody: Tree = _
+    private var evaluated = false
+    private var myBody: Tree = _
     def tree(implicit ctx: Context): Tree = {
       if (evaluated) assert(myBody != null)
       else {
@@ -127,7 +127,7 @@ object Annotations {
     /** Create an annotation where the symbol and the tree are computed lazily. */
     def deferredSymAndTree(symf: (given Context) => Symbol)(treeFn: (given Context) => Tree)(implicit ctx: Context): Annotation =
       new LazyAnnotation {
-        private[this] var mySym: Symbol = _
+        private var mySym: Symbol = _
 
         override def symbol(implicit ctx: Context): Symbol = {
           if (mySym == null || mySym.defRunId != ctx.runId) {

@@ -80,7 +80,7 @@ object Implicits {
     /** The implicit references */
     def refs: List[ImplicitRef]
 
-    private[this] var SingletonClass: ClassSymbol = null
+    private var SingletonClass: ClassSymbol = null
 
     /** Widen type so that it is neither a singleton type nor a type that inherits from scala.Singleton. */
     private def widenSingleton(tp: Type)(implicit ctx: Context): Type = {
@@ -1954,7 +1954,7 @@ final class SearchRoot extends SearchHistory {
 
 /** A set of term references where equality is =:= */
 final class TermRefSet(implicit ctx: Context) {
-  private[this] val elems = new java.util.LinkedHashMap[TermSymbol, List[Type]]
+  private val elems = new java.util.LinkedHashMap[TermSymbol, List[Type]]
 
   def += (ref: TermRef): Unit = {
     val pre = ref.prefix

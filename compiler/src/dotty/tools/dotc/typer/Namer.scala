@@ -237,7 +237,7 @@ class Namer { typer: Typer =>
   val scope: MutableScope = newScope
 
   /** We are entering symbols coming from a SourceLoader */
-  private[this] var lateCompile = false
+  private var lateCompile = false
 
   /** The symbol of the given expanded tree. */
   def symbolOfTree(tree: Tree)(implicit ctx: Context): Symbol = {
@@ -898,8 +898,8 @@ class Namer { typer: Typer =>
   }
 
   class TypeDefCompleter(original: TypeDef)(ictx: Context) extends Completer(original)(ictx) with TypeParamsCompleter {
-    private[this] var myTypeParams: List[TypeSymbol] = null
-    private[this] var nestedCtx: Context = null
+    private var myTypeParams: List[TypeSymbol] = null
+    private var nestedCtx: Context = null
     assert(!original.isClassDef)
 
     override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] = {
@@ -934,9 +934,9 @@ class Namer { typer: Typer =>
 
     protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
 
-    private[this] var localCtx: Context = _
+    private var localCtx: Context = _
     /** info to be used temporarily while completing the class, to avoid cyclic references. */
-    private[this] var tempInfo: TempClassInfo = _
+    private var tempInfo: TempClassInfo = _
 
     val TypeDef(name, impl @ Template(constr, _, self, _)) = original
 

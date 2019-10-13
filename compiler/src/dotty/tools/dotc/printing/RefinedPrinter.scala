@@ -30,10 +30,10 @@ import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Te
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */
-  private[this] var enclosingDef: untpd.Tree = untpd.EmptyTree
-  private[this] var myCtx: Context = super.ctx
-  private[this] var printPos = ctx.settings.YprintPos.value
-  private[this] val printLines = ctx.settings.printLines.value
+  private var enclosingDef: untpd.Tree = untpd.EmptyTree
+  private var myCtx: Context = super.ctx
+  private var printPos = ctx.settings.YprintPos.value
+  private val printLines = ctx.settings.printLines.value
 
   override protected implicit def ctx: Context = myCtx
 

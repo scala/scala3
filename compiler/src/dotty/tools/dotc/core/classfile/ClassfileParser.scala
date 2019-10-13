@@ -70,7 +70,7 @@ class ClassfileParser(
   protected var currentClassName: SimpleName = _      // JVM name of the current class
   protected var classTParams: Map[Name, Symbol] = Map()
 
-  private[this] var Scala2UnpicklingMode = Mode.Scala2Unpickling
+  private var Scala2UnpicklingMode = Mode.Scala2Unpickling
 
   classRoot.info = NoLoader().withDecls(instanceScope)
   moduleRoot.info = NoLoader().withDecls(staticScope).withSourceModule(_ => staticModule)
@@ -696,7 +696,7 @@ class ClassfileParser(
 
   // Nothing$ and Null$ were incorrectly emitted with a Scala attribute
   // instead of ScalaSignature before 2.13.0-M2, see https://github.com/scala/scala/pull/5952
-  private[this] val scalaUnpickleWhitelist = List(tpnme.nothingClass, tpnme.nullClass)
+  private val scalaUnpickleWhitelist = List(tpnme.nothingClass, tpnme.nullClass)
 
   /** Parse inner classes. Expects `in.bp` to point to the superclass entry.
    *  Restores the old `bp`.

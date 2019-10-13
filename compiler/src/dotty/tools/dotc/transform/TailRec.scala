@@ -196,7 +196,7 @@ class TailRec extends MiniPhase {
     var failureReported: Boolean = false
 
     /** The `tailLabelN` label symbol, used to encode a `continue` from the infinite `while` loop. */
-    private[this] var myContinueLabel: Symbol = _
+    private var myContinueLabel: Symbol = _
     def continueLabel(implicit ctx: Context): Symbol = {
       if (myContinueLabel == null)
         myContinueLabel = ctx.newSymbol(method, TailLabelName.fresh(), Label, defn.UnitType)
@@ -235,7 +235,7 @@ class TailRec extends MiniPhase {
     /** Symbols of Labeled blocks that are in tail position. */
     private val tailPositionLabeledSyms = new mutable.HashSet[Symbol]()
 
-    private[this] var inTailPosition = true
+    private var inTailPosition = true
 
     /** Rewrite this tree to contain no tail recursive calls */
     def transform(tree: Tree, tailPosition: Boolean)(implicit ctx: Context): Tree =

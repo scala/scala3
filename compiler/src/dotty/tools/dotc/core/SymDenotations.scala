@@ -145,9 +145,9 @@ object SymDenotations {
 
     // ------ Getting and setting fields -----------------------------
 
-    private[this] var myFlags: FlagSet = adaptFlags(initFlags)
-    private[this] var myPrivateWithin: Symbol = initPrivateWithin
-    private[this] var myAnnotations: List[Annotation] = Nil
+    private var myFlags: FlagSet = adaptFlags(initFlags)
+    private var myPrivateWithin: Symbol = initPrivateWithin
+    private var myAnnotations: List[Annotation] = Nil
 
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = maybeOwner
@@ -1023,7 +1023,7 @@ object SymDenotations {
 
     /** The chain of owners of this denotation, starting with the denoting symbol itself */
     final def ownersIterator(implicit ctx: Context): Iterator[Symbol] = new Iterator[Symbol] {
-      private[this] var current = symbol
+      private var current = symbol
       def hasNext = current.exists
       def next: Symbol = {
         val result = current
@@ -1483,16 +1483,16 @@ object SymDenotations {
 
     // ----- caches -------------------------------------------------------
 
-    private[this] var myTypeParams: List[TypeSymbol] = null
-    private[this] var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.Empty
+    private var myTypeParams: List[TypeSymbol] = null
+    private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.Empty
 
-    private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
-    private[this] var myMemberCachePeriod: Period = Nowhere
+    private var myMemberCache: LRUCache[Name, PreDenotation] = null
+    private var myMemberCachePeriod: Period = Nowhere
 
     /** A cache from types T to baseType(T, C) */
     type BaseTypeMap = java.util.IdentityHashMap[CachedType, Type]
-    private[this] var myBaseTypeCache: BaseTypeMap = null
-    private[this] var myBaseTypeCachePeriod: Period = Nowhere
+    private var myBaseTypeCache: BaseTypeMap = null
+    private var myBaseTypeCachePeriod: Period = Nowhere
 
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
@@ -1609,7 +1609,7 @@ object SymDenotations {
 
    // ------ class-specific operations -----------------------------------
 
-    private[this] var myThisType: Type = null
+    private var myThisType: Type = null
 
     /** The this-type depends on the kind of class:
      *  - for a package class `p`:  ThisType(TypeRef(Noprefix, p))
@@ -1627,7 +1627,7 @@ object SymDenotations {
       ThisType.raw(TypeRef(pre, cls))
     }
 
-    private[this] var myTypeRef: TypeRef = null
+    private var myTypeRef: TypeRef = null
 
     override def typeRef(implicit ctx: Context): TypeRef = {
       if (myTypeRef == null) myTypeRef = super.typeRef
@@ -2047,7 +2047,7 @@ object SymDenotations {
             .installAfter(phase)
       }
 
-    private[this] var myCompanion: Symbol = NoSymbol
+    private var myCompanion: Symbol = NoSymbol
 
     /** Register companion class */
     override def registerCompanion(companion: Symbol)(implicit ctx: Context) =
@@ -2070,8 +2070,8 @@ object SymDenotations {
     initPrivateWithin: Symbol)
     extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
 
-    private[this] var packageObjsCache: List[ClassDenotation] = _
-    private[this] var packageObjsRunId: RunId = NoRunId
+    private var packageObjsCache: List[ClassDenotation] = _
+    private var packageObjsRunId: RunId = NoRunId
 
     /** The package objects in this class */
     def packageObjs(implicit ctx: Context): List[ClassDenotation] = {
@@ -2221,10 +2221,10 @@ object SymDenotations {
     def apply(sym: Symbol): LazyType = this
     def apply(module: TermSymbol, modcls: ClassSymbol): LazyType = this
 
-    private[this] val NoSymbolFn = (_: Context) => NoSymbol
-    private[this] var myDecls: Scope = EmptyScope
-    private[this] var mySourceModuleFn: Context => Symbol = NoSymbolFn
-    private[this] var myModuleClassFn: Context => Symbol = NoSymbolFn
+    private val NoSymbolFn = (_: Context) => NoSymbol
+    private var myDecls: Scope = EmptyScope
+    private var mySourceModuleFn: Context => Symbol = NoSymbolFn
+    private var myModuleClassFn: Context => Symbol = NoSymbolFn
 
     /** The type parameters computed by the completer before completion has finished */
     def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeParamInfo] =
@@ -2347,8 +2347,8 @@ object SymDenotations {
   private abstract class InheritedCacheImpl(val createdAt: Period) extends InheritedCache {
     protected def sameGroup(p1: Phase, p2: Phase): Boolean
 
-    private[this] var dependent: WeakHashMap[InheritedCache, Unit] = null
-    private[this] var checkedPeriod: Period = Nowhere
+    private var dependent: WeakHashMap[InheritedCache, Unit] = null
+    private var checkedPeriod: Period = Nowhere
 
     protected def invalidateDependents() = {
       if (dependent != null) {
@@ -2378,12 +2378,12 @@ object SymDenotations {
   }
 
   private class MemberNamesImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with MemberNames {
-    private[this] var cache: SimpleIdentityMap[NameFilter, Set[Name]] = SimpleIdentityMap.Empty
+    private var cache: SimpleIdentityMap[NameFilter, Set[Name]] = SimpleIdentityMap.Empty
 
     final def isValid(implicit ctx: Context): Boolean =
       cache != null && isValidAt(ctx.phase)
 
-    private[this] var locked = false
+    private var locked = false
 
     /** Computing parent member names might force parents, which could invalidate
      *  the cache itself. In that case we should cancel invalidation and
@@ -2417,11 +2417,11 @@ object SymDenotations {
   }
 
   private class BaseDataImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with BaseData {
-    private[this] var cache: (List[ClassSymbol], BaseClassSet) = null
+    private var cache: (List[ClassSymbol], BaseClassSet) = null
 
-    private[this] var valid = true
-    private[this] var locked = false
-    private[this] var provisional = false
+    private var valid = true
+    private var locked = false
+    private var provisional = false
 
     final def isValid(implicit ctx: Context): Boolean = valid && isValidAt(ctx.phase)
 
@@ -2480,9 +2480,9 @@ object SymDenotations {
 
   /** A class to combine base data from parent types */
   class BaseDataBuilder {
-    private[this] var classes: List[ClassSymbol] = Nil
-    private[this] var classIds = new Array[Int](32)
-    private[this] var length = 0
+    private var classes: List[ClassSymbol] = Nil
+    private var classIds = new Array[Int](32)
+    private var length = 0
 
     private def resize(size: Int) = {
       val classIds1 = new Array[Int](size)
@@ -2520,5 +2520,5 @@ object SymDenotations {
 
   private val packageTypeName = ModuleClassName(nme.PACKAGE).toTypeName
 
-  @sharable private[this] var indent = 0 // for completions printing
+  @sharable private var indent = 0 // for completions printing
 }

@@ -67,7 +67,7 @@ class ReplCompiler extends Compiler {
     }
   }
 
-  private[this] val objectNames = mutable.Map.empty[Int, TermName]
+  private val objectNames = mutable.Map.empty[Int, TermName]
 
   private case class Definitions(stats: List[untpd.Tree], state: State)
 
