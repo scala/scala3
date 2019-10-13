@@ -276,6 +276,9 @@ class Namer { typer: Typer =>
     /** Check that flags are OK for symbol. This is done early to avoid
      *  catastrophic failure when we create a TermSymbol with TypeFlags, or vice versa.
      *  A more complete check is done in checkWellFormed.
+     *  Also, speculatively add a Local flag to private members that can be Local if
+     *  referred to exclusively from their owner's this-type. The Local flag is retracted in
+     *  `isAccessibleFrom` if the access not from such a this-type.
      */
     def checkFlags(flags: FlagSet) =
       if (flags.isEmpty) flags
@@ -284,9 +287,12 @@ class Namer { typer: Typer =>
           case tree: TypeDef => (flags.isTypeFlags, flags.toTypeFlags, "type")
           case _ => (flags.isTermFlags, flags.toTermFlags, "value")
         }
-        if (!ok)
+        def canBeLocal = tree match
+          case tree: ValOrDefDef => SymDenotations.canBeLocal(tree.name, flags)
+          case _ => false
+        if !ok then
           ctx.error(i"modifier(s) `${flags.flagsString}` incompatible with $kind definition", tree.sourcePos)
-        adapted
+        if adapted.is(Private) && canBeLocal then adapted | Local else adapted
       }
 
     /** Add moduleClass/sourceModule to completer if it is for a module val or class */
