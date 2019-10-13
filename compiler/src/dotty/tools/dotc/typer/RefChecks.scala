@@ -116,7 +116,7 @@ object RefChecks {
       case TypeRef(ref: TermRef, _) =>
         val paramRefs = ref.namedPartsWith(ntp => ntp.symbol.enclosingClass == cls)
         if (paramRefs.nonEmpty)
-          ctx.error("trait parameters cannot be used as parent prefixes", parent.sourcePos)
+          ctx.error(TraitParameterUsedAsParentPrefix(cls), parent.sourcePos)
       case _ =>
     }
 

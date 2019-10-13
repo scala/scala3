@@ -2362,4 +2362,20 @@ object messages {
     }
     val explanation: String = ""
   }
+
+  case class TraitParameterUsedAsParentPrefix(cls: Symbol)(implicit val ctx: Context)
+    extends Message(TraitParameterUsedAsParentPrefixID) {
+    val kind: String = "Reference"
+    val msg: String =
+      s"${cls.show} cannot extend from a parent that is derived via its own parameters"
+    val explanation: String =
+      ex"""
+          |The parent class/trait that ${cls.show} extends from is obtained from
+          |the parameter of ${cls.show}. This is disallowed in order to prevent
+          |outer-related Null Pointer Exceptions in Scala.
+          |
+          |In order to fix this issue consider directly extending from the parent rather
+          |than obtaining it from the parameters of ${cls.show}.
+          |""".stripMargin
+  }
 }
