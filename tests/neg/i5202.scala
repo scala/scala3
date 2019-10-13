@@ -9,7 +9,7 @@ class Foo[A] {
   def foo(a: A): Unit = {}
 }
 class Co[+A] {
-  def foo(a: A): Unit = {} // error: contravariant occurs in covariant position
+  def foo(a: A): Unit = {}
   def bar: A = ???
 }
 class Contra[-A] {

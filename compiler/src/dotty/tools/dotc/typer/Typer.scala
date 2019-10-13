@@ -1740,7 +1740,6 @@ class Typer extends Namer
         checkEnum(cdef, cls, firstParent)
       }
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
-      checkVariance(cdef1)
 
       val reportDynamicInheritance =
         ctx.phase.isTyper &&
@@ -1827,9 +1826,6 @@ class Typer extends Namer
       typed(untpd.New(untpd.TypedSplice(firstParent), Nil)) :: otherParents
     else parents
   }
-
-  /** Overridden in retyper */
-  def checkVariance(tree: Tree)(implicit ctx: Context): Unit = VarianceChecker.check(tree)
 
   def localDummy(cls: ClassSymbol, impl: untpd.Template)(implicit ctx: Context): Symbol =
     ctx.newLocalDummy(cls, impl.span)
