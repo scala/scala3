@@ -288,7 +288,7 @@ class Namer { typer: Typer =>
           case _ => (flags.isTermFlags, flags.toTermFlags, "value")
         }
         def canBeLocal = tree match
-          case tree: ValOrDefDef => SymDenotations.canBeLocal(tree.name, flags)
+          case tree: MemberDef => SymDenotations.canBeLocal(tree.name, flags)
           case _ => false
         if !ok then
           ctx.error(i"modifier(s) `${flags.flagsString}` incompatible with $kind definition", tree.sourcePos)

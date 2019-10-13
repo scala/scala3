@@ -795,7 +795,7 @@ object SymDenotations {
      *  @param superAccess  Access is via super
      *  Everything is accessible if `pre` is `NoPrefix`.
      *  A symbol with type `NoType` is not accessible for any other prefix.
-     *  
+     *
      *  As a side effect, drop Local flags of members that are not accessed via the ThisType
      *  of their owner.
      */
@@ -2192,19 +2192,16 @@ object SymDenotations {
     validFor = Period.allInRun(NoRunId)
   }
 
-  /** Can a pruvate symbol with given name and flags be inferred to be local,
+  /** Can a private symbol with given name and flags be inferred to be local,
    *  if all references to such symbols are via `this`?
-   *  This holds for all term symbols, except
+   *  This holds for all symbols except
    *   - constructors, since they can never be referred to as members of their
    *     own, fully elaborated `this`.
    *   - parameters and parameter accessors, since their Local status is already
    *     determined by whether they have a `val` or `var` or not.
    */
   def canBeLocal(name: Name, flags: FlagSet)(given Context) =
-    name.isTermName
-    && !name.isConstructorName
-    && !flags.is(Param)
-    && !flags.is(ParamAccessor)
+    !name.isConstructorName && !flags.is(Param) && !flags.is(ParamAccessor)
 
   // ---- Completion --------------------------------------------------------
 
