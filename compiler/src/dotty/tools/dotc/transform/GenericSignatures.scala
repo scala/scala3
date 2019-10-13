@@ -9,13 +9,14 @@ import core.Flags._
 import core.Names.{DerivedName, Name, SimpleName, TypeName}
 import core.Symbols._
 import core.TypeApplications.TypeParamInfo
-import core.TypeErasure.erasure
+import core.TypeErasure.{erasure, fullErasure}
 import core.Types._
 import core.classfile.ClassfileConstants
 import ast.Trees._
 import SymUtils._
 import TypeUtils._
 import java.lang.StringBuilder
+import core.Decorators._
 
 import scala.annotation.tailrec
 
@@ -33,7 +34,12 @@ object GenericSignatures {
    */
   def javaSig(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] =
     // Avoid generating a signature for local symbols.
-    if (sym0.isLocal) None
+    // Also suppress signatures for private symbols whose types erase in the end to primitive
+    // value types. This is done to fix #7416. Since I do not know GenericSignatures well,
+    // I did a minimal fix that lets #7416 pass. Maybe it can be generalized
+    if sym0.isLocal
+       || sym0.is(Private) && fullErasure(info).isPrimitiveValueType
+    then None
     else javaSig0(sym0, info)(ctx.withPhase(ctx.erasurePhase))
 
   @noinline
