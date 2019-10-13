@@ -331,7 +331,7 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘lazy’
                     |  ‘inline’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
-AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
+AccessQualifier   ::=  ‘[’ id ‘]’
 
 Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                        Apply(tpe, args)
 

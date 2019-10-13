@@ -2642,7 +2642,11 @@ object Parsers {
         if (mods.is(Local) || mods.hasPrivateWithin)
           syntaxError(DuplicatePrivateProtectedQualifier())
         inBrackets {
-          if (in.token == THIS) { in.nextToken(); mods | Local }
+          if in.token == THIS then
+            if ctx.settings.strict.value then
+              deprecationWarning("The [this] qualifier is deprecated in Scala 3.1; it should be dropped.")
+            in.nextToken()
+            mods | Local
           else mods.withPrivateWithin(ident().toTypeName)
         }
       }
