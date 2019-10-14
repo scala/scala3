@@ -729,7 +729,7 @@ trait Implicits { self: Typer =>
 
   lazy val synthesizedQuoteContext: SpecialHandler =
     (formal, span) => implicit ctx =>
-      if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.QuoteContext_macroContext)
+      if (ctx.inMacro || enclosingInlineds.nonEmpty) ref(defn.QuoteContext_macroContext)
       else EmptyTree
 
   lazy val synthesizedTupleFunction: SpecialHandler =
