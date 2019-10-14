@@ -6,7 +6,6 @@ object scalatest {
 
   def assertImpl(cond: Expr[Boolean])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty.{_, given}
-    import util._
 
     cond.unseal.underlyingArgument match {
       case t @ Apply(Select(lhs, op), rhs :: Nil) =>

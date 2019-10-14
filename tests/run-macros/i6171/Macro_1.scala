@@ -6,7 +6,6 @@ object scalatest {
 
   def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty.{_, given}
-    import util._
 
     def isImplicitMethodType(tp: Type): Boolean =
       Type.IsMethodType.unapply(tp).flatMap(tp => if tp.isImplicit then Some(true) else None).nonEmpty
