@@ -162,7 +162,7 @@ object SymDenotations {
 
     inline private def setMyFlags(flags: FlagSet) =
       if isCompleting then assert((flags & FromStartFlags).isEmpty,
-        s"Illegal mutation of flags ${flags & FromStartFlags} on completion of $this")
+        s"Illegal mutation of flags ${(flags & FromStartFlags).flagsString} on completion of $this")
       myFlags = flags
 
     final def flagsString(implicit ctx: Context): String = flags.flagsString
