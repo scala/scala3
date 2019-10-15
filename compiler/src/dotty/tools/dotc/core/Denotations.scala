@@ -653,15 +653,18 @@ object Denotations {
       case ExprType(rtp1) =>
         tp2 match {
           case ExprType(rtp2) => ExprType(rtp1 & rtp2)
-          case _ => rtp1 & tp2
+          case _ => infoMeet(rtp1, tp2, sym1, sym2, safeIntersection)
         }
       case _ =>
-        try tp1 & tp2.widenExpr
-        catch {
-          case ex: Throwable =>
-            println(i"error for meet: $tp1 &&& $tp2, ${tp1.getClass}, ${tp2.getClass}")
-            throw ex
-        }
+        tp2 match
+          case _: MethodType | _: PolyType =>
+            mergeConflict(sym1, sym2, tp1, tp2)
+          case _ =>
+            try tp1 & tp2.widenExpr
+            catch
+              case ex: Throwable =>
+                println(i"error for meet: $tp1 &&& $tp2, ${tp1.getClass}, ${tp2.getClass}")
+                throw ex
     }
 
   /** Normally, `tp1 | tp2`.
