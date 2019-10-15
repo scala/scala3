@@ -451,7 +451,8 @@ object Flags {
    */
   val AfterLoadFlags: FlagSet = commonFlags(
     FromStartFlags, AccessFlags, Final, AccessorOrSealed, LazyOrTrait, SelfName, JavaDefined,
-    Enum, StableRealizable) // TODO: change to JavaEnumValue in future, blocked by possible bug in FlagSet union
+    // We cannot use JavaEnumValue here because it has not been initialized
+    Enum, StableRealizable)
 
   /** A value that's unstable unless complemented with a Stable flag */
   val UnstableValueFlags: FlagSet = Mutable | Method
