@@ -23,7 +23,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   /** the following two members override abstract members in Transform */
   val phaseName: String = "capturedVars"
 
-  private var Captured: Store.Location[collection.Set[Symbol]] = _
+  private[this] var Captured: Store.Location[collection.Set[Symbol]] = _
   private def captured(implicit ctx: Context) = ctx.store(Captured)
 
   override def initContext(ctx: FreshContext): Unit =
@@ -82,7 +82,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
     */
   def refClass(cls: Symbol, isVolatile: Boolean)(implicit ctx: Context): Symbol = {
     val refMap = if (isVolatile) refInfo.volatileRefClass else refInfo.refClass
-    if (cls.isClass) 
+    if (cls.isClass)
       refMap.getOrElse(cls, refMap(defn.ObjectClass))
     else refMap(defn.ObjectClass)
   }
