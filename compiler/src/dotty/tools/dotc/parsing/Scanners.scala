@@ -555,7 +555,7 @@ object Scanners {
           token = INDENT
     end observeIndented
 
-    /** Insert an <outdent> token if next token is in statCtdTokens */
+    /** Insert an <outdent> token if next token closes an indentation region */
     def observeOutdented(): Unit = currentRegion match
       case r: Indented if !r.isOutermost && closingRegionTokens.contains(token) =>
         currentRegion = r.enclosing
