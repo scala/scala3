@@ -555,6 +555,13 @@ object Scanners {
           token = INDENT
     end observeIndented
 
+    /** Insert an <outdent> token if next token is in statCtdTokens */
+    def observeOutdented(): Unit = currentRegion match
+      case r: Indented if !r.isOutermost && closingRegionTokens.contains(token) =>
+        currentRegion = r.enclosing
+        insert(OUTDENT, offset)
+      case _ =>
+
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
      *  - Insert missing OUTDENTs at EOF
      */
