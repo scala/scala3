@@ -160,6 +160,11 @@ object SymDenotations {
      */
     private[dotc] final def flagsUNSAFE: FlagSet = myFlags
 
+    inline private def setMyFlags(flags: FlagSet) =
+      if isCompleting then assert((flags & FromStartFlags).isEmpty,
+        s"Illegal mutation of flags ${flags & FromStartFlags} on completion of $this")
+      myFlags = flags
+
     final def flagsString(implicit ctx: Context): String = flags.flagsString
 
     /** Adapt flag set to this denotation's term or type nature */
@@ -167,13 +172,13 @@ object SymDenotations {
 
     /** Update the flag set */
     final def flags_=(flags: FlagSet): Unit =
-      myFlags = adaptFlags(flags)
+      setMyFlags(adaptFlags(flags))
 
     /** Set given flags(s) of this denotation */
-    final def setFlag(flags: FlagSet): Unit = { myFlags |= flags }
+    final def setFlag(flags: FlagSet): Unit = { setMyFlags(myFlags | flags) }
 
     /** Unset given flags(s) of this denotation */
-    final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
+    final def resetFlag(flags: FlagSet): Unit = { setMyFlags(myFlags &~ flags) }
 
     /** Set applicable flags in {NoInits, PureInterface}
      *  @param  parentFlags  The flags that match the class or trait's parents
@@ -237,7 +242,7 @@ object SymDenotations {
         indent += 1
 
         if (myFlags.is(Touched)) throw CyclicReference(this)
-        myFlags |= Touched
+        setMyFlags(myFlags | Touched)
 
         // completions.println(s"completing ${this.debugString}")
         try completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
@@ -253,7 +258,7 @@ object SymDenotations {
       }
       else {
         if (myFlags.is(Touched)) throw CyclicReference(this)
-        myFlags |= Touched
+        setMyFlags(myFlags | Touched)
         completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
       }
 

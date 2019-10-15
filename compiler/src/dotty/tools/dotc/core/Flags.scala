@@ -434,7 +434,6 @@ object Flags {
     commonFlags(Module, Param, Synthetic, Package, Local, Mutable, Trait)
 
   /** Flags that are not (re)set when completing the denotation
-   *  TODO: Should check that FromStartFlags do not change in completion
    */
   val FromStartFlags: FlagSet = commonFlags(
     Module, Package, Deferred, Method, Case,
