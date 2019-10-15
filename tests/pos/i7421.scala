@@ -7,5 +7,11 @@ object Main {
       } else {
       println("Hello world!")
     }
+    if (args.length > 0)
+      {
+        println(args)
+      } else {
+      println("Hello world!")
+    }
   }
 }
