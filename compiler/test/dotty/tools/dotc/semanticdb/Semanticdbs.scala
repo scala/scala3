@@ -68,7 +68,7 @@ object Semanticdbs {
       )
       sb.append(doc.text.substring(offset, end))
         .append(" /* ")
-        .append(if (occ.role.isDefinition) "<== " else "==> ")
+        .append(if (occ.role.isDefinition) "<<< " else "ref ")
         .append(occ.symbol.replace('/', '.'))
         .append(" */ ")
       offset = end

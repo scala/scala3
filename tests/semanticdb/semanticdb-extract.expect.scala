@@ -1,18 +1,18 @@
- /* ==> _empty_ */  /* ==> A. */  /* ==> A.`<init>`(). */ object  /* ==> java.lang.Object#`<init>`(). */ A /* <== A. */  {
+ /* ref _empty_ */ object  /* ref java.lang.Object#`<init>`(). */ A /* <<< A. */  {
 
-   /* ==> scala.package.Serializable# */  /* ==> scala. */  /* ==> _root_ */  /* ==> A. */ def foo /* <== A.foo(+1). */ (x /* <== A.foo(+1).(x) */ : Int /* ==> scala.Int# */ ) = ()
-  def foo /* <== A.foo(+0). */ (): Unit /* ==> scala.Unit# */  = ()
+   /* ref scala.package.Serializable# */  /* ref scala. */  /* ref _root_ */  /* ref A. */ def foo /* <<< A.foo(+1). */ (x /* <<< A.foo(+1).(x) */ : Int /* ref scala.Int# */ ) = ()
+  def foo /* <<< A.foo(+0). */ (): Unit /* ref scala.Unit# */  = ()
 
-  foo /* ==> A.foo(+1). */ (1)
-  foo /* ==> A.foo(+0). */ ()
+  foo /* ref A.foo(+1). */ (1)
+  foo /* ref A.foo(+0). */ ()
 
-  "".substring /* ==> java.lang.String#substring(+1). */ (1)
-  "".substring /* ==> java.lang.String#substring(+0). */ (1, 2)
+  "".substring /* ref java.lang.String#substring(+1). */ (1)
+  "".substring /* ref java.lang.String#substring(+0). */ (1, 2)
 
-  List /* ==> scala.package.List. */  /* ==> scala.collection.IterableFactory#apply(). */ (1, 2)
-  List /* ==> scala.package.List. */ .apply /* ==> scala.collection.IterableFactory#apply(). */ ()
-  List /* ==> scala.package.List. */ .`apply` /* ==> scala.collection.IterableFactory#apply(). */ ()
-  println /* ==> scala.Predef.println(+0). */ (1 + /* ==> scala.Int#`+`(+3). */  2)
+  List /* ref scala.package.List. */  /* ref scala.collection.IterableFactory#apply(). */ (1, 2)
+  List /* ref scala.package.List. */ .apply /* ref scala.collection.IterableFactory#apply(). */ ()
+  List /* ref scala.package.List. */ .`apply` /* ref scala.collection.IterableFactory#apply(). */ ()
+  println /* ref scala.Predef.println(+0). */ (1 + /* ref scala.Int#`+`(+3). */  2)
 
-   /* ==> A.Foo#`<init>`(). */  /* ==> A.Foo#copy().(x) */  /* ==> A.Foo.`<init>`(). */  /* ==> A.Foo.apply().(x) */ case class  /* ==> java.lang.Object#`<init>`(). */ Foo /* <== A.Foo# */ (x: In /* <== A.Foo#`<init>`(). */  /* <== A.Foo#`<init>`().(x) */  /* <== A.Foo#(x) */  /* <== A.Foo#copy().(x) */  /* <== A.Foo.apply().(x) */ t /* ==> scala.Int# */  /* ==> A.Foo#(x) */  /* ==> scala.package.Serializable# */  /* ==> scala. */  /* ==> _root_ */ ) /* ==> scala.Product# */  /* ==> scala. */  /* ==> _root_ */  /* ==> scala.package.Serializable# */
+   /* ref A.Foo#`<init>`(). */  /* ref A.Foo#copy().(x) */  /* ref A.Foo.apply().(x) */ case class  /* ref java.lang.Object#`<init>`(). */ Foo /* <<< A.Foo# */ (x: In /* <<< A.Foo#`<init>`(). */  /* <<< A.Foo#`<init>`().(x) */  /* <<< A.Foo#(x) */  /* <<< A.Foo#copy().(x) */  /* <<< A.Foo.apply().(x) */ t /* ref scala.Int# */  /* ref A.Foo#(x) */  /* ref scala.package.Serializable# */  /* ref scala. */  /* ref _root_ */ ) /* ref scala.Product# */  /* ref scala. */  /* ref _root_ */  /* ref scala.package.Serializable# */
 }
