@@ -541,6 +541,7 @@ class TreeUnpickler(reader: TastyReader,
       val sym =
         roots.find(root => (root.owner eq ctx.owner) && root.name == name) match {
           case Some(rootd) =>
+            rootd.startedLoading()
             pickling.println(i"overwriting ${rootd.symbol} # ${rootd.hashCode}")
             rootd.symbol.coord = coord
             rootd.info = adjustIfModule(
@@ -548,6 +549,7 @@ class TreeUnpickler(reader: TastyReader,
             rootd.flags = flags &~ Touched // allow one more completion
             rootd.setPrivateWithin(privateWithin)
             seenRoots += rootd.symbol
+            rootd.finishedLoading()
             rootd.symbol
           case _ =>
             val completer = adjustIfModule(new Completer(subReader(start, end)))

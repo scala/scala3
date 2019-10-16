@@ -152,7 +152,9 @@ object SymDenotations {
     private[this] var isLoading = false
     private[this] var wasLoaded = false
 
-    def startedLoading() = isLoading = true
+    def startedLoading() =
+      isLoading = true
+
     def finishedLoading() =
       isLoading = false
       wasLoaded = true
@@ -168,7 +170,7 @@ object SymDenotations {
      */
     private[dotc] final def flagsUNSAFE: FlagSet = myFlags
 
-    inline private def setMyFlags(flags: FlagSet) =
+    private def setMyFlags(flags: FlagSet) =
       lazy val immutableFlags = if wasLoaded then AfterLoadFlags else FromStartFlags
       lazy val changedImmutableFlags = (myFlags ^ flags) & immutableFlags
       if isCompleting && !isLoading then assert(changedImmutableFlags.isEmpty,
