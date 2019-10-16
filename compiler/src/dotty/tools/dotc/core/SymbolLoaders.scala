@@ -394,6 +394,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     load(root)
 
   def load(root: SymDenotation)(implicit ctx: Context): Unit = {
+    root.startedLoading()
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
     val classfileParser = new ClassfileParser(classfile, classRoot, moduleRoot)(ctx)
     val result = classfileParser.run()
@@ -404,6 +405,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
           moduleRoot.classSymbol.rootTreeOrProvider = unpickler
         case _ =>
       }
+    root.finishedLoading()
   }
 
   private def mayLoadTreesFromTasty(implicit ctx: Context): Boolean =

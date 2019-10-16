@@ -164,7 +164,7 @@ object Config {
   final val silentTemplateIndent = true
 
   /** If set, prints a trace of all symbol completions */
-  final val showCompletions = false
+  final val showCompletions = true
 
   /** If set, enables tracing */
   final val tracingEnabled = false

@@ -149,6 +149,14 @@ object SymDenotations {
     private var myPrivateWithin: Symbol = initPrivateWithin
     private var myAnnotations: List[Annotation] = Nil
 
+    private[this] var isLoading = false
+    private[this] var wasLoaded = false
+
+    def startedLoading() = isLoading = true
+    def finishedLoading() =
+      isLoading = false
+      wasLoaded = true
+
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = maybeOwner
 
@@ -161,8 +169,10 @@ object SymDenotations {
     private[dotc] final def flagsUNSAFE: FlagSet = myFlags
 
     inline private def setMyFlags(flags: FlagSet) =
-      if isCompleting then assert((flags & FromStartFlags).isEmpty,
-        s"Illegal mutation of flags ${(flags & FromStartFlags).flagsString} on completion of $this")
+      lazy val immutableFlags = if wasLoaded then AfterLoadFlags else FromStartFlags
+      lazy val changedImmutableFlags = (myFlags ^ flags) & immutableFlags
+      if isCompleting && !isLoading then assert(changedImmutableFlags.isEmpty,
+        s"Illegal mutation of flags ${changedImmutableFlags.flagsString} on completion of $this")
       myFlags = flags
 
     final def flagsString(implicit ctx: Context): String = flags.flagsString
