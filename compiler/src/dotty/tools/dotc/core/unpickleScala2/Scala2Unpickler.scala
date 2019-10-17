@@ -143,8 +143,8 @@ object Scala2Unpickler {
 /** Unpickle symbol table information descending from a class and/or module root
  *  from an array of bytes.
  *  @param bytes      bytearray from which we unpickle
- *  @param classroot  the top-level class which is unpickled, or NoSymbol if inapplicable
- *  @param moduleroot the top-level module class which is unpickled, or NoSymbol if inapplicable
+ *  @param classRoot  the top-level class which is unpickled, or NoSymbol if inapplicable
+ *  @param moduleClassRoot the top-level module class which is unpickled, or NoSymbol if inapplicable
  *  @param filename   filename associated with bytearray, only used for error messages
  */
 class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(ictx: Context)
@@ -191,6 +191,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   def run()(implicit ctx: Context): Unit =
     try {
+      classRoot.startedLoading()
+      moduleRoot.startedLoading()
       var i = 0
       while (i < index.length) {
         if (entries(i) == null && isSymbolEntry(i)) {
@@ -225,6 +227,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
         i += 1
       }
+      classRoot.finishedLoading()
+      moduleRoot.finishedLoading()
     }
     catch {
       case ex: RuntimeException => handleRuntimeException(ex)
