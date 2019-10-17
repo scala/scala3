@@ -4,6 +4,8 @@ object Test extends App {
   val x: BigInt = 13232202002020202020202
   val y: BigInt = -0xaabb12345ACF12345AC
   val z: BigDecimal = 132322020020.223
+  val w: BigDecimal = 10000000000000000.1234e223
+  val q: BigDecimal = 100000000000000001234e-223
 
   case class Even(n: Int)
 
@@ -20,6 +22,8 @@ object Test extends App {
   println(x)
   println(y)
   println(z)
+  println(w)
+  println(q)
   println(e)
 
   try println(123: Even)
@@ -44,6 +48,18 @@ object Test extends App {
   }
   (z: Any) match {
     case 132_322_020_020.223: BigDecimal => ()
+  }
+  w match {
+    case 10000000000000000.1234e223 => ()
+  }
+  (w: Any) match {
+    case 10_000_000_000_000_000.1234e223: BigDecimal => ()
+  }
+  q match {
+    case 100000000000000001234e-223 => ()
+  }
+  (q: Any) match {
+    case 100_000_000_000_000_001_234e-223: BigDecimal => ()
   }
 
   e match {

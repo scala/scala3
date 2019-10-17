@@ -4,7 +4,6 @@ package reflect
 /** Tasty reflect case definition */
 trait TreeUtils
     extends Core
-    with PatternOps
     with SymbolOps
     with TreeOps { self: Reflection =>
 
@@ -12,10 +11,8 @@ trait TreeUtils
 
     // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
     def foldTree(x: X, tree: Tree)(given ctx: Context): X
-    def foldPattern(x: X, tree: Pattern)(given ctx: Context): X
 
     def foldTrees(x: X, trees: Iterable[Tree])(given ctx: Context): X = trees.foldLeft(x)(foldTree)
-    def foldPatterns(x: X, trees: Iterable[Pattern])(given ctx: Context): X = trees.foldLeft(x)(foldPattern)
 
     def foldOverTree(x: X, tree: Tree)(given ctx: Context): X = {
       def localCtx(definition: Definition): Context = definition.symbol.localContext
@@ -92,32 +89,22 @@ trait TreeUtils
           foldTrees(foldTree(boundopt.fold(x)(foldTree(x, _)), selector), cases)
         case WildcardTypeTree() => x
         case TypeBoundsTree(lo, hi) => foldTree(foldTree(x, lo), hi)
-        case CaseDef(pat, guard, body) => foldTree(foldTrees(foldPattern(x, pat), guard), body)
+        case CaseDef(pat, guard, body) => foldTree(foldTrees(foldTree(x, pat), guard), body)
         case TypeCaseDef(pat, body) => foldTree(foldTree(x, pat), body)
+        case Bind(_, body) => foldTree(x, body)
+        case Unapply(fun, implicits, patterns) => foldTrees(foldTrees(foldTree(x, fun), implicits), patterns)
+        case Alternatives(patterns) => foldTrees(x, patterns)
       }
     }
-
-    def foldOverPattern(x: X, tree: Pattern)(given ctx: Context): X = tree match {
-      case Pattern.Value(v) => foldTree(x, v)
-      case Pattern.Bind(_, body) => foldPattern(x, body)
-      case Pattern.Unapply(fun, implicits, patterns) => foldPatterns(foldTrees(foldTree(x, fun), implicits), patterns)
-      case Pattern.Alternatives(patterns) => foldPatterns(x, patterns)
-      case Pattern.TypeTest(tpt) => foldTree(x, tpt)
-      case Pattern.WildcardPattern() => x
-    }
-
   }
 
   abstract class TreeTraverser extends TreeAccumulator[Unit] {
 
     def traverseTree(tree: Tree)(given ctx: Context): Unit = traverseTreeChildren(tree)
-    def traversePattern(tree: Pattern)(given ctx: Context): Unit = traversePatternChildren(tree)
 
     def foldTree(x: Unit, tree: Tree)(given ctx: Context): Unit = traverseTree(tree)
-    def foldPattern(x: Unit, tree: Pattern)(given ctx: Context) = traversePattern(tree)
 
     protected def traverseTreeChildren(tree: Tree)(given ctx: Context): Unit = foldOverTree((), tree)
-    protected def traversePatternChildren(tree: Pattern)(given ctx: Context): Unit = foldOverPattern((), tree)
 
   }
 
@@ -138,6 +125,12 @@ trait TreeUtils
           transformCaseDef(tree)
         case IsTypeCaseDef(tree) =>
           transformTypeCaseDef(tree)
+        case IsBind(pattern) =>
+          Bind.copy(pattern)(pattern.name, pattern.pattern)
+        case IsUnapply(pattern) =>
+          Unapply.copy(pattern)(transformTerm(pattern.fun), transformSubTrees(pattern.implicits), transformTrees(pattern.patterns))
+        case IsAlternatives(pattern) =>
+          Alternatives.copy(pattern)(transformTrees(pattern.patterns))
       }
     }
 
@@ -237,24 +230,11 @@ trait TreeUtils
     }
 
     def transformCaseDef(tree: CaseDef)(given ctx: Context): CaseDef = {
-      CaseDef.copy(tree)(transformPattern(tree.pattern), tree.guard.map(transformTerm), transformTerm(tree.rhs))
+      CaseDef.copy(tree)(transformTree(tree.pattern), tree.guard.map(transformTerm), transformTerm(tree.rhs))
     }
 
     def transformTypeCaseDef(tree: TypeCaseDef)(given ctx: Context): TypeCaseDef = {
       TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern), transformTypeTree(tree.rhs))
-    }
-
-    def transformPattern(pattern: Pattern)(given ctx: Context): Pattern = pattern match {
-      case Pattern.Value(_) | Pattern.WildcardPattern() =>
-        pattern
-      case Pattern.IsTypeTest(pattern) =>
-        Pattern.TypeTest.copy(pattern)(transformTypeTree(pattern.tpt))
-      case Pattern.IsUnapply(pattern) =>
-        Pattern.Unapply.copy(pattern)(transformTerm(pattern.fun), transformSubTrees(pattern.implicits), transformPatterns(pattern.patterns))
-      case Pattern.IsAlternatives(pattern) =>
-        Pattern.Alternatives.copy(pattern)(transformPatterns(pattern.patterns))
-      case Pattern.IsBind(pattern) =>
-        Pattern.Bind.copy(pattern)(pattern.name, transformPattern(pattern.pattern))
     }
 
     def transformStats(trees: List[Statement])(given ctx: Context): List[Statement] =
@@ -274,9 +254,6 @@ trait TreeUtils
 
     def transformTypeCaseDefs(trees: List[TypeCaseDef])(given ctx: Context): List[TypeCaseDef] =
       trees mapConserve (transformTypeCaseDef(_))
-
-    def transformPatterns(trees: List[Pattern])(given ctx: Context): List[Pattern] =
-      trees mapConserve (transformPattern(_))
 
     def transformSubTrees[Tr <: Tree](trees: List[Tr])(given ctx: Context): List[Tr] =
       transformTrees(trees).asInstanceOf[List[Tr]]

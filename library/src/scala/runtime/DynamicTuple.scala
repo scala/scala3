@@ -212,8 +212,8 @@ object DynamicTuple {
 
   def dynamicConcat[This <: Tuple, That <: Tuple](self: This, that: That): Concat[This, That] = {
     type Result = Concat[This, That]
-    (this: Any) match {
-      case self: Unit => return self.asInstanceOf[Result]
+    (self: Any) match {
+      case self: Unit => return that.asInstanceOf[Result]
       case _ =>
     }
     (that: Any) match {

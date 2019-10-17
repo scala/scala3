@@ -303,6 +303,15 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             //     case x: Tree[?]
             // (which translates to)
             //     case x: (_: Tree[?])
+        case m @ MatchTypeTree(bounds, selector, cases) =>
+          // Analog to the case above for match types
+          def tranformIgnoringBoundsCheck(x: CaseDef): CaseDef =
+            super.transform(x)(ctx.addMode(Mode.Pattern)).asInstanceOf[CaseDef]
+          cpy.MatchTypeTree(tree)(
+            super.transform(bounds),
+            super.transform(selector),
+            cases.mapConserve(tranformIgnoringBoundsCheck)
+          )
         case tree =>
           super.transform(tree)
       }

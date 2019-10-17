@@ -8,8 +8,8 @@ object Macro {
   inline def foo[T](implicit inline t: Type[T]): String =
     ${ fooImpl }
 
-  def fooImpl[T](implicit t: Type[T], q: QuoteContext): Expr[String] = {
-    import q.tasty._
+  def fooImpl[T](implicit t: Type[T], qctx: QuoteContext): Expr[String] = {
+    import qctx.tasty.{_, given}
     val sym = t.unseal.symbol
     if sym.isClassDef then '{ "symbol" }
     else if sym.isNoSymbol then '{ "no symbol" }

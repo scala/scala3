@@ -207,7 +207,7 @@ trait QuotesAndSplices {
                     x => t.resType.subst(t, x).toFunctionType())
               case t => t
             }
-            val bindingExprTpe = AppliedType(defn.QuotedMatchingBindingClass.typeRef, bindingType :: Nil)
+            val bindingExprTpe = AppliedType(defn.QuotedMatchingSymClass.typeRef, bindingType :: Nil)
             assert(ddef.name.startsWith("$"))
             val bindName = ddef.name.toString.stripPrefix("$").toTermName
             val sym = ctx0.newPatternBoundSymbol(bindName, bindingExprTpe, ddef.span)

@@ -19,7 +19,7 @@ object Type {
    */
   def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeType: Type[_])(implicit patternType: Type[_],
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     new Matcher.QuoteMatcher[qctx.type].typeTreeMatch(scrutineeType.unseal, patternType.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
   }
 

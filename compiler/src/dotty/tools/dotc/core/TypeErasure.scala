@@ -147,6 +147,12 @@ object TypeErasure {
   def valueErasure(tp: Type)(implicit ctx: Context): Type =
     erasureFn(isJava = false, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(erasureCtx)
 
+  /** Like value class erasure, but value classes erase to their underlying type erasure */
+  def fullErasure(tp: Type)(implicit ctx: Context): Type =
+    valueErasure(tp) match
+      case ErasedValueType(_, underlying) => erasure(underlying)
+      case etp => etp
+
   def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName = {
     val normTp = tp.underlyingIfRepeated(isJava)
     val erase = erasureFn(isJava, semiEraseVCs = false, isConstructor = false, wildcardOK = true)

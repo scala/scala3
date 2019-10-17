@@ -13,9 +13,8 @@ class Reflection(private[scala] val internal: CompilerInterface)
     with ImplicitsOps
     with ImportSelectorOps
     with QuotedOps
-    with PatternOps
     with PositionOps
-    with Printers
+    with PrinterOps
     with ReportingOps
     with RootPosition
     with SignatureOps

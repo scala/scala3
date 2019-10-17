@@ -62,7 +62,8 @@ object Test extends App {
   def head2[X <: NonEmptyTuple](x: X): Tuple.Head[X] = x.head
 
   val hd1: Int = head1(x3)
-  val hd2: Int = head2(x3)
+  // Without an explicit type parameter type inferance infers Nothing here.
+  val hd2: Int = head2[x3.type](x3)
 
   def tail1(x: NonEmptyTuple): Tuple.Tail[x.type] = x.tail
   def tail2[X <: NonEmptyTuple](x: X): Tuple.Tail[X] = x.tail

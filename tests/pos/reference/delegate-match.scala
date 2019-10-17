@@ -1,6 +1,6 @@
 package implicitmatch
 
-class Test extends App {
+class Test extends App with
   import scala.collection.immutable.{TreeSet, HashSet}
   import scala.compiletime.summonFrom
 
@@ -22,4 +22,4 @@ class Test extends App {
   inline def f: Any = summonFrom {
     case ev: A => println(ev.x)  // error: ambiguous implicits
   }
-}
+

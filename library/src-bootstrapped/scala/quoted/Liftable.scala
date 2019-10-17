@@ -19,20 +19,20 @@ trait Liftable[T] {
  */
 object Liftable {
 
-  given Liftable_Boolean_delegate[T <: Boolean] : Liftable[T] = new PrimitiveLiftable
-  given Liftable_Byte_delegate[T <: Byte] : Liftable[T] = new PrimitiveLiftable
-  given Liftable_Short_delegate[T <: Short] : Liftable[T] = new PrimitiveLiftable
-  given Liftable_Int_delegate[T <: Int] : Liftable[T] = new PrimitiveLiftable
-  given Liftable_Long_delegate[T <: Long] : Liftable[T] = new PrimitiveLiftable
-  given Liftable_Float_delegate[T <: Float] : Liftable[T] = new PrimitiveLiftable
-  given Liftable_Double_delegate[T <: Double] : Liftable[T] = new PrimitiveLiftable
-  given Liftable_Char_delegate[T <: Char] : Liftable[T] = new PrimitiveLiftable
-  given Liftable_String_delegate[T <: String] : Liftable[T] = new PrimitiveLiftable
+  given BooleanIsLiftable[T <: Boolean] : Liftable[T] = new PrimitiveLiftable
+  given ByteIsLiftable[T <: Byte] : Liftable[T] = new PrimitiveLiftable
+  given ShortIsLiftable[T <: Short] : Liftable[T] = new PrimitiveLiftable
+  given IntIsLiftable[T <: Int] : Liftable[T] = new PrimitiveLiftable
+  given LongIsLiftable[T <: Long] : Liftable[T] = new PrimitiveLiftable
+  given FloatIsLiftable[T <: Float] : Liftable[T] = new PrimitiveLiftable
+  given DoubleIsLiftable[T <: Double] : Liftable[T] = new PrimitiveLiftable
+  given CharIsLiftable[T <: Char] : Liftable[T] = new PrimitiveLiftable
+  given StringIsLiftable[T <: String] : Liftable[T] = new PrimitiveLiftable
 
   private class PrimitiveLiftable[T <: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends Liftable[T] {
     /** Lift a primitive value `n` into `'{ n }` */
     def toExpr(x: T) = (given qctx) => {
-      import qctx.tasty._
+      import qctx.tasty.{_, given}
       Literal(Constant(x)).seal.asInstanceOf[Expr[T]]
     }
   }
@@ -40,7 +40,7 @@ object Liftable {
   given ClassIsLiftable[T] : Liftable[Class[T]] = new Liftable[Class[T]] {
     /** Lift a `Class[T]` into `'{ classOf[T] }` */
     def toExpr(x: Class[T]) = (given qctx) => {
-      import qctx.tasty._
+      import qctx.tasty.{_, given}
       Ref(defn.Predef_classOf).appliedToType(Type(x)).seal.asInstanceOf[Expr[Class[T]]]
     }
   }

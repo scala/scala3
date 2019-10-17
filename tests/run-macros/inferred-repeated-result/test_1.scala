@@ -4,7 +4,7 @@ object Macros {
 
   inline def go[T](t: => T) = ${ impl('t) }
   def impl[T](expr: Expr[T])(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
 
     val tree = expr.unseal
 
