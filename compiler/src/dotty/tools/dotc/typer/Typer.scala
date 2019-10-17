@@ -1276,13 +1276,7 @@ class Typer extends Namer
   }
 
   def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Tree = {
-    val pt = if (ctx.explicitNulls) {
-      // `throw null` is valid Scala code
-      OrType(defn.ThrowableType, defn.NullType)
-    } else {
-      defn.ThrowableType
-    }
-    val expr1 = typed(tree.expr, pt)
+    val expr1 = typed(tree.expr, defn.ThrowableType)
     Throw(expr1).withSpan(tree.span)
   }
 
