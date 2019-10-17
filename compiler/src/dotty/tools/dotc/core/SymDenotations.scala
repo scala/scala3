@@ -787,18 +787,16 @@ object SymDenotations {
     }
 
     /** Is this symbol a class of which `null` is a value? */
-    final def isNullableClass(implicit ctx: Context): Boolean = {
+    final def isNullableClass(implicit ctx: Context): Boolean =
       if (ctx.explicitNulls && !ctx.phase.erasedTypes) symbol == defn.NullClass || symbol == defn.AnyClass
       else isNullableClassAfterErasure
-    }
 
     /** Is this symbol a class of which `null` is a value after erasure?
      *  For example, if `-Yexplicit-nulls` is set, `String` is not nullable before erasure,
      *  but it becomes nullable after erasure.
      */
-    final def isNullableClassAfterErasure(implicit ctx: Context): Boolean = {
+    final def isNullableClassAfterErasure(implicit ctx: Context): Boolean =
       isClass && !isValueClass && !is(ModuleClass) && symbol != defn.NothingClass
-    }
 
     /** Is this definition accessible as a member of tree with type `pre`?
      *  @param pre          The type of the tree from which the selection is made

@@ -1396,11 +1396,9 @@ class Namer { typer: Typer =>
         WildcardType
     }
     val memTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
-    if (ctx.explicitNulls && mdef.mods.is(JavaDefined)) {
+    if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
       JavaNullInterop.nullifyMember(sym, memTpe)
-    } else {
-      memTpe
-    }
+    else memTpe
   }
 
   /** The type signature of a DefDef with given symbol */
