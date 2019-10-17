@@ -167,6 +167,12 @@ class ExtractSemanticDB extends Phase {
 
         case _ =>
 
+      for annot <- tree.symbol.annotations do
+        if annot.tree.span.exists
+          && annot.symbol.owner != defn.ScalaAnnotationInternal
+        then
+          traverse(annot.tree)
+
       tree match
         case tree: ValDef if tree.symbol.is(Module) => // skip module val
         case tree: NamedDefTree
@@ -196,6 +202,8 @@ class ExtractSemanticDB extends Phase {
         case tree: Inlined =>
           traverse(tree.call)
         case tree: PackageDef => tree.stats.foreach(traverse)
+        case tree: Annotated => // skip the annotation (see `@param` in https://github.com/scalameta/scalameta/blob/633824474e99bbfefe12ad0cc73da1fe064b3e9b/tests/jvm/src/test/resources/example/Annotations.scala#L37)
+          traverse(tree.arg)
         case _ =>
           traverseChildren(tree)
   }

@@ -750,6 +750,7 @@ class Definitions {
   @tu lazy val RefiningAnnotationClass: ClassSymbol = ctx.requiredClass("scala.annotation.RefiningAnnotation")
 
   // Annotation classes
+  @tu lazy val ScalaAnnotationInternal: ClassSymbol = ctx.requiredClass("scala.annotation.internal")
   @tu lazy val AliasAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.Alias")
   @tu lazy val AnnotationDefaultAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.AnnotationDefault")
   @tu lazy val BodyAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.Body")
