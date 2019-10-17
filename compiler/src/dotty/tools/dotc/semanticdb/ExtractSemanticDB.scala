@@ -160,6 +160,13 @@ class ExtractSemanticDB extends Phase {
         registerOccurrence(sym, span, SymbolOccurrence.Role.REFERENCE)
 
     override def traverse(tree: Tree)(given ctx: Context): Unit =
+      def registerPath(expr: Tree): Unit = expr match
+        case t @ Select(expr, _) =>
+          registerUse(t.symbol, t.span)
+          registerPath(expr)
+
+        case _ =>
+
       tree match
         case tree: ValDef if tree.symbol.is(Module) => // skip module val
         case tree: NamedDefTree
@@ -185,6 +192,7 @@ class ExtractSemanticDB extends Phase {
             if imported != nme.WILDCARD then
               for alt <- tree.expr.tpe.member(imported).alternatives do
                 registerUse(alt.symbol, sel.imported.span)
+              registerPath(tree.expr)
         case tree: Inlined =>
           traverse(tree.call)
         case tree: PackageDef => tree.stats.foreach(traverse)
