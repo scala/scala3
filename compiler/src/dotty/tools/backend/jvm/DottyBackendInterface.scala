@@ -535,8 +535,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   private def getGenericSignature(sym: Symbol, owner: Symbol, memberTpe: Type)(implicit ctx: Context): Option[String] =
     if (needsGenericSignature(sym)) {
-      val erasedTypeSym = sym.denot.info.typeSymbol
+      val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
       if (erasedTypeSym.isPrimitiveValueClass) {
+        // Suppress signatures for symbols whose types erase in the end to primitive
+        // value types. This is needed to fix #7416.
         None
       } else {
         val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
@@ -791,8 +793,14 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     }
     def methodSymbols: List[Symbol] =
       for (f <- toDenot(sym).info.decls.toList if f.isMethod && f.isTerm && !f.isModule) yield f
-    def serialVUID: Option[Long] = None
-
+    def serialVUID: Option[Long] =
+      sym.getAnnotation(defn.SerialVersionUIDAnnot).flatMap { annot =>
+        val vuid = annot.argumentConstant(0).map(_.longValue)
+        if (vuid.isEmpty)
+          ctx.error("The argument passed to @SerialVersionUID must be a constant",
+            annot.argument(0).getOrElse(annot.tree).sourcePos)
+        vuid
+      }
 
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
       ctx.newSymbol(sym, name.toTermName, termFlagSet(flags), tpe, NoSymbol, pos)

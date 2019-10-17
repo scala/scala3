@@ -13,11 +13,11 @@ object Macros {
 
     given ev0 : Env = Map.empty
 
-    def envWith[T](id: Bind[T], ref: Expr[R[T]])(given env: Env): Env =
+    def envWith[T](id: Sym[T], ref: Expr[R[T]])(given env: Env): Env =
       env.updated(id, ref)
 
     object FromEnv {
-      def unapply[T](id: Bind[T])(given Env): Option[Expr[R[T]]] =
+      def unapply[T](id: Sym[T])(given Env): Option[Expr[R[T]]] =
         summon[Env].get(id).asInstanceOf[Option[Expr[R[T]]]] // We can only add binds that have the same type as the refs
     }
 
@@ -50,7 +50,7 @@ object Macros {
       case '{ Symantics.fix[$t, $u]($f) } =>
         '{ $sym.fix[$t, $u]((x: R[$t => $u]) => $sym.app(${lift(f)}, x)).asInstanceOf[R[T]] }
 
-      case Bind(FromEnv(expr)) => expr.asInstanceOf[Expr[R[T]]]
+      case Sym(FromEnv(expr)) => expr.asInstanceOf[Expr[R[T]]]
 
       case _ =>
         summon[QuoteContext].error("Expected explicit value but got: " + e.show, e)

@@ -13,8 +13,8 @@ object Macros {
       tup.toArray.toList.map {
         case r: quoted.Type[_] =>
           s"Type(${r.unseal.show})"
-        case r: Bind[_] =>
-          s"Bind(${r.name})"
+        case r: Sym[_] =>
+          s"Sym(${r.name})"
       }
     }
 

@@ -7,7 +7,7 @@ object Macros {
     ${ impl('x) }
 
   def impl[T](x: Expr[T])(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
 
     val tree = x.unseal
     val treeStr = tree.showExtractors

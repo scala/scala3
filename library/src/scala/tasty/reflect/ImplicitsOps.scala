@@ -10,7 +10,7 @@ trait ImplicitsOps extends Core {
       internal.matchImplicitSearchSuccess(isr)
   }
 
-  implicit class IsImplicitSearchSuccessAPI(self: ImplicitSearchSuccess) {
+  given (self: ImplicitSearchSuccess) {
     def tree(given ctx: Context): Term = internal.ImplicitSearchSuccess_tree(self)
   }
 
@@ -19,7 +19,7 @@ trait ImplicitsOps extends Core {
       internal.matchImplicitSearchFailure(isr)
   }
 
-  implicit class ImplicitSearchFailureAPI(self: ImplicitSearchFailure) {
+  given (self: ImplicitSearchFailure) {
     def explanation(given ctx: Context): String = internal.ImplicitSearchFailure_explanation(self)
   }
 

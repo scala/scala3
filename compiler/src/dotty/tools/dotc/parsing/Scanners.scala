@@ -869,8 +869,8 @@ object Scanners {
 
 // Lookahead ---------------------------------------------------------------
 
-    class LookaheadScanner extends Scanner(source, offset) {
-      override val indentSyntax = false
+    class LookaheadScanner(indent: Boolean = false) extends Scanner(source, offset) {
+      override val indentSyntax = indent
       override protected def printState() = {
         print("la:")
         super.printState()

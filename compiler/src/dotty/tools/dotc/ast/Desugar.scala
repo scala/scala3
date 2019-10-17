@@ -49,9 +49,6 @@ object desugar {
     case None, Exhaustive, IrrefutablePatDef, IrrefutableGenFrom
   }
 
-  /** Info of a variable in a pattern: The named tree and its type */
-  private type VarInfo = (NameTree, Tree)
-
   /** Is `name` the name of a method that can be invalidated as a compiler-generated
    *  case class method if it clashes with a user-defined method?
    */
@@ -1683,16 +1680,6 @@ object desugar {
       else (parentCores map TypeTree, ValDef(nme.WILDCARD, untpdParent, EmptyTree))
     val impl = Template(emptyConstructor, classParents, Nil, self, refinements)
     TypeDef(tpnme.REFINE_CLASS, impl).withFlags(Trait)
-  }
-
- /** If tree is of the form `id` or `id: T`, return its name and type, otherwise return None.
-   */
-  private object IdPattern {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[VarInfo] = tree match {
-      case id: Ident if id.name != nme.WILDCARD => Some(id, TypeTree())
-      case Typed(id: Ident, tpt) => Some((id, tpt))
-      case _ => None
-    }
   }
 
   /** Returns list of all pattern variables, possibly with their types,

@@ -69,7 +69,7 @@ maximum(xs)(given descending(given ListOrd(given IntOrd)))
 There can be several `given` parameter clauses in a definition and `given` parameter clauses can be freely
 mixed with normal ones. Example:
 ```scala
-def f(u: Universe)(given c: u.Context)(given s: ctx.Symbol, k: ctx.Kind) = ...
+def f(u: Universe)(given ctx: u.Context)(given s: ctx.Symbol, k: ctx.Kind) = ...
 ```
 Multiple given clauses are matched left-to-right in applications. Example:
 ```scala

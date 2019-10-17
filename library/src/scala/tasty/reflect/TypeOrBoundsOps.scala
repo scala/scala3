@@ -7,7 +7,7 @@ trait TypeOrBoundsOps extends Core {
 
   def typeOf[T: scala.quoted.Type]: Type
 
-  implicit class TypeAPI(self: Type) {
+  given (self: Type) {
     def =:=(that: Type)(given ctx: Context): Boolean = internal.`Type_=:=`(self)(that)
     def <:<(that: Type)(given ctx: Context): Boolean = internal.`Type_<:<`(self)(that)
     def widen(given ctx: Context): Type = internal.Type_widen(self)
@@ -276,79 +276,79 @@ trait TypeOrBoundsOps extends Core {
 
   }
 
-  implicit class Type_ConstantTypeAPI(self: ConstantType) {
+  given (self: ConstantType) {
     def constant(given ctx: Context): Constant = internal.ConstantType_constant(self)
   }
 
-  implicit class Type_TermRefAPI(self: TermRef) {
+  given (self: TermRef) {
     def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TermRef_qualifier(self)
     def name(given ctx: Context): String = internal.TermRef_name(self)
   }
 
-  implicit class Type_TypeRefAPI(self: TypeRef) {
+  given (self: TypeRef) {
     def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TypeRef_qualifier(self)
     def name(given ctx: Context): String = internal.TypeRef_name(self)
   }
 
-  implicit class Type_SuperTypeAPI(self: SuperType) {
+  given (self: SuperType) {
     def thistpe(given ctx: Context): Type = internal.SuperType_thistpe(self)
     def supertpe(given ctx: Context): Type = internal.SuperType_supertpe(self)
   }
 
-  implicit class Type_RefinementAPI(self: Refinement) {
+  given (self: Refinement) {
     def parent(given ctx: Context): Type = internal.Refinement_parent(self)
     def name(given ctx: Context): String = internal.Refinement_name(self)
     def info(given ctx: Context): TypeOrBounds = internal.Refinement_info(self)
   }
 
-  implicit class Type_AppliedTypeAPI(self: AppliedType) {
+  given (self: AppliedType) {
     def tycon(given ctx: Context): Type = internal.AppliedType_tycon(self)
     def args(given ctx: Context): List[TypeOrBounds /* Type | TypeBounds */] = internal.AppliedType_args(self)
   }
 
-  implicit class Type_AnnotatedTypeAPI(self: AnnotatedType) {
+  given (self: AnnotatedType) {
     def underlying(given ctx: Context): Type = internal.AnnotatedType_underlying(self)
     def annot(given ctx: Context): Term = internal.AnnotatedType_annot(self)
   }
 
-  implicit class Type_AndTypeAPI(self: AndType) {
+  given (self: AndType) {
     def left(given ctx: Context): Type = internal.AndType_left(self)
     def right(given ctx: Context): Type = internal.AndType_right(self)
   }
 
-  implicit class Type_OrTypeAPI(self: OrType) {
+  given (self: OrType) {
     def left(given ctx: Context): Type = internal.OrType_left(self)
     def right(given ctx: Context): Type = internal.OrType_right(self)
   }
 
-  implicit class Type_MatchTypeAPI(self: MatchType) {
+  given (self: MatchType) {
     def bound(given ctx: Context): Type = internal.MatchType_bound(self)
     def scrutinee(given ctx: Context): Type = internal.MatchType_scrutinee(self)
     def cases(given ctx: Context): List[Type] = internal.MatchType_cases(self)
   }
 
-  implicit class Type_ByNameTypeAPI(self: ByNameType) {
+  given (self: ByNameType) {
     def underlying(given ctx: Context): Type = internal.ByNameType_underlying(self)
   }
 
-  implicit class Type_ParamRefAPI(self: ParamRef) {
+  given (self: ParamRef) {
     def binder(given ctx: Context): LambdaType[TypeOrBounds] = internal.ParamRef_binder(self)
     def paramNum(given ctx: Context): Int = internal.ParamRef_paramNum(self)
   }
 
-  implicit class Type_ThisTypeAPI(self: ThisType) {
+  given (self: ThisType) {
     def tref(given ctx: Context): Type = internal.ThisType_tref(self)
   }
 
-  implicit class Type_RecursiveThisAPI(self: RecursiveThis) {
+  given (self: RecursiveThis) {
     def binder(given ctx: Context): RecursiveType = internal.RecursiveThis_binder(self)
   }
 
-  implicit class Type_RecursiveTypeAPI(self: RecursiveType) {
+  given (self: RecursiveType) {
     def underlying(given ctx: Context): Type = internal.RecursiveType_underlying(self)
   }
 
-  implicit class Type_MethodTypeAPI(self: MethodType) {
+  given (self: MethodType) {
     def isImplicit: Boolean = internal.MethodType_isImplicit(self)
     def isErased: Boolean = internal.MethodType_isErased(self)
     def paramNames(given ctx: Context): List[String] = internal.MethodType_paramNames(self)
@@ -356,13 +356,13 @@ trait TypeOrBoundsOps extends Core {
     def resType(given ctx: Context): Type = internal.MethodType_resType(self)
   }
 
-  implicit class Type_PolyTypeAPI(self: PolyType) {
+  given (self: PolyType) {
     def paramNames(given ctx: Context): List[String] = internal.PolyType_paramNames(self)
     def paramBounds(given ctx: Context): List[TypeBounds] = internal.PolyType_paramBounds(self)
     def resType(given ctx: Context): Type = internal.PolyType_resType(self)
   }
 
-  implicit class Type_TypeLambdaAPI(self: TypeLambda) {
+  given (self: TypeLambda) {
     def paramNames(given ctx: Context): List[String] = internal.TypeLambda_paramNames(self)
     def paramBounds(given ctx: Context): List[TypeBounds] = internal.TypeLambda_paramBounds(self)
     def resType(given ctx: Context): Type = internal.TypeLambda_resType(self)
@@ -380,7 +380,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchTypeBounds(typeOrBounds).map(x => (x.low, x.hi))
   }
 
-  implicit class TypeBoundsAPI(self: TypeBounds) {
+  given (self: TypeBounds) {
     def low(given ctx: Context): Type = internal.TypeBounds_low(self)
     def hi(given ctx: Context): Type = internal.TypeBounds_hi(self)
   }

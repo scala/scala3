@@ -1638,4 +1638,23 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         message.msg
       )
     }
+
+  @Test def traitParametersUsedAsParentPrefix() =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |class Outer {
+        |   trait Inner
+        |   trait Test(val outer: Outer) extends outer.Inner
+        |}
+        |""".stripMargin
+    }.expect {
+      (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        val TraitParameterUsedAsParentPrefix(cls) :: Nil = messages
+        assertEquals("trait Test", cls.show)
+        assertEquals(
+          s"${cls.show} cannot extend from a parent that is derived via its own parameters",
+          messages.head.msg
+        )
+    }
 }

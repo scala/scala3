@@ -8,7 +8,7 @@ object Macros {
     ${ impl('x) }
 
   def impl[T](x: Expr[T])(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
 
     val buff = new StringBuilder
 
@@ -38,11 +38,11 @@ object Macros {
     '{print(${buff.result()})}
   }
 
-  def dummyShow(given qctx: QuoteContext): qctx.tasty.Printer = {
-    import qctx.tasty._
-    new Printer {
+  def dummyShow(given qctx: QuoteContext): scala.tasty.reflect.Printer[qctx.tasty.type] = {
+    new scala.tasty.reflect.Printer {
+      val tasty = qctx.tasty
+      import qctx.tasty.{_, given}
       def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
-      def showPattern(pattern: Pattern)(implicit ctx: Context): String = "Pattern"
       def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = "TypeOrBounds"
       def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"
       def showSymbol(symbol: Symbol)(implicit ctx: Context): String = "Symbol"

@@ -317,7 +317,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       return Empty
     }
     else {
-      val res = ctx.typeComparer.disjoint(tp1, tp2)
+      val res = ctx.typeComparer.provablyDisjoint(tp1, tp2)
 
       if (res) Empty
       else if (tp1.isSingleton) Typ(tp1, true)
@@ -548,7 +548,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
           def inhabited(tp: Type): Boolean =
             tp.dealias match {
-              case AndType(tp1, tp2) => !ctx.typeComparer.disjoint(tp1, tp2)
+              case AndType(tp1, tp2) => !ctx.typeComparer.provablyDisjoint(tp1, tp2)
               case OrType(tp1, tp2) => inhabited(tp1) || inhabited(tp2)
               case tp: RefinedType => inhabited(tp.parent)
               case tp: TypeRef => inhabited(tp.prefix)

@@ -421,7 +421,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     def addSerialVUID(id: Long, jclass: asm.ClassVisitor): Unit = {
       // add static serialVersionUID field if `clasz` annotated with `@SerialVersionUID(uid: Long)`
       jclass.visitField(
-        GenBCodeOps.PublicStaticFinal,
+        GenBCodeOps.PrivateStaticFinal,
         "serialVersionUID",
         "J",
         null, // no java-generic-signature

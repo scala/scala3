@@ -158,7 +158,7 @@ object FromDigits {
     def fromDigits(digits: String, radix: Int): BigInt = BigInt(digits, radix)
   }
 
-  given BigDecimalFromDigits : FromDigits.Decimal[BigDecimal] {
+  given BigDecimalFromDigits : FromDigits.Floating[BigDecimal] {
     def fromDigits(digits: String): BigDecimal = BigDecimal(digits)
   }
 }

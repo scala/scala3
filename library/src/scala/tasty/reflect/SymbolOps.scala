@@ -14,7 +14,7 @@ trait SymbolOps extends Core { selfSymbolOps: FlagsOps =>
       internal.Symbol_noSymbol
   }
 
-  implicit class SymbolAPI(self: Symbol) {
+  given (self: Symbol) {
 
     /** Owner of this symbol. The owner is the symbol in which this symbol is defined */
     def owner(given ctx: Context): Symbol = internal.Symbol_owner(self)
@@ -49,13 +49,10 @@ trait SymbolOps extends Core { selfSymbolOps: FlagsOps =>
      * if this symbol `isTypeDef` it will return a `TypeDef`,
      * if this symbol `isValDef` it will return a `ValDef`,
      * if this symbol `isDefDef` it will return a `DefDef`
+     * if this symbol `isBind` it will return a `Bind`
      */
     def tree(given ctx: Context): Tree =
       internal.Symbol_tree(self)
-
-    /** Pattern of this definition */
-    def pattern(given ctx: Context): Pattern =
-      internal.Symbol_pattern(self)
 
     /** Annotations attached to this symbol */
     def annots(given ctx: Context): List[Term] = internal.Symbol_annots(self)
