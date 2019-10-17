@@ -73,7 +73,7 @@ class ExtractSemanticDB extends Phase {
       /** Is symbol global? Non-global symbols get localX names */
       def isGlobal(sym: Symbol): Boolean =
         sym.is(Package)
-        || (sym.is(Param) || sym.owner.isClass) && isGlobal(sym.owner)
+        || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && isGlobal(sym.owner)
 
       def addOwner(owner: Symbol): Unit =
         if !owner.isRoot && !owner.isEmptyPackage then addSymName(b, owner)

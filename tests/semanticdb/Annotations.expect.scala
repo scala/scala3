@@ -5,15 +5,15 @@ import scala.annotation.meta._
 import scala.language/*=>>scalaShadowing.language.*/.experimental/*=>>scalaShadowing.language.experimental.*/.macros/*=>>scalaShadowing.language.experimental.macros.*/
 
 @ClassAnnotation
-class /*=>>java.lang.Object#`<init>`().*/Annotations/*<<=annot.Annotations#*/[@Type/*<<=annot.Annotations#`<init>`().*/ParameterAnnotation T/*<<=annot.Annotations#`<init>`().(T)*//*<<=annot.Annotations#(T)*/](@ParameterAnnotation x/*<<=annot.Annotations#`<init>`().(x)*//*<<=annot.Annotations#(x)*/: T/*=>>annot.Annotations#`<init>`().(T)*/) { self/*<<=annot.Annotations#self.*/: AnyRef/*=>>scala.AnyRef#*/ =>
+class /*=>>java.lang.Object#`<init>`().*/Annotations/*<<=annot.Annotations#*/[@Type/*<<=annot.Annotations#`<init>`().*/ParameterAnnotation T/*<<=annot.Annotations#`<init>`().(T)*//*<<=annot.Annotations#(T)*/](@ParameterAnnotation x/*<<=annot.Annotations#`<init>`().(x)*//*<<=annot.Annotations#(x)*/: T/*=>>annot.Annotations#`<init>`().(T)*/) { self/*<<=local0*/: AnyRef/*=>>scala.AnyRef#*/ =>
   @FieldAnnotation
   val field/*<<=annot.Annotations#field.*/ = 42
 
   @MethodAnnotation
   def method/*<<=annot.Annotations#method().*/ = {
     @LocalAnnotation
-    val local/*<<=local0*/ = 42
-    local/*=>>local0*/
+    val local/*<<=local1*/ = 42
+    local/*=>>local1*/
   }
   @TypeAnnotation
   type S/*<<=annot.Annotations#S#*/
