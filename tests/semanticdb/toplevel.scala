@@ -1,6 +1,4 @@
 inline val a = ""
 def (x: Int) combine (y: Int) = x + y
-given [A](any: A) {
-  def sayHello = s"Hello, I am $any"
-}
-val hello1 = 1.sayHello
+def combine(x: Int, y: Int, z: Int) = x + y + z
+def combine = 0

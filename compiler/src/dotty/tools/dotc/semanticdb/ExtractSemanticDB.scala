@@ -79,11 +79,12 @@ class ExtractSemanticDB extends Phase {
         if !owner.isRoot && !owner.isEmptyPackage then addSymName(b, owner)
 
       def addOverloadIdx(sym: Symbol): Unit =
-        val alts = sym.owner.info.decls.lookupAll(sym.name).toList
+        val alts = sym.owner.info.decls.lookupAll(sym.name).toList.reverse
         if alts.tail.nonEmpty then
           val idx = alts.indexOf(sym)
           assert(idx >= 0)
-          b.append('+').append(idx)
+          if idx > 0 then
+            b.append('+').append(idx)
 
       def addDescriptor(sym: Symbol): Unit =
         if sym.is(ModuleClass) then
@@ -186,6 +187,7 @@ class ExtractSemanticDB extends Phase {
                 registerUse(alt.symbol, sel.imported.span)
         case tree: Inlined =>
           traverse(tree.call)
+        case tree: PackageDef => tree.stats.foreach(traverse)
         case _ =>
           traverseChildren(tree)
   }

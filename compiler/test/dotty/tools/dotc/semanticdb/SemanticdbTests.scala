@@ -21,7 +21,7 @@ import dotty.tools.dotc.semanticdb.DiffAssertions._
 class SemanticdbTests {
   val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
   val expectFile = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
-  val semanticdbFile = FileSystems.getDefault.getPathMatcher("glob:**.scala.semanticdb")
+  // val semanticdbFile = FileSystems.getDefault.getPathMatcher("glob:**.scala.semanticdb")
   val src = Paths.get(System.getProperty("user.dir")).resolve("tests").resolve("semanticdb")
 
   @Category(Array(classOf[dotty.SlowTests]))
@@ -64,6 +64,7 @@ class SemanticdbTests {
     val args = Array(
       "-Ysemanticdb",
       "-d", target.toString,
+      // "-Xprint:extractSemanticDB",
       "-sourceroot", src.toString,
       "-usejavacp",
     ) ++ inputFiles().map(_.toString)

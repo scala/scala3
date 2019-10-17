@@ -67,10 +67,10 @@ object Semanticdbs {
         sourceFile.lineToOffset(range.endLine) + range.endCharacter
       )
       sb.append(doc.text.substring(offset, end))
-        .append(" /* ")
-        .append(if (occ.role.isDefinition) "<<< " else "ref ")
+        .append(" /*")
+        .append(if (occ.role.isDefinition) "<<=" else "=>>")
         .append(occ.symbol.replace('/', '.'))
-        .append(" */ ")
+        .append("*/ ")
       offset = end
     }
     sb.append(doc.text.substring(offset))
