@@ -1062,7 +1062,7 @@ object Build {
         "-Dplugin.scalaVersion=" + dottyVersion,
         "-Dsbt.boot.directory=" + ((baseDirectory in ThisBuild).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
       ),
-      // By default scripted tests use $HOME/.ivy2 for the ivy cache. We need to override this value for the CI.
+      // Pass along ivy home setting to sbt instances run from the tests
       scriptedLaunchOpts ++= ivyPaths.value.ivyHome.map("-Dsbt.ivy.home=" + _.getAbsolutePath).toList,
       scriptedBufferLog := true,
       scripted := scripted.dependsOn(
