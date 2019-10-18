@@ -918,17 +918,10 @@ object SymDenotations {
     /** Is this a Scala 2 macro */
     final def isScala2Macro(implicit ctx: Context): Boolean = is(Macro) && symbol.owner.is(Scala2x)
 
-    /** An erased value or an inline method, excluding @forceInline annotated methods.
-     *  The latter have to be kept around to get to parity with Scala.
-     *  This is necessary at least until we have full bootstrap. Right now
-     *  dotty-bootstrapped involves running the Dotty compiler compiled with Scala 2 with
-     *  a Dotty runtime library compiled with Dotty. If we erase @forceInline annotated
-     *  methods, this means that the support methods in dotty.runtime.LazyVals vanish.
-     *  But they are needed for running the lazy val implementations in the Scala-2 compiled compiler.
+    /** An erased value or an inline method.
      */
     def isEffectivelyErased(implicit ctx: Context): Boolean =
-      is(Erased) ||
-      isInlineMethod && unforcedAnnotation(defn.ForceInlineAnnot).isEmpty
+      is(Erased) || isInlineMethod
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,

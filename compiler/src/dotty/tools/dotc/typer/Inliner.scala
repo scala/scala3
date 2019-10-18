@@ -33,15 +33,12 @@ import dotty.tools.dotc.transform.{Splicer, TreeMapWithStages}
 object Inliner {
   import tpd._
 
-  /** `sym` is an inline method with a known body to inline (note: definitions coming
-   *  from Scala2x class files might be `@forceInline`, but still lack that body).
+  /** `sym` is an inline method with a known body to inline.
    */
   def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
     sym.isInlineMethod && sym.hasAnnotation(defn.BodyAnnot)
 
   /** The body to inline for method `sym`, or `EmptyTree` if none exists.
-   *  Note: definitions coming from Scala2x class files might be `@forceInline`,
-   *  but still lack that body.
    *  @pre  hasBodyToInline(sym)
    */
   def bodyToInline(sym: SymDenotation)(implicit ctx: Context): Tree =

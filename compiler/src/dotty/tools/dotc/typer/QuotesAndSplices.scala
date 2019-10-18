@@ -165,7 +165,7 @@ trait QuotesAndSplices {
     object splitter extends tpd.TreeMap {
       private var variance: Int = 1
 
-      @forceInline private def atVariance[T](v: Int)(op: => T): T = {
+      inline private def atVariance[T](v: Int)(op: => T): T = {
         val saved = variance
         variance = v
         val res = op
