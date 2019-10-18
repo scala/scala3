@@ -823,9 +823,8 @@ class Typer extends Namer
     val (thenCtx, elseCtx) = if (ctx.explicitNulls) {
       val Inferred(ifTrue, ifFalse) = FlowTyper.inferFromCond(cond1)
       (ctx.fresh.addFlowFacts(ifTrue), ctx.fresh.addFlowFacts(ifFalse))
-    } else {
-      (ctx, ctx)
     }
+    else (ctx, ctx)
 
     if (tree.elsep.isEmpty) {
       val thenp1 = typed(tree.thenp, defn.UnitType)(thenCtx)

@@ -594,7 +594,8 @@ object Types {
             // We need to strip `JavaNull` from both the type and the prefix so that
             // `pre <: tp` continues to hold.
             tp.stripJavaNull.findMember(name, pre.stripJavaNull, required, excluded)
-          } else {
+          }
+          else {
             // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
             // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
             // lots of places. The present strategy is instead of widen `tp` using `join` to be a
