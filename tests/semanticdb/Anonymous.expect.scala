@@ -16,5 +16,5 @@ class /*=>>java.lang.Object#`<init>`().*/Anonymous/*<<=example.Anonymous#*/ {
   }
 
   trait Foo/*<<=example.Anonymous#Foo#*/
-  /*=>>java.lang.Object#`<init>`().*/new F/*<<=local1*/oo/*=>>example.Anonymous#Foo#*/ {}/*=>>local2*//*=>>local1*/
+  /*=>>java.lang.Object#`<init>`().*/new Foo/*=>>example.Anonymous#Foo#*/ {}
 }

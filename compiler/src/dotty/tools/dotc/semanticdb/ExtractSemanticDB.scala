@@ -150,7 +150,13 @@ class ExtractSemanticDB extends Phase {
 
     /** Definitions of this symbol should be excluded from semanticdb */
     private def excludeDef(sym: Symbol)(given Context): Boolean =
-      !sym.exists || sym.isLocalDummy || sym.is(Synthetic)
+      !sym.exists
+      || sym.isLocalDummy
+      || sym.is(Synthetic)
+      || sym.isAnonymousClass
+      || sym.isAnonymousModuleVal
+      || sym.isAnonymousFunction
+      || sym.isPrimaryConstructor && excludeDef(sym.owner)
 
     /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
     private def excludeUse(sym: Symbol, span: Span)(given Context): Boolean =

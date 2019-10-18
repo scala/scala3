@@ -11,8 +11,8 @@ class /*=>>java.lang.Object#`<init>`().*/C/*<<=advanced.C#*/[T] {
 
 class /*=>>java.lang.Object#`<init>`().*/Structural/*<<=advanced.Structural#*/ {
   def s1/*<<=advanced.Structural#s1().*/: { val x/*<<=local0*/: Int/*=>>scala.Int#*/ } = ???/*=>>scala.Predef.`???`().*/
-  def s2/*<<=advanced.Structural#s2().*/: { val x/*<<=local1*/: Int/*=>>scala.Int#*/ } = /*=>>java.lang.Object#`<init>`().*/new {/*<<=local2*/ val x/*<<=local3*/: Int/*=>>scala.Int#*/ = ???/*=>>scala.Predef.`???`().*/ }/*=>>local4*//*=>>local2*/
-  def s3/*<<=advanced.Structural#s3().*/: { def m/*<<=local5*/(x/*<<=local6*/: Int/*=>>scala.Int#*/): Int/*=>>scala.Int#*/ } = /*=>>java.lang.Object#`<init>`().*/new {/*<<=local7*/ def m/*<<=local8*/(x/*<<=local9*/: Int/*=>>scala.Int#*/): Int/*=>>scala.Int#*/ = ???/*=>>scala.Predef.`???`().*/ }/*=>>local10*//*=>>local7*/
+  def s2/*<<=advanced.Structural#s2().*/: { val x/*<<=local1*/: Int/*=>>scala.Int#*/ } = /*=>>java.lang.Object#`<init>`().*/new { val x/*<<=local2*/: Int/*=>>scala.Int#*/ = ???/*=>>scala.Predef.`???`().*/ }
+  def s3/*<<=advanced.Structural#s3().*/: { def m/*<<=local3*/(x/*<<=local4*/: Int/*=>>scala.Int#*/): Int/*=>>scala.Int#*/ } = /*=>>java.lang.Object#`<init>`().*/new { def m/*<<=local5*/(x/*<<=local6*/: Int/*=>>scala.Int#*/): Int/*=>>scala.Int#*/ = ???/*=>>scala.Predef.`???`().*/ }
 }
 
 class /*=>>java.lang.Object#`<init>`().*/Wildcards/*<<=advanced.Wildcards#*/ {
@@ -34,8 +34,8 @@ object /*=>>java.lang.Object#`<init>`().*/Test/*<<=advanced.Test.*/ {
 
   {
     (???/*=>>scala.Predef.`???`().*/ : Any/*=>>scala.Any#*/) match {
-      case e3/*<<=local11*/: List/*=>>scala.package.List#*/[_] =>
-        val e3x/*<<=local12*/ = e3/*=>>local11*/.head/*=>>scala.collection.IterableOps#head().*/
+      case e3/*<<=local7*/: List/*=>>scala.package.List#*/[_] =>
+        val e3x/*<<=local8*/ = e3/*=>>local7*/.head/*=>>scala.collection.IterableOps#head().*/
         ()
     }
   }
