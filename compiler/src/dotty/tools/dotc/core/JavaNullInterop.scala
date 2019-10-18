@@ -4,7 +4,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.JavaDefined
 import dotty.tools.dotc.core.StdNames.{jnme, nme}
 import dotty.tools.dotc.core.Symbols.{Symbol, defn, _}
-import dotty.tools.dotc.core.Types.{AndType, AppliedType, LambdaType, MethodType, OrType, PolyType, Type, TypeAlias, TypeMap, TypeParamRef, TypeRef}
+import dotty.tools.dotc.core.Types.{AndType, AppliedType, LambdaType, MethodType, OrType, PolyType, ThisType, Type, TypeAlias, TypeMap, TypeParamRef, TypeRef}
 import NullOpsDecorator._
 
 /** This module defines methods to interpret types of Java symbols, which are implicitly nullable in Java,
@@ -60,12 +60,33 @@ object JavaNullInterop {
     if (sym.name == nme.TYPE_ || sym.isAllOf(Flags.JavaEnumValue))
       // Don't nullify the `TYPE` field in every class and Java enum instances
       tp
-    else if (sym.name == nme.toString_ || sym.isConstructor)
+    else if (sym.name == nme.toString_ || sym.isConstructor || hasNotNull(sym))
       // Don't nullify the return type of the `toString` method and constructors
+      // or it has a NotNull annotation
       nullifyParamsOnly(tp)
     else
       // Otherwise, nullify everything
       nullifyType(tp)
+  }
+
+  private val notNullAnnotations: List[String] =
+    "javax.annotation.Nonnull" ::
+      "edu.umd.cs.findbugs.annotations.NonNull" ::
+      "androidx.annotation.NonNull" ::
+      "android.support.annotation.NonNull" ::
+      "android.annotation.NonNull" ::
+      "com.android.annotations.NonNull" ::
+      "org.eclipse.jdt.annotation.NonNull" ::
+      "org.checkerframework.checker.nullness.qual.NonNull" ::
+      "org.checkerframework.checker.nullness.compatqual.NonNullDecl" ::
+      "org.jetbrains.annotations.NotNull" ::
+      "lombok.NonNull" ::
+      "io.reactivex.annotations.NonNull" ::
+      // mytest
+      "mytests.anno.MyAnno" :: Nil
+
+  private def hasNotNull(sym: Symbol)(implicit ctx: Context): Boolean = {
+    sym.annotations.exists(anno => notNullAnnotations.contains(anno.symbol.showFullName))
   }
 
   /** Only nullify method parameters (but not result types). */
