@@ -526,7 +526,7 @@ object Flags {
   val DeferredOrLazyOrMethod: FlagSet        = Deferred | Lazy | Method
   val DeferredOrTermParamOrAccessor: FlagSet = Deferred | ParamAccessor | TermParam           // term symbols without right-hand sides
   val DeferredOrTypeParam: FlagSet           = Deferred | TypeParam                           // type symbols without right-hand sides
-  val EnumValue: FlagSet                     = Enum | JavaStatic | StableRealizable           // A Scala enum value
+  val EnumValue: FlagSet                     = Enum | StableRealizable           // A Scala enum value
   val StableOrErased: FlagSet                = Erased | StableRealizable                      // Assumed to be pure
   val ExtensionMethod: FlagSet               = Extension | Method
   val FinalOrInline: FlagSet                 = Final | Inline
