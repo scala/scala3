@@ -1,4 +1,4 @@
-object ABug
+class ABug
   enum Tag
     case first
   import Tag.first
