@@ -73,7 +73,11 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     else {
       val isField = sym.owner.isClass
       if (isField)
-        if (sym.isAllOf(SyntheticModule))
+        if sym.isAllOf(SyntheticModule) && sym.allOverriddenSymbols.isEmpty then
+          // I am not sure what the conditions for this optimization should be.
+          // It was applied for all synthetic objects, but this is clearly false, as t704 demonstrates.
+          // It seems we have to at least exclude synthetic objects that derive from mixins.
+          // This is done by demanding that the object does not override anything.
           transformSyntheticModule(tree)
         else if (sym.isThreadUnsafe || ctx.settings.scalajs.value)
           if (sym.is(Module) && !ctx.settings.scalajs.value) {
