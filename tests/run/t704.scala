@@ -1,10 +1,10 @@
 trait D {
   private val x = "xxxx should appear twice"
-  object xxxx { Console.println(x) }
+  private object xxxx { Console.println(x) }
   def get_xxxx: AnyRef = xxxx
 
   private val z = "zzzz should appear twice"
-  lazy val zzzz = new ZZZZ
+  private lazy val zzzz = new ZZZZ
   class ZZZZ { Console.println(z) }
   def get_zzzz: AnyRef = zzzz
 }
