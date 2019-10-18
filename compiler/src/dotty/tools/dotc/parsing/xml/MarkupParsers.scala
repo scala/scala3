@@ -317,7 +317,7 @@ object MarkupParsers {
     }
 
     /** Some try/catch/finally logic used by xLiteral and xLiteralPattern.  */
-    @forceInline private def xLiteralCommon(f: () => Tree, ifTruncated: String => Unit): Tree = {
+    inline private def xLiteralCommon(f: () => Tree, ifTruncated: String => Unit): Tree = {
       assert(parser.in.token == Tokens.XMLSTART)
       val saved = parser.in.newTokenData
       saved.copyFrom(parser.in)

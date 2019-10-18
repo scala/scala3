@@ -13,7 +13,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     val source = """
                  |class Foo {
                  |  inline def foo: Int = 1
-                 |  @forceInline def bar: Int = 1
+                 |  inline def bar: Int = 1
                  |
                  |  def meth1: Unit = foo
                  |  def meth2: Unit = bar
