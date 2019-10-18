@@ -337,9 +337,11 @@ class Namer { typer: Typer =>
 
       val sym =
         if (prev.exists) {
+          prev.startedLoading()
           prev.flags = flags1
           prev.info = infoFn(prev.asInstanceOf[S])
           prev.setPrivateWithin(privateWithin)
+          prev.finishedLoading()
           prev
         }
         else symFn(flags1, infoFn, privateWithin)
