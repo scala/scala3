@@ -5,7 +5,7 @@ import scala.annotation.meta._
 import scala.language/*=>>scalaShadowing.language.*/.experimental/*=>>scalaShadowing.language.experimental.*/.macros/*=>>scalaShadowing.language.experimental.macros.*/
 
 @ClassAnnotation/*=>>com.javacp.annot.ClassAnnotation#*/
-class /*=>>java.lang.Object#`<init>`().*/Annotations/*<<=annot.Annotations#*/[@Type/*<<=annot.Annotations#`<init>`().*/ParameterAnnotation/*=>>com.javacp.annot.TypeParameterAnnotation#*/ T/*<<=annot.Annotations#`<init>`().(T)*//*<<=annot.Annotations#(T)*/](@ParameterAnnotation/*=>>com.javacp.annot.ParameterAnnotation#*/ x/*<<=annot.Annotations#`<init>`().(x)*//*<<=annot.Annotations#(x)*/: T/*=>>annot.Annotations#`<init>`().(T)*/) { self/*<<=local0*/: AnyRef/*=>>scala.AnyRef#*/ =>
+class /*=>>java.lang.Object#`<init>`().*/Annotations/*<<=annot.Annotations#*/[@Type/*<<=annot.Annotations#`<init>`().*/ParameterAnnotation/*=>>com.javacp.annot.TypeParameterAnnotation#*/ T/*<<=annot.Annotations#`<init>`().[T]*//*<<=annot.Annotations#[T]*/](@ParameterAnnotation/*=>>com.javacp.annot.ParameterAnnotation#*/ x/*<<=annot.Annotations#`<init>`().(x)*//*<<=annot.Annotations#(x)*/: T/*=>>annot.Annotations#`<init>`().[T]*/) { self/*<<=local0*/: AnyRef/*=>>scala.AnyRef#*/ =>
   @FieldAnnotation/*=>>com.javacp.annot.FieldAnnotation#*/
   val field/*<<=annot.Annotations#field.*/ = 42
 
@@ -27,7 +27,7 @@ class /*=>>java.lang.Object#`<init>`().*/B/*<<=annot.B#*/ @Cons/*<<=annot.B#`<in
 @ObjectAnnotation/*=>>com.javacp.annot.ObjectAnnotation#*/
 object /*=>>java.lang.Object#`<init>`().*/M/*<<=annot.M.*/ {
   /*=>>scala.package.Serializable#*//*=>>scala.*//*=>>_root_*//*=>>annot.M.*/@MacroAnnotation/*=>>com.javacp.annot.MacroAnnotation#*/
-  def m/*<<=annot.M.m().*/[TT/*<<=annot.M.m().(TT)*/]: Int/*=>>scala.Int#*//*=>>scala.Predef.`???`().*//*=>>scala.Predef.*//*=>>scala.*//*=>>_root_*/ = macro ???
+  def m/*<<=annot.M.m().*/[TT/*<<=annot.M.m().[TT]*/]: Int/*=>>scala.Int#*//*=>>scala.Predef.`???`().*//*=>>scala.Predef.*//*=>>scala.*//*=>>_root_*/ = macro ???
 }
 
 @TraitAnnotation/*=>>com.javacp.annot.TraitAnnotation#*/

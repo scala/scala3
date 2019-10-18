@@ -89,10 +89,10 @@ class ExtractSemanticDB extends Phase {
       def addDescriptor(sym: Symbol): Unit =
         if sym.is(ModuleClass) then
           addDescriptor(sym.sourceModule)
-        else if sym.is(Param) || sym.is(ParamAccessor) then
-          b.append('('); addName(sym.name); b.append(')')
         else if sym.is(TypeParam) then
           b.append('['); addName(sym.name); b.append(']')
+        else if sym.is(Param) || sym.is(ParamAccessor) then
+          b.append('('); addName(sym.name); b.append(')')
         else
           addName(sym.name)
           if sym.is(Package) then b.append('/')
@@ -141,6 +141,13 @@ class ExtractSemanticDB extends Phase {
       val (endLine, endCol) = lineCol(span.end)
       Some(Range(startLine, startCol, endLine, endCol))
 
+    private val WILDCARDTypeName = nme.WILDCARD.toTypeName
+
+    private def isWildcard(name: Name)(given ctx: Context) = name match
+      case nme.WILDCARD | WILDCARDTypeName           => true
+      case _ if name.is(NameKinds.WildcardParamName) => true
+      case _                                         => false
+
     /** Definitions of this symbol should be excluded from semanticdb */
     private def excludeDef(sym: Symbol)(given Context): Boolean =
       !sym.exists || sym.isLocalDummy || sym.is(Synthetic)
@@ -156,8 +163,12 @@ class ExtractSemanticDB extends Phase {
         generated += occ
 
     private def registerUse(sym: Symbol, span: Span)(given Context) =
-      if !excludeUse(sym, span) then
+      if !excludeUse(sym, span) && !isWildcard(sym.name) then
         registerOccurrence(sym, span, SymbolOccurrence.Role.REFERENCE)
+
+    private def registerDefinition(sym: Symbol, span: Span)(given Context) =
+      if !isWildcard(sym.name) then
+        registerOccurrence(sym, span, SymbolOccurrence.Role.DEFINITION)
 
     override def traverse(tree: Tree)(given ctx: Context): Unit =
       def registerPath(expr: Tree): Unit = expr match
@@ -177,10 +188,11 @@ class ExtractSemanticDB extends Phase {
         case tree: ValDef if tree.symbol.is(Module) => // skip module val
         case tree: NamedDefTree
         if !excludeDef(tree.symbol) && tree.span.start != tree.span.end =>
-          registerOccurrence(tree.symbol, tree.nameSpan, SymbolOccurrence.Role.DEFINITION)
+          registerDefinition(tree.symbol, tree.nameSpan)
           traverseChildren(tree)
         case tree: Ident =>
-          registerUse(tree.symbol, tree.span)
+          if tree.name != nme.WILDCARD && !excludeUse(tree.symbol, tree.span) then
+            registerUse(tree.symbol, tree.span)
         case tree: Select =>
           if !excludeUse(tree.symbol, tree.span) then
             val end = tree.span.end

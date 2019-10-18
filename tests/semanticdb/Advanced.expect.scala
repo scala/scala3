@@ -6,7 +6,7 @@ import scala.language/*=>>scalaShadowing.language.*/.reflectiveCalls/*=>>scalaSh
 import scala.reflect/*=>>scala.reflect.*/.Selectable/*=>>scala.reflect.Selectable.*/.reflectiveSelectable/*=>>scala.reflect.Selectable.reflectiveSelectable().*/
 
 class /*=>>java.lang.Object#`<init>`().*/C/*<<=advanced.C#*/[T] {
-/*<<=advanced.C#`<init>`().*//*<<=advanced.C#`<init>`().(T)*//*<<=advanced.C#(T)*/  def t/*<<=advanced.C#t().*/: T/*=>>advanced.C#(T)*/ = ???/*=>>scala.Predef.`???`().*/
+/*<<=advanced.C#`<init>`().*//*<<=advanced.C#`<init>`().[T]*//*<<=advanced.C#[T]*/  def t/*<<=advanced.C#t().*/: T/*=>>advanced.C#[T]*/ = ???/*=>>scala.Predef.`???`().*/
 }
 
 class /*=>>java.lang.Object#`<init>`().*/Structural/*<<=advanced.Structural#*/ {
@@ -34,8 +34,8 @@ object /*=>>java.lang.Object#`<init>`().*/Test/*<<=advanced.Test.*/ {
 
   {
     (???/*=>>scala.Predef.`???`().*/ : Any/*=>>scala.Any#*/) match {
-      case e3/*<<=local11*/: List/*=>>scala.package.List#*/[_/*<<=local12*/] =>
-        val e3x/*<<=local13*/ = e3/*=>>local11*/.head/*=>>scala.collection.IterableOps#head().*/
+      case e3/*<<=local11*/: List/*=>>scala.package.List#*/[_] =>
+        val e3x/*<<=local12*/ = e3/*=>>local11*/.head/*=>>scala.collection.IterableOps#head().*/
         ()
     }
   }
