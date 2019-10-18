@@ -762,10 +762,8 @@ class Namer { typer: Typer =>
       else bound
     }
 
-  def missingType(sym: Symbol, modifier: String)(implicit ctx: Context): Unit = {
+  def missingType(sym: Symbol, modifier: String)(implicit ctx: Context): Unit =
     ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.sourcePos)
-    sym.resetFlag(GivenOrImplicit)
-  }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
   class Completer(val original: Tree)(implicit ctx: Context) extends LazyType with SymbolLoaders.SecondCompleter {
