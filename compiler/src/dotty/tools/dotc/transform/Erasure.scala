@@ -75,12 +75,8 @@ class Erasure extends Phase with DenotTransformer {
         val newInfo = transformInfo(oldSymbol, oldInfo)
         val oldFlags = ref.flags
         val newFlags =
-          if oldSymbol.is(Flags.TermParam) && isCompacted(oldSymbol.owner) then
-            oldFlags &~ Flags.Param
-          else if oldSymbol.isAllOf(Flags.EnumValue) && oldSymbol.isStatic then
-            oldFlags | Flags.JavaStatic
-          else
-            oldFlags &~ Flags.HasDefaultParamsFlags // HasDefaultParamsFlags needs to be dropped because overriding might become overloading
+          if (oldSymbol.is(Flags.TermParam) && isCompacted(oldSymbol.owner)) oldFlags &~ Flags.Param
+          else oldFlags &~ Flags.HasDefaultParamsFlags // HasDefaultParamsFlags needs to be dropped because overriding might become overloading
 
         // TODO: define derivedSymDenotation?
         if ((oldSymbol eq newSymbol) && (oldOwner eq newOwner) && (oldName eq newName) && (oldInfo eq newInfo) && (oldFlags == newFlags))

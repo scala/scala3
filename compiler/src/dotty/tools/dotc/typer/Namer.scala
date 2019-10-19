@@ -352,14 +352,25 @@ class Namer { typer: Typer =>
         cls
       case tree: MemberDef =>
         val name = checkNoConflict(tree.name)
-        val flags = checkFlags(tree.mods.flags)
-        val isDeferred = lacksDefinition(tree)
-        val deferred = if (isDeferred) Deferred else EmptyFlags
-        val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
-        val higherKinded = tree match {
-          case TypeDef(_, LambdaTypeTree(_, _)) if isDeferred => HigherKinded
-          case _ => EmptyFlags
-        }
+        var flags = checkFlags(tree.mods.flags)
+        tree match
+          case tree: ValOrDefDef =>
+            if tree.unforcedRhs == EmptyTree
+               && !flags.isOneOf(TermParamOrAccessor)
+               && !tree.name.isConstructorName
+            then
+              flags |= Deferred
+            if (tree.isInstanceOf[DefDef]) flags |= Method
+            else if flags.isAllOf(EnumValue) && ctx.owner.isStaticOwner then flags |= JavaStatic
+          case tree: TypeDef =>
+            def analyzeRHS(rhs: Tree): Unit = rhs match
+              case _: TypeBoundsTree | _: MatchTypeTree =>
+                flags |= Deferred // Typedefs with Match rhs classify as abstract
+              case LambdaTypeTree(_, body) =>
+                flags |= HigherKinded
+                analyzeRHS(body)
+              case _ =>
+            if tree.rhs.isEmpty then flags |= Deferred else analyzeRHS(tree.rhs)
 
         // to complete a constructor, move one context further out -- this
         // is the context enclosing the class. Note that the context in which a
@@ -370,7 +381,7 @@ class Namer { typer: Typer =>
         // Don't do this for Java constructors because they need to see the import
         // of the companion object, and it is not necessary for them because they
         // have no implementation.
-        val cctx = if (tree.name == nme.CONSTRUCTOR && !tree.mods.is(JavaDefined)) ctx.outer else ctx
+        val cctx = if (tree.name == nme.CONSTRUCTOR && !flags.is(JavaDefined)) ctx.outer else ctx
 
         val completer = tree match {
           case tree: TypeDef =>
@@ -380,8 +391,7 @@ class Namer { typer: Typer =>
             new Completer(tree)(cctx)
         }
         val info = adjustIfModule(completer, tree)
-        createOrRefine[Symbol](tree, name, flags | deferred | method | higherKinded,
-          ctx.owner, _ => info,
+        createOrRefine[Symbol](tree, name, flags, ctx.owner, _ => info,
           (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.nameSpan))
       case tree: Import =>
         recordSym(ctx.newImportSymbol(ctx.owner, new Completer(tree), tree.span), tree)
