@@ -5,5 +5,5 @@
   |    Exception occurred while executing macro expansion.
   |    scala.MatchError: Inlined(EmptyTree,List(),Literal(Constant(2))) (of class dotty.tools.dotc.ast.Trees$Inlined)
   |    	at playground.macros$.mcrImpl(Macro_1.scala:12)
-  |    
+  |
   | This location is in code that was inlined at Test_2.scala:5
