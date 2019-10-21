@@ -1,4 +1,4 @@
-object A {
+object AnObject {
 
   def foo(x: Int) = ()
   def foo(): Unit = ()

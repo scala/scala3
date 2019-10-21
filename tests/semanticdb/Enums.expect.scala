@@ -1,50 +1,50 @@
-object Enums/*<<=Enums.*/ {
-  enum Colour/*<<=Enums.Colour#*/ {
-    case /*=>>scala.runtime.EnumValues#`<init>`().*/Red/*=>>Enums.Colour.Red.*//*<<=Enums.Colour.Red.*/, Green/*=>>Enums.Colour.Green.*//*<<=Enums.Colour.Green.*/, Blue/*=>>Enums.Colour.Blue.*//*<<=Enums.Colour.Blue.*/
+object Enums/*<<=_empty_.Enums.*/ {
+  enum Colour/*<<=_empty_.Enums.Colour#*/ {
+    case /*=>>scala.runtime.EnumValues#`<init>`().*/Red/*=>>_empty_.Enums.Colour.Red.*//*<<=_empty_.Enums.Colour.Red.*/, Green/*=>>_empty_.Enums.Colour.Green.*//*<<=_empty_.Enums.Colour.Green.*/, Blue/*=>>_empty_.Enums.Colour.Blue.*//*<<=_empty_.Enums.Colour.Blue.*/
   }
 
-  enum WeekDays/*<<=Enums.WeekDays#*/ {
-    /*=>>scala.runtime.EnumValues#`<init>`().*/case Monday/*<<=Enums.WeekDays.Monday.*/
-    case Tuesday/*<<=Enums.WeekDays.Tuesday.*/
-    case Wednesday/*<<=Enums.WeekDays.Wednesday.*/
-    case Thursday/*<<=Enums.WeekDays.Thursday.*/
-    case Friday/*<<=Enums.WeekDays.Friday.*/
-    case Saturday/*<<=Enums.WeekDays.Saturday.*/
-    case Sunday/*<<=Enums.WeekDays.Sunday.*/
+  enum WeekDays/*<<=_empty_.Enums.WeekDays#*/ {
+    /*=>>scala.runtime.EnumValues#`<init>`().*/case Monday/*<<=_empty_.Enums.WeekDays.Monday.*/
+    case Tuesday/*<<=_empty_.Enums.WeekDays.Tuesday.*/
+    case Wednesday/*<<=_empty_.Enums.WeekDays.Wednesday.*/
+    case Thursday/*<<=_empty_.Enums.WeekDays.Thursday.*/
+    case Friday/*<<=_empty_.Enums.WeekDays.Friday.*/
+    case Saturday/*<<=_empty_.Enums.WeekDays.Saturday.*/
+    case Sunday/*<<=_empty_.Enums.WeekDays.Sunday.*/
   }
 
-  enum Maybe/*<<=Enums.Maybe#*/[+A/*<<=Enums.Maybe#[A]*/] {
-    /*=>>Enums.Maybe#`<init>`().*//*=>>Enums.Maybe.Just#[A]*/case Just/*<<=Enums.Maybe.Just#*/(value/*<<=Enums.Maybe.Just#value.*/: A/*=>>Enums.Maybe.Just#`<init>`().[A]*/)
-    /*=>>Enums.Maybe#`<init>`().*/case None/*<<=Enums.Maybe.None.*/
+  enum Maybe/*<<=_empty_.Enums.Maybe#*/[+A/*<<=_empty_.Enums.Maybe#[A]*/] {
+    /*=>>_empty_.Enums.Maybe#`<init>`().*//*=>>_empty_.Enums.Maybe.Just#[A]*/case Just/*<<=_empty_.Enums.Maybe.Just#*/(value/*<<=_empty_.Enums.Maybe.Just#value.*/: A/*=>>_empty_.Enums.Maybe.Just#`<init>`().[A]*/)
+    /*=>>_empty_.Enums.Maybe#`<init>`().*/case None/*<<=_empty_.Enums.Maybe.None.*/
   }
 
-  enum Tag/*<<=Enums.Tag#*/[A/*<<=Enums.Tag#[A]*/] {
-    case IntTag/*<<=Enums.Tag.IntTag.*/ extends Tag/*=>>Enums.Tag#*/[Int/*=>>scala.Int#*/]/*=>>Enums.Tag#`<init>`().*/
-    case BooleanTag/*<<=Enums.Tag.BooleanTag.*/ extends Tag/*=>>Enums.Tag#*/[Boolean/*=>>scala.Boolean#*/]/*=>>Enums.Tag#`<init>`().*/
+  enum Tag/*<<=_empty_.Enums.Tag#*/[A/*<<=_empty_.Enums.Tag#[A]*/] {
+    case IntTag/*<<=_empty_.Enums.Tag.IntTag.*/ extends Tag/*=>>_empty_.Enums.Tag#*/[Int/*=>>scala.Int#*/]/*=>>_empty_.Enums.Tag#`<init>`().*/
+    case BooleanTag/*<<=_empty_.Enums.Tag.BooleanTag.*/ extends Tag/*=>>_empty_.Enums.Tag#*/[Boolean/*=>>scala.Boolean#*/]/*=>>_empty_.Enums.Tag#`<init>`().*/
   }
 
-  enum =:=/*<<=Enums.`=:=`#*/[A/*<<=Enums.`=:=`#[A]*/, B/*<<=Enums.`=:=`#[B]*/] {
-    case Refl/*<<=Enums.`=:=`.Refl#*/[C/*<<=Enums.`=:=`.Refl#[C]*/]() extends (C/*=>>Enums.`=:=`.Refl#[C]*/ =:=/*=>>Enums.`=:=`#*/ C/*=>>Enums.`=:=`.Refl#[C]*//*=>>Enums.`=:=`#`<init>`().*/)
+  enum =:=/*<<=_empty_.Enums.`=:=`#*/[A/*<<=_empty_.Enums.`=:=`#[A]*/, B/*<<=_empty_.Enums.`=:=`#[B]*/] {
+    case Refl/*<<=_empty_.Enums.`=:=`.Refl#*/[C/*<<=_empty_.Enums.`=:=`.Refl#[C]*/]() extends (C/*=>>_empty_.Enums.`=:=`.Refl#[C]*/ =:=/*=>>_empty_.Enums.`=:=`#*/ C/*=>>_empty_.Enums.`=:=`.Refl#[C]*//*=>>_empty_.Enums.`=:=`#`<init>`().*/)
   }
 
-  def unwrap/*<<=Enums.unwrap().*/[A/*<<=Enums.unwrap().[A]*/,B/*<<=Enums.unwrap().[B]*/](opt/*<<=Enums.unwrap().(opt)*/: Option/*=>>scala.Option#*/[A/*=>>Enums.unwrap().[A]*/])(given ev/*<<=Enums.unwrap().(ev)*/: A/*=>>Enums.unwrap().[A]*/ =:=/*=>>Enums.`=:=`#*/ Option/*=>>scala.Option#*/[B/*=>>Enums.unwrap().[B]*/]): Option/*=>>scala.Option#*/[B/*=>>Enums.unwrap().[B]*/] = {
-    ev/*=>>Enums.unwrap().(ev)*/ match {
-      case =:=/*=>>Enums.`=:=`.*/.Refl/*=>>Enums.`=:=`.Refl.*/() => opt/*=>>Enums.unwrap().(opt)*/.flatMap/*=>>scala.Option#flatMap().*/(identity/*=>>scala.Predef.identity().*/[Option/*=>>scala.Option#*/[B/*=>>Enums.unwrap().[B]*/]])
+  def unwrap/*<<=_empty_.Enums.unwrap().*/[A/*<<=_empty_.Enums.unwrap().[A]*/,B/*<<=_empty_.Enums.unwrap().[B]*/](opt/*<<=_empty_.Enums.unwrap().(opt)*/: Option/*=>>scala.Option#*/[A/*=>>_empty_.Enums.unwrap().[A]*/])(given ev/*<<=_empty_.Enums.unwrap().(ev)*/: A/*=>>_empty_.Enums.unwrap().[A]*/ =:=/*=>>_empty_.Enums.`=:=`#*/ Option/*=>>scala.Option#*/[B/*=>>_empty_.Enums.unwrap().[B]*/]): Option/*=>>scala.Option#*/[B/*=>>_empty_.Enums.unwrap().[B]*/] = {
+    ev/*=>>_empty_.Enums.unwrap().(ev)*/ match {
+      case =:=/*=>>_empty_.Enums.`=:=`.*/.Refl/*=>>_empty_.Enums.`=:=`.Refl.*/() => opt/*=>>_empty_.Enums.unwrap().(opt)*/.flatMap/*=>>scala.Option#flatMap().*/(identity/*=>>scala.Predef.identity().*/[Option/*=>>scala.Option#*/[B/*=>>_empty_.Enums.unwrap().[B]*/]])
     }
   }
 
-  enum Planet/*<<=Enums.Planet#*/(mass/*<<=Enums.Planet#mass.*/: Double/*=>>scala.Double#*/, radius/*<<=Enums.Planet#radius.*/: Double/*=>>scala.Double#*/) extends java/*=>>java.*/.lang/*=>>java.lang.*/.Enum/*=>>java.lang.Enum#*/[Planet/*=>>Enums.Planet#*/]/*=>>java.lang.Enum#`<init>`().*/ {
-    private final val G/*<<=Enums.Planet#G.*/ = 6.67300E-11
-    def surfaceGravity/*<<=Enums.Planet#surfaceGravity().*/ = G/*=>>Enums.Planet#G.*/ */*=>>scala.Double#`*`(+6).*/ mass/*=>>Enums.Planet#mass.*/ //*=>>scala.Double#`.`(+6).*/ (radius/*=>>Enums.Planet#radius.*/ */*=>>scala.Double#`*`(+6).*/ radius/*=>>Enums.Planet#radius.*/)
-    def surfaceWeight/*<<=Enums.Planet#surfaceWeight().*/(otherMass/*<<=Enums.Planet#surfaceWeight().(otherMass)*/: Double/*=>>scala.Double#*/) = otherMass/*=>>Enums.Planet#surfaceWeight().(otherMass)*/ */*=>>scala.Double#`*`(+6).*/ surfaceGravity/*=>>Enums.Planet#surfaceGravity().*/
+  enum Planet/*<<=_empty_.Enums.Planet#*/(mass/*<<=_empty_.Enums.Planet#mass.*/: Double/*=>>scala.Double#*/, radius/*<<=_empty_.Enums.Planet#radius.*/: Double/*=>>scala.Double#*/) extends java/*=>>java.*/.lang/*=>>java.lang.*/.Enum/*=>>java.lang.Enum#*/[Planet/*=>>_empty_.Enums.Planet#*/]/*=>>java.lang.Enum#`<init>`().*/ {
+    private final val G/*<<=_empty_.Enums.Planet#G.*/ = 6.67300E-11
+    def surfaceGravity/*<<=_empty_.Enums.Planet#surfaceGravity().*/ = G/*=>>_empty_.Enums.Planet#G.*/ */*=>>scala.Double#`*`(+6).*/ mass/*=>>_empty_.Enums.Planet#mass.*/ //*=>>scala.Double#`.`(+6).*/ (radius/*=>>_empty_.Enums.Planet#radius.*/ */*=>>scala.Double#`*`(+6).*/ radius/*=>>_empty_.Enums.Planet#radius.*/)
+    def surfaceWeight/*<<=_empty_.Enums.Planet#surfaceWeight().*/(otherMass/*<<=_empty_.Enums.Planet#surfaceWeight().(otherMass)*/: Double/*=>>scala.Double#*/) = otherMass/*=>>_empty_.Enums.Planet#surfaceWeight().(otherMass)*/ */*=>>scala.Double#`*`(+6).*/ surfaceGravity/*=>>_empty_.Enums.Planet#surfaceGravity().*/
 
-    case Mercury/*<<=Enums.Planet.Mercury.*/ extends /*=>>scala.runtime.EnumValues#`<init>`().*/Planet/*=>>Enums.Planet#*//*=>>Enums.Planet#`<init>`().*/(3.303e+23, 2.4397e6)/*=>>scala.runtime.EnumValues#register().*/
-    case Venus/*<<=Enums.Planet.Venus.*/   extends Planet/*=>>Enums.Planet#*//*=>>Enums.Planet#`<init>`().*/(4.869e+24, 6.0518e6)/*=>>scala.runtime.EnumValues#register().*/
-    case Earth/*<<=Enums.Planet.Earth.*/   extends Planet/*=>>Enums.Planet#*//*=>>Enums.Planet#`<init>`().*/(5.976e+24, 6.37814e6)/*=>>scala.runtime.EnumValues#register().*/
-    case Mars/*<<=Enums.Planet.Mars.*/    extends Planet/*=>>Enums.Planet#*//*=>>Enums.Planet#`<init>`().*/(6.421e+23, 3.3972e6)/*=>>scala.runtime.EnumValues#register().*/
-    case Jupiter/*<<=Enums.Planet.Jupiter.*/ extends Planet/*=>>Enums.Planet#*//*=>>Enums.Planet#`<init>`().*/(1.9e+27,   7.1492e7)/*=>>scala.runtime.EnumValues#register().*/
-    case Saturn/*<<=Enums.Planet.Saturn.*/  extends Planet/*=>>Enums.Planet#*//*=>>Enums.Planet#`<init>`().*/(5.688e+26, 6.0268e7)/*=>>scala.runtime.EnumValues#register().*/
-    case Uranus/*<<=Enums.Planet.Uranus.*/  extends Planet/*=>>Enums.Planet#*//*=>>Enums.Planet#`<init>`().*/(8.686e+25, 2.5559e7)/*=>>scala.runtime.EnumValues#register().*/
-    case Neptune/*<<=Enums.Planet.Neptune.*/ extends Planet/*=>>Enums.Planet#*//*=>>Enums.Planet#`<init>`().*/(1.024e+26, 2.4746e7)/*=>>scala.runtime.EnumValues#register().*/
+    case Mercury/*<<=_empty_.Enums.Planet.Mercury.*/ extends /*=>>scala.runtime.EnumValues#`<init>`().*/Planet/*=>>_empty_.Enums.Planet#*//*=>>_empty_.Enums.Planet#`<init>`().*/(3.303e+23, 2.4397e6)/*=>>scala.runtime.EnumValues#register().*/
+    case Venus/*<<=_empty_.Enums.Planet.Venus.*/   extends Planet/*=>>_empty_.Enums.Planet#*//*=>>_empty_.Enums.Planet#`<init>`().*/(4.869e+24, 6.0518e6)/*=>>scala.runtime.EnumValues#register().*/
+    case Earth/*<<=_empty_.Enums.Planet.Earth.*/   extends Planet/*=>>_empty_.Enums.Planet#*//*=>>_empty_.Enums.Planet#`<init>`().*/(5.976e+24, 6.37814e6)/*=>>scala.runtime.EnumValues#register().*/
+    case Mars/*<<=_empty_.Enums.Planet.Mars.*/    extends Planet/*=>>_empty_.Enums.Planet#*//*=>>_empty_.Enums.Planet#`<init>`().*/(6.421e+23, 3.3972e6)/*=>>scala.runtime.EnumValues#register().*/
+    case Jupiter/*<<=_empty_.Enums.Planet.Jupiter.*/ extends Planet/*=>>_empty_.Enums.Planet#*//*=>>_empty_.Enums.Planet#`<init>`().*/(1.9e+27,   7.1492e7)/*=>>scala.runtime.EnumValues#register().*/
+    case Saturn/*<<=_empty_.Enums.Planet.Saturn.*/  extends Planet/*=>>_empty_.Enums.Planet#*//*=>>_empty_.Enums.Planet#`<init>`().*/(5.688e+26, 6.0268e7)/*=>>scala.runtime.EnumValues#register().*/
+    case Uranus/*<<=_empty_.Enums.Planet.Uranus.*/  extends Planet/*=>>_empty_.Enums.Planet#*//*=>>_empty_.Enums.Planet#`<init>`().*/(8.686e+25, 2.5559e7)/*=>>scala.runtime.EnumValues#register().*/
+    case Neptune/*<<=_empty_.Enums.Planet.Neptune.*/ extends Planet/*=>>_empty_.Enums.Planet#*//*=>>_empty_.Enums.Planet#`<init>`().*/(1.024e+26, 2.4746e7)/*=>>scala.runtime.EnumValues#register().*/
   }
 }

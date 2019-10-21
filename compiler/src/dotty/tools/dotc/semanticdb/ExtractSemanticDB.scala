@@ -60,7 +60,7 @@ class ExtractSemanticDB extends Phase {
     private val generated = new mutable.HashSet[SymbolOccurrence]
 
     /** Add semanticdb name of the given symbol to string builder */
-    private def addSymName(b: StringBuilder, sym: Symbol)(given ctx: Context): Unit =
+    private def addSymName(b: StringBuilder, sym: Symbol, inOwner: Boolean = false)(given ctx: Context): Unit =
 
       def isJavaIdent(str: String) =
         isJavaIdentifierStart(str.head) && str.tail.forall(isJavaIdentifierPart)
@@ -76,7 +76,7 @@ class ExtractSemanticDB extends Phase {
         || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && isGlobal(sym.owner)
 
       def addOwner(owner: Symbol): Unit =
-        if !owner.isRoot && !owner.isEmptyPackage then addSymName(b, owner)
+        if !owner.isRoot then addSymName(b, owner, inOwner = true)
 
       def addOverloadIdx(sym: Symbol): Unit =
         val alts = sym.owner.info.decls.lookupAll(sym.name).toList.reverse
@@ -118,9 +118,9 @@ class ExtractSemanticDB extends Phase {
 
       if sym.exists then
         if sym.isRoot then
-          b.append("_root_")
+          b.append(if !inOwner then "_root_" else "_root_.")
         else if sym.isEmptyPackage then
-          b.append("_empty_")
+          b.append(if !inOwner then "_empty_" else "_empty_.")
         else if isGlobal(sym) then
           addOwner(sym.owner); addDescriptor(sym)
         else

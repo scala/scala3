@@ -1,10 +1,10 @@
-object A/*<<=A.*/ {
+object AnObject/*<<=_empty_.AnObject.*/ {
 
-  def foo/*<<=A.foo().*/(x/*<<=A.foo().(x)*/: Int/*=>>scala.Int#*/) = ()
-  def foo/*<<=A.foo(+1).*/(): Unit/*=>>scala.Unit#*/ = ()
+  def foo/*<<=_empty_.AnObject.foo().*/(x/*<<=_empty_.AnObject.foo().(x)*/: Int/*=>>scala.Int#*/) = ()
+  def foo/*<<=_empty_.AnObject.foo(+1).*/(): Unit/*=>>scala.Unit#*/ = ()
 
-  foo/*=>>A.foo().*/(1)
-  foo/*=>>A.foo(+1).*/()
+  foo/*=>>_empty_.AnObject.foo().*/(1)
+  foo/*=>>_empty_.AnObject.foo(+1).*/()
 
   "".substring/*=>>java.lang.String#substring().*/(1)
   "".substring/*=>>java.lang.String#substring(+1).*/(1, 2)
@@ -14,5 +14,5 @@ object A/*<<=A.*/ {
   List/*=>>scala.package.List().*/.`apply`/*=>>scala.collection.IterableFactory#apply().*/()
   println/*=>>scala.Predef.println(+1).*/(1 +/*=>>scala.Int#`+`(+4).*/ 2)
 
-  case class Foo/*<<=A.Foo#*/(x/*<<=A.Foo#x.*/: Int/*=>>scala.Int#*/)
+  case class Foo/*<<=_empty_.AnObject.Foo#*/(x/*<<=_empty_.AnObject.Foo#x.*/: Int/*=>>scala.Int#*/)
 }
