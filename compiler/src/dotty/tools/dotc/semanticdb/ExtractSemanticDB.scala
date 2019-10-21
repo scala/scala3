@@ -97,7 +97,8 @@ class ExtractSemanticDB extends Phase {
           addName(sym.name)
           if sym.is(Package) then b.append('/')
           else if sym.isType then b.append('#')
-          else if sym.is(Method) || (sym.isOneOf(Accessor | Local) && sym.is(Mutable)) then
+          else if sym.isOneOf(Method | Mutable)
+          && (!sym.is(StableRealizable) || sym.name == nme.CONSTRUCTOR) then
             b.append('('); addOverloadIdx(sym); b.append(").")
           else b.append('.')
 
