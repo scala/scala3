@@ -137,9 +137,9 @@ object JavaParsers {
     // ------------- general parsing ---------------------------
 
     /** skip parent or brace enclosed sequence of things */
-    def skipAhead(initnparens: Int, initnbraces: Int): Unit = {
-      var nparens = initnparens
-      var nbraces = initnbraces
+    def skipAhead(): Unit = {
+      var nparens = 0
+      var nbraces = 0
       while ({
         in.token match {
           case LPAREN =>
@@ -160,8 +160,6 @@ object JavaParsers {
       })
       ()
     }
-
-    def skipAhead(): Unit = skipAhead(0,0)
 
     def skipTo(tokens: Int*): Unit =
       while (!(tokens contains in.token) && in.token != EOF)
@@ -346,26 +344,19 @@ object JavaParsers {
       */
     def annotation(): Option[Tree] = {
       val id = convertToTypeId(qualId())
-      var skipAnno = false
+      var skipAnnot = false
 
       // only parse annotations without arguments
       if (in.token == LPAREN) {
-        in.nextToken()
-        if (in.token != RPAREN) {
-          skipAnno = true
-          skipAhead(1, 0)
+        if (in.lookaheadToken != RPAREN) {
+          skipAnnot = true
+          skipAhead()
         }
+        else in.nextToken()
         accept(RPAREN)
-      } else if (in.token == LBRACE) {
-        in.nextToken()
-        if (in.token != RBRACE) {
-          skipAnno = true
-          skipAhead(0, 1)
-        }
-        accept(RBRACE)
       }
 
-      if (skipAnno) None
+      if (skipAnnot) None
       else Some(ensureApplied(Select(New(id), nme.CONSTRUCTOR)))
     }
 
@@ -373,9 +364,9 @@ object JavaParsers {
       var flags: FlagSet = Flags.JavaDefined
       // assumed true unless we see public/private/protected
       var isPackageAccess = true
-      var annots: List[Tree] = Nil
+      var annots = new ListBuffer[Tree]
       def addAnnot(sym: ClassSymbol) =
-        annots :+= atSpan(in.offset) {
+        annots += atSpan(in.offset) {
           in.nextToken()
           New(TypeTree(sym.typeRef))
         }
@@ -385,7 +376,7 @@ object JavaParsers {
           case AT if (in.lookaheadToken != INTERFACE) =>
             in.nextToken()
             annotation() match {
-              case Some(anno) => annots :+= anno
+              case Some(anno) => annots += anno
               case _ =>
             }
           case PUBLIC =>
@@ -423,7 +414,7 @@ object JavaParsers {
               if (isPackageAccess && !inInterface) thisPackageName
               else tpnme.EMPTY
 
-            return Modifiers(flags, privateWithin) withAnnotations annots
+            return Modifiers(flags, privateWithin) withAnnotations annots.toList
         }
       assert(false, "should not be here")
       throw new RuntimeException
