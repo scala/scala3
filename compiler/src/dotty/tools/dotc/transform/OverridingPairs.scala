@@ -82,10 +82,10 @@ object OverridingPairs {
 
     /** The current entry candidate for overriding
      */
-    private[this] var curEntry = decls.lastEntry
+    private var curEntry = decls.lastEntry
 
     /** The current entry candidate for overridden */
-    private[this] var nextEntry = curEntry
+    private var nextEntry = curEntry
 
     /** The current candidate symbol for overriding */
     var overriding: Symbol = _

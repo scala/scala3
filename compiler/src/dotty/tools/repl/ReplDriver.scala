@@ -61,7 +61,7 @@ class ReplDriver(settings: Array[String],
   override def sourcesRequired: Boolean = false
 
   /** Create a fresh and initialized context with IDE mode enabled */
-  private[this] def initialCtx = {
+  private def initialCtx = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive | Mode.ReadComments)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     val ictx = setup(settings, rootCtx)._2
@@ -78,7 +78,7 @@ class ReplDriver(settings: Array[String],
    *  such, when the user enters `:reset` this method should be called to reset
    *  everything properly
    */
-  protected[this] def resetToInitial(): Unit = {
+  protected def resetToInitial(): Unit = {
     rootCtx = initialCtx
     if (rootCtx.settings.outputDir.isDefault(rootCtx))
       rootCtx = rootCtx.fresh
@@ -87,9 +87,9 @@ class ReplDriver(settings: Array[String],
     rendering = new Rendering(classLoader)
   }
 
-  private[this] var rootCtx: Context = _
-  private[this] var compiler: ReplCompiler = _
-  private[this] var rendering: Rendering = _
+  private var rootCtx: Context = _
+  private var compiler: ReplCompiler = _
+  private var rendering: Rendering = _
 
   // initialize the REPL session as part of the constructor so that once `run`
   // is called, we're in business
@@ -159,7 +159,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** Extract possible completions at the index of `cursor` in `expr` */
-  protected[this] final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
+  protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
     def makeCandidate(completion: Completion) = {
       val displ = completion.label
       new Candidate(

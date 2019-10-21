@@ -99,7 +99,7 @@ object Inferencing {
       inst
     }
 
-    private[this] var toMaximize: Boolean = false
+    private var toMaximize: Boolean = false
 
     def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
       case _: WildcardType | _: ProtoType =>

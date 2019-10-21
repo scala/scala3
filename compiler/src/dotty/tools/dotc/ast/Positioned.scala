@@ -18,8 +18,8 @@ import java.io.{ PrintWriter }
  */
 abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Product with Cloneable {
 
-  private[this] var myUniqueId: Int = _
-  private[this] var mySpan: Span = _
+  private var myUniqueId: Int = _
+  private var mySpan: Span = _
 
   /** A unique identifier. Among other things, used for determining the source file
    *  component of the position.

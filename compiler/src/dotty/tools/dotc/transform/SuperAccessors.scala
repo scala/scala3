@@ -46,7 +46,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     *  The `invalidEnclClass` field, if different from NoSymbol,
     *  contains the symbol that is not a valid owner.
     */
-  private[this] var invalidEnclClass: Symbol = NoSymbol
+  private var invalidEnclClass: Symbol = NoSymbol
 
   private def withInvalidCurrentClass[A](trans: => A)(implicit ctx: Context): A = {
     val saved = invalidEnclClass

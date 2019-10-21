@@ -44,7 +44,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
       refClassKeys.flatMap(k => Set(refClass(k), volatileRefClass(k)))
   }
 
-  private[this] var myRefInfo: RefInfo = null
+  private var myRefInfo: RefInfo = null
   private def refInfo(implicit ctx: Context) = {
     if (myRefInfo == null) myRefInfo = new RefInfo()
     myRefInfo

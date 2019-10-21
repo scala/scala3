@@ -171,15 +171,15 @@ object Scanners {
     }
 
     /** All doc comments kept by their end position in a `Map` */
-    private[this] var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
+    private var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
     /* A Buffer for comment positions */
-    private[this] val commentPosBuf = new mutable.ListBuffer[Span]
+    private val commentPosBuf = new mutable.ListBuffer[Span]
 
     /** Return a list of all the comment positions */
     def commentSpans: List[Span] = commentPosBuf.toList
 
-    private[this] def addComment(comment: Comment): Unit = {
+    private def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()
       def nextPos: Int = (lookahead.getc(): @switch) match {
         case ' ' | '\t' => nextPos
@@ -196,7 +196,7 @@ object Scanners {
     def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
 
     /** A buffer for comments */
-    private[this] val commentBuf = new mutable.StringBuilder
+    private val commentBuf = new mutable.StringBuilder
 
     private def handleMigration(keyword: Token): Token =
       if (!isScala2Mode) keyword

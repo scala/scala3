@@ -16,6 +16,9 @@ class LazyNullable(a: => Int) {
   private [this] val e = "E"
   lazy val l4 = try e finally () // null out e
 
+  private val eInf = "E" // still nullable because private[this] is inferred
+  lazy val l4Inf = eInf
+
   private[this] val i = "I"
   // null out i even though the try ends up lifted, because the LazyVals phase runs before the LiftTry phase
   lazy val l5 = try i catch { case e: Exception => () }
@@ -38,9 +41,6 @@ class LazyNotNullable {
 
   private[this] lazy val d = "D" // not nullable because lazy
   lazy val l3 = d
-
-  private val e = "E" // not nullable because not private[this]
-  lazy val l4 = e
 
   private[this] val f = "F" // not nullable because used in mutiple lazy vals
   lazy val l5 = f
@@ -98,6 +98,9 @@ object Test {
     assert(lz.l4 == "E")
     assertNull("e")
 
+    assert(lz.l4Inf == "E")
+    assertNull("eInf")
+
     assert(lz.l5 == "I")
     assertNull("i")
 
@@ -123,9 +126,6 @@ object Test {
     assertNotNull("c")
 
     assert(lz.l3 == "D")
-
-    assert(lz.l4 == "E")
-    assertNotNull("e")
 
     assert(lz.l5 == "F")
     assert(lz.l6 == "F")

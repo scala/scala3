@@ -237,7 +237,7 @@ class Namer { typer: Typer =>
   val scope: MutableScope = newScope
 
   /** We are entering symbols coming from a SourceLoader */
-  private[this] var lateCompile = false
+  private var lateCompile = false
 
   /** The symbol of the given expanded tree. */
   def symbolOfTree(tree: Tree)(implicit ctx: Context): Symbol = {
@@ -276,6 +276,9 @@ class Namer { typer: Typer =>
     /** Check that flags are OK for symbol. This is done early to avoid
      *  catastrophic failure when we create a TermSymbol with TypeFlags, or vice versa.
      *  A more complete check is done in checkWellFormed.
+     *  Also, speculatively add a Local flag to private members that can be Local if
+     *  referred to exclusively from their owner's this-type. The Local flag is retracted in
+     *  `isAccessibleFrom` if the access not from such a this-type.
      */
     def checkFlags(flags: FlagSet) =
       if (flags.isEmpty) flags
@@ -284,9 +287,12 @@ class Namer { typer: Typer =>
           case tree: TypeDef => (flags.isTypeFlags, flags.toTypeFlags, "type")
           case _ => (flags.isTermFlags, flags.toTermFlags, "value")
         }
-        if (!ok)
+        def canBeLocal = tree match
+          case tree: MemberDef => SymDenotations.canBeLocal(tree.name, flags)
+          case _ => false
+        if !ok then
           ctx.error(i"modifier(s) `${flags.flagsString}` incompatible with $kind definition", tree.sourcePos)
-        adapted
+        if adapted.is(Private) && canBeLocal then adapted | Local else adapted
       }
 
     /** Add moduleClass/sourceModule to completer if it is for a module val or class */
@@ -902,8 +908,8 @@ class Namer { typer: Typer =>
   }
 
   class TypeDefCompleter(original: TypeDef)(ictx: Context) extends Completer(original)(ictx) with TypeParamsCompleter {
-    private[this] var myTypeParams: List[TypeSymbol] = null
-    private[this] var nestedCtx: Context = null
+    private var myTypeParams: List[TypeSymbol] = null
+    private var nestedCtx: Context = null
     assert(!original.isClassDef)
 
     override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] = {
@@ -938,9 +944,9 @@ class Namer { typer: Typer =>
 
     protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
 
-    private[this] var localCtx: Context = _
+    private var localCtx: Context = _
     /** info to be used temporarily while completing the class, to avoid cyclic references. */
-    private[this] var tempInfo: TempClassInfo = _
+    private var tempInfo: TempClassInfo = _
 
     val TypeDef(name, impl @ Template(constr, _, self, _)) = original
 

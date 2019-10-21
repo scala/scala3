@@ -68,8 +68,8 @@ final class SummaryReport extends SummaryReporting {
   private val reproduceInstructions = new java.util.concurrent.ConcurrentLinkedDeque[String]
   private val cleanUps = new java.util.concurrent.ConcurrentLinkedDeque[() => Unit]
 
-  private[this] var passed = 0
-  private[this] var failed = 0
+  private var passed = 0
+  private var failed = 0
 
   def reportFailed(): Unit =
     failed += 1

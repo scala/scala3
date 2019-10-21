@@ -93,7 +93,7 @@ class Erasure extends Phase with DenotTransformer {
       ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.symbol.info))
   }
 
-  private[this] val eraser = new Erasure.Typer(this)
+  private val eraser = new Erasure.Typer(this)
 
   def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit

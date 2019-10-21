@@ -35,7 +35,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     ctx
   }
 
-  private[this] var myCtx: Context = myInitCtx
+  private var myCtx: Context = myInitCtx
   def currentCtx: Context = myCtx
 
   private val compiler: Compiler = new InteractiveCompiler
@@ -311,7 +311,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * this compiler). In those cases, an un-initialized compiler may crash (for instance if
    * late-compilation is needed).
    */
-  private[this] def initialize(): Unit = {
+  private def initialize(): Unit = {
     val run = compiler.newRun(myInitCtx.fresh)
     myCtx = run.runContext
     run.compileUnits(Nil, myCtx)

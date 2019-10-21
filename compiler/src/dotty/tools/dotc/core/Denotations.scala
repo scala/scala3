@@ -116,9 +116,9 @@ object Denotations {
      */
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): PreDenotation
 
-    private[this] var cachedPrefix: Type = _
-    private[this] var cachedAsSeenFrom: AsSeenFromResult = _
-    private[this] var validAsSeenFrom: Period = Nowhere
+    private var cachedPrefix: Type = _
+    private var cachedAsSeenFrom: AsSeenFromResult = _
+    private var validAsSeenFrom: Period = Nowhere
 
     type AsSeenFromResult <: PreDenotation
 
@@ -774,7 +774,7 @@ object Denotations {
 
     // ------ Transformations -----------------------------------------
 
-    private[this] var myValidFor: Period = Nowhere
+    private var myValidFor: Period = Nowhere
 
     def validFor: Period = myValidFor
     def validFor_=(p: Period): Unit = {
