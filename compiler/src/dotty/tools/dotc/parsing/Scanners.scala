@@ -695,7 +695,7 @@ object Scanners {
                *  to let it be base-10 because of history.  Should it be an error? Is
                *  there a realistic situation where one would need it?
                */
-              if (isDigit(ch))
+              if (isDigit(ch) || (isNumberSeparator(ch) && isDigit(lookaheadChar())))
                 error("Non-zero numbers may not have a leading zero.")
               base = 10
             }
