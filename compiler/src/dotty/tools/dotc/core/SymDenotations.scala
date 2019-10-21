@@ -173,7 +173,7 @@ object SymDenotations {
     private def setMyFlags(flags: FlagSet) =
       lazy val immutableFlags = if wasLoaded then AfterLoadFlags else FromStartFlags
       lazy val changedImmutableFlags = (myFlags ^ flags) & immutableFlags
-      if isCompleting && !isLoading then assert(changedImmutableFlags.isEmpty,
+      if myFlags.is(Touched) && !isLoading then assert(changedImmutableFlags.isEmpty,
         s"Illegal mutation of flags ${changedImmutableFlags.flagsString} on completion of $this")
       myFlags = flags
 
@@ -254,7 +254,7 @@ object SymDenotations {
         indent += 1
 
         if (myFlags.is(Touched)) throw CyclicReference(this)
-        setMyFlags(myFlags | Touched)
+        myFlags |= Touched
 
         // completions.println(s"completing ${this.debugString}")
         try completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
@@ -270,9 +270,10 @@ object SymDenotations {
       }
       else {
         if (myFlags.is(Touched)) throw CyclicReference(this)
-        setMyFlags(myFlags | Touched)
+        myFlags |= Touched
         completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
       }
+      myFlags &~= Touched
 
     protected[dotc] def info_=(tp: Type): Unit = {
       /* // DEBUG
