@@ -344,20 +344,19 @@ object JavaParsers {
       */
     def annotation(): Option[Tree] = {
       val id = convertToTypeId(qualId())
-      var skipAnnot = false
+      var annot: Option[Tree] = Some(ensureApplied(Select(New(id), nme.CONSTRUCTOR)))
 
       // only parse annotations without arguments
       if (in.token == LPAREN) {
         if (in.lookaheadToken != RPAREN) {
-          skipAnnot = true
+          annot = None
           skipAhead()
         }
         else in.nextToken()
         accept(RPAREN)
       }
 
-      if (skipAnnot) None
-      else Some(ensureApplied(Select(New(id), nme.CONSTRUCTOR)))
+      annot
     }
 
     def modifiers(inInterface: Boolean): Modifiers = {
