@@ -103,16 +103,10 @@ object GenericSignatures {
         jsig(finalType)
     }
 
-    // This will reject any name that has characters that cannot appear in
-    // names on the JVM. Interop with Java is not guaranteed for those, so we
-    // dont need to generate signatures for them.
-    def sanitizeName(name: Name): String = {
-      val nameString = name.mangledString
-      if (nameString.forall(c => c == '.' || Character.isJavaIdentifierPart(c)))
-        nameString
-      else
-        throw new UnknownSig
-    }
+    // This works as long as mangled names are always valid valid Java identifiers,
+    // if we change our name encoding, we'll have to `throw new UnknownSig` here for
+    // names which are not valid Java identifiers (see git history of this method).
+    def sanitizeName(name: Name): String = name.mangledString
 
     // Anything which could conceivably be a module (i.e. isn't known to be
     // a type parameter or similar) must go through here or the signature is

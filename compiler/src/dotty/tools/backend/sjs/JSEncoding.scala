@@ -229,10 +229,7 @@ object JSEncoding {
     fullyMangledString(sym.name)
   }
 
-  /** Work around https://github.com/lampepfl/dotty/issues/5936 by bridging
-   *  most (all?) of the gap in encoding so that Dotty.js artifacts are
-   *  compatible with the restrictions on valid IR identifier names.
-   */
+  /** Convert Dotty mangled names into valid IR identifier names. */
   private def fullyMangledString(name: Name): String = {
     val base = name.mangledString
     val len = base.length
@@ -245,10 +242,8 @@ object JSEncoding {
         val c = base.charAt(i)
         if (c == '_')
           result.append("$und")
-        else if (Character.isJavaIdentifierPart(c) || c == '.')
-          result.append(c)
         else
-          result.append("$u%04x".format(c.toInt))
+          result.append(c)
         i += 1
       }
       result.toString()
@@ -257,7 +252,7 @@ object JSEncoding {
     var i = 0
     while (i != len) {
       val c = base.charAt(i)
-      if (c == '_' || !Character.isJavaIdentifierPart(c))
+      if (c == '_')
         return encodeFurther()
       i += 1
     }
