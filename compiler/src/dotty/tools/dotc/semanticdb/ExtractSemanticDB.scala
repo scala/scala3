@@ -66,7 +66,7 @@ class ExtractSemanticDB extends Phase {
         isJavaIdentifierStart(str.head) && str.tail.forall(isJavaIdentifierPart)
 
       def addName(name: Name) =
-        val str = name.toString.replaceAllLiterally("package","<???>")
+        val str = name.toString
         if isJavaIdent(str) then b.append(str)
         else b.append('`').append(str).append('`')
 
@@ -157,6 +157,10 @@ class ExtractSemanticDB extends Phase {
       || sym.is(Synthetic) || (sym.owner.is(Synthetic) && !sym.isAllOf(EnumCase))
       || sym.isAnonymous
       || sym.isPrimaryConstructor && excludeDef(sym.owner)
+      || excludeDefStrict(sym)
+
+    private def excludeDefStrict(sym: Symbol)(given Context): Boolean =
+      sym.name.is(NameKinds.DefaultGetterName)
 
     private def (sym: Symbol) isAnonymous(given Context): Boolean =
       sym.isAnonymousClass
@@ -164,8 +168,8 @@ class ExtractSemanticDB extends Phase {
       || sym.isAnonymousFunction
 
     /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
-    private def excludeUse(sym: Symbol, span: Span)(given Context): Boolean =
-      excludeDef(sym) && span.start == span.end
+    private def excludeUseStrict(sym: Symbol, span: Span)(given Context): Boolean =
+      excludeDefStrict(sym) || (excludeDef(sym) && span.start == span.end)
 
     private def registerOccurrence(sym: Symbol, span: Span, role: SymbolOccurrence.Role)(given Context): Unit =
       val occ = SymbolOccurrence(symbolName(sym), range(span), role)
@@ -174,7 +178,7 @@ class ExtractSemanticDB extends Phase {
         generated += occ
 
     private def registerUse(sym: Symbol, span: Span)(given Context) =
-      if !excludeUse(sym, span) && !isWildcard(sym.name) then
+      if !excludeUseStrict(sym, span) && !isWildcard(sym.name) then
         registerOccurrence(sym, span, SymbolOccurrence.Role.REFERENCE)
 
     private def registerDefinition(sym: Symbol, span: Span)(given Context) =
@@ -220,10 +224,10 @@ class ExtractSemanticDB extends Phase {
             traverse(tree.self)
           tree.body.foreach(traverse)
         case tree: Ident =>
-          if tree.name != nme.WILDCARD && !excludeUse(tree.symbol, tree.span) then
+          if tree.name != nme.WILDCARD && !excludeUseStrict(tree.symbol, tree.span) then
             registerUse(tree.symbol, tree.span)
         case tree: Select =>
-          if !excludeUse(tree.symbol, tree.span) then
+          if !excludeUseStrict(tree.symbol, tree.span) then
             val end = tree.span.end
             val limit = tree.qualifier.span.end
             val start =
@@ -240,6 +244,8 @@ class ExtractSemanticDB extends Phase {
               if imported != nme.WILDCARD then
                 for alt <- tree.expr.tpe.member(imported).alternatives do
                   registerUse(alt.symbol, sel.imported.span)
+                  if (alt.symbol.companionClass.exists)
+                    registerUse(alt.symbol.companionClass, sel.imported.span)
                 registerPath(tree.expr)
         case tree: Inlined =>
           traverse(tree.call)
