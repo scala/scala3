@@ -16,7 +16,7 @@ class Structural/*<<=advanced.Structural#*/ {
 }
 
 class Wildcards/*<<=advanced.Wildcards#*/ {
-  def e1/*<<=advanced.Wildcards#e1().*/: List/*=>>scala.package.List#*/[_] = ???/*=>>scala.Predef.`???`().*/
+  def e1/*<<=advanced.Wildcards#e1().*/: List/*=>>scala.List#*/[_] = ???/*=>>scala.Predef.`???`().*/
 }
 
 object Test/*<<=advanced.Test.*/ {
@@ -34,7 +34,7 @@ object Test/*<<=advanced.Test.*/ {
 
   {
     (???/*=>>scala.Predef.`???`().*/ : Any/*=>>scala.Any#*/) match {
-      case e3/*<<=local7*/: List/*=>>scala.package.List#*/[_] =>
+      case e3/*<<=local7*/: List/*=>>scala.List#*/[_] =>
         val e3x/*<<=local8*/ = e3/*=>>local7*/.head/*=>>scala.collection.IterableOps#head().*/
         ()
     }
