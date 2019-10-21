@@ -26,7 +26,7 @@ object N/*<<=classes.N.*/ {
   val anonClass/*<<=classes.N.anonClass.*/ = new C7/*=>>classes.C7#*//*=>>classes.C7#`<init>`().*/(42) {
     val local/*<<=local0*/ = ???/*=>>scala.Predef.`???`().*/
   }
-  val anonFun/*<<=classes.N.anonFun.*/ = List/*=>>scala.List().*//*=>>scala.collection.IterableFactory#apply().*/(1).map/*=>>scala.collection.immutable.List#map().*/ { i =>
+  val anonFun/*<<=classes.N.anonFun.*/ = List/*=>>scala.package.List().*//*=>>scala.collection.IterableFactory#apply().*/(1).map/*=>>scala.collection.immutable.List#map().*/ { i =>
     val local = 2
     local/*=>>local1*/ +/*=>>scala.Int#`+`(+4).*/ 2
   }

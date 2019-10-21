@@ -93,8 +93,6 @@ class ExtractSemanticDB extends Phase {
           b.append('['); addName(sym.name); b.append(']')
         else if sym.is(Param) then
           b.append('('); addName(sym.name); b.append(')')
-        else if sym.isPackageObject then
-          ()
         else
           addName(sym.name)
           if sym.is(Package) then b.append('/')
