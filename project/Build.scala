@@ -201,6 +201,15 @@ object Build {
     ).toList,
     PgpKeys.pgpPassphrase := sys.env.get("PGP_PW").map(_.toCharArray()),
     PgpKeys.useGpgPinentry := true,
+
+    javaOptions ++= {
+      val ciOptions = // propagate if this is a CI build
+        sys.props.get("dotty.drone.mem") match {
+          case Some(prop) => List("-Xmx" + prop)
+          case _ => List()
+        }
+      agentOptions ::: ciOptions
+    }
   )
 
   lazy val commonSettings = publishSettings ++ Seq(
@@ -432,29 +441,8 @@ object Build {
   def findArtifactPath(classpath: Def.Classpath, name: String): String =
     findArtifact(classpath, name).getAbsolutePath
 
-  // Settings shared between dotty-compiler, dotty-compiler-bootstrapped and dotty-staging
-  lazy val commonDottyJarClasspathSettings = Seq(
-    // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
-    // packageAll should always be run before tests
-    javaOptions ++= {
-      val externalDeps = externalCompilerClasspathTask.value
-      val jars = packageAll.in(LocalProject("dotty-compiler")).value
-
-      List(
-        "-Ddotty.tests.classes.dottyInterfaces=" + jars("dotty-interfaces"),
-        "-Ddotty.tests.classes.dottyLibrary=" + jars("dotty-library"),
-        "-Ddotty.tests.classes.dottyCompiler=" + jars("dotty-compiler"),
-        "-Ddotty.tests.classes.compilerInterface=" + findArtifactPath(externalDeps, "compiler-interface"),
-        "-Ddotty.tests.classes.scalaLibrary=" + findArtifactPath(externalDeps, "scala-library"),
-        "-Ddotty.tests.classes.scalaAsm=" + findArtifactPath(externalDeps, "scala-asm"),
-        "-Ddotty.tests.classes.jlineTerminal=" + findArtifactPath(externalDeps, "jline-terminal"),
-        "-Ddotty.tests.classes.jlineReader=" + findArtifactPath(externalDeps, "jline-reader")
-      )
-    }
-  )
-
   // Settings shared between dotty-compiler and dotty-compiler-bootstrapped
-  lazy val commonDottyCompilerSettings = commonDottyJarClasspathSettings ++ Seq(
+  lazy val commonDottyCompilerSettings = Seq(
       // set system in/out for repl
       connectInput in run := true,
       outputStrategy := Some(StdoutOutput),
@@ -509,32 +497,27 @@ object Build {
       // Add git-hash used to package the distribution to the manifest to know it in runtime and report it in REPL
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)),
 
-      // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
-      // packageAll should always be run before tests
       javaOptions ++= {
-        val ci_build = // propagate if this is a ci build
-          sys.props.get("dotty.drone.mem") match {
-            case Some(prop) => List("-Xmx" + prop)
-            case _ => List()
-          }
-
-        val tuning =
-          if (sys.props.isDefinedAt("Oshort"))
-            // Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
-            List("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1")
-          else List()
-
         val managedSrcDir = {
           // Populate the directory
           (managedSources in Compile).value
 
           (sourceManaged in Compile).value
         }
+        val externalDeps = externalCompilerClasspathTask.value
+        val jars = packageAll.value
 
-        val jarOpt =
-          "-Ddotty.tests.dottyCompilerManagedSources=" + managedSrcDir
-
-        jarOpt :: tuning ::: agentOptions ::: ci_build
+        Seq(
+          "-Ddotty.tests.dottyCompilerManagedSources=" + managedSrcDir,
+          "-Ddotty.tests.classes.dottyInterfaces=" + jars("dotty-interfaces"),
+          "-Ddotty.tests.classes.dottyLibrary=" + jars("dotty-library"),
+          "-Ddotty.tests.classes.dottyCompiler=" + jars("dotty-compiler"),
+          "-Ddotty.tests.classes.compilerInterface=" + findArtifactPath(externalDeps, "compiler-interface"),
+          "-Ddotty.tests.classes.scalaLibrary=" + findArtifactPath(externalDeps, "scala-library"),
+          "-Ddotty.tests.classes.scalaAsm=" + findArtifactPath(externalDeps, "scala-asm"),
+          "-Ddotty.tests.classes.jlineTerminal=" + findArtifactPath(externalDeps, "jline-terminal"),
+          "-Ddotty.tests.classes.jlineReader=" + findArtifactPath(externalDeps, "jline-reader"),
+        )
       },
 
       testCompilation := Def.inputTaskDyn {
@@ -707,7 +690,7 @@ object Build {
 
   lazy val bootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
     javaOptions += {
-      val jars = packageAll.in(LocalProject("dotty-compiler-bootstrapped")).value
+      val jars = packageAll.value
       "-Ddotty.tests.classes.dottyStaging=" + jars("dotty-staging")
     },
     packageAll := {
@@ -769,12 +752,8 @@ object Build {
     dependsOn(dottyCompiler(Bootstrapped) % "compile->runtime").
     dependsOn(dottyCompiler(Bootstrapped) % "test->test").
     settings(commonBootstrappedSettings).
-    settings(commonDottyJarClasspathSettings).
     settings(
-      javaOptions ++= {
-        val jars = packageAll.in(`dotty-compiler-bootstrapped`).value
-        List("-Ddotty.tests.classes.dottyStaging=" + jars("dotty-staging"))
-      }
+      javaOptions := (javaOptions in `dotty-compiler-bootstrapped`).value
     )
 
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge/src")).
