@@ -314,6 +314,10 @@ object SymDenotations {
       ensureCompleted(); myAnnotations
     }
 
+    final def unforcedAnnotations(implicit ctx: Context): List[Annotation] = {
+      myAnnotations
+    }
+
     /** Update the annotations of this denotation */
     final def annotations_=(annots: List[Annotation]): Unit =
       myAnnotations = annots

@@ -1,4 +1,4 @@
-package mytests.anno;
+package mytests.annot;
 
 public class J_1 {
 

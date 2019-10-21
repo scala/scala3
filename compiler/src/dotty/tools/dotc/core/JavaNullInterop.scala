@@ -83,10 +83,10 @@ object JavaNullInterop {
       "lombok.NonNull" ::
       "io.reactivex.annotations.NonNull" ::
       // mytest
-      "mytests.anno.MyAnno" :: Nil
+      "mytests.annot.TestNotNull" :: Nil
 
   private def hasNotNull(sym: Symbol)(implicit ctx: Context): Boolean = {
-    sym.annotations.exists(anno => notNullAnnotations.contains(anno.symbol.showFullName))
+    sym.unforcedAnnotations.exists(anno => notNullAnnotations.contains(anno.symbol.showFullName))
   }
 
   /** Only nullify method parameters (but not result types). */
