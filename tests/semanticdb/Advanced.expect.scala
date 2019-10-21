@@ -5,22 +5,22 @@ import scala.language/*=>>scalaShadowing.language.*/.reflectiveCalls/*=>>scalaSh
 
 import scala.reflect/*=>>scala.reflect.*/.Selectable/*=>>scala.reflect.Selectable.*/.reflectiveSelectable/*=>>scala.reflect.Selectable.reflectiveSelectable().*/
 
-class /*=>>java.lang.Object#`<init>`().*/C/*<<=advanced.C#*/[T] {
-/*<<=advanced.C#`<init>`().*//*<<=advanced.C#`<init>`().[T]*//*<<=advanced.C#[T]*/  def t/*<<=advanced.C#t().*/: T/*=>>advanced.C#[T]*/ = ???/*=>>scala.Predef.`???`().*/
+class C/*<<=advanced.C#*/[T/*<<=advanced.C#[T]*/] {
+  def t/*<<=advanced.C#t().*/: T/*=>>advanced.C#[T]*/ = ???/*=>>scala.Predef.`???`().*/
 }
 
-class /*=>>java.lang.Object#`<init>`().*/Structural/*<<=advanced.Structural#*/ {
+class Structural/*<<=advanced.Structural#*/ {
   def s1/*<<=advanced.Structural#s1().*/: { val x/*<<=local0*/: Int/*=>>scala.Int#*/ } = ???/*=>>scala.Predef.`???`().*/
-  def s2/*<<=advanced.Structural#s2().*/: { val x/*<<=local1*/: Int/*=>>scala.Int#*/ } = /*=>>java.lang.Object#`<init>`().*/new { val x/*<<=local2*/: Int/*=>>scala.Int#*/ = ???/*=>>scala.Predef.`???`().*/ }
-  def s3/*<<=advanced.Structural#s3().*/: { def m/*<<=local3*/(x/*<<=local4*/: Int/*=>>scala.Int#*/): Int/*=>>scala.Int#*/ } = /*=>>java.lang.Object#`<init>`().*/new { def m/*<<=local5*/(x/*<<=local6*/: Int/*=>>scala.Int#*/): Int/*=>>scala.Int#*/ = ???/*=>>scala.Predef.`???`().*/ }
+  def s2/*<<=advanced.Structural#s2().*/: { val x/*<<=local1*/: Int/*=>>scala.Int#*/ } = new { val x/*<<=local2*/: Int/*=>>scala.Int#*/ = ???/*=>>scala.Predef.`???`().*/ }
+  def s3/*<<=advanced.Structural#s3().*/: { def m/*<<=local3*/(x/*<<=local4*/: Int/*=>>scala.Int#*/): Int/*=>>scala.Int#*/ } = new { def m/*<<=local5*/(x/*<<=local6*/: Int/*=>>scala.Int#*/): Int/*=>>scala.Int#*/ = ???/*=>>scala.Predef.`???`().*/ }
 }
 
-class /*=>>java.lang.Object#`<init>`().*/Wildcards/*<<=advanced.Wildcards#*/ {
+class Wildcards/*<<=advanced.Wildcards#*/ {
   def e1/*<<=advanced.Wildcards#e1().*/: List/*=>>scala.package.List#*/[_] = ???/*=>>scala.Predef.`???`().*/
 }
 
-object /*=>>java.lang.Object#`<init>`().*/Test/*<<=advanced.Test.*/ {
-  /*=>>scala.package.Serializable#*//*=>>scala.*//*=>>_root_*//*=>>advanced.Test.*/val s/*<<=advanced.Test.s.*/ = new Structural/*=>>advanced.Structural#*//*=>>advanced.Structural#`<init>`().*/
+object Test/*<<=advanced.Test.*/ {
+  val s/*<<=advanced.Test.s.*/ = new Structural/*=>>advanced.Structural#*//*=>>advanced.Structural#`<init>`().*/
   val s1/*<<=advanced.Test.s1.*/ = s/*=>>advanced.Test.s.*/.s1/*=>>advanced.Structural#s1().*/
   val s1x/*<<=advanced.Test.s1x.*/ = /*=>>scala.reflect.Selectable.reflectiveSelectable().*/s/*=>>advanced.Test.s.*/.s1/*=>>advanced.Structural#s1().*//*=>>scala.Selectable#selectDynamic().*/.x
   val s2/*<<=advanced.Test.s2.*/ = s/*=>>advanced.Test.s.*/.s2/*=>>advanced.Structural#s2().*/

@@ -1,6 +1,6 @@
 package example
 
-class /*=>>java.lang.Object#`<init>`().*/Access/*<<=example.Access#*/ {
+class Access/*<<=example.Access#*/ {
   private def m1/*<<=example.Access#m1().*/ = ???/*=>>scala.Predef.`???`().*/
   private[this] def m2/*<<=example.Access#m2().*/ = ???/*=>>scala.Predef.`???`().*/
   private[Access] def m3/*<<=example.Access#m3().*/ = ???/*=>>scala.Predef.`???`().*/

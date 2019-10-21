@@ -1,7 +1,7 @@
 package example
 import scala.language/*=>>scalaShadowing.language.*/.higherKinds/*=>>scalaShadowing.language.higherKinds.*/
 
-class /*=>>java.lang.Object#`<init>`().*/Anonymous/*<<=example.Anonymous#*/ {
+class Anonymous/*<<=example.Anonymous#*/ {
   this: Anonymous/*=>>example.Anonymous#*/ =>
 
   def locally/*<<=example.Anonymous#locally().*/[A/*<<=example.Anonymous#locally().[A]*/](x/*<<=example.Anonymous#locally().(x)*/: A/*=>>example.Anonymous#locally().[A]*/): A/*=>>example.Anonymous#locally().[A]*/ = x/*=>>example.Anonymous#locally().(x)*/
@@ -16,5 +16,5 @@ class /*=>>java.lang.Object#`<init>`().*/Anonymous/*<<=example.Anonymous#*/ {
   }
 
   trait Foo/*<<=example.Anonymous#Foo#*/
-  /*=>>java.lang.Object#`<init>`().*/new Foo/*=>>example.Anonymous#Foo#*/ {}
+  new Foo/*=>>example.Anonymous#Foo#*/ {}
 }

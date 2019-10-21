@@ -64,6 +64,7 @@ class SemanticdbTests {
     val args = Array(
       "-Ysemanticdb",
       "-d", target.toString,
+      // "-Ydebug",
       // "-Xprint:extractSemanticDB",
       "-sourceroot", src.toString,
       "-usejavacp",

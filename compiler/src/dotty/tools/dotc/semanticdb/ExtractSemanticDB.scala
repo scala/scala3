@@ -91,13 +91,13 @@ class ExtractSemanticDB extends Phase {
           addDescriptor(sym.sourceModule)
         else if sym.is(TypeParam) then
           b.append('['); addName(sym.name); b.append(']')
-        else if sym.is(Param) || sym.is(ParamAccessor) then
+        else if sym.is(Param) then
           b.append('('); addName(sym.name); b.append(')')
         else
           addName(sym.name)
           if sym.is(Package) then b.append('/')
           else if sym.isType then b.append('#')
-          else if sym.is(Method) && (!sym.is(Accessor) || sym.is(Mutable)) then
+          else if sym.is(Method) || (sym.isOneOf(Accessor | Local) && sym.is(Mutable)) then
             b.append('('); addOverloadIdx(sym); b.append(").")
           else b.append('.')
 
@@ -152,11 +152,14 @@ class ExtractSemanticDB extends Phase {
     private def excludeDef(sym: Symbol)(given Context): Boolean =
       !sym.exists
       || sym.isLocalDummy
-      || sym.is(Synthetic)
-      || sym.isAnonymousClass
+      || sym.is(Synthetic) || (sym.owner.is(Synthetic) && !sym.isAllOf(EnumCase))
+      || sym.isAnonymous
+      || sym.isPrimaryConstructor && excludeDef(sym.owner)
+
+    private def (sym: Symbol) isAnonymous(given Context): Boolean =
+      sym.isAnonymousClass
       || sym.isAnonymousModuleVal
       || sym.isAnonymousFunction
-      || sym.isPrimaryConstructor && excludeDef(sym.owner)
 
     /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
     private def excludeUse(sym: Symbol, span: Span)(given Context): Boolean =
@@ -196,6 +199,24 @@ class ExtractSemanticDB extends Phase {
         if !excludeDef(tree.symbol) && tree.span.start != tree.span.end =>
           registerDefinition(tree.symbol, tree.nameSpan)
           traverseChildren(tree)
+        case tree: (ValDef | DefDef | TypeDef) if tree.symbol.is(Synthetic, butNot=Module) && !tree.symbol.isAnonymous => // skip
+        case tree: Template =>
+          for
+            vparams <- tree.constr.vparamss
+            vparam <- vparams
+          do
+            traverse(vparam.tpt) // the accessor symbol is traversed in the body
+          for parent <- tree.parentsOrDerived do
+            if
+              parent.symbol != defn.ObjectClass.primaryConstructor
+              && parent.tpe.dealias != defn.SerializableType
+              && parent.symbol != defn.ProductClass
+            then
+              traverse(parent)
+          val selfSpan = tree.self.span
+          if selfSpan.exists && selfSpan.start != selfSpan.end then
+            traverse(tree.self)
+          tree.body.foreach(traverse)
         case tree: Ident =>
           if tree.name != nme.WILDCARD && !excludeUse(tree.symbol, tree.span) then
             registerUse(tree.symbol, tree.span)
@@ -211,12 +232,13 @@ class ExtractSemanticDB extends Phase {
             registerUse(tree.symbol, Span(start max limit, end))
           traverseChildren(tree)
         case tree: Import =>
-          for sel <- tree.selectors do
-            val imported = sel.imported.name
-            if imported != nme.WILDCARD then
-              for alt <- tree.expr.tpe.member(imported).alternatives do
-                registerUse(alt.symbol, sel.imported.span)
-              registerPath(tree.expr)
+          if tree.span.exists && tree.span.start != tree.span.end then
+            for sel <- tree.selectors do
+              val imported = sel.imported.name
+              if imported != nme.WILDCARD then
+                for alt <- tree.expr.tpe.member(imported).alternatives do
+                  registerUse(alt.symbol, sel.imported.span)
+                registerPath(tree.expr)
         case tree: Inlined =>
           traverse(tree.call)
         case tree: PackageDef => tree.stats.foreach(traverse)
