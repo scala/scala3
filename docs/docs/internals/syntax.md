@@ -47,17 +47,15 @@ idrest           ::=  {letter | digit} [‘_’ op]
 quoteId          ::=  ‘'’ alphaid
 
 integerLiteral   ::=  (decimalNumeral | hexNumeral) [‘L’ | ‘l’]
-decimalNumeral   ::=  ‘0’ | nonZeroDigit {digit}
-hexNumeral       ::=  ‘0’ (‘x’ | ‘X’) hexDigit {hexDigit}
-digit            ::=  ‘0’ | nonZeroDigit
+decimalNumeral   ::=  ‘0’ | nonZeroDigit [{digit | ‘_’} digit]
+hexNumeral       ::=  ‘0’ (‘x’ | ‘X’) hexDigit [{hexDigit | ‘_’} hexDigit]
 nonZeroDigit     ::=  ‘1’ | … | ‘9’
 
 floatingPointLiteral
-                 ::=  digit {digit} ‘.’ {digit} [exponentPart] [floatType]
-                   |  ‘.’ digit {digit} [exponentPart] [floatType]
-                   |  digit {digit} exponentPart [floatType]
-                   |  digit {digit} [exponentPart] floatType
-exponentPart     ::=  (‘E’ | ‘e’) [‘+’ | ‘-’] digit {digit}
+                 ::=  [decimalNumeral] ‘.’ digit [{digit | ‘_’} digit] [exponentPart] [floatType]
+                   |  decimalNumeral exponentPart [floatType]
+                   |  decimalNumeral floatType
+exponentPart     ::=  (‘E’ | ‘e’) [‘+’ | ‘-’] digit [{digit | ‘_’} digit]
 floatType        ::=  ‘F’ | ‘f’ | ‘D’ | ‘d’
 
 booleanLiteral   ::=  ‘true’ | ‘false’
