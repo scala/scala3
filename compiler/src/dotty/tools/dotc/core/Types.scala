@@ -2509,7 +2509,7 @@ object Types {
           // if errors were reported previously handle this by throwing a CyclicReference
           // instead of crashing immediately. A test case is neg/i6057.scala.
           assert(ctx.reporter.errorsReported)
-          CyclicReference(NoDenotation)
+          throw CyclicReference(NoDenotation)
         }
       }
       else {
