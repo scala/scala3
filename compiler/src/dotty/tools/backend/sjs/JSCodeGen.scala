@@ -723,9 +723,10 @@ class JSCodeGen()(implicit ctx: Context) {
           mutable = false, rest = false)
     }
 
-    def genBody() =
+    def genBody() = localNames.makeLabeledIfRequiresEnclosingReturn(resultIRType) {
       if (resultIRType == jstpe.NoType) genStat(tree)
       else genExpr(tree)
+    }
 
     //if (!isScalaJSDefinedJSClass(currentClassSym)) {
     val flags = js.MemberFlags.empty.withNamespace(namespace)
