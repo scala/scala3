@@ -69,25 +69,8 @@ object JavaNullInterop {
       nullifyType(tp)
   }
 
-  private val notNullAnnotations: List[String] =
-    "javax.annotation.Nonnull" ::
-      "edu.umd.cs.findbugs.annotations.NonNull" ::
-      "androidx.annotation.NonNull" ::
-      "android.support.annotation.NonNull" ::
-      "android.annotation.NonNull" ::
-      "com.android.annotations.NonNull" ::
-      "org.eclipse.jdt.annotation.NonNull" ::
-      "org.checkerframework.checker.nullness.qual.NonNull" ::
-      "org.checkerframework.checker.nullness.compatqual.NonNullDecl" ::
-      "org.jetbrains.annotations.NotNull" ::
-      "lombok.NonNull" ::
-      "io.reactivex.annotations.NonNull" ::
-      // mytest
-      "mytests.annot.TestNotNull" :: Nil
-
-  private def hasNotNull(sym: Symbol)(implicit ctx: Context): Boolean = {
-    sym.unforcedAnnotations.exists(anno => notNullAnnotations.contains(anno.symbol.showFullName))
-  }
+  private def hasNotNull(sym: Symbol)(implicit ctx: Context): Boolean =
+    ctx.definitions.NotNullAnnots.exists(nna => sym.unforcedAnnotation(nna).isDefined)
 
   /** Only nullify method parameters (but not result types). */
   private def nullifyParamsOnly(tp: Type)(implicit ctx: Context): Type =
