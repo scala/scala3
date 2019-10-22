@@ -32,7 +32,7 @@ object Scala2Flags {
   final val BYNAMEPARAM   = 1 << 16       // parameter is by name
   final val CONTRAVARIANT = 1 << 17       // symbol is a contravariant type variable
   final val ABSOVERRIDE   = 1 << 18       // combination of abstract & override
-  final val LOCAL         = 1 << 19       // symbol is local to current class (i.e. private[this] or protected[this]
+  final val LOCAL         = 1 << 19       // symbol is local to current class (i.e. private[this] or protected
                                           // pre: PRIVATE or PROTECTED are also set
   final val JAVA          = 1 << 20       // symbol was defined by a Java class
   final val STATIC        = 1 << 23       // static field, method or class

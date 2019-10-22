@@ -237,7 +237,7 @@ class Namer { typer: Typer =>
   val scope: MutableScope = newScope
 
   /** We are entering symbols coming from a SourceLoader */
-  private[this] var lateCompile = false
+  private var lateCompile = false
 
   /** The symbol of the given expanded tree. */
   def symbolOfTree(tree: Tree)(implicit ctx: Context): Symbol = {
@@ -276,6 +276,9 @@ class Namer { typer: Typer =>
     /** Check that flags are OK for symbol. This is done early to avoid
      *  catastrophic failure when we create a TermSymbol with TypeFlags, or vice versa.
      *  A more complete check is done in checkWellFormed.
+     *  Also, speculatively add a Local flag to private members that can be Local if
+     *  referred to exclusively from their owner's this-type. The Local flag is retracted in
+     *  `isAccessibleFrom` if the access not from such a this-type.
      */
     def checkFlags(flags: FlagSet) =
       if (flags.isEmpty) flags
@@ -284,9 +287,12 @@ class Namer { typer: Typer =>
           case tree: TypeDef => (flags.isTypeFlags, flags.toTypeFlags, "type")
           case _ => (flags.isTermFlags, flags.toTermFlags, "value")
         }
-        if (!ok)
+        def canBeLocal = tree match
+          case tree: MemberDef => SymDenotations.canBeLocal(tree.name, flags)
+          case _ => false
+        if !ok then
           ctx.error(i"modifier(s) `${flags.flagsString}` incompatible with $kind definition", tree.sourcePos)
-        adapted
+        if adapted.is(Private) && canBeLocal then adapted | Local else adapted
       }
 
     /** Add moduleClass/sourceModule to completer if it is for a module val or class */
@@ -352,14 +358,25 @@ class Namer { typer: Typer =>
         cls
       case tree: MemberDef =>
         val name = checkNoConflict(tree.name)
-        val flags = checkFlags(tree.mods.flags)
-        val isDeferred = lacksDefinition(tree)
-        val deferred = if (isDeferred) Deferred else EmptyFlags
-        val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
-        val higherKinded = tree match {
-          case TypeDef(_, LambdaTypeTree(_, _)) if isDeferred => HigherKinded
-          case _ => EmptyFlags
-        }
+        var flags = checkFlags(tree.mods.flags)
+        tree match
+          case tree: ValOrDefDef =>
+            if tree.unforcedRhs == EmptyTree
+               && !flags.isOneOf(TermParamOrAccessor)
+               && !tree.name.isConstructorName
+            then
+              flags |= Deferred
+            if (tree.isInstanceOf[DefDef]) flags |= Method
+            else if flags.isAllOf(EnumValue) && ctx.owner.isStaticOwner then flags |= JavaStatic
+          case tree: TypeDef =>
+            def analyzeRHS(rhs: Tree): Unit = rhs match
+              case _: TypeBoundsTree | _: MatchTypeTree =>
+                flags |= Deferred // Typedefs with Match rhs classify as abstract
+              case LambdaTypeTree(_, body) =>
+                flags |= HigherKinded
+                analyzeRHS(body)
+              case _ =>
+            if tree.rhs.isEmpty then flags |= Deferred else analyzeRHS(tree.rhs)
 
         // to complete a constructor, move one context further out -- this
         // is the context enclosing the class. Note that the context in which a
@@ -370,7 +387,7 @@ class Namer { typer: Typer =>
         // Don't do this for Java constructors because they need to see the import
         // of the companion object, and it is not necessary for them because they
         // have no implementation.
-        val cctx = if (tree.name == nme.CONSTRUCTOR && !tree.mods.is(JavaDefined)) ctx.outer else ctx
+        val cctx = if (tree.name == nme.CONSTRUCTOR && !flags.is(JavaDefined)) ctx.outer else ctx
 
         val completer = tree match {
           case tree: TypeDef =>
@@ -380,8 +397,7 @@ class Namer { typer: Typer =>
             new Completer(tree)(cctx)
         }
         val info = adjustIfModule(completer, tree)
-        createOrRefine[Symbol](tree, name, flags | deferred | method | higherKinded,
-          ctx.owner, _ => info,
+        createOrRefine[Symbol](tree, name, flags, ctx.owner, _ => info,
           (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.nameSpan))
       case tree: Import =>
         recordSym(ctx.newImportSymbol(ctx.owner, new Completer(tree), tree.span), tree)
@@ -901,8 +917,8 @@ class Namer { typer: Typer =>
   }
 
   class TypeDefCompleter(original: TypeDef)(ictx: Context) extends Completer(original)(ictx) with TypeParamsCompleter {
-    private[this] var myTypeParams: List[TypeSymbol] = null
-    private[this] var nestedCtx: Context = null
+    private var myTypeParams: List[TypeSymbol] = null
+    private var nestedCtx: Context = null
     assert(!original.isClassDef)
 
     override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] = {
@@ -937,9 +953,9 @@ class Namer { typer: Typer =>
 
     protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
 
-    private[this] var localCtx: Context = _
+    private var localCtx: Context = _
     /** info to be used temporarily while completing the class, to avoid cyclic references. */
-    private[this] var tempInfo: TempClassInfo = _
+    private var tempInfo: TempClassInfo = _
 
     val TypeDef(name, impl @ Template(constr, _, self, _)) = original
 

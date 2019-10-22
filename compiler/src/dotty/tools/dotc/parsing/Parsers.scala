@@ -37,7 +37,7 @@ object Parsers {
   case class OpInfo(operand: Tree, operator: Ident, offset: Offset)
 
   class ParensCounters {
-    private[this] var parCounts = new Array[Int](lastParen - firstParen)
+    private var parCounts = new Array[Int](lastParen - firstParen)
 
     def count(tok: Token): Int = parCounts(tok - firstParen)
     def change(tok: Token, delta: Int): Unit = parCounts(tok - firstParen) += delta
@@ -233,7 +233,7 @@ object Parsers {
     /** The offset of the last time when a statement on a new line was definitely
      *  encountered in the current scope or an outer scope.
      */
-    private[this] var lastStatOffset = -1
+    private var lastStatOffset = -1
 
     def setLastStatOffset(): Unit =
       if (mustStartStat && in.isAfterLineEnd)
@@ -397,7 +397,7 @@ object Parsers {
 
     def errorTermTree: Literal = atSpan(in.offset) { Literal(Constant(null)) }
 
-    private[this] var inFunReturnType = false
+    private var inFunReturnType = false
     private def fromWithinReturnType[T](body: => T): T = {
       val saved = inFunReturnType
       try {
@@ -410,7 +410,7 @@ object Parsers {
     /** A flag indicating we are parsing in the annotations of a primary
      *  class constructor
      */
-    private[this] var inClassConstrAnnots = false
+    private var inClassConstrAnnots = false
     private def fromWithinClassConstr[T](body: => T): T = {
       val saved = inClassConstrAnnots
       inClassConstrAnnots = true
@@ -418,7 +418,7 @@ object Parsers {
       finally inClassConstrAnnots = saved
     }
 
-    private[this] var inEnum = false
+    private var inEnum = false
     private def withinEnum[T](body: => T): T = {
       val saved = inEnum
       inEnum = true
@@ -426,7 +426,7 @@ object Parsers {
       finally inEnum = saved
     }
 
-    private[this] var staged = StageKind.None
+    private var staged = StageKind.None
     def withinStaged[T](kind: StageKind)(op: => T): T = {
       val saved = staged
       staged |= kind
@@ -538,7 +538,7 @@ object Parsers {
      *  NoSourcePosition if there were no XML literals.
      */
     def firstXmlPos: SourcePosition = myFirstXmlPos
-    private[this] var myFirstXmlPos: SourcePosition = NoSourcePosition
+    private var myFirstXmlPos: SourcePosition = NoSourcePosition
 
     object symbXMLBuilder extends xml.SymbolicXMLBuilder(this, true) // DEBUG choices
 
@@ -2642,7 +2642,11 @@ object Parsers {
         if (mods.is(Local) || mods.hasPrivateWithin)
           syntaxError(DuplicatePrivateProtectedQualifier())
         inBrackets {
-          if (in.token == THIS) { in.nextToken(); mods | Local }
+          if in.token == THIS then
+            if ctx.settings.strict.value then
+              deprecationWarning("The [this] qualifier is deprecated in Scala 3.1; it should be dropped.")
+            in.nextToken()
+            mods | Local
           else mods.withPrivateWithin(ident().toTypeName)
         }
       }

@@ -30,7 +30,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   protected final val _consoleReporter = new ConsoleReporter(null, new PrintWriter(_consoleBuf))
   final def consoleOutput: String = _consoleBuf.toString
 
-  private[this] var _didCrash = false
+  private var _didCrash = false
   final def compilerCrashed: Boolean = _didCrash
 
   protected final def inlineInfo(pos: SourcePosition)(implicit ctx: Context): String =
@@ -87,10 +87,10 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
 }
 
 object TestReporter {
-  private[this] var outFile: JFile = _
-  private[this] var logWriter: PrintWriter = _
+  private var outFile: JFile = _
+  private var logWriter: PrintWriter = _
 
-  private[this] def initLog() = if (logWriter eq null) {
+  private def initLog() = if (logWriter eq null) {
     val date = new Date
     val df0 = new SimpleDateFormat("yyyy-MM-dd")
     val df1 = new SimpleDateFormat("yyyy-MM-dd-'T'HH-mm-ss")

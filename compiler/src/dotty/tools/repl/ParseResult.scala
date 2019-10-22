@@ -106,7 +106,7 @@ case object Help extends Command {
 
 object ParseResult {
 
-  @sharable private[this] val CommandExtract = """(:[\S]+)\s*(.*)""".r
+  @sharable private val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
   private def parseStats(implicit ctx: Context): List[untpd.Tree] = {
     val parser = new Parser(ctx.source)

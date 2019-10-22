@@ -13,7 +13,7 @@ import collection.mutable
 
   var monitored: Boolean = false
 
-  @volatile private[this] var stack: List[String] = Nil
+  @volatile private var stack: List[String] = Nil
 
   val hits: mutable.HashMap[String, Int] = new mutable.HashMap[String, Int] {
     override def default(key: String): Int = 0

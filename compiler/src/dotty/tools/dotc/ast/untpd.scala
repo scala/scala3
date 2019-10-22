@@ -276,7 +276,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   abstract class DerivedTypeTree(implicit @constructorOnly src: SourceFile) extends TypeTree {
 
-    private[this] var myWatched: Tree = EmptyTree
+    private var myWatched: Tree = EmptyTree
 
     /** The watched tree; used only for printing */
     def watched: Tree = myWatched
