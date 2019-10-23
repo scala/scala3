@@ -171,7 +171,7 @@ sidebar:
               url: docs/reference/dropped-features/weak-conformance.html
             - title: Nonlocal Returns
               url: docs/reference/dropped-features/nonlocal-returns.html
-            - title: [this] Qualifier
+            - title: "[this] Qualifier"
               url: docs/reference/dropped-features/this-qualifier.html
     - title: Contributing
       subsection:
