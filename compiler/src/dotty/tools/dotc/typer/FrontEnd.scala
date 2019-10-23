@@ -24,12 +24,12 @@ class FrontEnd extends Phase {
   override def allowsImplicitSearch: Boolean = true
 
   /** The contexts for compilation units that are parsed but not yet entered */
-  private[this] var remaining: List[Context] = Nil
+  private var remaining: List[Context] = Nil
 
   /** The position of the first XML literal encountered while parsing,
    *  NoSourcePosition if there were no XML literals.
    */
-  private[this] var firstXmlPos: SourcePosition = NoSourcePosition
+  private var firstXmlPos: SourcePosition = NoSourcePosition
 
   /** Does a source file ending with `<name>.scala` belong to a compilation unit
    *  that is parsed but not yet entered?

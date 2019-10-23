@@ -130,7 +130,6 @@ class ReTyper extends Typer with ReChecking {
 
   override def inlineExpansion(mdef: DefDef)(implicit ctx: Context): Tree = mdef
 
-  override def checkVariance(tree: Tree)(implicit ctx: Context): Unit = ()
   override def inferView(from: Tree, to: Type)(implicit ctx: Context): Implicits.SearchResult =
     Implicits.NoMatchingImplicitsFailure
   override def checkCanEqual(ltp: Type, rtp: Type, span: Span)(implicit ctx: Context): Unit = ()

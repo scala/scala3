@@ -7,12 +7,12 @@ sealed trait FileFilter {
 object FileFilter {
 
   def exclude(files: List[String]): FileFilter = new FileFilter {
-    private[this] val blackList = files.toSet
+    private val blackList = files.toSet
     def accept(file: String): Boolean = !blackList.contains(file)
   }
 
   def include(files: List[String]): FileFilter = new FileFilter {
-    private[this] val whiteList = files.toSet
+    private val whiteList = files.toSet
     def accept(file: String): Boolean = whiteList.contains(file)
   }
 

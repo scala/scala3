@@ -21,11 +21,11 @@ import dotc.core.StdNames.str
  */
 private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
-  private[this] val MaxStringElements: Int = 1000  // no need to mkString billions of elements
+  private val MaxStringElements: Int = 1000  // no need to mkString billions of elements
 
-  private[this] var myClassLoader: ClassLoader = _
+  private var myClassLoader: ClassLoader = _
 
-  private[this] var myReplStringOf: Object => String = _
+  private var myReplStringOf: Object => String = _
 
 
   /** Class loader used to load compiled code */
@@ -62,7 +62,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
    *
    *  Calling this method evaluates the expression using reflection
    */
-  private[this] def valueOf(sym: Symbol)(implicit ctx: Context): Option[String] = {
+  private def valueOf(sym: Symbol)(implicit ctx: Context): Option[String] = {
     val defn = ctx.definitions
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())

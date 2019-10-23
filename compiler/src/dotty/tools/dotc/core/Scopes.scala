@@ -201,18 +201,18 @@ object Scopes {
     private[dotc] var lastEntry: ScopeEntry = initElems
 
     /** The size of the scope */
-    private[this] var _size = initSize
+    private var _size = initSize
 
     override final def size: Int = _size
     private def size_= (x: Int) = _size = x
 
     /** the hash table
      */
-    private[this] var hashTable: Array[ScopeEntry] = null
+    private var hashTable: Array[ScopeEntry] = null
 
     /** a cache for all elements, to be used by symbol iterator.
      */
-    private[this] var elemsCache: List[Symbol] = null
+    private var elemsCache: List[Symbol] = null
 
     /** The synthesizer to be used, or `null` if no synthesis is done on this scope */
     private var synthesize: SymbolSynthesizer = null

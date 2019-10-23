@@ -22,7 +22,7 @@ class YCheckPositions extends Phases.Phase {
     tree match {
       case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
         new TreeTraverser {
-          private[this] var sources: List[SourceFile] = ctx.source :: Nil
+          private var sources: List[SourceFile] = ctx.source :: Nil
           def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = {
 
             // Check current context is correct

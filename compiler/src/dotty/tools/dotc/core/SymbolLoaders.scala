@@ -203,7 +203,7 @@ object SymbolLoaders {
     override def sourceModule(implicit ctx: Context): TermSymbol = _sourceModule
     def description(implicit ctx: Context): String = "package loader " + sourceModule.fullName
 
-    private[this] var enterFlatClasses: Option[Context => Unit] = None
+    private var enterFlatClasses: Option[Context => Unit] = None
 
     Stats.record("package scopes")
 
