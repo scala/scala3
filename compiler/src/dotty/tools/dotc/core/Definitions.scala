@@ -813,6 +813,7 @@ class Definitions {
   @tu lazy val InfixAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.infix")
   @tu lazy val AlphaAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.alpha")
 
+  // A list of NotNull annotations
   @tu lazy val NotNullAnnots: List[ClassSymbol] =
     ("javax.annotation.Nonnull" ::
       "edu.umd.cs.findbugs.annotations.NonNull" ::
@@ -825,9 +826,7 @@ class Definitions {
       "org.checkerframework.checker.nullness.compatqual.NonNullDecl" ::
       "org.jetbrains.annotations.NotNull" ::
       "lombok.NonNull" ::
-      "io.reactivex.annotations.NonNull" ::
-      // A special NotNull annotation for test
-      "mytests.annot.TestNotNull" :: Nil).map(s => ctx.requiredClass(PreNamedString(s)))
+      "io.reactivex.annotations.NonNull" :: Nil).map(ctx.requiredClass(_))
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
