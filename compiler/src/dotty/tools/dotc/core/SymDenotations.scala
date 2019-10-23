@@ -201,10 +201,19 @@ object SymDenotations {
         if (myFlags.is(Trait)) NoInitsInterface & bodyFlags // no parents are initialized from a trait
         else NoInits & bodyFlags & parentFlags)
 
-    private def isCurrent(fs: FlagSet) =
-      fs <= (
+    private def isCurrent(fs: FlagSet)(implicit ctx: Context): Boolean =
+      val immutableFlags =
         if (myInfo.isInstanceOf[SymbolLoader]) FromStartFlags
-        else AfterLoadFlags)
+        else AfterLoadFlags
+      val mutableFlagsBeingQueried = fs &~ immutableFlags
+
+      mutableFlagsBeingQueried.isEmpty || ( // All flags are immutable wrt completion
+        mutableFlagsBeingQueried <= ConditionallyImmutableFlags.flags && // All the mutable flags being queried are not mutated during completion under certain conditions
+        ConditionallyImmutableFlags.flagsAndConditions.forall { case (flag, condition) =>
+          (flag & mutableFlagsBeingQueried).isEmpty || !condition(this)
+        }
+      )
+
 
     final def relevantFlagsFor(fs: FlagSet)(implicit ctx: Context) =
       if (isCurrent(fs)) myFlags else flags

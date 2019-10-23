@@ -436,7 +436,7 @@ object Flags {
   /** Flags that are not (re)set when completing the denotation
    */
   val FromStartFlags: FlagSet = commonFlags(
-    Module, Package, Deferred, Method, Case,
+    Module, Package, Method, Case,
     HigherKinded, Param, ParamAccessor,
     Scala2ExistentialCommon, Mutable, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
@@ -450,6 +450,21 @@ object Flags {
    */
   val AfterLoadFlags: FlagSet = commonFlags(
     FromStartFlags, AccessFlags, Final, AccessorOrSealed, LazyOrTrait, SelfName, JavaDefined)
+
+  /** Flags that are not mutated during completion when a certain
+   *  condition is satisfied
+   */
+  object ConditionallyImmutableFlags {
+    val flagsAndConditions: List[(Flag, (given Contexts.Context) => SymDenotations.SymDenotation => Boolean)] = List(
+      Deferred -> { denot =>
+        denot.is(Opaque) && denot.isType &&
+        !denot.infoOrCompleter.isInstanceOf[SymbolLoader] // If it is loaded, we assume the opaque mechanism has already set the flags correctly
+      }
+    )
+
+    val flags: FlagSet = flagsAndConditions.map(_._1)
+      .foldLeft(EmptyFlags) { (accum, next) => accum | next }
+  }
 
 
   /** A value that's unstable unless complemented with a Stable flag */
