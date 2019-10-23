@@ -466,6 +466,7 @@ class Definitions {
 
   @tu lazy val BoxedUnitClass: ClassSymbol = ctx.requiredClass("scala.runtime.BoxedUnit")
     def BoxedUnit_UNIT(given Context): TermSymbol = BoxedUnitClass.linkedClass.requiredValue("UNIT")
+    def BoxedUnit_TYPE(given Context): TermSymbol = BoxedUnitClass.linkedClass.requiredValue("TYPE")
 
   @tu lazy val BoxedBooleanClass: ClassSymbol = ctx.requiredClass("java.lang.Boolean")
   @tu lazy val BoxedByteClass   : ClassSymbol = ctx.requiredClass("java.lang.Byte")

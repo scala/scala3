@@ -2732,6 +2732,8 @@ class JSCodeGen()(implicit ctx: Context) {
 
     if (sym == defn.BoxedUnit_UNIT) {
       js.Undefined()
+    } else if (sym == defn.BoxedUnit_TYPE) {
+      js.ClassOf(jstpe.ClassRef("V"))
     } else {
       val inst = genLoadModule(sym.owner)
       val method = encodeStaticMemberSym(sym)
