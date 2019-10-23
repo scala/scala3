@@ -168,7 +168,7 @@ object Names {
     override def asTermName: TermName = this
 
     @sharable // because it is only modified in the synchronized block of toTypeName.
-    @volatile private[this] var _typeName: TypeName = null
+    @volatile private var _typeName: TypeName = null
 
     override def toTypeName: TypeName = {
       if (_typeName == null)
@@ -185,7 +185,7 @@ object Names {
     def underlying: TermName = unsupported("underlying")
 
     @sharable // because of synchronized block in `and`
-    private[this] var derivedNames: immutable.Map[NameInfo, DerivedName] | HashMap[NameInfo, DerivedName] =
+    private var derivedNames: immutable.Map[NameInfo, DerivedName] | HashMap[NameInfo, DerivedName] =
       immutable.Map.empty[NameInfo, DerivedName]
 
     private def getDerived(info: NameInfo): DerivedName /* | Null */ = (derivedNames: @unchecked) match {
@@ -253,10 +253,10 @@ object Names {
     }
 
     @sharable // because it's just a cache for performance
-    private[this] var myMangledString: String = null
+    private var myMangledString: String = null
 
     @sharable // because it's just a cache for performance
-    private[this] var myMangled: Name = null
+    private var myMangled: Name = null
 
     protected[Names] def mangle: ThisName
 
@@ -532,15 +532,15 @@ object Names {
 
   /** The number of characters filled. */
   @sharable // because it's only mutated in synchronized block of termName
-  private[this] var nc = 0
+  private var nc = 0
 
   /** Hashtable for finding term names quickly. */
   @sharable // because it's only mutated in synchronized block of termName
-  private[this] var table = new Array[SimpleName](InitialHashSize)
+  private var table = new Array[SimpleName](InitialHashSize)
 
   /** The number of defined names. */
   @sharable // because it's only mutated in synchronized block of termName
-  private[this] var size = 1
+  private var size = 1
 
   /** The hash of a name made of from characters cs[offset..offset+len-1].  */
   private def hashValue(cs: Array[Char], offset: Int, len: Int): Int = {

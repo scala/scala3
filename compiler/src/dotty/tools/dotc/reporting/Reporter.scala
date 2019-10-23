@@ -204,7 +204,7 @@ abstract class Reporter extends interfaces.ReporterResult {
    *  debugging information (like printing the classpath) is not rendered
    *  invisible due to the max message length.
    */
-  private[this] var _truncationOK: Boolean = true
+  private var _truncationOK: Boolean = true
   def truncationOK: Boolean = _truncationOK
   def withoutTruncating[T](body: => T): T = {
     val saved = _truncationOK
@@ -213,7 +213,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     finally _truncationOK = saved
   }
 
-  private[this] var incompleteHandler: ErrorHandler = defaultIncompleteHandler
+  private var incompleteHandler: ErrorHandler = defaultIncompleteHandler
 
   def withIncompleteHandler[T](handler: ErrorHandler)(op: => T): T = {
     val saved = incompleteHandler
@@ -222,8 +222,8 @@ abstract class Reporter extends interfaces.ReporterResult {
     finally incompleteHandler = saved
   }
 
-  private[this] var _errorCount = 0
-  private[this] var _warningCount = 0
+  private var _errorCount = 0
+  private var _warningCount = 0
 
   /** The number of errors reported by this reporter (ignoring outer reporters) */
   def errorCount: Int = _errorCount
@@ -237,7 +237,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** Have warnings been reported by this reporter (ignoring outer reporters)? */
   def hasWarnings: Boolean = warningCount > 0
 
-  private[this] var errors: List[Error] = Nil
+  private var errors: List[Error] = Nil
 
   /** All errors reported by this reporter (ignoring outer reporters) */
   def allErrors: List[Error] = errors
@@ -258,7 +258,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     errorCount > initial
   }
 
-  private[this] var reportedFeaturesUseSites = Set[Symbol]()
+  private var reportedFeaturesUseSites = Set[Symbol]()
 
   def isReportedFeatureUseSite(featureTrait: Symbol): Boolean =
     featureTrait.ne(NoSymbol) && reportedFeaturesUseSites.contains(featureTrait)

@@ -274,23 +274,6 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case _ => tree
   }
 
-  /** True iff definition is a val or def with no right-hand-side, or it
-   *  is an abstract typoe declaration
-   */
-  def lacksDefinition(mdef: MemberDef)(implicit ctx: Context): Boolean = mdef match {
-    case mdef: ValOrDefDef =>
-      mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.isOneOf(TermParamOrAccessor)
-    case mdef: TypeDef =>
-      def isBounds(rhs: Tree): Boolean = rhs match {
-        case _: TypeBoundsTree => true
-        case _: MatchTypeTree => true // Typedefs with Match rhs classify as abstract
-        case LambdaTypeTree(_, body) => isBounds(body)
-        case _ => false
-      }
-      mdef.rhs.isEmpty || isBounds(mdef.rhs)
-    case _ => false
-  }
-
   def functionWithUnknownParamType(tree: Tree): Option[Tree] = tree match {
     case Function(args, _) =>
       if (args.exists {

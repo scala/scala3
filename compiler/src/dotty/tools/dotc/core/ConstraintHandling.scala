@@ -34,7 +34,7 @@ trait ConstraintHandling[AbstractContext] {
   protected def constraint: Constraint
   protected def constraint_=(c: Constraint): Unit
 
-  private[this] var addConstraintInvocations = 0
+  private var addConstraintInvocations = 0
 
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint: Boolean = false

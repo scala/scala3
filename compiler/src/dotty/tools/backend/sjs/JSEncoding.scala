@@ -92,6 +92,18 @@ object JSEncoding {
         returnLabelName = Some(freshName("_return"))
       js.Ident(returnLabelName.get)
     }
+
+    /* If this `LocalNameGenerator` has a `returnLabelName` (often added in the
+     * construction of the `body` argument), wrap the resulting js.Tree to use that label.
+     */
+    def makeLabeledIfRequiresEnclosingReturn(tpe: jstpe.Type)(body: js.Tree)(implicit pos: ir.Position): js.Tree = {
+      returnLabelName match {
+        case None =>
+          body
+        case Some(labelName) =>
+          js.Labeled(js.Ident(labelName), tpe, body)
+      }
+    }
   }
 
   private object LocalNameGenerator {
