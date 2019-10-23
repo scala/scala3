@@ -1,0 +1,7 @@
+-- [E120] Duplicate Symbol Error: tests/neg/i7359-f.scala:1:6 ----------------------------------------------------------
+1 |trait SAMTrait // error
+  |      ^
+  |      Name clash between inherited members:
+  |      def equals: [T >: Boolean <: Boolean](obj: Any): T in trait SAMTrait at line 3 and
+  |      def equals(x$0: Any): Boolean in class Any
+  |      have the same type after erasure.

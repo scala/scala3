@@ -1,0 +1,4 @@
+-- [E105] Syntax Error: tests/neg/i7359-b.scala:3:6 --------------------------------------------------------------------
+3 |  def notifyAll(): Unit // error
+  |      ^
+  |      Traits cannot redefine final method notifyAll from class AnyRef.

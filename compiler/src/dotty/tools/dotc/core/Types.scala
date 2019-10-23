@@ -37,6 +37,8 @@ import java.lang.ref.WeakReference
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
+import dotty.tools.dotc.transform.SymUtils._
+
 object Types {
 
   @sharable private var nextId = 0
@@ -765,6 +767,26 @@ object Types {
       record("abstractTermMembers")
       memberDenots(abstractTermNameFilter,
           (name, buf) => buf ++= nonPrivateMember(name).altsWith(_.is(Deferred)))
+    }
+
+    /**
+     * Returns the set of methods that are abstract and do not overlap with any of
+     * [[java.lang.Object]] methods.
+     *
+     * Conceptually, a SAM (functional interface) has exactly one abstract method.
+     * If an interface declares an abstract method overriding one of the public
+     * methods of [[java.lang.Object]], that also does not count toward the interface's
+     * abstract method count.
+     *
+     * @see https://docs.oracle.com/javase/8/docs/api/java/lang/FunctionalInterface.html
+     *
+     * @return the set of methods that are abstract and do not match any of [[java.lang.Object]]
+     *
+     */
+    final def possibleSamMethods(implicit ctx: Context): Seq[SingleDenotation] = {
+      record("possibleSamMethods")
+      abstractTermMembers
+        .filterNot(m => m.symbol.matchingMember(defn.ObjectType).exists || m.symbol.isSuperAccessor)
     }
 
     /** The set of abstract type members of this type. */
@@ -4369,8 +4391,7 @@ object Types {
     }
     def unapply(tp: Type)(implicit ctx: Context): Option[MethodType] =
       if (isInstantiatable(tp)) {
-        val absMems = tp.abstractTermMembers
-        // println(s"absMems: ${absMems map (_.show) mkString ", "}")
+        val absMems = tp.possibleSamMethods
         if (absMems.size == 1)
           absMems.head.info match {
             case mt: MethodType if !mt.isParamDependent &&
