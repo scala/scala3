@@ -251,7 +251,7 @@ object DynamicTuple {
       case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
         TupleXXL.fromIArray(Array(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21, self._22).asInstanceOf[IArray[Object]])
       case _ =>
-        val arr = new Array[Object](self.size)
+        val arr = new Array[Object](self.size + 1)
         to$Array(self, self.size, arr, 1)
         arr(0) = x.asInstanceOf[Object]
         TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
