@@ -456,10 +456,7 @@ object Flags {
    */
   object ConditionallyImmutableFlags {
     val flagsAndConditions: List[(Flag, (given Contexts.Context) => SymDenotations.SymDenotation => Boolean)] = List(
-      Deferred -> { denot =>
-        denot.is(Opaque) && denot.isType &&
-        !denot.infoOrCompleter.isInstanceOf[SymbolLoader] // If it is loaded, we assume the opaque mechanism has already set the flags correctly
-      }
+      Deferred -> { denot => denot.is(Opaque) && denot.isType }
     )
 
     val flags: FlagSet = flagsAndConditions.map(_._1)

@@ -677,7 +677,7 @@ class TreeUnpickler(reader: TastyReader,
             if (sym.isTerm && !sym.isOneOf(DeferredOrLazyOrMethod))
               initsFlags = EmptyFlags
             else if (sym.isClass ||
-              sym.is(Method, butNot = Deferred) && !sym.isConstructor)
+              sym.is(Method) && !sym.is(Deferred) && !sym.isConstructor)
               initsFlags &= NoInits
           case IMPORT =>
             skipTree()
