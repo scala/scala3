@@ -75,7 +75,6 @@ steps:
   - ./project/scripts/sbt ";compile ;test"
   when:
     event:
-    - push
     - tag
     - promote
 
