@@ -30,4 +30,18 @@ public class J {
     public String h(int i) {
         return "h: " + i;
     }
+
+    @Nonnull
+    public <T> String[] gemericf(T a) {
+        String[] as = new String[1];
+        as[0] = "" + a;
+        return as;
+    }
+
+    @Nonnull
+    public <T> List<T> gemericg(T a) {
+        List<T> as = new ArrayList<T>();
+        as.add(a);
+        return as;
+    }
 }
