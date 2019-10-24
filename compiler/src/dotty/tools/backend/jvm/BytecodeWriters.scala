@@ -82,7 +82,7 @@ trait BytecodeWriters {
     private def emitAsmp(jclassBytes: Array[Byte], asmpFile: dotty.tools.io.File): Unit = {
       val pw = asmpFile.printWriter()
       try {
-        val cnode = new asm.tree.ClassNode()
+        val cnode = new ClassNode1()
         val cr    = new asm.ClassReader(jclassBytes)
         cr.accept(cnode, 0)
         val trace = new scala.tools.asm.util.TraceClassVisitor(new java.io.PrintWriter(new java.io.StringWriter()))
