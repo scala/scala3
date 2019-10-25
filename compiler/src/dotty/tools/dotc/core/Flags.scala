@@ -406,6 +406,11 @@ object Flags {
   /** A denotation that is valid in all run-ids */
   val (Permanent @ _, _, _) = newFlags(61, "<permanent>")
 
+  /** Denotation is being loaded. If `Completing` is not set,
+   *  this means this denotation was loaded from an external file.
+   */
+  val (Loading @ _, _, _) = newFlags(62, "<loading>")
+
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
   /** All possible flags */
