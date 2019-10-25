@@ -813,7 +813,9 @@ class Definitions {
   @tu lazy val InfixAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.infix")
   @tu lazy val AlphaAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.alpha")
 
-  // A list of NotNull annotations
+  // A list of annotations that are commonly used to indicate that a field/method argument or return
+  // type is not null. These annotations are used by the nullification logic in JavaNullInterop to
+  // improve the precision of type nullification.
   @tu lazy val NotNullAnnots: List[ClassSymbol] =
     ("javax.annotation.Nonnull" ::
       "edu.umd.cs.findbugs.annotations.NonNull" ::

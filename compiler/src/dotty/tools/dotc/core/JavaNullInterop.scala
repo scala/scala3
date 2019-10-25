@@ -77,7 +77,7 @@ object JavaNullInterop {
    *  but the result return type is not nullable.
    *  If tp is a type of a field, the inside of the type is nullified,
    *  but the result type is not nullable.
-  */
+   */
   private def nullifyExceptReturnType(tp: Type)(implicit ctx: Context): Type =
     new JavaNullMap(true)(ctx)(tp)
 
@@ -90,10 +90,10 @@ object JavaNullInterop {
    *  If a field has a final flag and its value is not null, then the type of it is a ConstantType,
    *  we don't need to nullify it.
    *  @param currentLevelNullable whether the type needs to be nullable at current level.
-   *                         Initialize this value to true, so that the field types and the return types of
-   *                         methods (for example, constructors) are not nullable.
-   *                         This is also needed so that `JavaNullMap(A & B)` gives back `(A & B) | JavaNull`,
-   *                         instead of `(A|JavaNull & B|JavaNull) | JavaNull`.
+   *                              Initialize this value to true, so that the field types and the return
+   *                              types of methods (for example, constructors) are not nullable.
+   *                              This is also needed so that `JavaNullMap(A & B)` gives back
+   *                              `(A & B) | JavaNull`, instead of `(A|JavaNull & B|JavaNull) | JavaNull`.
    */
   private class JavaNullMap(var currentLevelNullable: Boolean)(implicit ctx: Context) extends TypeMap {
     /** Should we nullify `tp` at the current level? */
@@ -149,6 +149,9 @@ object JavaNullInterop {
           currentLevelNullable = true
           toJavaNullableUnion(derivedAndType(tp, this(tp.tp1), this(tp.tp2)))
         case tp: TypeParamRef if needsNull(tp) => toJavaNullableUnion(tp)
+        // In all other cases, return the type unchanged.
+        // In particular, if the type is a ConstantType, then we don't nullify it because it is the
+        // type of a final non-nullable field.
         case _ => tp
       }
     }

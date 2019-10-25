@@ -37,14 +37,14 @@ public class J_2 {
     }
 
     @Nonnull
-    public <T> String[] gemericf(T a) {
+    public <T> String[] genericf(T a) {
         String[] as = new String[1];
         as[0] = "" + a;
         return as;
     }
 
     @Nonnull
-    public <T> List<T> gemericg(T a) {
+    public <T> List<T> genericg(T a) {
         List<T> as = new ArrayList<T>();
         as.add(a);
         return as;
