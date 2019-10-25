@@ -259,7 +259,7 @@ object SymDenotations {
         println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
         indent += 1
 
-        if (myFlags.is(Completing)) throw CyclicReference(this)
+        if (isCompleting) throw CyclicReference(this)
         myFlags |= Completing
 
         // completions.println(s"completing ${this.debugString}")
@@ -275,7 +275,7 @@ object SymDenotations {
         }
       }
       else {
-        if (myFlags.is(Completing)) throw CyclicReference(this)
+        if (isCompleting) throw CyclicReference(this)
         myFlags |= Completing
         completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
       }
@@ -403,7 +403,10 @@ object SymDenotations {
     /** The denotation is in train of being completed and its info is not stubbed
      *  with a non-lazy type.
      */
-    final def isCompletingAndNotStubbed: Boolean = myFlags.is(Completing) && !isCompletedOrStubbed
+    final def isCompletingAndNotStubbed: Boolean = isCompleting && !isCompletedOrStubbed
+
+    /** The denotation is in train of being completed */
+    final def isCompleting: Boolean = myFlags.is(Completing)
 
     /** The completer of this denotation. @pre: Denotation is not yet completed */
     final def completer: LazyType = myInfo.asInstanceOf[LazyType]
