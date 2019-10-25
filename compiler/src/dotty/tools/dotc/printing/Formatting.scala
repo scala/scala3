@@ -91,7 +91,7 @@ object Formatting {
     def isSensical(arg: Any): Boolean = arg match {
       case tpe: Type =>
         tpe.exists && !tpe.isErroneous
-      case sym: Symbol if sym.isCompleted =>
+      case sym: Symbol if sym.isCompletedOrStubbed =>
         sym.info match {
           case _: ErrorType | TypeAlias(_: ErrorType) | NoType => false
           case _ => true

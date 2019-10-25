@@ -427,7 +427,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Scala2 files such as `scala.collection.generic.Mapfactory`.
    */
   final def safeAppliedTo(args: List[Type])(implicit ctx: Context): Type = self match {
-    case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
+    case self: TypeRef if !self.symbol.isClass && self.symbol.isCompletingAndNotStubbed =>
       AppliedType(self, args)
     case _ =>
       appliedTo(args)

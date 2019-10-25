@@ -275,7 +275,7 @@ object SymbolLoaders {
       assert(root is PackageClass, root)
       val pre = root.owner.thisType
       root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre select sourceModule)
-      if (!sourceModule.isCompleted)
+      if (!sourceModule.isCompletedOrStubbed)
         sourceModule.completer.complete(sourceModule)
 
       val packageName = if (root.isEffectiveRoot) "" else root.fullName.mangledString
@@ -351,7 +351,7 @@ abstract class SymbolLoader extends LazyType { self =>
     }
     finally {
       def postProcess(denot: SymDenotation) =
-        if (!denot.isCompleted &&
+        if (!denot.isCompletedOrStubbed &&
             !denot.completer.isInstanceOf[SymbolLoaders.SecondCompleter])
           denot.markAbsent()
       postProcess(root)

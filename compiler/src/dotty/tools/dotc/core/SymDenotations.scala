@@ -324,10 +324,10 @@ object SymDenotations {
 
     /** Set privateWithin, prefer setting it at symbol-creation time instead if
      *  possible.
-     *  @pre `isCompleting` is false, or this is a ModuleCompleter or SymbolLoader
+     *  @pre `isCompletingAndNotStubbed` is false, or this is a ModuleCompleter or SymbolLoader
      */
     protected[dotc] final def setPrivateWithin(pw: Symbol)(implicit ctx: Context): Unit = {
-      if (isCompleting)
+      if (isCompletingAndNotStubbed)
         assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
           s"Illegal call to `setPrivateWithin($pw)` while completing $this using completer $myInfo")
       myPrivateWithin = pw
@@ -394,11 +394,16 @@ object SymDenotations {
       case Nil => Nil
     }
 
-    /** The denotation is completed: info is not a lazy type and attributes have defined values */
-    final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]
+    /** The denotation's info is not set to a LazyType. This means one of
+     *  two things: either it is completed or it is stubbed with a temporary
+     *  info so that to avoid cyclic references.
+     */
+    final def isCompletedOrStubbed: Boolean = !myInfo.isInstanceOf[LazyType]
 
-    /** The denotation is in train of being completed */
-    final def isCompleting: Boolean = myFlags.is(Completing) && !isCompleted
+    /** The denotation is in train of being completed and its info is not stubbed
+     *  with a non-lazy type.
+     */
+    final def isCompletingAndNotStubbed: Boolean = myFlags.is(Completing) && !isCompletedOrStubbed
 
     /** The completer of this denotation. @pre: Denotation is not yet completed */
     final def completer: LazyType = myInfo.asInstanceOf[LazyType]
@@ -570,10 +575,10 @@ object SymDenotations {
     def isError: Boolean = false
 
     /** Make denotation not exist.
-     *  @pre `isCompleting` is false, or this is a ModuleCompleter or SymbolLoader
+     *  @pre `isCompletingAndNotStubbed` is false, or this is a ModuleCompleter or SymbolLoader
      */
     final def markAbsent()(implicit ctx: Context): Unit = {
-      if (isCompleting)
+      if (isCompletingAndNotStubbed)
         assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
           s"Illegal call to `markAbsent()` while completing $this using completer $myInfo")
       myInfo = NoType
@@ -765,7 +770,7 @@ object SymDenotations {
     final def isSetter(implicit ctx: Context): Boolean =
       this.is(Accessor) &&
       originalName.isSetterName &&
-      (!isCompleted || info.firstParamTypes.nonEmpty) // to avoid being fooled by   var x_= : Unit = ...
+      (!isCompletedOrStubbed || info.firstParamTypes.nonEmpty) // to avoid being fooled by   var x_= : Unit = ...
 
     /** is this a symbol representing an import? */
     final def isImport: Boolean = name == nme.IMPORT
@@ -2138,7 +2143,7 @@ object SymDenotations {
     override def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
       def recur(pobjs: List[ClassDenotation], acc: PreDenotation): PreDenotation = pobjs match {
         case pcls :: pobjs1 =>
-          if (pcls.isCompleting) recur(pobjs1, acc)
+          if (pcls.isCompletingAndNotStubbed) recur(pobjs1, acc)
           else {
             // A package object inherits members from `Any` and `Object` which
             // should not be accessible from the package prefix.

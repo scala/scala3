@@ -174,7 +174,7 @@ class Typer extends Namer
         }
 
       def selection(imp: ImportInfo, name: Name, checkBounds: Boolean) =
-        if imp.sym.isCompleting then
+        if imp.sym.isCompletingAndNotStubbed then
           ctx.warning(i"cyclic ${imp.sym}, ignored", posd.sourcePos)
           NoType
         else if unimported.nonEmpty && unimported.contains(imp.site.termSymbol) then
@@ -323,7 +323,7 @@ class Typer extends Namer
               val namedImp = namedImportRef(curImport)
               if (namedImp.exists)
                 findRefRecur(checkNewOrShadowed(namedImp, NamedImport), NamedImport, ctx)(outer)
-              else if (isPossibleImport(WildImport) && !curImport.sym.isCompleting) {
+              else if (isPossibleImport(WildImport) && !curImport.sym.isCompletingAndNotStubbed) {
                 val wildImp = wildImportRef(curImport)
                 if (wildImp.exists)
                   findRefRecur(checkNewOrShadowed(wildImp, WildImport), WildImport, ctx)(outer)
@@ -1213,7 +1213,7 @@ class Typer extends Namer
       else if (owner != cx.outer.owner && owner.isRealMethod)
         if (owner.isInlineMethod)
           (EmptyTree, errorType(NoReturnFromInlineable(owner), tree.sourcePos))
-        else if (!owner.isCompleted)
+        else if (!owner.isCompletedOrStubbed)
           (EmptyTree, errorType(MissingReturnTypeWithReturnStatement(owner), tree.sourcePos))
         else {
           val from = Ident(TermRef(NoPrefix, owner.asTerm))

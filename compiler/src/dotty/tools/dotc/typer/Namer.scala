@@ -811,7 +811,7 @@ class Namer { typer: Typer =>
       }
       else {
         completeInCreationContext(denot)
-        if (denot.isCompleted) registerIfChild(denot)
+        if (denot.isCompletedOrStubbed) registerIfChild(denot)
       }
     }
 

@@ -277,7 +277,7 @@ class Definitions {
 
   @tu lazy val ObjectClass: ClassSymbol = {
     val cls = ctx.requiredClass("java.lang.Object")
-    assert(!cls.isCompleted, "race for completing java.lang.Object")
+    assert(!cls.isCompletedOrStubbed, "race for completing java.lang.Object")
     cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
     cls.setFlag(NoInits)
 

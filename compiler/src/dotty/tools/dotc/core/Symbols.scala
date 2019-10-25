@@ -156,7 +156,7 @@ trait Symbols { this: Context =>
         infoFn(module, modcls), privateWithin)
     val mdenot = SymDenotation(
         module, owner, name, modFlags | ModuleValCreationFlags,
-        if (cdenot.isCompleted) TypeRef(owner.thisType, modcls)
+        if (cdenot.isCompletedOrStubbed) TypeRef(owner.thisType, modcls)
         else new ModuleCompleter(modcls))
     module.denot = mdenot
     modcls.denot = cdenot
@@ -547,7 +547,7 @@ object Symbols {
 
     /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
     final def signature(implicit ctx: Context): Signature =
-      if (lastDenot != null && (lastDenot.isCompleted || lastDenot.is(Method)))
+      if (lastDenot != null && (lastDenot.isCompletedOrStubbed || lastDenot.is(Method)))
         denot.signature
       else
         Signature.NotAMethod
