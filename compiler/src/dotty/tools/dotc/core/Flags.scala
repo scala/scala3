@@ -356,8 +356,8 @@ object Flags {
   /** Symbol is not a member of its owner */
   val (NonMember @ _, _, _) = newFlags(45, "<non-member>")
 
-  /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
-  val (Touched @ _, _, _) = newFlags(48, "<touched>")
+  /** Denotation is in train of being completed, used to catch cyclic dependencies */
+  val (Completing @ _, _, _) = newFlags(48, "<completing>")
 
   /** Class has been lifted out to package level, local value has been lifted out to class level */
   val (Lifted @ _, _, _) = newFlags(51, "<lifted>")
@@ -443,7 +443,7 @@ object Flags {
   val FromStartFlags: FlagSet = commonFlags(
     Module, Package, Method, Case,
     HigherKinded, Param, ParamAccessor,
-    Scala2ExistentialCommon, Mutable, Touched, JavaStatic,
+    Scala2ExistentialCommon, Mutable, Completing, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic,
     SuperAccessorOrScala2x, Inline)

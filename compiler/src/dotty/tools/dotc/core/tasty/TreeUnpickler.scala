@@ -546,7 +546,7 @@ class TreeUnpickler(reader: TastyReader,
             rootd.symbol.coord = coord
             rootd.info = adjustIfModule(
                 new Completer(subReader(start, end)) with SymbolLoaders.SecondCompleter)
-            rootd.flags = flags &~ Touched // allow one more completion
+            rootd.flags = flags &~ Completing // allow one more completion
             rootd.setPrivateWithin(privateWithin)
             seenRoots += rootd.symbol
             rootd.finishedLoading()

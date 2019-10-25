@@ -179,8 +179,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     // need to bring containers to start of method
     val (holders, stats) =
       trees.partition {
-        _.symbol.flags.&~(Touched) == containerFlags
-        // Filtering out Touched is not required currently, as there are no LazyTypes involved here
+        _.symbol.flags.&~(Completing) == containerFlags
+        // Filtering out Completing is not required currently, as there are no LazyTypes involved here
         // but just to be more safe
       }
     holders:::stats

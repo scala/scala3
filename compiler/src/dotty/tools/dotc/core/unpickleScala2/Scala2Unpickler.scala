@@ -486,7 +486,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
     def completeRoot(denot: ClassDenotation, completer: LazyType, privateWithin: Symbol): Symbol = {
       denot.setFlag(flags)
-      denot.resetFlag(Touched) // allow one more completion
+      denot.resetFlag(Completing) // allow one more completion
 
       // Temporary measure, as long as we do not read these classes from Tasty.
       // Scala-2 classes don't have NoInits set even if they are pure. We override this

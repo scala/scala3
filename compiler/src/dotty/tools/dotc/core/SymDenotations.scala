@@ -163,7 +163,7 @@ object SymDenotations {
     private def setMyFlags(flags: FlagSet) =
       lazy val immutableFlags = if myInfo.isInstanceOf[SymbolLoader] then AfterLoadFlags else FromStartFlags
       lazy val changedImmutableFlags = (myFlags ^ flags) & immutableFlags
-      if myFlags.is(Touched, butNot = Loading) then assert(changedImmutableFlags.isEmpty,
+      if myFlags.is(Completing, butNot = Loading) then assert(changedImmutableFlags.isEmpty,
         s"Illegal mutation of flags ${changedImmutableFlags.flagsString} on completion of $this")
       myFlags = flags
 
@@ -259,8 +259,8 @@ object SymDenotations {
         println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
         indent += 1
 
-        if (myFlags.is(Touched)) throw CyclicReference(this)
-        myFlags |= Touched
+        if (myFlags.is(Completing)) throw CyclicReference(this)
+        myFlags |= Completing
 
         // completions.println(s"completing ${this.debugString}")
         try completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
@@ -275,11 +275,11 @@ object SymDenotations {
         }
       }
       else {
-        if (myFlags.is(Touched)) throw CyclicReference(this)
-        myFlags |= Touched
+        if (myFlags.is(Completing)) throw CyclicReference(this)
+        myFlags |= Completing
         completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
       }
-      myFlags &~= Touched
+      myFlags &~= Completing
 
     protected[dotc] def info_=(tp: Type): Unit = {
       /* // DEBUG
@@ -398,7 +398,7 @@ object SymDenotations {
     final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]
 
     /** The denotation is in train of being completed */
-    final def isCompleting: Boolean = myFlags.is(Touched) && !isCompleted
+    final def isCompleting: Boolean = myFlags.is(Completing) && !isCompleted
 
     /** The completer of this denotation. @pre: Denotation is not yet completed */
     final def completer: LazyType = myInfo.asInstanceOf[LazyType]
@@ -2245,7 +2245,7 @@ object SymDenotations {
 
     /** The type parameters computed by the completer before completion has finished */
     def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeParamInfo] =
-      if (sym.is(Touched)) Nil // return `Nil` instead of throwing a cyclic reference
+      if (sym.is(Completing)) Nil // return `Nil` instead of throwing a cyclic reference
       else sym.info.typeParams
 
     def decls: Scope = myDecls
