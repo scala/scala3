@@ -85,18 +85,21 @@ object JavaNullInterop {
   private def nullifyType(tp: Type)(implicit ctx: Context): Type =
     new JavaNullMap(false)(ctx)(tp)
 
-
-  /** A type map that adds `| JavaNull`.
-   *  @param currentLevelNullable whether the type needs to be nullable at current level.
-   *                              Initialize this value to true, so that the field types and the return
-   *                              types of methods (for example, constructors) are not nullable.
-   *                              This is also needed so that `JavaNullMap(A & B)` gives back
-   *                              `(A & B) | JavaNull`, instead of `(A|JavaNull & B|JavaNull) | JavaNull`.
+  /** A type map that implements the nullification function on types. Given a Java-sourced type, this adds `| JavaNull`
+   *  in the right places to make the nulls explicit in Scala.
+   *
+   *  @param outermostLevelAlreadyNullable whether this type is already nullable at the outermost level.
+   *                                       For example, `Array[String]|JavaNull` is already nullable at the
+   *                                       outermost level, but `Array[String|JavaNull]` isn't.
+   *                                       If this parameter is set to true, then the types of fields, and the return
+   *                                       types of methods will not be nullified.
+   *                                       This is useful for e.g. constructors, and also so that `A & B` is nullified
+   *                                       to `(A & B) | JavaNull`, instead of `(A|JavaNull & B|JavaNull) | JavaNull`.
    */
-  private class JavaNullMap(var currentLevelNullable: Boolean)(implicit ctx: Context) extends TypeMap {
+  private class JavaNullMap(var outermostLevelAlreadyNullable: Boolean)(implicit ctx: Context) extends TypeMap {
     /** Should we nullify `tp` at the current level? */
     def needsNull(tp: Type): Boolean =
-      !currentLevelNullable && (tp match {
+      !outermostLevelAlreadyNullable && (tp match {
         case tp: TypeRef =>
           // We don't modify value types because they're non-nullable even in Java.
           !tp.symbol.isValueClass &&
@@ -126,25 +129,25 @@ object JavaNullInterop {
       tp match {
         case tp: TypeRef if needsNull(tp) => toJavaNullableUnion(tp)
         case appTp @ AppliedType(tycons, targs) =>
-          val oldCLN = currentLevelNullable
-          currentLevelNullable = false
+          val oldCLN = outermostLevelAlreadyNullable
+          outermostLevelAlreadyNullable = false
           val targs2 = if (needsNullArgs(appTp)) targs map this else targs
-          currentLevelNullable = oldCLN
+          outermostLevelAlreadyNullable = oldCLN
           val appTp2 = derivedAppliedType(appTp, tycons, targs2)
           if (needsNull(tycons)) toJavaNullableUnion(appTp2) else appTp2
         case ptp: PolyType =>
           derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
         case mtp: MethodType =>
-          val oldCLN = currentLevelNullable
-          currentLevelNullable = false
+          val oldCLN = outermostLevelAlreadyNullable
+          outermostLevelAlreadyNullable = false
           val paramInfos2 = mtp.paramInfos map this
-          currentLevelNullable = oldCLN
+          outermostLevelAlreadyNullable = oldCLN
           derivedLambdaType(mtp)(paramInfos2, this(mtp.resType))
         case tp: TypeAlias => mapOver(tp)
         case tp: AndType =>
           // nullify(A & B) = (nullify(A) & nullify(B)) | JavaNull, but take care not to add
           // duplicate `JavaNull`s at the outermost level inside `A` and `B`.
-          currentLevelNullable = true
+          outermostLevelAlreadyNullable = true
           toJavaNullableUnion(derivedAndType(tp, this(tp.tp1), this(tp.tp2)))
         case tp: TypeParamRef if needsNull(tp) => toJavaNullableUnion(tp)
         // In all other cases, return the type unchanged.

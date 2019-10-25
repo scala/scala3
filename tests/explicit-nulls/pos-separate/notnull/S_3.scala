@@ -1,4 +1,4 @@
-// Test the NotNull annotations are working in class files
+// Test that NotNull annotations are working in class files.
 
 import javax.annotation.J_2
 
