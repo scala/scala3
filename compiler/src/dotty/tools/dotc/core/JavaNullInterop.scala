@@ -87,8 +87,6 @@ object JavaNullInterop {
 
 
   /** A type map that adds `| JavaNull`.
-   *  If a field has a final flag and its value is not null, then the type of it is a ConstantType,
-   *  we don't need to nullify it.
    *  @param currentLevelNullable whether the type needs to be nullable at current level.
    *                              Initialize this value to true, so that the field types and the return
    *                              types of methods (for example, constructors) are not nullable.
