@@ -86,7 +86,7 @@ class FrontEnd extends Phase {
   }
 
   protected def discardAfterTyper(unit: CompilationUnit)(implicit ctx: Context): Boolean =
-    unit.isJava || firstTopLevelDef(unit.tpdTree :: Nil).isPrimitiveValueClass
+    unit.isJava
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
     val unitContexts = for (unit <- units) yield {
