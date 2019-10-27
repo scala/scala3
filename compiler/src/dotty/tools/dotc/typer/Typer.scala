@@ -2203,7 +2203,14 @@ class Typer extends Namer
         traverse(rest)
       case stat :: rest =>
         val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
-        checkStatementPurity(stat1)(stat, exprOwner)
+        if (ctx.settings.YerrorValueDiscard.value && 
+            ctx.phase.isTyper &&
+            !isSelfOrSuperConstrCall(stat1) &&
+            !stat1.tpe.isRef(defn.UnitClass)) {  
+           ctx.error("non-unit value is discarded", stat1.sourcePos)
+        } else {
+           checkStatementPurity(stat1)(stat, exprOwner)
+        }
         buf += stat1
         traverse(rest)
       case nil =>

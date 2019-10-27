@@ -29,7 +29,7 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
     val isStaticRef = !sym.is(Package) && !sym.maybeOwner.is(Package) && isStaticMember
     val tree1 =
       if (isStaticRef && !tree.qualifier.symbol.isAllOf(JavaModule) && !tree.qualifier.isType)
-        Block(List(tree.qualifier), ref(sym))
+        Block(List(Typed(tree.qualifier,Ident(defn.UnitType))), ref(sym))
       else tree
 
     normalize(tree1)

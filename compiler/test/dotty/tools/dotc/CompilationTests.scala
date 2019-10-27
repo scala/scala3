@@ -251,6 +251,15 @@ class CompilationTests extends ParallelTesting {
 
     tests.foreach(_.delete())
   }
+
+
+  @Test def yErrorValueDiscard: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("YerrorValueDiscard")
+    compileFilesInDir("tests/run-custom-args/Yerror-value-discard", 
+            defaultOptions.and("-Yerror-value-discard").and("-Ydebug").and("-Ycheck:all")
+       ).checkRuns()
+  }
+
 }
 
 object CompilationTests {
