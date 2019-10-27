@@ -94,7 +94,7 @@ given stringOps: {
 }
 
 given {
-  def (xs: List[T]) second[T] = xs.tail.head
+  def [T](xs: List[T]) second = xs.tail.head
 }
 ```
 If such given instances are anonymous (as in the second clause), their name is synthesized from the name of the first defined extension method.
@@ -106,8 +106,8 @@ as well as any type parameters of these extension methods into the given instanc
 For instance, here is a given instance with two extension methods.
 ```scala
 given listOps: {
-  def (xs: List[T]) second[T]: T = xs.tail.head
-  def (xs: List[T]) third[T]: T = xs.tail.tail.head
+  def [T](xs: List[T]) second: T = xs.tail.head
+  def [T](xs: List[T]) third: T = xs.tail.tail.head
 }
 ```
 The repetition in the parameters can be avoided by hoisting the parameters up into the given instance itself. The following version is a shorthand for the code above.
@@ -151,13 +151,13 @@ to the implementation of right binding operators as normal methods.
 The `StringSeqOps` examples extended a specific instance of a generic type. It is also possible to extend a generic type by adding type parameters to an extension method. Examples:
 
 ```scala
-def (xs: List[T]) second [T] =
+def [T](xs: List[T]) second =
   xs.tail.head
 
-def (xs: List[List[T]]) flattened [T] =
+def [T](xs: List[List[T]]) flattened =
   xs.foldLeft[List[T]](Nil)(_ ++ _)
 
-def (x: T) + [T : Numeric](y: T): T =
+def [T: Numeric](x: T) + (y: T): T =
   summon[Numeric[T]].plus(x, y)
 ```
 
@@ -170,7 +170,7 @@ The required syntax extension just adds one clause for extension methods relativ
 to the [current syntax](../../internals/syntax.md).
 ```
 DefSig            ::=  ...
-                    |  ‘(’ DefParam ‘)’ [nl] id [DefTypeParamClause] DefParamClauses
+                    |  ExtParamClause [nl] id DefParamClauses
 GivenDef          ::=  ...
                        [GivenSig ‘:’] [ExtParamClause] TemplateBody
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’ {GivenParamClause}

@@ -11,8 +11,8 @@ object Test extends App {
 
     // These should be inline but that does not work currently. Try again
     // once inliner is moved to ReifyQuotes
-    def (ia: IArray[A]) length[A]: Int = (ia: Array[A]).length
-    def (ia: IArray[A]) apply[A] (i: Int): A = (ia: Array[A])(i)
+    def [A](ia: IArray[A]) length: Int = (ia: Array[A]).length
+    def [A](ia: IArray[A]) apply (i: Int): A = (ia: Array[A])(i)
 
     // return a sorted copy of the array
     def sorted[A <: AnyRef : math.Ordering](ia: IArray[A]): IArray[A] = {

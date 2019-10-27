@@ -26,8 +26,8 @@ object Test extends App {
       def (x: Int) |+| (y: Int) = x + y
       def (x: Int) |+| (y: String) = x + y.length
 
-      def (xs: List[T]) +++ [T] (ys: List[T]): List[T] = xs ++ ys ++ ys
-      def (xs: List[T]) +++ [T] (ys: Iterator[T]): List[T] = xs ++ ys ++ ys
+      def [T](xs: List[T]) +++ (ys: List[T]): List[T] = xs ++ ys ++ ys
+      def [T](xs: List[T]) +++ (ys: Iterator[T]): List[T] = xs ++ ys ++ ys
     }
 
     assert((1 |+| 2) == 3)
@@ -58,8 +58,8 @@ object Test extends App {
       def (x: Int) |+| (y: Int) = x + y
       def (x: Int) |+| (y: String) = x + y.length
 
-      def (xs: List[T]) +++ [T] (ys: List[T]): List[T] = xs ++ ys ++ ys
-      def (xs: List[T]) +++ [T] (ys: Iterator[T]): List[T] = xs ++ ys ++ ys
+      def [T](xs: List[T]) +++ (ys: List[T]): List[T] = xs ++ ys ++ ys
+      def [T](xs: List[T]) +++ (ys: Iterator[T]): List[T] = xs ++ ys ++ ys
     }
     given Bar : Foo
 

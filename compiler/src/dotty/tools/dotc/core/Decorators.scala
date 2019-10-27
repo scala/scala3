@@ -170,8 +170,8 @@ object Decorators {
       }
   }
 
-  implicit object reportDeco {
-    def (x: T) reporting[T](
+  implicit class reportDeco[T](x: T) extends AnyVal {
+    def reporting(
         op: (given WrappedResult[T]) => String,
         printer: config.Printers.Printer = config.Printers.default): T = {
       printer.println(op(given WrappedResult(x)))

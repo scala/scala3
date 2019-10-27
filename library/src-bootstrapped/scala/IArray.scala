@@ -23,8 +23,8 @@ object opaques {
     def (arr: IArray[Long]) apply (n: Int): Long = arr.asInstanceOf[Array[Long]].apply(n)
     def (arr: IArray[Float]) apply (n: Int): Float = arr.asInstanceOf[Array[Float]].apply(n)
     def (arr: IArray[Double]) apply (n: Int): Double = arr.asInstanceOf[Array[Double]].apply(n)
-    def (arr: IArray[T]) apply[T <: Object] (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
-    def (arr: IArray[T]) apply[T] (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
+    def [T <: Object](arr: IArray[T]) apply (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
+    def [T](arr: IArray[T]) apply (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
 
     /** The number of elements in an immutable array
       *  @param arr  the immutable array
@@ -37,7 +37,7 @@ object opaques {
     def (arr: IArray[Float]) length: Int = arr.asInstanceOf[Array[Float]].length
     def (arr: IArray[Double]) length: Int = arr.asInstanceOf[Array[Double]].length
     def (arr: IArray[Object]) length: Int = arr.asInstanceOf[Array[Object]].length
-    def (arr: IArray[T]) length[T] : Int = arr.asInstanceOf[Array[T]].length
+    def [T](arr: IArray[T]) length: Int = arr.asInstanceOf[Array[T]].length
   }
 }
 type IArray[+T] = opaques.IArray[T]

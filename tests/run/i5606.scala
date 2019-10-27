@@ -1,6 +1,6 @@
 object Test extends App {
 
-  def (f: A => B) `$`[A, B](a: A): B = f(a)
+  def [A, B](f: A => B) `$` (a: A): B = f(a)
 
   assert((((a: Int) => a.toString()) `$` 10) == "10")
 
