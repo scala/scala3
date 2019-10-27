@@ -329,29 +329,43 @@ object JavaParsers {
     }
 
     def annotations(): List[Tree] = {
-      //var annots = new ListBuffer[Tree]
+      var annots = new ListBuffer[Tree]
       while (in.token == AT) {
         in.nextToken()
-        annotation()
+        annotation() match {
+          case Some(anno) => annots += anno
+          case _ =>
+        }
       }
-      List() // don't pass on annotations for now
+      annots.toList
     }
 
     /** Annotation ::= TypeName [`(` AnnotationArgument {`,` AnnotationArgument} `)`]
       */
-    def annotation(): Unit = {
-      qualId()
-      if (in.token == LPAREN) { skipAhead(); accept(RPAREN) }
-      else if (in.token == LBRACE) { skipAhead(); accept(RBRACE) }
+    def annotation(): Option[Tree] = {
+      val id = convertToTypeId(qualId())
+      // only parse annotations without arguments
+      if (in.token == LPAREN && in.lookaheadToken != RPAREN) {
+        skipAhead()
+        accept(RPAREN)
+        None
+      }
+      else {
+        if (in.token == LPAREN) {
+          in.nextToken()
+          accept(RPAREN)
+        }
+        Some(ensureApplied(Select(New(id), nme.CONSTRUCTOR)))
+      }
     }
 
     def modifiers(inInterface: Boolean): Modifiers = {
       var flags: FlagSet = Flags.JavaDefined
       // assumed true unless we see public/private/protected
       var isPackageAccess = true
-      var annots: List[Tree] = Nil
+      var annots = new ListBuffer[Tree]
       def addAnnot(sym: ClassSymbol) =
-        annots :+= atSpan(in.offset) {
+        annots += atSpan(in.offset) {
           in.nextToken()
           New(TypeTree(sym.typeRef))
         }
@@ -360,7 +374,10 @@ object JavaParsers {
         in.token match {
           case AT if (in.lookaheadToken != INTERFACE) =>
             in.nextToken()
-            annotation()
+            annotation() match {
+              case Some(anno) => annots += anno
+              case _ =>
+            }
           case PUBLIC =>
             isPackageAccess = false
             in.nextToken()
@@ -396,7 +413,7 @@ object JavaParsers {
               if (isPackageAccess && !inInterface) thisPackageName
               else tpnme.EMPTY
 
-            return Modifiers(flags, privateWithin) withAnnotations annots
+            return Modifiers(flags, privateWithin) withAnnotations annots.toList
         }
       assert(false, "should not be here")
       throw new RuntimeException
