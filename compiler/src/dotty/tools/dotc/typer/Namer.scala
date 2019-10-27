@@ -254,7 +254,7 @@ class Namer { typer: Typer =>
     else {
       val cls = ctx.owner.enclosingClassNamed(name)
       if (!cls.exists)
-        ctx.error(s"no enclosing class or object is named $name", ctx.source.atSpan(span))
+        ctx.error(UnknownNamedEnclosingClassOrObject(name), ctx.source.atSpan(span))
       cls
     }
 

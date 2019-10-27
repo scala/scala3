@@ -2378,4 +2378,18 @@ object messages {
           |than obtaining it from the parameters of ${cls.show}.
           |""".stripMargin
   }
+
+  case class UnknownNamedEnclosingClassOrObject(name: TypeName)(implicit val ctx: Context)
+    extends Message(UnknownNamedEnclosingClassOrObjectID) {
+    val kind: String = "Reference"
+    val msg: String =
+      em"""no enclosing class or object is named '${hl(name.show)}'"""
+    val explanation: String =
+      ex"""
+      |The class or object named '${hl(name.show)}' was used a visibility
+      |modifier, but could not be resolved. Make sure that
+      |'${hl(name.show)}' is not misspelled and has been imported into the
+      |current scope.
+      """.stripMargin
+    }
 }
