@@ -1,0 +1,8 @@
+-- Error: tests/neg-macros/macro-class-not-found-1/Bar.scala:4:13 ------------------------------------------------------
+4 |  Foo.myMacro() // error
+  |  ^^^^^^^^^^^^^
+  |  Exception occurred while executing macro expansion.
+  |  java.lang.NoClassDefFoundError
+  |  	at Foo$.aMacroImplementation(Foo.scala:8)
+  |
+  | This location is in code that was inlined at Bar.scala:4

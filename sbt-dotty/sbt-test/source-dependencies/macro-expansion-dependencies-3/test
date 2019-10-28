@@ -1,0 +1,6 @@
+> compile
+
+# make sure that Macros is recompiled due to it's dependencie on B.f
+# this will end in a failure to compile due to cyclic macros
+$ copy-file changes/TestB.scala TestB.scala
+-> compile

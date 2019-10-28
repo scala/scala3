@@ -61,6 +61,9 @@ extends interfaces.SourcePosition with Showable {
   def focus   : SourcePosition = withSpan(span.focus)
   def toSynthetic: SourcePosition = withSpan(span.toSynthetic)
 
+  def outermost: SourcePosition =
+    if outer == null || outer == NoSourcePosition then this else outer.outermost
+
   override def toString: String =
     s"${if (source.exists) source.file.toString else "(no source)"}:$span"
 

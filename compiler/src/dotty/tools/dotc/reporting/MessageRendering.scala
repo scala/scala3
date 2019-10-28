@@ -104,7 +104,7 @@ trait MessageRendering {
     }
 
     msg.linesIterator
-      .map { line => " " * (offset - 1) + "|" + padding + line}
+      .map { line => " " * (offset - 1) + "|" + (if line.isEmpty then "" else padding + line) }
       .mkString(EOL)
   }
 
