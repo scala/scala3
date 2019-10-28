@@ -100,9 +100,9 @@ affect implicits on the language level.
     ```
  7. The rule for picking a _most specific_ alternative among a set of overloaded or implicit
     alternatives is refined to take inferable parameters into account. All else
-    being equal, an alternative that takes more inferable parameters is taken to be more specific
-    than an alternative that takes fewer. If both alternatives take the same number of
-    inferable parameters, we try to choose between them as if they were methods with regular parameters.
+    being equal, an alternative that takes some implicit parameters is taken to be less specific
+    than an alternative that takes none. If both alternatives take implicit parameters, we try
+    to choose between them as if they were methods with regular parameters.
     The following paragraph in the SLS is affected by this change:
 
     _Original version:_
