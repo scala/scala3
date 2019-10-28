@@ -161,8 +161,10 @@ def [T: Numeric](x: T) + (y: T): T =
   summon[Numeric[T]].plus(x, y)
 ```
 
-As usual, type parameters of the extension method follow the defined method name. Nevertheless, such type parameters can already be used in the preceding parameter clause.
-
+If an extension method has type parameters, they come immediately after the `def` and are followed by the extended parameter. When calling a  generic extension method, any explicitly given type arguments follow the method name. So the `second` method can be instantiated as follows:
+```scala
+List(1, 2, 3).second[Int]
+```
 
 ### Syntax
 

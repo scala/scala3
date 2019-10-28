@@ -3121,12 +3121,12 @@ object Parsers {
         makeConstructor(Nil, vparamss, rhs).withMods(mods).setComment(in.getDocComment(start))
       }
       else {
-        def extParamss = try paramClause(0, prefix = true) :: Nil finally newLineOpt()
+        def extParamss() = try paramClause(0, prefix = true) :: Nil finally newLineOpt()
         val (leadingTparams, leadingVparamss, flags) =
           if in.token == LBRACKET then
-            (typeParamClause(ParamOwner.Def), extParamss, Method | Extension)
+            (typeParamClause(ParamOwner.Def), extParamss(), Method | Extension)
           else if in.token == LPAREN then
-            (Nil, extParamss, Method | Extension)
+            (Nil, extParamss(), Method | Extension)
           else
             (Nil, Nil, Method)
         val mods1 = addFlag(mods, flags)
