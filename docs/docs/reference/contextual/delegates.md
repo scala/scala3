@@ -45,7 +45,7 @@ given Ord[Int] { ... }
 given [T](given Ord[T]): Ord[List[T]] { ... }
 ```
 If the name of a given is missing, the compiler will synthesize a name from
-the type(s) in the `as` clause.
+the implemented type(s).
 
 ## Alias Givens
 

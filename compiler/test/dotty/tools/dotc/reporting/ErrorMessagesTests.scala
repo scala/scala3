@@ -1657,4 +1657,19 @@ class ErrorMessagesTests extends ErrorMessagesTest {
           messages.head.msg
         )
     }
+
+  @Test def unknownNamedEnclosingClassOrObject() =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |class TestObject {
+        |  private[doesNotExist] def test: Int = 5
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val UnknownNamedEnclosingClassOrObject(name) :: Nil = messages
+      assertEquals("doesNotExist", name.show)
+    }
 }

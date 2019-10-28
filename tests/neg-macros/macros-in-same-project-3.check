@@ -1,8 +1,0 @@
--- Error: tests/neg-macros/macros-in-same-project-3/Baz.scala:2:13 -----------------------------------------------------
-2 |  Bar.myMacro() // error
-  |  ^^^^^^^^^^^^^
-  |Failed to expand macro. This macro depends on an implementation that is defined in the same project and not yet compiled.
-  |In particular method myMacro depends on method aMacroImplementation.
-  |
-  |Moving method aMacroImplementation to a different project would fix this.
-  | This location is in code that was inlined at Baz.scala:2

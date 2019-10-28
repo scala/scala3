@@ -47,6 +47,8 @@ object Splicer {
         interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContext())))
       }
       catch {
+        case ex: CompilationUnit.SuspendException =>
+          throw ex
         case ex: StopInterpretation =>
           ctx.error(ex.msg, ex.pos)
           EmptyTree
@@ -322,7 +324,7 @@ object Splicer {
       try classLoader.loadClass(name)
       catch {
         case _: ClassNotFoundException =>
-          val msg = s"Could not find class $name in classpath$extraMsg"
+          val msg = s"Could not find class $name in classpath"
           throw new StopInterpretation(msg, pos)
       }
 
@@ -330,11 +332,9 @@ object Splicer {
       try clazz.getMethod(name.toString, paramClasses: _*)
       catch {
         case _: NoSuchMethodException =>
-          val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)$extraMsg"
+          val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)"
           throw new StopInterpretation(msg, pos)
       }
-
-    private def extraMsg = ". The most common reason for that is that you apply macros in the compilation run that defines them"
 
     private def stopIfRuntimeException[T](thunk: => T, method: Method): T =
       try thunk
@@ -348,20 +348,37 @@ object Splicer {
           sw.write("\n")
           throw new StopInterpretation(sw.toString, pos)
         case ex: InvocationTargetException =>
-          val sw = new StringWriter()
-          sw.write("Exception occurred while executing macro expansion.\n")
-          val targetException = ex.getTargetException
-          if (!ctx.settings.Ydebug.value) {
-            val end = targetException.getStackTrace.lastIndexWhere { x =>
-              x.getClassName == method.getDeclaringClass.getCanonicalName && x.getMethodName == method.getName
-            }
-            val shortStackTrace = targetException.getStackTrace.take(end + 1)
-            targetException.setStackTrace(shortStackTrace)
+          ex.getTargetException match {
+            case MissingClassDefinedInCurrentRun(sym) =>
+              if (ctx.settings.XprintSuspension.value)
+                ctx.echo(i"suspension triggered by a dependency on $sym", pos)
+              ctx.compilationUnit.suspend() // this throws a SuspendException
+            case targetException =>
+              val sw = new StringWriter()
+              sw.write("Exception occurred while executing macro expansion.\n")
+              if (!ctx.settings.Ydebug.value) {
+                val end = targetException.getStackTrace.lastIndexWhere { x =>
+                  x.getClassName == method.getDeclaringClass.getCanonicalName && x.getMethodName == method.getName
+                }
+                val shortStackTrace = targetException.getStackTrace.take(end + 1)
+                targetException.setStackTrace(shortStackTrace)
+              }
+              targetException.printStackTrace(new PrintWriter(sw))
+              sw.write("\n")
+              throw new StopInterpretation(sw.toString, pos)
           }
-          targetException.printStackTrace(new PrintWriter(sw))
-          sw.write("\n")
-          throw new StopInterpretation(sw.toString, pos)
       }
+
+    private object MissingClassDefinedInCurrentRun {
+      def unapply(targetException: NoClassDefFoundError)(given ctx: Context): Option[Symbol] = {
+        val className = targetException.getMessage
+        if (className eq null) None
+        else {
+          val sym = ctx.base.staticRef(className.toTypeName).symbol
+          if (sym.isDefinedInCurrentRun) Some(sym) else None
+        }
+      }
+    }
 
     /** List of classes of the parameters of the signature of `sym` */
     private def paramsSig(sym: Symbol): List[Class[?]] = {

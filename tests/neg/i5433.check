@@ -3,7 +3,7 @@
    |      ^
    |      class Fail cannot be defined due to a conflict between its parents when
    |      implementing a super-accessor for foo in trait C:
-   |      
+   |
    |      1. One of its parent (C) contains a call super.foo in its body,
    |         and when a super-call in a trait is written without an explicit parent
    |         listed in brackets, it is implemented by a generated super-accessor in
@@ -19,9 +19,9 @@
    |         Y (the type of foo in trait C).
    |         Hence, the super-accessor that needs to be generated in Fail
    |         is illegal.
-   |      
+   |
    |      Here are two possible ways to resolve this:
-   |      
+   |
    |      1. Change the linearization order of Fail such that
    |         C comes before B.
    |      2. Alternatively, replace super.foo in the body of trait C by a
