@@ -3,8 +3,8 @@ package dotty.tools.dotc.core
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.JavaDefined
 import dotty.tools.dotc.core.StdNames.{jnme, nme}
-import dotty.tools.dotc.core.Symbols.{Symbol, defn, _}
-import dotty.tools.dotc.core.Types.{AndType, AppliedType, LambdaType, MethodType, OrType, PolyType, Type, TypeAlias, TypeMap, TypeParamRef, TypeRef}
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Types._
 import NullOpsDecorator._
 
 /** This module defines methods to interpret types of Java symbols, which are implicitly nullable in Java,
@@ -60,35 +60,46 @@ object JavaNullInterop {
     if (sym.name == nme.TYPE_ || sym.isAllOf(Flags.JavaEnumValue))
       // Don't nullify the `TYPE` field in every class and Java enum instances
       tp
-    else if (sym.name == nme.toString_ || sym.isConstructor)
-      // Don't nullify the return type of the `toString` method and constructors
-      nullifyParamsOnly(tp)
+    else if (sym.name == nme.toString_ || sym.isConstructor || hasNotNullAnnot(sym))
+      // Don't nullify the return type of the `toString` method.
+      // Don't nullify the return type of constructors.
+      // Don't nullify the return type of methods with a not-null annotation.
+      nullifyExceptReturnType(tp)
     else
       // Otherwise, nullify everything
       nullifyType(tp)
   }
 
-  /** Only nullify method parameters (but not result types). */
-  private def nullifyParamsOnly(tp: Type)(implicit ctx: Context): Type =
-    new JavaNullMap(alreadyNullable = false, nonNullResultType = true)(ctx)(tp)
+  private def hasNotNullAnnot(sym: Symbol)(implicit ctx: Context): Boolean =
+    ctx.definitions.NotNullAnnots.exists(nna => sym.unforcedAnnotation(nna).isDefined)
+
+  /** If tp is a MethodType, the parameters and the inside of return type are nullified,
+   *  but the result return type is not nullable.
+   *  If tp is a type of a field, the inside of the type is nullified,
+   *  but the result type is not nullable.
+   */
+  private def nullifyExceptReturnType(tp: Type)(implicit ctx: Context): Type =
+    new JavaNullMap(true)(ctx)(tp)
 
   /** Nullifies a Java type by adding `| JavaNull` in the relevant places. */
   private def nullifyType(tp: Type)(implicit ctx: Context): Type =
-    new JavaNullMap(alreadyNullable = false, nonNullResultType = false)(ctx)(tp)
+    new JavaNullMap(false)(ctx)(tp)
 
-
-  /** A type map that adds `| JavaNull`.
-   *  @param alreadyNullable whether the type being mapped is already nullable (at the outermost level).
-   *                         This is needed so that `JavaNullMap(A | B)` gives back `(A | B) | JavaNull`,
-   *                         instead of `(A|JavaNull | B|JavaNull) | JavaNull`.
-   *  @param nonNullResultType if true, then the current type is a method or generic method type,
-   *                           and we don't want to nullify its return type at the top level.
-   *                           This is useful e.g. for constructors.
+  /** A type map that implements the nullification function on types. Given a Java-sourced type, this adds `| JavaNull`
+   *  in the right places to make the nulls explicit in Scala.
+   *
+   *  @param outermostLevelAlreadyNullable whether this type is already nullable at the outermost level.
+   *                                       For example, `Array[String]|JavaNull` is already nullable at the
+   *                                       outermost level, but `Array[String|JavaNull]` isn't.
+   *                                       If this parameter is set to true, then the types of fields, and the return
+   *                                       types of methods will not be nullified.
+   *                                       This is useful for e.g. constructors, and also so that `A & B` is nullified
+   *                                       to `(A & B) | JavaNull`, instead of `(A|JavaNull & B|JavaNull) | JavaNull`.
    */
-  private class JavaNullMap(var alreadyNullable: Boolean, var nonNullResultType: Boolean)(implicit ctx: Context) extends TypeMap {
+  private class JavaNullMap(var outermostLevelAlreadyNullable: Boolean)(implicit ctx: Context) extends TypeMap {
     /** Should we nullify `tp` at the outermost level? */
-    def needsTopLevelNull(tp: Type): Boolean =
-      !alreadyNullable && (tp match {
+    def needsNull(tp: Type): Boolean =
+      !outermostLevelAlreadyNullable && (tp match {
         case tp: TypeRef =>
           // We don't modify value types because they're non-nullable even in Java.
           !tp.symbol.isValueClass &&
@@ -116,31 +127,32 @@ object JavaNullInterop {
       def toJavaNullableUnion(tpe: Type): Type = OrType(tpe, defn.JavaNullAliasType)
 
       tp match {
-        case tp: TypeRef if needsTopLevelNull(tp) => toJavaNullableUnion(tp)
+        case tp: TypeRef if needsNull(tp) => toJavaNullableUnion(tp)
         case appTp @ AppliedType(tycons, targs) =>
-          val oldAN = alreadyNullable
-          alreadyNullable = false
+          val oldOutermostNullable = outermostLevelAlreadyNullable
+          outermostLevelAlreadyNullable = false
           val targs2 = if (needsNullArgs(appTp)) targs map this else targs
-          alreadyNullable = oldAN
+          outermostLevelAlreadyNullable = oldOutermostNullable
           val appTp2 = derivedAppliedType(appTp, tycons, targs2)
-          if (needsTopLevelNull(tycons)) toJavaNullableUnion(appTp2) else appTp2
+          if (needsNull(tycons)) toJavaNullableUnion(appTp2) else appTp2
         case ptp: PolyType =>
           derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
         case mtp: MethodType =>
-          val resTpe = if (nonNullResultType) {
-            nonNullResultType = false
-            this(mtp.resType).stripNull
-          }
-          else this(mtp.resType)
-          derivedLambdaType(mtp)(mtp.paramInfos map this, resTpe)
-        case tp: LambdaType => mapOver(tp)
+          val oldOutermostNullable = outermostLevelAlreadyNullable
+          outermostLevelAlreadyNullable = false
+          val paramInfos2 = mtp.paramInfos map this
+          outermostLevelAlreadyNullable = oldOutermostNullable
+          derivedLambdaType(mtp)(paramInfos2, this(mtp.resType))
         case tp: TypeAlias => mapOver(tp)
         case tp: AndType =>
           // nullify(A & B) = (nullify(A) & nullify(B)) | JavaNull, but take care not to add
           // duplicate `JavaNull`s at the outermost level inside `A` and `B`.
-          alreadyNullable = true
+          outermostLevelAlreadyNullable = true
           toJavaNullableUnion(derivedAndType(tp, this(tp.tp1), this(tp.tp2)))
-        case tp: TypeParamRef if needsTopLevelNull(tp) => toJavaNullableUnion(tp)
+        case tp: TypeParamRef if needsNull(tp) => toJavaNullableUnion(tp)
+        // In all other cases, return the type unchanged.
+        // In particular, if the type is a ConstantType, then we don't nullify it because it is the
+        // type of a final non-nullable field.
         case _ => tp
       }
     }

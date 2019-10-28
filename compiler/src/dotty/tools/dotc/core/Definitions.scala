@@ -813,6 +813,23 @@ class Definitions {
   @tu lazy val InfixAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.infix")
   @tu lazy val AlphaAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.alpha")
 
+  // A list of annotations that are commonly used to indicate that a field/method argument or return
+  // type is not null. These annotations are used by the nullification logic in JavaNullInterop to
+  // improve the precision of type nullification.
+  @tu lazy val NotNullAnnots: List[ClassSymbol] =
+    ("javax.annotation.Nonnull" ::
+      "edu.umd.cs.findbugs.annotations.NonNull" ::
+      "androidx.annotation.NonNull" ::
+      "android.support.annotation.NonNull" ::
+      "android.annotation.NonNull" ::
+      "com.android.annotations.NonNull" ::
+      "org.eclipse.jdt.annotation.NonNull" ::
+      "org.checkerframework.checker.nullness.qual.NonNull" ::
+      "org.checkerframework.checker.nullness.compatqual.NonNullDecl" ::
+      "org.jetbrains.annotations.NotNull" ::
+      "lombok.NonNull" ::
+      "io.reactivex.annotations.NonNull" :: Nil).map(ctx.requiredClass(_))
+
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
   def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
