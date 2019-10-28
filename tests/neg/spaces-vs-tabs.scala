@@ -5,7 +5,7 @@ object Test
     println(2)   // error
   	println(3)   // error
 	  println(4)   // error
- else ()         // error // error
+ else ()         // error
 
 	object Test2
 
