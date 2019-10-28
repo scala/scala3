@@ -963,7 +963,7 @@ object desugar {
           case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
             s"${name}_of_${inventTypeName(vparam.tpt)}"
           case _ =>
-            ctx.error(i"anonymous instance must have `as` part or must define at least one extension method", impl.sourcePos)
+            ctx.error(i"anonymous instance must implement a type or have at least one extension method", impl.sourcePos)
             nme.ERROR.toString
         }
       else
@@ -986,7 +986,7 @@ object desugar {
           case tree: LambdaTypeTree =>
             apply(x, tree.body)
           case tree: Tuple =>
-            if (followArgs) extractArgs(tree.trees) else "Tuple"
+            extractArgs(tree.trees)
           case tree: Function if tree.args.nonEmpty =>
             if (followArgs) s"${extractArgs(tree.args)}_to_${apply("", tree.body)}" else "Function"
           case _ => foldOver(x, tree)
