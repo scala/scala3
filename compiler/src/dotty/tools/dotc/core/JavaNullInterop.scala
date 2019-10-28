@@ -97,7 +97,7 @@ object JavaNullInterop {
    *                                       to `(A & B) | JavaNull`, instead of `(A|JavaNull & B|JavaNull) | JavaNull`.
    */
   private class JavaNullMap(var outermostLevelAlreadyNullable: Boolean)(implicit ctx: Context) extends TypeMap {
-    /** Should we nullify `tp` at the current level? */
+    /** Should we nullify `tp` at the outermost level? */
     def needsNull(tp: Type): Boolean =
       !outermostLevelAlreadyNullable && (tp match {
         case tp: TypeRef =>
@@ -129,19 +129,19 @@ object JavaNullInterop {
       tp match {
         case tp: TypeRef if needsNull(tp) => toJavaNullableUnion(tp)
         case appTp @ AppliedType(tycons, targs) =>
-          val oldCLN = outermostLevelAlreadyNullable
+          val oldOutermostNullable = outermostLevelAlreadyNullable
           outermostLevelAlreadyNullable = false
           val targs2 = if (needsNullArgs(appTp)) targs map this else targs
-          outermostLevelAlreadyNullable = oldCLN
+          outermostLevelAlreadyNullable = oldOutermostNullable
           val appTp2 = derivedAppliedType(appTp, tycons, targs2)
           if (needsNull(tycons)) toJavaNullableUnion(appTp2) else appTp2
         case ptp: PolyType =>
           derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
         case mtp: MethodType =>
-          val oldCLN = outermostLevelAlreadyNullable
+          val oldOutermostNullable = outermostLevelAlreadyNullable
           outermostLevelAlreadyNullable = false
           val paramInfos2 = mtp.paramInfos map this
-          outermostLevelAlreadyNullable = oldCLN
+          outermostLevelAlreadyNullable = oldOutermostNullable
           derivedLambdaType(mtp)(paramInfos2, this(mtp.resType))
         case tp: TypeAlias => mapOver(tp)
         case tp: AndType =>
