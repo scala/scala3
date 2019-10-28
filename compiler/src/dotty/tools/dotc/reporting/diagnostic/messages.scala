@@ -2386,7 +2386,7 @@ object messages {
       em"""no enclosing class or object is named '${hl(name.show)}'"""
     val explanation: String =
       ex"""
-      |The class or object named '${hl(name.show)}' was used a visibility
+      |The class or object named '${hl(name.show)}' was used as a visibility
       |modifier, but could not be resolved. Make sure that
       |'${hl(name.show)}' is not misspelled and has been imported into the
       |current scope.
