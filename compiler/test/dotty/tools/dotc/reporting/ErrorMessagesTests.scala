@@ -1672,4 +1672,19 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val UnknownNamedEnclosingClassOrObject(name) :: Nil = messages
       assertEquals("doesNotExist", name.show)
     }
+
+  @Test def illegalCyclicTypeReference() =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |type X = List[X]
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val IllegalCyclicTypeReference(sym, where, lastChecked) :: Nil = messages
+      assertEquals("type X", sym.show)
+      assertEquals("alias", where)
+      assertEquals("List[X]", lastChecked.show)
+    }
 }
