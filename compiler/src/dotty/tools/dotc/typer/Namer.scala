@@ -762,8 +762,8 @@ class Namer { typer: Typer =>
       else bound
     }
 
-  def missingType(sym: Symbol, modifier: String)(implicit ctx: Context): Unit = {
-    ctx.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.sourcePos)
+  def missingType(sym: Symbol, kindOfType: Option[String])(implicit ctx: Context): Unit = {
+    ctx.error(ImplicitDefinitionNeedsExplicitType(sym, kindOfType), sym.sourcePos)
     sym.resetFlag(GivenOrImplicit)
   }
 
@@ -1131,7 +1131,7 @@ class Namer { typer: Typer =>
               if (ptype.typeParams.isEmpty) ptype
               else {
                 if (denot.is(ModuleClass) && denot.sourceModule.isOneOf(GivenOrImplicit))
-                  missingType(denot.symbol, "parent ")(creationContext)
+                  missingType(denot.symbol, Some("parent"))(creationContext)
                 fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.span)
               }
             case _ =>
@@ -1381,8 +1381,8 @@ class Namer { typer: Typer =>
       else {
         if (sym.is(Implicit))
           mdef match {
-            case _: DefDef => missingType(sym, "result ")
-            case _: ValDef if sym.owner.isType => missingType(sym, "")
+            case _: DefDef => missingType(sym, Some("result"))
+            case _: ValDef if sym.owner.isType => missingType(sym, None)
             case _ =>
           }
         lhsType orElse WildcardType

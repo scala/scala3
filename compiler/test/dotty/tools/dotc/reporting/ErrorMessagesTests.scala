@@ -1672,4 +1672,36 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val UnknownNamedEnclosingClassOrObject(name) :: Nil = messages
       assertEquals("doesNotExist", name.show)
     }
+
+  @Test def implicitDefinitionNeedsExplicitTypeValue() =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |class TestObject {
+        |  implicit val foo = 5
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ImplicitDefinitionNeedsExplicitType(sym, kindOfType) :: Nil = messages
+      assertEquals("value foo", sym.show)
+      assertEquals(None, kindOfType)
+    }
+
+  @Test def implicitDefinitionNeedsExplicitTypeDef() =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |class TestObject {
+        |  implicit def bar = 6
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ImplicitDefinitionNeedsExplicitType(sym, kindOfType) :: Nil = messages
+      assertEquals("method bar", sym.show)
+      assertEquals(Some("result"), kindOfType)
+    }
 }

@@ -2392,4 +2392,12 @@ object messages {
       |current scope.
       """.stripMargin
     }
+
+    case class ImplicitDefinitionNeedsExplicitType(sym: Symbol, kindOfType: Option[String])(implicit val ctx: Context)
+      extends Message(ImplicitDefinitionNeedsExplicitTypeID) {
+      val kind: String = "Type"
+      val msg: String =
+        em"implicit definition of ${sym.show} needs explicit ${kindOfType.map(_ + " ").getOrElse("")}type"
+      val explanation: String = ""
+    }
 }
