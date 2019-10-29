@@ -874,20 +874,19 @@ class Namer { typer: Typer =>
     def registerIfChild(denot: SymDenotation)(implicit ctx: Context): Unit = {
       val sym = denot.symbol
 
-      def register(child: Symbol, parent: Type) = {
+      def register(child: Symbol, parent: Type) =
         val cls = parent.classSymbol
         if cls.isEffectivelySealed
            && child.associatedFile == cls.associatedFile // don't register ad-hoc extensions as children
         then
-          if child.isInaccessibleChildOf(cls) && !sym.hasAnonymousChild then
+          if (child.isInaccessibleChildOf(cls) || child.isAnonymousClass) && !sym.hasAnonymousChild then
             addChild(cls, cls)
           else if !cls.is(ChildrenQueried) then
             addChild(cls, child)
           else
-            ctx.error(em"""children of $cls were already queried before $sym was discovered.
+            ctx.error(em"""children of $cls were already queried before $sym / ${sym.ownersIterator.toList} was discovered.
                           |As a remedy, you could move $sym on the same nesting level as $cls.""",
                       child.sourcePos)
-      }
 
       if (denot.isClass && !sym.isEnumAnonymClass && !sym.isRefinementClass)
         denot.asClass.classParents.foreach { parent =>

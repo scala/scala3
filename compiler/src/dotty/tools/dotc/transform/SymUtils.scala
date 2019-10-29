@@ -184,9 +184,9 @@ class SymUtils(val self: Symbol) extends AnyVal {
     def isAccessible(sym: Symbol): Boolean =
       sym == cls
       || sym == cls.owner
-      || sym.owner.is(Package)
-      || sym.owner.isType && isAccessible(sym.owner)
-    !isAccessible(self)
+      || sym.is(Package)
+      || sym.isType && isAccessible(sym.owner)
+    !isAccessible(self.owner)
 
   /** If this is a sealed class, its known children in the order of textual occurrence */
   def children(implicit ctx: Context): List[Symbol] = {
