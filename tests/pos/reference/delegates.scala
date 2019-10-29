@@ -15,11 +15,11 @@ class Common with
     def unit: T
 
   trait Functor[F[_]] with
-    def (x: F[A]) map[A, B] (f: A => B): F[B]
+    def [A, B](x: F[A]) map (f: A => B): F[B]
 
   trait Monad[F[_]] extends Functor[F] with
-    def (x: F[A]) flatMap[A, B] (f: A => F[B]): F[B]
-    def (x: F[A]) map[A, B] (f: A => B) = x.flatMap(f `andThen` pure)
+    def [A, B](x: F[A]) flatMap (f: A => F[B]): F[B]
+    def [A, B](x: F[A]) map (f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
 
@@ -49,13 +49,13 @@ object Instances extends Common with
     def third = xs.tail.tail.head
 
   given listMonad: Monad[List] with
-    def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
+    def [A, B](xs: List[A]) flatMap (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
 
   given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] with
-    def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
+    def [A, B](r: Ctx => A) flatMap (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x
@@ -153,13 +153,13 @@ object AnonymousInstances extends Common with
         val fst = x.compareTo(y)
         if (fst != 0) fst else xs1.compareTo(ys1)
 
-  given with
-    def (xs: Seq[String]) longestStrings: Seq[String] =
+  given (xs: Seq[String])
+    def longestStrings: Seq[String] =
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
 
-  given with
-    def (xs: List[T]) second[T] = xs.tail.head
+  given [T](xs: List[T])
+    def second = xs.tail.head
 
   given [From, To](given c: Convertible[From, To]) : Convertible[List[From], List[To]] with
     def (x: List[From]) convert: List[To] = x.map(c.convert)

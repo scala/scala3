@@ -4,11 +4,11 @@ object Test extends App {
 
   val l: mutable.Seq[String] = mutable.ArrayBuffer()
 
-  def (xs: List[T]) emap[T, U] (f: T => U): List[U] = xs.map(f)
+  def [T, U](xs: List[T]) emap (f: T => U): List[U] = xs.map(f)
 
-  def (xs: List[T]) ereduce[T] (f: (T, T) => T): T = xs.reduceLeft(f)
+  def [T](xs: List[T]) ereduce (f: (T, T) => T): T = xs.reduceLeft(f)
 
-  def (xs: mutable.Seq[T]) append[T] (ys: mutable.Seq[T]): mutable.Seq[T] = xs ++ ys
+  def [T](xs: mutable.Seq[T]) append (ys: mutable.Seq[T]): mutable.Seq[T] = xs ++ ys
 
   List(l, mutable.ArrayBuffer(1))
     .emap(list => list)

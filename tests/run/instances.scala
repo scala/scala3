@@ -26,18 +26,18 @@ object Test extends App {
   assert(names.longestStrings == List("hello", "world"))
 
   given seqOps: {
-    def (xs: Seq[T]) second[T] = xs.tail.head
+    def [T](xs: Seq[T]) second = xs.tail.head
   }
 
   assert(names.longestStrings.second == "world")
 
   given listListOps: {
-    def (xs: List[List[T]]) flattened[T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
+    def [T](xs: List[List[T]]) flattened = xs.foldLeft[List[T]](Nil)(_ ++ _)
   }
 
   // A right associative op
   given prepend: {
-    def (x: T) ::[T] (xs: Seq[T]) = x +: xs
+    def [T](x: T) :: (xs: Seq[T]) = x +: xs
   }
   val ss: Seq[Int] = List(1, 2, 3)
   val ss1 = 0 :: ss
@@ -99,25 +99,25 @@ object Test extends App {
   println(max(List(1, 2, 3), List(2)))
 
   trait Functor[F[_]] {
-    def (x: F[A]) map[A, B] (f: A => B): F[B]
+    def [A, B](x: F[A]) map (f: A => B): F[B]
   }
 
   trait Monad[F[_]] extends Functor[F] {
-    def (x: F[A]) flatMap[A, B] (f: A => F[B]): F[B]
-    def (x: F[A]) map[A, B] (f: A => B) = x.flatMap(f `andThen` pure)
+    def [A, B](x: F[A]) flatMap (f: A => F[B]): F[B]
+    def [A, B](x: F[A]) map (f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
   }
 
   given ListMonad : Monad[List] {
-    def (xs: List[A]) flatMap[A, B] (f: A => List[B]): List[B] =
+    def [A, B](xs: List[A]) flatMap (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
   given ReaderMonad[Ctx] : Monad[[X] =>> Ctx => X] {
-    def (r: Ctx => A) flatMap[A, B] (f: A => Ctx => B): Ctx => B =
+    def [A, B](r: Ctx => A) flatMap (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x

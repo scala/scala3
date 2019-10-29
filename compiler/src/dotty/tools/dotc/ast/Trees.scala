@@ -754,9 +754,10 @@ object Trees {
     def unforced: LazyTree[T] = preRhs
     protected def force(x: Tree[T @uncheckedVariance]): Unit = preRhs = x
 
-    override def disableOverlapChecks = rawMods.is(Given)
-      // disable order checks for implicit aliases since their given clause follows
-      // their for clause, but the two appear swapped in the DefDef.
+    override def disableOverlapChecks = rawMods.is(Extension)
+      // disable order checks for extension methods as long as we parse
+      // type parameters both before and after the leading parameter section.
+      // TODO drop this once syntax of type parameters has settled.
   }
 
   /** mods class name template     or
@@ -789,10 +790,6 @@ object Trees {
 
     def parents: List[Tree[T]] = parentsOrDerived // overridden by DerivingTemplate
     def derived: List[untpd.Tree] = Nil           // overridden by DerivingTemplate
-
-    override def disableOverlapChecks = true
-      // disable overlaps checks since templates of instance definitions have their
-      // `given` clause come last, which means that the constructor span can contain the parent spans.
   }
 
 
