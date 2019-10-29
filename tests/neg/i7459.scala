@@ -2,7 +2,7 @@ object Foo {
   inline def summon[T](x: T): T =  x match {
     case t: T => t
   }
-  println(summon)
+  println(summon)  // error
 }
 
 import scala.deriving._
@@ -14,7 +14,7 @@ inline def summon[T](given t:T): T = t match {
 
 inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
   case _: Unit => Nil
-  case _: (t *: ts) => summon[Eq[t]] :: summonAll[ts]
+  case _: (t *: ts) => summon[Eq[t]] :: summonAll[ts]  // error
 }
 
 trait Eq[T] {
