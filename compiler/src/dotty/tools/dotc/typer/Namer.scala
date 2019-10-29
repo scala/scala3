@@ -254,7 +254,7 @@ class Namer { typer: Typer =>
     else {
       val cls = ctx.owner.enclosingClassNamed(name)
       if (!cls.exists)
-        ctx.error(s"no enclosing class or object is named $name", ctx.source.atSpan(span))
+        ctx.error(UnknownNamedEnclosingClassOrObject(name), ctx.source.atSpan(span))
       cls
     }
 
@@ -813,11 +813,16 @@ class Namer { typer: Typer =>
         assert(ctx.mode.is(Mode.Interactive), s"completing $denot in wrong run ${ctx.runId}, was created in ${creationContext.runId}")
         denot.info = UnspecifiedErrorType
       }
-      else {
-        // the default behaviour is to complete using creation context
-        completeInContext(denot, this.ctx)
-        if (denot.isCompleted) registerIfChild(denot)
-      }
+      else
+        try
+          // the default behaviour is to complete using creation context
+          completeInContext(denot, this.ctx)
+          if (denot.isCompleted) registerIfChild(denot)
+        catch
+          case ex: CompilationUnit.SuspendException =>
+            val completer = SuspendCompleter()
+            denot.info = completer
+            completer.complete(denot)
     }
 
     protected def addAnnotations(sym: Symbol): Unit = original match {
@@ -1206,6 +1211,13 @@ class Namer { typer: Typer =>
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)
       processExports(localCtx)
     }
+  }
+
+  class SuspendCompleter extends LazyType, SymbolLoaders.SecondCompleter {
+
+    final override def complete(denot: SymDenotation)(implicit ctx: Context): Unit =
+      denot.resetFlag(Touched) // allow one more completion
+      ctx.compilationUnit.suspend()
   }
 
   /** Typecheck `tree` during completion using `typed`, and remember result in TypedAhead map */

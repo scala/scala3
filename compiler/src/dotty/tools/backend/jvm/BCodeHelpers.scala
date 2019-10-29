@@ -3,6 +3,7 @@ package backend
 package jvm
 
 import scala.tools.asm
+import scala.tools.asm.ClassWriter
 import scala.collection.mutable
 import dotty.tools.io.AbstractFile
 
@@ -112,6 +113,20 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   }
 
   /*
+   * can-multi-thread
+   */
+  def createJAttribute(name: String, b: Array[Byte], offset: Int, len: Int): asm.Attribute = {
+    new asm.Attribute(name) {
+      override def write(classWriter: ClassWriter, code: Array[Byte],
+        codeLength: Int, maxStack: Int, maxLocals: Int): asm.ByteVector = {
+        val byteVector = new asm.ByteVector(len)
+        byteVector.putByteArray(b, offset, len)
+        byteVector
+      }
+    }
+  }
+
+  /*
    * Custom attribute (JVMS 4.7.1) "ScalaSig" used as marker only
    * i.e., the pickle is contained in a custom annotation, see:
    *   (1) `addAnnotations()`,
@@ -134,15 +149,6 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       vp writeNat PickleFormat.MinorVersion
       vp writeNat 0
       vp
-    }
-
-    /*
-     * can-multi-thread
-     */
-    def createJAttribute(name: String, b: Array[Byte], offset: Int, len: Int): asm.Attribute = {
-      val dest = new Array[Byte](len)
-      System.arraycopy(b, offset, dest, 0, len)
-      new asm.CustomAttr(name, dest)
     }
 
     /*

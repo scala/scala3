@@ -7,7 +7,6 @@ import dotty.tools.dotc.core.Phases.Phase
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
-import scala.tools.asm.CustomAttr
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.util.SourceFile
@@ -56,6 +55,10 @@ class GenBCode extends Phase {
     try super.runOn(units)
     finally myOutput match {
       case jar: JarArchive =>
+        if (ctx.run.suspendedUnits.nonEmpty)
+          // If we close the jar the next run will not be able to write on the jar.
+          // But if we do not close it we cannot use it as part of the macro classpath of the suspended files.
+          ctx.error("Can not suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
         jar.close()
       case _ =>
     }
@@ -241,7 +244,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(implicit val ctx: Context
               getFileForClassfile(outF, store.name, ".hasTasty")
               binary
             }
-          val dataAttr = new CustomAttr(nme.TASTYATTR.mangledString, tasty)
+          val dataAttr = createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
           store.visitAttribute(dataAttr)
         }
 

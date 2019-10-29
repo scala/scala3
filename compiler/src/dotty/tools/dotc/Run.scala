@@ -78,17 +78,20 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     */
   def units: List[CompilationUnit] = myUnits
 
+  var suspendedUnits: mutable.ListBuffer[CompilationUnit] = mutable.ListBuffer()
+
   private def units_=(us: List[CompilationUnit]): Unit =
     myUnits = us
 
-  /** The files currently being compiled, this may return different results over time.
-    *  These files do not have to be source files since it's possible to compile
-    *  from TASTY.
-    */
+  /** The files currently being compiled (active or suspended).
+   *  This may return different results over time.
+   *  These files do not have to be source files since it's possible to compile
+   *  from TASTY.
+   */
   def files: Set[AbstractFile] = {
     if (myUnits ne myUnitsCached) {
       myUnitsCached = myUnits
-      myFiles = myUnits.map(_.source.file).toSet
+      myFiles = (myUnits ++ suspendedUnits).map(_.source.file).toSet
     }
     myFiles
   }
@@ -247,11 +250,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   }
 
   /** Print summary; return # of errors encountered */
-  def printSummary(): Reporter = {
+  def printSummary(): Unit = {
     printMaxConstraint()
     val r = ctx.reporter
     r.printSummary
-    r
   }
 
   override def reset(): Unit = {

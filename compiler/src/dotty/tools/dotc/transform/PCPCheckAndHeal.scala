@@ -153,7 +153,21 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     /** Is a reference to a class but not `this.type` */
     def isClassRef = sym.isClass && !tp.isInstanceOf[ThisType]
 
-    if (!sym.exists || levelOK(sym))
+    /** Is this a static path or a type porjection with a static prefix */
+    def isStaticPathOK(tp1: Type): Boolean =
+      tp1.stripTypeVar match
+        case tp1: TypeRef => tp1.symbol.is(Package) || isStaticPathOK(tp1.prefix)
+        case tp1: TermRef =>
+          def isStaticTermPathOK(sym: Symbol): Boolean =
+            (sym.is(Module) && sym.isStatic) ||
+            (sym.isStableMember && isStaticTermPathOK(sym.owner))
+          isStaticTermPathOK(tp1.symbol)
+        case tp1: ThisType => tp1.cls.isStaticOwner
+        case tp1: AppliedType => isStaticPathOK(tp1.tycon)
+        case tp1: SkolemType => isStaticPathOK(tp1.info)
+        case _ => false
+
+    if (!sym.exists || levelOK(sym) || isStaticPathOK(tp))
       None
     else if (!sym.isStaticOwner && !isClassRef)
       tryHeal(sym, tp, pos)
@@ -180,7 +194,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
             sym.isClass // reference to this in inline methods
           )
     case None =>
-      !sym.is(Param) || levelOK(sym.owner)
+      sym.is(Package) || sym.owner.isStaticOwner || levelOK(sym.owner)
   }
 
   /** Try to heal phase-inconsistent reference to type `T` using a local type definition.

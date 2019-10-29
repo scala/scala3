@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.SymUtils._
 import util.{NoSource, SourceFile}
+import core.Decorators._
 
 class CompilationUnit protected (val source: SourceFile) {
 
@@ -31,9 +32,21 @@ class CompilationUnit protected (val source: SourceFile) {
 
   /** A structure containing a temporary map for generating inline accessors */
   val inlineAccessors: InlineAccessors = new InlineAccessors
+
+  var suspended: Boolean = false
+
+  def suspend()(given ctx: Context): Nothing =
+    if !suspended then
+      if (ctx.settings.XprintSuspension.value)
+        ctx.echo(i"suspended: $this")
+      suspended = true
+      ctx.run.suspendedUnits += this
+    throw CompilationUnit.SuspendException()
 }
 
 object CompilationUnit {
+
+  class SuspendException extends Exception
 
   /** Make a compilation unit for top class `clsd` with the contents of the `unpickled` tree */
   def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =

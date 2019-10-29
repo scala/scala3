@@ -1,0 +1,3 @@
+object Bar {
+  Foo.myMacro()
+}
