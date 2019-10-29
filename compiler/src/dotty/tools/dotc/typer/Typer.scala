@@ -528,20 +528,23 @@ class Typer extends Namer
         return lit(doubleFromDigits(digits))
       else if (target.isValueType && isFullyDefined(target, ForceDegree.none)) {
         // If expected type is defined with a FromDigits instance, use that one
-        val fromDigitsCls = tree.kind match {
-          case Whole(10) => defn.FromDigitsClass
-          case Whole(_) => defn.FromDigits_WithRadixClass
-          case Decimal => defn.FromDigits_DecimalClass
-          case Floating => defn.FromDigits_FloatingClass
-        }
-        inferImplicit(fromDigitsCls.typeRef.appliedTo(target), EmptyTree, tree.span) match {
+        val summoner = tree.kind match
+          case Whole(10) => defn.FromDigits_fromDigits
+          case Whole(_)  => defn.FromDigits_fromRadixDigits
+          case Decimal   => defn.FromDigits_fromDecimalDigits
+          case Floating  => defn.FromDigits_fromFloatingDigits
+        inferImplicit(defn.FromDigitsClass.typeRef.appliedTo(target), EmptyTree, tree.span) match {
           case SearchSuccess(arg, _, _) =>
-            val fromDigits = untpd.Select(untpd.TypedSplice(arg), nme.fromDigits).withSpan(tree.span)
+            val summoned = untpd.Apply(untpd.TypedSplice(ref(summoner)), untpd.TypedSplice(arg) :: Nil).setGivenApply()
+            var fromDigits: untpd.Tree = untpd.Select(summoned, nme.fromDigits).withSpan(tree.span)
             val firstArg = Literal(Constant(digits))
-            val otherArgs = tree.kind match {
-              case Whole(r) if r != 10 => Literal(Constant(r)) :: Nil
-              case _ => Nil
-            }
+            val otherArgs =
+              if arg.tpe.widen.classSymbol.isSubClass(defn.FromDigits_WithRadixClass) then
+                tree.kind match
+                case Whole(r) if r != 10 => Literal(Constant(r)) :: Nil
+                case _                   => Nil
+              else
+                Nil
             var app: untpd.Tree = untpd.Apply(fromDigits, firstArg :: otherArgs)
             if (ctx.mode.is(Mode.Pattern)) app = untpd.Block(Nil, app)
             return typed(app, pt)

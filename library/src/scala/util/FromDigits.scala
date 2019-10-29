@@ -47,6 +47,30 @@ object FromDigits {
    */
   trait Floating[T] extends Decimal[T]
 
+  inline def fromDigits[T](given x: FromDigits[T]): x.type = x
+
+  inline def fromRadixDigits[T](given x: FromDigits[T]): x.type =
+    ${summonDigitsImpl[x.type, FromDigits.WithRadix[T]]('x)}
+
+  inline def fromDecimalDigits[T](given x: FromDigits[T]): x.type =
+    ${summonDigitsImpl[x.type, FromDigits.Decimal[T]]('x)}
+
+  inline def fromFloatingDigits[T](given x: FromDigits[T]): x.type =
+    ${summonDigitsImpl[x.type, FromDigits.Floating[T]]('x)}
+
+  private def summonDigitsImpl[T <: FromDigits[_], U <: FromDigits[_]](x: Expr[T])(given
+      qctx: QuoteContext, t: Type[T], u: Type[U]): Expr[T] = {
+    import qctx.tasty.{Type => _, _, given}
+    def makeError = s"""|FromDigits instance is incompatible with the expected numeric kind.
+      |    Found:    ${t.show}(${x.show})
+      |    Expected: ${u.show}""".stripMargin
+    if typeOf[T] <:< typeOf[U] then
+      x
+    else
+      qctx.error(makeError, x)
+      Expr.nullExpr.cast[T]
+  }
+
   /** The base type for exceptions that can be thrown from
    *  `fromDigits` conversions
    */
