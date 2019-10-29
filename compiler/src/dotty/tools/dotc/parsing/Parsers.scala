@@ -2590,6 +2590,7 @@ object Parsers {
         name match {
           case nme.inline => Mod.Inline()
           case nme.opaque => Mod.Opaque()
+          case nme.open => Mod.Open()
         }
     }
 
@@ -2661,7 +2662,7 @@ object Parsers {
      *                  |  AccessModifier
      *                  |  override
      *                  |  opaque
-     *  LocalModifier  ::= abstract | final | sealed | implicit | lazy | erased | inline
+     *  LocalModifier  ::= abstract | final | sealed | open | implicit | lazy | erased | inline
      */
     def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
       @tailrec

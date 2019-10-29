@@ -37,7 +37,7 @@ object Flags {
       else {
         val tbits = x.bits & y.bits & KINDFLAGS
         if (tbits == 0)
-          assert(false, s"illegal flagset combination: $x and $y")
+          assert(false, s"illegal flagset combination: ${x.flagsString} and ${y.flagsString}")
         FlagSet(tbits | ((x.bits | y.bits) & ~KINDFLAGS))
       }
 
@@ -237,8 +237,8 @@ object Flags {
   /** A value or variable accessor (getter or setter) */
   val (AccessorOrSealed @ _, Accessor @ _, Sealed @ _) = newFlags(11, "<accessor>", "sealed")
 
-  /** A mutable var */
-  val (_, Mutable @ _, _) = newFlags(12, "mutable")
+  /** A mutable var, an open class */
+  val (MutableOrOpen @ __, Mutable @ _, Open @ _) = newFlags(12, "mutable", "open")
 
   /** Symbol is local to current class (i.e. private[this] or protected[this]
    *  pre: Private or Protected are also set
@@ -422,7 +422,7 @@ object Flags {
     commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic)
 
   val TypeSourceModifierFlags: FlagSet =
-    CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque
+    CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open
 
   val TermSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy | Erased
@@ -439,7 +439,7 @@ object Flags {
   val FromStartFlags: FlagSet = commonFlags(
     Module, Package, Deferred, Method, Case,
     HigherKinded, Param, ParamAccessor,
-    Scala2ExistentialCommon, Mutable, Opaque, Touched, JavaStatic,
+    Scala2ExistentialCommon, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic,
     SuperAccessorOrScala2x, Inline, Macro)
@@ -508,6 +508,8 @@ object Flags {
 
   /** Flags retained in export forwarders */
   val RetainedExportFlags = Given | Implicit | Extension
+
+  val ClassOnlyFlags = Sealed | Open | Abstract.toTypeFlags
 
 // ------- Other flag sets -------------------------------------
 

@@ -417,6 +417,10 @@ object Checking {
     }
     if (!sym.isClass && sym.is(Abstract))
       fail(OnlyClassesCanBeAbstract(sym))
+        // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
+        // but they can never be one of ClassOnlyFlags
+    if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
+      fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if (sym.is(Trait) && sym.is(Final))
@@ -437,6 +441,8 @@ object Checking {
     }
     if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
       fail(CannotExtendAnyVal(sym))
+    checkCombination(Final, Open)
+    checkCombination(Sealed, Open)
     checkCombination(Final, Sealed)
     checkCombination(Private, Protected)
     checkCombination(Abstract, Override)
