@@ -509,6 +509,7 @@ object Flags {
   /** Flags retained in export forwarders */
   val RetainedExportFlags = Given | Implicit | Extension
 
+  /** Flags that apply only to classes */
   val ClassOnlyFlags = Sealed | Open | Abstract.toTypeFlags
 
 // ------- Other flag sets -------------------------------------
@@ -517,6 +518,7 @@ object Flags {
   val AbstractOverride: FlagSet              = Abstract | Override
   val AbstractSealed: FlagSet                = Abstract | Sealed
   val AbstractOrTrait: FlagSet               = Abstract | Trait
+  val EffectivelyOpenFlags                   = Abstract | JavaDefined | Open | Scala2x | Trait
   val PrivateAccessor: FlagSet               = Accessor | Private
   val AccessorOrSynthetic: FlagSet           = Accessor | Synthetic
   val EnumCase: FlagSet                      = Case | Enum

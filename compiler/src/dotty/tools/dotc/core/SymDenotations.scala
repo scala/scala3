@@ -1071,7 +1071,13 @@ object SymDenotations {
     final def isEffectivelyFinal(implicit ctx: Context): Boolean =
       isOneOf(EffectivelyFinalFlags) || !owner.isClass || owner.isOneOf(FinalOrModuleClass) || owner.isAnonymousClass
 
-    /** The class containing this denotation which has the given effective name. */
+    /** A class is effectively sealed if has the `final` or `sealed` modifier, or it
+     *  is defined in Scala 3 and is neither abstract nor open.
+     */
+    final def isEffectivelySealed(given Context): Boolean =
+      isOneOf(FinalOrSealed) || isClass && !isOneOf(EffectivelyOpenFlags)
+
+      /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {
       val cls = enclosingClass
       if (cls.effectiveName == name || !cls.exists) cls else cls.owner.enclosingClassNamed(name)
@@ -1369,16 +1375,16 @@ object SymDenotations {
      */
     def typeParamCreationFlags: FlagSet = TypeParam
 
-    override def toString: String = {
-      val kindString =
-        if (myFlags.is(ModuleClass)) "module class"
-        else if (isClass) "class"
-        else if (isType) "type"
-        else if (myFlags.is(Module)) "module"
-        else if (myFlags.is(Method)) "method"
-        else "val"
-      s"$kindString $name"
-    }
+    def kindString: String =
+      if myFlags.is(ModuleClass) then "module class"
+      else if myFlags.is(Trait)  then "trait"
+      else if isClass            then "class"
+      else if isType             then "type"
+      else if myFlags.is(Module) then "module"
+      else if myFlags.is(Method) then "method"
+      else                            "val"
+
+    override def toString: String = s"$kindString $name"
 
     // ----- Sanity checks and debugging */
 

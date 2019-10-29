@@ -876,10 +876,12 @@ class Namer { typer: Typer =>
 
       def register(child: Symbol, parent: Type) = {
         val cls = parent.classSymbol
-        if (cls.is(Sealed))
-          if ((child.isInaccessibleChildOf(cls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
+        if cls.isEffectivelySealed
+           && child.associatedFile == cls.associatedFile // don't register ad-hoc extensions as children
+        then
+          if child.isInaccessibleChildOf(cls) && !sym.hasAnonymousChild then
             addChild(cls, cls)
-          else if (!cls.is(ChildrenQueried))
+          else if !cls.is(ChildrenQueried) then
             addChild(cls, child)
           else
             ctx.error(em"""children of $cls were already queried before $sym was discovered.
