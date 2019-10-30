@@ -184,10 +184,16 @@ object SymDenotations {
         if (myFlags.is(Trait)) NoInitsInterface & bodyFlags // no parents are initialized from a trait
         else NoInits & bodyFlags & parentFlags)
 
+    /** Flags that are immutable at the current stage of
+     *  this denotation's lifecycle.
+     */
+    final def immutableFlags: FlagSet =
+      var result: FlagSet = AfterLoadFlags
+      if (myInfo.isInstanceOf[SymbolLoader]) result = FromStartFlags
+      result
+
     private def isCurrent(fs: FlagSet) =
-      fs <= (
-        if (myInfo.isInstanceOf[SymbolLoader]) FromStartFlags
-        else AfterLoadFlags)
+      fs <= immutableFlags
 
     final def relevantFlagsFor(fs: FlagSet)(implicit ctx: Context) =
       if (isCurrent(fs)) myFlags else flags
