@@ -27,6 +27,11 @@ object SymbolLoaders {
    */
   trait SecondCompleter
 
+  /** A marker trait for a completer that loads information from
+   *  an external source such as a TASTy or a class file.
+   */
+  trait LoadingCompleter
+
   private def enterNew(
       owner: Symbol, member: Symbol,
       completer: SymbolLoader, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
@@ -302,7 +307,7 @@ object SymbolLoaders {
 /** A lazy type that completes itself by calling parameter doComplete.
  *  Any linked modules/classes or module classes are also initialized.
  */
-abstract class SymbolLoader extends LazyType { self =>
+abstract class SymbolLoader extends LazyType with SymbolLoaders.LoadingCompleter { self =>
   /** Load source or class file for `root`, return */
   def doComplete(root: SymDenotation)(implicit ctx: Context): Unit
 

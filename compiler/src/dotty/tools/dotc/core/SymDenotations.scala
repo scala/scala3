@@ -189,7 +189,7 @@ object SymDenotations {
      */
     final def immutableFlags: FlagSet =
       var result: FlagSet = AfterLoadFlags
-      if (myInfo.isInstanceOf[SymbolLoader]) result = FromStartFlags
+      if (myInfo.isInstanceOf[SymbolLoaders.LoadingCompleter]) result = FromStartFlags
       result
 
     private def setMyFlags(fs: FlagSet) =

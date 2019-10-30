@@ -559,7 +559,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     })
   }
 
-  class LocalUnpickler extends LazyType {
+  class LocalUnpickler extends LazyType with SymbolLoaders.LoadingCompleter {
     def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = try {
       def parseToCompletion(denot: SymDenotation)(implicit ctx: Context) = {
