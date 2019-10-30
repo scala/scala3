@@ -160,7 +160,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   import Scala2Unpickler._
 
-  val moduleRoot: SymDenotation = moduleClassRoot.sourceModule(ictx).denot(ictx)
+  val (moduleRoot: SymDenotation, moduleRootCompleter: ModuleCompleter) = {
+    val denot = moduleClassRoot.sourceModule(ictx).denot(ictx)
+    val completer = denot.completer
+    denot.info = new NoLoader  // This denotation is still loading, mark it as such with this completer
+    (denot, completer)
+  }
+
   assert(moduleRoot.isTerm)
 
   checkVersion(ictx)
@@ -548,6 +554,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case MODULEsym =>
         if (isModuleRoot) {
           moduleRoot setFlag flags
+          moduleRoot.info = moduleRootCompleter
           moduleRoot.symbol
         } else ctx.newSymbol(owner, name.asTermName, flags,
           new LocalUnpickler() withModuleClass(implicit ctx =>
