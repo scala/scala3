@@ -9,7 +9,7 @@ object scalatest {
     import util._
 
     def isImplicitMethodType(tp: Type): Boolean =
-      Type.IsMethodType.unapply(tp).flatMap(tp => if tp.isImplicit then Some(true) else None).nonEmpty
+      IsMethodType.unapply(tp).flatMap(tp => if tp.isImplicit then Some(true) else None).nonEmpty
 
     cond.unseal.underlyingArgument match {
       case t @ Apply(sel @ Select(lhs, op), rhs :: Nil) =>
