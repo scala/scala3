@@ -326,15 +326,18 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
       computeParamBindings(tp.resultType, Nil, argss)
     case tp: MethodType =>
-      assert(argss.nonEmpty, i"missing bindings: $tp in $call")
-      tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head).foreach { (name, paramtp, arg) =>
-        paramSpan(name) = arg.span
-        paramBinding(name) = arg.tpe.dealias match {
-          case _: SingletonType if isIdempotentPath(arg) => arg.tpe
-          case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol.termRef
+      if argss.isEmpty then
+        // can happen if arguments have errors, see i7438.scala
+        ctx.error(i"mising arguments for inline method $inlinedMethod", call.sourcePos)
+      else
+        tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head).foreach { (name, paramtp, arg) =>
+          paramSpan(name) = arg.span
+          paramBinding(name) = arg.tpe.dealias match {
+            case _: SingletonType if isIdempotentPath(arg) => arg.tpe
+            case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol.termRef
+          }
         }
-      }
-      computeParamBindings(tp.resultType, targs, argss.tail)
+        computeParamBindings(tp.resultType, targs, argss.tail)
     case _ =>
       assert(targs.isEmpty)
       assert(argss.isEmpty)
