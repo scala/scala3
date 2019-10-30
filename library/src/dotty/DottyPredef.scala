@@ -3,12 +3,12 @@ package dotty
 object DottyPredef {
   import compiletime.summonFrom
 
-  @forceInline final def assert(assertion: => Boolean, message: => Any): Unit = {
+  inline final def assert(assertion: => Boolean, message: => Any): Unit = {
     if (!assertion)
       assertFail(message)
   }
 
-  @forceInline final def assert(assertion: => Boolean): Unit = {
+  inline final def assert(assertion: => Boolean): Unit = {
     if (!assertion)
       assertFail()
   }
@@ -16,9 +16,9 @@ object DottyPredef {
   def assertFail(): Unit = throw new java.lang.AssertionError("assertion failed")
   def assertFail(message: => Any): Unit = throw new java.lang.AssertionError("assertion failed: " + message)
 
-  @forceInline final def implicitly[T](implicit ev: T): T = ev
+  inline final def implicitly[T](implicit ev: T): T = ev
 
-  @forceInline def locally[T](body: => T): T = body
+  inline def locally[T](body: => T): T = body
 
   /**
    * Retrieve the single value of a type with a unique inhabitant.

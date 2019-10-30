@@ -830,8 +830,6 @@ class Namer { typer: Typer =>
           else {
             val ann = Annotation.deferred(cls)(typedAnnotation(annotTree))
             sym.addAnnotation(ann)
-            if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
-              sym.setFlag(Inline)
           }
         }
       case _ =>
