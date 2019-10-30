@@ -50,26 +50,25 @@ object FromDigits {
   inline def fromDigits[T](given x: FromDigits[T]): x.type = x
 
   inline def fromRadixDigits[T](given x: FromDigits[T]): x.type =
-    ${summonDigitsImpl[x.type, FromDigits.WithRadix[T]]('x)}
+    ${summonDigitsImpl[x.type, FromDigits.WithRadix[T], T]('x, "whole numbers with radix other than 10")}
 
   inline def fromDecimalDigits[T](given x: FromDigits[T]): x.type =
-    ${summonDigitsImpl[x.type, FromDigits.Decimal[T]]('x)}
+    ${summonDigitsImpl[x.type, FromDigits.Decimal[T], T]('x, "numbers with a decimal point")}
 
   inline def fromFloatingDigits[T](given x: FromDigits[T]): x.type =
-    ${summonDigitsImpl[x.type, FromDigits.Floating[T]]('x)}
+    ${summonDigitsImpl[x.type, FromDigits.Floating[T], T]('x, "floating-point numbers")}
 
-  private def summonDigitsImpl[T <: FromDigits[_], U <: FromDigits[_]](x: Expr[T])(given
-      qctx: QuoteContext, t: Type[T], u: Type[U]): Expr[T] = {
-    import qctx.tasty.{Type => _, _, given}
-    def makeError = s"""|FromDigits instance is incompatible with the expected numeric kind.
-      |    Found:    ${t.show}(${x.show})
-      |    Expected: ${u.show}""".stripMargin
-    if typeOf[T] <:< typeOf[U] then
+  private def summonDigitsImpl[Inst <: FromDigits[T], Expected <: FromDigits[T], T](x: Expr[Inst], descriptor: String)
+   (given qctx: QuoteContext, instance: Type[Inst], t: Type[T], expected: Type[Expected]): Expr[Inst] =
+    import qctx.tasty.{_, given}
+    if typeOf[Inst] <:< typeOf[Expected] then
       x
     else
-      qctx.error(makeError, x)
-      Expr.nullExpr.cast[T]
-  }
+      val msg = s"""|Type ${t.show} does not have a FromDigits instance for $descriptor.
+      |    Found:    ${instance.show}(${x.show})
+      |    Expected: ${expected.show}""".stripMargin
+      qctx.error(msg, x)
+      Expr.nullExpr.cast[Inst]
 
   /** The base type for exceptions that can be thrown from
    *  `fromDigits` conversions
