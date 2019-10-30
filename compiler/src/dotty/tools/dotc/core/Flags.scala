@@ -439,7 +439,7 @@ object Flags {
   val FromStartFlags: FlagSet = commonFlags(
     Module, Package, Deferred, Method, Case,
     HigherKinded, Param, ParamAccessor,
-    Scala2ExistentialCommon, Mutable, Opaque, Touched, JavaStatic,
+    Scala2ExistentialCommon, Mutable, Opaque, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic,
     SuperAccessorOrScala2x, Inline)
