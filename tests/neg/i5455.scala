@@ -11,10 +11,9 @@ object Library {
     def toInt(n: Nat): Int = n
 
   }
-  given {
-    def (x: Nat) * (y: Nat): Nat = x * y
-    def (x: Nat) toInt: Int = x
-  }
+  given (x: Nat)
+    def * (y: Nat): Nat = x * y
+    def toInt: Int = x
 }
 
 object User extends App {

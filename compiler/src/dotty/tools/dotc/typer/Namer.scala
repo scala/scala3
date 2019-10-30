@@ -884,7 +884,7 @@ class Namer { typer: Typer =>
           else if !cls.is(ChildrenQueried) then
             addChild(cls, child)
           else
-            ctx.error(em"""children of $cls were already queried before $sym / ${sym.ownersIterator.toList} was discovered.
+            ctx.error(em"""children of $cls were already queried before $sym was discovered.
                           |As a remedy, you could move $sym on the same nesting level as $cls.""",
                       child.sourcePos)
 
@@ -1163,10 +1163,16 @@ class Namer { typer: Typer =>
           }
           else {
             val pclazz = pt.typeSymbol
-            if (pclazz.is(Final))
+            if pclazz.is(Final) then
               ctx.error(ExtendFinalClass(cls, pclazz), cls.sourcePos)
-            if (pclazz.is(Sealed) && pclazz.associatedFile != cls.associatedFile)
-              ctx.error(UnableToExtendSealedClass(pclazz), cls.sourcePos)
+            else if pclazz.isEffectivelySealed && pclazz.associatedFile != cls.associatedFile then
+              if pclazz.is(Sealed) then
+                ctx.error(UnableToExtendSealedClass(pclazz), cls.sourcePos)
+              else if ctx.settings.strict.value then
+                checkFeature(nme.adhocExtensions,
+                  i"Unless $pclazz with flags ${pclazz.flagsString} is declared 'open', its extension in a separate file",
+                  cls.topLevelClass,
+                  parent.sourcePos)
             pt
           }
         }
