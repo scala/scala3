@@ -84,6 +84,10 @@ trait TypeOrBoundsOps extends Core {
       internal.matchConstantType(typeOrBounds).map(_.constant)
   }
 
+  given (self: ConstantType) {
+    def constant(given ctx: Context): Constant = internal.ConstantType_constant(self)
+  }
+
   object IsTermRef {
     /** Matches any TermRef and returns it */
     def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[TermRef] =
@@ -97,6 +101,11 @@ trait TypeOrBoundsOps extends Core {
       internal.matchTermRef(typeOrBounds).map(x => (x.qualifier, x.name))
   }
 
+  given (self: TermRef) {
+    def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TermRef_qualifier(self)
+    def name(given ctx: Context): String = internal.TermRef_name(self)
+  }
+
   object IsTypeRef {
     /** Matches any TypeRef and returns it */
     def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[TypeRef] =
@@ -106,6 +115,11 @@ trait TypeOrBoundsOps extends Core {
   object TypeRef {
     def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
       internal.matchTypeRef(typeOrBounds).map(x => (x.qualifier, x.name))
+  }
+
+  given (self: TypeRef) {
+    def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TypeRef_qualifier(self)
+    def name(given ctx: Context): String = internal.TypeRef_name(self)
   }
 
   object IsSuperType {
@@ -119,6 +133,11 @@ trait TypeOrBoundsOps extends Core {
       internal.matchSuperType(typeOrBounds).map(x => (x.thistpe, x.supertpe))
   }
 
+  given (self: SuperType) {
+    def thistpe(given ctx: Context): Type = internal.SuperType_thistpe(self)
+    def supertpe(given ctx: Context): Type = internal.SuperType_supertpe(self)
+  }
+
   object IsRefinement {
     /** Matches any Refinement and returns it */
     def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[Refinement] =
@@ -128,6 +147,12 @@ trait TypeOrBoundsOps extends Core {
   object Refinement {
     def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] =
       internal.matchRefinement(typeOrBounds).map(x => (x.parent, x.name, x.info))
+  }
+
+  given (self: Refinement) {
+    def parent(given ctx: Context): Type = internal.Refinement_parent(self)
+    def name(given ctx: Context): String = internal.Refinement_name(self)
+    def info(given ctx: Context): TypeOrBounds = internal.Refinement_info(self)
   }
 
   object IsAppliedType {
@@ -143,6 +168,11 @@ trait TypeOrBoundsOps extends Core {
       internal.matchAppliedType(typeOrBounds).map(x => (x.tycon, x.args))
   }
 
+  given (self: AppliedType) {
+    def tycon(given ctx: Context): Type = internal.AppliedType_tycon(self)
+    def args(given ctx: Context): List[TypeOrBounds /* Type | TypeBounds */] = internal.AppliedType_args(self)
+  }
+
   object IsAnnotatedType {
     /** Matches any AnnotatedType and returns it */
     def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[AnnotatedType] =
@@ -152,6 +182,11 @@ trait TypeOrBoundsOps extends Core {
   object AnnotatedType {
     def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Term)] =
       internal.matchAnnotatedType(typeOrBounds).map(x => (x.underlying, x.annot))
+  }
+
+  given (self: AnnotatedType) {
+    def underlying(given ctx: Context): Type = internal.AnnotatedType_underlying(self)
+    def annot(given ctx: Context): Term = internal.AnnotatedType_annot(self)
   }
 
   object IsAndType {
@@ -165,6 +200,11 @@ trait TypeOrBoundsOps extends Core {
       internal.matchAndType(typeOrBounds).map(x => (x.left, x.right))
   }
 
+  given (self: AndType) {
+    def left(given ctx: Context): Type = internal.AndType_left(self)
+    def right(given ctx: Context): Type = internal.AndType_right(self)
+  }
+
   object IsOrType {
     /** Matches any OrType and returns it */
     def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[OrType] =
@@ -174,6 +214,11 @@ trait TypeOrBoundsOps extends Core {
   object OrType {
     def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type)] =
       internal.matchOrType(typeOrBounds).map(x => (x.left, x.right))
+  }
+
+  given (self: OrType) {
+    def left(given ctx: Context): Type = internal.OrType_left(self)
+    def right(given ctx: Context): Type = internal.OrType_right(self)
   }
 
   object IsMatchType {
@@ -187,6 +232,12 @@ trait TypeOrBoundsOps extends Core {
       internal.matchMatchType(typeOrBounds).map(x => (x.bound, x.scrutinee, x.cases))
   }
 
+  given (self: MatchType) {
+    def bound(given ctx: Context): Type = internal.MatchType_bound(self)
+    def scrutinee(given ctx: Context): Type = internal.MatchType_scrutinee(self)
+    def cases(given ctx: Context): List[Type] = internal.MatchType_cases(self)
+  }
+
   object IsByNameType {
     /** Matches any ByNameType and returns it */
     def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ByNameType] =
@@ -196,6 +247,10 @@ trait TypeOrBoundsOps extends Core {
   object ByNameType {
     def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Type] =
       internal.matchByNameType(typeOrBounds).map(_.underlying)
+  }
+
+  given (self: ByNameType) {
+    def underlying(given ctx: Context): Type = internal.ByNameType_underlying(self)
   }
 
   object IsParamRef {
@@ -209,6 +264,11 @@ trait TypeOrBoundsOps extends Core {
       internal.matchParamRef(typeOrBounds).map(x => (x.binder, x.paramNum))
   }
 
+  given (self: ParamRef) {
+    def binder(given ctx: Context): LambdaType[TypeOrBounds] = internal.ParamRef_binder(self)
+    def paramNum(given ctx: Context): Int = internal.ParamRef_paramNum(self)
+  }
+
   object IsThisType {
     /** Matches any ThisType and returns it */
     def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ThisType] =
@@ -218,6 +278,10 @@ trait TypeOrBoundsOps extends Core {
   object ThisType {
     def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Type] =
       internal.matchThisType(typeOrBounds).map(_.tref)
+  }
+
+  given (self: ThisType) {
+    def tref(given ctx: Context): Type = internal.ThisType_tref(self)
   }
 
   object IsRecursiveThis {
@@ -231,6 +295,10 @@ trait TypeOrBoundsOps extends Core {
       internal.matchRecursiveThis(typeOrBounds).map(_.binder)
   }
 
+  given (self: RecursiveThis) {
+    def binder(given ctx: Context): RecursiveType = internal.RecursiveThis_binder(self)
+  }
+
   object IsRecursiveType {
     /** Matches any RecursiveType and returns it */
     def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[RecursiveType] =
@@ -240,6 +308,10 @@ trait TypeOrBoundsOps extends Core {
   object RecursiveType {
     def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Type] =
       internal.matchRecursiveType(typeOrBounds).map(_.underlying)
+  }
+
+  given (self: RecursiveType) {
+    def underlying(given ctx: Context): Type = internal.RecursiveType_underlying(self)
   }
 
   object IsMethodType {
@@ -253,6 +325,14 @@ trait TypeOrBoundsOps extends Core {
       internal.matchMethodType(typeOrBounds).map(x => (x.paramNames, x.paramTypes, x.resType))
   }
 
+  given (self: MethodType) {
+    def isImplicit: Boolean = internal.MethodType_isImplicit(self)
+    def isErased: Boolean = internal.MethodType_isErased(self)
+    def paramNames(given ctx: Context): List[String] = internal.MethodType_paramNames(self)
+    def paramTypes(given ctx: Context): List[Type] = internal.MethodType_paramTypes(self)
+    def resType(given ctx: Context): Type = internal.MethodType_resType(self)
+  }
+
   object IsPolyType {
     /** Matches any PolyType and returns it */
     def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[PolyType] =
@@ -264,6 +344,12 @@ trait TypeOrBoundsOps extends Core {
       internal.matchPolyType(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
   }
 
+  given (self: PolyType) {
+    def paramNames(given ctx: Context): List[String] = internal.PolyType_paramNames(self)
+    def paramBounds(given ctx: Context): List[TypeBounds] = internal.PolyType_paramBounds(self)
+    def resType(given ctx: Context): Type = internal.PolyType_resType(self)
+  }
+
   object IsTypeLambda {
     /** Matches any TypeLambda and returns it */
     def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[TypeLambda] =
@@ -273,92 +359,6 @@ trait TypeOrBoundsOps extends Core {
   object TypeLambda {
     def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
       internal.matchTypeLambda(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
-  }
-
-  given (self: ConstantType) {
-    def constant(given ctx: Context): Constant = internal.ConstantType_constant(self)
-  }
-
-  given (self: TermRef) {
-    def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TermRef_qualifier(self)
-    def name(given ctx: Context): String = internal.TermRef_name(self)
-  }
-
-  given (self: TypeRef) {
-    def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TypeRef_qualifier(self)
-    def name(given ctx: Context): String = internal.TypeRef_name(self)
-  }
-
-  given (self: SuperType) {
-    def thistpe(given ctx: Context): Type = internal.SuperType_thistpe(self)
-    def supertpe(given ctx: Context): Type = internal.SuperType_supertpe(self)
-  }
-
-  given (self: Refinement) {
-    def parent(given ctx: Context): Type = internal.Refinement_parent(self)
-    def name(given ctx: Context): String = internal.Refinement_name(self)
-    def info(given ctx: Context): TypeOrBounds = internal.Refinement_info(self)
-  }
-
-  given (self: AppliedType) {
-    def tycon(given ctx: Context): Type = internal.AppliedType_tycon(self)
-    def args(given ctx: Context): List[TypeOrBounds /* Type | TypeBounds */] = internal.AppliedType_args(self)
-  }
-
-  given (self: AnnotatedType) {
-    def underlying(given ctx: Context): Type = internal.AnnotatedType_underlying(self)
-    def annot(given ctx: Context): Term = internal.AnnotatedType_annot(self)
-  }
-
-  given (self: AndType) {
-    def left(given ctx: Context): Type = internal.AndType_left(self)
-    def right(given ctx: Context): Type = internal.AndType_right(self)
-  }
-
-  given (self: OrType) {
-    def left(given ctx: Context): Type = internal.OrType_left(self)
-    def right(given ctx: Context): Type = internal.OrType_right(self)
-  }
-
-  given (self: MatchType) {
-    def bound(given ctx: Context): Type = internal.MatchType_bound(self)
-    def scrutinee(given ctx: Context): Type = internal.MatchType_scrutinee(self)
-    def cases(given ctx: Context): List[Type] = internal.MatchType_cases(self)
-  }
-
-  given (self: ByNameType) {
-    def underlying(given ctx: Context): Type = internal.ByNameType_underlying(self)
-  }
-
-  given (self: ParamRef) {
-    def binder(given ctx: Context): LambdaType[TypeOrBounds] = internal.ParamRef_binder(self)
-    def paramNum(given ctx: Context): Int = internal.ParamRef_paramNum(self)
-  }
-
-  given (self: ThisType) {
-    def tref(given ctx: Context): Type = internal.ThisType_tref(self)
-  }
-
-  given (self: RecursiveThis) {
-    def binder(given ctx: Context): RecursiveType = internal.RecursiveThis_binder(self)
-  }
-
-  given (self: RecursiveType) {
-    def underlying(given ctx: Context): Type = internal.RecursiveType_underlying(self)
-  }
-
-  given (self: MethodType) {
-    def isImplicit: Boolean = internal.MethodType_isImplicit(self)
-    def isErased: Boolean = internal.MethodType_isErased(self)
-    def paramNames(given ctx: Context): List[String] = internal.MethodType_paramNames(self)
-    def paramTypes(given ctx: Context): List[Type] = internal.MethodType_paramTypes(self)
-    def resType(given ctx: Context): Type = internal.MethodType_resType(self)
-  }
-
-  given (self: PolyType) {
-    def paramNames(given ctx: Context): List[String] = internal.PolyType_paramNames(self)
-    def paramBounds(given ctx: Context): List[TypeBounds] = internal.PolyType_paramBounds(self)
-    def resType(given ctx: Context): Type = internal.PolyType_resType(self)
   }
 
   given (self: TypeLambda) {
