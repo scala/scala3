@@ -11,7 +11,7 @@ object Macros {
     def unpackTuple(tp: Type): List[Type] = {
       @tailrec
       def loop(tp: Type, acc: List[Type]): List[Type] = tp.dealias.simplified match {
-        case Type.AppliedType(_, List(IsType(hd), IsType(tl))) =>
+        case AppliedType(_, List(IsType(hd), IsType(tl))) =>
           loop(tl, hd.dealias.simplified :: acc)
         case other => acc
       }

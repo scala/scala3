@@ -69,211 +69,210 @@ trait TypeOrBoundsOps extends Core {
   }
 
   object Type {
+    def apply(clazz: Class[_])(given ctx: Context): Type =
+      internal.Type_apply(clazz)
+  }
 
-    def apply(clazz: Class[_])(given ctx: Context): Type = internal.Type_apply(clazz)
+  object IsConstantType {
+    /** Matches any ConstantType and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ConstantType] =
+      internal.matchConstantType(tpe)
+  }
 
-    object IsConstantType {
-      /** Matches any ConstantType and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ConstantType] =
-        internal.matchConstantType(tpe)
-    }
+  object ConstantType {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Constant] =
+      internal.matchConstantType(typeOrBounds).map(_.constant)
+  }
 
-    object ConstantType {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Constant] =
-        internal.matchConstantType(typeOrBounds).map(_.constant)
-    }
+  object IsTermRef {
+    /** Matches any TermRef and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[TermRef] =
+      internal.matchTermRef(tpe)
+  }
 
-    object IsTermRef {
-      /** Matches any TermRef and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[TermRef] =
-        internal.matchTermRef(tpe)
-    }
+  object TermRef {
+    def apply(qual: TypeOrBounds, name: String)(given ctx: Context): TermRef =
+      internal.TermRef_apply(qual, name)
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
+      internal.matchTermRef(typeOrBounds).map(x => (x.qualifier, x.name))
+  }
 
-    object TermRef {
-      def apply(qual: TypeOrBounds, name: String)(given ctx: Context): TermRef =
-        internal.TermRef_apply(qual, name)
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
-        internal.matchTermRef(typeOrBounds).map(x => (x.qualifier, x.name))
-    }
+  object IsTypeRef {
+    /** Matches any TypeRef and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[TypeRef] =
+      internal.matchTypeRef(tpe)
+  }
 
-    object IsTypeRef {
-      /** Matches any TypeRef and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[TypeRef] =
-        internal.matchTypeRef(tpe)
-    }
+  object TypeRef {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
+      internal.matchTypeRef(typeOrBounds).map(x => (x.qualifier, x.name))
+  }
 
-    object TypeRef {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
-        internal.matchTypeRef(typeOrBounds).map(x => (x.qualifier, x.name))
-    }
+  object IsSuperType {
+    /** Matches any SuperType and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[SuperType] =
+      internal.matchSuperType(tpe)
+  }
 
-    object IsSuperType {
-      /** Matches any SuperType and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[SuperType] =
-        internal.matchSuperType(tpe)
-    }
+  object SuperType {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type)] =
+      internal.matchSuperType(typeOrBounds).map(x => (x.thistpe, x.supertpe))
+  }
 
-    object SuperType {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type)] =
-        internal.matchSuperType(typeOrBounds).map(x => (x.thistpe, x.supertpe))
-    }
+  object IsRefinement {
+    /** Matches any Refinement and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[Refinement] =
+      internal.matchRefinement(tpe)
+  }
 
-    object IsRefinement {
-      /** Matches any Refinement and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[Refinement] =
-        internal.matchRefinement(tpe)
-    }
+  object Refinement {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] =
+      internal.matchRefinement(typeOrBounds).map(x => (x.parent, x.name, x.info))
+  }
 
-    object Refinement {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] =
-        internal.matchRefinement(typeOrBounds).map(x => (x.parent, x.name, x.info))
-    }
+  object IsAppliedType {
+    /** Matches any AppliedType and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[AppliedType] =
+      internal.matchAppliedType(tpe)
+  }
 
-    object IsAppliedType {
-      /** Matches any AppliedType and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[AppliedType] =
-        internal.matchAppliedType(tpe)
-    }
+  object AppliedType {
+    def apply(tycon: Type, args: List[TypeOrBounds])(given ctx: Context) : AppliedType =
+      internal.AppliedType_apply(tycon, args)
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] =
+      internal.matchAppliedType(typeOrBounds).map(x => (x.tycon, x.args))
+  }
 
-    object AppliedType {
-      def apply(tycon: Type, args: List[TypeOrBounds])(given ctx: Context) : AppliedType =
-        internal.AppliedType_apply(tycon, args)
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] =
-        internal.matchAppliedType(typeOrBounds).map(x => (x.tycon, x.args))
-    }
+  object IsAnnotatedType {
+    /** Matches any AnnotatedType and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[AnnotatedType] =
+      internal.matchAnnotatedType(tpe)
+  }
 
-    object IsAnnotatedType {
-      /** Matches any AnnotatedType and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[AnnotatedType] =
-        internal.matchAnnotatedType(tpe)
-    }
+  object AnnotatedType {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Term)] =
+      internal.matchAnnotatedType(typeOrBounds).map(x => (x.underlying, x.annot))
+  }
 
-    object AnnotatedType {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Term)] =
-        internal.matchAnnotatedType(typeOrBounds).map(x => (x.underlying, x.annot))
-    }
+  object IsAndType {
+    /** Matches any AndType and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[AndType] =
+      internal.matchAndType(tpe)
+  }
 
-    object IsAndType {
-      /** Matches any AndType and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[AndType] =
-        internal.matchAndType(tpe)
-    }
+  object AndType {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type)] =
+      internal.matchAndType(typeOrBounds).map(x => (x.left, x.right))
+  }
 
-    object AndType {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type)] =
-        internal.matchAndType(typeOrBounds).map(x => (x.left, x.right))
-    }
+  object IsOrType {
+    /** Matches any OrType and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[OrType] =
+      internal.matchOrType(tpe)
+  }
 
-    object IsOrType {
-      /** Matches any OrType and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[OrType] =
-        internal.matchOrType(tpe)
-    }
+  object OrType {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type)] =
+      internal.matchOrType(typeOrBounds).map(x => (x.left, x.right))
+  }
 
-    object OrType {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type)] =
-        internal.matchOrType(typeOrBounds).map(x => (x.left, x.right))
-    }
+  object IsMatchType {
+    /** Matches any MatchType and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[MatchType] =
+      internal.matchMatchType(tpe)
+  }
 
-    object IsMatchType {
-      /** Matches any MatchType and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[MatchType] =
-        internal.matchMatchType(tpe)
-    }
+  object MatchType {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type, List[Type])] =
+      internal.matchMatchType(typeOrBounds).map(x => (x.bound, x.scrutinee, x.cases))
+  }
 
-    object MatchType {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type, List[Type])] =
-        internal.matchMatchType(typeOrBounds).map(x => (x.bound, x.scrutinee, x.cases))
-    }
+  object IsByNameType {
+    /** Matches any ByNameType and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ByNameType] =
+      internal.matchByNameType(tpe)
+  }
 
-    object IsByNameType {
-      /** Matches any ByNameType and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ByNameType] =
-        internal.matchByNameType(tpe)
-    }
+  object ByNameType {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Type] =
+      internal.matchByNameType(typeOrBounds).map(_.underlying)
+  }
 
-    object ByNameType {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Type] =
-        internal.matchByNameType(typeOrBounds).map(_.underlying)
-    }
+  object IsParamRef {
+    /** Matches any ParamRef and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ParamRef] =
+      internal.matchParamRef(tpe)
+  }
 
-    object IsParamRef {
-      /** Matches any ParamRef and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ParamRef] =
-        internal.matchParamRef(tpe)
-    }
+  object ParamRef {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] =
+      internal.matchParamRef(typeOrBounds).map(x => (x.binder, x.paramNum))
+  }
 
-    object ParamRef {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] =
-        internal.matchParamRef(typeOrBounds).map(x => (x.binder, x.paramNum))
-    }
+  object IsThisType {
+    /** Matches any ThisType and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ThisType] =
+      internal.matchThisType(tpe)
+  }
 
-    object IsThisType {
-      /** Matches any ThisType and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ThisType] =
-        internal.matchThisType(tpe)
-    }
+  object ThisType {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Type] =
+      internal.matchThisType(typeOrBounds).map(_.tref)
+  }
 
-    object ThisType {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Type] =
-        internal.matchThisType(typeOrBounds).map(_.tref)
-    }
+  object IsRecursiveThis {
+    /** Matches any RecursiveThis and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[RecursiveThis] =
+      internal.matchRecursiveThis(tpe)
+  }
 
-    object IsRecursiveThis {
-      /** Matches any RecursiveThis and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[RecursiveThis] =
-        internal.matchRecursiveThis(tpe)
-    }
+  object RecursiveThis {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[RecursiveType] =
+      internal.matchRecursiveThis(typeOrBounds).map(_.binder)
+  }
 
-    object RecursiveThis {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[RecursiveType] =
-        internal.matchRecursiveThis(typeOrBounds).map(_.binder)
-    }
+  object IsRecursiveType {
+    /** Matches any RecursiveType and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[RecursiveType] =
+      internal.matchRecursiveType(tpe)
+  }
 
-    object IsRecursiveType {
-      /** Matches any RecursiveType and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[RecursiveType] =
-        internal.matchRecursiveType(tpe)
-    }
+  object RecursiveType {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Type] =
+      internal.matchRecursiveType(typeOrBounds).map(_.underlying)
+  }
 
-    object RecursiveType {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Type] =
-        internal.matchRecursiveType(typeOrBounds).map(_.underlying)
-    }
+  object IsMethodType {
+    /** Matches any MethodType and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[MethodType] =
+      internal.matchMethodType(tpe)
+  }
 
-    object IsMethodType {
-      /** Matches any MethodType and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[MethodType] =
-        internal.matchMethodType(tpe)
-    }
+  object MethodType {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(List[String], List[Type], Type)] =
+      internal.matchMethodType(typeOrBounds).map(x => (x.paramNames, x.paramTypes, x.resType))
+  }
 
-    object MethodType {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(List[String], List[Type], Type)] =
-        internal.matchMethodType(typeOrBounds).map(x => (x.paramNames, x.paramTypes, x.resType))
-    }
+  object IsPolyType {
+    /** Matches any PolyType and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[PolyType] =
+      internal.matchPolyType(tpe)
+  }
 
-    object IsPolyType {
-      /** Matches any PolyType and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[PolyType] =
-        internal.matchPolyType(tpe)
-    }
+  object PolyType {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
+      internal.matchPolyType(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
+  }
 
-    object PolyType {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
-        internal.matchPolyType(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
-    }
+  object IsTypeLambda {
+    /** Matches any TypeLambda and returns it */
+    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[TypeLambda] =
+      internal.matchTypeLambda(tpe)
+  }
 
-    object IsTypeLambda {
-      /** Matches any TypeLambda and returns it */
-      def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[TypeLambda] =
-        internal.matchTypeLambda(tpe)
-    }
-
-    object TypeLambda {
-      def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
-        internal.matchTypeLambda(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
-    }
-
+  object TypeLambda {
+    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
+      internal.matchTypeLambda(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
   }
 
   given (self: ConstantType) {
