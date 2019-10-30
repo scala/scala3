@@ -167,13 +167,13 @@ object SymDenotations {
 
     /** Update the flag set */
     final def flags_=(flags: FlagSet): Unit =
-      myFlags = adaptFlags(flags)
+      setMyFlags(adaptFlags(flags))
 
     /** Set given flags(s) of this denotation */
-    final def setFlag(flags: FlagSet): Unit = { myFlags |= flags }
+    final def setFlag(flags: FlagSet): Unit = setMyFlags(myFlags | flags)
 
     /** Unset given flags(s) of this denotation */
-    final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
+    final def resetFlag(flags: FlagSet): Unit = setMyFlags(myFlags &~ flags)
 
     /** Set applicable flags in {NoInits, PureInterface}
      *  @param  parentFlags  The flags that match the class or trait's parents
@@ -183,6 +183,9 @@ object SymDenotations {
       setFlag(
         if (myFlags.is(Trait)) NoInitsInterface & bodyFlags // no parents are initialized from a trait
         else NoInits & bodyFlags & parentFlags)
+
+    private def setMyFlags(fs: FlagSet) =
+      myFlags = fs
 
     private def isCurrent(fs: FlagSet) =
       fs <= (
