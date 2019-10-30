@@ -368,7 +368,8 @@ object Trees {
               // name (e.g. in a comment) before finding the real definition.
               // To make this behavior more robust we'd have to change the trees for definitions to contain
               // a fully positioned Ident in place of a name.
-              val idx = source.content().indexOfSlice(realName, point)
+              val contents = if source.exists then source.content() else Array.empty[Char]
+              val idx = contents.indexOfSlice(realName, point)
               if (idx >= 0) idx
               else point // use `point` anyway. This is important if no source exists so scanning fails
             }
