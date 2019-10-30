@@ -441,7 +441,7 @@ object Flags {
     HigherKinded, Param, ParamAccessor,
     Scala2ExistentialCommon, Mutable, Opaque, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
-    Extension, NonMember, Implicit, Given, Permanent, Synthetic, Inline)
+    Extension, NonMember, Implicit, Given, Permanent, Inline)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
@@ -450,7 +450,7 @@ object Flags {
    */
   val AfterLoadFlags: FlagSet = commonFlags(
     FromStartFlags, AccessFlags, Final, AccessorOrSealed, LazyOrTrait, SelfName, JavaDefined,
-    SuperAccessorOrScala2x)
+    SuperAccessorOrScala2x, Synthetic)
 
 
   /** A value that's unstable unless complemented with a Stable flag */
