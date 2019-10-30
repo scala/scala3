@@ -193,6 +193,8 @@ object SymDenotations {
       result
 
     private def setMyFlags(fs: FlagSet) =
+      val changedImmutableFlags = (myFlags ^ fs) & immutableFlags
+      assert(changedImmutableFlags.isEmpty, s"Illegal mutation of flags ${changedImmutableFlags.flagsString} on denotation $this")
       myFlags = fs
 
     private def isCurrent(fs: FlagSet) =
