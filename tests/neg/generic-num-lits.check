@@ -1,0 +1,36 @@
+-- Error: tests/neg/generic-num-lits.scala:2:8 -------------------------------------------------------------------------
+2 |val b = 0xcafebabe: BigDecimal // error
+  |        ^
+  |        Type BigDecimal does not have a FromDigits instance for whole numbers with radix other than 10.
+-- Error: tests/neg/generic-num-lits.scala:3:8 -------------------------------------------------------------------------
+3 |val c = 1.3: BigInt // error
+  |        ^
+  |        Type BigInt does not have a FromDigits instance for numbers with a decimal point.
+-- Error: tests/neg/generic-num-lits.scala:4:8 -------------------------------------------------------------------------
+4 |val d = 2e500: BigInt // error
+  |        ^
+  |        Type BigInt does not have a FromDigits instance for floating-point numbers.
+-- Error: tests/neg/generic-num-lits.scala:7:7 -------------------------------------------------------------------------
+7 |  case 0xcafebabe: BigDecimal => // error
+  |       ^
+  |       Type BigDecimal does not have a FromDigits instance for whole numbers with radix other than 10.
+-- Error: tests/neg/generic-num-lits.scala:11:7 ------------------------------------------------------------------------
+11 |  case 1.3: BigInt => // error
+   |       ^
+   |       Type BigInt does not have a FromDigits instance for numbers with a decimal point.
+-- Error: tests/neg/generic-num-lits.scala:15:7 ------------------------------------------------------------------------
+15 |  case 2e500: BigInt => // error
+   |       ^
+   |       Type BigInt does not have a FromDigits instance for floating-point numbers.
+-- Error: tests/neg/generic-num-lits.scala:19:7 ------------------------------------------------------------------------
+19 |  case 0xa => // error
+   |       ^
+   |       Type BigDecimal does not have a FromDigits instance for whole numbers with radix other than 10.
+-- Error: tests/neg/generic-num-lits.scala:23:7 ------------------------------------------------------------------------
+23 |  case 1.2 => // error
+   |       ^
+   |       Type BigInt does not have a FromDigits instance for numbers with a decimal point.
+-- Error: tests/neg/generic-num-lits.scala:27:7 ------------------------------------------------------------------------
+27 |  case 5e10 => // error
+   |       ^
+   |       Type BigInt does not have a FromDigits instance for floating-point numbers.

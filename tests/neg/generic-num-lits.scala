@@ -14,3 +14,15 @@ val f = (??? : Any) match
 val g = (??? : Any) match
   case 2e500: BigInt => // error
     ()
+
+val h = (1.3: BigDecimal) match
+  case 0xa => // error
+    ()
+
+val i = (1: BigInt) match
+  case 1.2 => // error
+    ()
+
+val j = (1: BigInt) match
+  case 5e10 => // error
+    ()

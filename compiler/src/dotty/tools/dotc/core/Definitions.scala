@@ -689,7 +689,6 @@ class Definitions {
     @tu lazy val Stats_doRecord: Symbol = StatsModule.requiredMethod("doRecord")
 
   @tu lazy val FromDigitsClass: ClassSymbol           = ctx.requiredClass("scala.util.FromDigits")
-  @tu lazy val FromDigits_WithRadixClass: ClassSymbol  = ctx.requiredClass("scala.util.FromDigits.WithRadix")
   @tu lazy val FromDigitsModule: TermSymbol           = ctx.requiredModule("scala.util.FromDigits")
     @tu lazy val FromDigits_fromDigits: Symbol          = FromDigitsModule.requiredMethod(nme.fromDigits)
     @tu lazy val FromDigits_fromRadixDigits: Symbol     = FromDigitsModule.requiredMethod(nme.fromRadixDigits)

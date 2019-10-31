@@ -534,17 +534,14 @@ class Typer extends Namer
           case Decimal   => defn.FromDigits_fromDecimalDigits
           case Floating  => defn.FromDigits_fromFloatingDigits
         inferImplicit(defn.FromDigitsClass.typeRef.appliedTo(target), EmptyTree, tree.span) match {
-          case SearchSuccess(arg, _, _) =>
-            val summoned = untpd.Apply(untpd.TypedSplice(ref(summoner)), untpd.TypedSplice(arg) :: Nil).setGivenApply()
-            var fromDigits: untpd.Tree = untpd.Select(summoned, nme.fromDigits).withSpan(tree.span)
+          case _: SearchSuccess =>
+            val summoned = untpd.TypedSplice(ref(summoner).appliedToType(target))
+            val fromDigits = untpd.Select(summoned, nme.fromDigits).withSpan(tree.span)
             val firstArg = Literal(Constant(digits))
-            val otherArgs =
-              if arg.tpe.widen.classSymbol.isSubClass(defn.FromDigits_WithRadixClass) then
-                tree.kind match
-                case Whole(r) if r != 10 => Literal(Constant(r)) :: Nil
-                case _                   => Nil
-              else
-                Nil
+            val otherArgs = tree.kind match {
+              case Whole(r) if r != 10 => Literal(Constant(r)) :: Nil
+              case _ => Nil
+            }
             var app: untpd.Tree = untpd.Apply(fromDigits, firstArg :: otherArgs)
             if (ctx.mode.is(Mode.Pattern)) app = untpd.Block(Nil, app)
             return typed(app, pt)

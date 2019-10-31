@@ -4,6 +4,7 @@ import quoted._
 import quoted.matching._
 import internal.Chars.digit2int
 import annotation.internal.sharable
+import annotation.implicitNotFound
 
 /** A typeclass for types that admit numeric literals.
  */
@@ -27,6 +28,7 @@ object FromDigits {
   /** A subclass of `FromDigits` that also allows to convert whole number literals
    *  with a radix other than 10
    */
+  @implicitNotFound("Type ${T} does not have a FromDigits instance for whole numbers with radix other than 10.")
   trait WithRadix[T] extends FromDigits[T] {
     def fromDigits(digits: String): T = fromDigits(digits, 10)
 
@@ -39,36 +41,23 @@ object FromDigits {
   /** A subclass of `FromDigits` that also allows to convert number
    *  literals containing a decimal point ".".
    */
+  @implicitNotFound("Type ${T} does not have a FromDigits instance for numbers with a decimal point.")
   trait Decimal[T] extends FromDigits[T]
 
   /** A subclass of `FromDigits`that allows also to convert number
    *  literals containing a decimal point "." or an
    *  exponent `('e' | 'E')['+' | '-']digit digit*`.
    */
+  @implicitNotFound("Type ${T} does not have a FromDigits instance for floating-point numbers.")
   trait Floating[T] extends Decimal[T]
 
   inline def fromDigits[T](given x: FromDigits[T]): x.type = x
 
-  inline def fromRadixDigits[T](given x: FromDigits[T]): x.type =
-    ${summonDigitsImpl[x.type, FromDigits.WithRadix[T], T]('x, "whole numbers with radix other than 10")}
+  inline def fromRadixDigits[T](given x: FromDigits.WithRadix[T]): x.type = x
 
-  inline def fromDecimalDigits[T](given x: FromDigits[T]): x.type =
-    ${summonDigitsImpl[x.type, FromDigits.Decimal[T], T]('x, "numbers with a decimal point")}
+  inline def fromDecimalDigits[T](given x: FromDigits.Decimal[T]): x.type = x
 
-  inline def fromFloatingDigits[T](given x: FromDigits[T]): x.type =
-    ${summonDigitsImpl[x.type, FromDigits.Floating[T], T]('x, "floating-point numbers")}
-
-  private def summonDigitsImpl[Inst <: FromDigits[T], Expected <: FromDigits[T], T](x: Expr[Inst], descriptor: String)
-   (given qctx: QuoteContext, instance: Type[Inst], t: Type[T], expected: Type[Expected]): Expr[Inst] =
-    import qctx.tasty.{_, given}
-    if typeOf[Inst] <:< typeOf[Expected] then
-      x
-    else
-      val msg = s"""|Type ${t.show} does not have a FromDigits instance for $descriptor.
-      |    Found:    ${instance.show}(${x.show})
-      |    Expected: ${expected.show}""".stripMargin
-      qctx.error(msg, x)
-      Expr.nullExpr.cast[Inst]
+  inline def fromFloatingDigits[T](given x: FromDigits.Floating[T]): x.type = x
 
   /** The base type for exceptions that can be thrown from
    *  `fromDigits` conversions
