@@ -50,12 +50,12 @@ Classes that are not open can still be extended, but only if at least one of two
 
 When writing a class, there are three possible expectations of extensibility:
 
-- The class is intended to allow extensions. This means one should expect
+1. The class is intended to allow extensions. This means one should expect
 a carefully worked out and documented extension contract for the class.
 
-- Extensions of the class are forbidden, for instance to make correctness or security guarantees.
+2. Extensions of the class are forbidden, for instance to make correctness or security guarantees.
 
-- There is no firm decision either way. The class is not _a priori_ intended for extensions, but if others find it useful to extend on an _ad-hoc_ basis, let them go ahead. However, they are on their own in this case. There is no documented extension contract, and future versions of the class might break the extensions (by rearranging internal call patterns, for instance).
+3. There is no firm decision either way. The class is not _a priori_ intended for extensions, but if others find it useful to extend on an _ad-hoc_ basis, let them go ahead. However, they are on their own in this case. There is no documented extension contract, and future versions of the class might break the extensions (by rearranging internal call patterns, for instance).
 
 The three cases are clearly distinguished by using `open` for (1), `final` for (2) and no modifier for (3).
 
