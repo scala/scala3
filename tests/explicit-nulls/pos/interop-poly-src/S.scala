@@ -11,4 +11,10 @@ class Test {
   val jc: JavaCat[String]|Null = J.getJavaCat[String]()
   // ScalaCat is Java-defined, so we need the inner |Null.
   val sc: ScalaCat[String|Null]|Null = J.getScalaCat[String]()
+
+  import java.util.List
+
+  val las: List[Array[String|Null]]|Null = J.getListOfStringArray()
+  val als: Array[List[String]|Null]|Null = J.getArrayOfStringList()
+  val css: List[Array[List[Array[String|Null]]|Null]]|Null = J.getComplexStrings()
 }
