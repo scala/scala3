@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.ExprType
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
+import dotty.tools.dotc.transform.Splicer.checkEscapedVariables
 import dotty.tools.dotc.transform.ReifyQuotes
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
@@ -67,8 +68,12 @@ private class QuoteCompiler extends Compiler {
           cls.enter(unitCtx.newDefaultConstructor(cls), EmptyScope)
           val meth = unitCtx.newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
 
-          val qctx = dotty.tools.dotc.quoted.QuoteContext()
-          val quoted = PickledQuotes.quotedExprToTree(exprUnit.exprBuilder.apply(qctx))(unitCtx.withOwner(meth))
+          val quoted = {
+            given Context = unitCtx.withOwner(meth)
+            val qctx = dotty.tools.dotc.quoted.QuoteContext()
+            val quoted = PickledQuotes.quotedExprToTree(exprUnit.exprBuilder.apply(qctx))
+            checkEscapedVariables(quoted, meth)
+          }
 
           getLiteral(quoted) match {
             case Some(value) =>

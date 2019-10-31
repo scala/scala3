@@ -1,5 +1,5 @@
 foo
-DefDef("main", Nil, List(List(ValDef("args", Inferred(), None))), Inferred(), None)
+ValDef("macro$1", Inferred(), None)
 
 bar
 DefDef("foo", Nil, Nil, Inferred(), None)
@@ -8,7 +8,7 @@ bar2
 DefDef("foo", Nil, Nil, Inferred(), None)
 
 foo2
-DefDef("main", Nil, List(List(ValDef("args", Inferred(), None))), Inferred(), None)
+ValDef("macro$1", Inferred(), None)
 
 baz
 ValDef("foo2", Inferred(), None)

@@ -37,14 +37,17 @@ object Splicer {
    *
    *  See: `Staging`
    */
-  def splice(tree: Tree, pos: SourcePosition, classLoader: ClassLoader)(implicit ctx: Context): Tree = tree match {
+  def splice(tree: Tree, pos: SourcePosition, classLoader: ClassLoader)(given ctx: Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
     case _ =>
       val interpreter = new Interpreter(pos, classLoader)
+      val macroOwner = ctx.newSymbol(ctx.owner, NameKinds.UniqueName.fresh(nme.MACROkw), Synthetic, defn.AnyType, coord = tree.span)
       try {
+        given Context = ctx.withOwner(macroOwner)
         // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
         val interpretedExpr = interpreter.interpret[scala.quoted.QuoteContext => scala.quoted.Expr[Any]](tree)
-        interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContext())))
+        val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContext())))
+        checkEscapedVariables(interpretedTree, macroOwner).changeOwner(macroOwner, ctx.owner)
       }
       catch {
         case ex: CompilationUnit.SuspendException =>
@@ -62,6 +65,50 @@ object Splicer {
           EmptyTree
       }
   }
+
+  /** Checks that no symbol that whas generated within the macro expansion has an out of scope reference */
+  def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(given ctx: Context): tree.type =
+    new TreeTraverser {
+      private[this] var locals = Set.empty[Symbol]
+      private def markDef(tree: Tree)(implicit ctx: Context): Unit = tree match {
+        case tree: DefTree =>
+          val sym = tree.symbol
+          if (!locals.contains(sym))
+            locals = locals + sym
+        case _ =>
+      }
+      def traverse(tree: Tree)(given ctx: Context): Unit =
+        def traverseOver(lastEntered: Set[Symbol]) =
+          try traverseChildren(tree)
+          finally locals = lastEntered
+        tree match
+          case tree: Ident if isEscapedVariable(tree.symbol) =>
+            val sym = tree.symbol
+            ctx.error(em"While expanding a macro, a reference to $sym was used outside the scope where it was defined", tree.sourcePos)
+          case Block(stats, _) =>
+            val last = locals
+            stats.foreach(markDef)
+            traverseOver(last)
+          case CaseDef(pat, guard, body) =>
+            val last = locals
+            // mark all bindings
+            new TreeTraverser {
+              def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+                markDef(tree)
+                traverseChildren(tree)
+              }
+            }.traverse(pat)
+            traverseOver(last)
+          case _ =>
+            markDef(tree)
+            traverseChildren(tree)
+      private def isEscapedVariable(sym: Symbol)(given ctx: Context): Boolean =
+        sym.exists && !sym.is(Package)
+        && sym.owner.ownersIterator.contains(expansionOwner) // symbol was generated within the macro expansion
+        && !locals.contains(sym) // symbol is not in current scope
+    }.traverse(tree)
+    tree
+
 
   /** Check that the Tree can be spliced. `${'{xyz}}` becomes `xyz`
     *  and for `$xyz` the tree of `xyz` is interpreted for which the

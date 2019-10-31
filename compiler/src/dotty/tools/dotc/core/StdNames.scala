@@ -500,7 +500,6 @@ object StdNames {
     val lang: N                 = "lang"
     val length: N               = "length"
     val lengthCompare: N        = "lengthCompare"
-    val `macro` : N             = "macro"
     val macroThis : N           = "_this"
     val macroContext : N        = "c"
     val main: N                 = "main"
