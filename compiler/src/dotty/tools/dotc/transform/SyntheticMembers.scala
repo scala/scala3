@@ -509,7 +509,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       if (clazz.is(Case)) makeSingletonMirror()
       else if (linked.isGenericProduct) makeProductMirror(linked)
       else if (linked.isGenericSum) makeSumMirror(linked)
-      else if linked.isEffectivelySealed then
+      else if (linked.is(Sealed))
         derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum}")
     }
     else if (impl.removeAttachment(ExtendsSingletonMirror).isDefined)

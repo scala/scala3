@@ -91,10 +91,8 @@ class SymUtils(val self: Symbol) extends AnyVal {
    *   - all of its children are generic products or singletons
    */
   def whyNotGenericSum(implicit ctx: Context): String =
-    if !self.isEffectivelySealed then
+    if (!self.is(Sealed))
       s"it is not a sealed ${self.kindString}"
-    else if self.is(Final) then
-      s"it is a final class"
     else {
       val children = self.children
       val companion = self.linkedClass

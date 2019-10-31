@@ -1077,7 +1077,7 @@ object SymDenotations {
     final def isEffectivelySealed(given Context): Boolean =
       isOneOf(FinalOrSealed) || isClass && !isOneOf(EffectivelyOpenFlags)
 
-      /** The class containing this denotation which has the given effective name. */
+    /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {
       val cls = enclosingClass
       if (cls.effectiveName == name || !cls.exists) cls else cls.owner.enclosingClassNamed(name)

@@ -550,7 +550,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def canDecompose(tp: Type): Boolean = {
     val dealiasedTp = tp.dealias
     val res =
-      (tp.classSymbol.isEffectivelySealed &&
+      (tp.classSymbol.is(Sealed) &&
         tp.classSymbol.isOneOf(AbstractOrTrait) &&
         !tp.classSymbol.hasAnonymousChild &&
         tp.classSymbol.children.nonEmpty ) ||
@@ -672,7 +672,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           if (mergeList) "_: _*" else "_: List"
         else if (scalaConsType.isRef(sym))
           if (mergeList) "_, _: _*"  else "List(_, _: _*)"
-        else if (tp.classSymbol.isEffectivelySealed && tp.classSymbol.hasAnonymousChild)
+        else if (tp.classSymbol.is(Sealed) && tp.classSymbol.hasAnonymousChild)
           "_: " + showType(tp) + " (anonymous)"
         else if (tp.classSymbol.is(CaseClass) && !hasCustomUnapply(tp.classSymbol))
         // use constructor syntax for case class

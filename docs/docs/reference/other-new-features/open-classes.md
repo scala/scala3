@@ -16,6 +16,7 @@ open class Writer[T] with
   /** Send all arguments using `send` */
   def sendAll(xs: T*) = xs.foreach(send)
 
+
 // File EncryptedWriter.scala
 package p
 
@@ -29,12 +30,11 @@ Classes that are not open can still be extended, but only if one of two alternat
 
  - The extending class is in the same source file as the extended class. In this case, the extension is usually an internal implementation matter.
 
- - The language feature `adhocExtensions` is enabled for the extending class. This is typically enabled by an import statement
+ - The language feature `adhocExtensions` is enabled for the extending class. This is typically enabled by an import statement in the source file of the extension:
    ```scala
    import scala.language.adhocExtensions
    ```
-   in the source file of the extension, but can alternatively be provided
-   by a command line option `-language:adhocExtensions`.
+   Alternatively, the feature can be enabled by the command line option `-language:adhocExtensions`.
    If the feature is not enabled, the compiler will issue a "feature" warning. For instance, if the `open` modifier on class `Writer` is dropped, compiling `EncryptedWriter` would produce a warning:
    ```
    -- Feature Warning: EncryptedWriter.scala:6:14 ----
@@ -69,9 +69,9 @@ to mock classes in tests, or to apply temporary patches that add features or fix
  - An `open` class cannot be `final` or `sealed`.
  - Traits or `abstract` classes are always `open`, so `open` is redundant for them.
 
-### Relatinship with `sealed`
+### Relationship with `sealed`
 
-A class that is neither `abstract` nor `open` is similar to a `sealed` class`: it can still be extended, but only in the same compilation unit. The difference is what happens if an extension of the class is attempted in a different compilation unit. For a `sealed` class, this is an error, whereas for a simple non-open class, this is still permitted provided the `adhocExtensions` feature is enabled, and gives a warning otherwise.
+A class that is neither `abstract` nor `open` is similar to a `sealed` class: it can still be extended, but only in the same compilation unit. The difference is what happens if an extension of the class is attempted in another compilation unit. For a `sealed` class, this is an error, whereas for a simple non-open class, this is still permitted provided the `adhocExtensions` feature is enabled, and it gives a warning otherwise.
 
 ### Migration
 
