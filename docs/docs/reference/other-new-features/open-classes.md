@@ -8,25 +8,26 @@ An `open` modifier on a class signals that the class is planned for extensions. 
 // File Writer.scala
 package p
 
-open class Writer[T] with
+open class Writer[T] {
 
   /** Sends to stdout, can be overridden */
   def send(x: T) = println(x)
 
   /** Send all arguments using `send` */
   def sendAll(xs: T*) = xs.foreach(send)
-
+}
 
 // File EncryptedWriter.scala
 package p
 
-class EncryptedWriter[T: Encryptable] extends Writer[T] with
+class EncryptedWriter[T: Encryptable] extends Writer[T] {
   override def send(x: T) = super.send(encrypt(x))
+}
 ```
 An open class typically comes with some documentation that describes
 the internal calling patterns between methods of the class as well as hooks that can be overridden. We call this the _extension contract_ of the class. It is different from the _external contract_ between a class and its users.
 
-Classes that are not open can still be extended, but only if one of two alternative conditions hold:
+Classes that are not open can still be extended, but only if at least one of two alternative conditions is met:
 
  - The extending class is in the same source file as the extended class. In this case, the extension is usually an internal implementation matter.
 
