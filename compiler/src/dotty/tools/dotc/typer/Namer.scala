@@ -1170,7 +1170,7 @@ class Namer { typer: Typer =>
                 ctx.error(UnableToExtendSealedClass(pclazz), cls.sourcePos)
               else if ctx.settings.strict.value then
                 checkFeature(nme.adhocExtensions,
-                  i"Unless $pclazz with flags ${pclazz.flagsString} is declared 'open', its extension in a separate file",
+                  i"Unless $pclazz is declared 'open', its extension in a separate file",
                   cls.topLevelClass,
                   parent.sourcePos)
             pt
