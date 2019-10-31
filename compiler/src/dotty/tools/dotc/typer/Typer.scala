@@ -2103,17 +2103,19 @@ class Typer extends Namer
         }
 
         val ifpt = defn.asImplicitFunctionType(pt)
-        val result = if (ifpt.exists &&
-            xtree.isTerm &&
-            !untpd.isContextualClosure(xtree) &&
-            !ctx.mode.is(Mode.Pattern) &&
-            !ctx.isAfterTyper &&
-            !ctx.isInlineContext)
-          makeContextualFunction(xtree, ifpt)
-        else xtree match {
-          case xtree: untpd.NameTree => typedNamed(xtree, pt)
-          case xtree => typedUnnamed(xtree)
-        }
+        val result =
+          if ifpt.exists
+             && xtree.isTerm
+             && !untpd.isContextualClosure(xtree)
+             && !ctx.mode.is(Mode.Pattern)
+             && !ctx.isAfterTyper
+             && !ctx.isInlineContext
+          then
+            makeContextualFunction(xtree, ifpt)
+          else xtree match
+            case xtree: untpd.NameTree => typedNamed(xtree, pt)
+            case xtree => typedUnnamed(xtree)
+
         simplify(result, pt, locked)
     }
   }

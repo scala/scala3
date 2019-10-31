@@ -179,12 +179,14 @@ class SymUtils(val self: Symbol) extends AnyVal {
    *  it cannot be seen from parent class `cls`?
    */
   def isInaccessibleChildOf(cls: Symbol)(given Context): Boolean =
-    def isAccessible(sym: Symbol): Boolean =
-      sym == cls
-      || sym == cls.owner
-      || sym.is(Package)
-      || sym.isType && isAccessible(sym.owner)
-    !isAccessible(self.owner)
+    def isAccessible(sym: Symbol, cls: Symbol): Boolean =
+      if cls.isType && !cls.is(Package) then
+        isAccessible(sym, cls.owner)
+      else
+        sym == cls
+        || sym.is(Package)
+        || sym.isType && isAccessible(sym.owner, cls)
+    !isAccessible(self.owner, cls)
 
   /** If this is a sealed class, its known children in the order of textual occurrence */
   def children(implicit ctx: Context): List[Symbol] = {
