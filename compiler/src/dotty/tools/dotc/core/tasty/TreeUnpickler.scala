@@ -106,7 +106,7 @@ class TreeUnpickler(reader: TastyReader,
     }
   }
 
-  class Completer(reader: TastyReader)(implicit @constructorOnly ctx: Context) extends LazyType {
+  class Completer(reader: TastyReader)(implicit @constructorOnly ctx: Context) extends LazyType with SymbolLoaders.LoadingCompleter {
     import reader._
     val owner = ctx.owner
     val source = ctx.source
