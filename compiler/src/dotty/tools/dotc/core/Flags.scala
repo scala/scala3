@@ -54,6 +54,12 @@ object Flags {
     def (x: FlagSet) ^ (y: FlagSet) =
       FlagSet((x.bits | y.bits) & KINDFLAGS | (x.bits ^ y.bits) & ~KINDFLAGS)
 
+    def (x: FlagSet) partitionByIntersection(y: FlagSet): (FlagSet, FlagSet) =
+      val intersection = x & y
+      val complement = x &~ y
+      (intersection, complement)
+
+
     /** Does the given flag set contain the given flag?
      *  This means that both the kind flags and the carrier bits have non-empty intersection.
      */
