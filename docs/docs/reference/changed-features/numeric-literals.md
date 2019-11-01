@@ -45,7 +45,7 @@ val y: BigInt = 0x123_abc_789_def_345_678_901
 val z: BigDecimal = 111222333444.55
 ```
 are legal by rule (2), since both `BigInt` and `BigDecimal` have `FromDigits` instances
-(which implement the `FromDigits` subclasses `FromDigits.WithRadix` and `FromDigits.Decimal`, respectively).
+(which implement the `FromDigits` subclasses `FromDigits.WithRadix` and `FromDigits.Floating`, respectively).
 On the other hand,
 ```scala
 val x = -10_000_000_000
@@ -112,6 +112,36 @@ class NumberTooSmall (msg: String = "number too small")         extends FromDigi
 class MalformedNumber(msg: String = "malformed number literal") extends FromDigitsException(msg)
 ```
 
+### Compiler Expansion
+
+The companion object `FromDigits` also defines four methods that may be used to provide a given instance of one of the subclasses of `FromDigits`:
+```scala
+inline def fromDigits[T](given x: FromDigits[T]): x.type = x
+
+inline def fromRadixDigits[T](given x: FromDigits.WithRadix[T]): x.type = x
+
+inline def fromDecimalDigits[T](given x: FromDigits.Decimal[T]): x.type = x
+
+inline def fromFloatingDigits[T](given x: FromDigits.Floating[T]): x.type = x
+```
+
+If a numeric literal has a known expected type `T` that is not one of the primitive numeric types, then the compiler will search for a given instance of `FromDigits[T]`. If one exists, then the compiler expands the literal to a call on the `fromDigits` method on the result obtained from calling one of the above four methods.
+
+As an example, the literal below has a nonsensical expected type `BigDecimal`, which can not be constructed with hex digits:
+```scala
+0xCAFEBABE: BigDecimal
+```
+Upon the compiler finding a given instance for `FromDigits[BigDecimal]`, the hex literal above expands to the following:
+```scala
+FromDigits.fromRadixDigits[BigDecimal].fromDigits("0CAFEBABE", 16)
+```
+The given clause of `fromRadixDigits` asserts that the prior found `FromDigits` instance is a subtype of `FromDigits.WithRadix[BigDecimal]`, or else following error is issued:
+```scala
+1 |0xCAFEBABE: BigDecimal
+  |^
+  |Type BigDecimal does not have a FromDigits instance for whole numbers with radix other than 10.
+```
+
 ### Example
 
 As a fully worked out example, here is an implementation of a new numeric class, `BigFloat`, that accepts numeric literals. `BigFloat` is defined in terms of a `BigInt` mantissa and an `Int` exponent:
@@ -174,7 +204,7 @@ With the setup of the previous section, a literal like
 ```
 would be expanded by the compiler to
 ```scala
-BigFloat.FromDigits.fromDigits("1e100000000000")
+FromDigits.fromFloatingDigits[BigFloat].fromDigits("1e100000000000")
 ```
 Evaluating this expression throws a `NumberTooLarge` exception at run time. We would like it to
 produce a compile-time error instead. We can achieve this by tweaking the `BigFloat` class
