@@ -300,7 +300,7 @@ object Checking {
     catch {
       case ex: CyclicReference =>
         if (reportErrors)
-          errorType(i"illegal cyclic reference: ${checker.where} ${checker.lastChecked} of $sym refers back to the type itself", sym.sourcePos)
+          errorType(IllegalCyclicTypeReference(sym, checker.where, checker.lastChecked), sym.sourcePos)
         else info
     }
   }
