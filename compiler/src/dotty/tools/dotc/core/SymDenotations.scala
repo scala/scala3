@@ -193,34 +193,47 @@ object SymDenotations {
       if (isCurrent(fs)) myFlags else flags
 
     /** Has this denotation one of given flag set? */
-    final def is(flag: Flag)(implicit ctx: Context): Boolean =
-      (if (isCurrent(flag)) myFlags else flags).is(flag)
-
-    /** Has this denotation one of the flags in `fs` set? */
-    final def isOneOf(fs: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs)) myFlags else flags).isOneOf(fs)
+    final inline def is(flag: Flag)(implicit ctx: Context): Boolean =
+      is(flag, EmptyFlags)
 
     /** Has this denotation the given flag set, whereas none of the flags
      *  in `butNot` are set?
      */
-    final def is(flag: Flag, butNot: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(flag) && isCurrent(butNot)) myFlags else flags).is(flag, butNot)
+    final inline def is(flag: Flag, butNot: FlagSet)(implicit ctx: Context): Boolean =
+      isAllOf(flag, butNot)
+
+    /** Has this denotation one of the flags in `fs` set? */
+    final inline def isOneOf(fs: FlagSet)(implicit ctx: Context): Boolean =
+      isOneOf(fs, EmptyFlags)
 
     /** Has this denotation one of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
     final def isOneOf(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).isOneOf(fs, butNot)
+      val immutable = immutableFlags
+      val (fsImmut, fsMut) = fs.partitionByIntersection(immutable)
+      val (butNotImmut, butNotMut) = butNot.partitionByIntersection(immutable)
+
+      (butNotImmut & myFlags).isEmpty &&
+      (!(fsImmut & myFlags).isEmpty || (!fsMut.isEmpty && !(fsMut & flags).isEmpty)) &&
+      (butNotMut.isEmpty || (butNotMut & flags).isEmpty)
 
     /** Has this denotation all of the flags in `fs` set? */
-    final def isAllOf(fs: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs)) myFlags else flags).isAllOf(fs)
+    final inline def isAllOf(fs: FlagSet)(implicit ctx: Context): Boolean =
+      isAllOf(fs, EmptyFlags)
 
     /** Has this denotation all of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
     final def isAllOf(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).isAllOf(fs, butNot)
+      val immutable = immutableFlags
+      val (fsImmut, fsMut) = fs.partitionByIntersection(immutable)
+      val (butNotImmut, butNotMut) = butNot.partitionByIntersection(immutable)
+
+      fsImmut <= myFlags &&
+      (butNotImmut & myFlags).isEmpty &&
+      (fsMut.isEmpty || fsMut <= flags) &&
+      (butNotMut.isEmpty || (butNotMut & flags).isEmpty)
 
     /** The type info, or, if symbol is not yet completed, the completer */
     final def infoOrCompleter: Type = myInfo
