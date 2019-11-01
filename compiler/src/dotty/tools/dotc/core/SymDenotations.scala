@@ -215,13 +215,13 @@ object SymDenotations {
      *  in `butNot` are set?
      */
     final def is(flag: Flag, butNot: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(flag) && isCurrent(butNot)) myFlags else flags).is(flag, butNot)
+      is(flag) && !isOneOf(butNot)
 
     /** Has this denotation one of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
     final def isOneOf(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).isOneOf(fs, butNot)
+      isOneOf(fs) && !isOneOf(butNot)
 
     /** Has this denotation all of the flags in `fs` set? */
     final def isAllOf(fs: FlagSet)(implicit ctx: Context): Boolean =
@@ -231,7 +231,7 @@ object SymDenotations {
      *  in `butNot` are set?
      */
     final def isAllOf(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean =
-      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).isAllOf(fs, butNot)
+      isAllOf(fs) && !isOneOf(butNot)
 
     /** The type info, or, if symbol is not yet completed, the completer */
     final def infoOrCompleter: Type = myInfo
