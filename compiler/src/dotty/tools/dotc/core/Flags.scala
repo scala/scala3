@@ -449,7 +449,7 @@ object Flags {
    *  is completed)
    */
   val AfterLoadFlags: FlagSet = commonFlags(
-    FromStartFlags, AccessFlags, Final, AccessorOrSealed, LazyOrTrait, SelfName, JavaDefined,
+    FromStartFlags, AccessFlags, AccessorOrSealed, LazyOrTrait, SelfName, JavaDefined,
     SuperAccessorOrScala2x, Synthetic)
 
 
