@@ -108,13 +108,13 @@ trait Reporting { this: Context =>
       else {
         reporter.reportNewFeatureUseSite(featureUseSite)
         s"""
-           |This can be achieved by adding the import clause 'import $fqname'
-           |or by setting the compiler option -language:$feature.
            |See the Scala docs for value $fqname for a discussion
            |why the feature $req be explicitly enabled.""".stripMargin
       }
 
-    val msg = s"$featureDescription $req be enabled\nby making the implicit value $fqname visible.$explain"
+    val msg = s"""$featureDescription $req be enabled
+                 |by adding the import clause 'import $fqname'
+                 |or by setting the compiler option -language:$feature.$explain""".stripMargin
     if (required) error(msg, pos)
     else reportWarning(new FeatureWarning(msg, pos))
   }

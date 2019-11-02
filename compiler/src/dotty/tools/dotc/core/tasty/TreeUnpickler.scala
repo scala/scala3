@@ -631,6 +631,7 @@ class TreeUnpickler(reader: TastyReader,
           case GIVEN => addFlag(Given)
           case PARAMsetter => addFlag(ParamAccessor)
           case EXPORTED => addFlag(Exported)
+          case OPEN => addFlag(Open)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readWithin(ctx)
@@ -890,9 +891,9 @@ class TreeUnpickler(reader: TastyReader,
           untpd.ValDef(readName(), readTpt(), EmptyTree).withType(NoType)
         }
         else EmptyValDef
+      cls.setNoInitsFlags(parentsKind(parents), bodyFlags)
       cls.info = ClassInfo(cls.owner.thisType, cls, parentTypes, cls.unforcedDecls,
         if (self.isEmpty) NoType else self.tpt.tpe)
-      cls.setNoInitsFlags(parentsKind(parents), bodyFlags)
       val constr = readIndexedDef().asInstanceOf[DefDef]
       val mappedParents = parents.map(_.changeOwner(localDummy, constr.symbol))
 

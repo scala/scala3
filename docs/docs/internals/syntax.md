@@ -103,7 +103,7 @@ yield
 ### Soft keywords
 
 ```
-as        derives   inline    opaque
+as        derives   inline    opaque    open
 ~         *         |         &         +         -
 ```
 
@@ -325,6 +325,7 @@ Modifier          ::=  LocalModifier
 LocalModifier     ::=  ‘abstract’
                     |  ‘final’
                     |  ‘sealed’
+                    |  ‘open’
                     |  ‘implicit’
                     |  ‘lazy’
                     |  ‘inline’
