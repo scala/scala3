@@ -1068,7 +1068,7 @@ object Scanners {
         }
       else if (ch == '$') {
         nextRawChar()
-        if (ch == '$') {
+        if (ch == '$' || ch == '"') {
           putChar(ch)
           nextRawChar()
           getStringPart(multiLine)
@@ -1089,7 +1089,7 @@ object Scanners {
           finishNamed(target = next)
         }
         else
-          error("invalid string interpolation: `$$', `$'ident or `$'BlockExpr expected")
+          error("invalid string interpolation: `$$', `$\"`, `$'ident or `$'BlockExpr expected")
       }
       else {
         val isUnclosedLiteral = !isUnicodeEscape && (ch == SU || (!multiLine && (ch == CR || ch == LF)))
