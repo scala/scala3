@@ -125,19 +125,26 @@ inline def fromDecimalDigits[T](given x: FromDigits.Decimal[T]): x.type = x
 inline def fromFloatingDigits[T](given x: FromDigits.Floating[T]): x.type = x
 ```
 
-If a numeric literal has a known expected type `T` that is not one of the primitive numeric types, then the compiler will search for a given instance of `FromDigits[T]`. If one exists, then the compiler expands the literal to a call on the `fromDigits` method on the result obtained from calling one of the above four methods.
+If a numeric literal has a concrete expected type `T` that is not one of the primitive numeric types, the compiler will search for a given instance of `FromDigits[T]`. If one exists, then the compiler will replace the numeric literal with an application of its digits to the `fromDigits` method on the result of the application of `T` to one of the above four methods, resulting in the following:
+
+- `fromDigits[T].fromDigits(digits)` if the literal forms a whole number with base-10.
+- `fromRadixDigits[T].fromDigits(digits, 16)` if the literal forms a whole number with base-16.
+- `fromDecimalDigits[T].fromDigits(digits)` if the literal is base-10 with a single decimal point.
+- `fromFloatingDigits[T].fromDigits(digits)` if the literal is base-10 with an exponent and optionally a single decimal point.
+
+<!-- on the `fromDigits` method on the result obtained from calling one of the  -->
 
 As an example, the literal below has a nonsensical expected type `BigDecimal`, which can not be constructed with hex digits:
 ```scala
-0xCAFEBABE: BigDecimal
+0xABC_123: BigDecimal
 ```
-Upon the compiler finding a given instance for `FromDigits[BigDecimal]`, the hex literal above expands to the following:
+Upon the compiler finding a given instance for `FromDigits[BigDecimal]`, the hex literal above expands to the following, after removing numeric separators:
 ```scala
-FromDigits.fromRadixDigits[BigDecimal].fromDigits("0CAFEBABE", 16)
+FromDigits.fromRadixDigits[BigDecimal].fromDigits("0ABC123", 16)
 ```
 The given clause of `fromRadixDigits` asserts that the prior found `FromDigits` instance is a subtype of `FromDigits.WithRadix[BigDecimal]`, or else following error is issued:
 ```scala
-1 |0xCAFEBABE: BigDecimal
+1 |0xABC_123: BigDecimal
   |^
   |Type BigDecimal does not have a FromDigits instance for whole numbers with radix other than 10.
 ```
