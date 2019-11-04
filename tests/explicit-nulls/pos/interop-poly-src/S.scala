@@ -9,7 +9,7 @@ class Test {
   // because JavaCat, being a Java class, _already_ nullifies its
   // fields.
   val jc: JavaCat[String]|Null = J.getJavaCat[String]()
-  // ScalaCat is Java-defined, so we need the inner |Null.
+  // ScalaCat is Scala-defined, so we need the inner |Null.
   val sc: ScalaCat[String|Null]|Null = J.getScalaCat[String]()
 
   import java.util.List
