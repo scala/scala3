@@ -6,6 +6,7 @@ import interfaces.CompilerCallback
 import Decorators._
 import Periods._
 import Names._
+import StdNames.str
 import Phases._
 import Types._
 import Symbols._
@@ -235,7 +236,10 @@ object Contexts {
     /** Sourcefile corresponding to given abstract file, memoized */
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
       util.Stats.record("getSource")
-      base.sources.getOrElseUpdate(file, new SourceFile(file, codec))
+      def newSource =
+        if (file.exists || file.toString.startsWith(str.REPL_SESSION_LINE)) new SourceFile(file, codec)
+        else NoSource
+      base.sources.getOrElseUpdate(file, newSource)
     }
 
     /** Sourcefile with given path name, memoized */
