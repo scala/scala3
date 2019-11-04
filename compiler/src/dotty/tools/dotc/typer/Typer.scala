@@ -962,7 +962,7 @@ class Typer extends Namer
       *  @post: If result exists, `paramIndex` is defined for the name of
       *         every parameter in `params`.
       */
-    def calleeType: Type = fnBody match {
+    def calleeType(body: untpd.Tree): Type = body match {
       case app @ Apply(expr, args) =>
         paramIndex = {
           for (param <- params; idx <- paramIndices(param, args))
@@ -980,6 +980,8 @@ class Typer extends Namer
               expr1.tpe
           }
         else NoType
+      case Block(Nil, expr) =>
+        calleeType(expr)
       case _ =>
         NoType
     }
@@ -994,7 +996,7 @@ class Typer extends Namer
       */
     def inferredParamType(param: untpd.ValDef, formal: Type): Type = {
       if (isFullyDefined(formal, ForceDegree.noBottom)) return formal
-      calleeType.widen match {
+      calleeType(fnBody).widen match {
         case mtpe: MethodType =>
           val pos = paramIndex(param.name)
           if (pos < mtpe.paramInfos.length) {
@@ -2899,6 +2901,15 @@ class Typer extends Namer
       if (captured `ne` wtp)
         return readapt(tree.cast(captured))
 
+      // If prefix type is an uninstantiated type variable with a non-bottom
+      // lower bound, instantiate it.
+      wtp match
+        case tvar: TypeVar
+        if pt.isInstanceOf[ProtoType] && !tvar.isInstantiated && tvar.hasLowerBound =>
+          tvar.instantiate(fromBelow = true)
+          return readapt(tree)
+        case _ =>
+
       // drop type if prototype is Unit
       if (pt isRef defn.UnitClass) {
         // local adaptation makes sure every adapted tree conforms to its pt
@@ -2925,15 +2936,9 @@ class Typer extends Namer
         case _ =>
       }
 
-      // (1) Is prefix type is an uninstantiated type variable, try to instantiate and continue
-      // (2) try an extension method in scope
+      // Try an extension method in scope
       pt match {
         case SelectionProto(name, mbrType, _, _) =>
-          wtp match
-            case tvar: TypeVar if !tvar.isInstantiated && tvar.hasLowerBound =>
-              tvar.instantiate(fromBelow = true)
-              return readapt(tree)
-            case _ =>
           def tryExtension(implicit ctx: Context): Tree =
             try
               findRef(name, WildcardType, ExtensionMethod, tree.posd) match {
