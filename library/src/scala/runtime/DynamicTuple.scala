@@ -200,7 +200,7 @@ object DynamicTuple {
     arr
   }
 
-  def dynamicCons[H, This <: Tuple](x: H, self: Tuple): H *: This = {
+  def dynamicCons[H, This <: Tuple](x: H, self: This): H *: This = {
     type Result = H *: This
     val res = (self: Any) match {
       case () =>
@@ -251,7 +251,7 @@ object DynamicTuple {
         val arr = new Array[Object](self.size + 1)
         to$Array(self.asInstanceOf[Product].productIterator, self.size, arr, 1)
         arr(0) = x.asInstanceOf[Object]
-        dynamicFromIArray(arr.asInstanceOf[IArray[Object]])
+        dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]])
     }
     res.asInstanceOf[Result]
   }
@@ -269,7 +269,7 @@ object DynamicTuple {
     val arr = new Array[Object](self.size + that.size)
     to$Array(self.asInstanceOf[Product].productIterator, self.size, arr, 0)
     to$Array(that.asInstanceOf[Product].productIterator, that.size, arr, self.size)
-    dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+    dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
   }
 
   def dynamicSize[This <: Tuple](self: This): Size[This] = (self: Any) match {
@@ -329,7 +329,7 @@ object DynamicTuple {
         val it = self.asInstanceOf[Product].productIterator
         it.next()
         to$Array(it, self.size - 1, arr, 0)
-        dynamicFromIArray(arr.asInstanceOf[IArray[Object]])
+        dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]])
     }
     res.asInstanceOf[Result]
   }
