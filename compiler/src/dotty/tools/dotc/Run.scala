@@ -177,7 +177,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     val runCtx = ctx.fresh
     runCtx.setProfiler(Profiler())
     ctx.phases.foreach(_.initContext(runCtx))
-    runPhases(runCtx)
+    try runPhases(runCtx)
+    catch
+      case ex: TypeError => ctx.error(ex.toMessage)
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()
     while (finalizeActions.nonEmpty) {
       val action = finalizeActions.remove(0)
