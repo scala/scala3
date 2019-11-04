@@ -9,6 +9,7 @@ import NameKinds.DepParamName
 import Trees._
 import Constants._
 import util.{Stats, SimpleIdentityMap}
+import transform.TypeUtils.given
 import Decorators._
 import Uniques._
 import config.Printers.typr
@@ -125,31 +126,8 @@ object ProtoTypes {
   abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
 
-    /** Is the set of members of this type unknown? This is the case if:
-     *  1. The type has Nothing or Wildcard as a prefix or underlying type,
-     *  2. The type has an uninstantiated TypeVar with a bottom type as lower bound
-     *     as a prefix or underlying type, or as an upper bound of a prefix or underlying type.
-     */
-    private def hasUnknownMembers(tp: Type)(implicit ctx: Context): Boolean = tp match {
-      case tp: TypeVar => !tp.isInstantiated && !tp.hasLowerBound
-      case tp: WildcardType => true
-      case NoType => true
-      case tp: TypeRef =>
-        val sym = tp.symbol
-        sym == defn.NothingClass ||
-        !sym.isStatic && {
-          hasUnknownMembers(tp.prefix) || {
-            val bound = tp.info.hiBound
-            bound.isProvisional && hasUnknownMembers(bound)
-          }
-        }
-      case tp: AppliedType => hasUnknownMembers(tp.tycon) || hasUnknownMembers(tp.superType)
-      case tp: TypeProxy => hasUnknownMembers(tp.superType)
-      case _ => false
-    }
-
     override def isMatchedBy(tp1: Type, keepConstraint: Boolean)(implicit ctx: Context): Boolean =
-      name == nme.WILDCARD || hasUnknownMembers(tp1) ||
+      name == nme.WILDCARD || tp1.hasUnknownMembers ||
       {
         val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
         def qualifies(m: SingleDenotation) =

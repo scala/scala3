@@ -69,5 +69,30 @@ object TypeUtils {
       case self: TypeProxy =>
         self.underlying.companionRef
     }
+
+    /** Is the set of members of this type unknown? This is the case if:
+     *  1. The type has Nothing or Wildcard as a prefix or underlying type,
+     *  2. The type has an uninstantiated TypeVar with a bottom type as lower bound
+     *     as a prefix or underlying type, or as an upper bound of a prefix or underlying type.
+     */
+    def hasUnknownMembers(given Context): Boolean = self match
+      case self: TypeVar => !self.isInstantiated && !self.hasLowerBound
+      case self: WildcardType => true
+      case NoType => true
+      case self: TypeRef =>
+        val sym = self.symbol
+        sym == defn.NothingClass
+        || !sym.isStatic
+           && {
+            self.prefix.hasUnknownMembers
+            || {
+              val bound = self.info.hiBound
+              bound.isProvisional && bound.hasUnknownMembers
+            }
+          }
+      case self: AppliedType =>
+        self.tycon.hasUnknownMembers || self.superType.hasUnknownMembers
+      case self: TypeProxy => self.superType.hasUnknownMembers
+      case _ => false
   }
 }
