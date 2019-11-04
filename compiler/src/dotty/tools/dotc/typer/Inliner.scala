@@ -197,16 +197,14 @@ object Inliner {
     /** Expand call to scala.compiletime.testing.typeChecks */
     def typeChecks(tree: Tree)(implicit ctx: Context): Tree = {
       assert(tree.symbol == defn.CompiletimeTesting_typeChecks)
-      def getCodeArgValue(t: Tree): Option[String] = t match {
-        case Literal(Constant(code: String)) => Some(code)
-        case Typed(t2, _) => getCodeArgValue(t2)
-        case Inlined(_, Nil, t2) => getCodeArgValue(t2)
-        case Block(Nil, t2) => getCodeArgValue(t2)
-        case _ => None
+      def stripTyped(t: Tree): Tree = t match {
+        case Typed(t2, _) => stripTyped(t2)
+        case _ => t
       }
+
       val Apply(_, codeArg :: Nil) = tree
-      getCodeArgValue(codeArg.underlyingArgument) match {
-        case Some(code) =>
+      ConstFold(stripTyped(codeArg.underlyingArgument)).tpe.widenTermRefExpr match {
+        case ConstantType(Constant(code: String)) =>
           val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer)
           val tree2 = new Parser(SourceFile.virtual("tasty-reflect", code))(ctx2).block()
           val res =
@@ -216,7 +214,8 @@ object Inliner {
               !ctx2.reporter.hasErrors
             }
           Literal(Constant(res))
-        case _ =>
+        case t =>
+          assert(ctx.reporter.hasErrors) // at least: argument to inline parameter must be a known value
           EmptyTree
       }
     }
