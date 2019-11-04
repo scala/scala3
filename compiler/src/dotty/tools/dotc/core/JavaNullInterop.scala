@@ -114,13 +114,6 @@ object JavaNullInterop {
         case _ => true
       })
 
-    /** Should we nullify the type arguments to the given generic `tp`?
-     *  We only nullify the inside of Scala-defined generics.
-     *  This is because Java classes are _all_ nullified, so both `java.util.List[String]` and
-     *  `java.util.List[String|Null]` contain nullable elements.
-     */
-    def needsNullArgs(tp: AppliedType): Boolean = !tp.classSymbol.is(JavaDefined)
-
     override def apply(tp: Type): Type = {
       // Fast version of Type::toJavaNullableUnion that doesn't check whether the type
       // is already a union.
@@ -128,13 +121,16 @@ object JavaNullInterop {
 
       tp match {
         case tp: TypeRef if needsNull(tp) => toJavaNullableUnion(tp)
-        case appTp @ AppliedType(tycons, targs) =>
+        case appTp @ AppliedType(tycon, targs) =>
           val oldOutermostNullable = outermostLevelAlreadyNullable
-          outermostLevelAlreadyNullable = false
-          val targs2 = if (needsNullArgs(appTp)) targs map this else targs
+          // We don't make the outmost levels of type arguements nullable if tycon is Java-defined.
+          // This is because Java classes are _all_ nullified, so both `java.util.List[String]` and
+          // `java.util.List[String|Null]` contain nullable elements.
+          outermostLevelAlreadyNullable = tp.classSymbol.is(JavaDefined)
+          val targs2 = targs map this
           outermostLevelAlreadyNullable = oldOutermostNullable
-          val appTp2 = derivedAppliedType(appTp, tycons, targs2)
-          if (needsNull(tycons)) toJavaNullableUnion(appTp2) else appTp2
+          val appTp2 = derivedAppliedType(appTp, tycon, targs2)
+          if (needsNull(tycon)) toJavaNullableUnion(appTp2) else appTp2
         case ptp: PolyType =>
           derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
         case mtp: MethodType =>
