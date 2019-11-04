@@ -1790,13 +1790,10 @@ object messages {
     extends Message(ClassAndCompanionNameClashID) {
     val kind: String = "Naming"
     val msg: String = em"Name clash: both ${cls.owner} and its companion object defines ${cls.name.stripModuleClassSuffix}"
-    val explanation: String = {
-      val kind = if (cls.owner.is(Flags.Trait)) "trait" else "class"
-
-      em"""|A $kind and its companion object cannot both define a ${hl("class")}, ${hl("trait")} or ${hl("object")} with the same name:
+    val explanation: String =
+      em"""|A ${cls.kindString} and its companion object cannot both define a ${hl("class")}, ${hl("trait")} or ${hl("object")} with the same name:
            |  - ${cls.owner} defines ${cls}
            |  - ${other.owner} defines ${other}"""
-      }
   }
 
   case class TailrecNotApplicable(symbol: Symbol)(implicit ctx: Context)
@@ -2391,5 +2388,12 @@ object messages {
       |'${hl(name.show)}' is not misspelled and has been imported into the
       |current scope.
       """.stripMargin
+    }
+
+    case class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(implicit val ctx: Context)
+      extends Message(IllegalCyclicTypeReferenceID) {
+      val kind: String = "Type"
+      val msg: String = i"illegal cyclic type reference: ${where} ${hl(lastChecked.show)} of $sym refers back to the type itself"
+      val explanation: String = ""
     }
 }

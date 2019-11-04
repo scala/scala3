@@ -1,120 +1,120 @@
 Inlined(None, Nil, Literal(Constant(true)))
-Type.ConstantType(Constant(true))
+ConstantType(Constant(true))
 
 Inlined(None, Nil, Literal(Constant(1)))
-Type.ConstantType(Constant(1))
+ConstantType(Constant(1))
 
 Inlined(None, Nil, Literal(Constant(2L)))
-Type.ConstantType(Constant(2L))
+ConstantType(Constant(2L))
 
 Inlined(None, Nil, Literal(Constant(2.1f)))
-Type.ConstantType(Constant(2.1f))
+ConstantType(Constant(2.1f))
 
 Inlined(None, Nil, Literal(Constant(2.2d)))
-Type.ConstantType(Constant(2.2d))
+ConstantType(Constant(2.2d))
 
 Inlined(None, Nil, Literal(Constant("abc")))
-Type.ConstantType(Constant("abc"))
+ConstantType(Constant("abc"))
 
 Inlined(None, Nil, Apply(Ident("println"), List(Literal(Constant("abc")))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Typed(Literal(Constant(8)), TypeIdent("Int")))
-Type.TypeRef(Type.TermRef(Type.ThisType(Type.TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
 
 Inlined(None, Nil, Typed(Literal(Constant(8: Byte)), TypeIdent("Byte")))
-Type.TypeRef(Type.TermRef(Type.ThisType(Type.TypeRef(NoPrefix(), "<root>")), "scala"), "Byte")
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Byte")
 
 Inlined(None, Nil, Typed(Literal(Constant(8: Short)), TypeIdent("Short")))
-Type.TypeRef(Type.TermRef(Type.ThisType(Type.TypeRef(NoPrefix(), "<root>")), "scala"), "Short")
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Short")
 
 Inlined(None, Nil, Literal(Constant('a')))
-Type.ConstantType(Constant('a'))
+ConstantType(Constant('a'))
 
 Inlined(None, Nil, Block(List(Literal(Constant(1)), Literal(Constant(2))), Literal(Constant(3))))
-Type.ConstantType(Constant(3))
+ConstantType(Constant(3))
 
 Inlined(None, Nil, If(Typed(Literal(Constant(true)), TypeIdent("Boolean")), Literal(Constant(1)), Literal(Constant(2))))
-Type.OrType(Type.ConstantType(Constant(1)), Type.ConstantType(Constant(2)))
+OrType(ConstantType(Constant(1)), ConstantType(Constant(2)))
 
 Inlined(None, Nil, Match(Literal(Constant("a")), List(CaseDef(Literal(Constant("a")), None, Block(Nil, Literal(Constant(())))))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Match(Literal(Constant("b")), List(CaseDef(Bind("n", Ident("_")), None, Block(Nil, Literal(Constant(())))))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Match(Literal(Constant("c")), List(CaseDef(Bind("n", Typed(Ident("_"), TypeIdent("String"))), None, Block(Nil, Literal(Constant(())))))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Match(Literal(Constant("e")), List(CaseDef(Ident("_"), None, Block(Nil, Literal(Constant(())))))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Match(Literal(Constant("f")), List(CaseDef(Typed(Ident("_"), TypeIdent("String")), None, Block(Nil, Literal(Constant(())))))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Match(Typed(Literal(Constant("g")), TypeIdent("Any")), List(CaseDef(Alternative(List(Typed(Ident("_"), TypeIdent("String")), Typed(Ident("_"), TypeIdent("Int")))), None, Block(Nil, Literal(Constant(())))))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Match(Literal(Constant("h")), List(CaseDef(Ident("_"), Some(Literal(Constant(false))), Block(Nil, Literal(Constant(())))))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Block(List(ValDef("a", Inferred(), Some(Literal(Constant("o"))))), Match(Literal(Constant("i")), List(CaseDef(Bind("a", Ident("_")), None, Block(Nil, Literal(Constant(()))))))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Match(Ident("Nil"), List(CaseDef(Unapply(TypeApply(Select(Ident("List"), "unapplySeq"), List(Inferred())), Nil, List(Bind("a", Ident("_")), Bind("b", Ident("_")), Bind("c", Ident("_")))), None, Block(Nil, Literal(Constant(())))))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Try(Literal(Constant(1)), List(CaseDef(Ident("_"), None, Block(Nil, Literal(Constant(()))))), None))
-Type.OrType(Type.ConstantType(Constant(1)), Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit"))
+OrType(ConstantType(Constant(1)), TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit"))
 
 Inlined(None, Nil, Try(Literal(Constant(2)), Nil, Some(Literal(Constant(())))))
-Type.ConstantType(Constant(2))
+ConstantType(Constant(2))
 
 Inlined(None, Nil, Try(Literal(Constant(3)), List(CaseDef(Ident("_"), None, Block(Nil, Literal(Constant(()))))), Some(Literal(Constant(())))))
-Type.OrType(Type.ConstantType(Constant(3)), Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit"))
+OrType(ConstantType(Constant(3)), TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit"))
 
 Inlined(None, Nil, Apply(Select(Literal(Constant("a")), "=="), List(Literal(Constant("b")))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Boolean")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Boolean")
 
 Inlined(None, Nil, Apply(Select(New(TypeIdent("Object")), "<init>"), Nil))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "lang")), "Object")
+TypeRef(ThisType(TypeRef(NoPrefix(), "lang")), "Object")
 
 Inlined(None, Nil, Apply(Select(Ident("Int"), "box"), List(NamedArg("x", Literal(Constant(9))))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "lang")), "Integer")
+TypeRef(ThisType(TypeRef(NoPrefix(), "lang")), "Integer")
 
 Inlined(None, Nil, Apply(TypeApply(Select(Ident("Ordering"), "apply"), List(TypeIdent("Int"))), List(Ident("Int"))))
-Type.AppliedType(Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "math")), "Ordering"), List(Type.TypeRef(Type.TermRef(Type.ThisType(Type.TypeRef(NoPrefix(), "<root>")), "scala"), "Int")))
+AppliedType(TypeRef(ThisType(TypeRef(NoPrefix(), "math")), "Ordering"), List(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")))
 
 Inlined(None, Nil, Block(List(ValDef("a", TypeIdent("Int"), Some(Literal(Constant(3))))), Literal(Constant(()))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Block(List(ValDef("b", TypeIdent("Int"), Some(Literal(Constant(3))))), Literal(Constant(()))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Block(List(DefDef("f1", Nil, Nil, TypeIdent("Int"), Some(Literal(Constant(3))))), Literal(Constant(()))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Block(List(DefDef("f2", Nil, Nil, TypeIdent("Int"), Some(Return(Literal(Constant(4)))))), Literal(Constant(()))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Block(List(DefDef("f3", Nil, List(List(ValDef("i", TypeIdent("Int"), None))), TypeIdent("Int"), Some(Ident("i")))), Literal(Constant(()))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Block(List(DefDef("f4", Nil, List(List(ValDef("i", TypeIdent("Int"), None)), List(ValDef("j", TypeIdent("Int"), None))), TypeIdent("Int"), Some(Apply(Select(Ident("i"), "+"), List(Ident("j")))))), Literal(Constant(()))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Block(List(DefDef("f5", Nil, List(List(ValDef("i", TypeIdent("Int"), None))), TypeIdent("Int"), Some(Ident("i"))), DefDef("f5$default$1", Nil, Nil, Inferred(), Some(Literal(Constant(9))))), Literal(Constant(()))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Block(List(DefDef("f6", List(TypeDef("T", TypeBoundsTree(Inferred(), Inferred()))), List(List(ValDef("x", TypeIdent("T"), None))), TypeIdent("T"), Some(Ident("x")))), Literal(Constant(()))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Block(List(DefDef("f7", List(TypeDef("T", TypeBoundsTree(Inferred(), Inferred()))), List(List(ValDef("x", TypeIdent("T"), None))), Singleton(Ident("x")), Some(Ident("x")))), Literal(Constant(()))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Block(List(DefDef("f8", Nil, List(List(ValDef("i", Annotated(Applied(Inferred(), List(TypeIdent("Int"))), Apply(Select(New(Inferred()), "<init>"), Nil)), None))), TypeIdent("Int"), Some(Literal(Constant(9))))), Apply(Ident("f8"), List(Typed(Repeated(List(Literal(Constant(1)), Literal(Constant(2)), Literal(Constant(3))), Inferred()), Inferred())))))
-Type.TypeRef(Type.TermRef(Type.ThisType(Type.TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
 
 Inlined(None, Nil, Block(List(DefDef("f9", Nil, List(List(ValDef("i", ByName(TypeIdent("Int")), None))), TypeIdent("Int"), Some(Ident("i")))), Literal(Constant(()))))
-Type.TypeRef(Type.ThisType(Type.TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 

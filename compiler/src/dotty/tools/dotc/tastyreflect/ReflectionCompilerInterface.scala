@@ -1544,6 +1544,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Flags_Private: Flags = core.Flags.Private
   def Flags_Protected: Flags = core.Flags.Protected
   def Flags_Abstract: Flags = core.Flags.Abstract
+  def Flags_Open: Flags = core.Flags.Open
   def Flags_Final: Flags = core.Flags.Final
   def Flags_Sealed: Flags = core.Flags.Sealed
   def Flags_Case: Flags = core.Flags.Case

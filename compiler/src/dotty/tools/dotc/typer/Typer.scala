@@ -1778,7 +1778,6 @@ class Typer extends Namer
       // check value class constraints
       checkDerivedValueClass(cls, body1)
 
-
       // Temporarily set the typed class def as root tree so that we have at least some
       // information in the IDE in case we never reach `SetRootTree`.
       if (ctx.mode.is(Mode.Interactive) && ctx.settings.YretainTrees.value)
@@ -2126,17 +2125,19 @@ class Typer extends Namer
         }
 
         val ifpt = defn.asImplicitFunctionType(pt)
-        val result = if (ifpt.exists &&
-            xtree.isTerm &&
-            !untpd.isContextualClosure(xtree) &&
-            !ctx.mode.is(Mode.Pattern) &&
-            !ctx.isAfterTyper &&
-            !ctx.isInlineContext)
-          makeContextualFunction(xtree, ifpt)
-        else xtree match {
-          case xtree: untpd.NameTree => typedNamed(xtree, pt)
-          case xtree => typedUnnamed(xtree)
-        }
+        val result =
+          if ifpt.exists
+             && xtree.isTerm
+             && !untpd.isContextualClosure(xtree)
+             && !ctx.mode.is(Mode.Pattern)
+             && !ctx.isAfterTyper
+             && !ctx.isInlineContext
+          then
+            makeContextualFunction(xtree, ifpt)
+          else xtree match
+            case xtree: untpd.NameTree => typedNamed(xtree, pt)
+            case xtree => typedUnnamed(xtree)
+
         simplify(result, pt, locked)
     }
   }

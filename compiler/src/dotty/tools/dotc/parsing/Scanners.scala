@@ -555,6 +555,13 @@ object Scanners {
           token = INDENT
     end observeIndented
 
+    /** Insert an <outdent> token if next token closes an indentation region */
+    def observeOutdented(): Unit = currentRegion match
+      case r: Indented if !r.isOutermost && closingRegionTokens.contains(token) =>
+        currentRegion = r.enclosing
+        insert(OUTDENT, offset)
+      case _ =>
+
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
      *  - Insert missing OUTDENTs at EOF
      */
@@ -1061,7 +1068,7 @@ object Scanners {
         }
       else if (ch == '$') {
         nextRawChar()
-        if (ch == '$') {
+        if (ch == '$' || ch == '"') {
           putChar(ch)
           nextRawChar()
           getStringPart(multiLine)
@@ -1082,7 +1089,7 @@ object Scanners {
           finishNamed(target = next)
         }
         else
-          error("invalid string interpolation: `$$', `$'ident or `$'BlockExpr expected")
+          error("invalid string interpolation: `$$', `$\"`, `$'ident or `$'BlockExpr expected")
       }
       else {
         val isUnclosedLiteral = !isUnicodeEscape && (ch == SU || (!multiLine && (ch == CR || ch == LF)))

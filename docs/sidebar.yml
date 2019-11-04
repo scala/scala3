@@ -93,6 +93,8 @@ sidebar:
               url: docs/reference/other-new-features/export.html
             - title: Opaque Type Aliases
               url: docs/reference/other-new-features/opaques.html
+            - title: Open Classes
+              url: docs/reference/other-new-features/open-classes.html
             - title: Parameter Untupling
               url: docs/reference/other-new-features/parameter-untupling.html
             - title: Kind Polymorphism

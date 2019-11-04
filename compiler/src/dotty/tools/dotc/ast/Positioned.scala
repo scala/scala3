@@ -208,16 +208,13 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
       case tree: DefDef if tree.mods.is(Extension) =>
         tree.vparamss match {
           case vparams1 :: vparams2 :: rest if !isLeftAssoc(tree.name) =>
+            check(tree.tparams)
             check(vparams2)
-            check(tree.tparams)
             check(vparams1)
-            check(rest)
-          case vparams1 :: rest =>
-            check(vparams1)
-            check(tree.tparams)
             check(rest)
           case _ =>
             check(tree.tparams)
+            check(tree.vparamss)
         }
         check(tree.tpt)
         check(tree.rhs)

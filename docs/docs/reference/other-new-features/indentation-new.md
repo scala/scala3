@@ -77,6 +77,8 @@ There are two rules:
      If the indentation width of the token on the next line is still less than the new current indentation width, step (2) repeats. Therefore, several `<outdent>` tokens
      may be inserted in a row.
 
+    An `<outdent>` is also inserted if the next statement following a statement sequence starting with an `<indent>` closes an indentation region, i.e. is one of `then`, `else`, `do`, `catch`, `finally`, `yield`, `}` or `case`.
+
 It is an error if the indentation width of the token following an `<outdent>` does not
 match the indentation of some previous line in the enclosing indentation region. For instance, the following would be rejected.
 ```scala
