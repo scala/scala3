@@ -6,9 +6,8 @@ object DynamicTuple {
   inline val MaxSpecialized = 22
   inline private val XXL = MaxSpecialized + 1
 
-  def to$Array(xs: Tuple, n: Int, arr: Array[Object], offset: Int): Unit = {
+  def to$Array(it: Iterator[Any], n: Int, arr: Array[Object], offset: Int): Unit = {
     var i = 0
-    var it = xs.asInstanceOf[Product].productIterator
     while (i < n) {
       arr(offset + i) = it.next().asInstanceOf[Object]
       i += 1
@@ -250,7 +249,7 @@ object DynamicTuple {
         Tuple22(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21)
       case _ =>
         val arr = new Array[Object](self.size + 1)
-        to$Array(self, self.size, arr, 1)
+        to$Array(self.asInstanceOf[Product].productIterator, self.size, arr, 1)
         arr(0) = x.asInstanceOf[Object]
         TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
     }
@@ -267,7 +266,10 @@ object DynamicTuple {
       case that: Unit => return self.asInstanceOf[Result]
       case _ =>
     }
-    dynamicFromArray[Result](concat$Array(dynamicToArray(self), dynamicToArray(that)))
+    val arr = new Array[Object](self.size + that.size)
+    to$Array(self.asInstanceOf[Product].productIterator, self.size, arr, 0)
+    to$Array(that.asInstanceOf[Product].productIterator, that.size, arr, self.size)
+    TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
   }
 
   def dynamicSize[This <: Tuple](self: This): Size[This] = (self: Any) match {
@@ -322,7 +324,12 @@ object DynamicTuple {
         Tuple20(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21)
       case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
         Tuple21(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21, self._22)
-      case _ => dynamicFromArray[Result](dynamicToArray(self).tail)
+      case _ =>
+        val arr = new Array[Object](self.size - 1)
+        val it = self.asInstanceOf[Product].productIterator
+        it.next()
+        to$Array(it, self.size - 1, arr, 0)
+        TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
     }
     res.asInstanceOf[Result]
   }
