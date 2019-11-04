@@ -56,7 +56,7 @@ class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLe
 
   protected def computeRootTrees(implicit ctx: Context): List[Tree] = treeUnpickler.unpickle(mode)
 
-  private[this] var ids: Array[String] = null
+  private var ids: Array[String] = null
 
   override def mightContain(id: String)(implicit ctx: Context): Boolean = {
     if (ids == null)

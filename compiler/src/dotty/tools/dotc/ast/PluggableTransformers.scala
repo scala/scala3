@@ -9,8 +9,8 @@ object PluggableTransformers {
   abstract class PluggableTransformer[T] extends TreeTransformer[T, Context] {
     type PluginOp[-N <: Tree[T]] = N => Tree[T]
 
-    private[this] var _ctx: Context = _
-    private[this] var _oldTree: Tree[T] = _
+    private var _ctx: Context = _
+    private var _oldTree: Tree[T] = _
 
     protected implicit def ctx: Context = _ctx
     protected def oldTree: Tree[T] = _oldTree
@@ -44,7 +44,7 @@ object PluggableTransformers {
 
     val EmptyPlugin = new Plugins
 
-    private[this] var _plugins: Plugins = EmptyPlugin
+    private var _plugins: Plugins = EmptyPlugin
 
     override def plugins: Plugins = _plugins
 

@@ -24,7 +24,7 @@ object Macro {
       case ('{ StringContext(${ExprSeq(parts)}: _*) }, ExprSeq(args)) =>
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
-            import qctx.tasty._
+            import qctx.tasty.{_, given}
             error(msg, parts(partIdx).unseal.pos)
           }
         }
@@ -38,7 +38,7 @@ object Macro {
         val errors = List.newBuilder[Expr[(Int, Int, Int, String)]]
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
-            import qctx.tasty._
+            import qctx.tasty.{_, given}
             val pos = parts(partIdx).unseal.pos
             errors += '{ Tuple4($partIdx, ${pos.start}, ${pos.end}, $msg) }
           }

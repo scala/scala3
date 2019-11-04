@@ -41,7 +41,7 @@ class ReplCompiler extends Compiler {
   def newRun(initCtx: Context, state: State): Run = new Run(this, initCtx) {
 
     /** Import previous runs and user defined imports */
-    override protected[this] def rootContext(implicit ctx: Context): Context = {
+    override protected def rootContext(implicit ctx: Context): Context = {
       def importContext(imp: tpd.Import)(implicit ctx: Context) =
         ctx.importContext(imp, imp.symbol)
 
@@ -67,7 +67,7 @@ class ReplCompiler extends Compiler {
     }
   }
 
-  private[this] val objectNames = mutable.Map.empty[Int, TermName]
+  private val objectNames = mutable.Map.empty[Int, TermName]
 
   private case class Definitions(stats: List[untpd.Tree], state: State)
 

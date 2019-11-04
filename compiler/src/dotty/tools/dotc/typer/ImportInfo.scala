@@ -57,7 +57,7 @@ class ImportInfo(symf: (given Context) => Symbol,
     }
     mySym
   }
-  private[this] var mySym: Symbol = _
+  private var mySym: Symbol = _
 
   /** The (TermRef) type of the qualifier of the import clause */
   def site(implicit ctx: Context): Type = sym.info match {
@@ -80,13 +80,13 @@ class ImportInfo(symf: (given Context) => Symbol,
   /** Does the import clause have at least one `given` selector? */
   def isGivenImport: Boolean = { ensureInitialized(); myGivenImport }
 
-  private[this] var myExcluded: Set[TermName] = null
-  private[this] var myForwardMapping: SimpleIdentityMap[TermName, TermName] = null
-  private[this] var myReverseMapping: SimpleIdentityMap[TermName, TermName] = null
-  private[this] var myWildcardImport: Boolean = false
-  private[this] var myGivenImport: Boolean = false
-  private[this] var myWildcardBound: Type = NoType
-  private[this] var myGivenBound: Type = NoType
+  private var myExcluded: Set[TermName] = null
+  private var myForwardMapping: SimpleIdentityMap[TermName, TermName] = null
+  private var myReverseMapping: SimpleIdentityMap[TermName, TermName] = null
+  private var myWildcardImport: Boolean = false
+  private var myGivenImport: Boolean = false
+  private var myWildcardBound: Type = NoType
+  private var myGivenBound: Type = NoType
 
   /** Compute info relating to the selector list */
   private def ensureInitialized(): Unit = if myExcluded == null then
@@ -169,7 +169,7 @@ class ImportInfo(symf: (given Context) => Symbol,
       assert(myUnimported != null)
     myUnimported
 
-  private[this] var myUnimported: Symbol = _
+  private var myUnimported: Symbol = _
 
   /** Does this import clause or a preceding import clause import `owner.feature`? */
   def featureImported(feature: TermName, owner: Symbol)(implicit ctx: Context): Boolean =
@@ -189,8 +189,8 @@ class ImportInfo(symf: (given Context) => Symbol,
     }
     lastResults(feature)
 
-  private[this] var lastOwner: Symbol = null
-  private[this] var lastResults: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.Empty
+  private var lastOwner: Symbol = null
+  private var lastResults: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.Empty
 
   def toText(printer: Printer): Text = printer.toText(this)
 }

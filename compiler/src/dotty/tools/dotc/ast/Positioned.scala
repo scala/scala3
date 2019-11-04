@@ -18,8 +18,8 @@ import java.io.{ PrintWriter }
  */
 abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Product with Cloneable {
 
-  private[this] var myUniqueId: Int = _
-  private[this] var mySpan: Span = _
+  private var myUniqueId: Int = _
+  private var mySpan: Span = _
 
   /** A unique identifier. Among other things, used for determining the source file
    *  component of the position.
@@ -208,16 +208,13 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
       case tree: DefDef if tree.mods.is(Extension) =>
         tree.vparamss match {
           case vparams1 :: vparams2 :: rest if !isLeftAssoc(tree.name) =>
+            check(tree.tparams)
             check(vparams2)
-            check(tree.tparams)
             check(vparams1)
-            check(rest)
-          case vparams1 :: rest =>
-            check(vparams1)
-            check(tree.tparams)
             check(rest)
           case _ =>
             check(tree.tparams)
+            check(tree.vparamss)
         }
         check(tree.tpt)
         check(tree.rhs)

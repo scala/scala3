@@ -304,7 +304,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
        */
       def checkTestSource(): Unit
 
-      private[this] val logBuffer = mutable.ArrayBuffer.empty[String]
+      private val logBuffer = mutable.ArrayBuffer.empty[String]
       def log(msg: String): Unit = logBuffer.append(msg)
 
       def logReporterContents(reporter: TestReporter): Unit =
@@ -334,7 +334,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     /** Total amount of test sources being compiled by this test */
     val sourceCount = filteredSources.length
 
-    private[this] var _testSourcesCompleted = 0
+    private var _testSourcesCompleted = 0
     private def testSourcesCompleted: Int = _testSourcesCompleted
 
     /** Complete the current compilation with the amount of errors encountered */
@@ -347,11 +347,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     case class TimeoutFailure(title: String) extends Failure
     case object Generic extends Failure
 
-    private[this] var _failures = Set.empty[Failure]
-    private[this] var _failureCount = 0
+    private var _failures = Set.empty[Failure]
+    private var _failureCount = 0
 
     /** Fail the current test */
-    protected[this] final def fail(failure: Failure = Generic): Unit = synchronized {
+    protected final def fail(failure: Failure = Generic): Unit = synchronized {
       _failures = _failures + failure
       _failureCount = _failureCount + 1
     }
@@ -370,12 +370,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     /** Instructions on how to reproduce failed test source compilations */
-    private[this] val reproduceInstructions = mutable.ArrayBuffer.empty[String]
+    private val reproduceInstructions = mutable.ArrayBuffer.empty[String]
     protected final def addFailureInstruction(ins: String): Unit =
       synchronized { reproduceInstructions.append(ins) }
 
     /** The test sources that failed according to the implementing subclass */
-    private[this] val failedTestSources = mutable.ArrayBuffer.empty[String]
+    private val failedTestSources = mutable.ArrayBuffer.empty[String]
     protected final def failTestSource(testSource: TestSource, reason: Failure = Generic) = synchronized {
       val extra = reason match {
         case TimeoutFailure(title) => s", test '$title' timed out"
@@ -586,8 +586,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
   private final class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
-    private[this] var didAddNoRunWarning = false
-    private[this] def addNoRunWarning() = if (!didAddNoRunWarning) {
+    private var didAddNoRunWarning = false
+    private def addNoRunWarning() = if (!didAddNoRunWarning) {
       didAddNoRunWarning = true
       summaryReport.addStartingMessage {
         """|WARNING
@@ -907,7 +907,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     /** Extract `Failure` set and render from `Test` */
-    private[this] def reasonsForFailure(test: Test): String = {
+    private def reasonsForFailure(test: Test): String = {
       val failureReport =
         if (test.failureCount == 0) ""
         else s"\n  - encountered ${test.failureCount} test failures(s)"

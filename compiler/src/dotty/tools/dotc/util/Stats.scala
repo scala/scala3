@@ -13,14 +13,13 @@ import collection.mutable
 
   var monitored: Boolean = false
 
-  @volatile private[this] var stack: List[String] = Nil
+  @volatile private var stack: List[String] = Nil
 
   val hits: mutable.HashMap[String, Int] = new mutable.HashMap[String, Int] {
     override def default(key: String): Int = 0
   }
 
-  @forceInline
-  def record(fn: => String, n: => Int = 1): Unit =
+  inline def record(fn: => String, n: => Int = 1): Unit =
     if (enabled) doRecord(fn, n)
 
   def doRecord(fn: String, n: Int) =
@@ -29,8 +28,7 @@ import collection.mutable
       hits(name) += n
     }
 
-  @forceInline
-  def trackTime[T](fn: String)(op: => T): T =
+  inline def trackTime[T](fn: String)(op: => T): T =
     if (enabled) doTrackTime(fn)(op) else op
 
   def doTrackTime[T](fn: String)(op: => T): T = {

@@ -3,7 +3,7 @@ package reflect
 
 trait ContextOps extends Core {
 
-  implicit class ContextAPI(self: Context) {
+  given (self: Context) {
     /** Returns the owner of the context */
     def owner: Symbol = internal.Context_owner(self)
 

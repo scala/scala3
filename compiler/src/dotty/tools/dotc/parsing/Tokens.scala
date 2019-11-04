@@ -270,7 +270,7 @@ object Tokens extends TokensCommon {
   final val closingRegionTokens = BitSet(RBRACE, CASE) | statCtdTokens
 
   final val canStartIndentTokens: BitSet =
-    statCtdTokens | BitSet(COLONEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR)
+    statCtdTokens | BitSet(COLONEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR, IF, WITH)
       // `if` is excluded because it often comes after `else` which makes for awkward indentation rules  TODO: try to do without the exception
 
   /** Faced with the choice between a type and a formal parameter, the following
@@ -286,5 +286,5 @@ object Tokens extends TokensCommon {
 
   final val scala3keywords = BitSet(ENUM, ERASED, GIVEN)
 
-  final val softModifierNames = Set(nme.inline, nme.opaque)
+  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open)
 }

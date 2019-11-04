@@ -3,6 +3,7 @@ package transform
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd, untpd}
+import dotty.tools.dotc.core.Annotations.BodyAnnotation
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
@@ -23,6 +24,7 @@ import dotty.tools.dotc.typer.Inliner
 
 import scala.collection.mutable
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.Property
 
 import scala.annotation.constructorOnly
 
@@ -33,20 +35,27 @@ import scala.annotation.constructorOnly
 class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) {
   import tpd._
 
+  private val InAnnotation = Property.Key[Unit]()
+
   override def transform(tree: Tree)(implicit ctx: Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(ctx.withSource(tree.source))
     else tree match {
       case tree: DefDef if tree.symbol.is(Inline) && level > 0 => EmptyTree
       case tree: DefTree =>
-        for (annot <- tree.symbol.annotations)
-          transform(annot.tree)(given ctx.withOwner(tree.symbol))
+        lazy val annotCtx = ctx.fresh.setProperty(InAnnotation, true).withOwner(tree.symbol)
+        for (annot <- tree.symbol.annotations) annot match {
+          case annot: BodyAnnotation => annot // already checked in PrepareInlineable before the creation of the BodyAnnotation
+          case annot => transform(annot.tree)(given annotCtx)
+        }
         checkLevel(super.transform(tree))
       case _ => checkLevel(super.transform(tree))
     }
 
   /** Transform quoted trees while maintaining phase correctness */
   override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
+    if (ctx.property(InAnnotation).isDefined)
+      ctx.error("Cannot have a quote in an annotation", quote.sourcePos)
     val body1 = transform(body)(quoteContext)
     super.transformQuotation(body1, quote)
   }
@@ -144,7 +153,21 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     /** Is a reference to a class but not `this.type` */
     def isClassRef = sym.isClass && !tp.isInstanceOf[ThisType]
 
-    if (!sym.exists || levelOK(sym))
+    /** Is this a static path or a type porjection with a static prefix */
+    def isStaticPathOK(tp1: Type): Boolean =
+      tp1.stripTypeVar match
+        case tp1: TypeRef => tp1.symbol.is(Package) || isStaticPathOK(tp1.prefix)
+        case tp1: TermRef =>
+          def isStaticTermPathOK(sym: Symbol): Boolean =
+            (sym.is(Module) && sym.isStatic) ||
+            (sym.isStableMember && isStaticTermPathOK(sym.owner))
+          isStaticTermPathOK(tp1.symbol)
+        case tp1: ThisType => tp1.cls.isStaticOwner
+        case tp1: AppliedType => isStaticPathOK(tp1.tycon)
+        case tp1: SkolemType => isStaticPathOK(tp1.info)
+        case _ => false
+
+    if (!sym.exists || levelOK(sym) || isStaticPathOK(tp))
       None
     else if (!sym.isStaticOwner && !isClassRef)
       tryHeal(sym, tp, pos)
@@ -171,7 +194,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
             sym.isClass // reference to this in inline methods
           )
     case None =>
-      !sym.is(Param) || levelOK(sym.owner)
+      sym.is(Package) || sym.owner.isStaticOwner || levelOK(sym.owner)
   }
 
   /** Try to heal phase-inconsistent reference to type `T` using a local type definition.

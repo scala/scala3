@@ -34,7 +34,7 @@ trait ConstraintHandling[AbstractContext] {
   protected def constraint: Constraint
   protected def constraint_=(c: Constraint): Unit
 
-  private[this] var addConstraintInvocations = 0
+  private var addConstraintInvocations = 0
 
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint: Boolean = false
@@ -205,7 +205,7 @@ trait ConstraintHandling[AbstractContext] {
     else
       isSubType(tp1, tp2)
 
-  @forceInline final def inFrozenConstraint[T](op: => T): T = {
+  inline final def inFrozenConstraint[T](op: => T): T = {
     val savedFrozen = frozenConstraint
     val savedLambda = caseLambda
     frozenConstraint = true

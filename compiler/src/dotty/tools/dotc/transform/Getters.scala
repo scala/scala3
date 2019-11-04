@@ -10,6 +10,10 @@ import Symbols._
 import MegaPhase._
 import Flags._
 import ValueClasses._
+import SymUtils._
+import NameOps._
+import collection.mutable
+
 
 /** Performs the following rewritings for fields of a class:
  *
@@ -30,13 +34,20 @@ import ValueClasses._
  *    <mods> non-static <module> val x$ = e
  *      -->  <mods> <module> <accessor> def x$ = e
  *
+ *  Also, generate setters for fields that are private but not private[this]
+ *  The form of a setter is
+ *
+ *     <mods> def x_=(init: T): Unit = ()
+ *
  *  Omitted from the rewritings are
  *
  *   - private[this] fields in classes (excluding traits, value classes)
  *   - fields generated for static modules (TODO: needed?)
  *   - parameters, static fields, and fields coming from Java
  *
- *  Furthermore, assignments to mutable vars are replaced by setter calls
+ *  The rhs is computed later, in phase Memoize.
+ *
+ *  Furthermore, assignments to mutable vars with setters are replaced by setter calls
  *
  *     p.x = e
  *      -->  p.x_=(e)
@@ -46,7 +57,7 @@ import ValueClasses._
  *  Also, drop the Local flag from all private[this] and protected[this] members.
  *  This allows subsequent code motions in Flatten.
  */
-class Getters extends MiniPhase with SymTransformer {
+class Getters extends MiniPhase with SymTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = Getters.name
@@ -80,11 +91,31 @@ class Getters extends MiniPhase with SymTransformer {
   }
   private val NoGetterNeededFlags = Method | Param | JavaDefined | JavaStatic
 
+  val newSetters = mutable.HashSet[Symbol]()
+
+  def ensureSetter(sym: TermSymbol)(given Context) =
+    if !sym.setter.exists then
+      newSetters += sym.copy(
+        name = sym.name.setterName,
+        info = MethodType(sym.info.widenExpr :: Nil, defn.UnitType)
+      ).enteredAfter(thisPhase)
+
   override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
-    if (tree.symbol.is(Method)) DefDef(tree.symbol.asTerm, tree.rhs).withSpan(tree.span) else tree
+    val sym = tree.symbol
+    if !sym.is(Method) then return tree
+    val getterDef = DefDef(sym.asTerm, tree.rhs).withSpan(tree.span)
+    if !sym.is(Mutable) then return getterDef
+    ensureSetter(sym.asTerm)
+    if !newSetters.contains(sym.setter) then return getterDef
+    val setterDef = DefDef(sym.setter.asTerm, unitLiteral)
+    Thicket(getterDef, setterDef)
 
   override def transformAssign(tree: Assign)(implicit ctx: Context): Tree =
-    if (tree.lhs.symbol.is(Method)) tree.lhs.becomes(tree.rhs).withSpan(tree.span) else tree
+    val lsym = tree.lhs.symbol.asTerm
+    if (lsym.is(Method))
+      ensureSetter(lsym)
+      tree.lhs.becomes(tree.rhs).withSpan(tree.span)
+    else tree
 }
 
 object Getters {

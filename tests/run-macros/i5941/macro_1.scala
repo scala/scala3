@@ -12,7 +12,7 @@ object Lens {
   }
 
   def impl[S: Type, T: Type](getter: Expr[S => T])(given qctx: QuoteContext): Expr[Lens[S, T]] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     import util._
 
     // obj.copy(a = obj.a.copy(b = a.b.copy(c = v)))
@@ -85,7 +85,7 @@ object Iso {
   }
 
   def impl[S: Type, A: Type](given qctx: QuoteContext): Expr[Iso[S, A]] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     import util._
 
     val tpS = typeOf[S]
@@ -102,7 +102,7 @@ object Iso {
     val cls = tpS.classSymbol.get
 
     val companion = tpS match {
-      case Type.TypeRef(prefix, name) => Type.TermRef(prefix, name)
+      case TypeRef(prefix, name) => TermRef(prefix, name)
     }
 
     if (cls.caseFields.size != 1) {
@@ -124,7 +124,7 @@ object Iso {
   }
 
   def implUnit[S: Type](given qctx: QuoteContext): Expr[Iso[S, 1]] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     import util._
 
     val tpS = typeOf[S]
@@ -144,7 +144,7 @@ object Iso {
       }
 
       val companion = tpS match {
-        case Type.TypeRef(prefix, name) => Type.TermRef(prefix, name)
+        case TypeRef(prefix, name) => TermRef(prefix, name)
       }
 
       val obj = Select.overloaded(Ident(companion), "apply", Nil, Nil).seal.cast[S]
@@ -196,7 +196,7 @@ object Prism {
   }
 
   def impl[S: Type, A <: S : Type](given qctx: QuoteContext): Expr[Prism[S, A]] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     import util._
 
     '{

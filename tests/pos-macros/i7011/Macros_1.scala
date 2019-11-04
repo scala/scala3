@@ -4,7 +4,7 @@ import scala.quoted.given
 inline def mcr(body: => Any): Unit = ${mcrImpl('body)}
 
 def mcrImpl[T](body: Expr[Any])(given ctx: QuoteContext): Expr[Any] = {
-  import ctx.tasty._
+  import ctx.tasty.{_, given}
 
   val bTree = body.unseal
   val under = bTree.underlyingArgument

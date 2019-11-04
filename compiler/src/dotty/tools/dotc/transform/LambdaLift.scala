@@ -59,10 +59,10 @@ object LambdaLift {
     val liftedDefs: mutable.HashMap[Symbol, mutable.ListBuffer[Tree]] = new HashMap
 
     /** A flag to indicate whether new free variables have been found */
-    private[this] var changedFreeVars: Boolean = _
+    private var changedFreeVars: Boolean = _
 
     /** A flag to indicate whether lifted owners have changed */
-    private[this] var changedLiftedOwner: Boolean = _
+    private var changedLiftedOwner: Boolean = _
 
     private val ord: Ordering[Symbol] = Ordering.by(_.id)
     private def newSymSet = TreeSet.empty[Symbol](ord)
@@ -324,7 +324,7 @@ object LambdaLift {
     private def liftLocals()(implicit ctx: Context): Unit = {
       for ((local, lOwner) <- liftedOwner) {
         val (newOwner, maybeStatic) =
-          if (lOwner is Package) { 
+          if (lOwner is Package) {
             val encClass = local.enclosingClass
             val topClass = local.topLevelClass
             val preferEncClass =

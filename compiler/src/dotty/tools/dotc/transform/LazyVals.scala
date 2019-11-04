@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds.{LazyBitMapName, LazyLocalInitName, LazyLocalName}
+import dotty.tools.dotc.core.NameKinds.{LazyBitMapName, LazyLocalInitName, LazyLocalName, ExpandedName}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
@@ -26,7 +26,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   /** this map contains mutable state of transformation: OffsetDefs to be appended to companion object definitions,
     * and number of bits currently used */
   class OffsetInfo(var defs: List[Tree], var ord:Int)
-  private[this] val appendOffsetDefs = mutable.Map.empty[Symbol, OffsetInfo]
+  private val appendOffsetDefs = mutable.Map.empty[Symbol, OffsetInfo]
 
   override def phaseName: String = LazyVals.name
 
@@ -42,7 +42,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   val containerFlagsMask: FlagSet = Method | Lazy | Accessor | Module
 
   /** A map of lazy values to the fields they should null after initialization. */
-  private[this] var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = _
+  private var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = _
   private def nullableFor(sym: Symbol)(implicit ctx: Context) = {
     // optimisation: value only used once, we can remove the value from the map
     val nullables = lazyValNullables.remove(sym)
@@ -73,7 +73,18 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     else {
       val isField = sym.owner.isClass
       if (isField)
-        if (sym.isAllOf(SyntheticModule))
+        if sym.isAllOf(SyntheticModule)
+           && sym.allOverriddenSymbols.isEmpty
+           && !sym.name.is(ExpandedName) then
+          // I am not sure what the conditions for this optimization should be.
+          // It was applied for all synthetic objects, but this is clearly false, as t704 demonstrates.
+          // It seems we have to at least exclude synthetic objects that derive from mixins.
+          // This is done by demanding that the object does not override anything.
+          // Figuring out whether a symbol implements a trait module is not so simple.
+          // For non-private trait members we can check whether there is an overridden symbol.
+          // For private trait members this does not work, since `ensureNotPrivate` in phase Mixins
+          // does change the name but does not update the owner's scope, so `allOverriddenSymbols` does
+          // not work in that case. However, we can check whether the name is an ExpandedName instead.
           transformSyntheticModule(tree)
         else if (sym.isThreadUnsafe || ctx.settings.scalajs.value)
           if (sym.is(Module) && !ctx.settings.scalajs.value) {

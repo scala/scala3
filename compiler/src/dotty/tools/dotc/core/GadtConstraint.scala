@@ -261,16 +261,16 @@ final class ProperGadtConstraint private(
 
   // ---- Private ----------------------------------------------------------
 
-  private[this] def externalize(param: TypeParamRef)(implicit ctx: Context): Type =
+  private def externalize(param: TypeParamRef)(implicit ctx: Context): Type =
     reverseMapping(param) match {
       case sym: Symbol => sym.typeRef
       case null => param
     }
 
-  private[this] def tvarOrError(sym: Symbol)(implicit ctx: Context): TypeVar =
+  private def tvarOrError(sym: Symbol)(implicit ctx: Context): TypeVar =
     mapping(sym).ensuring(_ ne null, i"not a constrainable symbol: $sym")
 
-  private[this] def containsNoInternalTypes(
+  private def containsNoInternalTypes(
     tp: Type,
     acc: TypeAccumulator[Boolean] = null
   )(implicit ctx: Context): Boolean = tp match {
@@ -280,7 +280,7 @@ final class ProperGadtConstraint private(
       (if (acc ne null) acc else new ContainsNoInternalTypesAccumulator()).foldOver(true, tp)
   }
 
-  private[this] class ContainsNoInternalTypesAccumulator(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+  private class ContainsNoInternalTypesAccumulator(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     override def apply(x: Boolean, tp: Type): Boolean = x && containsNoInternalTypes(tp)
   }
 

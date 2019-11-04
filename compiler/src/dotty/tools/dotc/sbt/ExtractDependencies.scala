@@ -201,8 +201,8 @@ private final class UsedNamesInClass {
 private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeTraverser =>
   import tpd._
 
-  private[this] val _usedNames = new mutable.HashMap[Symbol, UsedNamesInClass]
-  private[this] val _dependencies = new mutable.HashSet[ClassDependency]
+  private val _usedNames = new mutable.HashMap[Symbol, UsedNamesInClass]
+  private val _dependencies = new mutable.HashSet[ClassDependency]
 
   /** The names used in this class, this does not include names which are only
    *  defined and not referenced.
@@ -216,7 +216,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
   /** Top level import dependencies are registered as coming from a first top level
    *  class/trait/object declared in the compilation unit. If none exists, issue warning.
    */
-  private[this] var _responsibleForImports: Symbol = _
+  private var _responsibleForImports: Symbol = _
   private def responsibleForImports(implicit ctx: Context) = {
     def firstClassOrModule(tree: Tree) = {
       val acc = new TreeAccumulator[Symbol] {
@@ -243,8 +243,8 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     _responsibleForImports
   }
 
-  private[this] var lastOwner: Symbol = _
-  private[this] var lastDepSource: Symbol = _
+  private var lastOwner: Symbol = _
+  private var lastDepSource: Symbol = _
 
   /**
    * Resolves dependency source (that is, the closest non-local enclosing

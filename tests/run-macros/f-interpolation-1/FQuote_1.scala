@@ -10,7 +10,7 @@ object FQuote {
   }
 
   /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(given qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {
       case x :: xs  =>

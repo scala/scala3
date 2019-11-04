@@ -124,7 +124,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
       Some(lineToOffset(index))
 
   /** A cache to speed up offsetToLine searches to similar lines */
-  private[this] var lastLine = 0
+  private var lastLine = 0
 
   /** Convert offset to line in this source file
    *  Lines are numbered from 0
@@ -175,7 +175,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
 
   // Positioned ids
 
-  private[this] val ctr = new AtomicInteger
+  private val ctr = new AtomicInteger
 
   def nextId: Int = {
     val id = ctr.get

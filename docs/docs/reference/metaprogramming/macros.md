@@ -598,6 +598,19 @@ def defaultOfImpl(str: String): Expr[Any] = str match {
 // in a separate file
 val a: Int = defaultOf("int")
 val b: String = defaultOf("string")
+
 ```
+
+### Defining a macro and using it in a single project
+It is possible to define macros and use them in the same project as long as the implementation
+of the macros does not have run-time dependencies on code in the file where it is used.
+It might still have compile-time dependencies on types and quoted code that refers to the use-site file.
+
+To provide this functionality Dotty provides a transparent compilation mode where files that
+try to expand a macro but fail because the macro has not been compiled yet are suspended.
+If there are any suspended files when the compilation ends, the compiler will automatically restart
+compilation of the suspended files using the output of the previous (partial) compilation as macro classpath.
+In case all files are suspended due to cyclic dependencies the compilation will fail with an error.
+
 
 [More details](./macros-spec.md)

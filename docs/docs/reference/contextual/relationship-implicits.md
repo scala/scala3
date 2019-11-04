@@ -59,6 +59,9 @@ The synthesized type names are formed from
  - the simple name(s) of the implemented type(s), leaving out any prefixes,
  - the simple name(s) of the toplevel argument type constructors to these types.
 
+Tuples are treated as transparent, i.e. a type `F[(X, Y)]` would get the synthesized name
+`F_X_Y`. Directly implemented function types `A => B` are represented as `A_to_B`. Function types used as arguments to other type constructors are represented as `Function`.
+
 Anonymous given instances that define extension methods without also implementing a type
 get their name from the name of the first extension method and the toplevel type
 constructor of its first parameter. For example, the given instance

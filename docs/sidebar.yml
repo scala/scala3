@@ -93,6 +93,8 @@ sidebar:
               url: docs/reference/other-new-features/export.html
             - title: Opaque Type Aliases
               url: docs/reference/other-new-features/opaques.html
+            - title: Open Classes
+              url: docs/reference/other-new-features/open-classes.html
             - title: Parameter Untupling
               url: docs/reference/other-new-features/parameter-untupling.html
             - title: Kind Polymorphism
@@ -171,6 +173,8 @@ sidebar:
               url: docs/reference/dropped-features/weak-conformance.html
             - title: Nonlocal Returns
               url: docs/reference/dropped-features/nonlocal-returns.html
+            - title: "[this] Qualifier"
+              url: docs/reference/dropped-features/this-qualifier.html
     - title: Contributing
       subsection:
         - title: Contribute Knowledge

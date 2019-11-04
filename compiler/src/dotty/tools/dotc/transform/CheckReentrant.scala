@@ -32,9 +32,9 @@ class CheckReentrant extends MiniPhase {
 
   override def phaseName: String = "checkReentrant"
 
-  private[this] var shared: Set[Symbol] = Set()
-  private[this] var seen: Set[ClassSymbol] = Set()
-  private[this] var indent: Int = 0
+  private var shared: Set[Symbol] = Set()
+  private var seen: Set[ClassSymbol] = Set()
+  private var indent: Int = 0
 
   private val sharableAnnot = new CtxLazy(
     summon[Context].requiredClass("scala.annotation.internal.sharable"))

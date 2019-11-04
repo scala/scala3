@@ -13,7 +13,7 @@ object Lens {
 
   def impl[S: Type, T: Type](getter: Expr[S => T])(given qctx: QuoteContext): Expr[Lens[S, T]] = {
     implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(this.getClass.getClassLoader)
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     import util._
     // obj.copy(field = value)
     def setterBody(obj: Expr[S], value: Expr[T], field: String): Expr[S] =

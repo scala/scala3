@@ -54,6 +54,22 @@
 26 |  val x8 = 0x52_ // error
    |              ^
    |              trailing separator is not allowed
+-- Error: tests/neg/t6124.scala:27:11 ----------------------------------------------------------------------------------
+27 |  val x9 = 0_52 // error
+   |           ^
+   |           Non-zero numbers may not have a leading zero.
+-- Error: tests/neg/t6124.scala:28:12 ----------------------------------------------------------------------------------
+28 |  val x10 = 052 // error
+   |            ^
+   |            Non-zero numbers may not have a leading zero.
+-- Error: tests/neg/t6124.scala:29:12 ----------------------------------------------------------------------------------
+29 |  val x11 = 0_0.52 // error
+   |            ^
+   |            Non-zero numbers may not have a leading zero.
+-- Error: tests/neg/t6124.scala:30:12 ----------------------------------------------------------------------------------
+30 |  val x12 = 00.52 // error
+   |            ^
+   |            Non-zero numbers may not have a leading zero.
 -- Error: tests/neg/t6124.scala:12:17 ----------------------------------------------------------------------------------
 12 |  def tooSmall = 1.0E-325 // error
    |                 ^^^^^^^^

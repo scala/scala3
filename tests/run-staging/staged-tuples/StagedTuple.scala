@@ -79,7 +79,7 @@ object StagedTuple {
   }
 
   def headStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int])(given QuoteContext): Expr[Head[Tup]] = {
-    if (!specialize) '{dynamicApply($tup, 0)}
+    if (!specialize) '{dynamicApply[Tup, 0]($tup, 0)}
     else {
       val resVal = size match {
         case Some(1) =>

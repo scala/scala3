@@ -24,7 +24,7 @@ object Comments {
     */
   class ContextDocstrings {
 
-    private[this] val _docstrings: MutableSymbolMap[Comment] = newMutableSymbolMap
+    private val _docstrings: MutableSymbolMap[Comment] = newMutableSymbolMap
 
     val templateExpander: CommentExpander = new CommentExpander
 
@@ -93,7 +93,7 @@ object Comments {
      *  def foo: A = ???
      *  }}}
      */
-    private[this] def decomposeUseCase(body: String, span: Span, start: Int, end: Int)(implicit ctx: Context): UseCase = {
+    private def decomposeUseCase(body: String, span: Span, start: Int, end: Int)(implicit ctx: Context): UseCase = {
       def subPos(start: Int, end: Int) =
         if (span == NoSpan) NoSpan
         else {

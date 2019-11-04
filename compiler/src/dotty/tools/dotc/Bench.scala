@@ -12,7 +12,7 @@ import scala.annotation.internal.sharable
  */
 object Bench extends Driver {
 
-  @sharable private[this] var numRuns = 1
+  @sharable private var numRuns = 1
 
   private def ntimes(n: Int)(op: => Reporter): Reporter =
     (0 until n).foldLeft(emptyReporter)((_, _) => op)

@@ -7,7 +7,6 @@ import dotty.tools.dotc.core.Phases.Phase
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
-import scala.tools.asm.CustomAttr
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.util.SourceFile
@@ -39,7 +38,7 @@ class GenBCode extends Phase {
     superCallsMap.update(sym, old + calls)
   }
 
-  private[this] var myOutput: AbstractFile = _
+  private var myOutput: AbstractFile = _
 
   private def outputDir(implicit ctx: Context): AbstractFile = {
     if (myOutput eq null)
@@ -56,6 +55,10 @@ class GenBCode extends Phase {
     try super.runOn(units)
     finally myOutput match {
       case jar: JarArchive =>
+        if (ctx.run.suspendedUnits.nonEmpty)
+          // If we close the jar the next run will not be able to write on the jar.
+          // But if we do not close it we cannot use it as part of the macro classpath of the suspended files.
+          ctx.error("Can not suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
         jar.close()
       case _ =>
     }
@@ -68,14 +71,14 @@ object GenBCode {
 
 class GenBCodePipeline(val int: DottyBackendInterface)(implicit val ctx: Context) extends BCodeSyncAndTry {
 
-  private[this] var tree: Tree = _
+  private var tree: Tree = _
 
-  private[this] val sourceFile: SourceFile = ctx.compilationUnit.source
+  private val sourceFile: SourceFile = ctx.compilationUnit.source
 
   /** Convert a `dotty.tools.io.AbstractFile` into a
    *  `dotty.tools.dotc.interfaces.AbstractFile`.
    */
-  private[this] def convertAbstractFile(absfile: dotty.tools.io.AbstractFile): interfaces.AbstractFile =
+  private def convertAbstractFile(absfile: dotty.tools.io.AbstractFile): interfaces.AbstractFile =
     new interfaces.AbstractFile {
       override def name = absfile.name
       override def path = absfile.path
@@ -86,8 +89,8 @@ class GenBCodePipeline(val int: DottyBackendInterface)(implicit val ctx: Context
 
 //  class BCodePhase() {
 
-  private[this] var bytecodeWriter  : BytecodeWriter   = null
-  private[this] var mirrorCodeGen   : JMirrorBuilder   = null
+  private var bytecodeWriter  : BytecodeWriter   = null
+  private var mirrorCodeGen   : JMirrorBuilder   = null
 
   /* ---------------- q1 ---------------- */
 
@@ -241,7 +244,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(implicit val ctx: Context
               getFileForClassfile(outF, store.name, ".hasTasty")
               binary
             }
-          val dataAttr = new CustomAttr(nme.TASTYATTR.mangledString, tasty)
+          val dataAttr = createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
           store.visitAttribute(dataAttr)
         }
 

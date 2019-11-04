@@ -173,7 +173,7 @@ final class JSDefinitions()(implicit ctx: Context) {
     @threadUnsafe lazy val Reflect_registerInstantiatableClassR = ReflectModule.requiredMethodRef("registerInstantiatableClass")
     def Reflect_registerInstantiatableClass(implicit ctx: Context) = Reflect_registerInstantiatableClassR.symbol
 
-  private[this] var allRefClassesCache: Set[Symbol] = _
+  private var allRefClassesCache: Set[Symbol] = _
   def allRefClasses(implicit ctx: Context): Set[Symbol] = {
     if (allRefClassesCache == null) {
       val baseNames = List("Object", "Boolean", "Character", "Byte", "Short",

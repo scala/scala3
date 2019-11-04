@@ -3,7 +3,7 @@ package reflect
 
 trait ImportSelectorOps extends Core {
 
-  implicit class SimpleSelectorAPI(self: SimpleSelector) {
+  given (self: SimpleSelector) {
     def selection(given ctx: Context): Id =
       internal.SimpleSelector_selection(self)
   }
@@ -13,7 +13,7 @@ trait ImportSelectorOps extends Core {
       internal.matchSimpleSelector(importSelector).map(_.selection)
   }
 
-  implicit class RenameSelectorAPI(self: RenameSelector) {
+  given (self: RenameSelector) {
     def from(given ctx: Context): Id =
       internal.RenameSelector_from(self)
 
@@ -26,7 +26,7 @@ trait ImportSelectorOps extends Core {
       internal.matchRenameSelector(importSelector).map(x => (x.from, x.to))
   }
 
-  implicit class OmitSelectorAPI(self: OmitSelector) {
+  given (self: OmitSelector) {
     def omitted(given ctx: Context): Id =
       internal.SimpleSelector_omitted(self)
   }

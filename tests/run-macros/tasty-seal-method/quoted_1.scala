@@ -7,12 +7,12 @@ object Asserts {
 
   /** Replaces last argument list by 0s */
   def zeroLastArgsImpl(x: Expr[Int])(given qctx: QuoteContext): Expr[Int] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     // For simplicity assumes that all parameters are Int and parameter lists have no more than 3 elements
     x.unseal.underlyingArgument match {
       case Apply(fn, args) =>
         fn.tpe.widen match {
-          case Type.IsMethodType(_) =>
+          case IsMethodType(_) =>
             args.size match {
               case 0 => Expr.betaReduce(fn.seal.cast[() => Int])()
               case 1 => Expr.betaReduce(fn.seal.cast[Int => Int])('{0})
@@ -29,7 +29,7 @@ object Asserts {
 
   /** Replaces all argument list by 0s */
   def zeroAllArgsImpl(x: Expr[Int])(given qctx: QuoteContext): Expr[Int] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     // For simplicity assumes that all parameters are Int and parameter lists have no more than 3 elements
     def rec(term: Term): Term = term match {
       case Apply(fn, args) =>

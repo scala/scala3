@@ -1790,13 +1790,10 @@ object messages {
     extends Message(ClassAndCompanionNameClashID) {
     val kind: String = "Naming"
     val msg: String = em"Name clash: both ${cls.owner} and its companion object defines ${cls.name.stripModuleClassSuffix}"
-    val explanation: String = {
-      val kind = if (cls.owner.is(Flags.Trait)) "trait" else "class"
-
-      em"""|A $kind and its companion object cannot both define a ${hl("class")}, ${hl("trait")} or ${hl("object")} with the same name:
+    val explanation: String =
+      em"""|A ${cls.kindString} and its companion object cannot both define a ${hl("class")}, ${hl("trait")} or ${hl("object")} with the same name:
            |  - ${cls.owner} defines ${cls}
            |  - ${other.owner} defines ${other}"""
-      }
   }
 
   case class TailrecNotApplicable(symbol: Symbol)(implicit ctx: Context)
@@ -2362,4 +2359,41 @@ object messages {
     }
     val explanation: String = ""
   }
+
+  case class TraitParameterUsedAsParentPrefix(cls: Symbol)(implicit val ctx: Context)
+    extends Message(TraitParameterUsedAsParentPrefixID) {
+    val kind: String = "Reference"
+    val msg: String =
+      s"${cls.show} cannot extend from a parent that is derived via its own parameters"
+    val explanation: String =
+      ex"""
+          |The parent class/trait that ${cls.show} extends from is obtained from
+          |the parameter of ${cls.show}. This is disallowed in order to prevent
+          |outer-related Null Pointer Exceptions in Scala.
+          |
+          |In order to fix this issue consider directly extending from the parent rather
+          |than obtaining it from the parameters of ${cls.show}.
+          |""".stripMargin
+  }
+
+  case class UnknownNamedEnclosingClassOrObject(name: TypeName)(implicit val ctx: Context)
+    extends Message(UnknownNamedEnclosingClassOrObjectID) {
+    val kind: String = "Reference"
+    val msg: String =
+      em"""no enclosing class or object is named '${hl(name.show)}'"""
+    val explanation: String =
+      ex"""
+      |The class or object named '${hl(name.show)}' was used as a visibility
+      |modifier, but could not be resolved. Make sure that
+      |'${hl(name.show)}' is not misspelled and has been imported into the
+      |current scope.
+      """.stripMargin
+    }
+
+    case class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(implicit val ctx: Context)
+      extends Message(IllegalCyclicTypeReferenceID) {
+      val kind: String = "Type"
+      val msg: String = i"illegal cyclic type reference: ${where} ${hl(lastChecked.show)} of $sym refers back to the type itself"
+      val explanation: String = ""
+    }
 }

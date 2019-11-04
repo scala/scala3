@@ -5,11 +5,11 @@ object scalatest {
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition, '{""}) }
 
   def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     import util._
 
     def isImplicitMethodType(tp: Type): Boolean =
-      Type.IsMethodType.unapply(tp).flatMap(tp => if tp.isImplicit then Some(true) else None).nonEmpty
+      IsMethodType.unapply(tp).flatMap(tp => if tp.isImplicit then Some(true) else None).nonEmpty
 
     cond.unseal.underlyingArgument match {
       case t @ Apply(Select(lhs, op), rhs :: Nil) =>

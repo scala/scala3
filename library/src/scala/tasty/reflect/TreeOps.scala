@@ -5,7 +5,7 @@ trait TreeOps extends Core {
 
   // ----- Tree -----------------------------------------------------
 
-  implicit class TreeAPI(self: Tree) {
+  given (self: Tree) {
     /** Position in the source code */
     def pos(given ctx: Context): Position = internal.Tree_pos(self)
 
@@ -26,7 +26,7 @@ trait TreeOps extends Core {
       internal.matchPackageClause(tree).map(x => (x.pid, x.stats))
   }
 
-  implicit class PackageClauseAPI(self: PackageClause) {
+  given (self: PackageClause) {
     def pid(given ctx: Context): Ref = internal.PackageClause_pid(self)
     def stats(given ctx: Context): List[Tree] = internal.PackageClause_stats(self)
   }
@@ -45,7 +45,7 @@ trait TreeOps extends Core {
       internal.matchImport(tree).map(x => (x.expr, x.selectors))
   }
 
-  implicit class ImportAPI(self: Import)  {
+  given (self: Import)  {
     def expr(given ctx: Context): Term = internal.Import_expr(self)
     def selectors(given ctx: Context): List[ImportSelector] =
       internal.Import_selectors(self)
@@ -62,7 +62,7 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(given ctx: Context): Option[Definition] = internal.matchDefinition(tree)
   }
 
-  implicit class DefinitionAPI(self: Definition) {
+  given (self: Definition) {
     def name(given ctx: Context): String = internal.Definition_name(self)
   }
 
@@ -80,13 +80,12 @@ trait TreeOps extends Core {
       internal.matchClassDef(tree).map(x => (x.name, x.constructor, x.parents, x.derived, x.self, x.body))
   }
 
-  implicit class ClassDefAPI(self: ClassDef) {
+  given (self: ClassDef) {
     def constructor(given ctx: Context): DefDef = internal.ClassDef_constructor(self)
     def parents(given ctx: Context): List[Tree /* Term | TypeTree */] = internal.ClassDef_parents(self)
     def derived(given ctx: Context): List[TypeTree] = internal.ClassDef_derived(self)
     def self(given ctx: Context): Option[ValDef] = internal.ClassDef_self(self)
     def body(given ctx: Context): List[Statement] = internal.ClassDef_body(self)
-    def symbol(given ctx: Context): Symbol = internal.ClassDef_symbol(self)
   }
 
   // DefDef
@@ -104,12 +103,11 @@ trait TreeOps extends Core {
       internal.matchDefDef(tree).map(x => (x.name, x.typeParams, x.paramss, x.returnTpt, x.rhs))
   }
 
-  implicit class DefDefAPI(self: DefDef) {
+  given (self: DefDef) {
     def typeParams(given ctx: Context): List[TypeDef] = internal.DefDef_typeParams(self)
     def paramss(given ctx: Context): List[List[ValDef]] = internal.DefDef_paramss(self)
     def returnTpt(given ctx: Context): TypeTree = internal.DefDef_returnTpt(self) // TODO rename to tpt
     def rhs(given ctx: Context): Option[Term] = internal.DefDef_rhs(self)
-    def symbol(given ctx: Context): Symbol = internal.DefDef_symbol(self)
   }
 
   // ValDef
@@ -127,10 +125,9 @@ trait TreeOps extends Core {
       internal.matchValDef(tree).map(x => (x.name, x.tpt, x.rhs))
   }
 
-  implicit class ValDefAPI(self: ValDef) {
+  given (self: ValDef) {
     def tpt(given ctx: Context): TypeTree = internal.ValDef_tpt(self)
     def rhs(given ctx: Context): Option[Term] = internal.ValDef_rhs(self)
-    def symbol(given ctx: Context): Symbol = internal.ValDef_symbol(self)
   }
 
   // TypeDef
@@ -148,9 +145,8 @@ trait TreeOps extends Core {
       internal.matchTypeDef(tree).map(x => (x.name, x.rhs))
   }
 
-  implicit class TypeDefAPI(self: TypeDef) {
+  given (self: TypeDef) {
     def rhs(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeDef_rhs(self)
-    def symbol(given ctx: Context): Symbol = internal.TypeDef_symbol(self)
   }
 
   // PackageDef
@@ -160,10 +156,9 @@ trait TreeOps extends Core {
       internal.matchPackageDef(tree)
   }
 
-  implicit class PackageDefAPI(self: PackageDef) {
+  given (self: PackageDef) {
     def owner(given ctx: Context): PackageDef = internal.PackageDef_owner(self)
     def members(given ctx: Context): List[Statement] = internal.PackageDef_members(self)
-    def symbol(given ctx: Context): Symbol = internal.PackageDef_symbol(self)
   }
 
   object PackageDef {
@@ -173,19 +168,18 @@ trait TreeOps extends Core {
 
   // ----- Terms ----------------------------------------------------
 
-  implicit class TermAPI(self: Term) {
+  given (self: Term) {
     def tpe(given ctx: Context): Type = internal.Term_tpe(self)
-    def pos(given ctx: Context): Position = internal.Term_pos(self)
     def underlyingArgument(given ctx: Context): Term = internal.Term_underlyingArgument(self)
     def underlying(given ctx: Context): Term = internal.Term_underlying(self)
 
     /** A unary apply node with given argument: `tree(arg)` */
     def appliedTo(arg: Term)(given ctx: Context): Term =
-      appliedToArgs(arg :: Nil)
+      self.appliedToArgs(arg :: Nil)
 
     /** An apply node with given arguments: `tree(arg, args0, ..., argsN)` */
     def appliedTo(arg: Term, args: Term*)(given ctx: Context): Term =
-      appliedToArgs(arg :: args.toList)
+      self.appliedToArgs(arg :: args.toList)
 
     /** An apply node with given argument list `tree(args(0), ..., args(args.length - 1))` */
     def appliedToArgs(args: List[Term])(given ctx: Context): Apply =
@@ -198,15 +192,16 @@ trait TreeOps extends Core {
       argss.foldLeft(self: Term)(Apply(_, _))
 
     /** The current tree applied to (): `tree()` */
-    def appliedToNone(given ctx: Context): Apply = appliedToArgs(Nil)
+    def appliedToNone(given ctx: Context): Apply =
+      self.appliedToArgs(Nil)
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToType(targ: Type)(given ctx: Context): Term =
-      appliedToTypes(targ :: Nil)
+      self.appliedToTypes(targ :: Nil)
 
     /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
     def appliedToTypes(targs: List[Type])(given ctx: Context): Term =
-      appliedToTypeTrees(targs map (Inferred(_)))
+      self.appliedToTypeTrees(targs map (Inferred(_)))
 
     /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
     def appliedToTypeTrees(targs: List[TypeTree])(given ctx: Context): Term =
@@ -243,7 +238,7 @@ trait TreeOps extends Core {
     def unapply(tree: Tree)(given ctx: Context): Option[Ident] = internal.matchIdent(tree)
   }
 
-  implicit class IdentAPI(self: Ident) {
+  given (self: Ident) {
     def name(given ctx: Context): String = internal.Ident_name(self)
   }
 
@@ -293,7 +288,7 @@ trait TreeOps extends Core {
       internal.matchSelect(tree).map(x => (x.qualifier, x.name))
   }
 
-  implicit class SelectAPI(self: Select) {
+  given (self: Select) {
     def qualifier(given ctx: Context): Term = internal.Select_qualifier(self)
     def name(given ctx: Context): String = internal.Select_name(self)
     def signature(given ctx: Context): Option[Signature] = internal.Select_signature(self)
@@ -319,7 +314,7 @@ trait TreeOps extends Core {
       internal.matchLiteral(tree).map(_.constant)
   }
 
-  implicit class LiteralAPI(self:  Literal) {
+  given (self:  Literal) {
     def constant(given ctx: Context): Constant = internal.Literal_constant(self)
   }
 
@@ -344,7 +339,7 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class ThisAPI(self:  This) {
+  given (self:  This) {
     def id(given ctx: Context): Option[Id] = internal.This_id(self)
   }
 
@@ -368,7 +363,7 @@ trait TreeOps extends Core {
       internal.matchNew(tree).map(_.tpt)
   }
 
-  implicit class NewAPI(self: New) {
+  given (self: New) {
     def tpt(given ctx: Context): TypeTree = internal.New_tpt(self)
   }
 
@@ -393,7 +388,7 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class NamedArgAPI(self: NamedArg) {
+  given (self: NamedArg) {
     def name(given ctx: Context): String = internal.NamedArg_name(self)
     def value(given ctx: Context): Term = internal.NamedArg_value(self)
   }
@@ -418,7 +413,7 @@ trait TreeOps extends Core {
       internal.matchApply(tree).map(x => (x.fun, x.args))
   }
 
-  implicit class ApplyAPI(self: Apply) {
+  given (self: Apply) {
     def fun(given ctx: Context): Term = internal.Apply_fun(self)
     def args(given ctx: Context): List[Term] = internal.Apply_args(self)
   }
@@ -445,7 +440,7 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class TypeApplyAPI(self: TypeApply) {
+  given (self: TypeApply) {
     def fun(given ctx: Context): Term = internal.TypeApply_fun(self)
     def args(given ctx: Context): List[TypeTree] = internal.TypeApply_args(self)
   }
@@ -470,7 +465,7 @@ trait TreeOps extends Core {
       internal.matchSuper(tree).map(x => (x.qualifier, x.id))
   }
 
-  implicit class SuperAPI(self: Super) {
+  given (self: Super) {
     def qualifier(given ctx: Context): Term = internal.Super_qualifier(self)
     def id(given ctx: Context): Option[Id] = internal.Super_id(self)
   }
@@ -496,7 +491,7 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class TypedAPI(self: Typed) {
+  given (self: Typed) {
     def expr(given ctx: Context): Term = internal.Typed_expr(self)
     def tpt(given ctx: Context): TypeTree = internal.Typed_tpt(self)
   }
@@ -521,7 +516,7 @@ trait TreeOps extends Core {
       internal.matchAssign(tree).map(x => (x.lhs, x.rhs))
   }
 
-  implicit class AssignAPI(self: Assign) {
+  given (self: Assign) {
     def lhs(given ctx: Context): Term = internal.Assign_lhs(self)
     def rhs(given ctx: Context): Term = internal.Assign_rhs(self)
   }
@@ -546,7 +541,7 @@ trait TreeOps extends Core {
       internal.matchBlock(tree).map(x => (x.statements, x.expr))
   }
 
-  implicit class BlockAPI(self: Block) {
+  given (self: Block) {
     def statements(given ctx: Context): List[Statement] = internal.Block_statements(self)
     def expr(given ctx: Context): Term = internal.Block_expr(self)
   }
@@ -568,7 +563,7 @@ trait TreeOps extends Core {
       internal.matchClosure(tree).map(x => (x.meth, x.tpeOpt))
   }
 
-  implicit class ClosureAPI(self: Closure) {
+  given (self: Closure) {
     def meth(given ctx: Context): Term = internal.Closure_meth(self)
     def tpeOpt(given ctx: Context): Option[Type] = internal.Closure_tpeOpt(self)
   }
@@ -616,7 +611,7 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class IfAPI(self: If) {
+  given (self: If) {
     def cond(given ctx: Context): Term = internal.If_cond(self)
     def thenp(given ctx: Context): Term = internal.If_thenp(self)
     def elsep(given ctx: Context): Term = internal.If_elsep(self)
@@ -643,7 +638,7 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class MatchAPI(self: Match) {
+  given (self: Match) {
     def scrutinee(given ctx: Context): Term = internal.Match_scrutinee(self)
     def cases(given ctx: Context): List[CaseDef] = internal.Match_cases(self)
   }
@@ -669,7 +664,7 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class ImplicitMatchAPI(self: ImpliedMatch) {
+  given (self: ImpliedMatch) {
     def cases(given ctx: Context): List[CaseDef] = internal.ImplicitMatch_cases(self)
   }
 
@@ -694,7 +689,7 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class TryAPI(self: Try) {
+  given (self: Try) {
     def body(given ctx: Context): Term = internal.Try_body(self)
     def cases(given ctx: Context): List[CaseDef] = internal.Try_cases(self)
     def finalizer(given ctx: Context): Option[Term] = internal.Try_finalizer(self)
@@ -721,7 +716,7 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class ReturnAPI(self: Return) {
+  given (self: Return) {
     def expr(given ctx: Context): Term = internal.Return_expr(self)
   }
 
@@ -743,7 +738,7 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class RepeatedAPI(self: Repeated) {
+  given (self: Repeated) {
     def elems(given ctx: Context): List[Term] = internal.Repeated_elems(self)
     def elemtpt(given ctx: Context): TypeTree = internal.Repeated_elemtpt(self)
   }
@@ -766,7 +761,7 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class InlinedAPI(self: Inlined) {
+  given (self: Inlined) {
     def call(given ctx: Context): Option[Tree /* Term | TypeTree */] = internal.Inlined_call(self)
     def bindings(given ctx: Context): List[Definition] = internal.Inlined_bindings(self)
     def body(given ctx: Context): Term = internal.Inlined_body(self)
@@ -790,10 +785,9 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class SelectOuterAPI(self: SelectOuter) {
+  given (self: SelectOuter) {
     def qualifier(given ctx: Context): Term = internal.SelectOuter_qualifier(self)
     def level(given ctx: Context): Int = internal.SelectOuter_level(self)
-    def tpe(given ctx: Context): Type = internal.SelectOuter_tpe(self)
   }
 
   object IsWhile {
@@ -816,22 +810,16 @@ trait TreeOps extends Core {
 
   }
 
-  implicit class WhileAPI(self: While) {
+  given (self: While) {
     def cond(given ctx: Context): Term = internal.While_cond(self)
     def body(given ctx: Context): Term = internal.While_body(self)
   }
 
   // ----- TypeTrees ------------------------------------------------
 
-  implicit class TypeTreeAPI(self: TypeTree) {
-    /** Position in the source code */
-    def pos(given ctx: Context): Position = internal.TypeTree_pos(self)
-
+  given (self: TypeTree) {
     /** Type of this type tree */
     def tpe(given ctx: Context): Type = internal.TypeTree_tpe(self)
-
-    /** Symbol of this type tree */
-    def symbol(given ctx: Context): Symbol = internal.TypeTree_symbol(self)
   }
 
   object IsTypeTree {
@@ -860,7 +848,7 @@ trait TreeOps extends Core {
       internal.matchTypeIdent(tree)
   }
 
-  implicit class TypeIdentAPI(self: TypeIdent) {
+  given (self: TypeIdent) {
     def name(given ctx: Context): String = internal.TypeIdent_name(self)
   }
 
@@ -887,7 +875,7 @@ trait TreeOps extends Core {
       internal.matchTypeSelect(tree).map(x => (x.qualifier, x.name))
   }
 
-  implicit class TypeSelectAPI(self: TypeSelect) {
+  given (self: TypeSelect) {
     def qualifier(given ctx: Context): Term = internal.TypeSelect_qualifier(self)
     def name(given ctx: Context): String = internal.TypeSelect_name(self)
   }
@@ -906,7 +894,7 @@ trait TreeOps extends Core {
       internal.matchProjection(tree).map(x => (x.qualifier, x.name))
   }
 
-  implicit class ProjectionAPI(self: Projection) {
+  given (self: Projection) {
     def qualifier(given ctx: Context): TypeTree = internal.Projection_qualifier(self)
     def name(given ctx: Context): String = internal.Projection_name(self)
   }
@@ -926,7 +914,7 @@ trait TreeOps extends Core {
       internal.matchSingleton(tree).map(_.ref)
   }
 
-  implicit class SingletonAPI(self: Singleton) {
+  given (self: Singleton) {
     def ref(given ctx: Context): Term = internal.Singleton_ref(self)
   }
 
@@ -944,7 +932,7 @@ trait TreeOps extends Core {
       internal.matchRefined(tree).map(x => (x.tpt, x.refinements))
   }
 
-  implicit class RefinedAPI(self: Refined) {
+  given (self: Refined) {
     def tpt(given ctx: Context): TypeTree = internal.Refined_tpt(self)
     def refinements(given ctx: Context): List[Definition] = internal.Refined_refinements(self)
   }
@@ -964,7 +952,7 @@ trait TreeOps extends Core {
       internal.matchApplied(tree).map(x => (x.tpt, x.args))
   }
 
-  implicit class AppliedAPI(self: Applied) {
+  given (self: Applied) {
     def tpt(given ctx: Context): TypeTree = internal.Applied_tpt(self)
     def args(given ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = internal.Applied_args(self)
   }
@@ -984,7 +972,7 @@ trait TreeOps extends Core {
       internal.matchAnnotated(tree).map(x => (x.arg, x.annotation))
   }
 
-  implicit class AnnotatedAPI(self: Annotated) {
+  given (self: Annotated) {
     def arg(given ctx: Context): TypeTree = internal.Annotated_arg(self)
     def annotation(given ctx: Context): Term = internal.Annotated_annotation(self)
   }
@@ -1004,7 +992,7 @@ trait TreeOps extends Core {
       internal.matchMatchTypeTree(tree).map(x => (x.bound, x.selector, x.cases))
   }
 
-  implicit class MatchTypeTreeAPI(self: MatchTypeTree) {
+  given (self: MatchTypeTree) {
     def bound(given ctx: Context): Option[TypeTree] = internal.MatchTypeTree_bound(self)
     def selector(given ctx: Context): TypeTree = internal.MatchTypeTree_selector(self)
     def cases(given ctx: Context): List[TypeCaseDef] = internal.MatchTypeTree_cases(self)
@@ -1025,7 +1013,7 @@ trait TreeOps extends Core {
       internal.matchByName(tree).map(_.result)
   }
 
-  implicit class ByNameAPI(self: ByName) {
+  given (self: ByName) {
     def result(given ctx: Context): TypeTree = internal.ByName_result(self)
   }
 
@@ -1044,7 +1032,7 @@ trait TreeOps extends Core {
       internal.matchLambdaTypeTree(tree).map(x => (x.tparams, x.body))
   }
 
-  implicit class LambdaTypeTreeAPI(self: LambdaTypeTree) {
+  given (self: LambdaTypeTree) {
     def tparams(given ctx: Context): List[TypeDef] = internal.Lambdatparams(self)
     def body(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.Lambdabody(self)
   }
@@ -1063,7 +1051,7 @@ trait TreeOps extends Core {
       internal.matchTypeBind(tree).map(x => (x.name, x.body))
   }
 
-  implicit class TypeBindAPI(self: TypeBind) {
+  given (self: TypeBind) {
     def name(given ctx: Context): String = internal.TypeBind_name(self)
     def body(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeBind_body(self)
   }
@@ -1083,14 +1071,14 @@ trait TreeOps extends Core {
       internal.matchTypeBlock(tree).map(x => (x.aliases, x.tpt))
   }
 
-  implicit class TypeBlockAPI(self: TypeBlock) {
+  given (self: TypeBlock) {
     def aliases(given ctx: Context): List[TypeDef] = internal.TypeBlock_aliases(self)
     def tpt(given ctx: Context): TypeTree = internal.TypeBlock_tpt(self)
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------
 
-  implicit class TypeBoundsTreeAPI(self: TypeBoundsTree) {
+  given (self: TypeBoundsTree) {
     def tpe(given ctx: Context): TypeBounds = internal.TypeBoundsTree_tpe(self)
     def low(given ctx: Context): TypeTree = internal.TypeBoundsTree_low(self)
     def hi(given ctx: Context): TypeTree = internal.TypeBoundsTree_hi(self)
@@ -1106,7 +1094,7 @@ trait TreeOps extends Core {
       internal.matchTypeBoundsTree(tree).map(x => (x.low, x.hi))
   }
 
-  implicit class WildcardTypeTreeAPI(self: WildcardTypeTree) {
+  given (self: WildcardTypeTree) {
     def tpe(given ctx: Context): TypeOrBounds = internal.WildcardTypeTree_tpe(self)
   }
 
@@ -1124,7 +1112,7 @@ trait TreeOps extends Core {
 
   // ----- CaseDefs ------------------------------------------------
 
-  implicit class CaseDefAPI(caseDef: CaseDef) {
+  given (caseDef: CaseDef) {
     def pattern(given ctx: Context): Tree = internal.CaseDef_pattern(caseDef)
     def guard(given ctx: Context): Option[Term] = internal.CaseDef_guard(caseDef)
     def rhs(given ctx: Context): Term = internal.CaseDef_rhs(caseDef)
@@ -1146,7 +1134,7 @@ trait TreeOps extends Core {
       internal.matchCaseDef(tree).map( x => (x.pattern, x.guard, x.rhs))
   }
 
-  implicit class TypeCaseDefAPI(caseDef: TypeCaseDef) {
+  given (caseDef: TypeCaseDef) {
     def pattern(given ctx: Context): TypeTree = internal.TypeCaseDef_pattern(caseDef)
     def rhs(given ctx: Context): TypeTree = internal.TypeCaseDef_rhs(caseDef)
   }
@@ -1182,7 +1170,7 @@ trait TreeOps extends Core {
       internal.matchTree_Bind(pattern).map(x => (x.name, x.pattern))
   }
 
-  implicit class BindAPI(bind: Bind) {
+  given (bind: Bind) {
     def name(given ctx: Context): String = internal.Tree_Bind_name(bind)
     def pattern(given ctx: Context): Tree = internal.Tree_Bind_pattern(bind)
   }
@@ -1200,7 +1188,7 @@ trait TreeOps extends Core {
       internal.matchTree_Unapply(pattern).map(x => (x.fun, x.implicits, x.patterns))
   }
 
-  implicit class UnapplyAPI(unapply: Unapply) {
+  given (unapply: Unapply) {
     def fun(given ctx: Context): Term = internal.Tree_Unapply_fun(unapply)
     def implicits(given ctx: Context): List[Term] = internal.Tree_Unapply_implicits(unapply)
     def patterns(given ctx: Context): List[Tree] = internal.Tree_Unapply_patterns(unapply)
@@ -1220,7 +1208,7 @@ trait TreeOps extends Core {
       internal.matchTree_Alternatives(pattern).map(_.patterns)
   }
 
-  implicit class AlternativesAPI(alternatives: Alternatives) {
+  given (alternatives: Alternatives) {
     def patterns(given ctx: Context): List[Tree] = internal.Tree_Alternatives_patterns(alternatives)
   }
 

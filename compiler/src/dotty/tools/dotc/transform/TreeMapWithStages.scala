@@ -36,10 +36,10 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   import TreeMapWithStages._
 
   /** A map from locally defined symbols to their definition quotation level */
-  private[this] val levelOfMap: mutable.HashMap[Symbol, Int] = ictx.property(LevelOfKey).get
+  private val levelOfMap: mutable.HashMap[Symbol, Int] = ictx.property(LevelOfKey).get
 
   /** A stack of entered symbols, to be unwound after scope exit */
-  private[this] var enteredSyms: List[Symbol] = Nil
+  private var enteredSyms: List[Symbol] = Nil
 
   /** The quotation level of the definition of the locally defined symbol */
   protected def levelOf(sym: Symbol): Option[Int] = levelOfMap.get(sym)

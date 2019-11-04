@@ -11,7 +11,7 @@ import printing.Highlighting._
 
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
-  private[this] val sb: StringBuilder = new StringBuilder
+  private val sb: StringBuilder = new StringBuilder
 
   val unpickler: TastyUnpickler = new TastyUnpickler(bytes)
   import unpickler.{nameAtRef, unpickle}
@@ -51,7 +51,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
   class TreeSectionUnpickler extends SectionUnpickler[String](TreePickler.sectionName) {
     import TastyFormat._
 
-    private[this] val sb: StringBuilder = new StringBuilder
+    private val sb: StringBuilder = new StringBuilder
 
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
       import reader._
@@ -127,7 +127,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
   class PositionSectionUnpickler extends SectionUnpickler[String]("Positions") {
 
-    private[this] val sb: StringBuilder = new StringBuilder
+    private val sb: StringBuilder = new StringBuilder
 
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
       sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")
@@ -144,7 +144,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
   class CommentSectionUnpickler extends SectionUnpickler[String]("Comments") {
 
-    private[this] val sb: StringBuilder = new StringBuilder
+    private val sb: StringBuilder = new StringBuilder
 
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
       sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")

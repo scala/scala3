@@ -30,12 +30,12 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
    * the removeStaleEntries() method works through the queue to remove
    * stale entries from the table
    */
-  private[this] val queue = new ReferenceQueue[A]
+  private val queue = new ReferenceQueue[A]
 
   /**
    * the number of elements in this set
    */
-  private[this] var count = 0
+  private var count = 0
 
   /**
    * from a specified initial capacity compute the capacity we'll use as being the next
@@ -52,21 +52,21 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
   /**
    * the underlying table of entries which is an array of Entry linked lists
    */
-  private[this] var table = new Array[Entry[A]](computeCapacity)
+  private var table = new Array[Entry[A]](computeCapacity)
 
   /**
    * the limit at which we'll increase the size of the hash table
    */
-  private[this] var threshold = computeThreshold
+  private var threshold = computeThreshold
 
-  private[this] def computeThreshold: Int = (table.size * loadFactor).ceil.toInt
+  private def computeThreshold: Int = (table.size * loadFactor).ceil.toInt
 
   def get(elem: A): Option[A] = Option(findEntry(elem))
 
   /**
    * find the bucket associated with an element's hash code
    */
-  private[this] def bucketFor(hash: Int): Int = {
+  private def bucketFor(hash: Int): Int = {
     // spread the bits around to try to avoid accidental collisions using the
     // same algorithm as java.util.HashMap
     var h = hash
@@ -85,7 +85,7 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
   /**
    * remove a single entry from a linked list in a given bucket
    */
-  private[this] def remove(bucket: Int, prevEntry: Entry[A], entry: Entry[A]): Unit = {
+  private def remove(bucket: Int, prevEntry: Entry[A], entry: Entry[A]): Unit = {
     prevEntry match {
       case null => table(bucket) = entry.tail
       case _ => prevEntry.tail = entry.tail
@@ -96,7 +96,7 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
   /**
    * remove entries associated with elements that have been gc'ed
    */
-  private[this] def removeStaleEntries(): Unit = {
+  private def removeStaleEntries(): Unit = {
     def poll(): Entry[A] = queue.poll().asInstanceOf[Entry[A]]
 
     @tailrec
@@ -121,7 +121,7 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
   /**
    * Double the size of the internal table
    */
-  private[this] def resize(): Unit = {
+  private def resize(): Unit = {
     val oldTable = table
     table = new Array[Entry[A]](oldTable.size * 2)
     threshold = computeThreshold
@@ -275,17 +275,17 @@ final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double) e
       /**
        * the bucket currently being examined. Initially it's set past the last bucket and will be decremented
        */
-      private[this] var currentBucket: Int = table.size
+      private var currentBucket: Int = table.size
 
       /**
        * the entry that was last examined
        */
-      private[this] var entry: Entry[A] = null
+      private var entry: Entry[A] = null
 
       /**
        * the element that will be the result of the next call to next()
        */
-      private[this] var lookaheadelement: A = null.asInstanceOf[A]
+      private var lookaheadelement: A = null.asInstanceOf[A]
 
       @tailrec
       def hasNext: Boolean = {

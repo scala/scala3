@@ -5,7 +5,7 @@ object api {
     ${ stripImpl(x) }
 
   private def stripImpl(x: String)(given qctx: QuoteContext): Expr[String] =
-    Expr(x.stripMargin)
+    Expr(augmentString(x).stripMargin)
 
   inline def typeChecks(inline x: String): Boolean =
     ${ typeChecksImpl(scala.compiletime.testing.typeChecks(x)) }

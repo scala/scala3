@@ -21,6 +21,7 @@ object MacroClassLoader {
 
   private def makeMacroClassLoader(implicit ctx: Context): ClassLoader = trace("new macro class loader") {
     val urls = ctx.settings.classpath.value.split(java.io.File.pathSeparatorChar).map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
-    new java.net.URLClassLoader(urls, getClass.getClassLoader)
+    val out = ctx.settings.outputDir.value.jpath.toUri.toURL // to find classes in case of suspended compilation
+    new java.net.URLClassLoader(urls :+ out, getClass.getClassLoader)
   }
 }

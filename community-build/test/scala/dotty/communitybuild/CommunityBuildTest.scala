@@ -91,6 +91,12 @@ class CommunityBuildTest {
     }
   }
 
+  @Test def intent = test(
+    project       = "intent",
+    testCommand   = "test",
+    updateCommand = "update"
+  )
+
   @Test def algebra = test(
     project       = "algebra",
     testCommand   = "coreJVM/compile",

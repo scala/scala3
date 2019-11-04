@@ -457,6 +457,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   /** Are we in an inline method body? */
   def inInlineMethod: Boolean = owner.ownersIterator.exists(_.isInlineMethod)
 
+  /** Are we in a macro? */
+  def inMacro: Boolean = owner.ownersIterator.exists(s => s.isInlineMethod && s.is(Macro))
+
   /** Is `feature` enabled in class `owner`?
    *  This is the case if one of the following two alternatives holds:
    *

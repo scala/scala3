@@ -145,9 +145,9 @@ object SymDenotations {
 
     // ------ Getting and setting fields -----------------------------
 
-    private[this] var myFlags: FlagSet = adaptFlags(initFlags)
-    private[this] var myPrivateWithin: Symbol = initPrivateWithin
-    private[this] var myAnnotations: List[Annotation] = Nil
+    private var myFlags: FlagSet = adaptFlags(initFlags)
+    private var myPrivateWithin: Symbol = initPrivateWithin
+    private var myAnnotations: List[Annotation] = Nil
 
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = maybeOwner
@@ -795,6 +795,9 @@ object SymDenotations {
      *  @param superAccess  Access is via super
      *  Everything is accessible if `pre` is `NoPrefix`.
      *  A symbol with type `NoType` is not accessible for any other prefix.
+     *
+     *  As a side effect, drop Local flags of members that are not accessed via the ThisType
+     *  of their owner.
      */
     final def isAccessibleFrom(pre: Type, superAccess: Boolean = false, whyNot: StringBuffer = null)(implicit ctx: Context): Boolean = {
 
@@ -832,11 +835,12 @@ object SymDenotations {
                | Access to protected $this not permitted because enclosing ${ctx.owner.enclosingClass.showLocated}
                | is not a subclass of ${owner.showLocated} where target is defined""")
         else if
-          (!(  isType // allow accesses to types from arbitrary subclasses fixes #4737
+          !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
            || pre.derivesFrom(cls)
            || isConstructor
            || owner.is(ModuleClass) // don't perform this check for static members
-           ))
+           )
+        then
           fail(
             i"""
                | Access to protected ${symbol.show} not permitted because prefix type ${pre.widen.show}
@@ -854,6 +858,11 @@ object SymDenotations {
         || (accessWithin(boundary) || accessWithinLinked(boundary)) &&
              (  !this.is(Local)
              || isCorrectThisType(pre)
+             || canBeLocal(name, flags)
+                && {
+                  resetFlag(Local)
+                  true
+                }
              )
         || this.is(Protected) &&
              (  superAccess
@@ -909,17 +918,10 @@ object SymDenotations {
     /** Is this a Scala 2 macro */
     final def isScala2Macro(implicit ctx: Context): Boolean = is(Macro) && symbol.owner.is(Scala2x)
 
-    /** An erased value or an inline method, excluding @forceInline annotated methods.
-     *  The latter have to be kept around to get to parity with Scala.
-     *  This is necessary at least until we have full bootstrap. Right now
-     *  dotty-bootstrapped involves running the Dotty compiler compiled with Scala 2 with
-     *  a Dotty runtime library compiled with Dotty. If we erase @forceInline annotated
-     *  methods, this means that the support methods in dotty.runtime.LazyVals vanish.
-     *  But they are needed for running the lazy val implementations in the Scala-2 compiled compiler.
+    /** An erased value or an inline method.
      */
     def isEffectivelyErased(implicit ctx: Context): Boolean =
-      is(Erased) ||
-      isInlineMethod && unforcedAnnotation(defn.ForceInlineAnnot).isEmpty
+      is(Erased) || isInlineMethod
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,
@@ -1014,7 +1016,7 @@ object SymDenotations {
 
     /** The chain of owners of this denotation, starting with the denoting symbol itself */
     final def ownersIterator(implicit ctx: Context): Iterator[Symbol] = new Iterator[Symbol] {
-      private[this] var current = symbol
+      private var current = symbol
       def hasNext = current.exists
       def next: Symbol = {
         val result = current
@@ -1061,6 +1063,12 @@ object SymDenotations {
     /** A symbol is effectively final if it cannot be overridden in a subclass */
     final def isEffectivelyFinal(implicit ctx: Context): Boolean =
       isOneOf(EffectivelyFinalFlags) || !owner.isClass || owner.isOneOf(FinalOrModuleClass) || owner.isAnonymousClass
+
+    /** A class is effectively sealed if has the `final` or `sealed` modifier, or it
+     *  is defined in Scala 3 and is neither abstract nor open.
+     */
+    final def isEffectivelySealed(given Context): Boolean =
+      isOneOf(FinalOrSealed) || isClass && !isOneOf(EffectivelyOpenFlags)
 
     /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {
@@ -1360,16 +1368,16 @@ object SymDenotations {
      */
     def typeParamCreationFlags: FlagSet = TypeParam
 
-    override def toString: String = {
-      val kindString =
-        if (myFlags.is(ModuleClass)) "module class"
-        else if (isClass) "class"
-        else if (isType) "type"
-        else if (myFlags.is(Module)) "module"
-        else if (myFlags.is(Method)) "method"
-        else "val"
-      s"$kindString $name"
-    }
+    def kindString: String =
+      if myFlags.is(ModuleClass) then "module class"
+      else if myFlags.is(Trait)  then "trait"
+      else if isClass            then "class"
+      else if isType             then "type"
+      else if myFlags.is(Module) then "module"
+      else if myFlags.is(Method) then "method"
+      else                            "val"
+
+    override def toString: String = s"$kindString $name"
 
     // ----- Sanity checks and debugging */
 
@@ -1474,16 +1482,16 @@ object SymDenotations {
 
     // ----- caches -------------------------------------------------------
 
-    private[this] var myTypeParams: List[TypeSymbol] = null
-    private[this] var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.Empty
+    private var myTypeParams: List[TypeSymbol] = null
+    private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.Empty
 
-    private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
-    private[this] var myMemberCachePeriod: Period = Nowhere
+    private var myMemberCache: LRUCache[Name, PreDenotation] = null
+    private var myMemberCachePeriod: Period = Nowhere
 
     /** A cache from types T to baseType(T, C) */
     type BaseTypeMap = java.util.IdentityHashMap[CachedType, Type]
-    private[this] var myBaseTypeCache: BaseTypeMap = null
-    private[this] var myBaseTypeCachePeriod: Period = Nowhere
+    private var myBaseTypeCache: BaseTypeMap = null
+    private var myBaseTypeCachePeriod: Period = Nowhere
 
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
@@ -1600,7 +1608,7 @@ object SymDenotations {
 
    // ------ class-specific operations -----------------------------------
 
-    private[this] var myThisType: Type = null
+    private var myThisType: Type = null
 
     /** The this-type depends on the kind of class:
      *  - for a package class `p`:  ThisType(TypeRef(Noprefix, p))
@@ -1618,7 +1626,7 @@ object SymDenotations {
       ThisType.raw(TypeRef(pre, cls))
     }
 
-    private[this] var myTypeRef: TypeRef = null
+    private var myTypeRef: TypeRef = null
 
     override def typeRef(implicit ctx: Context): TypeRef = {
       if (myTypeRef == null) myTypeRef = super.typeRef
@@ -2038,7 +2046,7 @@ object SymDenotations {
             .installAfter(phase)
       }
 
-    private[this] var myCompanion: Symbol = NoSymbol
+    private var myCompanion: Symbol = NoSymbol
 
     /** Register companion class */
     override def registerCompanion(companion: Symbol)(implicit ctx: Context) =
@@ -2061,8 +2069,8 @@ object SymDenotations {
     initPrivateWithin: Symbol)
     extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
 
-    private[this] var packageObjsCache: List[ClassDenotation] = _
-    private[this] var packageObjsRunId: RunId = NoRunId
+    private var packageObjsCache: List[ClassDenotation] = _
+    private var packageObjsRunId: RunId = NoRunId
 
     /** The package objects in this class */
     def packageObjs(implicit ctx: Context): List[ClassDenotation] = {
@@ -2183,6 +2191,17 @@ object SymDenotations {
     validFor = Period.allInRun(NoRunId)
   }
 
+  /** Can a private symbol with given name and flags be inferred to be local,
+   *  if all references to such symbols are via `this`?
+   *  This holds for all symbols except
+   *   - constructors, since they can never be referred to as members of their
+   *     own, fully elaborated `this`.
+   *   - parameters and parameter accessors, since their Local status is already
+   *     determined by whether they have a `val` or `var` or not.
+   */
+  def canBeLocal(name: Name, flags: FlagSet)(given Context) =
+    !name.isConstructorName && !flags.is(Param) && !flags.is(ParamAccessor)
+
   // ---- Completion --------------------------------------------------------
 
   /** Instances of LazyType are carried by uncompleted symbols.
@@ -2201,10 +2220,10 @@ object SymDenotations {
     def apply(sym: Symbol): LazyType = this
     def apply(module: TermSymbol, modcls: ClassSymbol): LazyType = this
 
-    private[this] val NoSymbolFn = (_: Context) => NoSymbol
-    private[this] var myDecls: Scope = EmptyScope
-    private[this] var mySourceModuleFn: Context => Symbol = NoSymbolFn
-    private[this] var myModuleClassFn: Context => Symbol = NoSymbolFn
+    private val NoSymbolFn = (_: Context) => NoSymbol
+    private var myDecls: Scope = EmptyScope
+    private var mySourceModuleFn: Context => Symbol = NoSymbolFn
+    private var myModuleClassFn: Context => Symbol = NoSymbolFn
 
     /** The type parameters computed by the completer before completion has finished */
     def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeParamInfo] =
@@ -2327,8 +2346,8 @@ object SymDenotations {
   private abstract class InheritedCacheImpl(val createdAt: Period) extends InheritedCache {
     protected def sameGroup(p1: Phase, p2: Phase): Boolean
 
-    private[this] var dependent: WeakHashMap[InheritedCache, Unit] = null
-    private[this] var checkedPeriod: Period = Nowhere
+    private var dependent: WeakHashMap[InheritedCache, Unit] = null
+    private var checkedPeriod: Period = Nowhere
 
     protected def invalidateDependents() = {
       if (dependent != null) {
@@ -2358,12 +2377,12 @@ object SymDenotations {
   }
 
   private class MemberNamesImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with MemberNames {
-    private[this] var cache: SimpleIdentityMap[NameFilter, Set[Name]] = SimpleIdentityMap.Empty
+    private var cache: SimpleIdentityMap[NameFilter, Set[Name]] = SimpleIdentityMap.Empty
 
     final def isValid(implicit ctx: Context): Boolean =
       cache != null && isValidAt(ctx.phase)
 
-    private[this] var locked = false
+    private var locked = false
 
     /** Computing parent member names might force parents, which could invalidate
      *  the cache itself. In that case we should cancel invalidation and
@@ -2397,11 +2416,11 @@ object SymDenotations {
   }
 
   private class BaseDataImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with BaseData {
-    private[this] var cache: (List[ClassSymbol], BaseClassSet) = null
+    private var cache: (List[ClassSymbol], BaseClassSet) = null
 
-    private[this] var valid = true
-    private[this] var locked = false
-    private[this] var provisional = false
+    private var valid = true
+    private var locked = false
+    private var provisional = false
 
     final def isValid(implicit ctx: Context): Boolean = valid && isValidAt(ctx.phase)
 
@@ -2460,9 +2479,9 @@ object SymDenotations {
 
   /** A class to combine base data from parent types */
   class BaseDataBuilder {
-    private[this] var classes: List[ClassSymbol] = Nil
-    private[this] var classIds = new Array[Int](32)
-    private[this] var length = 0
+    private var classes: List[ClassSymbol] = Nil
+    private var classIds = new Array[Int](32)
+    private var length = 0
 
     private def resize(size: Int) = {
       val classIds1 = new Array[Int](size)
@@ -2500,5 +2519,5 @@ object SymDenotations {
 
   private val packageTypeName = ModuleClassName(nme.PACKAGE).toTypeName
 
-  @sharable private[this] var indent = 0 // for completions printing
+  @sharable private var indent = 0 // for completions printing
 }

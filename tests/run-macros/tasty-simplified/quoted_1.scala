@@ -6,12 +6,12 @@ object Macros {
   inline def simplified[T <: Tuple]: Seq[String] = ${ impl[T] }
 
   def impl[T: Type](given qctx: QuoteContext): Expr[Seq[String]] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
 
     def unpackTuple(tp: Type): List[Type] = {
       @tailrec
       def loop(tp: Type, acc: List[Type]): List[Type] = tp.dealias.simplified match {
-        case Type.AppliedType(_, List(IsType(hd), IsType(tl))) =>
+        case AppliedType(_, List(IsType(hd), IsType(tl))) =>
           loop(tl, hd.dealias.simplified :: acc)
         case other => acc
       }

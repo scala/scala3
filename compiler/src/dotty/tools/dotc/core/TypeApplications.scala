@@ -103,7 +103,7 @@ object TypeApplications {
    *  produce a higher-kinded application with a type lambda as type constructor.
    */
   class Reducer(tycon: TypeLambda, args: List[Type])(implicit ctx: Context) extends TypeMap {
-    private[this] var available = (0 until args.length).toSet
+    private var available = (0 until args.length).toSet
     var allReplaced: Boolean = true
     def hasWildcardArg(p: TypeParamRef): Boolean =
       p.binder == tycon && isBounds(args(p.paramNum))

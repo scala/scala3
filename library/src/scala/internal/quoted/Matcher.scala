@@ -12,7 +12,7 @@ private[quoted] object Matcher {
 
     private final val debug = false
 
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     import Matching._
 
     private type Env = Set[(Symbol, Symbol)]

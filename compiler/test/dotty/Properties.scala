@@ -6,7 +6,7 @@ import java.nio.file._
 object Properties {
 
   /** If property is unset or "TRUE" we consider it `true` */
-  private[this] def propIsNullOrTrue(prop: String): Boolean = {
+  private def propIsNullOrTrue(prop: String): Boolean = {
     val prop = System.getProperty("dotty.tests.interactive")
     prop == null || prop == "TRUE"
   }

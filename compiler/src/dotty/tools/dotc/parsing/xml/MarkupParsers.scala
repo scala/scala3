@@ -87,7 +87,7 @@ object MarkupParsers {
 
     var xEmbeddedBlock: Boolean = false
 
-    private[this] var debugLastStartElement = List.empty[(Int, String)]
+    private var debugLastStartElement = List.empty[(Int, String)]
     private def debugLastPos = debugLastStartElement.head._1
     private def debugLastElem = debugLastStartElement.head._2
 
@@ -317,7 +317,7 @@ object MarkupParsers {
     }
 
     /** Some try/catch/finally logic used by xLiteral and xLiteralPattern.  */
-    @forceInline private def xLiteralCommon(f: () => Tree, ifTruncated: String => Unit): Tree = {
+    inline private def xLiteralCommon(f: () => Tree, ifTruncated: String => Unit): Tree = {
       assert(parser.in.token == Tokens.XMLSTART)
       val saved = parser.in.newTokenData
       saved.copyFrom(parser.in)

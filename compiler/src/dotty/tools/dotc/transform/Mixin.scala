@@ -270,11 +270,12 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       parents = impl.parents.map(p => TypeTree(p.tpe).withSpan(p.span)),
       body =
         if (cls.is(Trait)) traitDefs(impl.body)
-        else {
+        else if (!cls.isPrimitiveValueClass) {
           val mixInits = mixins.flatMap { mixin =>
             flatten(traitInits(mixin)) ::: superCallOpt(mixin) ::: setters(mixin) ::: mixinForwarders(mixin)
           }
           superCallOpt(superCls) ::: mixInits ::: impl.body
-        })
+        }
+        else impl.body)
   }
 }

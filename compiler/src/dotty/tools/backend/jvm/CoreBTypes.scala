@@ -203,7 +203,7 @@ final class CoreBTypesProxy[BTFS <: BTypesFromSymbols[_ <: BackendInterface]](va
   import bTypes._
   import bTypes.int._
 
-  private[this] var _coreBTypes: CoreBTypes[bTypes.type] = _
+  private var _coreBTypes: CoreBTypes[bTypes.type] = _
   def setBTypes(coreBTypes: CoreBTypes[BTFS]): Unit = {
     _coreBTypes = coreBTypes.asInstanceOf[CoreBTypes[bTypes.type]]
   }

@@ -13,12 +13,12 @@ object Asserts {
     ${ impl('cond) }
 
   def impl(cond: Expr[Boolean])(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
 
     val tree = cond.unseal
 
     def isOps(tpe: TypeOrBounds): Boolean = tpe match {
-      case Type.IsTermRef(tpe) => tpe.termSymbol.isDefDef && tpe.name == "Ops"// TODO check that the parent is Asserts
+      case IsTermRef(tpe) => tpe.termSymbol.isDefDef && tpe.name == "Ops"// TODO check that the parent is Asserts
       case _ => false
     }
 

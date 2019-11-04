@@ -5,8 +5,8 @@ import Contexts._
 import config.Printers.{default, typr}
 
 trait ConstraintRunInfo { self: Run =>
-  private[this] var maxSize = 0
-  private[this] var maxConstraint: Constraint = _
+  private var maxSize = 0
+  private var maxConstraint: Constraint = _
   def recordConstraintSize(c: Constraint, size: Int): Unit =
     if (size > maxSize) {
       maxSize = size

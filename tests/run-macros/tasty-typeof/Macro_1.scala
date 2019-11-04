@@ -6,7 +6,7 @@ object Macros {
   inline def testTypeOf(): Unit = ${ testTypeOfImpl }
 
   private def testTypeOfImpl(given qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
     '{
       assert(${(typeOf[Unit] =:= defn.UnitType)}, "Unit")
       assert(${(typeOf[Byte] =:= defn.ByteType)}, "Byte")

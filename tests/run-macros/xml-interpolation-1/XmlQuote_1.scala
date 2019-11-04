@@ -14,7 +14,7 @@ object XmlQuote {
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
           (given qctx: QuoteContext): Expr[Xml] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given}
 
     // for debugging purpose
     def pp(tree: Tree): Unit = {

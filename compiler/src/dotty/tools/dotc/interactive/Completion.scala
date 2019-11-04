@@ -136,7 +136,7 @@ object Completion {
 
   private class CompletionBuffer(val mode: Mode, val prefix: String, pos: SourcePosition) {
 
-    private[this] val completions = new RenameAwareScope
+    private val completions = new RenameAwareScope
 
     /**
      * Return the list of symbols that should be included in completion results.
@@ -316,7 +316,7 @@ object Completion {
     }
 
     /** Filter for names that should appear when looking for completions. */
-    private[this] object completionsFilter extends NameFilter {
+    private object completionsFilter extends NameFilter {
       def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
         !name.isConstructorName && name.toTermName.info.kind == SimpleNameKind
     }
@@ -349,7 +349,7 @@ object Completion {
    *  in the REPL and the IDE.
    */
   private class RenameAwareScope extends Scopes.MutableScope {
-    private[this] val nameToSymbols: mutable.Map[TermName, List[Symbol]] = mutable.Map.empty
+    private val nameToSymbols: mutable.Map[TermName, List[Symbol]] = mutable.Map.empty
 
     /** Enter the symbol `sym` in this scope, recording a potential renaming. */
     def enter[T <: Symbol](sym: T, name: Name)(implicit ctx: Context): T = {

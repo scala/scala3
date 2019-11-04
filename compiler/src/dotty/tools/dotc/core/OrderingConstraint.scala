@@ -595,7 +595,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     upperMap.foreachBinding((_, paramss) => paramss.foreach(_.foreach(checkClosedType(_, "upper"))))
   }
 
-  private[this] var myUninstVars: mutable.ArrayBuffer[TypeVar] = _
+  private var myUninstVars: mutable.ArrayBuffer[TypeVar] = _
 
   /** The uninstantiated typevars of this constraint */
   def uninstVars: collection.Seq[TypeVar] = {

@@ -53,3 +53,6 @@
 [submodule "community-build/community-projects/effpi"]
 	path = community-build/community-projects/effpi
 	url = https://github.com/dotty-staging/effpi
+[submodule "community-build/community-projects/intent"]
+	path = community-build/community-projects/intent
+	url = https://github.com/dotty-staging/intent

@@ -1638,4 +1638,53 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         message.msg
       )
     }
+
+  @Test def traitParametersUsedAsParentPrefix() =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |class Outer {
+        |   trait Inner
+        |   trait Test(val outer: Outer) extends outer.Inner
+        |}
+        |""".stripMargin
+    }.expect {
+      (ictx, messages) =>
+        implicit val ctx: Context = ictx
+        val TraitParameterUsedAsParentPrefix(cls) :: Nil = messages
+        assertEquals("trait Test", cls.show)
+        assertEquals(
+          s"${cls.show} cannot extend from a parent that is derived via its own parameters",
+          messages.head.msg
+        )
+    }
+
+  @Test def unknownNamedEnclosingClassOrObject() =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |class TestObject {
+        |  private[doesNotExist] def test: Int = 5
+        |}
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val UnknownNamedEnclosingClassOrObject(name) :: Nil = messages
+      assertEquals("doesNotExist", name.show)
+    }
+
+  @Test def illegalCyclicTypeReference() =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |type X = List[X]
+      """.stripMargin
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val IllegalCyclicTypeReference(sym, where, lastChecked) :: Nil = messages
+      assertEquals("type X", sym.show)
+      assertEquals("alias", where)
+      assertEquals("List[X]", lastChecked.show)
+    }
 }

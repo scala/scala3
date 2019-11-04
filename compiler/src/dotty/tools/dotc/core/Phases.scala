@@ -215,23 +215,23 @@ object Phases {
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
     }
 
-    private[this] var myTyperPhase: Phase = _
-    private[this] var myPostTyperPhase: Phase = _
-    private[this] var mySbtExtractDependenciesPhase: Phase = _
-    private[this] var myPicklerPhase: Phase = _
-    private[this] var myReifyQuotesPhase: Phase = _
-    private[this] var myCollectNullableFieldsPhase: Phase = _
-    private[this] var myRefChecksPhase: Phase = _
-    private[this] var myPatmatPhase: Phase = _
-    private[this] var myElimRepeatedPhase: Phase = _
-    private[this] var myExtensionMethodsPhase: Phase = _
-    private[this] var myExplicitOuterPhase: Phase = _
-    private[this] var myGettersPhase: Phase = _
-    private[this] var myErasurePhase: Phase = _
-    private[this] var myElimErasedValueTypePhase: Phase = _
-    private[this] var myLambdaLiftPhase: Phase = _
-    private[this] var myFlattenPhase: Phase = _
-    private[this] var myGenBCodePhase: Phase = _
+    private var myTyperPhase: Phase = _
+    private var myPostTyperPhase: Phase = _
+    private var mySbtExtractDependenciesPhase: Phase = _
+    private var myPicklerPhase: Phase = _
+    private var myReifyQuotesPhase: Phase = _
+    private var myCollectNullableFieldsPhase: Phase = _
+    private var myRefChecksPhase: Phase = _
+    private var myPatmatPhase: Phase = _
+    private var myElimRepeatedPhase: Phase = _
+    private var myExtensionMethodsPhase: Phase = _
+    private var myExplicitOuterPhase: Phase = _
+    private var myGettersPhase: Phase = _
+    private var myErasurePhase: Phase = _
+    private var myElimErasedValueTypePhase: Phase = _
+    private var myLambdaLiftPhase: Phase = _
+    private var myFlattenPhase: Phase = _
+    private var myGenBCodePhase: Phase = _
 
     final def typerPhase: Phase = myTyperPhase
     final def postTyperPhase: Phase = myPostTyperPhase
@@ -347,17 +347,17 @@ object Phases {
 
     def initContext(ctx: FreshContext): Unit = ()
 
-    private[this] var myPeriod: Period = Periods.InvalidPeriod
-    private[this] var myBase: ContextBase = null
-    private[this] var myErasedTypes = false
-    private[this] var myFlatClasses = false
-    private[this] var myRefChecked = false
-    private[this] var myLambdaLifted = false
-    private[this] var myPatternTranslated = false
+    private var myPeriod: Period = Periods.InvalidPeriod
+    private var myBase: ContextBase = null
+    private var myErasedTypes = false
+    private var myFlatClasses = false
+    private var myRefChecked = false
+    private var myLambdaLifted = false
+    private var myPatternTranslated = false
 
-    private[this] var mySameMembersStartId = NoPhaseId
-    private[this] var mySameParentsStartId = NoPhaseId
-    private[this] var mySameBaseTypesStartId = NoPhaseId
+    private var mySameMembersStartId = NoPhaseId
+    private var mySameParentsStartId = NoPhaseId
+    private var mySameBaseTypesStartId = NoPhaseId
 
     /** The sequence position of this phase in the given context where 0
      * is reserved for NoPhase and the first real phase is at position 1.

@@ -43,7 +43,6 @@ object Inferencing {
     if (isFullyDefined(tp, ForceDegree.all)) tp
     else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $span") // !!! DEBUG
 
-
   /** Instantiate selected type variables `tvars` in type `tp` */
   def instantiateSelected(tp: Type, tvars: List[Type])(implicit ctx: Context): Unit =
     if (tvars.nonEmpty)
@@ -99,7 +98,7 @@ object Inferencing {
       inst
     }
 
-    private[this] var toMaximize: Boolean = false
+    private var toMaximize: Boolean = false
 
     def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
       case _: WildcardType | _: ProtoType =>

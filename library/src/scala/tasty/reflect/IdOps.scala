@@ -3,7 +3,7 @@ package reflect
 
 trait IdOps extends Core {
 
-  implicit class IdAPI(id: Id) {
+  given (id: Id) {
 
     /** Position in the source code */
     def pos(given ctx: Context): Position = internal.Id_pos(id)

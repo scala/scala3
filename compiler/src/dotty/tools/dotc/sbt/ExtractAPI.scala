@@ -131,19 +131,19 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   /** This cache is necessary for correctness, see the comment about inherited
    *  members in `apiClassStructure`
    */
-  private[this] val classLikeCache = new mutable.HashMap[ClassSymbol, api.ClassLikeDef]
+  private val classLikeCache = new mutable.HashMap[ClassSymbol, api.ClassLikeDef]
   /** This cache is optional, it avoids recomputing representations */
-  private[this] val typeCache = new mutable.HashMap[Type, api.Type]
+  private val typeCache = new mutable.HashMap[Type, api.Type]
   /** This cache is necessary to avoid unstable name hashing when `typeCache` is present,
    *  see the comment in the `RefinedType` case in `computeType`
    *  The cache key is (api of RefinedType#parent, api of RefinedType#refinedInfo).
     */
-  private[this] val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition), api.Structure]
+  private val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition), api.Structure]
 
-  private[this] val allNonLocalClassesInSrc = new mutable.HashSet[xsbti.api.ClassLike]
-  private[this] val _mainClasses = new mutable.HashSet[String]
+  private val allNonLocalClassesInSrc = new mutable.HashSet[xsbti.api.ClassLike]
+  private val _mainClasses = new mutable.HashSet[String]
 
-  private[this] object Constants {
+  private object Constants {
     val emptyStringArray = Array[String]()
     val local            = api.ThisQualifier.create()
     val public           = api.Public.create()

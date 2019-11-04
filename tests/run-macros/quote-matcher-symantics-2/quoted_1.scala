@@ -26,7 +26,7 @@ object Macros {
       case Sym(b) if env.contains(b) => env(b)
 
       case _ =>
-        import qctx.tasty._
+        import qctx.tasty.{_, given}
         error("Expected explicit DSL", e.unseal.pos)
         ???
     }
@@ -36,7 +36,7 @@ object Macros {
         sym.lam((y: Expr[T]) => lift(body)(env + (x -> y)))
 
       case _ =>
-        import qctx.tasty._
+        import qctx.tasty.{_, given}
         error("Expected explicit DSL => DSL", e.unseal.pos)
         ???
     }

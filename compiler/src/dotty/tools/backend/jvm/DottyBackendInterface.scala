@@ -535,8 +535,10 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   private def getGenericSignature(sym: Symbol, owner: Symbol, memberTpe: Type)(implicit ctx: Context): Option[String] =
     if (needsGenericSignature(sym)) {
-      val erasedTypeSym = sym.denot.info.typeSymbol
+      val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
       if (erasedTypeSym.isPrimitiveValueClass) {
+        // Suppress signatures for symbols whose types erase in the end to primitive
+        // value types. This is needed to fix #7416.
         None
       } else {
         val jsOpt = GenericSignatures.javaSig(sym, memberTpe)

@@ -43,10 +43,10 @@ class Definitions {
     ctx.newSymbol(owner, name, flags | Permanent, info)
 
   private def newClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, infoFn: ClassSymbol => Type) =
-    ctx.newClassSymbol(owner, name, flags | Permanent | NoInits, infoFn)
+    ctx.newClassSymbol(owner, name, flags | Permanent | NoInits | Open, infoFn)
 
   private def enterCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope = newScope) =
-    ctx.newCompleteClassSymbol(owner, name, flags | Permanent | NoInits, parents, decls).entered
+    ctx.newCompleteClassSymbol(owner, name, flags | Permanent | NoInits | Open, parents, decls).entered
 
   private def enterTypeField(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
     scope.enter(newSymbol(cls, name, flags, TypeBounds.empty))
@@ -279,7 +279,7 @@ class Definitions {
     val cls = ctx.requiredClass("java.lang.Object")
     assert(!cls.isCompleted, "race for completing java.lang.Object")
     cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
-    cls.setFlag(NoInits)
+    cls.setFlag(NoInits | JavaDefined)
 
     // The companion object doesn't really exist, so it needs to be marked as
     // absent. Here we need to set it before completing attempt to load Object's
@@ -375,7 +375,7 @@ class Definitions {
     }
     myDottyPredefModule
   }
-  private[this] var myDottyPredefModule: Symbol = _
+  private var myDottyPredefModule: Symbol = _
 
   @tu lazy val DottyArraysModule: Symbol = ctx.requiredModule("dotty.runtime.Arrays")
     def newGenericArrayMethod(implicit ctx: Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
@@ -466,6 +466,7 @@ class Definitions {
 
   @tu lazy val BoxedUnitClass: ClassSymbol = ctx.requiredClass("scala.runtime.BoxedUnit")
     def BoxedUnit_UNIT(given Context): TermSymbol = BoxedUnitClass.linkedClass.requiredValue("UNIT")
+    def BoxedUnit_TYPE(given Context): TermSymbol = BoxedUnitClass.linkedClass.requiredValue("TYPE")
 
   @tu lazy val BoxedBooleanClass: ClassSymbol = ctx.requiredClass("java.lang.Boolean")
   @tu lazy val BoxedByteClass   : ClassSymbol = ctx.requiredClass("java.lang.Byte")
@@ -749,7 +750,6 @@ class Definitions {
   @tu lazy val DeprecatedAnnot: ClassSymbol = ctx.requiredClass("scala.deprecated")
   @tu lazy val ImplicitAmbiguousAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.implicitAmbiguous")
   @tu lazy val ImplicitNotFoundAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.implicitNotFound")
-  @tu lazy val ForceInlineAnnot: ClassSymbol = ctx.requiredClass("scala.forceInline")
   @tu lazy val InlineParamAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.InlineParam")
   @tu lazy val InvariantBetweenAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.internal.InvariantBetween")
   @tu lazy val MainAnnot: ClassSymbol = ctx.requiredClass("scala.main")
@@ -1201,8 +1201,8 @@ class Definitions {
 
   /** This class would also be obviated by the implicit function type design */
   class PerRun[T](generate: Context => T) {
-    private[this] var current: RunId = NoRunId
-    private[this] var cached: T = _
+    private var current: RunId = NoRunId
+    private var cached: T = _
     def apply()(implicit ctx: Context): T = {
       if (current != ctx.runId) {
         cached = generate(ctx)
@@ -1315,7 +1315,7 @@ class Definitions {
 
   @tu lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
-  private[this] var isInitialized = false
+  private var isInitialized = false
 
   def init()(implicit ctx: Context): Unit = {
     this.ctx = ctx

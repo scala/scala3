@@ -4,7 +4,7 @@ import scala.quoted.given
 inline def foo = ${fooImpl}
 
 def fooImpl(given qctx: QuoteContext) = {
-  import qctx.tasty._
+  import qctx.tasty.{_, given}
   val res = Expr.ofList(List('{"One"}))
   Expr(res.show)
 }

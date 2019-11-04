@@ -227,7 +227,6 @@ trait CompilerInterface {
 
   def PackageDef_owner(self: PackageDef)(given ctx: Context): PackageDef
   def PackageDef_members(self: PackageDef)(given ctx: Context): List[Statement]
-  def PackageDef_symbol(self: PackageDef)(given ctx: Context): Symbol
 
   /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
   type ClassDef <: Definition
@@ -239,7 +238,6 @@ trait CompilerInterface {
   def ClassDef_derived(self: ClassDef)(given ctx: Context): List[TypeTree]
   def ClassDef_self(self: ClassDef)(given ctx: Context): Option[ValDef]
   def ClassDef_body(self: ClassDef)(given ctx: Context): List[Statement]
-  def ClassDef_symbol(self: ClassDef)(given ctx: Context): Symbol
 
   def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree/* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(given ctx: Context): ClassDef
 
@@ -249,7 +247,6 @@ trait CompilerInterface {
   def matchTypeDef(tree: Tree)(given ctx: Context): Option[TypeDef]
 
   def TypeDef_rhs(self: TypeDef)(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
-  def TypeDef_symbol(self: TypeDef)(given ctx: Context): Symbol
 
   def TypeDef_apply(symbol: Symbol)(given ctx: Context): TypeDef
   def TypeDef_copy(original: TypeDef)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeDef
@@ -263,7 +260,6 @@ trait CompilerInterface {
   def DefDef_paramss(self: DefDef)(given ctx: Context): List[List[ValDef]]
   def DefDef_returnTpt(self: DefDef)(given ctx: Context): TypeTree
   def DefDef_rhs(self: DefDef)(given ctx: Context): Option[Term]
-  def DefDef_symbol(self: DefDef)(given ctx: Context): Symbol
 
   def DefDef_apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(given ctx: Context): DefDef
   def DefDef_copy(original: DefDef)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(given ctx: Context): DefDef
@@ -275,7 +271,6 @@ trait CompilerInterface {
 
   def ValDef_tpt(self: ValDef)(given ctx: Context): TypeTree
   def ValDef_rhs(self: ValDef)(given ctx: Context): Option[Term]
-  def ValDef_symbol(self: ValDef)(given ctx: Context): Symbol
 
   def ValDef_apply(symbol: Symbol, rhs: Option[Term])(given ctx: Context): ValDef
   def ValDef_copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(given ctx: Context): ValDef
@@ -285,7 +280,6 @@ trait CompilerInterface {
 
   def matchTerm(tree: Tree)(given ctx: Context): Option[Term]
 
-  def Term_pos(self: Term)(given ctx: Context): Position
   def Term_tpe(self: Term)(given ctx: Context): Type
   def Term_underlyingArgument(self: Term)(given ctx: Context): Term
   def Term_underlying(self: Term)(given ctx: Context): Term
@@ -533,7 +527,6 @@ trait CompilerInterface {
 
   def SelectOuter_qualifier(self: SelectOuter)(given ctx: Context): Term
   def SelectOuter_level(self: SelectOuter)(given ctx: Context): Int
-  def SelectOuter_tpe(self: SelectOuter)(given ctx: Context): Type
 
   def SelectOuter_apply(qualifier: Term, name: String, levels: Int)(given ctx: Context): SelectOuter
   def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int)(given ctx: Context): SelectOuter
@@ -554,8 +547,6 @@ trait CompilerInterface {
 
   def matchTypeTree(tree: Tree)(given ctx: Context): Option[TypeTree]
 
-  def TypeTree_pos(self: TypeTree)(given ctx: Context): Position
-  def TypeTree_symbol(self: TypeTree)(given ctx: Context): Symbol
   def TypeTree_tpe(self: TypeTree)(given ctx: Context): Type
 
   /** Type tree representing an inferred type */

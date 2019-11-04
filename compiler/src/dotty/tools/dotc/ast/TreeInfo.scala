@@ -274,23 +274,6 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case _ => tree
   }
 
-  /** True iff definition is a val or def with no right-hand-side, or it
-   *  is an abstract typoe declaration
-   */
-  def lacksDefinition(mdef: MemberDef)(implicit ctx: Context): Boolean = mdef match {
-    case mdef: ValOrDefDef =>
-      mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.isOneOf(TermParamOrAccessor)
-    case mdef: TypeDef =>
-      def isBounds(rhs: Tree): Boolean = rhs match {
-        case _: TypeBoundsTree => true
-        case _: MatchTypeTree => true // Typedefs with Match rhs classify as abstract
-        case LambdaTypeTree(_, body) => isBounds(body)
-        case _ => false
-      }
-      mdef.rhs.isEmpty || isBounds(mdef.rhs)
-    case _ => false
-  }
-
   def functionWithUnknownParamType(tree: Tree): Option[Tree] = tree match {
     case Function(args, _) =>
       if (args.exists {
@@ -344,6 +327,18 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    */
   def bodyKind(body: List[Tree])(implicit ctx: Context): FlagSet =
     body.foldLeft(NoInitsInterface)((fs, stat) => fs & defKind(stat))
+
+  /** Info of a variable in a pattern: The named tree and its type */
+  type VarInfo = (NameTree, Tree)
+
+  /** An extractor for trees of the form `id` or `id: T` */
+  object IdPattern {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[VarInfo] = tree match {
+      case id: Ident if id.name != nme.WILDCARD => Some(id, TypeTree())
+      case Typed(id: Ident, tpt) => Some((id, tpt))
+      case _ => None
+    }
+  }
 
   // todo: fill with other methods from TreeInfo that only apply to untpd.Tree's
 }

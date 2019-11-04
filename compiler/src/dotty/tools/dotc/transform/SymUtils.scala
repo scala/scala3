@@ -92,7 +92,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
    */
   def whyNotGenericSum(implicit ctx: Context): String =
     if (!self.is(Sealed))
-      s"it is not a sealed ${if (self.is(Trait)) "trait" else "class"}"
+      s"it is not a sealed ${self.kindString}"
     else {
       val children = self.children
       val companion = self.linkedClass
@@ -175,12 +175,18 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isEnumAnonymClass(implicit ctx: Context): Boolean =
     self.isAnonymousClass && (self.owner.name.eq(nme.DOLLAR_NEW) || self.owner.is(CaseVal))
 
-  /** Is this symbol defined locally (i.e. at some level owned by a term) and
-   *  defined in a different toplevel class than its supposed parent class `cls`?
-   *  Such children are not pickled, and have to be reconstituted manually.
+  /** Is this symbol defined locally (i.e. at some level owned by a term) so that
+   *  it cannot be seen from parent class `cls`?
    */
-  def isInaccessibleChildOf(cls: Symbol)(implicit ctx: Context): Boolean =
-    self.isLocal && !cls.topLevelClass.isLinkedWith(self.topLevelClass)
+  def isInaccessibleChildOf(cls: Symbol)(given Context): Boolean =
+    def isAccessible(sym: Symbol, cls: Symbol): Boolean =
+      if cls.isType && !cls.is(Package) then
+        isAccessible(sym, cls.owner)
+      else
+        sym == cls
+        || sym.is(Package)
+        || sym.isType && isAccessible(sym.owner, cls)
+    !isAccessible(self.owner, cls)
 
   /** If this is a sealed class, its known children in the order of textual occurrence */
   def children(implicit ctx: Context): List[Symbol] = {

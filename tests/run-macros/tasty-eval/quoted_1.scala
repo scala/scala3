@@ -18,16 +18,16 @@ object Macros {
 
   implicit def intIsEvalable: Valuable[Int] = new Valuable[Int] {
     override def value(e: Expr[Int])(given qctx: QuoteContext): Option[Int] = {
-      import qctx.tasty._
+      import qctx.tasty.{_, given}
 
       e.unseal.tpe match {
-        case Type.IsTermRef(pre) if pre.termSymbol.isValDef =>
+        case IsTermRef(pre) if pre.termSymbol.isValDef =>
           val IsValDef(t) = pre.termSymbol.tree
           t.tpt.tpe match {
-            case Type.ConstantType(Constant(i: Int)) => Some(i)
+            case ConstantType(Constant(i: Int)) => Some(i)
             case _ => None
           }
-        case Type.ConstantType(Constant(i: Int)) => Some(i)
+        case ConstantType(Constant(i: Int)) => Some(i)
         case _ => None
       }
     }

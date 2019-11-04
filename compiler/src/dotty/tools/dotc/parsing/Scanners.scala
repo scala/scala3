@@ -171,15 +171,15 @@ object Scanners {
     }
 
     /** All doc comments kept by their end position in a `Map` */
-    private[this] var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
+    private var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
     /* A Buffer for comment positions */
-    private[this] val commentPosBuf = new mutable.ListBuffer[Span]
+    private val commentPosBuf = new mutable.ListBuffer[Span]
 
     /** Return a list of all the comment positions */
     def commentSpans: List[Span] = commentPosBuf.toList
 
-    private[this] def addComment(comment: Comment): Unit = {
+    private def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()
       def nextPos: Int = (lookahead.getc(): @switch) match {
         case ' ' | '\t' => nextPos
@@ -196,7 +196,7 @@ object Scanners {
     def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
 
     /** A buffer for comments */
-    private[this] val commentBuf = new mutable.StringBuilder
+    private val commentBuf = new mutable.StringBuilder
 
     private def handleMigration(keyword: Token): Token =
       if (!isScala2Mode) keyword
@@ -555,6 +555,13 @@ object Scanners {
           token = INDENT
     end observeIndented
 
+    /** Insert an <outdent> token if next token closes an indentation region */
+    def observeOutdented(): Unit = currentRegion match
+      case r: Indented if !r.isOutermost && closingRegionTokens.contains(token) =>
+        currentRegion = r.enclosing
+        insert(OUTDENT, offset)
+      case _ =>
+
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
      *  - Insert missing OUTDENTs at EOF
      */
@@ -695,7 +702,7 @@ object Scanners {
                *  to let it be base-10 because of history.  Should it be an error? Is
                *  there a realistic situation where one would need it?
                */
-              if (isDigit(ch))
+              if (isDigit(ch) || (isNumberSeparator(ch) && isDigit(lookaheadChar())))
                 error("Non-zero numbers may not have a leading zero.")
               base = 10
             }
@@ -869,8 +876,8 @@ object Scanners {
 
 // Lookahead ---------------------------------------------------------------
 
-    class LookaheadScanner extends Scanner(source, offset) {
-      override val indentSyntax = false
+    class LookaheadScanner(indent: Boolean = false) extends Scanner(source, offset) {
+      override val indentSyntax = indent
       override protected def printState() = {
         print("la:")
         super.printState()
@@ -1061,7 +1068,7 @@ object Scanners {
         }
       else if (ch == '$') {
         nextRawChar()
-        if (ch == '$') {
+        if (ch == '$' || ch == '"') {
           putChar(ch)
           nextRawChar()
           getStringPart(multiLine)
@@ -1082,7 +1089,7 @@ object Scanners {
           finishNamed(target = next)
         }
         else
-          error("invalid string interpolation: `$$', `$'ident or `$'BlockExpr expected")
+          error("invalid string interpolation: `$$', `$\"`, `$'ident or `$'BlockExpr expected")
       }
       else {
         val isUnclosedLiteral = !isUnicodeEscape && (ch == SU || (!multiLine && (ch == CR || ch == LF)))

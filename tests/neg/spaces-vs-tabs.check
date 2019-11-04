@@ -17,15 +17,11 @@
   |	  Previous indent : 2 tabs
   |	  Latest indent   : 1 tab, 2 spaces
 -- Error: tests/neg/spaces-vs-tabs.scala:8:1 ---------------------------------------------------------------------------
-8 | else ()         // error // error
+8 | else ()         // error
   | ^
   | Incompatible combinations of tabs and spaces in indentation prefixes.
   | Previous indent : 2 tabs
   | Latest indent   : 1 space
--- [E040] Syntax Error: tests/neg/spaces-vs-tabs.scala:8:6 -------------------------------------------------------------
-8 | else ()         // error // error
-  |      ^
-  |      ';' expected, but '(' found
 -- Error: tests/neg/spaces-vs-tabs.scala:14:2 --------------------------------------------------------------------------
 14 |	  else 2 // error // error
    |	  ^

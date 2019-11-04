@@ -82,7 +82,7 @@ class JSCodeGen()(implicit ctx: Context) {
   /* See genSuperCall()
    * TODO Can we avoid this unscoped var?
    */
-  private[this] var isModuleInitialized: Boolean = false
+  private var isModuleInitialized: Boolean = false
 
   private def currentClassType = encodeClassType(currentClassSym)
 
@@ -723,9 +723,10 @@ class JSCodeGen()(implicit ctx: Context) {
           mutable = false, rest = false)
     }
 
-    def genBody() =
+    def genBody() = localNames.makeLabeledIfRequiresEnclosingReturn(resultIRType) {
       if (resultIRType == jstpe.NoType) genStat(tree)
       else genExpr(tree)
+    }
 
     //if (!isScalaJSDefinedJSClass(currentClassSym)) {
     val flags = js.MemberFlags.empty.withNamespace(namespace)
@@ -2731,6 +2732,8 @@ class JSCodeGen()(implicit ctx: Context) {
 
     if (sym == defn.BoxedUnit_UNIT) {
       js.Undefined()
+    } else if (sym == defn.BoxedUnit_TYPE) {
+      js.ClassOf(jstpe.ClassRef("V"))
     } else {
       val inst = genLoadModule(sym.owner)
       val method = encodeStaticMemberSym(sym)

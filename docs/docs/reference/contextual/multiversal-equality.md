@@ -94,7 +94,7 @@ Instead of defining `Eql` instances directly, it is often more convenient to der
 ```scala
 class Box[T](x: T) derives Eql
 ```
-By the usual rules if [typeclass derivation](./derivation.md),
+By the usual rules of [typeclass derivation](./derivation.md),
 this generates the following `Eql` instance in the companion object of `Box`:
 ```scala
 given [T, U](given Eql[T, U]) : Eql[Box[T], Box[U]] = Eql.derived

@@ -1,8 +1,6 @@
--- Error: tests/neg-macros/macros-in-same-project-4/Bar.scala:5:13 -----------------------------------------------------
-5 |  Foo.myMacro() // error
-  |  ^^^^^^^^^^^^^
-  |Failed to expand macro. This macro depends on an implementation that is defined in the same project and not yet compiled.
-  |In particular method myMacro depends on method aMacroImplementation.
-  |
-  |Moving method aMacroImplementation to a different project would fix this.
-  | This location is in code that was inlined at Bar.scala:5
+Cyclic macro dependencies in tests/neg-macros/macros-in-same-project-4/Bar.scala.
+Compilation stopped since no further progress can be made.
+
+To fix this, place macros in one set of files and their callers in another.
+
+Compiling with  -Xprint-suspension   gives more information.

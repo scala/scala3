@@ -307,7 +307,7 @@ trait Applications extends Compatibility {
     }
 
     /** A flag signalling that the typechecking the application was so far successful */
-    private[this] var _ok = true
+    private var _ok = true
 
     def ok: Boolean = _ok
     def ok_=(x: Boolean): Unit = _ok = x
@@ -686,9 +686,9 @@ trait Applications extends Compatibility {
   extends Application(methRef, fun.tpe, args, resultType) {
     type TypedArg = Tree
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
-    private[this] var typedArgBuf = new mutable.ListBuffer[Tree]
-    private[this] var liftedDefs: mutable.ListBuffer[Tree] = null
-    private[this] var myNormalizedFun: Tree = fun
+    private var typedArgBuf = new mutable.ListBuffer[Tree]
+    private var liftedDefs: mutable.ListBuffer[Tree] = null
+    private var myNormalizedFun: Tree = fun
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =

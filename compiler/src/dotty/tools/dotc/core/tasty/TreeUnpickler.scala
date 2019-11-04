@@ -71,15 +71,15 @@ class TreeUnpickler(reader: TastyReader,
   /** The root symbol denotation which are defined by the Tasty file associated with this
    *  TreeUnpickler. Set by `enterTopLevel`.
    */
-  private[this] var roots: Set[SymDenotation] = null
+  private var roots: Set[SymDenotation] = null
 
   /** The root symbols that are defined in this Tasty file. This
    *  is a subset of `roots.map(_.symbol)`.
    */
-  private[this] var seenRoots: Set[Symbol] = Set()
+  private var seenRoots: Set[Symbol] = Set()
 
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
-  private[this] var ownerTree: OwnerTree = _
+  private var ownerTree: OwnerTree = _
 
   private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym
@@ -631,6 +631,7 @@ class TreeUnpickler(reader: TastyReader,
           case GIVEN => addFlag(Given)
           case PARAMsetter => addFlag(ParamAccessor)
           case EXPORTED => addFlag(Exported)
+          case OPEN => addFlag(Open)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readWithin(ctx)
@@ -890,9 +891,9 @@ class TreeUnpickler(reader: TastyReader,
           untpd.ValDef(readName(), readTpt(), EmptyTree).withType(NoType)
         }
         else EmptyValDef
+      cls.setNoInitsFlags(parentsKind(parents), bodyFlags)
       cls.info = ClassInfo(cls.owner.thisType, cls, parentTypes, cls.unforcedDecls,
         if (self.isEmpty) NoType else self.tpt.tpe)
-      cls.setNoInitsFlags(parentsKind(parents), bodyFlags)
       val constr = readIndexedDef().asInstanceOf[DefDef]
       val mappedParents = parents.map(_.changeOwner(localDummy, constr.symbol))
 

@@ -49,9 +49,6 @@ object desugar {
     case None, Exhaustive, IrrefutablePatDef, IrrefutableGenFrom
   }
 
-  /** Info of a variable in a pattern: The named tree and its type */
-  private type VarInfo = (NameTree, Tree)
-
   /** Is `name` the name of a method that can be invalidated as a compiler-generated
    *  case class method if it clashes with a user-defined method?
    */
@@ -153,12 +150,14 @@ object desugar {
    *  ==>
    *    def x: Int = expr
    *    def x_=($1: <TypeTree()>): Unit = ()
+   *
+   *  Generate the setter only for non-private class members and all trait members.
    */
   def valDef(vdef0: ValDef)(implicit ctx: Context): Tree = {
     val vdef @ ValDef(name, tpt, rhs) = transformQuotedPatternName(vdef0)
     val mods = vdef.mods
     val setterNeeded =
-      mods.is(Mutable) && ctx.owner.isClass && (!mods.isAllOf(PrivateLocal) || ctx.owner.is(Trait))
+      mods.is(Mutable) && ctx.owner.isClass && (!mods.is(Private) || ctx.owner.is(Trait))
     if (setterNeeded) {
       // TODO: copy of vdef as getter needed?
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
@@ -964,7 +963,7 @@ object desugar {
           case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
             s"${name}_of_${inventTypeName(vparam.tpt)}"
           case _ =>
-            ctx.error(i"anonymous instance must have `as` part or must define at least one extension method", impl.sourcePos)
+            ctx.error(i"anonymous instance must implement a type or have at least one extension method", impl.sourcePos)
             nme.ERROR.toString
         }
       else
@@ -987,7 +986,7 @@ object desugar {
           case tree: LambdaTypeTree =>
             apply(x, tree.body)
           case tree: Tuple =>
-            if (followArgs) extractArgs(tree.trees) else "Tuple"
+            extractArgs(tree.trees)
           case tree: Function if tree.args.nonEmpty =>
             if (followArgs) s"${extractArgs(tree.args)}_to_${apply("", tree.body)}" else "Function"
           case _ => foldOver(x, tree)
@@ -1683,16 +1682,6 @@ object desugar {
       else (parentCores map TypeTree, ValDef(nme.WILDCARD, untpdParent, EmptyTree))
     val impl = Template(emptyConstructor, classParents, Nil, self, refinements)
     TypeDef(tpnme.REFINE_CLASS, impl).withFlags(Trait)
-  }
-
- /** If tree is of the form `id` or `id: T`, return its name and type, otherwise return None.
-   */
-  private object IdPattern {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[VarInfo] = tree match {
-      case id: Ident if id.name != nme.WILDCARD => Some(id, TypeTree())
-      case Typed(id: Ident, tpt) => Some((id, tpt))
-      case _ => None
-    }
   }
 
   /** Returns list of all pattern variables, possibly with their types,

@@ -33,7 +33,7 @@ object Logger {
 The `Config` object contains a definition of the **inline value** `logging`.
 This means that `logging` is treated as a _constant value_, equivalent to its
 right-hand side `false`. The right-hand side of such an `inline val` must itself
-be a [constant expression](https://scala-lang.org/files/archive/spec/2.12/06-expressions.html#constant-expressions). 
+be a [constant expression](https://scala-lang.org/files/archive/spec/2.12/06-expressions.html#constant-expressions).
 Used in this way, `inline` is equivalent to Java and Scala 2's `final`. Note that `final`, meaning
 _inlined constant_, is still supported in Dotty, but will be phased out.
 
@@ -322,7 +322,7 @@ the singleton type `2`.
 So far we have seen inline methods that take terms (tuples and integers) as
 parameters. What if we want to base case distinctions on types instead? For
 instance, one would like to be able to write a function `defaultValue`, that,
-given a type `T`, returns optionally the default value of `T`, if it exists. 
+given a type `T`, returns optionally the default value of `T`, if it exists.
 We can already express this using rewrite match expressions and a simple
 helper function, `scala.compiletime.erasedValue`, which is defined as follows:
 
@@ -362,9 +362,9 @@ Then:
   val dAny: None.type = defaultValue[Any]
 ```
 
-As another example, consider the type-level version of `toInt` below: 
+As another example, consider the type-level version of `toInt` below:
 given a _type_ representing a Peano number,
-return the integer _value_ corresponding to it. 
+return the integer _value_ corresponding to it.
 Consider the definitions of numbers as in the _Inline
 Match_ section above. Here is how `toIntT` can be defined:
 
@@ -452,7 +452,7 @@ would use it as follows:
 ```scala
 import scala.compiletime.summonFrom
 
-inline def setFor[T]: Set[T] = summonFrom match {
+inline def setFor[T]: Set[T] = summonFrom {
   case given ord: Ordering[T] => new TreeSet[T]
   case _                      => new HashSet[T]
 }
