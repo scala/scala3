@@ -126,12 +126,13 @@ object ProtoTypes {
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
 
     /** Is the set of members of this type unknown? This is the case if:
-     *  1. The type has Nothing or Wildcard as a prefix or underlying type
-     *  2. The type has an uninstantiated TypeVar as a prefix or underlying type,
-     *  or as an upper bound of a prefix or underlying type.
+     *  1. The type has Nothing or Wildcard as a prefix or underlying type,
+     *  2. The type has an uninstantiated TypeVar with a bottom type as lower bound
+     *     as a prefix or underlying type, or as an upper bound of a prefix or underlying type.
      */
     private def hasUnknownMembers(tp: Type)(implicit ctx: Context): Boolean = tp match {
-      case tp: TypeVar => !tp.isInstantiated
+      case tp: TypeVar =>
+        !tp.isInstantiated && ctx.typeComparer.bounds(tp.origin).lo.isBottomType
       case tp: WildcardType => true
       case NoType => true
       case tp: TypeRef =>

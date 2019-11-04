@@ -1354,7 +1354,7 @@ object Trees {
         transform(trees).asInstanceOf[List[Tr]]
 
       protected def transformMoreCases(tree: Tree)(implicit ctx: Context): Tree = {
-        assert(ctx.reporter.errorsReported)
+        assert(ctx.reporter.errorsReported, i"unexpected: $tree of class ${tree.getClass}")
         tree
       }
     }
