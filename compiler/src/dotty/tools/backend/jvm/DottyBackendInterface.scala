@@ -240,7 +240,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   private def emitArgument(av:   AnnotationVisitor,
                            name: String,
                            arg:  Tree, bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
-    normalizeArgument(arg) match {
+    val narg = normalizeArgument(arg)
+    // Transformation phases are not run on annotation trees, so we need to run
+    // `constToLiteral` at this point.
+    val t = constToLiteral(narg)(ctx.withPhase(ctx.erasurePhase))
+    t match {
       case Literal(const @ Constant(_)) =>
         const.tag match {
           case BooleanTag | ByteTag | ShortTag | CharTag | IntTag | LongTag | FloatTag | DoubleTag => av.visit(name, const.value)
