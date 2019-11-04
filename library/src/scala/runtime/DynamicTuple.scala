@@ -251,7 +251,7 @@ object DynamicTuple {
         val arr = new Array[Object](self.size + 1)
         to$Array(self.asInstanceOf[Product].productIterator, self.size, arr, 1)
         arr(0) = x.asInstanceOf[Object]
-        TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
+        dynamicFromIArray(arr.asInstanceOf[IArray[Object]])
     }
     res.asInstanceOf[Result]
   }
@@ -269,7 +269,7 @@ object DynamicTuple {
     val arr = new Array[Object](self.size + that.size)
     to$Array(self.asInstanceOf[Product].productIterator, self.size, arr, 0)
     to$Array(that.asInstanceOf[Product].productIterator, that.size, arr, self.size)
-    TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+    dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
   }
 
   def dynamicSize[This <: Tuple](self: This): Size[This] = (self: Any) match {
@@ -329,7 +329,7 @@ object DynamicTuple {
         val it = self.asInstanceOf[Product].productIterator
         it.next()
         to$Array(it, self.size - 1, arr, 0)
-        TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
+        dynamicFromIArray(arr.asInstanceOf[IArray[Object]])
     }
     res.asInstanceOf[Result]
   }
