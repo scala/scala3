@@ -348,6 +348,7 @@ object Parsers {
       if in.isNewLine then in.nextToken() else accept(SEMI)
 
     def acceptStatSepUnlessAtEnd(altEnd: Token = EOF): Unit =
+      in.observeOutdented()
       if (!isStatSeqEnd)
         in.token match {
           case EOF =>
@@ -2589,6 +2590,7 @@ object Parsers {
         name match {
           case nme.inline => Mod.Inline()
           case nme.opaque => Mod.Opaque()
+          case nme.open => Mod.Open()
         }
     }
 
@@ -2660,7 +2662,7 @@ object Parsers {
      *                  |  AccessModifier
      *                  |  override
      *                  |  opaque
-     *  LocalModifier  ::= abstract | final | sealed | implicit | lazy | erased | inline
+     *  LocalModifier  ::= abstract | final | sealed | open | implicit | lazy | erased | inline
      */
     def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
       @tailrec
@@ -3088,10 +3090,11 @@ object Parsers {
       }
     }
 
-    /** DefDef ::= DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr
-     *           | this ParamClause ParamClauses `=' ConstrExpr
-     *  DefDcl ::= DefSig `:' Type
-     *  DefSig ::= [‘(’ DefParam ‘)’ [nl]] id [DefTypeParamClause] ParamClauses
+    /** DefDef  ::=  DefSig [(‘:’ | ‘<:’) Type] ‘=’ Expr
+     *            |  this ParamClause ParamClauses `=' ConstrExpr
+     *  DefDcl  ::=  DefSig `:' Type
+     *  DefSig  ::=  id [DefTypeParamClause] DefParamClauses
+     *            |  ExtParamClause [nl] id DefParamClauses
      */
     def defDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
       def scala2ProcedureSyntax(resultTypeStr: String) = {
@@ -3120,27 +3123,35 @@ object Parsers {
         makeConstructor(Nil, vparamss, rhs).withMods(mods).setComment(in.getDocComment(start))
       }
       else {
-        val (leadingParamss, flags) =
-          if (in.token == LPAREN)
-            try (paramClause(0, prefix = true) :: Nil, Method | Extension)
-            finally newLineOpt()
+        def extParamss() = try paramClause(0, prefix = true) :: Nil finally newLineOpt()
+        val (leadingTparams, leadingVparamss, flags) =
+          if in.token == LBRACKET then
+            (typeParamClause(ParamOwner.Def), extParamss(), Method | Extension)
+          else if in.token == LPAREN then
+            (Nil, extParamss(), Method | Extension)
           else
-            (Nil, Method)
+            (Nil, Nil, Method)
         val mods1 = addFlag(mods, flags)
         val ident = termIdent()
         val name = ident.name.asTermName
-        val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val vparamss = paramClauses() match {
-          case rparams :: rparamss if leadingParamss.nonEmpty && !isLeftAssoc(ident.name) =>
-            rparams :: leadingParamss ::: rparamss
+        val tparams =
+          if in.token == LBRACKET then
+            if flags.is(Extension) then
+              if leadingTparams.isEmpty then
+                deprecationWarning("type parameters in extension methods should be written after `def`")
+              else
+                syntaxError("no type parameters allowed here")
+            typeParamClause(ParamOwner.Def)
+          else leadingTparams
+        val vparamss = paramClauses() match
+          case rparams :: rparamss if leadingVparamss.nonEmpty && !isLeftAssoc(ident.name) =>
+            rparams :: leadingVparamss ::: rparamss
           case rparamss =>
-            leadingParamss ::: rparamss
-        }
+            leadingVparamss ::: rparamss
         var tpt = fromWithinReturnType {
-          if (in.token == SUBTYPE && mods.is(Inline)) {
+          if in.token == SUBTYPE && mods.is(Inline) then
             in.nextToken()
             TypeBoundsTree(EmptyTree, toplevelTyp())
-          }
           else typedOpt()
         }
         if (in.isScala2Mode) newLineOptWhenFollowedBy(LBRACE)

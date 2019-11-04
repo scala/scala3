@@ -103,7 +103,7 @@ yield
 ### Soft keywords
 
 ```
-as        derives   inline    opaque
+as        derives   inline    opaque    open
 ~         *         |         &         +         -
 ```
 
@@ -325,6 +325,7 @@ Modifier          ::=  LocalModifier
 LocalModifier     ::=  ‘abstract’
                     |  ‘final’
                     |  ‘sealed’
+                    |  ‘open’
                     |  ‘implicit’
                     |  ‘lazy’
                     |  ‘inline’
@@ -357,8 +358,8 @@ Dcl               ::=  RefineDcl
 ValDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 DefDcl            ::=  DefSig ‘:’ Type                                          DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
-DefSig            ::=  [‘(’ DefParam ‘)’ [nl]] id
-                       [DefTypeParamClause] DefParamClauses
+DefSig            ::=  id [DefTypeParamClause] DefParamClauses
+                    |  ExtParamClause [nl] id DefParamClauses
 TypeDcl           ::=  id [TypeParamClause] SubtypeBounds [‘=’ Type]           TypeDefTree(_, name, tparams, bound
 
 Def               ::=  ‘val’ PatDef

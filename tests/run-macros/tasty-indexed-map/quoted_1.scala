@@ -29,11 +29,11 @@ object Index {
     import qctx.tasty.{_, given}
 
     def name(tp: TypeOrBounds): String = tp match {
-      case Type.ConstantType(Constant(str: String)) => str
+      case ConstantType(Constant(str: String)) => str
     }
 
     def names(tp: TypeOrBounds): List[String] = tp match {
-      case Type.AppliedType(_, x1 :: x2 :: Nil) => name(x1) :: names(x2)
+      case AppliedType(_, x1 :: x2 :: Nil) => name(x1) :: names(x2)
       case _ => Nil
     }
 

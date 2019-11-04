@@ -183,43 +183,43 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
     }
 
     def visitType(x: TypeOrBounds): Buffer = x match {
-      case Type.ConstantType(value) =>
-        this += "Type.ConstantType(" += value += ")"
-      case Type.TermRef(qual, name) =>
-        this += "Type.TermRef(" += qual+= ", \"" += name += "\")"
-      case Type.TypeRef(qual, name) =>
-        this += "Type.TypeRef(" += qual += ", \"" += name += "\")"
-      case Type.Refinement(parent, name, info) =>
-        this += "Type.Refinement(" += parent += ", " += name += ", " += info += ")"
-      case Type.AppliedType(tycon, args) =>
-        this += "Type.AppliedType(" += tycon += ", " ++= args += ")"
-      case Type.AnnotatedType(underlying, annot) =>
-        this += "Type.AnnotatedType(" += underlying += ", " += annot += ")"
-      case Type.AndType(left, right) =>
-        this += "Type.AndType(" += left += ", " += right += ")"
-      case Type.OrType(left, right) =>
-        this += "Type.OrType(" += left += ", " += right += ")"
-      case Type.MatchType(bound, scrutinee, cases) =>
-        this += "Type.MatchType(" += bound += ", " += scrutinee += ", " ++= cases += ")"
-      case Type.ByNameType(underlying) =>
-        this += "Type.ByNameType(" += underlying += ")"
-      case Type.ParamRef(binder, idx) =>
-        this += "Type.ParamRef(" += binder += ", " += idx += ")"
-      case Type.ThisType(tp) =>
-        this += "Type.ThisType(" += tp += ")"
-      case Type.SuperType(thistpe, supertpe) =>
-        this += "Type.SuperType(" += thistpe += ", " += supertpe += ")"
-      case Type.RecursiveThis(binder) =>
-        this += "Type.RecursiveThis(" += binder += ")"
-      case Type.RecursiveType(underlying) =>
-        this += "Type.RecursiveType(" += underlying += ")"
-      case Type.MethodType(argNames, argTypes, resType) =>
-        this += "Type.MethodType(" ++= argNames += ", " ++= argTypes += ", " += resType += ")"
-      case Type.PolyType(argNames, argBounds, resType) =>
-        this += "Type.PolyType(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
-      case Type.TypeLambda(argNames, argBounds, resType) =>
+      case ConstantType(value) =>
+        this += "ConstantType(" += value += ")"
+      case TermRef(qual, name) =>
+        this += "TermRef(" += qual+= ", \"" += name += "\")"
+      case TypeRef(qual, name) =>
+        this += "TypeRef(" += qual += ", \"" += name += "\")"
+      case Refinement(parent, name, info) =>
+        this += "Refinement(" += parent += ", " += name += ", " += info += ")"
+      case AppliedType(tycon, args) =>
+        this += "AppliedType(" += tycon += ", " ++= args += ")"
+      case AnnotatedType(underlying, annot) =>
+        this += "AnnotatedType(" += underlying += ", " += annot += ")"
+      case AndType(left, right) =>
+        this += "AndType(" += left += ", " += right += ")"
+      case OrType(left, right) =>
+        this += "OrType(" += left += ", " += right += ")"
+      case MatchType(bound, scrutinee, cases) =>
+        this += "MatchType(" += bound += ", " += scrutinee += ", " ++= cases += ")"
+      case ByNameType(underlying) =>
+        this += "ByNameType(" += underlying += ")"
+      case ParamRef(binder, idx) =>
+        this += "ParamRef(" += binder += ", " += idx += ")"
+      case ThisType(tp) =>
+        this += "ThisType(" += tp += ")"
+      case SuperType(thistpe, supertpe) =>
+        this += "SuperType(" += thistpe += ", " += supertpe += ")"
+      case RecursiveThis(binder) =>
+        this += "RecursiveThis(" += binder += ")"
+      case RecursiveType(underlying) =>
+        this += "RecursiveType(" += underlying += ")"
+      case MethodType(argNames, argTypes, resType) =>
+        this += "MethodType(" ++= argNames += ", " ++= argTypes += ", " += resType += ")"
+      case PolyType(argNames, argBounds, resType) =>
+        this += "PolyType(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
+      case TypeLambda(argNames, argBounds, resType) =>
         // resType is not printed to avoid cycles
-        this += "Type.TypeLambda(" ++= argNames += ", " ++= argBounds += ", _)"
+        this += "TypeLambda(" ++= argNames += ", " ++= argBounds += ", _)"
       case TypeBounds(lo, hi) =>
         this += "TypeBounds(" += lo += ", " += hi += ")"
       case NoPrefix() =>

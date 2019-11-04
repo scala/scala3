@@ -194,6 +194,7 @@ class Worksheet implements Disposable {
   private createDecoration(margin: number, text: string) {
     return vscode.window.createTextEditorDecorationType({
       isWholeLine: true,
+      rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
       after: {
         contentText: text,
         margin: `0px 0px 0px ${margin}ch`,

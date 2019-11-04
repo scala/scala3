@@ -1,6 +1,6 @@
 import scala.util.control.NonLocalReturns._
 
-inline def (op: => T) rescue[T, E <: Throwable] (fallback: PartialFunction[E, T]) =
+inline def [T, E <: Throwable](op: => T) rescue (fallback: PartialFunction[E, T]) =
   try op
   catch {
     case ex: ReturnThrowable[_] => throw ex

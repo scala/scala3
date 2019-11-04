@@ -205,7 +205,7 @@ trait ConstraintHandling[AbstractContext] {
     else
       isSubType(tp1, tp2)
 
-  @forceInline final def inFrozenConstraint[T](op: => T): T = {
+  inline final def inFrozenConstraint[T](op: => T): T = {
     val savedFrozen = frozenConstraint
     val savedLambda = caseLambda
     frozenConstraint = true

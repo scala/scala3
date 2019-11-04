@@ -18,7 +18,7 @@ import Names.{Name, TermName}
 import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName}
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
-import Inferencing.fullyDefinedType
+import Inferencing.isFullyDefined
 import config.Printers.inlining
 import ErrorReporting.errorTree
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
@@ -33,15 +33,12 @@ import dotty.tools.dotc.transform.{Splicer, TreeMapWithStages}
 object Inliner {
   import tpd._
 
-  /** `sym` is an inline method with a known body to inline (note: definitions coming
-   *  from Scala2x class files might be `@forceInline`, but still lack that body).
+  /** `sym` is an inline method with a known body to inline.
    */
   def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
     sym.isInlineMethod && sym.hasAnnotation(defn.BodyAnnot)
 
   /** The body to inline for method `sym`, or `EmptyTree` if none exists.
-   *  Note: definitions coming from Scala2x class files might be `@forceInline`,
-   *  but still lack that body.
    *  @pre  hasBodyToInline(sym)
    */
   def bodyToInline(sym: SymDenotation)(implicit ctx: Context): Tree =
@@ -200,16 +197,14 @@ object Inliner {
     /** Expand call to scala.compiletime.testing.typeChecks */
     def typeChecks(tree: Tree)(implicit ctx: Context): Tree = {
       assert(tree.symbol == defn.CompiletimeTesting_typeChecks)
-      def getCodeArgValue(t: Tree): Option[String] = t match {
-        case Literal(Constant(code: String)) => Some(code)
-        case Typed(t2, _) => getCodeArgValue(t2)
-        case Inlined(_, Nil, t2) => getCodeArgValue(t2)
-        case Block(Nil, t2) => getCodeArgValue(t2)
-        case _ => None
+      def stripTyped(t: Tree): Tree = t match {
+        case Typed(t2, _) => stripTyped(t2)
+        case _ => t
       }
+
       val Apply(_, codeArg :: Nil) = tree
-      getCodeArgValue(codeArg.underlyingArgument) match {
-        case Some(code) =>
+      ConstFold(stripTyped(codeArg.underlyingArgument)).tpe.widenTermRefExpr match {
+        case ConstantType(Constant(code: String)) =>
           val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer)
           val tree2 = new Parser(SourceFile.virtual("tasty-reflect", code))(ctx2).block()
           val res =
@@ -219,7 +214,8 @@ object Inliner {
               !ctx2.reporter.hasErrors
             }
           Literal(Constant(res))
-        case _ =>
+        case t =>
+          assert(ctx.reporter.hasErrors) // at least: argument to inline parameter must be a known value
           EmptyTree
       }
     }
@@ -242,8 +238,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
   inlining.println(i"-----------------------\nInlining $call\nWith RHS $rhsToInline")
 
-  // Make sure all type arguments to the call are fully determined
-  for (targ <- callTypeArgs) fullyDefinedType(targ.tpe, "inlined type argument", targ.span)
+  // Make sure all type arguments to the call are fully determined,
+  // but continue if that's not achievable (or else i7459.scala would crash).
+  for arg <- callTypeArgs do
+    isFullyDefined(arg.tpe, ForceDegree.all)
 
   /** A map from parameter names of the inlineable method to references of the actual arguments.
    *  For a type argument this is the full argument type.
@@ -316,9 +314,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
   /** Populate `paramBinding` and `bindingsBuf` by matching parameters with
    *  corresponding arguments. `bindingbuf` will be further extended later by
-   *  proxies to this-references.
+   *  proxies to this-references. Issue an error if some arguments are missing.
    */
-  private def computeParamBindings(tp: Type, targs: List[Tree], argss: List[List[Tree]]): Unit = tp match {
+  private def computeParamBindings(tp: Type, targs: List[Tree], argss: List[List[Tree]]): Boolean = tp match
     case tp: PolyType =>
       tp.paramNames.lazyZip(targs).foreach { (name, arg) =>
         paramSpan(name) = arg.span
@@ -326,19 +324,22 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
       computeParamBindings(tp.resultType, Nil, argss)
     case tp: MethodType =>
-      assert(argss.nonEmpty, i"missing bindings: $tp in $call")
-      tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head).foreach { (name, paramtp, arg) =>
-        paramSpan(name) = arg.span
-        paramBinding(name) = arg.tpe.dealias match {
-          case _: SingletonType if isIdempotentPath(arg) => arg.tpe
-          case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol.termRef
+      if argss.isEmpty then
+        ctx.error(i"mising arguments for inline method $inlinedMethod", call.sourcePos)
+        false
+      else
+        tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head).foreach { (name, paramtp, arg) =>
+          paramSpan(name) = arg.span
+          paramBinding(name) = arg.tpe.dealias match {
+            case _: SingletonType if isIdempotentPath(arg) => arg.tpe
+            case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol.termRef
+          }
         }
-      }
-      computeParamBindings(tp.resultType, targs, argss.tail)
+        computeParamBindings(tp.resultType, targs, argss.tail)
     case _ =>
       assert(targs.isEmpty)
       assert(argss.isEmpty)
-  }
+      true
 
   // Compute val-definitions for all this-proxies and append them to `bindingsBuf`
   private def computeThisBindings() = {
@@ -447,7 +448,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
 
     // Compute bindings for all parameters, appending them to bindingsBuf
-    computeParamBindings(inlinedMethod.info, callTypeArgs, callValueArgss)
+    if !computeParamBindings(inlinedMethod.info, callTypeArgs, callValueArgss) then
+      return call
 
     // make sure prefix is executed if it is impure
     if (!isIdempotentExpr(inlineCallPrefix)) registerType(inlinedMethod.owner.thisType)

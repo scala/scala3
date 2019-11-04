@@ -182,6 +182,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Opaque()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Opaque)
 
+    case class Open()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Open)
+
     case class Override()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Override)
 
     case class Abstract()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Abstract)
