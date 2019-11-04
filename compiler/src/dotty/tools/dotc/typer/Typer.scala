@@ -2925,9 +2925,15 @@ class Typer extends Namer
         case _ =>
       }
 
-      // try an extension method in scope
+      // (1) Is prefix type is an uninstantiated type variable, try to instantiate and continue
+      // (2) try an extension method in scope
       pt match {
         case SelectionProto(name, mbrType, _, _) =>
+          wtp match
+            case tvar: TypeVar if !tvar.isInstantiated && tvar.hasLowerBound =>
+              tvar.instantiate(fromBelow = true)
+              return readapt(tree)
+            case _ =>
           def tryExtension(implicit ctx: Context): Tree =
             try
               findRef(name, WildcardType, ExtensionMethod, tree.posd) match {

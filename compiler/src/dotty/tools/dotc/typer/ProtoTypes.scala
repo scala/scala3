@@ -131,8 +131,7 @@ object ProtoTypes {
      *     as a prefix or underlying type, or as an upper bound of a prefix or underlying type.
      */
     private def hasUnknownMembers(tp: Type)(implicit ctx: Context): Boolean = tp match {
-      case tp: TypeVar =>
-        !tp.isInstantiated && ctx.typeComparer.bounds(tp.origin).lo.isBottomType
+      case tp: TypeVar => !tp.isInstantiated && !tp.hasLowerBound
       case tp: WildcardType => true
       case NoType => true
       case tp: TypeRef =>
