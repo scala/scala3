@@ -427,7 +427,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
             inParens {
               printTree(term)
               this += (if (scala.internal.Chars.isOperatorPart(sb.last)) " : " else ": ")
-              def printTypeOrAnnots(tpe: Type): Unit = tpe match {
+              def printTypeOrAnnots(tpe: Tpe): Unit = tpe match {
                 case AnnotatedType(tp, annot) if tp == term.tpe =>
                   printAnnotation(annot)
                 case AnnotatedType(tp, annot) =>
@@ -641,8 +641,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     def printTypeTrees(trees: List[TypeTree], sep: String)(given elideThis: Option[Symbol] = None): Buffer =
       printList(trees, sep, (t: TypeTree) => printTypeTree(t))
 
-    def printTypes(trees: List[Type], sep: String)(given elideThis: Option[Symbol]): Buffer = {
-      def printSeparated(list: List[Type]): Unit = list match {
+    def printTypes(trees: List[Tpe], sep: String)(given elideThis: Option[Symbol]): Buffer = {
+      def printSeparated(list: List[Tpe]): Unit = list match {
         case Nil =>
         case x :: Nil => printType(x)
         case x :: xs =>
@@ -966,7 +966,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     def printTypeTree(tree: TypeTree)(given elideThis: Option[Symbol] = None): Buffer = tree match {
       case Inferred() =>
         // TODO try to move this logic into `printType`
-        def printTypeAndAnnots(tpe: Type): Buffer = tpe match {
+        def printTypeAndAnnots(tpe: Tpe): Buffer = tpe match {
           case AnnotatedType(tp, annot) =>
             printTypeAndAnnots(tp)
             this += " "
@@ -1055,7 +1055,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         printType(lo)
         this += " <: "
         printType(hi)
-      case IsType(tpe) => printType(tpe)
+      case IsTpe(tpe) => printType(tpe)
     }
 
     /** Print type
@@ -1066,7 +1066,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       *   Self type annotation and types in parent list should elide current class
       *   prefix `C.this` to avoid type checking errors.
       */
-    def printType(tpe: Type)(given elideThis: Option[Symbol] = None): Buffer = tpe match {
+    def printType(tpe: Tpe)(given elideThis: Option[Symbol] = None): Buffer = tpe match {
       case ConstantType(const) =>
         printConstant(const)
 
@@ -1087,9 +1087,9 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
           case IsTypeRef(prefix) if prefix.typeSymbol.isClassDef =>
             printType(prefix)
             this += "#"
-          case IsType(ThisType(TermRef(cdef, _))) if elideThis.nonEmpty && cdef == elideThis.get =>
-          case IsType(ThisType(TypeRef(cdef, _))) if elideThis.nonEmpty && cdef == elideThis.get =>
-          case IsType(prefix) =>
+          case IsTpe(ThisType(TermRef(cdef, _))) if elideThis.nonEmpty && cdef == elideThis.get =>
+          case IsTpe(ThisType(TypeRef(cdef, _))) if elideThis.nonEmpty && cdef == elideThis.get =>
+          case IsTpe(prefix) =>
             printType(prefix)
             this += "."
         }
@@ -1190,7 +1190,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       case IsMethodType(tpe) =>
         this += "("
         printList(tpe.paramNames.zip(tpe.paramTypes), ", ",
-          (x: (String, Type)) => (this += x._1 += ": ").printType(x._2))
+          (x: (String, Tpe)) => (this += x._1 += ": ").printType(x._2))
         this += ")"
         printType(tpe.resType)
 
@@ -1255,7 +1255,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       else this
     }
 
-    def printRefinement(tpe: Type)(given elideThis: Option[Symbol]): Buffer = {
+    def printRefinement(tpe: Tpe)(given elideThis: Option[Symbol]): Buffer = {
       def printMethodicType(tp: TypeOrBounds): Unit = tp match {
         case tp @ MethodType(paramNames, params, res) =>
           inParens(printMethodicTypeParams(paramNames, params))
@@ -1266,11 +1266,11 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         case ByNameType(t) =>
           this += ": "
           printType(t)
-        case IsType(tp) =>
+        case IsTpe(tp) =>
           this += ": "
           printType(tp)
       }
-      def rec(tp: Type): Unit = tp match {
+      def rec(tp: Tpe): Unit = tp match {
         case Refinement(parent, name, info) =>
           rec(parent)
           indented {
@@ -1282,7 +1282,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
               case ByNameType(_) | MethodType(_, _, _) | TypeLambda(_, _, _) =>
                 this += highlightKeyword("def ") += highlightTypeDef(name)
                 printMethodicType(info)
-              case IsType(info) =>
+              case IsTpe(info) =>
                 this += highlightKeyword("val ") += highlightValDef(name)
                 printMethodicType(info)
             }
@@ -1298,7 +1298,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     def printMethodicTypeParams(paramNames: List[String], params: List[TypeOrBounds])(given elideThis: Option[Symbol]): Unit = {
       def printInfo(info: TypeOrBounds) = info match {
         case IsTypeBounds(info) => printBounds(info)
-        case IsType(info) =>
+        case IsTpe(info) =>
           this += ": "
           printType(info)
       }
@@ -1340,7 +1340,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
     def printProtectedOrPrivate(definition: Definition): Boolean = {
       var prefixWasPrinted = false
-      def printWithin(within: Type) = within match {
+      def printWithin(within: Tpe) = within match {
         case TypeRef(_, name) => this += name
         case _ => printFullClassName(within)
       }
@@ -1436,22 +1436,22 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
   private object Types {
 
     object JavaLangObject {
-      def unapply(tpe: Type)(given ctx: Context): Boolean = tpe match {
+      def unapply(tpe: Tpe)(given ctx: Context): Boolean = tpe match {
         case TypeRef(IsTermRef(prefix), "Object") => prefix.typeSymbol.fullName == "java.lang"
         case _ => false
       }
     }
 
     object Sequence {
-      def unapply(tpe: Type)(given ctx: Context): Option[Type] = tpe match {
-        case AppliedType(TypeRef(IsTermRef(prefix), "Seq"), IsType(tp) :: Nil) if prefix.termSymbol.fullName == "scala.collection" => Some(tp)
-        case AppliedType(TypeRef(IsTypeRef(prefix), "Seq"), IsType(tp) :: Nil) if prefix.typeSymbol.fullName == "scala.collection" => Some(tp)
+      def unapply(tpe: Tpe)(given ctx: Context): Option[Tpe] = tpe match {
+        case AppliedType(TypeRef(IsTermRef(prefix), "Seq"), IsTpe(tp) :: Nil) if prefix.termSymbol.fullName == "scala.collection" => Some(tp)
+        case AppliedType(TypeRef(IsTypeRef(prefix), "Seq"), IsTpe(tp) :: Nil) if prefix.typeSymbol.fullName == "scala.collection" => Some(tp)
         case _ => None
       }
     }
 
     object RepeatedAnnotation {
-      def unapply(tpe: Type)(given ctx: Context): Boolean = tpe match {
+      def unapply(tpe: Tpe)(given ctx: Context): Boolean = tpe match {
         case TypeRef(IsTermRef(prefix), "Repeated") => prefix.termSymbol.fullName == "scala.annotation.internal"
         case TypeRef(IsTypeRef(prefix), "Repeated") => prefix.typeSymbol.fullName == "scala.annotation.internal"
         case _ => false
@@ -1459,8 +1459,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     }
 
     object Repeated {
-      def unapply(tpe: Type)(given ctx: Context): Option[Type] = tpe match {
-        case AppliedType(TypeRef(ScalaPackage(), "<repeated>"), IsType(tp) :: Nil) => Some(tp)
+      def unapply(tpe: Tpe)(given ctx: Context): Option[Tpe] = tpe match {
+        case AppliedType(TypeRef(ScalaPackage(), "<repeated>"), IsTpe(tp) :: Nil) => Some(tp)
         case _ => None
       }
     }

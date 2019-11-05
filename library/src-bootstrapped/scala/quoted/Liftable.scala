@@ -41,7 +41,7 @@ object Liftable {
     /** Lift a `Class[T]` into `'{ classOf[T] }` */
     def toExpr(x: Class[T]) = (given qctx) => {
       import qctx.tasty.{_, given}
-      Ref(defn.Predef_classOf).appliedToType(Type(x)).seal.asInstanceOf[Expr[Class[T]]]
+      Ref(defn.Predef_classOf).appliedToType(Tpe(x)).seal.asInstanceOf[Expr[Class[T]]]
     }
   }
 

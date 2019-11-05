@@ -8,7 +8,7 @@ object scalatest {
     import qctx.tasty.{_, given}
     import util._
 
-    def isImplicitMethodType(tp: Type): Boolean =
+    def isImplicitMethodType(tp: Tpe): Boolean =
       IsMethodType.unapply(tp).flatMap(tp => if tp.isImplicit then Some(true) else None).nonEmpty
 
     cond.unseal.underlyingArgument match {

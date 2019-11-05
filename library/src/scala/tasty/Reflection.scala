@@ -1,6 +1,5 @@
 package scala.tasty
 
-import scala.quoted.QuoteContext
 import scala.tasty.reflect._
 
 class Reflection(private[scala] val internal: CompilerInterface)
@@ -24,7 +23,7 @@ class Reflection(private[scala] val internal: CompilerInterface)
     with TreeUtils
     with TypeOrBoundsOps { self =>
 
-  def typeOf[T: scala.quoted.Type]: Type =
+  def typeOf[T: scala.quoted.Type]: Tpe =
     implicitly[scala.quoted.Type[T]].unseal.tpe
 
 }

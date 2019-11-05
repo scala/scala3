@@ -95,7 +95,7 @@ trait TreeOps extends Core {
   }
 
   object DefDef {
-    def apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(given ctx: Context): DefDef =
+    def apply(symbol: Symbol, rhsFn: List[Tpe] => List[List[Term]] => Option[Term])(given ctx: Context): DefDef =
       internal.DefDef_apply(symbol, rhsFn)
     def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(given ctx: Context): DefDef =
       internal.DefDef_copy(original)(name, typeParams, paramss, tpt, rhs)
@@ -169,7 +169,7 @@ trait TreeOps extends Core {
   // ----- Terms ----------------------------------------------------
 
   given (self: Term) {
-    def tpe(given ctx: Context): Type = internal.Term_tpe(self)
+    def tpe(given ctx: Context): Tpe = internal.Term_tpe(self)
     def underlyingArgument(given ctx: Context): Term = internal.Term_underlyingArgument(self)
     def underlying(given ctx: Context): Term = internal.Term_underlying(self)
 
@@ -196,11 +196,11 @@ trait TreeOps extends Core {
       self.appliedToArgs(Nil)
 
     /** The current tree applied to given type argument: `tree[targ]` */
-    def appliedToType(targ: Type)(given ctx: Context): Term =
+    def appliedToType(targ: Tpe)(given ctx: Context): Term =
       self.appliedToTypes(targ :: Nil)
 
     /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
-    def appliedToTypes(targs: List[Type])(given ctx: Context): Term =
+    def appliedToTypes(targs: List[Tpe])(given ctx: Context): Term =
       self.appliedToTypeTrees(targs map (Inferred(_)))
 
     /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
@@ -277,7 +277,7 @@ trait TreeOps extends Core {
 
     // TODO rename, this returns an Apply and not a Select
     /** Call an overloaded method with the given type and term parameters */
-    def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(given ctx: Context): Apply =
+    def overloaded(qualifier: Term, name: String, targs: List[Tpe], args: List[Term])(given ctx: Context): Apply =
       internal.Select_overloaded(qualifier, name, targs, args)
 
     def copy(original: Tree)(qualifier: Term, name: String)(given ctx: Context): Select =
@@ -553,19 +553,19 @@ trait TreeOps extends Core {
 
   object Closure {
 
-    def apply(meth: Term, tpt: Option[Type])(given ctx: Context): Closure =
+    def apply(meth: Term, tpt: Option[Tpe])(given ctx: Context): Closure =
       internal.Closure_apply(meth, tpt)
 
-    def copy(original: Tree)(meth: Tree, tpt: Option[Type])(given ctx: Context): Closure =
+    def copy(original: Tree)(meth: Tree, tpt: Option[Tpe])(given ctx: Context): Closure =
       internal.Closure_copy(original)(meth, tpt)
 
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, Option[Type])] =
+    def unapply(tree: Tree)(given ctx: Context): Option[(Term, Option[Tpe])] =
       internal.matchClosure(tree).map(x => (x.meth, x.tpeOpt))
   }
 
   given (self: Closure) {
     def meth(given ctx: Context): Term = internal.Closure_meth(self)
-    def tpeOpt(given ctx: Context): Option[Type] = internal.Closure_tpeOpt(self)
+    def tpeOpt(given ctx: Context): Option[Tpe] = internal.Closure_tpeOpt(self)
   }
 
   /** A lambda `(...) => ...` in the source code is represented as
@@ -780,7 +780,7 @@ trait TreeOps extends Core {
     def copy(original: Tree)(qualifier: Term, name: String, levels: Int)(given ctx: Context): SelectOuter =
       internal.SelectOuter_copy(original)(qualifier, name, levels)
 
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, Int, Type)] = // TODO homogenize order of parameters
+    def unapply(tree: Tree)(given ctx: Context): Option[(Term, Int, Tpe)] = // TODO homogenize order of parameters
       internal.matchSelectOuter(tree).map(x => (x.qualifier, x.level, x.tpe))
 
   }
@@ -818,8 +818,8 @@ trait TreeOps extends Core {
   // ----- TypeTrees ------------------------------------------------
 
   given (self: TypeTree) {
-    /** Type of this type tree */
-    def tpe(given ctx: Context): Type = internal.TypeTree_tpe(self)
+    /** Tpe of this type tree */
+    def tpe(given ctx: Context): Tpe = internal.TypeTree_tpe(self)
   }
 
   object IsTypeTree {
@@ -835,7 +835,7 @@ trait TreeOps extends Core {
 
   /** TypeTree containing an inferred type */
   object Inferred {
-    def apply(tpe: Type)(given ctx: Context): Inferred =
+    def apply(tpe: Tpe)(given ctx: Context): Inferred =
       internal.Inferred_apply(tpe)
     /** Matches a TypeTree containing an inferred type */
     def unapply(tree: Tree)(given ctx: Context): Boolean =

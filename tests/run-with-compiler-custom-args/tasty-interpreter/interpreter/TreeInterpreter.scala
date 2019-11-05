@@ -190,10 +190,10 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     }
   }
 
-  private def isNumericPrimitive(tpe: Type): Boolean =
+  private def isNumericPrimitive(tpe: Tpe): Boolean =
     isIntegralPrimitive(tpe) || isFractionalPrimitive(tpe)
 
-  private def isIntegralPrimitive(tpe: Type): Boolean = {
+  private def isIntegralPrimitive(tpe: Tpe): Boolean = {
     tpe <:< defn.ByteType ||
     tpe <:< defn.CharType ||
     tpe <:< defn.ShortType ||
@@ -201,7 +201,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     tpe <:< defn.LongType
   }
 
-  private def isFractionalPrimitive(tpe: Type): Boolean =
+  private def isFractionalPrimitive(tpe: Tpe): Boolean =
     tpe <:< defn.FloatType || tpe <:< defn.DoubleType
 
 

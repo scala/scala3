@@ -8,10 +8,10 @@ object Macros {
   def impl[T: Type](given qctx: QuoteContext): Expr[Seq[String]] = {
     import qctx.tasty.{_, given}
 
-    def unpackTuple(tp: Type): List[Type] = {
+    def unpackTuple(tp: Tpe): List[Tpe] = {
       @tailrec
-      def loop(tp: Type, acc: List[Type]): List[Type] = tp.dealias.simplified match {
-        case AppliedType(_, List(IsType(hd), IsType(tl))) =>
+      def loop(tp: Tpe, acc: List[Tpe]): List[Tpe] = tp.dealias.simplified match {
+        case AppliedType(_, List(IsTpe(hd), IsTpe(tl))) =>
           loop(tl, hd.dealias.simplified :: acc)
         case other => acc
       }

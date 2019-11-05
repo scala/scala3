@@ -177,51 +177,51 @@ trait StandardDefinitions extends Core {
     */
   trait StandardTypes {
     /** The type of primitive type `Unit`. */
-    def UnitType: Type = internal.Definitions_UnitType
+    def UnitType: Tpe = internal.Definitions_UnitType
 
     /** The type of primitive type `Byte`. */
-    def ByteType: Type = internal.Definitions_ByteType
+    def ByteType: Tpe = internal.Definitions_ByteType
 
     /** The type of primitive type `Short`. */
-    def ShortType: Type = internal.Definitions_ShortType
+    def ShortType: Tpe = internal.Definitions_ShortType
 
     /** The type of primitive type `Char`. */
-    def CharType: Type = internal.Definitions_CharType
+    def CharType: Tpe = internal.Definitions_CharType
 
     /** The type of primitive type `Int`. */
-    def IntType: Type = internal.Definitions_IntType
+    def IntType: Tpe = internal.Definitions_IntType
 
     /** The type of primitive type `Long`. */
-    def LongType: Type = internal.Definitions_LongType
+    def LongType: Tpe = internal.Definitions_LongType
 
     /** The type of primitive type `Float`. */
-    def FloatType: Type = internal.Definitions_FloatType
+    def FloatType: Tpe = internal.Definitions_FloatType
 
     /** The type of primitive type `Double`. */
-    def DoubleType: Type = internal.Definitions_DoubleType
+    def DoubleType: Tpe = internal.Definitions_DoubleType
 
     /** The type of primitive type `Boolean`. */
-    def BooleanType: Type = internal.Definitions_BooleanType
+    def BooleanType: Tpe = internal.Definitions_BooleanType
 
     /** The type of core type `Any`. */
-    def AnyType: Type = internal.Definitions_AnyType
+    def AnyType: Tpe = internal.Definitions_AnyType
 
     /** The type of core type `AnyVal`. */
-    def AnyValType: Type = internal.Definitions_AnyValType
+    def AnyValType: Tpe = internal.Definitions_AnyValType
 
     /** The type of core type `AnyRef`. */
-    def AnyRefType: Type = internal.Definitions_AnyRefType
+    def AnyRefType: Tpe = internal.Definitions_AnyRefType
 
     /** The type of core type `Object`. */
-    def ObjectType: Type = internal.Definitions_ObjectType
+    def ObjectType: Tpe = internal.Definitions_ObjectType
 
     /** The type of core type `Nothing`. */
-    def NothingType: Type = internal.Definitions_NothingType
+    def NothingType: Tpe = internal.Definitions_NothingType
 
     /** The type of core type `Null`. */
-    def NullType: Type = internal.Definitions_NullType
+    def NullType: Tpe = internal.Definitions_NullType
 
     /** The type for `scala.String`. */
-    def StringType: Type = internal.Definitions_StringType
+    def StringType: Tpe = internal.Definitions_StringType
   }
 }

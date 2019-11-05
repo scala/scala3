@@ -354,7 +354,7 @@ object StringContextMacro {
      *  @return reports a type mismatch error if the actual type is not a subtype of any of the possibilities,
      *  nothing otherwise
      */
-    def checkSubtype(actualType : Type, expectedType : String, argIndex : Int, possibilities : Type*) = {
+    def checkSubtype(actualType : Tpe, expectedType : String, argIndex : Int, possibilities : Tpe*) = {
       if (possibilities.find(actualType <:< _).isEmpty)
         reporter.argError("type mismatch;\n found   : " + actualType.widen.show.stripPrefix("scala.Predef.").stripPrefix("java.lang.").stripPrefix("scala.") + "\n required: " + expectedType, argIndex)
     }
@@ -452,7 +452,7 @@ object StringContextMacro {
      *  ’d’: only ’#’ is allowed,
      *  ’o’, ’x’, ’X’: ’-’, ’#’, ’0’ are always allowed, depending on the type, this will be checked in the type check step
      */
-    def checkIntegralConversion(partIndex : Int, argType : Option[Type], conversionChar : Char, flags : List[(Char, Int)], hasPrecision : Boolean, precision : Int) = {
+    def checkIntegralConversion(partIndex : Int, argType : Option[Tpe], conversionChar : Char, flags : List[(Char, Int)], hasPrecision : Boolean, precision : Int) = {
       if (conversionChar == 'd')
         checkFlags(partIndex, flags, ('#', true,  "# not allowed for d conversion"))
 
@@ -526,7 +526,7 @@ object StringContextMacro {
      *  @return reports an error
      *  if '#' flag is used or if any other flag is used
      */
-    def checkGeneralConversion(partIndex : Int, argType : Option[Type], conversionChar : Char, flags : List[(Char, Int)]) = {
+    def checkGeneralConversion(partIndex : Int, argType : Option[Tpe], conversionChar : Char, flags : List[(Char, Int)]) = {
       for {flag <- flags ; if (flag._1 != '-' && flag._1 != '#')}
         reporter.partError("Illegal flag '" + flag._1 + "'", partIndex, flag._2)
     }
@@ -578,7 +578,7 @@ object StringContextMacro {
      *  reports an error/warning if the formatting parameters are not allowed/wrong, nothing otherwise
      */
     def checkFormatSpecifiers(partIndex : Int, hasArgumentIndex : Boolean, actualArgumentIndex : Int, expectedArgumentIndex : Option[Int], firstFormattingSubstring : Boolean, maxArgumentIndex : Option[Int],
-      hasRelative : Boolean, hasWidth : Boolean, width : Int, hasPrecision : Boolean, precision : Int, flags : List[(Char, Int)], conversion : Int, argType : Option[Type], part : String) : (Option[(Type, Int)], Char, List[(Char, Int)])= {
+      hasRelative : Boolean, hasWidth : Boolean, width : Int, hasPrecision : Boolean, precision : Int, flags : List[(Char, Int)], conversion : Int, argType : Option[Tpe], part : String) : (Option[(Tpe, Int)], Char, List[(Char, Int)])= {
       val conversionChar = part.charAt(conversion)
 
       if (hasArgumentIndex && expectedArgumentIndex.nonEmpty && maxArgumentIndex.nonEmpty && firstFormattingSubstring)
@@ -608,7 +608,7 @@ object StringContextMacro {
      *  @param formattingStart the index in the part where the formatting substring starts, i.e. where the '%' is
      *  @return reports an error/warning if the formatting parameters are not allowed/wrong depending on the type, nothing otherwise
      */
-    def checkArgTypeWithConversion(partIndex : Int, conversionChar : Char, argument : Option[(Type, Int)], flags : List[(Char, Int)], formattingStart : Int) = {
+    def checkArgTypeWithConversion(partIndex : Int, conversionChar : Char, argument : Option[(Tpe, Int)], flags : List[(Char, Int)], formattingStart : Int) = {
       if (argument.nonEmpty)
         checkTypeWithArgs(argument.get, conversionChar, partIndex, flags)
       else
@@ -624,7 +624,7 @@ object StringContextMacro {
      *  @return reports an error if the argument type does not correspond with the conversion character,
      *  nothing otherwise
      */
-    def checkTypeWithArgs(argument : (Type, Int), conversionChar : Char, partIndex : Int, flags : List[(Char, Int)]) = {
+    def checkTypeWithArgs(argument : (Tpe, Int), conversionChar : Char, partIndex : Int, flags : List[(Char, Int)]) = {
       val booleans = List(defn.BooleanType, defn.NullType)
       val dates = List(defn.LongType, typeOf[java.util.Calendar], typeOf[java.util.Date])
       val floatingPoints = List(defn.DoubleType, defn.FloatType, typeOf[java.math.BigDecimal])
@@ -687,7 +687,7 @@ object StringContextMacro {
      *  @param maxArgumentIndex an Option containing the maximum argument index possible, None if no args are specified
      *  @return a list with all the elements of the conversion per formatting string
      */
-    def checkPart(part : String, start : Int, argument : Option[(Int, Expr[Any])], maxArgumentIndex : Option[Int]) : List[(Option[(Type, Int)], Char, List[(Char, Int)])] = {
+    def checkPart(part : String, start : Int, argument : Option[(Int, Expr[Any])], maxArgumentIndex : Option[Int]) : List[(Option[(Tpe, Int)], Char, List[(Char, Int)])] = {
       reporter.resetReported()
       val hasFormattingSubstring = getFormattingSubstring(part, part.size, start)
       if (hasFormattingSubstring.nonEmpty) {

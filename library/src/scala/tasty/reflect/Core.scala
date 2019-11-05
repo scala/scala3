@@ -66,7 +66,7 @@ package scala.tasty.reflect
  *                   +- NoPrefix
  *  +- TypeOrBounds -+- TypeBounds
  *                   |
- *                   +- Type -------+- ConstantType
+ *                   +- Tpe --------+- ConstantType
  *                                  +- TermRef
  *                                  +- TypeRef
  *                                  +- SuperType
@@ -301,7 +301,7 @@ trait Core {
     type TypeBounds = internal.TypeBounds
 
     /** A type */
-    type Type = internal.Type
+    type Tpe = internal.Type
 
       /** A singleton type representing a known constant value */
       type ConstantType = internal.ConstantType

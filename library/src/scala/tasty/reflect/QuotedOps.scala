@@ -25,7 +25,7 @@ trait QuotedOps extends Core {
       internal.QuotedExpr_seal(term)
   }
 
-  implicit class TypeToQuotedAPI(tpe: Type) {
+  implicit class TypeToQuotedAPI(tpe: Tpe) {
     /** Convert `Type` to an `quoted.Type[_]` */
     def seal(given ctx: Context): scala.quoted.Type[_] =
       internal.QuotedType_seal(tpe)

@@ -23,10 +23,10 @@ trait SymbolOps extends Core { selfSymbolOps: FlagsOps =>
     def flags(given ctx: Context): Flags = internal.Symbol_flags(self)
 
     /** This symbol is private within the resulting type */
-    def privateWithin(given ctx: Context): Option[Type] = internal.Symbol_privateWithin(self)
+    def privateWithin(given ctx: Context): Option[Tpe] = internal.Symbol_privateWithin(self)
 
     /** This symbol is protected within the resulting type */
-    def protectedWithin(given ctx: Context): Option[Type] = internal.Symbol_protectedWithin(self)
+    def protectedWithin(given ctx: Context): Option[Tpe] = internal.Symbol_protectedWithin(self)
 
     /** The name of this symbol */
     def name(given ctx: Context): String = internal.Symbol_name(self)

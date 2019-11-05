@@ -2,7 +2,7 @@ package scala.tasty.reflect
 
 trait ImplicitsOps extends Core {
 
-  def searchImplicit(tpe: Type)(given ctx: Context): ImplicitSearchResult =
+  def searchImplicit(tpe: Tpe)(given ctx: Context): ImplicitSearchResult =
     internal.searchImplicit(tpe)
 
   object IsImplicitSearchSuccess {
