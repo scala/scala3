@@ -4,7 +4,7 @@ package b
 object Givens/*<<=a.b.Givens.*/
 
   given :[A](any: A)
-    de/*<<=a.b.Givens.given_sayHello_of_A.*//*<<=a.b.Givens.given_sayHello_of_A.sayHello().[A]*//*<<=a.b.Givens.given_sayHello_of_A.sayHello().(any)*//*=>>a.b.Givens.given_sayHello_of_A.sayHello().[A]*/f sayHello/*<<=a.b.Givens.given_sayHello_of_A.sayHello().*/ = s"/*=>>scala.StringContext.*//*=>>scala.*//*=>>_root_*/Hello, I am $any/*=>>a.b.Givens.given_sayHello_of_A.sayHello().(any)*//*=>>scala.StringContext#s().*/"
+    de/*<<=a.b.Givens.given_sayHello_of_A.*//*<<=a.b.Givens.given_sayHello_of_A.sayHello().[A]*//*<<=a.b.Givens.given_sayHello_of_A.sayHello().(any)*//*=>>a.b.Givens.given_sayHello_of_A.sayHello().[A]*/f sayHello/*<<=a.b.Givens.given_sayHello_of_A.sayHello().*/ = s"Hello, I am $any/*=>>a.b.Givens.given_sayHello_of_A.sayHello().(any)*//*=>>scala.StringContext#s().*/"
 
   val hello1/*<<=a.b.Givens.hello1.*/ = /*=>>a.b.Givens.given_sayHello_of_A.sayHello().*//*=>>a.b.Givens.given_sayHello_of_A.*/1.sayHello
 
