@@ -26,17 +26,10 @@ class Concat {
     val size2 = sizes.split(' ')(1).toInt
     tuple1 = tupleOfSize(size1)
     tuple2 = tupleOfSize(size2)
-    array1 = Array.fill(size1)("elem")
-    array2 = Array.fill(size2)("elem")
   }
 
   @Benchmark
   def tupleConcat(): Tuple = {
     DynamicTuple.dynamicConcat(tuple1, tuple2)
-  }
-
-  @Benchmark
-  def arrayConcat(): Array[Object] = {
-    DynamicTuple.concat$Array(array1, array2)
   }
 }

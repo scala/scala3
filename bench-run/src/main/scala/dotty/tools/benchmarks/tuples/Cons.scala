@@ -16,17 +16,10 @@ class Cons {
 
     for (i <- 1 to size)
       tuple = "elem" *: tuple
-
-    array = Array.fill(size)("elem")
   }
 
   @Benchmark
   def tupleCons(): Tuple = {
     DynamicTuple.dynamicCons("elem", tuple)
-  }
-
-  @Benchmark
-  def arrayCons(): Array[Object] = {
-    DynamicTuple.cons$Array("elem", array)
   }
 }
