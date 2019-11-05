@@ -28,6 +28,39 @@ object DynamicTuple {
     result
   }
 
+  def dynamicFromIterator[T <: Tuple](it: Iterator[Object], size: Int): T = size match {
+    case 1  => Tuple1(it.next()).asInstanceOf[T]
+    case 2  => Tuple2(it.next(), it.next()).asInstanceOf[T]
+    case 3  => Tuple3(it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 4  => Tuple4(it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 5  => Tuple5(it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 6  => Tuple6(it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 7  => Tuple7(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 8  => Tuple8(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 9  => Tuple9(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 10 => Tuple10(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 11 => Tuple11(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 12 => Tuple12(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 13 => Tuple13(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 14 => Tuple14(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 15 => Tuple15(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 16 => Tuple16(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 17 => Tuple17(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 18 => Tuple18(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 19 => Tuple19(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 20 => Tuple20(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 21 => Tuple21(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case 22 => Tuple22(it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next(), it.next()).asInstanceOf[T]
+    case _  =>
+      val arr: Array[Object] = new Array[Object](size)
+      var i = 0
+      while (i < size) {
+        arr(i) = it.next()
+        i += 1
+      }
+      TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[T]
+  }
+
   def dynamicFromArray[T <: Tuple](xs: Array[Object]): T = xs.length match {
     case 0  => ().asInstanceOf[T]
     case 1  => Tuple1(xs(0)).asInstanceOf[T]
@@ -248,10 +281,7 @@ object DynamicTuple {
       case self: Tuple21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
         Tuple22(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21)
       case _ =>
-        val arr = new Array[Object](self.size + 1)
-        to$Array(self.asInstanceOf[Product].productIterator, self.size, arr, 1)
-        arr(0) = x.asInstanceOf[Object]
-        dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]])
+        dynamicFromIterator[Result](consIterator(x, self).asInstanceOf[Iterator[Object]], self.size + 1)
     }
     res.asInstanceOf[Result]
   }
@@ -266,10 +296,7 @@ object DynamicTuple {
       case that: Unit => return self.asInstanceOf[Result]
       case _ =>
     }
-    val arr = new Array[Object](self.size + that.size)
-    to$Array(self.asInstanceOf[Product].productIterator, self.size, arr, 0)
-    to$Array(that.asInstanceOf[Product].productIterator, that.size, arr, self.size)
-    dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+    dynamicFromIterator[Result](concatIterator(self, that).asInstanceOf[Iterator[Object]], self.size + that.size)
   }
 
   def dynamicSize[This <: Tuple](self: This): Size[This] = (self: Any) match {
@@ -325,11 +352,9 @@ object DynamicTuple {
       case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
         Tuple21(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21, self._22)
       case _ =>
-        val arr = new Array[Object](self.size - 1)
-        val it = self.asInstanceOf[Product].productIterator
+        val it = self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
         it.next()
-        to$Array(it, self.size - 1, arr, 0)
-        dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]])
+        dynamicFromIterator(it, self.size - 1)
     }
     res.asInstanceOf[Result]
   }
