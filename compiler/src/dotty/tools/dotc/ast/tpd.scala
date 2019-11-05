@@ -868,6 +868,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def appliedToArgs(args: List[Tree])(implicit ctx: Context): Apply =
       Apply(tree, args)
 
+    /** An applied node that accepts only varargs as arguments */
+    def appliedToVarargs(args: List[Tree], tpt: Tree)(given Context): Tree =
+      appliedTo(repeated(args, tpt))
+
     /** The current tree applied to given argument lists:
      *  `tree (argss(0)) ... (argss(argss.length -1))`
      */
@@ -884,6 +888,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
     def appliedToTypes(targs: List[Type])(implicit ctx: Context): Tree =
       appliedToTypeTrees(targs map (TypeTree(_)))
+
+    /** The current tree applied to given type argument: `tree[targ]` */
+    def appliedToTypeTree(targ: Tree)(implicit ctx: Context): Tree =
+      appliedToTypeTrees(targ :: Nil)
 
     /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
     def appliedToTypeTrees(targs: List[Tree])(implicit ctx: Context): Tree =
@@ -1357,5 +1365,24 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val targs = atp.argTypes
     tpd.applyOverloaded(New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp)
   }
-}
 
+  /** Convert a list of trees to a vararg-compatible tree.
+   *  Used to make arguments for methods that accept varargs.
+   */
+  def repeated(trees: List[Tree], tpt: Tree)(given ctx: Context): Tree =
+    ctx.typeAssigner.arrayToRepeated(JavaSeqLiteral(trees, tpt))
+
+  /** Create a tree representing a list containing all
+   *  the elements of the argument list. A "list of tree to
+   *  tree of list" conversion.
+   *
+   *  @param trees  the elements the list represented by
+   *                the resulting tree should contain.
+   *  @param tpe    the type of the elements of the resulting list.
+   *
+   */
+  def mkList(trees: List[Tree], tpe: Tree)(given Context): Tree =
+    ref(defn.ListModule).select(nme.apply)
+      .appliedToTypeTree(tpe)
+      .appliedToVarargs(trees, tpe)
+}

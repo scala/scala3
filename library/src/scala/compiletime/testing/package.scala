@@ -28,5 +28,4 @@ package object testing {
    */
   inline def typeCheckErrors(inline code: String): List[Error] =
     error("`typeCheckErrors` was not checked by the compiler")
-
 }
