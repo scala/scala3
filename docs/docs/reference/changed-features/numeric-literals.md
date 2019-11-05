@@ -70,7 +70,7 @@ the string is passed to `fromDigits`.
 
 The companion object `FromDigits` also defines subclasses of `FromDigits` for
 whole numbers with a given radix, for numbers with a decimal point, and for
-numbers that can have both a decimal point and an exponent:
+numbers that can have both a decimal point and an exponent, along with methods to summon a given instance of each subclass:
 ```scala
 object FromDigits {
 
@@ -92,12 +92,32 @@ object FromDigits {
    *  exponent `('e' | 'E')['+' | '-']digit digit*`.
    */
   trait Floating[T] extends Decimal[T]
+
+  /** Does `T` have a given `FromDigits[T]` instance?
+   */
+  inline def fromDigits[T](given x: FromDigits[T]): x.type = x
+
+  /** Does `T` have a given `FromDigits.WithRadix[T]` instance?
+   */
+  inline def fromRadixDigits[T](given x: FromDigits.WithRadix[T]): x.type = x
+
+  /** Does `T` have a given `FromDigits.Decimal[T]` instance?
+   */
+  inline def fromDecimalDigits[T](given x: FromDigits.Decimal[T]): x.type = x
+
+  /** Does `T` have a given `FromDigits.Floating[T]` instance?
+   */
+  inline def fromFloatingDigits[T](given x: FromDigits.Floating[T]): x.type = x
   ...
 }
 ```
-A user-defined number type can implement one of those, which signals to the compiler
-that hexadecimal numbers, decimal points, or exponents are also accepted in literals
-for this type.
+A user-defined number type, that provides a given instance of one of the above subclasses, signals to the compiler
+that hexadecimal numbers, decimal points, or exponents are also accepted in literals for that type. A numeric literal with a concrete type `T` and digits `digits` is replaced as follows, when a given instance for `FromDigits[T]` is available:
+
+- `fromDigits[T].fromDigits(digits)` if the digits form a decimal whole number.
+- `fromRadixDigits[T].fromDigits(digits, 16)` if the digits form a hexadecimal whole number.
+- `fromDecimalDigits[T].fromDigits(digits)` if the digits are decimal with a single decimal point `"."`.
+- `fromFloatingDigits[T].fromDigits(digits)` if the digits are decimal with an exponent and optionally a single decimal point `"."`.
 
 ### Error Handling
 
@@ -112,37 +132,19 @@ class NumberTooSmall (msg: String = "number too small")         extends FromDigi
 class MalformedNumber(msg: String = "malformed number literal") extends FromDigitsException(msg)
 ```
 
-### Compiler Expansion
+### Number Format Safety
 
-The companion object `FromDigits` also defines four methods that may be used to provide a given instance of one of the subclasses of `FromDigits`:
-```scala
-inline def fromDigits[T](given x: FromDigits[T]): x.type = x
+A benefit of implementing one of the specialised subclasses of `FromDigits` is that the compiler preserves invariants about the format of digits passed to the `fromDigits` method.
 
-inline def fromRadixDigits[T](given x: FromDigits.WithRadix[T]): x.type = x
-
-inline def fromDecimalDigits[T](given x: FromDigits.Decimal[T]): x.type = x
-
-inline def fromFloatingDigits[T](given x: FromDigits.Floating[T]): x.type = x
-```
-
-If a numeric literal has a concrete expected type `T` that is not one of the primitive numeric types, the compiler will search for a given instance of `FromDigits[T]`. If one exists, then the compiler will replace the numeric literal with an application of its digits to the `fromDigits` method on the result of the application of `T` to one of the above four methods, resulting in the following:
-
-- `fromDigits[T].fromDigits(digits)` if the literal forms a whole number with base-10.
-- `fromRadixDigits[T].fromDigits(digits, 16)` if the literal forms a whole number with base-16.
-- `fromDecimalDigits[T].fromDigits(digits)` if the literal is base-10 with a single decimal point.
-- `fromFloatingDigits[T].fromDigits(digits)` if the literal is base-10 with an exponent and optionally a single decimal point.
-
-<!-- on the `fromDigits` method on the result obtained from calling one of the  -->
-
-As an example, the literal below has a nonsensical expected type `BigDecimal`, which can not be constructed with hex digits:
+As an example, the constructor for `BigDecimal` can not accept digits in hexadecimal format, so it does not make sense to allow hexadecimal number literals with expected type `BigDecimal`. Below is such an expression:
 ```scala
 0xABC_123: BigDecimal
 ```
-Upon the compiler finding a given instance for `FromDigits[BigDecimal]`, the hex literal above expands to the following, after removing numeric separators:
+We can protect against this poorly formed expression by restricting the domain of acceptable number literals. The `FromDigits` companion object provides a given instance of `FromDigits.Floating[BigDecimal]`, which does not accept non-decimal literals. As described above, because the compiler can see a given instance for `FromDigits[BigDecimal]`, the hex literal is replaced with the following, after removing numeric separators:
 ```scala
 FromDigits.fromRadixDigits[BigDecimal].fromDigits("0ABC123", 16)
 ```
-The given clause of `fromRadixDigits` asserts that the prior found `FromDigits` instance is a subtype of `FromDigits.WithRadix[BigDecimal]`, or else following error is issued:
+Because the given instance for `FromDigits[BigDecimal]` in the `FromDigits` companion object is not a subtype of `FromDigits.WithRadix[BigDecimal]`, as expected by the given clause of `fromRadixDigits`, the following error is issued:
 ```scala
 1 |0xABC_123: BigDecimal
   |^

@@ -51,12 +51,20 @@ object FromDigits {
   @implicitNotFound("Type ${T} does not have a FromDigits instance for floating-point numbers.")
   trait Floating[T] extends Decimal[T]
 
+  /** Does `T` have a given `FromDigits[T]` instance?
+   */
   inline def fromDigits[T](given x: FromDigits[T]): x.type = x
 
+  /** Does `T` have a given `FromDigits.WithRadix[T]` instance?
+   */
   inline def fromRadixDigits[T](given x: FromDigits.WithRadix[T]): x.type = x
 
+  /** Does `T` have a given `FromDigits.Decimal[T]` instance?
+   */
   inline def fromDecimalDigits[T](given x: FromDigits.Decimal[T]): x.type = x
 
+  /** Does `T` have a given `FromDigits.Floating[T]` instance?
+   */
   inline def fromFloatingDigits[T](given x: FromDigits.Floating[T]): x.type = x
 
   /** The base type for exceptions that can be thrown from
