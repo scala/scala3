@@ -198,6 +198,10 @@ class ExtractSemanticDB extends Phase {
         then
           traverse(annot.tree)
 
+      val Predef_name = defn.ScalaPredefModule.name
+      val RootName = nme.ROOTPKG.toSimpleName
+      val Scala = "scala".toTermName.toSimpleName
+
       tree match
         case tree: ValDef if tree.symbol.is(Module) => // skip module val
         case tree: NamedDefTree
@@ -235,7 +239,9 @@ class ExtractSemanticDB extends Phase {
                 if source.content()(end - 1) == '`' then end - len - 1 else end - len
               else limit
             registerUse(tree.symbol, Span(start max limit, end))
-          traverseChildren(tree)
+          tree.qualifier match
+            case Select(Select(Ident(RootName), Scala), Predef_name) => // skip
+            case _ => traverseChildren(tree)
         case tree: Import =>
           if tree.span.exists && tree.span.start != tree.span.end then
             for sel <- tree.selectors do

@@ -1448,13 +1448,13 @@ object Trees {
               this(x, trees)
             case UnApply(fun, implicits, patterns) =>
               this(this(this(x, fun), implicits), patterns)
-            case tree @ ValDef(name, tpt, _) =>
+            case tree @ ValDef(_, tpt, _) =>
               implicit val ctx = localCtx
               this(this(x, tpt), tree.rhs)
-            case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
+            case tree @ DefDef(_, tparams, vparamss, tpt, _) =>
               implicit val ctx = localCtx
               this(this(vparamss.foldLeft(this(x, tparams))(apply), tpt), tree.rhs)
-            case TypeDef(name, rhs) =>
+            case TypeDef(_, rhs) =>
               implicit val ctx = localCtx
               this(x, rhs)
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
