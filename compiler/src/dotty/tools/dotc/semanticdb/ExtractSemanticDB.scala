@@ -102,7 +102,10 @@ class ExtractSemanticDB extends Phase {
         else if sym.is(Param) then
           b.append('('); addName(sym.name); b.append(')')
         else
-          addName(sym.name)
+          if (sym.isPackageObject) then
+            b.append("package")
+          else
+            addName(sym.name)
           if sym.is(Package) then b.append('/')
           else if sym.isType then b.append('#')
           else if sym.isOneOf(Method | Mutable)
@@ -134,6 +137,7 @@ class ExtractSemanticDB extends Phase {
           addOwner(sym.owner); addDescriptor(sym)
         else
           b.append("local").append(localIdx(sym))
+
     end addSymName
 
     /** The semanticdb name of the given symbol */
