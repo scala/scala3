@@ -71,7 +71,7 @@ Standard-Section: "ASTs" TopLevelStat*
   TypeParam     = TYPEPARAM      Length NameRef type_Term Modifier*                -- modifiers name bounds
   Param         = PARAM          Length NameRef type_Term rhs_Term? Modifier*      -- modifiers name : type (= rhs_Term)?. `rhsTerm` is present in the case of an aliased class parameter
                   PARAMEND                                                         -- ends a parameter clause
-                  																   -- needed if previous parameter clause is empty or another parameter clause follows
+                                                																   -- needed if previous parameter clause is empty or another parameter clause follows
   Template      = TEMPLATE       Length TypeParam* Param* parent_Term* Self? Stat* -- [typeparams] paramss extends parents { self => stats }, where Stat* always starts with the primary constructor.
   Self          = SELFDEF               selfName_NameRef selfType_Term             -- selfName : selfType
 
