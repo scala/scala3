@@ -191,7 +191,10 @@ package internal {
      */
     final class TastyTreeExpr[Tree](val tree: Tree, val scopeId: Int) extends Expr[Any] {
       override def equals(that: Any): Boolean = that match {
-        case that: TastyTreeExpr[_] => tree == that.tree && scopeId == that.scopeId
+        case that: TastyTreeExpr[_] =>
+          // TastyTreeExpr are wrappers around trees, therfore they are equals if their trees are equal.
+          // All scopeId should be equal unless two different runs of the compiler created the trees.
+          tree == that.tree && scopeId == that.scopeId
         case _ => false
       }
       override def hashCode: Int = tree.hashCode
