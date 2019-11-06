@@ -10,8 +10,6 @@ class Concat {
   var sizes: String = _
   var tuple1: Tuple = _
   var tuple2: Tuple = _
-  var array1: Array[Object] = _
-  var array2: Array[Object] = _
 
   def tupleOfSize(n: Int): Tuple = {
     var t: Tuple = ()
