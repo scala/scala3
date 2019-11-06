@@ -4,6 +4,7 @@ import java.util.*;
 public class J {
 
     @Nonnull
+    // TODO: remove annotaion after #7483
     // JavaParser will never assign ConstantType to fields currently.
     public static final String k = "k";
 
