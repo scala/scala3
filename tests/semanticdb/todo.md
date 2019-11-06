@@ -8,9 +8,9 @@ This todolist is based upon blackbox observation of testcases at this repository
 - [ ] Hide calls to implicit conversions and their arguments
 - [ ] Hide Tuple contructors
 - [x] unescape unicode in names.
-- [x] Hide `scala.Predef` prefix
-- [x] Hide `scala.StringContext`
 - [x] Only traverse prefix of a Select if it is not a package
 - [x] Ensure only methods are counted in overloads
 - [x] Import wildcard needs to have reference to the qualifier
+- [-] ~~Hide `scala.Predef` prefix~~ // same effect acheved by ensuring prefix has a range > 0
+- [-] ~~Hide `scala.StringContext`~~ // same effect acheved by ensuring prefix has a range > 0
 - [-] ~~Hide `Predef.classOf`~~ // won't fix - confirmed as a bug in scalameta

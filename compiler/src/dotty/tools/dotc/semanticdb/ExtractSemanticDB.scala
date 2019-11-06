@@ -175,8 +175,6 @@ class ExtractSemanticDB extends Phase {
 
     private def blacklistPrefix(sym: Symbol)(given Context): Boolean =
       sym.is(Package)
-      || sym == defn.ScalaPredefModule
-      || sym == defn.StringContextModule
 
     private def (sym: Symbol) isAnonymous(given Context): Boolean =
       sym.isAnonymousClass
@@ -244,16 +242,17 @@ class ExtractSemanticDB extends Phase {
           if tree.name != nme.WILDCARD && !excludeUseStrict(tree.symbol, tree.span) then
             registerUse(tree.symbol, tree.span)
         case tree: Select =>
+          val qualSpan = tree.qualifier.span
           if !excludeUseStrict(tree.symbol, tree.span) then
             val end = tree.span.end
-            val limit = tree.qualifier.span.end
+            val limit = qualSpan.end
             val start =
               if limit < end then
                 val len = tree.name.toString.length
                 if source.content()(end - 1) == '`' then end - len - 1 else end - len
               else limit
             registerUse(tree.symbol, Span(start max limit, end))
-          if !blacklistPrefix(tree.qualifier.symbol) then
+          if !blacklistPrefix(tree.qualifier.symbol) && qualSpan.exists && qualSpan.start != qualSpan.end then
             traverseChildren(tree)
         case tree: Import =>
           if tree.span.exists && tree.span.start != tree.span.end then

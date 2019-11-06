@@ -8,7 +8,7 @@ class ImplicitConversion/*<<=example.ImplicitConversion#*/ {
   ): Int/*=>>scala.Int#*/ = 42
   implicit def newAny2StringAdd/*<<=example.ImplicitConversion#newAny2StringAdd().*/[T/*<<=example.ImplicitConversion#newAny2StringAdd().[T]*/](
       any/*<<=example.ImplicitConversion#newAny2StringAdd().(any)*/: T/*=>>example.ImplicitConversion#newAny2StringAdd().[T]*/
-  ): Predef.any2stringadd/*=>>scala.Predef.any2stringadd#*/[T/*=>>example.ImplicitConversion#newAny2StringAdd().[T]*/] = new Predef.any2stringadd/*=>>scala.Predef.any2stringadd#`<init>`().*/(any/*=>>example.ImplicitConversion#newAny2StringAdd().(any)*/)
+  ): Predef/*=>>scala.Predef.*/.any2stringadd/*=>>scala.Predef.any2stringadd#*/[T/*=>>example.ImplicitConversion#newAny2StringAdd().[T]*/] = new Predef/*=>>scala.Predef.*/.any2stringadd/*=>>scala.Predef.any2stringadd#`<init>`().*/(any/*=>>example.ImplicitConversion#newAny2StringAdd().(any)*/)
   val message/*<<=example.ImplicitConversion#message.*/ = ""
   val number/*<<=example.ImplicitConversion#number.*/ = 42
   val tuple/*<<=example.ImplicitConversion#tuple.*/ = (1, 2)

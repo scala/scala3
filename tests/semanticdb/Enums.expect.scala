@@ -14,7 +14,7 @@ object Enums/*<<=_empty_.Enums.*/ {
   }
 
   enum Maybe/*<<=_empty_.Enums.Maybe#*/[+A/*<<=_empty_.Enums.Maybe#[A]*/] {
-    /*=>>_empty_.Enums.Maybe#`<init>`().*//*=>>_empty_.Enums.Maybe.Just#[A]*/case Just/*<<=_empty_.Enums.Maybe.Just#*/(value/*<<=_empty_.Enums.Maybe.Just#value.*/: A/*=>>_empty_.Enums.Maybe.Just#`<init>`().[A]*/)
+    /*=>>_empty_.Enums.Maybe#`<init>`().*/case Just/*<<=_empty_.Enums.Maybe.Just#*/(value/*<<=_empty_.Enums.Maybe.Just#value.*/: A/*=>>_empty_.Enums.Maybe.Just#`<init>`().[A]*/)
     /*=>>_empty_.Enums.Maybe#`<init>`().*/case None/*<<=_empty_.Enums.Maybe.None.*/
   }
 
