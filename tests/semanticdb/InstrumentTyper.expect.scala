@@ -21,6 +21,6 @@ class InstrumentTyper/*<<=example.InstrumentTyper#*/ { self/*<<=local0*/: AnyRef
     List/*=>>scala.package.List.*//*=>>scala.collection.IterableFactory#apply().*/()
   )
   type AnnotatedType/*<<=example.InstrumentTyper#AnnotatedType#*/ = Int/*=>>scala.Int#*/ @param
-  def singletonType/*<<=example.InstrumentTyper#singletonType().*/(x/*<<=example.InstrumentTyper#singletonType().(x)*/: Predef.type) = ???/*=>>scala.Predef.`???`().*/
+  def singletonType/*<<=example.InstrumentTyper#singletonType().*/(x/*<<=example.InstrumentTyper#singletonType().(x)*/: Predef/*=>>scala.Predef.*/.type) = ???/*=>>scala.Predef.`???`().*/
   final val clazzOf/*<<=example.InstrumentTyper#clazzOf.*/ = classOf[Option/*=>>scala.Option#*/[Int/*=>>scala.Int#*/]]
 }

@@ -59,14 +59,22 @@ class ExtractSemanticDB extends Phase {
     /** The symbol occurrences generated so far, as a set */
     private val generated = new mutable.HashSet[SymbolOccurrence]
 
+    private val unicodeEscape = raw"\$$u(\p{XDigit}{4})".r
+
     /** Add semanticdb name of the given symbol to string builder */
     private def addSymName(b: StringBuilder, sym: Symbol, inOwner: Boolean = false)(given ctx: Context): Unit =
 
       def isJavaIdent(str: String) =
         isJavaIdentifierStart(str.head) && str.tail.forall(isJavaIdentifierPart)
 
+      def (name: Name) unescapeUnicode = {
+        unicodeEscape.replaceAllIn(name.toString, m =>
+          String.valueOf(Integer.parseInt(m.group(1), 16).toChar)
+        )
+      }
+
       def addName(name: Name) =
-        val str = name.toString
+        val str = name.unescapeUnicode
         if isJavaIdent(str) then b.append(str)
         else b.append('`').append(str).append('`')
 
@@ -79,8 +87,8 @@ class ExtractSemanticDB extends Phase {
         if !owner.isRoot then addSymName(b, owner, inOwner = true)
 
       def addOverloadIdx(sym: Symbol): Unit =
-        val alts = sym.owner.info.decls.lookupAll(sym.name).toList.reverse
-        if alts.tail.nonEmpty then
+        val alts = sym.owner.info.decls.lookupAll(sym.name).filter(_.is(Method)).toList.reverse
+        if alts.nonEmpty && alts.tail.nonEmpty then
           val idx = alts.indexOf(sym)
           assert(idx >= 0)
           if idx > 0 then
@@ -161,6 +169,9 @@ class ExtractSemanticDB extends Phase {
     private def excludeDefStrict(sym: Symbol)(given Context): Boolean =
       sym.name.is(NameKinds.DefaultGetterName)
       || sym == defn.Predef_classOf
+
+    private def blacklistPrefix(sym: Symbol)(given Context): Boolean =
+      sym.is(Package)
       || sym == defn.ScalaPredefModule
       || sym == defn.StringContextModule
 
@@ -191,7 +202,7 @@ class ExtractSemanticDB extends Phase {
       def registerPath(expr: Tree): Unit = expr match
         case t @ Select(expr, _) =>
           registerUse(t.symbol, t.span)
-          if !expr.symbol.is(Package) then
+          if !blacklistPrefix(expr.symbol) then
             registerPath(expr)
 
         case _ =>
@@ -239,7 +250,7 @@ class ExtractSemanticDB extends Phase {
                 if source.content()(end - 1) == '`' then end - len - 1 else end - len
               else limit
             registerUse(tree.symbol, Span(start max limit, end))
-          if !tree.qualifier.symbol.is(Package) then
+          if !blacklistPrefix(tree.qualifier.symbol) then
             traverseChildren(tree)
         case tree: Import =>
           if tree.span.exists && tree.span.start != tree.span.end then
@@ -250,7 +261,7 @@ class ExtractSemanticDB extends Phase {
                   registerUse(alt.symbol, sel.imported.span)
                   if (alt.symbol.companionClass.exists)
                     registerUse(alt.symbol.companionClass, sel.imported.span)
-            if !tree.expr.symbol.is(Package) then
+            if !blacklistPrefix(tree.expr.symbol) then
               registerPath(tree.expr)
         case tree: Inlined =>
           traverse(tree.call)
