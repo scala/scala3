@@ -190,6 +190,11 @@ package internal {
      *  May contain references to code defined outside this TastyTreeExpr instance.
      */
     final class TastyTreeExpr[Tree](val tree: Tree, val scopeId: Int) extends Expr[Any] {
+      override def equals(that: Any): Boolean = that match {
+        case that: TastyTreeExpr[_] => tree == that.tree && scopeId == that.scopeId
+        case _ => false
+      }
+      override def hashCode: Int = tree.hashCode
       override def toString: String = s"Expr(<tasty tree>)"
     }
 

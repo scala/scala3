@@ -514,6 +514,9 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       case IsTypeTree(tpt) =>
         printTypeTree(tpt)
 
+      case Closure(meth, _) =>
+        printTree(meth)
+
       case _ =>
         throw new MatchError(tree.showExtractors)
 

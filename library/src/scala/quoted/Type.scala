@@ -71,6 +71,11 @@ package internal {
 
     /** An Type backed by a tree */
     final class TreeType[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quoted.Type[Any] {
+      override def equals(that: Any): Boolean = that match {
+        case that: TreeType[_] => typeTree == that.typeTree && scopeId == that.scopeId
+        case _ => false
+      }
+      override def hashCode: Int = typeTree.hashCode
       override def toString: String = s"Type(<tasty tree>)"
     }
 
