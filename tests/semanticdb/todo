@@ -1,15 +1,16 @@
+## BlackBox Todo list
+This todolist is based upon blackbox observation of testcases at this repository: https://github.com/scalameta/scalameta/tree/master/tests/jvm/src/test/resources/example
+
 - [ ] Hide unapply, unapplySeq?
 - [ ] Hide constructor of template
 - [ ] Hide local vars in pattern def?
 - [ ] Hide desugaring of for comprehension
 - [ ] Hide calls to implicit conversions and their arguments
 - [ ] Hide Tuple contructors
-- [ ] Hide qualifier in Select inside a type?
 - [x] unescape unicode in names.
-- [x] Hide `Predef.classOf`
 - [x] Hide `scala.Predef` prefix
 - [x] Hide `scala.StringContext`
-- [x] Only traverse qualifier of a select if it is not a package
-- [ ] Weird issue with method overload counter when mixed with objects
-- [ ] Import wildcard needs to have reference to the qualifier
-- [ ] We must look of the qualifier of a select on a term
+- [x] Only traverse prefix of a Select if it is not a package
+- [x] Ensure only methods are counted in overloads
+- [x] Import wildcard needs to have reference to the qualifier
+- [-] ~~Hide `Predef.classOf`~~ // won't fix - confirmed as a bug in scalameta
