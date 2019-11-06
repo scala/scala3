@@ -63,7 +63,7 @@ private class Rewriter(preTransform: Expr[Any] => Expr[Any], postTransform: Expr
         case IsInlined(_) | IsSelect(_) =>
           transformChildrenTerm(tree)
         case _ =>
-          tree.tpe match {
+          tree.tpe.widen match {
             case IsMethodType(_) | IsPolyType(_) =>
               transformChildrenTerm(tree)
             case _ =>
