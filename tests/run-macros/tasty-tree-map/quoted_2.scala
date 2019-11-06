@@ -42,7 +42,7 @@ object Test {
     println(identityMaped({ val x: Int | Any = 60; x }))
     println(identityMaped({ def f(x: => Int): Int = x; f(61) }))
     println(identityMaped({ type T[X] = X; val x: T[Int] = 62; x }))
-    println(identityMaped({ type T[X] = X match { case Int => String; case String => Int }; val x: T[String] = 63; x }))
+    println(identityMaped({ type T[X] = X match { case Int => String case String => Int }; val x: T[String] = 63; x }))
     println(identityMaped((Nil: List[Int]) match { case _: List[t] => 64 }))
     println(identityMaped({ object F { type T = Int }; val x: F.T = 65; x }))
     println(identityMaped({ val x: Foo { type T = Int } = new Foo { type T = Int; def y: Int = 66 }; x.y }))
