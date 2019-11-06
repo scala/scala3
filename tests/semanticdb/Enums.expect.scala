@@ -33,7 +33,7 @@ object Enums/*<<=_empty_.Enums.*/ {
     }
   }
 
-  enum Planet/*<<=_empty_.Enums.Planet#*/(mass/*<<=_empty_.Enums.Planet#mass.*/: Double/*=>>scala.Double#*/, radius/*<<=_empty_.Enums.Planet#radius.*/: Double/*=>>scala.Double#*/) extends java/*=>>java.*/.lang/*=>>java.lang.*/.Enum/*=>>java.lang.Enum#*/[Planet/*=>>_empty_.Enums.Planet#*/]/*=>>java.lang.Enum#`<init>`().*/ {
+  enum Planet/*<<=_empty_.Enums.Planet#*/(mass/*<<=_empty_.Enums.Planet#mass.*/: Double/*=>>scala.Double#*/, radius/*<<=_empty_.Enums.Planet#radius.*/: Double/*=>>scala.Double#*/) extends java.lang.Enum/*=>>java.lang.Enum#*/[Planet/*=>>_empty_.Enums.Planet#*/]/*=>>java.lang.Enum#`<init>`().*/ {
     private final val G/*<<=_empty_.Enums.Planet#G.*/ = 6.67300E-11
     def surfaceGravity/*<<=_empty_.Enums.Planet#surfaceGravity().*/ = G/*=>>_empty_.Enums.Planet#G.*/ */*=>>scala.Double#`*`(+6).*/ mass/*=>>_empty_.Enums.Planet#mass.*/ //*=>>scala.Double#`.`(+6).*/ (radius/*=>>_empty_.Enums.Planet#radius.*/ */*=>>scala.Double#`*`(+6).*/ radius/*=>>_empty_.Enums.Planet#radius.*/)
     def surfaceWeight/*<<=_empty_.Enums.Planet#surfaceWeight().*/(otherMass/*<<=_empty_.Enums.Planet#surfaceWeight().(otherMass)*/: Double/*=>>scala.Double#*/) = otherMass/*=>>_empty_.Enums.Planet#surfaceWeight().(otherMass)*/ */*=>>scala.Double#`*`(+6).*/ surfaceGravity/*=>>_empty_.Enums.Planet#surfaceGravity().*/

@@ -160,6 +160,9 @@ class ExtractSemanticDB extends Phase {
 
     private def excludeDefStrict(sym: Symbol)(given Context): Boolean =
       sym.name.is(NameKinds.DefaultGetterName)
+      || sym == defn.Predef_classOf
+      || sym == defn.ScalaPredefModule
+      || sym == defn.StringContextModule
 
     private def (sym: Symbol) isAnonymous(given Context): Boolean =
       sym.isAnonymousClass
@@ -172,7 +175,7 @@ class ExtractSemanticDB extends Phase {
 
     private def registerOccurrence(sym: Symbol, span: Span, role: SymbolOccurrence.Role)(given Context): Unit =
       val occ = SymbolOccurrence(symbolName(sym), range(span), role)
-      if !generated.contains(occ) then
+      if !generated.contains(occ) && occ.symbol.nonEmpty then
         occurrences += occ
         generated += occ
 
@@ -188,7 +191,8 @@ class ExtractSemanticDB extends Phase {
       def registerPath(expr: Tree): Unit = expr match
         case t @ Select(expr, _) =>
           registerUse(t.symbol, t.span)
-          registerPath(expr)
+          if !expr.symbol.is(Package) then
+            registerPath(expr)
 
         case _ =>
 
@@ -197,9 +201,6 @@ class ExtractSemanticDB extends Phase {
           && annot.symbol.owner != defn.ScalaAnnotationInternal
         then
           traverse(annot.tree)
-
-      val RootName = nme.ROOTPKG.toSimpleName
-      val Scala = "scala".toTermName.toSimpleName
 
       tree match
         case tree: ValDef if tree.symbol.is(Module) => // skip module val
@@ -238,9 +239,8 @@ class ExtractSemanticDB extends Phase {
                 if source.content()(end - 1) == '`' then end - len - 1 else end - len
               else limit
             registerUse(tree.symbol, Span(start max limit, end))
-          tree.qualifier match
-            case Select(Select(Ident(RootName), Scala), _) => // skip
-            case _ => traverseChildren(tree)
+          if !tree.qualifier.symbol.is(Package) then
+            traverseChildren(tree)
         case tree: Import =>
           if tree.span.exists && tree.span.start != tree.span.end then
             for sel <- tree.selectors do
@@ -250,7 +250,8 @@ class ExtractSemanticDB extends Phase {
                   registerUse(alt.symbol, sel.imported.span)
                   if (alt.symbol.companionClass.exists)
                     registerUse(alt.symbol.companionClass, sel.imported.span)
-                registerPath(tree.expr)
+            if !tree.expr.symbol.is(Package) then
+              registerPath(tree.expr)
         case tree: Inlined =>
           traverse(tree.call)
         case tree: PackageDef => tree.stats.foreach(traverse)

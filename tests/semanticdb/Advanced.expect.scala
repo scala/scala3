@@ -3,7 +3,7 @@ package advanced
 import scala.language/*=>>scalaShadowing.language.*/.higherKinds/*=>>scalaShadowing.language.higherKinds.*/
 import scala.language/*=>>scalaShadowing.language.*/.reflectiveCalls/*=>>scalaShadowing.language.reflectiveCalls.*/
 
-import scala.reflect/*=>>scala.reflect.*/.Selectable/*=>>scala.reflect.Selectable.*/.reflectiveSelectable/*=>>scala.reflect.Selectable.reflectiveSelectable().*/
+import scala.reflect.Selectable/*=>>scala.reflect.Selectable.*/.reflectiveSelectable/*=>>scala.reflect.Selectable.reflectiveSelectable().*/
 
 class C/*<<=advanced.C#*/[T/*<<=advanced.C#[T]*/] {
   def t/*<<=advanced.C#t().*/: T/*=>>advanced.C#[T]*/ = ???/*=>>scala.Predef.`???`().*/

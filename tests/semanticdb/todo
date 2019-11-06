@@ -1,0 +1,13 @@
+- [ ] Hide unapply, unapplySeq?
+- [ ] Hide constructor of template
+- [ ] Hide local vars in pattern def?
+- [ ] Hide desugaring of for comprehension
+- [ ] Hide calls to implicit conversions and their arguments
+- [ ] Hide Tuple contructors
+- [ ] Hide qualifier in Select inside a type?
+- [x] Hide `Predef.classOf`
+- [x] Hide `scala.Predef`
+- [x] Hide `scala.StringContext`
+- [x] Only traverse qualifier of a select if it is not a package
+- [ ] Import wildcard needs to have reference to the qualifier
+- [ ] We must look of the qualifier of a select on a term

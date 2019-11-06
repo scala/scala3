@@ -1,9 +1,9 @@
 package example
 
-import scala.annotation/*=>>scala.annotation.*/.meta/*=>>scala.annotation.meta.*/.param/*=>>scala.annotation.meta.param.*/
+import scala.annotation.meta.param/*=>>scala.annotation.meta.param.*/
 import scala.language/*=>>scalaShadowing.language.*/.existentials/*=>>scalaShadowing.language.existentials.*/
 import scala.language/*=>>scalaShadowing.language.*/.higherKinds/*=>>scalaShadowing.language.higherKinds.*/
-import types.Test._
+import types.Test/*=>>types.Test.*/._
 
 class InstrumentTyper/*<<=example.InstrumentTyper#*/ { self/*<<=local0*/: AnyRef/*=>>scala.AnyRef#*/ =>
   def all/*<<=example.InstrumentTyper#all().*/ = List/*=>>scala.package.List.*//*=>>scala.collection.IterableFactory#apply().*/(
@@ -21,6 +21,6 @@ class InstrumentTyper/*<<=example.InstrumentTyper#*/ { self/*<<=local0*/: AnyRef
     List/*=>>scala.package.List.*//*=>>scala.collection.IterableFactory#apply().*/()
   )
   type AnnotatedType/*<<=example.InstrumentTyper#AnnotatedType#*/ = Int/*=>>scala.Int#*/ @param
-  def singletonType/*<<=example.InstrumentTyper#singletonType().*/(x/*<<=example.InstrumentTyper#singletonType().(x)*/: Predef/*=>>scala.Predef.*/.type) = ???/*=>>scala.Predef.`???`().*/
-  final val clazzOf/*<<=example.InstrumentTyper#clazzOf.*/ = classOf/*=>>scala.Predef.classOf().*/[Option/*=>>scala.Option#*/[Int/*=>>scala.Int#*/]]
+  def singletonType/*<<=example.InstrumentTyper#singletonType().*/(x/*<<=example.InstrumentTyper#singletonType().(x)*/: Predef.type) = ???/*=>>scala.Predef.`???`().*/
+  final val clazzOf/*<<=example.InstrumentTyper#clazzOf.*/ = classOf[Option/*=>>scala.Option#*/[Int/*=>>scala.Int#*/]]
 }

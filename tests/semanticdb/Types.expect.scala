@@ -3,9 +3,9 @@ package types
 import scala.language/*=>>scalaShadowing.language.*/.existentials/*=>>scalaShadowing.language.existentials.*/
 import scala.language/*=>>scalaShadowing.language.*/.higherKinds/*=>>scalaShadowing.language.higherKinds.*/
 
-class /*=>>scala.annotation.Annotation#`<init>`().*/ann/*<<=types.ann#*/[T/*<<=types.ann#[T]*/](x/*<<=types.ann#x.*/: T/*=>>types.ann#`<init>`().[T]*/) extends scala/*=>>scala.*/.annotation/*=>>scala.annotation.*/.StaticAnnotation/*=>>scala.annotation.StaticAnnotation#*/
-class /*=>>scala.annotation.Annotation#`<init>`().*/ann1/*<<=types.ann1#*/ extends scala/*=>>scala.*/.annotation/*=>>scala.annotation.*/.StaticAnnotation/*=>>scala.annotation.StaticAnnotation#*/
-class /*=>>scala.annotation.Annotation#`<init>`().*/ann2/*<<=types.ann2#*/ extends scala/*=>>scala.*/.annotation/*=>>scala.annotation.*/.StaticAnnotation/*=>>scala.annotation.StaticAnnotation#*/
+class /*=>>scala.annotation.Annotation#`<init>`().*/ann/*<<=types.ann#*/[T/*<<=types.ann#[T]*/](x/*<<=types.ann#x.*/: T/*=>>types.ann#`<init>`().[T]*/) extends scala.annotation.StaticAnnotation/*=>>scala.annotation.StaticAnnotation#*/
+class /*=>>scala.annotation.Annotation#`<init>`().*/ann1/*<<=types.ann1#*/ extends scala.annotation.StaticAnnotation/*=>>scala.annotation.StaticAnnotation#*/
+class /*=>>scala.annotation.Annotation#`<init>`().*/ann2/*<<=types.ann2#*/ extends scala.annotation.StaticAnnotation/*=>>scala.annotation.StaticAnnotation#*/
 
 class B/*<<=types.B#*/
 
@@ -43,7 +43,7 @@ object Test/*<<=types.Test.*/ {
 
     val singleType1/*<<=types.Test.C#singleType1.*/: x/*=>>types.Test.C#x.*/.type = ???/*=>>scala.Predef.`???`().*/
     val singleType2/*<<=types.Test.C#singleType2.*/: p/*=>>types.Test.C#p.*/.x/*=>>types.P#x.*/.type = ???/*=>>scala.Predef.`???`().*/
-    val Either/*<<=types.Test.C#Either.*/ = scala/*=>>scala.*/.util/*=>>scala.util.*/.Either/*=>>scala.util.Either.*/
+    val Either/*<<=types.Test.C#Either.*/ = scala.util.Either/*=>>scala.util.Either.*/
 
     val thisType1/*<<=types.Test.C#thisType1.*/: this.type = ???/*=>>scala.Predef.`???`().*/
     val thisType2/*<<=types.Test.C#thisType2.*/: C.this.type = ???/*=>>scala.Predef.`???`().*/
@@ -67,7 +67,7 @@ object Test/*<<=types.Test.*/ {
     val existentialType4/*<<=types.Test.C#existentialType4.*/ = Class/*=>>java.lang.Class.*/.forName/*=>>java.lang.Class.forName().*/("foo.Bar")
 
     def typeLambda1/*<<=types.Test.C#typeLambda1().*/[M/*<<=types.Test.C#typeLambda1().[M]*/[_]] = ???/*=>>scala.Predef.`???`().*/
-    typeLambda1/*=>>types.Test.C#typeLambda1().*/[({ type L/*<<=local4*/[T/*<<=local5*/] = List/*=>>scala.package.List#*/[T/*=>>local5*/] })#L/*=>>*/]
+    typeLambda1/*=>>types.Test.C#typeLambda1().*/[({ type L/*<<=local4*/[T/*<<=local5*/] = List/*=>>scala.package.List#*/[T/*=>>local5*/] })#L]
 
     object ClassInfoType1/*<<=types.Test.C#ClassInfoType1.*/
     class ClassInfoType2/*<<=types.Test.C#ClassInfoType2#*/ extends B/*=>>types.B#*//*=>>types.B#`<init>`().*/ { def x/*<<=types.Test.C#ClassInfoType2#x().*/ = 42 }
@@ -109,7 +109,7 @@ object Test/*<<=types.Test.*/ {
     final val string/*<<=types.Test.Literal.string.*/ = "a"
     final val bool/*<<=types.Test.Literal.bool.*/ = true
     final val unit/*<<=types.Test.Literal.unit.*/ = ()
-    final val javaEnum/*<<=types.Test.Literal.javaEnum.*/ = java/*=>>java.*/.nio/*=>>java.nio.*/.file/*=>>java.nio.file.*/.LinkOption/*=>>java.nio.file.LinkOption.*/.NOFOLLOW_LINKS/*=>>java.nio.file.LinkOption.NOFOLLOW_LINKS.*/
-    final val clazzOf/*<<=types.Test.Literal.clazzOf.*/ = classOf/*=>>scala.Predef.classOf().*/[Option/*=>>scala.Option#*/[Int/*=>>scala.Int#*/]]
+    final val javaEnum/*<<=types.Test.Literal.javaEnum.*/ = java.nio.file.LinkOption/*=>>java.nio.file.LinkOption.*/.NOFOLLOW_LINKS/*=>>java.nio.file.LinkOption.NOFOLLOW_LINKS.*/
+    final val clazzOf/*<<=types.Test.Literal.clazzOf.*/ = classOf[Option/*=>>scala.Option#*/[Int/*=>>scala.Int#*/]]
   }
 }

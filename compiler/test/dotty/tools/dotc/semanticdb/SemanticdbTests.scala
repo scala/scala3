@@ -65,7 +65,7 @@ class SemanticdbTests {
       "-Ysemanticdb",
       "-d", target.toString,
       // "-Ydebug",
-      // "-Xprint:extractSemanticDB",
+      "-Xprint:extractSemanticDB",
       "-sourceroot", src.toString,
       "-usejavacp",
     ) ++ inputFiles().map(_.toString)
