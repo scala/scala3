@@ -1248,6 +1248,9 @@ object Parsers {
       // note: next is defined here because current == NEWLINE
       if (in.token == NEWLINE && in.next.token == token) in.nextToken()
 
+    def newLinesOptWhenFollowedBy(token: Int): Unit =
+      if in.isNewLine && in.next.token == token then in.nextToken()
+
     def newLinesOptWhenFollowedBy(name: Name): Unit =
       if in.isNewLine && in.next.token == IDENTIFIER && in.next.name == name then
         in.nextToken()
@@ -1742,8 +1745,7 @@ object Parsers {
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  Expr2
-     *                      |  [‘inline’] Expr2 `match' `{' CaseClauses `}'
-     *                      |  `given' `match' `{' ImplicitCaseClauses `}'
+     *                      |  [‘inline’] Expr2 `match' (`{' CaseClauses `}' | CaseClause)
      *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
      *  Binding           ::=  (id | `_') [`:' Type]
      *  Expr2             ::=  PostfixExpr [Ascription]
@@ -1829,11 +1831,12 @@ object Parsers {
           atSpan(in.skipToken()) {
             val body = expr()
             val (handler, handlerStart) =
-              if (in.token == CATCH) {
+              if in.token == CATCH then
                 val span = in.offset
                 in.nextToken()
-                (subExpr(), span)
-              }
+                (if in.token == CASE then Match(EmptyTree, caseClause() :: Nil)
+                 else subExpr(),
+                 span)
               else (EmptyTree, -1)
 
             handler match {
@@ -1955,20 +1958,20 @@ object Parsers {
         mkIf(cond, thenp, elsep)
       }
 
-    /**    `match' { CaseClauses }
+    /**    `match' (`{' CaseClauses `}' | CaseClause)
      */
     def matchExpr(t: Tree, start: Offset, mkMatch: (Tree, List[CaseDef]) => Match) =
       indentRegion(MATCH) {
         atSpan(start, in.skipToken()) {
-          mkMatch(t, inBracesOrIndented(caseClauses(caseClause)))
+          mkMatch(t, casesExpr(caseClause))
         }
       }
 
-    /**    `match' { TypeCaseClauses }
+    /**    `match' (`{' TypeCaseClauses `}' | TypeCaseClause)
      */
     def matchType(t: Tree): MatchTypeTree =
       atSpan(t.span.start, accept(MATCH)) {
-        inBracesOrIndented(MatchTypeTree(EmptyTree, t, caseClauses(typeCaseClause)))
+        MatchTypeTree(EmptyTree, t, casesExpr(typeCaseClause))
       }
 
     /** FunParams         ::=  Bindings
@@ -2399,8 +2402,11 @@ object Parsers {
       }
     }
 
+    def casesExpr(clause: () => CaseDef): List[CaseDef] =
+      if in.token == CASE then clause() :: Nil
+      else inBracesOrIndented(caseClauses(clause))
+
     /** CaseClauses         ::= CaseClause {CaseClause}
-     *  ImplicitCaseClauses ::= ImplicitCaseClause {ImplicitCaseClause}
      *  TypeCaseClauses     ::= TypeCaseClause {TypeCaseClause}
      */
     def caseClauses(clause: () => CaseDef): List[CaseDef] = {
@@ -2410,9 +2416,8 @@ object Parsers {
       buf.toList
     }
 
-   /** CaseClause         ::= ‘case’ Pattern [Guard] `=>' Block
-    *  ImplicitCaseClause ::= ‘case’ PatVar [Ascription] [Guard] `=>' Block
-    */
+    /** CaseClause         ::= ‘case’ Pattern [Guard] `=>' Block
+     */
     val caseClause: () => CaseDef = () => atSpan(in.offset) {
       val (pat, grd) = inSepRegion(LPAREN, RPAREN) {
         accept(CASE)
@@ -2430,7 +2435,7 @@ object Parsers {
       }
       CaseDef(pat, EmptyTree, atSpan(accept(ARROW)) {
         val t = typ()
-        if (isStatSep) in.nextToken()
+        newLinesOptWhenFollowedBy(CASE)
         t
       })
     }

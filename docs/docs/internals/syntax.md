@@ -147,7 +147,8 @@ FunArgTypes       ::=  InfixType
                     |  ‘(’ [ ‘[given]’ FunArgType {‘,’ FunArgType } ] ‘)’
                     |  ‘(’ ‘[given]’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
-MatchType         ::=  InfixType `match` TypeCaseClauses
+MatchType         ::=  InfixType `match`
+                       (‘{’ TypeCaseClauses ‘}’ | TypeCaseClause)
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
 RefinedType       ::=  WithType {[nl | ‘with’] Refinement}                      RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
@@ -198,12 +199,12 @@ Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl}
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
                     |  Expr2
-                    |  [‘inline’] Expr2 ‘match’ ‘{’ CaseClauses ‘}’             Match(expr, cases) -- point on match
-                    |  ‘given’ ‘match’ ‘{’ ImplicitCaseClauses ‘}’
+                    |  [‘inline’] Expr2 ‘match’
+                       (‘{’ CaseClauses ‘}’ | CaseClause)                       Match(expr, cases) -- point on match
 Expr2             ::=  PostfixExpr [Ascription]
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
-Catches           ::=  ‘catch’ Expr
+Catches           ::=  ‘catch’ (Expr | CaseClause)
 PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op)
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr                              InfixOp(expr, op, expr)
