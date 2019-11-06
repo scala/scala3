@@ -193,7 +193,7 @@ trait CompilerInterface {
 
   def PackageClause_apply(pid: Ref, stats: List[Tree])(given ctx: Context): PackageClause
 
-  def PackageClause_copy(original: PackageClause)(pid: Ref, stats: List[Tree])(given ctx: Context): PackageClause
+  def PackageClause_copy(original: Tree)(pid: Ref, stats: List[Tree])(given ctx: Context): PackageClause
 
   /** Tree representing a statement in the source code */
   type Statement <: Tree
@@ -211,7 +211,7 @@ trait CompilerInterface {
 
   def Import_apply(iexpr: Term, selectors: List[ImportSelector])(given ctx: Context): Import
 
-  def Import_copy(original: Import)(expr: Term, selectors: List[ImportSelector])(given ctx: Context): Import
+  def Import_copy(original: Tree)(expr: Term, selectors: List[ImportSelector])(given ctx: Context): Import
 
   /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
   type Definition <: Statement
@@ -239,7 +239,7 @@ trait CompilerInterface {
   def ClassDef_self(self: ClassDef)(given ctx: Context): Option[ValDef]
   def ClassDef_body(self: ClassDef)(given ctx: Context): List[Statement]
 
-  def ClassDef_copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree/* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(given ctx: Context): ClassDef
+  def ClassDef_copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree/* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(given ctx: Context): ClassDef
 
   /** Tree representing a type (paramter or member) definition in the source code */
   type TypeDef <: Definition
@@ -249,7 +249,7 @@ trait CompilerInterface {
   def TypeDef_rhs(self: TypeDef)(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
 
   def TypeDef_apply(symbol: Symbol)(given ctx: Context): TypeDef
-  def TypeDef_copy(original: TypeDef)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeDef
+  def TypeDef_copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeDef
 
   /** Tree representing a method definition in the source code */
   type DefDef <: Definition
@@ -273,7 +273,7 @@ trait CompilerInterface {
   def ValDef_rhs(self: ValDef)(given ctx: Context): Option[Term]
 
   def ValDef_apply(symbol: Symbol, rhs: Option[Term])(given ctx: Context): ValDef
-  def ValDef_copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(given ctx: Context): ValDef
+  def ValDef_copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term])(given ctx: Context): ValDef
 
   /** Tree representing an expression in the source code */
   type Term <: Statement
@@ -355,7 +355,7 @@ trait CompilerInterface {
   def NamedArg_value(self: NamedArg)(given ctx: Context): Term
 
   def NamedArg_apply(name: String, arg: Term)(given ctx: Context): NamedArg
-  def NamedArg_copy(tree: NamedArg)(name: String, arg: Term)(given ctx: Context): NamedArg
+  def NamedArg_copy(original: Tree)(name: String, arg: Term)(given ctx: Context): NamedArg
 
   /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s */
   type Apply <: Term
@@ -563,7 +563,7 @@ trait CompilerInterface {
 
   def TypeIdent_name(self: TypeIdent)(given ctx: Context): String
 
-  def TypeIdent_copy(original: TypeIdent)(name: String)(given ctx: Context): TypeIdent
+  def TypeIdent_copy(original: Tree)(name: String)(given ctx: Context): TypeIdent
 
   /** Type tree representing a selection of definition with a given name on a given term prefix */
   type TypeSelect <: TypeTree
@@ -574,7 +574,7 @@ trait CompilerInterface {
   def TypeSelect_name(self: TypeSelect)(given ctx: Context): String
 
   def TypeSelect_apply(qualifier: Term, name: String)(given ctx: Context): TypeSelect
-  def TypeSelect_copy(original: TypeSelect)(qualifier: Term, name: String)(given ctx: Context): TypeSelect
+  def TypeSelect_copy(original: Tree)(qualifier: Term, name: String)(given ctx: Context): TypeSelect
 
   /** Type tree representing a selection of definition with a given name on a given type prefix */
   type Projection <: TypeTree
@@ -584,7 +584,7 @@ trait CompilerInterface {
   def Projection_qualifier(self: Projection)(given ctx: Context): TypeTree
   def Projection_name(self: Projection)(given ctx: Context): String
 
-  def Projection_copy(original: Projection)(qualifier: TypeTree, name: String)(given ctx: Context): Projection
+  def Projection_copy(original: Tree)(qualifier: TypeTree, name: String)(given ctx: Context): Projection
 
   /** Type tree representing a singleton type */
   type Singleton <: TypeTree
@@ -594,7 +594,7 @@ trait CompilerInterface {
   def Singleton_ref(self: Singleton)(given ctx: Context): Term
 
   def Singleton_apply(ref: Term)(given ctx: Context): Singleton
-  def Singleton_copy(original: Singleton)(ref: Term)(given ctx: Context): Singleton
+  def Singleton_copy(original: Tree)(ref: Term)(given ctx: Context): Singleton
 
   /** Type tree representing a type refinement */
   type Refined <: TypeTree
@@ -604,7 +604,7 @@ trait CompilerInterface {
   def Refined_tpt(self: Refined)(given ctx: Context): TypeTree
   def Refined_refinements(self: Refined)(given ctx: Context): List[Definition]
 
-  def Refined_copy(original: Refined)(tpt: TypeTree, refinements: List[Definition])(given ctx: Context): Refined
+  def Refined_copy(original: Tree)(tpt: TypeTree, refinements: List[Definition])(given ctx: Context): Refined
 
   /** Type tree representing a type application */
   type Applied <: TypeTree
@@ -615,7 +615,7 @@ trait CompilerInterface {
   def Applied_args(self: Applied)(given ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/]
 
   def Applied_apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(given ctx: Context): Applied
-  def Applied_copy(original: Applied)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(given ctx: Context): Applied
+  def Applied_copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(given ctx: Context): Applied
 
   /** Type tree representing an annotated type */
   type Annotated <: TypeTree
@@ -626,7 +626,7 @@ trait CompilerInterface {
   def Annotated_annotation(self: Annotated)(given ctx: Context): Term
 
   def Annotated_apply(arg: TypeTree, annotation: Term)(given ctx: Context): Annotated
-  def Annotated_copy(original: Annotated)(arg: TypeTree, annotation: Term)(given ctx: Context): Annotated
+  def Annotated_copy(original: Tree)(arg: TypeTree, annotation: Term)(given ctx: Context): Annotated
 
   /** Type tree representing a type match */
   type MatchTypeTree <: TypeTree
@@ -638,7 +638,7 @@ trait CompilerInterface {
   def MatchTypeTree_cases(self: MatchTypeTree)(given ctx: Context): List[TypeCaseDef]
 
   def MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(given ctx: Context): MatchTypeTree
-  def MatchTypeTree_copy(original: MatchTypeTree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(given ctx: Context): MatchTypeTree
+  def MatchTypeTree_copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(given ctx: Context): MatchTypeTree
 
   /** Type tree representing a by name parameter */
   type ByName <: TypeTree
@@ -648,7 +648,7 @@ trait CompilerInterface {
   def matchByName(tree: Tree)(given ctx: Context): Option[ByName]
 
   def ByName_apply(result: TypeTree)(given ctx: Context): ByName
-  def ByName_copy(original: ByName)(result: TypeTree)(given ctx: Context): ByName
+  def ByName_copy(original: Tree)(result: TypeTree)(given ctx: Context): ByName
 
   /** Type tree representing a lambda abstraction type */
   type LambdaTypeTree <: TypeTree
@@ -659,7 +659,7 @@ trait CompilerInterface {
   def Lambdabody(self: LambdaTypeTree)(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
 
   def Lambdaapply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): LambdaTypeTree
-  def Lambdacopy(original: LambdaTypeTree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): LambdaTypeTree
+  def Lambdacopy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): LambdaTypeTree
 
   /** Type tree representing a type binding */
   type TypeBind <: TypeTree
@@ -669,7 +669,7 @@ trait CompilerInterface {
   def TypeBind_name(self: TypeBind)(given ctx: Context): String
   def TypeBind_body(self: TypeBind)(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
 
-  def TypeBind_copy(original: TypeBind)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeBind
+  def TypeBind_copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeBind
 
   /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
   type TypeBlock <: TypeTree
@@ -680,7 +680,7 @@ trait CompilerInterface {
   def TypeBlock_tpt(self: TypeBlock)(given ctx: Context): TypeTree
 
   def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree)(given ctx: Context): TypeBlock
-  def TypeBlock_copy(original: TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(given ctx: Context): TypeBlock
+  def TypeBlock_copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree)(given ctx: Context): TypeBlock
 
   /** Type tree representing a type bound written in the source */
   type TypeBoundsTree <: Tree /*TypeTree | TypeBoundsTree*/
@@ -711,7 +711,7 @@ trait CompilerInterface {
   def CaseDef_rhs(self: CaseDef)(given ctx: Context): Term
 
   def CaseDef_module_apply(pattern: Tree, guard: Option[Term], body: Term)(given ctx: Context): CaseDef
-  def CaseDef_module_copy(original: CaseDef)(pattern: Tree, guard: Option[Term], body: Term)(given ctx: Context): CaseDef
+  def CaseDef_module_copy(original: Tree)(pattern: Tree, guard: Option[Term], body: Term)(given ctx: Context): CaseDef
 
   /** Branch of a type pattern match */
   type TypeCaseDef <: Tree
@@ -722,7 +722,7 @@ trait CompilerInterface {
   def TypeCaseDef_rhs(self: TypeCaseDef)(given ctx: Context): TypeTree
 
   def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree)(given ctx: Context): TypeCaseDef
-  def TypeCaseDef_module_copy(original: TypeCaseDef)(pattern: TypeTree, body: TypeTree)(given ctx: Context): TypeCaseDef
+  def TypeCaseDef_module_copy(original: Tree)(pattern: TypeTree, body: TypeTree)(given ctx: Context): TypeCaseDef
 
   //
   // PATTERNS
@@ -737,7 +737,7 @@ trait CompilerInterface {
 
   def Tree_Bind_pattern(self: Bind)(given ctx: Context): Tree
 
-  def Tree_Bind_module_copy(original: Bind)(name: String, pattern: Tree)(given ctx: Context): Bind
+  def Tree_Bind_module_copy(original: Tree)(name: String, pattern: Tree)(given ctx: Context): Bind
 
   /** Tree representing an unapply pattern `Xyz(...)` */
   type Unapply <: Tree
@@ -750,7 +750,7 @@ trait CompilerInterface {
 
   def Tree_Unapply_patterns(self: Unapply)(given ctx: Context): List[Tree]
 
-  def Tree_Unapply_module_copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply
+  def Tree_Unapply_module_copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply
 
   /** Tree representing pattern alternatives `X | Y | ...` */
   type Alternatives <: Tree
@@ -760,7 +760,7 @@ trait CompilerInterface {
   def Tree_Alternatives_patterns(self: Alternatives)(given ctx: Context): List[Tree]
 
   def Tree_Alternatives_module_apply(patterns: List[Tree])(given ctx: Context): Alternatives
-  def Tree_Alternatives_module_copy(original: Alternatives)(patterns: List[Tree])(given ctx: Context): Alternatives
+  def Tree_Alternatives_module_copy(original: Tree)(patterns: List[Tree])(given ctx: Context): Alternatives
 
 
   //

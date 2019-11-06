@@ -20,7 +20,7 @@ trait TreeOps extends Core {
   object PackageClause {
     def apply(pid: Ref, stats: List[Tree])(given ctx: Context): PackageClause =
       internal.PackageClause_apply(pid, stats)
-    def copy(original: PackageClause)(pid: Ref, stats: List[Tree])(given ctx: Context): PackageClause =
+    def copy(original: Tree)(pid: Ref, stats: List[Tree])(given ctx: Context): PackageClause =
       internal.PackageClause_copy(original)(pid, stats)
     def unapply(tree: Tree)(given ctx: Context): Option[(Ref, List[Tree])] =
       internal.matchPackageClause(tree).map(x => (x.pid, x.stats))
@@ -39,7 +39,7 @@ trait TreeOps extends Core {
   object Import {
     def apply(expr: Term, selectors: List[ImportSelector])(given ctx: Context): Import =
       internal.Import_apply(expr, selectors)
-    def copy(original: Import)(expr: Term, selectors: List[ImportSelector])(given ctx: Context): Import =
+    def copy(original: Tree)(expr: Term, selectors: List[ImportSelector])(given ctx: Context): Import =
       internal.Import_copy(original)(expr, selectors)
     def unapply(tree: Tree)(given ctx: Context): Option[(Term, List[ImportSelector])] =
       internal.matchImport(tree).map(x => (x.expr, x.selectors))
@@ -74,7 +74,7 @@ trait TreeOps extends Core {
 
   object ClassDef {
     // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(given ctx: Context): ClassDef
-    def copy(original: ClassDef)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(given ctx: Context): ClassDef =
+    def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(given ctx: Context): ClassDef =
       internal.ClassDef_copy(original)(name, constr, parents, derived, selfOpt, body)
     def unapply(tree: Tree)(given ctx: Context): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
       internal.matchClassDef(tree).map(x => (x.name, x.constructor, x.parents, x.derived, x.self, x.body))
@@ -119,7 +119,7 @@ trait TreeOps extends Core {
   object ValDef {
     def apply(symbol: Symbol, rhs: Option[Term])(given ctx: Context): ValDef =
       internal.ValDef_apply(symbol, rhs)
-    def copy(original: ValDef)(name: String, tpt: TypeTree, rhs: Option[Term])(given ctx: Context): ValDef =
+    def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term])(given ctx: Context): ValDef =
       internal.ValDef_copy(original)(name, tpt, rhs)
     def unapply(tree: Tree)(given ctx: Context): Option[(String, TypeTree, Option[Term])] =
       internal.matchValDef(tree).map(x => (x.name, x.tpt, x.rhs))
@@ -139,7 +139,7 @@ trait TreeOps extends Core {
   object TypeDef {
     def apply(symbol: Symbol)(given ctx: Context): TypeDef =
       internal.TypeDef_apply(symbol)
-    def copy(original: TypeDef)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeDef =
+    def copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeDef =
       internal.TypeDef_copy(original)(name, rhs)
     def unapply(tree: Tree)(given ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)] =
       internal.matchTypeDef(tree).map(x => (x.name, x.rhs))
@@ -379,7 +379,7 @@ trait TreeOps extends Core {
     def apply(name: String, arg: Term)(given ctx: Context): NamedArg =
       internal.NamedArg_apply(name, arg)
 
-    def copy(original: NamedArg)(name: String, arg: Term)(given ctx: Context): NamedArg =
+    def copy(original: Tree)(name: String, arg: Term)(given ctx: Context): NamedArg =
       internal.NamedArg_copy(original)(name, arg)
 
     /** Matches a named argument `<name: String> = <value: Term>` */
@@ -854,7 +854,7 @@ trait TreeOps extends Core {
 
   object TypeIdent {
     // TODO def apply(name: String)(given ctx: Context): TypeIdent
-    def copy(original: TypeIdent)(name: String)(given ctx: Context): TypeIdent =
+    def copy(original: Tree)(name: String)(given ctx: Context): TypeIdent =
       internal.TypeIdent_copy(original)(name)
     def unapply(tree: Tree)(given ctx: Context): Option[String] =
       internal.matchTypeIdent(tree).map(_.name)
@@ -869,7 +869,7 @@ trait TreeOps extends Core {
   object TypeSelect {
     def apply(qualifier: Term, name: String)(given ctx: Context): TypeSelect =
       internal.TypeSelect_apply(qualifier, name)
-    def copy(original: TypeSelect)(qualifier: Term, name: String)(given ctx: Context): TypeSelect =
+    def copy(original: Tree)(qualifier: Term, name: String)(given ctx: Context): TypeSelect =
       internal.TypeSelect_copy(original)(qualifier, name)
     def unapply(tree: Tree)(given ctx: Context): Option[(Term, String)] =
       internal.matchTypeSelect(tree).map(x => (x.qualifier, x.name))
@@ -888,7 +888,7 @@ trait TreeOps extends Core {
 
   object Projection {
     // TODO def apply(qualifier: TypeTree, name: String)(given ctx: Context): Project
-    def copy(original: Projection)(qualifier: TypeTree, name: String)(given ctx: Context): Projection =
+    def copy(original: Tree)(qualifier: TypeTree, name: String)(given ctx: Context): Projection =
       internal.Projection_copy(original)(qualifier, name)
     def unapply(tree: Tree)(given ctx: Context): Option[(TypeTree, String)] =
       internal.matchProjection(tree).map(x => (x.qualifier, x.name))
@@ -908,7 +908,7 @@ trait TreeOps extends Core {
   object Singleton {
     def apply(ref: Term)(given ctx: Context): Singleton =
       internal.Singleton_apply(ref)
-    def copy(original: Singleton)(ref: Term)(given ctx: Context): Singleton =
+    def copy(original: Tree)(ref: Term)(given ctx: Context): Singleton =
       internal.Singleton_copy(original)(ref)
     def unapply(tree: Tree)(given ctx: Context): Option[Term] =
       internal.matchSingleton(tree).map(_.ref)
@@ -926,7 +926,7 @@ trait TreeOps extends Core {
 
   object Refined {
     // TODO def apply(tpt: TypeTree, refinements: List[Definition])(given ctx: Context): Refined
-    def copy(original: Refined)(tpt: TypeTree, refinements: List[Definition])(given ctx: Context): Refined =
+    def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition])(given ctx: Context): Refined =
       internal.Refined_copy(original)(tpt, refinements)
     def unapply(tree: Tree)(given ctx: Context): Option[(TypeTree, List[Definition])] =
       internal.matchRefined(tree).map(x => (x.tpt, x.refinements))
@@ -946,7 +946,7 @@ trait TreeOps extends Core {
   object Applied {
     def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(given ctx: Context): Applied =
       internal.Applied_apply(tpt, args)
-    def copy(original: Applied)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(given ctx: Context): Applied =
+    def copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(given ctx: Context): Applied =
       internal.Applied_copy(original)(tpt, args)
     def unapply(tree: Tree)(given ctx: Context): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
       internal.matchApplied(tree).map(x => (x.tpt, x.args))
@@ -966,7 +966,7 @@ trait TreeOps extends Core {
   object Annotated {
     def apply(arg: TypeTree, annotation: Term)(given ctx: Context): Annotated =
       internal.Annotated_apply(arg, annotation)
-    def copy(original: Annotated)(arg: TypeTree, annotation: Term)(given ctx: Context): Annotated =
+    def copy(original: Tree)(arg: TypeTree, annotation: Term)(given ctx: Context): Annotated =
       internal.Annotated_copy(original)(arg, annotation)
     def unapply(tree: Tree)(given ctx: Context): Option[(TypeTree, Term)] =
       internal.matchAnnotated(tree).map(x => (x.arg, x.annotation))
@@ -986,7 +986,7 @@ trait TreeOps extends Core {
   object MatchTypeTree {
     def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(given ctx: Context): MatchTypeTree =
       internal.MatchTypeTree_apply(bound, selector, cases)
-    def copy(original: MatchTypeTree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(given ctx: Context): MatchTypeTree =
+    def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(given ctx: Context): MatchTypeTree =
       internal.MatchTypeTree_copy(original)(bound, selector, cases)
     def unapply(tree: Tree)(given ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
       internal.matchMatchTypeTree(tree).map(x => (x.bound, x.selector, x.cases))
@@ -1007,7 +1007,7 @@ trait TreeOps extends Core {
   object ByName {
     def apply(result: TypeTree)(given ctx: Context): ByName =
       internal.ByName_apply(result)
-    def copy(original: ByName)(result: TypeTree)(given ctx: Context): ByName =
+    def copy(original: Tree)(result: TypeTree)(given ctx: Context): ByName =
       internal.ByName_copy(original)(result)
     def unapply(tree: Tree)(given ctx: Context): Option[TypeTree] =
       internal.matchByName(tree).map(_.result)
@@ -1026,7 +1026,7 @@ trait TreeOps extends Core {
   object LambdaTypeTree {
     def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): LambdaTypeTree =
       internal.Lambdaapply(tparams, body)
-    def copy(original: LambdaTypeTree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): LambdaTypeTree =
+    def copy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): LambdaTypeTree =
       internal.Lambdacopy(original)(tparams, body)
     def unapply(tree: Tree)(given ctx: Context): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
       internal.matchLambdaTypeTree(tree).map(x => (x.tparams, x.body))
@@ -1045,7 +1045,7 @@ trait TreeOps extends Core {
 
   object TypeBind {
     // TODO def apply(name: String, tree: Tree)(given ctx: Context): TypeBind
-    def copy(original: TypeBind)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeBind =
+    def copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeBind =
       internal.TypeBind_copy(original)(name, tpt)
     def unapply(tree: Tree)(given ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)] =
       internal.matchTypeBind(tree).map(x => (x.name, x.body))
@@ -1065,7 +1065,7 @@ trait TreeOps extends Core {
   object TypeBlock {
     def apply(aliases: List[TypeDef], tpt: TypeTree)(given ctx: Context): TypeBlock =
       internal.TypeBlock_apply(aliases, tpt)
-    def copy(original: TypeBlock)(aliases: List[TypeDef], tpt: TypeTree)(given ctx: Context): TypeBlock =
+    def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree)(given ctx: Context): TypeBlock =
       internal.TypeBlock_copy(original)(aliases, tpt)
     def unapply(tree: Tree)(given ctx: Context): Option[(List[TypeDef], TypeTree)] =
       internal.matchTypeBlock(tree).map(x => (x.aliases, x.tpt))
@@ -1127,7 +1127,7 @@ trait TreeOps extends Core {
     def apply(pattern: Tree, guard: Option[Term], rhs: Term)(given ctx: Context): CaseDef =
       internal.CaseDef_module_apply(pattern, guard, rhs)
 
-    def copy(original: CaseDef)(pattern: Tree, guard: Option[Term], rhs: Term)(given ctx: Context): CaseDef =
+    def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term)(given ctx: Context): CaseDef =
       internal.CaseDef_module_copy(original)(pattern, guard, rhs)
 
     def unapply(tree: Tree)(given ctx: Context): Option[(Tree, Option[Term], Term)] =
@@ -1148,7 +1148,7 @@ trait TreeOps extends Core {
     def apply(pattern: TypeTree, rhs: TypeTree)(given ctx: Context): TypeCaseDef =
       internal.TypeCaseDef_module_apply(pattern, rhs)
 
-    def copy(original: TypeCaseDef)(pattern: TypeTree, rhs: TypeTree)(given ctx: Context): TypeCaseDef =
+    def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree)(given ctx: Context): TypeCaseDef =
       internal.TypeCaseDef_module_copy(original)(pattern, rhs)
 
     def unapply(tree: Tree)(given ctx: Context): Option[(TypeTree, TypeTree)] =
@@ -1164,7 +1164,7 @@ trait TreeOps extends Core {
 
   object Bind {
     // TODO def apply(name: String, pattern: Tree)(given ctx: Context): Bind
-    def copy(original: Bind)(name: String, pattern: Tree)(given ctx: Context): Bind =
+    def copy(original: Tree)(name: String, pattern: Tree)(given ctx: Context): Bind =
       internal.Tree_Bind_module_copy(original)(name, pattern)
     def unapply(pattern: Tree)(given ctx: Context): Option[(String, Tree)] =
       internal.matchTree_Bind(pattern).map(x => (x.name, x.pattern))
@@ -1182,7 +1182,7 @@ trait TreeOps extends Core {
 
   object Unapply {
     // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply
-    def copy(original: Unapply)(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply =
+    def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply =
       internal.Tree_Unapply_module_copy(original)(fun, implicits, patterns)
     def unapply(pattern: Tree)(given ctx: Context): Option[(Term, List[Term], List[Tree])] =
       internal.matchTree_Unapply(pattern).map(x => (x.fun, x.implicits, x.patterns))
@@ -1202,7 +1202,7 @@ trait TreeOps extends Core {
   object Alternatives {
     def apply(patterns: List[Tree])(given ctx: Context): Alternatives =
       internal.Tree_Alternatives_module_apply(patterns)
-    def copy(original: Alternatives)(patterns: List[Tree])(given ctx: Context): Alternatives =
+    def copy(original: Tree)(patterns: List[Tree])(given ctx: Context): Alternatives =
       internal.Tree_Alternatives_module_copy(original)(patterns)
     def unapply(pattern: Tree)(given ctx: Context): Option[List[Tree]] =
       internal.matchTree_Alternatives(pattern).map(_.patterns)
