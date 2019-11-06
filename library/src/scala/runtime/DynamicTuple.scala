@@ -235,14 +235,24 @@ object DynamicTuple {
         Tuple22(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21)
       case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
         val arr = new Array[Object](23)
-        itToArray(self.asInstanceOf[Product].productIterator, 22, arr, 1)
-        arr(0) = x.asInstanceOf[Object]
-        dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]])
+        arr(0) = x.asInstanceOf[Object];
+        arr(1) = self._1.asInstanceOf[Object]; arr(2) = self._2.asInstanceOf[Object];
+        arr(3) = self._3.asInstanceOf[Object]; arr(4) = self._4.asInstanceOf[Object];
+        arr(5) = self._5.asInstanceOf[Object]; arr(6) = self._6.asInstanceOf[Object];
+        arr(7) = self._7.asInstanceOf[Object]; arr(8) = self._8.asInstanceOf[Object];
+        arr(9) = self._9.asInstanceOf[Object]; arr(10) = self._10.asInstanceOf[Object];
+        arr(11) = self._11.asInstanceOf[Object]; arr(12) = self._12.asInstanceOf[Object];
+        arr(13) = self._13.asInstanceOf[Object]; arr(14) = self._14.asInstanceOf[Object];
+        arr(15) = self._15.asInstanceOf[Object]; arr(16) = self._16.asInstanceOf[Object];
+        arr(17) = self._17.asInstanceOf[Object]; arr(18) = self._18.asInstanceOf[Object];
+        arr(19) = self._19.asInstanceOf[Object]; arr(20) = self._20.asInstanceOf[Object];
+        arr(21) = self._21.asInstanceOf[Object]; arr(22) = self._22.asInstanceOf[Object];
+        TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
       case xxl: TupleXXL =>
-        val arr = new Array[Object](self.size + 1)
-        System.arraycopy(xxl.elems, 0, arr, 1, self.size)
+        val arr = new Array[Object](xxl.productArity + 1)
+        System.arraycopy(xxl.elems, 0, arr, 1, xxl.productArity)
         arr(0) = x.asInstanceOf[Object]
-        dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]])
+        TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
     }
     res.asInstanceOf[Result]
   }
@@ -253,6 +263,7 @@ object DynamicTuple {
       case self: Unit => return that.asInstanceOf[Result]
       case _ =>
     }
+
     (that: Any) match {
       case that: Unit => return self.asInstanceOf[Result]
       case _ =>
@@ -260,16 +271,18 @@ object DynamicTuple {
 
     val arr = new Array[Object](self.size + that.size)
 
-    if (self.size <= 22) {
-      itToArray(self.asInstanceOf[Product].productIterator, self.size, arr, 0)
-    } else {
-      System.arraycopy(self.asInstanceOf[TupleXXL].elems, 0, arr, 0, self.size)
+    (self: Any) match {
+      case xxl: TupleXXL =>
+        System.arraycopy(xxl.elems, 0, arr, 0, self.size)
+      case _ =>
+        itToArray(self.asInstanceOf[Product].productIterator, self.size, arr, 0)
     }
 
-    if (that.size <= 22) {
-      itToArray(that.asInstanceOf[Product].productIterator, that.size, arr, 0)
-    } else {
-      System.arraycopy(that.asInstanceOf[TupleXXL].elems, 0, arr, self.size, that.size)
+    (that: Any) match {
+      case xxl: TupleXXL =>
+        System.arraycopy(xxl.elems, 0, arr, self.size, that.size)
+      case _ =>
+        itToArray(that.asInstanceOf[Product].productIterator, that.size, arr, 0)
     }
 
     dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
@@ -328,8 +341,23 @@ object DynamicTuple {
       case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
         Tuple21(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21, self._22)
       case xxl: TupleXXL =>
+        if (xxl.productArity == 23) {
+          val elems = xxl.elems
+          Tuple22(
+            xxl.elems(1), xxl.elems(2), xxl.elems(3), xxl.elems(4), xxl.elems(5), xxl.elems(6), xxl.elems(7),
+            xxl.elems(8), xxl.elems(9), xxl.elems(10), xxl.elems(11), xxl.elems(12), xxl.elems(13), xxl.elems(14),
+            xxl.elems(15), xxl.elems(16), xxl.elems(17), xxl.elems(18), xxl.elems(19), xxl.elems(20),
+            xxl.elems(21), xxl.elems(22)
+          ).asInstanceOf[Result]
+        } else {
+          val arr = new Array[Object](self.size - 1)
+          System.arraycopy(xxl.elems, 1, arr, 0, self.size - 1)
+          dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]])
+        }
+      case _ =>
         val arr = new Array[Object](self.size - 1)
-        System.arraycopy(xxl.elems, 1, arr, 0, self.size - 1)
+        val it = self.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+        itToArray(it, self.size - 1, arr, 0)
         dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]])
     }
     res.asInstanceOf[Result]
