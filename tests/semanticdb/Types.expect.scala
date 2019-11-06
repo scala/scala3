@@ -110,6 +110,6 @@ object Test/*<<=types.Test.*/ {
     final val bool/*<<=types.Test.Literal.bool.*/ = true
     final val unit/*<<=types.Test.Literal.unit.*/ = ()
     final val javaEnum/*<<=types.Test.Literal.javaEnum.*/ = java.nio.file.LinkOption/*=>>java.nio.file.LinkOption.*/.NOFOLLOW_LINKS/*=>>java.nio.file.LinkOption.NOFOLLOW_LINKS.*/
-    final val clazzOf/*<<=types.Test.Literal.clazzOf.*/ = classOf[Option/*=>>scala.Option#*/[Int/*=>>scala.Int#*/]]
+    final val clazzOf/*<<=types.Test.Literal.clazzOf.*/ = classOf/*=>>scala.Predef.classOf().*/[Option/*=>>scala.Option#*/[Int/*=>>scala.Int#*/]]
   }
 }

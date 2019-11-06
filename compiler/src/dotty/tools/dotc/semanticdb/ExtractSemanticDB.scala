@@ -172,7 +172,6 @@ class ExtractSemanticDB extends Phase {
 
     private def excludeDefStrict(sym: Symbol)(given Context): Boolean =
       sym.name.is(NameKinds.DefaultGetterName)
-      || sym == defn.Predef_classOf
 
     private def blacklistPrefix(sym: Symbol)(given Context): Boolean =
       sym.is(Package)
