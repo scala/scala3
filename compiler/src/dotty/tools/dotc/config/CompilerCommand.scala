@@ -102,8 +102,8 @@ object CompilerCommand {
     }
 
     def isStandard(s: Setting[?]): Boolean = !isAdvanced(s) && !isPrivate(s)
-    def isAdvanced(s: Setting[?]): Boolean = s.name startsWith "-X"
-    def isPrivate(s: Setting[?]) : Boolean = s.name startsWith "-Y"
+    def isAdvanced(s: Setting[?]): Boolean = s.name.startsWith("-X") && s.name != "-X"
+    def isPrivate(s: Setting[?]) : Boolean = s.name.startsWith("-Y") && s.name != "-Y"
 
     /** Messages explaining usage and options */
     def usageMessage    = createUsageMsg("where possible standard", shouldExplain = false, isStandard)
@@ -112,7 +112,14 @@ object CompilerCommand {
 
     def shouldStopWithInfo = {
       import settings._
-      Set(help, Xhelp, Yhelp, showPlugins) exists (_.value)
+      Set(help, Xhelp, Yhelp, showPlugins, XshowPhases) exists (_.value)
+    }
+
+    def phasesMessage: String = {
+      (new Compiler()).phases.map(phasegroup => {
+        if(phasegroup.length == 1) phasegroup.head.phaseName
+        else phasegroup.mkString("{", ", ", "}")
+      }).mkString("\n")
     }
 
     def infoMessage: String = {
@@ -121,6 +128,7 @@ object CompilerCommand {
       else if (Xhelp.value) xusageMessage
       else if (Yhelp.value) yusageMessage
       else if (showPlugins.value) ctx.pluginDescriptions
+      else if (XshowPhases.value) phasesMessage
       else ""
     }
 
