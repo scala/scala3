@@ -116,10 +116,10 @@ object CompilerCommand {
     }
 
     def phasesMessage: String = {
-      (new Compiler()).phases.map(phasegroup => {
-        if(phasegroup.length == 1) phasegroup.head.phaseName
-        else phasegroup.mkString("{", ", ", "}")
-      }).mkString("\n")
+      (new Compiler()).phases.map {
+        case List(single) => single.phaseName
+        case more => more.map(_.phaseName).mkString("{", ", ", "}")
+      }.mkString("\n")
     }
 
     def infoMessage: String = {
