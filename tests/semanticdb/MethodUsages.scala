@@ -13,7 +13,7 @@ class MethodUsages {
   m.m6(Nil)
   m.m7(m, new m.List[Int])
   m.`m8().`()
-  m.m9(null)
+  // m.m9(null) suspended due to issue https://github.com/lampepfl/dotty/issues/7514
   m.m10(null)
   m.m11(Predef)
   m.m11(Example)

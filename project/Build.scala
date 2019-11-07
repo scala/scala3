@@ -740,6 +740,9 @@ object Build {
     if (mode == NonBootstrapped) nonBootstrapedDottyCompilerSettings else bootstrapedDottyCompilerSettings
 
   lazy val `dotty-compiler` = project.in(file("compiler")).asDottyCompiler(NonBootstrapped)
+    .settings(
+      Test / testOptions := Seq(Tests.Filter(s => s != "dotty.tools.dotc.semanticdb.SemanticdbTests"))
+    )
   lazy val `dotty-compiler-bootstrapped` = project.in(file("compiler")).asDottyCompiler(Bootstrapped)
 
   def dottyCompiler(implicit mode: Mode): Project = mode match {

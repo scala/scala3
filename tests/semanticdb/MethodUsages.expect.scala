@@ -13,7 +13,7 @@ class MethodUsages/*<<=example.MethodUsages#*/ {
   m/*=>>example.MethodUsages#m.*/.m6/*=>>example.Methods#m6(+2).*/(Nil/*=>>scala.package.Nil.*/)
   m/*=>>example.MethodUsages#m.*/.m7/*=>>example.Methods#m7().*/(m/*=>>example.MethodUsages#m.*/, new m/*=>>example.MethodUsages#m.*/.List/*=>>example.Methods#List#*/[Int/*=>>scala.Int#*/]/*=>>example.Methods#List#`<init>`().*/)/*=>>scala.math.Ordering.Int.*/
   m/*=>>example.MethodUsages#m.*/.`m8().`/*=>>example.Methods#`m8().`().*/()
-  m/*=>>example.MethodUsages#m.*/.m9/*=>>example.Methods#m9().*/(null)
+  // m.m9(null) suspended due to issue https://github.com/lampepfl/dotty/issues/7514
   m/*=>>example.MethodUsages#m.*/.m10/*=>>example.Methods#m10().*/(null)
   m/*=>>example.MethodUsages#m.*/.m11/*=>>example.Methods#m11().*/(Predef/*=>>scala.Predef.*/)
   m/*=>>example.MethodUsages#m.*/.m11/*=>>example.Methods#m11(+1).*/(Example/*=>>example.Example.*/)
