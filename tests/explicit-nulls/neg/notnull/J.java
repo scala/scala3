@@ -3,10 +3,12 @@ import notnull.NotNull;
 
 public class J {
 
+    private static String getK() {
+        return "k";
+    }
+
     @NotNull
-    // TODO: remove annotaion after #7483
-    // JavaParser will never assign ConstantType to fields currently.
-    public static final String k = "k";
+    public static final String k = getK();
 
     @NotNull
     public static String l = "l";

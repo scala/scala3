@@ -3,10 +3,12 @@ import java.util.*;
 
 public class J {
 
+    private static String getK() {
+        return "k";
+    }
+
     @Nonnull
-    // TODO: remove annotaion after #7483
-    // JavaParser will never assign ConstantType to fields currently.
-    public static final String k = "k";
+    public static final String k = getK();
 
     @Nonnull
     public static String l = "l";

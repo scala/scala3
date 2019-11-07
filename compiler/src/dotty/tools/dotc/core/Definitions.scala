@@ -816,6 +816,8 @@ class Definitions {
   // A list of annotations that are commonly used to indicate that a field/method argument or return
   // type is not null. These annotations are used by the nullification logic in JavaNullInterop to
   // improve the precision of type nullification.
+  // We don't require that any of these annotations be present in the class path, but we want to
+  // create Symbols for the ones that are present, so they can be checked during nullification.
   @tu lazy val NotNullAnnots: List[ClassSymbol] = ctx.getClassesIfDefined(
     "javax.annotation.Nonnull" ::
     "edu.umd.cs.findbugs.annotations.NonNull" ::
