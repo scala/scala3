@@ -33,17 +33,17 @@ scala> abstract class C { type T; val x: T; val s: Unit = { type T = String; var
 1 | abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
   |                                                                                  ^
   |Found:    C.this.T(C.this.x)
-  |Required: T'
+  |Required: T²
   |
   |where:    T  is a type in class C
-  |          T' is a type in the initializer of value s which is an alias of String
+  |          T² is a type in the initializer of value s which is an alias of String
 1 | abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
   |                                                                                                                                    ^
   |Found:    T(y)
-  |Required: T'
+  |Required: T²
   |
   |where:    T  is a type in the initializer of value s which is an alias of String
-  |          T' is a type in method f which is an alias of Int
+  |          T² is a type in method f which is an alias of Int
 scala> class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
 1 | class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
   |                                                        ^^^^^^^^
