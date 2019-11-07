@@ -110,7 +110,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def matchStatement(tree: Tree)(given Context): Option[Statement] = tree match {
     case _: PatternTree => None
-    case tree if tree.isTerm => Some(tree)
+    case tree if tree.isTerm => matchTerm(tree)
     case _ => matchDefinition(tree)
   }
 
@@ -226,6 +226,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   type Term = tpd.Tree
 
   def matchTerm(tree: Tree)(given Context): Option[Term] = tree match {
+    case _ if matchTree_Unapply(tree).isDefined => None
     case _: PatternTree => None
     case x: tpd.SeqLiteral => Some(tree)
     case _ if tree.isTerm => Some(tree)
