@@ -1,0 +1,4 @@
+scala> val list = List(1, 2, 3)
+val list: List[Int] = List(1, 2, 3)
+scala> list.foldLeft(List.empty[Int]){ case (acc, n) => n :: acc }
+val res0: List[Int] = List(3, 2, 1)

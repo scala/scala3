@@ -240,7 +240,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   private def emitArgument(av:   AnnotationVisitor,
                            name: String,
                            arg:  Tree, bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
-    (normalizeArgument(arg): @unchecked) match {
+    val narg = normalizeArgument(arg)
+    // Transformation phases are not run on annotation trees, so we need to run
+    // `constToLiteral` at this point.
+    val t = constToLiteral(narg)(ctx.withPhase(ctx.erasurePhase))
+    t match {
       case Literal(const @ Constant(_)) =>
         const.tag match {
           case BooleanTag | ByteTag | ShortTag | CharTag | IntTag | LongTag | FloatTag | DoubleTag => av.visit(name, const.value)
@@ -257,10 +261,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
       case Ident(nme.WILDCARD) =>
         // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
-      case t: tpd.RefTree =>
-        assert(t.symbol.denot.owner.isAllOf(Flags.JavaEnumTrait),
-          i"not an enum: $t / ${t.symbol} / ${t.symbol.denot.owner} / ${t.symbol.denot.owner.isTerm} / ${t.symbol.denot.owner.flagsString}")
-
+      case t: tpd.RefTree if t.symbol.denot.owner.isAllOf(Flags.JavaEnumTrait) =>
         val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
         val evalue = t.symbol.name.mangledString // value the actual enumeration value.
         av.visitEnum(name, edesc, evalue)
@@ -306,6 +307,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         val desc = innerClasesStore.typeDescriptor(typ.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the nested annotation class
         val nestedVisitor = av.visitAnnotation(name, desc)
         emitAssocs(nestedVisitor, assocs, bcodeStore)(innerClasesStore)
+
+      case t =>
+        ctx.error(ex"Annotation argument is not a constant", t.sourcePos)
     }
   }
 
