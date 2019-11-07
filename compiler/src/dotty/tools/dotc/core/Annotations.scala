@@ -154,12 +154,12 @@ object Annotations {
 
       /** A deferred annotation to the result of a given child computation */
       def later(delayedSym: (given Context) => Symbol, span: Span)(implicit ctx: Context): Annotation = {
-        def makeChildLater(implicit ctx: Context) = {
+        def makeChildLater(given ctx: Context) = {
           val sym = delayedSym
           New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
             .withSpan(span)
         }
-        deferred(defn.ChildAnnot)(makeChildLater(ctx))
+        deferred(defn.ChildAnnot)(makeChildLater)
       }
 
       /** A regular, non-deferred Child annotation */

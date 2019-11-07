@@ -1,0 +1,18 @@
+Macro_1$package.plus(1, 4)
+5
+
+Macro_1$package.plus(0, a)
+a
+
+Macro_1$package.plus(a, b)
+a.+(b)
+
+Macro_1$package.plus(Macro_1$package.plus(a, 0), Macro_1$package.plus(0, b))
+0.+(a).+(b)
+
+Macro_1$package.power(4, 5)
+1024
+
+Macro_1$package.power(a, 5)
+a.*(a.*(a.*(a.*(1.*(a)))))
+
