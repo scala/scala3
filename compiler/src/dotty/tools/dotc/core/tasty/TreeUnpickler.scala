@@ -131,7 +131,10 @@ class TreeUnpickler(reader: TastyReader,
     def skipTree(): Unit = skipTree(readByte())
 
     def skipParams(): Unit =
-      while (nextByte == PARAMS || nextByte == TYPEPARAM) skipTree()
+      while
+        val tag = nextByte
+        tag == PARAM || tag == TYPEPARAM || tag == PARAMEND
+      do skipTree()
 
     /** Record all directly nested definitions and templates in current tree
      *  as `OwnerTree`s in `buf`.
@@ -747,12 +750,12 @@ class TreeUnpickler(reader: TastyReader,
       val tag = readByte()
       val end = readEnd()
 
-      def readParamss(implicit ctx: Context): List[List[ValDef]] =
-        collectWhile(nextByte == PARAMS) {
-          readByte()
-          readEnd()
-          readParams[ValDef](PARAM)
-        }
+      def readParamss(implicit ctx: Context): List[List[ValDef]] = nextByte match
+        case PARAM | PARAMEND =>
+          readParams[ValDef](PARAM) ::
+            (if nextByte == PARAMEND then { readByte(); readParamss } else Nil)
+        case _ =>
+          Nil
 
       val localCtx = localContext(sym)
 
@@ -987,10 +990,11 @@ class TreeUnpickler(reader: TastyReader,
     def readIndexedParams[T <: MemberDef](tag: Int)(implicit ctx: Context): List[T] =
       collectWhile(nextByte == tag) { readIndexedDef().asInstanceOf[T] }
 
-    def readParams[T <: MemberDef](tag: Int)(implicit ctx: Context): List[T] = {
-      fork.indexParams(tag)
-      readIndexedParams(tag)
-    }
+    def readParams[T <: MemberDef](tag: Int)(implicit ctx: Context): List[T] =
+      if nextByte == tag then
+        fork.indexParams(tag)
+        readIndexedParams(tag)
+      else Nil
 
 // ------ Reading trees -----------------------------------------------------
 

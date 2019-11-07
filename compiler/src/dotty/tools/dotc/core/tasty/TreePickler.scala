@@ -494,13 +494,15 @@ class TreePickler(pickler: TastyPickler) {
         case tree: ValDef =>
           pickleDef(VALDEF, tree.symbol, tree.tpt, tree.rhs)
         case tree: DefDef =>
-          def pickleAllParams = {
+          def pickleParamss(paramss: List[List[ValDef]]): Unit = paramss match
+            case Nil =>
+            case params :: rest =>
+              pickleParams(params)
+              if params.isEmpty || rest.nonEmpty then writeByte(PARAMEND)
+              pickleParamss(rest)
+          def pickleAllParams =
             pickleParams(tree.tparams)
-            for (vparams <- tree.vparamss) {
-              writeByte(PARAMS)
-              withLength { pickleParams(vparams) }
-            }
-          }
+            pickleParamss(tree.vparamss)
           pickleDef(DEFDEF, tree.symbol, tree.tpt, tree.rhs, pickleAllParams)
         case tree: TypeDef =>
           pickleDef(TYPEDEF, tree.symbol, tree.rhs)
