@@ -1,0 +1,8 @@
+-- [E007] Type Mismatch Error: tests/neg/i7195.scala:10:8 --------------------------------------------------------------
+10 |  A.foo(??? : T) // error
+   |        ^^^^^^^
+   |        Found:    B.T
+   |        Required: A.T²
+   |
+   |        where:    T  is a type in object B
+   |                  T² is a type in object A
