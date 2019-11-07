@@ -63,8 +63,8 @@ object Test/*<<=types.Test.*/ {
     val annType2/*<<=types.Test.C#annType2.*/: T/*=>>types.T#*/ @ann1 @ann2 = ???/*=>>scala.Predef.`???`().*/
 
     val existentialType2/*<<=types.Test.C#existentialType2.*/: List/*=>>scala.package.List#*/[_] = ???/*=>>scala.Predef.`???`().*/
-    val existentialType3/*<<=types.Test.C#existentialType3.*/ = Class/*=>>java.lang.Class.*/.forName/*=>>java.lang.Class.forName().*/("foo.Bar")
-    val existentialType4/*<<=types.Test.C#existentialType4.*/ = Class/*=>>java.lang.Class.*/.forName/*=>>java.lang.Class.forName().*/("foo.Bar")
+    val existentialType3/*<<=types.Test.C#existentialType3.*/ = Class/*=>>java.lang.Class#*/.forName/*=>>java.lang.Class#forName().*/("foo.Bar")
+    val existentialType4/*<<=types.Test.C#existentialType4.*/ = Class/*=>>java.lang.Class#*/.forName/*=>>java.lang.Class#forName().*/("foo.Bar")
 
     def typeLambda1/*<<=types.Test.C#typeLambda1().*/[M/*<<=types.Test.C#typeLambda1().[M]*/[_]] = ???/*=>>scala.Predef.`???`().*/
     typeLambda1/*=>>types.Test.C#typeLambda1().*/[({ type L/*<<=local4*/[T/*<<=local5*/] = List/*=>>scala.package.List#*/[T/*=>>local5*/] })#L]
@@ -109,7 +109,7 @@ object Test/*<<=types.Test.*/ {
     final val string/*<<=types.Test.Literal.string.*/ = "a"
     final val bool/*<<=types.Test.Literal.bool.*/ = true
     final val unit/*<<=types.Test.Literal.unit.*/ = ()
-    final val javaEnum/*<<=types.Test.Literal.javaEnum.*/ = java.nio.file.LinkOption/*=>>java.nio.file.LinkOption.*/.NOFOLLOW_LINKS/*=>>java.nio.file.LinkOption.NOFOLLOW_LINKS.*/
+    final val javaEnum/*<<=types.Test.Literal.javaEnum.*/ = java.nio.file.LinkOption/*=>>java.nio.file.LinkOption#*/.NOFOLLOW_LINKS/*=>>java.nio.file.LinkOption#NOFOLLOW_LINKS.*/
     final val clazzOf/*<<=types.Test.Literal.clazzOf.*/ = classOf/*=>>scala.Predef.classOf().*/[Option/*=>>scala.Option#*/[Int/*=>>scala.Int#*/]]
   }
 }

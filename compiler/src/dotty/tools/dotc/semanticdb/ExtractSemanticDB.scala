@@ -87,12 +87,19 @@ class ExtractSemanticDB extends Phase {
         if !owner.isRoot then addSymName(b, owner, inOwner = true)
 
       def addOverloadIdx(sym: Symbol): Unit =
-        val alts = sym.owner.info.decls.lookupAll(sym.name).filter(_.is(Method)).toList.reverse
-        if alts.nonEmpty && alts.tail.nonEmpty then
-          val idx = alts.indexOf(sym)
-          assert(idx >= 0)
-          if idx > 0 then
-            b.append('+').append(idx)
+        val decls = {
+          val decls0 = sym.owner.info.decls.lookupAll(sym.name)
+          if sym.owner.isAllOf(JavaModule)
+            decls0 ++ sym.owner.companionClass.info.decls.lookupAll(sym.name)
+          else
+            decls0
+        }
+        val alts = decls.filter(_.is(Method)).toList.reverse
+        alts match
+        case notSym :: rest if sym != notSym =>
+          val idx = rest.indexOf(sym).ensuring(_ >= 0)
+          b.append('+').append(idx + 1)
+        case _ =>
 
       def addDescriptor(sym: Symbol): Unit =
         if sym.is(ModuleClass) then
@@ -107,7 +114,7 @@ class ExtractSemanticDB extends Phase {
           else
             addName(sym.name)
           if sym.is(Package) then b.append('/')
-          else if sym.isType then b.append('#')
+          else if sym.isType || sym.isAllOf(JavaModule) then b.append('#')
           else if sym.isOneOf(Method | Mutable)
           && (!sym.is(StableRealizable) || sym.name == nme.CONSTRUCTOR) then
             b.append('('); addOverloadIdx(sym); b.append(").")
@@ -259,7 +266,7 @@ class ExtractSemanticDB extends Phase {
             for sel <- tree.selectors do
               val imported = sel.imported.name
               if imported != nme.WILDCARD then
-                for alt <- tree.expr.tpe.member(imported).alternatives do
+                for alt <- tree.expr.tpe.member(imported).alternatives if !alt.symbol.is(Package) do
                   registerUse(alt.symbol, sel.imported.span)
                   if (alt.symbol.companionClass.exists)
                     registerUse(alt.symbol.companionClass, sel.imported.span)
