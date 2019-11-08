@@ -98,6 +98,12 @@ class CommunityBuildTest {
     }
   }
 
+  @Test def utest = testMill(
+    project = "utest",
+    testCommand = "__.__.test",
+    extraMillArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
+  )
+
   @Test def intent = testSbt(
     project       = "intent",
     testCommand   = "test",
