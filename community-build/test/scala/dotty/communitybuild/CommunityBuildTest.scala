@@ -100,7 +100,7 @@ class CommunityBuildTest {
 
   @Test def utest = testMill(
     project = "utest",
-    testCommand = "__.__.test",
+    testCommand = s"utest.jvm[$compilerVersion].test",
     extraMillArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
   )
 
