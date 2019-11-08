@@ -46,8 +46,8 @@ object Nullables with
 
     /* The paths that are known to be not null after execution of `tree` terminates normally */
     def notNullRefs(given Context): Excluded =
-      tree.getAttachment(AlwaysExcluded) match
-        case Some(excl) if !curCtx.isAfterTyper => excl
+      stripInlined(tree).getAttachment(AlwaysExcluded) match
+        case Some(excl) if !curCtx.erasedTypes => excl
         case _ => Set.empty
 
     /** The paths that are known to be not null if the condition represented
@@ -56,7 +56,7 @@ object Nullables with
      */
     def condNotNullRefs(given Context): EitherExcluded =
       stripBlock(tree).getAttachment(CondExcluded) match
-        case Some(excl) if !curCtx.isAfterTyper => excl
+        case Some(excl) if !curCtx.erasedTypes => excl
         case _ => NoneExcluded
 
     /** The current context augmented with nullability information of `tree` */
@@ -78,7 +78,7 @@ object Nullables with
      *  of the left argument, if the application is a boolean `&&` or `||`.
      */
     def nullableInArgContext(given Context): Context = tree match
-      case Select(x, _) if !curCtx.isAfterTyper =>
+      case Select(x, _) if !curCtx.erasedTypes =>
         if tree.symbol == defn.Boolean_&& then x.nullableContext(true)
         else if tree.symbol == defn.Boolean_|| then x.nullableContext(false)
         else curCtx
@@ -94,7 +94,7 @@ object Nullables with
     def computeNullable(given Context): tree.type =
       def setExcluded(ifTrue: Excluded, ifFalse: Excluded) =
         tree.putAttachment(CondExcluded, EitherExcluded(ifTrue, ifFalse))
-      if !curCtx.isAfterTyper then tree match
+      if !curCtx.erasedTypes then tree match
         case ComparePathNull(ref, testEqual) =>
           if testEqual then setExcluded(Set(), Set(ref))
           else setExcluded(Set(ref), Set())
