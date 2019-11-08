@@ -391,7 +391,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       if (fn.symbol.is(Erased) || fn.symbol == defn.InternalQuoted_typeQuote) Pure else exprPurity(fn)
     case Apply(fn, args) =>
       def isKnownPureOp(sym: Symbol) =
-        sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass
+        sym.owner.isPrimitiveValueClass
+        || sym.owner == defn.StringClass
+        || defn.pureMethods.contains(sym)
       if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
           || (fn.symbol.isStableMember && !fn.symbol.is(Lazy))
           || fn.symbol.isPrimaryConstructor && fn.symbol.owner.isNoInitsClass) // TODO: include in isStable?
