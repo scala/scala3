@@ -12,7 +12,6 @@ The implementation of the feature in dotty can be conceptually divided in severa
   2. a "translation layer" for Java interop that exposes the nullability in Java APIs
   3. a "magic" `JavaNull` type (an alias for `Null`) that is recognized by the compiler and
      allows unsound member selections (trading soundness for usability)
-  4. a module for "flow typing", so we can work more naturally with nullable values
 
 Feature Flag
 ------------
@@ -29,7 +28,7 @@ We change the type hierarchy so that `Null` is only a subtype of `Any` by:
 
 Java Interop
 ------------
-TODO(abeln): add support for recognizing nullability annotations a la 
+TODO(abeln): add support for recognizing nullability annotations a la
 https://kotlinlang.org/docs/reference/java-interop.html#nullability-annotations
 
 The problem we're trying to solve here is: if we see a Java method `String foo(String)`,
@@ -99,88 +98,3 @@ are methods of the `Type` class, so call them with `this` as a receiver:
      we'll get `Array[String|Null]` (only the outermost nullable union was removed).
   - `stripAllJavaNull` is like `stripNull` but removes _all_ nullable unions in the type (and only works
      for `JavaNull`). This is needed when we want to "revert" the Java nullification function.
-
-Flow Typing
------------
-Flow typing is needed so we can work with nullable unions in a more natural way.
-The following is a common idiom that should work without additional casts:
-```scala
-val x: String|Null = ???
-if (x != null && x.length < 10)
-```
-This is implemented as a "must be null in the current scope" analysis on stable paths:
-  - we add additional state to the `Context` in `Contexts.scala`.
-    Specifically, we add a set of `FlowFacts` (right now just a set of `TermRef`s), which
-    are the paths known to be non-nullable in the current scope.
-  - the bulk of the flow typing logic lives in a new `FlowTyper.scala` file.
-    
-    There are four entry points to `FlowTyper`:
-      1. `inferFromCond(cond: Tree): Inferred`: given a tree representing a condition such as
-          `x != null && x.length < 10`, return the `Inferred` facts.
-           
-          In turn, `Inferred` is defined as `case class Inferred(ifTrue: FlowFacts, ifFalse: FlowFacts)`.
-          That is, `Inferred` contains the paths that _must_ be non-null if the condition is true and,
-          separately, the paths that must be non-null if the condition is false.
-
-          e.g. for `x != null` we'd get `Inferred({x}, {})`, but only if `x` is stable.
-          However, if we had `x == null` we'd get `Inferred({}, {x})`.
-      	  
-      2. `inferWithinCond(cond: Tree): FlowFacts`: given a condition of the form `lhs && rhs` or
-         `lhs || rhs`, calculate the paths that must be non-null for the rhs to execute (given
-         that these operations) are short-circuiting.
-
-      3. `inferWithinBlock(stat: Tree): FlowFacts`: if `stat` is a statement with a block, calculate
-         which paths must be non-null when the statement that _follows_ `stat` in the block executes.
-         This is so we can handle things like
-         ```scala
-         val x: String|Null = ???
-	     if (x == null) return
-         val y = x.length
-         ```
-         Here, `inferWithinBlock(if (x == null) return)` gives back `{x}`, because we can tell that
-         the next statement will execute only if `x` is non-null.
-
-      4. `refineType(tpe: Type): Type`: given a type, refine it if possible using flow-sensitive type
-         information. This uses a `NonNullTermRef` (see below).
-
-  - Each of the public APIs in `FlowTyper` is used to do flow typing in a different scenario
-    (but all the use sites of `FlowTyper` are in `Typer.scala`):
-    * `refineType` is used in `typedIdent` and `typedSelect`
-    * `inferFromCond` is used for typing if statements
-    * `inferWithinCond` is used when typing "applications" (which is how "&&" and "||" are encoded)
-    * `inferWithinBlock` is used when typing blocks
-
-    For example, to do FlowTyping on if expressions:
-      * we type the condition
-      * we give the typed condition to the FlowTyper and obtain a pair of sets of paths `(ifTrue, ifFalse)`.
-        We type the `then` branch with the `ifTrue` facts, and the else branch with the `ifFalse` facts.
-      * profit
-
-Flow typing also introduces two new abstractions: `NonNullTermRef` and `ValDefInBlockCompleter`.
-
-#### NonNullTermRef
-This is a new type of `TermRef` (path-dependent type) that, whenever its denotation is updated, makes sure
-that the underlying widened type is non-null. It's defined in `Types.scala`. A `NonNullTermRef` is identified by `computeDenot` whenever the denotation is updated, and then we call `stripNull` on the widened type.
-
-To use the flow-typing information, whenever we see a path that we know must be non-null (in `typedIdent` or
-`typedSelect`), we replace its `TermRef` by a `NonNullTermRef`.
-
-#### ValDefInBlockCompleter
-This a new type of completer defined in `Namer.scala` that completes itself using the completion context, asopposed to the creation context.
-
-The problem we're trying to solve here is the following:
-```scala
-val x: String|Null = ???
-if (x == null) return
-val y = x.length
-```
-The block is usually typed as follows:
-  1. first, we scan the block to create symbols for the new definitions (`val x`, `val y`)
-  2. then, we type statement by statement
-  3. the completers for the symbols created in 1. are _all_ invoked in step 2. However,
-     regular completers  use the _creation_ context, so that means that `val y` is completed
-     with a context that doesn't contain the new flow fact "x != null".
-
-To fix this, whenever we're inside a block and we create completers for `val`s, we use a 
-`ValDefInBlockCompleter` instead of a regular completer. This new completer uses the completion context,
-which is aware of the new flow fact "x != null".

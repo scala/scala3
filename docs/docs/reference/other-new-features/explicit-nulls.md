@@ -38,7 +38,7 @@ The unsoundness happens because uninitialized fields in a class start out as `nu
 ```scala
 class C {
   val f: String = foo(f)
-  def foo(f2: String): String = if (f2 == null) "field is null" else f2 
+  def foo(f2: String): String = if (f2 == null) "field is null" else f2
 }
 val c = new C()
 // c.f == "field is null"
@@ -46,7 +46,7 @@ val c = new C()
 
 Enforcing sound initialization is a non-goal of this proposal. However, once we have a type
 system where nullability is explicit, we can use a sound initialization scheme like the one
-proposed by @liufengyun and @biboudis in [https://github.com/lampepfl/dotty/pull/4543](https://github.com/lampepfl/dotty/pull/4543) to eliminate this particular source of unsoundness. 
+proposed by @liufengyun and @biboudis in [https://github.com/lampepfl/dotty/pull/4543](https://github.com/lampepfl/dotty/pull/4543) to eliminate this particular source of unsoundness.
 
 ## Equality
 
@@ -146,7 +146,7 @@ We do the patching with a "nullification" function `n` on types:
     ```scala
     class C<T> { T foo() { return null; } }
     ==>
-    class C[T] { def foo(): T|Null } 
+    class C[T] { def foo(): T|Null }
     ```
 
     Notice this is rule is sometimes too conservative, as witnessed by
@@ -156,7 +156,7 @@ We do the patching with a "nullification" function `n` on types:
       val b: Bool = c.foo() // no longer typechecks, since foo now returns Bool|Null
     }
     ```
-    
+
   * Rule 4 reduces the number of redundant nullable types we need to add. Consider
     ```scala
     class Box<T> { T get(); }
@@ -165,23 +165,23 @@ We do the patching with a "nullification" function `n` on types:
     class Box[T] { def get(): T|JavaNull }
     class BoxFactory[T] { def makeBox(): Box[T]|JavaNull }
     ```
-    
+
     Suppose we have a `BoxFactory[String]`. Notice that calling `makeBox()` on it returns a `Box[String]|JavaNull`, not
     a `Box[String|JavaNull]|JavaNull`, because of rule 4. This seems at first glance unsound ("What if the box itself
     has `null` inside?"), but is sound because calling `get()` on a `Box[String]` returns a `String|JavaNull`, as per
     rule 3.
-    
+
     Notice that for rule 4 to be correct we need to patch _all_ Java-defined classes that transitively appear in the
     argument or return type of a field or method accessible from the Scala code being compiled. Absent crazy reflection
     magic, we think that all such Java classes _must_ be visible to the Typer in the first place, so they will be patched.
-        
+
   * Rule 5 is needed because Java code might use a generic that's defined in Scala as opposed to Java.
     ```scala
     class BoxFactory<T> { Box<T> makeBox(); } // Box is Scala defined
     ==>
     class BoxFactory[T] { def makeBox(): Box[T|JavaNull]|JavaNull }
     ```
-    
+
     In this case, since `Box` is Scala-defined, `nf` is applied to the type argument `T`, so rule 3 applies and we get
     `Box[T|JavaNull]|JavaNull`. This is needed because our nullability function is only applied (modularly) to the Java
     classes, but not to the Scala ones, so we need a way to tell `Box` that it contains a nullable value.
@@ -190,7 +190,7 @@ We do the patching with a "nullification" function `n` on types:
     The handling of unions and intersections in the compiler is a bit more involved than the presentation above.
     Specifically, the implementation makes sure to add `| Null` only at the top level of a type:
     e.g. `nf(A & B) = (A & B) | JavaNull`, as opposed to `(A | JavaNull) & (B | JavaNull)`.
-  
+
 ### JavaNull
 To enable method chaining on Java-returned values, we have a special `JavaNull` alias
 ```scala
@@ -294,89 +294,3 @@ class Old() {
 val o: Old = ???
 o.foo(null.asInstanceOf[String]) // ok: cast will succeed at runtime
 ```
-
-## Flow Typing
-
-We added a simple form of flow-sensitive type inference. The idea is that if `p` is a
-stable path, then we can know that `p` is non-null if it's compared with the `null` literal.
-This information can then be propagated to the `then` and `else` branches of an if-statement (among other places).
-
-Example:
-```scala
-val s: String|Null = ???
-if (s != null) {
-  // s: String
-}
-// s: String|Null
-```
-A similar inference can be made for the `else` case if the test is `p == null`
-```scala
-if (s == null) {
-  // s: String|Null
-} else {
-  // s: String
-}
-```
-
-What exactly is considered a comparison for the purposes of the flow inference?
-  - `==` and `!=`
-  - `eq` and `ne`
-
-### Non-Stable Paths
-If `p` isn't stable, then inferring non-nullness is potentially unsound:
-```scala
-var s: String|Null = "hello"
-if (s != null && {s = null; true}) {
-  // s == null
-}
-```
-
-We _only_ infer non-nullness if `p` is stable (`val`s and not `var`s or `def`s).
-
-### Logical Operators
-We also support logical operators (`&&`, `||`, and `!`):
-```scala
-val s: String|Null = ???
-val s2: String|Null = ???
-if (s != null && s2 != null) {
-  // s: String
-  // s2: String
-}
-
-if (s == null || s2 == null) {
-  // s: String|Null
-  // s2: String|Null
-} else {
-  // s: String
-  // s2: String
-}
-```
-
-### Inside Conditions
-We also support type specialization _within_ the condition, taking into account that `&&` and `||` are short-circuiting:
-```scala
-val s: String|Null
-if (s != null && s.length > 0) { // s: String in `s.length > 0`
-  // s: String
-}
-
-if (s == null || s.length > 0) // s: String in `s.length > 0` {
-  // s: String|Null
-} else {
-  // s: String|Null
-}
-```
-
-### Unsupported Idioms
-We don't support
-  - reasoning about non-stable paths
-  - flow facts not related to nullability (`if (x == 0) { // x: 0.type not inferred }`)
-  - tracking aliasing between non-nullable paths
-    ```scala
-    val s: String|Null = ???
-    val s2: String|Null = ???
-    if (s != null && s == s2) {
-      // s:  String inferred
-      // s2: String not inferred
-    }
-    ```
