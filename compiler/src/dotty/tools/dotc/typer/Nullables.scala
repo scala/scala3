@@ -106,7 +106,7 @@ object Nullables with
               setExcluded(xc.ifTrue | yc.ifTrue, xc.ifFalse & yc.ifFalse)
             else if tree.symbol == defn.Boolean_|| then
               setExcluded(xc.ifTrue & yc.ifTrue, xc.ifFalse | yc.ifFalse)
-        case Apply(Select(x, _), Nil) if tree.symbol == defn.Boolean_! =>
+        case Select(x, _) if tree.symbol == defn.Boolean_! =>
           val xc = x.condNotNullRefs
           if !xc.isEmpty then
             setExcluded(xc.ifFalse, xc.ifTrue)
