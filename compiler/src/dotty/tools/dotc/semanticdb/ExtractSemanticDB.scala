@@ -62,7 +62,7 @@ class ExtractSemanticDB extends Phase {
     private val unicodeEscape = raw"\$$u(\p{XDigit}{4})".r
 
     /** Add semanticdb name of the given symbol to string builder */
-    private def addSymName(b: StringBuilder, sym: Symbol, inOwner: Boolean = false)(given ctx: Context): Unit =
+    private def addSymName(b: StringBuilder, sym: Symbol)(given ctx: Context): Unit =
 
       def isJavaIdent(str: String) =
         isJavaIdentifierStart(str.head) && str.tail.forall(isJavaIdentifierPart)
@@ -84,7 +84,7 @@ class ExtractSemanticDB extends Phase {
         || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && isGlobal(sym.owner)
 
       def addOwner(owner: Symbol): Unit =
-        if !owner.isRoot then addSymName(b, owner, inOwner = true)
+        if !owner.isRoot then addSymName(b, owner)
 
       def addOverloadIdx(sym: Symbol): Unit =
         val decls = {
@@ -109,7 +109,11 @@ class ExtractSemanticDB extends Phase {
         else if sym.is(Param) then
           b.append('('); addName(sym.name); b.append(')')
         else
-          if (sym.isPackageObject) then
+          if sym.isRoot then
+            b.append("_root_")
+          else if sym.isEmptyPackage then
+            b.append("_empty_")
+          else if (sym.isPackageObject) then
             b.append("package")
           else
             addName(sym.name)
@@ -136,11 +140,7 @@ class ExtractSemanticDB extends Phase {
         locals.getOrElseUpdate(sym, computeLocalIdx())
 
       if sym.exists then
-        if sym.isRoot then
-          b.append(if !inOwner then "_root_" else "_root_.")
-        else if sym.isEmptyPackage then
-          b.append(if !inOwner then "_empty_" else "_empty_.")
-        else if isGlobal(sym) then
+        if isGlobal(sym) then
           addOwner(sym.owner); addDescriptor(sym)
         else
           b.append("local").append(localIdx(sym))
