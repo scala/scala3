@@ -24,6 +24,7 @@ import ErrorReporting.errorTree
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
 import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, SourceFile, SourcePosition}
 import dotty.tools.dotc.parsing.Parsers.Parser
+import Nullables.given
 
 import collection.mutable
 import reporting.trace
@@ -1064,10 +1065,18 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             errorTree(tree, em"""cannot reduce inline if
                                 | its condition   ${tree.cond}
                                 | is not a constant value""")
-          else {
+          else
+            // Recompute nullablity info. This is needed because inlined code could have come
+            // from Tasty where no nullability info is kept.
+            val addNullable = new TreeTraverser {
+              def traverse(tree: Tree)(implicit ctx: Context) =
+                traverseChildren(tree)
+                tree.computeNullable
+            }
+            addNullable.traverse(cond1)
+            
             val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
             super.typedIf(if1, pt)
-          }
       }
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree =
