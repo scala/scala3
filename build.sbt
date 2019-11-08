@@ -23,7 +23,7 @@ val `dist-bootstrapped` = Build.`dist-bootstrapped`
 val `community-build` = Build.`community-build`
 
 val sjsSandbox = Build.sjsSandbox
-val sjsJUnitTests = Build.sjsJUnitTests
+//val sjsJUnitTests = Build.sjsJUnitTests
 
 val `sbt-dotty` = Build.`sbt-dotty`
 val `vscode-dotty` = Build.`vscode-dotty`
