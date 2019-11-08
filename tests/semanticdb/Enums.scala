@@ -1,9 +1,10 @@
-object Enums {
-  enum Colour {
-    case Red, Green, Blue
-  }
+object Enums with
+  import =:=._
 
-  enum WeekDays {
+  enum Colour with
+    case Red, Green, Blue
+
+  enum WeekDays with
     case Monday
     case Tuesday
     case Wednesday
@@ -11,29 +12,23 @@ object Enums {
     case Friday
     case Saturday
     case Sunday
-  }
 
-  enum Maybe[+A] {
+  enum Maybe[+A] with
     case Just(value: A)
     case None
-  }
 
-  enum Tag[A] {
+  enum Tag[A] with
     case IntTag extends Tag[Int]
     case BooleanTag extends Tag[Boolean]
-  }
 
-  enum =:=[A, B] {
+  enum =:=[A, B] with
     case Refl[C]() extends (C =:= C)
-  }
 
-  def unwrap[A,B](opt: Option[A])(given ev: A =:= Option[B]): Option[B] = {
-    ev match {
-      case =:=.Refl() => opt.flatMap(identity[Option[B]])
-    }
-  }
+  def unwrap[A,B](opt: Option[A])(given ev: A =:= Option[B]): Option[B] = ev match
+    case Refl() => opt.flatMap(identity[Option[B]])
+    case _      => None // TODO remove after https://github.com/lampepfl/dotty/issues/7524 is fixed
 
-  enum Planet(mass: Double, radius: Double) extends java.lang.Enum[Planet] {
+  enum Planet(mass: Double, radius: Double) extends java.lang.Enum[Planet] with
     private final val G = 6.67300E-11
     def surfaceGravity = G * mass / (radius * radius)
     def surfaceWeight(otherMass: Double) = otherMass * surfaceGravity
@@ -46,5 +41,3 @@ object Enums {
     case Saturn  extends Planet(5.688e+26, 6.0268e7)
     case Uranus  extends Planet(8.686e+25, 2.5559e7)
     case Neptune extends Planet(1.024e+26, 2.4746e7)
-  }
-}

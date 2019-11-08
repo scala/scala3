@@ -1,5 +1,7 @@
 package example
 
+import scala.language.implicitConversions
+
 class Synthetic {
   List(1).map(_ + 2)
   Array.empty[Int].headOption
@@ -7,11 +9,11 @@ class Synthetic {
 
   // See https://github.com/scalameta/scalameta/issues/977
   val Name = "name:(.*)".r
-  val x #:: xs = Stream(1, 2)
+  val x #:: xs = LazyList(1, 2)
   val Name(name) = "name:foo"
-  1 #:: 2 #:: Stream.empty
+  1 #:: 2 #:: LazyList.empty
 
-  val lst = 1 #:: 2 #:: Stream.empty
+  val lst = 1 #:: 2 #:: LazyList.empty
 
   for (x <- 1 to 10; y <- 0 until 10) println(x -> x)
   for (i <- 1 to 10; j <- 0 until 10) yield (i, j)

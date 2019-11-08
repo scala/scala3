@@ -3,12 +3,10 @@ package example
 import scala.language.implicitConversions
 
 class ImplicitConversion {
+  import ImplicitConversion._
   implicit def string2Number(
       string: String
   ): Int = 42
-  implicit def newAny2StringAdd[T](
-      any: T
-  ): Predef.any2stringadd[T] = new Predef.any2stringadd(any)
   val message = ""
   val number = 42
   val tuple = (1, 2)
@@ -30,4 +28,10 @@ class ImplicitConversion {
 
   val a: Int = char
   val b: Long = char
+}
+
+object ImplicitConversion {
+  implicit final class newAny2stringadd[A](private val self: A) extends AnyVal {
+    def +(other: String): String = String.valueOf(self) + other
+  }
 }

@@ -3,12 +3,10 @@ package example
 import scala.language/*=>>scalaShadowing.language.*/.implicitConversions/*=>>scalaShadowing.language.implicitConversions.*/
 
 class ImplicitConversion/*<<=example.ImplicitConversion#*/ {
+  import ImplicitConversion._
   implicit def string2Number/*<<=example.ImplicitConversion#string2Number().*/(
       string/*<<=example.ImplicitConversion#string2Number().(string)*/: String/*=>>scala.Predef.String#*/
   ): Int/*=>>scala.Int#*/ = 42
-  implicit def newAny2StringAdd/*<<=example.ImplicitConversion#newAny2StringAdd().*/[T/*<<=example.ImplicitConversion#newAny2StringAdd().[T]*/](
-      any/*<<=example.ImplicitConversion#newAny2StringAdd().(any)*/: T/*=>>example.ImplicitConversion#newAny2StringAdd().[T]*/
-  ): Predef/*=>>scala.Predef.*/.any2stringadd/*=>>scala.Predef.any2stringadd#*/[T/*=>>example.ImplicitConversion#newAny2StringAdd().[T]*/] = new Predef/*=>>scala.Predef.*/.any2stringadd/*=>>scala.Predef.any2stringadd#`<init>`().*/(any/*=>>example.ImplicitConversion#newAny2StringAdd().(any)*/)
   val message/*<<=example.ImplicitConversion#message.*/ = ""
   val number/*<<=example.ImplicitConversion#number.*/ = 42
   val tuple/*<<=example.ImplicitConversion#tuple.*/ = (1, 2)
@@ -17,7 +15,7 @@ class ImplicitConversion/*<<=example.ImplicitConversion#*/ {
   // extension methods
   /*=>>scala.Predef.augmentString().*/message/*=>>example.ImplicitConversion#message.*/
     .stripSuffix/*=>>scala.collection.StringOps#stripSuffix().*/("h")
-  /*=>>example.ImplicitConversion#newAny2StringAdd().*/tuple/*=>>example.ImplicitConversion#tuple.*/ +/*=>>scala.Predef.any2stringadd#`+`().*/ "Hello"
+  tuple/*=>>example.ImplicitConversion#tuple.*/ +/*=>>example.ImplicitConversion.newAny2stringadd#`+`().*/ "Hello"
 
   // implicit conversions
   val x/*<<=example.ImplicitConversion#x.*/: Int/*=>>scala.Int#*/ = /*=>>example.ImplicitConversion#string2Number().*/message/*=>>example.ImplicitConversion#message.*/
@@ -30,4 +28,10 @@ class ImplicitConversion/*<<=example.ImplicitConversion#*/ {
 
   val a/*<<=example.ImplicitConversion#a.*/: Int/*=>>scala.Int#*/ = /*=>>scala.Char.char2int().*/char/*=>>example.ImplicitConversion#char.*/
   val b/*<<=example.ImplicitConversion#b.*/: Long/*=>>scala.Long#*/ = /*=>>scala.Char.char2long().*/char/*=>>example.ImplicitConversion#char.*/
+}
+
+object ImplicitConversion/*<<=example.ImplicitConversion.*/ {
+  implicit final class newAny2stringadd/*<<=example.ImplicitConversion.newAny2stringadd#*/[A/*<<=example.ImplicitConversion.newAny2stringadd#[A]*/](private val self/*<<=example.ImplicitConversion.newAny2stringadd#self.*/: A/*=>>example.ImplicitConversion.newAny2stringadd#`<init>`().[A]*/) extends AnyVal/*=>>scala.AnyVal#*//*=>>scala.AnyVal#`<init>`().*/ {
+    def +/*<<=example.ImplicitConversion.newAny2stringadd#`+`().*/(other/*<<=example.ImplicitConversion.newAny2stringadd#`+`().(other)*/: String/*=>>scala.Predef.String#*/): String/*=>>scala.Predef.String#*/ = String/*=>>java.lang.String#*/.valueOf/*=>>java.lang.String#valueOf().*/(self/*=>>example.ImplicitConversion.newAny2stringadd#self.*/) +/*=>>java.lang.String#`+`().*/ other/*=>>example.ImplicitConversion.newAny2stringadd#`+`().(other)*/
+  }
 }

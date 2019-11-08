@@ -7,17 +7,20 @@ import java.nio.file._
 import java.nio.charset.StandardCharsets
 import java.util.stream.Collectors
 import scala.util.control.NonFatal
+import scala.jdk.CollectionConverters._
+
 import org.junit.Assert._
 import org.junit.Test
 import org.junit.experimental.categories.Category
-import scala.collection.JavaConverters._
+
+import dotty.BootstrappedOnlyTests
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.semanticdb.DiffAssertions._
-
 
 @main def updateExpect() =
   new SemanticdbTests().runExpectTest(updateExpectFiles = true)
 
+@Category(Array(classOf[BootstrappedOnlyTests]))
 class SemanticdbTests {
   val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
   val expectFile = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
@@ -64,6 +67,8 @@ class SemanticdbTests {
     val args = Array(
       "-Ysemanticdb",
       "-d", target.toString,
+      "-feature",
+      "-deprecation",
       // "-Ydebug",
       // "-Xprint:extractSemanticDB",
       "-sourceroot", src.toString,

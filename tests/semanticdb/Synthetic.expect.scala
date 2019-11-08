@@ -1,5 +1,7 @@
 package example
 
+import scala.language/*=>>scalaShadowing.language.*/.implicitConversions/*=>>scalaShadowing.language.implicitConversions.*/
+
 class Synthetic/*<<=example.Synthetic#*/ {
   List/*=>>scala.package.List.*//*=>>scala.collection.IterableFactory#apply().*/(1).map/*=>>scala.collection.immutable.List#map().*/(_ +/*=>>scala.Int#`+`(+4).*/ 2)
   /*=>>scala.Predef.intArrayOps().*/Array/*=>>scala.Array.*/.empty/*=>>scala.Array.empty().*/[Int/*=>>scala.Int#*/]/*=>>scala.reflect.ClassTag.apply().*//*=>>java.lang.Integer#TYPE.*/.headOption/*=>>scala.collection.ArrayOps#headOption().*/
@@ -7,11 +9,11 @@ class Synthetic/*<<=example.Synthetic#*/ {
 
   // See https://github.com/scalameta/scalameta/issues/977
   val Name/*<<=example.Synthetic#Name.*/ = /*=>>scala.Predef.augmentString().*/"name:(.*)".r/*=>>scala.collection.StringOps#r().*/
-  /*=>>scala.Tuple2#_1.*//*=>>scala.Tuple2#_2.*/val x/*<<=example.Synthetic#x.*/ #:: xs/*<<=example.Synthetic#xs.*/ = Stream(1, 2)
+  /*=>>scala.Tuple2#_1.*//*=>>scala.Tuple2#_2.*/val x/*<<=example.Synthetic#x.*/ #:: xs/*<<=example.Synthetic#xs.*/ = LazyList(1, 2)
   val Name/*=>>example.Synthetic#Name.*//*=>>scala.util.matching.Regex#unapplySeq().*/(name/*<<=example.Synthetic#name.*//*<<=local0*/)/*=>>local0*/ = "name:foo"
-  1 #:: /*=>>scala.collection.immutable.Stream.toDeferrer().*/2 #:: /*=>>scala.collection.immutable.Stream.toDeferrer().*/Stream/*=>>scala.package.Stream.*/.empty/*=>>scala.collection.immutable.Stream.empty().*//*=>>scala.collection.immutable.Stream.Deferrer#`#::`().*/
+  1 #:: /*=>>scala.collection.immutable.LazyList.toDeferrer().*/2 #:: /*=>>scala.collection.immutable.LazyList.toDeferrer().*/LazyList/*=>>scala.package.LazyList.*/.empty/*=>>scala.collection.immutable.LazyList.empty().*//*=>>scala.collection.immutable.LazyList.Deferrer#`#::`().*/
 
-  val lst/*<<=example.Synthetic#lst.*/ = 1 #:: /*=>>scala.collection.immutable.Stream.toDeferrer().*/2 #:: /*=>>scala.collection.immutable.Stream.toDeferrer().*/Stream/*=>>scala.package.Stream.*/.empty/*=>>scala.collection.immutable.Stream.empty().*//*=>>scala.collection.immutable.Stream.Deferrer#`#::`().*/
+  val lst/*<<=example.Synthetic#lst.*/ = 1 #:: /*=>>scala.collection.immutable.LazyList.toDeferrer().*/2 #:: /*=>>scala.collection.immutable.LazyList.toDeferrer().*/LazyList/*=>>scala.package.LazyList.*/.empty/*=>>scala.collection.immutable.LazyList.empty().*//*=>>scala.collection.immutable.LazyList.Deferrer#`#::`().*/
 
   for (x <- /*=>>scala.LowPriorityImplicits#intWrapper().*/1 to/*=>>scala.runtime.RichInt#to().*/ 10/*=>>scala.collection.immutable.Range#foreach().*/; y <- /*=>>scala.LowPriorityImplicits#intWrapper().*/0 until/*=>>scala.runtime.RichInt#until().*/ 10/*=>>scala.collection.immutable.Range#foreach().*/) println/*=>>scala.Predef.println(+1).*/(x/*=>>local1*/ ->/*=>>scala.Predef.ArrowAssoc#`->`().*/ x/*=>>local1*/)
   for (i <- /*=>>scala.LowPriorityImplicits#intWrapper().*/1 to/*=>>scala.runtime.RichInt#to().*/ 10/*=>>scala.collection.StrictOptimizedIterableOps#flatMap().*/; j <- /*=>>scala.LowPriorityImplicits#intWrapper().*/0 until/*=>>scala.runtime.RichInt#until().*/ 10/*=>>scala.collection.immutable.Range#map().*/) yield (i/*=>>local2*/, j/*=>>local3*/)

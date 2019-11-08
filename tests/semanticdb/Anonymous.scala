@@ -16,5 +16,5 @@ class Anonymous {
   }
 
   trait Foo
-  new Foo {}
+  val foo = new Foo {}
 }
