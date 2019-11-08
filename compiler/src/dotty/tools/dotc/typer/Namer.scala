@@ -559,7 +559,9 @@ class Namer { typer: Typer =>
     case _ => ()
   }
 
-  /** Create top-level symbols for statements and enter them into symbol table */
+  /** Create top-level symbols for statements and enter them into symbol table
+   *  @return A context that reflects all imports in `stats`.
+   */
   def index(stats: List[Tree])(implicit ctx: Context): Context = {
 
     // module name -> (stat, moduleCls | moduleVal)

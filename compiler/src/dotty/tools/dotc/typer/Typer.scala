@@ -754,13 +754,14 @@ class Typer extends Namer
         }
     }
 
-  def typedBlockStats(stats: List[untpd.Tree])(implicit ctx: Context): (Context, List[tpd.Tree]) =
-    (index(stats), typedStats(stats, ctx.owner))
+  def typedBlockStats(stats: List[untpd.Tree])(implicit ctx: Context): (List[tpd.Tree], Context) =
+    index(stats)
+    typedStats(stats, ctx.owner)
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context): Tree = {
     val localCtx = ctx.retractMode(Mode.Pattern)
-    val (exprCtx, stats1) = typedBlockStats(tree.stats)(given localCtx)
-    val expr1 = typedExpr(tree.expr, pt.dropIfProto)(exprCtx)
+    val (stats1, exprCtx) = typedBlockStats(tree.stats)(given localCtx)
+    val expr1 = typedExpr(tree.expr, pt.dropIfProto)(given exprCtx)
     ensureNoLocalRefs(
       cpy.Block(tree)(stats1, expr1).withType(expr1.tpe), pt, localSyms(stats1))
   }
@@ -1291,7 +1292,7 @@ class Typer extends Namer
   }
 
   def typedInlined(tree: untpd.Inlined, pt: Type)(implicit ctx: Context): Tree = {
-    val (exprCtx, bindings1) = typedBlockStats(tree.bindings)
+    val (bindings1, exprCtx) = typedBlockStats(tree.bindings)
     val expansion1 = typed(tree.expansion, pt)(inlineContext(tree.call)(exprCtx))
     assignType(cpy.Inlined(tree)(tree.call, bindings1.asInstanceOf[List[MemberDef]], expansion1),
         bindings1, expansion1)
@@ -1728,7 +1729,7 @@ class Typer extends Namer
     else {
       val dummy = localDummy(cls, impl)
       val body1 = addAccessorDefs(cls,
-        typedStats(impl.body, dummy)(ctx.inClassContext(self1.symbol)))
+        typedStats(impl.body, dummy)(ctx.inClassContext(self1.symbol))._1)
 
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
@@ -1848,9 +1849,9 @@ class Typer extends Namer
       case pid1: RefTree if pkg.exists =>
         if (!pkg.is(Package)) ctx.error(PackageNameAlreadyDefined(pkg), tree.sourcePos)
         val packageCtx = ctx.packageContext(tree, pkg)
-        var stats1 = typedStats(tree.stats, pkg.moduleClass)(packageCtx)
+        var stats1 = typedStats(tree.stats, pkg.moduleClass)(packageCtx)._1
         if (!ctx.isAfterTyper)
-          stats1 = stats1 ++ typedBlockStats(MainProxies.mainProxies(stats1))(packageCtx)._2
+          stats1 = stats1 ++ typedBlockStats(MainProxies.mainProxies(stats1))(packageCtx)._1
         cpy.PackageDef(tree)(pid1, stats1).withType(pkg.termRef)
       case _ =>
         // Package will not exist if a duplicate type has already been entered, see `tests/neg/1708.scala`
@@ -2167,11 +2168,11 @@ class Typer extends Namer
   def typedTrees(trees: List[untpd.Tree])(implicit ctx: Context): List[Tree] =
     trees mapconserve (typed(_))
 
-  def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
+  def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): (List[Tree], Context) = {
     val buf = new mutable.ListBuffer[Tree]
     val enumContexts = new mutable.HashMap[Symbol, Context]
       // A map from `enum` symbols to the contexts enclosing their definitions
-    @tailrec def traverse(stats: List[untpd.Tree])(implicit ctx: Context): List[Tree] = stats match {
+    @tailrec def traverse(stats: List[untpd.Tree])(implicit ctx: Context): (List[Tree], Context) = stats match {
       case (imp: untpd.Import) :: rest =>
         val imp1 = typed(imp)
         buf += imp1
@@ -2208,7 +2209,7 @@ class Typer extends Namer
         buf += stat1
         traverse(rest)
       case nil =>
-        buf.toList
+        (buf.toList, ctx)
     }
     val localCtx = {
       val exprOwnerOpt = if (exprOwner == ctx.owner) None else Some(exprOwner)
@@ -2225,9 +2226,10 @@ class Typer extends Namer
       case _ =>
         stat
     }
-    val stats1 = traverse(stats)(localCtx).mapConserve(finalize)
+    val (stats0, finalCtx) = traverse(stats)(localCtx)
+    val stats1 = stats0.mapConserve(finalize)
     if (ctx.owner == exprOwner) checkNoAlphaConflict(stats1)
-    stats1
+    (stats1, finalCtx)
   }
 
   /** Given an inline method `mdef`, the method rewritten so that its body
