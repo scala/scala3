@@ -4,7 +4,7 @@ package ast
 
 import core._
 import Flags._, Trees._, Types._, Contexts._
-import Names._, StdNames._, NameOps._, Symbols._
+import Names._, StdNames._, NameOps._, Symbols._, Constants._
 import typer.ConstFold
 import reporting.trace
 import dotty.tools.dotc.transform.SymUtils._
@@ -647,6 +647,31 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
     acc(Nil, tree)
   }
+
+  /** An extractor for null comparisons */
+  object CompareNull with
+
+    /** Matches one of
+     *
+     *    tree == null, tree eq null, null == tree, null eq tree
+     *    tree != null, tree ne null, null != tree, null ne tree
+     *
+     *  The second boolean result is true for equality tests, false for inequality tests
+     */
+    def unapply(tree: Tree)(given Context): Option[(Tree, Boolean)] = tree match
+      case Apply(Select(l, _), Literal(Constant(null)) :: Nil) =>
+        testSym(tree.symbol, l)
+      case Apply(Select(Literal(Constant(null)), _), r :: Nil) =>
+        testSym(tree.symbol, r)
+      case _ =>
+        None
+
+    private def testSym(sym: Symbol, operand: Tree)(given Context) =
+      if sym == defn.Any_== || sym == defn.Object_eq then Some((operand, true))
+      else if sym == defn.Any_!= || sym == defn.Object_ne then Some((operand, false))
+      else None
+
+  end CompareNull
 
   /** Is this pattern node a catch-all or type-test pattern? */
   def isCatchCase(cdef: CaseDef)(implicit ctx: Context): Boolean = cdef match {

@@ -40,6 +40,7 @@ import dotty.tools.dotc.transform.{PCPCheckAndHeal, Staging, TreeMapWithStages}
 import transform.SymUtils._
 import transform.TypeUtils._
 import reporting.trace
+import Nullables.given
 
 object Typer {
 
@@ -78,8 +79,6 @@ object Typer {
    */
   private[typer] val HiddenSearchFailure = new Property.Key[SearchFailure]
 }
-
-
 class Typer extends Namer
                with TypeAssigner
                with Applications
@@ -634,6 +633,7 @@ class Typer extends Namer
         else if (isWildcard) tree.expr.withType(tpt.tpe)
         else typed(tree.expr, tpt.tpe.widenSkolem)
       assignType(cpy.Typed(tree)(expr1, tpt), underlyingTreeTpe)
+        .withNotNullRefs(expr1.notNullRefs)
     }
 
     if (untpd.isWildcardStarArg(tree)) {
@@ -763,7 +763,10 @@ class Typer extends Namer
     val (stats1, exprCtx) = typedBlockStats(tree.stats)(given localCtx)
     val expr1 = typedExpr(tree.expr, pt.dropIfProto)(given exprCtx)
     ensureNoLocalRefs(
-      cpy.Block(tree)(stats1, expr1).withType(expr1.tpe), pt, localSyms(stats1))
+      cpy.Block(tree)(stats1, expr1)
+        .withType(expr1.tpe)
+        .withNotNullRefs(stats1.foldLeft(expr1.notNullRefs)(_ | _.notNullRefs)),
+      pt, localSyms(stats1))
   }
 
   def escapingRefs(block: Tree, localSyms: => List[Symbol])(implicit ctx: Context): collection.Set[NamedType] = {
@@ -804,21 +807,30 @@ class Typer extends Namer
     }
   }
 
-  def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = {
-    if (tree.isInline) checkInInlineContext("inline if", tree.posd)
+  def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree =
+    if tree.isInline then checkInInlineContext("inline if", tree.posd)
     val cond1 = typed(tree.cond, defn.BooleanType)
 
-    if (tree.elsep.isEmpty) {
-      val thenp1 = typed(tree.thenp, defn.UnitType)
-      val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
-      cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
-    }
-    else {
-      val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt)(
-        (tree.thenp :: tree.elsep :: Nil).map(typed(_, pt.dropIfProto)))
-      assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
-    }
-  }
+    val result =
+      if tree.elsep.isEmpty then
+        val thenp1 = typed(tree.thenp, defn.UnitType)(given cond1.nullableContext(true))
+        val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
+        cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
+      else
+        val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
+          val thenp0 = typed(tree.thenp, pt.dropIfProto)(given cond1.nullableContext(true))
+          val elsep0 = typed(tree.elsep, pt.dropIfProto)(given cond1.nullableContext(false))
+          thenp0 :: elsep0 :: Nil
+        }
+        assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
+
+    if result.thenp.tpe.isRef(defn.NothingClass) then
+      result.withNotNullRefs(cond1.condNotNullRefs.ifFalse)
+    else if result.elsep.tpe.isRef(defn.NothingClass) then
+      result.withNotNullRefs(cond1.condNotNullRefs.ifTrue)
+    else
+      result
+  end typedIf
 
   /** Decompose function prototype into a list of parameter prototypes and a result prototype
    *  tree, using WildcardTypes where a type is not known.
@@ -1242,8 +1254,9 @@ class Typer extends Namer
     val cond1 =
       if (tree.cond eq EmptyTree) EmptyTree
       else typed(tree.cond, defn.BooleanType)
-    val body1 = typed(tree.body, defn.UnitType)
+    val body1 = typed(tree.body, defn.UnitType)(given cond1.nullableContext(true))
     assignType(cpy.WhileDo(tree)(cond1, body1))
+      .withNotNullRefs(cond1.condNotNullRefs.ifFalse)
   }
 
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = {
@@ -1531,6 +1544,16 @@ class Typer extends Namer
     typed(annot, defn.AnnotationClass.typeRef)
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): Tree = {
+    sym.infoOrCompleter match
+      case completer: Namer#Completer
+      if completer.creationContext.notNullRefs ne ctx.notNullRefs =>
+        // The RHS of a val def should know about not null facts established
+        // in preceding statements (unless the ValDef is completed ahead of time,
+        // then it is impossible).
+        vdef.symbol.info = Completer(completer.original)(
+          given completer.creationContext.withNotNullRefs(ctx.notNullRefs))
+      case _ =>
+
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
@@ -2171,6 +2194,7 @@ class Typer extends Namer
   def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): (List[Tree], Context) = {
     val buf = new mutable.ListBuffer[Tree]
     val enumContexts = new mutable.HashMap[Symbol, Context]
+    val initialNotNullRefs = ctx.notNullRefs
       // A map from `enum` symbols to the contexts enclosing their definitions
     @tailrec def traverse(stats: List[untpd.Tree])(implicit ctx: Context): (List[Tree], Context) = stats match {
       case (imp: untpd.Import) :: rest =>
@@ -2182,7 +2206,14 @@ class Typer extends Namer
           case Some(xtree) =>
             traverse(xtree :: rest)
           case none =>
-            typed(mdef) match {
+            val defCtx = mdef match
+              // Keep preceding not null facts in the current context only if `mdef`
+              // cannot be executed out-of-sequence.
+              case _: ValDef if !mdef.mods.is(Lazy) && ctx.owner.isTerm =>
+                ctx // all preceding statements will have been executed in this case
+              case _ =>
+                ctx.withNotNullRefs(initialNotNullRefs)
+            typed(mdef)(given defCtx) match {
               case mdef1: DefDef if !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
                 buf += inlineExpansion(mdef1)
                   // replace body with expansion, because it will be used as inlined body
@@ -2207,7 +2238,7 @@ class Typer extends Namer
         val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
         checkStatementPurity(stat1)(stat, exprOwner)
         buf += stat1
-        traverse(rest)
+        traverse(rest)(given stat1.nullableContext)
       case nil =>
         (buf.toList, ctx)
     }
