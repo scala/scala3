@@ -59,8 +59,6 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   override def path: String = file.path
   override def jfile: Optional[JFile] = Optional.ofNullable(file.file)
 
-  def pathName: PathName = file.absolutePath.toTermName
-
   override def equals(that: Any): Boolean =
     (this `eq` that.asInstanceOf[AnyRef]) || {
       that match {
