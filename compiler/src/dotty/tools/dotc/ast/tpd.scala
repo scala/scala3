@@ -711,11 +711,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   class TimeTravellingTreeCopier extends TypedTreeCopier {
     override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply =
-      ta.assignType(untpdCpy.Apply(tree)(fun, args), fun, args)
+      tree match
+        case tree: Apply
+        if (tree.fun eq fun) && (tree.args eq args)
+           && tree.tpe.isInstanceOf[ConstantType]
+           && isPureExpr(tree) => tree
+        case _ =>
+          ta.assignType(untpdCpy.Apply(tree)(fun, args), fun, args)
       // Note: Reassigning the original type if `fun` and `args` have the same types as before
-      // does not work here: The computed type depends on the widened function type, not
-      // the function type itself. A treetransform may keep the function type the
+      // does not work here in general: The computed type depends on the widened function type, not
+      // the function type itself. A tree transform may keep the function type the
       // same but its widened type might change.
+      // However, we keep constant types of pure expressions. This uses the underlying assumptions
+      // that pure functions yielding a constant will not change in later phases.
 
     override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
       ta.assignType(untpdCpy.TypeApply(tree)(fun, args), fun, args)
