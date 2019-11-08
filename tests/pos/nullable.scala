@@ -39,5 +39,5 @@ def test: Unit =
   if !(x3 != null) then throw AssertionError()
   if x3 == null then impossible(new T{})
 
-  //assert(x4 != null)
-  //if x4 == null then impossible(new T{})
+  assert(x4 != null)
+  if x4 == null then impossible(new T{})
