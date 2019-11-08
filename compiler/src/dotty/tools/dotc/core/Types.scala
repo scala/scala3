@@ -7,6 +7,7 @@ import Symbols._
 import Flags._
 import Names._
 import StdNames._, NameOps._
+import NullOpsDecorator._
 import NameKinds.SkolemName
 import Scopes._
 import Constants._
@@ -270,17 +271,6 @@ object Types {
           false
       }
       loop(this)
-    }
-
-    /** Is this type guaranteed not to have `null` as a value? */
-    final def isNotNull(implicit ctx: Context): Boolean = this match {
-      case tp: ConstantType => tp.value.value != null
-      case tp: ClassInfo => !tp.cls.isNullableClass && tp.cls != defn.NothingClass
-      case tp: TypeBounds => tp.lo.isNotNull
-      case tp: TypeProxy => tp.underlying.isNotNull
-      case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
-      case OrType(tp1, tp2) => tp1.isNotNull && tp2.isNotNull
-      case _ => false
     }
 
     /** Is this type produced as a repair for an error? */
@@ -598,11 +588,20 @@ object Types {
         case AndType(l, r) =>
           goAnd(l, r)
         case tp: OrType =>
-          // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
-          // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
-          // lots of places. The present strategy is instead of widen `tp` using `join` to be a
-          // supertype of `pre`.
-          go(tp.join)
+          if (ctx.explicitNulls && tp.isJavaNullableUnion) {
+            // Selecting `name` from a type `T|JavaNull` is like selecting `name` from `T`.
+            // This can throw at runtime, but we trade soundness for usability.
+            // We need to strip `JavaNull` from both the type and the prefix so that
+            // `pre <: tp` continues to hold.
+            tp.stripJavaNull.findMember(name, pre.stripJavaNull, required, excluded)
+          }
+          else {
+            // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
+            // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
+            // lots of places. The present strategy is instead of widen `tp` using `join` to be a
+            // supertype of `pre`.
+            go(tp.join)
+          }
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, required, excluded)
         case err: ErrorType =>
@@ -1066,21 +1065,60 @@ object Types {
   	 *
      *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
      *  instead of `ArrayBuffer[? >: Int | A <: Int & A]`
+     *
+     *  Exception (if `-YexplicitNulls` is set): if this type is a nullable union (i.e. of the form `T | Null`),
+     *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
-    def widenUnion(implicit ctx: Context): Type = widen match {
-      case OrType(tp1, tp2) =>
-        ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
-          case union: OrType => union.join
-          case res => res
-        }
-      case tp @ AndType(tp1, tp2) =>
-        tp derived_& (tp1.widenUnion, tp2.widenUnion)
-      case tp: RefinedType =>
-        tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
-      case tp: RecType =>
-        tp.rebind(tp.parent.widenUnion)
-      case tp =>
-        tp
+    def widenUnion(implicit ctx: Context): Type = {
+      widen match {
+        case tp @ OrType(lhs, rhs) =>
+          def defaultJoin(tp1: Type, tp2: Type) =
+            ctx.typeComparer.lub(tp1, tp2, canConstrain = true) match {
+              case union: OrType => union.join
+              case res => res
+            }
+
+          // Given a type `tpe`, if it is already a nullable union, return it unchanged.
+          // Otherwise, construct a nullable union where `tpe` is the lhs (use `orig` to
+          // potentially avoid creating a new object for the union).
+          def ensureNullableUnion(tpe: Type, orig: OrType): Type = tpe match {
+            case orTpe: OrType if orTpe.tp2.isNullType => tpe
+            case _ => orig.derivedOrType(tpe, defn.NullType)
+          }
+
+          // Test for nullable union that assumes the type has already been normalized.
+          def isNullableUnionFast(tp: Type): Boolean = tp match {
+            case orTpe: OrType if orTpe.tp2.isNullType => true
+            case _ => false
+          }
+
+          if (ctx.explicitNulls) {
+            // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
+            // This part relies on the postcondition of widenUnion: the result is either a
+            // non-union type, or a nullable union type where the rhs is `Null` type.
+            if (rhs.isNullType) ensureNullableUnion(lhs.widenUnion, tp)
+            else if (lhs.isNullType) ensureNullableUnion(rhs.widenUnion, tp)
+            else {
+              val lhsWiden = lhs.widenUnion
+              val rhsWiden = rhs.widenUnion
+              val tmpRes = defaultJoin(lhs.widenUnion, rhs.widenUnion)
+              if (isNullableUnionFast(lhsWiden) || isNullableUnionFast(rhsWiden))
+                // If either lhs or rhs is a nullable union,
+                // we need to ensure the result is also a nullable union.
+                ensureNullableUnion(tmpRes, tp)
+              else tmpRes
+            }
+          }
+          else defaultJoin(lhs.widenUnion, rhs.widenUnion)
+        case tp @ AndType(tp1, tp2) =>
+          tp derived_& (tp1.widenUnion, tp2.widenUnion)
+        case tp: RefinedType =>
+          tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
+        case tp: RecType =>
+          tp.rebind(tp.parent.widenUnion)
+        case tp =>
+          tp
+      }
     }
 
     /** Widen all top-level singletons reachable by dealiasing
@@ -1886,18 +1924,18 @@ object Types {
       else computeDenot
     }
 
-    private def computeDenot(implicit ctx: Context): Denotation = {
+    protected def finish(d: Denotation)(implicit ctx: Context): Denotation = {
+      if (d.exists)
+        // Avoid storing NoDenotations in the cache - we will not be able to recover from
+        // them. The situation might arise that a type has NoDenotation in some later
+        // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
+        // is undefined after erasure.) We need to be able to do time travel back and
+        // forth also in these cases.
+        setDenot(d)
+      d
+    }
 
-      def finish(d: Denotation) = {
-        if (d.exists)
-          // Avoid storing NoDenotations in the cache - we will not be able to recover from
-          // them. The situation might arise that a type has NoDenotation in some later
-          // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
-          // is undefined after erasure.) We need to be able to do time travel back and
-          // forth also in these cases.
-          setDenot(d)
-        d
-      }
+    private def computeDenot(implicit ctx: Context): Denotation = {
 
       def fromDesignator = designator match {
         case name: Name =>
@@ -2197,7 +2235,7 @@ object Types {
 
     /** A reference like this one, but with the given symbol, if it exists */
     final def withSym(sym: Symbol)(implicit ctx: Context): ThisType =
-      if ((designator ne sym) && sym.exists) NamedType(prefix, sym).asInstanceOf[ThisType]
+      if ((designator ne sym) && sym.exists) newLikeThis(prefix, sym).asInstanceOf[ThisType]
       else this
 
     /** A reference like this one, but with the given denotation, if it exists.
@@ -2244,10 +2282,10 @@ object Types {
           d = disambiguate(d,
                 if (lastSymbol.signature == Signature.NotAMethod) Signature.NotAMethod
                 else lastSymbol.asSeenFrom(prefix).signature)
-        NamedType(prefix, name, d)
+        newLikeThis(prefix, name, d)
       }
       if (prefix eq this.prefix) this
-      else if (lastDenotation == null) NamedType(prefix, designator)
+      else if (lastDenotation == null) newLikeThis(prefix, designator)
       else designator match {
         case sym: Symbol =>
           if (infoDependsOnPrefix(sym, prefix) && !prefix.isArgPrefixOf(sym)) {
@@ -2256,10 +2294,10 @@ object Types {
               // A false override happens if we rebind an inner class to another type with the same name
               // in an outer subclass. This is wrong, since classes do not override. We need to
               // return a type with the existing class info as seen from the new prefix instead.
-            if (falseOverride) NamedType(prefix, sym.name, denot.asSeenFrom(prefix))
+            if (falseOverride) newLikeThis(prefix, sym.name, denot.asSeenFrom(prefix))
             else candidate
           }
-          else NamedType(prefix, sym)
+          else newLikeThis(prefix, sym)
         case name: Name => reload()
       }
     }
@@ -2282,6 +2320,12 @@ object Types {
     }
 
     override def eql(that: Type): Boolean = this eq that // safe because named types are hash-consed separately
+
+    protected def newLikeThis(prefix: Type, designator: Designator)(implicit ctx: Context): NamedType =
+      NamedType(prefix, designator)
+
+    protected def newLikeThis(prefix: Type, designator: Name, denot: Denotation)(implicit ctx: Context): NamedType =
+      NamedType(prefix, designator, denot)
   }
 
   /** A reference to an implicit definition. This can be either a TermRef or a
@@ -2298,7 +2342,7 @@ object Types {
                               private var myDesignator: Designator)
     extends NamedType with SingletonType with ImplicitRef {
 
-    type ThisType = TermRef
+    type ThisType >: this.type <: TermRef
     type ThisName = TermName
 
     override def designator: Designator = myDesignator
@@ -2353,6 +2397,34 @@ object Types {
     myHash = hc
   }
 
+  /** A `TermRef` that, through flow-sensitive type inference, we know is non-null.
+   *  Accordingly, the `info` in its denotation won't be of the form `T|Null`.
+   *
+   *  This class is cached differently from regular `TermRef`s. Regular `TermRef`s use the
+   *  `uniqueNameTypes` map in the context, while these non-null `TermRef`s use
+   *  the generic `uniques` map. This is so that regular `TermRef`s can continue to use
+   *  a "fast path", since non-null `TermRef`s are not very common.
+   */
+  final class NonNullTermRef(prefix: Type, designator: Designator) extends TermRef(prefix, designator) {
+    override type ThisType = NonNullTermRef
+
+    override protected def finish(d: Denotation)(implicit ctx: Context): Denotation =
+      // If the denotation is computed for the first time, or if it's ever updated, make sure
+      // that the `info` is non-null.
+      super.finish(d.mapInfo(_.stripNull))
+
+    override protected def newLikeThis(prefix: Type, designator: Designator)(implicit ctx: Context): NamedType =
+      NonNullTermRef(prefix, designator)
+
+    override protected def newLikeThis(prefix: Type, designator: Name, denot: Denotation)(implicit ctx: Context): NamedType =
+      NonNullTermRef(prefix, designator.asTermName, denot)
+
+    override def eql(that: Type): Boolean = that match {
+      case that: NonNullTermRef => (this.prefix eq that.prefix) && (this.designator eq that.designator)
+      case _ => false
+    }
+  }
+
   final class CachedTypeRef(prefix: Type, designator: Designator, hc: Int) extends TypeRef(prefix, designator) {
     assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol])
     myHash = hc
@@ -2384,9 +2456,11 @@ object Types {
       case sym: Symbol => sym.isType
       case name: Name => name.isTypeName
     }
+
     def apply(prefix: Type, designator: Designator)(implicit ctx: Context): NamedType =
       if (isType(designator)) TypeRef.apply(prefix, designator)
       else TermRef.apply(prefix, designator)
+
     def apply(prefix: Type, designator: Name, denot: Denotation)(implicit ctx: Context): NamedType =
       if (designator.isTermName) TermRef.apply(prefix, designator.asTermName, denot)
       else TypeRef.apply(prefix, designator.asTypeName, denot)
@@ -2402,6 +2476,23 @@ object Types {
      *  from the denotation's symbol if the latter exists, or else it is the given name.
      */
     def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef =
+      apply(prefix, designatorFor(prefix, name, denot)).withDenot(denot)
+  }
+
+  object NonNullTermRef {
+    // Notice these TermRefs are cached in a different map than the one used for
+    // regular TermRefs. The non-null TermRefs use the "slow" map, since they're less common.
+    // If we used the same map, then we'd end up replacing a regular TermRef by a non-null
+    // one with a different denotation.
+
+    /** Create a non-null term ref with the given designator. */
+    def apply(prefix: Type, desig: Designator)(implicit ctx: Context): NonNullTermRef =
+      unique(new NonNullTermRef(prefix, desig))
+
+    /** Create a non-null term ref with given initial denotation. The name of the reference is taken
+     *  from the denotation's symbol if the latter exists, or else it is the given name.
+     */
+    def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): NonNullTermRef =
       apply(prefix, designatorFor(prefix, name, denot)).withDenot(denot)
   }
 

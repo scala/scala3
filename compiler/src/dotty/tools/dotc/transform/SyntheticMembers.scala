@@ -14,6 +14,7 @@ import ValueClasses.isDerivedValueClass
 import SymUtils._
 import util.Property
 import config.Printers.derive
+import NullOpsDecorator._
 
 object SyntheticMembers {
 
@@ -187,7 +188,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val ioob = defn.IndexOutOfBoundsException.typeRef
       // Second constructor of ioob that takes a String argument
       def filterStringConstructor(s: Symbol): Boolean = s.info match {
-        case m: MethodType if s.isConstructor => m.paramInfos == List(defn.StringType)
+        case m: MethodType if s.isConstructor && m.paramInfos.size == 1 =>
+          val pinfo = if (ctx.explicitNulls) m.paramInfos.head.stripJavaNull else m.paramInfos.head
+          pinfo == defn.StringType
         case _ => false
       }
       val constructor = ioob.typeSymbol.info.decls.find(filterStringConstructor _).asTerm
