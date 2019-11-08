@@ -9,3 +9,6 @@ t802.scala
 
 # Matchtype
 i7087.scala
+
+# Nullability
+nullable.scala
