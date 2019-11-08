@@ -673,6 +673,17 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   end CompareNull
 
+  /** An extractor for comparisons between a path and null. */
+  object ComparePathNull with
+    def unapply(tree: Tree)(given Context): Option[(TermRef, Boolean)] =
+      CompareNull.unapply(tree) match
+        case some @ Some((x, testEqual)) =>
+          x.tpe match
+            case ref: TermRef if ref.isStable => Some((ref, testEqual))
+            case _ => None
+        case none => None
+  end ComparePathNull
+
   /** Is this pattern node a catch-all or type-test pattern? */
   def isCatchCase(cdef: CaseDef)(implicit ctx: Context): Boolean = cdef match {
     case CaseDef(Typed(Ident(nme.WILDCARD), tpt), EmptyTree, _) =>
