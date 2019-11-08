@@ -88,6 +88,12 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   /** If this is a block, its expression part */
   def stripBlock(tree: Tree): Tree = unsplice(tree) match {
     case Block(_, expr) => stripBlock(expr)
+    case Inlined(_, _, expr) => stripBlock(expr)
+    case _ => tree
+  }
+
+  def stripInlined(tree: Tree): Tree = unsplice(tree) match {
+    case Inlined(_, _, expr) => stripInlined(expr)
     case _ => tree
   }
 
