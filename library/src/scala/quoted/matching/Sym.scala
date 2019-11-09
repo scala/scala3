@@ -22,7 +22,7 @@ object Sym {
   def unapply[T](expr: Expr[T])(given qctx: QuoteContext): Option[Sym[T]] = {
     import qctx.tasty.{_, given}
     expr.unseal match {
-      case IsIdent(ref) =>
+      case ref: Ident =>
         val sym = ref.symbol
         Some(new Sym[T](sym.name, sym))
       case _ => None

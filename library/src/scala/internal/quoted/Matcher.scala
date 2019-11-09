@@ -131,14 +131,14 @@ private[quoted] object Matcher {
         (scrutinee, pattern) match {
 
           // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
-          case (IsTerm(scrutinee @ Typed(s, tpt1)), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
+          case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
               if patternHole.symbol == internal.Definitions_InternalQuoted_patternHole &&
                  s.tpe <:< tpt.tpe &&
                  tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
             matched(scrutinee.seal)
 
           // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
-          case (IsTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
+          case (scrutinee: Term, TypeApply(patternHole, tpt :: Nil))
               if patternHole.symbol == internal.Definitions_InternalQuoted_patternHole &&
                  scrutinee.tpe <:< tpt.tpe =>
             matched(scrutinee.seal)
@@ -162,7 +162,7 @@ private[quoted] object Matcher {
           case (Select(qual1, _), Select(qual2, _)) if scrutinee.symbol == pattern.symbol =>
             qual1 =?= qual2
 
-          case (IsRef(_), IsRef(_)) if scrutinee.symbol == pattern.symbol =>
+          case (_: Ref, _: Ref) if scrutinee.symbol == pattern.symbol =>
             matched
 
           case (Apply(fn1, args1), Apply(fn2, args2)) if fn1.symbol == fn2.symbol =>
@@ -209,7 +209,7 @@ private[quoted] object Matcher {
           case (Repeated(elems1, _), Repeated(elems2, _)) if elems1.size == elems2.size =>
             elems1 =?= elems2
 
-          case (IsTypeTree(scrutinee), IsTypeTree(pattern)) if scrutinee.tpe <:< pattern.tpe =>
+          case (scrutinee: TypeTree, pattern: TypeTree) if scrutinee.tpe <:< pattern.tpe =>
             matched
 
           case (Applied(tycon1, args1), Applied(tycon2, args2)) =>
@@ -306,7 +306,7 @@ private[quoted] object Matcher {
       *          `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
       */
     private def patternsMatches(scrutinee: Tree, pattern: Tree)(given Context, Env): (Env, Matching) = (scrutinee, pattern) match {
-      case (IsTerm(v1), Unapply(TypeApply(Select(patternHole @ Ident("patternHole"), "unapply"), List(tpt)), Nil, Nil))
+      case (v1: Term, Unapply(TypeApply(Select(patternHole @ Ident("patternHole"), "unapply"), List(tpt)), Nil, Nil))
         if patternHole.symbol.owner.fullName == "scala.runtime.quoted.Matcher$" =>
         (summon[Env], matched(v1.seal))
 
@@ -327,7 +327,7 @@ private[quoted] object Matcher {
       case (Typed(Ident("_"), tpt1), Typed(Ident("_"), tpt2)) =>
         (summon[Env], tpt1 =?= tpt2)
 
-      case (IsTerm(v1), IsTerm(v2)) =>
+      case (v1: Term, v2: Term) =>
         (summon[Env], v1 =?= v2)
 
       case _ =>
@@ -360,7 +360,7 @@ private[quoted] object Matcher {
     }
 
     private def isTypeBinding(tree: Tree): Boolean = tree match {
-      case IsTypeDef(tree) => hasBindAnnotation(tree.symbol)
+      case tree: TypeDef => hasBindAnnotation(tree.symbol)
       case _ => false
     }
   }

@@ -12,18 +12,19 @@ trait TreeOps extends Core {
     def symbol(given ctx: Context): Symbol = internal.Tree_symbol(self)
   }
 
-  object IsPackageClause {
-    def unapply(tree: Tree)(given ctx: Context): Option[PackageClause] =
-      internal.matchPackageClause(tree)
-  }
+  given (given Context): IsInstanceOf[PackageClause] = internal.isInstanceOfPackageClause
+
+  object IsPackageClause
+    @deprecated("Use _: PackageClause", "")
+    def unapply(x: PackageClause): Some[PackageClause] = Some(x)
 
   object PackageClause {
     def apply(pid: Ref, stats: List[Tree])(given ctx: Context): PackageClause =
       internal.PackageClause_apply(pid, stats)
     def copy(original: Tree)(pid: Ref, stats: List[Tree])(given ctx: Context): PackageClause =
       internal.PackageClause_copy(original)(pid, stats)
-    def unapply(tree: Tree)(given ctx: Context): Option[(Ref, List[Tree])] =
-      internal.matchPackageClause(tree).map(x => (x.pid, x.stats))
+    def unapply(tree: PackageClause)(given ctx: Context): Some[(Ref, List[Tree])] =
+      Some((tree.pid, tree.stats))
   }
 
   given PackageClauseOps: (self: PackageClause) {
@@ -31,18 +32,19 @@ trait TreeOps extends Core {
     def stats(given ctx: Context): List[Tree] = internal.PackageClause_stats(self)
   }
 
-  object IsImport {
-    def unapply(tree: Tree)(given ctx: Context): Option[Import] =
-      internal.matchImport(tree)
-  }
+  given (given Context): IsInstanceOf[Import] = internal.isInstanceOfImport
+
+  object IsImport
+    @deprecated("Use _: Import", "")
+    def unapply(x: Import): Some[Import] = Some(x)
 
   object Import {
     def apply(expr: Term, selectors: List[ImportSelector])(given ctx: Context): Import =
       internal.Import_apply(expr, selectors)
     def copy(original: Tree)(expr: Term, selectors: List[ImportSelector])(given ctx: Context): Import =
       internal.Import_copy(original)(expr, selectors)
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, List[ImportSelector])] =
-      internal.matchImport(tree).map(x => (x.expr, x.selectors))
+    def unapply(tree: Import)(given ctx: Context): Option[(Term, List[ImportSelector])] =
+      Some((tree.expr, tree.selectors))
   }
 
   given ImportOps: (self: Import)  {
@@ -51,16 +53,19 @@ trait TreeOps extends Core {
       internal.Import_selectors(self)
   }
 
-  object IsStatement {
-    /** Matches any Statement and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Statement] = internal.matchStatement(tree)
-  }
+  given (given Context): IsInstanceOf[Statement] = internal.isInstanceOfStatement
+
+  object IsStatement
+    @deprecated("Use _: Statement", "")
+    def unapply(x: Statement): Option[Statement] = Some(x)
 
   // ----- Definitions ----------------------------------------------
 
-  object IsDefinition {
-    def unapply(tree: Tree)(given ctx: Context): Option[Definition] = internal.matchDefinition(tree)
-  }
+  given (given Context): IsInstanceOf[Definition] = internal.isInstanceOfDefinition
+
+  object IsDefinition
+    @deprecated("Use _: Definition", "")
+    def unapply(x: Definition): Option[Definition] = Some(x)
 
   given DefinitionOps: (self: Definition) {
     def name(given ctx: Context): String = internal.Definition_name(self)
@@ -68,16 +73,18 @@ trait TreeOps extends Core {
 
   // ClassDef
 
-  object IsClassDef {
-    def unapply(tree: Tree)(given ctx: Context): Option[ClassDef] = internal.matchClassDef(tree)
-  }
+  given (given Context): IsInstanceOf[ClassDef] = internal.isInstanceOfClassDef
+
+  object IsClassDef
+    @deprecated("Use _: ClassDef", "")
+    def unapply(x: ClassDef): Some[ClassDef] = Some(x)
 
   object ClassDef {
     // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(given ctx: Context): ClassDef
     def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(given ctx: Context): ClassDef =
       internal.ClassDef_copy(original)(name, constr, parents, derived, selfOpt, body)
-    def unapply(tree: Tree)(given ctx: Context): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
-      internal.matchClassDef(tree).map(x => (x.name, x.constructor, x.parents, x.derived, x.self, x.body))
+    def unapply(cdef: ClassDef)(given ctx: Context): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
+      Some((cdef.name, cdef.constructor, cdef.parents, cdef.derived, cdef.self, cdef.body))
   }
 
   given ClassDefOps: (self: ClassDef) {
@@ -90,17 +97,19 @@ trait TreeOps extends Core {
 
   // DefDef
 
-  object IsDefDef {
-    def unapply(tree: Tree)(given ctx: Context): Option[DefDef] = internal.matchDefDef(tree)
-  }
+  given (given Context): IsInstanceOf[DefDef] = internal.isInstanceOfDefDef
+
+  object IsDefDef
+    @deprecated("Use _: DefDef", "")
+    def unapply(x: DefDef): Some[DefDef] = Some(x)
 
   object DefDef {
     def apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(given ctx: Context): DefDef =
       internal.DefDef_apply(symbol, rhsFn)
     def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(given ctx: Context): DefDef =
       internal.DefDef_copy(original)(name, typeParams, paramss, tpt, rhs)
-    def unapply(tree: Tree)(given ctx: Context): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
-      internal.matchDefDef(tree).map(x => (x.name, x.typeParams, x.paramss, x.returnTpt, x.rhs))
+    def unapply(ddef: DefDef)(given ctx: Context): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
+      Some((ddef.name, ddef.typeParams, ddef.paramss, ddef.returnTpt, ddef.rhs))
   }
 
   given DefDefOps: (self: DefDef) {
@@ -112,17 +121,19 @@ trait TreeOps extends Core {
 
   // ValDef
 
-  object IsValDef {
-    def unapply(tree: Tree)(given ctx: Context): Option[ValDef] = internal.matchValDef(tree)
-  }
+  given (given Context): IsInstanceOf[ValDef] = internal.isInstanceOfValDef
+
+  object IsValDef
+    @deprecated("Use _: ValDef", "")
+    def unapply(x: ValDef): Some[ValDef] = Some(x)
 
   object ValDef {
     def apply(symbol: Symbol, rhs: Option[Term])(given ctx: Context): ValDef =
       internal.ValDef_apply(symbol, rhs)
     def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term])(given ctx: Context): ValDef =
       internal.ValDef_copy(original)(name, tpt, rhs)
-    def unapply(tree: Tree)(given ctx: Context): Option[(String, TypeTree, Option[Term])] =
-      internal.matchValDef(tree).map(x => (x.name, x.tpt, x.rhs))
+    def unapply(vdef: ValDef)(given ctx: Context): Option[(String, TypeTree, Option[Term])] =
+      Some((vdef.name, vdef.tpt, vdef.rhs))
   }
 
   given ValDefOps: (self: ValDef) {
@@ -132,17 +143,19 @@ trait TreeOps extends Core {
 
   // TypeDef
 
-  object IsTypeDef {
-    def unapply(tree: Tree)(given ctx: Context): Option[TypeDef] = internal.matchTypeDef(tree)
-  }
+  given (given Context): IsInstanceOf[TypeDef] = internal.isInstanceOfTypeDef
+
+  object IsTypeDef
+    @deprecated("Use _: TypeDef", "")
+    def unapply(x: TypeDef): Some[TypeDef] = Some(x)
 
   object TypeDef {
     def apply(symbol: Symbol)(given ctx: Context): TypeDef =
       internal.TypeDef_apply(symbol)
     def copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeDef =
       internal.TypeDef_copy(original)(name, rhs)
-    def unapply(tree: Tree)(given ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)] =
-      internal.matchTypeDef(tree).map(x => (x.name, x.rhs))
+    def unapply(tdef: TypeDef)(given ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)] =
+      Some((tdef.name, tdef.rhs))
   }
 
   given TypeDefOps: (self: TypeDef) {
@@ -151,19 +164,20 @@ trait TreeOps extends Core {
 
   // PackageDef
 
-  object IsPackageDef {
-    def unapply(tree: Tree)(given ctx: Context): Option[PackageDef] =
-      internal.matchPackageDef(tree)
-  }
+  given (given Context): IsInstanceOf[PackageDef] = internal.isInstanceOfPackageDef
 
   given PackageDefOps: (self: PackageDef) {
     def owner(given ctx: Context): PackageDef = internal.PackageDef_owner(self)
     def members(given ctx: Context): List[Statement] = internal.PackageDef_members(self)
   }
 
+  object IsPackageDef
+    @deprecated("Use _: PackageDef", "")
+    def unapply(x: PackageDef): Some[PackageDef] = Some(x)
+
   object PackageDef {
-    def unapply(tree: Tree)(given ctx: Context): Option[(String, PackageDef)] =
-      internal.matchPackageDef(tree).map(x => (x.name, x.owner))
+    def unapply(tree: PackageDef)(given ctx: Context): Option[(String, PackageDef)] =
+      Some((tree.name, tree.owner))
   }
 
   // ----- Terms ----------------------------------------------------
@@ -213,16 +227,17 @@ trait TreeOps extends Core {
     def select(sym: Symbol)(given ctx: Context): Select = Select(self, sym)
   }
 
-  object IsTerm {
-    /** Matches any term */
-    def unapply(tree: Tree)(given ctx: Context): Option[Term] =
-      internal.matchTerm(tree)
-  }
+  given (given Context): IsInstanceOf[Term] = internal.isInstanceOfTerm
 
-  object IsRef {
-    /** Matches any Ref and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Ref] = internal.matchRef(tree)
-  }
+  object IsTerm
+    @deprecated("Use _: Term", "")
+    def unapply(x: Term): Some[Term] = Some(x)
+
+  given (given Context): IsInstanceOf[Ref] = internal.isInstanceOfRef
+
+  object IsRef
+    @deprecated("Use _: Ref", "")
+    def unapply(x: Ref): Some[Ref] = Some(x)
 
   object Ref {
 
@@ -234,16 +249,17 @@ trait TreeOps extends Core {
 
   }
 
-  object IsIdent {
-    /** Matches any Ident and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Ident] = internal.matchIdent(tree)
-  }
+  given (given Context): IsInstanceOf[Ident] = internal.isInstanceOfIdent
 
   given IdentOps: (self: Ident) {
     def name(given ctx: Context): String = internal.Ident_name(self)
   }
 
   /** Scala term identifier */
+  object IsIdent
+    @deprecated("Use _: Ident", "")
+    def unapply(x: Ident): Some[Ident] = Some(x)
+
   object Ident {
     def apply(tmref: TermRef)(given ctx: Context): Term =
       internal.Ident_apply(tmref)
@@ -252,16 +268,17 @@ trait TreeOps extends Core {
       internal.Ident_copy(original)(name)
 
     /** Matches a term identifier and returns its name */
-    def unapply(tree: Tree)(given ctx: Context): Option[String] =
-      internal.matchIdent(tree).map(_.name)
+    def unapply(tree: Ident)(given ctx: Context): Option[String] =
+      Some(tree.name)
   }
 
-  object IsSelect {
-    /** Matches any Select and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Select] = internal.matchSelect(tree)
-  }
+  given (given Context): IsInstanceOf[Select] = internal.isInstanceOfSelect
 
   /** Scala term selection */
+  object IsSelect
+    @deprecated("Use _: Select", "")
+    def unapply(x: Select): Some[Select] = Some(x)
+
   object Select {
     /** Select a term member by symbol */
     def apply(qualifier: Term, symbol: Symbol)(given ctx: Context): Select =
@@ -285,8 +302,8 @@ trait TreeOps extends Core {
       internal.Select_copy(original)(qualifier, name)
 
     /** Matches `<qualifier: Term>.<name: String>` */
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, String)] =
-      internal.matchSelect(tree).map(x => (x.qualifier, x.name))
+    def unapply(x: Select)(given ctx: Context): Option[(Term, String)] =
+      Some((x.qualifier, x.name))
   }
 
   given SelectOps: (self: Select) {
@@ -295,12 +312,14 @@ trait TreeOps extends Core {
     def signature(given ctx: Context): Option[Signature] = internal.Select_signature(self)
   }
 
-  object IsLiteral {
-    /** Matches any Literal and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Literal] = internal.matchLiteral(tree)
-  }
+  given (given Context): IsInstanceOf[Literal] =
+    internal.isInstanceOfLiteral
 
   /** Scala literal constant */
+  object IsLiteral
+    @deprecated("Use _: Literal", "")
+    def unapply(x: Literal): Some[Literal] = Some(x)
+
   object Literal {
 
     /** Create a literal constant */
@@ -311,20 +330,21 @@ trait TreeOps extends Core {
       internal.Literal_copy(original)(constant)
 
     /** Matches a literal constant */
-    def unapply(tree: Tree)(given ctx: Context): Option[Constant] =
-      internal.matchLiteral(tree).map(_.constant)
+    def unapply(x: Literal)(given ctx: Context): Option[Constant] =
+      Some(x.constant)
   }
 
   given LiteralOps: (self: Literal) {
     def constant(given ctx: Context): Constant = internal.Literal_constant(self)
   }
 
-  object IsThis {
-    /** Matches any This and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[This] = internal.matchThis(tree)
-  }
+  given (given Context): IsInstanceOf[This] = internal.isInstanceOfThis
 
   /** Scala `this` or `this[id]` */
+  object IsThis
+    @deprecated("Use _: This", "")
+    def unapply(x: This): Some[This] = Some(x)
+
   object This {
 
     /** Create a `this[<id: Id]>` */
@@ -335,8 +355,7 @@ trait TreeOps extends Core {
       internal.This_copy(original)(qual)
 
     /** Matches `this[<id: Option[Id]>` */
-    def unapply(tree: Tree)(given ctx: Context): Option[Option[Id]] =
-      internal.matchThis(tree).map(_.id)
+    def unapply(x: This)(given ctx: Context): Option[Option[Id]] = Some(x.id)
 
   }
 
@@ -344,12 +363,13 @@ trait TreeOps extends Core {
     def id(given ctx: Context): Option[Id] = internal.This_id(self)
   }
 
-  object IsNew {
-    /** Matches any New and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[New] = internal.matchNew(tree)
-  }
+  given (given Context): IsInstanceOf[New] = internal.isInstanceOfNew
 
   /** Scala `new` */
+  object IsNew
+    @deprecated("Use _: New", "")
+    def unapply(x: New): Some[New] = Some(x)
+
   object New {
 
     /** Create a `new <tpt: TypeTree>` */
@@ -360,20 +380,20 @@ trait TreeOps extends Core {
       internal.New_copy(original)(tpt)
 
     /** Matches a `new <tpt: TypeTree>` */
-    def unapply(tree: Tree)(given ctx: Context): Option[TypeTree] =
-      internal.matchNew(tree).map(_.tpt)
+    def unapply(x: New)(given ctx: Context): Option[TypeTree] = Some(x.tpt)
   }
 
   given NewOps: (self: New) {
     def tpt(given ctx: Context): TypeTree = internal.New_tpt(self)
   }
 
-  object IsNamedArg {
-    /** Matches any NamedArg and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[NamedArg] = internal.matchNamedArg(tree)
-  }
+  given (given Context): IsInstanceOf[NamedArg] = internal.isInstanceOfNamedArg
 
   /** Scala named argument `x = y` in argument position */
+  object IsNamedArg
+    @deprecated("Use _: NamedArg", "")
+    def unapply(x: NamedArg): Some[NamedArg] = Some(x)
+
   object NamedArg {
 
     /** Create a named argument `<name: String> = <value: Term>` */
@@ -384,8 +404,8 @@ trait TreeOps extends Core {
       internal.NamedArg_copy(original)(name, arg)
 
     /** Matches a named argument `<name: String> = <value: Term>` */
-    def unapply(tree: Tree)(given ctx: Context): Option[(String, Term)] =
-      internal.matchNamedArg(tree).map(x => (x.name, x.value))
+    def unapply(x: NamedArg)(given ctx: Context): Option[(String, Term)] =
+      Some((x.name, x.value))
 
   }
 
@@ -394,12 +414,13 @@ trait TreeOps extends Core {
     def value(given ctx: Context): Term = internal.NamedArg_value(self)
   }
 
-  object IsApply {
-    /** Matches any Apply and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Apply] = internal.matchApply(tree)
-  }
+  given (given Context): IsInstanceOf[Apply] = internal.isInstanceOfApply
 
   /** Scala parameter application */
+  object IsApply
+    @deprecated("Use _: Apply", "")
+    def unapply(x: Apply): Some[Apply] = Some(x)
+
   object Apply {
 
     /** Create a function application `<fun: Term>(<args: List[Term]>)` */
@@ -410,8 +431,8 @@ trait TreeOps extends Core {
       internal.Apply_copy(original)(fun, args)
 
     /** Matches a function application `<fun: Term>(<args: List[Term]>)` */
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, List[Term])] =
-      internal.matchApply(tree).map(x => (x.fun, x.args))
+    def unapply(x: Apply)(given ctx: Context): Option[(Term, List[Term])] =
+      Some((x.fun, x.args))
   }
 
   given ApplyOps: (self: Apply) {
@@ -419,13 +440,13 @@ trait TreeOps extends Core {
     def args(given ctx: Context): List[Term] = internal.Apply_args(self)
   }
 
-  object IsTypeApply {
-    /** Matches any TypeApply and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[TypeApply] =
-      internal.matchTypeApply(tree)
-  }
+  given (given Context): IsInstanceOf[TypeApply] = internal.isInstanceOfTypeApply
 
   /** Scala type parameter application */
+  object IsTypeApply
+    @deprecated("Use _: TypeApply", "")
+    def unapply(x: TypeApply): Some[TypeApply] = Some(x)
+
   object TypeApply {
 
     /** Create a function type application `<fun: Term>[<args: List[TypeTree]>]` */
@@ -436,8 +457,8 @@ trait TreeOps extends Core {
       internal.TypeApply_copy(original)(fun, args)
 
     /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]` */
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, List[TypeTree])] =
-      internal.matchTypeApply(tree).map(x => (x.fun, x.args))
+    def unapply(x: TypeApply)(given ctx: Context): Option[(Term, List[TypeTree])] =
+      Some((x.fun, x.args))
 
   }
 
@@ -446,12 +467,13 @@ trait TreeOps extends Core {
     def args(given ctx: Context): List[TypeTree] = internal.TypeApply_args(self)
   }
 
-  object IsSuper {
-    /** Matches any Super and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Super] = internal.matchSuper(tree)
-  }
+  given (given Context): IsInstanceOf[Super] = internal.isInstanceOfSuper
 
   /** Scala `x.super` or `x.super[id]` */
+  object IsSuper
+    @deprecated("Use _: Super", "")
+    def unapply(x: Super): Some[Super] = Some(x)
+
   object Super {
 
     /** Creates a `<qualifier: Term>.super[<id: Option[Id]>` */
@@ -462,8 +484,8 @@ trait TreeOps extends Core {
       internal.Super_copy(original)(qual, mix)
 
     /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, Option[Id])] =
-      internal.matchSuper(tree).map(x => (x.qualifier, x.id))
+    def unapply(x: Super)(given ctx: Context): Option[(Term, Option[Id])] =
+      Some((x.qualifier, x.id))
   }
 
   given SuperOps: (self: Super) {
@@ -471,12 +493,13 @@ trait TreeOps extends Core {
     def id(given ctx: Context): Option[Id] = internal.Super_id(self)
   }
 
-  object IsTyped {
-    /** Matches any Typed and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Typed] = internal.matchTyped(tree)
-  }
+  given (given Context): IsInstanceOf[Typed] = internal.isInstanceOfTyped
 
   /** Scala ascription `x: T` */
+  object IsTyped
+    @deprecated("Use _: Typed", "")
+    def unapply(x: Typed): Some[Typed] = Some(x)
+
   object Typed {
 
     /** Create a type ascription `<x: Term>: <tpt: TypeTree>` */
@@ -487,8 +510,8 @@ trait TreeOps extends Core {
       internal.Typed_copy(original)(expr, tpt)
 
     /** Matches `<expr: Term>: <tpt: TypeTree>` */
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, TypeTree)] =
-      internal.matchTyped(tree).map(x => (x.expr, x.tpt))
+    def unapply(x: Typed)(given ctx: Context): Option[(Term, TypeTree)] =
+      Some((x.expr, x.tpt))
 
   }
 
@@ -497,12 +520,13 @@ trait TreeOps extends Core {
     def tpt(given ctx: Context): TypeTree = internal.Typed_tpt(self)
   }
 
-  object IsAssign {
-    /** Matches any Assign and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Assign] = internal.matchAssign(tree)
-  }
+  given (given Context): IsInstanceOf[Assign] = internal.isInstanceOfAssign
 
   /** Scala assign `x = y` */
+  object IsAssign
+    @deprecated("Use _: Assign", "")
+    def unapply(x: Assign): Some[Assign] = Some(x)
+
   object Assign {
 
     /** Create an assignment `<lhs: Term> = <rhs: Term>` */
@@ -513,8 +537,8 @@ trait TreeOps extends Core {
       internal.Assign_copy(original)(lhs, rhs)
 
     /** Matches an assignment `<lhs: Term> = <rhs: Term>` */
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, Term)] =
-      internal.matchAssign(tree).map(x => (x.lhs, x.rhs))
+    def unapply(x: Assign)(given ctx: Context): Option[(Term, Term)] =
+      Some((x.lhs, x.rhs))
   }
 
   given AssignOps: (self: Assign) {
@@ -522,12 +546,13 @@ trait TreeOps extends Core {
     def rhs(given ctx: Context): Term = internal.Assign_rhs(self)
   }
 
-  object IsBlock {
-    /** Matches any Block and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Block] = internal.matchBlock(tree)
-  }
+  given (given Context): IsInstanceOf[Block] = internal.isInstanceOfBlock
 
   /** Scala code block `{ stat0; ...; statN; expr }` term */
+  object IsBlock
+    @deprecated("Use _: Block", "")
+    def unapply(x: Block): Some[Block] = Some(x)
+
   object Block {
 
     /** Creates a block `{ <statements: List[Statement]>; <expr: Term> }` */
@@ -538,8 +563,8 @@ trait TreeOps extends Core {
       internal.Block_copy(original)(stats, expr)
 
     /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }` */
-    def unapply(tree: Tree)(given ctx: Context): Option[(List[Statement], Term)] =
-      internal.matchBlock(tree).map(x => (x.statements, x.expr))
+    def unapply(x: Block)(given ctx: Context): Option[(List[Statement], Term)] =
+      Some((x.statements, x.expr))
   }
 
   given BlockOps: (self: Block) {
@@ -547,10 +572,11 @@ trait TreeOps extends Core {
     def expr(given ctx: Context): Term = internal.Block_expr(self)
   }
 
-  object IsClosure {
-    /** Matches any Closure and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Closure] = internal.matchClosure(tree)
-  }
+  given (given Context): IsInstanceOf[Closure] = internal.isInstanceOfClosure
+
+  object IsClosure
+    @deprecated("Use _: Closure", "")
+    def unapply(x: Closure): Some[Closure] = Some(x)
 
   object Closure {
 
@@ -560,8 +586,8 @@ trait TreeOps extends Core {
     def copy(original: Tree)(meth: Tree, tpt: Option[Type])(given ctx: Context): Closure =
       internal.Closure_copy(original)(meth, tpt)
 
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, Option[Type])] =
-      internal.matchClosure(tree).map(x => (x.meth, x.tpeOpt))
+    def unapply(x: Closure)(given ctx: Context): Option[(Term, Option[Type])] =
+      Some((x.meth, x.tpeOpt))
   }
 
   given ClosureOps: (self: Closure) {
@@ -591,10 +617,11 @@ trait TreeOps extends Core {
     }
   }
 
-  object IsIf {
-    /** Matches any If and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[If] = internal.matchIf(tree)
-  }
+  given (given Context): IsInstanceOf[If] = internal.isInstanceOfIf
+
+  object IsIf
+    @deprecated("Use _: If", "")
+    def unapply(x: If): Some[If] = Some(x)
 
   /** Scala `if`/`else` term */
   object If {
@@ -607,8 +634,8 @@ trait TreeOps extends Core {
       internal.If_copy(original)(cond, thenp, elsep)
 
     /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, Term, Term)] =
-      internal.matchIf(tree).map(x => (x.cond, x.thenp, x.elsep))
+    def unapply(tree: If)(given ctx: Context): Option[(Term, Term, Term)] =
+      Some((tree.cond, tree.thenp, tree.elsep))
 
   }
 
@@ -618,12 +645,13 @@ trait TreeOps extends Core {
     def elsep(given ctx: Context): Term = internal.If_elsep(self)
   }
 
-  object IsMatch {
-    /** Matches any Match and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Match] = internal.matchMatch(tree)
-  }
+  given (given Context): IsInstanceOf[Match] = internal.isInstanceOfMatch
 
   /** Scala `match` term */
+  object IsMatch
+    @deprecated("Use _: Match", "")
+    def unapply(x: Match): Some[Match] = Some(x)
+
   object Match {
 
     /** Creates a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
@@ -634,8 +662,8 @@ trait TreeOps extends Core {
       internal.Match_copy(original)(selector, cases)
 
     /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, List[CaseDef])] =
-      internal.matchMatch(tree).map(x => (x.scrutinee, x.cases))
+    def unapply(x: Match)(given ctx: Context): Option[(Term, List[CaseDef])] =
+      Some((x.scrutinee, x.cases))
 
   }
 
@@ -644,12 +672,13 @@ trait TreeOps extends Core {
     def cases(given ctx: Context): List[CaseDef] = internal.Match_cases(self)
   }
 
-  object IsImplicitMatch {
-    /** Matches any ImpliedMatch and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[ImpliedMatch] = internal.matchImplicitMatch(tree)
-  }
+  given (given Context): IsInstanceOf[ImpliedMatch] = internal.isInstanceOfImpliedMatch
 
   /** Scala implicit `match` term */
+  object IsImpliedMatch
+    @deprecated("Use _: ImpliedMatch", "")
+    def unapply(x: ImpliedMatch): Some[ImpliedMatch] = Some(x)
+
   object ImpliedMatch {
 
     /** Creates a pattern match `delegate match { <cases: List[CaseDef]> }` */
@@ -660,8 +689,7 @@ trait TreeOps extends Core {
       internal.ImplicitMatch_copy(original)(cases)
 
     /** Matches a pattern match `delegate match { <cases: List[CaseDef]> }` */
-    def unapply(tree: Tree)(given ctx: Context): Option[List[CaseDef]] =
-      internal.matchImplicitMatch(tree).map(_.cases)
+    def unapply(x: ImpliedMatch)(given ctx: Context): Option[List[CaseDef]] = Some(x.cases)
 
   }
 
@@ -669,12 +697,13 @@ trait TreeOps extends Core {
     def cases(given ctx: Context): List[CaseDef] = internal.ImplicitMatch_cases(self)
   }
 
-  object IsTry {
-    /** Matches any Try and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Try] = internal.matchTry(tree)
-  }
+  given (given Context): IsInstanceOf[Try] = internal.isInstanceOfTry
 
   /** Scala `try`/`catch`/`finally` term */
+  object IsTry
+    @deprecated("Use _: Try", "")
+    def unapply(x: Try): Some[Try] = Some(x)
+
   object Try {
 
     /** Create a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
@@ -685,8 +714,8 @@ trait TreeOps extends Core {
       internal.Try_copy(original)(expr, cases, finalizer)
 
     /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, List[CaseDef], Option[Term])] =
-      internal.matchTry(tree).map(x => (x.body, x.cases, x.finalizer))
+    def unapply(x: Try)(given ctx: Context): Option[(Term, List[CaseDef], Option[Term])] =
+      Some((x.body, x.cases, x.finalizer))
 
   }
 
@@ -696,12 +725,13 @@ trait TreeOps extends Core {
     def finalizer(given ctx: Context): Option[Term] = internal.Try_finalizer(self)
   }
 
-  object IsReturn {
-    /** Matches any Return and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Return] = internal.matchReturn(tree)
-  }
+  given (given Context): IsInstanceOf[Return] = internal.isInstanceOfReturn
 
   /** Scala local `return` */
+  object IsReturn
+    @deprecated("Use _: Return", "")
+    def unapply(x: Return): Some[Return] = Some(x)
+
   object Return {
 
     /** Creates `return <expr: Term>` */
@@ -712,8 +742,7 @@ trait TreeOps extends Core {
       internal.Return_copy(original)(expr)
 
     /** Matches `return <expr: Term>` */
-    def unapply(tree: Tree)(given ctx: Context): Option[Term] =
-      internal.matchReturn(tree).map(_.expr)
+    def unapply(x: Return)(given ctx: Context): Option[Term] = Some(x.expr)
 
   }
 
@@ -721,10 +750,11 @@ trait TreeOps extends Core {
     def expr(given ctx: Context): Term = internal.Return_expr(self)
   }
 
-  object IsRepeated {
-    /** Matches any Repeated and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Repeated] = internal.matchRepeated(tree)
-  }
+  given (given Context): IsInstanceOf[Repeated] = internal.isInstanceOfRepeated
+
+  object IsRepeated
+    @deprecated("Use _: Repeated", "")
+    def unapply(x: Repeated): Some[Repeated] = Some(x)
 
   object Repeated {
 
@@ -734,8 +764,8 @@ trait TreeOps extends Core {
     def copy(original: Tree)(elems: List[Term], tpt: TypeTree)(given ctx: Context): Repeated =
       internal.Repeated_copy(original)(elems, tpt)
 
-    def unapply(tree: Tree)(given ctx: Context): Option[(List[Term], TypeTree)] =
-      internal.matchRepeated(tree).map(x => (x.elems, x.elemtpt))
+    def unapply(x: Repeated)(given ctx: Context): Option[(List[Term], TypeTree)] =
+      Some((x.elems, x.elemtpt))
 
   }
 
@@ -744,10 +774,11 @@ trait TreeOps extends Core {
     def elemtpt(given ctx: Context): TypeTree = internal.Repeated_elemtpt(self)
   }
 
-  object IsInlined {
-    /** Matches any Inlined and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Inlined] = internal.matchInlined(tree)
-  }
+  given (given Context): IsInstanceOf[Inlined] = internal.isInstanceOfInlined
+
+  object IsInlined
+    @deprecated("Use _: Inlined", "")
+    def unapply(x: Inlined): Some[Inlined] = Some(x)
 
   object Inlined {
 
@@ -757,8 +788,8 @@ trait TreeOps extends Core {
     def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term)(given ctx: Context): Inlined =
       internal.Inlined_copy(original)(call, bindings, expansion)
 
-    def unapply(tree: Tree)(given ctx: Context): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
-      internal.matchInlined(tree).map(x => (x.call, x.bindings, x.body))
+    def unapply(x: Inlined)(given ctx: Context): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
+      Some((x.call, x.bindings, x.body))
 
   }
 
@@ -768,10 +799,11 @@ trait TreeOps extends Core {
     def body(given ctx: Context): Term = internal.Inlined_body(self)
   }
 
-  object IsSelectOuter {
-    /** Matches any SelectOuter and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[SelectOuter] = internal.matchSelectOuter(tree)
-  }
+  given (given Context): IsInstanceOf[SelectOuter] = internal.isInstanceOfSelectOuter
+
+  object IsSelectOuter
+    @deprecated("Use _: SelectOuter", "")
+    def unapply(x: SelectOuter): Some[SelectOuter] = Some(x)
 
   object SelectOuter {
 
@@ -781,8 +813,8 @@ trait TreeOps extends Core {
     def copy(original: Tree)(qualifier: Term, name: String, levels: Int)(given ctx: Context): SelectOuter =
       internal.SelectOuter_copy(original)(qualifier, name, levels)
 
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, Int, Type)] = // TODO homogenize order of parameters
-      internal.matchSelectOuter(tree).map(x => (x.qualifier, x.level, x.tpe))
+    def unapply(x: SelectOuter)(given ctx: Context): Option[(Term, Int, Type)] = // TODO homogenize order of parameters
+      Some((x.qualifier, x.level, x.tpe))
 
   }
 
@@ -791,10 +823,11 @@ trait TreeOps extends Core {
     def level(given ctx: Context): Int = internal.SelectOuter_level(self)
   }
 
-  object IsWhile {
-    /** Matches any While and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[While] = internal.matchWhile(tree)
-  }
+  given (given Context): IsInstanceOf[While] = internal.isInstanceOfWhile
+
+  object IsWhile
+    @deprecated("Use _: While", "")
+    def unapply(x: While): Some[While] = Some(x)
 
   object While {
 
@@ -806,8 +839,8 @@ trait TreeOps extends Core {
       internal.While_copy(original)(cond, body)
 
     /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, Term)] =
-      internal.matchWhile(tree).map(x => (x.cond, x.body))
+    def unapply(x: While)(given ctx: Context): Option[(Term, Term)] =
+      Some((x.cond, x.body))
 
   }
 
@@ -823,57 +856,57 @@ trait TreeOps extends Core {
     def tpe(given ctx: Context): Type = internal.TypeTree_tpe(self)
   }
 
-  object IsTypeTree {
-    def unapply(tpt: Tree)(given ctx: Context): Option[TypeTree] =
-      internal.matchTypeTree(tpt)
-  }
+  given (given Context): IsInstanceOf[TypeTree] =
+    internal.isInstanceOfTypeTree
 
-  object IsInferred {
-    /** Matches any Inferred and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Inferred] =
-      internal.matchInferred(tree)
-  }
+  object IsTypeTree
+    @deprecated("Use _: TypeTree", "")
+    def unapply(x: TypeTree): Option[TypeTree] = Some(x)
+
+  given (given Context): IsInstanceOf[Inferred] = internal.isInstanceOfInferred
 
   /** TypeTree containing an inferred type */
+  object IsInferred
+    @deprecated("Use _: Inferred", "")
+    def unapply(x: Inferred): Some[Inferred] = Some(x)
+
   object Inferred {
     def apply(tpe: Type)(given ctx: Context): Inferred =
       internal.Inferred_apply(tpe)
     /** Matches a TypeTree containing an inferred type */
-    def unapply(tree: Tree)(given ctx: Context): Boolean =
-      internal.matchInferred(tree).isDefined
+    def unapply(x: Inferred)(given ctx: Context): Boolean = true
   }
 
-  object IsTypeIdent {
-    /** Matches any TypeIdent and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[TypeIdent] =
-      internal.matchTypeIdent(tree)
-  }
+  given (given Context): IsInstanceOf[TypeIdent] = internal.isInstanceOfTypeIdent
 
   given TypeIdentOps: (self: TypeIdent) {
     def name(given ctx: Context): String = internal.TypeIdent_name(self)
   }
 
+  object IsTypeIdent
+    @deprecated("Use _: TypeIdent", "")
+    def unapply(x: TypeIdent): Some[TypeIdent] = Some(x)
+
   object TypeIdent {
     // TODO def apply(name: String)(given ctx: Context): TypeIdent
     def copy(original: Tree)(name: String)(given ctx: Context): TypeIdent =
       internal.TypeIdent_copy(original)(name)
-    def unapply(tree: Tree)(given ctx: Context): Option[String] =
-      internal.matchTypeIdent(tree).map(_.name)
+    def unapply(x: TypeIdent)(given ctx: Context): Option[String] = Some(x.name)
   }
 
-  object IsTypeSelect {
-    /** Matches any TypeSelect and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[TypeSelect] =
-      internal.matchTypeSelect(tree)
-  }
+  given (given Context): IsInstanceOf[TypeSelect] = internal.isInstanceOfTypeSelect
+
+  object IsTypeSelect
+    @deprecated("Use _: TypeSelect", "")
+    def unapply(x: TypeSelect): Some[TypeSelect] = Some(x)
 
   object TypeSelect {
     def apply(qualifier: Term, name: String)(given ctx: Context): TypeSelect =
       internal.TypeSelect_apply(qualifier, name)
     def copy(original: Tree)(qualifier: Term, name: String)(given ctx: Context): TypeSelect =
       internal.TypeSelect_copy(original)(qualifier, name)
-    def unapply(tree: Tree)(given ctx: Context): Option[(Term, String)] =
-      internal.matchTypeSelect(tree).map(x => (x.qualifier, x.name))
+    def unapply(x: TypeSelect)(given ctx: Context): Option[(Term, String)] =
+      Some((x.qualifier, x.name))
   }
 
   given TypeSelectOps: (self: TypeSelect) {
@@ -881,18 +914,18 @@ trait TreeOps extends Core {
     def name(given ctx: Context): String = internal.TypeSelect_name(self)
   }
 
-  object IsProjection {
-    /** Matches any Projection and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Projection] =
-      internal.matchProjection(tree)
-  }
+  given (given Context): IsInstanceOf[Projection] = internal.isInstanceOfProjection
+
+  object IsProjection
+    @deprecated("Use _: Projection", "")
+    def unapply(x: Projection): Some[Projection] = Some(x)
 
   object Projection {
     // TODO def apply(qualifier: TypeTree, name: String)(given ctx: Context): Project
     def copy(original: Tree)(qualifier: TypeTree, name: String)(given ctx: Context): Projection =
       internal.Projection_copy(original)(qualifier, name)
-    def unapply(tree: Tree)(given ctx: Context): Option[(TypeTree, String)] =
-      internal.matchProjection(tree).map(x => (x.qualifier, x.name))
+    def unapply(x: Projection)(given ctx: Context): Option[(TypeTree, String)] =
+      Some((x.qualifier, x.name))
   }
 
   given ProjectionOps: (self: Projection) {
@@ -900,37 +933,38 @@ trait TreeOps extends Core {
     def name(given ctx: Context): String = internal.Projection_name(self)
   }
 
-  object IsSingleton {
-    /** Matches any Singleton and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Singleton] =
-      internal.matchSingleton(tree)
-  }
+  given (given Context): IsInstanceOf[Singleton] =
+    internal.isInstanceOfSingleton
+
+  object IsSingleton
+    @deprecated("Use _: Singleton", "")
+    def unapply(x: Singleton): Some[Singleton] = Some(x)
 
   object Singleton {
     def apply(ref: Term)(given ctx: Context): Singleton =
       internal.Singleton_apply(ref)
     def copy(original: Tree)(ref: Term)(given ctx: Context): Singleton =
       internal.Singleton_copy(original)(ref)
-    def unapply(tree: Tree)(given ctx: Context): Option[Term] =
-      internal.matchSingleton(tree).map(_.ref)
+    def unapply(x: Singleton)(given ctx: Context): Option[Term] =
+      Some(x.ref)
   }
 
   given SingletonOps: (self: Singleton) {
     def ref(given ctx: Context): Term = internal.Singleton_ref(self)
   }
 
-  object IsRefined {
-    /** Matches any Refined and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Refined] =
-      internal.matchRefined(tree)
-  }
+  given (given Context): IsInstanceOf[Refined] = internal.isInstanceOfRefined
+
+  object IsRefined
+    @deprecated("Use _: Refined", "")
+    def unapply(x: Refined): Some[Refined] = Some(x)
 
   object Refined {
     // TODO def apply(tpt: TypeTree, refinements: List[Definition])(given ctx: Context): Refined
     def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition])(given ctx: Context): Refined =
       internal.Refined_copy(original)(tpt, refinements)
-    def unapply(tree: Tree)(given ctx: Context): Option[(TypeTree, List[Definition])] =
-      internal.matchRefined(tree).map(x => (x.tpt, x.refinements))
+    def unapply(x: Refined)(given ctx: Context): Option[(TypeTree, List[Definition])] =
+      Some((x.tpt, x.refinements))
   }
 
   given RefinedOps: (self: Refined) {
@@ -938,19 +972,19 @@ trait TreeOps extends Core {
     def refinements(given ctx: Context): List[Definition] = internal.Refined_refinements(self)
   }
 
-  object IsApplied {
-    /** Matches any Applied and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Applied] =
-      internal.matchApplied(tree)
-  }
+  given (given Context): IsInstanceOf[Applied] = internal.isInstanceOfApplied
+
+  object IsApplied
+    @deprecated("Use _: Applied", "")
+    def unapply(x: Applied): Some[Applied] = Some(x)
 
   object Applied {
     def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(given ctx: Context): Applied =
       internal.Applied_apply(tpt, args)
     def copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(given ctx: Context): Applied =
       internal.Applied_copy(original)(tpt, args)
-    def unapply(tree: Tree)(given ctx: Context): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
-      internal.matchApplied(tree).map(x => (x.tpt, x.args))
+    def unapply(x: Applied)(given ctx: Context): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
+      Some((x.tpt, x.args))
   }
 
   given AppliedOps: (self: Applied) {
@@ -958,19 +992,20 @@ trait TreeOps extends Core {
     def args(given ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = internal.Applied_args(self)
   }
 
-  object IsAnnotated {
-    /** Matches any Annotated and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[Annotated] =
-      internal.matchAnnotated(tree)
-  }
+  given (given Context): IsInstanceOf[Annotated] =
+    internal.isInstanceOfAnnotated
+
+  object IsAnnotated
+    @deprecated("Use _: Annotated", "")
+    def unapply(x: Annotated): Some[Annotated] = Some(x)
 
   object Annotated {
     def apply(arg: TypeTree, annotation: Term)(given ctx: Context): Annotated =
       internal.Annotated_apply(arg, annotation)
     def copy(original: Tree)(arg: TypeTree, annotation: Term)(given ctx: Context): Annotated =
       internal.Annotated_copy(original)(arg, annotation)
-    def unapply(tree: Tree)(given ctx: Context): Option[(TypeTree, Term)] =
-      internal.matchAnnotated(tree).map(x => (x.arg, x.annotation))
+    def unapply(x: Annotated)(given ctx: Context): Option[(TypeTree, Term)] =
+      Some((x.arg, x.annotation))
   }
 
   given AnnotatedOps: (self: Annotated) {
@@ -978,19 +1013,20 @@ trait TreeOps extends Core {
     def annotation(given ctx: Context): Term = internal.Annotated_annotation(self)
   }
 
-  object IsMatchTypeTree {
-    /** Matches any MatchTypeTree and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[MatchTypeTree] =
-      internal.matchMatchTypeTree(tree)
-  }
+  given (given Context): IsInstanceOf[MatchTypeTree] =
+    internal.isInstanceOfMatchTypeTree
+
+  object IsMatchTypeTree
+    @deprecated("Use _: MatchTypeTree", "")
+    def unapply(x: MatchTypeTree): Some[MatchTypeTree] = Some(x)
 
   object MatchTypeTree {
     def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(given ctx: Context): MatchTypeTree =
       internal.MatchTypeTree_apply(bound, selector, cases)
     def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(given ctx: Context): MatchTypeTree =
       internal.MatchTypeTree_copy(original)(bound, selector, cases)
-    def unapply(tree: Tree)(given ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
-      internal.matchMatchTypeTree(tree).map(x => (x.bound, x.selector, x.cases))
+    def unapply(x: MatchTypeTree)(given ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
+      Some((x.bound, x.selector, x.cases))
   }
 
   given MatchTypeTreeOps: (self: MatchTypeTree) {
@@ -999,38 +1035,39 @@ trait TreeOps extends Core {
     def cases(given ctx: Context): List[TypeCaseDef] = internal.MatchTypeTree_cases(self)
   }
 
-  object IsByName {
-    /** Matches any ByName and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[ByName] =
-      internal.matchByName(tree)
-  }
+  given (given Context): IsInstanceOf[ByName] =
+    internal.isInstanceOfByName
+
+  object IsByName
+    @deprecated("Use _: ByName", "")
+    def unapply(x: ByName): Some[ByName] = Some(x)
 
   object ByName {
     def apply(result: TypeTree)(given ctx: Context): ByName =
       internal.ByName_apply(result)
     def copy(original: Tree)(result: TypeTree)(given ctx: Context): ByName =
       internal.ByName_copy(original)(result)
-    def unapply(tree: Tree)(given ctx: Context): Option[TypeTree] =
-      internal.matchByName(tree).map(_.result)
+    def unapply(x: ByName)(given ctx: Context): Option[TypeTree] =
+      Some(x.result)
   }
 
   given ByNameOps: (self: ByName) {
     def result(given ctx: Context): TypeTree = internal.ByName_result(self)
   }
 
-  object IsLambdaTypeTree {
-    /** Matches any LambdaTypeTree and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[LambdaTypeTree] =
-      internal.matchLambdaTypeTree(tree)
-  }
+  given (given Context): IsInstanceOf[LambdaTypeTree] = internal.isInstanceOfLambdaTypeTree
+
+  object IsLambdaTypeTree
+    @deprecated("Use _: LambdaTypeTree", "")
+    def unapply(x: LambdaTypeTree): Some[LambdaTypeTree] = Some(x)
 
   object LambdaTypeTree {
     def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): LambdaTypeTree =
       internal.Lambdaapply(tparams, body)
     def copy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): LambdaTypeTree =
       internal.Lambdacopy(original)(tparams, body)
-    def unapply(tree: Tree)(given ctx: Context): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
-      internal.matchLambdaTypeTree(tree).map(x => (x.tparams, x.body))
+    def unapply(tree: LambdaTypeTree)(given ctx: Context): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
+      Some((tree.tparams, tree.body))
   }
 
   given LambdaTypeTreeOps: (self: LambdaTypeTree) {
@@ -1038,18 +1075,18 @@ trait TreeOps extends Core {
     def body(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.Lambdabody(self)
   }
 
-  object IsTypeBind {
-    /** Matches any TypeBind and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[TypeBind] =
-      internal.matchTypeBind(tree)
-  }
+  given (given Context): IsInstanceOf[TypeBind] = internal.isInstanceOfTypeBind
+
+  object IsTypeBind
+    @deprecated("Use _: TypeBind", "")
+    def unapply(x: TypeBind): Some[TypeBind] = Some(x)
 
   object TypeBind {
     // TODO def apply(name: String, tree: Tree)(given ctx: Context): TypeBind
     def copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(given ctx: Context): TypeBind =
       internal.TypeBind_copy(original)(name, tpt)
-    def unapply(tree: Tree)(given ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)] =
-      internal.matchTypeBind(tree).map(x => (x.name, x.body))
+    def unapply(x: TypeBind)(given ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)] =
+      Some((x.name, x.body))
   }
 
   given TypeBindOps: (self: TypeBind) {
@@ -1057,19 +1094,19 @@ trait TreeOps extends Core {
     def body(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeBind_body(self)
   }
 
-  object IsTypeBlock {
-    /** Matches any TypeBlock and returns it */
-    def unapply(tree: Tree)(given ctx: Context): Option[TypeBlock] =
-      internal.matchTypeBlock(tree)
-  }
+  given (given Context): IsInstanceOf[TypeBlock] = internal.isInstanceOfTypeBlock
+
+  object IsTypeBlock
+    @deprecated("Use _: TypeBlock", "")
+    def unapply(x: TypeBlock): Some[TypeBlock] = Some(x)
 
   object TypeBlock {
     def apply(aliases: List[TypeDef], tpt: TypeTree)(given ctx: Context): TypeBlock =
       internal.TypeBlock_apply(aliases, tpt)
     def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree)(given ctx: Context): TypeBlock =
       internal.TypeBlock_copy(original)(aliases, tpt)
-    def unapply(tree: Tree)(given ctx: Context): Option[(List[TypeDef], TypeTree)] =
-      internal.matchTypeBlock(tree).map(x => (x.aliases, x.tpt))
+    def unapply(x: TypeBlock)(given ctx: Context): Option[(List[TypeDef], TypeTree)] =
+      Some((x.aliases, x.tpt))
   }
 
   given TypeBlockOps: (self: TypeBlock) {
@@ -1085,30 +1122,31 @@ trait TreeOps extends Core {
     def hi(given ctx: Context): TypeTree = internal.TypeBoundsTree_hi(self)
   }
 
-  object IsTypeBoundsTree {
-    def unapply(tree: Tree)(given ctx: Context): Option[TypeBoundsTree] =
-      internal.matchTypeBoundsTree(tree)
-  }
+  given (given Context): IsInstanceOf[TypeBoundsTree] = internal.isInstanceOfTypeBoundsTree
+
+  object IsTypeBoundsTree
+    @deprecated("Use _: TypeBoundsTree", "")
+    def unapply(x: TypeBoundsTree): Some[TypeBoundsTree] = Some(x)
 
   object TypeBoundsTree {
-    def unapply(tree: Tree)(given ctx: Context): Option[(TypeTree, TypeTree)] =
-      internal.matchTypeBoundsTree(tree).map(x => (x.low, x.hi))
+    def unapply(x: TypeBoundsTree)(given ctx: Context): Option[(TypeTree, TypeTree)] =
+      Some((x.low, x.hi))
   }
 
   given WildcardTypeTreeOps: (self: WildcardTypeTree) {
     def tpe(given ctx: Context): TypeOrBounds = internal.WildcardTypeTree_tpe(self)
   }
 
-  object IsWildcardTypeTree {
-    def unapply(tree: Tree)(given ctx: Context): Option[WildcardTypeTree] =
-      internal.matchWildcardTypeTree(tree)
-  }
+  given (given Context): IsInstanceOf[WildcardTypeTree] = internal.isInstanceOfWildcardTypeTree
 
   /** TypeBoundsTree containing wildcard type bounds */
+  object IsWildcardTypeTree
+    @deprecated("Use _: WildcardTypeTree", "")
+    def unapply(x: WildcardTypeTree): Some[WildcardTypeTree] = Some(x)
+
   object WildcardTypeTree {
     /** Matches a TypeBoundsTree containing wildcard type bounds */
-    def unapply(tree: Tree)(given ctx: Context): Boolean =
-      internal.matchWildcardTypeTree(tree).isDefined
+    def unapply(x: WildcardTypeTree)(given ctx: Context): Boolean = true
   }
 
   // ----- CaseDefs ------------------------------------------------
@@ -1119,10 +1157,11 @@ trait TreeOps extends Core {
     def rhs(given ctx: Context): Term = internal.CaseDef_rhs(caseDef)
   }
 
-  object IsCaseDef {
-    def unapply(self: Tree)(given ctx: Context): Option[CaseDef] =
-      internal.matchCaseDef(self)
-  }
+  given (given Context): IsInstanceOf[CaseDef] = internal.isInstanceOfCaseDef
+
+  object IsCaseDef
+    @deprecated("Use _: CaseDef", "")
+    def unapply(x: CaseDef): Some[CaseDef] = Some(x)
 
   object CaseDef {
     def apply(pattern: Tree, guard: Option[Term], rhs: Term)(given ctx: Context): CaseDef =
@@ -1131,8 +1170,8 @@ trait TreeOps extends Core {
     def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term)(given ctx: Context): CaseDef =
       internal.CaseDef_module_copy(original)(pattern, guard, rhs)
 
-    def unapply(tree: Tree)(given ctx: Context): Option[(Tree, Option[Term], Term)] =
-      internal.matchCaseDef(tree).map( x => (x.pattern, x.guard, x.rhs))
+    def unapply(x: CaseDef)(given ctx: Context): Option[(Tree, Option[Term], Term)] =
+      Some((x.pattern, x.guard, x.rhs))
   }
 
   given TypeCaseDefOps: (caseDef: TypeCaseDef) {
@@ -1140,10 +1179,12 @@ trait TreeOps extends Core {
     def rhs(given ctx: Context): TypeTree = internal.TypeCaseDef_rhs(caseDef)
   }
 
-  object IsTypeCaseDef {
-    def unapply(self: Tree)(given ctx: Context): Option[TypeCaseDef] =
-      internal.matchTypeCaseDef(self)
-  }
+  given (given Context): IsInstanceOf[TypeCaseDef] =
+    internal.isInstanceOfTypeCaseDef
+
+  object IsTypeCaseDef
+    @deprecated("Use _: TypeCaseDef", "")
+    def unapply(x: TypeCaseDef): Some[TypeCaseDef] = Some(x)
 
   object TypeCaseDef {
     def apply(pattern: TypeTree, rhs: TypeTree)(given ctx: Context): TypeCaseDef =
@@ -1152,23 +1193,24 @@ trait TreeOps extends Core {
     def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree)(given ctx: Context): TypeCaseDef =
       internal.TypeCaseDef_module_copy(original)(pattern, rhs)
 
-    def unapply(tree: Tree)(given ctx: Context): Option[(TypeTree, TypeTree)] =
-      internal.matchTypeCaseDef(tree).map( x => (x.pattern, x.rhs))
+    def unapply(tree: TypeCaseDef)(given ctx: Context): Option[(TypeTree, TypeTree)] =
+      Some((tree.pattern, tree.rhs))
   }
 
   // ----- Trees ------------------------------------------------
 
-  object IsBind {
-    def unapply(pattern: Tree)(given ctx: Context): Option[Bind] =
-      internal.matchTree_Bind(pattern)
-  }
+  given (given Context): IsInstanceOf[Bind] = internal.isInstanceOfBind
+
+  object IsBind
+    @deprecated("Use _: Bind", "")
+    def unapply(x: Bind): Some[Bind] = Some(x)
 
   object Bind {
     // TODO def apply(name: String, pattern: Tree)(given ctx: Context): Bind
     def copy(original: Tree)(name: String, pattern: Tree)(given ctx: Context): Bind =
       internal.Tree_Bind_module_copy(original)(name, pattern)
-    def unapply(pattern: Tree)(given ctx: Context): Option[(String, Tree)] =
-      internal.matchTree_Bind(pattern).map(x => (x.name, x.pattern))
+    def unapply(pattern: Bind)(given ctx: Context): Option[(String, Tree)] =
+      Some((pattern.name, pattern.pattern))
   }
 
   given BindOps: (bind: Bind) {
@@ -1176,17 +1218,18 @@ trait TreeOps extends Core {
     def pattern(given ctx: Context): Tree = internal.Tree_Bind_pattern(bind)
   }
 
-  object IsUnapply {
-    def unapply(pattern: Tree)(given ctx: Context): Option[Unapply] =
-      internal.matchTree_Unapply(pattern)
-  }
+  given (given Context): IsInstanceOf[Unapply] = internal.isInstanceOfUnapply
+
+  object IsUnapply
+    @deprecated("Use _: Unapply", "")
+    def unapply(x: Unapply): Some[Unapply] = Some(x)
 
   object Unapply {
     // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply
     def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree])(given ctx: Context): Unapply =
       internal.Tree_Unapply_module_copy(original)(fun, implicits, patterns)
-    def unapply(pattern: Tree)(given ctx: Context): Option[(Term, List[Term], List[Tree])] =
-      internal.matchTree_Unapply(pattern).map(x => (x.fun, x.implicits, x.patterns))
+    def unapply(x: Unapply)(given ctx: Context): Option[(Term, List[Term], List[Tree])] =
+      Some((x.fun, x.implicits, x.patterns))
   }
 
   given UnapplyOps: (unapply: Unapply) {
@@ -1195,18 +1238,19 @@ trait TreeOps extends Core {
     def patterns(given ctx: Context): List[Tree] = internal.Tree_Unapply_patterns(unapply)
   }
 
-  object IsAlternatives {
-    def unapply(pattern: Tree)(given ctx: Context): Option[Alternatives] =
-      internal.matchTree_Alternatives(pattern)
-  }
+  given (given Context): IsInstanceOf[Alternatives] = internal.isInstanceOfAlternatives
+
+  object IsAlternatives
+    @deprecated("Use _: Alternatives", "")
+    def unapply(x: Alternatives): Some[Alternatives] = Some(x)
 
   object Alternatives {
     def apply(patterns: List[Tree])(given ctx: Context): Alternatives =
       internal.Tree_Alternatives_module_apply(patterns)
     def copy(original: Tree)(patterns: List[Tree])(given ctx: Context): Alternatives =
       internal.Tree_Alternatives_module_copy(original)(patterns)
-    def unapply(pattern: Tree)(given ctx: Context): Option[List[Tree]] =
-      internal.matchTree_Alternatives(pattern).map(_.patterns)
+    def unapply(x: Alternatives)(given ctx: Context): Option[List[Tree]] =
+      Some(x.patterns)
   }
 
   given AlternativesOps: (alternatives: Alternatives) {
