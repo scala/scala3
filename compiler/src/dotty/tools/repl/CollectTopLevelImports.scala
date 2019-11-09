@@ -20,7 +20,7 @@ class CollectTopLevelImports extends Phase {
 
   def run(implicit ctx: Context): Unit = {
     def topLevelImports(tree: Tree) = {
-      val PackageDef(_, _ :: TypeDef(_, rhs: Template) :: Nil) = tree
+      val PackageDef(_, _ :: TypeDef(_, rhs: Template) :: _) = tree
       rhs.body.collect { case tree: Import => tree }
     }
 
