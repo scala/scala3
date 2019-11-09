@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import Types._, Contexts._, Symbols._, Decorators._
+import Types._, Contexts._, Symbols._, Decorators._, Constants._
 import annotation.tailrec
 import util.Property
 
@@ -29,6 +29,41 @@ object Nullables with
     *  by this tree.
     */
   private[typer] val AlwaysExcluded = Property.StickyKey[Nullables.Excluded]
+
+  /** An extractor for null comparisons */
+  object CompareNull with
+
+    /** Matches one of
+     *
+     *    tree == null, tree eq null, null == tree, null eq tree
+     *    tree != null, tree ne null, null != tree, null ne tree
+     *
+     *  The second boolean result is true for equality tests, false for inequality tests
+     */
+    def unapply(tree: Tree)(given Context): Option[(Tree, Boolean)] = tree match
+      case Apply(Select(l, _), Literal(Constant(null)) :: Nil) =>
+        testSym(tree.symbol, l)
+      case Apply(Select(Literal(Constant(null)), _), r :: Nil) =>
+        testSym(tree.symbol, r)
+      case _ =>
+        None
+
+    private def testSym(sym: Symbol, operand: Tree)(given Context) =
+      if sym == defn.Any_== || sym == defn.Object_eq then Some((operand, true))
+      else if sym == defn.Any_!= || sym == defn.Object_ne then Some((operand, false))
+      else None
+
+  end CompareNull
+
+  /** An extractor for null-trackable references */
+  object TrackedRef
+    def unapply(tree: Tree)(given Context): Option[TermRef] = tree.typeOpt match
+      case ref: TermRef if isTracked(ref) => Some(ref)
+      case _ => None
+  end TrackedRef
+
+  /** Is given reference tracked for nullability? */
+  def isTracked(ref: TermRef)(given Context) = ref.isStable
 
   given (excluded: List[Excluded])
     def containsRef(ref: TermRef): Boolean =
@@ -95,7 +130,7 @@ object Nullables with
       def setExcluded(ifTrue: Excluded, ifFalse: Excluded) =
         tree.putAttachment(CondExcluded, EitherExcluded(ifTrue, ifFalse))
       if !curCtx.erasedTypes then tree match
-        case ComparePathNull(ref, testEqual) =>
+        case CompareNull(TrackedRef(ref), testEqual) =>
           if testEqual then setExcluded(Set(), Set(ref))
           else setExcluded(Set(ref), Set())
         case Apply(Select(x, _), y :: Nil) =>
