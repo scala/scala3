@@ -14,5 +14,5 @@ annot-nonconst.scala:6: error: annotation argument needs to be a constant; found
 annot-nonconst.scala:7: error: annotation argument cannot be null
   @Ann2(null) def bar = "bar"
         ^
-two warnings found
-two errors found
+2 warnings found
+2 errors found

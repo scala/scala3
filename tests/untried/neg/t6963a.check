@@ -3,5 +3,5 @@ The behavior of `scanRight` has changed. The previous behavior can be reproduced
   List(1,2,3,4,5).scanRight(0)(_+_)
                   ^
 error: No warnings can be incurred under -Xfatal-warnings.
-one warning found
-one error found
+1 warning found
+1 error found
