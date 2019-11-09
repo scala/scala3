@@ -308,10 +308,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** Returns a string meaning "n elements". */
   protected def countString(n: Int, elements: String): String = n match {
     case 0 => s"no ${elements}s"
-    case 1 => s"one ${elements}"
-    case 2 => s"two ${elements}s"
-    case 3 => s"three ${elements}s"
-    case 4 => s"four ${elements}s"
+    case 1 => s"1 ${elements}"
     case _ => s"$n ${elements}s"
   }
 
