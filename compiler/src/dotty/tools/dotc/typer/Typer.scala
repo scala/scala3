@@ -1138,13 +1138,18 @@ class Typer extends Namer
 
   // Overridden in InlineTyper for inline matches
   def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(implicit ctx: Context): Tree = {
-    val cases1 = harmonic(harmonize, pt)(typedCases(cases, wideSelType, pt.dropIfProto))
+    val cases1 = harmonic(harmonize, pt)(typedCases(cases, sel, wideSelType, pt.dropIfProto))
       .asInstanceOf[List[CaseDef]]
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
   }
 
-  def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context): List[CaseDef] =
-    cases.mapconserve(typedCase(_, selType, pt))
+  def typedCases(cases: List[untpd.CaseDef], sel: Tree, wideSelType: Type, pt: Type)(implicit ctx: Context): List[CaseDef] =
+    var caseCtx = ctx
+    cases.mapconserve { cas =>
+      val case1 = typedCase(cas, sel, wideSelType, pt)(given caseCtx)
+      caseCtx = Nullables.afterPatternContext(sel, case1.pat)
+      case1
+    }
 
   /** - strip all instantiated TypeVars from pattern types.
     *    run/reducable.scala is a test case that shows stripping typevars is necessary.
@@ -1171,7 +1176,7 @@ class Typer extends Namer
   }
 
   /** Type a case. */
-  def typedCase(tree: untpd.CaseDef, selType: Type, pt: Type)(implicit ctx: Context): CaseDef = {
+  def typedCase(tree: untpd.CaseDef, sel: Tree, wideSelType: Type, pt: Type)(implicit ctx: Context): CaseDef = {
     val originalCtx = ctx
     val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
 
@@ -1184,8 +1189,10 @@ class Typer extends Namer
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)
     }
 
-    val pat1 = typedPattern(tree.pat, selType)(gadtCtx)
-    caseRest(pat1)(gadtCtx.fresh.setNewScope)
+    val pat1 = typedPattern(tree.pat, wideSelType)(gadtCtx)
+    caseRest(pat1)(
+      given Nullables.caseContext(sel, pat1)(
+        given gadtCtx.fresh.setNewScope))
   }
 
   def typedLabeled(tree: untpd.Labeled)(implicit ctx: Context): Labeled = {
@@ -1204,7 +1211,6 @@ class Typer extends Namer
     }
     caseRest(ctx.fresh.setFreshGADTBounds.setNewScope)
   }
-
 
   def typedReturn(tree: untpd.Return)(implicit ctx: Context): Return = {
     def returnProto(owner: Symbol, locals: Scope): Type =
@@ -1263,7 +1269,7 @@ class Typer extends Namer
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = {
     val expr2 :: cases2x = harmonic(harmonize, pt) {
       val expr1 = typed(tree.expr, pt.dropIfProto)
-      val cases1 = typedCases(tree.cases, defn.ThrowableType, pt.dropIfProto)
+      val cases1 = typedCases(tree.cases, EmptyTree, defn.ThrowableType, pt.dropIfProto)
       expr1 :: cases1
     }
     val finalizer1 = typed(tree.finalizer, defn.UnitType)

@@ -65,6 +65,20 @@ object Nullables with
   /** Is given reference tracked for nullability? */
   def isTracked(ref: TermRef)(given Context) = ref.isStable
 
+  def afterPatternContext(sel: Tree, pat: Tree)(given ctx: Context) = (sel, pat) match
+    case (TrackedRef(ref), Literal(Constant(null))) => ctx.addExcluded(Set(ref))
+    case _ => ctx
+
+  def caseContext(sel: Tree, pat: Tree)(given ctx: Context): Context = sel match
+    case TrackedRef(ref) if matchesNotNull(pat) => ctx.addExcluded(Set(ref))
+    case _ => ctx
+
+  private def matchesNotNull(pat: Tree)(given Context): Boolean = pat match
+    case _: Typed | _: UnApply => true
+    case Alternative(pats) => pats.forall(matchesNotNull)
+    // TODO: Add constant pattern if the constant type is not nullable
+    case _ => false
+
   given (excluded: List[Excluded])
     def containsRef(ref: TermRef): Boolean =
       excluded.exists(_.contains(ref))

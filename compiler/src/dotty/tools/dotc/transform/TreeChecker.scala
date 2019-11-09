@@ -434,9 +434,9 @@ class TreeChecker extends Phase with SymTransformer {
         }
       }
 
-    override def typedCase(tree: untpd.CaseDef, selType: Type, pt: Type)(implicit ctx: Context): CaseDef =
+    override def typedCase(tree: untpd.CaseDef, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context): CaseDef =
       withPatSyms(tpd.patVars(tree.pat.asInstanceOf[tpd.Tree])) {
-        super.typedCase(tree, selType, pt)
+        super.typedCase(tree, sel, selType, pt)
       }
 
     override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context): Tree = {

@@ -30,6 +30,19 @@ def test: Unit =
   }
   then ()
 
+  x match
+    case _: String =>
+      if x == null then impossible(new T{})
+
+  val y: Any = List(x)
+  y match
+    case y1 :: ys => if y == null then impossible(new T{})
+    case Some(_) | Seq(_: _*) => if y == null then impossible(new T{})
+
+  x match
+    case null =>
+    case _ => if x == null then impossible(new T{})
+
   if x == null then return
   if x == null then impossible(new T{})
 
