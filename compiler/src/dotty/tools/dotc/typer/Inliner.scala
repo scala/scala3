@@ -1066,15 +1066,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                                 | its condition   ${tree.cond}
                                 | is not a constant value""")
           else
-            // Recompute nullablity info. This is needed because inlined code could have come
-            // from Tasty where no nullability info is kept.
-            val addNullable = new TreeTraverser {
-              def traverse(tree: Tree)(implicit ctx: Context) =
-                traverseChildren(tree)
-                tree.computeNullable
-            }
-            addNullable.traverse(cond1)
-            
+            cond1.computeNullableDeeply()
             val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
             super.typedIf(if1, pt)
       }

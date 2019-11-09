@@ -4,7 +4,7 @@ package ast
 
 import core._
 import Flags._, Trees._, Types._, Contexts._
-import Names._, StdNames._, NameOps._, Symbols._, Constants._
+import Names._, StdNames._, NameOps._, Symbols._
 import typer.ConstFold
 import reporting.trace
 import dotty.tools.dotc.transform.SymUtils._

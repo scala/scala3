@@ -140,7 +140,7 @@ object Nullables with
      *     a path (i.e. a stable TermRef)
      *  2. Boolean &&, ||, !
      */
-    def computeNullable(given Context): tree.type =
+    def computeNullable()(given Context): tree.type =
       def setExcluded(ifTrue: Excluded, ifFalse: Excluded) =
         tree.putAttachment(CondExcluded, EitherExcluded(ifTrue, ifFalse))
       if !curCtx.erasedTypes then tree match
@@ -161,4 +161,13 @@ object Nullables with
             setExcluded(xc.ifFalse, xc.ifTrue)
         case _ =>
       tree
+
+    /** Compute nullability information for this tree and all its subtrees */
+    def computeNullableDeeply()(given Context): Unit =
+      new TreeTraverser {
+        def traverse(tree: Tree)(implicit ctx: Context) =
+          traverseChildren(tree)
+          tree.computeNullable()
+      }.traverse(tree)
+
 end Nullables
