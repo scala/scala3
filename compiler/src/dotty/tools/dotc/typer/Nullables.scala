@@ -7,6 +7,9 @@ import Types._, Contexts._, Symbols._, Decorators._, Constants._
 import annotation.tailrec
 import StdNames.nme
 import util.Property
+import Names.Name
+import util.Spans.Span
+import Flags.Mutable
 
 /** Operations for implementing a flow analysis for nullability */
 object Nullables with
@@ -94,8 +97,21 @@ object Nullables with
       case _ => None
   end TrackedRef
 
-  /** Is given reference tracked for nullability? */
-  def isTracked(ref: TermRef)(given Context) = ref.isStable
+  /** Is given reference tracked for nullability?
+   *  This is the case if the reference is a path to an immutable val,
+   *  or if it refers to a local mutable variable where all assignments
+   *  to the variable are reachable.
+   */
+  def isTracked(ref: TermRef)(given Context) =
+    ref.isStable
+    || { val sym = ref.symbol
+         sym.is(Mutable)
+         && sym.owner.isTerm
+         && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod
+         && sym.span.exists
+         && curCtx.compilationUnit.trackedVarSpans.contains(sym.span.start)
+//           .reporting(i"tracked? $sym ${sym.span} = $result")
+       }
 
   def afterPatternContext(sel: Tree, pat: Tree)(given ctx: Context) = (sel, pat) match
     case (TrackedRef(ref), Literal(Constant(null))) => ctx.addNotNullRefs(Set(ref))
@@ -151,7 +167,7 @@ object Nullables with
      *  by `tree` yields `true` or `false`. Two empty sets if `tree` is not
      *  a condition.
      */
-    private def notNullConditional(given Context): NotNullConditional =
+    def notNullConditional(given Context): NotNullConditional =
       stripBlock(tree).getAttachment(NNConditional) match
         case Some(cond) if !curCtx.erasedTypes => cond
         case _ => NotNullConditional.empty
@@ -226,4 +242,52 @@ object Nullables with
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)
 
+  /** The name offsets of all local mutable variables in the current compilation unit
+   *  that have only reachable assignments. An assignment is reachable if the
+   *  path of tree nodes between the block enclosing the variable declaration to
+   *  the assignment consists only of if-expressions, while-expressions, block-expressions
+   *  and type-ascriptions. Only reachable assignments are handled correctly in the
+   *  nullability analysis. Therefore, variables with unreachable assignments can
+   *  be assumed to be not-null only if their type asserts it.
+   */
+  def trackedVarSpans(given Context): Set[Int] =
+    import ast.untpd._
+    object populate extends UntypedTreeTraverser with
+
+      /** The name offsets of variables that are tracked */
+      var tracked: Set[Int] = Set.empty
+      /** The names of candidate variables in scope that might be tracked */
+      var candidates: Set[Name] = Set.empty
+      /** An assignment to a variable that's not in reachable makes the variable ineligible for tracking */
+      var reachable: Set[Name] = Set.empty
+
+      def traverse(tree: Tree)(implicit ctx: Context) =
+        val savedReachable = reachable
+        tree match
+          case Block(stats, expr) =>
+            var shadowed: Set[Name] = Set.empty
+            for case (stat: ValDef) <- stats if stat.mods.is(Mutable) do
+              if candidates.contains(stat.name) then shadowed += stat.name
+              else candidates += stat.name
+              reachable += stat.name
+            traverseChildren(tree)
+            for case (stat: ValDef) <- stats if stat.mods.is(Mutable) do
+              if candidates.contains(stat.name) then
+                tracked += stat.nameSpan.start // candidates that survive until here are tracked
+                candidates -= stat.name
+            candidates ++= shadowed
+          case Assign(Ident(name), rhs) =>
+            if !reachable.contains(name) then candidates -= name // variable cannot be tracked
+            traverseChildren(tree)
+          case _: (If | WhileDo | Typed) =>
+            traverseChildren(tree)      // assignments to candidate variables are OK here ...
+          case _ =>
+            reachable = Set.empty       // ... but not here
+            traverseChildren(tree)
+        reachable = savedReachable
+
+    populate.traverse(curCtx.compilationUnit.untpdTree)
+    populate.tracked
+      .reporting(i"tracked vars: ${result.toList}%, %")
+  end trackedVarSpans
 end Nullables

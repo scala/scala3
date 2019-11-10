@@ -5,11 +5,13 @@ import util.SourceFile
 import ast.{tpd, untpd}
 import tpd.{Tree, TreeTraverser}
 import typer.PrepareInlineable.InlineAccessors
+import typer.Nullables
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.SymUtils._
 import util.{NoSource, SourceFile}
+import util.Spans.Span
 import core.Decorators._
 
 class CompilationUnit protected (val source: SourceFile) {
@@ -42,6 +44,15 @@ class CompilationUnit protected (val source: SourceFile) {
       suspended = true
       ctx.run.suspendedUnits += this
     throw CompilationUnit.SuspendException()
+
+  private var myTrackedVarSpans: Set[Int] = null
+
+  /** The (name-) offsets of all local variables in this compilation unit
+   *  that can be tracked for being not null.
+   */
+  def trackedVarSpans(given Context): Set[Int] =
+    if myTrackedVarSpans == null then myTrackedVarSpans = Nullables.trackedVarSpans
+    myTrackedVarSpans
 }
 
 object CompilationUnit {
