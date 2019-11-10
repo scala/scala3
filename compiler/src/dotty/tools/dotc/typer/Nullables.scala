@@ -110,7 +110,6 @@ object Nullables with
          && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod
          && sym.span.exists
          && curCtx.compilationUnit.trackedVarSpans.contains(sym.span.start)
-//           .reporting(i"tracked? $sym ${sym.span} = $result")
        }
 
   def afterPatternContext(sel: Tree, pat: Tree)(given ctx: Context) = (sel, pat) match
@@ -288,6 +287,5 @@ object Nullables with
 
     populate.traverse(curCtx.compilationUnit.untpdTree)
     populate.tracked
-      .reporting(i"tracked vars: ${result.toList}%, %")
   end trackedVarSpans
 end Nullables
