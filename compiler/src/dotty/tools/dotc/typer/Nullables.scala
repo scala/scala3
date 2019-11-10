@@ -109,8 +109,9 @@ object Nullables with
          && sym.owner.isTerm
          && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod
          && sym.span.exists
+         && curCtx.compilationUnit != null // could be null under -Ytest-pickler
          && curCtx.compilationUnit.trackedVarSpans.contains(sym.span.start)
-       }
+      }
 
   def afterPatternContext(sel: Tree, pat: Tree)(given ctx: Context) = (sel, pat) match
     case (TrackedRef(ref), Literal(Constant(null))) => ctx.addNotNullRefs(Set(ref))
