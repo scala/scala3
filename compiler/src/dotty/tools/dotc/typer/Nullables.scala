@@ -5,6 +5,7 @@ package typer
 import core._
 import Types._, Contexts._, Symbols._, Decorators._, Constants._
 import annotation.{tailrec, infix}
+import StdNames.nme
 import util.Property
 
 /** Operations for implementing a flow analysis for nullability */
@@ -17,7 +18,7 @@ object Nullables with
   case class NotNullInfo(asserted: Set[TermRef], retracted: Set[TermRef])
     assert((asserted & retracted).isEmpty)
 
-    def isEmpty = this eq noNotNulls
+    def isEmpty = this eq NotNullInfo.empty
 
     /** The sequential combination with another not-null info */
     @infix def seq(that: NotNullInfo): NotNullInfo =
@@ -28,24 +29,22 @@ object Nullables with
         this.retracted.union(that.retracted).diff(that.asserted))
 
   object NotNullInfo with
+    val empty = new NotNullInfo(Set(), Set())
     def apply(asserted: Set[TermRef], retracted: Set[TermRef]): NotNullInfo =
-      if asserted.isEmpty && retracted.isEmpty then noNotNulls
+      if asserted.isEmpty && retracted.isEmpty then empty
       else new NotNullInfo(asserted, retracted)
   end NotNullInfo
 
-  val noNotNulls = new NotNullInfo(Set(), Set())
-
   /** A pair of not-null sets, depending on whether a condition is `true` or `false` */
   case class NotNullConditional(ifTrue: Set[TermRef], ifFalse: Set[TermRef]) with
-    def isEmpty = this eq neitherNotNull
+    def isEmpty = this eq NotNullConditional.empty
 
   object NotNullConditional with
+    val empty = new NotNullConditional(Set(), Set())
     def apply(ifTrue: Set[TermRef], ifFalse: Set[TermRef]): NotNullConditional =
-      if ifTrue.isEmpty && ifFalse.isEmpty then neitherNotNull
+      if ifTrue.isEmpty && ifFalse.isEmpty then empty
       else new NotNullConditional(ifTrue, ifFalse)
   end NotNullConditional
-
-  val neitherNotNull = new NotNullConditional(Set(), Set())
 
   /** An attachment that represents conditional flow facts established
    *  by this tree, which represents a condition.
@@ -117,8 +116,9 @@ object Nullables with
         false
 
     def extendWith(info: NotNullInfo) =
-      if info.asserted.forall(infos.containsRef(_))
-         && !info.retracted.exists(infos.containsRef(_))
+      if info.isEmpty
+         || info.asserted.forall(infos.containsRef(_))
+            && !info.retracted.exists(infos.containsRef(_))
       then infos
       else info :: infos
 
@@ -135,7 +135,7 @@ object Nullables with
     def notNullInfo(given Context): NotNullInfo =
       stripInlined(tree).getAttachment(NNInfo) match
         case Some(info) if !curCtx.erasedTypes => info
-        case _ => noNotNulls
+        case _ => NotNullInfo.empty
 
     /** The paths that are known to be not null if the condition represented
      *  by `tree` yields `true` or `false`. Two empty sets if `tree` is not
@@ -144,7 +144,7 @@ object Nullables with
     def notNullConditional(given Context): NotNullConditional =
       stripBlock(tree).getAttachment(NNConditional) match
         case Some(cond) if !curCtx.erasedTypes => cond
-        case _ => neitherNotNull
+        case _ => NotNullConditional.empty
 
     /** The current context augmented with nullability information of `tree` */
     def nullableContext(given Context): Context =
@@ -181,7 +181,7 @@ object Nullables with
     def computeNullable()(given Context): tree.type =
       def setConditional(ifTrue: Set[TermRef], ifFalse: Set[TermRef]) =
         tree.putAttachment(NNConditional, NotNullConditional(ifTrue, ifFalse))
-      if !curCtx.erasedTypes then
+      if !curCtx.erasedTypes && analyzedOps.contains(tree.symbol.name.toTermName) then
         tree match
           case CompareNull(TrackedRef(ref), testEqual) =>
             if testEqual then setConditional(Set(), Set(ref))
@@ -208,5 +208,7 @@ object Nullables with
           traverseChildren(tree)
           tree.computeNullable()
       }.traverse(tree)
+
+  private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)
 
 end Nullables
