@@ -814,23 +814,24 @@ class Typer extends Namer
 
     val result =
       if tree.elsep.isEmpty then
-        val thenp1 = typed(tree.thenp, defn.UnitType)(given cond1.nullableContext(true))
+        val thenp1 = typed(tree.thenp, defn.UnitType)(given cond1.nullableContextIf(true))
         val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
         cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
       else
         val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
-          val thenp0 = typed(tree.thenp, pt.dropIfProto)(given cond1.nullableContext(true))
-          val elsep0 = typed(tree.elsep, pt.dropIfProto)(given cond1.nullableContext(false))
+          val thenp0 = typed(tree.thenp, pt.dropIfProto)(given cond1.nullableContextIf(true))
+          val elsep0 = typed(tree.elsep, pt.dropIfProto)(given cond1.nullableContextIf(false))
           thenp0 :: elsep0 :: Nil
         }
         assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
 
-    if result.thenp.tpe.isRef(defn.NothingClass) then
-      result.withNotNullRefs(cond1.notNullConditional.ifFalse)
-    else if result.elsep.tpe.isRef(defn.NothingClass) then
-      result.withNotNullRefs(cond1.notNullConditional.ifTrue)
-    else
-      result
+    def thenPathInfo = cond1.notNullInfoIf(true).seq(result.thenp.notNullInfo)
+    def elsePathInfo = cond1.notNullInfoIf(false).seq(result.elsep.notNullInfo)
+    result.withNotNullInfo(
+      if result.thenp.tpe.isRef(defn.NothingClass) then elsePathInfo
+      else if result.elsep.tpe.isRef(defn.NothingClass) then thenPathInfo
+      else thenPathInfo.alt(elsePathInfo)
+    )
   end typedIf
 
   /** Decompose function prototype into a list of parameter prototypes and a result prototype
@@ -1261,9 +1262,9 @@ class Typer extends Namer
     val cond1 =
       if (tree.cond eq EmptyTree) EmptyTree
       else typed(tree.cond, defn.BooleanType)
-    val body1 = typed(tree.body, defn.UnitType)(given cond1.nullableContext(true))
+    val body1 = typed(tree.body, defn.UnitType)(given cond1.nullableContextIf(true))
     assignType(cpy.WhileDo(tree)(cond1, body1))
-      .withNotNullRefs(cond1.notNullConditional.ifFalse)
+      .withNotNullInfo(body1.notNullInfo.retractedInfo.seq(cond1.notNullInfoIf(false)))
   }
 
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = {

@@ -4,7 +4,7 @@ package typer
 
 import core._
 import Types._, Contexts._, Symbols._, Decorators._, Constants._
-import annotation.{tailrec, infix}
+import annotation.tailrec
 import StdNames.nme
 import util.Property
 
@@ -20,13 +20,19 @@ object Nullables with
 
     def isEmpty = this eq NotNullInfo.empty
 
+    def retractedInfo = NotNullInfo(Set(), retracted)
+
     /** The sequential combination with another not-null info */
-    @infix def seq(that: NotNullInfo): NotNullInfo =
+    def seq(that: NotNullInfo): NotNullInfo =
       if this.isEmpty then that
       else if that.isEmpty then this
       else NotNullInfo(
         this.asserted.union(that.asserted).diff(that.retracted),
         this.retracted.union(that.retracted).diff(that.asserted))
+
+    /** The alternative path combination with another not-null info */
+    def alt(that: NotNullInfo): NotNullInfo =
+      NotNullInfo(this.asserted.intersect(that.asserted), this.retracted.union(that.retracted))
 
   object NotNullInfo with
     val empty = new NotNullInfo(Set(), Set())
@@ -124,24 +130,28 @@ object Nullables with
 
   given (tree: Tree)
 
-    /* The `tree` with added attachment stating that all paths in `refs` are not-null */
+    /* The `tree` with added nullability attachment */
     def withNotNullInfo(info: NotNullInfo): tree.type =
       if !info.isEmpty then tree.putAttachment(NNInfo, info)
       tree
 
-    def withNotNullRefs(refs: Set[TermRef]) = tree.withNotNullInfo(NotNullInfo(refs, Set()))
-
-    /* The paths that are known to be not null after execution of `tree` terminates normally */
+    /* The nullability info of `tree` */
     def notNullInfo(given Context): NotNullInfo =
       stripInlined(tree).getAttachment(NNInfo) match
         case Some(info) if !curCtx.erasedTypes => info
         case _ => NotNullInfo.empty
 
+    /* The nullability info of `tree`, assuming it is a condition that evaluates to `c` */
+    def notNullInfoIf(c: Boolean)(given Context): NotNullInfo =
+      val cond = tree.notNullConditional
+      if cond.isEmpty then tree.notNullInfo
+      else tree.notNullInfo.seq(NotNullInfo(if c then cond.ifTrue else cond.ifFalse, Set()))
+
     /** The paths that are known to be not null if the condition represented
      *  by `tree` yields `true` or `false`. Two empty sets if `tree` is not
      *  a condition.
      */
-    def notNullConditional(given Context): NotNullConditional =
+    private def notNullConditional(given Context): NotNullConditional =
       stripBlock(tree).getAttachment(NNConditional) match
         case Some(cond) if !curCtx.erasedTypes => cond
         case _ => NotNullConditional.empty
@@ -153,12 +163,11 @@ object Nullables with
 
     /** The current context augmented with nullability information,
      *  assuming the result of the condition represented by `tree` is the same as
-     *  the value of `tru`. The current context if `tree` is not a condition.
+     *  the value of `c`.
      */
-    def nullableContext(tru: Boolean)(given Context): Context =
-      val cond = tree.notNullConditional
-      if cond.isEmpty then curCtx
-      else curCtx.addNotNullRefs(if tru then cond.ifTrue else cond.ifFalse)
+    def nullableContextIf(c: Boolean)(given Context): Context =
+      val info = tree.notNullInfoIf(c)
+      if info.isEmpty then curCtx else curCtx.addNotNullInfo(info)
 
     /** The context to use for the arguments of the function represented by `tree`.
      *  This is the current context, augmented with nullability information
@@ -166,8 +175,8 @@ object Nullables with
      */
     def nullableInArgContext(given Context): Context = tree match
       case Select(x, _) if !curCtx.erasedTypes =>
-        if tree.symbol == defn.Boolean_&& then x.nullableContext(true)
-        else if tree.symbol == defn.Boolean_|| then x.nullableContext(false)
+        if tree.symbol == defn.Boolean_&& then x.nullableContextIf(true)
+        else if tree.symbol == defn.Boolean_|| then x.nullableContextIf(false)
         else curCtx
       case _ => curCtx
 
