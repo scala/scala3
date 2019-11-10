@@ -866,7 +866,7 @@ trait Applications extends Compatibility {
                 new ApplyToTyped(tree, fun1, funRef, proto.unforcedTypedArgs, pt)
               else
                 new ApplyToUntyped(tree, fun1, funRef, proto, pt)(
-                  fun1.nullableInArgContext(given argCtx(tree)))
+                  given fun1.nullableInArgContext(given argCtx(tree)))
             convertNewGenericArray(app.result).computeNullable()
           case _ =>
             handleUnexpectedFunType(tree, fun1)

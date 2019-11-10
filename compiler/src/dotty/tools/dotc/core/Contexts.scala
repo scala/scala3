@@ -16,7 +16,7 @@ import ast.untpd
 import Flags.GivenOrImplicit
 import util.{FreshNameCreator, NoSource, SimpleIdentityMap, SourceFile}
 import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
-import Nullables.given
+import Nullables.{NotNullInfo, given}
 import Implicits.ContextualImplicits
 import config.Settings._
 import config.Config
@@ -48,7 +48,7 @@ object Contexts {
   private val (compilationUnitLoc,  store6) = store5.newLocation[CompilationUnit]()
   private val (runLoc,              store7) = store6.newLocation[Run]()
   private val (profilerLoc,         store8) = store7.newLocation[Profiler]()
-  private val (notNullRefsLoc,      store9) = store8.newLocation[List[Nullables.Excluded]]()
+  private val (notNullInfosLoc,     store9) = store8.newLocation[List[NotNullInfo]]()
   private val initialStore = store9
 
   /** The current context */
@@ -213,7 +213,7 @@ object Contexts {
     def profiler: Profiler = store(profilerLoc)
 
     /** The paths currently known to be not null */
-    def notNullRefs = store(notNullRefsLoc)
+    def notNullInfos = store(notNullInfosLoc)
 
     /** The new implicit references that are introduced by this scope */
     protected var implicitsCache: ContextualImplicits = null
@@ -564,7 +564,7 @@ object Contexts {
     def setRun(run: Run): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
     def setFreshNames(freshNames: FreshNameCreator): this.type = updateStore(freshNamesLoc, freshNames)
-    def setNotNullRefs(notNullRefs: List[Nullables.Excluded]): this.type = updateStore(notNullRefsLoc, notNullRefs)
+    def setNotNullInfos(notNullInfos: List[NotNullInfo]): this.type = updateStore(notNullInfosLoc, notNullInfos)
 
     def setProperty[T](key: Key[T], value: T): this.type =
       setMoreProperties(moreProperties.updated(key, value))
@@ -597,12 +597,14 @@ object Contexts {
   }
 
   given (c: Context)
-    def addExcluded(refs: Nullables.Excluded) =
-      if c.notNullRefs.containsAll(refs) then c
-      else c.fresh.setNotNullRefs(refs :: c.notNullRefs)
+    def addNotNullInfo(info: NotNullInfo) =
+      c.withNotNullInfos(c.notNullInfos.extendWith(info))
 
-    def withNotNullRefs(nnrefs: List[Nullables.Excluded]): Context =
-      if c.notNullRefs eq nnrefs then c else c.fresh.setNotNullRefs(nnrefs)
+    def addNotNullRefs(refs: Set[TermRef]) =
+      c.addNotNullInfo(NotNullInfo(refs, Set()))
+
+    def withNotNullInfos(infos: List[NotNullInfo]): Context =
+      if c.notNullInfos eq infos then c else c.fresh.setNotNullInfos(infos)
 
   // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
   implicit class ModeChanges(val c: Context) extends AnyVal {
@@ -635,7 +637,7 @@ object Contexts {
     source = NoSource
     store = initialStore
       .updated(settingsStateLoc, settingsGroup.defaultState)
-      .updated(notNullRefsLoc, Nil)
+      .updated(notNullInfosLoc, Nil)
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchRoot
     gadt = EmptyGadtConstraint

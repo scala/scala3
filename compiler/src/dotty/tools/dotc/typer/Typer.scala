@@ -40,7 +40,7 @@ import dotty.tools.dotc.transform.{PCPCheckAndHeal, Staging, TreeMapWithStages}
 import transform.SymUtils._
 import transform.TypeUtils._
 import reporting.trace
-import Nullables.given
+import Nullables.{NotNullInfo, given}
 
 object Typer {
 
@@ -634,7 +634,7 @@ class Typer extends Namer
         else if (isWildcard) tree.expr.withType(tpt.tpe)
         else typed(tree.expr, tpt.tpe.widenSkolem)
       assignType(cpy.Typed(tree)(expr1, tpt), underlyingTreeTpe)
-        .withNotNullRefs(expr1.notNullRefs)
+        .withNotNullInfo(expr1.notNullInfo)
     }
 
     if (untpd.isWildcardStarArg(tree)) {
@@ -766,7 +766,7 @@ class Typer extends Namer
     ensureNoLocalRefs(
       cpy.Block(tree)(stats1, expr1)
         .withType(expr1.tpe)
-        .withNotNullRefs(stats1.foldLeft(expr1.notNullRefs)(_ | _.notNullRefs)),
+        .withNotNullInfo(stats1.foldRight(expr1.notNullInfo)(_.notNullInfo.seq(_))),
       pt, localSyms(stats1))
   }
 
@@ -826,9 +826,9 @@ class Typer extends Namer
         assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
 
     if result.thenp.tpe.isRef(defn.NothingClass) then
-      result.withNotNullRefs(cond1.condNotNullRefs.ifFalse)
+      result.withNotNullRefs(cond1.notNullConditional.ifFalse)
     else if result.elsep.tpe.isRef(defn.NothingClass) then
-      result.withNotNullRefs(cond1.condNotNullRefs.ifTrue)
+      result.withNotNullRefs(cond1.notNullConditional.ifTrue)
     else
       result
   end typedIf
@@ -1263,7 +1263,7 @@ class Typer extends Namer
       else typed(tree.cond, defn.BooleanType)
     val body1 = typed(tree.body, defn.UnitType)(given cond1.nullableContext(true))
     assignType(cpy.WhileDo(tree)(cond1, body1))
-      .withNotNullRefs(cond1.condNotNullRefs.ifFalse)
+      .withNotNullRefs(cond1.notNullConditional.ifFalse)
   }
 
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = {
@@ -1553,12 +1553,12 @@ class Typer extends Namer
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): Tree = {
     sym.infoOrCompleter match
       case completer: Namer#Completer
-      if completer.creationContext.notNullRefs ne ctx.notNullRefs =>
+      if completer.creationContext.notNullInfos ne ctx.notNullInfos =>
         // The RHS of a val def should know about not null facts established
         // in preceding statements (unless the ValDef is completed ahead of time,
         // then it is impossible).
         vdef.symbol.info = Completer(completer.original)(
-          given completer.creationContext.withNotNullRefs(ctx.notNullRefs))
+          given completer.creationContext.withNotNullInfos(ctx.notNullInfos))
       case _ =>
 
     val ValDef(name, tpt, _) = vdef
@@ -2201,7 +2201,7 @@ class Typer extends Namer
   def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): (List[Tree], Context) = {
     val buf = new mutable.ListBuffer[Tree]
     val enumContexts = new mutable.HashMap[Symbol, Context]
-    val initialNotNullRefs = ctx.notNullRefs
+    val initialNotNullInfos = ctx.notNullInfos
       // A map from `enum` symbols to the contexts enclosing their definitions
     @tailrec def traverse(stats: List[untpd.Tree])(implicit ctx: Context): (List[Tree], Context) = stats match {
       case (imp: untpd.Import) :: rest =>
@@ -2219,7 +2219,7 @@ class Typer extends Namer
               case _: ValDef if !mdef.mods.is(Lazy) && ctx.owner.isTerm =>
                 ctx // all preceding statements will have been executed in this case
               case _ =>
-                ctx.withNotNullRefs(initialNotNullRefs)
+                ctx.withNotNullInfos(initialNotNullInfos)
             typed(mdef)(given defCtx) match {
               case mdef1: DefDef if !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
                 buf += inlineExpansion(mdef1)

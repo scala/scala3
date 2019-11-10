@@ -20,7 +20,7 @@ object ConstFold {
   /** If tree is a constant operation, replace with result. */
   def apply[T <: Tree](tree: T)(implicit ctx: Context): T = finish(tree) {
     tree match {
-      case CompareNull(TrackedRef(ref), testEqual) if ctx.notNullRefs.containsRef(ref) =>
+      case CompareNull(TrackedRef(ref), testEqual) if ctx.notNullInfos.containsRef(ref) =>
         // TODO maybe drop once we have general Nullability?
         Constant(!testEqual)
       case Apply(Select(xt, op), yt :: Nil) =>
