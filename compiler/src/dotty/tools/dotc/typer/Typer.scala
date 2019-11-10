@@ -733,6 +733,7 @@ class Typer extends Namer
               val lhsBounds =
                 TypeBounds.lower(lhsVal.symbol.info).asSeenFrom(ref.prefix, lhsVal.symbol.owner)
               assignType(cpy.Assign(tree)(lhs1, typed(tree.rhs, lhsBounds.loBound)))
+                .computeAssignNullable()
             }
             else {
               val pre = ref.prefix

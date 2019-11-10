@@ -218,6 +218,12 @@ object Nullables with
           tree.computeNullable()
       }.traverse(tree)
 
+  given (tree: Assign)
+    def computeAssignNullable()(given Context): tree.type = tree.lhs match
+      case TrackedRef(ref) =>
+        tree.withNotNullInfo(NotNullInfo(Set(), Set(ref))) // TODO: refine with nullability type info
+      case _ => tree
+
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)
 
 end Nullables
