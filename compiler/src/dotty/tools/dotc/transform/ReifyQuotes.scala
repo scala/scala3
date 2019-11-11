@@ -157,6 +157,8 @@ class ReifyQuotes extends MacroTransform {
                 val tagDef = tagDefCache.getOrElseUpdate(prefix.symbol, mkTagSymbolAndAssignType(prefix))
                 tagDef.symbol.typeRef
             }
+          case AnnotatedType(parent, _) =>
+            apply(parent) // Only keep the Annotated tree
           case _ =>
             mapOver(tp)
         }

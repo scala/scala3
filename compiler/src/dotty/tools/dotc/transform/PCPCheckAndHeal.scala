@@ -136,6 +136,8 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         case tp: ThisType =>
           assert(checkSymLevel(tp.cls, tp, pos).isEmpty)
           mapOver(tp)
+        case tp: AnnotatedType =>
+          derivedAnnotatedType(tp, apply(tp.parent), tp.annot)
         case _ =>
           mapOver(tp)
       }
