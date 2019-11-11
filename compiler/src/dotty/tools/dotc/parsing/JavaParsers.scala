@@ -601,9 +601,53 @@ object JavaParsers {
 
     def varDecl(mods: Modifiers, tpt: Tree, name: TermName): ValDef = {
       val tpt1 = optArrayBrackets(tpt)
-      if (in.token == EQUALS && !mods.is(Flags.Param)) skipTo(COMMA, SEMI)
+      /** Tries to detect final static literals syntactically and returns a constant type replacement */
+      def optConstantTpe(): Tree = {
+        def constantTpe(const: Constant): Tree = TypeTree(ConstantType(const))
+
+        def forConst(const: Constant): Tree = {
+          if (in.token != SEMI) tpt1
+          else {
+            def isStringTyped = tpt1 match {
+              case Ident(n: TypeName) => "String" == n.toString
+              case _ => false
+            }
+            if (const.tag == Constants.StringTag && isStringTyped) constantTpe(const)
+            else tpt1 match {
+              case TypedSplice(tpt2) =>
+                if (const.tag == Constants.BooleanTag || const.isNumeric) {
+                  //for example, literal 'a' is ok for float. 127 is ok for byte, but 128 is not.
+                  val converted = const.convertTo(tpt2.tpe)
+                  if (converted == null) tpt1
+                  else constantTpe(converted)
+                }
+                else tpt1
+              case _ => tpt1
+            }
+          }
+        }
+
+        in.nextToken() // EQUALS
+        if (mods.is(Flags.JavaStatic) && mods.is(Flags.Final)) {
+          val neg = in.token match {
+            case MINUS | BANG => in.nextToken(); true
+            case _ => false
+          }
+          tryLiteral(neg).map(forConst).getOrElse(tpt1)
+        }
+        else tpt1
+      }
+
+      val tpt2: Tree =
+        if (in.token == EQUALS && !mods.is(Flags.Param)) {
+          val res = optConstantTpe()
+          skipTo(COMMA, SEMI)
+          res
+        }
+        else tpt1
+
       val mods1 = if (mods.is(Flags.Final)) mods else mods | Flags.Mutable
-      ValDef(name, tpt1, if (mods.is(Flags.Param)) EmptyTree else unimplementedExpr).withMods(mods1)
+      ValDef(name, tpt2, if (mods.is(Flags.Param)) EmptyTree else unimplementedExpr).withMods(mods1)
     }
 
     def memberDecl(start: Offset, mods: Modifiers, parentToken: Int, parentTParams: List[TypeDef]): List[Tree] = in.token match {
@@ -879,6 +923,25 @@ object JavaParsers {
       case AT        => annotationDecl(start, mods)
       case CLASS     => classDecl(start, mods)
       case _         => in.nextToken(); syntaxError("illegal start of type declaration", skipIt = true); List(errorTypeTree)
+    }
+
+    def tryLiteral(negate: Boolean = false): Option[Constant] = {
+      val l = in.token match {
+        case TRUE      => !negate
+        case FALSE     => negate
+        case CHARLIT   => in.strVal.charAt(0)
+        case INTLIT    => in.intVal(negate).toInt
+        case LONGLIT   => in.intVal(negate)
+        case FLOATLIT  => in.floatVal(negate).toFloat
+        case DOUBLELIT => in.floatVal(negate)
+        case STRINGLIT => in.strVal
+        case _         => null
+      }
+      if (l == null) None
+      else {
+        in.nextToken()
+        Some(Constant(l))
+      }
     }
 
     /** CompilationUnit ::= [package QualId semi] TopStatSeq
