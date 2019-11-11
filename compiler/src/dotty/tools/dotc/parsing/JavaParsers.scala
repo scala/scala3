@@ -521,7 +521,7 @@ object JavaParsers {
           val vparams = formalParams()
           if (!isVoid) rtpt = optArrayBrackets(rtpt)
           optThrows()
-          val bodyOk = !inInterface || mods.is(Flags.DefaultMethod) || mods.is(Flags.JavaStatic)
+          val bodyOk = !inInterface || mods.isOneOf(Flags.DefaultMethod | Flags.JavaStatic)
           val body =
             if (bodyOk && in.token == LBRACE)
               methodBody()
