@@ -45,14 +45,15 @@ class CompilationUnit protected (val source: SourceFile) {
       ctx.run.suspendedUnits += this
     throw CompilationUnit.SuspendException()
 
-  private var myTrackedVarSpans: Set[Int] = null
+  private var myAssignmentSpans: Map[Int, List[Span]] = null
 
-  /** The (name-) offsets of all local variables in this compilation unit
-   *  that can be tracked for being not null.
+  /** A map from (name-) offsets of all local variables in this compilation unit
+   *  that can be tracked for being not null to the list of spans of assignments
+   *  to these variables.
    */
-  def trackedVarSpans(given Context): Set[Int] =
-    if myTrackedVarSpans == null then myTrackedVarSpans = Nullables.trackedVarSpans
-    myTrackedVarSpans
+  def assignmentSpans(given Context): Map[Int, List[Span]] =
+    if myAssignmentSpans == null then myAssignmentSpans = Nullables.assignmentSpans
+    myAssignmentSpans
 }
 
 object CompilationUnit {

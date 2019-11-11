@@ -1260,6 +1260,7 @@ class Typer extends Namer
   }
 
   def typedWhileDo(tree: untpd.WhileDo)(implicit ctx: Context): Tree = {
+    given whileCtx: Context = Nullables.whileContext(tree.span)(given ctx)
     val cond1 =
       if (tree.cond eq EmptyTree) EmptyTree
       else typed(tree.cond, defn.BooleanType)

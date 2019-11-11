@@ -10,6 +10,7 @@ import util.Property
 import Names.Name
 import util.Spans.Span
 import Flags.Mutable
+import collection.mutable
 
 /** Operations for implementing a flow analysis for nullability */
 object Nullables with
@@ -110,7 +111,7 @@ object Nullables with
          && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod
          && sym.span.exists
          && curCtx.compilationUnit != null // could be null under -Ytest-pickler
-         && curCtx.compilationUnit.trackedVarSpans.contains(sym.span.start)
+         && curCtx.compilationUnit.assignmentSpans.contains(sym.span.start)
       }
 
   def afterPatternContext(sel: Tree, pat: Tree)(given ctx: Context) = (sel, pat) match
@@ -242,42 +243,54 @@ object Nullables with
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)
 
-  /** The name offsets of all local mutable variables in the current compilation unit
-   *  that have only reachable assignments. An assignment is reachable if the
-   *  path of tree nodes between the block enclosing the variable declaration to
-   *  the assignment consists only of if-expressions, while-expressions, block-expressions
-   *  and type-ascriptions. Only reachable assignments are handled correctly in the
-   *  nullability analysis. Therefore, variables with unreachable assignments can
-   *  be assumed to be not-null only if their type asserts it.
+  /** A map from (name-) offsets of all local variables in this compilation unit
+   *  that can be tracked for being not null to the list of spans of assignments
+   *  to these variables. A variable can be tracked if it has only reachable assignments.
+   *  An assignment is reachable if the path of tree nodes between the block enclosing
+   *  the variable declaration to the assignment consists only of if-expressions,
+   *  while-expressions, block-expressions and type-ascriptions.
+   *  Only reachable assignments are handled correctly in the nullability analysis.
+   *  Therefore, variables with unreachable assignments can be assumed to be not-null
+   *  only if their type asserts it.
    */
-  def trackedVarSpans(given Context): Set[Int] =
+  def assignmentSpans(given Context): Map[Int, List[Span]] =
     import ast.untpd._
+
     object populate extends UntypedTreeTraverser with
 
       /** The name offsets of variables that are tracked */
-      var tracked: Set[Int] = Set.empty
-      /** The names of candidate variables in scope that might be tracked */
-      var candidates: Set[Name] = Set.empty
-      /** An assignment to a variable that's not in reachable makes the variable ineligible for tracking */
+      var tracked: Map[Int, List[Span]] = Map.empty
+
+      /** Map the names of potentially trackable candidate variables in scope to the spans
+       *  of their reachable assignments
+       */
+      val candidates = mutable.Map[Name, List[Span]]()
+
+      /** An assignment to a variable that's not in reachable makes the variable
+       *  ineligible for tracking
+       */
       var reachable: Set[Name] = Set.empty
 
       def traverse(tree: Tree)(implicit ctx: Context) =
         val savedReachable = reachable
         tree match
           case Block(stats, expr) =>
-            var shadowed: Set[Name] = Set.empty
+            var shadowed: Set[(Name, List[Span])] = Set.empty
             for case (stat: ValDef) <- stats if stat.mods.is(Mutable) do
-              if candidates.contains(stat.name) then shadowed += stat.name
-              else candidates += stat.name
+              for prevSpans <- candidates.put(stat.name, Nil) do
+                shadowed += (stat.name -> prevSpans)
               reachable += stat.name
             traverseChildren(tree)
             for case (stat: ValDef) <- stats if stat.mods.is(Mutable) do
-              if candidates.contains(stat.name) then
-                tracked += stat.nameSpan.start // candidates that survive until here are tracked
-                candidates -= stat.name
+              for spans <- candidates.remove(stat.name) do
+                tracked += (stat.nameSpan.start -> spans) // candidates that survive until here are tracked
             candidates ++= shadowed
           case Assign(Ident(name), rhs) =>
-            if !reachable.contains(name) then candidates -= name // variable cannot be tracked
+            candidates.get(name) match
+              case Some(spans) =>
+                if reachable.contains(name) then candidates(name) = tree.span :: spans
+                else candidates -= name
+              case None =>
             traverseChildren(tree)
           case _: (If | WhileDo | Typed) =>
             traverseChildren(tree)      // assignments to candidate variables are OK here ...
@@ -288,5 +301,41 @@ object Nullables with
 
     populate.traverse(curCtx.compilationUnit.untpdTree)
     populate.tracked
-  end trackedVarSpans
+  end assignmentSpans
+
+  /** The initial context to be used for a while expression with given span.
+   *  In this context, all variables that are assigned within the while expression
+   *  have their nullability status retracted, i.e. are not known to be null.
+   *  While necessary for soundness, this scheme loses precision: Even if
+   *  the initial state of the variable is not null and all assignments to the variable
+   *  in the while expression are also known to be not null, the variable is still
+   *  assumed to be potentially null. The loss of precision is unavoidable during
+   *  normal typing, since we can only do a linear traversal which does not allow
+   *  a fixpoint computation. But it could be mitigated as follows:
+   *
+   *   - initially, use `whileContext` as computed here
+   *   - when typechecking the while, delay all errors due to a variable being potentially null
+   *   - afterwards, if there are such delayed errors, run the analysis again with
+   *     as a fixpoint computation, reporting all previously delayed errors that remain.
+   *
+   *  The following code would produce an error in the current analysis, but not in the
+   *  refined analysis:
+   *
+   *     class Links(val elem: T, val next: Links | Null)
+   *
+   *     var ys: Links | Null = Links(1, null)
+   *     var xs: Links | Null = xs
+   *     while xs != null
+   *       ys = Links(xs.elem, ys.next)  // error in unrefined: ys is potentially null here
+   *       xs = xs.next
+   */
+  def whileContext(whileSpan: Span)(given Context): Context =
+    def isRetracted(ref: TermRef): Boolean =
+      val sym = ref.symbol
+      sym.span.exists
+      && assignmentSpans.getOrElse(sym.span.start, Nil).exists(whileSpan.contains(_))
+      && curCtx.notNullInfos.containsRef(ref)
+    val retractedVars = curCtx.notNullInfos.flatMap(_.asserted.filter(isRetracted)).toSet
+    curCtx.addNotNullInfo(NotNullInfo(Set(), retractedVars))
+
 end Nullables
