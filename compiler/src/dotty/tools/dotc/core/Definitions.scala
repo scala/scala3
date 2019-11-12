@@ -249,7 +249,9 @@ class Definitions {
    */
   @tu lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil), ensureCtor = false)
   def AnyType: TypeRef = AnyClass.typeRef
-  @tu lazy val AnyValClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyClass.typeRef)))
+  @tu lazy val AnyValClass: ClassSymbol = completeClass(
+    enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract,
+      List(AnyClass.typeRef, NotNullClass.typeRef)))
   def AnyValType: TypeRef = AnyValClass.typeRef
 
     @tu lazy val Any_== : TermSymbol           = enterMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
@@ -278,7 +280,8 @@ class Definitions {
   @tu lazy val ObjectClass: ClassSymbol = {
     val cls = ctx.requiredClass("java.lang.Object")
     assert(!cls.isCompleted, "race for completing java.lang.Object")
-    cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
+    cls.info = ClassInfo(cls.owner.thisType, cls,
+      List(AnyClass.typeRef, NotNullClass.typeRef), newScope)
     cls.setFlag(NoInits | JavaDefined)
 
     // The companion object doesn't really exist, so it needs to be marked as
@@ -402,6 +405,11 @@ class Definitions {
       ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final,
       List(AnyClass.typeRef), EmptyScope)
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
+
+  @tu lazy val NotNullClass: ClassSymbol =
+    enterCompleteClassSymbol(
+      ScalaPackageClass, tpnme.NotNull, PureInterfaceCreationFlags,
+      List(AnyClass.typeRef), EmptyScope)
 
   @tu lazy val CollectionSeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
   @tu lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.immutable.Seq")
@@ -1290,6 +1298,7 @@ class Definitions {
       .updated(AnyClass, ObjectClass)
       .updated(AnyValClass, ObjectClass)
       .updated(SingletonClass, ObjectClass)
+      .updated(NotNullClass, ObjectClass)
       .updated(TupleClass, ObjectClass)
       .updated(NonEmptyTupleClass, ProductClass)
 
@@ -1306,6 +1315,7 @@ class Definitions {
     ByNameParamClass2x,
     AnyValClass,
     NullClass,
+    NotNullClass,
     NothingClass,
     SingletonClass)
 

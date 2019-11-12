@@ -195,6 +195,7 @@ object StdNames {
     final val ExprApi: N             = "ExprApi"
     final val Mirror: N              = "Mirror"
     final val Nothing: N             = "Nothing"
+    final val NotNull: N             = "NotNull"
     final val Null: N                = "Null"
     final val Object: N              = "Object"
     final val Product: N             = "Product"
