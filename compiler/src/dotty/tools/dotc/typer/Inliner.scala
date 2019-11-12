@@ -66,7 +66,7 @@ object Inliner {
    *            and body that replace it.
    */
   def inlineCall(tree: Tree)(implicit ctx: Context): Tree = {
-    if tree.symbol.owner.companionModule == defn.CompiletimeTestingPackageObject
+    if tree.symbol.denot != SymDenotations.NoDenotation && tree.symbol.owner.companionModule == defn.CompiletimeTestingPackageObject
       if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
       if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
