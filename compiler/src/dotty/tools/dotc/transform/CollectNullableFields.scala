@@ -34,7 +34,7 @@ object CollectNullableFields {
  *    - belongs to a non trait-class
  *    - is private[this]
  *    - is not lazy
- *    - its type is nullable
+ *    - its type is nullable after erasure
  *    - is only used in a lazy val initializer
  *    - defined in the same class as the lazy val
  */
@@ -65,7 +65,9 @@ class CollectNullableFields extends MiniPhase {
       !sym.is(Lazy) &&
       !sym.owner.is(Trait) &&
       sym.initial.isAllOf(PrivateLocal) &&
-      sym.info.widenDealias.typeSymbol.isNullableClass
+      // We need `isNullableClassAfterErasure` and not `isNullable` because
+      // we care about the values as present in the JVM.
+      sym.info.widenDealias.typeSymbol.isNullableClassAfterErasure
 
     if (isNullablePrivateField)
       nullability.get(sym) match {

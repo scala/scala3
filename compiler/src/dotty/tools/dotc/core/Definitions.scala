@@ -4,7 +4,7 @@ package core
 
 import scala.annotation.{threadUnsafe => tu}
 import Types._, Contexts._, Symbols._, SymDenotations._, StdNames._, Names._
-import Flags._, Scopes._, Decorators._, NameOps._, Periods._
+import Flags._, Scopes._, Decorators._, NameOps._, Periods._, NullOpsDecorator._
 import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
 import collection.mutable
@@ -295,8 +295,16 @@ class Definitions {
   @tu lazy val AnyRefAlias: TypeSymbol = enterAliasType(tpnme.AnyRef, ObjectType)
   def AnyRefType: TypeRef = AnyRefAlias.typeRef
 
-    @tu lazy val Object_eq: TermSymbol = enterMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
-    @tu lazy val Object_ne: TermSymbol = enterMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
+    @tu lazy val Object_eq: TermSymbol = {
+      // If explicit nulls is enabled, then we want to allow `(x: String).eq(null)`, so we need
+      // to adjust the signature of `eq` accordingly.
+      enterMethod(ObjectClass, nme.eq, methOfAnyRefOrNull(BooleanType), Final)
+    }
+    @tu lazy val Object_ne: TermSymbol = {
+      // If explicit nulls is enabled, then we want to allow `(x: String).ne(null)`, so we need
+      // to adjust the signature of `ne` accordingly.
+      enterMethod(ObjectClass, nme.ne, methOfAnyRefOrNull(BooleanType), Final)
+    }
     @tu lazy val Object_synchronized: TermSymbol = enterPolyMethod(ObjectClass, nme.synchronized_, 1,
         pt => MethodType(List(pt.paramRefs(0)), pt.paramRefs(0)), Final)
     @tu lazy val Object_clone: TermSymbol = enterMethod(ObjectClass, nme.clone_, MethodType(Nil, ObjectType), Protected)
@@ -336,10 +344,28 @@ class Definitions {
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
   def NothingType: TypeRef = NothingClass.typeRef
   @tu lazy val RuntimeNothingModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Nothing")
-  @tu lazy val NullClass: ClassSymbol = enterCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Null, AbstractFinal, List(ObjectClass.typeRef))
+  @tu lazy val NullClass: ClassSymbol = {
+    val parent = if (ctx.explicitNulls) AnyType else ObjectType
+    enterCompleteClassSymbol(ScalaPackageClass, tpnme.Null, AbstractFinal, parent :: Nil)
+  }
   def NullType: TypeRef = NullClass.typeRef
   @tu lazy val RuntimeNullModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.Null")
+
+  /** An alias for null values that originate in Java code.
+   *  This type gets special treatment in the Typer. Specifically, `JavaNull` can be selected through:
+   *  e.g.
+   *  ```
+   *  // x: String|Null
+   *  x.length // error: `Null` has no `length` field
+   *  // x2: String|JavaNull
+   *  x2.length // allowed by the Typer, but unsound (might throw NPE)
+   *  ```
+   */
+  lazy val JavaNullAlias: TypeSymbol = {
+    assert(ctx.explicitNulls)
+    enterAliasType(tpnme.JavaNull, NullType)
+  }
+  def JavaNullAliasType: TypeRef = JavaNullAlias.typeRef
 
   @tu lazy val ImplicitScrutineeTypeSym =
     newSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
@@ -508,12 +534,16 @@ class Definitions {
   @tu lazy val BoxedNumberClass: ClassSymbol          = ctx.requiredClass("java.lang.Number")
   @tu lazy val ClassCastExceptionClass: ClassSymbol   = ctx.requiredClass("java.lang.ClassCastException")
     @tu lazy val ClassCastExceptionClass_stringConstructor: TermSymbol  = ClassCastExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
-      case List(pt) => (pt isRef StringClass)
+      case List(pt) =>
+        val pt1 = if (ctx.explicitNulls) pt.stripNull else pt
+        pt1 isRef StringClass
       case _ => false
     }).symbol.asTerm
   @tu lazy val ArithmeticExceptionClass: ClassSymbol  = ctx.requiredClass("java.lang.ArithmeticException")
     @tu lazy val ArithmeticExceptionClass_stringConstructor: TermSymbol  = ArithmeticExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
-      case List(pt) => (pt isRef StringClass)
+      case List(pt) =>
+        val pt1 = if (ctx.explicitNulls) pt.stripNull else pt
+        pt1 isRef StringClass
       case _ => false
     }).symbol.asTerm
 
@@ -783,10 +813,29 @@ class Definitions {
   @tu lazy val InfixAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.infix")
   @tu lazy val AlphaAnnot: ClassSymbol = ctx.requiredClass("scala.annotation.alpha")
 
+  // A list of annotations that are commonly used to indicate that a field/method argument or return
+  // type is not null. These annotations are used by the nullification logic in JavaNullInterop to
+  // improve the precision of type nullification.
+  // We don't require that any of these annotations be present in the class path, but we want to
+  // create Symbols for the ones that are present, so they can be checked during nullification.
+  @tu lazy val NotNullAnnots: List[ClassSymbol] = ctx.getClassesIfDefined(
+    "javax.annotation.Nonnull" ::
+    "edu.umd.cs.findbugs.annotations.NonNull" ::
+    "androidx.annotation.NonNull" ::
+    "android.support.annotation.NonNull" ::
+    "android.annotation.NonNull" ::
+    "com.android.annotations.NonNull" ::
+    "org.eclipse.jdt.annotation.NonNull" ::
+    "org.checkerframework.checker.nullness.qual.NonNull" ::
+    "org.checkerframework.checker.nullness.compatqual.NonNullDecl" ::
+    "org.jetbrains.annotations.NotNull" ::
+    "lombok.NonNull" ::
+    "io.reactivex.annotations.NonNull" :: Nil map PreNamedString)
+
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
   def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
-  def methOfAnyRef(tp: Type): MethodType = MethodType(List(ObjectType), tp)
+  def methOfAnyRefOrNull(tp: Type): MethodType = MethodType(List(ObjectType.maybeNullable), tp)
 
   // Derived types
 
@@ -947,8 +996,16 @@ class Definitions {
       name.drop(prefix.length).forall(_.isDigit))
 
   def isBottomClass(cls: Symbol): Boolean =
-    cls == NothingClass || cls == NullClass
+    if (ctx.explicitNulls && !ctx.phase.erasedTypes) cls == NothingClass
+    else isBottomClassAfterErasure(cls)
+
+  def isBottomClassAfterErasure(cls: Symbol): Boolean = cls == NothingClass || cls == NullClass
+
   def isBottomType(tp: Type): Boolean =
+    if (ctx.explicitNulls && !ctx.phase.erasedTypes) tp.derivesFrom(NothingClass)
+    else isBottomTypeAfterErasure(tp)
+
+  def isBottomTypeAfterErasure(tp: Type): Boolean =
     tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
 
   /** Is a function class.
@@ -1292,18 +1349,22 @@ class Definitions {
   // ----- Initialization ---------------------------------------------------
 
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-  @tu lazy val syntheticScalaClasses: List[TypeSymbol] = List(
-    AnyClass,
-    AnyRefAlias,
-    AnyKindClass,
-    andType,
-    orType,
-    RepeatedParamClass,
-    ByNameParamClass2x,
-    AnyValClass,
-    NullClass,
-    NothingClass,
-    SingletonClass)
+  @tu lazy val syntheticScalaClasses: List[TypeSymbol] = {
+    val synth = List(
+      AnyClass,
+      AnyRefAlias,
+      AnyKindClass,
+      andType,
+      orType,
+      RepeatedParamClass,
+      ByNameParamClass2x,
+      AnyValClass,
+      NullClass,
+      NothingClass,
+      SingletonClass)
+
+    if (ctx.explicitNulls) synth :+ JavaNullAlias else synth
+  }
 
   @tu lazy val syntheticCoreClasses: List[Symbol] = syntheticScalaClasses ++ List(
     EmptyPackageVal,

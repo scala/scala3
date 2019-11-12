@@ -7,6 +7,7 @@ import Symbols._
 import Flags._
 import Names._
 import StdNames._, NameOps._
+import NullOpsDecorator._
 import NameKinds.SkolemName
 import Scopes._
 import Constants._
@@ -270,17 +271,6 @@ object Types {
           false
       }
       loop(this)
-    }
-
-    /** Is this type guaranteed not to have `null` as a value? */
-    final def isNotNull(implicit ctx: Context): Boolean = this match {
-      case tp: ConstantType => tp.value.value != null
-      case tp: ClassInfo => !tp.cls.isNullableClass && tp.cls != defn.NothingClass
-      case tp: TypeBounds => tp.lo.isNotNull
-      case tp: TypeProxy => tp.underlying.isNotNull
-      case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
-      case OrType(tp1, tp2) => tp1.isNotNull && tp2.isNotNull
-      case _ => false
     }
 
     /** Is this type produced as a repair for an error? */
@@ -598,11 +588,20 @@ object Types {
         case AndType(l, r) =>
           goAnd(l, r)
         case tp: OrType =>
-          // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
-          // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
-          // lots of places. The present strategy is instead of widen `tp` using `join` to be a
-          // supertype of `pre`.
-          go(tp.join)
+          if (ctx.explicitNulls && tp.isJavaNullableUnion) {
+            // Selecting `name` from a type `T|JavaNull` is like selecting `name` from `T`.
+            // This can throw at runtime, but we trade soundness for usability.
+            // We need to strip `JavaNull` from both the type and the prefix so that
+            // `pre <: tp` continues to hold.
+            tp.stripJavaNull.findMember(name, pre.stripJavaNull, required, excluded)
+          }
+          else {
+            // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
+            // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
+            // lots of places. The present strategy is instead of widen `tp` using `join` to be a
+            // supertype of `pre`.
+            go(tp.join)
+          }
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, required, excluded)
         case err: ErrorType =>
@@ -1066,21 +1065,60 @@ object Types {
   	 *
      *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
      *  instead of `ArrayBuffer[? >: Int | A <: Int & A]`
+     *
+     *  Exception (if `-YexplicitNulls` is set): if this type is a nullable union (i.e. of the form `T | Null`),
+     *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
-    def widenUnion(implicit ctx: Context): Type = widen match {
-      case OrType(tp1, tp2) =>
-        ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
-          case union: OrType => union.join
-          case res => res
-        }
-      case tp @ AndType(tp1, tp2) =>
-        tp derived_& (tp1.widenUnion, tp2.widenUnion)
-      case tp: RefinedType =>
-        tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
-      case tp: RecType =>
-        tp.rebind(tp.parent.widenUnion)
-      case tp =>
-        tp
+    def widenUnion(implicit ctx: Context): Type = {
+      widen match {
+        case tp @ OrType(lhs, rhs) =>
+          def defaultJoin(tp1: Type, tp2: Type) =
+            ctx.typeComparer.lub(tp1, tp2, canConstrain = true) match {
+              case union: OrType => union.join
+              case res => res
+            }
+
+          // Given a type `tpe`, if it is already a nullable union, return it unchanged.
+          // Otherwise, construct a nullable union where `tpe` is the lhs (use `orig` to
+          // potentially avoid creating a new object for the union).
+          def ensureNullableUnion(tpe: Type, orig: OrType): Type = tpe match {
+            case orTpe: OrType if orTpe.tp2.isNullType => tpe
+            case _ => orig.derivedOrType(tpe, defn.NullType)
+          }
+
+          // Test for nullable union that assumes the type has already been normalized.
+          def isNullableUnionFast(tp: Type): Boolean = tp match {
+            case orTpe: OrType if orTpe.tp2.isNullType => true
+            case _ => false
+          }
+
+          if (ctx.explicitNulls) {
+            // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
+            // This part relies on the postcondition of widenUnion: the result is either a
+            // non-union type, or a nullable union type where the rhs is `Null` type.
+            if (rhs.isNullType) ensureNullableUnion(lhs.widenUnion, tp)
+            else if (lhs.isNullType) ensureNullableUnion(rhs.widenUnion, tp)
+            else {
+              val lhsWiden = lhs.widenUnion
+              val rhsWiden = rhs.widenUnion
+              val tmpRes = defaultJoin(lhs.widenUnion, rhs.widenUnion)
+              if (isNullableUnionFast(lhsWiden) || isNullableUnionFast(rhsWiden))
+                // If either lhs or rhs is a nullable union,
+                // we need to ensure the result is also a nullable union.
+                ensureNullableUnion(tmpRes, tp)
+              else tmpRes
+            }
+          }
+          else defaultJoin(lhs.widenUnion, rhs.widenUnion)
+        case tp @ AndType(tp1, tp2) =>
+          tp derived_& (tp1.widenUnion, tp2.widenUnion)
+        case tp: RefinedType =>
+          tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
+        case tp: RecType =>
+          tp.rebind(tp.parent.widenUnion)
+        case tp =>
+          tp
+      }
     }
 
     /** Widen all top-level singletons reachable by dealiasing

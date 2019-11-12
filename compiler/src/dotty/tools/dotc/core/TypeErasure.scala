@@ -289,8 +289,8 @@ object TypeErasure {
     // We need to short-circuit this case here because the regular lub logic below
     // relies on the class hierarchy, which doesn't properly capture `Null`s subtyping
     // behaviour.
-    if (defn.isBottomType(tp1) && tp2.derivesFrom(defn.ObjectClass)) return tp2
-    if (defn.isBottomType(tp2) && tp1.derivesFrom(defn.ObjectClass)) return tp1
+    if (defn.isBottomTypeAfterErasure(tp1) && tp2.derivesFrom(defn.ObjectClass)) return tp2
+    if (defn.isBottomTypeAfterErasure(tp2) && tp1.derivesFrom(defn.ObjectClass)) return tp1
     tp1 match {
       case JavaArrayType(elem1) =>
         import dotty.tools.dotc.transform.TypeUtils._

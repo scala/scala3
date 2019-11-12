@@ -254,6 +254,28 @@ class CompilationTests extends ParallelTesting {
 
     tests.foreach(_.delete())
   }
+
+  // Explicit nulls tests
+  @Test def explicitNullsNeg: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("explicitNullsNeg")
+    aggregateTests(
+      compileFilesInDir("tests/explicit-nulls/neg", explicitNullsOptions),
+      compileFilesInDir("tests/explicit-nulls/neg-patmat", explicitNullsOptions and "-Xfatal-warnings")
+    )
+  }.checkExpectedErrors()
+
+  @Test def explicitNullsPos: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("explicitNullsPos")
+    aggregateTests(
+      compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
+      compileFilesInDir("tests/explicit-nulls/pos-separate", explicitNullsOptions)
+    )
+  }.checkCompile()
+
+  @Test def explicitNullsRun: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("explicitNullsRun")
+    compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions)
+  }.checkRuns()
 }
 
 object CompilationTests {
