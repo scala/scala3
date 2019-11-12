@@ -180,9 +180,6 @@ class ExtractSemanticDB extends Phase {
     private def excludeDefStrict(sym: Symbol)(given Context): Boolean =
       sym.name.is(NameKinds.DefaultGetterName)
 
-    private def blacklistPrefix(sym: Symbol)(given Context): Boolean =
-      sym.is(Package)
-
     private def (sym: Symbol) isAnonymous(given Context): Boolean =
       sym.isAnonymousClass
       || sym.isAnonymousModuleVal
@@ -210,8 +207,7 @@ class ExtractSemanticDB extends Phase {
       def registerPath(expr: Tree): Unit = expr match
         case t @ Select(expr, _) =>
           registerUse(t.symbol, t.span)
-          if !blacklistPrefix(expr.symbol) then
-            registerPath(expr)
+          registerPath(expr)
 
         case _ =>
 
@@ -259,22 +255,20 @@ class ExtractSemanticDB extends Phase {
                 if source.content()(end - 1) == '`' then end - len - 1 else end - len
               else limit
             registerUse(tree.symbol, Span(start max limit, end))
-          if !blacklistPrefix(tree.qualifier.symbol) && qualSpan.exists && qualSpan.start != qualSpan.end then
+          if qualSpan.exists && qualSpan.start != qualSpan.end then
             traverseChildren(tree)
         case tree: Import =>
           if tree.span.exists && tree.span.start != tree.span.end then
             for sel <- tree.selectors do
               val imported = sel.imported.name
               if imported != nme.WILDCARD then
-                for alt <- tree.expr.tpe.member(imported).alternatives if !alt.symbol.is(Package) do
+                for alt <- tree.expr.tpe.member(imported).alternatives do
                   registerUse(alt.symbol, sel.imported.span)
                   if (alt.symbol.companionClass.exists)
                     registerUse(alt.symbol.companionClass, sel.imported.span)
-            if !blacklistPrefix(tree.expr.symbol) then
-              registerPath(tree.expr)
+            registerPath(tree.expr)
         case tree: Inlined =>
           traverse(tree.call)
-        case tree: PackageDef => tree.stats.foreach(traverse)
         case tree: Annotated => // skip the annotation (see `@param` in https://github.com/scalameta/scalameta/blob/633824474e99bbfefe12ad0cc73da1fe064b3e9b/tests/jvm/src/test/resources/example/Annotations.scala#L37)
           traverse(tree.arg)
         case _ =>

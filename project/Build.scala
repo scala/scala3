@@ -552,6 +552,10 @@ object Build {
         )
       },
 
+      javaOptions += (
+        s"-Ddotty.tools.dotc.semanticdb.test.expect=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"/"expect"}"
+      ),
+
       testCompilation := Def.inputTaskDyn {
         val args = spaceDelimited("<arg>").parsed
         if (args.contains("--help")) {

@@ -4,6 +4,7 @@ import java.nio.file._
 import java.nio.charset.StandardCharsets
 import scala.collection.JavaConverters._
 import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.semanticdb.Scala.{_, given}
 
 object Semanticdbs {
 
@@ -67,10 +68,11 @@ object Semanticdbs {
         sourceFile.lineToOffset(range.endLine) + range.endCharacter
       )
       sb.append(doc.text.substring(offset, end))
-        .append("/*")
-        .append(if (occ.role.isDefinition) "<<=" else "=>>")
-        .append(occ.symbol.replace('/', '.'))
-        .append("*/")
+      if !occ.symbol.isPackage
+        sb.append("/*")
+          .append(if (occ.role.isDefinition) "<<=" else "=>>")
+          .append(occ.symbol.replace('/', '.'))
+          .append("*/")
       offset = end
     }
     sb.append(doc.text.substring(offset))

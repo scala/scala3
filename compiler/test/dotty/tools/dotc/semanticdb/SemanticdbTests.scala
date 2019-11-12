@@ -6,7 +6,9 @@ import java.io.File
 import java.nio.file._
 import java.nio.charset.StandardCharsets
 import java.util.stream.Collectors
+import java.util.Comparator
 import scala.util.control.NonFatal
+import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
 import org.junit.Assert._
@@ -25,16 +27,17 @@ class SemanticdbTests with
   val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
   val expectFile = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
   // val semanticdbFile = FileSystems.getDefault.getPathMatcher("glob:**.scala.semanticdb")
-  val src = Paths.get(System.getProperty("user.dir")).resolve("tests").resolve("semanticdb")
+  val expectSrc = Paths.get(System.getProperty("dotty.tools.dotc.semanticdb.test.expect"))
 
   @Category(Array(classOf[dotty.SlowTests]))
   @Test def expectTests: Unit = runExpectTest(updateExpectFiles = false)
 
   def runExpectTest(updateExpectFiles: Boolean): Unit =
     val target = generateSemanticdb()
+    val errors = mutable.ArrayBuffer.empty[(Path, String)]
     inputFiles().foreach { source =>
       val filename = source.getFileName.toString
-      val relpath = src.relativize(source)
+      val relpath = expectSrc.relativize(source)
       val semanticdbPath = target
         .resolve("META-INF")
         .resolve("semanticdb")
@@ -48,18 +51,28 @@ class SemanticdbTests with
         println("updated: " + expectPath)
       else
         val expected = new String(Files.readAllBytes(expectPath), StandardCharsets.UTF_8)
-        assertNoDiff(obtained, expected)
+        val expectName = expectPath.getFileName
+        val relExpect = expectSrc.relativize(expectPath)
+        collectFailingDiff(obtained, expected, s"a/$relExpect", s"b/$relExpect")(errors += expectName -> _)
     }
+    errors.foreach { (source, diff) =>
+      def red(msg: String) = Console.RED + msg + Console.RESET
+      def blue(msg: String) = Console.BLUE + msg + Console.RESET
+      println(s"[${red("error")}] check file ${blue(source.toString)} does not match generated:\n${red(diff)}")
+    }
+    Files.walk(target).sorted(Comparator.reverseOrder).forEach(Files.delete)
+    if errors.nonEmpty
+      fail(s"${errors.size} errors in expect test.")
 
   def trimTrailingWhitespace(s: String): String =
     Pattern.compile(" +$", Pattern.MULTILINE).matcher(s).replaceAll("")
 
   def inputFiles(): List[Path] =
-    val ls = Files.walk(src)
+    val ls = Files.walk(expectSrc)
     val files =
       try ls.filter(p => scalaFile.matches(p) && !expectFile.matches(p)).collect(Collectors.toList).asScala
       finally ls.close()
-    require(files.nonEmpty, s"No input files! $src")
+    require(files.nonEmpty, s"No input files! $expectSrc")
     files.toList
 
   def generateSemanticdb(): Path =
@@ -71,7 +84,7 @@ class SemanticdbTests with
       "-deprecation",
       // "-Ydebug",
       // "-Xprint:extractSemanticDB",
-      "-sourceroot", src.toString,
+      "-sourceroot", expectSrc.toString,
       "-usejavacp",
     ) ++ inputFiles().map(_.toString)
     val exit = Main.process(args)
