@@ -45,7 +45,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
 
     def pickleSource(source: SourceFile): Unit = {
       buf.writeInt(SOURCE)
-      buf.writeInt(pickler.nameBuffer.nameIndex(source.pathName).index)
+      buf.writeInt(pickler.nameBuffer.nameIndex(source.path.toTermName).index)
     }
 
     /** True if x's position shouldn't be reconstructed automatically from its initial span
