@@ -15,7 +15,7 @@ object M/*<<=prefixes.M.*/ {
   def n1/*<<=prefixes.M.n1().*/: T/*=>>prefixes.M.T#*/ = ???/*=>>scala.Predef.`???`().*/
 }
 
-object O/*<<=prefixes.O.*/ extends C/*=>>prefixes.C#*//*=>>prefixes.C#`<init>`().*/ {
+object O/*<<=prefixes.O.*/ extends C/*=>>prefixes.C#*/ {
   def o1/*<<=prefixes.O.o1().*/: T/*=>>prefixes.C#T#*/ = ???/*=>>scala.Predef.`???`().*/
 }
 

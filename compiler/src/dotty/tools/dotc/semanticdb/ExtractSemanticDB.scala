@@ -38,7 +38,7 @@ class ExtractSemanticDB extends Phase {
     val unit = ctx.compilationUnit
     val extract = Extractor()
     extract.traverse(unit.tpdTree)
-    ExtractSemanticDB.write(unit.source, extract.occurrences.toList)
+    ExtractSemanticDB.write(unit.source, extract.occurrences.toList, extract.symbols.toList)
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser {
@@ -55,6 +55,9 @@ class ExtractSemanticDB extends Phase {
 
     /** The extracted symbol occurrences */
     val occurrences = new mutable.ListBuffer[SymbolOccurrence]()
+
+    /** The extracted symbol infos */
+    val symbols = new mutable.HashSet[SymbolInformation]()
 
     /** The symbol occurrences generated so far, as a set */
     private val generated = new mutable.HashSet[SymbolOccurrence]
@@ -189,19 +192,45 @@ class ExtractSemanticDB extends Phase {
     private def excludeUseStrict(sym: Symbol, span: Span)(given Context): Boolean =
       excludeDefStrict(sym) || (excludeDef(sym) && span.start == span.end)
 
-    private def registerOccurrence(sym: Symbol, span: Span, role: SymbolOccurrence.Role)(given Context): Unit =
-      val occ = SymbolOccurrence(symbolName(sym), range(span), role)
+    private def symbolKind(sym: Symbol)(given Context): SymbolInformation.Kind =
+      if sym.name == nme.CONSTRUCTOR
+        SymbolInformation.Kind.CONSTRUCTOR
+      else
+        SymbolInformation.Kind.UNKNOWN_KIND
+
+    private def symbolProps(sym: Symbol)(given Context): Set[SymbolInformation.Property] =
+      if sym.isPrimaryConstructor
+        Set(SymbolInformation.Property.PRIMARY)
+      else
+        Set.empty
+
+    private def symbolInfo(sym: Symbol, symbolName: String)(given Context): SymbolInformation = SymbolInformation(
+      symbol = symbolName,
+      language = Language.SCALA,
+      kind = symbolKind(sym),
+      properties = symbolProps(sym).foldLeft(0)(_ | _.value),
+      displayName = sym.name.show
+    )
+
+    private def registerSymbol(sym: Symbol, symbolName: String)(given Context): Unit =
+      symbols += symbolInfo(sym, symbolName)
+
+    private def registerOccurrence(symbol: String, span: Span, role: SymbolOccurrence.Role)(given Context): Unit =
+      val occ = SymbolOccurrence(symbol, range(span), role)
       if !generated.contains(occ) && occ.symbol.nonEmpty then
         occurrences += occ
         generated += occ
 
     private def registerUse(sym: Symbol, span: Span)(given Context) =
       if !excludeUseStrict(sym, span) && !isWildcard(sym.name) then
-        registerOccurrence(sym, span, SymbolOccurrence.Role.REFERENCE)
+        registerOccurrence(symbolName(sym), span, SymbolOccurrence.Role.REFERENCE)
 
     private def registerDefinition(sym: Symbol, span: Span)(given Context) =
       if !isWildcard(sym.name) then
-        registerOccurrence(sym, span, SymbolOccurrence.Role.DEFINITION)
+        val symbol = symbolName(sym)
+        registerOccurrence(symbol, span, SymbolOccurrence.Role.DEFINITION)
+        if !sym.is(Package)
+          registerSymbol(sym, symbol)
 
     override def traverse(tree: Tree)(given ctx: Context): Unit =
       def registerPath(expr: Tree): Unit = expr match
@@ -225,6 +254,7 @@ class ExtractSemanticDB extends Phase {
           traverseChildren(tree)
         case tree: (ValDef | DefDef | TypeDef) if tree.symbol.is(Synthetic, butNot=Module) && !tree.symbol.isAnonymous => // skip
         case tree: Template =>
+          registerDefinition(tree.constr.symbol, tree.constr.span)
           for
             vparams <- tree.constr.vparamss
             vparam <- vparams
@@ -283,7 +313,7 @@ object ExtractSemanticDB {
 
   val name: String = "extractSemanticDB"
 
-  def write(source: SourceFile, occurrences: List[SymbolOccurrence])(given ctx: Context): Unit =
+  def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbols: List[SymbolInformation])(given ctx: Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
     val sourcePath = absolutePath(source.file.jpath)
     val sourceRoot = absolutePath(Paths.get(ctx.settings.sourceroot.value))
@@ -307,6 +337,7 @@ object ExtractSemanticDB {
       uri = relURI,
       text = "",
       md5 = internal.MD5.compute(String(source.content)),
+      symbols = symbols,
       occurrences = occurrences
     )
     val docs = TextDocuments(List(doc))

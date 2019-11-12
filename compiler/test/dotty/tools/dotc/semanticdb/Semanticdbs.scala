@@ -55,6 +55,7 @@ object Semanticdbs {
    * }}}
    **/
   def printTextDocument(doc: TextDocument): String = {
+    val symtab = doc.symbols.iterator.map(info => info.symbol -> info).toMap
     val sb = new StringBuilder
     val sourceFile = SourceFile.virtual(doc.uri, doc.text)
     implicit val occurrenceOrdering: Ordering[SymbolOccurrence] =
@@ -67,13 +68,15 @@ object Semanticdbs {
         offset,
         sourceFile.lineToOffset(range.endLine) + range.endCharacter
       )
-      sb.append(doc.text.substring(offset, end))
-      if !occ.symbol.isPackage
+      val isPrimaryConstructor =
+        symtab.get(occ.symbol).exists(_.isPrimary)
+      if !occ.symbol.isPackage && !isPrimaryConstructor
+        sb.append(doc.text.substring(offset, end))
         sb.append("/*")
           .append(if (occ.role.isDefinition) "<<=" else "=>>")
           .append(occ.symbol.replace('/', '.'))
           .append("*/")
-      offset = end
+        offset = end
     }
     sb.append(doc.text.substring(offset))
     sb.toString()

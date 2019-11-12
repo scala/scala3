@@ -3,7 +3,7 @@ package dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.internal._
 
 object TextDocument {
-  def defaultInstance: TextDocument = TextDocument(Schema.LEGACY, Language.UNKNOWN_LANGUAGE, "", "", "", Nil)
+  def defaultInstance: TextDocument = TextDocument(Schema.LEGACY, Language.UNKNOWN_LANGUAGE, "", "", "", Nil, Nil)
 }
 case class TextDocument(
     schema: Schema,
@@ -11,6 +11,7 @@ case class TextDocument(
     uri: String,
     text: String,
     md5: String,
+    symbols: Seq[SymbolInformation],
     occurrences: Seq[SymbolOccurrence]
 ) extends SemanticdbMessage[TextDocument] {
   private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
@@ -45,6 +46,10 @@ case class TextDocument(
         __size += SemanticdbOutputStream.computeEnumSize(10, __value.value)
       }
     };
+    symbols.foreach { __item =>
+      val __value = __item
+      __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
+    }
     occurrences.foreach { __item =>
       val __value = __item
       __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(
@@ -74,6 +79,12 @@ case class TextDocument(
         _output__.writeString(2, __v)
       }
     };
+    symbols.foreach { __v =>
+      val __m = __v
+      _output__.writeTag(5, 2)
+      _output__.writeUInt32NoTag(__m.serializedSize)
+      __m.writeTo(_output__)
+    };
     occurrences.foreach { __v =>
       val __m = __v
       _output__.writeTag(6, 2)
@@ -98,6 +109,7 @@ case class TextDocument(
     var __uri = this.uri
     var __md5 = this.md5
     var __language = this.language
+    val __symbols = (_root_.scala.collection.immutable.Vector.newBuilder[SymbolInformation] ++= this.symbols)
     val __occurrences = (_root_.scala.collection.immutable.Vector.newBuilder[SymbolOccurrence] ++= this.occurrences)
     var _done__ = false
     while (!_done__) {
@@ -112,6 +124,8 @@ case class TextDocument(
           __md5 = _input__.readString()
         case 80 =>
           __language = Language.fromValue(_input__.readEnum())
+        case 42 =>
+          __symbols += LiteParser.readMessage(_input__, SymbolInformation.defaultInstance)
         case 50 =>
           __occurrences += LiteParser.readMessage(_input__, SymbolOccurrence.defaultInstance)
         case tag => _input__.skipField(tag)
@@ -123,6 +137,7 @@ case class TextDocument(
       text = "",
       md5 = __md5,
       language = __language,
+      symbols = __symbols.result(),
       occurrences = __occurrences.result(),
     )
   }

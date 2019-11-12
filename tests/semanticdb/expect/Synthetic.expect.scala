@@ -32,7 +32,7 @@ class Synthetic/*<<=example.Synthetic#*/ {
 
   class F/*<<=example.Synthetic#F#*/
   implicit val ordering/*<<=example.Synthetic#ordering.*/: Ordering/*=>>scala.package.Ordering#*/[F/*=>>example.Synthetic#F#*/] = ???/*=>>scala.Predef.`???`().*/
-  val f/*<<=example.Synthetic#f.*/: Ordered/*=>>scala.package.Ordered#*/[F/*=>>example.Synthetic#F#*/] = /*=>>scala.math.Ordered.orderingToOrdered().*/new F/*=>>example.Synthetic#F#*//*=>>example.Synthetic#F#`<init>`().*//*=>>example.Synthetic#ordering.*/
+  val f/*<<=example.Synthetic#f.*/: Ordered/*=>>scala.package.Ordered#*/[F/*=>>example.Synthetic#F#*/] = /*=>>scala.math.Ordered.orderingToOrdered().*/new F/*=>>example.Synthetic#F#*//*=>>example.Synthetic#ordering.*/
 
   import scala.concurrent.ExecutionContext/*=>>scala.concurrent.ExecutionContext.*/.Implicits/*=>>scala.concurrent.ExecutionContext.Implicits.*/.global/*=>>scala.concurrent.ExecutionContext.Implicits.global().*/
   for {

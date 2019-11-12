@@ -37,3 +37,8 @@ object Scala with
       !symbol.isNoSymbol && !symbol.isMulti && symbol.last == ')'
     def isTypeParameter: Boolean =
       !symbol.isNoSymbol && !symbol.isMulti && symbol.last == ']'
+
+  given (info: SymbolInformation) with
+
+    def isPrimary: Boolean =
+      (info.properties & SymbolInformation.Property.PRIMARY.value) != 0

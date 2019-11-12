@@ -10,5 +10,5 @@ object U/*<<=traits.U.*/ {
 }
 
 class C/*<<=traits.C#*/
-trait V/*<<=traits.V#*/ { self/*<<=local0*/: C/*=>>traits.C#*/ =>
+trait V/*<<=traits.V#*/ { self/*<<=local1*/: C/*=>>traits.C#*/ =>
 }

@@ -23,11 +23,11 @@ class C8/*<<=classes.C8#*/(private[this] val x/*<<=classes.C8#x.*/: Int/*=>>scal
 class C9/*<<=classes.C9#*/(private[this] var x/*<<=classes.C9#x().*/: Int/*=>>scala.Int#*/)
 
 object N/*<<=classes.N.*/ {
-  val anonClass/*<<=classes.N.anonClass.*/ = new C7/*=>>classes.C7#*//*=>>classes.C7#`<init>`().*/(42) {
-    val local/*<<=local0*/ = ???/*=>>scala.Predef.`???`().*/
+  val anonClass/*<<=classes.N.anonClass.*/ = new C7/*=>>classes.C7#*/(42) {
+    val local/*<<=local1*/ = ???/*=>>scala.Predef.`???`().*/
   }
   val anonFun/*<<=classes.N.anonFun.*/ = List/*=>>scala.package.List.*//*=>>scala.collection.IterableFactory#apply().*/(1).map/*=>>scala.collection.immutable.List#map().*/ { i =>
     val local = 2
-    local/*=>>local1*/ +/*=>>scala.Int#`+`(+4).*/ 2
+    local/*=>>local2*/ +/*=>>scala.Int#`+`(+4).*/ 2
   }
 }

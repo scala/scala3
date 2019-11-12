@@ -14,13 +14,13 @@ class C/*<<=types.C#*/
 class P/*<<=types.P#*/ {
   class C/*<<=types.P#C#*/
   class X/*<<=types.P#X#*/
-  val x/*<<=types.P#x.*/ = new X/*=>>types.P#X#*//*=>>types.P#X#`<init>`().*/
+  val x/*<<=types.P#x.*/ = new X/*=>>types.P#X#*/
 }
 
 class T/*<<=types.T#*/ {
   class C/*<<=types.T#C#*/
   class X/*<<=types.T#X#*/
-  val x/*<<=types.T#x.*/ = new X/*=>>types.T#X#*//*=>>types.T#X#`<init>`().*/
+  val x/*<<=types.T#x.*/ = new X/*=>>types.T#X#*/
 }
 
 object Test/*<<=types.Test.*/ {
@@ -32,8 +32,8 @@ object Test/*<<=types.Test.*/ {
     def n/*<<=types.Test.N#n().*/: Int/*=>>scala.Int#*/ = ???/*=>>scala.Predef.`???`().*/
   }
 
-  class C/*<<=types.Test.C#*/ extends M/*=>>types.Test.M#*//*=>>types.Test.M#`<init>`().*/ {
-    val p/*<<=types.Test.C#p.*/ = new P/*=>>types.P#*//*=>>types.P#`<init>`().*/
+  class C/*<<=types.Test.C#*/ extends M/*=>>types.Test.M#*/ {
+    val p/*<<=types.Test.C#p.*/ = new P/*=>>types.P#*/
     val x/*<<=types.Test.C#x.*/ = p/*=>>types.Test.C#p.*/.x/*=>>types.P#x.*/
 
     val typeRef1/*<<=types.Test.C#typeRef1.*/: C/*=>>types.Test.C#*/ = ???/*=>>scala.Predef.`???`().*/
@@ -55,9 +55,9 @@ object Test/*<<=types.Test.*/ {
     val compoundType1/*<<=types.Test.C#compoundType1.*/: { def k/*<<=local0*/: Int/*=>>scala.Int#*/ } = ???/*=>>scala.Predef.`???`().*/
     val compoundType2/*<<=types.Test.C#compoundType2.*/: M/*=>>types.Test.M#*/ with N/*=>>types.Test.N#*/ = ???/*=>>scala.Predef.`???`().*/
     val compoundType3/*<<=types.Test.C#compoundType3.*/: M/*=>>types.Test.M#*/ with N/*=>>types.Test.N#*/ { def k/*<<=local1*/: Int/*=>>scala.Int#*/ } = ???/*=>>scala.Predef.`???`().*/
-    val compoundType4/*<<=types.Test.C#compoundType4.*/ = new { def k/*<<=local2*/: Int/*=>>scala.Int#*/ = ???/*=>>scala.Predef.`???`().*/ }
-    val compoundType5/*<<=types.Test.C#compoundType5.*/ = new M/*=>>types.Test.M#*//*=>>types.Test.M#`<init>`().*/ with N/*=>>types.Test.N#*/
-    val compoundType6/*<<=types.Test.C#compoundType6.*/ = new M/*=>>types.Test.M#*//*=>>types.Test.M#`<init>`().*/ with N/*=>>types.Test.N#*/ { def k/*<<=local3*/: Int/*=>>scala.Int#*/ = ???/*=>>scala.Predef.`???`().*/ }
+    val compoundType4/*<<=types.Test.C#compoundType4.*/ = new { def k/*<<=local3*/: Int/*=>>scala.Int#*/ = ???/*=>>scala.Predef.`???`().*/ }
+    val compoundType5/*<<=types.Test.C#compoundType5.*/ = new M/*=>>types.Test.M#*/ with N/*=>>types.Test.N#*/
+    val compoundType6/*<<=types.Test.C#compoundType6.*/ = new M/*=>>types.Test.M#*/ with N/*=>>types.Test.N#*/ { def k/*<<=local6*/: Int/*=>>scala.Int#*/ = ???/*=>>scala.Predef.`???`().*/ }
 
     val annType1/*<<=types.Test.C#annType1.*/: T/*=>>types.T#*/ @ann(42) = ???/*=>>scala.Predef.`???`().*/
     val annType2/*<<=types.Test.C#annType2.*/: T/*=>>types.T#*/ @ann1 @ann2 = ???/*=>>scala.Predef.`???`().*/
@@ -67,10 +67,10 @@ object Test/*<<=types.Test.*/ {
     val existentialType4/*<<=types.Test.C#existentialType4.*/ = Class/*=>>java.lang.Class#*/.forName/*=>>java.lang.Class#forName().*/("foo.Bar")
 
     def typeLambda1/*<<=types.Test.C#typeLambda1().*/[M/*<<=types.Test.C#typeLambda1().[M]*/[_]] = ???/*=>>scala.Predef.`???`().*/
-    typeLambda1/*=>>types.Test.C#typeLambda1().*/[({ type L/*<<=local4*/[T/*<<=local5*/] = List/*=>>scala.package.List#*/[T/*=>>local5*/] })#L]
+    typeLambda1/*=>>types.Test.C#typeLambda1().*/[({ type L/*<<=local7*/[T/*<<=local8*/] = List/*=>>scala.package.List#*/[T/*=>>local8*/] })#L]
 
     object ClassInfoType1/*<<=types.Test.C#ClassInfoType1.*/
-    class ClassInfoType2/*<<=types.Test.C#ClassInfoType2#*/ extends B/*=>>types.B#*//*=>>types.B#`<init>`().*/ { def x/*<<=types.Test.C#ClassInfoType2#x().*/ = 42 }
+    class ClassInfoType2/*<<=types.Test.C#ClassInfoType2#*/ extends B/*=>>types.B#*/ { def x/*<<=types.Test.C#ClassInfoType2#x().*/ = 42 }
     trait ClassInfoType3/*<<=types.Test.C#ClassInfoType3#*/[T/*<<=types.Test.C#ClassInfoType3#[T]*/]
 
     object MethodType/*<<=types.Test.C#MethodType.*/ {
