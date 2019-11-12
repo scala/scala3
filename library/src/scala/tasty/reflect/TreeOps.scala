@@ -172,6 +172,7 @@ trait TreeOps extends Core {
     def tpe(given ctx: Context): Type = internal.Term_tpe(self)
     def underlyingArgument(given ctx: Context): Term = internal.Term_underlyingArgument(self)
     def underlying(given ctx: Context): Term = internal.Term_underlying(self)
+    def etaExpand(given ctx: Context): Term = internal.Term_etaExpand(self)
 
     /** A unary apply node with given argument: `tree(arg)` */
     def appliedTo(arg: Term)(given ctx: Context): Term =
