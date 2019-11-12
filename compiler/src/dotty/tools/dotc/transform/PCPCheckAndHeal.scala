@@ -13,7 +13,6 @@ import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans._
@@ -137,6 +136,8 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         case tp: ThisType =>
           assert(checkSymLevel(tp.cls, tp, pos).isEmpty)
           mapOver(tp)
+        case tp: AnnotatedType =>
+          derivedAnnotatedType(tp, apply(tp.parent), tp.annot)
         case _ =>
           mapOver(tp)
       }
@@ -167,7 +168,12 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         case tp1: SkolemType => isStaticPathOK(tp1.info)
         case _ => false
 
-    if (!sym.exists || levelOK(sym) || isStaticPathOK(tp))
+    /* Is a reference to an `<init>` method on a class with a static path */
+    def isStaticNew(tp1: Type): Boolean = tp1 match
+      case tp1: TermRef => tp1.symbol.isConstructor && isStaticPathOK(tp1.prefix)
+      case _ => false
+
+    if (!sym.exists || levelOK(sym) || isStaticPathOK(tp) || isStaticNew(tp))
       None
     else if (!sym.isStaticOwner && !isClassRef)
       tryHeal(sym, tp, pos)
