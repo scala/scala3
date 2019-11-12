@@ -9,10 +9,8 @@ import java.io.IOException
 import scala.internal.Chars._
 import Spans._
 import scala.io.Codec
-import core.Names.TermName
 import core.Contexts.Context
 import scala.annotation.internal.sharable
-import core.Decorators.PreNamedString
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 
@@ -199,8 +197,6 @@ object SourceFile {
   implicit def eqSource: Eql[SourceFile, SourceFile] = Eql.derived
 
   implicit def fromContext(implicit ctx: Context): SourceFile = ctx.source
-
-  type PathName = TermName
 
   def fromId(id: Int): SourceFile = sourceOfChunk(id >> ChunkSizeLog)
 

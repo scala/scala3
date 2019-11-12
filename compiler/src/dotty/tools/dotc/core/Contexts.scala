@@ -239,7 +239,7 @@ object Contexts {
     }
 
     /** Sourcefile with given path name, memoized */
-    def getSource(path: SourceFile.PathName): SourceFile = base.sourceNamed.get(path) match {
+    def getSource(path: TermName): SourceFile = base.sourceNamed.get(path) match {
       case Some(source) =>
         source
       case None =>
@@ -685,7 +685,7 @@ object Contexts {
 
     /** Sources that were loaded */
     val sources: mutable.HashMap[AbstractFile, SourceFile] = new mutable.HashMap[AbstractFile, SourceFile]
-    val sourceNamed: mutable.HashMap[SourceFile.PathName, SourceFile] = new mutable.HashMap[SourceFile.PathName, SourceFile]
+    val sourceNamed: mutable.HashMap[TermName, SourceFile] = new mutable.HashMap[TermName, SourceFile]
 
     // Types state
     /** A table for hash consing unique types */
