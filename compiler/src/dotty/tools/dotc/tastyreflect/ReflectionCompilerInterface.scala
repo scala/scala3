@@ -1604,7 +1604,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   /** Convert `Term` to an `quoted.Expr[Any]`  */
   def QuotedExpr_seal(self: Term)(given ctx: Context): scala.quoted.Expr[Any] = self.tpe.widen match {
-    case mtpe: Types.MethodType => throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
+    case _: Types.MethodType | _: Types.PolyType => throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
     case _ => new scala.internal.quoted.TastyTreeExpr(self, compilerId)
   }
 
