@@ -62,6 +62,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   private var myAnyKindClass: ClassSymbol = null
   private var myNothingClass: ClassSymbol = null
   private var myNullClass: ClassSymbol = null
+  private var myNotNullClass: ClassSymbol = null
   private var myObjectClass: ClassSymbol = null
   private var myAnyType: TypeRef = null
   private var myAnyKindType: TypeRef = null
@@ -83,6 +84,10 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     if (myNullClass == null) myNullClass = defn.NullClass
     myNullClass
   }
+  def NotNullClass: ClassSymbol =
+    if myNotNullClass == null then myNotNullClass = defn.NotNullClass
+    myNotNullClass
+
   def ObjectClass: ClassSymbol = {
     if (myObjectClass == null) myObjectClass = defn.ObjectClass
     myObjectClass
@@ -770,6 +775,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
         if (tp2a ne tp2) // Follow the alias; this might avoid truncating the search space in the either below
           return recur(tp1, tp2a)
 
+        if tp11.isRef(NotNullClass)
+          tp12.widen match
+            case OrNull(tp12a) if recur(tp12a, tp2) => return true
+            case _ =>
+        if tp12.isRef(NotNullClass)
+          tp11.widen match
+            case OrNull(tp11a) if recur(tp11a, tp2) => return true
+            case _ =>
+
         // Rewrite (T111 | T112) & T12 <: T2 to (T111 & T12) <: T2 and (T112 | T12) <: T2
         // and analogously for T11 & (T121 | T122) & T12 <: T2
         // `&' types to the left of <: are problematic, because
@@ -1042,7 +1056,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
      */
     def isNewSubType(tp1: Type): Boolean =
       if (isCovered(tp1) && isCovered(tp2))
-        //println(s"useless subtype: $tp1 <:< $tp2")
+        //println(i"useless subtype: $tp1 <:< $tp2")
         false
       else isSubType(tp1, tp2, approx.addLow)
 
@@ -1533,7 +1547,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
    *  combiners are AppliedTypes, RefinedTypes, RecTypes, And/Or-Types or AnnotatedTypes.
    */
   private def isCovered(tp: Type): Boolean = tp.dealiasKeepRefiningAnnots.stripTypeVar match {
-    case tp: TypeRef => tp.symbol.isClass && tp.symbol != NothingClass && tp.symbol != NullClass
+    case tp: TypeRef =>
+      tp.symbol.isClass
+      && tp.symbol != NothingClass
+      && tp.symbol != NullClass
+      && tp.symbol != NotNullClass
     case tp: AppliedType => isCovered(tp.tycon)
     case tp: RefinedOrRecType => isCovered(tp.parent)
     case tp: AndType => isCovered(tp.tp1) && isCovered(tp.tp2)
@@ -1701,28 +1719,27 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             tp11 & tp2 | tp12 & tp2
           case _ =>
             val tp1a = dropIfSuper(tp1, tp2)
-            if (tp1a ne tp1) glb(tp1a, tp2)
-            else {
-              val tp2a = dropIfSuper(tp2, tp1)
-              if (tp2a ne tp2) glb(tp1, tp2a)
-              else tp1 match {
-                case tp1: ConstantType =>
-                  tp2 match {
-                    case tp2: ConstantType =>
-                      // Make use of the fact that the intersection of two constant types
-                      // types which are not subtypes of each other is known to be empty.
-                      // Note: The same does not apply to singleton types in general.
-                      // E.g. we could have a pattern match against `x.type & y.type`
-                      // which might succeed if `x` and `y` happen to be the same ref
-                      // at run time. It would not work to replace that with `Nothing`.
-                      // However, maybe we can still apply the replacement to
-                      // types which are not explicitly written.
-                      NothingType
-                    case _ => andType(tp1, tp2)
-                  }
-                case _ => andType(tp1, tp2)
-              }
-            }
+            if (tp1a ne tp1) return glb(tp1a, tp2)
+            val tp2a = dropIfSuper(tp2, tp1)
+            if (tp2a ne tp2) return glb(tp1, tp2a)
+            tp1 match
+              case tp1: ConstantType =>
+                tp2 match
+                  case tp2: ConstantType =>
+                    // Make use of the fact that the intersection of two constant types
+                    // types which are not subtypes of each other is known to be empty.
+                    // Note: The same does not apply to singleton types in general.
+                    // E.g. we could have a pattern match against `x.type & y.type`
+                    // which might succeed if `x` and `y` happen to be the same ref
+                    // at run time. It would not work to replace that with `Nothing`.
+                    // However, maybe we can still apply the replacement to
+                    // types which are not explicitly written.
+                    return NothingType
+                  case _ =>
+              case _ =>
+            if tp1.isRef(NotNullClass) && tp2.isNull then return NothingType
+            if tp2.isRef(NotNullClass) && tp1.isNull then return NothingType
+            andType(tp1, tp2)
         }
     }
   }
@@ -1838,7 +1855,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     else if (!tp2.exists) tp1
     else tp.derivedAndType(tp1, tp2)
 
-  /** If some (&-operand of) this type is a supertype of `sub` replace it with `NoType`.
+  /** If some (&-operand of) `tp` is a supertype of `sub` replace it with `NoType`.
    */
   private def dropIfSuper(tp: Type, sub: Type): Type =
     if (isSubTypeWhenFrozen(sub, tp)) NoType
