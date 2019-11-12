@@ -2891,6 +2891,7 @@ object Types {
       else apply(tp1, tp2)
   }
 
+  /** An extractor for `T | Null` or `Null | T`, returning the `T` */
   object OrNull with
     private def stripNull(tp: Type)(given Context): Type = tp match
       case tp @ OrType(tp1, tp2) =>
