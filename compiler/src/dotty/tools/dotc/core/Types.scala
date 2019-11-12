@@ -1403,6 +1403,7 @@ object Types {
     /** Is this (an alias of) the `scala.Null` type? */
     final def isNull(given Context) =
       isRef(defn.NullClass)
+      || classSymbol.name == tpnme.Null // !!! temporary kludge for being able to test without the explicit nulls PR
 
     /** The resultType of a LambdaType, or ExprType, the type itself for others */
     def resultType(implicit ctx: Context): Type = this
