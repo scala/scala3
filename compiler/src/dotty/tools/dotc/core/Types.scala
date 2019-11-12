@@ -3552,7 +3552,8 @@ object Types {
         if (defn.isCompiletime_S(tycon.symbol) && args.length == 1)
           trace(i"normalize S $this", typr, show = true) {
             args.head.normalized match {
-              case ConstantType(Constant(n: Int)) => ConstantType(Constant(n + 1))
+              case ConstantType(Constant(n: Int)) if n >= 0 && n < Int.MaxValue =>
+                ConstantType(Constant(n + 1))
               case none => tryMatchAlias
             }
           }
