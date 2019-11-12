@@ -142,7 +142,7 @@ object Scanners {
     /** A switch whether operators at the start of lines can be infix operators */
     private[Scanners] var allowLeadingInfixOperators = true
 
-    val isScala2Mode: Boolean = ctx.scala2Setting
+    val isScala2CompatMode: Boolean = ctx.scala2CompatSetting
 
     val rewrite = ctx.settings.rewrite.value.isDefined
     val oldSyntax = ctx.settings.oldSyntax.value
@@ -154,7 +154,7 @@ object Scanners {
     val noindentSyntax =
       ctx.settings.noindent.value
       || ctx.settings.oldSyntax.value
-      || isScala2Mode
+      || isScala2CompatMode
     val indentSyntax =
       (if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value)
       || rewriteNoIndent
@@ -199,12 +199,12 @@ object Scanners {
     private val commentBuf = new mutable.StringBuilder
 
     private def handleMigration(keyword: Token): Token =
-      if (!isScala2Mode) keyword
+      if (!isScala2CompatMode) keyword
       else if (scala3keywords.contains(keyword)) treatAsIdent()
       else keyword
 
     private def treatAsIdent() = {
-      testScala2Mode(i"$name is now a keyword, write `$name` instead of $name to keep it as an identifier")
+      testScala2CompatMode(i"$name is now a keyword, write `$name` instead of $name to keep it as an identifier")
       patch(source, Span(offset), "`")
       patch(source, Span(offset + name.length), "`")
       IDENTIFIER
@@ -232,14 +232,14 @@ object Scanners {
 // Scala 2 compatibility
 
     /** Cannot use ctx.featureEnabled because accessing the context would force too much */
-    def testScala2Mode(msg: String, span: Span = Span(offset)): Boolean = {
-      if (isScala2Mode) ctx.migrationWarning(msg, source.atSpan(span))
-      isScala2Mode
+    def testScala2CompatMode(msg: String, span: Span = Span(offset)): Boolean = {
+      if (isScala2CompatMode) ctx.migrationWarning(msg, source.atSpan(span))
+      isScala2CompatMode
     }
 
     /** A migration warning if in Scala-2 mode, an error otherwise */
     def errorOrMigrationWarning(msg: String, span: Span = Span(offset)): Unit =
-      if (isScala2Mode) ctx.migrationWarning(msg, source.atSpan(span))
+      if (isScala2CompatMode) ctx.migrationWarning(msg, source.atSpan(span))
       else ctx.error(msg, source.atSpan(span))
 
 // Get next token ------------------------------------------------------------
@@ -371,7 +371,7 @@ object Scanners {
       *   - it does not follow a blank line, and
       *   - it is followed on the same line by at least one ' '
       *     and a token that can start an expression.
-      *  If a leading infix operator is found and -language:Scala2 or -old-syntax is set,
+      *  If a leading infix operator is found and -language:Scala2Compat or -old-syntax is set,
       *  emit a change warning.
       */
     def isLeadingInfixOperator(inConditional: Boolean = true) = (
@@ -388,7 +388,7 @@ object Scanners {
         canStartExprTokens.contains(lookahead.token)
       }
       && {
-        if isScala2Mode || oldSyntax && !rewrite then
+        if isScala2CompatMode || oldSyntax && !rewrite then
           val (what, previous) =
             if inConditional then ("Rest of line", "previous expression in parentheses")
             else ("Line", "expression on the previous line")
@@ -1009,10 +1009,10 @@ object Scanners {
     def isNestedEnd = token == RBRACE || token == OUTDENT
 
     def canStartStatTokens =
-      if isScala2Mode then canStartStatTokens2 else canStartStatTokens3
+      if isScala2CompatMode then canStartStatTokens2 else canStartStatTokens3
 
     def canStartExprTokens =
-      if isScala2Mode then canStartExprTokens2 else canStartExprTokens3
+      if isScala2CompatMode then canStartExprTokens2 else canStartExprTokens3
 
 // Literals -----------------------------------------------------------------
 

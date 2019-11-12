@@ -301,7 +301,7 @@ class Typer extends Namer
               if (!curOwner.is(Package) || isDefinedInCurrentUnit(defDenot))
                 result = checkNewOrShadowed(found, Definition) // no need to go further out, we found highest prec entry
               else {
-                if (ctx.scala2Mode && !foundUnderScala2.exists)
+                if (ctx.scala2CompatMode && !foundUnderScala2.exists)
                   foundUnderScala2 = checkNewOrShadowed(found, Definition, scala2pkg = true)
                 if (defDenot.symbol.is(Package))
                   result = checkNewOrShadowed(previous orElse found, PackageClause)
@@ -382,8 +382,8 @@ class Typer extends Namer
         if (foundUnderScala2.exists && !(foundUnderScala2 =:= found)) {
           ctx.migrationWarning(
             ex"""Name resolution will change.
-              | currently selected                     : $foundUnderScala2
-              | in the future, without -language:Scala2: $found""", tree.sourcePos)
+              | currently selected                           : $foundUnderScala2
+              | in the future, without -language:Scala2Compat: $found""", tree.sourcePos)
           found = foundUnderScala2
         }
         found
@@ -1909,7 +1909,7 @@ class Typer extends Namer
       case _ =>
         val recovered = typed(qual)(ctx.fresh.setExploreTyperState())
         ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen), tree.sourcePos)
-        if (ctx.scala2Mode) {
+        if (ctx.scala2CompatMode) {
           // Under -rewrite, patch `x _` to `(() => x)`
           patch(Span(tree.span.start), "(() => ")
           patch(Span(qual.span.end, tree.span.end), ")")
@@ -1930,7 +1930,7 @@ class Typer extends Namer
         else s"use `$prefix<function>$suffix` instead"
       ctx.errorOrMigrationWarning(i"""The syntax `<function> _` is no longer supported;
                                      |you can $remedy""", tree.sourcePos)
-      if (ctx.scala2Mode) {
+      if (ctx.scala2CompatMode) {
         patch(Span(tree.span.start), prefix)
         patch(Span(qual.span.end, tree.span.end), suffix)
       }
@@ -2681,7 +2681,7 @@ class Typer extends Namer
       def isAutoApplied(sym: Symbol): Boolean =
         sym.isConstructor ||
         sym.matchNullaryLoosely ||
-        ctx.testScala2Mode(MissingEmptyArgumentList(sym), tree.sourcePos,
+        ctx.testScala2CompatMode(MissingEmptyArgumentList(sym), tree.sourcePos,
             patch(tree.span.endPos, "()"))
 
       // Reasons NOT to eta expand:

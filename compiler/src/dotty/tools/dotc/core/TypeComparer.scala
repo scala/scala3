@@ -573,7 +573,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             * am not sure how, since the code is buried so deep in subtyping logic.
             */
             def boundsOK =
-              ctx.scala2Mode ||
+              ctx.scala2CompatMode ||
               tp1.typeParams.corresponds(tp2.typeParams)((tparam1, tparam2) =>
                 isSubType(tparam2.paramInfo.subst(tp2, tp1), tparam1.paramInfo))
             val saved = comparedTypeLambdas
@@ -1730,7 +1730,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   /** The greatest lower bound of a list types */
   final def glb(tps: List[Type]): Type = tps.foldLeft(AnyType: Type)(glb)
 
-  def widenInUnions(implicit ctx: Context): Boolean = ctx.scala2Mode || ctx.erasedTypes
+  def widenInUnions(implicit ctx: Context): Boolean = ctx.scala2CompatMode || ctx.erasedTypes
 
   /** The least upper bound of two types
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.

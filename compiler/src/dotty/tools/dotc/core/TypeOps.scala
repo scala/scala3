@@ -369,7 +369,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
      *  type parameter corresponding to the wildcard.
      */
     def skolemizeWildcardArgs(tps: List[Type], app: Type) = app match {
-      case AppliedType(tycon, args) if tycon.typeSymbol.isClass && !scala2Mode =>
+      case AppliedType(tycon, args) if tycon.typeSymbol.isClass && !scala2CompatMode =>
         tps.zipWithConserve(tycon.typeSymbol.typeParams) {
           (tp, tparam) => tp match {
             case _: TypeBounds => app.select(tparam)
@@ -500,25 +500,34 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   def canAutoTuple: Boolean =
     !featureEnabled(nme.noAutoTupling)
 
-  def scala2Mode: Boolean =
-    featureEnabled(nme.Scala2)
+  def scala2CompatMode: Boolean =
+    featureEnabled(nme.Scala2Compat) || {
+      val scala2 = featureEnabled(nme.Scala2)
+      if scala2 then ctx.warning("Use `-language:Scala2Compat` or `import scala.Scala2Compat` instead of `-language:Scala2` or `import scala.Scala2`")
+      scala2
+    }
+
 
   def dynamicsEnabled: Boolean =
     featureEnabled(nme.dynamics)
 
-  def testScala2Mode(msg: => Message, pos: SourcePosition, replace: => Unit = ()): Boolean = {
-    if (scala2Mode) {
+  def testScala2CompatMode(msg: => Message, pos: SourcePosition, replace: => Unit = ()): Boolean = {
+    if (scala2CompatMode) {
       migrationWarning(msg, pos)
       replace
     }
-    scala2Mode
+    scala2CompatMode
   }
 
-  /** Is option -language:Scala2 set?
+  /** Is option -language:Scala2Compat set?
    *  This test is used when we are too early in the pipeline to consider imports.
    */
-  def scala2Setting: Boolean =
-    ctx.settings.language.value.contains(nme.Scala2.toString)
+  def scala2CompatSetting: Boolean =
+    ctx.settings.language.value.contains(nme.Scala2Compat.toString) || {
+      val scala2 = ctx.settings.language.value.contains(nme.Scala2.toString)
+      if scala2 then ctx.warning("Use -language:Scala2Compat instead of -language:Scala2")
+      scala2
+    }
 
   /** Refine child based on parent
    *

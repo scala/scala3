@@ -1931,7 +1931,7 @@ object messages {
     extends Message(UnapplyInvalidReturnTypeID) {
     val kind = "Type Mismatch"
     val addendum =
-      if (ctx.scala2Mode && unapplyName == nme.unapplySeq)
+      if (ctx.scala2CompatMode && unapplyName == nme.unapplySeq)
         "\nYou might want to try to rewrite the extractor to use `unapply` instead."
       else ""
     val msg = em"""| ${Red(i"$unapplyResult")} is not a valid result type of an $unapplyName method of an ${Magenta("extractor")}.$addendum"""

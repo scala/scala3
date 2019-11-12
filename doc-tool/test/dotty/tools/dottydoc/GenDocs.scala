@@ -22,7 +22,7 @@ trait LocalResources extends DocDriver {
   def withClasspath(files: Array[String]) =
     "-siteroot" +: "../docs" +:
     "-project" +: "Dotty" +:
-    "-language:Scala2" +:
+    "-language:Scala2Compat" +:
     "-classpath" +:
     TestConfiguration.basicClasspath +:
     files

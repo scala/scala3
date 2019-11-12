@@ -167,7 +167,7 @@ object ErrorReporting {
     }
 
     def rewriteNotice: String =
-      if (ctx.scala2Mode) "\nThis patch can be inserted automatically under -rewrite."
+      if (ctx.scala2CompatMode) "\nThis patch can be inserted automatically under -rewrite."
       else ""
   }
 

@@ -75,7 +75,7 @@ requirement.
 ### Migrating code
 
 Existing Scala code with inconsistent parameters can still be compiled
-in Dotty under `-language:Scala2`. When paired with the `-rewrite`
+in Dotty under `-language:Scala2Compat`. When paired with the `-rewrite`
 option, the code will be automatically rewritten to conform to Dotty's
 stricter checking.
 
