@@ -63,6 +63,7 @@ class ExtractSemanticDB extends Phase {
 
     /** Add semanticdb name of the given symbol to string builder */
     private def addSymName(b: StringBuilder, sym: Symbol)(given ctx: Context): Unit =
+      import Scala._
 
       def isJavaIdent(str: String) =
         isJavaIdentifierStart(str.head) && str.tail.forall(isJavaIdentifierPart)
@@ -75,8 +76,8 @@ class ExtractSemanticDB extends Phase {
 
       def addName(name: Name) =
         val str = name.unescapeUnicode
-        if isJavaIdent(str) then b.append(str)
-        else b.append('`').append(str).append('`')
+        if isJavaIdent(str) then b `append` str
+        else b append '`' append str append '`'
 
       /** Is symbol global? Non-global symbols get localX names */
       def isGlobal(sym: Symbol): Boolean =
@@ -108,15 +109,14 @@ class ExtractSemanticDB extends Phase {
           b.append('['); addName(sym.name); b.append(']')
         else if sym.is(Param) then
           b.append('('); addName(sym.name); b.append(')')
+        else if sym.isRoot then
+          b.append(Symbols.RootPackage)
+        else if sym.isEmptyPackage then
+          b.append(Symbols.EmptyPackage)
+        else if (sym.isPackageObject) then
+          b.append(Symbols.PackageObjectDescriptor)
         else
-          if sym.isRoot then
-            b.append("_root_")
-          else if sym.isEmptyPackage then
-            b.append("_empty_")
-          else if (sym.isPackageObject) then
-            b.append("package")
-          else
-            addName(sym.name)
+          addName(sym.name)
           if sym.is(Package) then b.append('/')
           else if sym.isType || sym.isAllOf(JavaModule) then b.append('#')
           else if sym.isOneOf(Method | Mutable)
@@ -143,7 +143,7 @@ class ExtractSemanticDB extends Phase {
         if isGlobal(sym) then
           addOwner(sym.owner); addDescriptor(sym)
         else
-          b.append("local").append(localIdx(sym))
+          b.append(Symbols.LocalPrefix).append(localIdx(sym))
 
     end addSymName
 

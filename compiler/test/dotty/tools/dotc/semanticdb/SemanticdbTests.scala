@@ -17,11 +17,11 @@ import dotty.BootstrappedOnlyTests
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.semanticdb.DiffAssertions._
 
-@main def updateExpect() =
-  new SemanticdbTests().runExpectTest(updateExpectFiles = true)
+@main def updateExpect =
+  SemanticdbTests().runExpectTest(updateExpectFiles = true)
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
-class SemanticdbTests {
+class SemanticdbTests with
   val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
   val expectFile = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
   // val semanticdbFile = FileSystems.getDefault.getPathMatcher("glob:**.scala.semanticdb")
@@ -75,8 +75,5 @@ class SemanticdbTests {
       "-usejavacp",
     ) ++ inputFiles().map(_.toString)
     val exit = Main.process(args)
-    if (exit.hasErrors)
-      sys.error(s"dotc errors: ${exit.errorCount}")
+    assertFalse(s"dotc errors: ${exit.errorCount}", exit.hasErrors)
     target
-
-}
