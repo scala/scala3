@@ -1,4 +1,4 @@
-package dotty.tools.dotc.semanticdb
+package dotty.tools.dotc.semanticdb.internal
 
 trait SemanticdbMessage[A] {
   def serializedSize: Int

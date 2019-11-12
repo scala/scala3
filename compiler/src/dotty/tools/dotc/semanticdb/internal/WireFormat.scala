@@ -1,4 +1,4 @@
-package dotty.tools.dotc.semanticdb
+package dotty.tools.dotc.semanticdb.internal
 
 object WireFormat {
   val WIRETYPE_VARINT = 0

@@ -1,5 +1,7 @@
 package dotty.tools.dotc.semanticdb
 
+import dotty.tools.dotc.semanticdb.internal._
+
 abstract class Language(val value: Int) extends SemanticdbEnum
 object Language {
   case object UNKNOWN_LANGUAGE extends Language(0)

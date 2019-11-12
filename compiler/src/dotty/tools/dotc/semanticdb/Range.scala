@@ -1,5 +1,7 @@
 package dotty.tools.dotc.semanticdb
 
+import dotty.tools.dotc.semanticdb.internal._
+
 object Range {
   def defaultInstance: Range = Range(0, 0, 0, 0)
 }
@@ -105,10 +107,10 @@ case class Range(
       }
     }
     Range(
-        startLine = __startLine,
-        startCharacter = __startCharacter,
-        endLine = __endLine,
-        endCharacter = __endCharacter
+      startLine = __startLine,
+      startCharacter = __startCharacter,
+      endLine = __endLine,
+      endCharacter = __endCharacter
     )
   }
 }

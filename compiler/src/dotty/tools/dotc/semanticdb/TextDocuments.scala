@@ -1,5 +1,7 @@
 package dotty.tools.dotc.semanticdb
 
+import dotty.tools.dotc.semanticdb.internal._
+
 object TextDocuments {
   def parseFrom(in: Array[Byte]): TextDocuments = {
     parseFrom(SemanticdbInputStream.newInstance(in))
@@ -50,7 +52,7 @@ case class TextDocuments(documents: Seq[TextDocument]) extends SemanticdbMessage
       }
     }
     TextDocuments(
-        documents = __documents.result()
+      documents = __documents.result()
     )
   }
 }

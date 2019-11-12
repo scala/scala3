@@ -1,5 +1,7 @@
 package dotty.tools.dotc.semanticdb
 
+import dotty.tools.dotc.semanticdb.internal._
+
 object SymbolOccurrence {
   sealed abstract class Role(val value: Int) extends SemanticdbEnum {
     def isDefinition: Boolean = this == Role.DEFINITION
@@ -104,9 +106,9 @@ case class SymbolOccurrence(
       }
     }
     SymbolOccurrence(
-        range = __range,
-        symbol = __symbol,
-        role = __role
+      range = __range,
+      symbol = __symbol,
+      role = __role
     )
   }
 }

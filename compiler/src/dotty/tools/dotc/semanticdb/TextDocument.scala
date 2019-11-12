@@ -1,5 +1,7 @@
 package dotty.tools.dotc.semanticdb
 
+import dotty.tools.dotc.semanticdb.internal._
+
 object TextDocument {
   def defaultInstance: TextDocument = TextDocument(Schema.LEGACY, Language.UNKNOWN_LANGUAGE, "", "", "", Nil)
 }
@@ -116,12 +118,12 @@ case class TextDocument(
       }
     }
     TextDocument(
-        schema = __schema,
-        uri = __uri,
-        text = "",
-        md5 = __md5,
-        language = __language,
-        occurrences = __occurrences.result(),
+      schema = __schema,
+      uri = __uri,
+      text = "",
+      md5 = __md5,
+      language = __language,
+      occurrences = __occurrences.result(),
     )
   }
 }

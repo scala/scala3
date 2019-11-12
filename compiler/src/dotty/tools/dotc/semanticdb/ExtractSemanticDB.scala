@@ -306,13 +306,13 @@ object ExtractSemanticDB {
       language = Language.SCALA,
       uri = relURI,
       text = "",
-      md5 = MD5.compute(String(source.content)),
+      md5 = internal.MD5.compute(String(source.content)),
       occurrences = occurrences
     )
     val docs = TextDocuments(List(doc))
     val out = Files.newOutputStream(outpath)
     try
-      val stream = SemanticdbOutputStream.newInstance(out)
+      val stream = internal.SemanticdbOutputStream.newInstance(out)
       docs.writeTo(stream)
       stream.flush()
     finally

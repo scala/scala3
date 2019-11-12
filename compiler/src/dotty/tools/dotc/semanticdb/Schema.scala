@@ -1,5 +1,7 @@
 package dotty.tools.dotc.semanticdb
 
+import dotty.tools.dotc.semanticdb.internal._
+
 abstract class Schema(val value: Int) extends SemanticdbEnum
 object Schema {
   def fromValue(value: _root_.scala.Int): Schema = value match {
