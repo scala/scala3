@@ -105,6 +105,9 @@ class ExtractSemanticDB extends Phase {
           b.append('+').append(idx + 1)
         case _ =>
 
+      def (sym: Symbol) isScala2PackageObject(given Context): Boolean =
+        sym.name == nme.PACKAGE && sym.owner.is(Package) && sym.is(Module)
+
       def addDescriptor(sym: Symbol): Unit =
         if sym.is(ModuleClass) then
           addDescriptor(sym.sourceModule)
@@ -116,7 +119,7 @@ class ExtractSemanticDB extends Phase {
           b.append(Symbols.RootPackage)
         else if sym.isEmptyPackage then
           b.append(Symbols.EmptyPackage)
-        else if (sym.isPackageObject) then
+        else if (sym.isScala2PackageObject) then
           b.append(Symbols.PackageObjectDescriptor)
         else
           addName(sym.name)
