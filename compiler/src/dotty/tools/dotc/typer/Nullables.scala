@@ -17,7 +17,7 @@ object Nullables with
   import ast.tpd._
 
   /** A set of val or var references that are known to be not null, plus a set of
-   *  variable references that are not known (anymore) to be null
+   *  variable references that are not known (anymore) to be not null
    */
   case class NotNullInfo(asserted: Set[TermRef], retracted: Set[TermRef])
     assert((asserted & retracted).isEmpty)
@@ -34,7 +34,9 @@ object Nullables with
         this.asserted.union(that.asserted).diff(that.retracted),
         this.retracted.union(that.retracted).diff(that.asserted))
 
-    /** The alternative path combination with another not-null info */
+    /** The alternative path combination with another not-null info. Used to merge
+     *  the nullability info of the two branches of an if.
+     */
     def alt(that: NotNullInfo): NotNullInfo =
       NotNullInfo(this.asserted.intersect(that.asserted), this.retracted.union(that.retracted))
 
@@ -99,9 +101,9 @@ object Nullables with
   end TrackedRef
 
   /** Is given reference tracked for nullability?
-   *  This is the case if the reference is a path to an immutable val,
-   *  or if it refers to a local mutable variable where all assignments
-   *  to the variable are reachable.
+   *  This is the case if the reference is a path to an immutable val, or if it refers
+   *  to a local mutable variable where all assignments to the variable are _reachable_
+   *  (in the sense of how it is defined in assignmentSpans).
    */
   def isTracked(ref: TermRef)(given Context) =
     ref.isStable
@@ -114,10 +116,17 @@ object Nullables with
          && curCtx.compilationUnit.assignmentSpans.contains(sym.span.start)
       }
 
+  /** The nullability context to be used after a case that matches pattern `pat`.
+   *  If `pat` is `null`, this will assert that the selector `sel` is not null afterwards.
+   */
   def afterPatternContext(sel: Tree, pat: Tree)(given ctx: Context) = (sel, pat) match
     case (TrackedRef(ref), Literal(Constant(null))) => ctx.addNotNullRefs(Set(ref))
     case _ => ctx
 
+  /** The nullability context to be used for the guard and rhs of a case with
+   *  given pattern `pat`. If the pattern can only match non-null values, this
+   *  will assert that the selector `sel` is not null in these regions.
+   */
   def caseContext(sel: Tree, pat: Tree)(given ctx: Context): Context = sel match
     case TrackedRef(ref) if matchesNotNull(pat) => ctx.addNotNullRefs(Set(ref))
     case _ => ctx
@@ -129,19 +138,26 @@ object Nullables with
     case _ => false
 
   given (infos: List[NotNullInfo])
-    @tailRec
-    def containsRef(ref: TermRef): Boolean = infos match
+
+    /** Do the current not-null infos imply that `ref` is not null?
+     *  Not-null infos are as a history where earlier assertions and retractions replace
+     *  later ones (i.e. it records the assignment history in reverse, with most recent first)
+     */
+    @tailrec def impliesNotNull(ref: TermRef): Boolean = infos match
       case info :: infos1 =>
         if info.asserted.contains(ref) then true
         else if info.retracted.contains(ref) then false
-        else containsRef(infos1)(ref)
+        else impliesNotNull(infos1)(ref)
       case _ =>
         false
 
+    /** Add `info` as the most recent entry to the list of null infos. Assertions
+     *  or retractions in `info` supersede infos in existing entries of `infos`.
+     */
     def extendWith(info: NotNullInfo) =
       if info.isEmpty
-         || info.asserted.forall(infos.containsRef(_))
-            && !info.retracted.exists(infos.containsRef(_))
+         || info.asserted.forall(infos.impliesNotNull(_))
+            && !info.retracted.exists(infos.impliesNotNull(_))
       then infos
       else info :: infos
 
@@ -245,13 +261,16 @@ object Nullables with
 
   /** A map from (name-) offsets of all local variables in this compilation unit
    *  that can be tracked for being not null to the list of spans of assignments
-   *  to these variables. A variable can be tracked if it has only reachable assignments.
+   *  to these variables. A variable can be tracked if it has only reachable assignments
    *  An assignment is reachable if the path of tree nodes between the block enclosing
    *  the variable declaration to the assignment consists only of if-expressions,
    *  while-expressions, block-expressions and type-ascriptions.
    *  Only reachable assignments are handled correctly in the nullability analysis.
    *  Therefore, variables with unreachable assignments can be assumed to be not-null
    *  only if their type asserts it.
+   *
+   *  Note: we the local variables through their offset and not through their name
+   *  because of shadowing.
    */
   def assignmentSpans(given Context): Map[Int, List[Span]] =
     import ast.untpd._
@@ -305,7 +324,7 @@ object Nullables with
 
   /** The initial context to be used for a while expression with given span.
    *  In this context, all variables that are assigned within the while expression
-   *  have their nullability status retracted, i.e. are not known to be null.
+   *  have their nullability status retracted, i.e. are not known to be not null.
    *  While necessary for soundness, this scheme loses precision: Even if
    *  the initial state of the variable is not null and all assignments to the variable
    *  in the while expression are also known to be not null, the variable is still
@@ -323,8 +342,8 @@ object Nullables with
    *
    *     class Links(val elem: T, val next: Links | Null)
    *
-   *     var ys: Links | Null = Links(1, null)
-   *     var xs: Links | Null = xs
+   *     var xs: Links | Null = Links(1, null)
+   *     var ys: Links | Null = xs
    *     while xs != null
    *       ys = Links(xs.elem, ys.next)  // error in unrefined: ys is potentially null here
    *       xs = xs.next
@@ -334,7 +353,7 @@ object Nullables with
       val sym = ref.symbol
       sym.span.exists
       && assignmentSpans.getOrElse(sym.span.start, Nil).exists(whileSpan.contains(_))
-      && curCtx.notNullInfos.containsRef(ref)
+      && curCtx.notNullInfos.impliesNotNull(ref)
     val retractedVars = curCtx.notNullInfos.flatMap(_.asserted.filter(isRetracted)).toSet
     curCtx.addNotNullInfo(NotNullInfo(Set(), retractedVars))
 

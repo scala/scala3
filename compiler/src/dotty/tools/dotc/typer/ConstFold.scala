@@ -21,7 +21,7 @@ object ConstFold {
   def apply[T <: Tree](tree: T)(implicit ctx: Context): T = finish(tree) {
     tree match {
       case CompareNull(TrackedRef(ref), testEqual)
-      if ctx.settings.YexplicitNulls.value && ctx.notNullInfos.containsRef(ref) =>
+      if ctx.settings.YexplicitNulls.value && ctx.notNullInfos.impliesNotNull(ref) =>
         // TODO maybe drop once we have general Nullability?
         Constant(!testEqual)
       case Apply(Select(xt, op), yt :: Nil) =>
