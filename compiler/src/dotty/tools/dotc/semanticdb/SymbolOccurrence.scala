@@ -1,18 +1,21 @@
 package dotty.tools.dotc.semanticdb
 
 import dotty.tools.dotc.semanticdb.internal._
+import scala.annotation.internal.sharable
 
 object SymbolOccurrence {
-  sealed abstract class Role(val value: Int) extends SemanticdbEnum {
+
+  sealed trait Role(val value: Int) extends SemanticdbEnum derives Eql {
     def isDefinition: Boolean = this == Role.DEFINITION
     def isReference: Boolean = this == Role.REFERENCE
   }
 
   object Role {
+
     case object UNKNOWN_ROLE extends Role(0)
     case object REFERENCE extends Role(1)
     case object DEFINITION extends Role(2)
-    case class Unrecognized(id: Int) extends Role(id)
+    final case class Unrecognized(id: Int) extends Role(id)
 
     def fromValue(value: Int): Role = value match {
       case 0 => UNKNOWN_ROLE
@@ -20,18 +23,20 @@ object SymbolOccurrence {
       case 2 => DEFINITION
       case __other => Unrecognized(__other)
     }
+
   }
 
-  def defaultInstance: SymbolOccurrence = SymbolOccurrence("", None, Role.UNKNOWN_ROLE)
+  lazy val defaultInstance: SymbolOccurrence = SymbolOccurrence("", None, Role.UNKNOWN_ROLE)
 }
 
-case class SymbolOccurrence(
-    symbol: String,
-    range: Option[Range],
-    role: SymbolOccurrence.Role
-) extends SemanticdbMessage[SymbolOccurrence] {
-  private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-  private[this] def __computeSerializedValue(): _root_.scala.Int = {
+final case class SymbolOccurrence(
+  symbol: String,
+  range: Option[Range],
+  role: SymbolOccurrence.Role
+) extends SemanticdbMessage[SymbolOccurrence] derives Eql {
+  @sharable
+  private var __serializedSizeCachedValue: Int = 0
+  private def __computeSerializedValue(): Int = {
     var __size = 0
     if (range.isDefined) {
       val __value = range.get
@@ -57,7 +62,7 @@ case class SymbolOccurrence(
     };
     __size
   }
-  final override def serializedSize: _root_.scala.Int = {
+  final override def serializedSize: Int = {
     var read = __serializedSizeCachedValue
     if (read == 0) {
       read = __computeSerializedValue()
@@ -65,9 +70,7 @@ case class SymbolOccurrence(
     }
     read
   }
-  def writeTo(
-      `_output__`: SemanticdbOutputStream
-  ): _root_.scala.Unit = {
+  def writeTo(`_output__`: SemanticdbOutputStream): Unit = {
     range.foreach { __v =>
       val __m = __v
       _output__.writeTag(1, 2)

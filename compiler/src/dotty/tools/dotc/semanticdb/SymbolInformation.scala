@@ -1,28 +1,29 @@
 package dotty.tools.dotc.semanticdb
 
 import dotty.tools.dotc.semanticdb.internal._
+import scala.annotation.internal.sharable
 
 object SymbolInformation {
 
   lazy val defaultInstance = SymbolInformation("", Language.UNKNOWN_LANGUAGE, SymbolInformation.Kind.UNKNOWN_KIND, 0, "")
 
-  sealed trait Kind(val value: Int) extends SemanticdbEnum {
-    def isUnknownKind: _root_.scala.Boolean = false
-    def isLocal: _root_.scala.Boolean = false
-    def isField: _root_.scala.Boolean = false
-    def isMethod: _root_.scala.Boolean = false
-    def isConstructor: _root_.scala.Boolean = false
-    def isMacro: _root_.scala.Boolean = false
-    def isType: _root_.scala.Boolean = false
-    def isParameter: _root_.scala.Boolean = false
-    def isSelfParameter: _root_.scala.Boolean = false
-    def isTypeParameter: _root_.scala.Boolean = false
-    def isObject: _root_.scala.Boolean = false
-    def isPackage: _root_.scala.Boolean = false
-    def isPackageObject: _root_.scala.Boolean = false
-    def isClass: _root_.scala.Boolean = false
-    def isTrait: _root_.scala.Boolean = false
-    def isInterface: _root_.scala.Boolean = false
+  sealed trait Kind(val value: Int) extends SemanticdbEnum derives Eql {
+    def isUnknownKind: Boolean = this == Kind.UNKNOWN_KIND
+    def isLocal: Boolean = this == Kind.LOCAL
+    def isField: Boolean = this == Kind.FIELD
+    def isMethod: Boolean = this == Kind.METHOD
+    def isConstructor: Boolean = this == Kind.CONSTRUCTOR
+    def isMacro: Boolean = this == Kind.MACRO
+    def isType: Boolean = this == Kind.TYPE
+    def isParameter: Boolean = this == Kind.PARAMETER
+    def isSelfParameter: Boolean = this == Kind.SELF_PARAMETER
+    def isTypeParameter: Boolean = this == Kind.TYPE_PARAMETER
+    def isObject: Boolean = this == Kind.OBJECT
+    def isPackage: Boolean = this == Kind.PACKAGE
+    def isPackageObject: Boolean = this == Kind.PACKAGE_OBJECT
+    def isClass: Boolean = this == Kind.CLASS
+    def isTrait: Boolean = this == Kind.TRAIT
+    def isInterface: Boolean = this == Kind.INTERFACE
   }
 
   object Kind {
@@ -43,9 +44,9 @@ object SymbolInformation {
     case object LOCAL extends Kind(19)
     case object FIELD extends Kind(20)
     case object CONSTRUCTOR extends Kind(21)
-    final case class Unrecognized(id: _root_.scala.Int) extends Kind(id)
+    final case class Unrecognized(id: Int) extends Kind(id)
 
-    def fromValue(value: _root_.scala.Int): Kind = value match {
+    def fromValue(value: Int): Kind = value match {
       case 0 => UNKNOWN_KIND
       case 3 => METHOD
       case 6 => MACRO
@@ -65,22 +66,23 @@ object SymbolInformation {
       case __other => Unrecognized(__other)
     }
   }
-  sealed trait Property(val value: Int) extends SemanticdbEnum {
-    def isUnknownProperty: _root_.scala.Boolean = false
-    def isAbstract: _root_.scala.Boolean = false
-    def isFinal: _root_.scala.Boolean = false
-    def isSealed: _root_.scala.Boolean = false
-    def isImplicit: _root_.scala.Boolean = false
-    def isLazy: _root_.scala.Boolean = false
-    def isCase: _root_.scala.Boolean = false
-    def isCovariant: _root_.scala.Boolean = false
-    def isContravariant: _root_.scala.Boolean = false
-    def isVal: _root_.scala.Boolean = false
-    def isVar: _root_.scala.Boolean = false
-    def isStatic: _root_.scala.Boolean = false
-    def isPrimary: _root_.scala.Boolean = false
-    def isEnum: _root_.scala.Boolean = false
-    def isDefault: _root_.scala.Boolean = false
+
+  sealed trait Property(val value: Int) extends SemanticdbEnum derives Eql {
+    def isUnknownProperty: Boolean = this == Property.UNKNOWN_PROPERTY
+    def isAbstract: Boolean = this == Property.ABSTRACT
+    def isFinal: Boolean = this == Property.FINAL
+    def isSealed: Boolean = this == Property.SEALED
+    def isImplicit: Boolean = this == Property.IMPLICIT
+    def isLazy: Boolean = this == Property.LAZY
+    def isCase: Boolean = this == Property.CASE
+    def isCovariant: Boolean = this == Property.CONTRAVARIANT
+    def isContravariant: Boolean = this == Property.CONTRAVARIANT
+    def isVal: Boolean = this == Property.VAL
+    def isVar: Boolean = this == Property.VAR
+    def isStatic: Boolean = this == Property.STATIC
+    def isPrimary: Boolean = this == Property.PRIMARY
+    def isEnum: Boolean = this == Property.ENUM
+    def isDefault: Boolean = this == Property.DEFAULT
   }
 
   object Property {
@@ -102,7 +104,7 @@ object SymbolInformation {
     case object DEFAULT extends Property(32768)
     final case class Unrecognized(id: Int) extends Property(id)
 
-    def fromValue(value: _root_.scala.Int): Property = value match {
+    def fromValue(value: Int): Property = value match {
       case 0 => UNKNOWN_PROPERTY
       case 4 => ABSTRACT
       case 8 => FINAL
@@ -129,10 +131,10 @@ final case class SymbolInformation(
   kind: SymbolInformation.Kind,
   properties: Int,
   displayName: String
-) extends SemanticdbMessage[SymbolInformation] {
-    @transient
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+) extends SemanticdbMessage[SymbolInformation] derives Eql {
+    @sharable
+    private var __serializedSizeCachedValue: Int = 0
+    private def __computeSerializedValue(): Int = {
       var __size = 0
 
       {
@@ -171,7 +173,7 @@ final case class SymbolInformation(
       };
       __size
     }
-    final override def serializedSize: _root_.scala.Int = {
+    final override def serializedSize: Int = {
       var read = __serializedSizeCachedValue
       if (read == 0) {
         read = __computeSerializedValue()
@@ -179,7 +181,7 @@ final case class SymbolInformation(
       }
       read
     }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): Unit = {
       {
         val __v = symbol
         if (__v != "") {
@@ -234,11 +236,11 @@ final case class SymbolInformation(
         }
       }
       SymbolInformation(
-          symbol = __symbol,
-          language = __language,
-          kind = __kind,
-          properties = __properties,
-          displayName = __displayName
+        symbol = __symbol,
+        language = __language,
+        kind = __kind,
+        properties = __properties,
+        displayName = __displayName
       )
     }
 }

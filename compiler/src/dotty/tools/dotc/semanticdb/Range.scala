@@ -1,19 +1,21 @@
 package dotty.tools.dotc.semanticdb
 
 import dotty.tools.dotc.semanticdb.internal._
+import scala.annotation.internal.sharable
 
 object Range {
-  def defaultInstance: Range = Range(0, 0, 0, 0)
+  lazy val defaultInstance: Range = Range(0, 0, 0, 0)
 }
-case class Range(
-    startLine: Int,
-    startCharacter: Int,
-    endLine: Int,
-    endCharacter: Int
-) extends SemanticdbMessage[Range] {
-  @transient
-  private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-  private[this] def __computeSerializedValue(): _root_.scala.Int = {
+
+final case class Range(
+  startLine: Int,
+  startCharacter: Int,
+  endLine: Int,
+  endCharacter: Int
+) extends SemanticdbMessage[Range] derives Eql {
+  @sharable
+  private var __serializedSizeCachedValue: Int = 0
+  private def __computeSerializedValue(): Int = {
     var __size = 0
 
     {
@@ -49,7 +51,7 @@ case class Range(
     };
     __size
   }
-  final override def serializedSize: _root_.scala.Int = {
+  final override def serializedSize: Int = {
     var read = __serializedSizeCachedValue
     if (read == 0) {
       read = __computeSerializedValue()
@@ -59,7 +61,7 @@ case class Range(
   }
   def writeTo(
       `_output__`: SemanticdbOutputStream
-  ): _root_.scala.Unit = {
+  ): Unit = {
     {
       val __v = startLine
       if (__v != 0) {

@@ -1,21 +1,24 @@
 package dotty.tools.dotc.semanticdb
 
 import dotty.tools.dotc.semanticdb.internal._
+import scala.annotation.internal.sharable
 
 object TextDocument {
-  def defaultInstance: TextDocument = TextDocument(Schema.LEGACY, Language.UNKNOWN_LANGUAGE, "", "", "", Nil, Nil)
+  lazy val defaultInstance: TextDocument = TextDocument(Schema.LEGACY, Language.UNKNOWN_LANGUAGE, "", "", "", Nil, Nil)
 }
-case class TextDocument(
-    schema: Schema,
-    language: Language,
-    uri: String,
-    text: String,
-    md5: String,
-    symbols: Seq[SymbolInformation],
-    occurrences: Seq[SymbolOccurrence]
-) extends SemanticdbMessage[TextDocument] {
-  private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-  private[this] def __computeSerializedValue(): _root_.scala.Int = {
+
+final case class TextDocument(
+  schema: Schema,
+  language: Language,
+  uri: String,
+  text: String,
+  md5: String,
+  symbols: Seq[SymbolInformation],
+  occurrences: Seq[SymbolOccurrence]
+) extends SemanticdbMessage[TextDocument] derives Eql {
+  @sharable
+  private var __serializedSizeCachedValue: Int = 0
+  private def __computeSerializedValue(): Int = {
     var __size = 0
 
     {
@@ -58,7 +61,7 @@ case class TextDocument(
     }
     __size
   }
-  final override def serializedSize: _root_.scala.Int = {
+  final override def serializedSize: Int = {
     var read = __serializedSizeCachedValue
     if (read == 0) {
       read = __computeSerializedValue()
@@ -66,7 +69,7 @@ case class TextDocument(
     }
     read
   }
-  def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+  def writeTo(`_output__`: SemanticdbOutputStream): Unit = {
     {
       val __v = schema
       if (__v != Schema.LEGACY) {
@@ -109,8 +112,8 @@ case class TextDocument(
     var __uri = this.uri
     var __md5 = this.md5
     var __language = this.language
-    val __symbols = (_root_.scala.collection.immutable.Vector.newBuilder[SymbolInformation] ++= this.symbols)
-    val __occurrences = (_root_.scala.collection.immutable.Vector.newBuilder[SymbolOccurrence] ++= this.occurrences)
+    val __symbols = (Vector.newBuilder[SymbolInformation] ++= this.symbols)
+    val __occurrences = (Vector.newBuilder[SymbolOccurrence] ++= this.occurrences)
     var _done__ = false
     while (!_done__) {
       val _tag__ = _input__.readTag()
