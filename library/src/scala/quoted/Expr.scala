@@ -30,6 +30,26 @@ package quoted {
     final def matches(that: Expr[Any])(given qctx: QuoteContext): Boolean =
       !scala.internal.quoted.Expr.unapply[Unit, Unit](this)(given that, false, qctx).isEmpty
 
+    /** Returns the undelying argument that was in the call before inlining.
+     *
+     *  ```
+     *  inline foo(x: Int): Int = baz(x, x)
+     *  foo(bar())
+     *  ```
+     *  is inlined as
+     *  ```
+     *  val x = bar()
+     *  baz(x, x)
+     *  ```
+     *  in this case the undelying argument of `x` will be `bar()`.
+     *
+     *  Warning: Using the undelying argument directly in the expansion of a macro may change the parameter
+     *           semantics from by-value to by-name.
+     */
+    def underlyingArgument(given qctx: QuoteContext): Expr[T] = {
+      import qctx.tasty.{given, _}
+      this.unseal.underlyingArgument.seal.asInstanceOf[Expr[T]]
+    }
   }
 
   object Expr {
