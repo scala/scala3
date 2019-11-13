@@ -232,6 +232,13 @@ class ExtractSemanticDB extends Phase {
         if !sym.is(Package)
           registerSymbol(sym, symbol)
 
+    private def spanOfSymbol(sym: Symbol, span: Span)(given Context): Span = {
+      val contents = if source.exists then source.content() else Array.empty[Char]
+      val idx = contents.indexOfSlice(sym.name.show, span.start)
+      val start = if idx >= 0 then idx else span.start
+      Span(start, start + sym.name.show.length, start)
+    }
+
     override def traverse(tree: Tree)(given ctx: Context): Unit =
       def registerPath(expr: Tree): Unit = expr match
         case t @ Select(expr, _) =>
@@ -251,6 +258,9 @@ class ExtractSemanticDB extends Phase {
         case tree: NamedDefTree
         if !excludeDef(tree.symbol) && tree.span.start != tree.span.end =>
           registerDefinition(tree.symbol, tree.nameSpan)
+          val privateWithin = tree.symbol.privateWithin
+          if privateWithin `ne` NoSymbol
+            registerUse(privateWithin, spanOfSymbol(privateWithin, tree.span))
           traverseChildren(tree)
         case tree: (ValDef | DefDef | TypeDef) if tree.symbol.is(Synthetic, butNot=Module) && !tree.symbol.isAnonymous => // skip
         case tree: Template =>

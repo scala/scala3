@@ -348,7 +348,7 @@ object Trees {
         if (rawMods.is(Synthetic) || name.toTermName == nme.ERROR) Span(point)
         else {
           val realName = name.stripModuleClassSuffix.lastPart.toString
-          val nameStart =
+          val nameStart = // TODO: This is not used
             if (point != span.start) point
             else {
               // Point might be too far away from start to be recorded. In this case we fall back to scanning
