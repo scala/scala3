@@ -522,19 +522,19 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             (varianceText(tree.mods) ~ typeText(nameIdText(tree))) ~
             withEnclosingDef(tree) { tparamsText ~ rhsText }
           }
-        def recur(rhs: Tree, tparamsTxt: => Text): Text = rhs match {
+        def recur(rhs: Tree, tparamsTxt: => Text, printMemberArgs: Boolean): Text = rhs match {
           case impl: Template =>
             templateText(tree, impl)
           case rhs: TypeBoundsTree =>
             typeDefText(tparamsTxt, toText(rhs))
-          case LambdaTypeTree(tparams, body) =>
-            recur(body, tparamsText(tparams))
+          case LambdaTypeTree(tparams, body) if printMemberArgs =>
+            recur(body, tparamsText(tparams), false)
           case rhs: TypeTree if isBounds(rhs.typeOpt) =>
             typeDefText(tparamsTxt, toText(rhs))
           case rhs =>
             typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))
         }
-        recur(rhs, "")
+        recur(rhs, "", true)
       case Import(expr, selectors) =>
         keywordText("import ") ~ importText(expr, selectors)
       case Export(expr, selectors) =>
