@@ -1,6 +1,7 @@
 package dotty.tools.repl
 
 import java.nio.file.{ Path, Files }
+import java.util.Comparator
 
 import org.junit.{ Test, BeforeClass, AfterClass }
 import org.junit.Assert.assertEquals
@@ -9,8 +10,11 @@ class LoadTests extends ReplTest {
   import LoadTests._
 
   @Test def helloworld = loadTest(
-    file    = """def helloWorld = "Hello, World!"""",
-    defs    = """|def helloWorld: String
+    file    = """|def helloWorld = "Hello, World!"
+                 |println(helloWorld)
+                 |""".stripMargin,
+    defs    = """|Hello, World!
+                 |def helloWorld: String
                  |
                  |
                  |""".stripMargin,
@@ -21,7 +25,8 @@ class LoadTests extends ReplTest {
   )
 
   @Test def maindef = loadTest(
-    file    = """@main def helloWorld = println("Hello, World!")""",
+    file    = """|@main def helloWorld = println("Hello, World!")
+                 |""".stripMargin,
     defs    = """|def helloWorld: Unit
                  |
                  |
@@ -34,7 +39,8 @@ class LoadTests extends ReplTest {
 
   @Test def maindefs = loadTest(
     file    = """|@main def helloWorld = println("Hello, World!")
-                 |@main def helloTo(name: String) = println(s"Hello, $name!")""".stripMargin,
+                 |@main def helloTo(name: String) = println(s"Hello, $name!")
+                 |""".stripMargin,
     defs    = """|def helloTo(name: String): Unit
                  |def helloWorld: Unit
                  |
@@ -67,11 +73,10 @@ object LoadTests {
     dir = Files.createTempDirectory("repl_load_src")
 
   @AfterClass def removeDir: Unit =
-    Files.walk(dir).filter(!Files.isDirectory(_)).forEach(Files.delete)
-    Files.delete(dir)
+    Files.walk(dir).sorted(Comparator.reverseOrder).forEach(Files.delete)
     dir = null
 
-  def writeFile(contents: String): Path = {
+  private def writeFile(contents: String): Path = {
     val file = Files.createTempFile(dir, "repl_test", ".scala")
     Files.write(file, contents.getBytes)
     file
