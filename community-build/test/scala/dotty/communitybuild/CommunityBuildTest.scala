@@ -176,11 +176,10 @@ class CommunityBuildTest {
     updateCommand = "dotty-community-build/update"
   )
 
-  // TODO: revert to sourcecodeJVM/test
-  @Test def sourcecode = testSbt(
-    project       = "sourcecode",
-    testCommand   = "sourcecode/compile;sourcecode/test:compile",
-    updateCommand = "sourcecode/update"
+  @Test def sourcecode = testMill(
+    project = "sourcecode",
+    testCommand = s"sourcecode.jvm[$compilerVersion].test",
+    extraMillArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
   )
 
   @Test def stdLib213 = testSbt(
