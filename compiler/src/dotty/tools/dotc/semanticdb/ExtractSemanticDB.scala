@@ -177,7 +177,6 @@ class ExtractSemanticDB extends Phase {
       || sym.isLocalDummy
       || sym.is(Synthetic) || (sym.owner.is(Synthetic) && !sym.isAllOf(EnumCase))
       || sym.isAnonymous
-      || sym.isPrimaryConstructor && excludeDef(sym.owner)
       || excludeDefStrict(sym)
 
     private def excludeDefStrict(sym: Symbol)(given Context): Boolean =
@@ -209,7 +208,7 @@ class ExtractSemanticDB extends Phase {
       language = Language.SCALA,
       kind = symbolKind(sym),
       properties = symbolProps(sym).foldLeft(0)(_ | _.value),
-      displayName = sym.name.show
+      displayName = (if sym.is(ModuleClass) then sym.sourceModule else sym).name.show
     )
 
     private def registerSymbol(sym: Symbol, symbolName: String)(given Context): Unit =
@@ -240,13 +239,6 @@ class ExtractSemanticDB extends Phase {
     }
 
     override def traverse(tree: Tree)(given ctx: Context): Unit =
-      def registerPath(expr: Tree): Unit = expr match
-        case t @ Select(expr, _) =>
-          registerUse(t.symbol, t.span)
-          registerPath(expr)
-
-        case _ =>
-
       for annot <- tree.symbol.annotations do
         if annot.tree.span.exists
           && annot.symbol.owner != defn.ScalaAnnotationInternal
@@ -306,7 +298,7 @@ class ExtractSemanticDB extends Phase {
                   registerUse(alt.symbol, sel.imported.span)
                   if (alt.symbol.companionClass.exists)
                     registerUse(alt.symbol.companionClass, sel.imported.span)
-            registerPath(tree.expr)
+            traverseChildren(tree)
         case tree: Inlined =>
           traverse(tree.call)
         case tree: Annotated => // skip the annotation (see `@param` in https://github.com/scalameta/scalameta/blob/633824474e99bbfefe12ad0cc73da1fe064b3e9b/tests/jvm/src/test/resources/example/Annotations.scala#L37)

@@ -1,5 +1,5 @@
 object Enums/*<<=_empty_.Enums.*/ with
-  import =:=._
+  import =:=/*=>>_empty_.Enums.`=:=`.*/._
 
   enum Colour/*<<=_empty_.Enums.Colour#*/ with
     case /*=>>scala.runtime.EnumValues#`<init>`().*/Red/*=>>_empty_.Enums.Colour.Red.*//*<<=_empty_.Enums.Colour.Red.*/, Green/*=>>_empty_.Enums.Colour.Green.*//*<<=_empty_.Enums.Colour.Green.*/, Blue/*=>>_empty_.Enums.Colour.Blue.*//*<<=_empty_.Enums.Colour.Blue.*/

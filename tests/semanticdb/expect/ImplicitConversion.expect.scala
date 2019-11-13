@@ -3,7 +3,7 @@ package example
 import scala.language/*=>>scalaShadowing.language.*/.implicitConversions/*=>>scalaShadowing.language.implicitConversions.*/
 
 class ImplicitConversion/*<<=example.ImplicitConversion#*/ {
-  import ImplicitConversion._
+  import ImplicitConversion/*=>>example.ImplicitConversion.*/._
   implicit def string2Number/*<<=example.ImplicitConversion#string2Number().*/(
       string/*<<=example.ImplicitConversion#string2Number().(string)*/: String/*=>>scala.Predef.String#*/
   ): Int/*=>>scala.Int#*/ = 42
