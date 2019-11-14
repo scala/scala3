@@ -186,7 +186,6 @@ object DynamicTuple {
   }).asInstanceOf[T]
 
   def specialCaseCons[H, This <: Tuple](x: H, self: This): H *: This = {
-    type Result = H *: This
     val res = (self: Any) match {
       case self: Unit =>
         Tuple1(x)
@@ -245,17 +244,19 @@ object DynamicTuple {
         )
         TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
     }
-    res.asInstanceOf[Result]
+    res.asInstanceOf[H *: This]
+  }
+
+  def xxlCons[H, This <: Tuple](x: H, xxl: TupleXXL): H *: This = {
+    val arr = new Array[Object](xxl.productArity + 1)
+    System.arraycopy(xxl.elems, 0, arr, 1, xxl.productArity)
+    arr(0) = x.asInstanceOf[Object]
+    TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[H *: This]
   }
 
   def dynamicCons[H, This <: Tuple](x: H, self: This): H *: This = {
-    type Result = H *: This
     (self: Any) match {
-      case xxl: TupleXXL =>
-        val arr = new Array[Object](xxl.productArity + 1)
-        System.arraycopy(xxl.elems, 0, arr, 1, xxl.productArity)
-        arr(0) = x.asInstanceOf[Object]
-        TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+      case xxl: TupleXXL => xxlCons(x, xxl)
       case _ => specialCaseCons(x, self)
     }
   }
@@ -297,7 +298,6 @@ object DynamicTuple {
   }
 
   def specialCaseTail[This <: NonEmptyTuple] (self: This): Tail[This] = {
-    type Result = Tail[This]
     val res = (self: Any) match {
       case self: Tuple1[_] =>
         ()
@@ -344,26 +344,28 @@ object DynamicTuple {
       case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
         Tuple21(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21, self._22)
     }
-    res.asInstanceOf[Result]
+    res.asInstanceOf[Tail[This]]
   }
 
-  def dynamicTail[This <: NonEmptyTuple] (self: This): Tail[This] = {
-    type Result = Tail[This]
+  def xxlTail[This <: NonEmptyTuple](xxl: TupleXXL): Tail[This] = {
+    if (xxl.productArity == 23) {
+      val elems = xxl.elems
+      Tuple22(
+        elems(1), elems(2), elems(3), elems(4), elems(5), elems(6), elems(7),
+        elems(8), elems(9), elems(10), elems(11), elems(12), elems(13), elems(14),
+        elems(15), elems(16), elems(17), elems(18), elems(19), elems(20),
+        elems(21), elems(22)
+      ).asInstanceOf[Tail[This]]
+    } else {
+      val arr = new Array[Object](xxl.elems.length - 1)
+      System.arraycopy(xxl.elems, 1, arr, 0, xxl.elems.length - 1)
+      TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Tail[This]]
+    }
+  }
+
+  def dynamicTail[This <: NonEmptyTuple](self: This): Tail[This] = {
     (self: Any) match {
-      case xxl: TupleXXL =>
-        if (xxl.productArity == 23) {
-          val elems = xxl.elems
-          Tuple22(
-            elems(1), elems(2), elems(3), elems(4), elems(5), elems(6), elems(7),
-            elems(8), elems(9), elems(10), elems(11), elems(12), elems(13), elems(14),
-            elems(15), elems(16), elems(17), elems(18), elems(19), elems(20),
-            elems(21), elems(22)
-          ).asInstanceOf[Result]
-        } else {
-          val arr = new Array[Object](self.size - 1)
-          System.arraycopy(xxl.elems, 1, arr, 0, self.size - 1)
-          TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
-        }
+      case xxl: TupleXXL => xxlTail(xxl)
       case _ => specialCaseTail(self)
     }
   }
