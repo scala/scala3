@@ -81,7 +81,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
                   // called which we override to set the `approximated` flag.
                   range(defn.NothingType, pre)
               else pre
-            else if ((pre.termSymbol is Package) && !(thiscls is Package))
+            else if (pre.termSymbol.is(Package) && !thiscls.is(Package))
               toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
             else
               toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)

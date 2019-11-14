@@ -269,7 +269,7 @@ object Nullables with
    *  Therefore, variables with unreachable assignments can be assumed to be not-null
    *  only if their type asserts it.
    *
-   *  Note: we the local variables through their offset and not through their name
+   *  Note: we track the local variables through their offset and not through their name
    *  because of shadowing.
    */
   def assignmentSpans(given Context): Map[Int, List[Span]] =

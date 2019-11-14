@@ -197,6 +197,7 @@ object TypeErasure {
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
     else if (sym.is(Label)) erase.eraseResult(sym.info)(erasureCtx)
+    else if sym.is(Erased) && defn.isAny_notNull(sym) then NoType // Q: Should we delete all erased symbols that way?
     else erase.eraseInfo(tp, sym)(erasureCtx) match {
       case einfo: MethodType =>
         if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))

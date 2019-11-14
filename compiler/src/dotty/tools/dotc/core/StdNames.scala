@@ -262,6 +262,7 @@ object StdNames {
     val MIRROR_PREFIX: N            = "$m."
     val MIRROR_SHORT: N             = "$m"
     val MIRROR_UNTYPED: N           = "$m$untyped"
+    val NOT_NULL: N                 = "$nn"
     val REIFY_FREE_PREFIX: N        = "free$"
     val REIFY_FREE_THIS_SUFFIX: N   = "$this"
     val REIFY_FREE_VALUE_SUFFIX: N  = "$value"

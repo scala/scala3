@@ -2,6 +2,7 @@
 ##
 $asInstanceOf$
 $isInstanceOf$
+$nn
 ==
 andThen
 apply
