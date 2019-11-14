@@ -379,12 +379,20 @@ object DynamicTuple {
     res.asInstanceOf[Result]
   }
 
+  def zipIt(it1: Iterator[Any], it2: Iterator[Any], size: Int): IArray[Object] = {
+    val arr = new Array[Object](size)
+    var i = 0
+    while (i < size) {
+      arr(i) = (it1.next(), it2.next())
+      i += 1
+    }
+    arr.asInstanceOf[IArray[Object]]
+  }
+
   def dynamicZip[This <: Tuple, T2 <: Tuple](t1: This, t2: T2): Zip[This, T2] = {
-    if (t1.size == 0 || t2.size == 0) ().asInstanceOf[Zip[This, T2]]
-    else Tuple.fromArray(
-      t1.asInstanceOf[Product].productIterator.zip(
-      t2.asInstanceOf[Product].productIterator).toArray // TODO use toIArray of Object to avoid double/triple array copy
-    ).asInstanceOf[Zip[This, T2]]
+    if (t1.size == 0 || t2.size == 0) return ().asInstanceOf[Zip[This, T2]]
+    val size = Math.min(t1.size, t2.size)
+    Tuple.fromIArray(zipIt(t1.asInstanceOf[Product].productIterator, t2.asInstanceOf[Product].productIterator, size)).asInstanceOf[Zip[This, T2]]
   }
 
   def specialCaseMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): Map[This, F] = {
