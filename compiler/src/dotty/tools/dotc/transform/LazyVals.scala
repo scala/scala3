@@ -16,7 +16,6 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.{Names, StdNames}
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.transform.SymUtils._
-import dotty.tools.dotc.core.NullOpsDecorator._
 import scala.collection.mutable
 
 class LazyVals extends MiniPhase with IdentityDenotTransformer {

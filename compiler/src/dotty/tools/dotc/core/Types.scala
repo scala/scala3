@@ -273,6 +273,17 @@ object Types {
       loop(this)
     }
 
+    /** Is this type guaranteed not to have `null` as a value? */
+    final def isNotNull(implicit ctx: Context): Boolean = this match {
+      case tp: ConstantType => tp.value.value != null
+      case tp: ClassInfo => !tp.cls.isNullableClass && tp.cls != defn.NothingClass
+      case tp: TypeBounds => tp.lo.isNotNull
+      case tp: TypeProxy => tp.underlying.isNotNull
+      case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
+      case OrType(tp1, tp2) => tp1.isNotNull && tp2.isNotNull
+      case _ => false
+    }
+
     /** Is this type produced as a repair for an error? */
     final def isError(implicit ctx: Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]
 
@@ -588,19 +599,19 @@ object Types {
         case AndType(l, r) =>
           goAnd(l, r)
         case tp: OrType =>
-          if (ctx.explicitNulls && tp.isJavaNullableUnion) {
-            // Selecting `name` from a type `T|JavaNull` is like selecting `name` from `T`.
-            // This can throw at runtime, but we trade soundness for usability.
-            // We need to strip `JavaNull` from both the type and the prefix so that
-            // `pre <: tp` continues to hold.
-            tp.stripJavaNull.findMember(name, pre.stripJavaNull, required, excluded)
-          }
-          else {
-            // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
-            // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
-            // lots of places. The present strategy is instead of widen `tp` using `join` to be a
-            // supertype of `pre`.
-            go(tp.join)
+          tp match {
+            case OrJavaNull(tp1) =>
+              // Selecting `name` from a type `T|JavaNull` is like selecting `name` from `T`.
+              // This can throw at runtime, but we trade soundness for usability.
+              // We need to strip `JavaNull` from both the type and the prefix so that
+              // `pre <: tp` continues to hold.
+              tp1.findMember(name, pre.stripJavaNull, required, excluded)
+            case _ =>
+              // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
+              // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
+              // lots of places. The present strategy is instead of widen `tp` using `join` to be a
+              // supertype of `pre`.
+              go(tp.join)
           }
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, required, excluded)
@@ -2922,6 +2933,25 @@ object Types {
     def make(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       if (tp1 eq tp2) tp1
       else apply(tp1, tp2)
+  }
+
+  object OrNull {
+    def apply(tp: Type)(given Context) =
+      OrType(tp, defn.NullType)
+    def unapply(tp: Type)(given Context): Option[Type] =
+      val tp1 = tp.stripNull
+      if tp1 ne tp then Some(tp1) else None
+  }
+
+  object OrJavaNull {
+    def apply(tp: Type)(given Context) =
+      OrType(tp, defn.JavaNullAliasType)
+    def unapply(tp: Type)(given ctx: Context): Option[Type] =
+      if (ctx.explicitNulls) {
+        val tp1 = tp.stripJavaNull
+        if tp1 ne tp then Some(tp1) else None
+      }
+      else None
   }
 
   // ----- ExprType and LambdaTypes -----------------------------------
