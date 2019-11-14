@@ -16,8 +16,15 @@ object Test extends App {
   // small + xxl
   // xxl + small
   // xxl + xxl
-  println(tuple1 ++ emptyTuple)
+  println(emptyTuple ++ emptyTuple)
   println(emptyTuple ++ tuple1)
+  println(tuple1 ++ emptyTuple)
+  println(tupleXXL1 ++ emptyTuple)
+  println(emptyTuple ++ tupleXXL1)
+  println(tuple1 ++ tuple2)
+  println(tuple1 ++ tupleXXL1)
+  println(tupleXXL1 ++ tuple1)
+  println(tupleXXL1 ++ tupleXXL2)
 
   // Concatenation with an empty tuple should be a no-op
   assert((tuple1 ++ emptyTuple).asInstanceOf[AnyRef] eq tuple1.asInstanceOf[AnyRef])
