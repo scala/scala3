@@ -426,8 +426,6 @@ object Erasure {
      *      e.m -> e.[]m                if `m` is an array operation other than `clone`.
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
-      if defn.isAny_notNull(tree.symbol) then return typed(tree.qualifier, pt)
-
       val qual1 = typed(tree.qualifier, AnySelectionProto)
 
       def mapOwner(sym: Symbol): Symbol = {
