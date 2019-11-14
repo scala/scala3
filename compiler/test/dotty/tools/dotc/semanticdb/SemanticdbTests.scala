@@ -27,7 +27,9 @@ class SemanticdbTests with
   val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
   val expectFile = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
   // val semanticdbFile = FileSystems.getDefault.getPathMatcher("glob:**.scala.semanticdb")
-  val expectSrc = Paths.get(System.getProperty("dotty.tools.dotc.semanticdb.test.expect"))
+  val rootSrc = Paths.get(System.getProperty("dotty.tools.dotc.semanticdb.test"))
+  val expectSrc = rootSrc.resolve("expect")
+  val metacExpectFile = rootSrc.resolve("metac.expect")
 
   @Category(Array(classOf[dotty.SlowTests]))
   @Test def expectTests: Unit = runExpectTest(updateExpectFiles = false)
@@ -35,7 +37,8 @@ class SemanticdbTests with
   def runExpectTest(updateExpectFiles: Boolean): Unit =
     val target = generateSemanticdb()
     val errors = mutable.ArrayBuffer.empty[(Path, String)]
-    inputFiles().foreach { source =>
+    given metacSb: StringBuilder = StringBuilder(5000)
+    inputFiles().sorted.foreach { source =>
       val filename = source.getFileName.toString
       val relpath = expectSrc.relativize(source)
       val semanticdbPath = target
@@ -45,16 +48,25 @@ class SemanticdbTests with
         .resolveSibling(filename + ".semanticdb")
       val expectPath = source.resolveSibling(filename.replaceAllLiterally(".scala", ".expect.scala"))
       val doc = Semanticdbs.loadTextDocument(source, relpath, semanticdbPath)
+      Semanticdbs.metac(doc, rootSrc.relativize(source))(given metacSb)
       val obtained = trimTrailingWhitespace(Semanticdbs.printTextDocument(doc))
-      if (updateExpectFiles)
+      if updateExpectFiles
         Files.write(expectPath, obtained.getBytes(StandardCharsets.UTF_8))
         println("updated: " + expectPath)
       else
         val expected = new String(Files.readAllBytes(expectPath), StandardCharsets.UTF_8)
         val expectName = expectPath.getFileName
-        val relExpect = expectSrc.relativize(expectPath)
-        collectFailingDiff(obtained, expected, s"a/$relExpect", s"b/$relExpect")(errors += expectName -> _)
+        val relExpect = rootSrc.relativize(expectPath)
+        collectFailingDiff(expected, obtained, s"a/$relExpect", s"b/$relExpect")(errors += expectName -> _)
     }
+    if updateExpectFiles
+      Files.write(metacExpectFile, metacSb.toString.getBytes)
+      println("updated: " + metacExpectFile)
+    else
+      val expected = new String(Files.readAllBytes(metacExpectFile), StandardCharsets.UTF_8)
+      val expectName = metacExpectFile.getFileName
+      val relExpect = rootSrc.relativize(metacExpectFile)
+      collectFailingDiff(expected, metacSb.toString, s"a/$relExpect", s"b/$relExpect")(errors += expectName -> _)
     errors.foreach { (source, diff) =>
       def red(msg: String) = Console.RED + msg + Console.RESET
       def blue(msg: String) = Console.BLUE + msg + Console.RESET

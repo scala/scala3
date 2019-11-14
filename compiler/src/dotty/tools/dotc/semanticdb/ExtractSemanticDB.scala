@@ -41,8 +41,17 @@ class ExtractSemanticDB extends Phase {
     extract.traverse(unit.tpdTree)
     ExtractSemanticDB.write(unit.source, extract.occurrences.toList, extract.symbols.toList)
 
+  def (name: Name) isScala2PackageObjectName: Boolean = name match {
+    case name: Names.TermName => name == nme.PACKAGE
+    case name: Names.TypeName =>
+      name.toTermName match {
+        case NameKinds.ModuleClassName(original) => original.isScala2PackageObjectName
+        case _ => false
+      }
+  }
+
   def (sym: Symbol) isScala2PackageObject(given Context): Boolean =
-    sym.name == nme.PACKAGE && sym.owner.is(Package) && sym.is(Module)
+    sym.name.isScala2PackageObjectName && sym.owner.is(Package) && sym.is(Module)
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser {
@@ -207,20 +216,22 @@ class ExtractSemanticDB extends Phase {
     private def excludeUseStrict(sym: Symbol, span: Span)(given Context): Boolean =
       excludeDefStrict(sym) || (excludeDef(sym) && span.start == span.end)
 
-    private def symbolKind(sym: Symbol, symbol: String, symkind: SymbolKind)(given Context): SymbolInformation.Kind =
-      if sym.is(Local) || symbol.isLocal
+    private def symbolKind(sym: Symbol, symkind: SymbolKind)(given Context): SymbolInformation.Kind =
+      if sym.isTypeParam
+        SymbolInformation.Kind.TYPE_PARAMETER
+      else if sym.is(TermParam)
+        SymbolInformation.Kind.PARAMETER
+      else if sym.isTerm && sym.owner.isTerm
         SymbolInformation.Kind.LOCAL
       else if sym.isInlineMethod || sym.is(Macro)
         SymbolInformation.Kind.MACRO
+      else if sym.name == nme.CONSTRUCTOR
+        SymbolInformation.Kind.CONSTRUCTOR
+      else if sym.isSelfSym
+        SymbolInformation.Kind.SELF_PARAMETER
       else if sym.isOneOf(Method) || symkind.isValOrVar
         SymbolInformation.Kind.METHOD
-      else if sym.isTypeParam
-        SymbolInformation.Kind.TYPE_PARAMETER
-      else if sym.isType
-        SymbolInformation.Kind.TYPE
-      else if sym.is(TermParam)
-        SymbolInformation.Kind.PARAMETER
-      else if sym.isScala2PackageObject
+      else if sym.isPackageObject
         SymbolInformation.Kind.PACKAGE_OBJECT
       else if sym.is(Module)
         SymbolInformation.Kind.OBJECT
@@ -232,12 +243,10 @@ class ExtractSemanticDB extends Phase {
         SymbolInformation.Kind.INTERFACE
       else if sym.is(Trait)
         SymbolInformation.Kind.TRAIT
-      else if sym.isSelfSym
-        SymbolInformation.Kind.SELF_PARAMETER
+      else if sym.isType
+        SymbolInformation.Kind.TYPE
       else if sym.is(ParamAccessor)
         SymbolInformation.Kind.FIELD
-      else if sym.name == nme.CONSTRUCTOR
-        SymbolInformation.Kind.CONSTRUCTOR
       else
         SymbolInformation.Kind.UNKNOWN_KIND
 
@@ -276,9 +285,9 @@ class ExtractSemanticDB extends Phase {
     private def symbolInfo(sym: Symbol, symbolName: String, symkind: SymbolKind)(given Context): SymbolInformation = SymbolInformation(
       symbol = symbolName,
       language = Language.SCALA,
-      kind = symbolKind(sym, symbolName, symkind),
+      kind = symbolKind(sym, symkind),
       properties = symbolProps(sym, symkind).foldLeft(0)(_ | _.value),
-      displayName = (if sym.is(ModuleClass) then sym.sourceModule else sym).name.show
+      displayName = Symbols.displaySymbol(sym)
     )
 
     private def registerSymbol(sym: Symbol, symbolName: String, symkind: SymbolKind)(given Context): Unit =
@@ -318,10 +327,13 @@ class ExtractSemanticDB extends Phase {
         case tree: ValDef if tree.symbol.is(Module) => // skip module val
         case tree: NamedDefTree
         if !excludeDef(tree.symbol) && tree.span.start != tree.span.end =>
-          val symkind = tree match
-            case _: ValDef => if tree.mods.is(Mutable) then SymbolKind.Var else SymbolKind.Val
-            case _: Bind   => SymbolKind.Val
-            case _         => SymbolKind.Other
+          val symkind =
+            if tree.symbol.isSelfSym
+              SymbolKind.Other
+            else tree match
+              case _: ValDef => if tree.mods.is(Mutable) then SymbolKind.Var else SymbolKind.Val
+              case _: Bind   => SymbolKind.Val
+              case _         => SymbolKind.Other
           registerDefinition(tree.symbol, tree.nameSpan, symkind)
           val privateWithin = tree.symbol.privateWithin
           if privateWithin `ne` NoSymbol
@@ -395,7 +407,6 @@ object ExtractSemanticDB {
         else Paths.get(targetRootSetting)
       )
     val relPath = sourceRoot.relativize(sourcePath)
-    val relURI = relPath.iterator().asScala.mkString("/")
     val outpath = targetRoot
       .resolve("META-INF")
       .resolve("semanticdb")
@@ -405,7 +416,7 @@ object ExtractSemanticDB {
     val doc: TextDocument = TextDocument(
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
-      uri = relURI,
+      uri = relPath.toString,
       text = "",
       md5 = internal.MD5.compute(String(source.content)),
       symbols = symbols,

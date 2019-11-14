@@ -1,5 +1,9 @@
 package dotty.tools.dotc.semanticdb
 
+import dotty.tools.dotc.core.Symbols.{ Symbol => DottySymbol, defn }
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Flags._
+
 object Scala with
 
   object Symbols with
@@ -9,6 +13,31 @@ object Scala with
     val EmptyPackage: String = "_empty_/"
     val LocalPrefix: String = "local"
     val PackageObjectDescriptor: String = "package."
+    val s"${RootPackageName @ _}/" = RootPackage
+    val s"${EmptyPackageName @ _}/" = EmptyPackage
+
+    def displaySymbol(symbol: DottySymbol)(given Context): String =
+      if symbol.isPackageObject then
+        displaySymbol(symbol.owner)
+      else if symbol.is(ModuleClass) then
+        displaySymbol(symbol.sourceModule)
+      else if symbol == defn.RootPackage
+        RootPackageName
+      else if symbol.isEmptyPackage
+        EmptyPackageName
+      else
+        symbol.name.show
+
+
+  private val locals = raw"local(\d+)"
+
+  object LocalSymbol with
+    def unapply(symbolInfo: SymbolInformation): Option[Int] =
+      symbolInfo.symbol match
+      case locals.r(ints) =>
+        val bi = BigInt(ints)
+        if bi.isValidInt then Some(bi.toInt) else None
+      case _ => None
 
   given (symbol: String) with
 
@@ -24,7 +53,7 @@ object Scala with
         case _                           => false
       })
     def isLocal: Boolean =
-      symbol.startsWith(Symbols.LocalPrefix)
+      symbol.matches(locals)
     def isMulti: Boolean =
       symbol.startsWith(";")
     def isTerm: Boolean =
@@ -42,3 +71,29 @@ object Scala with
 
     def isPrimary: Boolean =
       (info.properties & SymbolInformation.Property.PRIMARY.value) != 0
+    def isAbstract: Boolean =
+      (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
+    def isFinal: Boolean =
+      (info.properties & SymbolInformation.Property.FINAL.value) != 0
+    def isSealed: Boolean =
+      (info.properties & SymbolInformation.Property.SEALED.value) != 0
+    def isImplicit: Boolean =
+      (info.properties & SymbolInformation.Property.IMPLICIT.value) != 0
+    def isLazy: Boolean =
+      (info.properties & SymbolInformation.Property.LAZY.value) != 0
+    def isCase: Boolean =
+      (info.properties & SymbolInformation.Property.CASE.value) != 0
+    def isCovariant: Boolean =
+      (info.properties & SymbolInformation.Property.COVARIANT.value) != 0
+    def isContravariant: Boolean =
+      (info.properties & SymbolInformation.Property.CONTRAVARIANT.value) != 0
+    def isVal: Boolean =
+      (info.properties & SymbolInformation.Property.VAL.value) != 0
+    def isVar: Boolean =
+      (info.properties & SymbolInformation.Property.VAR.value) != 0
+    def isStatic: Boolean =
+      (info.properties & SymbolInformation.Property.STATIC.value) != 0
+    def isEnum: Boolean =
+      (info.properties & SymbolInformation.Property.ENUM.value) != 0
+    def isDefault: Boolean =
+      (info.properties & SymbolInformation.Property.DEFAULT.value) != 0

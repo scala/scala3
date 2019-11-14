@@ -553,7 +553,7 @@ object Build {
       },
 
       javaOptions += (
-        s"-Ddotty.tools.dotc.semanticdb.test.expect=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"/"expect"}"
+        s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}"
       ),
 
       testCompilation := Def.inputTaskDyn {

@@ -2,7 +2,7 @@ object Enums/*<-_empty_::Enums.*/ with
   import =:=/*->_empty_::Enums.`=:=`.*/._
 
   enum Colour/*<-_empty_::Enums.Colour#*/ with
-    case /*->scala::runtime::EnumValues#`<init>`().*/Red/*->_empty_::Enums.Colour.Red.*//*<-_empty_::Enums.Colour.Red.*/, Green/*->_empty_::Enums.Colour.Green.*//*<-_empty_::Enums.Colour.Green.*/, Blue/*->_empty_::Enums.Colour.Blue.*//*<-_empty_::Enums.Colour.Blue.*/
+    case Red/*->_empty_::Enums.Colour.Red.*//*->scala::runtime::EnumValues#`<init>`().*//*<-_empty_::Enums.Colour.Red.*/, Green/*->_empty_::Enums.Colour.Green.*//*<-_empty_::Enums.Colour.Green.*/, Blue/*->_empty_::Enums.Colour.Blue.*//*<-_empty_::Enums.Colour.Blue.*/
 
   enum WeekDays/*<-_empty_::Enums.WeekDays#*/ with
     /*->scala::runtime::EnumValues#`<init>`().*/case Monday/*<-_empty_::Enums.WeekDays.Monday.*/
