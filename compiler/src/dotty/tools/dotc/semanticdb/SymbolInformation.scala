@@ -63,7 +63,7 @@ object SymbolInformation {
       case 19 => LOCAL
       case 20 => FIELD
       case 21 => CONSTRUCTOR
-      case __other => Unrecognized(__other)
+      case id => Unrecognized(id)
     }
   }
 
@@ -105,22 +105,22 @@ object SymbolInformation {
     final case class Unrecognized(id: Int) extends Property(id)
 
     def fromValue(value: Int): Property = value match {
-      case 0 => UNKNOWN_PROPERTY
-      case 4 => ABSTRACT
-      case 8 => FINAL
-      case 16 => SEALED
-      case 32 => IMPLICIT
-      case 64 => LAZY
-      case 128 => CASE
-      case 256 => COVARIANT
-      case 512 => CONTRAVARIANT
-      case 1024 => VAL
-      case 2048 => VAR
-      case 4096 => STATIC
-      case 8192 => PRIMARY
-      case 16384 => ENUM
-      case 32768 => DEFAULT
-      case __other => Unrecognized(__other)
+      case 0x0 => UNKNOWN_PROPERTY
+      case 0x4 => ABSTRACT
+      case 0x8 => FINAL
+      case 0x10 => SEALED
+      case 0x20 => IMPLICIT
+      case 0x40 => LAZY
+      case 0x80 => CASE
+      case 0x100 => COVARIANT
+      case 0x200 => CONTRAVARIANT
+      case 0x400 => VAL
+      case 0x800 => VAR
+      case 0x1000 => STATIC
+      case 0x2000 => PRIMARY
+      case 0x4000 => ENUM
+      case 0x8000 => DEFAULT
+      case id => Unrecognized(id)
     }
   }
 }

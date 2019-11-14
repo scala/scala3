@@ -25,6 +25,7 @@ import java.nio.file.Paths
  */
 class ExtractSemanticDB extends Phase {
   import ast.tpd._
+  import untpd.given
 
   override val phaseName: String = ExtractSemanticDB.name
 
@@ -40,8 +41,12 @@ class ExtractSemanticDB extends Phase {
     extract.traverse(unit.tpdTree)
     ExtractSemanticDB.write(unit.source, extract.occurrences.toList, extract.symbols.toList)
 
+  def (sym: Symbol) isScala2PackageObject(given Context): Boolean =
+    sym.name == nme.PACKAGE && sym.owner.is(Package) && sym.is(Module)
+
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser {
+    import Scala.{_, given}
 
     private var nextLocalIdx: Int = 0
 
@@ -64,9 +69,20 @@ class ExtractSemanticDB extends Phase {
 
     private val unicodeEscape = raw"\$$u(\p{XDigit}{4})".r
 
+    /**Necessary because if this phase is before `getters` then accessor info is not propagated from the tree to the
+     * symbol yet.
+     */
+    private enum SymbolKind derives Eql with
+      kind =>
+
+      case Val, Var, Other
+
+      def isValOrVar: Boolean = kind match
+        case Val | Var => true
+        case _         => false
+
     /** Add semanticdb name of the given symbol to string builder */
     private def addSymName(b: StringBuilder, sym: Symbol)(given ctx: Context): Unit =
-      import Scala._
 
       def isJavaIdent(str: String) =
         isJavaIdentifierStart(str.head) && str.tail.forall(isJavaIdentifierPart)
@@ -104,9 +120,6 @@ class ExtractSemanticDB extends Phase {
           val idx = rest.indexOf(sym).ensuring(_ >= 0)
           b.append('+').append(idx + 1)
         case _ =>
-
-      def (sym: Symbol) isScala2PackageObject(given Context): Boolean =
-        sym.name == nme.PACKAGE && sym.owner.is(Package) && sym.is(Module)
 
       def addDescriptor(sym: Symbol): Unit =
         if sym.is(ModuleClass) then
@@ -194,28 +207,82 @@ class ExtractSemanticDB extends Phase {
     private def excludeUseStrict(sym: Symbol, span: Span)(given Context): Boolean =
       excludeDefStrict(sym) || (excludeDef(sym) && span.start == span.end)
 
-    private def symbolKind(sym: Symbol)(given Context): SymbolInformation.Kind =
-      if sym.name == nme.CONSTRUCTOR
+    private def symbolKind(sym: Symbol, symbol: String, symkind: SymbolKind)(given Context): SymbolInformation.Kind =
+      if sym.is(Local) || symbol.isLocal
+        SymbolInformation.Kind.LOCAL
+      else if sym.isInlineMethod || sym.is(Macro)
+        SymbolInformation.Kind.MACRO
+      else if sym.isOneOf(Method) || symkind.isValOrVar
+        SymbolInformation.Kind.METHOD
+      else if sym.isTypeParam
+        SymbolInformation.Kind.TYPE_PARAMETER
+      else if sym.isType
+        SymbolInformation.Kind.TYPE
+      else if sym.is(TermParam)
+        SymbolInformation.Kind.PARAMETER
+      else if sym.isScala2PackageObject
+        SymbolInformation.Kind.PACKAGE_OBJECT
+      else if sym.is(Module)
+        SymbolInformation.Kind.OBJECT
+      else if sym.is(Package)
+        SymbolInformation.Kind.PACKAGE
+      else if sym.isClass
+        SymbolInformation.Kind.CLASS
+      else if sym.isAllOf(JavaInterface)
+        SymbolInformation.Kind.INTERFACE
+      else if sym.is(Trait)
+        SymbolInformation.Kind.TRAIT
+      else if sym.isSelfSym
+        SymbolInformation.Kind.SELF_PARAMETER
+      else if sym.is(ParamAccessor)
+        SymbolInformation.Kind.FIELD
+      else if sym.name == nme.CONSTRUCTOR
         SymbolInformation.Kind.CONSTRUCTOR
       else
         SymbolInformation.Kind.UNKNOWN_KIND
 
-    private def symbolProps(sym: Symbol)(given Context): Set[SymbolInformation.Property] =
+    private def symbolProps(sym: Symbol, symkind: SymbolKind)(given Context): Set[SymbolInformation.Property] =
+      val props = mutable.HashSet.empty[SymbolInformation.Property]
       if sym.isPrimaryConstructor
-        Set(SymbolInformation.Property.PRIMARY)
-      else
-        Set.empty
+        props += SymbolInformation.Property.PRIMARY
+      if sym.is(Abstract)
+        props += SymbolInformation.Property.ABSTRACT
+      if sym.is(Final)
+        props += SymbolInformation.Property.FINAL
+      if sym.is(Sealed)
+        props += SymbolInformation.Property.SEALED
+      if sym.isOneOf(GivenOrImplicit)
+        props += SymbolInformation.Property.IMPLICIT
+      if sym.is(Lazy)
+        props += SymbolInformation.Property.LAZY
+      if sym.isAllOf(CaseClass) || sym.isAllOf(EnumCase)
+        props += SymbolInformation.Property.CASE
+      if sym.is(Covariant)
+        props += SymbolInformation.Property.COVARIANT
+      if sym.is(Contravariant)
+        props += SymbolInformation.Property.CONTRAVARIANT
+      if sym.isAllOf(DefaultMethod | JavaDefined) || sym.is(Accessor) && sym.name.is(NameKinds.DefaultGetterName)
+        props += SymbolInformation.Property.DEFAULT
+      if symkind == SymbolKind.Val
+        props += SymbolInformation.Property.VAL
+      if symkind == SymbolKind.Var
+        props += SymbolInformation.Property.VAR
+      if sym.is(JavaStatic)
+        props += SymbolInformation.Property.STATIC
+      if sym.is(Enum)
+        props += SymbolInformation.Property.ENUM
+      props.toSet
 
-    private def symbolInfo(sym: Symbol, symbolName: String)(given Context): SymbolInformation = SymbolInformation(
+    private def symbolInfo(sym: Symbol, symbolName: String, symkind: SymbolKind)(given Context): SymbolInformation = SymbolInformation(
       symbol = symbolName,
       language = Language.SCALA,
-      kind = symbolKind(sym),
-      properties = symbolProps(sym).foldLeft(0)(_ | _.value),
+      kind = symbolKind(sym, symbolName, symkind),
+      properties = symbolProps(sym, symkind).foldLeft(0)(_ | _.value),
       displayName = (if sym.is(ModuleClass) then sym.sourceModule else sym).name.show
     )
 
-    private def registerSymbol(sym: Symbol, symbolName: String)(given Context): Unit =
-      symbols += symbolInfo(sym, symbolName)
+    private def registerSymbol(sym: Symbol, symbolName: String, symkind: SymbolKind)(given Context): Unit =
+      symbols += symbolInfo(sym, symbolName, symkind)
 
     private def registerOccurrence(symbol: String, span: Span, role: SymbolOccurrence.Role)(given Context): Unit =
       val occ = SymbolOccurrence(symbol, range(span), role)
@@ -227,12 +294,11 @@ class ExtractSemanticDB extends Phase {
       if !excludeUseStrict(sym, span) && !isWildcard(sym.name) then
         registerOccurrence(symbolName(sym), span, SymbolOccurrence.Role.REFERENCE)
 
-    private def registerDefinition(sym: Symbol, span: Span)(given Context) =
+    private def registerDefinition(sym: Symbol, span: Span, symkind: SymbolKind)(given Context) =
       if !isWildcard(sym.name) then
         val symbol = symbolName(sym)
         registerOccurrence(symbol, span, SymbolOccurrence.Role.DEFINITION)
-        if !sym.is(Package)
-          registerSymbol(sym, symbol)
+        registerSymbol(sym, symbol, symkind)
 
     private def spanOfSymbol(sym: Symbol, span: Span)(given Context): Span = {
       val contents = if source.exists then source.content() else Array.empty[Char]
@@ -252,14 +318,18 @@ class ExtractSemanticDB extends Phase {
         case tree: ValDef if tree.symbol.is(Module) => // skip module val
         case tree: NamedDefTree
         if !excludeDef(tree.symbol) && tree.span.start != tree.span.end =>
-          registerDefinition(tree.symbol, tree.nameSpan)
+          val symkind = tree match
+            case _: ValDef => if tree.mods.is(Mutable) then SymbolKind.Var else SymbolKind.Val
+            case _: Bind   => SymbolKind.Val
+            case _         => SymbolKind.Other
+          registerDefinition(tree.symbol, tree.nameSpan, symkind)
           val privateWithin = tree.symbol.privateWithin
           if privateWithin `ne` NoSymbol
             registerUse(privateWithin, spanOfSymbol(privateWithin, tree.span))
           traverseChildren(tree)
         case tree: (ValDef | DefDef | TypeDef) if tree.symbol.is(Synthetic, butNot=Module) && !tree.symbol.isAnonymous => // skip
         case tree: Template =>
-          registerDefinition(tree.constr.symbol, tree.constr.span)
+          registerDefinition(tree.constr.symbol, tree.constr.span, SymbolKind.Other)
           for
             vparams <- tree.constr.vparamss
             vparam <- vparams
