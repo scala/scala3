@@ -330,11 +330,7 @@ class ExtractSemanticDB extends Phase {
         case tree: (ValDef | DefDef | TypeDef) if tree.symbol.is(Synthetic, butNot=Module) && !tree.symbol.isAnonymous => // skip
         case tree: Template =>
           registerDefinition(tree.constr.symbol, tree.constr.span, SymbolKind.Other)
-          for
-            vparams <- tree.constr.vparamss
-            vparam <- vparams
-          do
-            traverse(vparam.tpt) // the accessor symbol is traversed in the body
+          tree.constr.vparamss.flatten.foreach(vparam => traverse(vparam.tpt)) // the accessor symbol is traversed in the body
           for parent <- tree.parentsOrDerived do
             if
               parent.symbol != defn.ObjectClass.primaryConstructor

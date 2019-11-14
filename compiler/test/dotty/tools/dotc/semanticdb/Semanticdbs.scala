@@ -50,7 +50,7 @@ object Semanticdbs {
    * Example output (NOTE, slightly modified to avoid "unclosed comment" errors):
    * {{{
    *   class Example *example/Example#*  {
-   *     val a *example/Example#a.* : String *scala/Predef.String#*  = "1"
+   *     val a *example/Example#a.* : String *scala/Predef.String#* = "1"
    *   }
    * }}}
    **/
@@ -73,8 +73,8 @@ object Semanticdbs {
       if !occ.symbol.isPackage && !isPrimaryConstructor
         sb.append(doc.text.substring(offset, end))
         sb.append("/*")
-          .append(if (occ.role.isDefinition) "<<=" else "=>>")
-          .append(occ.symbol.replace('/', '.'))
+          .append(if (occ.role.isDefinition) "<-" else "->")
+          .append(occ.symbol.replace("/", "::"))
           .append("*/")
         offset = end
     }

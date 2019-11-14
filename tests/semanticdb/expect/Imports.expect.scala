@@ -1,1 +1,1 @@
-import scala.util.control.NonFatal/*=>>scala.util.control.NonFatal.*/
+import scala.util.control.NonFatal/*->scala::util::control::NonFatal.*/

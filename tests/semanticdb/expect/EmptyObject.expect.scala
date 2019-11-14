@@ -1,3 +1,3 @@
 package example
 
-object EmptyObject/*<<=example.EmptyObject.*/ {}
+object EmptyObject/*<-example::EmptyObject.*/ {}
