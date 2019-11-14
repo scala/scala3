@@ -81,50 +81,6 @@ and where `T` is the expected type. The following two rewritings are tried in or
 So `circle.circumference` translates to `CircleOps.circumference(circle)`, provided
 `circle` has type `Circle` and `CircleOps` is given  (i.e. it is visible at the point of call or it is defined in the companion object of `Circle`).
 
-### Given Instances for Extension Methods
-
-Given instances that define extension methods can also be defined without a parent. E.g.,
-
-```scala
-given stringOps: {
-  def (xs: Seq[String]) longestStrings: Seq[String] = {
-    val maxLength = xs.map(_.length).max
-    xs.filter(_.length == maxLength)
-  }
-}
-
-given {
-  def [T](xs: List[T]) second = xs.tail.head
-}
-```
-If such given instances are anonymous (as in the second clause), their name is synthesized from the name of the first defined extension method.
-
-### Given Instances with Collective Parameters
-
-If a given instance has no parent but several extension methods one can pull out the left parameter section
-as well as any type parameters of these extension methods into the given instance itself.
-For instance, here is a given instance with two extension methods.
-```scala
-given listOps: {
-  def [T](xs: List[T]) second: T = xs.tail.head
-  def [T](xs: List[T]) third: T = xs.tail.tail.head
-}
-```
-The repetition in the parameters can be avoided by hoisting the parameters up into the given instance itself. The following version is a shorthand for the code above.
-```scala
-given listOps: [T](xs: List[T]) {
-  def second: T = xs.tail.head
-  def third: T = xs.tail.tail.head
-}
-```
-This syntax just adds convenience at the definition site. Applications of such extension methods are exactly the same as if their parameters were repeated in each extension method.
-Examples:
-```scala
-val xs = List(1, 2, 3)
-xs.second[Int]
-ListOps.third[T](xs)
-```
-
 ### Operators
 
 The extension method syntax also applies to the definition of operators.
@@ -165,6 +121,40 @@ If an extension method has type parameters, they come immediately after the `def
 ```scala
 List(1, 2, 3).second[Int]
 ```
+### Given Instances for Extension Methods
+
+The `given extends` syntax lets on define given instances that define extension methods and nothing else. Examples:
+
+```scala
+given stringOps extends (xs: Seq[String]) {
+  def longestStrings: Seq[String] = {
+    val maxLength = xs.map(_.length).max
+    xs.filter(_.length == maxLength)
+  }
+}
+
+given extends [T](xs: List[T]) {
+  def second = xs.tail.head
+  def third: T = xs.tail.tail.head
+}
+```
+If such given instances are anonymous (as in the second clause), their name is synthesized from the name of the first defined extension method.
+
+The extension method definitions above are equivalent to the following standard given instances where
+the implemented parent is `AnyRef` and the parameters after the `extend` clause are repeated in each
+method definition:
+```
+given stringOps: AnyRef {
+  def (xs: Seq[String]) longestStrings: Seq[String] = {
+    val maxLength = xs.map(_.length).max
+    xs.filter(_.length == maxLength)
+  }
+}
+given AnyRef {
+  def [T](xs: List[T]) second = xs.tail.head
+  def [T](xs: List[T]) third: T = xs.tail.tail.head
+}
+```
 
 ### Syntax
 
@@ -174,6 +164,7 @@ to the [current syntax](../../internals/syntax.md).
 DefSig            ::=  ...
                     |  ExtParamClause [nl] id DefParamClauses
 GivenDef          ::=  ...
-                       [GivenSig ‘:’] [ExtParamClause] TemplateBody
-ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’ {GivenParamClause}
+                       [id] ‘extends’ ExtParamClause {GivenParamClause} ExtMethods
+ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
+ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 ```
