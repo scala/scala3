@@ -15,7 +15,8 @@ import ast.Trees._
 import ast.untpd
 import Flags.GivenOrImplicit
 import util.{FreshNameCreator, NoSource, SimpleIdentityMap, SourceFile}
-import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, SearchRoot, TypeAssigner, Typer}
+import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
+import Nullables.{NotNullInfo, given}
 import Implicits.ContextualImplicits
 import config.Settings._
 import config.Config
@@ -47,7 +48,11 @@ object Contexts {
   private val (compilationUnitLoc,  store6) = store5.newLocation[CompilationUnit]()
   private val (runLoc,              store7) = store6.newLocation[Run]()
   private val (profilerLoc,         store8) = store7.newLocation[Profiler]()
-  private val initialStore = store8
+  private val (notNullInfosLoc,     store9) = store8.newLocation[List[NotNullInfo]]()
+  private val initialStore = store9
+
+  /** The current context */
+  def curCtx(given ctx: Context): Context = ctx
 
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
@@ -206,6 +211,9 @@ object Contexts {
 
     /**  The current compiler-run profiler */
     def profiler: Profiler = store(profilerLoc)
+
+    /** The paths currently known to be not null */
+    def notNullInfos = store(notNullInfosLoc)
 
     /** The new implicit references that are introduced by this scope */
     protected var implicitsCache: ContextualImplicits = null
@@ -556,6 +564,7 @@ object Contexts {
     def setRun(run: Run): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
     def setFreshNames(freshNames: FreshNameCreator): this.type = updateStore(freshNamesLoc, freshNames)
+    def setNotNullInfos(notNullInfos: List[NotNullInfo]): this.type = updateStore(notNullInfosLoc, notNullInfos)
 
     def setProperty[T](key: Key[T], value: T): this.type =
       setMoreProperties(moreProperties.updated(key, value))
@@ -587,6 +596,17 @@ object Contexts {
     def setDebug: this.type = setSetting(base.settings.Ydebug, true)
   }
 
+  given (c: Context)
+    def addNotNullInfo(info: NotNullInfo) =
+      c.withNotNullInfos(c.notNullInfos.extendWith(info))
+
+    def addNotNullRefs(refs: Set[TermRef]) =
+      c.addNotNullInfo(NotNullInfo(refs, Set()))
+
+    def withNotNullInfos(infos: List[NotNullInfo]): Context =
+      if c.notNullInfos eq infos then c else c.fresh.setNotNullInfos(infos)
+
+  // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
   implicit class ModeChanges(val c: Context) extends AnyVal {
     final def withModeBits(mode: Mode): Context =
       if (mode != c.mode) c.fresh.setMode(mode) else c
@@ -615,7 +635,9 @@ object Contexts {
     typeAssigner = TypeAssigner
     moreProperties = Map.empty
     source = NoSource
-    store = initialStore.updated(settingsStateLoc, settingsGroup.defaultState)
+    store = initialStore
+      .updated(settingsStateLoc, settingsGroup.defaultState)
+      .updated(notNullInfosLoc, Nil)
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchRoot
     gadt = EmptyGadtConstraint

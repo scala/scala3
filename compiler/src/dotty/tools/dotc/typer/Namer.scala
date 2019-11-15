@@ -559,7 +559,9 @@ class Namer { typer: Typer =>
     case _ => ()
   }
 
-  /** Create top-level symbols for statements and enter them into symbol table */
+  /** Create top-level symbols for statements and enter them into symbol table
+   *  @return A context that reflects all imports in `stats`.
+   */
   def index(stats: List[Tree])(implicit ctx: Context): Context = {
 
     // module name -> (stat, moduleCls | moduleVal)
@@ -1345,11 +1347,10 @@ class Namer { typer: Typer =>
       // We also drop the @Repeated annotation here to avoid leaking it in method result types
       // (see run/inferred-repeated-result).
       def widenRhs(tp: Type): Type = {
-        val tp1 = tp.widenTermRefExpr match {
+        val tp1 = tp.widenTermRefExpr.simplified match
           case ctp: ConstantType if isInlineVal => ctp
           case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
-          case _ => tp.widenUnion
-        }
+          case tp => tp.widenUnion
         tp1.dropRepeatedAnnot
       }
 

@@ -88,6 +88,12 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   /** If this is a block, its expression part */
   def stripBlock(tree: Tree): Tree = unsplice(tree) match {
     case Block(_, expr) => stripBlock(expr)
+    case Inlined(_, _, expr) => stripBlock(expr)
+    case _ => tree
+  }
+
+  def stripInlined(tree: Tree): Tree = unsplice(tree) match {
+    case Inlined(_, _, expr) => stripInlined(expr)
     case _ => tree
   }
 
@@ -391,7 +397,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       if (fn.symbol.is(Erased) || fn.symbol == defn.InternalQuoted_typeQuote) Pure else exprPurity(fn)
     case Apply(fn, args) =>
       def isKnownPureOp(sym: Symbol) =
-        sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass
+        sym.owner.isPrimitiveValueClass
+        || sym.owner == defn.StringClass
+        || defn.pureMethods.contains(sym)
       if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
           || (fn.symbol.isStableMember && !fn.symbol.is(Lazy))
           || fn.symbol.isPrimaryConstructor && fn.symbol.owner.isNoInitsClass) // TODO: include in isStable?

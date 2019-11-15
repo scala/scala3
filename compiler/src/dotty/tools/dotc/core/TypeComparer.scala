@@ -1838,7 +1838,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     else if (!tp2.exists) tp1
     else tp.derivedAndType(tp1, tp2)
 
-  /** If some (&-operand of) this type is a supertype of `sub` replace it with `NoType`.
+  /** If some (&-operand of) `tp` is a supertype of `sub` replace it with `NoType`.
    */
   private def dropIfSuper(tp: Type, sub: Type): Type =
     if (isSubTypeWhenFrozen(sub, tp)) NoType

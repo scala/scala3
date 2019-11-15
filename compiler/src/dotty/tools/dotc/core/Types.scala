@@ -1090,8 +1090,9 @@ object Types {
      *  instead of `ArrayBuffer[? >: Int | A <: Int & A]`
      */
     def widenUnion(implicit ctx: Context): Type = widen match {
-      case OrType(tp1, tp2) =>
-        ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
+      case tp @ OrType(tp1, tp2) =>
+        if tp1.isNull || tp2.isNull then tp
+        else ctx.typeComparer.lub(tp1.widenUnion, tp2.widenUnion, canConstrain = true) match {
           case union: OrType => union.join
           case res => res
         }
@@ -1420,6 +1421,11 @@ object Types {
       case mt: MethodType => false
       case _ => true
     }
+
+    /** Is this (an alias of) the `scala.Null` type? */
+    final def isNull(given Context) =
+      isRef(defn.NullClass)
+      || classSymbol.name == tpnme.Null // !!! temporary kludge for being able to test without the explicit nulls PR
 
     /** The resultType of a LambdaType, or ExprType, the type itself for others */
     def resultType(implicit ctx: Context): Type = this
@@ -2315,7 +2321,7 @@ object Types {
   }
 
   /** The singleton type for path prefix#myDesignator.
-    */
+   */
   abstract case class TermRef(override val prefix: Type,
                               private var myDesignator: Designator)
     extends NamedType with SingletonType with ImplicitRef {
@@ -2907,6 +2913,24 @@ object Types {
       if (tp1 eq tp2) tp1
       else apply(tp1, tp2)
   }
+
+  /** An extractor for `T | Null` or `Null | T`, returning the `T` */
+  object OrNull with
+    private def stripNull(tp: Type)(given Context): Type = tp match
+      case tp @ OrType(tp1, tp2) =>
+        if tp1.isNull then tp2
+        else if tp2.isNull then tp1
+        else tp.derivedOrType(stripNull(tp1), stripNull(tp2))
+      case tp @ AndType(tp1, tp2) =>
+        tp.derivedAndType(stripNull(tp1), stripNull(tp2))
+      case _ =>
+        tp
+    def apply(tp: Type)(given Context) =
+      OrType(tp, defn.NullType)
+    def unapply(tp: Type)(given Context): Option[Type] =
+      val tp1 = stripNull(tp)
+      if tp1 ne tp then Some(tp1) else None
+  end OrNull
 
   // ----- ExprType and LambdaTypes -----------------------------------
 

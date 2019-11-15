@@ -207,7 +207,7 @@ object Completion {
     def addMemberCompletions(qual: Tree)(implicit ctx: Context): Unit =
       if (!qual.tpe.widenDealias.isBottomType) {
         addAccessibleMembers(qual.tpe)
-        if (!mode.is(Mode.Import) && !qual.tpe.isRef(defn.NullClass))
+        if (!mode.is(Mode.Import) && !qual.tpe.isNull)
           // Implicit conversions do not kick in when importing
           // and for `NullClass` they produce unapplicable completions (for unclear reasons)
           implicitConversionTargets(qual)(ctx.fresh.setExploreTyperState())
