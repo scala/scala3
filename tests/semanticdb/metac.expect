@@ -194,7 +194,7 @@ Schema => SemanticDB v4
 Uri => Annotations.scala
 Text => empty
 Language => Scala
-Symbols => 20 entries
+Symbols => 22 entries
 Occurrences => 51 entries
 
 Symbols:
@@ -204,11 +204,13 @@ annot/Annotations# => class Annotations
 annot/Annotations#S# => type S
 annot/Annotations#[T] => typeparam T
 annot/Annotations#`<init>`(). => primary ctor <init>
+annot/Annotations#`<init>`().(x) => param x
 annot/Annotations#field. => val method field
 annot/Annotations#method(). => method method
 annot/Annotations#x. => val method x
 annot/B# => class B
 annot/B#`<init>`(). => primary ctor <init>
+annot/B#`<init>`().(x) => param x
 annot/B#`<init>`(+1). => ctor <init>
 annot/B#x. => val method x
 annot/M. => final object M
@@ -342,39 +344,48 @@ Schema => SemanticDB v4
 Uri => Classes.scala
 Text => empty
 Language => Scala
-Symbols => 35 entries
+Symbols => 44 entries
 Occurrences => 58 entries
 
 Symbols:
 classes/C1# => final class C1
 classes/C1#`<init>`(). => primary ctor <init>
+classes/C1#`<init>`().(x1) => val param x1
 classes/C1#x1. => val method x1
 classes/C2# => final class C2
 classes/C2#`<init>`(). => primary ctor <init>
+classes/C2#`<init>`().(x2) => val param x2
 classes/C2#x2. => val method x2
 classes/C2. => final object C2
 classes/C3# => case class C3
 classes/C3#`<init>`(). => primary ctor <init>
+classes/C3#`<init>`().(x) => val param x
 classes/C3#x. => val method x
 classes/C4# => case class C4
 classes/C4#`<init>`(). => primary ctor <init>
+classes/C4#`<init>`().(x) => val param x
 classes/C4#x. => val method x
 classes/C4. => final object C4
 classes/C6# => case class C6
 classes/C6#`<init>`(). => primary ctor <init>
+classes/C6#`<init>`().(x) => param x
 classes/C6#x. => val method x
 classes/C7# => class C7
 classes/C7#`<init>`(). => primary ctor <init>
+classes/C7#`<init>`().(x) => param x
 classes/C7#x. => val method x
 classes/C8# => class C8
 classes/C8#`<init>`(). => primary ctor <init>
+classes/C8#`<init>`().(x) => param x
 classes/C8#x. => val method x
 classes/C9# => class C9
 classes/C9#`<init>`(). => primary ctor <init>
+classes/C9#`<init>`().(x) => param x
 classes/C9#x(). => var method x
 classes/M. => final object M
 classes/M.C5# => class C5
 classes/M.C5#`<init>`(). => primary ctor <init>
+classes/M.C5#`<init>`().(x) => param x
 classes/M.C5#x. => val method x
 classes/N. => final object N
 classes/N.anonClass. => val method anonClass
@@ -534,7 +545,7 @@ Schema => SemanticDB v4
 Uri => Enums.scala
 Text => empty
 Language => Scala
-Symbols => 66 entries
+Symbols => 69 entries
 Occurrences => 156 entries
 
 Symbols:
@@ -549,11 +560,14 @@ _empty_/Enums.Maybe#[A] => covariant typeparam A
 _empty_/Enums.Maybe#`<init>`(). => primary ctor <init>
 _empty_/Enums.Maybe.Just# => final case enum class Just
 _empty_/Enums.Maybe.Just#`<init>`(). => primary ctor <init>
+_empty_/Enums.Maybe.Just#`<init>`().(value) => val param value
 _empty_/Enums.Maybe.Just#value. => val method value
 _empty_/Enums.Maybe.None. => case val static enum method None
 _empty_/Enums.Planet# => abstract sealed enum class Planet
 _empty_/Enums.Planet#G. => final val method G
 _empty_/Enums.Planet#`<init>`(). => primary ctor <init>
+_empty_/Enums.Planet#`<init>`().(mass) => param mass
+_empty_/Enums.Planet#`<init>`().(radius) => param radius
 _empty_/Enums.Planet#mass. => val method mass
 _empty_/Enums.Planet#radius. => val method radius
 _empty_/Enums.Planet#surfaceGravity(). => method surfaceGravity
@@ -845,13 +859,16 @@ Schema => SemanticDB v4
 Uri => Flags.scala
 Text => empty
 Language => Scala
-Symbols => 44 entries
+Symbols => 50 entries
 Occurrences => 84 entries
 
 Symbols:
 flags/p/package. => final package object p
 flags/p/package.AA# => class AA
 flags/p/package.AA#`<init>`(). => primary ctor <init>
+flags/p/package.AA#`<init>`().(x) => param x
+flags/p/package.AA#`<init>`().(y) => val param y
+flags/p/package.AA#`<init>`().(z) => var param z
 flags/p/package.AA#`z_=`(). => var method z_=
 flags/p/package.AA#x. => val method x
 flags/p/package.AA#y. => val method y
@@ -861,6 +878,9 @@ flags/p/package.C#[T] => covariant typeparam T
 flags/p/package.C#[U] => contravariant typeparam U
 flags/p/package.C#[V] => typeparam V
 flags/p/package.C#`<init>`(). => primary ctor <init>
+flags/p/package.C#`<init>`().(x) => param x
+flags/p/package.C#`<init>`().(y) => param y
+flags/p/package.C#`<init>`().(z) => param z
 flags/p/package.C#`<init>`(+1). => ctor <init>
 flags/p/package.C#`<init>`(+1).[T] => typeparam T
 flags/p/package.C#`<init>`(+1).[U] => typeparam U
@@ -1157,7 +1177,7 @@ Schema => SemanticDB v4
 Uri => ImplicitConversion.scala
 Text => empty
 Language => Scala
-Symbols => 18 entries
+Symbols => 19 entries
 Occurrences => 58 entries
 
 Symbols:
@@ -1178,6 +1198,7 @@ example/ImplicitConversion.newAny2stringadd#[A] => typeparam A
 example/ImplicitConversion.newAny2stringadd#`+`(). => method +
 example/ImplicitConversion.newAny2stringadd#`+`().(other) => val param other
 example/ImplicitConversion.newAny2stringadd#`<init>`(). => primary ctor <init>
+example/ImplicitConversion.newAny2stringadd#`<init>`().(self) => param self
 example/ImplicitConversion.newAny2stringadd#self. => val method self
 
 Occurrences:
@@ -1864,13 +1885,16 @@ Schema => SemanticDB v4
 Uri => NamedApplyBlock.scala
 Text => empty
 Language => Scala
-Symbols => 16 entries
+Symbols => 19 entries
 Occurrences => 35 entries
 
 Symbols:
 example/NamedApplyBlockCaseClassConstruction. => final object NamedApplyBlockCaseClassConstruction
 example/NamedApplyBlockCaseClassConstruction.Msg# => case class Msg
 example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`(). => primary ctor <init>
+example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(body) => val param body
+example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(head) => val param head
+example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(tail) => val param tail
 example/NamedApplyBlockCaseClassConstruction.Msg#body. => val method body
 example/NamedApplyBlockCaseClassConstruction.Msg#head. => val method head
 example/NamedApplyBlockCaseClassConstruction.Msg#tail. => val method tail
@@ -1930,13 +1954,14 @@ Schema => SemanticDB v4
 Uri => NamedArguments.scala
 Text => empty
 Language => Scala
-Symbols => 5 entries
+Symbols => 6 entries
 Occurrences => 10 entries
 
 Symbols:
 example/NamedArguments# => class NamedArguments
 example/NamedArguments#User# => case class User
 example/NamedArguments#User#`<init>`(). => primary ctor <init>
+example/NamedArguments#User#`<init>`().(name) => val param name
 example/NamedArguments#User#name. => val method name
 example/NamedArguments#`<init>`(). => primary ctor <init>
 
@@ -2171,7 +2196,7 @@ Schema => SemanticDB v4
 Uri => Synthetic.scala
 Text => empty
 Language => Scala
-Symbols => 21 entries
+Symbols => 22 entries
 Occurrences => 142 entries
 
 Symbols:
@@ -2181,6 +2206,7 @@ example/Synthetic#F#`<init>`(). => primary ctor <init>
 example/Synthetic#J# => class J
 example/Synthetic#J#[T] => typeparam T
 example/Synthetic#J#`<init>`(). => primary ctor <init>
+example/Synthetic#J#`<init>`().(evidence$2) => implicit param evidence$2
 example/Synthetic#J#arr. => val method arr
 example/Synthetic#J#evidence$2. => implicit val method evidence$2
 example/Synthetic#Name. => val method Name
@@ -2395,7 +2421,7 @@ Schema => SemanticDB v4
 Uri => Types.scala
 Text => empty
 Language => Scala
-Symbols => 117 entries
+Symbols => 119 entries
 Occurrences => 249 entries
 
 Symbols:
@@ -2451,6 +2477,7 @@ types/Test.C#MethodType.x1(). => method x1
 types/Test.C#MethodType.x2(). => method x2
 types/Test.C#RepeatedType# => case class RepeatedType
 types/Test.C#RepeatedType#`<init>`(). => primary ctor <init>
+types/Test.C#RepeatedType#`<init>`().(s) => val param s
 types/Test.C#RepeatedType#m1(). => method m1
 types/Test.C#RepeatedType#m1().(x) => val param x
 types/Test.C#RepeatedType#s. => val method s
@@ -2511,6 +2538,7 @@ types/Test.N#n(). => method n
 types/ann# => class ann
 types/ann#[T] => typeparam T
 types/ann#`<init>`(). => primary ctor <init>
+types/ann#`<init>`().(x) => param x
 types/ann#x. => val method x
 types/ann1# => class ann1
 types/ann1#`<init>`(). => primary ctor <init>
@@ -2869,7 +2897,7 @@ Schema => SemanticDB v4
 Uri => Vals.scala
 Text => empty
 Language => Scala
-Symbols => 30 entries
+Symbols => 33 entries
 Occurrences => 122 entries
 
 Symbols:
@@ -2877,6 +2905,9 @@ example/ValUsages. => final object ValUsages
 example/ValUsages.v. => val method v
 example/Vals# => abstract class Vals
 example/Vals#`<init>`(). => primary ctor <init>
+example/Vals#`<init>`().(p) => param p
+example/Vals#`<init>`().(xp) => val param xp
+example/Vals#`<init>`().(yp) => var param yp
 example/Vals#`yam_=`(). => var method yam_=
 example/Vals#`yfm_=`(). => final var method yfm_=
 example/Vals#`yim_=`(). => var method yim_=
@@ -3113,13 +3144,14 @@ Schema => SemanticDB v4
 Uri => semanticdb-extract.scala
 Text => empty
 Language => Scala
-Symbols => 7 entries
+Symbols => 8 entries
 Occurrences => 23 entries
 
 Symbols:
 _empty_/AnObject. => final object AnObject
 _empty_/AnObject.Foo# => case class Foo
 _empty_/AnObject.Foo#`<init>`(). => primary ctor <init>
+_empty_/AnObject.Foo#`<init>`().(x) => val param x
 _empty_/AnObject.Foo#x. => val method x
 _empty_/AnObject.foo(). => method foo
 _empty_/AnObject.foo().(x) => val param x

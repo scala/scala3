@@ -18,6 +18,8 @@ import collection.mutable
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 import java.nio.file.Paths
 
+import scala.annotation.{ threadUnsafe => tu }
+
 /** Extract symbol references and uses to semanticdb files.
  *  See https://scalameta.org/docs/semanticdb/specification.html#symbol-1
  *  for a description of the format.
@@ -97,6 +99,15 @@ class ExtractSemanticDB extends Phase {
       def isValOrVar: Boolean =
         kind.isVar
         || kind.isVal
+
+    private object SymbolKind with
+      val SingletonVal = Set(Val)
+      val SingletonVar = Set(Var)
+
+    private def isWildcard(name: Name)(given ctx: Context) = name match
+      case nme.WILDCARD | WILDCARDTypeName           => true
+      case _ if name.is(NameKinds.WildcardParamName) => true
+      case _                                         => false
 
     /** Add semanticdb name of the given symbol to string builder */
     private def addSymName(b: StringBuilder, sym: Symbol)(given ctx: Context): Unit =
@@ -198,11 +209,6 @@ class ExtractSemanticDB extends Phase {
       Some(Range(startLine, startCol, endLine, endCol))
 
     private val WILDCARDTypeName = nme.WILDCARD.toTypeName
-
-    private def isWildcard(name: Name)(given ctx: Context) = name match
-      case nme.WILDCARD | WILDCARDTypeName           => true
-      case _ if name.is(NameKinds.WildcardParamName) => true
-      case _                                         => false
 
     /** Definitions of this symbol should be excluded from semanticdb */
     private def excludeDef(sym: Symbol)(given Context): Boolean =
@@ -328,6 +334,19 @@ class ExtractSemanticDB extends Phase {
     def (tree: DefDef) isSetterDef(given Context): Boolean =
       tree.name.isSetterName && tree.mods.is(Accessor) && tree.vparamss.flatten.length == 1
 
+    def findGetters(ctorParams: List[ValDef], body: List[ast.tpd.Tree])(given Context): Map[Names.TermName, ValDef] =
+      if ctorParams.isEmpty then
+        Map.empty
+      else
+        val ctorParamNames = ctorParams.map(_.name).toSet
+        body.collect({
+          case tree: ValDef
+            if ctorParamNames.contains(tree.name)
+            && !tree.symbol.isPrivate =>
+              tree.name -> tree
+        }).toMap
+    end findGetters
+
     override def traverse(tree: Tree)(given Context): Unit =
       for annot <- tree.symbol.annotations do
         if annot.tree.span.exists
@@ -370,7 +389,16 @@ class ExtractSemanticDB extends Phase {
         case tree: Template =>
           if !excludeDef(tree.constr.symbol)
             registerDefinition(tree.constr.symbol, tree.constr.span, Set.empty)
-            tree.constr.vparamss.flatten.foreach(vparam => traverse(vparam.tpt)) // the accessor symbol is traversed in the body
+            val ctorParams = tree.constr.vparamss.flatten
+            @tu lazy val getters = findGetters(ctorParams, tree.body)
+            for vparam <- ctorParams do
+              if !isWildcard(vparam.name)
+                val symkinds =
+                  getters.get(vparam.name).fold(
+                    Set.empty[SymbolKind])(
+                    getter => if getter.mods.is(Mutable) then SymbolKind.SingletonVar else SymbolKind.SingletonVal)
+                registerSymbol(vparam.symbol, symbolName(vparam.symbol), symkinds)
+              traverse(vparam.tpt)
           for parent <- tree.parentsOrDerived do
             if
               parent.symbol != defn.ObjectClass.primaryConstructor
