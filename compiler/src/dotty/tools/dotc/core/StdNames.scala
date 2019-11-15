@@ -359,6 +359,7 @@ object StdNames {
     val RootPackage: N          = "RootPackage"
     val RootClass: N            = "RootClass"
     val Scala2: N               = "Scala2"
+    val Scala2Compat: N         = "Scala2Compat"
     val Select: N               = "Select"
     val Shape: N                = "Shape"
     val StringContext: N        = "StringContext"

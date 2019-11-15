@@ -486,7 +486,7 @@ object Denotations {
                   // things, starting with the return type of this method.
                   if (preferSym(sym2, sym1)) info2
                   else if (preferSym(sym1, sym2)) info1
-                  else if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2Mode)
+                  else if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2CompatMode)
                     info1 // follow Scala2 linearization -
                   // compare with way merge is performed in SymDenotation#computeMembersNamed
                   else throw new MergeError(ex.sym1, ex.sym2, ex.tp1, ex.tp2, pre)

@@ -199,7 +199,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       }
     }
 
-    val widePt = if (ctx.scala2Mode || refinementIsInvariant(patternTp)) scrutineeTp else widenVariantParams(scrutineeTp)
+    val widePt = if (ctx.scala2CompatMode || refinementIsInvariant(patternTp)) scrutineeTp else widenVariantParams(scrutineeTp)
     val narrowTp = SkolemType(patternTp)
     trace(i"constraining simple pattern type $narrowTp <:< $widePt", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       isSubType(narrowTp, widePt)

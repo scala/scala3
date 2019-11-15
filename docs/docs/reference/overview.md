@@ -63,7 +63,7 @@ These constructs are restricted to make the language safer.
  - [@infix and @alpha](https://github.com/lampepfl/dotty/pull/5975)
  make method application syntax uniform across code bases and require alphanumeric aliases for all symbolic names (proposed, not implemented).
 
-Unrestricted implicit conversions continue to be available in Scala 3.0, but will be deprecated and removed later. Unrestricted versions of the other constructs in the list above are available only under `-language:Scala2`.
+Unrestricted implicit conversions continue to be available in Scala 3.0, but will be deprecated and removed later. Unrestricted versions of the other constructs in the list above are available only under `-language:Scala2Compat`.
 
 
 ## Dropped Constructs
@@ -85,7 +85,7 @@ The date when these constructs are dropped varies. The current status is:
 
  - Not implemented at all:
    - DelayedInit, existential types, weak conformance.
- - Supported under `-language:Scala2`:
+ - Supported under `-language:Scala2Compat`:
    - procedure syntax, class shadowing, symbol literals, auto application, auto tupling in a restricted form.
  - Supported in 3.0, to be deprecated and phased out later:
    - XML literals, compound types.
@@ -100,7 +100,7 @@ These constructs have undergone changes to make them more regular and useful.
  - [Eta expansion](changed-features/eta-expansion.md) is now performed universally also in the absence of an expected type. The postfix `_` operator is thus made redundant. It will be deprecated and dropped after Scala 3.0.
  - [Implicit Resolution](changed-features/implicit-resolution.md): The implicit resolution rules have been cleaned up to make them more useful and less surprising. Implicit scope is restricted to no longer include package prefixes.
 
-Most aspects of old-style implicit resolution are still available under `-language:Scala2`. The other changes in this list are applied unconditionally.
+Most aspects of old-style implicit resolution are still available under `-language:Scala2Compat`. The other changes in this list are applied unconditionally.
 
 ## New Constructs
 

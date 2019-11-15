@@ -141,9 +141,9 @@ object Implicits {
               // The reason for leaving out `Predef_conforms` is that we know it adds
               // nothing since it only relates subtype with supertype.
               //
-              // We keep the old behavior under -language:Scala2.
+              // We keep the old behavior under -language:Scala2Compat.
               val isFunctionInS2 =
-                ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1)) && ref.symbol != defn.Predef_conforms
+                ctx.scala2CompatMode && tpw.derivesFrom(defn.FunctionClass(1)) && ref.symbol != defn.Predef_conforms
               val isImplicitConversion = tpw.derivesFrom(defn.ConversionClass)
               // An implementation of <:< counts as a view
               val isConforms = tpw.derivesFrom(defn.SubTypeClass)
@@ -265,7 +265,7 @@ object Implicits {
      */
     override val level: Int =
       if (outerImplicits == null) 1
-      else if (ctx.scala2Mode ||
+      else if (ctx.scala2CompatMode ||
                (ctx.owner eq outerImplicits.ctx.owner) &&
                (ctx.scope eq outerImplicits.ctx.scope) &&
                !refs.head.implicitName.is(LazyImplicitName)) outerImplicits.level
@@ -567,7 +567,7 @@ trait ImplicitRunInfo {
             addPath(pre.cls.sourceModule.termRef)
           case pre: TermRef =>
             if (pre.symbol.is(Package)) {
-              if (ctx.scala2Mode) {
+              if (ctx.scala2CompatMode) {
                 addCompanion(pre, pre.member(nme.PACKAGE).symbol)
                 addPath(pre.prefix)
               }
@@ -1323,7 +1323,7 @@ trait Implicits { self: Typer =>
           case result: SearchFailure if result.isAmbiguous =>
             val deepPt = pt.deepenProto
             if (deepPt ne pt) inferImplicit(deepPt, argument, span)
-            else if (ctx.scala2Mode && !ctx.mode.is(Mode.OldOverloadingResolution))
+            else if (ctx.scala2CompatMode && !ctx.mode.is(Mode.OldOverloadingResolution))
               inferImplicit(pt, argument, span)(ctx.addMode(Mode.OldOverloadingResolution)) match {
                 case altResult: SearchSuccess =>
                   ctx.migrationWarning(
@@ -1502,7 +1502,7 @@ trait Implicits { self: Typer =>
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
                 if (fail.isAmbiguous)
-                  if (ctx.scala2Mode) {
+                  if (ctx.scala2CompatMode) {
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
                     if (result.isSuccess)
                       warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])

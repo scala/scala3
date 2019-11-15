@@ -1153,7 +1153,7 @@ class Namer { typer: Typer =>
               traitReq = parent ne parents.head, stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
-              case Select(qual: Super, _) if ctx.scala2Mode =>
+              case Select(qual: Super, _) if ctx.scala2CompatMode =>
                 "\n(Note that inheriting a class of the same name is no longer allowed)"
               case _ => ""
             }

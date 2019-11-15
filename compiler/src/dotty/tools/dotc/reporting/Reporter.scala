@@ -144,7 +144,7 @@ trait Reporting { this: Context =>
   }
 
   def errorOrMigrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    if (ctx.scala2Mode) migrationWarning(msg, pos) else error(msg, pos)
+    if (ctx.scala2CompatMode) migrationWarning(msg, pos) else error(msg, pos)
 
   def restrictionError(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report {

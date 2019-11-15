@@ -576,7 +576,7 @@ object desugar {
       ensureApplied(nu)
     }
 
-    val copiedAccessFlags = if (ctx.scala2Setting) EmptyFlags else AccessFlags
+    val copiedAccessFlags = if (ctx.scala2CompatSetting) EmptyFlags else AccessFlags
 
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
     //     def _1: T1 = this.p1

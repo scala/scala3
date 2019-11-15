@@ -173,7 +173,7 @@ class VarianceChecker()(implicit ctx: Context) {
     def checkVariance(sym: Symbol, pos: SourcePosition) = Validator.validateDefinition(sym) match {
       case Some(VarianceError(tvar, required)) =>
         def msg = i"${varianceString(tvar.flags)} $tvar occurs in ${varianceString(required)} position in type ${sym.info} of $sym"
-        if (ctx.scala2Mode &&
+        if (ctx.scala2CompatMode &&
             (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAllOf(ProtectedLocal))))
           ctx.migrationWarning(
             s"According to new variance rules, this is no longer accepted; need to annotate with @uncheckedVariance:\n$msg",

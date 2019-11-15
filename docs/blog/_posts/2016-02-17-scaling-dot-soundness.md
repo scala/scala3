@@ -144,7 +144,7 @@ arithmetic.
 To ease the transition, we will continue for a while to allow unrestricted type
 projections under a flag, even though they are potentially
 unsound. In the current Dotty compiler, that flag is a language import
-`-language:Scala2`, but it could be something different for other
+`-language:Scala2Compat`, but it could be something different for other
 compilers, e.g. `-unsafe`.  Maybe we can find rules that are less
 restrictive than the ones we have now, and are still sound.  But one
 aspect should be non-negotiable: Any fundamental deviations from the
