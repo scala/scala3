@@ -322,7 +322,8 @@ class ExtractSemanticDB extends Phase {
       if !isWildcard(sym.name) then
         val symbol = symbolName(sym)
         registerOccurrence(symbol, span, SymbolOccurrence.Role.DEFINITION)
-        registerSymbol(sym, symbol, symkinds)
+        if !sym.is(Package)
+          registerSymbol(sym, symbol, symkinds)
 
     private def spanOfSymbol(sym: Symbol, span: Span)(given Context): Span = {
       val contents = if source.exists then source.content() else Array.empty[Char]
@@ -347,6 +348,16 @@ class ExtractSemanticDB extends Phase {
         }).toMap
     end findGetters
 
+    def adjustSpanToName(span: Span, qualSpan: Span, name: Name)(given Context) =
+      val end = span.end
+      val limit = qualSpan.end
+      val start =
+        if limit < end then
+          val len = name.toString.length
+          if source.content()(end - 1) == '`' then end - len - 2 else end - len
+        else limit
+      Span(start max limit, end)
+
     override def traverse(tree: Tree)(given Context): Unit =
       for annot <- tree.symbol.annotations do
         if annot.tree.span.exists
@@ -355,6 +366,15 @@ class ExtractSemanticDB extends Phase {
           traverse(annot.tree)
 
       tree match
+        case tree: PackageDef =>
+          if !excludeDef(tree.pid.symbol) && tree.pid.span.start != tree.pid.span.end
+            tree.pid match
+              case tree @ Select(qual, _) =>
+                traverse(qual)
+                registerDefinition(tree.symbol, adjustSpanToName(tree.span, qual.span, tree.symbol.name), Set.empty)
+              case tree @ Ident(name) =>
+                registerDefinition(tree.symbol, tree.span, Set.empty)
+          tree.stats.foreach(traverse)
         case tree: ValDef if tree.symbol.is(Module) => // skip module val
         case tree: NamedDefTree
         if !excludeDef(tree.symbol) && tree.span.start != tree.span.end =>
@@ -413,9 +433,17 @@ class ExtractSemanticDB extends Phase {
         case tree: Assign =>
           traverseChildren(tree.lhs)
           if !excludeUseStrict(tree.lhs.symbol, tree.lhs.span)
-            val name = tree.lhs.symbol.name
-            val setter = tree.lhs.symbol.owner.info.decls.find(s => s.name.startsWith(name.show) && s.name.isSetterName)
-            registerUse(setter.orElse(tree.lhs.symbol), tree.lhs.span)
+            val lhs = tree.lhs.symbol
+            val name = lhs.name
+            val setter =
+              lhs.owner
+                 .info
+                 .decls
+                 .find(s => s.name.startsWith(name.show) && s.name.isSetterName)
+                 .orElse(lhs)
+            tree.lhs match
+              case tree @ Select(qual, _) => registerUse(setter, adjustSpanToName(tree.span, qual.span, name))
+              case tree: Ident            => registerUse(setter, tree.span)
           traverse(tree.rhs)
         case tree: Ident =>
           if tree.name != nme.WILDCARD && !excludeUseStrict(tree.symbol, tree.span) then
@@ -423,14 +451,7 @@ class ExtractSemanticDB extends Phase {
         case tree: Select =>
           val qualSpan = tree.qualifier.span
           if !excludeUseStrict(tree.symbol, tree.span) then
-            val end = tree.span.end
-            val limit = qualSpan.end
-            val start =
-              if limit < end then
-                val len = tree.name.toString.length
-                if source.content()(end - 1) == '`' then end - len - 1 else end - len
-              else limit
-            registerUse(tree.symbol, Span(start max limit, end))
+            registerUse(tree.symbol, adjustSpanToName(tree.span, qualSpan, tree.name))
           if qualSpan.exists && qualSpan.start != qualSpan.end then
             traverseChildren(tree)
         case tree: Import =>

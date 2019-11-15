@@ -127,7 +127,7 @@ object Semanticdbs with
     sb.append(info.displayName).nl
   end processSymbol
 
-  def processOccurrence(occ: SymbolOccurrence)(given sb: StringBuilder): Unit =
+  def processOccurrence(occ: SymbolOccurrence)(given sb: StringBuilder, sourceFile: SourceFile): Unit =
     occ.range match
     case Some(range) =>
       sb.append('[')
@@ -135,14 +135,20 @@ object Semanticdbs with
         .append("..")
         .append(range.endLine).append(':').append(range.endCharacter)
         .append(')')
+      if range.endLine == range.startLine
+      && range.startCharacter != range.endCharacter
+      && !(occ.role.isDefinition && occ.symbol.matches(raw".+`<init>`\((?:\+\d+)?\)\."))
+        val line = sourceFile.lineContent(sourceFile.lineToOffset(range.startLine))
+        sb.append(" ").append(line.substring(range.startCharacter, range.endCharacter))
     case _ =>
       sb.append("[)")
     end match
-    sb.append(" => ").append(occ.symbol).nl
+    sb.append(if occ.role.isReference then " -> " else " <- ").append(occ.symbol).nl
   end processOccurrence
 
   def metac(doc: TextDocument, realPath: Path)(given sb: StringBuilder): StringBuilder =
     val realURI = realPath.toString
+    given SourceFile = SourceFile.virtual(doc.uri, doc.text)
     sb.append(realURI).nl
     sb.append("_" * realURI.length).nl
     sb.nl
