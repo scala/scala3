@@ -52,5 +52,15 @@ package object compiletime {
    */
   inline def summonFrom[T](f: Nothing => T) <: T = ???
 
-  type S[X <: Int] <: Int
+  /** Succesor of a natural number where zero is the type 0 and successors are reduced as if the definition was
+   *
+   *      type S[N <: Int] <: Int = N match {
+   *        case 0 => 1
+   *        case 1 => 2
+   *        case 2 => 3
+   *        ...
+   *        case 2147483646 => 2147483647
+   *      }
+   */
+  type S[N <: Int] <: Int
 }

@@ -1022,7 +1022,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     def compareS(tp: AppliedType, other: Type, fromBelow: Boolean): Boolean = tp.args match {
       case arg :: Nil =>
         natValue(arg) match {
-          case Some(n) =>
+          case Some(n) if n != Int.MaxValue =>
             val succ = ConstantType(Constant(n + 1))
             if (fromBelow) recur(other, succ) else recur(succ, other)
           case none =>
