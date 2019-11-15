@@ -48,22 +48,21 @@ object DottyPredef {
    *
    *  Note that `.nn` performs a checked cast, so if invoked on a null value it'll throw an NPE.
    */
-  def[T] (x: T|Null) nn: T =
+  def[T] (x: T|Null) nn: x.type & T =
     if (x == null) throw new NullPointerException("tried to cast away nullability, but value is null")
-    else x.asInstanceOf[T]
+    else x.asInstanceOf[x.type & T]
 
   /** Reference equality where the receiver is a nullable union.
    *  Note that if the receiver `r` is a reference type (e.g. `String`), then `r.eq` will invoke the
    *  `eq` method in `AnyRef`.
    */
   def (x: AnyRef|Null) eq(y: AnyRef|Null): Boolean =
-    (x == null && y == null) || (x != null && x.eq(y))
+    x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
 
   /** Reference disequality where the receiver is a nullable union.
    *  Note that if the receiver `r` is a reference type (e.g. `String`), then `r.ne` will invoke the
    *  `ne` method in `AnyRef`.
    */
   def (x: AnyRef|Null) ne(y: AnyRef|Null): Boolean =
-    (x == null && y != null) || (x != null && x.ne(y))
-
+    x.asInstanceOf[AnyRef] ne y.asInstanceOf[AnyRef]
 }
