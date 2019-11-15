@@ -2,13 +2,13 @@
 This todolist is based upon blackbox observation of testcases at this repository: https://github.com/scalameta/scalameta/tree/master/tests/jvm/src/test/resources/example
 
 - [ ] Hide unapply, unapplySeq?
-- [ ] Hide constructor of template
 - [ ] Hide local vars in pattern def?
 - [ ] Hide desugaring of for comprehension
 - [ ] Hide calls to implicit conversions and their arguments
 - [ ] Hide Tuple contructors
 - [ ] Hide implicitly applied arguments
-- [ ] Assignments to vars should emit setter symbol
+- [x] Assignments to vars should emit uses of the setter method and not the getter
+- [x] Hide constructor of module template // expect tests hide primary ctors
 - [x] unescape unicode in names.
 - [x] Only traverse prefix of a Select if it is not a package
 - [x] Ensure only methods are counted in overloads

@@ -382,6 +382,13 @@ class ExtractSemanticDB extends Phase {
           if selfSpan.exists && selfSpan.start != selfSpan.end then
             traverse(tree.self)
           tree.body.foreach(traverse)
+        case tree: Assign =>
+          traverseChildren(tree.lhs)
+          if !excludeUseStrict(tree.lhs.symbol, tree.lhs.span)
+            val name = tree.lhs.symbol.name
+            val setter = tree.lhs.symbol.owner.info.decls.find(s => s.name.startsWith(name.show) && s.name.isSetterName)
+            registerUse(setter.orElse(tree.lhs.symbol), tree.lhs.span)
+          traverse(tree.rhs)
         case tree: Ident =>
           if tree.name != nme.WILDCARD && !excludeUseStrict(tree.symbol, tree.span) then
             registerUse(tree.symbol, tree.span)

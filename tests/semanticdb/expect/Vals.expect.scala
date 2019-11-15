@@ -38,10 +38,10 @@ abstract class Vals/*<-example::Vals#*/(p/*<-example::Vals#p.*/: Int/*->scala::I
 
 object ValUsages/*<-example::ValUsages.*/ {
   val v/*<-example::ValUsages.v.*/: Vals/*->example::Vals#*/ = ???/*->scala::Predef.`???`().*/
-  v/*->example::ValUsages.v.*/.yp/*->example::Vals#yp().*/ = v/*->example::ValUsages.v.*/.xp/*->example::Vals#xp.*/ +/*->scala::Int#`+`(+4).*/ v/*->example::ValUsages.v.*/.yp/*->example::Vals#yp().*/
-  v/*->example::ValUsages.v.*/.ym/*->example::Vals#ym().*/ = v/*->example::ValUsages.v.*/.xm/*->example::Vals#xm.*/ +/*->scala::Int#`+`(+4).*/ v/*->example::ValUsages.v.*/.ym/*->example::Vals#ym().*/
-  v/*->example::ValUsages.v.*/.yam/*->example::Vals#yam().*/ = v/*->example::ValUsages.v.*/.xam/*->example::Vals#xam.*/ +/*->scala::Int#`+`(+4).*/ v/*->example::ValUsages.v.*/.yam/*->example::Vals#yam().*/
+  v/*->example::ValUsages.v.*/.yp/*->example::Vals#`yp_=`().*/ = v/*->example::ValUsages.v.*/.xp/*->example::Vals#xp.*/ +/*->scala::Int#`+`(+4).*/ v/*->example::ValUsages.v.*/.yp/*->example::Vals#yp().*/
+  v/*->example::ValUsages.v.*/.ym/*->example::Vals#`ym_=`().*/ = v/*->example::ValUsages.v.*/.xm/*->example::Vals#xm.*/ +/*->scala::Int#`+`(+4).*/ v/*->example::ValUsages.v.*/.ym/*->example::Vals#ym().*/
+  v/*->example::ValUsages.v.*/.yam/*->example::Vals#`yam_=`().*/ = v/*->example::ValUsages.v.*/.xam/*->example::Vals#xam.*/ +/*->scala::Int#`+`(+4).*/ v/*->example::ValUsages.v.*/.yam/*->example::Vals#yam().*/
   println/*->scala::Predef.println(+1).*/(v/*->example::ValUsages.v.*/.xzm/*->example::Vals#xzm.*/)
-  v/*->example::ValUsages.v.*/.yfm/*->example::Vals#yfm().*/ = v/*->example::ValUsages.v.*/.xfm/*->example::Vals#xfm.*/ +/*->scala::Int#`+`(+4).*/ v/*->example::ValUsages.v.*/.yfm/*->example::Vals#yfm().*/
-  v/*->example::ValUsages.v.*/.yim/*->example::Vals#yim().*/ = v/*->example::ValUsages.v.*/.xim/*->example::Vals#xim.*/ +/*->scala::Int#`+`(+4).*/ v/*->example::ValUsages.v.*/.yim/*->example::Vals#yim().*/
+  v/*->example::ValUsages.v.*/.yfm/*->example::Vals#`yfm_=`().*/ = v/*->example::ValUsages.v.*/.xfm/*->example::Vals#xfm.*/ +/*->scala::Int#`+`(+4).*/ v/*->example::ValUsages.v.*/.yfm/*->example::Vals#yfm().*/
+  v/*->example::ValUsages.v.*/.yim/*->example::Vals#`yim_=`().*/ = v/*->example::ValUsages.v.*/.xim/*->example::Vals#xim.*/ +/*->scala::Int#`+`(+4).*/ v/*->example::ValUsages.v.*/.yim/*->example::Vals#yim().*/
 }
