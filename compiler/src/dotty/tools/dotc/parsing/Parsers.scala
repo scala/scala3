@@ -3398,7 +3398,7 @@ object Parsers {
 
     /** GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
      *                   |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
-     *                   |  [[id] ‘extends’ ExtParamClause {GivenParamClause} ExtMethods
+     *                   |  [id ‘:’] ‘extension’ ExtParamClause {GivenParamClause} ExtMethods
      *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
      *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause {GivenParamClause}
      *  ExtMethods     ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
@@ -3406,20 +3406,24 @@ object Parsers {
     def givenDef(start: Offset, mods: Modifiers, instanceMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, instanceMod)
       val hasGivenSig = followingIsGivenSig()
-      val name =
-        if isIdent && (hasGivenSig || in.lookaheadIn(BitSet(EXTENDS))) then ident()
-        else EmptyTermName
+      val (name, isExtension) =
+        if isIdent && hasGivenSig then
+          (ident(), in.token == COLON && in.lookaheadIn(nme.extension))
+        else
+          (EmptyTermName, isIdent(nme.extension))
+
       val gdef = indentRegion(name) {
-        if in.token == EXTENDS then
-          in.nextToken()
+        if isExtension then
+          if (in.token == COLON) in.nextToken()
+          assert(ident() == nme.extension)
           val tparams = typeParamClauseOpt(ParamOwner.Def)
           val extParams = paramClause(0, prefix = true)
           val givenParamss = paramClauses(givenOnly = true)
           possibleTemplateStart()
-          val extMethods = templateBodyOpt(
+          val templ = templateBodyOpt(
             makeConstructor(tparams, extParams :: givenParamss), Nil, Nil)
-          extMethods.body.foreach(checkExtensionMethod)
-          ModuleDef(name, extMethods)
+          templ.body.foreach(checkExtensionMethod)
+          ModuleDef(name, templ)
         else
           var tparams: List[TypeDef] = Nil
           var vparamss: List[List[ValDef]] = Nil

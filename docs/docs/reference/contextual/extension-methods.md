@@ -123,48 +123,54 @@ List(1, 2, 3).second[Int]
 ```
 ### Given Instances for Extension Methods
 
-The `given extends` syntax lets on define given instances that define extension methods and nothing else. Examples:
+`given` extensions are given instances that define extension methods and nothing else. Examples:
 
 ```scala
-given stringOps extends (xs: Seq[String]) {
+given stringOps: extension (xs: Seq[String]) {
   def longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
 
-given extends [T](xs: List[T]) {
+given listOps: extension [T](xs: List[T]) {
   def second = xs.tail.head
   def third: T = xs.tail.tail.head
 }
-```
-If such given instances are anonymous (as in the second clause), their name is synthesized from the name of the first defined extension method.
 
-The extension method definitions above are equivalent to the following standard given instances where
-the implemented parent is `AnyRef` and the parameters after the `extend` clause are repeated in each
-method definition:
+given extension [T](xs: List[T])(given Ordering[T]) {
+  def largest(n: Int) = xs.sort.takeRight(n)
+}
 ```
+If a given extension is anonymous (as in the last clause), its name is synthesized from the name of the first defined extension method.
+
+The extensions above are equivalent to the following regular given instances where the implemented parent is `AnyRef` and the parameters in the `extension` clause are repeated in each extension method definition:
+```scala
 given stringOps: AnyRef {
   def (xs: Seq[String]) longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
-given AnyRef {
+given listOps: AnyRef {
   def [T](xs: List[T]) second = xs.tail.head
   def [T](xs: List[T]) third: T = xs.tail.tail.head
+}
+given AnyRef {
+  def [T](xs: List[T]) largest (given Ordering[T])(n: Int) =
+    xs.sort.takeRight(n)
 }
 ```
 
 ### Syntax
 
-The required syntax extension just adds one clause for extension methods relative
-to the [current syntax](../../internals/syntax.md).
+Here are the syntax changes for extension methods and given extensions relative
+to the [current syntax](../../internals/syntax.md). `extension` is a soft keyword, recognized only after a `given`. It can be used as an identifier everywhere else.
 ```
 DefSig            ::=  ...
                     |  ExtParamClause [nl] id DefParamClauses
 GivenDef          ::=  ...
-                       [id] ‘extends’ ExtParamClause {GivenParamClause} ExtMethods
+                       [id ‘:’] ‘extension’ ExtParamClause {GivenParamClause} ExtMethods
 ExtParamClause    ::=  [DefTypeParamClause] ‘(’ DefParam ‘)’
 ExtMethods        ::=  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 ```

@@ -895,14 +895,15 @@ object Scanners {
       nextToken()
 
     /** Is the token following the current one in `tokens`? */
-    def lookaheadIn(tokens: BitSet): Boolean = {
+    def lookaheadIn(follow: BitSet | TermName): Boolean =
       val lookahead = LookaheadScanner()
       while
         lookahead.nextToken()
         lookahead.isNewLine
       do ()
-      tokens.contains(lookahead.token)
-    }
+      follow match
+        case tokens: BitSet => tokens.contains(lookahead.token)
+        case name: TermName => lookahead.token == IDENTIFIER && lookahead.name == name
 
     /** Is the current token in a position where a modifier is allowed? */
     def inModifierPosition(): Boolean = {

@@ -41,16 +41,20 @@ object Test with
 
   List(1, 2, 3).second[Int]
 
-  given stringOps extends (xs: Seq[String]) {
+  given stringOps: extension (xs: Seq[String]) {
     def longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
     }
   }
 
-  given extends [T](xs: List[T]) with
+  given listOps: extension [T](xs: List[T]) with
     def second = xs.tail.head
     def third: T = xs.tail.tail.head
+
+
+  given extension [T](xs: List[T])(given Ordering[T]) with
+    def largest(n: Int) = xs.sorted.takeRight(n)
 
   given stringOps1: AnyRef {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
@@ -58,9 +62,15 @@ object Test with
       xs.filter(_.length == maxLength)
     }
   }
-  given AnyRef {
+
+  given listOps1: AnyRef {
     def [T](xs: List[T]) second = xs.tail.head
     def [T](xs: List[T]) third: T = xs.tail.tail.head
+  }
+
+  given AnyRef {
+    def [T](xs: List[T]) largest (given Ordering[T])(n: Int) =
+      xs.sorted.takeRight(n)
   }
 
 end Test
