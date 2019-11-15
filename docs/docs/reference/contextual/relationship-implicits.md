@@ -29,22 +29,21 @@ Given instances can be mapped to combinations of implicit objects, classes and i
     final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
     ```
  3. Alias givens map to implicit methods or implicit lazy vals. If an alias has neither type parameters nor a given clause,
-    it is treated as a lazy val, unless the right hand side is a simple reference, in which case we can use a forwarder to that
-    reference without caching it.
+    it is treated as a lazy val, unless the right hand side is a simple reference, in which case we can use a forwarder to
+    that reference without caching it.
 
- Examples:
+Examples:
+```scala
+given global: ExecutionContext = new ForkJoinContext()
 
-    ```scala
-    given global: ExecutionContext = new ForkJoinContext()
-
-    val ctx: Context
-    given Context = ctx
-    ```
-    would map to
-    ```scala
-    final implicit lazy val global: ExecutionContext = new ForkJoinContext()
-    final implicit def given_Context = ctx
-    ```
+val ctx: Context
+given Context = ctx
+```
+would map to
+```scala
+final implicit lazy val global: ExecutionContext = new ForkJoinContext()
+final implicit def given_Context = ctx
+```
 
 ### Anonymous Given Instances
 
