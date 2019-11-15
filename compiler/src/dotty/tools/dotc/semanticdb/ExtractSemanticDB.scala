@@ -201,6 +201,7 @@ class ExtractSemanticDB extends Phase {
       !sym.exists
       || sym.isLocalDummy
       || sym.is(Synthetic) || (sym.owner.is(Synthetic) && !sym.isAllOf(EnumCase))
+      || sym.name == nme.CONSTRUCTOR && sym.owner.is(ModuleClass)
       || sym.isAnonymous
       || excludeDefStrict(sym)
 
@@ -341,8 +342,9 @@ class ExtractSemanticDB extends Phase {
           traverseChildren(tree)
         case tree: (ValDef | DefDef | TypeDef) if tree.symbol.is(Synthetic, butNot=Module) && !tree.symbol.isAnonymous => // skip
         case tree: Template =>
-          registerDefinition(tree.constr.symbol, tree.constr.span, SymbolKind.Other)
-          tree.constr.vparamss.flatten.foreach(vparam => traverse(vparam.tpt)) // the accessor symbol is traversed in the body
+          if !excludeDef(tree.constr.symbol)
+            registerDefinition(tree.constr.symbol, tree.constr.span, SymbolKind.Other)
+            tree.constr.vparamss.flatten.foreach(vparam => traverse(vparam.tpt)) // the accessor symbol is traversed in the body
           for parent <- tree.parentsOrDerived do
             if
               parent.symbol != defn.ObjectClass.primaryConstructor
