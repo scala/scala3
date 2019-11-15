@@ -830,14 +830,14 @@ object desugar {
     val impl = mdef.impl
     val mods = mdef.mods
     impl.constr match {
-      case DefDef(_, tparams, (vparams @ (vparam :: Nil)) :: _, _, _) =>
+      case DefDef(_, tparams, (vparams @ (vparam :: Nil)) :: givenParamss, _, _) =>
         assert(mods.is(Given))
         return moduleDef(
           cpy.ModuleDef(mdef)(
             mdef.name,
             cpy.Template(impl)(
               constr = emptyConstructor,
-              body = impl.body.map(makeExtensionDef(_, tparams, vparams)))))
+              body = impl.body.map(makeExtensionDef(_, tparams, vparams, givenParamss)))))
       case _ =>
     }
 
@@ -892,7 +892,8 @@ object desugar {
    *  If the given member `mdef` is not of this form, flag it as an error.
    */
 
-  def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef])(given ctx: Context): Tree = {
+  def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef],
+                       givenParamss: List[List[ValDef]])(given ctx: Context): Tree = {
     val allowed = "allowed here, since collective parameters are given"
     mdef match {
       case mdef: DefDef =>
@@ -900,8 +901,10 @@ object desugar {
           ctx.error(em"No extension method $allowed", mdef.sourcePos)
           mdef
         }
-        else cpy.DefDef(mdef)(tparams = tparams ++ mdef.tparams, vparamss = leadingParams :: mdef.vparamss)
-          .withFlags(Extension)
+        else cpy.DefDef(mdef)(
+          tparams = tparams ++ mdef.tparams,
+          vparamss = leadingParams :: givenParamss ::: mdef.vparamss
+        ).withFlags(Extension)
       case mdef: Import =>
         mdef
       case mdef =>

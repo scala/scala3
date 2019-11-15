@@ -1,4 +1,4 @@
-object Test with
+object ExtMethods with
 
   case class Circle(x: Double, y: Double, radius: Double)
 
@@ -73,4 +73,4 @@ object Test with
       xs.sorted.takeRight(n)
   }
 
-end Test
+end ExtMethods
