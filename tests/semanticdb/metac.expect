@@ -216,7 +216,7 @@ annot/B#x. => val method x
 annot/M. => final object M
 annot/M.m(). => method m
 annot/M.m().[TT] => typeparam TT
-annot/T# => class T
+annot/T# => trait T
 annot/T#`<init>`(). => primary ctor <init>
 local0 => selfparam self
 local1 => val local local
@@ -287,7 +287,7 @@ Occurrences => 34 entries
 
 Symbols:
 example/Anonymous# => class Anonymous
-example/Anonymous#Foo# => class Foo
+example/Anonymous#Foo# => trait Foo
 example/Anonymous#Foo#`<init>`(). => primary ctor <init>
 example/Anonymous#`<init>`(). => primary ctor <init>
 example/Anonymous#foo. => val method foo
@@ -468,7 +468,7 @@ Symbols:
 a/Definitions. => final object Definitions
 a/Definitions.D# => class D
 a/Definitions.D#`<init>`(). => primary ctor <init>
-a/Definitions.E# => class E
+a/Definitions.E# => trait E
 a/Definitions.E#`<init>`(). => primary ctor <init>
 a/Definitions.`b_=`(). => var method b_=
 a/Definitions.a. => val method a
@@ -900,7 +900,7 @@ flags/p/package.V# => type V
 flags/p/package.X. => final case object X
 flags/p/package.Y# => final class Y
 flags/p/package.Y#`<init>`(). => primary ctor <init>
-flags/p/package.Z# => sealed class Z
+flags/p/package.Z# => sealed trait Z
 flags/p/package.Z#`<init>`(). => primary ctor <init>
 flags/p/package.`y_=`(). => var method y_=
 flags/p/package.m(). => method m
@@ -1093,7 +1093,7 @@ Occurrences => 52 entries
 
 Symbols:
 a/b/Givens. => final object Givens
-a/b/Givens.Monoid# => class Monoid
+a/b/Givens.Monoid# => trait Monoid
 a/b/Givens.Monoid#[A] => typeparam A
 a/b/Givens.Monoid#`<init>`(). => primary ctor <init>
 a/b/Givens.Monoid#combine(). => abstract method combine
@@ -2032,7 +2032,7 @@ Symbols => 6 entries
 Occurrences => 10 entries
 
 Symbols:
-example/A# => class A
+example/A# => trait A
 example/A#`<init>`(). => primary ctor <init>
 example/A#foo(). => abstract method foo
 example/B# => class B
@@ -2383,14 +2383,14 @@ local0 => primary ctor <init>
 local1 => selfparam self
 traits/C# => class C
 traits/C#`<init>`(). => primary ctor <init>
-traits/T# => class T
+traits/T# => trait T
 traits/T#`<init>`(). => primary ctor <init>
 traits/T#x(). => method x
-traits/U# => sealed class U
+traits/U# => sealed trait U
 traits/U#`<init>`(). => primary ctor <init>
 traits/U. => final object U
 traits/U.u(). => method u
-traits/V# => class V
+traits/V# => trait V
 traits/V#`<init>`(). => primary ctor <init>
 
 Occurrences:
@@ -2461,7 +2461,7 @@ types/Test.C#ClassInfoType1. => final object ClassInfoType1
 types/Test.C#ClassInfoType2# => class ClassInfoType2
 types/Test.C#ClassInfoType2#`<init>`(). => primary ctor <init>
 types/Test.C#ClassInfoType2#x(). => method x
-types/Test.C#ClassInfoType3# => class ClassInfoType3
+types/Test.C#ClassInfoType3# => trait ClassInfoType3
 types/Test.C#ClassInfoType3#[T] => typeparam T
 types/Test.C#ClassInfoType3#`<init>`(). => primary ctor <init>
 types/Test.C#Either. => val method Either
@@ -2532,7 +2532,7 @@ types/Test.Literal.unit. => final val method unit
 types/Test.M# => class M
 types/Test.M#`<init>`(). => primary ctor <init>
 types/Test.M#m(). => method m
-types/Test.N# => class N
+types/Test.N# => trait N
 types/Test.N#`<init>`(). => primary ctor <init>
 types/Test.N#n(). => method n
 types/ann# => class ann

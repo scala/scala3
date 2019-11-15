@@ -252,12 +252,12 @@ class ExtractSemanticDB extends Phase {
         SymbolInformation.Kind.OBJECT
       else if sym.is(Package)
         SymbolInformation.Kind.PACKAGE
-      else if sym.isClass
-        SymbolInformation.Kind.CLASS
       else if sym.isAllOf(JavaInterface)
         SymbolInformation.Kind.INTERFACE
       else if sym.is(Trait)
         SymbolInformation.Kind.TRAIT
+      else if sym.isClass
+        SymbolInformation.Kind.CLASS
       else if sym.isType
         SymbolInformation.Kind.TYPE
       else if sym.is(ParamAccessor)

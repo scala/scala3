@@ -7,6 +7,7 @@ This todolist is based upon blackbox observation of testcases at this repository
 - [ ] Hide calls to implicit conversions and their arguments
 - [ ] Hide Tuple contructors
 - [ ] Hide implicitly applied arguments
+- [ ] `macro ???` is already rewritten to `???` so can't add macro kind.
 - [x] Assignments to vars should emit uses of the setter method and not the getter
 - [x] Hide constructor of module template // expect tests hide primary ctors
 - [x] unescape unicode in names.
