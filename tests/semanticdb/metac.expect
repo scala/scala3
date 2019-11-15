@@ -76,11 +76,11 @@ advanced/Test.s3x. => val method s3x
 advanced/Wildcards# => class Wildcards
 advanced/Wildcards#`<init>`(). => primary ctor <init>
 advanced/Wildcards#e1(). => method e1
-local0 => val method x
-local1 => val method x
+local0 => abstract val method x
+local1 => abstract val method x
 local2 => primary ctor <init>
 local3 => val method x
-local4 => method m
+local4 => abstract method m
 local5 => val param x
 local6 => primary ctor <init>
 local7 => method m
@@ -459,7 +459,7 @@ a/Definitions.D# => class D
 a/Definitions.D#`<init>`(). => primary ctor <init>
 a/Definitions.E# => class E
 a/Definitions.E#`<init>`(). => primary ctor <init>
-a/Definitions.`b_=`(). => method b_=
+a/Definitions.`b_=`(). => var method b_=
 a/Definitions.a. => val method a
 a/Definitions.b(). => var method b
 a/Definitions.c(). => method c
@@ -852,7 +852,7 @@ Symbols:
 flags/p/package. => final package object p
 flags/p/package.AA# => class AA
 flags/p/package.AA#`<init>`(). => primary ctor <init>
-flags/p/package.AA#`z_=`(). => method z_=
+flags/p/package.AA#`z_=`(). => var method z_=
 flags/p/package.AA#x. => val method x
 flags/p/package.AA#y. => val method y
 flags/p/package.AA#z(). => var method z
@@ -865,7 +865,7 @@ flags/p/package.C#`<init>`(+1). => ctor <init>
 flags/p/package.C#`<init>`(+1).[T] => typeparam T
 flags/p/package.C#`<init>`(+1).[U] => typeparam U
 flags/p/package.C#`<init>`(+1).[V] => typeparam V
-flags/p/package.C#w(). => method w
+flags/p/package.C#w(). => abstract method w
 flags/p/package.C#x. => val method x
 flags/p/package.C#y. => val method y
 flags/p/package.C#z. => val method z
@@ -882,7 +882,7 @@ flags/p/package.Y# => final class Y
 flags/p/package.Y#`<init>`(). => primary ctor <init>
 flags/p/package.Z# => sealed class Z
 flags/p/package.Z#`<init>`(). => primary ctor <init>
-flags/p/package.`y_=`(). => method y_=
+flags/p/package.`y_=`(). => var method y_=
 flags/p/package.m(). => method m
 flags/p/package.m().[TT] => typeparam TT
 flags/p/package.x. => lazy val method x
@@ -1076,10 +1076,10 @@ a/b/Givens. => final object Givens
 a/b/Givens.Monoid# => class Monoid
 a/b/Givens.Monoid#[A] => typeparam A
 a/b/Givens.Monoid#`<init>`(). => primary ctor <init>
-a/b/Givens.Monoid#combine(). => method combine
+a/b/Givens.Monoid#combine(). => abstract method combine
 a/b/Givens.Monoid#combine().(x) => val param x
 a/b/Givens.Monoid#combine().(y) => val param y
-a/b/Givens.Monoid#empty(). => method empty
+a/b/Givens.Monoid#empty(). => abstract method empty
 a/b/Givens.foo(). => method foo
 a/b/Givens.foo().(A) => implicit val param A
 a/b/Givens.foo().[A] => typeparam A
@@ -1713,7 +1713,7 @@ example/Methods#m19(). => method m19
 example/Methods#m19().(x) => val param x
 example/Methods#m19().(y) => val param y
 example/Methods#m19().(z) => val param z
-local0 => val method x
+local0 => abstract val method x
 
 Occurrences:
 [0:8..0:15) => example/
@@ -2009,7 +2009,7 @@ Occurrences => 10 entries
 Symbols:
 example/A# => class A
 example/A#`<init>`(). => primary ctor <init>
-example/A#foo(). => method foo
+example/A#foo(). => abstract method foo
 example/B# => class B
 example/B#`<init>`(). => primary ctor <init>
 example/B#foo(). => method foo
@@ -2399,8 +2399,8 @@ Symbols => 117 entries
 Occurrences => 249 entries
 
 Symbols:
-local0 => method k
-local1 => method k
+local0 => abstract method k
+local1 => abstract method k
 local2 => primary ctor <init>
 local3 => method k
 local4 => primary ctor <init>
@@ -2782,9 +2782,9 @@ Occurrences => 57 entries
 Symbols:
 example/ValPattern# => class ValPattern
 example/ValPattern#`<init>`(). => primary ctor <init>
-example/ValPattern#`leftVar_=`(). => method leftVar_=
-example/ValPattern#`number1Var_=`(). => method number1Var_=
-example/ValPattern#`rightVar_=`(). => method rightVar_=
+example/ValPattern#`leftVar_=`(). => var method leftVar_=
+example/ValPattern#`number1Var_=`(). => var method number1Var_=
+example/ValPattern#`rightVar_=`(). => var method rightVar_=
 example/ValPattern#app(). => method app
 example/ValPattern#left. => val method left
 example/ValPattern#leftVar(). => var method leftVar
@@ -2877,14 +2877,14 @@ example/ValUsages. => final object ValUsages
 example/ValUsages.v. => val method v
 example/Vals# => abstract class Vals
 example/Vals#`<init>`(). => primary ctor <init>
-example/Vals#`yam_=`(). => method yam_=
-example/Vals#`yfm_=`(). => final method yfm_=
-example/Vals#`yim_=`(). => method yim_=
-example/Vals#`ym_=`(). => method ym_=
-example/Vals#`yp_=`(). => method yp_=
+example/Vals#`yam_=`(). => var method yam_=
+example/Vals#`yfm_=`(). => final var method yfm_=
+example/Vals#`yim_=`(). => var method yim_=
+example/Vals#`ym_=`(). => var method ym_=
+example/Vals#`yp_=`(). => var method yp_=
 example/Vals#m(). => method m
 example/Vals#p. => val method p
-example/Vals#xam. => val method xam
+example/Vals#xam. => abstract val method xam
 example/Vals#xfm. => final val method xfm
 example/Vals#xim. => implicit val method xim
 example/Vals#xlm. => val method xlm
@@ -2892,7 +2892,7 @@ example/Vals#xm. => val method xm
 example/Vals#xp. => val method xp
 example/Vals#xzlm. => lazy val method xzlm
 example/Vals#xzm. => lazy val method xzm
-example/Vals#yam(). => var method yam
+example/Vals#yam(). => abstract var method yam
 example/Vals#yfm(). => final var method yfm
 example/Vals#yim(). => implicit var method yim
 example/Vals#ylm(). => var method ylm
