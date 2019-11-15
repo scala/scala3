@@ -4,7 +4,7 @@ import dotty.tools.dotc.semanticdb.internal._
 import scala.annotation.internal.sharable
 
 object Range {
-  lazy val defaultInstance: Range = Range(0, 0, 0, 0)
+  val defaultInstance: Range = Range(0, 0, 0, 0)
 }
 
 final case class Range(

@@ -4,6 +4,9 @@ import dotty.tools.dotc.core.Symbols.{ Symbol => DottySymbol, defn }
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags._
 
+import scala.annotation.internal.sharable
+import scala.annotation.switch
+
 object Scala with
 
   object Symbols with
@@ -28,13 +31,13 @@ object Scala with
       else
         symbol.name.show
 
-
-  private val locals = raw"local(\d+)"
+  @sharable
+  private val locals = raw"local(\d+)".r
 
   object LocalSymbol with
     def unapply(symbolInfo: SymbolInformation): Option[Int] =
       symbolInfo.symbol match
-      case locals.r(ints) =>
+      case locals(ints) =>
         val bi = BigInt(ints)
         if bi.isValidInt then Some(bi.toInt) else None
       case _ => None
@@ -48,14 +51,16 @@ object Scala with
     def isEmptyPackage: Boolean =
       symbol == Symbols.EmptyPackage
     def isGlobal: Boolean =
-      !symbol.isNoSymbol && !symbol.isMulti && (symbol.last match {
+      !symbol.isNoSymbol
+      && !symbol.isMulti
+      && { (symbol.last: @switch) match
         case '.' | '#' | '/' | ')' | ']' => true
         case _                           => false
-      })
+      }
     def isLocal: Boolean =
-      symbol.matches(locals)
+      locals matches symbol
     def isMulti: Boolean =
-      symbol.startsWith(";")
+      symbol startsWith ";"
     def isTerm: Boolean =
       !symbol.isNoSymbol && !symbol.isMulti && symbol.last == '.'
     def isType: Boolean =

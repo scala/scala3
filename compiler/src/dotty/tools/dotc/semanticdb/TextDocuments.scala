@@ -10,7 +10,7 @@ object TextDocuments {
   def parseFrom(in: SemanticdbInputStream): TextDocuments = {
     defaultInstance.mergeFrom(in)
   }
-  lazy val defaultInstance: TextDocuments = TextDocuments(Nil)
+  val defaultInstance: TextDocuments = TextDocuments(Nil)
 }
 final case class TextDocuments(documents: Seq[TextDocument]) extends SemanticdbMessage[TextDocuments] derives Eql {
   @sharable
@@ -53,8 +53,6 @@ final case class TextDocuments(documents: Seq[TextDocument]) extends SemanticdbM
         case tag => _input__.skipField(tag)
       }
     }
-    TextDocuments(
-      documents = __documents.result()
-    )
+    TextDocuments(documents = __documents.result())
   }
 }

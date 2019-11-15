@@ -21,12 +21,12 @@ object SymbolOccurrence {
       case 0 => UNKNOWN_ROLE
       case 1 => REFERENCE
       case 2 => DEFINITION
-      case __other => Unrecognized(__other)
+      case id => Unrecognized(id)
     }
 
   }
 
-  lazy val defaultInstance: SymbolOccurrence = SymbolOccurrence("", None, Role.UNKNOWN_ROLE)
+  val defaultInstance: SymbolOccurrence = SymbolOccurrence("", None, Role.UNKNOWN_ROLE)
 }
 
 final case class SymbolOccurrence(

@@ -5,7 +5,7 @@ import scala.annotation.internal.sharable
 
 object SymbolInformation {
 
-  lazy val defaultInstance = SymbolInformation("", Language.UNKNOWN_LANGUAGE, SymbolInformation.Kind.UNKNOWN_KIND, 0, "")
+  val defaultInstance = SymbolInformation("", Language.UNKNOWN_LANGUAGE, SymbolInformation.Kind.UNKNOWN_KIND, 0, "")
 
   sealed trait Kind(val value: Int) extends SemanticdbEnum derives Eql {
     def isUnknownKind: Boolean = this == Kind.UNKNOWN_KIND

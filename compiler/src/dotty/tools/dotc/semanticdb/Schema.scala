@@ -15,7 +15,7 @@ object Schema {
     case 0 => LEGACY
     case 3 => SEMANTICDB3
     case 4 => SEMANTICDB4
-    case __other => Unrecognized(__other)
+    case id => Unrecognized(id)
   }
 
 }

@@ -15,7 +15,7 @@ object Language {
     case 0 => UNKNOWN_LANGUAGE
     case 1 => SCALA
     case 2 => JAVA
-    case __other => Unrecognized(__other)
+    case id => Unrecognized(id)
   }
 
 }
