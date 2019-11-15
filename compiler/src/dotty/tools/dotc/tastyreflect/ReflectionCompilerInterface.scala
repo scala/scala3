@@ -237,6 +237,18 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Term_underlyingArgument(self: Term)(given Context): Term = self.underlyingArgument
   def Term_underlying(self: Term)(given Context): Term = self.underlying
 
+  def Term_etaExpand(term: Term): Term = term.tpe.widen match {
+    case mtpe: Types.MethodType if !mtpe.isParamDependent =>
+      val closureResType = mtpe.resType match {
+        case t: Types.MethodType => t.toFunctionType()
+        case t => t
+      }
+      val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
+      val closureMethod = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
+      tpd.Closure(closureMethod, tss => Term_etaExpand(new tpd.TreeOps(term).appliedToArgs(tss.head)))
+    case _ => term
+  }
+
   type Ref = tpd.RefTree
 
   def matchRef(tree: Tree)(given Context): Option[Ref] = tree match {
@@ -1591,19 +1603,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     PickledQuotes.quotedTypeToTree(self)
 
   /** Convert `Term` to an `quoted.Expr[Any]`  */
-  def QuotedExpr_seal(self: Term)(given ctx: Context): scala.quoted.Expr[Any] = {
-    def etaExpand(term: Term): Term = term.tpe.widen match {
-      case mtpe: Types.MethodType if !mtpe.isParamDependent =>
-        val closureResType = mtpe.resType match {
-          case t: Types.MethodType => t.toFunctionType()
-          case t => t
-        }
-        val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
-        val closureMethod = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
-        tpd.Closure(closureMethod, tss => etaExpand(new tpd.TreeOps(term).appliedToArgs(tss.head)))
-      case _ => term
-    }
-    new scala.internal.quoted.TastyTreeExpr(etaExpand(self), compilerId)
+  def QuotedExpr_seal(self: Term)(given ctx: Context): scala.quoted.Expr[Any] = self.tpe.widen match {
+    case _: Types.MethodType | _: Types.PolyType => throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
+    case _ => new scala.internal.quoted.TastyTreeExpr(self, compilerId)
   }
 
   /** Checked cast to a `quoted.Expr[U]` */

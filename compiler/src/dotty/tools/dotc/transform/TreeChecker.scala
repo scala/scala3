@@ -434,9 +434,9 @@ class TreeChecker extends Phase with SymTransformer {
         }
       }
 
-    override def typedCase(tree: untpd.CaseDef, selType: Type, pt: Type)(implicit ctx: Context): CaseDef =
+    override def typedCase(tree: untpd.CaseDef, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context): CaseDef =
       withPatSyms(tpd.patVars(tree.pat.asInstanceOf[tpd.Tree])) {
-        super.typedCase(tree, selType, pt)
+        super.typedCase(tree, sel, selType, pt)
       }
 
     override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context): Tree = {
@@ -466,7 +466,7 @@ class TreeChecker extends Phase with SymTransformer {
      *  is that we should be able to pull out an expression as an initializer
      *  of a helper value without having to do a change owner traversal of the expression.
      */
-    override def typedStats(trees: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
+    override def typedStats(trees: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): (List[Tree], Context) = {
       for (tree <- trees) tree match {
         case tree: untpd.DefTree => checkOwner(tree)
         case _: untpd.Thicket => assert(false, i"unexpanded thicket $tree in statement sequence $trees%\n%")

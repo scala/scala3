@@ -176,8 +176,9 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     constToLiteral(tree)
 
   override def transformIf(tree: If)(implicit ctx: Context): Tree =
-    tree.cond match {
-      case Literal(Constant(c: Boolean)) => if (c) tree.thenp else tree.elsep
+    tree.cond.tpe match {
+      case ConstantType(Constant(c: Boolean)) if isPureExpr(tree.cond) =>
+        if (c) tree.thenp else tree.elsep
       case _ => tree
     }
 

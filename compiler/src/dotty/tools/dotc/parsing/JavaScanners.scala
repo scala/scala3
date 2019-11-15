@@ -479,6 +479,54 @@ object JavaScanners {
       setStrVal()
     }
 
+    /** convert name to long value
+     */
+    def intVal(negated: Boolean): Long =
+      if (token == CHARLIT && !negated)
+        if (strVal.length > 0) strVal.charAt(0).toLong else 0
+      else {
+        var value: Long = 0
+        val divider = if (base == 10) 1 else 2
+        val limit: Long =
+          if (token == LONGLIT) Long.MaxValue else Int.MaxValue
+        var i = 0
+        val len = strVal.length
+        while (i < len) {
+          val d = digit2int(strVal.charAt(i), base)
+          if (d < 0) {
+            error("malformed integer number")
+            return 0
+          }
+          if (value < 0 ||
+              limit / (base / divider) < value ||
+              limit - (d / divider) < value * (base / divider) &&
+              !(negated && limit == value * base - 1 + d)) {
+                error("integer number too large")
+                return 0
+              }
+          value = value * base + d
+          i += 1
+        }
+        if (negated) -value else value
+      }
+
+    /** convert name, base to double value
+     */
+    def floatVal(negated: Boolean): Double = {
+      val limit: Double =
+        if (token == DOUBLELIT) Double.MaxValue else Float.MaxValue
+      try {
+        val value: Double = java.lang.Double.valueOf(strVal.toString).doubleValue()
+        if (value > limit)
+          error("floating point number too large")
+        if (negated) -value else value
+      } catch {
+        case _: NumberFormatException =>
+          error("malformed floating point number")
+          0.0
+      }
+    }
+
     /** read a number into name and set base
       */
     protected def getNumber(): Unit = {

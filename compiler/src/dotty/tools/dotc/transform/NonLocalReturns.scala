@@ -88,7 +88,7 @@ class NonLocalReturns extends MiniPhase {
 
   override def transformReturn(tree: Return)(implicit ctx: Context): Tree =
     if (isNonLocalReturn(tree)) {
-      if (!ctx.scala2Mode)
+      if (!ctx.scala2CompatMode)
         ctx.strictWarning("Non local returns are deprecated; use scala.util.control.NonLocalReturns instead", tree.sourcePos)
       nonLocalReturnThrow(tree.expr, tree.from.symbol).withSpan(tree.span)
     }

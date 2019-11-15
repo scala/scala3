@@ -21,7 +21,9 @@ object TreePickler {
 
   val sectionName = "ASTs"
 
-  case class Hole(idx: Int, args: List[tpd.Tree])(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
+  case class Hole(isTermHole: Boolean, idx: Int, args: List[tpd.Tree])(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
+    override def isTerm: Boolean = isTermHole
+    override def isType: Boolean = !isTermHole
     override def fallbackToText(printer: Printer): Text =
       s"[[$idx|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]"
   }
@@ -579,7 +581,7 @@ class TreePickler(pickler: TastyPickler) {
             pickleTree(lo);
             if (hi ne lo) pickleTree(hi)
           }
-        case Hole(idx, args) =>
+        case Hole(_, idx, args) =>
           writeByte(HOLE)
           withLength {
             writeNat(idx)

@@ -283,6 +283,7 @@ trait CompilerInterface {
   def Term_tpe(self: Term)(given ctx: Context): Type
   def Term_underlyingArgument(self: Term)(given ctx: Context): Term
   def Term_underlying(self: Term)(given ctx: Context): Term
+  def Term_etaExpand(term: Term): Term
 
   /** Tree representing a reference to definition */
   type Ref <: Term

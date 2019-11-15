@@ -157,6 +157,8 @@ class ReifyQuotes extends MacroTransform {
                 val tagDef = tagDefCache.getOrElseUpdate(prefix.symbol, mkTagSymbolAndAssignType(prefix))
                 tagDef.symbol.typeRef
             }
+          case AnnotatedType(parent, _) =>
+            apply(parent) // Only keep the Annotated tree
           case _ =>
             mapOver(tp)
         }
@@ -263,7 +265,7 @@ class ReifyQuotes extends MacroTransform {
         assert(level == 1, "unexpected top splice outside quote")
         val (body1, quotes) = nested(isQuote = false).splitSplice(body)(spliceContext)
         val tpe = outer.embedded.getHoleType(body, splice)
-        val hole = makeHole(body1, quotes, tpe).withSpan(splice.span)
+        val hole = makeHole(splice.isTerm, body1, quotes, tpe).withSpan(splice.span)
         // We do not place add the inline marker for trees that where lifted as they come from the same file as their
         // enclosing quote. Any intemediate splice will add it's own Inlined node and cancel it before splicig the lifted tree.
         // Note that lifted trees are not necessarily expressions and that Inlined nodes are expected to be expressions.
@@ -378,9 +380,9 @@ class ReifyQuotes extends MacroTransform {
     /** Register `body` as an `embedded` quote or splice
      *  and return a hole with `splices` as arguments and the given type `tpe`.
      */
-    private def makeHole(body: Tree, splices: List[Tree], tpe: Type)(implicit ctx: Context): Hole = {
+    private def makeHole(isTermHole: Boolean, body: Tree, splices: List[Tree], tpe: Type)(implicit ctx: Context): Hole = {
       val idx = embedded.addTree(body, NoSymbol)
-      Hole(idx, splices).withType(tpe).asInstanceOf[Hole]
+      Hole(isTermHole, idx, splices).withType(tpe).asInstanceOf[Hole]
     }
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree =

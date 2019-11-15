@@ -229,12 +229,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextParents(tp.parents) ~~ "{...}"
       case JavaArrayType(elemtp) =>
         toText(elemtp) ~ "[]"
-      case tp: AnnotatedType if homogenizedView =>
-        // Positions of annotations in types are not serialized
-        // (they don't need to because we keep the original type tree with
-        //  the original annotation anyway. Therefore, there will always be
-        //  one version of the annotation tree that has the correct positions).
-        withoutPos(super.toText(tp))
       case tp: SelectionProto =>
         "?{ " ~ toText(tp.name) ~
            (Str(" ") provided !tp.name.toSimpleName.last.isLetterOrDigit) ~
@@ -522,19 +516,19 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             (varianceText(tree.mods) ~ typeText(nameIdText(tree))) ~
             withEnclosingDef(tree) { tparamsText ~ rhsText }
           }
-        def recur(rhs: Tree, tparamsTxt: => Text): Text = rhs match {
+        def recur(rhs: Tree, tparamsTxt: => Text, printMemberArgs: Boolean): Text = rhs match {
           case impl: Template =>
             templateText(tree, impl)
           case rhs: TypeBoundsTree =>
             typeDefText(tparamsTxt, toText(rhs))
-          case LambdaTypeTree(tparams, body) =>
-            recur(body, tparamsText(tparams))
+          case LambdaTypeTree(tparams, body) if printMemberArgs =>
+            recur(body, tparamsText(tparams), false)
           case rhs: TypeTree if isBounds(rhs.typeOpt) =>
             typeDefText(tparamsTxt, toText(rhs))
           case rhs =>
             typeDefText(tparamsTxt, optText(rhs)(" = " ~ _))
         }
-        recur(rhs, "")
+        recur(rhs, "", true)
       case Import(expr, selectors) =>
         keywordText("import ") ~ importText(expr, selectors)
       case Export(expr, selectors) =>

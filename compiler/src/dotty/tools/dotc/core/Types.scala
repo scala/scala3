@@ -38,6 +38,8 @@ import java.lang.ref.WeakReference
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
+import dotty.tools.dotc.transform.SymUtils._
+
 object Types {
 
   @sharable private var nextId = 0
@@ -777,6 +779,26 @@ object Types {
           (name, buf) => buf ++= nonPrivateMember(name).altsWith(_.is(Deferred)))
     }
 
+    /**
+     * Returns the set of methods that are abstract and do not overlap with any of
+     * [[java.lang.Object]] methods.
+     *
+     * Conceptually, a SAM (functional interface) has exactly one abstract method.
+     * If an interface declares an abstract method overriding one of the public
+     * methods of [[java.lang.Object]], that also does not count toward the interface's
+     * abstract method count.
+     *
+     * @see https://docs.oracle.com/javase/8/docs/api/java/lang/FunctionalInterface.html
+     *
+     * @return the set of methods that are abstract and do not match any of [[java.lang.Object]]
+     *
+     */
+    final def possibleSamMethods(implicit ctx: Context): Seq[SingleDenotation] = {
+      record("possibleSamMethods")
+      abstractTermMembers
+        .filterNot(m => m.symbol.matchingMember(defn.ObjectType).exists || m.symbol.isSuperAccessor)
+    }
+
     /** The set of abstract type members of this type. */
     final def abstractTypeMembers(implicit ctx: Context): Seq[SingleDenotation] = {
       record("abstractTypeMembers")
@@ -1447,6 +1469,11 @@ object Types {
       case mt: MethodType => false
       case _ => true
     }
+
+    /** Is this (an alias of) the `scala.Null` type? */
+    final def isNull(given Context) =
+      isRef(defn.NullClass)
+      || classSymbol.name == tpnme.Null // !!! temporary kludge for being able to test without the explicit nulls PR
 
     /** The resultType of a LambdaType, or ExprType, the type itself for others */
     def resultType(implicit ctx: Context): Type = this
@@ -2342,7 +2369,7 @@ object Types {
   }
 
   /** The singleton type for path prefix#myDesignator.
-    */
+   */
   abstract case class TermRef(override val prefix: Type,
                               private var myDesignator: Designator)
     extends NamedType with SingletonType with ImplicitRef {
@@ -3620,7 +3647,8 @@ object Types {
         if (defn.isCompiletime_S(tycon.symbol) && args.length == 1)
           trace(i"normalize S $this", typr, show = true) {
             args.head.normalized match {
-              case ConstantType(Constant(n: Int)) => ConstantType(Constant(n + 1))
+              case ConstantType(Constant(n: Int)) if n >= 0 && n < Int.MaxValue =>
+                ConstantType(Constant(n + 1))
               case none => tryMatchAlias
             }
           }
@@ -4437,8 +4465,7 @@ object Types {
     }
     def unapply(tp: Type)(implicit ctx: Context): Option[MethodType] =
       if (isInstantiatable(tp)) {
-        val absMems = tp.abstractTermMembers
-        // println(s"absMems: ${absMems map (_.show) mkString ", "}")
+        val absMems = tp.possibleSamMethods
         if (absMems.size == 1)
           absMems.head.info match {
             case mt: MethodType if !mt.isParamDependent &&

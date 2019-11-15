@@ -195,6 +195,7 @@ object StdNames {
     final val ExprApi: N             = "ExprApi"
     final val Mirror: N              = "Mirror"
     final val Nothing: N             = "Nothing"
+    final val NotNull: N             = "NotNull"
     final val Null: N                = "Null"
     final val JavaNull: N            = "JavaNull"
     final val Object: N              = "Object"
@@ -262,6 +263,7 @@ object StdNames {
     val MIRROR_PREFIX: N            = "$m."
     val MIRROR_SHORT: N             = "$m"
     val MIRROR_UNTYPED: N           = "$m$untyped"
+    val NOT_NULL: N                 = "$nn"
     val REIFY_FREE_PREFIX: N        = "free$"
     val REIFY_FREE_THIS_SUFFIX: N   = "$this"
     val REIFY_FREE_VALUE_SUFFIX: N  = "$value"
@@ -358,6 +360,7 @@ object StdNames {
     val RootPackage: N          = "RootPackage"
     val RootClass: N            = "RootClass"
     val Scala2: N               = "Scala2"
+    val Scala2Compat: N         = "Scala2Compat"
     val Select: N               = "Select"
     val Shape: N                = "Shape"
     val StringContext: N        = "StringContext"
@@ -808,6 +811,7 @@ object StdNames {
     final val ELSEkw: N         = kw("else")
     final val ENUMkw: N         = kw("enum")
     final val EXTENDSkw: N      = kw("extends")
+    final val FALSEkw: N        = kw("false")
     final val FINALkw: N        = kw("final")
     final val FINALLYkw: N      = kw("finally")
     final val FLOATkw: N        = kw("float")
@@ -837,6 +841,7 @@ object StdNames {
     final val THROWkw: N        = kw("throw")
     final val THROWSkw: N       = kw("throws")
     final val TRANSIENTkw: N    = kw("transient")
+    final val TRUEkw: N         = kw("true")
     final val TRYkw: N          = kw("try")
     final val VOIDkw: N         = kw("void")
     final val VOLATILEkw: N     = kw("volatile")

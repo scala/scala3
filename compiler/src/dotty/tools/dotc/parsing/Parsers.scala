@@ -361,7 +361,7 @@ object Parsers {
             accept(SEMI)
         }
 
-    /** Under -language:Scala2 or -old-syntax, flag
+    /** Under -language:Scala2Compat or -old-syntax, flag
      *
      *    extends p1 with       new p1 with      t1 with
      *            p2                p2           t2
@@ -369,7 +369,7 @@ object Parsers {
      *  as a migration warning or error since that means something else under significant indentation.
      */
     def checkNotWithAtEOL(): Unit =
-      if (in.isScala2Mode || in.oldSyntax) && in.isAfterLineEnd then
+      if (in.isScala2CompatMode || in.oldSyntax) && in.isAfterLineEnd then
         in.errorOrMigrationWarning("`with` cannot be followed by new line, place at beginning of next line instead")
 
     def rewriteNotice(additionalOption: String = "") = {
@@ -446,7 +446,7 @@ object Parsers {
         ts.map(convertToParam(_))
       case t: Typed =>
         in.errorOrMigrationWarning(
-          em"parentheses are required around the parameter of a lambda${rewriteNotice("-language:Scala2")}",
+          em"parentheses are required around the parameter of a lambda${rewriteNotice("-language:Scala2Compat")}",
           t.span)
         patch(source, t.span.startPos, "(")
         patch(source, t.span.endPos, ")")
@@ -1180,7 +1180,7 @@ object Parsers {
             in.errorOrMigrationWarning(em"""symbol literal '${in.name} is no longer supported,
                                            |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
                                            |or enclose in braces '{${in.name}} if you want a quoted expression.""")
-            if (in.isScala2Mode) {
+            if (in.isScala2CompatMode) {
               patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
               patch(source, Span(in.charOffset - 1), "\")")
             }
@@ -1681,7 +1681,7 @@ object Parsers {
      *  the initially parsed (...) region?
      */
     def toBeContinued(altToken: Token): Boolean =
-      if in.token == altToken || in.isNewLine || in.isScala2Mode then
+      if in.token == altToken || in.isNewLine || in.isScala2CompatMode then
         false // a newline token means the expression is finished
       else if !in.canStartStatTokens.contains(in.token)
               || in.isLeadingInfixOperator(inConditional = true)
@@ -1803,7 +1803,7 @@ object Parsers {
         in.errorOrMigrationWarning(
           i"""`do <body> while <cond>' is no longer supported,
              |use `while ({<body> ; <cond>}) ()' instead.
-             |${rewriteNotice("-language:Scala2")}
+             |${rewriteNotice("-language:Scala2Compat")}
            """)
         val start = in.skipToken()
         atSpan(start) {
@@ -1812,7 +1812,7 @@ object Parsers {
           val whileStart = in.offset
           accept(WHILE)
           val cond = expr()
-          if (in.isScala2Mode) {
+          if (in.isScala2CompatMode) {
             patch(source, Span(start, start + 2), "while ({")
             patch(source, Span(whileStart, whileStart + 5), ";")
             cond match {
@@ -2002,7 +2002,7 @@ object Parsers {
               in.errorOrMigrationWarning(s"This syntax is no longer supported; parameter needs to be enclosed in (...)")
             in.nextToken()
             val t = infixType()
-            if (false && in.isScala2Mode) {
+            if (false && in.isScala2CompatMode) {
               patch(source, Span(start), "(")
               patch(source, Span(in.lastOffset), ")")
             }
@@ -3106,7 +3106,7 @@ object Parsers {
         val toInsert =
           if (in.token == LBRACE) s"$resultTypeStr ="
           else ": Unit "  // trailing space ensures that `def f()def g()` works.
-        in.testScala2Mode(s"Procedure syntax no longer supported; `$toInsert' should be inserted here") && {
+        in.testScala2CompatMode(s"Procedure syntax no longer supported; `$toInsert' should be inserted here") && {
           patch(source, Span(in.lastOffset), toInsert)
           true
         }
@@ -3120,7 +3120,7 @@ object Parsers {
             case EOF        => incompleteInputError(AuxConstructorNeedsNonImplicitParameter())
             case _          => syntaxError(AuxConstructorNeedsNonImplicitParameter(), nameStart)
           }
-        if (in.isScala2Mode) newLineOptWhenFollowedBy(LBRACE)
+        if (in.isScala2CompatMode) newLineOptWhenFollowedBy(LBRACE)
         val rhs = {
           if (!(in.token == LBRACE && scala2ProcedureSyntax(""))) accept(EQUALS)
           atSpan(in.offset) { subPart(constrExpr) }
@@ -3159,7 +3159,7 @@ object Parsers {
             TypeBoundsTree(EmptyTree, toplevelTyp())
           else typedOpt()
         }
-        if (in.isScala2Mode) newLineOptWhenFollowedBy(LBRACE)
+        if (in.isScala2CompatMode) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
           if (in.token == EQUALS)
             indentRegion(name) {

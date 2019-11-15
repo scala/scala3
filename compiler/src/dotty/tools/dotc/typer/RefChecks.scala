@@ -280,7 +280,7 @@ object RefChecks {
             member.name.is(DefaultGetterName) || // default getters are not checked for compatibility
             memberTp.overrides(otherTp,
                 member.matchNullaryLoosely || other.matchNullaryLoosely ||
-                ctx.testScala2Mode(overrideErrorMsg("no longer has compatible type"),
+                ctx.testScala2CompatMode(overrideErrorMsg("no longer has compatible type"),
                    (if (member.owner == clazz) member else clazz).sourcePos))
         catch {
           case ex: MissingType =>
@@ -351,7 +351,7 @@ object RefChecks {
         // Also excluded under Scala2 mode are overrides of default methods of Java traits.
         if (autoOverride(member) ||
             other.owner.isAllOf(JavaInterface) &&
-            ctx.testScala2Mode("`override' modifier required when a Java 8 default method is re-implemented", member.sourcePos))
+            ctx.testScala2CompatMode("`override' modifier required when a Java 8 default method is re-implemented", member.sourcePos))
           member.setFlag(Override)
         else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))
           () // OK, don't complain about type aliases which are equal
@@ -383,7 +383,7 @@ object RefChecks {
       else if (member.is(ModuleVal) && !other.isRealMethod && !other.isOneOf(Deferred | Lazy))
         overrideError("may not override a concrete non-lazy value")
       else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy) &&
-                 !ctx.testScala2Mode(overrideErrorMsg("may not override a non-lazy value"), member.sourcePos))
+                 !ctx.testScala2CompatMode(overrideErrorMsg("may not override a non-lazy value"), member.sourcePos))
         overrideError("may not override a non-lazy value")
       else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy))
         overrideError("must be declared lazy to override a lazy value")
