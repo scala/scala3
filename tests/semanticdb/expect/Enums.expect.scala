@@ -2,7 +2,11 @@ object Enums/*<-_empty_::Enums.*/ with
   import =:=/*->_empty_::Enums.`=:=`.*/._
 
   enum Colour/*<-_empty_::Enums.Colour#*/ with
-    case Red/*->_empty_::Enums.Colour.Red.*//*->scala::runtime::EnumValues#`<init>`().*//*<-_empty_::Enums.Colour.Red.*/, Green/*->_empty_::Enums.Colour.Green.*//*<-_empty_::Enums.Colour.Green.*/, Blue/*->_empty_::Enums.Colour.Blue.*//*<-_empty_::Enums.Colour.Blue.*/
+    import Colour/*->_empty_::Enums.Colour.*/.Red/*->_empty_::Enums.Colour.Red.*/
+    case /*->scala::runtime::EnumValues#`<init>`().*/Red/*<-_empty_::Enums.Colour.Red.*/, Green/*<-_empty_::Enums.Colour.Green.*/, Blue/*<-_empty_::Enums.Colour.Blue.*/
+
+  enum Directions/*<-_empty_::Enums.Directions#*/ with
+    case /*->scala::runtime::EnumValues#`<init>`().*/North/*<-_empty_::Enums.Directions.North.*/, East/*<-_empty_::Enums.Directions.East.*/, South/*<-_empty_::Enums.Directions.South.*/, West/*<-_empty_::Enums.Directions.West.*/
 
   enum WeekDays/*<-_empty_::Enums.WeekDays#*/ with
     /*->scala::runtime::EnumValues#`<init>`().*/case Monday/*<-_empty_::Enums.WeekDays.Monday.*/
@@ -12,6 +16,13 @@ object Enums/*<-_empty_::Enums.*/ with
     case Friday/*<-_empty_::Enums.WeekDays.Friday.*/
     case Saturday/*<-_empty_::Enums.WeekDays.Saturday.*/
     case Sunday/*<-_empty_::Enums.WeekDays.Sunday.*/
+
+  enum Coin/*<-_empty_::Enums.Coin#*/(value/*<-_empty_::Enums.Coin#value.*/: Int/*->scala::Int#*/) with
+    case Penny/*<-_empty_::Enums.Coin.Penny.*/    extends /*->scala::runtime::EnumValues#`<init>`().*/Coin/*->_empty_::Enums.Coin#*/(1)/*->scala::runtime::EnumValues#register().*/
+    case Nickel/*<-_empty_::Enums.Coin.Nickel.*/   extends Coin/*->_empty_::Enums.Coin#*/(5)/*->scala::runtime::EnumValues#register().*/
+    case Dime/*<-_empty_::Enums.Coin.Dime.*/     extends Coin/*->_empty_::Enums.Coin#*/(10)/*->scala::runtime::EnumValues#register().*/
+    case Quarter/*<-_empty_::Enums.Coin.Quarter.*/  extends Coin/*->_empty_::Enums.Coin#*/(25)/*->scala::runtime::EnumValues#register().*/
+    case Dollar/*<-_empty_::Enums.Coin.Dollar.*/   extends Coin/*->_empty_::Enums.Coin#*/(100)/*->scala::runtime::EnumValues#register().*/
 
   enum Maybe/*<-_empty_::Enums.Maybe#*/[+A/*<-_empty_::Enums.Maybe#[A]*/] with
     case Just/*<-_empty_::Enums.Maybe.Just#*/(value/*<-_empty_::Enums.Maybe.Just#value.*/: A/*->_empty_::Enums.Maybe.Just#[A]*/)

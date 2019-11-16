@@ -18,7 +18,7 @@ import collection.mutable
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 import java.nio.file.Paths
 
-import scala.annotation.{ threadUnsafe => tu }
+import scala.annotation.{ threadUnsafe => tu, tailrec }
 
 /** Extract symbol references and uses to semanticdb files.
  *  See https://scalameta.org/docs/semanticdb/specification.html#symbol-1
@@ -358,6 +358,19 @@ class ExtractSemanticDB extends Phase {
         else limit
       Span(start max limit, end)
 
+    def (span: Span) hasLength: Boolean = span.start != span.end
+
+    /**Consume head while not an import statement.
+     * Returns the rest of the list after the first import, or else the empty list
+     */
+    @tailrec
+    private def (body: List[Tree]) foreachUntilImport(op: Tree => Unit): List[Tree] = body match
+      case ((_: Import) :: rest) => rest
+      case stat :: rest =>
+        op(stat)
+        rest.foreachUntilImport(op)
+      case Nil => Nil
+
     override def traverse(tree: Tree)(given Context): Unit =
       for annot <- tree.symbol.annotations do
         if annot.tree.span.exists
@@ -367,7 +380,7 @@ class ExtractSemanticDB extends Phase {
 
       tree match
         case tree: PackageDef =>
-          if !excludeDef(tree.pid.symbol) && tree.pid.span.start != tree.pid.span.end
+          if !excludeDef(tree.pid.symbol) && tree.pid.span.hasLength
             tree.pid match
               case tree @ Select(qual, _) =>
                 traverse(qual)
@@ -377,7 +390,7 @@ class ExtractSemanticDB extends Phase {
           tree.stats.foreach(traverse)
         case tree: ValDef if tree.symbol.is(Module) => // skip module val
         case tree: NamedDefTree
-        if !excludeDef(tree.symbol) && tree.span.start != tree.span.end =>
+        if !excludeDef(tree.symbol) && tree.span.hasLength =>
           val symkinds =
             if tree.symbol.isSelfSym
               Set.empty
@@ -422,7 +435,7 @@ class ExtractSemanticDB extends Phase {
               val tptSym = vparam.tpt.symbol
               if tptSym.owner == ctorSym
                 val found = ctorSym.owner.info.member(tptSym.name.toTypeName).symbol
-                if !excludeUseStrict(found, vparam.tpt.span) && vparam.tpt.span.start != vparam.tpt.span.end
+                if !excludeUseStrict(found, vparam.tpt.span) && vparam.tpt.span.hasLength
                   registerUse(found, vparam.tpt.span)
               else
                 traverse(vparam.tpt)
@@ -434,9 +447,12 @@ class ExtractSemanticDB extends Phase {
             then
               traverse(parent)
           val selfSpan = tree.self.span
-          if selfSpan.exists && selfSpan.start != selfSpan.end then
+          if selfSpan.exists && selfSpan.hasLength then
             traverse(tree.self)
-          tree.body.foreach(traverse)
+          if ctorSym.owner.is(Enum, butNot=Case)
+            tree.body.foreachUntilImport(traverse).foreach(traverse)
+          else
+            tree.body.foreach(traverse)
         case tree: Assign =>
           traverseChildren(tree.lhs)
           if !excludeUseStrict(tree.lhs.symbol, tree.lhs.span)
@@ -459,10 +475,10 @@ class ExtractSemanticDB extends Phase {
           val qualSpan = tree.qualifier.span
           if !excludeUseStrict(tree.symbol, tree.span) then
             registerUse(tree.symbol, adjustSpanToName(tree.span, qualSpan, tree.name))
-          if qualSpan.exists && qualSpan.start != qualSpan.end then
+          if qualSpan.exists && qualSpan.hasLength then
             traverseChildren(tree)
         case tree: Import =>
-          if tree.span.exists && tree.span.start != tree.span.end then
+          if tree.span.exists && tree.span.hasLength then
             for sel <- tree.selectors do
               val imported = sel.imported.name
               if imported != nme.WILDCARD then

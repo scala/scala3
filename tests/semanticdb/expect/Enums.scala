@@ -2,7 +2,11 @@ object Enums with
   import =:=._
 
   enum Colour with
+    import Colour.Red
     case Red, Green, Blue
+
+  enum Directions with
+    case North, East, South, West
 
   enum WeekDays with
     case Monday
@@ -12,6 +16,13 @@ object Enums with
     case Friday
     case Saturday
     case Sunday
+
+  enum Coin(value: Int) with
+    case Penny    extends Coin(1)
+    case Nickel   extends Coin(5)
+    case Dime     extends Coin(10)
+    case Quarter  extends Coin(25)
+    case Dollar   extends Coin(100)
 
   enum Maybe[+A] with
     case Just(value: A)

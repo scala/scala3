@@ -94,7 +94,7 @@ class SemanticdbTests with
       "-d", target.toString,
       "-feature",
       "-deprecation",
-      // "-Ydebug",
+      // "-Ydebug-flags",
       // "-Xprint:extractSemanticDB",
       "-sourceroot", expectSrc.toString,
       "-usejavacp",
