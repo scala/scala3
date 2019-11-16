@@ -6,7 +6,13 @@ object Givens
   given :[A](any: A)
     def sayHello = s"Hello, I am $any"
 
+  given :[B](any: B)
+    def sayGoodbye = s"Goodbye, from $any"
+    def saySoLong = s"So Long, from $any"
+
   val hello1 = 1.sayHello
+  val goodbye1 = 1.sayGoodbye
+  val soLong1 = 1.saySoLong
 
   trait Monoid[A]
     def empty: A

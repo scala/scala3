@@ -1085,8 +1085,8 @@ Schema => SemanticDB v4
 Uri => Givens.scala
 Text => empty
 Language => Scala
-Symbols => 22 entries
-Occurrences => 52 entries
+Symbols => 31 entries
+Occurrences => 69 entries
 
 Symbols:
 a/b/Givens. => final object Givens
@@ -1105,12 +1105,21 @@ a/b/Givens.given_Monoid_String.combine(). => method combine
 a/b/Givens.given_Monoid_String.combine().(x) => val param x
 a/b/Givens.given_Monoid_String.combine().(y) => val param y
 a/b/Givens.given_Monoid_String.empty(). => method empty
+a/b/Givens.given_sayGoodbye_of_B. => final object given_sayGoodbye_of_B
+a/b/Givens.given_sayGoodbye_of_B.sayGoodbye(). => method sayGoodbye
+a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().(any) => val param any
+a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().[B] => typeparam B
+a/b/Givens.given_sayGoodbye_of_B.saySoLong(). => method saySoLong
+a/b/Givens.given_sayGoodbye_of_B.saySoLong().(any) => val param any
+a/b/Givens.given_sayGoodbye_of_B.saySoLong().[B] => typeparam B
 a/b/Givens.given_sayHello_of_A. => final object given_sayHello_of_A
 a/b/Givens.given_sayHello_of_A.sayHello(). => method sayHello
 a/b/Givens.given_sayHello_of_A.sayHello().(any) => val param any
 a/b/Givens.given_sayHello_of_A.sayHello().[A] => typeparam A
+a/b/Givens.goodbye1. => val method goodbye1
 a/b/Givens.hello1. => val method hello1
 a/b/Givens.int2String(). => final implicit macro int2String
+a/b/Givens.soLong1. => val method soLong1
 
 Occurrences:
 [0:8..0:9) a <- a/
@@ -1123,48 +1132,65 @@ Occurrences:
 [6:8..6:16) sayHello <- a/b/Givens.given_sayHello_of_A.sayHello().
 [6:34..6:37) any -> a/b/Givens.given_sayHello_of_A.sayHello().(any)
 [6:37..6:37) -> scala/StringContext#s().
-[8:6..8:12) hello1 <- a/b/Givens.hello1.
-[8:15..8:15) -> a/b/Givens.given_sayHello_of_A.sayHello().
-[10:8..10:14) Monoid <- a/b/Givens.Monoid#
-[10:14..10:17) <- a/b/Givens.Monoid#`<init>`().
-[10:15..10:16) A <- a/b/Givens.Monoid#[A]
-[11:8..11:13) empty <- a/b/Givens.Monoid#empty().
-[11:15..11:16) A -> a/b/Givens.Monoid#[A]
-[12:8..12:15) (x: A)  <- a/b/Givens.Monoid#combine().
-[12:9..12:10) x <- a/b/Givens.Monoid#combine().(x)
-[12:12..12:13) A -> a/b/Givens.Monoid#[A]
-[12:24..12:25) y <- a/b/Givens.Monoid#combine().(y)
-[12:27..12:28) A -> a/b/Givens.Monoid#[A]
-[12:31..12:32) A -> a/b/Givens.Monoid#[A]
-[14:8..15:4) <- a/b/Givens.given_Monoid_String.
-[14:8..14:14) Monoid -> a/b/Givens.Monoid#
-[14:15..14:21) String -> scala/Predef.String#
-[15:8..15:13) empty <- a/b/Givens.given_Monoid_String.empty().
-[16:8..16:15) (x: Str <- a/b/Givens.given_Monoid_String.combine().
-[16:9..16:10) x <- a/b/Givens.given_Monoid_String.combine().(x)
-[16:12..16:18) String -> scala/Predef.String#
-[16:29..16:30) y <- a/b/Givens.given_Monoid_String.combine().(y)
-[16:32..16:38) String -> scala/Predef.String#
-[16:42..16:43) x -> a/b/Givens.given_Monoid_String.combine().(x)
-[16:44..16:45) + -> java/lang/String#`+`().
-[16:46..16:47) y -> a/b/Givens.given_Monoid_String.combine().(y)
-[18:15..18:25) int2String <- a/b/Givens.int2String().
-[18:27..18:37) Conversion -> scala/Conversion#
-[18:38..18:41) Int -> scala/Int#
-[18:43..18:49) String -> scala/Predef.String#
-[18:55..18:63) toString -> scala/Any#toString().
-[20:6..20:9) foo <- a/b/Givens.foo().
-[20:10..20:11) A <- a/b/Givens.foo().[A]
-[20:19..20:20) A <- a/b/Givens.foo().(A)
-[20:22..20:28) Monoid -> a/b/Givens.Monoid#
-[20:29..20:30) A -> a/b/Givens.foo().[A]
-[20:34..20:35) A -> a/b/Givens.foo().[A]
-[20:38..20:39) A -> a/b/Givens.foo().(A)
-[20:40..20:47) combine -> a/b/Givens.Monoid#combine().
-[20:48..20:49) A -> a/b/Givens.foo().(A)
-[20:50..20:55) empty -> a/b/Givens.Monoid#empty().
-[20:57..20:58) A -> a/b/Givens.foo().(A)
-[20:59..20:64) empty -> a/b/Givens.Monoid#empty().
+[8:8..9:8) <- a/b/Givens.given_sayGoodbye_of_B.
+[8:10..8:11) B <- a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().[B]
+[8:10..8:11) B <- a/b/Givens.given_sayGoodbye_of_B.saySoLong().[B]
+[8:13..8:16) any <- a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().(any)
+[8:13..8:16) any <- a/b/Givens.given_sayGoodbye_of_B.saySoLong().(any)
+[8:18..8:19) B -> a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().[B]
+[8:18..8:19) B -> a/b/Givens.given_sayGoodbye_of_B.saySoLong().[B]
+[9:8..9:18) sayGoodbye <- a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().
+[9:38..9:41) any -> a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().(any)
+[9:41..9:41) -> scala/StringContext#s().
+[10:8..10:17) saySoLong <- a/b/Givens.given_sayGoodbye_of_B.saySoLong().
+[10:37..10:40) any -> a/b/Givens.given_sayGoodbye_of_B.saySoLong().(any)
+[10:40..10:40) -> scala/StringContext#s().
+[12:6..12:12) hello1 <- a/b/Givens.hello1.
+[12:15..12:15) -> a/b/Givens.given_sayHello_of_A.sayHello().
+[13:6..13:14) goodbye1 <- a/b/Givens.goodbye1.
+[13:17..13:17) -> a/b/Givens.given_sayGoodbye_of_B.sayGoodbye().
+[14:6..14:13) soLong1 <- a/b/Givens.soLong1.
+[14:16..14:16) -> a/b/Givens.given_sayGoodbye_of_B.saySoLong().
+[16:8..16:14) Monoid <- a/b/Givens.Monoid#
+[16:14..16:17) <- a/b/Givens.Monoid#`<init>`().
+[16:15..16:16) A <- a/b/Givens.Monoid#[A]
+[17:8..17:13) empty <- a/b/Givens.Monoid#empty().
+[17:15..17:16) A -> a/b/Givens.Monoid#[A]
+[18:8..18:15) (x: A)  <- a/b/Givens.Monoid#combine().
+[18:9..18:10) x <- a/b/Givens.Monoid#combine().(x)
+[18:12..18:13) A -> a/b/Givens.Monoid#[A]
+[18:24..18:25) y <- a/b/Givens.Monoid#combine().(y)
+[18:27..18:28) A -> a/b/Givens.Monoid#[A]
+[18:31..18:32) A -> a/b/Givens.Monoid#[A]
+[20:8..21:4) <- a/b/Givens.given_Monoid_String.
+[20:8..20:14) Monoid -> a/b/Givens.Monoid#
+[20:15..20:21) String -> scala/Predef.String#
+[21:8..21:13) empty <- a/b/Givens.given_Monoid_String.empty().
+[22:8..22:15) (x: Str <- a/b/Givens.given_Monoid_String.combine().
+[22:9..22:10) x <- a/b/Givens.given_Monoid_String.combine().(x)
+[22:12..22:18) String -> scala/Predef.String#
+[22:29..22:30) y <- a/b/Givens.given_Monoid_String.combine().(y)
+[22:32..22:38) String -> scala/Predef.String#
+[22:42..22:43) x -> a/b/Givens.given_Monoid_String.combine().(x)
+[22:44..22:45) + -> java/lang/String#`+`().
+[22:46..22:47) y -> a/b/Givens.given_Monoid_String.combine().(y)
+[24:15..24:25) int2String <- a/b/Givens.int2String().
+[24:27..24:37) Conversion -> scala/Conversion#
+[24:38..24:41) Int -> scala/Int#
+[24:43..24:49) String -> scala/Predef.String#
+[24:55..24:63) toString -> scala/Any#toString().
+[26:6..26:9) foo <- a/b/Givens.foo().
+[26:10..26:11) A <- a/b/Givens.foo().[A]
+[26:19..26:20) A <- a/b/Givens.foo().(A)
+[26:22..26:28) Monoid -> a/b/Givens.Monoid#
+[26:29..26:30) A -> a/b/Givens.foo().[A]
+[26:34..26:35) A -> a/b/Givens.foo().[A]
+[26:38..26:39) A -> a/b/Givens.foo().(A)
+[26:40..26:47) combine -> a/b/Givens.Monoid#combine().
+[26:48..26:49) A -> a/b/Givens.foo().(A)
+[26:50..26:55) empty -> a/b/Givens.Monoid#empty().
+[26:57..26:58) A -> a/b/Givens.foo().(A)
+[26:59..26:64) empty -> a/b/Givens.Monoid#empty().
 
 expect/ImplicitConversion.scala
 _______________________________
@@ -3225,4 +3251,3 @@ Occurrences:
 [2:46..2:47) z -> _empty_/toplevel$package.combine(+1).(z)
 [3:4..3:11) combine <- _empty_/toplevel$package.combine(+2).
 [4:4..4:7) foo <- _empty_/toplevel$package.foo().
-
