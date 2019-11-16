@@ -1,5 +1,5 @@
 object Enums with
-  import =:=._
+  import <:<._
 
   enum Colour with
     import Colour.Red
@@ -7,6 +7,17 @@ object Enums with
 
   enum Directions with
     case North, East, South, West
+
+  enum Suits derives Eql with
+    case Hearts, Spades, Clubs, Diamonds
+
+  object Suits with
+    def (suit: Suits) isRed: Boolean =
+      suit == Hearts || suit == Diamonds
+
+    def (suit: Suits) isBlack: Boolean = suit match
+      case Spades | Diamonds => true
+      case _                 => false
 
   enum WeekDays with
     case Monday
@@ -32,12 +43,16 @@ object Enums with
     case IntTag extends Tag[Int]
     case BooleanTag extends Tag[Boolean]
 
-  enum =:=[A, B] with
-    case Refl[C]() extends (C =:= C)
+  enum <:<[-A, B] with
+    case Refl[C]() extends (C <:< C)
 
-  def unwrap[A,B](opt: Option[A])(given ev: A =:= Option[B]): Option[B] = ev match
+  object <:< with
+    given [T]: (T <:< T) = Refl()
+
+  def [A, B](opt: Option[A]) unwrap(given ev: A <:< Option[B]): Option[B] = ev match
     case Refl() => opt.flatMap(identity[Option[B]])
-    case _      => None // TODO remove after https://github.com/lampepfl/dotty/issues/7524 is fixed
+
+  val some1 = Some(Some(1)).unwrap
 
   enum Planet(mass: Double, radius: Double) extends java.lang.Enum[Planet] with
     private final val G = 6.67300E-11

@@ -1,5 +1,5 @@
 object Enums/*<-_empty_::Enums.*/ with
-  import =:=/*->_empty_::Enums.`=:=`.*/._
+  import <:</*->_empty_::Enums.`<:<`.*/._
 
   enum Colour/*<-_empty_::Enums.Colour#*/ with
     import Colour/*->_empty_::Enums.Colour.*/.Red/*->_empty_::Enums.Colour.Red.*/
@@ -7,6 +7,17 @@ object Enums/*<-_empty_::Enums.*/ with
 
   enum Directions/*<-_empty_::Enums.Directions#*/ with
     case North/*<-_empty_::Enums.Directions.North.*/, East/*<-_empty_::Enums.Directions.East.*/, South/*<-_empty_::Enums.Directions.South.*/, West/*<-_empty_::Enums.Directions.West.*/
+
+  enum Suits/*<-_empty_::Enums.Suits#*/ derives /*->scala::Eql.derived.*/Eql with
+    case Hearts/*<-_empty_::Enums.Suits.Hearts.*/, Spades/*<-_empty_::Enums.Suits.Spades.*/, Clubs/*<-_empty_::Enums.Suits.Clubs.*/, Diamonds/*<-_empty_::Enums.Suits.Diamonds.*/
+
+  object Suits/*<-_empty_::Enums.Suits.*/ with
+    def (suit/*<-_empty_::Enums.Suits.isRed().*//*<-_empty_::Enums.Suits.isRed().(suit)*/: Suits/*->_empty_::Enums.Suits#*/) isRed: Boolean/*->scala::Boolean#*/ =
+      suit/*->_empty_::Enums.Suits.isRed().(suit)*/ ==/*->scala::Any#`==`().*/ Hearts/*->_empty_::Enums.Suits.Hearts.*/ ||/*->scala::Boolean#`||`().*/ suit/*->_empty_::Enums.Suits.isRed().(suit)*/ ==/*->scala::Any#`==`().*/ Diamonds/*->_empty_::Enums.Suits.Diamonds.*/
+
+    def (suit: /*<-_empty_::Enums.Suits.isBlack().*//*<-_empty_::Enums.Suits.isBlack().(suit)*/Suits/*->_empty_::Enums.Suits#*/) isBlack: Boolean/*->scala::Boolean#*/ = suit/*->_empty_::Enums.Suits.isBlack().(suit)*/ match
+      case Spades/*->_empty_::Enums.Suits.Spades.*/ | Diamonds/*->_empty_::Enums.Suits.Diamonds.*/ => true
+      case _                 => false
 
   enum WeekDays/*<-_empty_::Enums.WeekDays#*/ with
     case Monday/*<-_empty_::Enums.WeekDays.Monday.*/
@@ -32,12 +43,16 @@ object Enums/*<-_empty_::Enums.*/ with
     case IntTag/*<-_empty_::Enums.Tag.IntTag.*/ extends Tag/*->_empty_::Enums.Tag#*/[Int/*->scala::Int#*/]
     case BooleanTag/*<-_empty_::Enums.Tag.BooleanTag.*/ extends Tag/*->_empty_::Enums.Tag#*/[Boolean/*->scala::Boolean#*/]
 
-  enum =:=/*<-_empty_::Enums.`=:=`#*/[A/*<-_empty_::Enums.`=:=`#[A]*/, B/*<-_empty_::Enums.`=:=`#[B]*/] with
-    case Refl/*<-_empty_::Enums.`=:=`.Refl#*/[C/*<-_empty_::Enums.`=:=`.Refl#[C]*/]() extends (C/*->_empty_::Enums.`=:=`.Refl#[C]*/ =:=/*->_empty_::Enums.`=:=`#*/ C/*->_empty_::Enums.`=:=`.Refl#[C]*/)
+  enum <:</*<-_empty_::Enums.`<:<`#*/[-A/*<-_empty_::Enums.`<:<`#[A]*/, B/*<-_empty_::Enums.`<:<`#[B]*/] with
+    case Refl/*<-_empty_::Enums.`<:<`.Refl#*/[C/*<-_empty_::Enums.`<:<`.Refl#[C]*/]() extends (C/*->_empty_::Enums.`<:<`.Refl#[C]*/ <:</*->_empty_::Enums.`<:<`#*/ C/*->_empty_::Enums.`<:<`.Refl#[C]*/)
 
-  def unwrap/*<-_empty_::Enums.unwrap().*/[A/*<-_empty_::Enums.unwrap().[A]*/,B/*<-_empty_::Enums.unwrap().[B]*/](opt/*<-_empty_::Enums.unwrap().(opt)*/: Option/*->scala::Option#*/[A/*->_empty_::Enums.unwrap().[A]*/])(given ev/*<-_empty_::Enums.unwrap().(ev)*/: A/*->_empty_::Enums.unwrap().[A]*/ =:=/*->_empty_::Enums.`=:=`#*/ Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/]): Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/] = ev/*->_empty_::Enums.unwrap().(ev)*/ match
-    case Refl/*->_empty_::Enums.`=:=`.Refl.*/() => opt/*->_empty_::Enums.unwrap().(opt)*/.flatMap/*->scala::Option#flatMap().*/(identity/*->scala::Predef.identity().*/[Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/]])
-    case _      => None/*->scala::None.*/ // TODO remove after https://github.com/lampepfl/dotty/issues/7524 is fixed
+  object <:</*<-_empty_::Enums.`<:<`.*/ with
+    given [T]: (T/*<-_empty_::Enums.`<:<`.given_T().*//*<-_empty_::Enums.`<:<`.given_T().[T]*//*->_empty_::Enums.`<:<`.given_T().[T]*/ <:</*->_empty_::Enums.`<:<`#*/ T/*->_empty_::Enums.`<:<`.given_T().[T]*/) = Refl/*->_empty_::Enums.`<:<`.Refl.*/()
+
+  def [A, B]/*<-_empty_::Enums.unwrap().*//*<-_empty_::Enums.unwrap().[A]*//*<-_empty_::Enums.unwrap().[B]*/(opt/*<-_empty_::Enums.unwrap().(opt)*/: Option/*->scala::Option#*/[A/*->_empty_::Enums.unwrap().[A]*/]) unwrap(given ev/*<-_empty_::Enums.unwrap().(ev)*/: A/*->_empty_::Enums.unwrap().[A]*/ <:</*->_empty_::Enums.`<:<`#*/ Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/]): Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/] = ev/*->_empty_::Enums.unwrap().(ev)*/ match
+    case Refl/*->_empty_::Enums.`<:<`.Refl.*/() => opt/*->_empty_::Enums.unwrap().(opt)*/.flatMap/*->scala::Option#flatMap().*/(identity/*->scala::Predef.identity().*/[Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/]])
+
+  val some1/*<-_empty_::Enums.some1.*/ = /*->_empty_::Enums.unwrap().*/Some/*->scala::Some.*/(Some/*->scala::Some.*/(1))/*->_empty_::Enums.`<:<`.given_T().*/.unwrap
 
   enum Planet/*<-_empty_::Enums.Planet#*/(mass/*<-_empty_::Enums.Planet#mass.*/: Double/*->scala::Double#*/, radius/*<-_empty_::Enums.Planet#radius.*/: Double/*->scala::Double#*/) extends java.lang.Enum/*->java::lang::Enum#*/[Planet/*->_empty_::Enums.Planet#*/]/*->java::lang::Enum#`<init>`().*/ with
     private final val G/*<-_empty_::Enums.Planet#G.*/ = 6.67300E-11

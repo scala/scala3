@@ -544,8 +544,8 @@ Schema => SemanticDB v4
 Uri => Enums.scala
 Text => empty
 Language => Scala
-Symbols => 73 entries
-Occurrences => 146 entries
+Symbols => 88 entries
+Occurrences => 183 entries
 
 Symbols:
 _empty_/Enums. => final object Enums
@@ -595,6 +595,17 @@ _empty_/Enums.Planet.Neptune. => case val static enum method Neptune
 _empty_/Enums.Planet.Saturn. => case val static enum method Saturn
 _empty_/Enums.Planet.Uranus. => case val static enum method Uranus
 _empty_/Enums.Planet.Venus. => case val static enum method Venus
+_empty_/Enums.Suits# => abstract sealed enum class Suits
+_empty_/Enums.Suits#`<init>`(). => primary ctor <init>
+_empty_/Enums.Suits. => final object Suits
+_empty_/Enums.Suits.Clubs. => case val static enum method Clubs
+_empty_/Enums.Suits.Diamonds. => case val static enum method Diamonds
+_empty_/Enums.Suits.Hearts. => case val static enum method Hearts
+_empty_/Enums.Suits.Spades. => case val static enum method Spades
+_empty_/Enums.Suits.isBlack(). => method isBlack
+_empty_/Enums.Suits.isBlack().(suit) => param suit
+_empty_/Enums.Suits.isRed(). => method isRed
+_empty_/Enums.Suits.isRed().(suit) => param suit
 _empty_/Enums.Tag# => abstract sealed enum class Tag
 _empty_/Enums.Tag#[A] => typeparam A
 _empty_/Enums.Tag#`<init>`(). => primary ctor <init>
@@ -609,13 +620,17 @@ _empty_/Enums.WeekDays.Sunday. => case val static enum method Sunday
 _empty_/Enums.WeekDays.Thursday. => case val static enum method Thursday
 _empty_/Enums.WeekDays.Tuesday. => case val static enum method Tuesday
 _empty_/Enums.WeekDays.Wednesday. => case val static enum method Wednesday
-_empty_/Enums.`=:=`# => abstract sealed enum class =:=
-_empty_/Enums.`=:=`#[A] => typeparam A
-_empty_/Enums.`=:=`#[B] => typeparam B
-_empty_/Enums.`=:=`#`<init>`(). => primary ctor <init>
-_empty_/Enums.`=:=`.Refl# => final case enum class Refl
-_empty_/Enums.`=:=`.Refl#[C] => typeparam C
-_empty_/Enums.`=:=`.Refl#`<init>`(). => primary ctor <init>
+_empty_/Enums.`<:<`# => abstract sealed enum class <:<
+_empty_/Enums.`<:<`#[A] => contravariant typeparam A
+_empty_/Enums.`<:<`#[B] => typeparam B
+_empty_/Enums.`<:<`#`<init>`(). => primary ctor <init>
+_empty_/Enums.`<:<`. => final object <:<
+_empty_/Enums.`<:<`.Refl# => final case enum class Refl
+_empty_/Enums.`<:<`.Refl#[C] => typeparam C
+_empty_/Enums.`<:<`.Refl#`<init>`(). => primary ctor <init>
+_empty_/Enums.`<:<`.given_T(). => final implicit method given_T
+_empty_/Enums.`<:<`.given_T().[T] => typeparam T
+_empty_/Enums.some1. => val method some1
 _empty_/Enums.unwrap(). => method unwrap
 _empty_/Enums.unwrap().(ev) => implicit param ev
 _empty_/Enums.unwrap().(opt) => param opt
@@ -624,7 +639,7 @@ _empty_/Enums.unwrap().[B] => typeparam B
 
 Occurrences:
 [0:7..0:12) Enums <- _empty_/Enums.
-[1:9..1:12) =:= -> _empty_/Enums.`=:=`.
+[1:9..1:12) <:< -> _empty_/Enums.`<:<`.
 [3:7..3:13) Colour <- _empty_/Enums.Colour#
 [4:4..4:4) <- _empty_/Enums.Colour#`<init>`().
 [4:11..4:17) Colour -> _empty_/Enums.Colour.
@@ -638,137 +653,174 @@ Occurrences:
 [8:16..8:20) East <- _empty_/Enums.Directions.East.
 [8:22..8:27) South <- _empty_/Enums.Directions.South.
 [8:29..8:33) West <- _empty_/Enums.Directions.West.
-[10:7..10:15) WeekDays <- _empty_/Enums.WeekDays#
-[11:4..11:4) <- _empty_/Enums.WeekDays#`<init>`().
-[11:9..11:15) Monday <- _empty_/Enums.WeekDays.Monday.
-[12:9..12:16) Tuesday <- _empty_/Enums.WeekDays.Tuesday.
-[13:9..13:18) Wednesday <- _empty_/Enums.WeekDays.Wednesday.
-[14:9..14:17) Thursday <- _empty_/Enums.WeekDays.Thursday.
-[15:9..15:15) Friday <- _empty_/Enums.WeekDays.Friday.
-[16:9..16:17) Saturday <- _empty_/Enums.WeekDays.Saturday.
-[17:9..17:15) Sunday <- _empty_/Enums.WeekDays.Sunday.
-[19:7..19:11) Coin <- _empty_/Enums.Coin#
-[19:11..19:23) <- _empty_/Enums.Coin#`<init>`().
-[19:12..19:17) value <- _empty_/Enums.Coin#value.
-[19:19..19:22) Int -> scala/Int#
-[20:9..20:14) Penny <- _empty_/Enums.Coin.Penny.
-[20:26..20:30) Coin -> _empty_/Enums.Coin#
-[20:30..20:30) -> _empty_/Enums.Coin#`<init>`().
-[21:9..21:15) Nickel <- _empty_/Enums.Coin.Nickel.
-[21:26..21:30) Coin -> _empty_/Enums.Coin#
-[21:30..21:30) -> _empty_/Enums.Coin#`<init>`().
-[22:9..22:13) Dime <- _empty_/Enums.Coin.Dime.
-[22:26..22:30) Coin -> _empty_/Enums.Coin#
-[22:30..22:30) -> _empty_/Enums.Coin#`<init>`().
-[23:9..23:16) Quarter <- _empty_/Enums.Coin.Quarter.
-[23:26..23:30) Coin -> _empty_/Enums.Coin#
-[23:30..23:30) -> _empty_/Enums.Coin#`<init>`().
-[24:9..24:15) Dollar <- _empty_/Enums.Coin.Dollar.
-[24:26..24:30) Coin -> _empty_/Enums.Coin#
-[24:30..24:30) -> _empty_/Enums.Coin#`<init>`().
-[26:7..26:12) Maybe <- _empty_/Enums.Maybe#
-[26:12..26:16) <- _empty_/Enums.Maybe#`<init>`().
-[26:14..26:15) A <- _empty_/Enums.Maybe#[A]
-[27:4..27:4) -> _empty_/Enums.Maybe#`<init>`().
-[27:9..27:13) Just <- _empty_/Enums.Maybe.Just#
-[27:13..27:23) <- _empty_/Enums.Maybe.Just#`<init>`().
-[27:14..27:19) value <- _empty_/Enums.Maybe.Just#value.
-[27:21..27:22) A -> _empty_/Enums.Maybe.Just#[A]
-[28:4..28:4) -> _empty_/Enums.Maybe#`<init>`().
-[28:9..28:13) None <- _empty_/Enums.Maybe.None.
-[30:7..30:10) Tag <- _empty_/Enums.Tag#
-[30:10..30:13) <- _empty_/Enums.Tag#`<init>`().
-[30:11..30:12) A <- _empty_/Enums.Tag#[A]
-[31:9..31:15) IntTag <- _empty_/Enums.Tag.IntTag.
-[31:24..31:27) Tag -> _empty_/Enums.Tag#
-[31:28..31:31) Int -> scala/Int#
-[31:32..31:32) -> _empty_/Enums.Tag#`<init>`().
-[32:9..32:19) BooleanTag <- _empty_/Enums.Tag.BooleanTag.
-[32:28..32:31) Tag -> _empty_/Enums.Tag#
-[32:32..32:39) Boolean -> scala/Boolean#
-[32:40..32:40) -> _empty_/Enums.Tag#`<init>`().
-[34:7..34:10) =:= <- _empty_/Enums.`=:=`#
-[34:10..34:16) <- _empty_/Enums.`=:=`#`<init>`().
-[34:11..34:12) A <- _empty_/Enums.`=:=`#[A]
-[34:14..34:15) B <- _empty_/Enums.`=:=`#[B]
-[35:9..35:13) Refl <- _empty_/Enums.`=:=`.Refl#
-[35:13..35:18) <- _empty_/Enums.`=:=`.Refl#`<init>`().
-[35:14..35:15) C <- _empty_/Enums.`=:=`.Refl#[C]
-[35:28..35:29) C -> _empty_/Enums.`=:=`.Refl#[C]
-[35:30..35:33) =:= -> _empty_/Enums.`=:=`#
-[35:34..35:35) C -> _empty_/Enums.`=:=`.Refl#[C]
-[35:35..35:35) -> _empty_/Enums.`=:=`#`<init>`().
-[37:6..37:12) unwrap <- _empty_/Enums.unwrap().
-[37:13..37:14) A <- _empty_/Enums.unwrap().[A]
-[37:15..37:16) B <- _empty_/Enums.unwrap().[B]
-[37:18..37:21) opt <- _empty_/Enums.unwrap().(opt)
-[37:23..37:29) Option -> scala/Option#
-[37:30..37:31) A -> _empty_/Enums.unwrap().[A]
-[37:40..37:42) ev <- _empty_/Enums.unwrap().(ev)
-[37:44..37:45) A -> _empty_/Enums.unwrap().[A]
-[37:46..37:49) =:= -> _empty_/Enums.`=:=`#
-[37:50..37:56) Option -> scala/Option#
-[37:57..37:58) B -> _empty_/Enums.unwrap().[B]
-[37:62..37:68) Option -> scala/Option#
-[37:69..37:70) B -> _empty_/Enums.unwrap().[B]
-[37:74..37:76) ev -> _empty_/Enums.unwrap().(ev)
-[38:9..38:13) Refl -> _empty_/Enums.`=:=`.Refl.
-[38:19..38:22) opt -> _empty_/Enums.unwrap().(opt)
-[38:23..38:30) flatMap -> scala/Option#flatMap().
-[38:31..38:39) identity -> scala/Predef.identity().
-[38:40..38:46) Option -> scala/Option#
-[38:47..38:48) B -> _empty_/Enums.unwrap().[B]
-[39:19..39:23) None -> scala/None.
-[41:7..41:13) Planet <- _empty_/Enums.Planet#
-[41:13..41:43) <- _empty_/Enums.Planet#`<init>`().
-[41:14..41:18) mass <- _empty_/Enums.Planet#mass.
-[41:20..41:26) Double -> scala/Double#
-[41:28..41:34) radius <- _empty_/Enums.Planet#radius.
-[41:36..41:42) Double -> scala/Double#
-[41:52..41:56) java -> java/
-[41:57..41:61) lang -> java/lang/
-[41:62..41:66) Enum -> java/lang/Enum#
-[41:67..41:73) Planet -> _empty_/Enums.Planet#
-[41:74..41:74) -> java/lang/Enum#`<init>`().
-[42:22..42:23) G <- _empty_/Enums.Planet#G.
-[43:8..43:22) surfaceGravity <- _empty_/Enums.Planet#surfaceGravity().
-[43:25..43:26) G -> _empty_/Enums.Planet#G.
-[43:27..43:28) * -> scala/Double#`*`(+6).
-[43:29..43:33) mass -> _empty_/Enums.Planet#mass.
-[43:34..43:35) / -> scala/Double#`/`(+6).
-[43:37..43:43) radius -> _empty_/Enums.Planet#radius.
-[43:44..43:45) * -> scala/Double#`*`(+6).
-[43:46..43:52) radius -> _empty_/Enums.Planet#radius.
-[44:8..44:21) surfaceWeight <- _empty_/Enums.Planet#surfaceWeight().
-[44:22..44:31) otherMass <- _empty_/Enums.Planet#surfaceWeight().(otherMass)
-[44:33..44:39) Double -> scala/Double#
-[44:43..44:52) otherMass -> _empty_/Enums.Planet#surfaceWeight().(otherMass)
-[44:53..44:54) * -> scala/Double#`*`(+6).
-[44:55..44:69) surfaceGravity -> _empty_/Enums.Planet#surfaceGravity().
-[46:9..46:16) Mercury <- _empty_/Enums.Planet.Mercury.
-[46:25..46:31) Planet -> _empty_/Enums.Planet#
-[46:31..46:31) -> _empty_/Enums.Planet#`<init>`().
-[47:9..47:14) Venus <- _empty_/Enums.Planet.Venus.
-[47:25..47:31) Planet -> _empty_/Enums.Planet#
-[47:31..47:31) -> _empty_/Enums.Planet#`<init>`().
-[48:9..48:14) Earth <- _empty_/Enums.Planet.Earth.
-[48:25..48:31) Planet -> _empty_/Enums.Planet#
-[48:31..48:31) -> _empty_/Enums.Planet#`<init>`().
-[49:9..49:13) Mars <- _empty_/Enums.Planet.Mars.
-[49:25..49:31) Planet -> _empty_/Enums.Planet#
-[49:31..49:31) -> _empty_/Enums.Planet#`<init>`().
-[50:9..50:16) Jupiter <- _empty_/Enums.Planet.Jupiter.
-[50:25..50:31) Planet -> _empty_/Enums.Planet#
-[50:31..50:31) -> _empty_/Enums.Planet#`<init>`().
-[51:9..51:15) Saturn <- _empty_/Enums.Planet.Saturn.
-[51:25..51:31) Planet -> _empty_/Enums.Planet#
-[51:31..51:31) -> _empty_/Enums.Planet#`<init>`().
-[52:9..52:15) Uranus <- _empty_/Enums.Planet.Uranus.
-[52:25..52:31) Planet -> _empty_/Enums.Planet#
-[52:31..52:31) -> _empty_/Enums.Planet#`<init>`().
-[53:9..53:16) Neptune <- _empty_/Enums.Planet.Neptune.
-[53:25..53:31) Planet -> _empty_/Enums.Planet#
-[53:31..53:31) -> _empty_/Enums.Planet#`<init>`().
+[10:7..10:12) Suits <- _empty_/Enums.Suits#
+[10:21..10:21) <- _empty_/Enums.Suits#`<init>`().
+[10:21..10:21) -> scala/Eql.derived.
+[11:9..11:15) Hearts <- _empty_/Enums.Suits.Hearts.
+[11:17..11:23) Spades <- _empty_/Enums.Suits.Spades.
+[11:25..11:30) Clubs <- _empty_/Enums.Suits.Clubs.
+[11:32..11:40) Diamonds <- _empty_/Enums.Suits.Diamonds.
+[13:9..13:14) Suits <- _empty_/Enums.Suits.
+[14:8..14:13) (suit <- _empty_/Enums.Suits.isRed().
+[14:9..14:13) suit <- _empty_/Enums.Suits.isRed().(suit)
+[14:15..14:20) Suits -> _empty_/Enums.Suits#
+[14:29..14:36) Boolean -> scala/Boolean#
+[15:6..15:10) suit -> _empty_/Enums.Suits.isRed().(suit)
+[15:11..15:13) == -> scala/Any#`==`().
+[15:14..15:20) Hearts -> _empty_/Enums.Suits.Hearts.
+[15:21..15:23) || -> scala/Boolean#`||`().
+[15:24..15:28) suit -> _empty_/Enums.Suits.isRed().(suit)
+[15:29..15:31) == -> scala/Any#`==`().
+[15:32..15:40) Diamonds -> _empty_/Enums.Suits.Diamonds.
+[17:8..17:15) (suit:  <- _empty_/Enums.Suits.isBlack().
+[17:9..17:13) suit <- _empty_/Enums.Suits.isBlack().(suit)
+[17:15..17:20) Suits -> _empty_/Enums.Suits#
+[17:31..17:38) Boolean -> scala/Boolean#
+[17:41..17:45) suit -> _empty_/Enums.Suits.isBlack().(suit)
+[18:11..18:17) Spades -> _empty_/Enums.Suits.Spades.
+[18:20..18:28) Diamonds -> _empty_/Enums.Suits.Diamonds.
+[21:7..21:15) WeekDays <- _empty_/Enums.WeekDays#
+[22:4..22:4) <- _empty_/Enums.WeekDays#`<init>`().
+[22:9..22:15) Monday <- _empty_/Enums.WeekDays.Monday.
+[23:9..23:16) Tuesday <- _empty_/Enums.WeekDays.Tuesday.
+[24:9..24:18) Wednesday <- _empty_/Enums.WeekDays.Wednesday.
+[25:9..25:17) Thursday <- _empty_/Enums.WeekDays.Thursday.
+[26:9..26:15) Friday <- _empty_/Enums.WeekDays.Friday.
+[27:9..27:17) Saturday <- _empty_/Enums.WeekDays.Saturday.
+[28:9..28:15) Sunday <- _empty_/Enums.WeekDays.Sunday.
+[30:7..30:11) Coin <- _empty_/Enums.Coin#
+[30:11..30:23) <- _empty_/Enums.Coin#`<init>`().
+[30:12..30:17) value <- _empty_/Enums.Coin#value.
+[30:19..30:22) Int -> scala/Int#
+[31:9..31:14) Penny <- _empty_/Enums.Coin.Penny.
+[31:26..31:30) Coin -> _empty_/Enums.Coin#
+[31:30..31:30) -> _empty_/Enums.Coin#`<init>`().
+[32:9..32:15) Nickel <- _empty_/Enums.Coin.Nickel.
+[32:26..32:30) Coin -> _empty_/Enums.Coin#
+[32:30..32:30) -> _empty_/Enums.Coin#`<init>`().
+[33:9..33:13) Dime <- _empty_/Enums.Coin.Dime.
+[33:26..33:30) Coin -> _empty_/Enums.Coin#
+[33:30..33:30) -> _empty_/Enums.Coin#`<init>`().
+[34:9..34:16) Quarter <- _empty_/Enums.Coin.Quarter.
+[34:26..34:30) Coin -> _empty_/Enums.Coin#
+[34:30..34:30) -> _empty_/Enums.Coin#`<init>`().
+[35:9..35:15) Dollar <- _empty_/Enums.Coin.Dollar.
+[35:26..35:30) Coin -> _empty_/Enums.Coin#
+[35:30..35:30) -> _empty_/Enums.Coin#`<init>`().
+[37:7..37:12) Maybe <- _empty_/Enums.Maybe#
+[37:12..37:16) <- _empty_/Enums.Maybe#`<init>`().
+[37:14..37:15) A <- _empty_/Enums.Maybe#[A]
+[38:4..38:4) -> _empty_/Enums.Maybe#`<init>`().
+[38:9..38:13) Just <- _empty_/Enums.Maybe.Just#
+[38:13..38:23) <- _empty_/Enums.Maybe.Just#`<init>`().
+[38:14..38:19) value <- _empty_/Enums.Maybe.Just#value.
+[38:21..38:22) A -> _empty_/Enums.Maybe.Just#[A]
+[39:4..39:4) -> _empty_/Enums.Maybe#`<init>`().
+[39:9..39:13) None <- _empty_/Enums.Maybe.None.
+[41:7..41:10) Tag <- _empty_/Enums.Tag#
+[41:10..41:13) <- _empty_/Enums.Tag#`<init>`().
+[41:11..41:12) A <- _empty_/Enums.Tag#[A]
+[42:9..42:15) IntTag <- _empty_/Enums.Tag.IntTag.
+[42:24..42:27) Tag -> _empty_/Enums.Tag#
+[42:28..42:31) Int -> scala/Int#
+[42:32..42:32) -> _empty_/Enums.Tag#`<init>`().
+[43:9..43:19) BooleanTag <- _empty_/Enums.Tag.BooleanTag.
+[43:28..43:31) Tag -> _empty_/Enums.Tag#
+[43:32..43:39) Boolean -> scala/Boolean#
+[43:40..43:40) -> _empty_/Enums.Tag#`<init>`().
+[45:7..45:10) <:< <- _empty_/Enums.`<:<`#
+[45:10..45:17) <- _empty_/Enums.`<:<`#`<init>`().
+[45:12..45:13) A <- _empty_/Enums.`<:<`#[A]
+[45:15..45:16) B <- _empty_/Enums.`<:<`#[B]
+[46:9..46:13) Refl <- _empty_/Enums.`<:<`.Refl#
+[46:13..46:18) <- _empty_/Enums.`<:<`.Refl#`<init>`().
+[46:14..46:15) C <- _empty_/Enums.`<:<`.Refl#[C]
+[46:28..46:29) C -> _empty_/Enums.`<:<`.Refl#[C]
+[46:30..46:33) <:< -> _empty_/Enums.`<:<`#
+[46:34..46:35) C -> _empty_/Enums.`<:<`.Refl#[C]
+[46:35..46:35) -> _empty_/Enums.`<:<`#`<init>`().
+[48:9..48:12) <:< <- _empty_/Enums.`<:<`.
+[49:10..49:17) [T]: (T <- _empty_/Enums.`<:<`.given_T().
+[49:11..49:12) T <- _empty_/Enums.`<:<`.given_T().[T]
+[49:16..49:17) T -> _empty_/Enums.`<:<`.given_T().[T]
+[49:18..49:21) <:< -> _empty_/Enums.`<:<`#
+[49:22..49:23) T -> _empty_/Enums.`<:<`.given_T().[T]
+[49:27..49:31) Refl -> _empty_/Enums.`<:<`.Refl.
+[51:6..51:12) [A, B] <- _empty_/Enums.unwrap().
+[51:7..51:8) A <- _empty_/Enums.unwrap().[A]
+[51:10..51:11) B <- _empty_/Enums.unwrap().[B]
+[51:13..51:16) opt <- _empty_/Enums.unwrap().(opt)
+[51:18..51:24) Option -> scala/Option#
+[51:25..51:26) A -> _empty_/Enums.unwrap().[A]
+[51:42..51:44) ev <- _empty_/Enums.unwrap().(ev)
+[51:46..51:47) A -> _empty_/Enums.unwrap().[A]
+[51:48..51:51) <:< -> _empty_/Enums.`<:<`#
+[51:52..51:58) Option -> scala/Option#
+[51:59..51:60) B -> _empty_/Enums.unwrap().[B]
+[51:64..51:70) Option -> scala/Option#
+[51:71..51:72) B -> _empty_/Enums.unwrap().[B]
+[51:76..51:78) ev -> _empty_/Enums.unwrap().(ev)
+[52:9..52:13) Refl -> _empty_/Enums.`<:<`.Refl.
+[52:19..52:22) opt -> _empty_/Enums.unwrap().(opt)
+[52:23..52:30) flatMap -> scala/Option#flatMap().
+[52:31..52:39) identity -> scala/Predef.identity().
+[52:40..52:46) Option -> scala/Option#
+[52:47..52:48) B -> _empty_/Enums.unwrap().[B]
+[54:6..54:11) some1 <- _empty_/Enums.some1.
+[54:14..54:14) -> _empty_/Enums.unwrap().
+[54:14..54:18) Some -> scala/Some.
+[54:19..54:23) Some -> scala/Some.
+[54:27..54:27) -> _empty_/Enums.`<:<`.given_T().
+[56:7..56:13) Planet <- _empty_/Enums.Planet#
+[56:13..56:43) <- _empty_/Enums.Planet#`<init>`().
+[56:14..56:18) mass <- _empty_/Enums.Planet#mass.
+[56:20..56:26) Double -> scala/Double#
+[56:28..56:34) radius <- _empty_/Enums.Planet#radius.
+[56:36..56:42) Double -> scala/Double#
+[56:52..56:56) java -> java/
+[56:57..56:61) lang -> java/lang/
+[56:62..56:66) Enum -> java/lang/Enum#
+[56:67..56:73) Planet -> _empty_/Enums.Planet#
+[56:74..56:74) -> java/lang/Enum#`<init>`().
+[57:22..57:23) G <- _empty_/Enums.Planet#G.
+[58:8..58:22) surfaceGravity <- _empty_/Enums.Planet#surfaceGravity().
+[58:25..58:26) G -> _empty_/Enums.Planet#G.
+[58:27..58:28) * -> scala/Double#`*`(+6).
+[58:29..58:33) mass -> _empty_/Enums.Planet#mass.
+[58:34..58:35) / -> scala/Double#`/`(+6).
+[58:37..58:43) radius -> _empty_/Enums.Planet#radius.
+[58:44..58:45) * -> scala/Double#`*`(+6).
+[58:46..58:52) radius -> _empty_/Enums.Planet#radius.
+[59:8..59:21) surfaceWeight <- _empty_/Enums.Planet#surfaceWeight().
+[59:22..59:31) otherMass <- _empty_/Enums.Planet#surfaceWeight().(otherMass)
+[59:33..59:39) Double -> scala/Double#
+[59:43..59:52) otherMass -> _empty_/Enums.Planet#surfaceWeight().(otherMass)
+[59:53..59:54) * -> scala/Double#`*`(+6).
+[59:55..59:69) surfaceGravity -> _empty_/Enums.Planet#surfaceGravity().
+[61:9..61:16) Mercury <- _empty_/Enums.Planet.Mercury.
+[61:25..61:31) Planet -> _empty_/Enums.Planet#
+[61:31..61:31) -> _empty_/Enums.Planet#`<init>`().
+[62:9..62:14) Venus <- _empty_/Enums.Planet.Venus.
+[62:25..62:31) Planet -> _empty_/Enums.Planet#
+[62:31..62:31) -> _empty_/Enums.Planet#`<init>`().
+[63:9..63:14) Earth <- _empty_/Enums.Planet.Earth.
+[63:25..63:31) Planet -> _empty_/Enums.Planet#
+[63:31..63:31) -> _empty_/Enums.Planet#`<init>`().
+[64:9..64:13) Mars <- _empty_/Enums.Planet.Mars.
+[64:25..64:31) Planet -> _empty_/Enums.Planet#
+[64:31..64:31) -> _empty_/Enums.Planet#`<init>`().
+[65:9..65:16) Jupiter <- _empty_/Enums.Planet.Jupiter.
+[65:25..65:31) Planet -> _empty_/Enums.Planet#
+[65:31..65:31) -> _empty_/Enums.Planet#`<init>`().
+[66:9..66:15) Saturn <- _empty_/Enums.Planet.Saturn.
+[66:25..66:31) Planet -> _empty_/Enums.Planet#
+[66:31..66:31) -> _empty_/Enums.Planet#`<init>`().
+[67:9..67:15) Uranus <- _empty_/Enums.Planet.Uranus.
+[67:25..67:31) Planet -> _empty_/Enums.Planet#
+[67:31..67:31) -> _empty_/Enums.Planet#`<init>`().
+[68:9..68:16) Neptune <- _empty_/Enums.Planet.Neptune.
+[68:25..68:31) Planet -> _empty_/Enums.Planet#
+[68:31..68:31) -> _empty_/Enums.Planet#`<init>`().
 
 expect/EtaExpansion.scala
 _________________________
