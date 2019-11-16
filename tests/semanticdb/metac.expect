@@ -544,8 +544,8 @@ Schema => SemanticDB v4
 Uri => Enums.scala
 Text => empty
 Language => Scala
-Symbols => 89 entries
-Occurrences => 196 entries
+Symbols => 73 entries
+Occurrences => 146 entries
 
 Symbols:
 _empty_/Enums. => final object Enums
@@ -621,22 +621,6 @@ _empty_/Enums.unwrap().(ev) => implicit val param ev
 _empty_/Enums.unwrap().(opt) => val param opt
 _empty_/Enums.unwrap().[A] => typeparam A
 _empty_/Enums.unwrap().[B] => typeparam B
-local0 => primary ctor <init>
-local1 => primary ctor <init>
-local2 => primary ctor <init>
-local3 => primary ctor <init>
-local4 => primary ctor <init>
-local5 => primary ctor <init>
-local6 => primary ctor <init>
-local7 => primary ctor <init>
-local8 => primary ctor <init>
-local9 => primary ctor <init>
-local10 => primary ctor <init>
-local11 => primary ctor <init>
-local12 => primary ctor <init>
-local13 => primary ctor <init>
-local14 => primary ctor <init>
-local15 => primary ctor <init>
 
 Occurrences:
 [0:7..0:12) Enums <- _empty_/Enums.
@@ -645,20 +629,17 @@ Occurrences:
 [4:4..4:4) <- _empty_/Enums.Colour#`<init>`().
 [4:11..4:17) Colour -> _empty_/Enums.Colour.
 [4:18..4:21) Red -> _empty_/Enums.Colour.Red.
-[5:9..5:9) -> scala/runtime/EnumValues#`<init>`().
 [5:9..5:12) Red <- _empty_/Enums.Colour.Red.
 [5:14..5:19) Green <- _empty_/Enums.Colour.Green.
 [5:21..5:25) Blue <- _empty_/Enums.Colour.Blue.
 [7:7..7:17) Directions <- _empty_/Enums.Directions#
 [8:4..8:4) <- _empty_/Enums.Directions#`<init>`().
-[8:9..8:9) -> scala/runtime/EnumValues#`<init>`().
 [8:9..8:14) North <- _empty_/Enums.Directions.North.
 [8:16..8:20) East <- _empty_/Enums.Directions.East.
 [8:22..8:27) South <- _empty_/Enums.Directions.South.
 [8:29..8:33) West <- _empty_/Enums.Directions.West.
 [10:7..10:15) WeekDays <- _empty_/Enums.WeekDays#
 [11:4..11:4) <- _empty_/Enums.WeekDays#`<init>`().
-[11:4..11:4) -> scala/runtime/EnumValues#`<init>`().
 [11:9..11:15) Monday <- _empty_/Enums.WeekDays.Monday.
 [12:9..12:16) Tuesday <- _empty_/Enums.WeekDays.Tuesday.
 [13:9..13:18) Wednesday <- _empty_/Enums.WeekDays.Wednesday.
@@ -671,36 +652,20 @@ Occurrences:
 [19:12..19:17) value <- _empty_/Enums.Coin#value.
 [19:19..19:22) Int -> scala/Int#
 [20:9..20:14) Penny <- _empty_/Enums.Coin.Penny.
-[20:26..20:26) -> scala/runtime/EnumValues#`<init>`().
-[20:26..20:26) <- local0
 [20:26..20:30) Coin -> _empty_/Enums.Coin#
 [20:30..20:30) -> _empty_/Enums.Coin#`<init>`().
-[20:33..20:33) -> scala/runtime/EnumValues#register().
-[20:33..20:33) -> local0
 [21:9..21:15) Nickel <- _empty_/Enums.Coin.Nickel.
-[21:26..21:26) <- local1
 [21:26..21:30) Coin -> _empty_/Enums.Coin#
 [21:30..21:30) -> _empty_/Enums.Coin#`<init>`().
-[21:33..21:33) -> scala/runtime/EnumValues#register().
-[21:33..21:33) -> local1
 [22:9..22:13) Dime <- _empty_/Enums.Coin.Dime.
-[22:26..22:26) <- local2
 [22:26..22:30) Coin -> _empty_/Enums.Coin#
 [22:30..22:30) -> _empty_/Enums.Coin#`<init>`().
-[22:34..22:34) -> scala/runtime/EnumValues#register().
-[22:34..22:34) -> local2
 [23:9..23:16) Quarter <- _empty_/Enums.Coin.Quarter.
-[23:26..23:26) <- local3
 [23:26..23:30) Coin -> _empty_/Enums.Coin#
 [23:30..23:30) -> _empty_/Enums.Coin#`<init>`().
-[23:34..23:34) -> scala/runtime/EnumValues#register().
-[23:34..23:34) -> local3
 [24:9..24:15) Dollar <- _empty_/Enums.Coin.Dollar.
-[24:26..24:26) <- local4
 [24:26..24:30) Coin -> _empty_/Enums.Coin#
 [24:30..24:30) -> _empty_/Enums.Coin#`<init>`().
-[24:35..24:35) -> scala/runtime/EnumValues#register().
-[24:35..24:35) -> local4
 [26:7..26:12) Maybe <- _empty_/Enums.Maybe#
 [26:12..26:16) <- _empty_/Enums.Maybe#`<init>`().
 [26:14..26:15) A <- _empty_/Enums.Maybe#[A]
@@ -709,25 +674,19 @@ Occurrences:
 [27:13..27:23) <- _empty_/Enums.Maybe.Just#`<init>`().
 [27:14..27:19) value <- _empty_/Enums.Maybe.Just#value.
 [27:21..27:22) A -> _empty_/Enums.Maybe.Just#[A]
-[28:4..28:4) <- local5
 [28:4..28:4) -> _empty_/Enums.Maybe#`<init>`().
 [28:9..28:13) None <- _empty_/Enums.Maybe.None.
-[28:13..28:13) -> local5
 [30:7..30:10) Tag <- _empty_/Enums.Tag#
 [30:10..30:13) <- _empty_/Enums.Tag#`<init>`().
 [30:11..30:12) A <- _empty_/Enums.Tag#[A]
 [31:9..31:15) IntTag <- _empty_/Enums.Tag.IntTag.
-[31:24..31:24) <- local6
 [31:24..31:27) Tag -> _empty_/Enums.Tag#
 [31:28..31:31) Int -> scala/Int#
 [31:32..31:32) -> _empty_/Enums.Tag#`<init>`().
-[31:32..31:32) -> local6
 [32:9..32:19) BooleanTag <- _empty_/Enums.Tag.BooleanTag.
-[32:28..32:28) <- local7
 [32:28..32:31) Tag -> _empty_/Enums.Tag#
 [32:32..32:39) Boolean -> scala/Boolean#
 [32:40..32:40) -> _empty_/Enums.Tag#`<init>`().
-[32:40..32:40) -> local7
 [34:7..34:10) =:= <- _empty_/Enums.`=:=`#
 [34:10..34:16) <- _empty_/Enums.`=:=`#`<init>`().
 [34:11..34:12) A <- _empty_/Enums.`=:=`#[A]
@@ -787,54 +746,29 @@ Occurrences:
 [44:53..44:54) * -> scala/Double#`*`(+6).
 [44:55..44:69) surfaceGravity -> _empty_/Enums.Planet#surfaceGravity().
 [46:9..46:16) Mercury <- _empty_/Enums.Planet.Mercury.
-[46:25..46:25) -> scala/runtime/EnumValues#`<init>`().
-[46:25..46:25) <- local8
 [46:25..46:31) Planet -> _empty_/Enums.Planet#
 [46:31..46:31) -> _empty_/Enums.Planet#`<init>`().
-[46:52..46:52) -> scala/runtime/EnumValues#register().
-[46:52..46:52) -> local8
 [47:9..47:14) Venus <- _empty_/Enums.Planet.Venus.
-[47:25..47:25) <- local9
 [47:25..47:31) Planet -> _empty_/Enums.Planet#
 [47:31..47:31) -> _empty_/Enums.Planet#`<init>`().
-[47:52..47:52) -> scala/runtime/EnumValues#register().
-[47:52..47:52) -> local9
 [48:9..48:14) Earth <- _empty_/Enums.Planet.Earth.
-[48:25..48:25) <- local10
 [48:25..48:31) Planet -> _empty_/Enums.Planet#
 [48:31..48:31) -> _empty_/Enums.Planet#`<init>`().
-[48:53..48:53) -> scala/runtime/EnumValues#register().
-[48:53..48:53) -> local10
 [49:9..49:13) Mars <- _empty_/Enums.Planet.Mars.
-[49:25..49:25) <- local11
 [49:25..49:31) Planet -> _empty_/Enums.Planet#
 [49:31..49:31) -> _empty_/Enums.Planet#`<init>`().
-[49:52..49:52) -> scala/runtime/EnumValues#register().
-[49:52..49:52) -> local11
 [50:9..50:16) Jupiter <- _empty_/Enums.Planet.Jupiter.
-[50:25..50:25) <- local12
 [50:25..50:31) Planet -> _empty_/Enums.Planet#
 [50:31..50:31) -> _empty_/Enums.Planet#`<init>`().
-[50:52..50:52) -> scala/runtime/EnumValues#register().
-[50:52..50:52) -> local12
 [51:9..51:15) Saturn <- _empty_/Enums.Planet.Saturn.
-[51:25..51:25) <- local13
 [51:25..51:31) Planet -> _empty_/Enums.Planet#
 [51:31..51:31) -> _empty_/Enums.Planet#`<init>`().
-[51:52..51:52) -> scala/runtime/EnumValues#register().
-[51:52..51:52) -> local13
 [52:9..52:15) Uranus <- _empty_/Enums.Planet.Uranus.
-[52:25..52:25) <- local14
 [52:25..52:31) Planet -> _empty_/Enums.Planet#
 [52:31..52:31) -> _empty_/Enums.Planet#`<init>`().
-[52:52..52:52) -> scala/runtime/EnumValues#register().
-[52:52..52:52) -> local14
 [53:9..53:16) Neptune <- _empty_/Enums.Planet.Neptune.
-[53:25..53:25) <- local15
 [53:25..53:31) Planet -> _empty_/Enums.Planet#
 [53:31..53:31) -> _empty_/Enums.Planet#`<init>`().
-[53:52..53:52) -> scala/runtime/EnumValues#register().
-[53:52..53:52) -> local15
 
 expect/EtaExpansion.scala
 _________________________

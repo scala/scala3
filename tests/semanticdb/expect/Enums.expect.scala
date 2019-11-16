@@ -3,13 +3,13 @@ object Enums/*<-_empty_::Enums.*/ with
 
   enum Colour/*<-_empty_::Enums.Colour#*/ with
     import Colour/*->_empty_::Enums.Colour.*/.Red/*->_empty_::Enums.Colour.Red.*/
-    case /*->scala::runtime::EnumValues#`<init>`().*/Red/*<-_empty_::Enums.Colour.Red.*/, Green/*<-_empty_::Enums.Colour.Green.*/, Blue/*<-_empty_::Enums.Colour.Blue.*/
+    case Red/*<-_empty_::Enums.Colour.Red.*/, Green/*<-_empty_::Enums.Colour.Green.*/, Blue/*<-_empty_::Enums.Colour.Blue.*/
 
   enum Directions/*<-_empty_::Enums.Directions#*/ with
-    case /*->scala::runtime::EnumValues#`<init>`().*/North/*<-_empty_::Enums.Directions.North.*/, East/*<-_empty_::Enums.Directions.East.*/, South/*<-_empty_::Enums.Directions.South.*/, West/*<-_empty_::Enums.Directions.West.*/
+    case North/*<-_empty_::Enums.Directions.North.*/, East/*<-_empty_::Enums.Directions.East.*/, South/*<-_empty_::Enums.Directions.South.*/, West/*<-_empty_::Enums.Directions.West.*/
 
   enum WeekDays/*<-_empty_::Enums.WeekDays#*/ with
-    /*->scala::runtime::EnumValues#`<init>`().*/case Monday/*<-_empty_::Enums.WeekDays.Monday.*/
+    case Monday/*<-_empty_::Enums.WeekDays.Monday.*/
     case Tuesday/*<-_empty_::Enums.WeekDays.Tuesday.*/
     case Wednesday/*<-_empty_::Enums.WeekDays.Wednesday.*/
     case Thursday/*<-_empty_::Enums.WeekDays.Thursday.*/
@@ -18,11 +18,11 @@ object Enums/*<-_empty_::Enums.*/ with
     case Sunday/*<-_empty_::Enums.WeekDays.Sunday.*/
 
   enum Coin/*<-_empty_::Enums.Coin#*/(value/*<-_empty_::Enums.Coin#value.*/: Int/*->scala::Int#*/) with
-    case Penny/*<-_empty_::Enums.Coin.Penny.*/    extends /*->scala::runtime::EnumValues#`<init>`().*/Coin/*->_empty_::Enums.Coin#*/(1)/*->scala::runtime::EnumValues#register().*/
-    case Nickel/*<-_empty_::Enums.Coin.Nickel.*/   extends Coin/*->_empty_::Enums.Coin#*/(5)/*->scala::runtime::EnumValues#register().*/
-    case Dime/*<-_empty_::Enums.Coin.Dime.*/     extends Coin/*->_empty_::Enums.Coin#*/(10)/*->scala::runtime::EnumValues#register().*/
-    case Quarter/*<-_empty_::Enums.Coin.Quarter.*/  extends Coin/*->_empty_::Enums.Coin#*/(25)/*->scala::runtime::EnumValues#register().*/
-    case Dollar/*<-_empty_::Enums.Coin.Dollar.*/   extends Coin/*->_empty_::Enums.Coin#*/(100)/*->scala::runtime::EnumValues#register().*/
+    case Penny/*<-_empty_::Enums.Coin.Penny.*/    extends Coin/*->_empty_::Enums.Coin#*/(1)
+    case Nickel/*<-_empty_::Enums.Coin.Nickel.*/   extends Coin/*->_empty_::Enums.Coin#*/(5)
+    case Dime/*<-_empty_::Enums.Coin.Dime.*/     extends Coin/*->_empty_::Enums.Coin#*/(10)
+    case Quarter/*<-_empty_::Enums.Coin.Quarter.*/  extends Coin/*->_empty_::Enums.Coin#*/(25)
+    case Dollar/*<-_empty_::Enums.Coin.Dollar.*/   extends Coin/*->_empty_::Enums.Coin#*/(100)
 
   enum Maybe/*<-_empty_::Enums.Maybe#*/[+A/*<-_empty_::Enums.Maybe#[A]*/] with
     case Just/*<-_empty_::Enums.Maybe.Just#*/(value/*<-_empty_::Enums.Maybe.Just#value.*/: A/*->_empty_::Enums.Maybe.Just#[A]*/)
@@ -44,11 +44,11 @@ object Enums/*<-_empty_::Enums.*/ with
     def surfaceGravity/*<-_empty_::Enums.Planet#surfaceGravity().*/ = G/*->_empty_::Enums.Planet#G.*/ */*->scala::Double#`*`(+6).*/ mass/*->_empty_::Enums.Planet#mass.*/ //*->scala::Double#`::`(+6).*/ (radius/*->_empty_::Enums.Planet#radius.*/ */*->scala::Double#`*`(+6).*/ radius/*->_empty_::Enums.Planet#radius.*/)
     def surfaceWeight/*<-_empty_::Enums.Planet#surfaceWeight().*/(otherMass/*<-_empty_::Enums.Planet#surfaceWeight().(otherMass)*/: Double/*->scala::Double#*/) = otherMass/*->_empty_::Enums.Planet#surfaceWeight().(otherMass)*/ */*->scala::Double#`*`(+6).*/ surfaceGravity/*->_empty_::Enums.Planet#surfaceGravity().*/
 
-    case Mercury/*<-_empty_::Enums.Planet.Mercury.*/ extends /*->scala::runtime::EnumValues#`<init>`().*/Planet/*->_empty_::Enums.Planet#*/(3.303e+23, 2.4397e6)/*->scala::runtime::EnumValues#register().*/
-    case Venus/*<-_empty_::Enums.Planet.Venus.*/   extends Planet/*->_empty_::Enums.Planet#*/(4.869e+24, 6.0518e6)/*->scala::runtime::EnumValues#register().*/
-    case Earth/*<-_empty_::Enums.Planet.Earth.*/   extends Planet/*->_empty_::Enums.Planet#*/(5.976e+24, 6.37814e6)/*->scala::runtime::EnumValues#register().*/
-    case Mars/*<-_empty_::Enums.Planet.Mars.*/    extends Planet/*->_empty_::Enums.Planet#*/(6.421e+23, 3.3972e6)/*->scala::runtime::EnumValues#register().*/
-    case Jupiter/*<-_empty_::Enums.Planet.Jupiter.*/ extends Planet/*->_empty_::Enums.Planet#*/(1.9e+27,   7.1492e7)/*->scala::runtime::EnumValues#register().*/
-    case Saturn/*<-_empty_::Enums.Planet.Saturn.*/  extends Planet/*->_empty_::Enums.Planet#*/(5.688e+26, 6.0268e7)/*->scala::runtime::EnumValues#register().*/
-    case Uranus/*<-_empty_::Enums.Planet.Uranus.*/  extends Planet/*->_empty_::Enums.Planet#*/(8.686e+25, 2.5559e7)/*->scala::runtime::EnumValues#register().*/
-    case Neptune/*<-_empty_::Enums.Planet.Neptune.*/ extends Planet/*->_empty_::Enums.Planet#*/(1.024e+26, 2.4746e7)/*->scala::runtime::EnumValues#register().*/
+    case Mercury/*<-_empty_::Enums.Planet.Mercury.*/ extends Planet/*->_empty_::Enums.Planet#*/(3.303e+23, 2.4397e6)
+    case Venus/*<-_empty_::Enums.Planet.Venus.*/   extends Planet/*->_empty_::Enums.Planet#*/(4.869e+24, 6.0518e6)
+    case Earth/*<-_empty_::Enums.Planet.Earth.*/   extends Planet/*->_empty_::Enums.Planet#*/(5.976e+24, 6.37814e6)
+    case Mars/*<-_empty_::Enums.Planet.Mars.*/    extends Planet/*->_empty_::Enums.Planet#*/(6.421e+23, 3.3972e6)
+    case Jupiter/*<-_empty_::Enums.Planet.Jupiter.*/ extends Planet/*->_empty_::Enums.Planet#*/(1.9e+27,   7.1492e7)
+    case Saturn/*<-_empty_::Enums.Planet.Saturn.*/  extends Planet/*->_empty_::Enums.Planet#*/(5.688e+26, 6.0268e7)
+    case Uranus/*<-_empty_::Enums.Planet.Uranus.*/  extends Planet/*->_empty_::Enums.Planet#*/(8.686e+25, 2.5559e7)
+    case Neptune/*<-_empty_::Enums.Planet.Neptune.*/ extends Planet/*->_empty_::Enums.Planet#*/(1.024e+26, 2.4746e7)

@@ -417,7 +417,13 @@ class ExtractSemanticDB extends Phase {
           val privateWithin = tree.symbol.privateWithin
           if privateWithin `ne` NoSymbol
             registerUse(privateWithin, spanOfSymbol(privateWithin, tree.span))
-          traverseChildren(tree)
+          tree match
+            case tree: ValDef if tree.symbol.isAllOf(EnumValue) =>
+              tree.rhs match
+              case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
+                template.parents.foreach(traverse)
+              case _ => // calls $new
+            case _ => traverseChildren(tree)
         case tree: (ValDef | DefDef | TypeDef) if tree.symbol.is(Synthetic, butNot=Module) && !tree.symbol.isAnonymous => // skip
         case tree: Template =>
           val ctorSym = tree.constr.symbol
@@ -451,6 +457,14 @@ class ExtractSemanticDB extends Phase {
             traverse(tree.self)
           if ctorSym.owner.is(Enum, butNot=Case)
             tree.body.foreachUntilImport(traverse).foreach(traverse)
+          else if ctorSym.owner.is(ModuleClass) && ctorSym.owner.companionClass.is(Enum, butNot=Case)
+            // TODO: Remove this branch if $values is removed or made synthetic
+            tree.body.filter({
+              case tree @ ValDef(nme.DOLLAR_VALUES,_,_)
+              if tree.mods.flags.is(Private)
+                && tree.symbol.info.typeSymbol == defn.EnumValuesClass => false
+              case _ => true
+            }).foreach(traverse)
           else
             tree.body.foreach(traverse)
         case tree: Assign =>
