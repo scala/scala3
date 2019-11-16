@@ -910,21 +910,21 @@ object Types {
 
     /** Is this type a legal type for member `sym1` that overrides another
      *  member `sym2` of type `that`? This is the same as `<:<`, except that
-     *  if `matchLoosely` evaluates to true the types `=> T` and `()T` are seen
-     *  as overriding each other.
+     *  @param matchLoosely   if true the types `=> T` and `()T` are seen as overriding each other.
+     *  @param checkClassInfo if true we check that ClassInfos are within bounds of abstract types
      */
-    final def overrides(that: Type, matchLoosely: => Boolean)(implicit ctx: Context): Boolean = {
+    final def overrides(that: Type, matchLoosely: => Boolean, checkClassInfo: Boolean = true)(implicit ctx: Context): Boolean = {
       def widenNullary(tp: Type) = tp match {
         case tp @ MethodType(Nil) => tp.resultType
         case _ => tp
       }
-      ((this.widenExpr frozen_<:< that.widenExpr) ||
-        matchLoosely && {
-          val this1 = widenNullary(this)
-          val that1 = widenNullary(that)
-          ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(that1, matchLoosely = false)
-        }
-      )
+      this.isInstanceOf[ClassInfo] && !checkClassInfo
+      || (this.widenExpr frozen_<:< that.widenExpr)
+      || matchLoosely && {
+           val this1 = widenNullary(this)
+           val that1 = widenNullary(that)
+           ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(that1, false, checkClassInfo)
+         }
     }
 
     /** Is this type close enough to that type so that members

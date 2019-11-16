@@ -459,7 +459,7 @@ object Denotations {
         /** Sym preference provided types also override */
         def prefer(sym1: Symbol, sym2: Symbol, info1: Type, info2: Type) =
           preferSym(sym1, sym2) &&
-          info1.overrides(info2, sym1.matchNullaryLoosely || sym2.matchNullaryLoosely)
+          info1.overrides(info2, sym1.matchNullaryLoosely || sym2.matchNullaryLoosely, checkClassInfo = false)
 
         def handleDoubleDef =
           if (preferSym(sym1, sym2)) denot1
@@ -600,13 +600,13 @@ object Denotations {
       case tp1: TypeBounds =>
         tp2 match {
           case tp2: TypeBounds => if (safeIntersection) tp1 safe_& tp2 else tp1 & tp2
-          case tp2: ClassInfo if tp1 contains tp2 => tp2
+          case tp2: ClassInfo => tp2
           case _ => mergeConflict(sym1, sym2, tp1, tp2)
         }
       case tp1: ClassInfo =>
         tp2 match {
           case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
-          case tp2: TypeBounds if tp2 contains tp1 => tp1
+          case tp2: TypeBounds => tp1
           case _ => mergeConflict(sym1, sym2, tp1, tp2)
         }
 
