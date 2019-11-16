@@ -7,7 +7,7 @@ trait TypeOrBoundsOps extends Core {
 
   def typeOf[T: scala.quoted.Type]: Type
 
-  given (self: Type) {
+  given TypeOps: (self: Type) {
     def =:=(that: Type)(given ctx: Context): Boolean = internal.`Type_=:=`(self)(that)
     def <:<(that: Type)(given ctx: Context): Boolean = internal.`Type_<:<`(self)(that)
     def widen(given ctx: Context): Type = internal.Type_widen(self)
@@ -84,7 +84,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchConstantType(typeOrBounds).map(_.constant)
   }
 
-  given (self: ConstantType) {
+  given ConstantTypeOps: (self: ConstantType) {
     def constant(given ctx: Context): Constant = internal.ConstantType_constant(self)
   }
 
@@ -101,7 +101,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchTermRef(typeOrBounds).map(x => (x.qualifier, x.name))
   }
 
-  given (self: TermRef) {
+  given TermRefOps: (self: TermRef) {
     def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TermRef_qualifier(self)
     def name(given ctx: Context): String = internal.TermRef_name(self)
   }
@@ -117,7 +117,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchTypeRef(typeOrBounds).map(x => (x.qualifier, x.name))
   }
 
-  given (self: TypeRef) {
+  given TypeRefOps: (self: TypeRef) {
     def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TypeRef_qualifier(self)
     def name(given ctx: Context): String = internal.TypeRef_name(self)
   }
@@ -133,7 +133,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchSuperType(typeOrBounds).map(x => (x.thistpe, x.supertpe))
   }
 
-  given (self: SuperType) {
+  given SuperTypeOps: (self: SuperType) {
     def thistpe(given ctx: Context): Type = internal.SuperType_thistpe(self)
     def supertpe(given ctx: Context): Type = internal.SuperType_supertpe(self)
   }
@@ -149,7 +149,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchRefinement(typeOrBounds).map(x => (x.parent, x.name, x.info))
   }
 
-  given (self: Refinement) {
+  given RefinementOps: (self: Refinement) {
     def parent(given ctx: Context): Type = internal.Refinement_parent(self)
     def name(given ctx: Context): String = internal.Refinement_name(self)
     def info(given ctx: Context): TypeOrBounds = internal.Refinement_info(self)
@@ -168,7 +168,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchAppliedType(typeOrBounds).map(x => (x.tycon, x.args))
   }
 
-  given (self: AppliedType) {
+  given AppliedTypeOps: (self: AppliedType) {
     def tycon(given ctx: Context): Type = internal.AppliedType_tycon(self)
     def args(given ctx: Context): List[TypeOrBounds /* Type | TypeBounds */] = internal.AppliedType_args(self)
   }
@@ -184,7 +184,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchAnnotatedType(typeOrBounds).map(x => (x.underlying, x.annot))
   }
 
-  given (self: AnnotatedType) {
+  given AnnotatedTypeOps: (self: AnnotatedType) {
     def underlying(given ctx: Context): Type = internal.AnnotatedType_underlying(self)
     def annot(given ctx: Context): Term = internal.AnnotatedType_annot(self)
   }
@@ -200,7 +200,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchAndType(typeOrBounds).map(x => (x.left, x.right))
   }
 
-  given (self: AndType) {
+  given AndTypeOps: (self: AndType) {
     def left(given ctx: Context): Type = internal.AndType_left(self)
     def right(given ctx: Context): Type = internal.AndType_right(self)
   }
@@ -216,7 +216,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchOrType(typeOrBounds).map(x => (x.left, x.right))
   }
 
-  given (self: OrType) {
+  given OrTypeOps: (self: OrType) {
     def left(given ctx: Context): Type = internal.OrType_left(self)
     def right(given ctx: Context): Type = internal.OrType_right(self)
   }
@@ -232,7 +232,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchMatchType(typeOrBounds).map(x => (x.bound, x.scrutinee, x.cases))
   }
 
-  given (self: MatchType) {
+  given MatchTypeOps: (self: MatchType) {
     def bound(given ctx: Context): Type = internal.MatchType_bound(self)
     def scrutinee(given ctx: Context): Type = internal.MatchType_scrutinee(self)
     def cases(given ctx: Context): List[Type] = internal.MatchType_cases(self)
@@ -249,7 +249,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchByNameType(typeOrBounds).map(_.underlying)
   }
 
-  given (self: ByNameType) {
+  given ByNameTypeOps: (self: ByNameType) {
     def underlying(given ctx: Context): Type = internal.ByNameType_underlying(self)
   }
 
@@ -264,7 +264,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchParamRef(typeOrBounds).map(x => (x.binder, x.paramNum))
   }
 
-  given (self: ParamRef) {
+  given ParamRefOps: (self: ParamRef) {
     def binder(given ctx: Context): LambdaType[TypeOrBounds] = internal.ParamRef_binder(self)
     def paramNum(given ctx: Context): Int = internal.ParamRef_paramNum(self)
   }
@@ -280,7 +280,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchThisType(typeOrBounds).map(_.tref)
   }
 
-  given (self: ThisType) {
+  given ThisTypeOps: (self: ThisType) {
     def tref(given ctx: Context): Type = internal.ThisType_tref(self)
   }
 
@@ -295,7 +295,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchRecursiveThis(typeOrBounds).map(_.binder)
   }
 
-  given (self: RecursiveThis) {
+  given RecursiveThisOps: (self: RecursiveThis) {
     def binder(given ctx: Context): RecursiveType = internal.RecursiveThis_binder(self)
   }
 
@@ -310,7 +310,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchRecursiveType(typeOrBounds).map(_.underlying)
   }
 
-  given (self: RecursiveType) {
+  given RecursiveTypeOps: (self: RecursiveType) {
     def underlying(given ctx: Context): Type = internal.RecursiveType_underlying(self)
   }
 
@@ -325,7 +325,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchMethodType(typeOrBounds).map(x => (x.paramNames, x.paramTypes, x.resType))
   }
 
-  given (self: MethodType) {
+  given MethodTypeOps: (self: MethodType) {
     def isImplicit: Boolean = internal.MethodType_isImplicit(self)
     def isErased: Boolean = internal.MethodType_isErased(self)
     def paramNames(given ctx: Context): List[String] = internal.MethodType_paramNames(self)
@@ -344,7 +344,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchPolyType(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
   }
 
-  given (self: PolyType) {
+  given PolyTypeOps: (self: PolyType) {
     def paramNames(given ctx: Context): List[String] = internal.PolyType_paramNames(self)
     def paramBounds(given ctx: Context): List[TypeBounds] = internal.PolyType_paramBounds(self)
     def resType(given ctx: Context): Type = internal.PolyType_resType(self)
@@ -361,7 +361,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchTypeLambda(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
   }
 
-  given (self: TypeLambda) {
+  given TypeLambdaOps: (self: TypeLambda) {
     def paramNames(given ctx: Context): List[String] = internal.TypeLambda_paramNames(self)
     def paramBounds(given ctx: Context): List[TypeBounds] = internal.TypeLambda_paramBounds(self)
     def resType(given ctx: Context): Type = internal.TypeLambda_resType(self)
@@ -379,7 +379,7 @@ trait TypeOrBoundsOps extends Core {
       internal.matchTypeBounds(typeOrBounds).map(x => (x.low, x.hi))
   }
 
-  given (self: TypeBounds) {
+  given TypeBoundsOps: (self: TypeBounds) {
     def low(given ctx: Context): Type = internal.TypeBounds_low(self)
     def hi(given ctx: Context): Type = internal.TypeBounds_hi(self)
   }

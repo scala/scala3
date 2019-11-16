@@ -3442,7 +3442,7 @@ object Parsers {
               if isExtension then
                 checkExtensionParams(paramsStart, vparamss)
 
-          parseParams(isExtension = !hasGivenSig)
+          parseParams(isExtension = false)
           val parents =
             if in.token == COLON then
               in.nextToken()

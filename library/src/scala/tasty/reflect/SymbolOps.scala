@@ -14,7 +14,7 @@ trait SymbolOps extends Core { selfSymbolOps: FlagsOps =>
       internal.Symbol_noSymbol
   }
 
-  given (self: Symbol) {
+  given SymbolOps: (self: Symbol) {
 
     /** Owner of this symbol. The owner is the symbol in which this symbol is defined */
     def owner(given ctx: Context): Symbol = internal.Symbol_owner(self)

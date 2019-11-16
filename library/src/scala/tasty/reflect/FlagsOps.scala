@@ -2,7 +2,7 @@ package scala.tasty.reflect
 
 trait FlagsOps extends Core {
 
-  given (self: Flags) {
+  given FlagsOps: (self: Flags) {
 
     /** Is the given flag set a subset of this flag sets */
     def is(that: Flags): Boolean = internal.Flags_is(self)(that)

@@ -28,7 +28,7 @@ The compiler will synthesize an instance of `TupledFunction[F, G]` if:
 * `F` is a function type of arity `N`
 * `G` is a function with a single tuple argument of size `N` and it's types are equal to the arguments of `F`
 * The return type of `F` is equal to the return type of `G`
-* `F` and `G` are the same kind of function (both are `(...) => R` or both are `given (...) => R`)
+* `F` and `G` are the same kind of function (both are `(...) => R` or both are `(given ...) => R`)
 * If only one of `F` or `G` is instantiated the second one is inferred.
 
 Examples
@@ -43,7 +43,7 @@ Examples
  *  @tparam Args the tuple type with the same types as the function arguments of F
  *  @tparam R the return type of F
  */
-def (f: F) tupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Args => R]): Args => R = tf.tupled(f)
+def (f: F) tupled[F, Args <: Tuple, R](given tf: TupledFunction[F, Args => R]): Args => R = tf.tupled(f)
 ```
 
 `TupledFunction` can be used to generalize the `Function.untupled` methods to functions of any arities ([full example](https://github.com/lampepfl/dotty/blob/master/tests/run/tupled-function-untupled.scala))
@@ -58,7 +58,7 @@ def (f: F) tupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Args => R]):
  *  @tparam Args the tuple type with the same types as the function arguments of F
  *  @tparam R the return type of F
  */
-def (f: Args => R) untupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Args => R]): F = tf.untupled(f)
+def (f: Args => R) untupled[F, Args <: Tuple, R](given tf: TupledFunction[F, Args => R]): F = tf.untupled(f)
 ```
 
 `TupledFunction` can also be used to generalize the [`Tuple1.compose`](https://github.com/lampepfl/dotty/blob/master/tests/run/tupled-function-compose.scala) and [`Tuple1.andThen`](https://github.com/lampepfl/dotty/blob/master/tests/run/tupled-function-andThen.scala) methods to compose functions of larger arities and with functions that return tuples.
@@ -72,7 +72,7 @@ def (f: Args => R) untupled[F, Args <: Tuple, R] given (tf: TupledFunction[F, Ar
  *  @tparam GArgs the tuple type with the same types as the function arguments of G
  *  @tparam R the return type of F
  */
-def (f: F) compose[F, G, FArgs <: Tuple, GArgs <: Tuple, R](g: G) given (tg: TupledFunction[G, GArgs => FArgs], tf: TupledFunction[F, FArgs => R]): GArgs => R = {
+def (f: F) compose[F, G, FArgs <: Tuple, GArgs <: Tuple, R](g: G)(given tg: TupledFunction[G, GArgs => FArgs], tf: TupledFunction[F, FArgs => R]): GArgs => R = {
   (x: GArgs) => tf.tupled(f)(tg.tupled(g)(x))
 }
 ```

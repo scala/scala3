@@ -170,7 +170,7 @@ quote but no splice between the parameter binding of `T` and its
 usage. But the code can be made phase correct by adding a binding
 of a `Type[T]` tag:
 ```scala
-def reflect[T, U](f: Expr[T] => Expr[U]) given (t: Type[T]): Expr[T => U] =
+def reflect[T, U](f: Expr[T] => Expr[U])(given t: Type[T]): Expr[T => U] =
   '{ (x: $t) => ${ f('x) } }
 ```
 In this version of `reflect`, the type of `x` is now the result of

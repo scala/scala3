@@ -92,7 +92,7 @@ class Definitions {
    *  ImplicitFunctionN traits follow this template:
    *
    *      trait ImplicitFunctionN[T0,...,T{N-1}, R] extends Object {
-   *        def apply given ($x0: T0, ..., $x{N_1}: T{N-1}): R
+   *        def apply(given $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
    *  ErasedFunctionN traits follow this template:

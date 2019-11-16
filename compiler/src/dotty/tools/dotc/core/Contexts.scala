@@ -596,7 +596,7 @@ object Contexts {
     def setDebug: this.type = setSetting(base.settings.Ydebug, true)
   }
 
-  given (c: Context)
+  given ops: (c: Context)
     def addNotNullInfo(info: NotNullInfo) =
       c.withNotNullInfos(c.notNullInfos.extendWith(info))
 
