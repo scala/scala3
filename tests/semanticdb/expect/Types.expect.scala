@@ -3,7 +3,7 @@ package types
 import scala.language/*->scalaShadowing::language.*/.existentials/*->scalaShadowing::language.existentials.*/
 import scala.language/*->scalaShadowing::language.*/.higherKinds/*->scalaShadowing::language.higherKinds.*/
 
-class ann/*<-types::ann#*//*->scala::annotation::Annotation#`<init>`().*/[T/*<-types::ann#[T]*/](x/*<-types::ann#x.*/: T/*->types::ann#`<init>`().[T]*/) extends scala.annotation.StaticAnnotation/*->scala::annotation::StaticAnnotation#*/
+class ann/*<-types::ann#*//*->scala::annotation::Annotation#`<init>`().*/[T/*<-types::ann#[T]*/](x/*<-types::ann#x.*/: T/*->types::ann#[T]*/) extends scala.annotation.StaticAnnotation/*->scala::annotation::StaticAnnotation#*/
 class ann1/*<-types::ann1#*//*->scala::annotation::Annotation#`<init>`().*/ extends scala.annotation.StaticAnnotation/*->scala::annotation::StaticAnnotation#*/
 class ann2/*<-types::ann2#*//*->scala::annotation::Annotation#`<init>`().*/ extends scala.annotation.StaticAnnotation/*->scala::annotation::StaticAnnotation#*/
 

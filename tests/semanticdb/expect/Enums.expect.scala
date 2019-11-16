@@ -14,7 +14,7 @@ object Enums/*<-_empty_::Enums.*/ with
     case Sunday/*<-_empty_::Enums.WeekDays.Sunday.*/
 
   enum Maybe/*<-_empty_::Enums.Maybe#*/[+A/*<-_empty_::Enums.Maybe#[A]*/] with
-    case Just/*<-_empty_::Enums.Maybe.Just#*/(value/*<-_empty_::Enums.Maybe.Just#value.*/: A/*->_empty_::Enums.Maybe.Just#`<init>`().[A]*/)
+    case Just/*<-_empty_::Enums.Maybe.Just#*/(value/*<-_empty_::Enums.Maybe.Just#value.*/: A/*->_empty_::Enums.Maybe.Just#[A]*/)
     case None/*<-_empty_::Enums.Maybe.None.*/
 
   enum Tag/*<-_empty_::Enums.Tag#*/[A/*<-_empty_::Enums.Tag#[A]*/] with

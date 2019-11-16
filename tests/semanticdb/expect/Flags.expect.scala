@@ -7,7 +7,7 @@ package object p {
   protected implicit var y/*<-flags::p::package.y().*/: /*<-flags::p::package.`y_=`().*/Int/*->scala::Int#*/ = 2
   def z/*<-flags::p::package.z().*/(pp/*<-flags::p::package.z().(pp)*/: Int/*->scala::Int#*/) = 3
   def m/*<-flags::p::package.m().*/[TT/*<-flags::p::package.m().[TT]*/]: Int/*->scala::Int#*//*->scala::Predef.`???`().*/ = macro ???
-  abstract class C/*<-flags::p::package.C#*/[+T/*<-flags::p::package.C#[T]*//*<-flags::p::package.C#`<init>`(+1).[T]*/, -U/*<-flags::p::package.C#[U]*//*<-flags::p::package.C#`<init>`(+1).[U]*/, V/*<-flags::p::package.C#[V]*//*<-flags::p::package.C#`<init>`(+1).[V]*/](x/*<-flags::p::package.C#x.*/: T/*->flags::p::package.C#`<init>`().[T]*/, y/*<-flags::p::package.C#y.*/: U/*->flags::p::package.C#`<init>`().[U]*/, z/*<-flags::p::package.C#z.*/: V/*->flags::p::package.C#`<init>`().[V]*/) {
+  abstract class C/*<-flags::p::package.C#*/[+T/*<-flags::p::package.C#[T]*//*<-flags::p::package.C#`<init>`(+1).[T]*/, -U/*<-flags::p::package.C#[U]*//*<-flags::p::package.C#`<init>`(+1).[U]*/, V/*<-flags::p::package.C#[V]*//*<-flags::p::package.C#`<init>`(+1).[V]*/](x/*<-flags::p::package.C#x.*/: T/*->flags::p::package.C#[T]*/, y/*<-flags::p::package.C#y.*/: U/*->flags::p::package.C#[U]*/, z/*<-flags::p::package.C#z.*/: V/*->flags::p::package.C#[V]*/) {
     def this()/*<-flags::p::package.C#`<init>`(+1).*/ = this(???/*->scala::Predef.`???`().*/, ???/*->scala::Predef.`???`().*/, ???/*->scala::Predef.`???`().*/)
     def w/*<-flags::p::package.C#w().*/: Int/*->scala::Int#*/
   }

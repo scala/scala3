@@ -407,8 +407,9 @@ class ExtractSemanticDB extends Phase {
           traverseChildren(tree)
         case tree: (ValDef | DefDef | TypeDef) if tree.symbol.is(Synthetic, butNot=Module) && !tree.symbol.isAnonymous => // skip
         case tree: Template =>
-          if !excludeDef(tree.constr.symbol)
-            registerDefinition(tree.constr.symbol, tree.constr.span, Set.empty)
+          val ctorSym = tree.constr.symbol
+          if !excludeDef(ctorSym)
+            registerDefinition(ctorSym, tree.constr.span, Set.empty)
             val ctorParams = tree.constr.vparamss.flatten
             @tu lazy val getters = findGetters(ctorParams, tree.body)
             for vparam <- ctorParams do
@@ -418,7 +419,13 @@ class ExtractSemanticDB extends Phase {
                     Set.empty[SymbolKind])(
                     getter => if getter.mods.is(Mutable) then SymbolKind.SingletonVar else SymbolKind.SingletonVal)
                 registerSymbol(vparam.symbol, symbolName(vparam.symbol), symkinds)
-              traverse(vparam.tpt)
+              val tptSym = vparam.tpt.symbol
+              if tptSym.owner == ctorSym
+                val found = ctorSym.owner.info.member(tptSym.name.toTypeName).symbol
+                if !excludeUseStrict(found, vparam.tpt.span) && vparam.tpt.span.start != vparam.tpt.span.end
+                  registerUse(found, vparam.tpt.span)
+              else
+                traverse(vparam.tpt)
           for parent <- tree.parentsOrDerived do
             if
               parent.symbol != defn.ObjectClass.primaryConstructor

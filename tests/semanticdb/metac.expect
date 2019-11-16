@@ -240,7 +240,7 @@ Occurrences:
 [7:43..7:44) T <- annot/Annotations#[T]
 [7:47..7:66) ParameterAnnotation -> com/javacp/annot/ParameterAnnotation#
 [7:67..7:68) x <- annot/Annotations#x.
-[7:70..7:71) T -> annot/Annotations#`<init>`().[T]
+[7:70..7:71) T -> annot/Annotations#[T]
 [7:75..7:79) self <- local0
 [7:81..7:87) AnyRef -> scala/AnyRef#
 [8:3..8:18) FieldAnnotation -> com/javacp/annot/FieldAnnotation#
@@ -647,7 +647,7 @@ Occurrences:
 [16:9..16:13) Just <- _empty_/Enums.Maybe.Just#
 [16:13..16:23) <- _empty_/Enums.Maybe.Just#`<init>`().
 [16:14..16:19) value <- _empty_/Enums.Maybe.Just#value.
-[16:21..16:22) A -> _empty_/Enums.Maybe.Just#`<init>`().[A]
+[16:21..16:22) A -> _empty_/Enums.Maybe.Just#[A]
 [17:4..17:4) <- local0
 [17:4..17:4) -> _empty_/Enums.Maybe#`<init>`().
 [17:9..17:13) None <- _empty_/Enums.Maybe.None.
@@ -940,11 +940,11 @@ Occurrences:
 [9:27..9:28) V <- flags/p/package.C#[V]
 [9:27..9:28) V <- flags/p/package.C#`<init>`(+1).[V]
 [9:30..9:31) x <- flags/p/package.C#x.
-[9:33..9:34) T -> flags/p/package.C#`<init>`().[T]
+[9:33..9:34) T -> flags/p/package.C#[T]
 [9:36..9:37) y <- flags/p/package.C#y.
-[9:39..9:40) U -> flags/p/package.C#`<init>`().[U]
+[9:39..9:40) U -> flags/p/package.C#[U]
 [9:42..9:43) z <- flags/p/package.C#z.
-[9:45..9:46) V -> flags/p/package.C#`<init>`().[V]
+[9:45..9:46) V -> flags/p/package.C#[V]
 [10:8..10:14) <- flags/p/package.C#`<init>`(+1).
 [10:22..10:22) -> flags/p/package.C#`<init>`().
 [10:22..10:25) ??? -> scala/Predef.`???`().
@@ -1271,7 +1271,7 @@ Occurrences:
 [33:39..33:63) <- example/ImplicitConversion.newAny2stringadd#`<init>`().
 [33:40..33:41) A <- example/ImplicitConversion.newAny2stringadd#[A]
 [33:55..33:59) self <- example/ImplicitConversion.newAny2stringadd#self.
-[33:61..33:62) A -> example/ImplicitConversion.newAny2stringadd#`<init>`().[A]
+[33:61..33:62) A -> example/ImplicitConversion.newAny2stringadd#[A]
 [33:72..33:78) AnyVal -> scala/AnyVal#
 [33:78..33:78) -> scala/AnyVal#`<init>`().
 [34:8..34:9) + <- example/ImplicitConversion.newAny2stringadd#`+`().
@@ -2579,7 +2579,7 @@ Occurrences:
 [5:9..5:18) <- types/ann#`<init>`().
 [5:10..5:11) T <- types/ann#[T]
 [5:13..5:14) x <- types/ann#x.
-[5:16..5:17) T -> types/ann#`<init>`().[T]
+[5:16..5:17) T -> types/ann#[T]
 [5:27..5:32) scala -> scala/
 [5:33..5:43) annotation -> scala/annotation/
 [5:44..5:60) StaticAnnotation -> scala/annotation/StaticAnnotation#
@@ -3251,3 +3251,4 @@ Occurrences:
 [2:46..2:47) z -> _empty_/toplevel$package.combine(+1).(z)
 [3:4..3:11) combine <- _empty_/toplevel$package.combine(+2).
 [4:4..4:7) foo <- _empty_/toplevel$package.foo().
+

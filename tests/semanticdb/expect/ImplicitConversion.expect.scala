@@ -31,7 +31,7 @@ class ImplicitConversion/*<-example::ImplicitConversion#*/ {
 }
 
 object ImplicitConversion/*<-example::ImplicitConversion.*/ {
-  implicit final class newAny2stringadd/*<-example::ImplicitConversion.newAny2stringadd#*/[A/*<-example::ImplicitConversion.newAny2stringadd#[A]*/](private val self/*<-example::ImplicitConversion.newAny2stringadd#self.*/: A/*->example::ImplicitConversion.newAny2stringadd#`<init>`().[A]*/) extends AnyVal/*->scala::AnyVal#*//*->scala::AnyVal#`<init>`().*/ {
+  implicit final class newAny2stringadd/*<-example::ImplicitConversion.newAny2stringadd#*/[A/*<-example::ImplicitConversion.newAny2stringadd#[A]*/](private val self/*<-example::ImplicitConversion.newAny2stringadd#self.*/: A/*->example::ImplicitConversion.newAny2stringadd#[A]*/) extends AnyVal/*->scala::AnyVal#*//*->scala::AnyVal#`<init>`().*/ {
     def +/*<-example::ImplicitConversion.newAny2stringadd#`+`().*/(other/*<-example::ImplicitConversion.newAny2stringadd#`+`().(other)*/: String/*->scala::Predef.String#*/): String/*->scala::Predef.String#*/ = String/*->java::lang::String#*/.valueOf/*->java::lang::String#valueOf().*/(self/*->example::ImplicitConversion.newAny2stringadd#self.*/) +/*->java::lang::String#`+`().*/ other/*->example::ImplicitConversion.newAny2stringadd#`+`().(other)*/
   }
 }
