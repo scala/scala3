@@ -167,7 +167,7 @@ class ExtractSemanticDB extends Phase {
           if sym.is(Package) then b.append('/')
           else if sym.isType || sym.isAllOf(JavaModule) then b.append('#')
           else if sym.isOneOf(Method | Mutable)
-          && (!sym.is(StableRealizable) || sym.name == nme.CONSTRUCTOR) then
+          && (!sym.is(StableRealizable) || sym.isConstructor) then
             b.append('('); addOverloadIdx(sym); b.append(").")
           else b.append('.')
 
@@ -215,7 +215,7 @@ class ExtractSemanticDB extends Phase {
       !sym.exists
       || sym.isLocalDummy
       || sym.is(Synthetic) || (sym.owner.is(Synthetic) && !sym.isAllOf(EnumCase))
-      || sym.name == nme.CONSTRUCTOR && sym.owner.is(ModuleClass)
+      || sym.isConstructor && sym.owner.is(ModuleClass)
       || sym.isAnonymous
       || excludeDefStrict(sym)
 
@@ -240,7 +240,7 @@ class ExtractSemanticDB extends Phase {
         SymbolInformation.Kind.LOCAL
       else if sym.isInlineMethod || sym.is(Macro)
         SymbolInformation.Kind.MACRO
-      else if sym.name == nme.CONSTRUCTOR
+      else if sym.isConstructor
         SymbolInformation.Kind.CONSTRUCTOR
       else if sym.isSelfSym
         SymbolInformation.Kind.SELF_PARAMETER
@@ -483,8 +483,10 @@ class ExtractSemanticDB extends Phase {
               case tree: Ident            => registerUse(setter, tree.span)
           traverse(tree.rhs)
         case tree: Ident =>
-          if tree.name != nme.WILDCARD && !excludeUseStrict(tree.symbol, tree.span) then
-            registerUse(tree.symbol, tree.span)
+          if tree.name != nme.WILDCARD then
+            // if tree.symbol.isTypeParam && tree.symbol.owner.isConstructor
+            if !excludeUseStrict(tree.symbol, tree.span) then
+              registerUse(tree.symbol, tree.span)
         case tree: Select =>
           val qualSpan = tree.qualifier.span
           if !excludeUseStrict(tree.symbol, tree.span) then

@@ -34,6 +34,9 @@ object Scala with
   @sharable
   private val locals = raw"local(\d+)".r
 
+  @sharable
+  private val ctor = raw"[^;].*`<init>`\((?:\+\d+)?\)\.".r
+
   object LocalSymbol with
     def unapply(symbolInfo: SymbolInformation): Option[Int] =
       symbolInfo.symbol match
@@ -61,6 +64,8 @@ object Scala with
       locals matches symbol
     def isMulti: Boolean =
       symbol startsWith ";"
+    def isConstructor: Boolean =
+      ctor matches symbol
     def isTerm: Boolean =
       !symbol.isNoSymbol && !symbol.isMulti && symbol.last == '.'
     def isType: Boolean =

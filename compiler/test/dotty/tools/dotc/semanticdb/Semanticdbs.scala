@@ -137,7 +137,7 @@ object Semanticdbs with
         .append(')')
       if range.endLine == range.startLine
       && range.startCharacter != range.endCharacter
-      && !(occ.role.isDefinition && occ.symbol.matches(raw".+`<init>`\((?:\+\d+)?\)\."))
+      && !(occ.symbol.isConstructor && occ.role.isDefinition)
         val line = sourceFile.lineContent(sourceFile.lineToOffset(range.startLine))
         sb.append(" ").append(line.substring(range.startCharacter, range.endCharacter))
     case _ =>
