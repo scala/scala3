@@ -9,6 +9,7 @@ package object p {
   def m[TT]: Int = macro ???
   abstract class C[+T, -U, V](x: T, y: U, z: V) {
     def this() = this(???, ???, ???)
+    def this(t: T) = this(t, ???, ???)
     def w: Int
   }
   type T1 = Int

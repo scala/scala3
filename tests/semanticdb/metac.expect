@@ -852,8 +852,8 @@ Schema => SemanticDB v4
 Uri => Flags.scala
 Text => empty
 Language => Scala
-Symbols => 50 entries
-Occurrences => 83 entries
+Symbols => 49 entries
+Occurrences => 87 entries
 
 Symbols:
 flags/p/package. => final package object p
@@ -875,9 +875,8 @@ flags/p/package.C#`<init>`().(x) => param x
 flags/p/package.C#`<init>`().(y) => param y
 flags/p/package.C#`<init>`().(z) => param z
 flags/p/package.C#`<init>`(+1). => ctor <init>
-flags/p/package.C#`<init>`(+1).[T] => typeparam T
-flags/p/package.C#`<init>`(+1).[U] => typeparam U
-flags/p/package.C#`<init>`(+1).[V] => typeparam V
+flags/p/package.C#`<init>`(+2). => ctor <init>
+flags/p/package.C#`<init>`(+2).(t) => val param t
 flags/p/package.C#w(). => abstract method w
 flags/p/package.C#x. => val method x
 flags/p/package.C#y. => val method y
@@ -929,11 +928,8 @@ Occurrences:
 [9:17..9:18) C <- flags/p/package.C#
 [9:18..9:47) <- flags/p/package.C#`<init>`().
 [9:20..9:21) T <- flags/p/package.C#[T]
-[9:20..9:21) T <- flags/p/package.C#`<init>`(+1).[T]
 [9:24..9:25) U <- flags/p/package.C#[U]
-[9:24..9:25) U <- flags/p/package.C#`<init>`(+1).[U]
 [9:27..9:28) V <- flags/p/package.C#[V]
-[9:27..9:28) V <- flags/p/package.C#`<init>`(+1).[V]
 [9:30..9:31) x <- flags/p/package.C#x.
 [9:33..9:34) T -> flags/p/package.C#[T]
 [9:36..9:37) y <- flags/p/package.C#y.
@@ -945,52 +941,59 @@ Occurrences:
 [10:22..10:25) ??? -> scala/Predef.`???`().
 [10:27..10:30) ??? -> scala/Predef.`???`().
 [10:32..10:35) ??? -> scala/Predef.`???`().
-[11:8..11:9) w <- flags/p/package.C#w().
-[11:11..11:14) Int -> scala/Int#
-[13:7..13:9) T1 <- flags/p/package.T1#
-[13:12..13:15) Int -> scala/Int#
-[14:7..14:9) T2 <- flags/p/package.T2#
-[14:10..14:11) T <- flags/p/package.T2#[T]
-[14:15..14:16) S -> flags/p/package.S#
-[14:17..14:18) T -> flags/p/package.T2#[T]
-[15:7..15:8) U <- flags/p/package.U#
-[15:12..15:15) Int -> scala/Int#
-[16:7..16:8) V <- flags/p/package.V#
+[11:8..11:14) <- flags/p/package.C#`<init>`(+2).
+[11:13..11:14) t <- flags/p/package.C#`<init>`(+2).(t)
+[11:16..11:17) T -> flags/p/package.C#[T]
+[11:26..11:26) -> flags/p/package.C#`<init>`().
+[11:26..11:27) t -> flags/p/package.C#`<init>`(+2).(t)
+[11:29..11:32) ??? -> scala/Predef.`???`().
+[11:34..11:37) ??? -> scala/Predef.`???`().
+[12:8..12:9) w <- flags/p/package.C#w().
+[12:11..12:14) Int -> scala/Int#
+[14:7..14:9) T1 <- flags/p/package.T1#
+[14:12..14:15) Int -> scala/Int#
+[15:7..15:9) T2 <- flags/p/package.T2#
+[15:10..15:11) T <- flags/p/package.T2#[T]
+[15:15..15:16) S -> flags/p/package.S#
+[15:17..15:18) T -> flags/p/package.T2#[T]
+[16:7..16:8) U <- flags/p/package.U#
 [16:12..16:15) Int -> scala/Int#
-[17:14..17:15) X <- flags/p/package.X.
-[18:2..18:2) <- flags/p/package.Y#`<init>`().
-[18:14..18:15) Y <- flags/p/package.Y#
-[19:2..19:2) <- flags/p/package.Z#`<init>`().
-[19:15..19:16) Z <- flags/p/package.Z#
-[20:8..20:10) AA <- flags/p/package.AA#
-[20:10..20:42) <- flags/p/package.AA#`<init>`().
-[20:11..20:12) x <- flags/p/package.AA#x.
-[20:14..20:17) Int -> scala/Int#
-[20:23..20:24) y <- flags/p/package.AA#y.
-[20:26..20:29) Int -> scala/Int#
-[20:35..20:36) z <- flags/p/package.AA#z().
-[20:35..20:38) z:  <- flags/p/package.AA#`z_=`().
-[20:38..20:41) Int -> scala/Int#
-[21:8..21:9) S <- flags/p/package.S#
-[21:9..21:25) <- flags/p/package.S#`<init>`().
-[21:11..21:22) specialized -> scala/specialized#
-[21:22..21:22) -> scala/specialized#`<init>`(+2).
-[21:23..21:24) T <- flags/p/package.S#[T]
-[22:6..22:10) List -> scala/package.List.
-[22:10..22:10) -> scala/collection/SeqFactory#unapplySeq().
-[22:11..22:14) xs1 <- flags/p/package.xs1.
-[22:11..22:14) xs1 <- local0
-[22:15..22:15) -> local0
-[22:18..22:21) ??? -> scala/Predef.`???`().
-[23:2..23:5) ??? -> scala/Predef.`???`().
-[23:19..23:23) List -> scala/package.List.
-[23:23..23:23) -> scala/collection/SeqFactory#unapplySeq().
-[23:24..23:27) xs2 <- local1
-[23:32..23:35) ??? -> scala/Predef.`???`().
+[17:7..17:8) V <- flags/p/package.V#
+[17:12..17:15) Int -> scala/Int#
+[18:14..18:15) X <- flags/p/package.X.
+[19:2..19:2) <- flags/p/package.Y#`<init>`().
+[19:14..19:15) Y <- flags/p/package.Y#
+[20:2..20:2) <- flags/p/package.Z#`<init>`().
+[20:15..20:16) Z <- flags/p/package.Z#
+[21:8..21:10) AA <- flags/p/package.AA#
+[21:10..21:42) <- flags/p/package.AA#`<init>`().
+[21:11..21:12) x <- flags/p/package.AA#x.
+[21:14..21:17) Int -> scala/Int#
+[21:23..21:24) y <- flags/p/package.AA#y.
+[21:26..21:29) Int -> scala/Int#
+[21:35..21:36) z <- flags/p/package.AA#z().
+[21:35..21:38) z:  <- flags/p/package.AA#`z_=`().
+[21:38..21:41) Int -> scala/Int#
+[22:8..22:9) S <- flags/p/package.S#
+[22:9..22:25) <- flags/p/package.S#`<init>`().
+[22:11..22:22) specialized -> scala/specialized#
+[22:22..22:22) -> scala/specialized#`<init>`(+2).
+[22:23..22:24) T <- flags/p/package.S#[T]
+[23:6..23:10) List -> scala/package.List.
+[23:10..23:10) -> scala/collection/SeqFactory#unapplySeq().
+[23:11..23:14) xs1 <- flags/p/package.xs1.
+[23:11..23:14) xs1 <- local0
+[23:15..23:15) -> local0
+[23:18..23:21) ??? -> scala/Predef.`???`().
 [24:2..24:5) ??? -> scala/Predef.`???`().
-[24:22..24:26) List -> scala/package.List#
-[24:27..24:28) t <- local2
-[24:33..24:36) ??? -> scala/Predef.`???`().
+[24:19..24:23) List -> scala/package.List.
+[24:23..24:23) -> scala/collection/SeqFactory#unapplySeq().
+[24:24..24:27) xs2 <- local1
+[24:32..24:35) ??? -> scala/Predef.`???`().
+[25:2..25:5) ??? -> scala/Predef.`???`().
+[25:22..25:26) List -> scala/package.List#
+[25:27..25:28) t <- local2
+[25:33..25:36) ??? -> scala/Predef.`???`().
 
 expect/ForComprehension.scala
 _____________________________
@@ -2328,7 +2331,7 @@ Occurrences:
 [30:10..30:11) T <- example/Synthetic#J#[T]
 [30:11..30:11) <- example/Synthetic#J#evidence$2.
 [30:13..30:21) Manifest -> scala/Predef.Manifest#
-[30:21..30:21) -> example/Synthetic#J#`<init>`().[T]
+[30:21..30:21) -> example/Synthetic#J#[T]
 [30:29..30:32) arr <- example/Synthetic#J#arr.
 [30:35..30:40) Array -> scala/Array.
 [30:41..30:46) empty -> scala/Array.empty().

@@ -332,10 +332,10 @@ class ExtractSemanticDB extends Phase {
       Span(start, start + sym.name.show.length, start)
     }
 
-    def (tree: DefDef) isSetterDef(given Context): Boolean =
+    private def (tree: DefDef) isSetterDef(given Context): Boolean =
       tree.name.isSetterName && tree.mods.is(Accessor) && tree.vparamss.flatten.length == 1
 
-    def findGetters(ctorParams: List[ValDef], body: List[ast.tpd.Tree])(given Context): Map[Names.TermName, ValDef] =
+    private def findGetters(ctorParams: List[ValDef], body: List[ast.tpd.Tree])(given Context): Map[Names.TermName, ValDef] =
       if ctorParams.isEmpty then
         Map.empty
       else
@@ -348,7 +348,7 @@ class ExtractSemanticDB extends Phase {
         }).toMap
     end findGetters
 
-    def adjustSpanToName(span: Span, qualSpan: Span, name: Name)(given Context) =
+    private def adjustSpanToName(span: Span, qualSpan: Span, name: Name)(given Context) =
       val end = span.end
       val limit = qualSpan.end
       val start =
@@ -358,7 +358,7 @@ class ExtractSemanticDB extends Phase {
         else limit
       Span(start max limit, end)
 
-    def (span: Span) hasLength: Boolean = span.start != span.end
+    private def (span: Span) hasLength: Boolean = span.start != span.end
 
     /**Consume head while not an import statement.
      * Returns the rest of the list after the first import, or else the empty list
@@ -371,12 +371,39 @@ class ExtractSemanticDB extends Phase {
         rest.foreachUntilImport(op)
       case Nil => Nil
 
+    private def (sym: Symbol) adjustIfCtorTyparam(given Context) =
+      if sym.isType && sym.owner.isConstructor
+        matchingMemberType(sym, sym.owner.owner)
+      else
+        sym
+
+    private inline def matchingMemberType(ctorTypeParam: Symbol, classSym: Symbol)(given Context) =
+      classSym.info.member(ctorTypeParam.name).symbol
+
     override def traverse(tree: Tree)(given Context): Unit =
       for annot <- tree.symbol.annotations do
         if annot.tree.span.exists
           && annot.symbol.owner != defn.ScalaAnnotationInternal
         then
           traverse(annot.tree)
+
+      def ctorParams(ctorSym: Symbol, vparamss: List[List[ValDef]], body: List[Tree]): Unit =
+        val ctorParams = vparamss.flatten
+        @tu lazy val getters = findGetters(ctorParams, body)
+        for vparam <- ctorParams do
+          if !isWildcard(vparam.name)
+            val symkinds =
+              getters.get(vparam.name).fold(
+                Set.empty[SymbolKind])(
+                getter => if getter.mods.is(Mutable) then SymbolKind.SingletonVar else SymbolKind.SingletonVal)
+            registerSymbol(vparam.symbol, symbolName(vparam.symbol), symkinds)
+          val tptSym = vparam.tpt.symbol
+          if tptSym.owner == ctorSym
+            val found = matchingMemberType(tptSym, ctorSym.owner)
+            if !excludeUseStrict(found, vparam.tpt.span) && vparam.tpt.span.hasLength
+              registerUse(found, vparam.tpt.span)
+          else
+            traverse(vparam.tpt)
 
       tree match
         case tree: PackageDef =>
@@ -423,28 +450,16 @@ class ExtractSemanticDB extends Phase {
               case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
                 template.parents.foreach(traverse)
               case _ => // calls $new
+            case tree: DefDef if tree.symbol.isConstructor =>
+              tree.vparamss.flatten.foreach(traverse)
+              traverse(tree.rhs)
             case _ => traverseChildren(tree)
         case tree: (ValDef | DefDef | TypeDef) if tree.symbol.is(Synthetic, butNot=Module) && !tree.symbol.isAnonymous => // skip
         case tree: Template =>
           val ctorSym = tree.constr.symbol
           if !excludeDef(ctorSym)
             registerDefinition(ctorSym, tree.constr.span, Set.empty)
-            val ctorParams = tree.constr.vparamss.flatten
-            @tu lazy val getters = findGetters(ctorParams, tree.body)
-            for vparam <- ctorParams do
-              if !isWildcard(vparam.name)
-                val symkinds =
-                  getters.get(vparam.name).fold(
-                    Set.empty[SymbolKind])(
-                    getter => if getter.mods.is(Mutable) then SymbolKind.SingletonVar else SymbolKind.SingletonVal)
-                registerSymbol(vparam.symbol, symbolName(vparam.symbol), symkinds)
-              val tptSym = vparam.tpt.symbol
-              if tptSym.owner == ctorSym
-                val found = ctorSym.owner.info.member(tptSym.name.toTypeName).symbol
-                if !excludeUseStrict(found, vparam.tpt.span) && vparam.tpt.span.hasLength
-                  registerUse(found, vparam.tpt.span)
-              else
-                traverse(vparam.tpt)
+            ctorParams(ctorSym, tree.constr.vparamss, tree.body)
           for parent <- tree.parentsOrDerived do
             if
               parent.symbol != defn.ObjectClass.primaryConstructor
@@ -484,13 +499,14 @@ class ExtractSemanticDB extends Phase {
           traverse(tree.rhs)
         case tree: Ident =>
           if tree.name != nme.WILDCARD then
-            // if tree.symbol.isTypeParam && tree.symbol.owner.isConstructor
-            if !excludeUseStrict(tree.symbol, tree.span) then
-              registerUse(tree.symbol, tree.span)
+            val sym = tree.symbol.adjustIfCtorTyparam
+            if !excludeUseStrict(sym, tree.span) then
+              registerUse(sym, tree.span)
         case tree: Select =>
           val qualSpan = tree.qualifier.span
-          if !excludeUseStrict(tree.symbol, tree.span) then
-            registerUse(tree.symbol, adjustSpanToName(tree.span, qualSpan, tree.name))
+          val sym = tree.symbol.adjustIfCtorTyparam
+          if !excludeUseStrict(sym, tree.span) then
+            registerUse(sym, adjustSpanToName(tree.span, qualSpan, tree.name))
           if qualSpan.exists && qualSpan.hasLength then
             traverseChildren(tree)
         case tree: Import =>
