@@ -174,14 +174,19 @@ object Implicits {
          *  Note that we always take the underlying type of a singleton type as the argument
          *  type, so that we get a reasonable implicit cache hit ratio.
          */
-        def adjustSingletonArg(tp: Type): Type = tp.widenSingleton match {
+        def adjustSingletonArg(tp: Type): Type = tp.widenSingleton match
           case tp: PolyType =>
             val res = adjustSingletonArg(tp.resType)
-            if (res `eq` tp.resType) tp else tp.derivedLambdaType(resType = res)
+            if res eq tp.resType then tp else tp.derivedLambdaType(resType = res)
           case tp: MethodType =>
             tp.derivedLambdaType(paramInfos = tp.paramInfos.mapConserve(widenSingleton))
-          case _ => tp
-        }
+          case _ =>
+            tp.baseType(defn.ConversionClass) match
+              case app @ AppliedType(tycon, from :: to :: Nil) =>
+                val wideFrom = from.widenSingleton
+                if wideFrom ne from then app.derivedAppliedType(tycon, wideFrom :: to :: Nil)
+                else tp
+              case _ => tp
 
         var ckind =
           if (!ref.symbol.isAccessibleFrom(ref.prefix)) Candidate.None
@@ -1384,7 +1389,7 @@ trait Implicits { self: Typer =>
                 untpd.Select(
                   untpd.TypedSplice(
                     adapt(generated,
-                      defn.ConversionClass.typeRef.appliedTo(argument.tpe.widen, pt),
+                      defn.ConversionClass.typeRef.appliedTo(argument.tpe, pt),
                       locked)),
                   nme.apply)
               else untpdGenerated
