@@ -473,14 +473,6 @@ class ExtractSemanticDB extends Phase {
             traverse(tree.self)
           if ctorSym.owner.is(Enum, butNot=Case)
             tree.body.foreachUntilImport(traverse).foreach(traverse)
-          else if ctorSym.owner.is(ModuleClass) && ctorSym.owner.companionClass.is(Enum, butNot=Case)
-            // TODO: Remove this branch if $values is removed or made synthetic
-            tree.body.filter({
-              case tree @ ValDef(nme.DOLLAR_VALUES,_,_)
-              if tree.mods.flags.is(Private)
-                && tree.symbol.info.typeSymbol == defn.EnumValuesClass => false
-              case _ => true
-            }).foreach(traverse)
           else
             tree.body.foreach(traverse)
         case tree: Assign =>
