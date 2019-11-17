@@ -4753,6 +4753,9 @@ object Types {
             // if H#x: y.type, then for any x in L..H, x.type =:= y.type,
             // hence we can replace with y.type under all variances
             reapply(info)
+          case info: ClassInfo =>
+            // For class types, we can fall back to a type projection P#C
+            tp.derivedSelect(pre.widen)
           case _ =>
             NoType
         }
