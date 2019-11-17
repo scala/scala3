@@ -3412,7 +3412,7 @@ object Parsers {
         else
           (EmptyTermName, isIdent(nme.extension))
 
-      val gdef = indentRegion(name) {
+      val gdef = indentRegion(if name.isEmpty then GIVEN else name) {
         if isExtension then
           if (in.token == COLON) in.nextToken()
           assert(ident() == nme.extension)
