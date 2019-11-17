@@ -134,14 +134,14 @@ object Semanticdbs with
         .append(range.startLine).append(':').append(range.startCharacter)
         .append("..")
         .append(range.endLine).append(':').append(range.endCharacter)
-        .append(')')
+        .append("):")
       if range.endLine == range.startLine
       && range.startCharacter != range.endCharacter
       && !(occ.symbol.isConstructor && occ.role.isDefinition)
         val line = sourceFile.lineContent(sourceFile.lineToOffset(range.startLine))
         sb.append(" ").append(line.substring(range.startCharacter, range.endCharacter))
     case _ =>
-      sb.append("[)")
+      sb.append("[):")
     end match
     sb.append(if occ.role.isReference then " -> " else " <- ").append(occ.symbol).nl
   end processOccurrence
