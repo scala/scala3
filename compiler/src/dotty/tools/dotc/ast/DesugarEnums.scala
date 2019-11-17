@@ -99,7 +99,7 @@ object DesugarEnums {
     val privateValuesDef =
       ValDef(nme.DOLLAR_VALUES, TypeTree(),
         New(TypeTree(defn.EnumValuesClass.typeRef.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
-        .withFlags(Private)
+        .withFlags(Private | Synthetic)
 
     val valuesOfExnMessage = Apply(
       Select(Literal(Constant("key not found: ")), "concat".toTermName),
