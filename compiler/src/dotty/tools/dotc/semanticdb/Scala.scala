@@ -1,13 +1,44 @@
 package dotty.tools.dotc.semanticdb
 
-import dotty.tools.dotc.core.Symbols.{ Symbol => DottySymbol, defn }
+import dotty.tools.dotc.core.Symbols.{ Symbol, defn }
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Names
+import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.NameKinds
+import dotty.tools.dotc.core.NameOps
+import dotty.tools.dotc.core.StdNames.nme
 
 import scala.annotation.internal.sharable
 import scala.annotation.switch
 
 object Scala with
+  import NameOps.given
+
+  @sharable private val unicodeEscape = raw"\$$u(\p{XDigit}{4})".r
+  @sharable private val locals        = raw"local(\d+)".r
+  @sharable private val ctor          = raw"[^;].*`<init>`\((?:\+\d+)?\)\.".r
+
+  private val WILDCARDTypeName = nme.WILDCARD.toTypeName
+
+  enum SymbolKind derives Eql with
+    kind =>
+
+    case Val, Var, Setter, Abstract
+
+    def isVar: Boolean = kind match
+      case Var | Setter => true
+      case _            => false
+
+    def isVal: Boolean = kind == Val
+
+    def isVarOrVal: Boolean = kind.isVar || kind.isVal
+
+  object SymbolKind with
+    val ValSet   = Set(Val)
+    val VarSet   = Set(Var)
+    val emptySet = Set.empty[SymbolKind]
 
   object Symbols with
 
@@ -19,7 +50,7 @@ object Scala with
     val s"${RootPackageName @ _}/" = RootPackage
     val s"${EmptyPackageName @ _}/" = EmptyPackage
 
-    def displaySymbol(symbol: DottySymbol)(given Context): String =
+    def displaySymbol(symbol: Symbol)(given Context): String =
       if symbol.isPackageObject then
         displaySymbol(symbol.owner)
       else if symbol.is(ModuleClass) then
@@ -31,11 +62,43 @@ object Scala with
       else
         symbol.name.show
 
-  @sharable
-  private val locals = raw"local(\d+)".r
+    given symbolOps: (symbol: String) with
+      def unescapeUnicode =
+        unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar))
 
-  @sharable
-  private val ctor = raw"[^;].*`<init>`\((?:\+\d+)?\)\.".r
+  given nameOps: (name: Name) with
+
+    def isWildcard = name match
+      case nme.WILDCARD | WILDCARDTypeName => true
+      case _                               => name.is(NameKinds.WildcardParamName)
+
+    def isScala2PackageObjectName: Boolean = name match
+      case name: Names.TermName => name == nme.PACKAGE
+      case name: Names.TypeName =>
+        name.toTermName match
+        case NameKinds.ModuleClassName(original) => original.isScala2PackageObjectName
+        case _                                   => false
+
+
+  given symbolOps: (sym: Symbol) with
+
+    def isScala2PackageObject(given Context): Boolean =
+      sym.name.isScala2PackageObjectName && sym.owner.is(Package) && sym.is(Module)
+
+    def isAnonymous(given Context): Boolean =
+      sym.isAnonymousClass
+      || sym.isAnonymousModuleVal
+      || sym.isAnonymousFunction
+
+    def matchingSetter(given Context): Symbol =
+
+      val setterName = sym.name.toTermName.setterName
+
+      inline def (t: Type) matchingType = t.paramInfoss match
+        case (arg::Nil)::Nil => t.resultType == defn.UnitType && arg == sym.info
+        case _               => false
+
+      sym.owner.info.decls.find(s => s.name == setterName && s.info.matchingType)
 
   object LocalSymbol with
     def unapply(symbolInfo: SymbolInformation): Option[Int] =
