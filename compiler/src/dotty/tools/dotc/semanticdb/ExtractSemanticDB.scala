@@ -405,6 +405,9 @@ class ExtractSemanticDB extends Phase with
             case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
               template.parents.foreach(traverse)
             case _ => // calls $new
+          case tree: ValDef if tree.symbol.isSelfSym =>
+            if tree.tpt.span.hasLength
+              traverse(tree.tpt)
           case tree: DefDef if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
             tree.vparamss.foreach(_.foreach(traverse))
             traverse(tree.rhs)

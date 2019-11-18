@@ -858,7 +858,7 @@ Uri => Example.scala
 Text => empty
 Language => Scala
 Symbols => 5 entries
-Occurrences => 27 entries
+Occurrences => 26 entries
 
 Symbols:
 example/Example. => final object Example
@@ -875,7 +875,6 @@ Occurrences:
 [2:24..2:30): Future -> scala/concurrent/Future#
 [4:7..4:14): Example <- example/Example.
 [4:17..4:21): self <- local0
-[4:17..4:17): -> example/Example.
 [5:6..5:11): scala -> scala/
 [5:12..5:22): collection -> scala/collection/
 [5:23..5:30): mutable -> scala/collection/mutable/
@@ -3302,3 +3301,4 @@ Occurrences:
 [2:46..2:47): z -> _empty_/toplevel$package.combine(+1).(z)
 [3:4..3:11): combine <- _empty_/toplevel$package.combine(+2).
 [4:4..4:7): foo <- _empty_/toplevel$package.foo().
+
