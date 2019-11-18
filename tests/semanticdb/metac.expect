@@ -219,7 +219,7 @@ annot/M.m().[TT] => typeparam TT
 annot/T# => trait T
 annot/T#`<init>`(). => primary ctor <init>
 local0 => selfparam self
-local1 => local local
+local1 => val local local
 
 Occurrences:
 [0:8..0:13): annot <- annot/
@@ -412,7 +412,7 @@ classes/N.anonFun. => val method anonFun
 local0 => primary ctor <init>
 local1 => val method local
 local2 => param i
-local3 => local local
+local3 => val local local
 
 Occurrences:
 [0:8..0:15): classes <- classes/
@@ -1125,16 +1125,14 @@ Schema => SemanticDB v4
 Uri => ForComprehension.scala
 Text => empty
 Language => Scala
-Symbols => 16 entries
+Symbols => 13 entries
 Occurrences => 72 entries
 
 Symbols:
 example/ForComprehension# => class ForComprehension
 example/ForComprehension#`<init>`(). => primary ctor <init>
 local0 => param a
-local1 => val local b
 local1 => param b
-local2 => local c
 local2 => val local c
 local3 => param x$1
 local4 => param a
@@ -1143,7 +1141,6 @@ local6 => param x$1
 local7 => val local c
 local8 => val local d
 local9 => val local e
-local9 => local e
 local10 => param f
 
 Occurrences:
@@ -2089,9 +2086,9 @@ example/NamedApplyBlockMethods.foo().(b) => param b
 example/NamedApplyBlockMethods.foo().(c) => param c
 example/NamedApplyBlockMethods.local. => val method local
 example/NamedApplyBlockMethods.recursive(). => method recursive
-local0 => local b$1
-local1 => local c$1
-local2 => local b$3
+local0 => val local b$1
+local1 => val local c$1
+local2 => val local b$3
 local3 => val local head$1
 
 Occurrences:
@@ -3018,7 +3015,7 @@ Schema => SemanticDB v4
 Uri => ValPattern.scala
 Text => empty
 Language => Scala
-Symbols => 25 entries
+Symbols => 23 entries
 Occurrences => 57 entries
 
 Symbols:
@@ -3039,14 +3036,12 @@ example/ValPattern#right. => val method right
 example/ValPattern#rightVar(). => var method rightVar
 local0 => val local number1
 local1 => val local number1Var
-local2 => local left
-local3 => local right
-local4 => local number1
+local2 => val local left
+local3 => val local right
 local4 => val local number1
-local5 => local leftVar
-local6 => local rightVar
-local7 => local number1Var
-local7 => val local number1Var
+local5 => var local leftVar
+local6 => var local rightVar
+local7 => var local number1Var
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -3152,11 +3147,11 @@ example/Vals#yim(). => implicit var method yim
 example/Vals#ylm(). => var method ylm
 example/Vals#ym(). => var method ym
 example/Vals#yp(). => var method yp
-local0 => local xl
-local1 => lazy local xzl
-local2 => implicit local xil
-local3 => local yl
-local4 => implicit local yil
+local0 => val local xl
+local1 => lazy val local xzl
+local2 => implicit val local xil
+local3 => var local yl
+local4 => implicit var local yil
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -3459,4 +3454,3 @@ Occurrences:
 [2:46..2:47): z -> _empty_/toplevel$package.combine(+1).(z)
 [3:4..3:11): combine <- _empty_/toplevel$package.combine(+2).
 [4:4..4:7): foo <- _empty_/toplevel$package.foo().
-

@@ -42,7 +42,7 @@ class ExtractSemanticDB extends Phase with
     val unit = ctx.compilationUnit
     val extract = Extractor()
     extract.traverse(unit.tpdTree)
-    ExtractSemanticDB.write(unit.source, extract.occurrences.toList, extract.symbols.toList)
+    ExtractSemanticDB.write(unit.source, extract.occurrences.toList, extract.symbolInfos.toList)
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser with
@@ -60,7 +60,10 @@ class ExtractSemanticDB extends Phase with
     val occurrences = new mutable.ListBuffer[SymbolOccurrence]()
 
     /** The extracted symbol infos */
-    val symbols = new mutable.HashSet[SymbolInformation]()
+    val symbolInfos = new mutable.HashSet[SymbolInformation]()
+
+    /** A cache of localN names */
+    val localNames = new mutable.HashSet[String]()
 
     /** The symbol occurrences generated so far, as a set */
     private val generated = new mutable.HashSet[SymbolOccurrence]
@@ -76,7 +79,7 @@ class ExtractSemanticDB extends Phase with
         if isJavaIdent(str) then b append str
         else b append '`' append str append '`'
 
-      /** Is symbol global? Non-global symbols get localX names */
+      /** Is symbol global? Non-global symbols get localNå names */
       def isGlobal(sym: Symbol): Boolean =
         sym.is(Package)
         || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && isGlobal(sym.owner)
@@ -265,7 +268,11 @@ class ExtractSemanticDB extends Phase with
       )
 
     private def registerSymbol(sym: Symbol, symbolName: String, symkinds: Set[SymbolKind])(given Context): Unit =
-      symbols += symbolInfo(sym, symbolName, symkinds)
+      val isLocal = symbolName.isLocal
+      if !isLocal || !localNames.contains(symbolName)
+        if isLocal
+          localNames += symbolName
+        symbolInfos += symbolInfo(sym, symbolName, symkinds)
 
     private def registerOccurrence(symbol: String, span: Span, role: SymbolOccurrence.Role)(given Context): Unit =
       val occ = SymbolOccurrence(symbol, range(span), role)
@@ -351,7 +358,7 @@ class ExtractSemanticDB extends Phase with
         val symkinds = mutable.HashSet.empty[SymbolKind]
         tree match
         case tree: ValDef =>
-          if !tree.symbol.owner.is(Method)
+          if !tree.symbol.is(Param)
             symkinds += (if tree.mods is Mutable then SymbolKind.Var else SymbolKind.Val)
           if tree.rhs.isEmpty && !tree.symbol.isOneOf(TermParam | CaseAccessor | ParamAccessor)
             symkinds += SymbolKind.Abstract
@@ -360,7 +367,8 @@ class ExtractSemanticDB extends Phase with
             symkinds += SymbolKind.Setter
           else if tree.rhs.isEmpty
             symkinds += SymbolKind.Abstract
-        case tree: Bind => symkinds += SymbolKind.Val
+        case tree: Bind =>
+          symkinds += SymbolKind.Val
         case _ =>
         symkinds.toSet
 
@@ -493,7 +501,7 @@ object ExtractSemanticDB with
 
   val name: String = "extractSemanticDB"
 
-  def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbols: List[SymbolInformation])(given ctx: Context): Unit =
+  def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(given ctx: Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
     val sourcePath = absolutePath(source.file.jpath)
     val sourceRoot = absolutePath(Paths.get(ctx.settings.sourceroot.value))
@@ -516,7 +524,7 @@ object ExtractSemanticDB with
       uri = relPath.toString,
       text = "",
       md5 = internal.MD5.compute(String(source.content)),
-      symbols = symbols,
+      symbols = symbolInfos,
       occurrences = occurrences
     )
     val docs = TextDocuments(List(doc))
