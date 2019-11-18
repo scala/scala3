@@ -1,6 +1,6 @@
 package dotty.tools.dotc.semanticdb
 
-import dotty.tools.dotc.core.Symbols.{ Symbol, defn }
+import dotty.tools.dotc.core.Symbols.{ Symbol , defn }
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.core.Names.Name
@@ -14,6 +14,7 @@ import scala.annotation.internal.sharable
 import scala.annotation.switch
 
 object Scala with
+  import Symbols._
   import NameOps.given
 
   @sharable private val unicodeEscape = raw"\$$u(\p{XDigit}{4})".r
@@ -30,15 +31,16 @@ object Scala with
     def isVar: Boolean = kind match
       case Var | Setter => true
       case _            => false
-
     def isVal: Boolean = kind == Val
-
     def isVarOrVal: Boolean = kind.isVar || kind.isVal
+
+  end SymbolKind
 
   object SymbolKind with
     val ValSet   = Set(Val)
     val VarSet   = Set(Var)
     val emptySet = Set.empty[SymbolKind]
+  end SymbolKind
 
   object Symbols with
 
@@ -62,9 +64,7 @@ object Scala with
       else
         symbol.name.show
 
-    given symbolOps: (symbol: String) with
-      def unescapeUnicode =
-        unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar))
+  end Symbols
 
   given nameOps: (name: Name) with
 
@@ -79,6 +79,7 @@ object Scala with
         case NameKinds.ModuleClassName(original) => original.isScala2PackageObjectName
         case _                                   => false
 
+  end nameOps
 
   given symbolOps: (sym: Symbol) with
 
@@ -100,22 +101,29 @@ object Scala with
 
       sym.owner.info.decls.find(s => s.name == setterName && s.info.matchingType)
 
+  end symbolOps
+
   object LocalSymbol with
     def unapply(symbolInfo: SymbolInformation): Option[Int] =
-      symbolInfo.symbol match
-      case locals(ints) =>
-        val bi = BigInt(ints)
-        if bi.isValidInt then Some(bi.toInt) else None
-      case _ => None
+    symbolInfo.symbol match
 
-  given (symbol: String) with
+    case locals(ints) =>
+      val bi = BigInt(ints)
+      if bi.isValidInt
+        Some(bi.toInt)
+      else
+        None
 
-    def isNoSymbol: Boolean =
-      symbol == Symbols.NoSymbol
-    def isRootPackage: Boolean =
-      symbol == Symbols.RootPackage
-    def isEmptyPackage: Boolean =
-      symbol == Symbols.EmptyPackage
+    case _ => None
+
+  end LocalSymbol
+
+  given stringOps: (symbol: String) with
+
+    def isNoSymbol: Boolean = NoSymbol == symbol
+    def isRootPackage: Boolean = RootPackage == symbol
+    def isEmptyPackage: Boolean = EmptyPackage == symbol
+
     def isGlobal: Boolean =
       !symbol.isNoSymbol
       && !symbol.isMulti
@@ -123,10 +131,10 @@ object Scala with
         case '.' | '#' | '/' | ')' | ']' => true
         case _                           => false
       }
-    def isLocal: Boolean =
-      locals matches symbol
-    def isMulti: Boolean =
-      symbol startsWith ";"
+
+    def isLocal: Boolean = !symbol.isGlobal
+    def isMulti: Boolean = symbol startsWith ";"
+
     def isConstructor: Boolean =
       ctor matches symbol
     def isTerm: Boolean =
@@ -140,33 +148,55 @@ object Scala with
     def isTypeParameter: Boolean =
       !symbol.isNoSymbol && !symbol.isMulti && symbol.last == ']'
 
-  given (info: SymbolInformation) with
+    def unescapeUnicode =
+      unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar))
+
+  end stringOps
+
+  given infoOps: (info: SymbolInformation) with
+
+    def isAbstract: Boolean =
+      (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
+
+    def isFinal: Boolean =
+      (info.properties & SymbolInformation.Property.FINAL.value) != 0
+
+    def isSealed: Boolean =
+      (info.properties & SymbolInformation.Property.SEALED.value) != 0
+
+    def isImplicit: Boolean =
+      (info.properties & SymbolInformation.Property.IMPLICIT.value) != 0
+
+    def isLazy: Boolean =
+      (info.properties & SymbolInformation.Property.LAZY.value) != 0
+
+    def isCase: Boolean =
+      (info.properties & SymbolInformation.Property.CASE.value) != 0
+
+    def isCovariant: Boolean =
+      (info.properties & SymbolInformation.Property.COVARIANT.value) != 0
+
+    def isContravariant: Boolean =
+      (info.properties & SymbolInformation.Property.CONTRAVARIANT.value) != 0
 
     def isPrimary: Boolean =
       (info.properties & SymbolInformation.Property.PRIMARY.value) != 0
-    def isAbstract: Boolean =
-      (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
-    def isFinal: Boolean =
-      (info.properties & SymbolInformation.Property.FINAL.value) != 0
-    def isSealed: Boolean =
-      (info.properties & SymbolInformation.Property.SEALED.value) != 0
-    def isImplicit: Boolean =
-      (info.properties & SymbolInformation.Property.IMPLICIT.value) != 0
-    def isLazy: Boolean =
-      (info.properties & SymbolInformation.Property.LAZY.value) != 0
-    def isCase: Boolean =
-      (info.properties & SymbolInformation.Property.CASE.value) != 0
-    def isCovariant: Boolean =
-      (info.properties & SymbolInformation.Property.COVARIANT.value) != 0
-    def isContravariant: Boolean =
-      (info.properties & SymbolInformation.Property.CONTRAVARIANT.value) != 0
+
     def isVal: Boolean =
       (info.properties & SymbolInformation.Property.VAL.value) != 0
+
     def isVar: Boolean =
       (info.properties & SymbolInformation.Property.VAR.value) != 0
+
     def isStatic: Boolean =
       (info.properties & SymbolInformation.Property.STATIC.value) != 0
+
     def isEnum: Boolean =
       (info.properties & SymbolInformation.Property.ENUM.value) != 0
+
     def isDefault: Boolean =
       (info.properties & SymbolInformation.Property.DEFAULT.value) != 0
+
+  end infoOps
+
+end Scala
