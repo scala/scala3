@@ -13,7 +13,7 @@ private def rewriteMacro[T: Type](x: Expr[T])(given QuoteContext): Expr[T] = {
     }
   )
 
-  val x2 = rewriter.rewrite(x)
+  val x2 = rewriter.map(x)
 
   '{
     println(${Expr(x.show)})
@@ -28,12 +28,12 @@ private object Rewriter {
     new Rewriter(preTransform, postTransform, fixPoint)
 }
 
-private class Rewriter(preTransform: Expr[Any] => Expr[Any], postTransform: Expr[Any] => Expr[Any], fixPoint: Boolean) {
-  def rewrite[T](e: Expr[T])(given QuoteContext, Type[T]): Expr[T] = {
+private class Rewriter(preTransform: Expr[Any] => Expr[Any], postTransform: Expr[Any] => Expr[Any], fixPoint: Boolean) extends util.ExprMap {
+  def map[T](e: Expr[T])(given QuoteContext, Type[T]): Expr[T] = {
     val e2 = checkedTransform(e, preTransform)
-    val e3 = rewriteChildren(e2)
+    val e3 = mapChildren(e2)
     val e4 = checkedTransform(e3, postTransform)
-    if fixPoint && e4 != e then rewrite(e4)
+    if fixPoint && !e4.matches(e) then map(e4)
     else e4
   }
 
@@ -54,30 +54,4 @@ private class Rewriter(preTransform: Expr[Any] => Expr[Any], postTransform: Expr
     }
   }
 
-  def rewriteChildren[T: Type](e: Expr[T])(given qctx: QuoteContext): Expr[T] = {
-    import qctx.tasty.{_, given}
-    class MapChildren extends TreeMap {
-      override def transformTerm(tree: Term)(given ctx: Context): Term = tree match {
-        case _: Closure =>
-          tree
-        case _: Inlined | _: Select =>
-          transformChildrenTerm(tree)
-        case _ =>
-          tree.tpe.widen match {
-            case _: MethodType | _: PolyType =>
-              transformChildrenTerm(tree)
-            case _ =>
-              tree.seal match {
-                case '{ $x: $t } => rewrite(x).unseal
-              }
-          }
-      }
-      def transformChildrenTerm(tree: Term)(given ctx: Context): Term =
-        super.transformTerm(tree)
-    }
-    (new MapChildren).transformChildrenTerm(e.unseal).seal.cast[T] // Cast will only fail if this implementation has a bug
-  }
-
 }
-
-
