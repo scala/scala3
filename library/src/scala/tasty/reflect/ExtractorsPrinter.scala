@@ -91,8 +91,8 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
         this += "Closure(" += meth += ", " += tpt += ")"
       case Match(selector, cases) =>
         this += "Match(" += selector += ", " ++= cases += ")"
-      case ImpliedMatch(cases) =>
-        this += "ImpliedMatch(" ++= cases += ")"
+      case GivenMatch(cases) =>
+        this += "GivenMatch(" ++= cases += ")"
       case Return(expr) =>
         this += "Return(" += expr += ")"
       case While(cond, body) =>
