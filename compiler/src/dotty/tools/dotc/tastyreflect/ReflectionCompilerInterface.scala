@@ -196,7 +196,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def isInstanceOfTypeDef(given ctx: Context): IsInstanceOf[TypeDef] = new {
     def runtimeClass: Class[?] = classOf[TypeDef]
     override def unapply(x: Any): Option[TypeDef] = x match
-      case x: tpd.TypeDef if !x.symbol.isClass => Some(x)
+      case x: tpd.TypeDef if !x.isClassDef => Some(x)
       case _ => None
   }
 
