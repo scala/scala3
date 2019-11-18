@@ -344,7 +344,7 @@ Schema => SemanticDB v4
 Uri => Classes.scala
 Text => empty
 Language => Scala
-Symbols => 46 entries
+Symbols => 65 entries
 Occurrences => 60 entries
 
 Symbols:
@@ -352,24 +352,42 @@ classes/C1# => final class C1
 classes/C1#`<init>`(). => primary ctor <init>
 classes/C1#`<init>`().(x1) => val param x1
 classes/C1#x1. => val method x1
+classes/C1. => final object C1
 classes/C2# => final class C2
 classes/C2#`<init>`(). => primary ctor <init>
 classes/C2#`<init>`().(x2) => val param x2
 classes/C2#x2. => val method x2
 classes/C2. => final object C2
 classes/C3# => case class C3
+classes/C3#_1(). => method _1
 classes/C3#`<init>`(). => primary ctor <init>
 classes/C3#`<init>`().(x) => val param x
+classes/C3#copy$default$1(). => method copy$default$1
+classes/C3#copy(). => method copy
 classes/C3#x. => val method x
+classes/C3. => final object C3
+classes/C3.apply(). => method apply
+classes/C3.unapply(). => method unapply
 classes/C4# => case class C4
+classes/C4#_1(). => method _1
 classes/C4#`<init>`(). => primary ctor <init>
 classes/C4#`<init>`().(x) => val param x
+classes/C4#copy$default$1(). => method copy$default$1
+classes/C4#copy(). => method copy
 classes/C4#x. => val method x
 classes/C4. => final object C4
+classes/C4.apply(). => method apply
+classes/C4.unapply(). => method unapply
 classes/C6# => case class C6
+classes/C6#_1(). => method _1
 classes/C6#`<init>`(). => primary ctor <init>
 classes/C6#`<init>`().(x) => param x
+classes/C6#copy$default$1(). => method copy$default$1
+classes/C6#copy(). => method copy
 classes/C6#x. => val method x
+classes/C6. => final object C6
+classes/C6.apply(). => method apply
+classes/C6.unapply(). => method unapply
 classes/C7# => class C7
 classes/C7#`<init>`(). => primary ctor <init>
 classes/C7#`<init>`().(x) => param x
@@ -387,6 +405,7 @@ classes/M.C5# => class C5
 classes/M.C5#`<init>`(). => primary ctor <init>
 classes/M.C5#`<init>`().(x) => param x
 classes/M.C5#x. => val method x
+classes/M.C5(). => final implicit method C5
 classes/N. => final object N
 classes/N.anonClass. => val method anonClass
 classes/N.anonFun. => val method anonFun
@@ -465,7 +484,7 @@ Schema => SemanticDB v4
 Uri => Definitions.scala
 Text => empty
 Language => Scala
-Symbols => 9 entries
+Symbols => 10 entries
 Occurrences => 10 entries
 
 Symbols:
@@ -475,6 +494,7 @@ a/Definitions.D#`<init>`(). => primary ctor <init>
 a/Definitions.E# => trait E
 a/Definitions.E#`<init>`(). => primary ctor <init>
 a/Definitions.`b_=`(). => var method b_=
+a/Definitions.`b_=`().(x$1) => param x$1
 a/Definitions.a. => val method a
 a/Definitions.b(). => var method b
 a/Definitions.c(). => method c
@@ -548,7 +568,7 @@ Schema => SemanticDB v4
 Uri => Enums.scala
 Text => empty
 Language => Scala
-Symbols => 88 entries
+Symbols => 132 entries
 Occurrences => 183 entries
 
 Symbols:
@@ -557,29 +577,52 @@ _empty_/Enums.Coin# => abstract sealed enum class Coin
 _empty_/Enums.Coin#`<init>`(). => primary ctor <init>
 _empty_/Enums.Coin#`<init>`().(value) => param value
 _empty_/Enums.Coin#value. => val method value
+_empty_/Enums.Coin. => final object Coin
+_empty_/Enums.Coin.$values. => val method $values
 _empty_/Enums.Coin.Dime. => case val static enum method Dime
 _empty_/Enums.Coin.Dollar. => case val static enum method Dollar
 _empty_/Enums.Coin.Nickel. => case val static enum method Nickel
 _empty_/Enums.Coin.Penny. => case val static enum method Penny
 _empty_/Enums.Coin.Quarter. => case val static enum method Quarter
+_empty_/Enums.Coin.valueOf(). => method valueOf
+_empty_/Enums.Coin.values(). => method values
 _empty_/Enums.Colour# => abstract sealed enum class Colour
 _empty_/Enums.Colour#`<init>`(). => primary ctor <init>
+_empty_/Enums.Colour. => final object Colour
+_empty_/Enums.Colour.$new(). => method $new
+_empty_/Enums.Colour.$values. => val method $values
 _empty_/Enums.Colour.Blue. => case val static enum method Blue
 _empty_/Enums.Colour.Green. => case val static enum method Green
 _empty_/Enums.Colour.Red. => case val static enum method Red
+_empty_/Enums.Colour.valueOf(). => method valueOf
+_empty_/Enums.Colour.values(). => method values
 _empty_/Enums.Directions# => abstract sealed enum class Directions
 _empty_/Enums.Directions#`<init>`(). => primary ctor <init>
+_empty_/Enums.Directions. => final object Directions
+_empty_/Enums.Directions.$new(). => method $new
+_empty_/Enums.Directions.$values. => val method $values
 _empty_/Enums.Directions.East. => case val static enum method East
 _empty_/Enums.Directions.North. => case val static enum method North
 _empty_/Enums.Directions.South. => case val static enum method South
 _empty_/Enums.Directions.West. => case val static enum method West
+_empty_/Enums.Directions.valueOf(). => method valueOf
+_empty_/Enums.Directions.values(). => method values
 _empty_/Enums.Maybe# => abstract sealed enum class Maybe
 _empty_/Enums.Maybe#[A] => covariant typeparam A
 _empty_/Enums.Maybe#`<init>`(). => primary ctor <init>
+_empty_/Enums.Maybe. => final object Maybe
 _empty_/Enums.Maybe.Just# => final case enum class Just
+_empty_/Enums.Maybe.Just#$ordinal(). => method $ordinal
+_empty_/Enums.Maybe.Just#[A] => typeparam A
+_empty_/Enums.Maybe.Just#_1(). => method _1
 _empty_/Enums.Maybe.Just#`<init>`(). => primary ctor <init>
 _empty_/Enums.Maybe.Just#`<init>`().(value) => val param value
+_empty_/Enums.Maybe.Just#copy$default$1(). => method copy$default$1
+_empty_/Enums.Maybe.Just#copy(). => method copy
 _empty_/Enums.Maybe.Just#value. => val method value
+_empty_/Enums.Maybe.Just. => final object Just
+_empty_/Enums.Maybe.Just.apply(). => method apply
+_empty_/Enums.Maybe.Just.unapply(). => method unapply
 _empty_/Enums.Maybe.None. => case val static enum method None
 _empty_/Enums.Planet# => abstract sealed enum class Planet
 _empty_/Enums.Planet#G. => final val method G
@@ -591,6 +634,8 @@ _empty_/Enums.Planet#radius. => val method radius
 _empty_/Enums.Planet#surfaceGravity(). => method surfaceGravity
 _empty_/Enums.Planet#surfaceWeight(). => method surfaceWeight
 _empty_/Enums.Planet#surfaceWeight().(otherMass) => param otherMass
+_empty_/Enums.Planet. => final object Planet
+_empty_/Enums.Planet.$values. => val method $values
 _empty_/Enums.Planet.Earth. => case val static enum method Earth
 _empty_/Enums.Planet.Jupiter. => case val static enum method Jupiter
 _empty_/Enums.Planet.Mars. => case val static enum method Mars
@@ -599,24 +644,35 @@ _empty_/Enums.Planet.Neptune. => case val static enum method Neptune
 _empty_/Enums.Planet.Saturn. => case val static enum method Saturn
 _empty_/Enums.Planet.Uranus. => case val static enum method Uranus
 _empty_/Enums.Planet.Venus. => case val static enum method Venus
+_empty_/Enums.Planet.valueOf(). => method valueOf
+_empty_/Enums.Planet.values(). => method values
 _empty_/Enums.Suits# => abstract sealed enum class Suits
 _empty_/Enums.Suits#`<init>`(). => primary ctor <init>
 _empty_/Enums.Suits. => final object Suits
+_empty_/Enums.Suits.$new(). => method $new
+_empty_/Enums.Suits.$values. => val method $values
 _empty_/Enums.Suits.Clubs. => case val static enum method Clubs
 _empty_/Enums.Suits.Diamonds. => case val static enum method Diamonds
 _empty_/Enums.Suits.Hearts. => case val static enum method Hearts
 _empty_/Enums.Suits.Spades. => case val static enum method Spades
+_empty_/Enums.Suits.derived$Eql(). => implicit method derived$Eql
 _empty_/Enums.Suits.isBlack(). => method isBlack
 _empty_/Enums.Suits.isBlack().(suit) => param suit
 _empty_/Enums.Suits.isRed(). => method isRed
 _empty_/Enums.Suits.isRed().(suit) => param suit
+_empty_/Enums.Suits.valueOf(). => method valueOf
+_empty_/Enums.Suits.values(). => method values
 _empty_/Enums.Tag# => abstract sealed enum class Tag
 _empty_/Enums.Tag#[A] => typeparam A
 _empty_/Enums.Tag#`<init>`(). => primary ctor <init>
+_empty_/Enums.Tag. => final object Tag
 _empty_/Enums.Tag.BooleanTag. => case val static enum method BooleanTag
 _empty_/Enums.Tag.IntTag. => case val static enum method IntTag
 _empty_/Enums.WeekDays# => abstract sealed enum class WeekDays
 _empty_/Enums.WeekDays#`<init>`(). => primary ctor <init>
+_empty_/Enums.WeekDays. => final object WeekDays
+_empty_/Enums.WeekDays.$new(). => method $new
+_empty_/Enums.WeekDays.$values. => val method $values
 _empty_/Enums.WeekDays.Friday. => case val static enum method Friday
 _empty_/Enums.WeekDays.Monday. => case val static enum method Monday
 _empty_/Enums.WeekDays.Saturday. => case val static enum method Saturday
@@ -624,14 +680,21 @@ _empty_/Enums.WeekDays.Sunday. => case val static enum method Sunday
 _empty_/Enums.WeekDays.Thursday. => case val static enum method Thursday
 _empty_/Enums.WeekDays.Tuesday. => case val static enum method Tuesday
 _empty_/Enums.WeekDays.Wednesday. => case val static enum method Wednesday
+_empty_/Enums.WeekDays.valueOf(). => method valueOf
+_empty_/Enums.WeekDays.values(). => method values
 _empty_/Enums.`<:<`# => abstract sealed enum class <:<
 _empty_/Enums.`<:<`#[A] => contravariant typeparam A
 _empty_/Enums.`<:<`#[B] => typeparam B
 _empty_/Enums.`<:<`#`<init>`(). => primary ctor <init>
 _empty_/Enums.`<:<`. => final object <:<
 _empty_/Enums.`<:<`.Refl# => final case enum class Refl
+_empty_/Enums.`<:<`.Refl#$ordinal(). => method $ordinal
 _empty_/Enums.`<:<`.Refl#[C] => typeparam C
 _empty_/Enums.`<:<`.Refl#`<init>`(). => primary ctor <init>
+_empty_/Enums.`<:<`.Refl#copy(). => method copy
+_empty_/Enums.`<:<`.Refl. => final object Refl
+_empty_/Enums.`<:<`.Refl.apply(). => method apply
+_empty_/Enums.`<:<`.Refl.unapply(). => method unapply
 _empty_/Enums.`<:<`.given_T(). => final implicit method given_T
 _empty_/Enums.`<:<`.given_T().[T] => typeparam T
 _empty_/Enums.some1. => val method some1
@@ -640,6 +703,7 @@ _empty_/Enums.unwrap().(ev) => implicit param ev
 _empty_/Enums.unwrap().(opt) => param opt
 _empty_/Enums.unwrap().[A] => typeparam A
 _empty_/Enums.unwrap().[B] => typeparam B
+local0 => param x
 
 Occurrences:
 [0:7..0:12): Enums <- _empty_/Enums.
@@ -834,12 +898,13 @@ Schema => SemanticDB v4
 Uri => EtaExpansion.scala
 Text => empty
 Language => Scala
-Symbols => 2 entries
+Symbols => 3 entries
 Occurrences => 10 entries
 
 Symbols:
 example/EtaExpansion# => class EtaExpansion
 example/EtaExpansion#`<init>`(). => primary ctor <init>
+local0 => param x
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -907,7 +972,7 @@ Schema => SemanticDB v4
 Uri => Flags.scala
 Text => empty
 Language => Scala
-Symbols => 49 entries
+Symbols => 51 entries
 Occurrences => 87 entries
 
 Symbols:
@@ -918,6 +983,7 @@ flags/p/package.AA#`<init>`().(x) => param x
 flags/p/package.AA#`<init>`().(y) => val param y
 flags/p/package.AA#`<init>`().(z) => var param z
 flags/p/package.AA#`z_=`(). => var method z_=
+flags/p/package.AA#`z_=`().(x$1) => param x$1
 flags/p/package.AA#x. => val method x
 flags/p/package.AA#y. => val method y
 flags/p/package.AA#z(). => var method z
@@ -950,6 +1016,7 @@ flags/p/package.Y#`<init>`(). => primary ctor <init>
 flags/p/package.Z# => sealed trait Z
 flags/p/package.Z#`<init>`(). => primary ctor <init>
 flags/p/package.`y_=`(). => var method y_=
+flags/p/package.`y_=`().(x$1) => param x$1
 flags/p/package.m(). => method m
 flags/p/package.m().[TT] => typeparam TT
 flags/p/package.x. => lazy val method x
@@ -1058,8 +1125,8 @@ Schema => SemanticDB v4
 Uri => ForComprehension.scala
 Text => empty
 Language => Scala
-Symbols => 15 entries
-Occurrences => 74 entries
+Symbols => 16 entries
+Occurrences => 72 entries
 
 Symbols:
 example/ForComprehension# => class ForComprehension
@@ -1069,14 +1136,15 @@ local1 => val local b
 local1 => param b
 local2 => local c
 local2 => val local c
-local3 => param a
-local4 => param b
-local5 => val local c
-local6 => val local d
-local7 => val local $1$
-local8 => val local e
-local8 => local e
-local9 => param f
+local3 => param x$1
+local4 => param a
+local5 => param b
+local6 => param x$1
+local7 => val local c
+local8 => val local d
+local9 => val local e
+local9 => local e
+local10 => param f
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -1103,56 +1171,54 @@ Occurrences:
 [8:11..8:12): a -> local0
 [8:14..8:15): b -> local1
 [8:17..8:18): c -> local2
-[10:4..10:5): a <- local3
+[10:4..10:5): a <- local4
 [10:9..10:13): List -> scala/package.List.
 [10:13..10:13): -> scala/collection/IterableFactory#apply().
 [10:16..10:16): -> scala/collection/immutable/List#flatMap().
-[11:4..11:5): b <- local4
+[11:4..11:5): b <- local5
 [11:9..11:13): List -> scala/package.List.
 [11:13..11:13): -> scala/collection/IterableFactory#apply().
-[11:14..11:15): a -> local3
+[11:14..11:15): a -> local4
 [11:16..11:16): -> scala/collection/IterableOps#withFilter().
-[13:6..13:7): a -> local3
-[14:6..14:7): b -> local4
+[13:6..13:7): a -> local4
+[14:6..14:7): b -> local5
 [15:6..15:8): == -> scala/Any#`==`().
 [15:15..15:15): -> scala/collection/WithFilter#flatMap().
-[16:4..17:1): <- local7
-[17:6..17:7): c <- local5
-[18:6..18:7): d <- local6
+[17:6..17:7): c <- local7
+[18:6..18:7): d <- local8
 [19:9..19:13): List -> scala/package.List.
 [19:13..19:13): -> scala/collection/IterableFactory#apply().
-[19:15..19:16): a -> local3
-[19:18..19:19): b -> local4
+[19:15..19:16): a -> local4
+[19:18..19:19): b -> local5
 [19:21..19:21): -> scala/collection/WithFilter#withFilter().
 [19:21..19:21): -> scala/collection/IterableOps#withFilter().
-[21:6..21:7): a -> local3
-[22:6..22:7): b -> local4
-[23:6..23:7): c -> local5
-[24:6..24:7): d -> local6
+[21:6..21:7): a -> local4
+[22:6..22:7): b -> local5
+[23:6..23:7): c -> local7
+[24:6..24:7): d -> local8
 [25:6..25:8): == -> scala/Any#`==`().
 [25:21..25:21): -> scala/collection/WithFilter#map().
-[26:4..26:5): e <- local8
-[26:4..26:4): -> local7
-[26:4..26:5): e -> local8
-[27:6..27:7): a -> local3
-[28:6..28:7): b -> local4
-[29:6..29:7): c -> local5
-[30:6..30:7): d -> local6
+[26:4..26:5): e <- local9
+[26:4..26:5): e -> local9
+[27:6..27:7): a -> local4
+[28:6..28:7): b -> local5
+[29:6..29:7): c -> local7
+[30:6..30:7): d -> local8
 [31:5..31:5): -> scala/collection/IterableOps#withFilter().
-[32:7..32:8): e -> local8
+[32:7..32:8): e -> local9
 [32:9..32:11): == -> scala/Any#`==`().
 [32:24..32:24): -> scala/collection/WithFilter#flatMap().
-[33:4..33:5): f <- local9
+[33:4..33:5): f <- local10
 [33:9..33:13): List -> scala/package.List.
 [33:13..33:13): -> scala/collection/IterableFactory#apply().
-[33:14..33:15): e -> local8
+[33:14..33:15): e -> local9
 [33:16..33:16): -> scala/collection/immutable/List#map().
-[36:6..36:7): a -> local3
-[37:6..37:7): b -> local4
-[38:6..38:7): c -> local5
-[39:6..39:7): d -> local6
-[40:6..40:7): e -> local8
-[41:6..41:7): f -> local9
+[36:6..36:7): a -> local4
+[37:6..37:7): b -> local5
+[38:6..38:7): c -> local7
+[39:6..39:7): d -> local8
+[40:6..40:7): e -> local9
+[41:6..41:7): f -> local10
 
 expect/Givens.scala
 ___________________
@@ -1277,7 +1343,7 @@ Schema => SemanticDB v4
 Uri => ImplicitConversion.scala
 Text => empty
 Language => Scala
-Symbols => 19 entries
+Symbols => 21 entries
 Occurrences => 58 entries
 
 Symbols:
@@ -1300,6 +1366,8 @@ example/ImplicitConversion.newAny2stringadd#`+`().(other) => param other
 example/ImplicitConversion.newAny2stringadd#`<init>`(). => primary ctor <init>
 example/ImplicitConversion.newAny2stringadd#`<init>`().(self) => param self
 example/ImplicitConversion.newAny2stringadd#self. => val method self
+example/ImplicitConversion.newAny2stringadd(). => final implicit method newAny2stringadd
+example/ImplicitConversion.newAny2stringadd. => final object newAny2stringadd
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -1761,8 +1829,8 @@ Schema => SemanticDB v4
 Uri => Methods.scala
 Text => empty
 Language => Scala
-Symbols => 69 entries
-Occurrences => 139 entries
+Symbols => 70 entries
+Occurrences => 138 entries
 
 Symbols:
 example/Methods# => class Methods
@@ -1795,7 +1863,6 @@ example/Methods#m6(+2). => method m6
 example/Methods#m6(+2).(x) => param x
 example/Methods#m7(). => method m7
 example/Methods#m7().(c) => param c
-example/Methods#m7().(evidence$1) => implicit param evidence$1
 example/Methods#m7().(l) => param l
 example/Methods#m7().[U] => typeparam U
 example/Methods#m9(). => method m9
@@ -1827,6 +1894,8 @@ example/Methods#m18().(a) => param a
 example/Methods#m18(+1). => method m18
 example/Methods#m18(+1).(b) => param b
 example/Methods#m18. => val method m18
+example/Methods#m19$default$2(). => method m19$default$2
+example/Methods#m19$default$3(). => method m19$default$3
 example/Methods#m19$default$3().(x) => param x
 example/Methods#m19$default$3().(y) => param y
 example/Methods#m19(). => method m19
@@ -1893,7 +1962,6 @@ Occurrences:
 [16:29..16:32): ??? -> scala/Predef.`???`().
 [17:6..17:8): m7 <- example/Methods#m7().
 [17:9..17:10): U <- example/Methods#m7().[U]
-[17:10..17:10): <- example/Methods#m7().(evidence$1)
 [17:12..17:20): Ordering -> scala/math/Ordering#
 [17:20..17:20): -> example/Methods#m7().[U]
 [17:22..17:23): c <- example/Methods#m7().(c)
@@ -1984,29 +2052,47 @@ Schema => SemanticDB v4
 Uri => NamedApplyBlock.scala
 Text => empty
 Language => Scala
-Symbols => 19 entries
+Symbols => 37 entries
 Occurrences => 35 entries
 
 Symbols:
 example/NamedApplyBlockCaseClassConstruction. => final object NamedApplyBlockCaseClassConstruction
 example/NamedApplyBlockCaseClassConstruction.Msg# => case class Msg
+example/NamedApplyBlockCaseClassConstruction.Msg#_1(). => method _1
+example/NamedApplyBlockCaseClassConstruction.Msg#_2(). => method _2
+example/NamedApplyBlockCaseClassConstruction.Msg#_3(). => method _3
 example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`(). => primary ctor <init>
 example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(body) => val param body
 example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(head) => val param head
 example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(tail) => val param tail
 example/NamedApplyBlockCaseClassConstruction.Msg#body. => val method body
+example/NamedApplyBlockCaseClassConstruction.Msg#copy$default$1(). => method copy$default$1
+example/NamedApplyBlockCaseClassConstruction.Msg#copy$default$2(). => method copy$default$2
+example/NamedApplyBlockCaseClassConstruction.Msg#copy$default$3(). => method copy$default$3
+example/NamedApplyBlockCaseClassConstruction.Msg#copy(). => method copy
 example/NamedApplyBlockCaseClassConstruction.Msg#head. => val method head
 example/NamedApplyBlockCaseClassConstruction.Msg#tail. => val method tail
+example/NamedApplyBlockCaseClassConstruction.Msg. => final object Msg
+example/NamedApplyBlockCaseClassConstruction.Msg.$lessinit$greater$default$2(). => method $lessinit$greater$default$2
+example/NamedApplyBlockCaseClassConstruction.Msg.apply(). => method apply
+example/NamedApplyBlockCaseClassConstruction.Msg.unapply(). => method unapply
 example/NamedApplyBlockCaseClassConstruction.bodyText. => val method bodyText
 example/NamedApplyBlockCaseClassConstruction.msg. => val method msg
 example/NamedApplyBlockMethods. => final object NamedApplyBlockMethods
 example/NamedApplyBlockMethods.baseCase(). => method baseCase
+example/NamedApplyBlockMethods.foo$default$1(). => method foo$default$1
+example/NamedApplyBlockMethods.foo$default$2(). => method foo$default$2
+example/NamedApplyBlockMethods.foo$default$3(). => method foo$default$3
 example/NamedApplyBlockMethods.foo(). => method foo
 example/NamedApplyBlockMethods.foo().(a) => param a
 example/NamedApplyBlockMethods.foo().(b) => param b
 example/NamedApplyBlockMethods.foo().(c) => param c
 example/NamedApplyBlockMethods.local. => val method local
 example/NamedApplyBlockMethods.recursive(). => method recursive
+local0 => local b$1
+local1 => local c$1
+local2 => local b$3
+local3 => val local head$1
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -2053,15 +2139,21 @@ Schema => SemanticDB v4
 Uri => NamedArguments.scala
 Text => empty
 Language => Scala
-Symbols => 6 entries
+Symbols => 12 entries
 Occurrences => 10 entries
 
 Symbols:
 example/NamedArguments# => class NamedArguments
 example/NamedArguments#User# => case class User
+example/NamedArguments#User#_1(). => method _1
 example/NamedArguments#User#`<init>`(). => primary ctor <init>
 example/NamedArguments#User#`<init>`().(name) => val param name
+example/NamedArguments#User#copy$default$1(). => method copy$default$1
+example/NamedArguments#User#copy(). => method copy
 example/NamedArguments#User#name. => val method name
+example/NamedArguments#User. => final object User
+example/NamedArguments#User.apply(). => method apply
+example/NamedArguments#User.unapply(). => method unapply
 example/NamedArguments#`<init>`(). => primary ctor <init>
 
 Occurrences:
@@ -2294,8 +2386,8 @@ Schema => SemanticDB v4
 Uri => Synthetic.scala
 Text => empty
 Language => Scala
-Symbols => 32 entries
-Occurrences => 152 entries
+Symbols => 34 entries
+Occurrences => 150 entries
 
 Symbols:
 example/Synthetic# => class Synthetic
@@ -2304,9 +2396,7 @@ example/Synthetic#F#`<init>`(). => primary ctor <init>
 example/Synthetic#J# => class J
 example/Synthetic#J#[T] => typeparam T
 example/Synthetic#J#`<init>`(). => primary ctor <init>
-example/Synthetic#J#`<init>`().(evidence$2) => implicit param evidence$2
 example/Synthetic#J#arr. => val method arr
-example/Synthetic#J#evidence$2. => implicit val method evidence$2
 example/Synthetic#Name. => val method Name
 example/Synthetic#`<init>`(). => primary ctor <init>
 example/Synthetic#f. => val method f
@@ -2316,6 +2406,10 @@ example/Synthetic#ordering. => implicit val method ordering
 example/Synthetic#s. => final object s
 example/Synthetic#s.Bar# => case class Bar
 example/Synthetic#s.Bar#`<init>`(). => primary ctor <init>
+example/Synthetic#s.Bar#copy(). => method copy
+example/Synthetic#s.Bar. => final object Bar
+example/Synthetic#s.Bar.apply(). => method apply
+example/Synthetic#s.Bar.unapply(). => method unapply
 example/Synthetic#s.apply(). => method apply
 example/Synthetic#x. => val method x
 example/Synthetic#xs. => val method xs
@@ -2424,14 +2518,12 @@ Occurrences:
 [30:8..30:9): J <- example/Synthetic#J#
 [30:9..30:22): <- example/Synthetic#J#`<init>`().
 [30:10..30:11): T <- example/Synthetic#J#[T]
-[30:11..30:11): <- example/Synthetic#J#evidence$2.
 [30:13..30:21): Manifest -> scala/Predef.Manifest#
 [30:21..30:21): -> example/Synthetic#J#[T]
 [30:29..30:32): arr <- example/Synthetic#J#arr.
 [30:35..30:40): Array -> scala/Array.
 [30:41..30:46): empty -> scala/Array.empty().
 [30:47..30:48): T -> example/Synthetic#J#[T]
-[30:49..30:49): -> example/Synthetic#J#evidence$2.
 [32:2..32:2): <- example/Synthetic#F#`<init>`().
 [32:8..32:9): F <- example/Synthetic#F#
 [33:15..33:23): ordering <- example/Synthetic#ordering.
@@ -2539,7 +2631,7 @@ Schema => SemanticDB v4
 Uri => Types.scala
 Text => empty
 Language => Scala
-Symbols => 119 entries
+Symbols => 123 entries
 Occurrences => 249 entries
 
 Symbols:
@@ -2594,11 +2686,15 @@ types/Test.C#MethodType.m6().[T] => typeparam T
 types/Test.C#MethodType.x1(). => method x1
 types/Test.C#MethodType.x2(). => method x2
 types/Test.C#RepeatedType# => case class RepeatedType
+types/Test.C#RepeatedType#_1(). => method _1
 types/Test.C#RepeatedType#`<init>`(). => primary ctor <init>
 types/Test.C#RepeatedType#`<init>`().(s) => val param s
 types/Test.C#RepeatedType#m1(). => method m1
 types/Test.C#RepeatedType#m1().(x) => param x
 types/Test.C#RepeatedType#s. => val method s
+types/Test.C#RepeatedType. => final object RepeatedType
+types/Test.C#RepeatedType.apply(). => method apply
+types/Test.C#RepeatedType.unapplySeq(). => method unapplySeq
 types/Test.C#TypeType. => final object TypeType
 types/Test.C#TypeType.T1# => type T1
 types/Test.C#TypeType.T4# => type T4
@@ -2922,15 +3018,18 @@ Schema => SemanticDB v4
 Uri => ValPattern.scala
 Text => empty
 Language => Scala
-Symbols => 22 entries
+Symbols => 25 entries
 Occurrences => 57 entries
 
 Symbols:
 example/ValPattern# => class ValPattern
 example/ValPattern#`<init>`(). => primary ctor <init>
 example/ValPattern#`leftVar_=`(). => var method leftVar_=
+example/ValPattern#`leftVar_=`().(x$1) => param x$1
 example/ValPattern#`number1Var_=`(). => var method number1Var_=
+example/ValPattern#`number1Var_=`().(x$1) => param x$1
 example/ValPattern#`rightVar_=`(). => var method rightVar_=
+example/ValPattern#`rightVar_=`().(x$1) => param x$1
 example/ValPattern#app(). => method app
 example/ValPattern#left. => val method left
 example/ValPattern#leftVar(). => var method leftVar
@@ -2946,8 +3045,8 @@ local4 => local number1
 local4 => val local number1
 local5 => local leftVar
 local6 => local rightVar
-local7 => val local number1Var
 local7 => local number1Var
+local7 => val local number1Var
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -3016,7 +3115,7 @@ Schema => SemanticDB v4
 Uri => Vals.scala
 Text => empty
 Language => Scala
-Symbols => 33 entries
+Symbols => 38 entries
 Occurrences => 122 entries
 
 Symbols:
@@ -3028,10 +3127,15 @@ example/Vals#`<init>`().(p) => param p
 example/Vals#`<init>`().(xp) => val param xp
 example/Vals#`<init>`().(yp) => var param yp
 example/Vals#`yam_=`(). => var method yam_=
+example/Vals#`yam_=`().(x$1) => param x$1
 example/Vals#`yfm_=`(). => final var method yfm_=
+example/Vals#`yfm_=`().(x$1) => param x$1
 example/Vals#`yim_=`(). => var method yim_=
+example/Vals#`yim_=`().(x$1) => param x$1
 example/Vals#`ym_=`(). => var method ym_=
+example/Vals#`ym_=`().(x$1) => param x$1
 example/Vals#`yp_=`(). => var method yp_=
+example/Vals#`yp_=`().(x$1) => param x$1
 example/Vals#m(). => method m
 example/Vals#p. => val method p
 example/Vals#xam. => abstract val method xam
@@ -3263,15 +3367,21 @@ Schema => SemanticDB v4
 Uri => semanticdb-extract.scala
 Text => empty
 Language => Scala
-Symbols => 8 entries
+Symbols => 14 entries
 Occurrences => 22 entries
 
 Symbols:
 _empty_/AnObject. => final object AnObject
 _empty_/AnObject.Foo# => case class Foo
+_empty_/AnObject.Foo#_1(). => method _1
 _empty_/AnObject.Foo#`<init>`(). => primary ctor <init>
 _empty_/AnObject.Foo#`<init>`().(x) => val param x
+_empty_/AnObject.Foo#copy$default$1(). => method copy$default$1
+_empty_/AnObject.Foo#copy(). => method copy
 _empty_/AnObject.Foo#x. => val method x
+_empty_/AnObject.Foo. => final object Foo
+_empty_/AnObject.Foo.apply(). => method apply
+_empty_/AnObject.Foo.unapply(). => method unapply
 _empty_/AnObject.foo(). => method foo
 _empty_/AnObject.foo().(x) => param x
 _empty_/AnObject.foo(+1). => method foo

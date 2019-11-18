@@ -165,12 +165,24 @@ class ExtractSemanticDB extends Phase with
       || sym.is(Synthetic)
       || sym.owner.is(Synthetic) && !sym.owner.isAnonymous && !sym.isAllOf(EnumCase)
       || sym.isConstructor && sym.owner.is(ModuleClass)
-      || sym.isAnonymous
       || excludeDefStrict(sym)
 
     private def excludeDefStrict(sym: Symbol)(given Context): Boolean =
       sym.name.is(NameKinds.DefaultGetterName)
-      || sym.name.isWildcard
+      || excludeSymbolStrict(sym)
+
+    private inline def (name: Name) isEmptyNumbered: Boolean = name match
+      case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
+      case _ => false
+
+    private def excludeSymbolStrict(sym: Symbol)(given Context): Boolean =
+      sym.name.isWildcard
+      || sym.isAnonymous
+      || sym.name.isEmptyNumbered
+
+    private def excludeChildren(sym: Symbol)(given Context): Boolean =
+      sym.isAllOf(HigherKinded | Param)
+      || !sym.isAnonymous && sym.is(Synthetic, butNot=Module)
 
     /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
     private def excludeUseStrict(sym: Symbol, span: Span)(given Context): Boolean =
@@ -359,7 +371,7 @@ class ExtractSemanticDB extends Phase with
         vparams <- vparamss
         vparam  <- vparams
       do
-        if !vparam.name.isWildcard
+        if !excludeSymbolStrict(vparam.symbol)
           val symkinds =
             getters.get(vparam.name).fold(SymbolKind.emptySet)(getter =>
               if getter.mods.is(Mutable) then SymbolKind.VarSet else SymbolKind.ValSet)
@@ -392,13 +404,16 @@ class ExtractSemanticDB extends Phase with
               traverse(qual)
             case tree => registerDefinition(tree.symbol, tree.span, Set.empty)
           tree.stats.foreach(traverse)
-        case tree: ValDef if tree.symbol.is(Module) => // skip module val
-        case tree: NamedDefTree
-        if !excludeDef(tree.symbol) && tree.span.hasLength =>
-          registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree))
-          val privateWithin = tree.symbol.privateWithin
-          if privateWithin.exists
-            registerUse(privateWithin, spanOfSymbol(privateWithin, tree.span))
+        case tree: NamedDefTree =>
+          if tree.symbol.isAllOf(ModuleValCreationFlags)
+            return
+          if !excludeDef(tree.symbol) && tree.span.hasLength
+            registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree))
+            val privateWithin = tree.symbol.privateWithin
+            if privateWithin.exists
+              registerUse(privateWithin, spanOfSymbol(privateWithin, tree.span))
+          else if !excludeSymbolStrict(tree.symbol)
+            registerSymbol(tree.symbol, symbolName(tree.symbol), symbolKinds(tree))
           tree match
           case tree: ValDef if tree.symbol.isAllOf(EnumValue) =>
             tree.rhs match
@@ -411,8 +426,9 @@ class ExtractSemanticDB extends Phase with
           case tree: DefDef if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
             tree.vparamss.foreach(_.foreach(traverse))
             traverse(tree.rhs)
-          case _ => traverseChildren(tree)
-        case tree: (ValDef|DefDef|TypeDef) if tree.symbol.is(Synthetic, butNot=Module) && !tree.symbol.isAnonymous => // skip
+          case tree =>
+            if !excludeChildren(tree.symbol)
+              traverseChildren(tree)
         case tree: Template =>
           val ctorSym = tree.constr.symbol
           if !excludeDef(ctorSym)
