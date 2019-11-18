@@ -67,7 +67,9 @@ object Inliner {
    *            and body that replace it.
    */
   def inlineCall(tree: Tree)(implicit ctx: Context): Tree = {
-    if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
+    if tree.symbol.denot != SymDenotations.NoDenotation && tree.symbol.owner.companionModule == defn.CompiletimeTestingPackageObject
+      if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
+      if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
    /** Set the position of all trees logically contained in the expansion of
     *  inlined call `call` to the position of `call`. This transform is necessary
@@ -194,10 +196,12 @@ object Inliner {
   }
 
   object Intrinsics {
+    import dotty.tools.dotc.reporting.diagnostic.messages.Error
+    private enum ErrorKind
+      case Parser, Typer
 
-    /** Expand call to scala.compiletime.testing.typeChecks */
-    def typeChecks(tree: Tree)(implicit ctx: Context): Tree = {
-      assert(tree.symbol == defn.CompiletimeTesting_typeChecks)
+    private def compileForErrors(tree: Tree, stopAfterParser: Boolean)(given ctx: Context): List[(ErrorKind, Error)] =
+      assert(tree.symbol == defn.CompiletimeTesting_typeChecks || tree.symbol == defn.CompiletimeTesting_typeCheckErrors)
       def stripTyped(t: Tree): Tree = t match {
         case Typed(t2, _) => stripTyped(t2)
         case _ => t
@@ -206,20 +210,49 @@ object Inliner {
       val Apply(_, codeArg :: Nil) = tree
       ConstFold(stripTyped(codeArg.underlyingArgument)).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
-          val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer)
-          val tree2 = new Parser(SourceFile.virtual("tasty-reflect", code))(ctx2).block()
-          val res =
-            if (ctx2.reporter.hasErrors) false
-            else {
-              ctx2.typer.typed(tree2)(ctx2)
-              !ctx2.reporter.hasErrors
-            }
-          Literal(Constant(res))
+          val source2 = SourceFile.virtual("tasty-reflect", code)
+          val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer).setSource(source2)
+          val tree2 = new Parser(source2)(ctx2).block()
+          val res = collection.mutable.ListBuffer.empty[(ErrorKind, Error)]
+
+          val parseErrors = ctx2.reporter.allErrors.toList
+          res ++= parseErrors.map(e => ErrorKind.Parser -> e)
+          if !stopAfterParser || res.isEmpty
+            ctx2.typer.typed(tree2)(ctx2)
+            val typerErrors = ctx2.reporter.allErrors.filterNot(parseErrors.contains)
+            res ++= typerErrors.map(e => ErrorKind.Typer -> e)
+          res.toList
         case t =>
           assert(ctx.reporter.hasErrors) // at least: argument to inline parameter must be a known value
-          EmptyTree
+          Nil
       }
-    }
+
+    private def packError(kind: ErrorKind, error: Error)(given Context): Tree =
+      def lit(x: Any) = Literal(Constant(x))
+      val constructor: Tree = ref(defn.CompiletimeTesting_Error_apply)
+      val parserErrorKind: Tree = ref(defn.CompiletimeTesting_ErrorKind_Parser)
+      val typerErrorKind: Tree = ref(defn.CompiletimeTesting_ErrorKind_Typer)
+
+      constructor.appliedTo(
+        lit(error.message),
+        lit(error.pos.lineContent.reverse.dropWhile("\n ".contains).reverse),
+        lit(error.pos.column),
+        if kind == ErrorKind.Parser then parserErrorKind else typerErrorKind)
+
+    private def packErrors(errors: List[(ErrorKind, Error)])(given Context): Tree =
+      val individualErrors: List[Tree] = errors.map(packError)
+      val errorTpt = ref(defn.CompiletimeTesting_ErrorClass)
+      mkList(individualErrors, errorTpt)
+
+    /** Expand call to scala.compiletime.testing.typeChecks */
+    def typeChecks(tree: Tree)(given Context): Tree =
+      val errors = compileForErrors(tree, true)
+      Literal(Constant(errors.isEmpty))
+
+    /** Expand call to scala.compiletime.testing.typeCheckErrors */
+    def typeCheckErrors(tree: Tree)(given Context): Tree =
+      val errors = compileForErrors(tree, false)
+      packErrors(errors)
   }
 }
 
