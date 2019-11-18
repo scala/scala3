@@ -345,7 +345,7 @@ object Scanners {
 
         lookahead.token match {
           case IDENTIFIER | BACKQUOTED_IDENT => handle(lookahead.name)
-          case IF | WHILE | FOR | MATCH | TRY | NEW => handle(lookahead.token)
+          case IF | WHILE | FOR | MATCH | TRY | NEW | GIVEN => handle(lookahead.token)
           case _ =>
         }
       }
