@@ -139,7 +139,7 @@ given listOps: extension [T](xs: List[T]) {
 }
 
 given extension [T](xs: List[T])(given Ordering[T]) {
-  def largest(n: Int) = xs.sort.takeRight(n)
+  def largest(n: Int) = xs.sorted.takeRight(n)
 }
 ```
 If a given extension is anonymous (as in the last clause), its name is synthesized from the name of the first defined extension method.
@@ -158,7 +158,7 @@ given listOps: AnyRef {
 }
 given given_largest_of_List_T: AnyRef {
   def [T](xs: List[T]) largest (given Ordering[T])(n: Int) =
-    xs.sort.takeRight(n)
+    xs.sorted.takeRight(n)
 }
 ```
 

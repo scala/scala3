@@ -10,7 +10,7 @@ trait ImplicitsOps extends Core {
       internal.matchImplicitSearchSuccess(isr)
   }
 
-  given successOps: (self: ImplicitSearchSuccess) {
+  given SuccessOps: (self: ImplicitSearchSuccess) {
     def tree(given ctx: Context): Term = internal.ImplicitSearchSuccess_tree(self)
   }
 
@@ -19,7 +19,7 @@ trait ImplicitsOps extends Core {
       internal.matchImplicitSearchFailure(isr)
   }
 
-  given failureOps: (self: ImplicitSearchFailure) {
+  given FailureOps: (self: ImplicitSearchFailure) {
     def explanation(given ctx: Context): String = internal.ImplicitSearchFailure_explanation(self)
   }
 
