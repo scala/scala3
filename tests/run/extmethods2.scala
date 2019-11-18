@@ -22,7 +22,7 @@ object Test extends App {
       def concat(ys: List[T]) = xs ++ ys
       def zipp[U](ys: List[U]): List[(T, U)] = xs.zip(ys)
     }
-    given (xs: List[Int]) {
+    given extension (xs: List[Int]) {
       def prod = (1 /: xs)(_ * _)
     }
   }
