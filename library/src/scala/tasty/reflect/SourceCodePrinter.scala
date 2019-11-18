@@ -476,8 +476,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         this += highlightKeyword(" match")
         inBlock(printCases(cases, lineBreak()))
 
-      case ImpliedMatch(cases) =>
-        this += highlightKeyword("delegate match")  // TODO: drop
+      case GivenMatch(cases) =>
+        this += highlightKeyword("given match")  // TODO: drop
         inBlock(printCases(cases, lineBreak()))
 
       case Try(body, cases, finallyOpt) =>

@@ -617,21 +617,21 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(given Context): Match =
     tpd.cpy.Match(original)(selector, cases)
 
-  type ImpliedMatch = tpd.Match
+  type GivenMatch = tpd.Match
 
-  def isInstanceOfImpliedMatch(given ctx: Context): IsInstanceOf[ImpliedMatch] = new {
-    def runtimeClass: Class[?] = classOf[ImpliedMatch]
-    override def unapply(x: Any): Option[ImpliedMatch] = x match
+  def isInstanceOfGivenMatch(given ctx: Context): IsInstanceOf[GivenMatch] = new {
+    def runtimeClass: Class[?] = classOf[GivenMatch]
+    override def unapply(x: Any): Option[GivenMatch] = x match
       case x: tpd.Match if x.selector.isEmpty => Some(x)
       case _ => None
   }
 
-  def ImplicitMatch_cases(self: Match)(given Context): List[CaseDef] = self.cases
+  def GivenMatch_cases(self: Match)(given Context): List[CaseDef] = self.cases
 
-  def ImplicitMatch_apply(cases: List[CaseDef])(given Context): ImpliedMatch =
+  def GivenMatch_apply(cases: List[CaseDef])(given Context): GivenMatch =
     withDefaultPos(tpd.Match(tpd.EmptyTree, cases))
 
-  def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(given Context): ImpliedMatch =
+  def GivenMatch_copy(original: Tree)(cases: List[CaseDef])(given Context): GivenMatch =
     tpd.cpy.Match(original)(tpd.EmptyTree, cases)
 
   type Try = tpd.Try

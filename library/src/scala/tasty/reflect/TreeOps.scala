@@ -672,29 +672,29 @@ trait TreeOps extends Core {
     def cases(given ctx: Context): List[CaseDef] = internal.Match_cases(self)
   }
 
-  given (given Context): IsInstanceOf[ImpliedMatch] = internal.isInstanceOfImpliedMatch
+  given (given Context): IsInstanceOf[GivenMatch] = internal.isInstanceOfGivenMatch
 
   /** Scala implicit `match` term */
-  object IsImpliedMatch
-    @deprecated("Use _: ImpliedMatch", "")
-    def unapply(x: ImpliedMatch): Some[ImpliedMatch] = Some(x)
+  object IsGivenMatch
+    @deprecated("Use _: GivenMatch", "")
+    def unapply(x: GivenMatch): Some[GivenMatch] = Some(x)
 
-  object ImpliedMatch {
+  object GivenMatch {
 
-    /** Creates a pattern match `delegate match { <cases: List[CaseDef]> }` */
-    def apply(cases: List[CaseDef])(given ctx: Context): ImpliedMatch =
-      internal.ImplicitMatch_apply(cases)
+    /** Creates a pattern match `given match { <cases: List[CaseDef]> }` */
+    def apply(cases: List[CaseDef])(given ctx: Context): GivenMatch =
+      internal.GivenMatch_apply(cases)
 
-    def copy(original: Tree)(cases: List[CaseDef])(given ctx: Context): ImpliedMatch =
-      internal.ImplicitMatch_copy(original)(cases)
+    def copy(original: Tree)(cases: List[CaseDef])(given ctx: Context): GivenMatch =
+      internal.GivenMatch_copy(original)(cases)
 
-    /** Matches a pattern match `delegate match { <cases: List[CaseDef]> }` */
-    def unapply(x: ImpliedMatch)(given ctx: Context): Option[List[CaseDef]] = Some(x.cases)
+    /** Matches a pattern match `given match { <cases: List[CaseDef]> }` */
+    def unapply(x: GivenMatch)(given ctx: Context): Option[List[CaseDef]] = Some(x.cases)
 
   }
 
-  given ImpliedMatchOps: (self: ImpliedMatch) {
-    def cases(given ctx: Context): List[CaseDef] = internal.ImplicitMatch_cases(self)
+  given GivenMatchOps: (self: GivenMatch) {
+    def cases(given ctx: Context): List[CaseDef] = internal.GivenMatch_cases(self)
   }
 
   given (given Context): IsInstanceOf[Try] = internal.isInstanceOfTry

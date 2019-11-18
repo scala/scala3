@@ -32,7 +32,7 @@ import scala.runtime.quoted.Unpickler
  *           |                             +- Closure
  *           |                             +- If
  *           |                             +- Match
- *           |                             +- ImpliedMatch
+ *           |                             +- GivenMatch
  *           |                             +- Try
  *           |                             +- Return
  *           |                             +- Repeated
@@ -466,15 +466,15 @@ trait CompilerInterface {
   def Match_apply(selector: Term, cases: List[CaseDef])(given ctx: Context): Match
   def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(given ctx: Context): Match
 
-  /** Tree representing a pattern match `delegate match  { ... }` in the source code */
-  type ImpliedMatch <: Term
+  /** Tree representing a pattern match `given match  { ... }` in the source code */
+  type GivenMatch <: Term
 
-  def isInstanceOfImpliedMatch(given ctx: Context): IsInstanceOf[ImpliedMatch]
+  def isInstanceOfGivenMatch(given ctx: Context): IsInstanceOf[GivenMatch]
 
-  def ImplicitMatch_cases(self: ImpliedMatch)(given ctx: Context): List[CaseDef]
+  def GivenMatch_cases(self: GivenMatch)(given ctx: Context): List[CaseDef]
 
-  def ImplicitMatch_apply(cases: List[CaseDef])(given ctx: Context): ImpliedMatch
-  def ImplicitMatch_copy(original: Tree)(cases: List[CaseDef])(given ctx: Context): ImpliedMatch
+  def GivenMatch_apply(cases: List[CaseDef])(given ctx: Context): GivenMatch
+  def GivenMatch_copy(original: Tree)(cases: List[CaseDef])(given ctx: Context): GivenMatch
 
   /** Tree representing a tyr catch `try x catch { ... } finally { ... }` in the source code */
   type Try <: Term
