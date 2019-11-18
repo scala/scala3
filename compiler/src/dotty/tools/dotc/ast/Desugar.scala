@@ -904,7 +904,7 @@ object desugar {
         else cpy.DefDef(mdef)(
           tparams = tparams ++ mdef.tparams,
           vparamss = leadingParams :: givenParamss ::: mdef.vparamss
-        ).withFlags(Extension)
+        ).withMods(mdef.mods | Extension)
       case mdef: Import =>
         mdef
       case mdef =>
