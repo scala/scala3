@@ -163,7 +163,7 @@ class ExtractSemanticDB extends Phase with
       !sym.exists
       || sym.isLocalDummy
       || sym.is(Synthetic)
-      || sym.owner.is(Synthetic) && !sym.isAllOf(EnumCase)
+      || sym.owner.is(Synthetic) && !sym.owner.isAnonymous && !sym.isAllOf(EnumCase)
       || sym.isConstructor && sym.owner.is(ModuleClass)
       || sym.isAnonymous
       || excludeDefStrict(sym)
