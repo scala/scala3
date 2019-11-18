@@ -555,9 +555,14 @@ object Scanners {
           token = INDENT
     end observeIndented
 
-    /** Insert an <outdent> token if next token closes an indentation region */
+    /** Insert an <outdent> token if next token closes an indentation region.
+     *  Exception: continue if indentation region belongs to a `match` and next token is `case`.
+     */
     def observeOutdented(): Unit = currentRegion match
-      case r: Indented if !r.isOutermost && closingRegionTokens.contains(token) =>
+      case r: Indented
+      if !r.isOutermost
+         && closingRegionTokens.contains(token)
+         && !(token == CASE && r.prefix == MATCH) =>
         currentRegion = r.enclosing
         insert(OUTDENT, offset)
       case _ =>
