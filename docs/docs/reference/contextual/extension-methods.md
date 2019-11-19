@@ -90,7 +90,7 @@ Examples:
 def (x: String) < (y: String) = ...
 def (x: Elem) +: (xs: Seq[Elem]) = ...
 
-"ab" + "c"
+"ab" < "c"
 1 +: List(2, 3)
 ```
 The two definitions above translate to
