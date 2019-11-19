@@ -1278,15 +1278,8 @@ object Parsers {
         if silentTemplateIndent && !isNew then in.observeIndented()
         newLineOptWhenFollowedBy(LBRACE)
 
-    def indentRegion[T](tag: EndMarkerTag)(op: => T): T = {
-      val iw = in.currentRegion.indentWidth
-      val t = op
-      in.consumeEndMarker(tag, iw)
-      t
-    }
-
-    def indentRegion[T](pid: Tree)(op: => T): T = pid match {
-      case pid: RefTree => indentRegion(pid.name.toTermName)(op)
+    def endMarkerScope[T](pid: Tree)(op: => T): T = pid match {
+      case pid: RefTree => in.endMarkerScope(pid.name.toTermName)(op)
       case _ => op
     }
 
@@ -1789,9 +1782,9 @@ object Parsers {
 
     def expr1(location: Location.Value = Location.ElseWhere): Tree = in.token match {
       case IF =>
-        indentRegion(IF) { ifExpr(in.offset, If) }
+        in.endMarkerScope(IF) { ifExpr(in.offset, If) }
       case WHILE =>
-        indentRegion(WHILE) {
+        in.endMarkerScope(WHILE) {
           atSpan(in.skipToken()) {
             val cond = condExpr(DO)
             newLinesOpt()
@@ -1826,7 +1819,7 @@ object Parsers {
           WhileDo(Block(body, cond), Literal(Constant(())))
         }
       case TRY =>
-        indentRegion(TRY) {
+        in.endMarkerScope(TRY) {
           val tryOffset = in.offset
           atSpan(in.skipToken()) {
             val body = expr()
@@ -1961,7 +1954,7 @@ object Parsers {
     /**    `match' (`{' CaseClauses `}' | CaseClause)
      */
     def matchExpr(t: Tree, start: Offset, mkMatch: (Tree, List[CaseDef]) => Match) =
-      indentRegion(MATCH) {
+      in.endMarkerScope(MATCH) {
         atSpan(start, in.skipToken()) {
           mkMatch(t, casesExpr(caseClause))
         }
@@ -2157,7 +2150,7 @@ object Parsers {
      *                  |  ‘new’ TemplateBody
      */
     def newExpr(): Tree =
-      indentRegion(NEW) {
+      in.endMarkerScope(NEW) {
         val start = in.skipToken()
         def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
         possibleBracesStart()
@@ -2323,7 +2316,7 @@ object Parsers {
      *                {nl} [`yield'] Expr
      *            |  `for' Enumerators (`do' Expr | `yield' Expr)
      */
-    def forExpr(): Tree = indentRegion(FOR) {
+    def forExpr(): Tree = in.endMarkerScope(FOR) {
       atSpan(in.skipToken()) {
         var wrappedEnums = true
         val start = in.offset
@@ -3074,7 +3067,7 @@ object Parsers {
         else emptyType
       val rhs =
         if (tpt.isEmpty || in.token == EQUALS)
-          indentRegion(first) {
+          endMarkerScope(first) {
             accept(EQUALS)
             if (in.token == USCORE && !tpt.isEmpty && mods.is(Mutable) &&
                 (lhs.toList forall (_.isInstanceOf[Ident])))
@@ -3166,7 +3159,7 @@ object Parsers {
         if (in.isScala2CompatMode) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
           if (in.token == EQUALS)
-            indentRegion(name) {
+            in.endMarkerScope(name) {
               in.nextToken()
               subExpr()
             }
@@ -3298,7 +3291,7 @@ object Parsers {
     }
 
     def classDefRest(start: Offset, mods: Modifiers, name: TypeName): TypeDef =
-      indentRegion(name.toTermName) {
+      in.endMarkerScope(name.toTermName) {
         val constr = classConstr(isCaseClass = mods.is(Case))
         val templ = templateOpt(constr)
         finalizeDef(TypeDef(name, templ), mods, start)
@@ -3322,7 +3315,7 @@ object Parsers {
      */
     def objectDef(start: Offset, mods: Modifiers): ModuleDef = atSpan(start, nameStart) {
       val name = ident()
-      indentRegion(name) {
+      in.endMarkerScope(name) {
         val templ = templateOpt(emptyConstructor)
         finalizeDef(ModuleDef(name, templ), mods, start)
       }
@@ -3332,7 +3325,7 @@ object Parsers {
      */
     def enumDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
       val modulName = ident()
-      indentRegion(modulName) {
+      in.endMarkerScope(modulName) {
         val clsName = modulName.toTypeName
         val constr = classConstr()
         val templ = template(constr, isEnum = true)
@@ -3412,7 +3405,7 @@ object Parsers {
         else
           (EmptyTermName, isIdent(nme.extension))
 
-      val gdef = indentRegion(if name.isEmpty then GIVEN else name) {
+      val gdef = in.endMarkerScope(if name.isEmpty then GIVEN else name) {
         if isExtension then
           if (in.token == COLON) in.nextToken()
           assert(ident() == nme.extension)
@@ -3597,7 +3590,7 @@ object Parsers {
      */
     def packaging(start: Int): Tree = {
       val pkg = qualId()
-      indentRegion(pkg) {
+      endMarkerScope(pkg) {
         possibleTemplateStart()
         val stats = inDefScopeBraces(topStatSeq())
         makePackaging(start, pkg, stats)
@@ -3785,7 +3778,7 @@ object Parsers {
           else
             val pkg = qualId()
             var continue = false
-            indentRegion(pkg) {
+            endMarkerScope(pkg) {
               possibleTemplateStart()
               if in.token == EOF then
                 ts += makePackaging(start, pkg, List())
