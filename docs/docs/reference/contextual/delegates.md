@@ -26,7 +26,7 @@ given listOrd[T](given ord: Ord[T]): Ord[List[T]] {
     case (_, Nil) => +1
     case (x :: xs1, y :: ys1) =>
       val fst = ord.compare(x, y)
-      if (fst != 0) fst else xs1.compareTo(ys1)
+      if (fst != 0) fst else compare(xs1, ys1)
   }
 }
 ```
