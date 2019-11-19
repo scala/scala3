@@ -1098,7 +1098,10 @@ object desugar {
           val firstDef =
             ValDef(tmpName, TypeTree(), matchExpr)
               .withSpan(pat.span.union(rhs.span)).withMods(patMods)
-          def selector(n: Int) = Select(Ident(tmpName), nme.selectorName(n))
+          val useSelectors = vars.length <= 22
+          def selector(n: Int) =
+            if useSelectors then Select(Ident(tmpName), nme.selectorName(n))
+            else Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(n)) :: Nil)
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex if named.name != nme.WILDCARD)
             yield
