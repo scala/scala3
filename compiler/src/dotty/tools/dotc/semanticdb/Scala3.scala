@@ -150,47 +150,37 @@ object Scala3 with
 
   given infoOps: (info: SymbolInformation) with
 
-    def isAbstract: Boolean =
-      (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
+    def isAbstract: Boolean = (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
+    def isFinal: Boolean = (info.properties & SymbolInformation.Property.FINAL.value) != 0
+    def isSealed: Boolean = (info.properties & SymbolInformation.Property.SEALED.value) != 0
+    def isImplicit: Boolean = (info.properties & SymbolInformation.Property.IMPLICIT.value) != 0
+    def isLazy: Boolean = (info.properties & SymbolInformation.Property.LAZY.value) != 0
+    def isCase: Boolean = (info.properties & SymbolInformation.Property.CASE.value) != 0
+    def isCovariant: Boolean = (info.properties & SymbolInformation.Property.COVARIANT.value) != 0
+    def isContravariant: Boolean = (info.properties & SymbolInformation.Property.CONTRAVARIANT.value) != 0
+    def isPrimary: Boolean = (info.properties & SymbolInformation.Property.PRIMARY.value) != 0
+    def isVal: Boolean = (info.properties & SymbolInformation.Property.VAL.value) != 0
+    def isVar: Boolean = (info.properties & SymbolInformation.Property.VAR.value) != 0
+    def isStatic: Boolean = (info.properties & SymbolInformation.Property.STATIC.value) != 0
+    def isEnum: Boolean = (info.properties & SymbolInformation.Property.ENUM.value) != 0
+    def isDefault: Boolean = (info.properties & SymbolInformation.Property.DEFAULT.value) != 0
 
-    def isFinal: Boolean =
-      (info.properties & SymbolInformation.Property.FINAL.value) != 0
-
-    def isSealed: Boolean =
-      (info.properties & SymbolInformation.Property.SEALED.value) != 0
-
-    def isImplicit: Boolean =
-      (info.properties & SymbolInformation.Property.IMPLICIT.value) != 0
-
-    def isLazy: Boolean =
-      (info.properties & SymbolInformation.Property.LAZY.value) != 0
-
-    def isCase: Boolean =
-      (info.properties & SymbolInformation.Property.CASE.value) != 0
-
-    def isCovariant: Boolean =
-      (info.properties & SymbolInformation.Property.COVARIANT.value) != 0
-
-    def isContravariant: Boolean =
-      (info.properties & SymbolInformation.Property.CONTRAVARIANT.value) != 0
-
-    def isPrimary: Boolean =
-      (info.properties & SymbolInformation.Property.PRIMARY.value) != 0
-
-    def isVal: Boolean =
-      (info.properties & SymbolInformation.Property.VAL.value) != 0
-
-    def isVar: Boolean =
-      (info.properties & SymbolInformation.Property.VAR.value) != 0
-
-    def isStatic: Boolean =
-      (info.properties & SymbolInformation.Property.STATIC.value) != 0
-
-    def isEnum: Boolean =
-      (info.properties & SymbolInformation.Property.ENUM.value) != 0
-
-    def isDefault: Boolean =
-      (info.properties & SymbolInformation.Property.DEFAULT.value) != 0
+    def isUnknownKind: Boolean = info.kind.isUnknownKind
+    def isLocal: Boolean = info.kind.isLocal
+    def isField: Boolean = info.kind.isField
+    def isMethod: Boolean = info.kind.isMethod
+    def isConstructor: Boolean = info.kind.isConstructor
+    def isMacro: Boolean = info.kind.isMacro
+    def isType: Boolean = info.kind.isType
+    def isParameter: Boolean = info.kind.isParameter
+    def isSelfParameter: Boolean = info.kind.isSelfParameter
+    def isTypeParameter: Boolean = info.kind.isTypeParameter
+    def isObject: Boolean = info.kind.isObject
+    def isPackage: Boolean = info.kind.isPackage
+    def isPackageObject: Boolean = info.kind.isPackageObject
+    def isClass: Boolean = info.kind.isClass
+    def isTrait: Boolean = info.kind.isTrait
+    def isInterface: Boolean = info.kind.isInterface
 
   end infoOps
 
