@@ -226,8 +226,8 @@ object Scanners {
     /** The current region. This is initially an Indented region with indentation width. */
     var currentRegion: Region = Indented(IndentWidth.Zero, Set(), EMPTY, null)
 
-    /** The end marker that was skipped last */
-    val endMarkers = new mutable.ListBuffer[EndMarker]
+    /** The number of open end marker scopes */
+    var openEndMarkers: List[(EndMarkerTag, IndentWidth)] = Nil
 
 // Scala 2 compatibility
 
@@ -324,48 +324,47 @@ object Scanners {
       this.token = token
     }
 
-    /** If this token and the next constitute an end marker, skip them and append a new EndMarker
-     *  value at the end of the endMarkers queue.
-     */
-    private def handleEndMarkers(width: IndentWidth): Unit =
-      if (next.token == IDENTIFIER && next.name == nme.end && width == currentRegion.indentWidth) {
-        val lookahead = LookaheadScanner()
-        lookahead.nextToken() // skip the `end`
+    /** What can be referred to in an end marker */
+    type EndMarkerTag = TermName | Token
 
-        def handle(tag: EndMarkerTag) = {
+    /** Establish a scope for a passible end-marker with given tag, parsed by `op` */
+    def endMarkerScope[T](tag: EndMarkerTag)(op: => T): T =
+      val saved = openEndMarkers
+      openEndMarkers = (tag, currentRegion.indentWidth) :: openEndMarkers
+      try op finally openEndMarkers = saved
+
+    /** If this token and the next constitute an end marker, skip them and check they
+     *  align with an opening construct with the same end marker tag.
+     */
+    protected def skipEndMarker(width: IndentWidth): Unit =
+      if next.token == IDENTIFIER && next.name == nme.end then
+        val lookahead = LookaheadScanner()
+        val start = lookahead.offset
+
+        def handle(tag: EndMarkerTag) =
+          def checkAligned(): Unit = openEndMarkers match
+            case (etag, ewidth) :: rest if width <= ewidth =>
+              if width < ewidth || tag != etag then
+                openEndMarkers = rest
+                checkAligned()
+            case _ =>
+              lexical.println(i"misaligned end marker $tag, $width, $openEndMarkers")
+              errorButContinue("misaligned end marker", start)
+
           val skipTo = lookahead.charOffset
           lookahead.nextToken()
-          if (lookahead.isAfterLineEnd || lookahead.token == EOF) {
-            lexical.println(i"produce end marker $tag $width")
-            endMarkers += EndMarker(tag, width, offset)
+          if lookahead.isAfterLineEnd || lookahead.token == EOF then
+            checkAligned()
             next.token = EMPTY
-            while (charOffset < skipTo) nextChar()
-          }
-        }
+            while charOffset < skipTo do nextChar()
+        end handle
 
-        lookahead.token match {
+        lookahead.nextToken() // skip the `end`
+        lookahead.token match
           case IDENTIFIER | BACKQUOTED_IDENT => handle(lookahead.name)
           case IF | WHILE | FOR | MATCH | TRY | NEW | GIVEN => handle(lookahead.token)
           case _ =>
-        }
-      }
-
-    /** Consume and cancel the head of the end markers queue if it has the given `tag` and width.
-     *  Flag end markers with higher indent widths as errors.
-     */
-    def consumeEndMarker(tag: EndMarkerTag, width: IndentWidth): Unit = {
-      lexical.println(i"consume end marker $tag $width")
-      if (endMarkers.nonEmpty) {
-        val em = endMarkers.head
-        if (width <= em.width) {
-          if (em.tag != tag || em.width != width) {
-            lexical.println(i"misaligned end marker ${em.tag}, ${em.width} at ${width}")
-            errorButContinue("misaligned end marker", em.offset)
-          }
-          endMarkers.trimStart(1)
-        }
-      }
-    }
+    end skipEndMarker
 
     /** A leading symbolic or backquoted identifier is treated as an infix operator if
       *   - it does not follow a blank line, and
@@ -501,6 +500,7 @@ object Scanners {
          && !isLeadingInfixOperator()
       then
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
+        skipEndMarker(nextWidth)
       else if indentIsSignificant then
         if nextWidth < lastWidth
            || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
@@ -511,7 +511,7 @@ object Scanners {
               case r: Indented =>
                 currentRegion = r.enclosing
                 insert(OUTDENT, offset)
-                handleEndMarkers(nextWidth)
+                skipEndMarker(nextWidth)
               case r: InBraces if !closingRegionTokens.contains(token) =>
                 ctx.warning("Line is indented too far to the left, or a `}' is missing",
                   source.atSpan(Span(offset)))
@@ -883,6 +883,7 @@ object Scanners {
 
     class LookaheadScanner(indent: Boolean = false) extends Scanner(source, offset) {
       override val indentSyntax = indent
+      override def skipEndMarker(width: IndentWidth) = ()
       override protected def printState() = {
         print("la:")
         super.printState()
@@ -1415,16 +1416,6 @@ object Scanners {
 
     val Zero = Run(' ', 0)
   }
-
-  /** What can be referred to in an end marker */
-  type EndMarkerTag = TermName | Token
-
-  /** A processed end marker
-   *  @param tag    The name or token referred to in the marker
-   *  @param width  The indentation width where the marker occurred
-   *  @param offset The offset of the `end`
-   */
-  case class EndMarker(tag: EndMarkerTag, width: IndentWidth, offset: Int)
 
   // ------------- keyword configuration -----------------------------------
 
