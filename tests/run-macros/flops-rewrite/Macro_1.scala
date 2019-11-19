@@ -33,7 +33,7 @@ private class Rewriter(preTransform: Expr[Any] => Expr[Any], postTransform: Expr
     val e2 = checkedTransform(e, preTransform)
     val e3 = mapChildren(e2)
     val e4 = checkedTransform(e3, postTransform)
-    if fixPoint && e4 != e then map(e4)
+    if fixPoint && !e4.matches(e) then map(e4)
     else e4
   }
 

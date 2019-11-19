@@ -68,7 +68,7 @@ private class Rewriter(preTransform: List[Transformation[_]] = Nil, postTransfor
     val e2 = preTransform.foldLeft(e)((ei, transform) => transform(ei))
     val e3 = mapChildren(e2)
     val e4 = postTransform.foldLeft(e3)((ei, transform) => transform(ei))
-    if fixPoint && e4 != e then map(e4)
+    if fixPoint && !e4.matches(e) then map(e4)
     else e4
   }
 
