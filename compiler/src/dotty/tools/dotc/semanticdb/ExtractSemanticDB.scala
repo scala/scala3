@@ -27,7 +27,7 @@ import scala.annotation.{ threadUnsafe => tu, tailrec }
  *  TODO: Also extract type information
  */
 class ExtractSemanticDB extends Phase with
-  import Scala.{_, given}
+  import Scala3.{_, given}
   import Symbols.given
 
   override val phaseName: String = ExtractSemanticDB.name
@@ -67,6 +67,146 @@ class ExtractSemanticDB extends Phase with
 
     /** The symbol occurrences generated so far, as a set */
     private val generated = new mutable.HashSet[SymbolOccurrence]
+
+    /** Definitions of this symbol should be excluded from semanticdb */
+    private def excludeDef(sym: Symbol)(given Context): Boolean =
+      !sym.exists
+      || sym.isLocalDummy
+      || sym.is(Synthetic)
+      || sym.isConstructor && sym.owner.is(ModuleClass)
+      || excludeDefStrict(sym)
+
+    private def excludeDefStrict(sym: Symbol)(given Context): Boolean =
+      sym.name.is(NameKinds.DefaultGetterName)
+      || excludeSymbolStrict(sym)
+
+    private def excludeSymbolStrict(sym: Symbol)(given Context): Boolean =
+      sym.name.isWildcard
+      || sym.isAnonymous
+      || sym.name.isEmptyNumbered
+
+    private def excludeChildren(sym: Symbol)(given Context): Boolean =
+      sym.isAllOf(HigherKinded | Param)
+
+    /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
+    private def excludeUseStrict(sym: Symbol, span: Span)(given Context): Boolean =
+      excludeDefStrict(sym)
+      || excludeDef(sym) && span.zeroLength
+
+    override def traverse(tree: Tree)(given Context): Unit =
+
+      inline def traverseCtorParamTpt(ctorSym: Symbol, tpt: Tree): Unit =
+        val tptSym = tpt.symbol
+        if tptSym.owner == ctorSym
+          val found = matchingMemberType(tptSym, ctorSym.owner)
+          if !excludeUseStrict(found, tpt.span) && tpt.span.hasLength
+            registerUse(found, tpt.span)
+        else
+          traverse(tpt)
+
+      for annot <- tree.symbol.annotations do
+        if annot.tree.span.exists
+          && annot.symbol.owner != defn.ScalaAnnotationInternal
+        then
+          traverse(annot.tree)
+
+      tree match
+        case tree: PackageDef =>
+          if !excludeDef(tree.pid.symbol) && tree.pid.span.hasLength
+            tree.pid match
+            case tree @ Select(qual, name) =>
+              registerDefinition(tree.symbol, adjustSpanToName(tree.span, qual.span, name), Set.empty)
+              traverse(qual)
+            case tree => registerDefinition(tree.symbol, tree.span, Set.empty)
+          tree.stats.foreach(traverse)
+        case tree: NamedDefTree =>
+          if tree.symbol.isAllOf(ModuleValCreationFlags)
+            return
+          if !excludeDef(tree.symbol) && tree.span.hasLength
+            registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree))
+            val privateWithin = tree.symbol.privateWithin
+            if privateWithin.exists
+              registerUse(privateWithin, spanOfSymbol(privateWithin, tree.span))
+          else if !excludeSymbolStrict(tree.symbol)
+            registerSymbol(tree.symbol, symbolName(tree.symbol), symbolKinds(tree))
+          tree match
+          case tree: ValDef if tree.symbol.isAllOf(EnumValue) =>
+            tree.rhs match
+            case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
+              template.parents.foreach(traverse)
+            case _ => // calls $new
+          case tree: ValDef if tree.symbol.isSelfSym =>
+            if tree.tpt.span.hasLength
+              traverse(tree.tpt)
+          case tree: DefDef if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
+            tree.vparamss.foreach(_.foreach(traverse))
+            traverse(tree.rhs)
+          case tree: (DefDef | ValDef) if tree.symbol.isSyntheticWithIdent =>
+            tree match
+              case tree: DefDef =>
+                tree.tparams.foreach(tparam => registerSymbolSimple(tparam.symbol))
+                tree.vparamss.foreach(_.foreach(vparam => registerSymbolSimple(vparam.symbol)))
+              case _ =>
+            // ignore rhs
+          case tree =>
+            if !excludeChildren(tree.symbol)
+              traverseChildren(tree)
+        case tree: Template =>
+          val ctorSym = tree.constr.symbol
+          if !excludeDef(ctorSym)
+            registerDefinition(ctorSym, tree.constr.span, Set.empty)
+            ctorParams(tree.constr.vparamss, tree.body)(traverseCtorParamTpt(ctorSym, _))
+          for parent <- tree.parentsOrDerived do
+            if
+              parent.symbol != defn.ObjectClass.primaryConstructor
+              && parent.tpe.dealias != defn.SerializableType
+              && parent.symbol != defn.ProductClass
+            then
+              traverse(parent)
+          val selfSpan = tree.self.span
+          if selfSpan.exists && selfSpan.hasLength then
+            traverse(tree.self)
+          if tree.symbol.owner.is(Enum, butNot=Case)
+            tree.body.foreachUntilImport(traverse).foreach(traverse) // the first import statement
+          else
+            tree.body.foreach(traverse)
+        case tree: Assign =>
+          if !excludeUseStrict(tree.lhs.symbol, tree.lhs.span)
+            val lhs = tree.lhs.symbol
+            val setter = lhs.matchingSetter.orElse(lhs)
+            tree.lhs match
+              case tree @ Select(qual, name) => registerUse(setter, adjustSpanToName(tree.span, qual.span, name))
+              case tree                      => registerUse(setter, tree.span)
+            traverseChildren(tree.lhs)
+          traverse(tree.rhs)
+        case tree: Ident =>
+          if tree.name != nme.WILDCARD then
+            val sym = tree.symbol.adjustIfCtorTyparam
+            if !excludeUseStrict(sym, tree.span) then
+              registerUse(sym, tree.span)
+        case tree: Select =>
+          val qualSpan = tree.qualifier.span
+          val sym = tree.symbol.adjustIfCtorTyparam
+          if !excludeUseStrict(sym, tree.span) then
+            registerUse(sym, adjustSpanToName(tree.span, qualSpan, tree.name))
+          if qualSpan.exists && qualSpan.hasLength then
+            traverseChildren(tree)
+        case tree: Import =>
+          if tree.span.exists && tree.span.hasLength then
+            for sel <- tree.selectors do
+              val imported = sel.imported.name
+              if imported != nme.WILDCARD then
+                for alt <- tree.expr.tpe.member(imported).alternatives do
+                  registerUse(alt.symbol, sel.imported.span)
+                  if (alt.symbol.companionClass.exists)
+                    registerUse(alt.symbol.companionClass, sel.imported.span)
+            traverseChildren(tree)
+        case tree: Inlined =>
+          traverse(tree.call)
+        case tree: Annotated => // skip the annotation (see `@param` in https://github.com/scalameta/scalameta/blob/633824474e99bbfefe12ad0cc73da1fe064b3e9b/tests/jvm/src/test/resources/example/Annotations.scala#L37)
+          traverse(tree.arg)
+        case _ =>
+          traverseChildren(tree)
 
     /** Add semanticdb name of the given symbol to string builder */
     private def addSymName(b: StringBuilder, sym: Symbol)(given ctx: Context): Unit =
@@ -161,36 +301,9 @@ class ExtractSemanticDB extends Phase with
       val (endLine, endCol) = lineCol(span.end)
       Some(Range(startLine, startCol, endLine, endCol))
 
-    /** Definitions of this symbol should be excluded from semanticdb */
-    private def excludeDef(sym: Symbol)(given Context): Boolean =
-      !sym.exists
-      || sym.isLocalDummy
-      || sym.is(Synthetic)
-      || sym.owner.is(Synthetic) && !sym.owner.isAnonymous && !sym.isAllOf(EnumCase)
-      || sym.isConstructor && sym.owner.is(ModuleClass)
-      || excludeDefStrict(sym)
-
-    private def excludeDefStrict(sym: Symbol)(given Context): Boolean =
-      sym.name.is(NameKinds.DefaultGetterName)
-      || excludeSymbolStrict(sym)
-
     private inline def (name: Name) isEmptyNumbered: Boolean = name match
       case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
       case _ => false
-
-    private def excludeSymbolStrict(sym: Symbol)(given Context): Boolean =
-      sym.name.isWildcard
-      || sym.isAnonymous
-      || sym.name.isEmptyNumbered
-
-    private def excludeChildren(sym: Symbol)(given Context): Boolean =
-      sym.isAllOf(HigherKinded | Param)
-      || !sym.isAnonymous && sym.is(Synthetic, butNot=Module)
-
-    /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
-    private def excludeUseStrict(sym: Symbol, span: Span)(given Context): Boolean =
-      excludeDefStrict(sym)
-      || excludeDef(sym) && span.zeroLength
 
     private def symbolKind(sym: Symbol, symkinds: Set[SymbolKind])(given Context): SymbolInformation.Kind =
       if sym.isTypeParam
@@ -273,6 +386,9 @@ class ExtractSemanticDB extends Phase with
         if isLocal
           localNames += symbolName
         symbolInfos += symbolInfo(sym, symbolName, symkinds)
+
+    private def registerSymbolSimple(sym: Symbol)(given Context): Unit =
+      registerSymbol(sym, symbolName(sym), Set.empty)
 
     private def registerOccurrence(symbol: String, span: Span, role: SymbolOccurrence.Role)(given Context): Unit =
       val occ = SymbolOccurrence(symbol, range(span), role)
@@ -385,114 +501,6 @@ class ExtractSemanticDB extends Phase with
               if getter.mods.is(Mutable) then SymbolKind.VarSet else SymbolKind.ValSet)
           registerSymbol(vparam.symbol, symbolName(vparam.symbol), symkinds)
         traverseTpt(vparam.tpt)
-
-    override def traverse(tree: Tree)(given Context): Unit =
-
-      inline def traverseCtorParamTpt(ctorSym: Symbol, tpt: Tree): Unit =
-        val tptSym = tpt.symbol
-        if tptSym.owner == ctorSym
-          val found = matchingMemberType(tptSym, ctorSym.owner)
-          if !excludeUseStrict(found, tpt.span) && tpt.span.hasLength
-            registerUse(found, tpt.span)
-        else
-          traverse(tpt)
-
-      for annot <- tree.symbol.annotations do
-        if annot.tree.span.exists
-          && annot.symbol.owner != defn.ScalaAnnotationInternal
-        then
-          traverse(annot.tree)
-
-      tree match
-        case tree: PackageDef =>
-          if !excludeDef(tree.pid.symbol) && tree.pid.span.hasLength
-            tree.pid match
-            case tree @ Select(qual, name) =>
-              registerDefinition(tree.symbol, adjustSpanToName(tree.span, qual.span, name), Set.empty)
-              traverse(qual)
-            case tree => registerDefinition(tree.symbol, tree.span, Set.empty)
-          tree.stats.foreach(traverse)
-        case tree: NamedDefTree =>
-          if tree.symbol.isAllOf(ModuleValCreationFlags)
-            return
-          if !excludeDef(tree.symbol) && tree.span.hasLength
-            registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree))
-            val privateWithin = tree.symbol.privateWithin
-            if privateWithin.exists
-              registerUse(privateWithin, spanOfSymbol(privateWithin, tree.span))
-          else if !excludeSymbolStrict(tree.symbol)
-            registerSymbol(tree.symbol, symbolName(tree.symbol), symbolKinds(tree))
-          tree match
-          case tree: ValDef if tree.symbol.isAllOf(EnumValue) =>
-            tree.rhs match
-            case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
-              template.parents.foreach(traverse)
-            case _ => // calls $new
-          case tree: ValDef if tree.symbol.isSelfSym =>
-            if tree.tpt.span.hasLength
-              traverse(tree.tpt)
-          case tree: DefDef if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
-            tree.vparamss.foreach(_.foreach(traverse))
-            traverse(tree.rhs)
-          case tree =>
-            if !excludeChildren(tree.symbol)
-              traverseChildren(tree)
-        case tree: Template =>
-          val ctorSym = tree.constr.symbol
-          if !excludeDef(ctorSym)
-            registerDefinition(ctorSym, tree.constr.span, Set.empty)
-            ctorParams(tree.constr.vparamss, tree.body)(traverseCtorParamTpt(ctorSym, _))
-          for parent <- tree.parentsOrDerived do
-            if
-              parent.symbol != defn.ObjectClass.primaryConstructor
-              && parent.tpe.dealias != defn.SerializableType
-              && parent.symbol != defn.ProductClass
-            then
-              traverse(parent)
-          val selfSpan = tree.self.span
-          if selfSpan.exists && selfSpan.hasLength then
-            traverse(tree.self)
-          if tree.symbol.owner.is(Enum, butNot=Case)
-            tree.body.foreachUntilImport(traverse).foreach(traverse) // the first import statement
-          else
-            tree.body.foreach(traverse)
-        case tree: Assign =>
-          if !excludeUseStrict(tree.lhs.symbol, tree.lhs.span)
-            val lhs = tree.lhs.symbol
-            val setter = lhs.matchingSetter.orElse(lhs)
-            tree.lhs match
-              case tree @ Select(qual, name) => registerUse(setter, adjustSpanToName(tree.span, qual.span, name))
-              case tree                      => registerUse(setter, tree.span)
-            traverseChildren(tree.lhs)
-          traverse(tree.rhs)
-        case tree: Ident =>
-          if tree.name != nme.WILDCARD then
-            val sym = tree.symbol.adjustIfCtorTyparam
-            if !excludeUseStrict(sym, tree.span) then
-              registerUse(sym, tree.span)
-        case tree: Select =>
-          val qualSpan = tree.qualifier.span
-          val sym = tree.symbol.adjustIfCtorTyparam
-          if !excludeUseStrict(sym, tree.span) then
-            registerUse(sym, adjustSpanToName(tree.span, qualSpan, tree.name))
-          if qualSpan.exists && qualSpan.hasLength then
-            traverseChildren(tree)
-        case tree: Import =>
-          if tree.span.exists && tree.span.hasLength then
-            for sel <- tree.selectors do
-              val imported = sel.imported.name
-              if imported != nme.WILDCARD then
-                for alt <- tree.expr.tpe.member(imported).alternatives do
-                  registerUse(alt.symbol, sel.imported.span)
-                  if (alt.symbol.companionClass.exists)
-                    registerUse(alt.symbol.companionClass, sel.imported.span)
-            traverseChildren(tree)
-        case tree: Inlined =>
-          traverse(tree.call)
-        case tree: Annotated => // skip the annotation (see `@param` in https://github.com/scalameta/scalameta/blob/633824474e99bbfefe12ad0cc73da1fe064b3e9b/tests/jvm/src/test/resources/example/Annotations.scala#L37)
-          traverse(tree.arg)
-        case _ =>
-          traverseChildren(tree)
 
 object ExtractSemanticDB with
   import java.nio.file.Path

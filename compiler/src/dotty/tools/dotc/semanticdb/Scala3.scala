@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import scala.annotation.internal.sharable
 import scala.annotation.switch
 
-object Scala with
+object Scala3 with
   import Symbols._
   import NameOps.given
 
@@ -101,6 +101,10 @@ object Scala with
 
       sym.owner.info.decls.find(s => s.name == setterName && s.info.matchingType)
 
+
+    def isSyntheticWithIdent(given Context): Boolean =
+      sym.is(Synthetic) && !sym.isAnonymous
+
   end symbolOps
 
   object LocalSymbol with
@@ -118,35 +122,26 @@ object Scala with
 
   end LocalSymbol
 
+  private inline def (char: Char) `is/.#])` = (char: @switch) match
+    case '/' | '.' | '#' | ']' | ')' => true
+    case _                           => false
+
   given stringOps: (symbol: String) with
 
     def isNoSymbol: Boolean = NoSymbol == symbol
     def isRootPackage: Boolean = RootPackage == symbol
     def isEmptyPackage: Boolean = EmptyPackage == symbol
 
-    def isGlobal: Boolean =
-      !symbol.isNoSymbol
-      && !symbol.isMulti
-      && { (symbol.last: @switch) match
-        case '.' | '#' | '/' | ')' | ']' => true
-        case _                           => false
-      }
-
-    def isLocal: Boolean = !symbol.isGlobal
+    def isGlobal: Boolean = !symbol.isNoSymbol && !symbol.isMulti && symbol.last.`is/.#])`
+    def isLocal: Boolean = !symbol.isNoSymbol && !symbol.isMulti && !symbol.last.`is/.#])`
     def isMulti: Boolean = symbol startsWith ";"
 
-    def isConstructor: Boolean =
-      ctor matches symbol
-    def isTerm: Boolean =
-      !symbol.isNoSymbol && !symbol.isMulti && symbol.last == '.'
-    def isType: Boolean =
-      !symbol.isNoSymbol && !symbol.isMulti && symbol.last == '#'
-    def isPackage: Boolean =
-      !symbol.isNoSymbol && !symbol.isMulti && symbol.last == '/'
-    def isParameter: Boolean =
-      !symbol.isNoSymbol && !symbol.isMulti && symbol.last == ')'
-    def isTypeParameter: Boolean =
-      !symbol.isNoSymbol && !symbol.isMulti && symbol.last == ']'
+    def isConstructor: Boolean = ctor matches symbol
+    def isPackage: Boolean = !symbol.isNoSymbol && !symbol.isMulti && symbol.last == '/'
+    def isTerm: Boolean = !symbol.isNoSymbol && !symbol.isMulti && symbol.last == '.'
+    def isType: Boolean = !symbol.isNoSymbol && !symbol.isMulti && symbol.last == '#'
+    def isTypeParameter: Boolean = !symbol.isNoSymbol && !symbol.isMulti && symbol.last == ']'
+    def isParameter: Boolean = !symbol.isNoSymbol && !symbol.isMulti && symbol.last == ')'
 
     def unescapeUnicode =
       unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar))
@@ -199,4 +194,4 @@ object Scala with
 
   end infoOps
 
-end Scala
+end Scala3
