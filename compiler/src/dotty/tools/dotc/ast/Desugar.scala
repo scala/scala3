@@ -1098,9 +1098,9 @@ object desugar {
           val firstDef =
             ValDef(tmpName, TypeTree(), matchExpr)
               .withSpan(pat.span.union(rhs.span)).withMods(patMods)
-          val arity = vars.length
+          val useSelectors = vars.length <= 22
           def selector(n: Int) =
-            if arity <= 22 then Select(Ident(tmpName), nme.selectorName(n))
+            if useSelectors then Select(Ident(tmpName), nme.selectorName(n))
             else Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(n)) :: Nil)
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex if named.name != nme.WILDCARD)
