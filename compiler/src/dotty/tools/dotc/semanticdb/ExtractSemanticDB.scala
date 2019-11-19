@@ -13,7 +13,6 @@ import StdNames.nme
 import util.Spans.Span
 import util.{SourceFile, SourcePosition}
 import collection.mutable
-import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 import java.nio.file.Paths
 
 import ast.untpd.given
@@ -112,7 +111,8 @@ class ExtractSemanticDB extends Phase with
 
       tree match
         case tree: PackageDef =>
-          if !excludeDef(tree.pid.symbol) && tree.pid.span.hasLength
+          if !excludeDef(tree.pid.symbol)
+          && tree.pid.span.hasLength
             tree.pid match
             case tree @ Select(qual, name) =>
               registerDefinition(tree.symbol, adjustSpanToName(tree.span, qual.span, name), Set.empty)
@@ -122,7 +122,8 @@ class ExtractSemanticDB extends Phase with
         case tree: NamedDefTree =>
           if tree.symbol.isAllOf(ModuleValCreationFlags)
             return
-          if !excludeDef(tree.symbol) && tree.span.hasLength
+          if !excludeDef(tree.symbol)
+          && tree.span.hasLength
             registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree))
             val privateWithin = tree.symbol.privateWithin
             if privateWithin.exists
@@ -130,18 +131,22 @@ class ExtractSemanticDB extends Phase with
           else if !excludeSymbolStrict(tree.symbol)
             registerSymbol(tree.symbol, symbolName(tree.symbol), symbolKinds(tree))
           tree match
-          case tree: ValDef if tree.symbol.isAllOf(EnumValue) =>
+          case tree: ValDef
+          if tree.symbol.isAllOf(EnumValue) =>
             tree.rhs match
             case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
               template.parents.foreach(traverse)
             case _ => // calls $new
-          case tree: ValDef if tree.symbol.isSelfSym =>
+          case tree: ValDef
+          if tree.symbol.isSelfSym =>
             if tree.tpt.span.hasLength
               traverse(tree.tpt)
-          case tree: DefDef if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
+          case tree: DefDef
+          if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
             tree.vparamss.foreach(_.foreach(traverse))
             traverse(tree.rhs)
-          case tree: (DefDef | ValDef) if tree.symbol.isSyntheticWithIdent =>
+          case tree: (DefDef | ValDef)
+          if tree.symbol.isSyntheticWithIdent =>
             tree match
               case tree: DefDef =>
                 tree.tparams.foreach(tparam => registerSymbolSimple(tparam.symbol))
@@ -211,18 +216,10 @@ class ExtractSemanticDB extends Phase with
     /** Add semanticdb name of the given symbol to string builder */
     private def addSymName(b: StringBuilder, sym: Symbol)(given ctx: Context): Unit =
 
-      def isJavaIdent(str: String) =
-        isJavaIdentifierStart(str.head) && str.tail.forall(isJavaIdentifierPart)
-
       def addName(name: Name) =
         val str = name.toString.unescapeUnicode
-        if isJavaIdent(str) then b append str
+        if str.isJavaIdent then b append str
         else b append '`' append str append '`'
-
-      /** Is symbol global? Non-global symbols get localNå names */
-      def isGlobal(sym: Symbol): Boolean =
-        sym.is(Package)
-        || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && isGlobal(sym.owner)
 
       def addOwner(owner: Symbol): Unit =
         if !owner.isRoot then addSymName(b, owner)
@@ -280,7 +277,7 @@ class ExtractSemanticDB extends Phase with
         locals.getOrElseUpdate(sym, computeLocalIdx())
 
       if sym.exists then
-        if isGlobal(sym) then
+        if sym.isGlobal then
           addOwner(sym.owner); addDescriptor(sym)
         else
           b.append(Symbols.LocalPrefix).append(localIdx(sym))
@@ -300,10 +297,6 @@ class ExtractSemanticDB extends Phase with
       val (startLine, startCol) = lineCol(span.start)
       val (endLine, endCol) = lineCol(span.end)
       Some(Range(startLine, startCol, endLine, endCol))
-
-    private inline def (name: Name) isEmptyNumbered: Boolean = name match
-      case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
-      case _ => false
 
     private def symbolKind(sym: Symbol, symkinds: Set[SymbolKind])(given Context): SymbolInformation.Kind =
       if sym.isTypeParam
@@ -457,7 +450,7 @@ class ExtractSemanticDB extends Phase with
       case Nil => Nil
 
     private def (sym: Symbol) adjustIfCtorTyparam(given Context) =
-      if sym.isType && sym.owner.isConstructor
+      if sym.isType && sym.owner.exists && sym.owner.isConstructor
         matchingMemberType(sym, sym.owner.owner)
       else
         sym

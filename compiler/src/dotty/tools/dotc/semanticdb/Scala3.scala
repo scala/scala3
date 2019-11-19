@@ -1,21 +1,23 @@
 package dotty.tools.dotc.semanticdb
 
-import dotty.tools.dotc.core.Symbols.{ Symbol , defn }
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Names
-import dotty.tools.dotc.core.Names.Name
-import dotty.tools.dotc.core.Types.Type
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds
-import dotty.tools.dotc.core.NameOps
-import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core
+import core.Symbols.{ Symbol , defn }
+import core.Contexts.Context
+import core.Names
+import core.Names.Name
+import core.Types.Type
+import core.Flags._
+import core.NameKinds
+import core.StdNames.nme
+
+import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 
 import scala.annotation.internal.sharable
 import scala.annotation.switch
 
 object Scala3 with
   import Symbols._
-  import NameOps.given
+  import core.NameOps.given
 
   @sharable private val unicodeEscape = raw"\$$u(\p{XDigit}{4})".r
   @sharable private val locals        = raw"local(\d+)".r
@@ -44,7 +46,6 @@ object Scala3 with
 
   object Symbols with
 
-    val NoSymbol: String = ""
     val RootPackage: String = "_root_/"
     val EmptyPackage: String = "_empty_/"
     val LocalPrefix: String = "local"
@@ -66,7 +67,7 @@ object Scala3 with
 
   end Symbols
 
-  given nameOps: (name: Name) with
+  given NameOps: (name: Name) with
 
     def isWildcard = name match
       case nme.WILDCARD | WILDCARDTypeName => true
@@ -79,9 +80,16 @@ object Scala3 with
         case NameKinds.ModuleClassName(original) => original.isScala2PackageObjectName
         case _                                   => false
 
-  end nameOps
+    def isEmptyNumbered: Boolean =
+      !name.is(NameKinds.WildcardParamName)
+      && { name match
+        case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
+        case _                                       => false
+      }
 
-  given symbolOps: (sym: Symbol) with
+  end NameOps
+
+  given SymbolOps: (sym: Symbol) with
 
     def isScala2PackageObject(given Context): Boolean =
       sym.name.isScala2PackageObjectName && sym.owner.is(Package) && sym.is(Module)
@@ -101,24 +109,31 @@ object Scala3 with
 
       sym.owner.info.decls.find(s => s.name == setterName && s.info.matchingType)
 
+    /** Is symbol global? Non-global symbols get localN names */
+    def isGlobal(given Context): Boolean =
+      sym.is(Package)
+      || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && sym.owner.isGlobal
 
+    def isLocalWithinSameName(given Context): Boolean =
+      sym.exists && !sym.isGlobal && sym.name == sym.owner.name
+
+    /** Synthetic symbols that are not anonymous or numbered empty ident */
     def isSyntheticWithIdent(given Context): Boolean =
-      sym.is(Synthetic) && !sym.isAnonymous
+      sym.is(Synthetic) && !sym.isAnonymous && !sym.name.isEmptyNumbered
 
-  end symbolOps
+  end SymbolOps
 
   object LocalSymbol with
-    def unapply(symbolInfo: SymbolInformation): Option[Int] =
-    symbolInfo.symbol match
 
-    case locals(ints) =>
-      val bi = BigInt(ints)
-      if bi.isValidInt
-        Some(bi.toInt)
-      else
-        None
+    def unapply(symbolInfo: SymbolInformation): Option[Int] = symbolInfo.symbol match
+      case locals(ints) =>
+        val bi = BigInt(ints)
+        if bi.isValidInt
+          Some(bi.toInt)
+        else
+          None
 
-    case _ => None
+      case _ => None
 
   end LocalSymbol
 
@@ -126,29 +141,32 @@ object Scala3 with
     case '/' | '.' | '#' | ']' | ')' => true
     case _                           => false
 
-  given stringOps: (symbol: String) with
+  given StringOps: (symbol: String) with
 
-    def isNoSymbol: Boolean = NoSymbol == symbol
+    def isSymbol: Boolean = !symbol.isEmpty
     def isRootPackage: Boolean = RootPackage == symbol
     def isEmptyPackage: Boolean = EmptyPackage == symbol
 
-    def isGlobal: Boolean = !symbol.isNoSymbol && !symbol.isMulti && symbol.last.`is/.#])`
-    def isLocal: Boolean = !symbol.isNoSymbol && !symbol.isMulti && !symbol.last.`is/.#])`
+    def isGlobal: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last.`is/.#])`
+    def isLocal: Boolean = !symbol.isEmpty && !symbol.isMulti && !symbol.last.`is/.#])`
     def isMulti: Boolean = symbol startsWith ";"
 
     def isConstructor: Boolean = ctor matches symbol
-    def isPackage: Boolean = !symbol.isNoSymbol && !symbol.isMulti && symbol.last == '/'
-    def isTerm: Boolean = !symbol.isNoSymbol && !symbol.isMulti && symbol.last == '.'
-    def isType: Boolean = !symbol.isNoSymbol && !symbol.isMulti && symbol.last == '#'
-    def isTypeParameter: Boolean = !symbol.isNoSymbol && !symbol.isMulti && symbol.last == ']'
-    def isParameter: Boolean = !symbol.isNoSymbol && !symbol.isMulti && symbol.last == ')'
+    def isPackage: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '/'
+    def isTerm: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '.'
+    def isType: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '#'
+    def isTypeParameter: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == ']'
+    def isParameter: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == ')'
 
     def unescapeUnicode =
       unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar))
 
-  end stringOps
+    def isJavaIdent =
+      isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
 
-  given infoOps: (info: SymbolInformation) with
+  end StringOps
+
+  given InfoOps: (info: SymbolInformation) with
 
     def isAbstract: Boolean = (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
     def isFinal: Boolean = (info.properties & SymbolInformation.Property.FINAL.value) != 0
@@ -182,6 +200,6 @@ object Scala3 with
     def isTrait: Boolean = info.kind.isTrait
     def isInterface: Boolean = info.kind.isInterface
 
-  end infoOps
+  end InfoOps
 
 end Scala3

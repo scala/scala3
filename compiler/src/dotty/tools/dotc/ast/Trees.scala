@@ -342,7 +342,7 @@ object Trees {
      *  a calling chain from `viewExists`), in that case the return position is NoSpan.
      *  Overridden in Bind
      */
-     def nameSpan: Span =
+    def nameSpan: Span =
       if (span.exists) {
         val point = span.point
         if (rawMods.is(Synthetic) || name.toTermName == nme.ERROR) Span(point)
