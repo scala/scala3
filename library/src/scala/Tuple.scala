@@ -50,6 +50,9 @@ sealed trait Tuple extends Any {
   */
   inline def map[F[_]](f: [t] => t => F[t]): Map[this.type, F] =
     DynamicTuple.dynamicMap(this, f)
+
+  inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
+    DynamicTuple.dynamicSplitAt[This, n.type](this, n)
 }
 
 object Tuple {
@@ -65,7 +68,7 @@ object Tuple {
   }
 
   /** Type of the concatenation of two tuples */
-  type Concat[+X <: Tuple, +Y <: Tuple] <: Tuple = X match {
+  type Concat[X <: Tuple, +Y <: Tuple] <: Tuple = X match {
     case Unit => Y
     case x1 *: xs1 => x1 *: Concat[xs1, Y]
   }
@@ -117,16 +120,16 @@ object Tuple {
   type IsMappedBy[F[_]] = [X <: Tuple] =>> X =:= Map[InverseMap[X, F], F]
 
   /** Transforms a tuple `(T1, ..., Tn)` into `(T1, ..., Ti)`. */
-  type Take[+T <: Tuple, N <: Int] = N match {
+  type Take[T <: Tuple, N <: Int] <: Tuple = N match {
     case 0 => Unit
     case S[n1] => T match {
       case Unit => Unit
-      case x *: xs => Concat[x *: Unit, Take[xs, n1]]
+      case x *: xs => x *: Take[xs, n1]
     }
   }
 
   /** Transforms a tuple `(T1, ..., Tn)` into `(Ti+1, ..., Tn)`. */
-  type Drop[+T <: Tuple, N <: Int] = N match {
+  type Drop[T <: Tuple, N <: Int] <: Tuple = N match {
     case 0 => T
     case S[n1] => T match {
       case Unit => Unit
@@ -137,7 +140,7 @@ object Tuple {
   /** Splits a tuple (T1, ..., Tn) into a pair of two tuples `(T1, ..., Ti)` and
    * `(Ti+1, ..., Tn)`.
    */
-  type Split[+T <: Tuple, N <: Int] = (Take[T, N], Drop[T, N]) = (Take[T, N], Drop[T, N])
+  type Split[T <: Tuple, N <: Int] = (Take[T, N], Drop[T, N])
 
   /** Convert an array into a tuple of unknown arity and types */
   def fromArray[T](xs: Array[T]): Tuple = {

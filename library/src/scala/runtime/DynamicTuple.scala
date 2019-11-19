@@ -1,6 +1,6 @@
 package scala.runtime
 
-import scala.Tuple.{ Concat, Size, Head, Tail, Elem, Zip, Map }
+import scala.Tuple.{ Concat, Size, Head, Tail, Elem, Zip, Map, Split }
 
 object DynamicTuple {
   inline val MaxSpecialized = 22
@@ -262,6 +262,26 @@ object DynamicTuple {
     case _ =>
       Tuple.fromArray(self.asInstanceOf[Product].productIterator.map(f(_)).toArray) // TODO use toIArray of Object to avoid double/triple array copy
         .asInstanceOf[Map[This, F]]
+  }
+
+  def dynamicSplitAt[This <: Tuple, N <: Int](self: This, n: N): Split[This, N] = {
+    type Result = Split[This, N]
+    val (arr1, arr2) = (self: Any) match {
+      case xxl: TupleXXL =>
+        xxl.elems.asInstanceOf[Array[Object]].splitAt(n)
+      case _ =>
+        val size = self.asInstanceOf[Product].productArity
+        val arr1 = new Array[Object](n)
+        val arr2 = new Array[Object](size - n)
+        val it = self.asInstanceOf[Product].productIterator
+        itToArray(it, n, arr1, 0)
+        itToArray(it, size - n, arr2, 0)
+        (arr1, arr2)
+    }
+    (
+      dynamicFromIArray(arr1.asInstanceOf[IArray[Object]]),
+      dynamicFromIArray(arr2.asInstanceOf[IArray[Object]])
+    ).asInstanceOf[Result]
   }
 
   def consIterator(head: Any, tail: Tuple): Iterator[Any] =
