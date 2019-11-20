@@ -8,12 +8,24 @@ import org.junit.Assert.{assertEquals, fail}
 import org.junit.experimental.categories.Category
 
 @Category(Array(classOf[TestCategory]))
-class CommunityBuildTest {
+class CommunityBuildTest { suite =>
   lazy val communitybuildDir: Path = Paths.get(sys.props("user.dir"))
 
   lazy val compilerVersion: String = {
     val file = communitybuildDir.resolve("dotty-bootstrapped.version")
     new String(Files.readAllBytes(file), UTF_8)
+  }
+
+  def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
+
+  /** Executes shell command, returns false in case of error. */
+  def exec(projectDir: Path, binary: String, arguments: String*): Int = {
+    val command = binary +: arguments
+    log(command.mkString(" "))
+    val builder = new ProcessBuilder(command: _*).directory(projectDir.toFile).inheritIO()
+    val process = builder.start()
+    val exitCode = process.waitFor()
+    exitCode
   }
 
   def testSbt(project: String, testCommand: String, updateCommand: String, extraSbtArgs: Seq[String] = Nil) = {
@@ -39,9 +51,6 @@ class CommunityBuildTest {
     test(project, "sbt", arguments)
   }
 
-  def testMill(project: String, testCommand: String, extraMillArgs: Seq[String] = Nil) =
-    test(project, "./mill", extraMillArgs :+ testCommand)
-
   /** Build the given project with the published local compiler and sbt plugin.
    *
    *  This test reads the compiler version from community-build/dotty-bootstrapped.version
@@ -53,8 +62,6 @@ class CommunityBuildTest {
    *  @param extraSbtArgs   Extra arguments to pass to sbt
    */
   def test(project: String, command: String, arguments: Seq[String]): Unit = {
-    def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
-
     log(s"Building $project with dotty-bootstrapped $compilerVersion...")
 
     val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
@@ -69,17 +76,7 @@ class CommunityBuildTest {
         |""".stripMargin)
     }
 
-    /** Executes shell command, returns false in case of error. */
-    def exec(binary: String, arguments: String*): Int = {
-      val command = binary +: arguments
-      log(command.mkString(" "))
-      val builder = new ProcessBuilder(command: _*).directory(projectDir.toFile).inheritIO()
-      val process = builder.start()
-      val exitCode = process.waitFor()
-      exitCode
-    }
-
-    val exitCode = exec(command, arguments: _*)
+    val exitCode = exec(projectDir, command, arguments: _*)
 
     if (exitCode != 0) {
       fail(s"""
@@ -98,23 +95,49 @@ class CommunityBuildTest {
     }
   }
 
-  @Test def utest = testMill(
-    project = "utest",
-    testCommand = s"utest.jvm[$compilerVersion].test",
-    extraMillArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
-  )
+  case class MillCommunityProject(project: String, testCommand: String,
+    publishCommand: String = "", extraArgs: List[String] = Nil,
+    dependencies: List[MillCommunityProject] = Nil)
+    final def test() =
+      dependencies.foreach(_.publish())
+      suite.test(project, "./mill", extraArgs :+ testCommand)
 
-  @Test def oslib = testMill(
-    project = "os-lib",
-    testCommand = s"os[$compilerVersion].test",
-    extraMillArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
-  )
+    final def publish() =
+      log(s"Publishing $project")
+      val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
+      if publishCommand.isEmpty
+        throw RuntimeException(s"Missing publish command for project $this")
+      exec(projectDir, "./mill", (extraArgs :+ publishCommand): _*)
 
-  @Test def oslibWatch = testMill(
-    project = "os-lib",
-    testCommand = s"os.watch[$compilerVersion].test",
-    extraMillArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
-  )
+  object projects {
+    val utest = MillCommunityProject(
+      project = "utest",
+      testCommand = s"utest.jvm[$compilerVersion].test",
+      publishCommand = s"utest.jvm[$compilerVersion].publishLocal",
+      extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
+    )
+
+    val sourcecode = MillCommunityProject(
+      project = "sourcecode",
+      testCommand = s"sourcecode.jvm[$compilerVersion].test",
+      publishCommand = s"sourcecode.jvm[$compilerVersion].publishLocal",
+      extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion"),
+    )
+
+    val oslib = MillCommunityProject(
+      project = "os-lib",
+      testCommand = s"os[$compilerVersion].test",
+      extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion"),
+      dependencies = List(utest, sourcecode)
+    )
+
+    val oslibWatch = MillCommunityProject(
+      project = "os-lib",
+      testCommand = s"os.watch[$compilerVersion].test",
+      extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion"),
+      dependencies = List(utest, sourcecode)
+    )
+  }
 
   @Test def intent = testSbt(
     project       = "intent",
@@ -188,11 +211,13 @@ class CommunityBuildTest {
     updateCommand = "dotty-community-build/update"
   )
 
-  @Test def sourcecode = testMill(
-    project = "sourcecode",
-    testCommand = s"sourcecode.jvm[$compilerVersion].test",
-    extraMillArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
-  )
+  @Test def utest = projects.utest.test()
+
+  @Test def sourcecode = projects.sourcecode.test()
+
+  @Test def oslib = projects.oslib.test()
+
+  @Test def oslibWatch = projects.oslibWatch.test()
 
   @Test def stdLib213 = testSbt(
     project       = "stdLib213",
