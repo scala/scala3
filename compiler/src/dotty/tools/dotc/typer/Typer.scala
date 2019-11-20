@@ -41,6 +41,7 @@ import transform.SymUtils._
 import transform.TypeUtils._
 import reporting.trace
 import Nullables.{NotNullInfo, given}
+import NullOpsDecorator._
 
 object Typer {
 
@@ -417,7 +418,20 @@ class Typer extends Namer
         tree.withType(ownType)
     }
 
-    checkStableIdentPattern(tree1, pt)
+    val tree2 = ownType match {
+      case ot: TermRef
+      if ctx.explicitNulls &&
+        pt != AssignProto && // Ensure it is not the lhs of Assign
+        ctx.notNullInfos.impliesNotNull(ot) =>
+        Apply(
+          TypeApply(Ident(defn.Compiletime_notNull.namedType), TypeTree(ownType.stripNull) :: Nil),
+          tree1 :: Nil)
+      case _ =>
+        tree1
+    }
+
+
+    checkStableIdentPattern(tree2, pt)
   }
 
   /** Check that a stable identifier pattern is indeed stable (SLS 8.1.5)
@@ -1554,16 +1568,6 @@ class Typer extends Namer
     typed(annot, defn.AnnotationClass.typeRef)
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): Tree = {
-    sym.infoOrCompleter match
-      case completer: Namer#Completer
-      if completer.creationContext.notNullInfos ne ctx.notNullInfos =>
-        // The RHS of a val def should know about not null facts established
-        // in preceding statements (unless the ValDef is completed ahead of time,
-        // then it is impossible).
-        vdef.symbol.info = Completer(completer.original)(
-          given completer.creationContext.withNotNullInfos(ctx.notNullInfos))
-      case _ =>
-
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
@@ -2223,6 +2227,19 @@ class Typer extends Namer
                 ctx // all preceding statements will have been executed in this case
               case _ =>
                 ctx.withNotNullInfos(initialNotNullInfos)
+            // We have to check the Completer of symbol befor typedValDef,
+            // otherwise the symbol is already completed using creation context.
+            mdef.getAttachment(SymOfTree).map(s => (s, s.infoOrCompleter)) match {
+              case Some((sym, completer: Namer#Completer))
+              if completer.creationContext.notNullInfos ne defCtx.notNullInfos =>
+                // The RHS of a val def should know about not null facts established
+                // in preceding statements (unless the ValDef is completed ahead of time,
+                // then it is impossible).
+                sym.info = Completer(completer.original)(
+                  given completer.creationContext.withNotNullInfos(defCtx.notNullInfos))
+              case _ =>
+            }
+
             typed(mdef)(given defCtx) match {
               case mdef1: DefDef if !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
                 buf += inlineExpansion(mdef1)

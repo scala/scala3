@@ -63,4 +63,11 @@ package object compiletime {
    *      }
    */
   type S[N <: Int] <: Int
+
+  /** Strip the Null type from x
+   *
+   *  val x: String|Null = ???
+   *  val _:String = $notNull[String](x)
+   */
+  inline def $notNull[A](x: A | Null): x.type & A = x.asInstanceOf
 }
