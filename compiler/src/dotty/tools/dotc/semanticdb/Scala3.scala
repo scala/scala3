@@ -206,4 +206,65 @@ object Scala3 with
     def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
   end RangeOps
 
+  /** Sort symbol occurrences by their start position. */
+  given OccurrenceOrdering: Ordering[SymbolOccurrence] = (x, y) =>
+    x.range -> y.range match
+    case None -> _ | _ -> None => 0
+    case Some(a) -> Some(b) =>
+      val byLine = Integer.compare(a.startLine, b.startLine)
+      if (byLine != 0)
+        byLine
+      else // byCharacter
+        Integer.compare(a.startCharacter, b.startCharacter)
+  end OccurrenceOrdering
+
+  given Ordering[SymbolInformation] = Ordering.by[SymbolInformation, String](_.symbol)(IdentifierOrdering())
+
+  /**
+    * A comparator for identifier like "Predef" or "Function10".
+    *
+    * Differences from the default string comparator:
+    * - works with CharSequences like compiler `Name`
+    * - orders numbers by their numerical value instead of lexicographical
+    *   - Good: `Function1`, `Function2`,  `Function10`
+    *   - Bad:  `Function1`, `Function10`, `Function2`
+    *
+    * taken from https://github.com/scalameta/scalameta/blob/master/semanticdb/metap/src/main/scala/scala/meta/internal/metap/IdentifierOrdering.scala
+    */
+  private class IdentifierOrdering[T <: CharSequence] extends Ordering[T] with
+
+    override def compare(o1: T, o2: T): Int =
+      val len = math.min(o1.length(), o2.length())
+      var i = 0
+      while i < len do
+        val a = o1.charAt(i)
+        val b = o2.charAt(i)
+        if a.isDigit && b.isDigit
+          val byDigit = Integer.compare(toDigit(o1, i), toDigit(o2, i))
+          if (byDigit != 0) return byDigit
+          else
+            i = seekNonDigit(o1, i)
+        else
+          val result = Character.compare(a, b)
+          if result != 0
+            return result
+          i += 1
+      end while
+      Integer.compare(o1.length(), o2.length())
+    end compare
+
+    private def seekNonDigit(cs: T, i: Int): Int =
+      var curr = i
+      while curr < cs.length && cs.charAt(curr).isDigit do
+        curr += 1
+      curr
+    end seekNonDigit
+
+    private def toDigit(cs: T, i: Int): Int =
+      val digit = cs.subSequence(i, seekNonDigit(cs, i))
+      Integer.parseUnsignedInt(digit.toString)
+    end toDigit
+
+  end IdentifierOrdering
+
 end Scala3

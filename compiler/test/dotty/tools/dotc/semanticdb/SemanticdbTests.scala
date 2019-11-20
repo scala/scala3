@@ -18,6 +18,8 @@ import org.junit.experimental.categories.Category
 import dotty.BootstrappedOnlyTests
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.semanticdb.DiffAssertions._
+import dotty.tools.dotc.semanticdb.Scala3.given
+import dotty.tools.dotc.util.SourceFile
 
 @main def updateExpect =
   SemanticdbTests().runExpectTest(updateExpectFiles = true)
@@ -47,9 +49,9 @@ class SemanticdbTests with
         .resolve(relpath)
         .resolveSibling(filename + ".semanticdb")
       val expectPath = source.resolveSibling(filename.replaceAllLiterally(".scala", ".expect.scala"))
-      val doc = Semanticdbs.loadTextDocument(source, relpath, semanticdbPath)
-      Semanticdbs.metac(doc, rootSrc.relativize(source))(given metacSb)
-      val obtained = trimTrailingWhitespace(Semanticdbs.printTextDocument(doc))
+      val doc = Tools.loadTextDocument(source, relpath, semanticdbPath)
+      Tools.metac(doc, rootSrc.relativize(source))(given metacSb)
+      val obtained = trimTrailingWhitespace(SemanticdbTests.printTextDocument(doc))
       if updateExpectFiles
         Files.write(expectPath, obtained.getBytes(StandardCharsets.UTF_8))
         println("updated: " + expectPath)
@@ -102,3 +104,42 @@ class SemanticdbTests with
     val exit = Main.process(args)
     assertFalse(s"dotc errors: ${exit.errorCount}", exit.hasErrors)
     target
+
+end SemanticdbTests
+
+object SemanticdbTests with
+  /** Prettyprint a text document with symbol occurrences next to each resolved identifier.
+   *
+   * Useful for testing purposes to ensure that SymbolOccurrence values make sense and are correct.
+   * Example output (NOTE, slightly modified to avoid "unclosed comment" errors):
+   * {{{
+   *   class Example *example/Example#*  {
+   *     val a *example/Example#a.* : String *scala/Predef.String#* = "1"
+   *   }
+   * }}}
+   **/
+  def printTextDocument(doc: TextDocument): String =
+    val symtab = doc.symbols.iterator.map(info => info.symbol -> info).toMap
+    val sb = StringBuilder(1000)
+    val sourceFile = SourceFile.virtual(doc.uri, doc.text)
+    var offset = 0
+    for occ <- doc.occurrences.sorted do
+      val range = occ.range.get
+      val end = math.max(
+        offset,
+        sourceFile.lineToOffset(range.endLine) + range.endCharacter
+      )
+      val isPrimaryConstructor =
+        symtab.get(occ.symbol).exists(_.isPrimary)
+      if !occ.symbol.isPackage && !isPrimaryConstructor
+        sb.append(doc.text.substring(offset, end))
+        sb.append("/*")
+          .append(if (occ.role.isDefinition) "<-" else "->")
+          .append(occ.symbol.replace("/", "::"))
+          .append("*/")
+        offset = end
+    sb.append(doc.text.substring(offset))
+    sb.toString
+  end printTextDocument
+
+end SemanticdbTests
