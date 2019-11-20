@@ -1055,7 +1055,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         printType(lo)
         this += " <: "
         printType(hi)
-      case IsType(tpe) => printType(tpe)
+      case tpe: Type => printType(tpe)
     }
 
     /** Print type
@@ -1089,7 +1089,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
             this += "#"
           case ThisType(TermRef(cdef, _)) if elideThis.nonEmpty && cdef == elideThis.get =>
           case ThisType(TypeRef(cdef, _)) if elideThis.nonEmpty && cdef == elideThis.get =>
-          case IsType(prefix) =>
+          case prefix: Type =>
             printType(prefix)
             this += "."
         }
@@ -1266,7 +1266,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         case ByNameType(t) =>
           this += ": "
           printType(t)
-        case IsType(tp) =>
+        case tp: Type =>
           this += ": "
           printType(tp)
       }
@@ -1282,7 +1282,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
               case ByNameType(_) | MethodType(_, _, _) | TypeLambda(_, _, _) =>
                 this += highlightKeyword("def ") += highlightTypeDef(name)
                 printMethodicType(info)
-              case IsType(info) =>
+              case info: Type =>
                 this += highlightKeyword("val ") += highlightValDef(name)
                 printMethodicType(info)
             }
@@ -1298,7 +1298,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     def printMethodicTypeParams(paramNames: List[String], params: List[TypeOrBounds])(given elideThis: Option[Symbol]): Unit = {
       def printInfo(info: TypeOrBounds) = info match {
         case info: TypeBounds => printBounds(info)
-        case IsType(info) =>
+        case info: Type =>
           this += ": "
           printType(info)
       }
@@ -1444,8 +1444,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
     object Sequence {
       def unapply(tpe: Type)(given ctx: Context): Option[Type] = tpe match {
-        case AppliedType(TypeRef(prefix: TermRef, "Seq"), IsType(tp) :: Nil) if prefix.termSymbol.fullName == "scala.collection" => Some(tp)
-        case AppliedType(TypeRef(prefix: TypeRef, "Seq"), IsType(tp) :: Nil) if prefix.typeSymbol.fullName == "scala.collection" => Some(tp)
+        case AppliedType(TypeRef(prefix: TermRef, "Seq"), (tp: Type) :: Nil) if prefix.termSymbol.fullName == "scala.collection" => Some(tp)
+        case AppliedType(TypeRef(prefix: TypeRef, "Seq"), (tp: Type) :: Nil) if prefix.typeSymbol.fullName == "scala.collection" => Some(tp)
         case _ => None
       }
     }
@@ -1460,7 +1460,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
     object Repeated {
       def unapply(tpe: Type)(given ctx: Context): Option[Type] = tpe match {
-        case AppliedType(TypeRef(ScalaPackage(), "<repeated>"), IsType(tp) :: Nil) => Some(tp)
+        case AppliedType(TypeRef(ScalaPackage(), "<repeated>"), (tp: Type) :: Nil) => Some(tp)
         case _ => None
       }
     }

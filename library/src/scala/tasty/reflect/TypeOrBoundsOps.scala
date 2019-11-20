@@ -63,13 +63,11 @@ trait TypeOrBoundsOps extends Core {
     def isDependentFunctionType(given ctx: Context): Boolean = internal.Type_isDependentFunctionType(self)
   }
 
-  // FIXME: needs #7532 fixed in the reference compiler
-  // given (given Context): IsInstanceOf[Type] = internal.isInstanceOfType
+  given (given Context): IsInstanceOf[Type] = internal.isInstanceOfType
 
   object IsType
-    // FIXME: Add depecation. Needs #7532 fixed in the reference compiler
-    // @deprecated("Use _: Type", "")
-    def unapply(x: TypeOrBounds)(given ctx: Context): Option[Type] =
+    @deprecated("Use _: Type", "")
+    def unapply(x: Type)(given ctx: Context): Option[Type] =
       internal.isInstanceOfType.unapply(x)
 
   object Type {
