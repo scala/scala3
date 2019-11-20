@@ -112,13 +112,13 @@ private class Rewriter private (preTransform: List[Transformation] = Nil, postTr
     import qctx.tasty.{_, given}
     class MapChildren extends TreeMap {
       override def transformTerm(tree: Term)(given ctx: Context): Term = tree match {
-        case IsClosure(_) =>
+        case _: Closure =>
           tree
-        case IsInlined(_) | IsSelect(_) =>
+        case _: Inlined | _: Select =>
           transformChildrenTerm(tree)
         case _ =>
           tree.tpe.widen match {
-            case IsMethodType(_) | IsPolyType(_) =>
+            case _: MethodType | _: PolyType =>
               transformChildrenTerm(tree)
             case _ =>
               tree.seal match {

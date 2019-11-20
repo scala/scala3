@@ -12,7 +12,7 @@ object Asserts {
     x.unseal.underlyingArgument match {
       case Apply(fn, args) =>
         fn.tpe.widen match {
-          case IsMethodType(_) =>
+          case _: MethodType =>
             args.size match {
               case 0 => Expr.betaReduce(fn.etaExpand.seal.cast[() => Int])()
               case 1 => Expr.betaReduce(fn.etaExpand.seal.cast[Int => Int])('{0})
