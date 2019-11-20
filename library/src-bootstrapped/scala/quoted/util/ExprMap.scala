@@ -102,7 +102,7 @@ trait ExprMap {
         tree match {
         case _: Closure =>
           tree
-        case _: Inlined | _: Select =>
+        case _: Inlined =>
           transformTermChildren(tree, tpe)
         case _ =>
           tree.tpe.widen match {
