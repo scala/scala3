@@ -7,18 +7,19 @@ import org.junit.{Ignore, Test}
 import org.junit.Assert.{assertEquals, fail}
 import org.junit.experimental.categories.Category
 
-case class MillCommunityProject(project: String, testCommand: String,
-  publishCommand: String = "", extraArgs: List[String] = Nil,
-  dependencies: List[MillCommunityProject] = Nil)
+final case class MillCommunityProject(project: String, testCommand: String,
+  updateCommand: String, publishCommand: String = "",
+  extraArgs: List[String] = Nil, dependencies: List[MillCommunityProject] = Nil)
   import communityBuildCommons.{ log, exec, communitybuildDir }
 
   private var published = false
 
-  final def test()(given suite: CommunityBuildTest) =
-    dependencies.foreach(_.publish())
-    suite.test(project, "./mill", extraArgs :+ testCommand)
+  def test(update: Boolean)(given suite: CommunityBuildTest) =
+    val millCmd = if update then updateCommand else testCommand
+    if !update then dependencies.foreach(_.publish())
+    suite.test(project, "./mill", extraArgs :+ millCmd)
 
-  final def publish() =
+  def publish() =
     if !published
       log(s"Publishing $project")
       val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
@@ -58,12 +59,14 @@ object projects
     project = "utest",
     testCommand = s"utest.jvm[$compilerVersion].test",
     publishCommand = s"utest.jvm[$compilerVersion].publishLocal",
+    updateCommand = "utest.jvm[$compilerVersion].compileClasspath",
     extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
   )
 
   val sourcecode = MillCommunityProject(
     project = "sourcecode",
     testCommand = s"sourcecode.jvm[$compilerVersion].test",
+    updateCommand = s"sourcecode.jvm[$compilerVersion].compileClasspath",
     publishCommand = s"sourcecode.jvm[$compilerVersion].publishLocal",
     extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion"),
   )
@@ -71,6 +74,7 @@ object projects
   val oslib = MillCommunityProject(
     project = "os-lib",
     testCommand = s"os[$compilerVersion].test",
+    updateCommand = s"os[$compilerVersion].compileClasspath",
     extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion"),
     dependencies = List(utest, sourcecode)
   )
@@ -78,6 +82,7 @@ object projects
   val oslibWatch = MillCommunityProject(
     project = "os-lib",
     testCommand = s"os.watch[$compilerVersion].test",
+    updateCommand = s"os.watch[$compilerVersion].compileClasspath",
     extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion"),
     dependencies = List(utest, sourcecode)
   )
@@ -88,6 +93,7 @@ class CommunityBuildTest {
   import communityBuildCommons._
 
   given CommunityBuildTest = this
+  val updateCacheRun = false
 
   def testSbt(project: String, testCommand: String, updateCommand: String, extraSbtArgs: Seq[String] = Nil) = {
     // Workaround for https://github.com/sbt/sbt/issues/4395
@@ -228,13 +234,13 @@ class CommunityBuildTest {
     updateCommand = "dotty-community-build/update"
   )
 
-  @Test def utest = projects.utest.test()
+  @Test def utest = projects.utest.test(updateCacheRun)
 
-  @Test def sourcecode = projects.sourcecode.test()
+  @Test def sourcecode = projects.sourcecode.test(updateCacheRun)
 
-  @Test def oslib = projects.oslib.test()
+  @Test def oslib = projects.oslib.test(updateCacheRun)
 
-  @Test def oslibWatch = projects.oslibWatch.test()
+  @Test def oslibWatch = projects.oslibWatch.test(updateCacheRun)
 
   @Test def stdLib213 = testSbt(
     project       = "stdLib213",
@@ -291,6 +297,8 @@ class UpdateCategory
 
 @Category(Array(classOf[UpdateCategory]))
 class CommunityBuildUpdate extends CommunityBuildTest {
+  override val updateCacheRun = true
+
   override def testSbt(project: String, testCommand: String, updateCommand: String, extraSbtArgs: Seq[String]): Unit =
     super.testSbt(project, updateCommand, null, extraSbtArgs)
 }
