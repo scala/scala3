@@ -19,7 +19,8 @@ class TupleOps {
     for (i <- 1 until 10)
       tuple2 = s"elem$i" *: tuple2
 
-    tuple3 = Tuple.fromArray(Random.shuffle(1 to 15).toArray)
+    val rand = new Random(12345)
+    tuple3 = Tuple.fromArray(rand.shuffle(1 to 15).toArray)
   }
 
   def tupleFlatMap(tuple: Tuple, f: [A] => A => Tuple): Tuple = {

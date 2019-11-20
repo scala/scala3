@@ -240,7 +240,7 @@ object DynamicTuple {
     res.asInstanceOf[Result]
   }
 
-  def dynamicApply[This <: NonEmptyTuple, N <: Int] (self: This, n: Int): Elem[This, N] = {
+  def dynamicApply[This <: NonEmptyTuple, N <: Int] (self: This, n: N): Elem[This, N] = {
     type Result = Elem[This, N]
     val res = (self: Any) match {
       case self: Unit => throw new IndexOutOfBoundsException(n.toString)
