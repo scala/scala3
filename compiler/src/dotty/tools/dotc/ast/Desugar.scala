@@ -830,14 +830,14 @@ object desugar {
     val impl = mdef.impl
     val mods = mdef.mods
     impl.constr match {
-      case DefDef(_, tparams, (vparams @ (vparam :: Nil)) :: _, _, _) =>
+      case DefDef(_, tparams, (vparams @ (vparam :: Nil)) :: givenParamss, _, _) =>
         assert(mods.is(Given))
         return moduleDef(
           cpy.ModuleDef(mdef)(
             mdef.name,
             cpy.Template(impl)(
               constr = emptyConstructor,
-              body = impl.body.map(makeExtensionDef(_, tparams, vparams)))))
+              body = impl.body.map(makeExtensionDef(_, tparams, vparams, givenParamss)))))
       case _ =>
     }
 
@@ -892,7 +892,8 @@ object desugar {
    *  If the given member `mdef` is not of this form, flag it as an error.
    */
 
-  def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef])(given ctx: Context): Tree = {
+  def makeExtensionDef(mdef: Tree, tparams: List[TypeDef], leadingParams: List[ValDef],
+                       givenParamss: List[List[ValDef]])(given ctx: Context): Tree = {
     val allowed = "allowed here, since collective parameters are given"
     mdef match {
       case mdef: DefDef =>
@@ -900,8 +901,10 @@ object desugar {
           ctx.error(em"No extension method $allowed", mdef.sourcePos)
           mdef
         }
-        else cpy.DefDef(mdef)(tparams = tparams ++ mdef.tparams, vparamss = leadingParams :: mdef.vparamss)
-          .withFlags(Extension)
+        else cpy.DefDef(mdef)(
+          tparams = tparams ++ mdef.tparams,
+          vparamss = leadingParams :: givenParamss ::: mdef.vparamss
+        ).withMods(mdef.mods | Extension)
       case mdef: Import =>
         mdef
       case mdef =>
@@ -1095,7 +1098,10 @@ object desugar {
           val firstDef =
             ValDef(tmpName, TypeTree(), matchExpr)
               .withSpan(pat.span.union(rhs.span)).withMods(patMods)
-          def selector(n: Int) = Select(Ident(tmpName), nme.selectorName(n))
+          val useSelectors = vars.length <= 22
+          def selector(n: Int) =
+            if useSelectors then Select(Ident(tmpName), nme.selectorName(n))
+            else Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(n)) :: Nil)
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex if named.name != nme.WILDCARD)
             yield
@@ -1737,7 +1743,8 @@ object desugar {
         new TreeTraverser {
           def traverse(tree: untpd.Tree)(implicit ctx: Context): Unit = tree match {
             case Splice(expr) => collect(expr)
-            case TypSplice(expr) => collect(expr)
+            case TypSplice(expr) =>
+              ctx.error("Type splices cannot be used in val patterns. Consider using `match` instead.", tree.sourcePos)
             case _ => traverseChildren(tree)
           }
         }.traverse(expr)

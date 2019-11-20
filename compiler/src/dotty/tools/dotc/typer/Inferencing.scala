@@ -389,7 +389,7 @@ trait Inferencing { this: Typer =>
     if ((ownedVars ne locked) && !ownedVars.isEmpty) {
       val qualifying = ownedVars -- locked
       if (!qualifying.isEmpty) {
-        typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
+        typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.toList}%, %, qualifying = ${qualifying.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
         val resultAlreadyConstrained =
           tree.isInstanceOf[Apply] || tree.tpe.isInstanceOf[MethodOrPoly]
         if (!resultAlreadyConstrained)
@@ -421,22 +421,70 @@ trait Inferencing { this: Typer =>
         //     val y: List[List[String]] = List(List(1))
         val hasUnreportedErrors = state.reporter.hasUnreportedErrors
         def constraint = state.constraint
+        type InstantiateQueue = mutable.ListBuffer[(TypeVar, Boolean)]
+        val toInstantiate = new InstantiateQueue
         for (tvar <- qualifying)
-          if (!tvar.isInstantiated && state.constraint.contains(tvar)) {
+          if (!tvar.isInstantiated && constraint.contains(tvar)) {
             // Needs to be checked again, since previous interpolations could already have
             // instantiated `tvar` through unification.
             val v = vs(tvar)
             if (v == null) {
               typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = ${tvar.hasLowerBound}, $constraint")
-              tvar.instantiate(fromBelow = tvar.hasLowerBound)
+              toInstantiate += ((tvar, tvar.hasLowerBound))
             }
             else if (!hasUnreportedErrors)
               if (v.intValue != 0) {
                 typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
-                tvar.instantiate(fromBelow = v.intValue == 1)
+                toInstantiate += ((tvar, v.intValue == 1))
               }
               else typr.println(i"no interpolation for nonvariant $tvar in $state")
           }
+
+        /** Instantiate all type variables in `buf` in the indicated directions.
+         *  If a type variable A is instantiated from below, and there is another
+         *  type variable B in `buf` that is known to be smaller than A, wait and
+         *  instantiate all other type variables before trying to instantiate A again.
+         *  Dually, wait instantiating a type variable from above as long as it has
+         *  upper bounds in `buf`.
+         *
+         *  This is done to avoid loss of precision when forming unions. An example
+         *  is in i7558.scala:
+         *
+         *      type Tr[+V1, +O1 <: V1]
+         *      def [V2, O2 <: V2](tr: Tr[V2, O2]) sl: Tr[V2, O2] = ???
+         *      def as[V3, O3 <: V3](tr: Tr[V3, O3]) : Tr[V3, O3] = tr.sl
+         *
+         *   Here we interpolate at some point V2 and O2 given the constraint
+         *
+         *      V2 >: V3, O2 >: O3, O2 <: V2
+         *
+         *   where O3 and V3 are type refs with O3 <: V3.
+         *   If we interpolate V2 first to V3 | O2, the widenUnion algorithm will
+         *   instantiate O2 to V3, leading to the final constraint
+         *
+         *      V2 := V3, O2 := V3
+         *
+         *   But if we instantiate O2 first to O3, and V2 next to V3, we get the
+         *   more flexible instantiation
+         *
+         *      V2 := V3, O2 := O3
+         */
+        def doInstantiate(buf: InstantiateQueue): Unit =
+          if buf.nonEmpty then
+            val suspended = new InstantiateQueue
+            while buf.nonEmpty do
+              val first @ (tvar, fromBelow) = buf.head
+              buf.dropInPlace(1)
+              val suspend = buf.exists{ (following, _) =>
+                if fromBelow then
+                  constraint.isLess(following.origin, tvar.origin)
+                else
+                  constraint.isLess(tvar.origin, following.origin)
+              }
+              if suspend then suspended += first else tvar.instantiate(fromBelow)
+            doInstantiate(suspended)
+        end doInstantiate
+        doInstantiate(toInstantiate)
       }
     }
     tree

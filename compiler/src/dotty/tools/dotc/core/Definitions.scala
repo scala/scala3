@@ -92,7 +92,7 @@ class Definitions {
    *  ImplicitFunctionN traits follow this template:
    *
    *      trait ImplicitFunctionN[T0,...,T{N-1}, R] extends Object {
-   *        def apply given ($x0: T0, ..., $x{N_1}: T{N-1}): R
+   *        def apply(given $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
    *  ErasedFunctionN traits follow this template:
@@ -225,7 +225,14 @@ class Definitions {
     @tu lazy val Compiletime_code         : Symbol = CompiletimePackageObject.requiredMethod("code")
     @tu lazy val Compiletime_summonFrom   : Symbol = CompiletimePackageObject.requiredMethod("summonFrom")
   @tu lazy val CompiletimeTestingPackageObject: Symbol = ctx.requiredModule("scala.compiletime.testing.package")
-    @tu lazy val CompiletimeTesting_typeChecks   : Symbol = CompiletimeTestingPackageObject.requiredMethod("typeChecks")
+    @tu lazy val CompiletimeTesting_typeChecks: Symbol = CompiletimeTestingPackageObject.requiredMethod("typeChecks")
+    @tu lazy val CompiletimeTesting_typeCheckErrors: Symbol = CompiletimeTestingPackageObject.requiredMethod("typeCheckErrors")
+    @tu lazy val CompiletimeTesting_ErrorClass: ClassSymbol = ctx.requiredClass("scala.compiletime.testing.Error")
+    @tu lazy val CompiletimeTesting_Error: Symbol = ctx.requiredModule("scala.compiletime.testing.Error")
+      @tu lazy val CompiletimeTesting_Error_apply = CompiletimeTesting_Error.requiredMethod(nme.apply)
+    @tu lazy val CompiletimeTesting_ErrorKind: Symbol = ctx.requiredModule("scala.compiletime.testing.ErrorKind")
+      @tu lazy val CompiletimeTesting_ErrorKind_Parser: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Parser")
+      @tu lazy val CompiletimeTesting_ErrorKind_Typer: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Typer")
 
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will
@@ -411,6 +418,7 @@ class Definitions {
     methodNames.map(getWrapVarargsArrayModule.requiredMethod(_))
   })
 
+  @tu lazy val ListModule: Symbol = ctx.requiredModule("scala.collection.immutable.List")
   @tu lazy val NilModule: Symbol = ctx.requiredModule("scala.collection.immutable.Nil")
 
   @tu lazy val SingletonClass: ClassSymbol =

@@ -29,7 +29,7 @@ package scala.tasty.reflect
  *           |                             +- Closure
  *           |                             +- If
  *           |                             +- Match
- *           |                             +- ImpliedMatch
+ *           |                             +- GivenMatch
  *           |                             +- Try
  *           |                             +- Return
  *           |                             +- Repeated
@@ -204,8 +204,8 @@ trait Core {
         /** Tree representing a pattern match `x match  { ... }` in the source code */
         type Match = internal.Match
 
-        /** Tree representing a pattern match `delegate match { ... }` in the source code */  // TODO: drop
-        type ImpliedMatch = internal.ImpliedMatch
+        /** Tree representing a pattern match `given match { ... }` in the source code */  // TODO: drop
+        type GivenMatch = internal.GivenMatch
 
         /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */
         type Try = internal.Try

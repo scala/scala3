@@ -8,8 +8,7 @@ object scalatest {
     import qctx.tasty.{_, given}
 
     cond.unseal.underlyingArgument match {
-      case app @ Apply(sel @ Select(lhs, op), rhs :: Nil) =>
-        val IsSelect(select) = sel
+      case app @ Apply(select @ Select(lhs, op), rhs :: Nil) =>
         val cond = Apply(Select.copy(select)(lhs, "exists"), rhs :: Nil).seal.cast[Boolean]
         '{ scala.Predef.assert($cond) }
       case _ =>

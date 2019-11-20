@@ -61,7 +61,8 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/pos-special/i7296.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings")),
       compileFile("tests/pos-special/nullable.scala", defaultOptions.and("-Yexplicit-nulls")),
       compileFile("tests/pos-special/notNull.scala", defaultOptions.and("-Yexplicit-nulls")),
-      compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings"))
+      compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings")),
+      compileFile("tests/pos-special/i7575.scala", defaultOptions.and("-language:dynamics")),
     ).checkCompile()
   }
 
@@ -146,7 +147,8 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/wildcards.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/indentRight.scala", defaultOptions.and("-noindent", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/extmethods-tparams.scala", defaultOptions.and("-deprecation", "-Xfatal-warnings")),
-      compileDir("tests/neg-custom-args/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings"))
+      compileDir("tests/neg-custom-args/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings")),
+      compileFile("tests/neg/i7575.scala", defaultOptions.and("-language:_")),
     ).checkExpectedErrors()
   }
 

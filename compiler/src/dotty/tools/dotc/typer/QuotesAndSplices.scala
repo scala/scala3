@@ -368,7 +368,7 @@ trait QuotesAndSplices {
     val quoteClass = if (tree.quoted.isTerm) defn.QuotedExprClass else defn.QuotedTypeClass
     val quotedPattern =
       if (tree.quoted.isTerm) ref(defn.InternalQuoted_exprQuote.termRef).appliedToType(defn.AnyType).appliedTo(shape).select(nme.apply).appliedTo(qctx)
-      else ref(defn.InternalQuoted_typeQuote.termRef).appliedToTypeTrees(shape :: Nil)
+      else ref(defn.InternalQuoted_typeQuote.termRef).appliedToTypeTree(shape)
     UnApply(
       fun = ref(unapplySym.termRef).appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
       implicits = quotedPattern :: Literal(Constant(typeBindings.nonEmpty)) :: qctx :: Nil,

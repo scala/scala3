@@ -56,3 +56,6 @@
 [submodule "community-build/community-projects/intent"]
 	path = community-build/community-projects/intent
 	url = https://github.com/dotty-staging/intent
+[submodule "community-build/community-projects/utest"]
+	path = community-build/community-projects/utest
+	url = https://github.com/dotty-staging/utest.git

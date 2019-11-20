@@ -58,7 +58,7 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "0.20.0-RC1"
+  val referenceVersion = "0.21.0-bin-20191119-7c7fffa-NIGHTLY"
 
   val baseVersion = "0.21.0"
   val baseSbtDottyVersion = "0.3.5"
@@ -1130,6 +1130,7 @@ object Build {
         (publishLocal in `dotty-compiler-bootstrapped`).value
         (publishLocal in `sbt-dotty`).value
         (publishLocal in `dotty-bootstrapped`).value
+        // (publishLocal in `dotty-staging`).value
         val pluginText =
           s"""updateOptions in Global ~= (_.withLatestSnapshots(false))
              |addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "$sbtDottyVersion")""".stripMargin

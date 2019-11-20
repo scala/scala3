@@ -1105,7 +1105,7 @@ object Types {
     def widenUnion(implicit ctx: Context): Type = widen match {
       case tp @ OrNull(tp1): OrType =>
         // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
-        val tp1Widen = tp1.widenUnion
+        val tp1Widen = tp1.widenUnionWithoutNull
         if (tp1Widen.isRef(defn.AnyClass)) tp1Widen
         else tp.derivedOrType(tp1Widen, defn.NullType)
       case tp =>

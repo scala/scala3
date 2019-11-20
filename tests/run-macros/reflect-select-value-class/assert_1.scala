@@ -8,8 +8,9 @@ object scalatest {
     import qctx.tasty.{_, given}
     import util._
 
-    def isImplicitMethodType(tp: Type): Boolean =
-      IsMethodType.unapply(tp).flatMap(tp => if tp.isImplicit then Some(true) else None).nonEmpty
+    def isImplicitMethodType(tp: Type): Boolean = tp match
+      case tp: MethodType => tp.isImplicit
+      case _ => false
 
     cond.unseal.underlyingArgument match {
       case t @ Apply(Select(lhs, op), rhs :: Nil) =>
