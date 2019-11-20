@@ -193,7 +193,7 @@ Uri => Annotations.scala
 Text => empty
 Language => Scala
 Symbols => 22 entries
-Occurrences => 63 entries
+Occurrences => 51 entries
 
 Symbols:
 annot/Alias. => final object Alias
@@ -232,53 +232,41 @@ Occurrences:
 [4:22..4:34): experimental -> scalaShadowing/language.experimental.
 [4:35..4:41): macros -> scalaShadowing/language.experimental.macros.
 [6:1..6:16): ClassAnnotation -> com/javacp/annot/ClassAnnotation#
-[6:16..6:16): -> com/javacp/annot/ClassAnnotation#`<init>`().
 [7:6..7:17): Annotations <- annot/Annotations#
 [7:17..7:72): <- annot/Annotations#`<init>`().
 [7:19..7:42): TypeParameterAnnotation -> com/javacp/annot/TypeParameterAnnotation#
-[7:42..7:42): -> com/javacp/annot/TypeParameterAnnotation#`<init>`().
 [7:43..7:44): T <- annot/Annotations#[T]
 [7:47..7:66): ParameterAnnotation -> com/javacp/annot/ParameterAnnotation#
-[7:66..7:66): -> com/javacp/annot/ParameterAnnotation#`<init>`().
 [7:67..7:68): x <- annot/Annotations#x.
 [7:70..7:71): T -> annot/Annotations#[T]
 [7:75..7:79): self <- local0
 [7:81..7:87): AnyRef -> scala/AnyRef#
 [8:3..8:18): FieldAnnotation -> com/javacp/annot/FieldAnnotation#
-[8:18..8:18): -> com/javacp/annot/FieldAnnotation#`<init>`().
 [9:6..9:11): field <- annot/Annotations#field.
 [11:3..11:19): MethodAnnotation -> com/javacp/annot/MethodAnnotation#
-[11:19..11:19): -> com/javacp/annot/MethodAnnotation#`<init>`().
 [12:6..12:12): method <- annot/Annotations#method().
 [13:5..13:20): LocalAnnotation -> com/javacp/annot/LocalAnnotation#
-[13:20..13:20): -> com/javacp/annot/LocalAnnotation#`<init>`().
 [14:8..14:13): local <- local1
 [15:4..15:9): local -> local1
 [17:3..17:17): TypeAnnotation -> com/javacp/annot/TypeAnnotation#
-[17:17..17:17): -> com/javacp/annot/TypeAnnotation#`<init>`().
 [18:7..18:8): S <- annot/Annotations#S#
 [21:6..21:7): B <- annot/B#
 [21:7..21:40): <- annot/B#`<init>`().
 [21:9..21:30): ConstructorAnnotation -> com/javacp/annot/ConstructorAnnotation#
-[21:30..21:30): -> com/javacp/annot/ConstructorAnnotation#`<init>`().
 [21:33..21:34): x <- annot/B#x.
 [21:36..21:39): Int -> scala/Int#
 [22:3..22:24): ConstructorAnnotation -> com/javacp/annot/ConstructorAnnotation#
-[22:24..22:24): -> com/javacp/annot/ConstructorAnnotation#`<init>`().
 [23:6..23:12): <- annot/B#`<init>`(+1).
 [23:20..23:20): -> annot/B#`<init>`().
 [26:1..26:17): ObjectAnnotation -> com/javacp/annot/ObjectAnnotation#
-[26:17..26:17): -> com/javacp/annot/ObjectAnnotation#`<init>`().
 [27:7..27:8): M <- annot/M.
 [28:3..28:18): MacroAnnotation -> com/javacp/annot/MacroAnnotation#
-[28:18..28:18): -> com/javacp/annot/MacroAnnotation#`<init>`().
 [29:6..29:7): m <- annot/M.m().
 [29:8..29:10): TT <- annot/M.m().[TT]
 [29:13..29:16): Int -> scala/Int#
 [29:16..29:16): -> scala/Predef.`???`().
 [32:0..32:0): <- annot/T#`<init>`().
 [32:1..32:16): TraitAnnotation -> com/javacp/annot/TraitAnnotation#
-[32:16..32:16): -> com/javacp/annot/TraitAnnotation#`<init>`().
 [33:6..33:7): T <- annot/T#
 [35:7..35:12): Alias <- annot/Alias.
 [36:7..36:8): A <- annot/Alias.A#
@@ -1022,7 +1010,7 @@ Uri => Flags.scala
 Text => empty
 Language => Scala
 Symbols => 51 entries
-Occurrences => 85 entries
+Occurrences => 84 entries
 
 Symbols:
 flags/p/package. => final package object p
@@ -1146,7 +1134,6 @@ Occurrences:
 [22:8..22:9): S <- flags/p/package.S#
 [22:9..22:25): <- flags/p/package.S#`<init>`().
 [22:11..22:22): specialized -> scala/specialized#
-[22:22..22:22): -> scala/specialized#`<init>`(+2).
 [22:23..22:24): T <- flags/p/package.S#[T]
 [23:6..23:10): List -> scala/package.List.
 [23:10..23:10): -> scala/collection/SeqFactory#unapplySeq().
@@ -2732,7 +2719,7 @@ Uri => Types.scala
 Text => empty
 Language => Scala
 Symbols => 125 entries
-Occurrences => 246 entries
+Occurrences => 243 entries
 
 Symbols:
 local0 => abstract method k
@@ -2870,7 +2857,6 @@ Occurrences:
 [3:13..3:21): language -> scalaShadowing/language.
 [3:22..3:33): higherKinds -> scalaShadowing/language.higherKinds.
 [5:6..5:9): ann <- types/ann#
-[5:6..5:6): -> scala/annotation/Annotation#`<init>`().
 [5:9..5:18): <- types/ann#`<init>`().
 [5:10..5:11): T <- types/ann#[T]
 [5:13..5:14): x <- types/ann#x.
@@ -2879,13 +2865,11 @@ Occurrences:
 [5:33..5:43): annotation -> scala/annotation/
 [5:44..5:60): StaticAnnotation -> scala/annotation/StaticAnnotation#
 [6:6..6:10): ann1 <- types/ann1#
-[6:6..6:6): -> scala/annotation/Annotation#`<init>`().
 [6:19..6:19): <- types/ann1#`<init>`().
 [6:19..6:24): scala -> scala/
 [6:25..6:35): annotation -> scala/annotation/
 [6:36..6:52): StaticAnnotation -> scala/annotation/StaticAnnotation#
 [7:6..7:10): ann2 <- types/ann2#
-[7:6..7:6): -> scala/annotation/Annotation#`<init>`().
 [7:19..7:19): <- types/ann2#`<init>`().
 [7:19..7:24): scala -> scala/
 [7:25..7:35): annotation -> scala/annotation/
@@ -3573,3 +3557,4 @@ Occurrences:
 [2:46..2:47): z -> _empty_/toplevel$package.combine(+1).(z)
 [3:4..3:11): combine <- _empty_/toplevel$package.combine(+2).
 [4:4..4:7): foo <- _empty_/toplevel$package.foo().
+

@@ -97,6 +97,7 @@ class ExtractSemanticDB extends Phase with
     /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
     private def excludeUse(qualifier: Option[Symbol], sym: Symbol)(given Context): Boolean =
       excludeDefOrUse(sym)
+      || sym.isConstructor && sym.owner.isAnnotation
       || sym == defn.Any_typeCast
       || qualifier.exists(excludeQual)
 

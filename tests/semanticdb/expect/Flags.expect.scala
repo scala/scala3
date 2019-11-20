@@ -20,7 +20,7 @@ package object p {
   final class Y/*<-flags::p::package.Y#*/
   sealed trait Z/*<-flags::p::package.Z#*/
   class AA/*<-flags::p::package.AA#*/(x/*<-flags::p::package.AA#x.*/: Int/*->scala::Int#*/, val y/*<-flags::p::package.AA#y.*/: Int/*->scala::Int#*/, var z/*<-flags::p::package.AA#z().*/: Int/*->scala::Int#*/)
-  class S/*<-flags::p::package.S#*/[@specialized/*->scala::specialized#*//*->scala::specialized#`<init>`(+2).*/ T/*<-flags::p::package.S#[T]*/]
+  class S/*<-flags::p::package.S#*/[@specialized/*->scala::specialized#*/ T/*<-flags::p::package.S#[T]*/]
   val List/*->scala::package.List.*//*->scala::collection::SeqFactory#unapplySeq().*/(xs1/*<-flags::p::package.xs1.*//*<-local0*/)/*->local0*/ = ???/*->scala::Predef.`???`().*/
   ???/*->scala::Predef.`???`().*/ match { case List/*->scala::package.List.*//*->scala::collection::SeqFactory#unapplySeq().*/(xs2/*<-local1*/) => ???/*->scala::Predef.`???`().*/ }
   ???/*->scala::Predef.`???`().*/ match { case _: List/*->scala::package.List#*/[t/*<-local2*/] => ???/*->scala::Predef.`???`().*/ }
