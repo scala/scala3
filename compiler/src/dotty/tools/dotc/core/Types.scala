@@ -1445,9 +1445,7 @@ object Types {
     }
 
     /** Is this (an alias of) the `scala.Null` type? */
-    final def isNull(given Context) =
-      isRef(defn.NullClass)
-      || classSymbol.name == tpnme.Null // !!! temporary kludge for being able to test without the explicit nulls PR
+    final def isNullType(given Context) = isRef(defn.NullClass)
 
     /** The resultType of a LambdaType, or ExprType, the type itself for others */
     def resultType(implicit ctx: Context): Type = this
@@ -2936,6 +2934,13 @@ object Types {
       else apply(tp1, tp2)
   }
 
+  /** An extractor object to pattern match against a nullable union.
+   *  e.g.
+   *
+   *  (tp: Type) match
+   *    case OrNull(tp1) => // tp had the form `tp1 | Null`
+   *    case _ => // tp was not a nullable union
+   */
   object OrNull {
     def apply(tp: Type)(given Context) =
       OrType(tp, defn.NullType)
@@ -2947,6 +2952,13 @@ object Types {
     else None
   }
 
+  /** An extractor object to pattern match against a Java-nullable union.
+   *  e.g.
+   *
+   *  (tp: Type) match
+   *    case OrJavaNull(tp1) => // tp had the form `tp1 | JavaNull`
+   *    case _ => // tp was not a Java-nullable union
+   */
   object OrJavaNull {
     def apply(tp: Type)(given Context) =
       OrType(tp, defn.JavaNullAliasType)

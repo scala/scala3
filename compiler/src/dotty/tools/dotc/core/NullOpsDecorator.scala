@@ -8,9 +8,6 @@ import dotty.tools.dotc.core.Types.{AndType, ClassInfo, ConstantType, OrType, Ty
 object NullOpsDecorator {
 
   implicit class NullOps(val self: Type) {
-    /** Is this type a reference to `Null`, possibly after aliasing? */
-    def isNullType(implicit ctx: Context): Boolean = self.isRef(defn.NullClass)
-
     /** Is this type exactly `JavaNull` (no vars, aliases, refinements etc allowed)? */
     def isJavaNullType(implicit ctx: Context): Boolean = {
       assert(ctx.explicitNulls)
