@@ -7,22 +7,22 @@ object Test {
   def main(args: Array[String]): Unit = withQuoteContext {
     val '[List[Int]] = '[List[Int]]
 
-    val '[List[$int]] = '[List[Int]]
-    println(int.show)
-    println()
+    '[List[Int]] match
+      case '[List[$int]] =>
+        println(int.show)
+        println()
 
-    {
-      val '[Function1[$t1, $r]] = '[Int => Double]
-      println(t1.show)
-      println(r.show)
-      println()
-    }
+    '[Int => Double] match
+      case  '[Function1[$t1, $r]] =>
+        println(t1.show)
+        println(r.show)
+        println()
 
-    {
-      val '[Function1[Function1[$t1, $r0], $r]] = '[(Int => Short) => Double]
-      println(t1.show)
-      println(r0.show)
-      println(r.show)
-    }
+    '[(Int => Short) => Double] match
+      case '[Function1[Function1[$t1, $r0], $r]] =>
+        println(t1.show)
+        println(r0.show)
+        println(r.show)
+
   }
 }
