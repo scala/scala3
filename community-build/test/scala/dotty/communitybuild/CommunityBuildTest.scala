@@ -104,6 +104,18 @@ class CommunityBuildTest {
     extraMillArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
   )
 
+  @Test def oslib = testMill(
+    project = "os-lib",
+    testCommand = s"os[$compilerVersion].test",
+    extraMillArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
+  )
+
+  @Test def oslibWatch = testMill(
+    project = "os-lib",
+    testCommand = s"os.watch[$compilerVersion].test",
+    extraMillArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
+  )
+
   @Test def intent = testSbt(
     project       = "intent",
     testCommand   = "test",
