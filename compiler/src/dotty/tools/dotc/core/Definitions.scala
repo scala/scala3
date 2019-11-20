@@ -295,16 +295,8 @@ class Definitions {
   @tu lazy val AnyRefAlias: TypeSymbol = enterAliasType(tpnme.AnyRef, ObjectType)
   def AnyRefType: TypeRef = AnyRefAlias.typeRef
 
-    @tu lazy val Object_eq: TermSymbol = {
-      // If explicit nulls is enabled, then we want to allow `(x: String).eq(null)`, so we need
-      // to adjust the signature of `eq` accordingly.
-      enterMethod(ObjectClass, nme.eq, methOfAnyRefOrNull(BooleanType), Final)
-    }
-    @tu lazy val Object_ne: TermSymbol = {
-      // If explicit nulls is enabled, then we want to allow `(x: String).ne(null)`, so we need
-      // to adjust the signature of `ne` accordingly.
-      enterMethod(ObjectClass, nme.ne, methOfAnyRefOrNull(BooleanType), Final)
-    }
+    @tu lazy val Object_eq: TermSymbol = enterMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
+    @tu lazy val Object_ne: TermSymbol = enterMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
     @tu lazy val Object_synchronized: TermSymbol = enterPolyMethod(ObjectClass, nme.synchronized_, 1,
         pt => MethodType(List(pt.paramRefs(0)), pt.paramRefs(0)), Final)
     @tu lazy val Object_clone: TermSymbol = enterMethod(ObjectClass, nme.clone_, MethodType(Nil, ObjectType), Protected)
@@ -839,7 +831,7 @@ class Definitions {
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
   def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
-  def methOfAnyRefOrNull(tp: Type): MethodType = MethodType(List(ObjectType.maybeNullable), tp)
+  def methOfAnyRef(tp: Type): MethodType = MethodType(List(ObjectType), tp)
 
   // Derived types
 
