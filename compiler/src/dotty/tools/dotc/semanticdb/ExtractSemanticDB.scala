@@ -72,7 +72,7 @@ class ExtractSemanticDB extends Phase with
       !sym.exists
       || sym.isLocalDummy
       || sym.is(Synthetic)
-      || sym.isConstructor && sym.owner.is(ModuleClass)
+      || sym.isConstructor && (sym.owner.is(ModuleClass) || !sym.isGlobal)
       || excludeDefStrict(sym)
 
     private def excludeDefStrict(sym: Symbol)(given Context): Boolean =
@@ -81,7 +81,8 @@ class ExtractSemanticDB extends Phase with
 
     private def excludeSymbolStrict(sym: Symbol)(given Context): Boolean =
       sym.name.isWildcard
-      || sym.isAnonymous
+      || sym.isAnonymousFunction
+      || sym.isAnonymousModuleVal
       || sym.name.isEmptyNumbered
 
     private def excludeChildren(sym: Symbol)(given Context): Boolean =
@@ -124,7 +125,7 @@ class ExtractSemanticDB extends Phase with
             return
           if !excludeDef(tree.symbol)
           && tree.span.hasLength
-            registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree))
+            registerDefinition(tree.symbol, tree.adjustedNameSpan, symbolKinds(tree))
             val privateWithin = tree.symbol.privateWithin
             if privateWithin.exists
               registerUse(privateWithin, spanOfSymbol(privateWithin, tree.span))
@@ -212,6 +213,12 @@ class ExtractSemanticDB extends Phase with
           traverse(tree.arg)
         case _ =>
           traverseChildren(tree)
+
+    private def (tree: NamedDefTree) adjustedNameSpan(given Context): Span =
+      if tree.span.exists && tree.name.isAnonymousFunctionName || tree.name.isAnonymousClassName
+        Span(tree.span.point)
+      else
+        tree.nameSpan
 
     /** Add semanticdb name of the given symbol to string builder */
     private def addSymName(b: StringBuilder, sym: Symbol)(given ctx: Context): Unit =

@@ -16,5 +16,5 @@ class Anonymous/*<-example::Anonymous#*/ {
   }
 
   trait Foo/*<-example::Anonymous#Foo#*/
-  val foo/*<-example::Anonymous#foo.*/ = new Foo/*->example::Anonymous#Foo#*/ {}
+  val foo/*<-example::Anonymous#foo.*/ = /*<-local1*/new Foo/*->example::Anonymous#Foo#*/ {}
 }

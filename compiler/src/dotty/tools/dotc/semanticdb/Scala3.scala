@@ -202,4 +202,8 @@ object Scala3 with
 
   end InfoOps
 
+  given RangeOps: (range: Range) with
+    def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
+  end RangeOps
+
 end Scala3
