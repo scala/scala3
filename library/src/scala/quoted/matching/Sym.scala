@@ -8,6 +8,8 @@ package matching
  */
 class Sym[T <: AnyKind] private[scala](val name: String, private[Sym] val id: Object) { self =>
 
+  override def toString: String = s"Sym($name)@${id.hashCode}"
+
   override def equals(obj: Any): Boolean = obj match {
     case obj: Sym[_] => obj.id == id
     case _ => false

@@ -615,6 +615,10 @@ trait TreeOps extends Core {
 
       case _ => None
     }
+
+    def apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(implicit ctx: Context): Block =
+      internal.Lambda_apply(tpe, rhsFn)
+
   }
 
   given (given Context): IsInstanceOf[If] = internal.isInstanceOfIf

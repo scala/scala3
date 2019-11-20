@@ -204,8 +204,44 @@ package quoted {
       val elems: Seq[Expr[_]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[_]]]
       ofTuple(elems).cast[Tuple.InverseMap[T, Expr]]
     }
-  }
 
+    // TODO generalize for any function arity (see Expr.betaReduce)
+    def open[T1, R, X](f: Expr[T1 => R])(content: (Expr[R], [t] => Expr[t] => Expr[T1] => Expr[t]) => X)(given qctx: QuoteContext): X = {
+      import qctx.tasty.{given, _}
+      val (params, bodyExpr) = paramsAndBody(f)
+      content(bodyExpr, [t] => (e: Expr[t]) => (v: Expr[T1]) => bodyFn[t](e.unseal, params, List(v.unseal)).seal.asInstanceOf[Expr[t]])
+    }
+
+    def open[T1, T2, R, X](f: Expr[(T1, T2) => R])(content: (Expr[R], [t] => Expr[t] => (Expr[T1], Expr[T2]) => Expr[t]) => X)(given qctx: QuoteContext)(given DummyImplicit): X = {
+      import qctx.tasty.{given, _}
+      val (params, bodyExpr) = paramsAndBody(f)
+      content(bodyExpr, [t] => (e: Expr[t]) => (v1: Expr[T1], v2: Expr[T2]) => bodyFn[t](e.unseal, params, List(v1.unseal, v2.unseal)).seal.asInstanceOf[Expr[t]])
+    }
+
+    def open[T1, T2, T3, R, X](f: Expr[(T1, T2) => R])(content: (Expr[R], [t] => Expr[t] => (Expr[T1], Expr[T2], Expr[T3]) => Expr[t]) => X)(given qctx: QuoteContext)(given DummyImplicit, DummyImplicit): X = {
+      import qctx.tasty.{given, _}
+      val (params, bodyExpr) = paramsAndBody(f)
+      content(bodyExpr, [t] => (e: Expr[t]) => (v1: Expr[T1], v2: Expr[T2], v3: Expr[T3]) => bodyFn[t](e.unseal, params, List(v1.unseal, v2.unseal, v3.unseal)).seal.asInstanceOf[Expr[t]])
+    }
+
+    private def paramsAndBody[R](given qctx: QuoteContext)(f: Expr[Any]) = {
+      import qctx.tasty.{given, _}
+      val Block(List(DefDef("$anonfun", Nil, List(params), _, Some(body))), Closure(Ident("$anonfun"), None)) = f.unseal.etaExpand
+      (params, body.seal.asInstanceOf[Expr[R]])
+    }
+
+    private def bodyFn[t](given qctx: QuoteContext)(e: qctx.tasty.Term, params: List[qctx.tasty.ValDef], args: List[qctx.tasty.Term]): qctx.tasty.Term = {
+      import qctx.tasty.{given, _}
+      val map = params.map(_.symbol).zip(args).toMap
+      new TreeMap {
+        override def transformTerm(tree: Term)(given ctx: Context): Term =
+          super.transformTerm(tree) match
+            case tree: Ident => map.getOrElse(tree.symbol, tree)
+            case tree => tree
+      }.transformTerm(e)
+    }
+
+  }
 }
 
 package internal {
