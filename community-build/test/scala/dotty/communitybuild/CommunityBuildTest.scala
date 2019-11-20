@@ -7,8 +7,30 @@ import org.junit.{Ignore, Test}
 import org.junit.Assert.{assertEquals, fail}
 import org.junit.experimental.categories.Category
 
-@Category(Array(classOf[TestCategory]))
-class CommunityBuildTest { suite =>
+case class MillCommunityProject(project: String, testCommand: String,
+  publishCommand: String = "", extraArgs: List[String] = Nil,
+  dependencies: List[MillCommunityProject] = Nil)
+  import communityBuildCommons.{ log, exec, communitybuildDir }
+
+  private var published = false
+
+  final def test()(given suite: CommunityBuildTest) =
+    dependencies.foreach(_.publish())
+    suite.test(project, "./mill", extraArgs :+ testCommand)
+
+  final def publish() =
+    if !published
+      log(s"Publishing $project")
+      val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
+      if publishCommand.isEmpty
+        throw RuntimeException(s"Missing publish command for $project, project details:\n$this")
+      val exitCode = exec(projectDir, "./mill", (extraArgs :+ publishCommand): _*)
+      if exitCode != 0
+        throw RuntimeException(s"Publish command exited with code $exitCode for project $project. Project details:\n$this")
+      published = true
+end MillCommunityProject
+
+object communityBuildCommons
   lazy val communitybuildDir: Path = Paths.get(sys.props("user.dir"))
 
   lazy val compilerVersion: String = {
@@ -27,6 +49,45 @@ class CommunityBuildTest { suite =>
     val exitCode = process.waitFor()
     exitCode
   }
+end communityBuildCommons
+
+object projects
+  import communityBuildCommons._
+
+  val utest = MillCommunityProject(
+    project = "utest",
+    testCommand = s"utest.jvm[$compilerVersion].test",
+    publishCommand = s"utest.jvm[$compilerVersion].publishLocal",
+    extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
+  )
+
+  val sourcecode = MillCommunityProject(
+    project = "sourcecode",
+    testCommand = s"sourcecode.jvm[$compilerVersion].test",
+    publishCommand = s"sourcecode.jvm[$compilerVersion].publishLocal",
+    extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion"),
+  )
+
+  val oslib = MillCommunityProject(
+    project = "os-lib",
+    testCommand = s"os[$compilerVersion].test",
+    extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion"),
+    dependencies = List(utest, sourcecode)
+  )
+
+  val oslibWatch = MillCommunityProject(
+    project = "os-lib",
+    testCommand = s"os.watch[$compilerVersion].test",
+    extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion"),
+    dependencies = List(utest, sourcecode)
+  )
+end projects
+
+@Category(Array(classOf[TestCategory]))
+class CommunityBuildTest {
+  import communityBuildCommons._
+
+  given CommunityBuildTest = this
 
   def testSbt(project: String, testCommand: String, updateCommand: String, extraSbtArgs: Seq[String] = Nil) = {
     // Workaround for https://github.com/sbt/sbt/issues/4395
@@ -93,50 +154,6 @@ class CommunityBuildTest { suite =>
           |
           |""".stripMargin)
     }
-  }
-
-  case class MillCommunityProject(project: String, testCommand: String,
-    publishCommand: String = "", extraArgs: List[String] = Nil,
-    dependencies: List[MillCommunityProject] = Nil)
-    final def test() =
-      dependencies.foreach(_.publish())
-      suite.test(project, "./mill", extraArgs :+ testCommand)
-
-    final def publish() =
-      log(s"Publishing $project")
-      val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
-      if publishCommand.isEmpty
-        throw RuntimeException(s"Missing publish command for project $this")
-      exec(projectDir, "./mill", (extraArgs :+ publishCommand): _*)
-
-  object projects {
-    val utest = MillCommunityProject(
-      project = "utest",
-      testCommand = s"utest.jvm[$compilerVersion].test",
-      publishCommand = s"utest.jvm[$compilerVersion].publishLocal",
-      extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
-    )
-
-    val sourcecode = MillCommunityProject(
-      project = "sourcecode",
-      testCommand = s"sourcecode.jvm[$compilerVersion].test",
-      publishCommand = s"sourcecode.jvm[$compilerVersion].publishLocal",
-      extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion"),
-    )
-
-    val oslib = MillCommunityProject(
-      project = "os-lib",
-      testCommand = s"os[$compilerVersion].test",
-      extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion"),
-      dependencies = List(utest, sourcecode)
-    )
-
-    val oslibWatch = MillCommunityProject(
-      project = "os-lib",
-      testCommand = s"os.watch[$compilerVersion].test",
-      extraArgs = List("-i", "-D", s"dottyVersion=$compilerVersion"),
-      dependencies = List(utest, sourcecode)
-    )
   }
 
   @Test def intent = testSbt(
