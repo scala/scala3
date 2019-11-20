@@ -6,8 +6,8 @@ class ValPattern/*<-example::ValPattern#*/ {
   val Some/*->scala::Some.*/(number1/*<-example::ValPattern#number1.*//*<-local0*/)/*->local0*/ =
     Some/*->scala::Some.*/(1)
 
-  /*->scala::Tuple2#_1.*//*->scala::Tuple2#_2.*/var (leftVar/*<-example::ValPattern#leftVar().*/, /*<-example::ValPattern#`leftVar_=`().*/rightVar/*<-example::ValPattern#rightVar().*/) /*<-example::ValPattern#`rightVar_=`().*/= (1, 2)
-  var Some/*->scala::Some.*/(number1Var/*<-example::ValPattern#number1Var().*//*<-local1*/) /*<-example::ValPattern#`number1Var_=`().*//*->local1*/=
+  /*->scala::Tuple2#_1.*//*->scala::Tuple2#_2.*/var (leftVar/*<-example::ValPattern#leftVar().*/, rightVar/*<-example::ValPattern#rightVar().*/) = (1, 2)
+  var Some/*->scala::Some.*/(number1Var/*<-example::ValPattern#number1Var().*//*<-local1*/)/*->local1*/ =
     Some/*->scala::Some.*/(1)
 
   def app/*<-example::ValPattern#app().*/(): Unit/*->scala::Unit#*/ = {

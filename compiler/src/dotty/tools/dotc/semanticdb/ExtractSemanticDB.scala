@@ -73,6 +73,7 @@ class ExtractSemanticDB extends Phase with
       || sym.isLocalDummy
       || sym.is(Synthetic)
       || sym.isConstructor && (sym.owner.is(ModuleClass) || !sym.isGlobal)
+      || sym.isSetter
       || excludeDefStrict(sym)
 
     private def excludeDefStrict(sym: Symbol)(given Context): Boolean =

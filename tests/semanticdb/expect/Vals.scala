@@ -11,6 +11,9 @@ abstract class Vals(p: Int, val xp: Int, var yp: Int) {
   var ym: Int = ???
   var yam: Int
   private[this] var ylm: Int = ???
+  private[this] var _explicitSetter: Int = 0
+  def explicitSetter = _explicitSetter
+  def explicitSetter_=(x: Int): Unit = _explicitSetter = x
   // NOTE: lazy not allowed here. Only vals can be lazy
   // lazy var xzm: Int = ???
   // private[this] lazy var yzlm: Int = ???
@@ -44,4 +47,5 @@ object ValUsages {
   println(v.xzm)
   v.yfm = v.xfm + v.yfm
   v.yim = v.xim + v.yim
+  v.explicitSetter = 25
 }
