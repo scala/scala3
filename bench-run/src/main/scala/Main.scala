@@ -11,6 +11,11 @@ import scala.io.Source
 
 object Bench {
   def main(args: Array[String]): Unit = {
+    if (args.contains("--help")) {
+      printUsage()
+      return
+    }
+
     val (intArgs, args1) = args.span(x => try { x.toInt; true } catch { case _: Throwable => false } )
 
     val warmup = if (intArgs.length > 0) intArgs(0).toInt else 20
@@ -18,7 +23,8 @@ object Bench {
     val forks = if (intArgs.length > 2) intArgs(2).toInt else 1
 
     if (args1.isEmpty) {
-      println("You should specify which benchmarks to run.")
+      println("Error: no benchmark was specified.")
+      printUsage()
       return
     }
 
@@ -36,7 +42,7 @@ object Bench {
       .resultFormat(ResultFormatType.CSV)
 
     if (args1.length > 1 && args1(1) != "--") {
-      for ((param, values) <- paramsFromFile(args1(1)))
+      for ((param, values) <- paramsFromFile("inputs/" ++ args1(1)))
         builder = builder.param(param, values: _*)
     }
 
@@ -44,8 +50,8 @@ object Bench {
       builder = builder.result(args1(2))
     }
 
-    val runner = new Runner(builder.build) // full access to all JMH features, you can also provide a custom output Format here
-    runner.run // actually run the benchmarks
+    val runner = new Runner(builder.build)
+    runner.run
   }
 
   def paramsFromFile(file: String): Array[(String, Array[String])] = {
@@ -53,5 +59,20 @@ object Bench {
       val Array(param, values) = l split ':'
       (param, values split ',')
     }
+  }
+
+  def printUsage(): Unit = {
+    println()
+    println("Usage:")
+    println()
+    println("dotty-bench-run/jmh:run [<warmup>] [<iterations>] [<forks>] <regexp> [<input>|--] [<output>]")
+    println()
+    println("warmup: warmup iterations. defaults to 20.")
+    println("iterations: benchmark iterations. defaults to 20.")
+    println("forks: number of forks. defaults to 1.")
+    println("regexp: regular expression that selects which benchmarks to run.")
+    println("input: input vector file. each line should have format \'<paramName>: <comma-separated-values>\'")
+    println("output: output file for the results of benchmarks.")
+    println()
   }
 }
