@@ -201,7 +201,7 @@ no code that can be executed at runtime. That's why we define an intermediary cl
 method in the `FromDigits` given instance. That method is defined in terms of a macro
 implementation method `fromDigitsImpl`. Here is its definition:
 ```scala
-  private def fromDigitsImpl(digits: Expr[String]) given (ctx: QuoteContext): Expr[BigFloat] =
+  private def fromDigitsImpl(digits: Expr[String])(given ctx: QuoteContext): Expr[BigFloat] =
     digits match {
       case Const(ds) =>
         try {

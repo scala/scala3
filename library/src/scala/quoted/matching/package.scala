@@ -13,8 +13,8 @@ package object matching {
   def searchImplicitExpr[T](given tpe: Type[T], qctx: QuoteContext): Option[Expr[T]] = {
     import qctx.tasty.{_, given}
     searchImplicit(tpe.unseal.tpe) match {
-      case IsImplicitSearchSuccess(iss) => Some(iss.tree.seal.asInstanceOf[Expr[T]])
-      case IsImplicitSearchFailure(isf) => None
+      case iss: ImplicitSearchSuccess => Some(iss.tree.seal.asInstanceOf[Expr[T]])
+      case isf: ImplicitSearchFailure => None
     }
   }
 

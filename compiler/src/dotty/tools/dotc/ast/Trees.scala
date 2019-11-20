@@ -1458,7 +1458,7 @@ object Trees {
               this(this(x, arg), annot)
             case Thicket(ts) =>
               this(x, ts)
-            case Hole(_, args) =>
+            case Hole(_, _, args) =>
               this(x, args)
             case _ =>
               foldMoreCases(x, tree)

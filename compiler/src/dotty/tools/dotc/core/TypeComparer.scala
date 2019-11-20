@@ -574,7 +574,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             * am not sure how, since the code is buried so deep in subtyping logic.
             */
             def boundsOK =
-              ctx.scala2Mode ||
+              ctx.scala2CompatMode ||
               tp1.typeParams.corresponds(tp2.typeParams)((tparam1, tparam2) =>
                 isSubType(tparam2.paramInfo.subst(tp2, tp1), tparam1.paramInfo))
             val saved = comparedTypeLambdas
@@ -1023,7 +1023,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     def compareS(tp: AppliedType, other: Type, fromBelow: Boolean): Boolean = tp.args match {
       case arg :: Nil =>
         natValue(arg) match {
-          case Some(n) =>
+          case Some(n) if n != Int.MaxValue =>
             val succ = ConstantType(Constant(n + 1))
             if (fromBelow) recur(other, succ) else recur(succ, other)
           case none =>
@@ -1610,12 +1610,18 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
             // The next two definitions handle the special case mentioned above, where
             // the Java argument has type 'Any', and the Scala argument has type 'Object' or
             // 'Object|Null', depending on whether explicit nulls are enabled.
-            lazy val formal2IsObject =
-              if (ctx.explicitNulls) formal2.isNullableUnion && formal2.stripNull(ctx).isRef(ObjectClass)
-              else formal2.isRef(ObjectClass)
-            lazy val formal1IsObject =
-              if (ctx.explicitNulls) formal1.isNullableUnion && formal1.stripNull(ctx).isRef(ObjectClass)
+            def formal1IsObject =
+              if (ctx.explicitNulls) formal1 match {
+                case OrNull(formal1b) => formal1b.isRef(ObjectClass)
+                case _ => false
+              }
               else formal1.isRef(ObjectClass)
+            def formal2IsObject =
+              if (ctx.explicitNulls) formal2 match {
+                case OrNull(formal2b) => formal2b.isRef(ObjectClass)
+                case _ => false
+              }
+              else formal2.isRef(ObjectClass)
             (isSameTypeWhenFrozen(formal1, formal2a)
             || tp1.isJavaMethod && formal2IsObject && (formal1 isRef AnyClass)
             || tp2.isJavaMethod && formal1IsObject && (formal2 isRef AnyClass)) &&
@@ -1740,7 +1746,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
   /** The greatest lower bound of a list types */
   final def glb(tps: List[Type]): Type = tps.foldLeft(AnyType: Type)(glb)
 
-  def widenInUnions(implicit ctx: Context): Boolean = ctx.scala2Mode || ctx.erasedTypes
+  def widenInUnions(implicit ctx: Context): Boolean = ctx.scala2CompatMode || ctx.erasedTypes
 
   /** The least upper bound of two types
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
@@ -1848,7 +1854,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling[AbsentContext] w
     else if (!tp2.exists) tp1
     else tp.derivedAndType(tp1, tp2)
 
-  /** If some (&-operand of) this type is a supertype of `sub` replace it with `NoType`.
+  /** If some (&-operand of) `tp` is a supertype of `sub` replace it with `NoType`.
    */
   private def dropIfSuper(tp: Type, sub: Type): Type =
     if (isSubTypeWhenFrozen(sub, tp)) NoType

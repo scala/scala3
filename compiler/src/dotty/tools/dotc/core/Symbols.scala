@@ -386,8 +386,8 @@ trait Symbols { this: Context =>
   /** Get a List of ClassSymbols which are either defined in current compilation
    *  run or present on classpath.
    */
-  def getClassesIfDefined(pathes: List[PreName]): List[ClassSymbol] =
-    pathes.foldLeft(List.empty){ case (acc, path) => getClassIfDefined(path) match {
+  def getClassesIfDefined(paths: List[PreName]): List[ClassSymbol] =
+    paths.foldLeft(List.empty){ case (acc, path) => getClassIfDefined(path) match {
       case cls: ClassSymbol => cls :: acc
       case _ => acc
     }}

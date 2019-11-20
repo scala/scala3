@@ -36,7 +36,7 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("compilePos")
     aggregateTests(
       compileFile("tests/pos/nullarify.scala", defaultOptions.and("-Ycheck:nullarify")),
-      compileFile("tests/pos-scala2/rewrites.scala", scala2Mode.and("-rewrite")).copyToTarget(),
+      compileFile("tests/pos-scala2/rewrites.scala", scala2CompatMode.and("-rewrite")).copyToTarget(),
       compileFile("tests/pos-special/utf8encoded.scala", explicitUTF8),
       compileFile("tests/pos-special/utf16encoded.scala", explicitUTF16),
       compileFile("tests/pos-special/completeFromSource/Test.scala", defaultOptions.and("-sourcepath", "tests/pos-special")),
@@ -48,7 +48,7 @@ class CompilationTests extends ParallelTesting {
       compileFilesInDir("tests/pos-special/strawman-collections", defaultOptions),
       compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")),
       compileFilesInDir("tests/new", defaultOptions),
-      compileFilesInDir("tests/pos-scala2", scala2Mode),
+      compileFilesInDir("tests/pos-scala2", scala2CompatMode),
       compileFilesInDir("tests/pos", defaultOptions),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
       compileFile(
@@ -59,7 +59,10 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/pos-special/typeclass-scaling.scala", defaultOptions.and("-Xmax-inlines", "40")),
       compileFile("tests/pos-special/indent-colons.scala", defaultOptions.and("-Yindent-colons")),
       compileFile("tests/pos-special/i7296.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings")),
-      compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings"))
+      compileFile("tests/pos-special/nullable.scala", defaultOptions.and("-Yexplicit-nulls")),
+      compileFile("tests/pos-special/notNull.scala", defaultOptions.and("-Yexplicit-nulls")),
+      compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings")),
+      compileFile("tests/pos-special/i7575.scala", defaultOptions.and("-language:dynamics")),
     ).checkCompile()
   }
 
@@ -118,9 +121,9 @@ class CompilationTests extends ParallelTesting {
       compileDir("tests/neg-custom-args/impl-conv", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFile("tests/neg-custom-args/implicit-conversions.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFile("tests/neg-custom-args/implicit-conversions-old.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
-      compileFile("tests/neg-custom-args/i3246.scala", scala2Mode),
-      compileFile("tests/neg-custom-args/overrideClass.scala", scala2Mode),
-      compileFile("tests/neg-custom-args/ovlazy.scala", scala2Mode.and("-migration", "-Xfatal-warnings")),
+      compileFile("tests/neg-custom-args/i3246.scala", scala2CompatMode),
+      compileFile("tests/neg-custom-args/overrideClass.scala", scala2CompatMode),
+      compileFile("tests/neg-custom-args/ovlazy.scala", scala2CompatMode.and("-migration", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")),
       compileFile("tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")),
       compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")),
@@ -144,7 +147,8 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/wildcards.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/indentRight.scala", defaultOptions.and("-noindent", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/extmethods-tparams.scala", defaultOptions.and("-deprecation", "-Xfatal-warnings")),
-      compileDir("tests/neg-custom-args/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings"))
+      compileDir("tests/neg-custom-args/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings")),
+      compileFile("tests/neg/i7575.scala", defaultOptions.and("-language:_")),
     ).checkExpectedErrors()
   }
 

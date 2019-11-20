@@ -57,21 +57,21 @@ trait TreeUtils
           foldTrees(foldTree(x, elemtpt), elems)
         case Inlined(call, bindings, expansion) =>
           foldTree(foldTrees(x, bindings), expansion)
-        case IsDefinition(vdef @ ValDef(_, tpt, rhs)) =>
+        case vdef @ ValDef(_, tpt, rhs) =>
           implicit val ctx = localCtx(vdef)
           foldTrees(foldTree(x, tpt), rhs)
-        case IsDefinition(ddef @ DefDef(_, tparams, vparamss, tpt, rhs)) =>
+        case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
           implicit val ctx = localCtx(ddef)
           foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams))(foldTrees), tpt), rhs)
-        case IsDefinition(tdef @ TypeDef(_, rhs)) =>
+        case tdef @ TypeDef(_, rhs) =>
           implicit val ctx = localCtx(tdef)
           foldTree(x, rhs)
-        case IsDefinition(cdef @ ClassDef(_, constr, parents, derived, self, body)) =>
+        case cdef @ ClassDef(_, constr, parents, derived, self, body) =>
           implicit val ctx = localCtx(cdef)
           foldTrees(foldTrees(foldTrees(foldTrees(foldTree(x, constr), parents), derived), self), body)
         case Import(expr, _) =>
           foldTree(x, expr)
-        case IsPackageClause(clause @ PackageClause(pid, stats)) =>
+        case clause @ PackageClause(pid, stats) =>
           foldTrees(foldTree(x, pid), stats)(given clause.symbol.localContext)
         case Inferred() => x
         case TypeIdent(_) => x
@@ -112,24 +112,24 @@ trait TreeUtils
 
     def transformTree(tree: Tree)(given ctx: Context): Tree = {
       tree match {
-        case IsPackageClause(tree) =>
+        case tree: PackageClause =>
           PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(given tree.symbol.localContext))
-        case IsImport(tree) =>
+        case tree: Import =>
           Import.copy(tree)(transformTerm(tree.expr), tree.selectors)
-        case IsStatement(tree) =>
+        case tree: Statement =>
           transformStatement(tree)
-        case IsTypeTree(tree) => transformTypeTree(tree)
-        case IsTypeBoundsTree(tree) => tree // TODO traverse tree
-        case IsWildcardTypeTree(tree) => tree // TODO traverse tree
-        case IsCaseDef(tree) =>
+        case tree: TypeTree => transformTypeTree(tree)
+        case tree: TypeBoundsTree => tree // TODO traverse tree
+        case tree: WildcardTypeTree => tree // TODO traverse tree
+        case tree: CaseDef =>
           transformCaseDef(tree)
-        case IsTypeCaseDef(tree) =>
+        case tree: TypeCaseDef =>
           transformTypeCaseDef(tree)
-        case IsBind(pattern) =>
+        case pattern: Bind =>
           Bind.copy(pattern)(pattern.name, pattern.pattern)
-        case IsUnapply(pattern) =>
+        case pattern: Unapply =>
           Unapply.copy(pattern)(transformTerm(pattern.fun), transformSubTrees(pattern.implicits), transformTrees(pattern.patterns))
-        case IsAlternatives(pattern) =>
+        case pattern: Alternatives =>
           Alternatives.copy(pattern)(transformTrees(pattern.patterns))
       }
     }
@@ -137,22 +137,22 @@ trait TreeUtils
     def transformStatement(tree: Statement)(given ctx: Context): Statement = {
       def localCtx(definition: Definition): Context = definition.symbol.localContext
       tree match {
-        case IsTerm(tree) =>
+        case tree: Term =>
           transformTerm(tree)
-        case IsValDef(tree) =>
+        case tree: ValDef =>
           implicit val ctx = localCtx(tree)
           val tpt1 = transformTypeTree(tree.tpt)
           val rhs1 = tree.rhs.map(x => transformTerm(x))
           ValDef.copy(tree)(tree.name, tpt1, rhs1)
-        case IsDefDef(tree) =>
+        case tree: DefDef =>
           implicit val ctx = localCtx(tree)
           DefDef.copy(tree)(tree.name, transformSubTrees(tree.typeParams), tree.paramss mapConserve (transformSubTrees(_)), transformTypeTree(tree.returnTpt), tree.rhs.map(x => transformTerm(x)))
-        case IsTypeDef(tree) =>
+        case tree: TypeDef =>
           implicit val ctx = localCtx(tree)
           TypeDef.copy(tree)(tree.name, transformTree(tree.rhs))
-        case IsClassDef(tree) =>
+        case tree: ClassDef =>
           ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
-        case IsImport(tree) =>
+        case tree: Import =>
           Import.copy(tree)(transformTerm(tree.expr), tree.selectors)
       }
     }
@@ -177,7 +177,7 @@ trait TreeUtils
           New.copy(tree)(transformTypeTree(tpt))
         case Typed(expr, tpt) =>
           Typed.copy(tree)(transformTerm(expr), transformTypeTree(tpt))
-        case IsNamedArg(tree) =>
+        case tree: NamedArg =>
           NamedArg.copy(tree)(tree.name, transformTerm(tree.value))
         case Assign(lhs, rhs) =>
           Assign.copy(tree)(transformTerm(lhs), transformTerm(rhs))
@@ -204,28 +204,28 @@ trait TreeUtils
 
     def transformTypeTree(tree: TypeTree)(given ctx: Context): TypeTree = tree match {
       case Inferred() => tree
-      case IsTypeIdent(tree) => tree
-      case IsTypeSelect(tree) =>
+      case tree: TypeIdent => tree
+      case tree: TypeSelect =>
         TypeSelect.copy(tree)(tree.qualifier, tree.name)
-      case IsProjection(tree) =>
+      case tree: Projection =>
         Projection.copy(tree)(tree.qualifier, tree.name)
-      case IsAnnotated(tree) =>
+      case tree: Annotated =>
         Annotated.copy(tree)(tree.arg, tree.annotation)
-      case IsSingleton(tree) =>
+      case tree: Singleton =>
         Singleton.copy(tree)(transformTerm(tree.ref))
-      case IsRefined(tree) =>
+      case tree: Refined =>
         Refined.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.refinements).asInstanceOf[List[Definition]])
-      case IsApplied(tree) =>
+      case tree: Applied =>
         Applied.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.args))
-      case IsMatchTypeTree(tree) =>
+      case tree: MatchTypeTree =>
         MatchTypeTree.copy(tree)(tree.bound.map(b => transformTypeTree(b)), transformTypeTree(tree.selector), transformTypeCaseDefs(tree.cases))
-      case IsByName(tree) =>
+      case tree: ByName =>
         ByName.copy(tree)(transformTypeTree(tree.result))
-      case IsLambdaTypeTree(tree) =>
+      case tree: LambdaTypeTree =>
         LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams), transformTree(tree.body))(given tree.symbol.localContext)
-      case IsTypeBind(tree) =>
+      case tree: TypeBind =>
         TypeBind.copy(tree)(tree.name, tree.body)
-      case IsTypeBlock(tree) =>
+      case tree: TypeBlock =>
         TypeBlock.copy(tree)(tree.aliases, tree.tpt)
     }
 

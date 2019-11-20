@@ -1,0 +1,1 @@
+new Quoted[scala.Int @Annot(42)]()

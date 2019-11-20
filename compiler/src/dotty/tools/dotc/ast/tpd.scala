@@ -711,11 +711,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   class TimeTravellingTreeCopier extends TypedTreeCopier {
     override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply =
-      ta.assignType(untpdCpy.Apply(tree)(fun, args), fun, args)
+      tree match
+        case tree: Apply
+        if (tree.fun eq fun) && (tree.args eq args)
+           && tree.tpe.isInstanceOf[ConstantType]
+           && isPureExpr(tree) => tree
+        case _ =>
+          ta.assignType(untpdCpy.Apply(tree)(fun, args), fun, args)
       // Note: Reassigning the original type if `fun` and `args` have the same types as before
-      // does not work here: The computed type depends on the widened function type, not
-      // the function type itself. A treetransform may keep the function type the
+      // does not work here in general: The computed type depends on the widened function type, not
+      // the function type itself. A tree transform may keep the function type the
       // same but its widened type might change.
+      // However, we keep constant types of pure expressions. This uses the underlying assumptions
+      // that pure functions yielding a constant will not change in later phases.
 
     override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
       ta.assignType(untpdCpy.TypeApply(tree)(fun, args), fun, args)
@@ -868,6 +876,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def appliedToArgs(args: List[Tree])(implicit ctx: Context): Apply =
       Apply(tree, args)
 
+    /** An applied node that accepts only varargs as arguments */
+    def appliedToVarargs(args: List[Tree], tpt: Tree)(given Context): Tree =
+      appliedTo(repeated(args, tpt))
+
     /** The current tree applied to given argument lists:
      *  `tree (argss(0)) ... (argss(argss.length -1))`
      */
@@ -884,6 +896,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
     def appliedToTypes(targs: List[Type])(implicit ctx: Context): Tree =
       appliedToTypeTrees(targs map (TypeTree(_)))
+
+    /** The current tree applied to given type argument: `tree[targ]` */
+    def appliedToTypeTree(targ: Tree)(implicit ctx: Context): Tree =
+      appliedToTypeTrees(targ :: Nil)
 
     /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
     def appliedToTypeTrees(targs: List[Tree])(implicit ctx: Context): Tree =
@@ -1357,5 +1373,24 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val targs = atp.argTypes
     tpd.applyOverloaded(New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp)
   }
-}
 
+  /** Convert a list of trees to a vararg-compatible tree.
+   *  Used to make arguments for methods that accept varargs.
+   */
+  def repeated(trees: List[Tree], tpt: Tree)(given ctx: Context): Tree =
+    ctx.typeAssigner.arrayToRepeated(JavaSeqLiteral(trees, tpt))
+
+  /** Create a tree representing a list containing all
+   *  the elements of the argument list. A "list of tree to
+   *  tree of list" conversion.
+   *
+   *  @param trees  the elements the list represented by
+   *                the resulting tree should contain.
+   *  @param tpe    the type of the elements of the resulting list.
+   *
+   */
+  def mkList(trees: List[Tree], tpe: Tree)(given Context): Tree =
+    ref(defn.ListModule).select(nme.apply)
+      .appliedToTypeTree(tpe)
+      .appliedToVarargs(trees, tpe)
+}

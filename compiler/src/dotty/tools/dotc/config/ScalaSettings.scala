@@ -44,7 +44,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val pageWidth: Setting[Int] = IntSetting("-pagewidth", "Set page width", 80) withAbbreviation "--page-width"
   val strict: Setting[Boolean] = BooleanSetting("-strict", "Use strict type rules, which means some formerly legal code does not typecheck anymore.") withAbbreviation "--strict"
   val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.") withAbbreviation "--language"
-  val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax") withAbbreviation "--rewrite"
+  val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2Compat rewrites sources to migrate to new syntax") withAbbreviation "--rewrite"
   val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.") withAbbreviation "--no-warnings"
   val fromTasty: Setting[Boolean] = BooleanSetting("-from-tasty", "Compile classes from tasty in classpath. The arguments are used as class names.") withAbbreviation "--from-tasty"
 

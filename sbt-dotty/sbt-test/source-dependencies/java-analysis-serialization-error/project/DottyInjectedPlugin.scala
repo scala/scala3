@@ -7,6 +7,6 @@ object DottyInjectedPlugin extends AutoPlugin {
 
   override val projectSettings = Seq(
     scalaVersion := sys.props("plugin.scalaVersion"),
-    scalacOptions += "-language:Scala2"
+    scalacOptions += "-language:Scala2CompatCompat"
   )
 }

@@ -14,7 +14,6 @@ import util.Spans._
 import reporting.diagnostic.messages.TypeTestAlwaysSucceeds
 import reporting.trace
 import config.Printers.{ transforms => debug }
-import NullOpsDecorator._
 
 /** This transform normalizes type tests and type casts,
  *  also replacing type tests with singleton argument type with reference equality check

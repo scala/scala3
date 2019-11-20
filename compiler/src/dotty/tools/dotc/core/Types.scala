@@ -38,6 +38,8 @@ import java.lang.ref.WeakReference
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
+import dotty.tools.dotc.transform.SymUtils._
+
 object Types {
 
   @sharable private var nextId = 0
@@ -271,6 +273,17 @@ object Types {
           false
       }
       loop(this)
+    }
+
+    /** Is this type guaranteed not to have `null` as a value? */
+    final def isNotNull(implicit ctx: Context): Boolean = this match {
+      case tp: ConstantType => tp.value.value != null
+      case tp: ClassInfo => !tp.cls.isNullableClass && tp.cls != defn.NothingClass
+      case tp: TypeBounds => tp.lo.isNotNull
+      case tp: TypeProxy => tp.underlying.isNotNull
+      case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
+      case OrType(tp1, tp2) => tp1.isNotNull && tp2.isNotNull
+      case _ => false
     }
 
     /** Is this type produced as a repair for an error? */
@@ -588,19 +601,19 @@ object Types {
         case AndType(l, r) =>
           goAnd(l, r)
         case tp: OrType =>
-          if (ctx.explicitNulls && tp.isJavaNullableUnion) {
-            // Selecting `name` from a type `T|JavaNull` is like selecting `name` from `T`.
-            // This can throw at runtime, but we trade soundness for usability.
-            // We need to strip `JavaNull` from both the type and the prefix so that
-            // `pre <: tp` continues to hold.
-            tp.stripJavaNull.findMember(name, pre.stripJavaNull, required, excluded)
-          }
-          else {
-            // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
-            // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
-            // lots of places. The present strategy is instead of widen `tp` using `join` to be a
-            // supertype of `pre`.
-            go(tp.join)
+          tp match {
+            case OrJavaNull(tp1) =>
+              // Selecting `name` from a type `T|JavaNull` is like selecting `name` from `T`.
+              // This can throw at runtime, but we trade soundness for usability.
+              // We need to strip `JavaNull` from both the type and the prefix so that
+              // `pre <: tp` continues to hold.
+              tp1.findMember(name, pre.stripJavaNull, required, excluded)
+            case _ =>
+              // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
+              // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
+              // lots of places. The present strategy is instead of widen `tp` using `join` to be a
+              // supertype of `pre`.
+              go(tp.join)
           }
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, required, excluded)
@@ -764,6 +777,26 @@ object Types {
       record("abstractTermMembers")
       memberDenots(abstractTermNameFilter,
           (name, buf) => buf ++= nonPrivateMember(name).altsWith(_.is(Deferred)))
+    }
+
+    /**
+     * Returns the set of methods that are abstract and do not overlap with any of
+     * [[java.lang.Object]] methods.
+     *
+     * Conceptually, a SAM (functional interface) has exactly one abstract method.
+     * If an interface declares an abstract method overriding one of the public
+     * methods of [[java.lang.Object]], that also does not count toward the interface's
+     * abstract method count.
+     *
+     * @see https://docs.oracle.com/javase/8/docs/api/java/lang/FunctionalInterface.html
+     *
+     * @return the set of methods that are abstract and do not match any of [[java.lang.Object]]
+     *
+     */
+    final def possibleSamMethods(implicit ctx: Context): Seq[SingleDenotation] = {
+      record("possibleSamMethods")
+      abstractTermMembers
+        .filterNot(m => m.symbol.matchingMember(defn.ObjectType).exists || m.symbol.isSuperAccessor)
     }
 
     /** The set of abstract type members of this type. */
@@ -1069,56 +1102,30 @@ object Types {
      *  Exception (if `-YexplicitNulls` is set): if this type is a nullable union (i.e. of the form `T | Null`),
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
-    def widenUnion(implicit ctx: Context): Type = {
-      widen match {
-        case tp @ OrType(lhs, rhs) =>
-          def defaultJoin(tp1: Type, tp2: Type) =
-            ctx.typeComparer.lub(tp1, tp2, canConstrain = true) match {
-              case union: OrType => union.join
-              case res => res
-            }
+    def widenUnion(implicit ctx: Context): Type = widen match {
+      case tp @ OrNull(tp1): OrType =>
+        // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
+        val tp1Widen = tp1.widenUnionWithoutNull
+        if (tp1Widen.isRef(defn.AnyClass)) tp1Widen
+        else tp.derivedOrType(tp1Widen, defn.NullType)
+      case tp =>
+        tp.widenUnionWithoutNull
+    }
 
-          // Given a type `tpe`, if it is already a nullable union, return it unchanged.
-          // Otherwise, construct a nullable union where `tpe` is the lhs (use `orig` to
-          // potentially avoid creating a new object for the union).
-          def ensureNullableUnion(tpe: Type, orig: OrType): Type = tpe match {
-            case orTpe: OrType if orTpe.tp2.isNullType => tpe
-            case _ => orig.derivedOrType(tpe, defn.NullType)
-          }
-
-          // Test for nullable union that assumes the type has already been normalized.
-          def isNullableUnionFast(tp: Type): Boolean = tp match {
-            case orTpe: OrType if orTpe.tp2.isNullType => true
-            case _ => false
-          }
-
-          if (ctx.explicitNulls) {
-            // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
-            // This part relies on the postcondition of widenUnion: the result is either a
-            // non-union type, or a nullable union type where the rhs is `Null` type.
-            if (rhs.isNullType) ensureNullableUnion(lhs.widenUnion, tp)
-            else if (lhs.isNullType) ensureNullableUnion(rhs.widenUnion, tp)
-            else {
-              val lhsWiden = lhs.widenUnion
-              val rhsWiden = rhs.widenUnion
-              val tmpRes = defaultJoin(lhs.widenUnion, rhs.widenUnion)
-              if (isNullableUnionFast(lhsWiden) || isNullableUnionFast(rhsWiden))
-                // If either lhs or rhs is a nullable union,
-                // we need to ensure the result is also a nullable union.
-                ensureNullableUnion(tmpRes, tp)
-              else tmpRes
-            }
-          }
-          else defaultJoin(lhs.widenUnion, rhs.widenUnion)
-        case tp @ AndType(tp1, tp2) =>
-          tp derived_& (tp1.widenUnion, tp2.widenUnion)
-        case tp: RefinedType =>
-          tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
-        case tp: RecType =>
-          tp.rebind(tp.parent.widenUnion)
-        case tp =>
-          tp
-      }
+    def widenUnionWithoutNull(implicit ctx: Context): Type = widen match {
+      case tp @ OrType(lhs, rhs) =>
+        ctx.typeComparer.lub(lhs.widenUnionWithoutNull, rhs.widenUnionWithoutNull, canConstrain = true) match {
+          case union: OrType => union.join
+          case res => res
+        }
+      case tp @ AndType(tp1, tp2) =>
+        tp derived_& (tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull)
+      case tp: RefinedType =>
+        tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
+      case tp: RecType =>
+        tp.rebind(tp.parent.widenUnion)
+      case tp =>
+        tp
     }
 
     /** Widen all top-level singletons reachable by dealiasing
@@ -1436,6 +1443,9 @@ object Types {
       case mt: MethodType => false
       case _ => true
     }
+
+    /** Is this (an alias of) the `scala.Null` type? */
+    final def isNullType(given Context) = isRef(defn.NullClass)
 
     /** The resultType of a LambdaType, or ExprType, the type itself for others */
     def resultType(implicit ctx: Context): Type = this
@@ -2331,7 +2341,7 @@ object Types {
   }
 
   /** The singleton type for path prefix#myDesignator.
-    */
+   */
   abstract case class TermRef(override val prefix: Type,
                               private var myDesignator: Designator)
     extends NamedType with SingletonType with ImplicitRef {
@@ -2922,6 +2932,42 @@ object Types {
     def make(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       if (tp1 eq tp2) tp1
       else apply(tp1, tp2)
+  }
+
+  /** An extractor object to pattern match against a nullable union.
+   *  e.g.
+   *
+   *  (tp: Type) match
+   *    case OrNull(tp1) => // tp had the form `tp1 | Null`
+   *    case _ => // tp was not a nullable union
+   */
+  object OrNull {
+    def apply(tp: Type)(given Context) =
+      OrType(tp, defn.NullType)
+    def unapply(tp: Type)(given ctx: Context): Option[Type] =
+    if (ctx.explicitNulls) {
+      val tp1 = tp.stripNull
+      if tp1 ne tp then Some(tp1) else None
+    }
+    else None
+  }
+
+  /** An extractor object to pattern match against a Java-nullable union.
+   *  e.g.
+   *
+   *  (tp: Type) match
+   *    case OrJavaNull(tp1) => // tp had the form `tp1 | JavaNull`
+   *    case _ => // tp was not a Java-nullable union
+   */
+  object OrJavaNull {
+    def apply(tp: Type)(given Context) =
+      OrType(tp, defn.JavaNullAliasType)
+    def unapply(tp: Type)(given ctx: Context): Option[Type] =
+      if (ctx.explicitNulls) {
+        val tp1 = tp.stripJavaNull
+        if tp1 ne tp then Some(tp1) else None
+      }
+      else None
   }
 
   // ----- ExprType and LambdaTypes -----------------------------------
@@ -3590,7 +3636,8 @@ object Types {
         if (defn.isCompiletime_S(tycon.symbol) && args.length == 1)
           trace(i"normalize S $this", typr, show = true) {
             args.head.normalized match {
-              case ConstantType(Constant(n: Int)) => ConstantType(Constant(n + 1))
+              case ConstantType(Constant(n: Int)) if n >= 0 && n < Int.MaxValue =>
+                ConstantType(Constant(n + 1))
               case none => tryMatchAlias
             }
           }
@@ -4407,8 +4454,7 @@ object Types {
     }
     def unapply(tp: Type)(implicit ctx: Context): Option[MethodType] =
       if (isInstantiatable(tp)) {
-        val absMems = tp.abstractTermMembers
-        // println(s"absMems: ${absMems map (_.show) mkString ", "}")
+        val absMems = tp.possibleSamMethods
         if (absMems.size == 1)
           absMems.head.info match {
             case mt: MethodType if !mt.isParamDependent &&

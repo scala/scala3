@@ -121,8 +121,8 @@ class TreeTypeMap(
           val bind1 = tmap.transformSub(bind)
           val expr1 = tmap.transform(expr)
           cpy.Labeled(labeled)(bind1, expr1)
-        case Hole(n, args) =>
-          Hole(n, args.mapConserve(transform)).withSpan(tree.span).withType(mapType(tree.tpe))
+        case Hole(isTermHole, n, args) =>
+          Hole(isTermHole, n, args.mapConserve(transform)).withSpan(tree.span).withType(mapType(tree.tpe))
         case tree1 =>
           super.transform(tree1)
       }

@@ -16,6 +16,32 @@ class CommunityBuildTest {
     new String(Files.readAllBytes(file), UTF_8)
   }
 
+  def testSbt(project: String, testCommand: String, updateCommand: String, extraSbtArgs: Seq[String] = Nil) = {
+    // Workaround for https://github.com/sbt/sbt/issues/4395
+    new File(sys.props("user.home") + "/.sbt/1.0/plugins").mkdirs()
+    val pluginFilePath = communitybuildDir.resolve("sbt-dotty-sbt").toAbsolutePath().toString()
+
+    // Run the sbt command with the compiler version and sbt plugin set in the build
+    val arguments = {
+      val sbtProps = Option(System.getProperty("sbt.ivy.home")) match {
+        case Some(ivyHome) =>
+          Seq(s"-Dsbt.ivy.home=$ivyHome")
+        case _ =>
+          Seq()
+      }
+      extraSbtArgs ++ sbtProps ++ Seq(
+        "-sbt-version", "1.2.7",
+        s"--addPluginSbtFile=$pluginFilePath",
+        s";clean ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! $testCommand"
+      )
+    }
+
+    test(project, "sbt", arguments)
+  }
+
+  def testMill(project: String, testCommand: String, extraMillArgs: Seq[String] = Nil) =
+    test(project, "./mill", extraMillArgs :+ testCommand)
+
   /** Build the given project with the published local compiler and sbt plugin.
    *
    *  This test reads the compiler version from community-build/dotty-bootstrapped.version
@@ -26,7 +52,7 @@ class CommunityBuildTest {
    *  @param updateCommand  The sbt command used to update the project
    *  @param extraSbtArgs   Extra arguments to pass to sbt
    */
-  def test(project: String, testCommand: String, updateCommand: String, extraSbtArgs: Seq[String] = Nil): Unit = {
+  def test(project: String, command: String, arguments: Seq[String]): Unit = {
     def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
 
     log(s"Building $project with dotty-bootstrapped $compilerVersion...")
@@ -53,37 +79,18 @@ class CommunityBuildTest {
       exitCode
     }
 
-    // Workaround for https://github.com/sbt/sbt/issues/4395
-    new File(sys.props("user.home") + "/.sbt/1.0/plugins").mkdirs()
-    val pluginFilePath = communitybuildDir.resolve("sbt-dotty-sbt").toAbsolutePath().toString()
-
-    // Run the sbt command with the compiler version and sbt plugin set in the build
-    val arguments = {
-      val sbtProps = Option(System.getProperty("sbt.ivy.home")) match {
-        case Some(ivyHome) =>
-          Seq(s"-Dsbt.ivy.home=$ivyHome")
-        case _ =>
-          Seq()
-      }
-      extraSbtArgs ++ sbtProps ++ Seq(
-        "-sbt-version", "1.2.7",
-        s"--addPluginSbtFile=$pluginFilePath",
-        s";clean ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! $testCommand"
-      )
-    }
-
-    val exitCode = exec("sbt", arguments: _*)
+    val exitCode = exec(command, arguments: _*)
 
     if (exitCode != 0) {
       fail(s"""
           |
-          |sbt exited with an error code. To reproduce without JUnit, use:
+          |$command exited with an error code. To reproduce without JUnit, use:
           |
           |    sbt community-build/prepareCommunityBuild
           |    cd community-build/community-projects/$project
-          |    sbt ${arguments.init.mkString(" ")} "${arguments.last}"
+          |    $command ${arguments.init.mkString(" ")} "${arguments.last}"
           |
-          |For a faster feedback loop, one can try to extract a direct call to dotc
+          |For a faster feedback loop on SBT projects, one can try to extract a direct call to dotc
           |using the sbt export command. For instance, for scalacheck, use
           |    sbt export jvm/test:compileIncremental
           |
@@ -91,111 +98,116 @@ class CommunityBuildTest {
     }
   }
 
-  @Test def intent = test(
+  @Test def utest = testMill(
+    project = "utest",
+    testCommand = s"utest.jvm[$compilerVersion].test",
+    extraMillArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
+  )
+
+  @Test def intent = testSbt(
     project       = "intent",
     testCommand   = "test",
     updateCommand = "update"
   )
 
-  @Test def algebra = test(
+  @Test def algebra = testSbt(
     project       = "algebra",
     testCommand   = "coreJVM/compile",
     updateCommand = "coreJVM/update"
   )
 
-  @Test def scalacheck = test(
+  @Test def scalacheck = testSbt(
     project       = "scalacheck",
     testCommand   = "jvm/test:compile",
     updateCommand = "jvm/test:update"
   )
 
-  @Test def scalatest = test(
+  @Test def scalatest = testSbt(
     project       = "scalatest",
     testCommand   = ";scalacticDotty/clean;scalacticTestDotty/test;scalatestTestDotty/test",
     updateCommand = "scalatest/update"
   )
 
-  @Test def scalaXml = test(
+  @Test def scalaXml = testSbt(
     project       = "scala-xml",
     testCommand   = "xml/test",
     updateCommand = "xml/update"
   )
 
-  @Test def scopt = test(
+  @Test def scopt = testSbt(
     project       = "scopt",
     testCommand   = "scoptJVM/compile",
     updateCommand = "scoptJVM/update"
   )
 
-  @Test def scalap = test(
+  @Test def scalap = testSbt(
     project       = "scalap",
     testCommand   = "scalap/compile",
     updateCommand = "scalap/update"
   )
 
-  @Test def squants = test(
+  @Test def squants = testSbt(
     project       = "squants",
     testCommand   = "squantsJVM/compile",
     updateCommand = "squantsJVM/update"
   )
 
-  @Test def betterfiles = test(
+  @Test def betterfiles = testSbt(
     project       = "betterfiles",
     testCommand   = "dotty-community-build/compile",
     updateCommand = "dotty-community-build/update"
   )
 
-  @Test def ScalaPB = test(
+  @Test def ScalaPB = testSbt(
     project       = "ScalaPB",
     testCommand   = "dotty-community-build/compile",
     updateCommand = "dotty-community-build/update"
   )
 
-  @Test def minitest = test(
+  @Test def minitest = testSbt(
     project       = "minitest",
     testCommand   = "dotty-community-build/compile",
     updateCommand = "dotty-community-build/update"
   )
 
-  @Test def fastparse = test(
+  @Test def fastparse = testSbt(
     project       = "fastparse",
     testCommand   = "dotty-community-build/compile;dotty-community-build/test:compile",
     updateCommand = "dotty-community-build/update"
   )
 
-  // TODO: revert to sourcecodeJVM/test
-  @Test def sourcecode = test(
-    project       = "sourcecode",
-    testCommand   = "sourcecode/compile;sourcecode/test:compile",
-    updateCommand = "sourcecode/update"
+  @Test def sourcecode = testMill(
+    project = "sourcecode",
+    testCommand = s"sourcecode.jvm[$compilerVersion].test",
+    extraMillArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
   )
 
-  @Test def stdLib213 = test(
+  @Test def stdLib213 = testSbt(
     project       = "stdLib213",
     testCommand   = "library/compile",
     updateCommand = "library/update",
     extraSbtArgs  = Seq("-Dscala.build.compileWithDotty=true")
   )
 
-  @Test def shapeless = test(
+  @Test def shapeless = testSbt(
     project       = "shapeless",
     testCommand   = "test",
     updateCommand = "update"
   )
 
-  @Test def xmlInterpolator = test(
+  @Test def xmlInterpolator = testSbt(
     project       = "xml-interpolator",
     testCommand   = "test",
     updateCommand = "update"
   )
 
-  @Test def semanticdb = test(
+  @Test def semanticdb = testSbt(
     project       = "semanticdb",
     testCommand   = "test:compile",
     updateCommand = "update"
   )
 
-  @Test def effpi = test(
+  @Test def effpi = testSbt(
     project       = "effpi",
     // We set `useEffpiPlugin := false` because we don't want to run their
     // compiler plugin since it relies on external binaries (from the model
@@ -225,6 +237,6 @@ class UpdateCategory
 
 @Category(Array(classOf[UpdateCategory]))
 class CommunityBuildUpdate extends CommunityBuildTest {
-  override def test(project: String, testCommand: String, updateCommand: String, extraSbtArgs: Seq[String]): Unit =
-    super.test(project, updateCommand, null, extraSbtArgs)
+  override def testSbt(project: String, testCommand: String, updateCommand: String, extraSbtArgs: Seq[String]): Unit =
+    super.testSbt(project, updateCommand, null, extraSbtArgs)
 }

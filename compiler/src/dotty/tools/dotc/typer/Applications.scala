@@ -22,6 +22,7 @@ import NameKinds.DefaultGetterName
 import ProtoTypes._
 import Inferencing._
 import transform.TypeUtils._
+import Nullables.given
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
@@ -864,8 +865,9 @@ trait Applications extends Compatibility {
               if (proto.allArgTypesAreCurrent())
                 new ApplyToTyped(tree, fun1, funRef, proto.unforcedTypedArgs, pt)
               else
-                new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx(tree))
-            convertNewGenericArray(app.result)
+                new ApplyToUntyped(tree, fun1, funRef, proto, pt)(
+                  given fun1.nullableInArgContext(given argCtx(tree)))
+            convertNewGenericArray(app.result).computeNullable()
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }

@@ -92,7 +92,7 @@ class Definitions {
    *  ImplicitFunctionN traits follow this template:
    *
    *      trait ImplicitFunctionN[T0,...,T{N-1}, R] extends Object {
-   *        def apply given ($x0: T0, ..., $x{N_1}: T{N-1}): R
+   *        def apply(given $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
    *  ErasedFunctionN traits follow this template:
@@ -225,7 +225,14 @@ class Definitions {
     @tu lazy val Compiletime_code         : Symbol = CompiletimePackageObject.requiredMethod("code")
     @tu lazy val Compiletime_summonFrom   : Symbol = CompiletimePackageObject.requiredMethod("summonFrom")
   @tu lazy val CompiletimeTestingPackageObject: Symbol = ctx.requiredModule("scala.compiletime.testing.package")
-    @tu lazy val CompiletimeTesting_typeChecks   : Symbol = CompiletimeTestingPackageObject.requiredMethod("typeChecks")
+    @tu lazy val CompiletimeTesting_typeChecks: Symbol = CompiletimeTestingPackageObject.requiredMethod("typeChecks")
+    @tu lazy val CompiletimeTesting_typeCheckErrors: Symbol = CompiletimeTestingPackageObject.requiredMethod("typeCheckErrors")
+    @tu lazy val CompiletimeTesting_ErrorClass: ClassSymbol = ctx.requiredClass("scala.compiletime.testing.Error")
+    @tu lazy val CompiletimeTesting_Error: Symbol = ctx.requiredModule("scala.compiletime.testing.Error")
+      @tu lazy val CompiletimeTesting_Error_apply = CompiletimeTesting_Error.requiredMethod(nme.apply)
+    @tu lazy val CompiletimeTesting_ErrorKind: Symbol = ctx.requiredModule("scala.compiletime.testing.ErrorKind")
+      @tu lazy val CompiletimeTesting_ErrorKind_Parser: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Parser")
+      @tu lazy val CompiletimeTesting_ErrorKind_Typer: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Typer")
 
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will
@@ -295,16 +302,8 @@ class Definitions {
   @tu lazy val AnyRefAlias: TypeSymbol = enterAliasType(tpnme.AnyRef, ObjectType)
   def AnyRefType: TypeRef = AnyRefAlias.typeRef
 
-    @tu lazy val Object_eq: TermSymbol = {
-      // If explicit nulls is enabled, then we want to allow `(x: String).eq(null)`, so we need
-      // to adjust the signature of `eq` accordingly.
-      enterMethod(ObjectClass, nme.eq, methOfAnyRefOrNull(BooleanType), Final)
-    }
-    @tu lazy val Object_ne: TermSymbol = {
-      // If explicit nulls is enabled, then we want to allow `(x: String).ne(null)`, so we need
-      // to adjust the signature of `ne` accordingly.
-      enterMethod(ObjectClass, nme.ne, methOfAnyRefOrNull(BooleanType), Final)
-    }
+    @tu lazy val Object_eq: TermSymbol = enterMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
+    @tu lazy val Object_ne: TermSymbol = enterMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
     @tu lazy val Object_synchronized: TermSymbol = enterPolyMethod(ObjectClass, nme.synchronized_, 1,
         pt => MethodType(List(pt.paramRefs(0)), pt.paramRefs(0)), Final)
     @tu lazy val Object_clone: TermSymbol = enterMethod(ObjectClass, nme.clone_, MethodType(Nil, ObjectType), Protected)
@@ -317,6 +316,10 @@ class Definitions {
 
     def ObjectMethods: List[TermSymbol] = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
+
+  /** Methods in Object and Any that do not have a side effect */
+  @tu lazy val pureMethods: List[TermSymbol] = List(Any_==, Any_!=, Any_equals, Any_hashCode,
+    Any_toString, Any_##, Any_getClass, Any_isInstanceOf, Any_typeTest, Object_eq, Object_ne)
 
   @tu lazy val AnyKindClass: ClassSymbol = {
     val cls = ctx.newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil)
@@ -415,6 +418,7 @@ class Definitions {
     methodNames.map(getWrapVarargsArrayModule.requiredMethod(_))
   })
 
+  @tu lazy val ListModule: Symbol = ctx.requiredModule("scala.collection.immutable.List")
   @tu lazy val NilModule: Symbol = ctx.requiredModule("scala.collection.immutable.Nil")
 
   @tu lazy val SingletonClass: ClassSymbol =
@@ -835,7 +839,7 @@ class Definitions {
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
   def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
-  def methOfAnyRefOrNull(tp: Type): MethodType = MethodType(List(ObjectType.maybeNullable), tp)
+  def methOfAnyRef(tp: Type): MethodType = MethodType(List(ObjectType), tp)
 
   // Derived types
 

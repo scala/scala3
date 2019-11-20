@@ -3,17 +3,17 @@ package reflect
 
 trait ImportSelectorOps extends Core {
 
-  given (self: SimpleSelector) {
+  given SimpleSelectorOps: (self: SimpleSelector) {
     def selection(given ctx: Context): Id =
       internal.SimpleSelector_selection(self)
   }
 
-  object SimpleSelector {
-    def unapply(importSelector: ImportSelector)(given ctx: Context): Option[Id] =
-      internal.matchSimpleSelector(importSelector).map(_.selection)
-  }
+  given (given Context): IsInstanceOf[SimpleSelector] = internal.isInstanceOfSimpleSelector
 
-  given (self: RenameSelector) {
+  object SimpleSelector
+    def unapply(x: SimpleSelector)(given ctx: Context): Option[Id] = Some(x.selection)
+
+  given RenameSelectorOps: (self: RenameSelector) {
     def from(given ctx: Context): Id =
       internal.RenameSelector_from(self)
 
@@ -21,19 +21,19 @@ trait ImportSelectorOps extends Core {
       internal.RenameSelector_to(self)
   }
 
-  object RenameSelector {
-    def unapply(importSelector: ImportSelector)(given ctx: Context): Option[(Id, Id)] =
-      internal.matchRenameSelector(importSelector).map(x => (x.from, x.to))
-  }
+  given (given Context): IsInstanceOf[RenameSelector] = internal.isInstanceOfRenameSelector
 
-  given (self: OmitSelector) {
+  object RenameSelector
+    def unapply(x: RenameSelector)(given ctx: Context): Option[(Id, Id)] = Some((x.from, x.to))
+
+  given OmitSelectorOps: (self: OmitSelector) {
     def omitted(given ctx: Context): Id =
       internal.SimpleSelector_omitted(self)
   }
 
-  object OmitSelector {
-    def unapply(importSelector: ImportSelector)(given ctx: Context): Option[Id] =
-      internal.matchOmitSelector(importSelector).map(_.omitted)
-  }
+  given (given Context): IsInstanceOf[OmitSelector] = internal.isInstanceOfOmitSelector
+
+  object OmitSelector
+    def unapply(x: OmitSelector)(given ctx: Context): Option[Id] = Some(x.omitted)
 
 }

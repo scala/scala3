@@ -63,7 +63,7 @@ object TestConfiguration {
   )
   val picklingWithCompilerOptions =
     picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
-  val scala2Mode = defaultOptions and "-language:Scala2"
+  val scala2CompatMode = defaultOptions and "-language:Scala2Compat"
   val explicitUTF8 = defaultOptions and ("-encoding", "UTF8")
   val explicitUTF16 = defaultOptions and ("-encoding", "UTF16")
 

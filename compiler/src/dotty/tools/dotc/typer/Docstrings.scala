@@ -33,7 +33,7 @@ object Docstrings {
         expandComment(sym).map { expanded =>
           val typedUsecases = expanded.usecases.map { usecase =>
             ctx.typer.enterSymbol(ctx.typer.createSymbol(usecase.untpdCode))
-            ctx.typer.typedStats(usecase.untpdCode :: Nil, owner) match {
+            ctx.typer.typedStats(usecase.untpdCode :: Nil, owner)._1 match {
               case List(df: tpd.DefDef) =>
                 usecase.typed(df)
               case _ =>

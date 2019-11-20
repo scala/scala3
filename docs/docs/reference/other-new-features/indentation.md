@@ -109,7 +109,7 @@ end largeMethod
 ```
 An `end` marker consists of the identifier `end` which follows an `<outdent>` token, and is in turn followed on the same line by exactly one other token, which is either an identifier or one of the reserved words
 ```scala
-if  while  for  match  try  new
+if  while  for  match  try  new  given
 ```
 If `end` is followed by a reserved word, the compiler checks that the marker closes an indentation region belonging to a construct that starts with the reserved word. If it is followed by an identifier _id_, the compiler checks that the marker closes a definition
 that defines _id_ or a package clause that refers to _id_.
@@ -175,7 +175,7 @@ end IndentWidth
 
 ### Settings and Rewrites
 
-Significant indentation is enabled by default. It can be turned off by giving any of the options `-noindent`, `old-syntax` and `language:Scala2`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues an error (or, in the case of `-language:Scala2`, a migration warning).
+Significant indentation is enabled by default. It can be turned off by giving any of the options `-noindent`, `old-syntax` and `language:Scala2`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues an error (or, in the case of `-language:Scala2Compat`, a migration warning).
 
 The Dotty compiler can rewrite source code to indented code and back.
 When invoked with options `-rewrite -indent` it will rewrite braces to

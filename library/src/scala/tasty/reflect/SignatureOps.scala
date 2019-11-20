@@ -9,7 +9,7 @@ trait SignatureOps extends Core {
       Some((sig.paramSigs, sig.resultSig))
   }
 
-  given (sig: Signature) {
+  given SignatureOps: (sig: Signature) {
 
     /** The signatures of the method parameters.
       *

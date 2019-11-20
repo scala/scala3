@@ -7,7 +7,7 @@ trait TypeOrBoundsOps extends Core {
 
   def typeOf[T: scala.quoted.Type]: Type
 
-  given (self: Type) {
+  given TypeOps: (self: Type) {
     def =:=(that: Type)(given ctx: Context): Boolean = internal.`Type_=:=`(self)(that)
     def <:<(that: Type)(given ctx: Context): Boolean = internal.`Type_<:<`(self)(that)
     def widen(given ctx: Context): Type = internal.Type_widen(self)
@@ -63,269 +63,266 @@ trait TypeOrBoundsOps extends Core {
     def isDependentFunctionType(given ctx: Context): Boolean = internal.Type_isDependentFunctionType(self)
   }
 
-  object IsType {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Type] =
-      internal.matchType(typeOrBounds)
-  }
+  given (given Context): IsInstanceOf[Type] = internal.isInstanceOfType
+
+  object IsType
+    @deprecated("Use _: Type", "")
+    def unapply(x: Type)(given ctx: Context): Option[Type] =
+      internal.isInstanceOfType.unapply(x)
 
   object Type {
     def apply(clazz: Class[_])(given ctx: Context): Type =
       internal.Type_apply(clazz)
   }
 
-  object IsConstantType {
-    /** Matches any ConstantType and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ConstantType] =
-      internal.matchConstantType(tpe)
-  }
+  given (given Context): IsInstanceOf[ConstantType] = internal.isInstanceOfConstantType
+
+  object IsConstantType
+    @deprecated("Use _: ConstantType", "")
+    def unapply(x: ConstantType)(given ctx: Context): Option[ConstantType] = Some(x)
 
   object ConstantType {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Constant] =
-      internal.matchConstantType(typeOrBounds).map(_.constant)
+    def unapply(x: ConstantType)(given ctx: Context): Option[Constant] = Some(x.constant)
   }
 
-  given (self: ConstantType) {
+  given ConstantTypeOps: (self: ConstantType) {
     def constant(given ctx: Context): Constant = internal.ConstantType_constant(self)
   }
 
-  object IsTermRef {
-    /** Matches any TermRef and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[TermRef] =
-      internal.matchTermRef(tpe)
-  }
+  given (given Context): IsInstanceOf[TermRef] = internal.isInstanceOfTermRef
+
+  object IsTermRef
+    @deprecated("Use _: TermRef", "")
+    def unapply(x: TermRef)(given ctx: Context): Option[TermRef] = Some(x)
 
   object TermRef {
     def apply(qual: TypeOrBounds, name: String)(given ctx: Context): TermRef =
       internal.TermRef_apply(qual, name)
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
-      internal.matchTermRef(typeOrBounds).map(x => (x.qualifier, x.name))
+    def unapply(x: TermRef)(given ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
+      Some((x.qualifier, x.name))
   }
 
-  given (self: TermRef) {
+  given TermRefOps: (self: TermRef) {
     def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TermRef_qualifier(self)
     def name(given ctx: Context): String = internal.TermRef_name(self)
   }
 
-  object IsTypeRef {
-    /** Matches any TypeRef and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[TypeRef] =
-      internal.matchTypeRef(tpe)
-  }
+  given (given Context): IsInstanceOf[TypeRef] = internal.isInstanceOfTypeRef
+
+  object IsTypeRef
+    @deprecated("Use _: TypeRef", "")
+    def unapply(x: TypeRef)(given ctx: Context): Option[TypeRef] = Some(x)
 
   object TypeRef {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
-      internal.matchTypeRef(typeOrBounds).map(x => (x.qualifier, x.name))
+    def unapply(x: TypeRef)(given ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
+      Some((x.qualifier, x.name))
   }
 
-  given (self: TypeRef) {
+  given TypeRefOps: (self: TypeRef) {
     def qualifier(given ctx: Context): TypeOrBounds /* Type | NoPrefix */ = internal.TypeRef_qualifier(self)
     def name(given ctx: Context): String = internal.TypeRef_name(self)
   }
 
-  object IsSuperType {
-    /** Matches any SuperType and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[SuperType] =
-      internal.matchSuperType(tpe)
-  }
+  given (given Context): IsInstanceOf[SuperType] = internal.isInstanceOfSuperType
+
+  object IsSuperType
+    @deprecated("Use _: SuperType", "")
+    def unapply(x: SuperType)(given ctx: Context): Option[SuperType] = Some(x)
 
   object SuperType {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type)] =
-      internal.matchSuperType(typeOrBounds).map(x => (x.thistpe, x.supertpe))
+    def unapply(x: SuperType)(given ctx: Context): Option[(Type, Type)] =
+      Some((x.thistpe, x.supertpe))
   }
 
-  given (self: SuperType) {
+  given SuperTypeOps: (self: SuperType) {
     def thistpe(given ctx: Context): Type = internal.SuperType_thistpe(self)
     def supertpe(given ctx: Context): Type = internal.SuperType_supertpe(self)
   }
 
-  object IsRefinement {
-    /** Matches any Refinement and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[Refinement] =
-      internal.matchRefinement(tpe)
-  }
+  given (given Context): IsInstanceOf[Refinement] = internal.isInstanceOfRefinement
+
+  object IsRefinement
+    @deprecated("Use _: Refinement", "")
+    def unapply(x: Refinement)(given ctx: Context): Option[Refinement] = Some(x)
 
   object Refinement {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] =
-      internal.matchRefinement(typeOrBounds).map(x => (x.parent, x.name, x.info))
+    def unapply(x: Refinement)(given ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] =
+      Some((x.parent, x.name, x.info))
   }
 
-  given (self: Refinement) {
+  given RefinementOps: (self: Refinement) {
     def parent(given ctx: Context): Type = internal.Refinement_parent(self)
     def name(given ctx: Context): String = internal.Refinement_name(self)
     def info(given ctx: Context): TypeOrBounds = internal.Refinement_info(self)
   }
 
-  object IsAppliedType {
-    /** Matches any AppliedType and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[AppliedType] =
-      internal.matchAppliedType(tpe)
-  }
+  given (given Context): IsInstanceOf[AppliedType] = internal.isInstanceOfAppliedType
+
+  object IsAppliedType
+    @deprecated("Use _: AppliedType", "")
+    def unapply(x: AppliedType)(given ctx: Context): Option[AppliedType] = Some(x)
 
   object AppliedType {
     def apply(tycon: Type, args: List[TypeOrBounds])(given ctx: Context) : AppliedType =
       internal.AppliedType_apply(tycon, args)
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] =
-      internal.matchAppliedType(typeOrBounds).map(x => (x.tycon, x.args))
+    def unapply(x: AppliedType)(given ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] =
+      Some((x.tycon, x.args))
   }
 
-  given (self: AppliedType) {
+  given AppliedTypeOps: (self: AppliedType) {
     def tycon(given ctx: Context): Type = internal.AppliedType_tycon(self)
     def args(given ctx: Context): List[TypeOrBounds /* Type | TypeBounds */] = internal.AppliedType_args(self)
   }
 
-  object IsAnnotatedType {
-    /** Matches any AnnotatedType and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[AnnotatedType] =
-      internal.matchAnnotatedType(tpe)
-  }
+  given (given Context): IsInstanceOf[AnnotatedType] = internal.isInstanceOfAnnotatedType
+
+  object IsAnnotatedType
+    @deprecated("Use _: AnnotatedType", "")
+    def unapply(x: AnnotatedType)(given ctx: Context): Option[AnnotatedType] = Some(x)
 
   object AnnotatedType {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Term)] =
-      internal.matchAnnotatedType(typeOrBounds).map(x => (x.underlying, x.annot))
+    def unapply(x: AnnotatedType)(given ctx: Context): Option[(Type, Term)] =
+      Some((x.underlying, x.annot))
   }
 
-  given (self: AnnotatedType) {
+  given AnnotatedTypeOps: (self: AnnotatedType) {
     def underlying(given ctx: Context): Type = internal.AnnotatedType_underlying(self)
     def annot(given ctx: Context): Term = internal.AnnotatedType_annot(self)
   }
 
-  object IsAndType {
-    /** Matches any AndType and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[AndType] =
-      internal.matchAndType(tpe)
-  }
+  given (given Context): IsInstanceOf[AndType] = internal.isInstanceOfAndType
+
+  object IsAndType
+    @deprecated("Use _: AndType", "")
+    def unapply(x: AndType)(given ctx: Context): Option[AndType] = Some(x)
 
   object AndType {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type)] =
-      internal.matchAndType(typeOrBounds).map(x => (x.left, x.right))
+    def unapply(x: AndType)(given ctx: Context): Option[(Type, Type)] =
+      Some((x.left, x.right))
   }
 
-  given (self: AndType) {
+  given AndTypeOps: (self: AndType) {
     def left(given ctx: Context): Type = internal.AndType_left(self)
     def right(given ctx: Context): Type = internal.AndType_right(self)
   }
 
-  object IsOrType {
-    /** Matches any OrType and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[OrType] =
-      internal.matchOrType(tpe)
-  }
+  given (given Context): IsInstanceOf[OrType] = internal.isInstanceOfOrType
+
+  object IsOrType
+    @deprecated("Use _: OrType", "")
+    def unapply(x: OrType)(given ctx: Context): Option[OrType] = Some(x)
 
   object OrType {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type)] =
-      internal.matchOrType(typeOrBounds).map(x => (x.left, x.right))
+    def unapply(x: OrType)(given ctx: Context): Option[(Type, Type)] =
+      Some((x.left, x.right))
   }
 
-  given (self: OrType) {
+  given OrTypeOps: (self: OrType) {
     def left(given ctx: Context): Type = internal.OrType_left(self)
     def right(given ctx: Context): Type = internal.OrType_right(self)
   }
 
-  object IsMatchType {
-    /** Matches any MatchType and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[MatchType] =
-      internal.matchMatchType(tpe)
-  }
+  given (given Context): IsInstanceOf[MatchType] = internal.isInstanceOfMatchType
+
+  object IsMatchType
+    @deprecated("Use _: MatchType", "")
+    def unapply(x: MatchType)(given ctx: Context): Option[MatchType] = Some(x)
 
   object MatchType {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type, List[Type])] =
-      internal.matchMatchType(typeOrBounds).map(x => (x.bound, x.scrutinee, x.cases))
+    def unapply(x: MatchType)(given ctx: Context): Option[(Type, Type, List[Type])] =
+      Some((x.bound, x.scrutinee, x.cases))
   }
 
-  given (self: MatchType) {
+  given MatchTypeOps: (self: MatchType) {
     def bound(given ctx: Context): Type = internal.MatchType_bound(self)
     def scrutinee(given ctx: Context): Type = internal.MatchType_scrutinee(self)
     def cases(given ctx: Context): List[Type] = internal.MatchType_cases(self)
   }
 
-  object IsByNameType {
-    /** Matches any ByNameType and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ByNameType] =
-      internal.matchByNameType(tpe)
-  }
+  given (given Context): IsInstanceOf[ByNameType] = internal.isInstanceOfByNameType
+
+  object IsByNameType
+    @deprecated("Use _: ByNameType", "")
+    def unapply(x: ByNameType)(given ctx: Context): Option[ByNameType] = Some(x)
 
   object ByNameType {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Type] =
-      internal.matchByNameType(typeOrBounds).map(_.underlying)
+    def unapply(x: ByNameType)(given ctx: Context): Option[Type] = Some(x.underlying)
   }
 
-  given (self: ByNameType) {
+  given ByNameTypeOps: (self: ByNameType) {
     def underlying(given ctx: Context): Type = internal.ByNameType_underlying(self)
   }
 
-  object IsParamRef {
-    /** Matches any ParamRef and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ParamRef] =
-      internal.matchParamRef(tpe)
-  }
+  given (given Context): IsInstanceOf[ParamRef] = internal.isInstanceOfParamRef
+
+  object IsParamRef
+    @deprecated("Use _: ParamRef", "")
+    def unapply(x: ParamRef)(given ctx: Context): Option[ParamRef] = Some(x)
 
   object ParamRef {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] =
-      internal.matchParamRef(typeOrBounds).map(x => (x.binder, x.paramNum))
+    def unapply(x: ParamRef)(given ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] =
+      Some((x.binder, x.paramNum))
   }
 
-  given (self: ParamRef) {
+  given ParamRefOps: (self: ParamRef) {
     def binder(given ctx: Context): LambdaType[TypeOrBounds] = internal.ParamRef_binder(self)
     def paramNum(given ctx: Context): Int = internal.ParamRef_paramNum(self)
   }
 
-  object IsThisType {
-    /** Matches any ThisType and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[ThisType] =
-      internal.matchThisType(tpe)
-  }
+  given (given Context): IsInstanceOf[ThisType] = internal.isInstanceOfThisType
+
+  object IsThisType
+    @deprecated("Use _: ThisType", "")
+    def unapply(x: ThisType)(given ctx: Context): Option[ThisType] = Some(x)
 
   object ThisType {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Type] =
-      internal.matchThisType(typeOrBounds).map(_.tref)
+    def unapply(x: ThisType)(given ctx: Context): Option[Type] = Some(x.tref)
   }
 
-  given (self: ThisType) {
+  given ThisTypeOps: (self: ThisType) {
     def tref(given ctx: Context): Type = internal.ThisType_tref(self)
   }
 
-  object IsRecursiveThis {
-    /** Matches any RecursiveThis and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[RecursiveThis] =
-      internal.matchRecursiveThis(tpe)
-  }
+  given (given Context): IsInstanceOf[RecursiveThis] = internal.isInstanceOfRecursiveThis
+
+  object IsRecursiveThis
+    @deprecated("Use _: RecursiveThis", "")
+    def unapply(x: RecursiveThis)(given ctx: Context): Option[RecursiveThis] = Some(x)
 
   object RecursiveThis {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[RecursiveType] =
-      internal.matchRecursiveThis(typeOrBounds).map(_.binder)
+    def unapply(x: RecursiveThis)(given ctx: Context): Option[RecursiveType] = Some(x.binder)
   }
 
-  given (self: RecursiveThis) {
+  given RecursiveThisOps: (self: RecursiveThis) {
     def binder(given ctx: Context): RecursiveType = internal.RecursiveThis_binder(self)
   }
 
-  object IsRecursiveType {
-    /** Matches any RecursiveType and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[RecursiveType] =
-      internal.matchRecursiveType(tpe)
-  }
+  given (given Context): IsInstanceOf[RecursiveType] = internal.isInstanceOfRecursiveType
+
+  object IsRecursiveType
+    @deprecated("Use _: RecursiveType", "")
+    def unapply(x: RecursiveType)(given ctx: Context): Option[RecursiveType] = Some(x)
 
   object RecursiveType {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[Type] =
-      internal.matchRecursiveType(typeOrBounds).map(_.underlying)
+    def unapply(x: RecursiveType)(given ctx: Context): Option[Type] = Some(x.underlying)
   }
 
-  given (self: RecursiveType) {
+  given RecursiveTypeOps: (self: RecursiveType) {
     def underlying(given ctx: Context): Type = internal.RecursiveType_underlying(self)
   }
 
-  object IsMethodType {
-    /** Matches any MethodType and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[MethodType] =
-      internal.matchMethodType(tpe)
-  }
+  given (given Context): IsInstanceOf[MethodType] = internal.isInstanceOfMethodType
+
+  object IsMethodType
+    @deprecated("Use _: MethodType", "")
+    def unapply(x: MethodType)(given ctx: Context): Option[MethodType] = Some(x)
 
   object MethodType {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(List[String], List[Type], Type)] =
-      internal.matchMethodType(typeOrBounds).map(x => (x.paramNames, x.paramTypes, x.resType))
+    def unapply(x: MethodType)(given ctx: Context): Option[(List[String], List[Type], Type)] =
+      Some((x.paramNames, x.paramTypes, x.resType))
   }
 
-  given (self: MethodType) {
+  given MethodTypeOps: (self: MethodType) {
     def isImplicit: Boolean = internal.MethodType_isImplicit(self)
     def isErased: Boolean = internal.MethodType_isErased(self)
     def paramNames(given ctx: Context): List[String] = internal.MethodType_paramNames(self)
@@ -333,35 +330,35 @@ trait TypeOrBoundsOps extends Core {
     def resType(given ctx: Context): Type = internal.MethodType_resType(self)
   }
 
-  object IsPolyType {
-    /** Matches any PolyType and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[PolyType] =
-      internal.matchPolyType(tpe)
-  }
+  given (given Context): IsInstanceOf[PolyType] = internal.isInstanceOfPolyType
+
+  object IsPolyType
+    @deprecated("Use _: PolyType", "")
+    def unapply(x: PolyType)(given ctx: Context): Option[PolyType] = Some(x)
 
   object PolyType {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
-      internal.matchPolyType(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
+    def unapply(x: PolyType)(given ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
+      Some((x.paramNames, x.paramBounds, x.resType))
   }
 
-  given (self: PolyType) {
+  given PolyTypeOps: (self: PolyType) {
     def paramNames(given ctx: Context): List[String] = internal.PolyType_paramNames(self)
     def paramBounds(given ctx: Context): List[TypeBounds] = internal.PolyType_paramBounds(self)
     def resType(given ctx: Context): Type = internal.PolyType_resType(self)
   }
 
-  object IsTypeLambda {
-    /** Matches any TypeLambda and returns it */
-    def unapply(tpe: TypeOrBounds)(given ctx: Context): Option[TypeLambda] =
-      internal.matchTypeLambda(tpe)
-  }
+  given (given Context): IsInstanceOf[TypeLambda] = internal.isInstanceOfTypeLambda
+
+  object IsTypeLambda
+    @deprecated("Use _: TypeLambda", "")
+    def unapply(x: TypeLambda)(given ctx: Context): Option[TypeLambda] = Some(x)
 
   object TypeLambda {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
-      internal.matchTypeLambda(typeOrBounds).map(x => (x.paramNames, x.paramBounds, x.resType))
+    def unapply(x: TypeLambda)(given ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
+      Some((x.paramNames, x.paramBounds, x.resType))
   }
 
-  given (self: TypeLambda) {
+  given TypeLambdaOps: (self: TypeLambda) {
     def paramNames(given ctx: Context): List[String] = internal.TypeLambda_paramNames(self)
     def paramBounds(given ctx: Context): List[TypeBounds] = internal.TypeLambda_paramBounds(self)
     def resType(given ctx: Context): Type = internal.TypeLambda_resType(self)
@@ -369,26 +366,26 @@ trait TypeOrBoundsOps extends Core {
 
   // ----- TypeBounds -----------------------------------------------
 
-  object IsTypeBounds {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[TypeBounds] =
-      internal.matchTypeBounds(typeOrBounds)
-  }
+  given (given Context): IsInstanceOf[TypeBounds] = internal.isInstanceOfTypeBounds
+
+  object IsTypeBounds
+    @deprecated("Use _: TypeBounds", "")
+    def unapply(x: TypeBounds)(given ctx: Context): Option[TypeBounds] = Some(x)
 
   object TypeBounds {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Option[(Type, Type)] =
-      internal.matchTypeBounds(typeOrBounds).map(x => (x.low, x.hi))
+    def unapply(x: TypeBounds)(given ctx: Context): Option[(Type, Type)] = Some((x.low, x.hi))
   }
 
-  given (self: TypeBounds) {
+  given TypeBoundsOps: (self: TypeBounds) {
     def low(given ctx: Context): Type = internal.TypeBounds_low(self)
     def hi(given ctx: Context): Type = internal.TypeBounds_hi(self)
   }
 
   // ----- NoPrefix -------------------------------------------------
 
-  object NoPrefix {
-    def unapply(typeOrBounds: TypeOrBounds)(given ctx: Context): Boolean =
-      internal.matchNoPrefix(typeOrBounds).isDefined
-  }
+  given (given Context): IsInstanceOf[NoPrefix] = internal.isInstanceOfNoPrefix
+
+  object NoPrefix
+    def unapply(x: NoPrefix)(given ctx: Context): Boolean = true
 
 }

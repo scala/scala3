@@ -28,3 +28,7 @@ i5720.scala
 
 # Tuples
 toexproftuple.scala
+i7580.scala
+
+# Nullability
+nullable.scala

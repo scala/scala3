@@ -1,0 +1,15 @@
+-- [E007] Type Mismatch Error: tests/neg/i6779.scala:9:30 --------------------------------------------------------------
+9 |def g1[T](x: T): F[G[T]] = x.f(given summon[Stuff]) // error
+  |                           ^^^^^^^^^^^^^^^^^^^^^^^^
+  |                           Found:    F[T]
+  |                           Required: F[G[T]]
+-- [E007] Type Mismatch Error: tests/neg/i6779.scala:11:27 -------------------------------------------------------------
+11 |def g2[T](x: T): F[G[T]] = x.f // error
+   |                           ^
+   |                           Found:    F[T]
+   |                           Required: F[G[T]]
+-- [E007] Type Mismatch Error: tests/neg/i6779.scala:13:31 -------------------------------------------------------------
+13 |def g3[T](x: T): F[G[T]] = f(x)(given summon[Stuff]) // error
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                           Found:    F[T]
+   |                           Required: F[G[T]]

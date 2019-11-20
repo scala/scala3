@@ -141,9 +141,9 @@ object Implicits {
               // The reason for leaving out `Predef_conforms` is that we know it adds
               // nothing since it only relates subtype with supertype.
               //
-              // We keep the old behavior under -language:Scala2.
+              // We keep the old behavior under -language:Scala2Compat.
               val isFunctionInS2 =
-                ctx.scala2Mode && tpw.derivesFrom(defn.FunctionClass(1)) && ref.symbol != defn.Predef_conforms
+                ctx.scala2CompatMode && tpw.derivesFrom(defn.FunctionClass(1)) && ref.symbol != defn.Predef_conforms
               val isImplicitConversion = tpw.derivesFrom(defn.ConversionClass)
               // An implementation of <:< counts as a view
               val isConforms = tpw.derivesFrom(defn.SubTypeClass)
@@ -174,14 +174,19 @@ object Implicits {
          *  Note that we always take the underlying type of a singleton type as the argument
          *  type, so that we get a reasonable implicit cache hit ratio.
          */
-        def adjustSingletonArg(tp: Type): Type = tp.widenSingleton match {
+        def adjustSingletonArg(tp: Type): Type = tp.widenSingleton match
           case tp: PolyType =>
             val res = adjustSingletonArg(tp.resType)
-            if (res `eq` tp.resType) tp else tp.derivedLambdaType(resType = res)
+            if res eq tp.resType then tp else tp.derivedLambdaType(resType = res)
           case tp: MethodType =>
             tp.derivedLambdaType(paramInfos = tp.paramInfos.mapConserve(widenSingleton))
-          case _ => tp
-        }
+          case _ =>
+            tp.baseType(defn.ConversionClass) match
+              case app @ AppliedType(tycon, from :: rest) =>
+                val wideFrom = from.widenSingleton
+                if wideFrom ne from then app.derivedAppliedType(tycon, wideFrom :: rest)
+                else tp
+              case _ => tp
 
         var ckind =
           if (!ref.symbol.isAccessibleFrom(ref.prefix)) Candidate.None
@@ -265,7 +270,7 @@ object Implicits {
      */
     override val level: Int =
       if (outerImplicits == null) 1
-      else if (ctx.scala2Mode ||
+      else if (ctx.scala2CompatMode ||
                (ctx.owner eq outerImplicits.ctx.owner) &&
                (ctx.scope eq outerImplicits.ctx.scope) &&
                !refs.head.implicitName.is(LazyImplicitName)) outerImplicits.level
@@ -567,7 +572,7 @@ trait ImplicitRunInfo {
             addPath(pre.cls.sourceModule.termRef)
           case pre: TermRef =>
             if (pre.symbol.is(Package)) {
-              if (ctx.scala2Mode) {
+              if (ctx.scala2CompatMode) {
                 addCompanion(pre, pre.member(nme.PACKAGE).symbol)
                 addPath(pre.prefix)
               }
@@ -1323,7 +1328,7 @@ trait Implicits { self: Typer =>
           case result: SearchFailure if result.isAmbiguous =>
             val deepPt = pt.deepenProto
             if (deepPt ne pt) inferImplicit(deepPt, argument, span)
-            else if (ctx.scala2Mode && !ctx.mode.is(Mode.OldOverloadingResolution))
+            else if (ctx.scala2CompatMode && !ctx.mode.is(Mode.OldOverloadingResolution))
               inferImplicit(pt, argument, span)(ctx.addMode(Mode.OldOverloadingResolution)) match {
                 case altResult: SearchSuccess =>
                   ctx.migrationWarning(
@@ -1384,7 +1389,7 @@ trait Implicits { self: Typer =>
                 untpd.Select(
                   untpd.TypedSplice(
                     adapt(generated,
-                      defn.ConversionClass.typeRef.appliedTo(argument.tpe.widen, pt),
+                      defn.ConversionClass.typeRef.appliedTo(argument.tpe, pt),
                       locked)),
                   nme.apply)
               else untpdGenerated
@@ -1455,16 +1460,29 @@ trait Implicits { self: Typer =>
        *    - If alt2 is preferred over alt1, pick alt2, otherwise return an
        *      ambiguous implicits error.
        */
-      def disambiguate(alt1: SearchResult, alt2: SearchSuccess) = alt1 match {
+      def disambiguate(alt1: SearchResult, alt2: SearchSuccess) = alt1 match
         case alt1: SearchSuccess =>
-          val diff = compareCandidate(alt1, alt2.ref, alt2.level)
+          var diff = compareCandidate(alt1, alt2.ref, alt2.level)
           assert(diff <= 0)   // diff > 0 candidates should already have been eliminated in `rank`
-          if (diff < 0) alt2
-          else
-            // numericValueTypeBreak(alt1, alt2) recoverWith
-            SearchFailure(new AmbiguousImplicits(alt1, alt2, pt, argument))
+          
+          if diff == 0 then
+            // Fall back: if both results are extension method applications,
+            // compare the extension methods instead of their wrappers.
+            object extMethodApply with
+              def unapply(t: Tree): Option[Type] = t match
+                case t: Applications.ExtMethodApply => Some(methPart(stripApply(t.app)).tpe)
+                case _ => None
+            end extMethodApply
+
+            (alt1.tree, alt2.tree) match
+              case (extMethodApply(ref1: TermRef), extMethodApply(ref2: TermRef)) =>
+                diff = compare(ref1, ref2)
+              case _ =>
+
+          if diff < 0 then alt2
+          else if diff > 0 then alt1
+          else SearchFailure(new AmbiguousImplicits(alt1, alt2, pt, argument))
         case _: SearchFailure => alt2
-      }
 
       /** Faced with an ambiguous implicits failure `fail`, try to find another
        *  alternative among `pending` that is strictly better than both ambiguous
@@ -1502,7 +1520,7 @@ trait Implicits { self: Typer =>
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
                 if (fail.isAmbiguous)
-                  if (ctx.scala2Mode) {
+                  if (ctx.scala2CompatMode) {
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
                     if (result.isSuccess)
                       warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])

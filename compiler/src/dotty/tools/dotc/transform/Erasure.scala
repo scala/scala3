@@ -740,11 +740,12 @@ object Erasure {
     override def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree =
       typed(tree.arg, pt)
 
-    override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
+    override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): (List[Tree], Context) = {
       val stats1 =
         if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass, erasurePhase).add(stats)
         else stats
-      super.typedStats(stats1, exprOwner).filter(!_.isEmpty)
+      val (stats2, finalCtx) = super.typedStats(stats1, exprOwner)
+      (stats2.filter(!_.isEmpty), finalCtx)
     }
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree =

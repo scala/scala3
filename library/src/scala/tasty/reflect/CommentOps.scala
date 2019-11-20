@@ -2,7 +2,7 @@ package scala.tasty.reflect
 
 trait CommentOps extends Core {
 
-  given (self: Comment) {
+  given CommentOps: (self: Comment) {
 
     /** Raw comment string */
     def raw: String = internal.Comment_raw(self)

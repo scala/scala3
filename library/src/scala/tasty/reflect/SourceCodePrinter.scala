@@ -105,8 +105,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
       case tree @ PackageClause(name, stats) =>
         val stats1 = stats.collect {
-          case IsPackageClause(stat) => stat
-          case IsDefinition(stat) if !(stat.symbol.flags.is(Flags.Object) && stat.symbol.flags.is(Flags.Lazy)) => stat
+          case stat: PackageClause => stat
+          case stat: Definition if !(stat.symbol.flags.is(Flags.Object) && stat.symbol.flags.is(Flags.Lazy)) => stat
           case stat @ Import(_, _) => stat
         }
         name match {
@@ -124,7 +124,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         this += "."
         printImportSelectors(selectors)
 
-      case IsClassDef(cdef @ ClassDef(name, DefDef(_, targs, argss, _, _), parents, derived, self, stats)) =>
+      case cdef @ ClassDef(name, DefDef(_, targs, argss, _, _), parents, derived, self, stats) =>
         printDefAnnotations(cdef)
 
         val flags = cdef.symbol.flags
@@ -141,7 +141,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         else if (flags.is(Flags.Abstract)) this += highlightKeyword("abstract class ") += highlightTypeDef(name)
         else this += highlightKeyword("class ") += highlightTypeDef(name)
 
-        val typeParams = stats.collect { case IsTypeDef(targ) => targ  }.filter(_.symbol.isTypeParam).zip(targs)
+        val typeParams = stats.collect { case targ: TypeDef => targ  }.filter(_.symbol.isTypeParam).zip(targs)
         if (!flags.is(Flags.Object)) {
           printTargsDefs(typeParams)
           val it = argss.iterator
@@ -150,30 +150,30 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         }
 
         val parents1 = parents.filter {
-          case IsTerm(Apply(Select(New(tpt), _), _)) => !Types.JavaLangObject.unapply(tpt.tpe)
-          case IsTypeTree(TypeSelect(Select(Ident("_root_"), "scala"), "Product")) => false
-          case IsTypeTree(TypeSelect(Select(Ident("_root_"), "scala"), "Serializable")) => false
+          case Apply(Select(New(tpt), _), _) => !Types.JavaLangObject.unapply(tpt.tpe)
+          case TypeSelect(Select(Ident("_root_"), "scala"), "Product") => false
+          case TypeSelect(Select(Ident("_root_"), "scala"), "Serializable") => false
           case _ => true
         }
         if (parents1.nonEmpty)
           this += highlightKeyword(" extends ")
 
         def printParent(parent: Tree /* Term | TypeTree */, needEmptyParens: Boolean = false): Unit = parent match {
-          case IsTypeTree(parent) =>
+          case parent: TypeTree =>
             printTypeTree(parent)(given Some(cdef.symbol))
-          case IsTerm(TypeApply(fun, targs)) =>
+          case TypeApply(fun, targs) =>
             printParent(fun)
-          case IsTerm(Apply(fun@Apply(_,_), args)) =>
+          case Apply(fun@Apply(_,_), args) =>
             printParent(fun, true)
             if (!args.isEmpty || needEmptyParens)
               inParens(printTrees(args, ", ")(given Some(cdef.symbol)))
-          case IsTerm(Apply(fun, args)) =>
+          case Apply(fun, args) =>
             printParent(fun)
             if (!args.isEmpty || needEmptyParens)
               inParens(printTrees(args, ", ")(given Some(cdef.symbol)))
-          case IsTerm(Select(IsNew(newTree), _)) =>
+          case Select(newTree: New, _) =>
             printType(newTree.tpe)(given Some(cdef.symbol))
-          case IsTerm(parent) =>
+          case parent: Term =>
             throw new MatchError(parent.showExtractors)
         }
 
@@ -211,9 +211,9 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
           !flags.is(Flags.Param) && !flags.is(Flags.ParamAccessor) && !flags.is(Flags.FieldAccessor) && !isUndecompilableCaseClassMethod && !isInnerModuleObject
         }
         val stats1 = stats.collect {
-          case IsDefinition(stat) if keepDefinition(stat) => stat
+          case stat: Definition if keepDefinition(stat) => stat
           case stat @ Import(_, _) => stat
-          case IsTerm(stat) => stat
+          case stat: Term => stat
         }
 
         def printBody(printSelf: Boolean) = {
@@ -245,12 +245,12 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         }
         this
 
-      case IsTypeDef(tdef @ TypeDef(name, rhs)) =>
+      case tdef @ TypeDef(name, rhs) =>
         printDefAnnotations(tdef)
         this += highlightKeyword("type ")
         printTargDef((tdef, tdef), isMember = true)
 
-      case IsValDef(vdef @ ValDef(name, tpt, rhs)) =>
+      case vdef @ ValDef(name, tpt, rhs) =>
         printDefAnnotations(vdef)
 
         val flags = vdef.symbol.flags
@@ -287,7 +287,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
             printTree(body)
         }
 
-      case IsDefDef(ddef @ DefDef(name, targs, argss, tpt, rhs)) =>
+      case ddef @ DefDef(name, targs, argss, tpt, rhs) =>
         printDefAnnotations(ddef)
 
         val isConstructor = name == "<init>"
@@ -321,7 +321,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       case Ident("_") =>
         this += "_"
 
-      case IsIdent(tree) =>
+      case tree: Ident =>
         splicedName(tree.symbol) match {
           case Some(name) => this += name
           case _ => printType(tree.tpe)
@@ -344,7 +344,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         }
         this += "this"
 
-      case IsNew(tree) =>
+      case tree: New =>
         this += "new "
         printType(tree.tpe)
 
@@ -455,7 +455,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
       case Block(stats0, expr) =>
         val stats = stats0.filter {
-          case IsValDef(tree) => !tree.symbol.flags.is(Flags.Object)
+          case tree: ValDef => !tree.symbol.flags.is(Flags.Object)
           case _ => true
         }
         printFlatBlock(stats, expr)
@@ -476,8 +476,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         this += highlightKeyword(" match")
         inBlock(printCases(cases, lineBreak()))
 
-      case ImpliedMatch(cases) =>
-        this += highlightKeyword("delegate match")  // TODO: drop
+      case GivenMatch(cases) =>
+        this += highlightKeyword("given match")  // TODO: drop
         inBlock(printCases(cases, lineBreak()))
 
       case Try(body, cases, finallyOpt) =>
@@ -508,10 +508,10 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         this += " <: "
         printTypeTree(hi)
 
-      case IsWildcardTypeTree(tpt) =>
+      case tpt: WildcardTypeTree =>
         printTypeOrBound(tpt.tpe)
 
-      case IsTypeTree(tpt) =>
+      case tpt: TypeTree =>
         printTypeTree(tpt)
 
       case Closure(meth, _) =>
@@ -523,7 +523,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     }
 
     def printQualTree(tree: Tree): Buffer = tree match {
-      case IsIf(_) | IsMatch(_) | IsWhile(_) | IsTry(_) | IsReturn(_) =>
+      case _: If | _: Match | _: While | _: Try | _: Return =>
         this += "("
         printTree(tree)
         this += ")"
@@ -573,7 +573,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     def printFlatBlock(stats: List[Statement], expr: Term)(given elideThis: Option[Symbol]): Buffer = {
       val (stats1, expr1) = flatBlock(stats, expr)
       val stats2 = stats1.filter {
-        case IsTypeDef(tree) => !tree.symbol.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.quoteTypeTag")
+        case tree: TypeDef => !tree.symbol.annots.exists(_.symbol.owner.fullName == "scala.internal.Quoted$.quoteTypeTag")
         case _ => true
       }
       if (stats2.isEmpty) {
@@ -601,7 +601,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
           case _ => this += lineBreak()
         }
         next match {
-          case IsTerm(term) =>
+          case term: Term =>
             flatBlock(Nil, term) match {
               case (next :: _, _) => rec(next)
               case (Nil, next) => rec(next)
@@ -748,13 +748,13 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
       this += argCons.name
       argCons.rhs match {
-        case IsTypeBoundsTree(rhs) => printBoundsTree(rhs)
-        case IsWildcardTypeTree(rhs) =>
+        case rhs: TypeBoundsTree => printBoundsTree(rhs)
+        case rhs: WildcardTypeTree =>
           printTypeOrBound(rhs.tpe)
         case rhs @ LambdaTypeTree(tparams, body) =>
           def printParam(t: Tree /*TypeTree | TypeBoundsTree*/): Unit = t match {
-            case IsTypeBoundsTree(t) => printBoundsTree(t)
-            case IsTypeTree(t) => printTypeTree(t)
+            case t: TypeBoundsTree => printBoundsTree(t)
+            case t: TypeTree => printTypeTree(t)
           }
           def printSeparated(list: List[TypeDef]): Unit = list match {
             case Nil =>
@@ -779,7 +779,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
             printTypeOrBoundsTree(body)
           }
           else this
-        case IsTypeTree(rhs) =>
+        case rhs: TypeTree =>
           this += " = "
           printTypeTree(rhs)
       }
@@ -830,7 +830,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       if sym.isDefDef && sym.name == "<init>" then
         val ClassDef(_, _, _, _, _, body) = sym.owner.tree
         body.collectFirst {
-          case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.symbol.flags.is(Flags.ParamAccessor) =>
+          case vdef @ ValDef(`name`, _, _) if vdef.symbol.flags.is(Flags.ParamAccessor) =>
             if (!vdef.symbol.flags.is(Flags.Local)) {
               var printedPrefix = false
               if (vdef.symbol.flags.is(Flags.Override)) {
@@ -915,7 +915,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         this += "_: "
         printTypeOrBoundsTree(tpt)
 
-      case IsTerm(v) =>
+      case v: Term =>
         printTree(v)
 
       case _ =>
@@ -949,9 +949,9 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         printTypeTree(lo)
         this += " <: "
         printTypeTree(hi)
-      case IsWildcardTypeTree(tpt) =>
+      case tpt: WildcardTypeTree =>
         printTypeOrBound(tpt.tpe)
-      case IsTypeTree(tpt) =>
+      case tpt: TypeTree =>
         printTypeTree(tpt)
     }
 
@@ -971,13 +971,13 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
             printTypeAndAnnots(tp)
             this += " "
             printAnnotation(annot)
-          case IsTypeRef(tpe) if tpe.typeSymbol.fullName == "scala.runtime.Null$" || tpe.typeSymbol.fullName == "scala.runtime.Nothing$" =>
+          case tpe: TypeRef if tpe.typeSymbol.fullName == "scala.runtime.Null$" || tpe.typeSymbol.fullName == "scala.runtime.Nothing$" =>
             // scala.runtime.Null$ and scala.runtime.Nothing$ are not modules, those are their actual names
             printType(tpe)
-          case IsTermRef(tpe) if tpe.termSymbol.isClassDef && tpe.termSymbol.name.endsWith("$") =>
+          case tpe: TermRef if tpe.termSymbol.isClassDef && tpe.termSymbol.name.endsWith("$") =>
             printType(tpe)
             this += ".type"
-          case IsTypeRef(tpe) if tpe.typeSymbol.isClassDef && tpe.typeSymbol.name.endsWith("$") =>
+          case tpe: TypeRef if tpe.typeSymbol.isClassDef && tpe.typeSymbol.name.endsWith("$") =>
             printType(tpe)
             this += ".type"
           case tpe @ TermRef(sym, _) =>
@@ -1055,7 +1055,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         printType(lo)
         this += " <: "
         printType(hi)
-      case IsType(tpe) => printType(tpe)
+      case tpe: Type => printType(tpe)
     }
 
     /** Print type
@@ -1070,7 +1070,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       case ConstantType(const) =>
         printConstant(const)
 
-      case IsTypeRef(tpe) =>
+      case tpe: TypeRef =>
         val sym = tpe.typeSymbol
         tpe.qualifier match {
           case ThisType(tp) if tp.typeSymbol == defn.RootClass || tp.typeSymbol == defn.EmptyPackageClass =>
@@ -1081,15 +1081,15 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
               if (packagePath != "")
                 this += packagePath += "."
             }
-          case IsTermRef(prefix) if prefix.termSymbol.isClassDef =>
+          case prefix: TermRef if prefix.termSymbol.isClassDef =>
             printType(prefix)
             this += "#"
-          case IsTypeRef(prefix) if prefix.typeSymbol.isClassDef =>
+          case prefix: TypeRef if prefix.typeSymbol.isClassDef =>
             printType(prefix)
             this += "#"
-          case IsType(ThisType(TermRef(cdef, _))) if elideThis.nonEmpty && cdef == elideThis.get =>
-          case IsType(ThisType(TypeRef(cdef, _))) if elideThis.nonEmpty && cdef == elideThis.get =>
-          case IsType(prefix) =>
+          case ThisType(TermRef(cdef, _)) if elideThis.nonEmpty && cdef == elideThis.get =>
+          case ThisType(TypeRef(cdef, _)) if elideThis.nonEmpty && cdef == elideThis.get =>
+          case prefix: Type =>
             printType(prefix)
             this += "."
         }
@@ -1113,7 +1113,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
       case AppliedType(tp, args) =>
         tp match {
-          case IsTypeLambda(tp) =>
+          case tp: TypeLambda =>
             printType(tpe.dealias)
           case TypeRef(Types.ScalaPackage(), "<repeated>") =>
             this += "_*"
@@ -1149,7 +1149,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
       case ThisType(tp) =>
         tp match {
-          case IsTypeRef(tp) if !tp.typeSymbol.flags.is(Flags.Object) =>
+          case tp: TypeRef if !tp.typeSymbol.flags.is(Flags.Object) =>
             printFullClassName(tp)
             this += highlightTypeDef(".this")
           case TypeRef(prefix, name) if name.endsWith("$") =>
@@ -1187,21 +1187,21 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       case RecursiveThis(_) =>
         this += highlightTypeDef("this")
 
-      case IsMethodType(tpe) =>
+      case tpe: MethodType =>
         this += "("
         printList(tpe.paramNames.zip(tpe.paramTypes), ", ",
           (x: (String, Type)) => (this += x._1 += ": ").printType(x._2))
         this += ")"
         printType(tpe.resType)
 
-      case IsPolyType(tpe) =>
+      case tpe: PolyType =>
         this += "["
         printList(tpe.paramNames.zip(tpe.paramBounds), ", ",
           (x: (String, TypeBounds)) => (this += x._1 += " ").printTypeOrBound(x._2))
         this += "]"
         printType(tpe.resType)
 
-      case IsTypeLambda(tpe) =>
+      case tpe: TypeLambda =>
         this += "["
         printList(tpe.paramNames.zip(tpe.paramBounds), ", ",
           (x: (String, TypeBounds)) => (this += x._1 += " ").printTypeOrBound(x._2))
@@ -1243,8 +1243,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       val annots = definition.symbol.annots.filter {
         case Annotation(annot, _) =>
           annot.tpe match {
-            case TypeRef(IsTermRef(prefix), _) if prefix.termSymbol.fullName == "scala.annotation.internal" => false
-            case TypeRef(IsTypeRef(prefix), _) if prefix.typeSymbol.fullName == "scala.annotation.internal" => false
+            case TypeRef(prefix: TermRef, _) if prefix.termSymbol.fullName == "scala.annotation.internal" => false
+            case TypeRef(prefix: TypeRef, _) if prefix.typeSymbol.fullName == "scala.annotation.internal" => false
             case TypeRef(Types.ScalaPackage(), "forceInline") => false
             case _ => true
           }
@@ -1266,7 +1266,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         case ByNameType(t) =>
           this += ": "
           printType(t)
-        case IsType(tp) =>
+        case tp: Type =>
           this += ": "
           printType(tp)
       }
@@ -1276,13 +1276,13 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
           indented {
             this += lineBreak()
             info match {
-              case IsTypeBounds(info) =>
+              case info: TypeBounds =>
                 this += highlightKeyword("type ") += highlightTypeDef(name)
                 printBounds(info)
               case ByNameType(_) | MethodType(_, _, _) | TypeLambda(_, _, _) =>
                 this += highlightKeyword("def ") += highlightTypeDef(name)
                 printMethodicType(info)
-              case IsType(info) =>
+              case info: Type =>
                 this += highlightKeyword("val ") += highlightValDef(name)
                 printMethodicType(info)
             }
@@ -1297,8 +1297,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
     def printMethodicTypeParams(paramNames: List[String], params: List[TypeOrBounds])(given elideThis: Option[Symbol]): Unit = {
       def printInfo(info: TypeOrBounds) = info match {
-        case IsTypeBounds(info) => printBounds(info)
-        case IsType(info) =>
+        case info: TypeBounds => printBounds(info)
+        case info: Type =>
           this += ": "
           printType(info)
       }
@@ -1413,7 +1413,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
   private object SpecialOp {
     def unapply(arg: Tree)(given ctx: Context): Option[(String, List[Term])] = arg match {
-      case IsTerm(arg @ Apply(fn, args)) =>
+      case arg @ Apply(fn, args) =>
         fn.tpe match {
           case tpe @ TermRef(ThisType(TypeRef(_, name)), name2) if name == "<special-ops>" =>
             Some((name2, args))
@@ -1437,37 +1437,37 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
     object JavaLangObject {
       def unapply(tpe: Type)(given ctx: Context): Boolean = tpe match {
-        case TypeRef(IsTermRef(prefix), "Object") => prefix.typeSymbol.fullName == "java.lang"
+        case TypeRef(prefix: TermRef, "Object") => prefix.typeSymbol.fullName == "java.lang"
         case _ => false
       }
     }
 
     object Sequence {
       def unapply(tpe: Type)(given ctx: Context): Option[Type] = tpe match {
-        case AppliedType(TypeRef(IsTermRef(prefix), "Seq"), IsType(tp) :: Nil) if prefix.termSymbol.fullName == "scala.collection" => Some(tp)
-        case AppliedType(TypeRef(IsTypeRef(prefix), "Seq"), IsType(tp) :: Nil) if prefix.typeSymbol.fullName == "scala.collection" => Some(tp)
+        case AppliedType(TypeRef(prefix: TermRef, "Seq"), (tp: Type) :: Nil) if prefix.termSymbol.fullName == "scala.collection" => Some(tp)
+        case AppliedType(TypeRef(prefix: TypeRef, "Seq"), (tp: Type) :: Nil) if prefix.typeSymbol.fullName == "scala.collection" => Some(tp)
         case _ => None
       }
     }
 
     object RepeatedAnnotation {
       def unapply(tpe: Type)(given ctx: Context): Boolean = tpe match {
-        case TypeRef(IsTermRef(prefix), "Repeated") => prefix.termSymbol.fullName == "scala.annotation.internal"
-        case TypeRef(IsTypeRef(prefix), "Repeated") => prefix.typeSymbol.fullName == "scala.annotation.internal"
+        case TypeRef(prefix: TermRef, "Repeated") => prefix.termSymbol.fullName == "scala.annotation.internal"
+        case TypeRef(prefix: TypeRef, "Repeated") => prefix.typeSymbol.fullName == "scala.annotation.internal"
         case _ => false
       }
     }
 
     object Repeated {
       def unapply(tpe: Type)(given ctx: Context): Option[Type] = tpe match {
-        case AppliedType(TypeRef(ScalaPackage(), "<repeated>"), IsType(tp) :: Nil) => Some(tp)
+        case AppliedType(TypeRef(ScalaPackage(), "<repeated>"), (tp: Type) :: Nil) => Some(tp)
         case _ => None
       }
     }
 
     object ScalaPackage {
       def unapply(tpe: TypeOrBounds)(given ctx: Context): Boolean = tpe match {
-        case IsTermRef(tpe) => tpe.termSymbol == defn.ScalaPackage
+        case tpe: TermRef => tpe.termSymbol == defn.ScalaPackage
         case _ => false
       }
     }

@@ -26,7 +26,7 @@ given listOrd[T](given ord: Ord[T]): Ord[List[T]] {
     case (_, Nil) => +1
     case (x :: xs1, y :: ys1) =>
       val fst = ord.compare(x, y)
-      if (fst != 0) fst else xs1.compareTo(ys1)
+      if (fst != 0) fst else compare(xs1, ys1)
   }
 }
 ```
@@ -68,8 +68,7 @@ An alias given can have type parameters and given clauses just like any other gi
 ## Given Instance Initialization
 
 A given instance without type parameters or given clause is initialized on-demand, the first
-time it is accessed. It is not required to ensure safe publication, which means that
-different threads might create different instances for the same `given` definition.
+time it is accessed.
 If a `given` definition has type parameters or a given clause, a fresh instance is created for each reference.
 
 ## Syntax

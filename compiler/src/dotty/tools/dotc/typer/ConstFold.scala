@@ -11,6 +11,7 @@ import Constants._
 import Names._
 import StdNames._
 import Contexts._
+import Nullables.{CompareNull, TrackedRef}
 
 object ConstFold {
 
@@ -19,15 +20,17 @@ object ConstFold {
   /** If tree is a constant operation, replace with result. */
   def apply[T <: Tree](tree: T)(implicit ctx: Context): T = finish(tree) {
     tree match {
+      case CompareNull(TrackedRef(ref), testEqual)
+      if ctx.settings.YexplicitNulls.value && ctx.notNullInfos.impliesNotNull(ref) =>
+        // TODO maybe drop once we have general Nullability?
+        Constant(!testEqual)
       case Apply(Select(xt, op), yt :: Nil) =>
-        xt.tpe.widenTermRefExpr.normalized match {
+        xt.tpe.widenTermRefExpr.normalized match
           case ConstantType(x) =>
-            yt.tpe.widenTermRefExpr match {
+            yt.tpe.widenTermRefExpr match
               case ConstantType(y) => foldBinop(op, x, y)
               case _ => null
-            }
           case _ => null
-        }
       case Select(xt, op) =>
         xt.tpe.widenTermRefExpr match {
           case ConstantType(x) => foldUnop(op, x)

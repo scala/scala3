@@ -8,9 +8,6 @@ import dotty.tools.dotc.core.Types.{AndType, ClassInfo, ConstantType, OrType, Ty
 object NullOpsDecorator {
 
   implicit class NullOps(val self: Type) {
-    /** Is this type a reference to `Null`, possibly after aliasing? */
-    def isNullType(implicit ctx: Context): Boolean = self.isRef(defn.NullClass)
-
     /** Is this type exactly `JavaNull` (no vars, aliases, refinements etc allowed)? */
     def isJavaNullType(implicit ctx: Context): Boolean = {
       assert(ctx.explicitNulls)
@@ -45,6 +42,8 @@ object NullOpsDecorator {
           if (rrhs.isNullType) llhs
           else if (llhs.isNullType) rrhs
           else tp.derivedOrType(llhs, rrhs)
+        case tp @ AndType(tp1, tp2) =>
+          tp.derivedAndType(strip(tp1), strip(tp2))
         case _ =>
           if (tp.isNullType) {
             if (tp.isJavaNullType) hasJavaNull = true
@@ -75,17 +74,6 @@ object NullOpsDecorator {
         case OrType(_, rhs) => rhs.isJavaNullType
         case _ => false
       }
-    }
-
-    /** Is this type guaranteed not to have `null` as a value? */
-    final def isNotNull(implicit ctx: Context): Boolean = self match {
-      case tp: ConstantType => tp.value.value != null
-      case tp: ClassInfo => !tp.cls.isNullableClass && tp.cls != defn.NothingClass
-      case tp: TypeBounds => tp.lo.isNotNull
-      case tp: TypeProxy => tp.underlying.isNotNull
-      case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
-      case OrType(tp1, tp2) => tp1.isNotNull && tp2.isNotNull
-      case _ => false
     }
 
     def maybeNullable(implicit ctx: Context): Type =
@@ -120,18 +108,17 @@ object NullOpsDecorator {
      */
     def stripAllJavaNull(implicit ctx: Context): Type = {
       assert(ctx.explicitNulls)
-      var diff = false
       object RemoveNulls extends TypeMap {
         override def apply(tp: Type): Type =
           tp.normNullableUnion match {
             case OrType(lhs, rhs) if rhs.isJavaNullType =>
-              diff = true
               mapOver(lhs)
             case _ => mapOver(tp)
           }
       }
-      val rem = RemoveNulls(self.widenDealias)
-      if (diff) rem else self
+      val self1 = self.widenDealias
+      val rem = RemoveNulls(self1)
+      if (rem ne self1) rem else self
     }
 
     /** Injects this type into a union with `JavaNull`. */
