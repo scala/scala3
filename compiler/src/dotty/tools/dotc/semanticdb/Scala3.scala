@@ -91,6 +91,8 @@ object Scala3 with
 
   given SymbolOps: (sym: Symbol) with
 
+    def ifExists(given Context): Option[Symbol] = if sym.exists then Some(sym) else None
+
     def isScala2PackageObject(given Context): Boolean =
       sym.name.isScala2PackageObjectName && sym.owner.is(Package) && sym.is(Module)
 

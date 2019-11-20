@@ -9,22 +9,22 @@ class Synthetic/*<-example::Synthetic#*/ {
 
   // See https://github.com/scalameta/scalameta/issues/977
   val Name/*<-example::Synthetic#Name.*/ = /*->scala::Predef.augmentString().*/"name:(.*)".r/*->scala::collection::StringOps#r().*/
-  /*->scala::Tuple2#_1.*//*->scala::Tuple2#_2.*/val x/*<-local0*//*<-example::Synthetic#x.*/ #::/*->scala::package.`#::`.*//*->scala::package.`#::`.unapply().*/ xs/*<-local1*//*<-example::Synthetic#xs.*//*->local0*//*->local1*/ = LazyList/*->scala::package.LazyList.*//*->scala::collection::IterableFactory#apply().*/(1, 2)
+  val x/*<-local0*//*<-example::Synthetic#x.*/ #::/*->scala::package.`#::`.*//*->scala::package.`#::`.unapply().*/ xs/*<-local1*//*<-example::Synthetic#xs.*//*->scala::Tuple2.apply().*//*->local0*//*->local1*/ = LazyList/*->scala::package.LazyList.*//*->scala::collection::IterableFactory#apply().*/(1, 2)
   val Name/*->example::Synthetic#Name.*//*->scala::util::matching::Regex#unapplySeq().*/(name/*<-example::Synthetic#name.*//*<-local2*/)/*->local2*/ = "name:foo"
   1 #:: /*->scala::collection::immutable::LazyList.toDeferrer().*/2 #:: /*->scala::collection::immutable::LazyList.toDeferrer().*/LazyList/*->scala::package.LazyList.*/.empty/*->scala::collection::immutable::LazyList.empty().*//*->scala::collection::immutable::LazyList.Deferrer#`#::`().*/
 
   val lst/*<-example::Synthetic#lst.*/ = 1 #:: /*->scala::collection::immutable::LazyList.toDeferrer().*/2 #:: /*->scala::collection::immutable::LazyList.toDeferrer().*/LazyList/*->scala::package.LazyList.*/.empty/*->scala::collection::immutable::LazyList.empty().*//*->scala::collection::immutable::LazyList.Deferrer#`#::`().*/
 
-  for (x/*<-local3*/ <- /*->scala::LowPriorityImplicits#intWrapper().*/1 to/*->scala::runtime::RichInt#to().*/ 10/*->scala::collection::immutable::Range#foreach().*/; y/*<-local4*/ <- /*->scala::LowPriorityImplicits#intWrapper().*/0 until/*->scala::runtime::RichInt#until().*/ 10/*->scala::collection::immutable::Range#foreach().*/) println/*->scala::Predef.println(+1).*/(x/*->local3*/ ->/*->scala::Predef.ArrowAssoc#`->`().*/ x/*->local3*/)
-  for (i/*<-local5*/ <- /*->scala::LowPriorityImplicits#intWrapper().*/1 to/*->scala::runtime::RichInt#to().*/ 10/*->scala::collection::StrictOptimizedIterableOps#flatMap().*/; j/*<-local6*/ <- /*->scala::LowPriorityImplicits#intWrapper().*/0 until/*->scala::runtime::RichInt#until().*/ 10/*->scala::collection::immutable::Range#map().*/) yield (i/*->local5*/, j/*->local6*/)
-  for (i/*<-local7*/ <- /*->scala::LowPriorityImplicits#intWrapper().*/1 to/*->scala::runtime::RichInt#to().*/ 10/*->scala::collection::StrictOptimizedIterableOps#flatMap().*/; j/*<-local8*/ <- /*->scala::LowPriorityImplicits#intWrapper().*/0 until/*->scala::runtime::RichInt#until().*/ 10/*->scala::collection::IterableOps#withFilter().*/ if i/*->local7*/ %/*->scala::Int#`%`(+3).*/ 2 ==/*->scala::Int#`==`(+3).*/ 0/*->scala::collection::WithFilter#map().*/) yield (i/*->local7*/, j/*->local8*/)
+  for (x/*<-local3*/ <- /*->scala::LowPriorityImplicits#intWrapper().*/1 to/*->scala::runtime::RichInt#to().*/ 10/*->scala::collection::immutable::Range#foreach().*/; y/*<-local4*/ <- /*->scala::LowPriorityImplicits#intWrapper().*/0 until/*->scala::runtime::RichInt#until().*/ 10/*->scala::collection::immutable::Range#foreach().*/) println/*->scala::Predef.println(+1).*/(/*->scala::Predef.ArrowAssoc().*/x/*->local3*/ ->/*->scala::Predef.ArrowAssoc#`->`().*/ x/*->local3*/)
+  for (i/*<-local5*/ <- /*->scala::LowPriorityImplicits#intWrapper().*/1 to/*->scala::runtime::RichInt#to().*/ 10/*->scala::collection::StrictOptimizedIterableOps#flatMap().*/; j/*<-local6*/ <- /*->scala::LowPriorityImplicits#intWrapper().*/0 until/*->scala::runtime::RichInt#until().*/ 10/*->scala::collection::immutable::Range#map().*/) yield (/*->scala::Tuple2.apply().*/i/*->local5*/, j/*->local6*/)
+  for (i/*<-local7*/ <- /*->scala::LowPriorityImplicits#intWrapper().*/1 to/*->scala::runtime::RichInt#to().*/ 10/*->scala::collection::StrictOptimizedIterableOps#flatMap().*/; j/*<-local8*/ <- /*->scala::LowPriorityImplicits#intWrapper().*/0 until/*->scala::runtime::RichInt#until().*/ 10/*->scala::collection::IterableOps#withFilter().*/ if i/*->local7*/ %/*->scala::Int#`%`(+3).*/ 2 ==/*->scala::Int#`==`(+3).*/ 0/*->scala::collection::WithFilter#map().*/) yield (/*->scala::Tuple2.apply().*/i/*->local7*/, j/*->local8*/)
 
   object s/*<-example::Synthetic#s.*/ {
     def apply/*<-example::Synthetic#s.apply().*/() = 2
     s/*->example::Synthetic#s.apply().*/()
     s.apply/*->example::Synthetic#s.apply().*/()
     case class Bar/*<-example::Synthetic#s.Bar#*/()
-    Bar/*->example::Synthetic#s.Bar.*/()
+    Bar/*->example::Synthetic#s.Bar.*//*->example::Synthetic#s.Bar.apply().*/()
     null.asInstanceOf/*->scala::Any#asInstanceOf().*/[Int/*->scala::Int#*/ => Int/*->scala::Int#*/]/*->scala::Function1#apply().*/(2)
   }
 

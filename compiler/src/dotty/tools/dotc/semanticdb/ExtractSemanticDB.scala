@@ -15,6 +15,8 @@ import util.{SourceFile, SourcePosition}
 import collection.mutable
 import java.nio.file.Paths
 
+import PartialFunction.condOpt
+
 import ast.untpd.given
 import NameOps.given
 
@@ -72,17 +74,20 @@ class ExtractSemanticDB extends Phase with
       !sym.exists
       || sym.isLocalDummy
       || sym.is(Synthetic)
-      || sym.isConstructor && (sym.owner.is(ModuleClass) || !sym.isGlobal)
       || sym.isSetter
-      || excludeDefStrict(sym)
+      || excludeDefOrUse(sym)
 
-    private def excludeDefStrict(sym: Symbol)(given Context): Boolean =
+    private def excludeDefOrUse(sym: Symbol)(given Context): Boolean =
       sym.name.is(NameKinds.DefaultGetterName)
-      || excludeSymbolStrict(sym)
+      || sym.isConstructor && (sym.owner.is(ModuleClass) || !sym.isGlobal)
+      || excludeSymbol(sym)
 
-    private def excludeSymbolStrict(sym: Symbol)(given Context): Boolean =
+    private def excludeSymbol(sym: Symbol)(given Context): Boolean =
       sym.name.isWildcard
-      || sym.isAnonymousFunction
+      || excludeQual(sym)
+
+    private def excludeQual(sym: Symbol)(given Context): Boolean =
+      sym.isAnonymousFunction
       || sym.isAnonymousModuleVal
       || sym.name.isEmptyNumbered
 
@@ -90,9 +95,10 @@ class ExtractSemanticDB extends Phase with
       sym.isAllOf(HigherKinded | Param)
 
     /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
-    private def excludeUseStrict(sym: Symbol, span: Span)(given Context): Boolean =
-      excludeDefStrict(sym)
-      || excludeDef(sym) && span.zeroLength
+    private def excludeUse(qualifier: Option[Symbol], sym: Symbol)(given Context): Boolean =
+      excludeDefOrUse(sym)
+      || sym == defn.Any_typeCast
+      || qualifier.exists(excludeQual)
 
     override def traverse(tree: Tree)(given Context): Unit =
 
@@ -100,8 +106,8 @@ class ExtractSemanticDB extends Phase with
         val tptSym = tpt.symbol
         if tptSym.owner == ctorSym
           val found = matchingMemberType(tptSym, ctorSym.owner)
-          if !excludeUseStrict(found, tpt.span) && tpt.span.hasLength
-            registerUse(found, tpt.span)
+          if tpt.span.hasLength
+            registerUseGuarded(None, found, tpt.span)
         else
           traverse(tpt)
 
@@ -129,8 +135,8 @@ class ExtractSemanticDB extends Phase with
             registerDefinition(tree.symbol, tree.adjustedNameSpan, symbolKinds(tree))
             val privateWithin = tree.symbol.privateWithin
             if privateWithin.exists
-              registerUse(privateWithin, spanOfSymbol(privateWithin, tree.span))
-          else if !excludeSymbolStrict(tree.symbol)
+              registerUseGuarded(None, privateWithin, spanOfSymbol(privateWithin, tree.span))
+          else if !excludeSymbol(tree.symbol)
             registerSymbol(tree.symbol, symbolName(tree.symbol), symbolKinds(tree))
           tree match
           case tree: ValDef
@@ -178,7 +184,8 @@ class ExtractSemanticDB extends Phase with
           else
             tree.body.foreach(traverse)
         case tree: Assign =>
-          if !excludeUseStrict(tree.lhs.symbol, tree.lhs.span)
+          val qualSym = condOpt(tree.lhs) { case Select(qual, _) if qual.symbol.exists => qual.symbol }
+          if !excludeUse(qualSym, tree.lhs.symbol)
             val lhs = tree.lhs.symbol
             val setter = lhs.matchingSetter.orElse(lhs)
             tree.lhs match
@@ -189,24 +196,22 @@ class ExtractSemanticDB extends Phase with
         case tree: Ident =>
           if tree.name != nme.WILDCARD then
             val sym = tree.symbol.adjustIfCtorTyparam
-            if !excludeUseStrict(sym, tree.span) then
-              registerUse(sym, tree.span)
+            registerUseGuarded(None, sym, tree.span)
         case tree: Select =>
           val qualSpan = tree.qualifier.span
           val sym = tree.symbol.adjustIfCtorTyparam
-          if !excludeUseStrict(sym, tree.span) then
-            registerUse(sym, adjustSpanToName(tree.span, qualSpan, tree.name))
+          registerUseGuarded(tree.qualifier.symbol.ifExists, sym, adjustSpanToName(tree.span, qualSpan, tree.name))
           if qualSpan.exists && qualSpan.hasLength then
-            traverseChildren(tree)
+            traverse(tree.qualifier)
         case tree: Import =>
           if tree.span.exists && tree.span.hasLength then
             for sel <- tree.selectors do
               val imported = sel.imported.name
               if imported != nme.WILDCARD then
                 for alt <- tree.expr.tpe.member(imported).alternatives do
-                  registerUse(alt.symbol, sel.imported.span)
+                  registerUseGuarded(None, alt.symbol, sel.imported.span)
                   if (alt.symbol.companionClass.exists)
-                    registerUse(alt.symbol.companionClass, sel.imported.span)
+                    registerUseGuarded(None, alt.symbol.companionClass, sel.imported.span)
             traverseChildren(tree)
         case tree: Inlined =>
           traverse(tree.call)
@@ -397,9 +402,12 @@ class ExtractSemanticDB extends Phase with
         occurrences += occ
         generated += occ
 
+    private def registerUseGuarded(qualSym: Option[Symbol], sym: Symbol, span: Span)(given Context) =
+      if !excludeUse(qualSym, sym) then
+        registerUse(sym, span)
+
     private def registerUse(sym: Symbol, span: Span)(given Context) =
-      if !excludeUseStrict(sym, span) then
-        registerOccurrence(symbolName(sym), span, SymbolOccurrence.Role.REFERENCE)
+      registerOccurrence(symbolName(sym), span, SymbolOccurrence.Role.REFERENCE)
 
     private def registerDefinition(sym: Symbol, span: Span, symkinds: Set[SymbolKind])(given Context) =
       val symbol = symbolName(sym)
@@ -496,7 +504,7 @@ class ExtractSemanticDB extends Phase with
         vparams <- vparamss
         vparam  <- vparams
       do
-        if !excludeSymbolStrict(vparam.symbol)
+        if !excludeSymbol(vparam.symbol)
           val symkinds =
             getters.get(vparam.name).fold(SymbolKind.emptySet)(getter =>
               if getter.mods.is(Mutable) then SymbolKind.VarSet else SymbolKind.ValSet)

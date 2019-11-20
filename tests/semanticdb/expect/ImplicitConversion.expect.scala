@@ -9,20 +9,20 @@ class ImplicitConversion/*<-example::ImplicitConversion#*/ {
   ): Int/*->scala::Int#*/ = 42
   val message/*<-example::ImplicitConversion#message.*/ = ""
   val number/*<-example::ImplicitConversion#number.*/ = 42
-  val tuple/*<-example::ImplicitConversion#tuple.*/ = (1, 2)
+  val tuple/*<-example::ImplicitConversion#tuple.*/ = (/*->scala::Tuple2.apply().*/1, 2)
   val char/*<-example::ImplicitConversion#char.*/: Char/*->scala::Char#*/ = 'a'
 
   // extension methods
   /*->scala::Predef.augmentString().*/message/*->example::ImplicitConversion#message.*/
     .stripSuffix/*->scala::collection::StringOps#stripSuffix().*/("h")
-  tuple/*->example::ImplicitConversion#tuple.*/ +/*->example::ImplicitConversion.newAny2stringadd#`+`().*/ "Hello"
+  /*->example::ImplicitConversion.newAny2stringadd().*/tuple/*->example::ImplicitConversion#tuple.*/ +/*->example::ImplicitConversion.newAny2stringadd#`+`().*/ "Hello"
 
   // implicit conversions
   val x/*<-example::ImplicitConversion#x.*/: Int/*->scala::Int#*/ = /*->example::ImplicitConversion#string2Number().*/message/*->example::ImplicitConversion#message.*/
 
   // interpolators
-  s"Hello $message/*->example::ImplicitConversion#message.*/ $number/*->example::ImplicitConversion#number.*//*->scala::StringContext#s().*/"
-  /*->scala::Predef.augmentString().*/s"""Hello
+  s"/*->scala::StringContext.apply().*/Hello $message/*->example::ImplicitConversion#message.*/ $number/*->example::ImplicitConversion#number.*//*->scala::StringContext#s().*/"
+  /*->scala::Predef.augmentString().*/s"""/*->scala::StringContext.apply().*/Hello
      |$message/*->example::ImplicitConversion#message.*/
      |$number/*->example::ImplicitConversion#number.*//*->scala::StringContext#s().*/""".stripMargin/*->scala::collection::StringOps#stripMargin(+1).*/
 
