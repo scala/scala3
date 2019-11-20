@@ -33,7 +33,7 @@ private def rewriteMacro[T: Type](x: Expr[T])(given QuoteContext): Expr[T] = {
     }
   )
 
-  val x2 = rewriter.map(x)
+  val x2 = rewriter.transform(x)
 
   '{
     println(${Expr(x.show)})
@@ -101,11 +101,11 @@ private class Rewriter private (preTransform: List[Transformation] = Nil, postTr
   def withPost(transform: Transformation): Rewriter =
     new Rewriter(preTransform, transform :: postTransform, fixPoint)
 
-  def map[T](e: Expr[T])(given QuoteContext, Type[T]): Expr[T] = {
+  def transform[T](e: Expr[T])(given QuoteContext, Type[T]): Expr[T] = {
     val e2 = preTransform.foldLeft(e)((ei, transform) => transform(ei))
-    val e3 = mapChildren(e2)
+    val e3 = transformChildren(e2)
     val e4 = postTransform.foldLeft(e3)((ei, transform) => transform(ei))
-    if fixPoint && !e4.matches(e) then map(e4) else e4
+    if fixPoint && !e4.matches(e) then transform(e4) else e4
   }
 
 }

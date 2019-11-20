@@ -5,10 +5,10 @@ import scala.quoted._
 trait ExprMap {
 
   /** Map an expression `e` with a type `tpe` */
-  def map[T](e: Expr[T])(given qctx: QuoteContext, tpe: Type[T]): Expr[T]
+  def transform[T](e: Expr[T])(given qctx: QuoteContext, tpe: Type[T]): Expr[T]
 
   /** Map subexpressions an expression `e` with a type `tpe` */
-  def mapChildren[T](e: Expr[T])(given qctx: QuoteContext, tpe: Type[T]): Expr[T] = {
+  def transformChildren[T](e: Expr[T])(given qctx: QuoteContext, tpe: Type[T]): Expr[T] = {
     import qctx.tasty.{_, given}
     class MapChildren() {
 
@@ -112,7 +112,7 @@ trait ExprMap {
               type X
               val expr = tree.seal.asInstanceOf[Expr[X]]
               val t = tpe.seal.asInstanceOf[quoted.Type[X]]
-              map(expr)(given qctx, t).unseal
+              transform(expr)(given qctx, t).unseal
           }
       }
 
