@@ -491,7 +491,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         if (!sym.exists) ""
         else toPrefix(sym.owner) + sym.name + "."
       val featureName = toPrefix(owner) + feature
-      ctx.base.settings.language.value exists (s => s == featureName || s == "_")
+      ctx.base.settings.language.value exists (s => s == featureName)
     }
     hasOption || hasImport
   }
