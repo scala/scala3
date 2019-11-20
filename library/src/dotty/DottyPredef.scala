@@ -51,18 +51,4 @@ object DottyPredef {
   def[T] (x: T|Null) nn: x.type & T =
     if (x == null) throw new NullPointerException("tried to cast away nullability, but value is null")
     else x.asInstanceOf[x.type & T]
-
-  /** Reference equality where the receiver is a nullable union.
-   *  Note that if the receiver `r` is a reference type (e.g. `String`), then `r.eq` will invoke the
-   *  `eq` method in `AnyRef`.
-   */
-  def (x: AnyRef|Null) eq(y: AnyRef|Null): Boolean =
-    x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
-
-  /** Reference disequality where the receiver is a nullable union.
-   *  Note that if the receiver `r` is a reference type (e.g. `String`), then `r.ne` will invoke the
-   *  `ne` method in `AnyRef`.
-   */
-  def (x: AnyRef|Null) ne(y: AnyRef|Null): Boolean =
-    x.asInstanceOf[AnyRef] ne y.asInstanceOf[AnyRef]
 }
