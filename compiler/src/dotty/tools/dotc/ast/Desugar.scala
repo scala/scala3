@@ -1741,7 +1741,7 @@ object desugar {
           def traverse(tree: untpd.Tree)(implicit ctx: Context): Unit = tree match {
             case Splice(expr) => collect(expr)
             case TypSplice(expr) =>
-              ctx.error("Type splices cannot ve used in val patterns. Consider using `match` instead.", tree.sourcePos)
+              ctx.error("Type splices cannot be used in val patterns. Consider using `match` instead.", tree.sourcePos)
             case _ => traverseChildren(tree)
           }
         }.traverse(expr)
