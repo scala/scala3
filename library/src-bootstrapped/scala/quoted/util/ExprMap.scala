@@ -37,7 +37,8 @@ trait ExprMap {
           case tree: TypeDef =>
             tree
           case tree: ClassDef =>
-            ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
+            val newBody = transformStats(tree.body)
+            ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, newBody)
         }
       }
 

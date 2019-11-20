@@ -115,6 +115,14 @@ object Test {
       println(s)
     }
 
+    rewrite {
+      class Foo {
+        println("new Foo")
+      }
+      new Foo
+    }
+
+
   }
 
 }
