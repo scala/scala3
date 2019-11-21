@@ -3099,8 +3099,8 @@ Schema => SemanticDB v4
 Uri => ValPattern.scala
 Text => empty
 Language => Scala
-Symbols => 21 entries
-Occurrences => 54 entries
+Symbols => 22 entries
+Occurrences => 63 entries
 
 Symbols:
 example/ValPattern# => class ValPattern
@@ -3116,6 +3116,7 @@ example/ValPattern#left. => val method left
 example/ValPattern#leftVar(). => var method leftVar
 example/ValPattern#number1. => val method number1
 example/ValPattern#number1Var(). => var method number1Var
+example/ValPattern#q1. => val method q1
 example/ValPattern#right. => val method right
 example/ValPattern#rightVar(). => var method rightVar
 local0 => val local left
@@ -3137,49 +3138,58 @@ Occurrences:
 [5:11..5:18): number1 <- example/ValPattern#number1.
 [6:4..6:8): Some -> scala/Some.
 [6:8..6:8): -> scala/Some.apply().
-[8:7..8:14): leftVar <- example/ValPattern#leftVar().
-[8:16..8:24): rightVar <- example/ValPattern#rightVar().
-[8:29..8:29): -> scala/Tuple2.apply().
-[9:6..9:10): Some -> scala/Some.
-[9:10..9:10): -> scala/Some.unapply().
-[9:11..9:21): number1Var <- example/ValPattern#number1Var().
-[10:4..10:8): Some -> scala/Some.
-[10:8..10:8): -> scala/Some.apply().
-[12:6..12:9): app <- example/ValPattern#app().
-[12:13..12:17): Unit -> scala/Unit#
-[13:4..13:11): println -> scala/Predef.println(+1).
-[15:8..15:8): -> scala/Tuple6.apply().
-[15:8..15:15): number1 -> example/ValPattern#number1.
-[16:8..16:12): left -> example/ValPattern#left.
-[17:8..17:13): right -> example/ValPattern#right.
-[18:8..18:18): number1Var -> example/ValPattern#number1Var().
-[19:8..19:15): leftVar -> example/ValPattern#leftVar().
-[20:8..20:16): rightVar -> example/ValPattern#rightVar().
-[23:4..23:11): locally -> dotty/DottyPredef.locally().
-[24:11..24:15): left <- local0
-[24:17..24:22): right <- local1
-[24:27..24:27): -> scala/Tuple2.apply().
-[25:10..25:14): Some -> scala/Some.
-[25:14..25:14): -> scala/Some.unapply().
-[25:15..25:22): number1 <- local2
-[26:8..26:12): Some -> scala/Some.
-[26:12..26:12): -> scala/Some.apply().
-[28:11..28:18): leftVar <- local3
-[28:20..28:28): rightVar <- local4
-[28:33..28:33): -> scala/Tuple2.apply().
-[29:10..29:14): Some -> scala/Some.
-[29:14..29:14): -> scala/Some.unapply().
-[29:15..29:25): number1Var <- local5
-[30:8..30:12): Some -> scala/Some.
-[30:12..30:12): -> scala/Some.apply().
-[31:6..31:13): println -> scala/Predef.println(+1).
-[33:10..33:10): -> scala/Tuple6.apply().
-[33:10..33:17): number1 -> local2
-[34:10..34:14): left -> local0
-[35:10..35:15): right -> local1
-[36:10..36:20): number1Var -> local5
-[37:10..37:17): leftVar -> local3
-[38:10..38:18): rightVar -> local4
+[8:6..8:10): List -> scala/package.List.
+[8:10..8:10): -> scala/collection/SeqFactory#unapplySeq().
+[8:11..8:15): Some -> scala/Some.
+[8:15..8:15): -> scala/Some.unapply().
+[8:16..8:18): q1 <- example/ValPattern#q1.
+[8:21..8:25): None -> scala/None.
+[8:27..8:31): None -> scala/None.
+[8:38..8:42): None -> scala/None.
+[8:46..8:49): ??? -> scala/Predef.`???`().
+[10:7..10:14): leftVar <- example/ValPattern#leftVar().
+[10:16..10:24): rightVar <- example/ValPattern#rightVar().
+[10:29..10:29): -> scala/Tuple2.apply().
+[11:6..11:10): Some -> scala/Some.
+[11:10..11:10): -> scala/Some.unapply().
+[11:11..11:21): number1Var <- example/ValPattern#number1Var().
+[12:4..12:8): Some -> scala/Some.
+[12:8..12:8): -> scala/Some.apply().
+[14:6..14:9): app <- example/ValPattern#app().
+[14:13..14:17): Unit -> scala/Unit#
+[15:4..15:11): println -> scala/Predef.println(+1).
+[17:8..17:8): -> scala/Tuple6.apply().
+[17:8..17:15): number1 -> example/ValPattern#number1.
+[18:8..18:12): left -> example/ValPattern#left.
+[19:8..19:13): right -> example/ValPattern#right.
+[20:8..20:18): number1Var -> example/ValPattern#number1Var().
+[21:8..21:15): leftVar -> example/ValPattern#leftVar().
+[22:8..22:16): rightVar -> example/ValPattern#rightVar().
+[25:4..25:11): locally -> dotty/DottyPredef.locally().
+[26:11..26:15): left <- local0
+[26:17..26:22): right <- local1
+[26:27..26:27): -> scala/Tuple2.apply().
+[27:10..27:14): Some -> scala/Some.
+[27:14..27:14): -> scala/Some.unapply().
+[27:15..27:22): number1 <- local2
+[28:8..28:12): Some -> scala/Some.
+[28:12..28:12): -> scala/Some.apply().
+[30:11..30:18): leftVar <- local3
+[30:20..30:28): rightVar <- local4
+[30:33..30:33): -> scala/Tuple2.apply().
+[31:10..31:14): Some -> scala/Some.
+[31:14..31:14): -> scala/Some.unapply().
+[31:15..31:25): number1Var <- local5
+[32:8..32:12): Some -> scala/Some.
+[32:12..32:12): -> scala/Some.apply().
+[33:6..33:13): println -> scala/Predef.println(+1).
+[35:10..35:10): -> scala/Tuple6.apply().
+[35:10..35:17): number1 -> local2
+[36:10..36:14): left -> local0
+[37:10..37:15): right -> local1
+[38:10..38:20): number1Var -> local5
+[39:10..39:17): leftVar -> local3
+[40:10..40:18): rightVar -> local4
 
 expect/Vals.scala
 -----------------

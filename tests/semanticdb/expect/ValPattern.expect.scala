@@ -6,6 +6,8 @@ class ValPattern/*<-example::ValPattern#*/ {
   val Some/*->scala::Some.*//*->scala::Some.unapply().*/(number1/*<-example::ValPattern#number1.*/) =
     Some/*->scala::Some.*//*->scala::Some.apply().*/(1)
 
+  val List/*->scala::package.List.*//*->scala::collection::SeqFactory#unapplySeq().*/(Some/*->scala::Some.*//*->scala::Some.unapply().*/(q1/*<-example::ValPattern#q1.*/), None/*->scala::None.*/: None/*->scala::None.*/.type, None/*->scala::None.*/) = ???/*->scala::Predef.`???`().*/
+
   var (leftVar/*<-example::ValPattern#leftVar().*/, rightVar/*<-example::ValPattern#rightVar().*/) = (/*->scala::Tuple2.apply().*/1, 2)
   var Some/*->scala::Some.*//*->scala::Some.unapply().*/(number1Var/*<-example::ValPattern#number1Var().*/) =
     Some/*->scala::Some.*//*->scala::Some.apply().*/(1)

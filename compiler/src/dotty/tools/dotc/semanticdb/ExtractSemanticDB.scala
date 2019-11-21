@@ -165,7 +165,7 @@ class ExtractSemanticDB extends Phase with
             // ignore rhs
           case PatternValDef(pat, rhs) =>
             traverse(rhs)
-            PatternValDef.collectUnapplyFuncs(pat).foreach(traverse)
+            PatternValDef.collectPats(pat).foreach(traverse)
           case tree =>
             if !excludeChildren(tree.symbol)
               traverseChildren(tree)
@@ -236,14 +236,17 @@ class ExtractSemanticDB extends Phase with
         case Types.AnnotatedType(_, annot) => annot.symbol == defn.UncheckedAnnot
         case _                             => false
 
-      def collectUnapplyFuncs(pat: Tree): List[Tree] =
+      def collectPats(pat: Tree): List[Tree] =
 
         @tailrec
         def impl(acc: List[Tree], pats: List[Tree]): List[Tree] = pats match
+
           case pat::pats => pat match
-            case Typed(UnApply(fun: Tree, _, args), _) => impl(fun::acc, args:::pats)
-            case UnApply(fun: Tree, _, args)           => impl(fun::acc, args:::pats)
-            case _                                     => impl(acc, pats)
+            case Typed(UnApply(fun: Tree, _, args), tpt: Tree) => impl(fun::tpt::acc, args:::pats)
+            case Typed(obj: Ident, tpt: Tree)                  => impl(obj::tpt::acc, pats)
+            case UnApply(fun: Tree, _, args)                   => impl(fun::acc,      args:::pats)
+            case obj: Ident                                    => impl(obj::acc,      pats)
+            case _                                             => impl(acc,           pats)
 
           case Nil => acc
 
