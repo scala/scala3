@@ -1041,8 +1041,12 @@ object Build {
         "-Dplugin.scalaVersion=" + dottyVersion,
         "-Dsbt.boot.directory=" + ((baseDirectory in ThisBuild).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
       ),
-      // Pass along ivy home setting to sbt instances run from the tests
-      scriptedLaunchOpts ++= ivyPaths.value.ivyHome.map("-Dsbt.ivy.home=" + _.getAbsolutePath).toList,
+      // Pass along ivy home and repositories settings to sbt instances run from the tests
+      scriptedLaunchOpts ++= {
+        val repositoryPath = (io.Path.userHome / ".sbt" / "repositories").absolutePath
+        s"-Dsbt.repository.config=$repositoryPath" ::
+        ivyPaths.value.ivyHome.map("-Dsbt.ivy.home=" + _.getAbsolutePath).toList
+      },
       scriptedBufferLog := true,
       scripted := scripted.dependsOn(
         publishLocal in `dotty-sbt-bridge`,
