@@ -31,19 +31,31 @@ object NullOpsDecorator {
      *      have been removed. Then the result is `self2 | Null` (`self2 | JavaNull`).
      */
      def normNullableUnion(implicit ctx: Context): Type = {
-      var isUnion = false
       var hasNull = false
       var hasJavaNull = false
       def strip(tp: Type): Type = tp match {
         case tp @ OrType(lhs, rhs) =>
-          isUnion = true
           val llhs = strip(lhs)
           val rrhs = strip(rhs)
           if (rrhs.isNullType) llhs
           else if (llhs.isNullType) rrhs
           else tp.derivedOrType(llhs, rrhs)
         case tp @ AndType(tp1, tp2) =>
-          tp.derivedAndType(strip(tp1), strip(tp2))
+          // We cannot `tp.derivedAndType(strip(tp1), strip(tp2))` directly,
+          // since `normNullableUnion((A | Null) & B)` would produce the wrong
+          // result `(A & B) | Null`.
+          val oldHN = hasNull
+          val oldHJN = hasJavaNull
+          val tp1s = strip(tp1)
+          val tp2s = strip(tp2)
+          if((tp1s ne tp1) && (tp2s ne tp2))
+            tp.derivedAndType(tp1s, tp2s)
+          else
+            // If tp1 or tp2 is not nullable, we should revert the change of
+            // `hasNull` and `hasJavaNull` and return the original tp.
+            hasNull = oldHN
+            hasJavaNull = oldHJN
+            tp
         case _ =>
           if (tp.isNullType) {
             if (tp.isJavaNullType) hasJavaNull = true
@@ -52,7 +64,7 @@ object NullOpsDecorator {
           tp
       }
       val tp = strip(self)
-      if (!isUnion) self
+      if (tp eq self) self
       else if (hasJavaNull) OrType(tp, defn.JavaNullAliasType)
       else if (hasNull) OrType(tp, defn.NullType)
       else self
