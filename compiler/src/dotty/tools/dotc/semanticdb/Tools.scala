@@ -43,7 +43,7 @@ object Tools with
     val realURI = realPath.toString
     given SourceFile = SourceFile.virtual(doc.uri, doc.text)
     sb.append(realURI).nl
-    sb.append("_" * realURI.length).nl
+    sb.append("-" * realURI.length).nl
     sb.nl
     sb.append("Summary:").nl
     sb.append("Schema => ").append(schemaString(doc.schema)).nl

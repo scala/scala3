@@ -1,5 +1,5 @@
 expect/Access.scala
-___________________
+-------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -42,7 +42,7 @@ Occurrences:
 [9:11..9:14): ??? -> scala/Predef.`???`().
 
 expect/Advanced.scala
-_____________________
+---------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -185,7 +185,7 @@ Occurrences:
 [37:21..37:25): head -> scala/collection/IterableOps#head().
 
 expect/Annotations.scala
-________________________
+------------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -273,7 +273,7 @@ Occurrences:
 [36:11..36:26): ClassAnnotation -> com/javacp/annot/ClassAnnotation#
 
 expect/Anonymous.scala
-______________________
+----------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -334,7 +334,7 @@ Occurrences:
 [18:16..18:19): Foo -> example/Anonymous#Foo#
 
 expect/Classes.scala
-____________________
+--------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -483,7 +483,7 @@ Occurrences:
 [30:10..30:11): + -> scala/Int#`+`(+4).
 
 expect/Definitions.scala
-________________________
+------------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -517,7 +517,7 @@ Occurrences:
 [6:8..6:9): E <- a/Definitions.E#
 
 expect/Empty.scala
-__________________
+------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -548,7 +548,7 @@ Occurrences:
 [5:13..5:16): ??? -> scala/Predef.`???`().
 
 expect/EmptyObject.scala
-________________________
+------------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -566,7 +566,7 @@ Occurrences:
 [2:7..2:18): EmptyObject <- example/EmptyObject.
 
 expect/Enums.scala
-__________________
+------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -574,7 +574,7 @@ Uri => Enums.scala
 Text => empty
 Language => Scala
 Symbols => 157 entries
-Occurrences => 188 entries
+Occurrences => 187 entries
 
 Symbols:
 _empty_/Enums. => final object Enums
@@ -808,7 +808,6 @@ Occurrences:
 [37:7..37:12): Maybe <- _empty_/Enums.Maybe#
 [37:12..37:16): <- _empty_/Enums.Maybe#`<init>`().
 [37:14..37:15): A <- _empty_/Enums.Maybe#[A]
-[38:4..38:4): -> _empty_/Enums.Maybe#`<init>`().
 [38:9..38:13): Just <- _empty_/Enums.Maybe.Just#
 [38:13..38:23): <- _empty_/Enums.Maybe.Just#`<init>`().
 [38:14..38:19): value <- _empty_/Enums.Maybe.Just#value.
@@ -926,7 +925,7 @@ Occurrences:
 [68:31..68:31): -> _empty_/Enums.Planet#`<init>`().
 
 expect/EtaExpansion.scala
-_________________________
+-------------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -956,7 +955,7 @@ Occurrences:
 [4:25..4:26): + -> java/lang/String#`+`().
 
 expect/Example.scala
-____________________
+--------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -1002,7 +1001,7 @@ Occurrences:
 [9:37..9:37): -> java/lang/Integer#TYPE.
 
 expect/Flags.scala
-__________________
+------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -1152,7 +1151,7 @@ Occurrences:
 [25:33..25:36): ??? -> scala/Predef.`???`().
 
 expect/ForComprehension.scala
-_____________________________
+-----------------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -1268,7 +1267,7 @@ Occurrences:
 [41:6..41:7): f -> local10
 
 expect/Givens.scala
-___________________
+-------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -1386,7 +1385,7 @@ Occurrences:
 [26:59..26:64): empty -> a/b/Givens.Monoid#empty().
 
 expect/ImplicitConversion.scala
-_______________________________
+-------------------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -1486,7 +1485,7 @@ Occurrences:
 [34:58..34:63): other -> example/ImplicitConversion.newAny2stringadd#`+`().(other)
 
 expect/Imports.scala
-____________________
+--------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -1505,7 +1504,7 @@ Occurrences:
 [0:26..0:34): NonFatal -> scala/util/control/NonFatal.
 
 expect/InstrumentTyper.scala
-____________________________
+----------------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -1582,7 +1581,7 @@ Occurrences:
 [24:37..24:40): Int -> scala/Int#
 
 expect/Issue1749.scala
-______________________
+----------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -1634,7 +1633,7 @@ Occurrences:
 [14:5..14:5): -> scala/collection/mutable/MapOps#update().
 
 expect/Local.scala
-__________________
+------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -1666,7 +1665,7 @@ Occurrences:
 [5:4..5:6): id -> local0
 
 expect/Locals.scala
-___________________
+-------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -1691,7 +1690,7 @@ Occurrences:
 [5:9..5:10): x -> local0
 
 expect/MetacJava.scala
-______________________
+----------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -1788,7 +1787,7 @@ Occurrences:
 [18:38..18:41): Int -> scala/Int#
 
 expect/MethodUsages.scala
-_________________________
+-------------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -1880,7 +1879,7 @@ Occurrences:
 [30:4..30:7): m18 -> example/Methods#m18(+1).
 
 expect/Methods.scala
-____________________
+--------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -2103,7 +2102,7 @@ Occurrences:
 [35:44..35:47): ??? -> scala/Predef.`???`().
 
 expect/NamedApplyBlock.scala
-____________________________
+----------------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -2202,7 +2201,7 @@ Occurrences:
 [12:16..12:24): bodyText -> example/NamedApplyBlockCaseClassConstruction.bodyText.
 
 expect/NamedArguments.scala
-___________________________
+---------------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -2243,7 +2242,7 @@ Occurrences:
 [5:7..5:12): apply -> example/NamedArguments#User.apply().
 
 expect/NewModifiers.scala
-_________________________
+-------------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -2265,7 +2264,7 @@ Occurrences:
 [2:18..2:21): Int -> scala/Int#
 
 expect/Objects.scala
-____________________
+--------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -2285,7 +2284,7 @@ Occurrences:
 [3:9..3:10): Y <- objects/X.Y.
 
 expect/Overrides.scala
-______________________
+----------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -2316,7 +2315,7 @@ Occurrences:
 [3:31..3:34): Int -> scala/Int#
 
 expect/Prefixes.scala
-_____________________
+---------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -2399,7 +2398,7 @@ Occurrences:
 [31:14..31:17): ??? -> scala/Predef.`???`().
 
 expect/Selfs.scala
-__________________
+------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -2453,7 +2452,7 @@ Occurrences:
 [13:27..13:28): B -> selfs/B#
 
 expect/Synthetic.scala
-______________________
+----------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -2666,7 +2665,7 @@ Occurrences:
 [45:11..45:11): -> scala/concurrent/ExecutionContext.Implicits.global().
 
 expect/Traits.scala
-___________________
+-------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -2711,7 +2710,7 @@ Occurrences:
 [12:16..12:17): C -> traits/C#
 
 expect/Types.scala
-__________________
+------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -3094,7 +3093,7 @@ Occurrences:
 [112:39..112:42): Int -> scala/Int#
 
 expect/ValPattern.scala
-_______________________
+-----------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -3192,7 +3191,7 @@ Occurrences:
 [38:10..38:18): rightVar -> local6
 
 expect/Vals.scala
-_________________
+-----------------
 
 Summary:
 Schema => SemanticDB v4
@@ -3378,7 +3377,7 @@ Occurrences:
 [49:3..49:18): .explicitSetter -> example/Vals#`explicitSetter_=`().
 
 expect/Vararg.scala
-___________________
+-------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -3410,7 +3409,7 @@ Occurrences:
 [4:26..4:30): Unit -> scala/Unit#
 
 expect/filename with spaces.scala
-_________________________________
+---------------------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -3430,7 +3429,7 @@ Occurrences:
 [2:6..2:24): FilenameWithSpaces <- example/FilenameWithSpaces#
 
 expect/local-file.scala
-_______________________
+-----------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -3455,7 +3454,7 @@ Occurrences:
 [5:10..5:11): + -> scala/Int#`+`(+4).
 
 expect/semanticdb-extract.scala
-_______________________________
+-------------------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -3509,7 +3508,7 @@ Occurrences:
 [16:20..16:23): Int -> scala/Int#
 
 expect/toplevel.scala
-_____________________
+---------------------
 
 Summary:
 Schema => SemanticDB v4
@@ -3557,4 +3556,3 @@ Occurrences:
 [2:46..2:47): z -> _empty_/toplevel$package.combine(+1).(z)
 [3:4..3:11): combine <- _empty_/toplevel$package.combine(+2).
 [4:4..4:7): foo <- _empty_/toplevel$package.foo().
-

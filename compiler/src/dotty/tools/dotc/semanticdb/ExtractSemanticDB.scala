@@ -170,13 +170,8 @@ class ExtractSemanticDB extends Phase with
           if !excludeDef(ctorSym)
             registerDefinition(ctorSym, tree.constr.span, Set.empty)
             ctorParams(tree.constr.vparamss, tree.body)(traverseCtorParamTpt(ctorSym, _))
-          for parent <- tree.parentsOrDerived do
-            if
-              parent.symbol != defn.ObjectClass.primaryConstructor
-              && parent.tpe.dealias != defn.SerializableType
-              && parent.symbol != defn.ProductClass
-            then
-              traverse(parent)
+          for parent <- tree.parentsOrDerived if parent.span.hasLength do
+            traverse(parent)
           val selfSpan = tree.self.span
           if selfSpan.exists && selfSpan.hasLength then
             traverse(tree.self)

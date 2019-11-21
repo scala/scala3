@@ -1,3 +1,3 @@
 package example
 
-class FilenameWithSpaces/*<-example::FilenameWithSpaces#*//*<=example.FilenameWithSpaces#*/
+class FilenameWithSpaces/*<-example::FilenameWithSpaces#*/
