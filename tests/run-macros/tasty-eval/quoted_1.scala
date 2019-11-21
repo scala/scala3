@@ -21,12 +21,13 @@ object Macros {
       import qctx.tasty.{_, given}
 
       e.unseal.tpe match {
-        case IsTermRef(pre) if pre.termSymbol.isValDef =>
-          val IsValDef(t) = pre.termSymbol.tree
-          t.tpt.tpe match {
-            case ConstantType(Constant(i: Int)) => Some(i)
-            case _ => None
-          }
+        case pre: TermRef if pre.termSymbol.isValDef =>
+          pre.termSymbol.tree match
+            case t: ValDef =>
+              t.tpt.tpe match {
+                case ConstantType(Constant(i: Int)) => Some(i)
+                case _ => None
+              }
         case ConstantType(Constant(i: Int)) => Some(i)
         case _ => None
       }

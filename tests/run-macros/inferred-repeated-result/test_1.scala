@@ -11,9 +11,10 @@ object Macros {
     val methods =
       tree.tpe.classSymbol.get.classMethods.map { m =>
         val name = m.show
-        val IsDefDef(ddef) = m.tree
-        val returnType = ddef.returnTpt.tpe.show
-        s"$name : $returnType"
+        m.tree match
+          case ddef: DefDef =>
+            val returnType = ddef.returnTpt.tpe.show
+            s"$name : $returnType"
       }.sorted
 
     methods.foldLeft('{}) { (res, m) => '{ $res; println(${m}) } }
