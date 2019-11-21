@@ -46,7 +46,7 @@ trait ExprMap {
         case Ident(name) =>
           tree
         case Select(qualifier, name) =>
-          Select.copy(tree)(transformTerm(qualifier, qualifier.tpe.widen), name)
+          Select.copy(tree)(transformTerm(qualifier, qualifier.tpe), name)
         case This(qual) =>
           tree
         case Super(qual, mix) =>
