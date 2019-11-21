@@ -11,6 +11,7 @@ Differences between scalameta implementation and dotc.
 
 ## Completed
 
+- [x] Recognise named arguments and traverse their bodies.
 - [x] Recognise pattern val definitions.
 - [x] Recognise anonymous functions.
 - [x] Recognise specialised constant enum values.

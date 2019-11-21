@@ -2106,8 +2106,8 @@ Schema => SemanticDB v4
 Uri => NamedApplyBlock.scala
 Text => empty
 Language => Scala
-Symbols => 44 entries
-Occurrences => 40 entries
+Symbols => 45 entries
+Occurrences => 46 entries
 
 Symbols:
 example/NamedApplyBlockCaseClassConstruction. => final object NamedApplyBlockCaseClassConstruction
@@ -2153,7 +2153,8 @@ example/NamedApplyBlockMethods.recursive(). => method recursive
 local0 => val local b$1
 local1 => val local c$1
 local2 => val local b$3
-local3 => val local head$1
+local3 => val local b$2
+local4 => val local head$1
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -2176,11 +2177,16 @@ Occurrences:
 [5:17..5:20): foo -> example/NamedApplyBlockMethods.foo().
 [5:17..5:17): -> local0
 [5:21..5:26): local -> example/NamedApplyBlockMethods.local.
+[5:28..5:29): c -> example/NamedApplyBlockMethods.foo().(c)
 [6:6..6:15): recursive <- example/NamedApplyBlockMethods.recursive().
 [6:18..6:21): foo -> example/NamedApplyBlockMethods.foo().
 [6:18..6:18): -> local2
 [6:22..6:27): local -> example/NamedApplyBlockMethods.local.
-[6:33..6:33): -> local1
+[6:29..6:30): c -> example/NamedApplyBlockMethods.foo().(c)
+[6:33..6:36): foo -> example/NamedApplyBlockMethods.foo().
+[6:33..6:33): -> local3
+[6:37..6:42): local -> example/NamedApplyBlockMethods.local.
+[6:44..6:45): c -> example/NamedApplyBlockMethods.foo().(c)
 [9:7..9:43): NamedApplyBlockCaseClassConstruction <- example/NamedApplyBlockCaseClassConstruction.
 [10:13..10:16): Msg <- example/NamedApplyBlockCaseClassConstruction.Msg#
 [10:16..10:70): <- example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().
@@ -2193,9 +2199,10 @@ Occurrences:
 [11:6..11:14): bodyText <- example/NamedApplyBlockCaseClassConstruction.bodyText.
 [12:6..12:9): msg <- example/NamedApplyBlockCaseClassConstruction.msg.
 [12:12..12:15): Msg -> example/NamedApplyBlockCaseClassConstruction.Msg.
-[12:12..12:12): -> local3
+[12:12..12:12): -> local4
 [12:15..12:15): -> example/NamedApplyBlockCaseClassConstruction.Msg.apply().
 [12:16..12:24): bodyText -> example/NamedApplyBlockCaseClassConstruction.bodyText.
+[12:26..12:30): tail -> example/NamedApplyBlockCaseClassConstruction.Msg.apply().(tail)
 
 expect/NamedArguments.scala
 ---------------------------
@@ -2206,7 +2213,7 @@ Uri => NamedArguments.scala
 Text => empty
 Language => Scala
 Symbols => 15 entries
-Occurrences => 11 entries
+Occurrences => 13 entries
 
 Symbols:
 example/NamedArguments# => class NamedArguments
@@ -2235,8 +2242,10 @@ Occurrences:
 [3:24..3:30): String -> scala/Predef.String#
 [4:2..4:6): User -> example/NamedArguments#User.
 [4:6..4:6): -> example/NamedArguments#User.apply().
+[4:7..4:11): name -> example/NamedArguments#User.apply().(name)
 [5:2..5:6): User -> example/NamedArguments#User.
 [5:7..5:12): apply -> example/NamedArguments#User.apply().
+[5:13..5:17): name -> example/NamedArguments#User.apply().(name)
 
 expect/NewModifiers.scala
 -------------------------

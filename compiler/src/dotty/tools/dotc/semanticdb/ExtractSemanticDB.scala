@@ -53,6 +53,9 @@ class ExtractSemanticDB extends Phase with
     /** The index of a local symbol */
     private val locals = mutable.HashMap[Symbol, Int]()
 
+    /** The bodies of synthetic localså */
+    private val localBodies = mutable.HashMap[Symbol, Tree]()
+
     /** The local symbol(s) starting at given offset */
     private val symsAtOffset = new mutable.HashMap[Int, Set[Symbol]]() with
       override def default(key: Int) = Set[Symbol]()
@@ -162,6 +165,8 @@ class ExtractSemanticDB extends Phase with
                 tree.tparams.foreach(tparam => registerSymbolSimple(tparam.symbol))
                 tree.vparamss.foreach(_.foreach(vparam => registerSymbolSimple(vparam.symbol)))
               case _ =>
+            if !tree.symbol.isGlobal
+              localBodies(tree.symbol) = tree.rhs
             // ignore rhs
           case PatternValDef(pat, rhs) =>
             traverse(rhs)
@@ -183,6 +188,15 @@ class ExtractSemanticDB extends Phase with
             tree.body.foreachUntilImport(traverse).foreach(traverse) // the first import statement
           else
             tree.body.foreach(traverse)
+        case tree: Apply =>
+          @tu lazy val genParamSymbol: Name => String = funParamSymbol(tree.fun.symbol)
+          traverse(tree.fun)
+          for arg <- tree.args do
+            arg match
+              case arg @ NamedArg(name, value) =>
+                registerUse(genParamSymbol(name), arg.span.startPos.withEnd(arg.span.start + name.toString.length))
+                traverse(localBodies.get(value.symbol).getOrElse(value))
+              case _ => traverse(arg)
         case tree: Assign =>
           val qualSym = condOpt(tree.lhs) { case Select(qual, _) if qual.symbol.exists => qual.symbol }
           if !excludeUse(qualSym, tree.lhs.symbol)
@@ -221,6 +235,14 @@ class ExtractSemanticDB extends Phase with
           traverseChildren(tree)
 
     end traverse
+
+    private def funParamSymbol(funSym: Symbol)(given Context): Name => String =
+      if funSym.isGlobal then
+        val funSymbol = symbolName(funSym)
+        name => s"$funSymbol($name)"
+      else
+        name => locals.keys.find(local => local.isTerm && local.owner == funSym && local.name == name)
+                      .fold("<?>")(Symbols.LocalPrefix + _)
 
     private object PatternValDef with
 
@@ -442,8 +464,11 @@ class ExtractSemanticDB extends Phase with
       if !excludeUse(qualSym, sym) then
         registerUse(sym, span)
 
-    private def registerUse(sym: Symbol, span: Span)(given Context) =
-      registerOccurrence(symbolName(sym), span, SymbolOccurrence.Role.REFERENCE)
+    private def registerUse(sym: Symbol, span: Span)(given Context): Unit =
+      registerUse(symbolName(sym), span)
+
+    private def registerUse(symbol: String, span: Span)(given Context): Unit =
+      registerOccurrence(symbol, span, SymbolOccurrence.Role.REFERENCE)
 
     private def registerDefinition(sym: Symbol, span: Span, symkinds: Set[SymbolKind])(given Context) =
       val symbol = symbolName(sym)
