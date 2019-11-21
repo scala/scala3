@@ -18,9 +18,12 @@ object Bench {
 
     val (intArgs, args1) = args.span(x => try { x.toInt; true } catch { case _: Throwable => false } )
 
-    val warmup = if (intArgs.length > 0) intArgs(0).toInt else 20
-    val iterations = if (intArgs.length > 1) intArgs(1).toInt else 20
-    val forks = if (intArgs.length > 2) intArgs(2).toInt else 1
+    def getIntArg(i: Int, default: Int): Int =
+      if (intArgs.length > i) intArgs(i).toInt else default
+
+    val warmup = getIntArg(0, 20)
+    val iterations = getIntArg(1, 20)
+    val forks = getIntArg(2, 1)
 
     if (args1.isEmpty) {
       println("Error: no benchmark was specified.")
