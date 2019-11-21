@@ -114,9 +114,10 @@ class ExtractSemanticDB extends Phase with
 
       for annot <- tree.symbol.annotations do
         if annot.tree.span.exists
-          && annot.symbol.owner != defn.ScalaAnnotationInternal
-        then
-          traverse(annot.tree)
+        && annot.tree.span.hasLength
+          annot.tree match
+            case tree: Typed => () // hack for inline code
+            case tree        => traverse(tree)
 
       tree match
         case tree: PackageDef =>
@@ -162,6 +163,9 @@ class ExtractSemanticDB extends Phase with
                 tree.vparamss.foreach(_.foreach(vparam => registerSymbolSimple(vparam.symbol)))
               case _ =>
             // ignore rhs
+          case PatternValDef(pat, rhs) =>
+            traverse(rhs)
+            PatternValDef.collectUnapplyFuncs(pat).foreach(traverse)
           case tree =>
             if !excludeChildren(tree.symbol)
               traverseChildren(tree)
@@ -215,6 +219,37 @@ class ExtractSemanticDB extends Phase with
           traverse(tree.arg)
         case _ =>
           traverseChildren(tree)
+
+    end traverse
+
+    private object PatternValDef with
+
+      def unapply(tree: ValDef)(given Context): Option[(Tree, Tree)] = tree.rhs match
+
+        case Match(Typed(selected: Tree, tpt: TypeTree), CaseDef(pat: Tree, _, _) :: Nil)
+        if tpt.span.exists && !tpt.span.hasLength && tpt.tpe.isAnnotatedByUnchecked =>
+          Some((pat, selected))
+
+        case _ => None
+
+      private inline def (tpe: Types.Type) isAnnotatedByUnchecked(given Context) = tpe match
+        case Types.AnnotatedType(_, annot) => annot.symbol == defn.UncheckedAnnot
+        case _                             => false
+
+      def collectUnapplyFuncs(pat: Tree): List[Tree] =
+
+        @tailrec
+        def impl(acc: List[Tree], pats: List[Tree]): List[Tree] = pats match
+          case pat::pats => pat match
+            case Typed(UnApply(fun: Tree, _, args), _) => impl(fun::acc, args:::pats)
+            case UnApply(fun: Tree, _, args)           => impl(fun::acc, args:::pats)
+            case _                                     => impl(acc, pats)
+
+          case Nil => acc
+
+        impl(Nil, pat::Nil)
+
+    end PatternValDef
 
     private def (tree: NamedDefTree) adjustedNameSpan(given Context): Span =
       if tree.span.exists && tree.name.isAnonymousFunctionName || tree.name.isAnonymousClassName

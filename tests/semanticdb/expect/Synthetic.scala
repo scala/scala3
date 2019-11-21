@@ -13,6 +13,8 @@ class Synthetic {
   val Name(name) = "name:foo"
   1 #:: 2 #:: LazyList.empty
 
+  val a1 #:: a2 #:: as = LazyList(1, 2)
+
   val lst = 1 #:: 2 #:: LazyList.empty
 
   for (x <- 1 to 10; y <- 0 until 10) println(x -> x)

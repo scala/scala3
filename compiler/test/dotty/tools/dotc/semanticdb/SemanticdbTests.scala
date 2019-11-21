@@ -132,12 +132,15 @@ object SemanticdbTests with
       val isPrimaryConstructor =
         symtab.get(occ.symbol).exists(_.isPrimary)
       if !occ.symbol.isPackage && !isPrimaryConstructor
+        assert(end <= doc.text.length,
+          s"doc is only ${doc.text.length} - offset=$offset, end=$end , symbol=${occ.symbol} in source ${sourceFile.name}")
         sb.append(doc.text.substring(offset, end))
         sb.append("/*")
           .append(if (occ.role.isDefinition) "<-" else "->")
           .append(occ.symbol.replace("/", "::"))
           .append("*/")
         offset = end
+    assert(offset <= doc.text.length, s"absurd offset = $offset when doc is length ${doc.text.length}")
     sb.append(doc.text.substring(offset))
     sb.toString
   end printTextDocument

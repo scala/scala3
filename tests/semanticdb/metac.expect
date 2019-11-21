@@ -1008,8 +1008,8 @@ Schema => SemanticDB v4
 Uri => Flags.scala
 Text => empty
 Language => Scala
-Symbols => 51 entries
-Occurrences => 84 entries
+Symbols => 50 entries
+Occurrences => 82 entries
 
 Symbols:
 flags/p/package. => final package object p
@@ -1060,9 +1060,8 @@ flags/p/package.xs1. => val method xs1
 flags/p/package.y(). => implicit var method y
 flags/p/package.z(). => method z
 flags/p/package.z().(pp) => param pp
-local0 => val local xs1
-local1 => val local xs2
-local2 => case val method t
+local0 => val local xs2
+local1 => case val method t
 
 Occurrences:
 [0:8..0:13): flags <- flags/
@@ -1137,17 +1136,15 @@ Occurrences:
 [23:6..23:10): List -> scala/package.List.
 [23:10..23:10): -> scala/collection/SeqFactory#unapplySeq().
 [23:11..23:14): xs1 <- flags/p/package.xs1.
-[23:11..23:14): xs1 <- local0
-[23:15..23:15): -> local0
 [23:18..23:21): ??? -> scala/Predef.`???`().
 [24:2..24:5): ??? -> scala/Predef.`???`().
 [24:19..24:23): List -> scala/package.List.
 [24:23..24:23): -> scala/collection/SeqFactory#unapplySeq().
-[24:24..24:27): xs2 <- local1
+[24:24..24:27): xs2 <- local0
 [24:32..24:35): ??? -> scala/Predef.`???`().
 [25:2..25:5): ??? -> scala/Predef.`???`().
 [25:22..25:26): List -> scala/package.List#
-[25:27..25:28): t <- local2
+[25:27..25:28): t <- local1
 [25:33..25:36): ??? -> scala/Predef.`???`().
 
 expect/ForComprehension.scala
@@ -2460,7 +2457,7 @@ Uri => Synthetic.scala
 Text => empty
 Language => Scala
 Symbols => 37 entries
-Occurrences => 161 entries
+Occurrences => 163 entries
 
 Symbols:
 example/Synthetic# => class Synthetic
@@ -2472,6 +2469,9 @@ example/Synthetic#J#`<init>`(). => primary ctor <init>
 example/Synthetic#J#arr. => val method arr
 example/Synthetic#Name. => val method Name
 example/Synthetic#`<init>`(). => primary ctor <init>
+example/Synthetic#a1. => val method a1
+example/Synthetic#a2. => val method a2
+example/Synthetic#as. => val method as
 example/Synthetic#f. => val method f
 example/Synthetic#lst. => val method lst
 example/Synthetic#name. => val method name
@@ -2487,19 +2487,16 @@ example/Synthetic#s.Bar.unapply().(x$1) => param x$1
 example/Synthetic#s.apply(). => method apply
 example/Synthetic#x. => val method x
 example/Synthetic#xs. => val method xs
-local0 => val local x
-local1 => val local xs
-local2 => val local name
-local3 => param x
-local4 => param y
-local5 => param i
-local6 => param j
-local7 => param i
-local8 => param j
-local9 => param a
-local10 => param b
-local11 => param a
-local12 => param b
+local0 => param x
+local1 => param y
+local2 => param i
+local3 => param j
+local4 => param i
+local5 => param j
+local6 => param a
+local7 => param b
+local8 => param a
+local9 => param b
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -2524,145 +2521,147 @@ Occurrences:
 [10:6..10:10): Name <- example/Synthetic#Name.
 [10:13..10:13): -> scala/Predef.augmentString().
 [10:25..10:26): r -> scala/collection/StringOps#r().
-[11:6..11:7): x <- local0
 [11:6..11:7): x <- example/Synthetic#x.
 [11:8..11:11): #:: -> scala/package.`#::`.
 [11:11..11:11): -> scala/package.`#::`.unapply().
-[11:12..11:14): xs <- local1
 [11:12..11:14): xs <- example/Synthetic#xs.
-[11:14..11:14): -> scala/Tuple2.apply().
-[11:14..11:14): -> local0
-[11:14..11:14): -> local1
 [11:17..11:25): LazyList -> scala/package.LazyList.
 [11:25..11:25): -> scala/collection/IterableFactory#apply().
 [12:6..12:10): Name -> example/Synthetic#Name.
 [12:10..12:10): -> scala/util/matching/Regex#unapplySeq().
 [12:11..12:15): name <- example/Synthetic#name.
-[12:11..12:15): name <- local2
-[12:16..12:16): -> local2
 [13:8..13:8): -> scala/collection/immutable/LazyList.toDeferrer().
 [13:14..13:14): -> scala/collection/immutable/LazyList.toDeferrer().
 [13:14..13:22): LazyList -> scala/package.LazyList.
 [13:23..13:28): empty -> scala/collection/immutable/LazyList.empty().
 [13:28..13:28): -> scala/collection/immutable/LazyList.Deferrer#`#::`().
-[15:6..15:9): lst <- example/Synthetic#lst.
-[15:18..15:18): -> scala/collection/immutable/LazyList.toDeferrer().
-[15:24..15:24): -> scala/collection/immutable/LazyList.toDeferrer().
-[15:24..15:32): LazyList -> scala/package.LazyList.
-[15:33..15:38): empty -> scala/collection/immutable/LazyList.empty().
-[15:38..15:38): -> scala/collection/immutable/LazyList.Deferrer#`#::`().
-[17:7..17:8): x <- local3
-[17:12..17:12): -> scala/LowPriorityImplicits#intWrapper().
-[17:14..17:16): to -> scala/runtime/RichInt#to().
-[17:19..17:19): -> scala/collection/immutable/Range#foreach().
-[17:21..17:22): y <- local4
-[17:26..17:26): -> scala/LowPriorityImplicits#intWrapper().
-[17:28..17:33): until -> scala/runtime/RichInt#until().
-[17:36..17:36): -> scala/collection/immutable/Range#foreach().
-[17:38..17:45): println -> scala/Predef.println(+1).
-[17:46..17:46): -> scala/Predef.ArrowAssoc().
-[17:46..17:47): x -> local3
-[17:48..17:50): -> -> scala/Predef.ArrowAssoc#`->`().
-[17:51..17:52): x -> local3
-[18:7..18:8): i <- local5
-[18:12..18:12): -> scala/LowPriorityImplicits#intWrapper().
-[18:14..18:16): to -> scala/runtime/RichInt#to().
-[18:19..18:19): -> scala/collection/StrictOptimizedIterableOps#flatMap().
-[18:21..18:22): j <- local6
-[18:26..18:26): -> scala/LowPriorityImplicits#intWrapper().
-[18:28..18:33): until -> scala/runtime/RichInt#until().
-[18:36..18:36): -> scala/collection/immutable/Range#map().
-[18:45..18:45): -> scala/Tuple2.apply().
-[18:45..18:46): i -> local5
-[18:48..18:49): j -> local6
-[19:7..19:8): i <- local7
+[15:6..15:8): a1 <- example/Synthetic#a1.
+[15:9..15:12): #:: -> scala/package.`#::`.
+[15:12..15:12): -> scala/package.`#::`.unapply().
+[15:13..15:15): a2 <- example/Synthetic#a2.
+[15:16..15:19): #:: -> scala/package.`#::`.
+[15:19..15:19): -> scala/package.`#::`.unapply().
+[15:20..15:22): as <- example/Synthetic#as.
+[15:25..15:33): LazyList -> scala/package.LazyList.
+[15:33..15:33): -> scala/collection/IterableFactory#apply().
+[17:6..17:9): lst <- example/Synthetic#lst.
+[17:18..17:18): -> scala/collection/immutable/LazyList.toDeferrer().
+[17:24..17:24): -> scala/collection/immutable/LazyList.toDeferrer().
+[17:24..17:32): LazyList -> scala/package.LazyList.
+[17:33..17:38): empty -> scala/collection/immutable/LazyList.empty().
+[17:38..17:38): -> scala/collection/immutable/LazyList.Deferrer#`#::`().
+[19:7..19:8): x <- local0
 [19:12..19:12): -> scala/LowPriorityImplicits#intWrapper().
 [19:14..19:16): to -> scala/runtime/RichInt#to().
-[19:19..19:19): -> scala/collection/StrictOptimizedIterableOps#flatMap().
-[19:21..19:22): j <- local8
+[19:19..19:19): -> scala/collection/immutable/Range#foreach().
+[19:21..19:22): y <- local1
 [19:26..19:26): -> scala/LowPriorityImplicits#intWrapper().
 [19:28..19:33): until -> scala/runtime/RichInt#until().
-[19:36..19:36): -> scala/collection/IterableOps#withFilter().
-[19:40..19:41): i -> local7
-[19:42..19:43): % -> scala/Int#`%`(+3).
-[19:46..19:48): == -> scala/Int#`==`(+3).
-[19:50..19:50): -> scala/collection/WithFilter#map().
-[19:59..19:59): -> scala/Tuple2.apply().
-[19:59..19:60): i -> local7
-[19:62..19:63): j -> local8
-[21:9..21:10): s <- example/Synthetic#s.
-[22:8..22:13): apply <- example/Synthetic#s.apply().
-[23:5..23:5): -> example/Synthetic#s.apply().
-[24:6..24:11): apply -> example/Synthetic#s.apply().
-[25:15..25:18): Bar <- example/Synthetic#s.Bar#
-[25:18..25:20): <- example/Synthetic#s.Bar#`<init>`().
-[26:4..26:7): Bar -> example/Synthetic#s.Bar.
-[26:7..26:7): -> example/Synthetic#s.Bar.apply().
-[27:9..27:21): asInstanceOf -> scala/Any#asInstanceOf().
-[27:22..27:25): Int -> scala/Int#
-[27:29..27:32): Int -> scala/Int#
-[27:33..27:33): -> scala/Function1#apply().
-[30:8..30:9): J <- example/Synthetic#J#
-[30:9..30:22): <- example/Synthetic#J#`<init>`().
-[30:10..30:11): T <- example/Synthetic#J#[T]
-[30:13..30:21): Manifest -> scala/Predef.Manifest#
-[30:21..30:21): -> example/Synthetic#J#[T]
-[30:29..30:32): arr <- example/Synthetic#J#arr.
-[30:35..30:40): Array -> scala/Array.
-[30:41..30:46): empty -> scala/Array.empty().
-[30:47..30:48): T -> example/Synthetic#J#[T]
-[32:2..32:2): <- example/Synthetic#F#`<init>`().
-[32:8..32:9): F <- example/Synthetic#F#
-[33:15..33:23): ordering <- example/Synthetic#ordering.
-[33:25..33:33): Ordering -> scala/package.Ordering#
-[33:34..33:35): F -> example/Synthetic#F#
-[33:39..33:42): ??? -> scala/Predef.`???`().
-[34:6..34:7): f <- example/Synthetic#f.
-[34:9..34:16): Ordered -> scala/package.Ordered#
-[34:17..34:18): F -> example/Synthetic#F#
-[34:22..34:22): -> scala/math/Ordered.orderingToOrdered().
-[34:26..34:27): F -> example/Synthetic#F#
-[34:27..34:27): -> example/Synthetic#F#`<init>`().
-[34:27..34:27): -> example/Synthetic#ordering.
-[36:9..36:14): scala -> scala/
-[36:15..36:25): concurrent -> scala/concurrent/
-[36:26..36:42): ExecutionContext -> scala/concurrent/ExecutionContext.
-[36:43..36:52): Implicits -> scala/concurrent/ExecutionContext.Implicits.
-[36:53..36:59): global -> scala/concurrent/ExecutionContext.Implicits.global().
-[38:4..38:5): a <- local9
+[19:36..19:36): -> scala/collection/immutable/Range#foreach().
+[19:38..19:45): println -> scala/Predef.println(+1).
+[19:46..19:46): -> scala/Predef.ArrowAssoc().
+[19:46..19:47): x -> local0
+[19:48..19:50): -> -> scala/Predef.ArrowAssoc#`->`().
+[19:51..19:52): x -> local0
+[20:7..20:8): i <- local2
+[20:12..20:12): -> scala/LowPriorityImplicits#intWrapper().
+[20:14..20:16): to -> scala/runtime/RichInt#to().
+[20:19..20:19): -> scala/collection/StrictOptimizedIterableOps#flatMap().
+[20:21..20:22): j <- local3
+[20:26..20:26): -> scala/LowPriorityImplicits#intWrapper().
+[20:28..20:33): until -> scala/runtime/RichInt#until().
+[20:36..20:36): -> scala/collection/immutable/Range#map().
+[20:45..20:45): -> scala/Tuple2.apply().
+[20:45..20:46): i -> local2
+[20:48..20:49): j -> local3
+[21:7..21:8): i <- local4
+[21:12..21:12): -> scala/LowPriorityImplicits#intWrapper().
+[21:14..21:16): to -> scala/runtime/RichInt#to().
+[21:19..21:19): -> scala/collection/StrictOptimizedIterableOps#flatMap().
+[21:21..21:22): j <- local5
+[21:26..21:26): -> scala/LowPriorityImplicits#intWrapper().
+[21:28..21:33): until -> scala/runtime/RichInt#until().
+[21:36..21:36): -> scala/collection/IterableOps#withFilter().
+[21:40..21:41): i -> local4
+[21:42..21:43): % -> scala/Int#`%`(+3).
+[21:46..21:48): == -> scala/Int#`==`(+3).
+[21:50..21:50): -> scala/collection/WithFilter#map().
+[21:59..21:59): -> scala/Tuple2.apply().
+[21:59..21:60): i -> local4
+[21:62..21:63): j -> local5
+[23:9..23:10): s <- example/Synthetic#s.
+[24:8..24:13): apply <- example/Synthetic#s.apply().
+[25:5..25:5): -> example/Synthetic#s.apply().
+[26:6..26:11): apply -> example/Synthetic#s.apply().
+[27:15..27:18): Bar <- example/Synthetic#s.Bar#
+[27:18..27:20): <- example/Synthetic#s.Bar#`<init>`().
+[28:4..28:7): Bar -> example/Synthetic#s.Bar.
+[28:7..28:7): -> example/Synthetic#s.Bar.apply().
+[29:9..29:21): asInstanceOf -> scala/Any#asInstanceOf().
+[29:22..29:25): Int -> scala/Int#
+[29:29..29:32): Int -> scala/Int#
+[29:33..29:33): -> scala/Function1#apply().
+[32:8..32:9): J <- example/Synthetic#J#
+[32:9..32:22): <- example/Synthetic#J#`<init>`().
+[32:10..32:11): T <- example/Synthetic#J#[T]
+[32:13..32:21): Manifest -> scala/Predef.Manifest#
+[32:21..32:21): -> example/Synthetic#J#[T]
+[32:29..32:32): arr <- example/Synthetic#J#arr.
+[32:35..32:40): Array -> scala/Array.
+[32:41..32:46): empty -> scala/Array.empty().
+[32:47..32:48): T -> example/Synthetic#J#[T]
+[34:2..34:2): <- example/Synthetic#F#`<init>`().
+[34:8..34:9): F <- example/Synthetic#F#
+[35:15..35:23): ordering <- example/Synthetic#ordering.
+[35:25..35:33): Ordering -> scala/package.Ordering#
+[35:34..35:35): F -> example/Synthetic#F#
+[35:39..35:42): ??? -> scala/Predef.`???`().
+[36:6..36:7): f <- example/Synthetic#f.
+[36:9..36:16): Ordered -> scala/package.Ordered#
+[36:17..36:18): F -> example/Synthetic#F#
+[36:22..36:22): -> scala/math/Ordered.orderingToOrdered().
+[36:26..36:27): F -> example/Synthetic#F#
+[36:27..36:27): -> example/Synthetic#F#`<init>`().
+[36:27..36:27): -> example/Synthetic#ordering.
 [38:9..38:14): scala -> scala/
 [38:15..38:25): concurrent -> scala/concurrent/
-[38:26..38:32): Future -> scala/concurrent/Future.
-[38:33..38:43): successful -> scala/concurrent/Future.successful().
-[38:46..38:46): -> scala/concurrent/Future#foreach().
-[39:4..39:5): b <- local10
-[39:9..39:14): scala -> scala/
-[39:15..39:25): concurrent -> scala/concurrent/
-[39:26..39:32): Future -> scala/concurrent/Future.
-[39:33..39:43): successful -> scala/concurrent/Future.successful().
-[39:46..39:46): -> scala/concurrent/Future#foreach().
-[40:4..40:11): println -> scala/Predef.println(+1).
-[40:12..40:13): a -> local9
-[40:14..40:14): -> scala/concurrent/ExecutionContext.Implicits.global().
-[42:4..42:5): a <- local11
-[42:9..42:14): scala -> scala/
-[42:15..42:25): concurrent -> scala/concurrent/
-[42:26..42:32): Future -> scala/concurrent/Future.
-[42:33..42:43): successful -> scala/concurrent/Future.successful().
-[42:46..42:46): -> scala/concurrent/Future#flatMap().
-[43:4..43:5): b <- local12
-[43:9..43:14): scala -> scala/
-[43:15..43:25): concurrent -> scala/concurrent/
-[43:26..43:32): Future -> scala/concurrent/Future.
-[43:33..43:43): successful -> scala/concurrent/Future.successful().
-[43:46..43:46): -> scala/concurrent/Future#withFilter().
-[44:7..44:8): a -> local11
-[44:9..44:10): < -> scala/Int#`<`(+3).
-[44:11..44:12): b -> local12
-[44:12..44:12): -> scala/concurrent/Future#map().
-[44:12..44:12): -> scala/concurrent/ExecutionContext.Implicits.global().
-[45:10..45:11): a -> local11
-[45:11..45:11): -> scala/concurrent/ExecutionContext.Implicits.global().
+[38:26..38:42): ExecutionContext -> scala/concurrent/ExecutionContext.
+[38:43..38:52): Implicits -> scala/concurrent/ExecutionContext.Implicits.
+[38:53..38:59): global -> scala/concurrent/ExecutionContext.Implicits.global().
+[40:4..40:5): a <- local6
+[40:9..40:14): scala -> scala/
+[40:15..40:25): concurrent -> scala/concurrent/
+[40:26..40:32): Future -> scala/concurrent/Future.
+[40:33..40:43): successful -> scala/concurrent/Future.successful().
+[40:46..40:46): -> scala/concurrent/Future#foreach().
+[41:4..41:5): b <- local7
+[41:9..41:14): scala -> scala/
+[41:15..41:25): concurrent -> scala/concurrent/
+[41:26..41:32): Future -> scala/concurrent/Future.
+[41:33..41:43): successful -> scala/concurrent/Future.successful().
+[41:46..41:46): -> scala/concurrent/Future#foreach().
+[42:4..42:11): println -> scala/Predef.println(+1).
+[42:12..42:13): a -> local6
+[42:14..42:14): -> scala/concurrent/ExecutionContext.Implicits.global().
+[44:4..44:5): a <- local8
+[44:9..44:14): scala -> scala/
+[44:15..44:25): concurrent -> scala/concurrent/
+[44:26..44:32): Future -> scala/concurrent/Future.
+[44:33..44:43): successful -> scala/concurrent/Future.successful().
+[44:46..44:46): -> scala/concurrent/Future#flatMap().
+[45:4..45:5): b <- local9
+[45:9..45:14): scala -> scala/
+[45:15..45:25): concurrent -> scala/concurrent/
+[45:26..45:32): Future -> scala/concurrent/Future.
+[45:33..45:43): successful -> scala/concurrent/Future.successful().
+[45:46..45:46): -> scala/concurrent/Future#withFilter().
+[46:7..46:8): a -> local8
+[46:9..46:10): < -> scala/Int#`<`(+3).
+[46:11..46:12): b -> local9
+[46:12..46:12): -> scala/concurrent/Future#map().
+[46:12..46:12): -> scala/concurrent/ExecutionContext.Implicits.global().
+[47:10..47:11): a -> local8
+[47:11..47:11): -> scala/concurrent/ExecutionContext.Implicits.global().
 
 expect/Traits.scala
 -------------------
@@ -3100,8 +3099,8 @@ Schema => SemanticDB v4
 Uri => ValPattern.scala
 Text => empty
 Language => Scala
-Symbols => 23 entries
-Occurrences => 60 entries
+Symbols => 21 entries
+Occurrences => 54 entries
 
 Symbols:
 example/ValPattern# => class ValPattern
@@ -3119,14 +3118,12 @@ example/ValPattern#number1. => val method number1
 example/ValPattern#number1Var(). => var method number1Var
 example/ValPattern#right. => val method right
 example/ValPattern#rightVar(). => var method rightVar
-local0 => val local number1
-local1 => val local number1Var
-local2 => val local left
-local3 => val local right
-local4 => val local number1
-local5 => var local leftVar
-local6 => var local rightVar
-local7 => var local number1Var
+local0 => val local left
+local1 => val local right
+local2 => val local number1
+local3 => var local leftVar
+local4 => var local rightVar
+local5 => var local number1Var
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -3138,8 +3135,6 @@ Occurrences:
 [5:6..5:10): Some -> scala/Some.
 [5:10..5:10): -> scala/Some.unapply().
 [5:11..5:18): number1 <- example/ValPattern#number1.
-[5:11..5:18): number1 <- local0
-[5:19..5:19): -> local0
 [6:4..6:8): Some -> scala/Some.
 [6:8..6:8): -> scala/Some.apply().
 [8:7..8:14): leftVar <- example/ValPattern#leftVar().
@@ -3148,8 +3143,6 @@ Occurrences:
 [9:6..9:10): Some -> scala/Some.
 [9:10..9:10): -> scala/Some.unapply().
 [9:11..9:21): number1Var <- example/ValPattern#number1Var().
-[9:11..9:21): number1Var <- local1
-[9:22..9:22): -> local1
 [10:4..10:8): Some -> scala/Some.
 [10:8..10:8): -> scala/Some.apply().
 [12:6..12:9): app <- example/ValPattern#app().
@@ -3163,32 +3156,30 @@ Occurrences:
 [19:8..19:15): leftVar -> example/ValPattern#leftVar().
 [20:8..20:16): rightVar -> example/ValPattern#rightVar().
 [23:4..23:11): locally -> dotty/DottyPredef.locally().
-[24:11..24:15): left <- local2
-[24:17..24:22): right <- local3
+[24:11..24:15): left <- local0
+[24:17..24:22): right <- local1
 [24:27..24:27): -> scala/Tuple2.apply().
 [25:10..25:14): Some -> scala/Some.
 [25:14..25:14): -> scala/Some.unapply().
-[25:15..25:22): number1 <- local4
-[25:23..25:23): -> local4
+[25:15..25:22): number1 <- local2
 [26:8..26:12): Some -> scala/Some.
 [26:12..26:12): -> scala/Some.apply().
-[28:11..28:18): leftVar <- local5
-[28:20..28:28): rightVar <- local6
+[28:11..28:18): leftVar <- local3
+[28:20..28:28): rightVar <- local4
 [28:33..28:33): -> scala/Tuple2.apply().
 [29:10..29:14): Some -> scala/Some.
 [29:14..29:14): -> scala/Some.unapply().
-[29:15..29:25): number1Var <- local7
-[29:26..29:26): -> local7
+[29:15..29:25): number1Var <- local5
 [30:8..30:12): Some -> scala/Some.
 [30:12..30:12): -> scala/Some.apply().
 [31:6..31:13): println -> scala/Predef.println(+1).
 [33:10..33:10): -> scala/Tuple6.apply().
-[33:10..33:17): number1 -> local4
-[34:10..34:14): left -> local2
-[35:10..35:15): right -> local3
-[36:10..36:20): number1Var -> local7
-[37:10..37:17): leftVar -> local5
-[38:10..38:18): rightVar -> local6
+[33:10..33:17): number1 -> local2
+[34:10..34:14): left -> local0
+[35:10..35:15): right -> local1
+[36:10..36:20): number1Var -> local5
+[37:10..37:17): leftVar -> local3
+[38:10..38:18): rightVar -> local4
 
 expect/Vals.scala
 -----------------

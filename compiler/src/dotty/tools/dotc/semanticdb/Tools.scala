@@ -127,6 +127,9 @@ object Tools with
       && range.startCharacter != range.endCharacter
       && !(occ.symbol.isConstructor && occ.role.isDefinition)
         val line = sourceFile.lineContent(sourceFile.lineToOffset(range.startLine))
+        assert(range.startCharacter <= line.length && range.endCharacter <= line.length,
+          s"Line is only ${line.length} - start line was ${range.startLine} in source ${sourceFile.name}"
+        )
         sb.append(" ").append(line.substring(range.startCharacter, range.endCharacter))
     case _ =>
       sb.append("[):")
