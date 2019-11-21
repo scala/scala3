@@ -1389,7 +1389,7 @@ class Typer extends Namer
         def typedArg(arg: untpd.Tree, tparam: ParamInfo) = {
           def tparamBounds = tparam.paramInfoAsSeenFrom(tpt1.tpe.appliedTo(tparams.map(_ => TypeBounds.empty)))
           val (desugaredArg, argPt) =
-            if (ctx.mode is Mode.Pattern)
+            if ctx.mode.is(Mode.Pattern) || ctx.mode.is(Mode.QuotedPattern) then
               (if (untpd.isVarPattern(arg)) desugar.patternVar(arg) else arg, tparamBounds)
             else
               (arg, WildcardType)
@@ -2177,7 +2177,7 @@ class Typer extends Namer
 
   /** Typecheck and adapt tree, returning a typed tree. Parameters as for `typedUnadapted` */
   def typed(tree: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree =
-    trace(i"typing $tree", typr, show = true) {
+    trace(i"typing $tree, pt = $pt", typr, show = true) {
       record(s"typed $getClass")
       record("typed total")
       assertPositioned(tree)

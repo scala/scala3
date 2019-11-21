@@ -98,7 +98,7 @@ trait QuotesAndSplices {
       case _ =>
     }
     if (ctx.mode.is(Mode.QuotedPattern) && level == 1)
-      if (isFullyDefined(pt, ForceDegree.all)) {
+      if (false && isFullyDefined(pt, ForceDegree.all)) {
         ctx.error(i"Spliced type pattern must not be fully defined. Consider using $pt directly", tree.expr.sourcePos)
         tree.withType(UnspecifiedErrorType)
       }
@@ -111,7 +111,10 @@ trait QuotesAndSplices {
             ctx.error("expected a name binding", expr.sourcePos)
             "$error".toTypeName
         }
-        val typeSym = ctx.newSymbol(spliceOwner(ctx), name, EmptyFlags, TypeBounds.empty, NoSymbol, tree.expr.span)
+        val typeSymInfo = pt match
+          case pt: TypeBounds => pt
+          case _ => TypeBounds.empty
+        val typeSym = ctx.newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.expr.span)
         typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.expr.span)))
         val pat = typedPattern(tree.expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
             spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
@@ -317,13 +320,16 @@ trait QuotesAndSplices {
       ctx.error(missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(tree.span))
 
     val quoted = tree.quoted
-    val exprPt = pt.baseType(defn.QuotedExprClass)
+    val exprPt = pt.baseType(if quoted.isType then defn.QuotedTypeClass else defn.QuotedExprClass)
     val quotedPt = exprPt.argInfos.headOption match {
       case Some(argPt: ValueType) => argPt // excludes TypeBounds
       case _ => defn.AnyType
     }
     val quoted0 = desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt)))
-    val quoted1 = typedExpr(quoted0, WildcardType)(quoteContext.addMode(Mode.QuotedPattern))
+    val quoteCtx = quoteContext.addMode(Mode.QuotedPattern)
+    val quoted1 =
+      if quoted.isType then typedType(quoted0, quotedPt)(quoteCtx)
+      else typedExpr(quoted0, quotedPt)(quoteCtx)
 
     val (typeBindings, shape, splices) = splitQuotePattern(quoted1)
 
