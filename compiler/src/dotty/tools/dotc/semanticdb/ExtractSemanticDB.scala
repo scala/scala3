@@ -342,6 +342,8 @@ class ExtractSemanticDB extends Phase with
         SymbolInformation.Kind.UNKNOWN_KIND
 
     private def symbolProps(sym: Symbol, symkinds: Set[SymbolKind])(given Context): Int =
+      if sym.is(ModuleClass)
+        return symbolProps(sym.sourceModule, symkinds)
       var props = 0
       if sym.isPrimaryConstructor
         props |= SymbolInformation.Property.PRIMARY.value
@@ -353,9 +355,9 @@ class ExtractSemanticDB extends Phase with
         props |= SymbolInformation.Property.SEALED.value
       if sym.isOneOf(GivenOrImplicit)
         props |= SymbolInformation.Property.IMPLICIT.value
-      if sym.is(Lazy)
+      if sym.is(Lazy, butNot=Module)
         props |= SymbolInformation.Property.LAZY.value
-      if sym.isAllOf(CaseClass) || sym.isAllOf(EnumCase)
+      if sym.isAllOf(Case | Module) || sym.is(CaseClass) || sym.isAllOf(EnumCase)
         props |= SymbolInformation.Property.CASE.value
       if sym.is(Covariant)
         props |= SymbolInformation.Property.COVARIANT.value
