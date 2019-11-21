@@ -97,29 +97,25 @@ trait QuotesAndSplices {
         ctx.warning("Canceled quote directly inside a splice. ${ '[ XYZ ] } is equivalent to XYZ.", tree.sourcePos)
       case _ =>
     }
+
     if (ctx.mode.is(Mode.QuotedPattern) && level == 1)
-      if (false && isFullyDefined(pt, ForceDegree.all)) {
-        ctx.error(i"Spliced type pattern must not be fully defined. Consider using $pt directly", tree.expr.sourcePos)
-        tree.withType(UnspecifiedErrorType)
+      def spliceOwner(ctx: Context): Symbol =
+      if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
+      val name = tree.expr match {
+        case Ident(name) => ("$" + name).toTypeName
+        case expr =>
+          ctx.error("expected a name binding", expr.sourcePos)
+          "$error".toTypeName
       }
-      else {
-        def spliceOwner(ctx: Context): Symbol =
-          if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
-        val name = tree.expr match {
-          case Ident(name) => ("$" + name).toTypeName
-          case expr =>
-            ctx.error("expected a name binding", expr.sourcePos)
-            "$error".toTypeName
-        }
-        val typeSymInfo = pt match
-          case pt: TypeBounds => pt
-          case _ => TypeBounds.empty
-        val typeSym = ctx.newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.expr.span)
-        typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.expr.span)))
-        val pat = typedPattern(tree.expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
-            spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
-        pat.select(tpnme.splice)
-      }
+
+      val typeSymInfo = pt match
+        case pt: TypeBounds => pt
+        case _ => TypeBounds.empty
+      val typeSym = ctx.newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.expr.span)
+      typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuoted_patternBindHoleAnnot.typeRef)).withSpan(tree.expr.span)))
+      val pat = typedPattern(tree.expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
+          spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
+      pat.select(tpnme.splice)
     else
       typedSelect(untpd.Select(tree.expr, tpnme.splice), pt)(spliceContext).withSpan(tree.span)
   }
