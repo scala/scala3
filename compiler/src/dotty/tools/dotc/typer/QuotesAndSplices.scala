@@ -328,8 +328,8 @@ trait QuotesAndSplices {
     val quoted0 = desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt)))
     val quoteCtx = quoteContext.addMode(Mode.QuotedPattern)
     val quoted1 =
-      if quoted.isType then typedType(quoted0, quotedPt)(quoteCtx)
-      else typedExpr(quoted0, quotedPt)(quoteCtx)
+      if quoted.isType then typedType(quoted0, WildcardType)(quoteCtx)
+      else typedExpr(quoted0, WildcardType)(quoteCtx)
 
     val (typeBindings, shape, splices) = splitQuotePattern(quoted1)
 
