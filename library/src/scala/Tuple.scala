@@ -43,14 +43,31 @@ sealed trait Tuple extends Any {
   inline def zip[This >: this.type <: Tuple, T2 <: Tuple](t2: T2): Zip[This, T2] =
     DynamicTuple.dynamicZip(this, t2)
 
- /** Called on a tuple `(a1, ..., an)`, returns a new tuple `(f(a1), ..., f(an))`.
-  *  The result is typed as `(F[A1], ..., F[An])` if the tuple type is fully known.
-  *  If the tuple is of the form `a1 *: ... *: Tuple` (that is, the tail is not known
-  *  to be the cons type.
-  */
+  /** Called on a tuple `(a1, ..., an)`, returns a new tuple `(f(a1), ..., f(an))`.
+   *  The result is typed as `(F[A1], ..., F[An])` if the tuple type is fully known.
+   *  If the tuple is of the form `a1 *: ... *: Tuple` (that is, the tail is not known
+   *  to be the cons type.
+   */
   inline def map[F[_]](f: [t] => t => F[t]): Map[this.type, F] =
     DynamicTuple.dynamicMap(this, f)
 
+  /** Given a tuple `(a1, ..., am)`, returns the tuple `(a1, ..., an)` consisting
+   *  of its first n elements.
+   */
+  inline def take[This >: this.type <: Tuple](n: Int): Take[This, n.type] =
+    DynamicTuple.dynamicTake[This, n.type](this, n)
+
+
+  /** Given a tuple `(a1, ..., am)`, returns the tuple `(an+1, ..., am)` consisting
+   *  all its elements except the first n ones.
+   */
+  inline def drop[This >: this.type <: Tuple](n: Int): Drop[This, n.type] =
+    DynamicTuple.dynamicDrop[This, n.type](this, n)
+
+  /** Given a tuple `(a1, ..., am)`, returns a pair of the tuple `(a1, ..., an)`
+   *  consisting of the first n elements, and the tuple `(an+1, ..., am)` consisting
+   *  of the remaining elements.
+   */
   inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
     DynamicTuple.dynamicSplitAt[This, n.type](this, n)
 }

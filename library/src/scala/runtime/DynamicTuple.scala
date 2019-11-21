@@ -1,6 +1,6 @@
 package scala.runtime
 
-import scala.Tuple.{ Concat, Size, Head, Tail, Elem, Zip, Map, Split }
+import scala.Tuple.{ Concat, Size, Head, Tail, Elem, Zip, Map, Take, Drop, Split }
 
 object DynamicTuple {
   inline val MaxSpecialized = 22
@@ -262,6 +262,33 @@ object DynamicTuple {
     case _ =>
       Tuple.fromArray(self.asInstanceOf[Product].productIterator.map(f(_)).toArray) // TODO use toIArray of Object to avoid double/triple array copy
         .asInstanceOf[Map[This, F]]
+  }
+
+  def dynamicTake[This <: Tuple, N <: Int](self: This, n: N): Take[This, N] = {
+    type Result = Take[This, N]
+    val arr = (self: Any) match {
+      case xxl: TupleXXL =>
+        xxl.elems.asInstanceOf[Array[Object]].take(n)
+      case _ =>
+        val arr = new Array[Object](n)
+        itToArray(self.asInstanceOf[Product].productIterator, n, arr, 0)
+        arr
+    }
+    dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+  }
+
+  def dynamicDrop[This <: Tuple, N <: Int](self: This, n: N): Drop[This, N] = {
+    type Result = Drop[This, N]
+    val arr = (self: Any) match {
+      case xxl: TupleXXL =>
+        xxl.elems.asInstanceOf[Array[Object]].drop(n)
+      case _ =>
+        val size = self.asInstanceOf[Product].productArity - n
+        val arr = new Array[Object](size)
+        itToArray(self.asInstanceOf[Product].productIterator.drop(n), size, arr, 0)
+        arr
+    }
+    dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
   }
 
   def dynamicSplitAt[This <: Tuple, N <: Int](self: This, n: N): Split[This, N] = {
