@@ -1713,13 +1713,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Symbol_noSymbol(given ctx: Context): Symbol = core.Symbols.NoSymbol
 
-  def Symbol_typeRef(symbol: Symbol)(given ctx: Context): TypeOrBounds = symbol.typeRef
-
-  def Symbol_termRef(symbol: Symbol)(given ctx: Context): TypeOrBounds = symbol.termRef
-
-  def Symbol_info(symbol: Symbol)(given ctx: Context): TypeOrBounds = symbol.info
-
-
   //
   // FLAGS
   //

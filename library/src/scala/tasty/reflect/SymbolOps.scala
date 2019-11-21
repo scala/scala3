@@ -143,16 +143,6 @@ trait SymbolOps extends Core { selfSymbolOps: FlagsOps =>
     /** The symbol of the companion module */
     def companionModule(given ctx: Context): Symbol =
       internal.Symbol_companionModule(self)
-
-    def typeRef(given ctx: Context): TypeOrBounds =
-      internal.Symbol_typeRef(self)
-
-    def termRef(given ctx: Context): TypeOrBounds =
-      internal.Symbol_termRef(self)
-
-    def info(given ctx: Context): TypeOrBounds =
-      internal.Symbol_info(self)
-
   }
 
 }

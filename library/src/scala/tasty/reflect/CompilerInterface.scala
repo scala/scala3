@@ -1255,12 +1255,6 @@ trait CompilerInterface {
 
   def Symbol_noSymbol(given ctx: Context): Symbol
 
-  def Symbol_typeRef(symbol: Symbol)(given ctx: Context): TypeOrBounds
-
-  def Symbol_termRef(symbol: Symbol)(given ctx: Context): TypeOrBounds
-
-  def Symbol_info(symbol: Symbol)(given ctx: Context): TypeOrBounds
-
   //
   // FLAGS
   //
