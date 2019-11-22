@@ -25,23 +25,23 @@ steps:
       git pull "$DRONE_REMOTE_URL" "$DRONE_BRANCH";
     fi
 
-- name: test
-  pull: default
-  image: lampepfl/dotty:2019-10-17
-  depends_on: [ clone ]
-  commands:
-  - cp -R . /tmp/1/ && cd /tmp/1/
-  - ./project/scripts/sbt ";compile ;test"
-  - ./project/scripts/cmdTests
+# - name: test
+#   pull: default
+#   image: lampepfl/dotty:2019-10-17
+#   depends_on: [ clone ]
+#   commands:
+#   - cp -R . /tmp/1/ && cd /tmp/1/
+#   - ./project/scripts/sbt ";compile ;test"
+#   - ./project/scripts/cmdTests
 
-- name: test_bootstrapped
-  pull: default
-  image: lampepfl/dotty:2019-10-17
-  depends_on: [ clone ]
-  commands:
-  - cp -R . /tmp/2/ && cd /tmp/2/
-  - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test ;dotty-staging/test ;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test"
-  - ./project/scripts/bootstrapCmdTests
+# - name: test_bootstrapped
+#   pull: default
+#   image: lampepfl/dotty:2019-10-17
+#   depends_on: [ clone ]
+#   commands:
+#   - cp -R . /tmp/2/ && cd /tmp/2/
+#   - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test ;dotty-staging/test ;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test"
+#   - ./project/scripts/bootstrapCmdTests
 
 - name: community_build
   pull: default
