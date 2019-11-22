@@ -1389,8 +1389,10 @@ class Typer extends Namer
         def typedArg(arg: untpd.Tree, tparam: ParamInfo) = {
           def tparamBounds = tparam.paramInfoAsSeenFrom(tpt1.tpe.appliedTo(tparams.map(_ => TypeBounds.empty)))
           val (desugaredArg, argPt) =
-            if (ctx.mode is Mode.Pattern)
+            if ctx.mode.is(Mode.Pattern) then
               (if (untpd.isVarPattern(arg)) desugar.patternVar(arg) else arg, tparamBounds)
+            else if ctx.mode.is(Mode.QuotedPattern) then
+              (arg, tparamBounds)
             else
               (arg, WildcardType)
           if (tpt1.symbol.isClass)
@@ -3030,7 +3032,7 @@ class Typer extends Namer
               tree.tpe.EtaExpand(tp.typeParamSymbols)
           tree.withType(tp1)
         }
-      if ((ctx.mode is Mode.Pattern) || tree1.tpe <:< pt) tree1
+      if (ctx.mode.is(Mode.Pattern) || ctx.mode.is(Mode.QuotedPattern) || tree1.tpe <:< pt) tree1
       else err.typeMismatch(tree1, pt)
     }
 
