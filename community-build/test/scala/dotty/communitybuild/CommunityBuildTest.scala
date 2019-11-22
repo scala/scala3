@@ -257,10 +257,10 @@ class CommunityBuildTest {
    *  This test reads the compiler version from community-build/dotty-bootstrapped.version
    *  and expects community-build/sbt-dotty-sbt to set the compiler plugin.
    *
-   *  @param project        The project name, should be a git submodule in community-build/
-   *  @param command        The sbt command used to test the project
-   *  @param updateCommand  The sbt command used to update the project
-   *  @param extraSbtArgs   Extra arguments to pass to sbt
+   *  @param project    The project name, should be a git submodule in community-build/
+   *  @param command    The binary file of the program used to test the project – usually
+   *                    a build tool like SBT or Mill
+   *  @param arguments  Arguments to pass to the testing program
    */
   def test(project: String, command: String, arguments: Seq[String]): Unit = {
     log(s"Building $project with dotty-bootstrapped $compilerVersion...")
