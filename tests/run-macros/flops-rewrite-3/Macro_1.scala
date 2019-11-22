@@ -33,7 +33,7 @@ private def rewriteMacro[T: Type](x: Expr[T])(given QuoteContext): Expr[T] = {
     }
   )
 
-  val x2 = rewriter.rewrite(x)
+  val x2 = rewriter.transform(x)
 
   '{
     println(${Expr(x.show)})
@@ -92,7 +92,7 @@ private object Rewriter {
   def apply(): Rewriter = new Rewriter(Nil, Nil, false)
 }
 
-private class Rewriter private (preTransform: List[Transformation] = Nil, postTransform: List[Transformation] = Nil, fixPoint: Boolean) {
+private class Rewriter private (preTransform: List[Transformation] = Nil, postTransform: List[Transformation] = Nil, fixPoint: Boolean) extends util.ExprMap {
 
   def withFixPoint: Rewriter =
     new Rewriter(preTransform, postTransform, fixPoint = true)
@@ -101,37 +101,11 @@ private class Rewriter private (preTransform: List[Transformation] = Nil, postTr
   def withPost(transform: Transformation): Rewriter =
     new Rewriter(preTransform, transform :: postTransform, fixPoint)
 
-  def rewrite[T](e: Expr[T])(given QuoteContext, Type[T]): Expr[T] = {
+  def transform[T](e: Expr[T])(given QuoteContext, Type[T]): Expr[T] = {
     val e2 = preTransform.foldLeft(e)((ei, transform) => transform(ei))
-    val e3 = rewriteChildren(e2)
+    val e3 = transformChildren(e2)
     val e4 = postTransform.foldLeft(e3)((ei, transform) => transform(ei))
-    if fixPoint && e4 != e then rewrite(e4) else e4
-  }
-
-  def rewriteChildren[T: Type](e: Expr[T])(given qctx: QuoteContext): Expr[T] = {
-    import qctx.tasty.{_, given}
-    class MapChildren extends TreeMap {
-      override def transformTerm(tree: Term)(given ctx: Context): Term = tree match {
-        case _: Closure =>
-          tree
-        case _: Inlined | _: Select =>
-          transformChildrenTerm(tree)
-        case _ =>
-          tree.tpe.widen match {
-            case _: MethodType | _: PolyType =>
-              transformChildrenTerm(tree)
-            case _ =>
-              tree.seal match {
-                case '{ $x: $t } => rewrite(x).unseal
-              }
-          }
-      }
-      def transformChildrenTerm(tree: Term)(given ctx: Context): Term =
-        super.transformTerm(tree)
-    }
-    (new MapChildren).transformChildrenTerm(e.unseal).seal.cast[T] // Cast will only fail if this implementation has a bug
+    if fixPoint && !e4.matches(e) then transform(e4) else e4
   }
 
 }
-
-
