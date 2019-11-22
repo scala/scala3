@@ -297,14 +297,14 @@ class CommunityBuildTest {
   }
 
   // @Test def intent = projects.intent.run()
-  @Test def algebra = projects.algebra.run()
+  // @Test def algebra = projects.algebra.run()
   @Test def scalacheck = projects.scalacheck.run()
   // @Test def scalatest = projects.scalatest.run()
   // @Test def scalaXml = projects.scalaXml.run()
   // @Test def scopt = projects.scopt.run()
   // @Test def scalap = projects.scalap.run()
   // @Test def squants = projects.squants.run()
-  // @Test def betterfiles = projects.betterfiles.run()
+  @Test def betterfiles = projects.betterfiles.run()
   // @Test def ScalaPB = projects.ScalaPB.run()
   // @Test def minitest = projects.minitest.run()
   // @Test def fastparse = projects.fastparse.run()
@@ -314,8 +314,8 @@ class CommunityBuildTest {
   // @Test def oslibWatch = projects.oslibWatch.run()
   // @Test def stdLib213 = projects.stdLib213.run()
   // @Test def shapeless = projects.shapeless.run()
-  // @Test def xmlInterpolator = projects.xmlInterpolator.run()
-  // @Test def semanticdb = projects.semanticdb.run()
+  @Test def xmlInterpolator = projects.xmlInterpolator.run()
+  @Test def semanticdb = projects.semanticdb.run()
   // @Test def effpi = projects.effpi.run()
 }
 
