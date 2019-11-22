@@ -1951,20 +1951,20 @@ object Parsers {
         mkIf(cond, thenp, elsep)
       }
 
-    /**    `match' (`{' CaseClauses `}' | CaseClause)
+    /**    `match' `{' CaseClauses `}'
      */
     def matchExpr(t: Tree, start: Offset, mkMatch: (Tree, List[CaseDef]) => Match) =
       in.endMarkerScope(MATCH) {
         atSpan(start, in.skipToken()) {
-          mkMatch(t, casesExpr(caseClause))
+          mkMatch(t, inBracesOrIndented(caseClauses(caseClause)))
         }
       }
 
-    /**    `match' (`{' TypeCaseClauses `}' | TypeCaseClause)
+    /**    `match' `{' TypeCaseClauses `}'
      */
     def matchType(t: Tree): MatchTypeTree =
       atSpan(t.span.start, accept(MATCH)) {
-        MatchTypeTree(EmptyTree, t, casesExpr(typeCaseClause))
+        MatchTypeTree(EmptyTree, t, inBracesOrIndented(caseClauses(typeCaseClause)))
       }
 
     /** FunParams         ::=  Bindings
@@ -2394,10 +2394,6 @@ object Parsers {
         }
       }
     }
-
-    def casesExpr(clause: () => CaseDef): List[CaseDef] =
-      if in.token == CASE then clause() :: Nil
-      else inBracesOrIndented(caseClauses(clause))
 
     /** CaseClauses         ::= CaseClause {CaseClause}
      *  TypeCaseClauses     ::= TypeCaseClause {TypeCaseClause}
