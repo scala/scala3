@@ -348,6 +348,16 @@ class Typer extends Namer
     findRefRecur(NoType, BindingPrec.NothingBound, NoContext)
   }
 
+  def toNotNullTermRef(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match
+    case tp @ OrNull(tpnn) : TermRef
+    if pt != AssignProto && // Ensure it is not the lhs of Assign
+    ctx.notNullInfos.impliesNotNull(tp) =>
+      Apply(
+        TypeApply(Ident(defn.Compiletime_notNull.namedType), TypeTree(tpnn) :: Nil),
+        tree :: Nil)
+    case _ =>
+      tree
+
   /** Attribute an identifier consisting of a simple name or wildcard
    *
    *  @param tree      The tree representing the identifier.
@@ -418,18 +428,7 @@ class Typer extends Namer
         tree.withType(ownType)
     }
 
-    val tree2 = ownType match {
-      case ot: TermRef
-      if ctx.explicitNulls &&
-        pt != AssignProto && // Ensure it is not the lhs of Assign
-        ctx.notNullInfos.impliesNotNull(ot) =>
-        Apply(
-          TypeApply(Ident(defn.Compiletime_notNull.namedType), TypeTree(ownType.stripNull) :: Nil),
-          tree1 :: Nil)
-      case _ =>
-        tree1
-    }
-
+    val tree2 = toNotNullTermRef(tree1, pt)
 
     checkStableIdentPattern(tree2, pt)
   }
@@ -456,8 +455,11 @@ class Typer extends Namer
     case qual =>
       if (tree.name.isTypeName) checkStable(qual.tpe, qual.sourcePos)
       val select = assignType(cpy.Select(tree)(qual, tree.name), qual)
-      if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
-      else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
+
+      val select1 = toNotNullTermRef(select, pt)
+
+      if (select1.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select1, pt))
+      else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select1
       else typedDynamicSelect(tree, Nil, pt)
   }
 
@@ -2220,27 +2222,31 @@ class Typer extends Namer
           case Some(xtree) =>
             traverse(xtree :: rest)
           case none =>
-            val defCtx = mdef match
+            def defCtx = ctx.withNotNullInfos(initialNotNullInfos)
+            val newCtx = if (ctx.owner.isTerm) {
               // Keep preceding not null facts in the current context only if `mdef`
               // cannot be executed out-of-sequence.
-              case _: ValDef if !mdef.mods.is(Lazy) && ctx.owner.isTerm =>
-                ctx // all preceding statements will have been executed in this case
-              case _ =>
-                ctx.withNotNullInfos(initialNotNullInfos)
-            // We have to check the Completer of symbol befor typedValDef,
-            // otherwise the symbol is already completed using creation context.
-            mdef.getAttachment(SymOfTree).map(s => (s, s.infoOrCompleter)) match {
-              case Some((sym, completer: Namer#Completer))
-              if completer.creationContext.notNullInfos ne defCtx.notNullInfos =>
-                // The RHS of a val def should know about not null facts established
-                // in preceding statements (unless the ValDef is completed ahead of time,
-                // then it is impossible).
-                sym.info = Completer(completer.original)(
-                  given completer.creationContext.withNotNullInfos(defCtx.notNullInfos))
-              case _ =>
+              // We have to check the Completer of symbol befor typedValDef,
+              // otherwise the symbol is already completed using creation context.
+              mdef.getAttachment(SymOfTree).map(s => (s, s.infoOrCompleter)) match {
+                case Some((sym, completer: Namer#Completer)) =>
+                  if (completer.creationContext.notNullInfos ne ctx.notNullInfos)
+                    // The RHS of a val def should know about not null facts established
+                    // in preceding statements (unless the DefTree is completed ahead of time,
+                    // then it is impossible).
+                    sym.info = Completer(completer.original)(
+                      given completer.creationContext.withNotNullInfos(ctx.notNullInfos))
+                  ctx // all preceding statements will have been executed in this case
+                case _ =>
+                  // If it has been completed, then it must be because there is a forward reference
+                  // to the definition in the program. Hence, we don't Keep preceding not null facts
+                  // in the current context.
+                  defCtx
+              }
             }
+            else defCtx
 
-            typed(mdef)(given defCtx) match {
+            typed(mdef)(given newCtx) match {
               case mdef1: DefDef if !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
                 buf += inlineExpansion(mdef1)
                   // replace body with expansion, because it will be used as inlined body

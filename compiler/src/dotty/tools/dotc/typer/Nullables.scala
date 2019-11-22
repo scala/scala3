@@ -95,9 +95,7 @@ object Nullables with
 
   /** An extractor for null-trackable references */
   object TrackedRef
-    def unapply(tree: Tree)(given Context): Option[TermRef] = tree.typeOpt match
-      case ref: TermRef if isTracked(ref) => Some(ref)
-      case _ => None
+    def unapply(tree: Tree)(given Context): Option[TermRef] = isTracked(tree)
   end TrackedRef
 
   /** Is given reference tracked for nullability?
@@ -105,16 +103,28 @@ object Nullables with
    *  to a local mutable variable where all assignments to the variable are _reachable_
    *  (in the sense of how it is defined in assignmentSpans).
    */
-  def isTracked(ref: TermRef)(given Context) =
-    ref.isStable
+  def isTracked(tree: Tree)(given Context): Option[TermRef] = tree.typeOpt match
+    case ref: TermRef
+    if ref.isStable
+    || isTrackedNotNull(tree)
     || { val sym = ref.symbol
-         sym.is(Mutable)
-         && sym.owner.isTerm
-         && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod
-         && sym.span.exists
-         && curCtx.compilationUnit != null // could be null under -Ytest-pickler
-         && curCtx.compilationUnit.assignmentSpans.contains(sym.span.start)
-      }
+        sym.is(Mutable)
+        && sym.owner.isTerm
+        && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod
+        && sym.span.exists
+        && curCtx.compilationUnit != null // could be null under -Ytest-pickler
+        && curCtx.compilationUnit.assignmentSpans.contains(sym.span.start)
+      } =>
+      Some(ref)
+    case _ => None
+
+  def isTrackedNotNull(tree: Tree)(given Context) = tree match
+    case Select(Apply(TypeApply(f: Ident, _), x :: Nil), _) =>
+      f.symbol == defn.Compiletime_notNull
+      && tree.symbol.isStableMember
+      && isTracked(x).isDefined
+    case _ =>
+      false
 
   /** The nullability context to be used after a case that matches pattern `pat`.
    *  If `pat` is `null`, this will assert that the selector `sel` is not null afterwards.
