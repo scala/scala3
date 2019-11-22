@@ -1917,6 +1917,9 @@ class Typer extends Namer
 
     if (sym.isInlineMethod)
       val rhsToInline = PrepareInlineable.wrapRHS(ddef, tpt1, rhs1)
+      rhsToInline match
+        case _: Typed =>
+        case _ => sym.setFlag(Transparent) // FIXME Tag whitebox macros (do it in desugar)
       PrepareInlineable.registerInlineInfo(sym, rhsToInline)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor) {

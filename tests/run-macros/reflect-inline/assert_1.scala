@@ -1,13 +1,13 @@
 import scala.quoted._
 
 object api {
-  inline def (inline x: String) stripMargin: String =
+  transparent inline def (inline x: String) stripMargin: String =
     ${ stripImpl('x) }
 
   private def stripImpl(x: Expr[String])(using qctx: QuoteContext): Expr[String] =
     Expr(augmentString(x.unliftOrError).stripMargin)
 
-  inline def typeChecks(inline x: String): Boolean =
+  transparent inline def typeChecks(inline x: String): Boolean =
     ${ typeChecksImpl('{scala.compiletime.testing.typeChecks(x)}) }
 
   private def typeChecksImpl(b: Expr[Boolean])(using qctx: QuoteContext): Expr[Boolean] = {

@@ -699,6 +699,7 @@ class TreePickler(pickler: TastyPickler) {
       if (flags.is(ParamAccessor)) writeModTag(PARAMsetter)
       if (flags.is(SuperParamAlias)) writeModTag(PARAMalias)
       if (flags.is(Exported)) writeModTag(EXPORTED)
+      if (flags.is(Transparent)) writeModTag(TRANSPARENT)
       assert(!(flags.is(Label)))
     }
     else {

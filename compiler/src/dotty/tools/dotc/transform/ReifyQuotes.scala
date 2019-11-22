@@ -195,8 +195,7 @@ class ReifyQuotes extends MacroTransform {
           case splice: Select => cpy.Select(splice)(body1, splice.name)
         }
       }
-      else {
-        assert(level == 1, "unexpected top splice outside quote")
+      else if (level == 1) {
         val (body1, quotes) = nested(isQuote = false).splitSplice(body)(spliceContext)
         val tpe = outer.embedded.getHoleType(body, splice)
         val hole = makeHole(splice.isTerm, body1, quotes, tpe).withSpan(splice.span)
@@ -206,6 +205,10 @@ class ReifyQuotes extends MacroTransform {
         // For example we can have a lifted tree containing the LHS of an assignment (see tests/run-with-compiler/quote-var.scala).
         if (splice.isType || outer.embedded.isLiftedSymbol(body.symbol)) hole
         else Inlined(EmptyTree, Nil, hole).withSpan(splice.span)
+      } else {
+        assert(level == 0, "unexpected splice insiced top splice")
+        val newBody = Inliner.expandMacro(body, splice.span)
+        transform(newBody)
       }
 
     /** Transforms the contents of a nested splice

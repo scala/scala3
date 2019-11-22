@@ -350,6 +350,9 @@ object Flags {
   /** An opaque type alias or a class containing one */
   val (Opaque @ _, _, _) = newFlags(43, "opaque")
 
+  /** An transparent inline method */
+  val (_, Transparent @ _, _) = newFlags(44, "transparent")
+
 
   // ------------ Flags following this one are not pickled ----------------------------------
 
@@ -426,7 +429,7 @@ object Flags {
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open
 
   val TermSourceModifierFlags: FlagSet =
-    CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy | Erased
+    CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy | Erased | Transparent
 
   /** Flags representing modifiers that can appear in trees */
   val ModifierFlags: FlagSet =
@@ -443,7 +446,7 @@ object Flags {
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic,
-    SuperParamAliasOrScala2x, Inline, Macro)
+    SuperParamAliasOrScala2x, Inline, Macro, Transparent)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class

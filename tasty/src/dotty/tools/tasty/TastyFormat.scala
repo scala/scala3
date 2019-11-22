@@ -185,6 +185,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   OPAQUE                                                           -- opaque, also used for classes containing opaque aliases
                   INLINE                                                           -- inline
                   MACRO                                                            -- Inline method containing toplevel splices
+                  TRANSPARENT                                                      -- Transparent inline method
                   INLINEPROXY                                                      -- Symbol of binding with an argument to an inline method as rhs (TODO: do we still need this?)
                   STATIC                                                           -- Mapped to static Java member
                   OBJECT                                                           -- An object or its class
@@ -254,7 +255,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 23
+  val MajorVersion: Int = 24
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names, should update [[nameTagToString]] if a new constant is added */
@@ -351,16 +352,17 @@ object TastyFormat {
   final val HASDEFAULT = 31
   final val STABLE = 32
   final val MACRO = 33
-  final val ERASED = 34
-  final val OPAQUE = 35
-  final val EXTENSION = 36
-  final val GIVEN = 37
-  final val PARAMsetter = 38
-  final val EXPORTED = 39
-  final val OPEN = 40
-  final val PARAMEND = 41
-  final val PARAMalias = 42
-  final val SUPERTRAIT = 43
+  final val TRANSPARENT = 34
+  final val ERASED = 35
+  final val OPAQUE = 36
+  final val EXTENSION = 37
+  final val GIVEN = 38
+  final val PARAMsetter = 39
+  final val EXPORTED = 40
+  final val OPEN = 41
+  final val PARAMEND = 42
+  final val PARAMalias = 43
+  final val SUPERTRAIT = 44
 
   // Cat. 2:    tag Nat
 
@@ -500,6 +502,7 @@ object TastyFormat {
        | INLINE
        | INLINEPROXY
        | MACRO
+       | TRANSPARENT
        | OPAQUE
        | STATIC
        | OBJECT
@@ -561,6 +564,7 @@ object TastyFormat {
     case INLINE => "INLINE"
     case INLINEPROXY => "INLINEPROXY"
     case MACRO => "MACRO"
+    case TRANSPARENT => "TRANSPARENT"
     case OPAQUE => "OPAQUE"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"

@@ -1,5 +1,5 @@
 foo
-ValDef("macro", Inferred(), None)
+DefDef("main", Nil, List(List(ValDef("args", Applied(TypeIdent("Array"), List(TypeIdent("String"))), None))), TypeIdent("Unit"), Some(Block(Nil, Inlined(Some(Projection(Inferred(), "Macros$")), Nil, Typed(Apply(TypeApply(Ident("exprSplice"), List(Inferred())), List(Block(List(DefDef("$anonfun", Nil, List(List(ValDef("evidence$1", Inferred(), None))), Inferred(), Some(Apply(Apply(TypeApply(Ident("impl"), List(Inferred())), List(Apply(Select(Apply(TypeApply(Ident("exprQuote"), List(Inferred())), List(Inlined(None, Nil, Block(List(DefDef("foo", Nil, Nil, Inferred(), Some(Block(List(DefDef("bar", Nil, Nil, Inferred(), Some(Literal(Constant(1)))), ValDef("bar2", Inferred(), Some(Literal(Constant(2))))), Typed(Ident("bar"), Inferred())))), ValDef("foo2", Inferred(), Some(Block(List(DefDef("baz", Nil, Nil, Inferred(), Some(Literal(Constant(3)))), ValDef("baz2", Inferred(), Some(Literal(Constant(4))))), Typed(Ident("baz"), Inferred())))), ClassDef("A", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(TypeDef("B", TypeIdent("Int")), DefDef("b", Nil, Nil, Inferred(), Some(Literal(Constant(5)))), ValDef("b2", Inferred(), Some(Literal(Constant(6))))))), Literal(Constant(())))))), "apply"), List(Ident("evidence$1"))))), List(Ident("evidence$1")))))), Closure(Ident("$anonfun"), None)))), TypeIdent("Unit"))))))
 
 bar
 DefDef("foo", Nil, Nil, Inferred(), None)
@@ -8,7 +8,7 @@ bar2
 DefDef("foo", Nil, Nil, Inferred(), None)
 
 foo2
-ValDef("macro", Inferred(), None)
+DefDef("main", Nil, List(List(ValDef("args", Applied(TypeIdent("Array"), List(TypeIdent("String"))), None))), TypeIdent("Unit"), Some(Block(Nil, Inlined(Some(Projection(Inferred(), "Macros$")), Nil, Typed(Apply(TypeApply(Ident("exprSplice"), List(Inferred())), List(Block(List(DefDef("$anonfun", Nil, List(List(ValDef("evidence$1", Inferred(), None))), Inferred(), Some(Apply(Apply(TypeApply(Ident("impl"), List(Inferred())), List(Apply(Select(Apply(TypeApply(Ident("exprQuote"), List(Inferred())), List(Inlined(None, Nil, Block(List(DefDef("foo", Nil, Nil, Inferred(), Some(Block(List(DefDef("bar", Nil, Nil, Inferred(), Some(Literal(Constant(1)))), ValDef("bar2", Inferred(), Some(Literal(Constant(2))))), Typed(Ident("bar"), Inferred())))), ValDef("foo2", Inferred(), Some(Block(List(DefDef("baz", Nil, Nil, Inferred(), Some(Literal(Constant(3)))), ValDef("baz2", Inferred(), Some(Literal(Constant(4))))), Typed(Ident("baz"), Inferred())))), ClassDef("A", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(TypeDef("B", TypeIdent("Int")), DefDef("b", Nil, Nil, Inferred(), Some(Literal(Constant(5)))), ValDef("b2", Inferred(), Some(Literal(Constant(6))))))), Literal(Constant(())))))), "apply"), List(Ident("evidence$1"))))), List(Ident("evidence$1")))))), Closure(Ident("$anonfun"), None)))), TypeIdent("Unit"))))))
 
 baz
 ValDef("foo2", Inferred(), None)

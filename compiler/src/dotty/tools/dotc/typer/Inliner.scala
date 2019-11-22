@@ -325,6 +325,27 @@ object Inliner {
       val errors = compileForErrors(tree, false)
       packErrors(errors)
   }
+
+  def expandMacro(body: Tree, span: Span)(implicit ctx: Context) = {
+    assert(level == 0)
+    val inlinedFrom = enclosingInlineds.last
+    val ctx1 = tastyreflect.MacroExpansion.context(inlinedFrom)
+
+    val evaluatedSplice = inContext(tastyreflect.MacroExpansion.context(inlinedFrom)) {
+      Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)
+    }
+
+    val inlinedNormailizer = new TreeMap {
+      override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+        case Inlined(EmptyTree, Nil, expr) if enclosingInlineds.isEmpty => transform(expr)
+        case _ => super.transform(tree)
+      }
+    }
+    val normalizedSplice = inlinedNormailizer.transform(evaluatedSplice)
+    if (normalizedSplice.isEmpty) normalizedSplice
+    else normalizedSplice.withSpan(span)
+  }
+
 }
 
 /** Produces an inlined version of `call` via its `inlined` method.
@@ -1233,7 +1254,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         case res: Apply if res.symbol == defn.InternalQuoted_exprSplice
                         && level == 0
                         && !suppressInline =>
-          expandMacro(res.args.head, tree.span)
+          val body = res.args.head
+          checkMacroDependencies(body, call.sourcePos)
+          if call.symbol.is(Transparent) then
+            expandMacro(res.args.head, tree.span)
+          else
+            // Blackbox macros expanded later in ReifyQuotes
+            ctx.compilationUnit.needsStaging = true
+            res
         case res => res
       }
 
@@ -1391,31 +1419,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     }
   }
 
-  private def expandMacro(body: Tree, span: Span)(using Context) = {
+  private def checkMacroDependencies(body: Tree, callPos: SourcePosition)(implicit ctx: Context): Unit = {
     assert(level == 0)
-    val inlinedFrom = enclosingInlineds.last
     val dependencies = macroDependencies(body)
-
     if dependencies.nonEmpty && !ctx.reporter.errorsReported then
       for sym <- dependencies do
         if ctx.compilationUnit.source.file == sym.associatedFile then
-          ctx.error(em"Cannot call macro $sym defined in the same source file", call.sourcePos)
+          ctx.error(em"Cannot call macro $sym defined in the same source file", callPos)
         if (ctx.settings.XprintSuspension.value)
-          ctx.echo(i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}", call.sourcePos)
+          ctx.echo(i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}", callPos)
       ctx.compilationUnit.suspend() // this throws a SuspendException
-
-    val evaluatedSplice = inContext(tastyreflect.MacroExpansion.context(inlinedFrom)) {
-      Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)
-    }
-    val inlinedNormailizer = new TreeMap {
-      override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
-        case Inlined(EmptyTree, Nil, expr) if enclosingInlineds.isEmpty => transform(expr)
-        case _ => super.transform(tree)
-      }
-    }
-    val normalizedSplice = inlinedNormailizer.transform(evaluatedSplice)
-    if (normalizedSplice.isEmpty) normalizedSplice
-    else normalizedSplice.withSpan(span)
   }
 
   /** Return the set of symbols that are referred at level -1 by the tree and defined in the current run.

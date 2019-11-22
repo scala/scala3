@@ -635,6 +635,7 @@ class TreeUnpickler(reader: TastyReader,
           case INLINE => addFlag(Inline)
           case INLINEPROXY => addFlag(InlineProxy)
           case MACRO => addFlag(Macro)
+          case TRANSPARENT => addFlag(Transparent)
           case OPAQUE => addFlag(Opaque)
           case STATIC => addFlag(JavaStatic)
           case OBJECT => addFlag(Module)
