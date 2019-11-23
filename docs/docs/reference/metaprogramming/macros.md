@@ -36,12 +36,12 @@ import scala.quoted._
 inline def assert(expr: => Boolean): Unit =
   ${ assertImpl('expr) }
 
-def assertImpl(expr: Expr[Boolean]) = '{
+def assertImpl(expr: Expr[Boolean])(given qctx: QuoteContext) = '{
   if (!$expr)
     throw new AssertionError(s"failed assertion: ${${ showExpr(expr) }}")
 }
 
-def showExpr(expr: Expr[Boolean]): Expr[String] =
+def showExpr(expr: Expr[Boolean])(given qctx: QuoteContext): Expr[String] =
   '{ "<some source code>" } // Better implementation later in this document
 ```
 
@@ -238,22 +238,23 @@ Running `compile(letExp, Map())` would yield the following Scala code:
 '{ val y = 3; (2 + y) + 4 }
 ```
 The body of the first clause, `case Num(n) => Expr(n)`, looks suspicious. `n`
-is declared as an `Int`, yet it is converted to an `Expr[Int]` with `toExpr`.
+is declared as an `Int`, yet it is converted to an `Expr[Int]` with `Expr()`.
 Shouldn’t `n` be quoted? In fact this would not
 work since replacing `n` by `'n` in the clause would not be phase
 correct.
 
-The `toExpr` extension method is defined in package `quoted`:
+The `Expr.apply` method is defined in package `quoted`:
 ```scala
 package quoted
 
-given {
-  def (x: T) toExpr[T: Liftable](given QuoteContext): Expr[T] = summon[Liftable[T]].toExpr(x)
+object Expr {
+  ...
+  def apply[T: Liftable](x: T)(given QuoteContext): Expr[T] = summon[Liftable[T]].toExpr(x)
   ...
 }
 ```
-The extension says that values of types implementing the `Liftable` type class can be
-converted ("lifted") to `Expr` values using `toExpr`, provided a given import of `scala.quoted._` is in scope.
+This method says that values of types implementing the `Liftable` type class can be
+converted ("lifted") to `Expr` values using `Expr.apply`.
 
 Dotty comes with given instances of `Liftable` for
 several types including `Boolean`, `String`, and all primitive number
