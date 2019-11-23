@@ -265,27 +265,36 @@ object DynamicTuple {
   }
 
   def dynamicTake[This <: Tuple, N <: Int](self: This, n: N): Take[This, N] = {
+    if (n < 0) throw new IndexOutOfBoundsException(n.toString)
+    val actualN = Math.min(n, self.size)
+
     type Result = Take[This, N]
     val arr = (self: Any) match {
+      case () => Array.empty[Object]
       case xxl: TupleXXL =>
-        xxl.elems.asInstanceOf[Array[Object]].take(n)
+        xxl.elems.asInstanceOf[Array[Object]].take(actualN)
       case _ =>
-        val arr = new Array[Object](n)
-        itToArray(self.asInstanceOf[Product].productIterator, n, arr, 0)
+        val arr = new Array[Object](actualN)
+        itToArray(self.asInstanceOf[Product].productIterator, actualN, arr, 0)
         arr
     }
     dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
   }
 
   def dynamicDrop[This <: Tuple, N <: Int](self: This, n: N): Drop[This, N] = {
+    if (n < 0) throw new IndexOutOfBoundsException(n.toString)
+    val size = self.size
+    val actualN = Math.min(n, size)
+
     type Result = Drop[This, N]
     val arr = (self: Any) match {
+      case () => Array.empty[Object]
       case xxl: TupleXXL =>
-        xxl.elems.asInstanceOf[Array[Object]].drop(n)
+        xxl.elems.asInstanceOf[Array[Object]].drop(actualN)
       case _ =>
-        val size = self.asInstanceOf[Product].productArity - n
-        val arr = new Array[Object](size)
-        itToArray(self.asInstanceOf[Product].productIterator.drop(n), size, arr, 0)
+        val rem = size - actualN
+        val arr = new Array[Object](rem)
+        itToArray(self.asInstanceOf[Product].productIterator.drop(actualN), rem, arr, 0)
         arr
     }
     dynamicFromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Result]
@@ -294,6 +303,7 @@ object DynamicTuple {
   def dynamicSplitAt[This <: Tuple, N <: Int](self: This, n: N): Split[This, N] = {
     type Result = Split[This, N]
     val (arr1, arr2) = (self: Any) match {
+      case () => (Array.empty[Object], Array.empty[Object])
       case xxl: TupleXXL =>
         xxl.elems.asInstanceOf[Array[Object]].splitAt(n)
       case _ =>
