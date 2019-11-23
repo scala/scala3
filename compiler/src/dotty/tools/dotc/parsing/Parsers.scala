@@ -951,7 +951,7 @@ object Parsers {
       recur(top)
     }
 
-    /**   operand { infixop operand | ‘given’ (operand | ParArgumentExprs) } [postfixop],
+    /**   operand { infixop operand | MatchClause } [postfixop],
      *
      *  respecting rules of associativity and precedence.
      *  @param isOperator    the current token counts as an operator.
@@ -981,17 +981,13 @@ object Parsers {
           }
           else recur(operand())
         }
-        else reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
+        else
+          val t = reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
+          if !isType && in.token == MATCH then recur(matchClause(t, t.span.start, Match))
+          else t
 
       recur(first)
     }
-
-    def applyGiven(t: Tree, operand: () => Tree): Tree =
-      atSpan(startOffset(t), in.offset) {
-        in.nextToken()
-        val args = if (in.token == LPAREN) parArgumentExprs()._1 else operand() :: Nil
-        Apply(t, args)
-      }.setGivenApply()
 
 /* -------- IDENTIFIERS AND LITERALS ------------------------------------------- */
 
@@ -1028,9 +1024,12 @@ object Parsers {
     def wildcardIdent(): Ident =
       atSpan(accept(USCORE)) { Ident(nme.WILDCARD) }
 
-    /** Accept identifier acting as a selector on given tree `t`. */
+    /** Accept identifier or match clause acting as a selector on given tree `t` */
     def selector(t: Tree): Tree =
-      atSpan(startOffset(t), in.offset) { Select(t, ident()) }
+      atSpan(startOffset(t), in.offset) {
+        if in.token == MATCH then matchClause(t, t.span.start, Match)
+        else Select(t, ident())
+      }
 
     /** Selectors ::= id { `.' id }
      *
@@ -1877,7 +1876,7 @@ object Parsers {
           }
         }
       case _ =>
-        if isIdent(nme.inline)
+        if isIdent(nme.inline)  // TODO: drop this clause
            && !in.inModifierPosition()
            && in.lookaheadIn(in.canStartExprTokens)
         then
@@ -1886,31 +1885,27 @@ object Parsers {
             case IF =>
               ifExpr(start, InlineIf)
             case _ =>
-              val t = postfixExpr()
-              if (in.token == MATCH) matchExpr(t, start, InlineMatch)
+              val t = prefixExpr()
+              if (in.token == MATCH) matchClause(t, start, InlineMatch)
               else
-                syntaxErrorOrIncomplete(i"`match` or `if` expected but ${in.token} found")
+                syntaxErrorOrIncomplete(i"`match` or `if` expected but ${in} found")
                 t
         else expr1Rest(postfixExpr(), location)
     }
 
-    def expr1Rest(t: Tree, location: Location.Value): Tree = in.token match {
+    def expr1Rest(t: Tree, location: Location.Value): Tree = in.token match
       case EQUALS =>
-         t match {
-           case Ident(_) | Select(_, _) | Apply(_, _) =>
-             atSpan(startOffset(t), in.skipToken()) { Assign(t, subExpr()) }
-           case _ =>
-             t
-         }
+        t match
+          case Ident(_) | Select(_, _) | Apply(_, _) =>
+            atSpan(startOffset(t), in.skipToken()) { Assign(t, subExpr()) }
+          case _ =>
+            t
       case COLON =>
         in.nextToken()
-        val t1 = ascription(t, location)
-        if (in.token == MATCH) expr1Rest(t1, location) else t1
-      case MATCH =>
-        matchExpr(t, startOffset(t), Match)
+        ascription(t, location)
       case _ =>
         t
-    }
+    end expr1Rest
 
     def ascription(t: Tree, location: Location.Value): Tree = atSpan(startOffset(t)) {
       in.token match {
@@ -1938,11 +1933,14 @@ object Parsers {
       }
     }
 
-    /**    `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
-     *     `if' Expr `then' Expr [[semi] else Expr]
+    /**    `if' [‘inline’] `(' Expr `)' {nl} Expr [[semi] else Expr]
+     *     `if' [‘inline’] Expr `then' Expr [[semi] else Expr]
      */
-    def ifExpr(start: Offset, mkIf: (Tree, Tree, Tree) => If): If =
+    def ifExpr(start: Offset, mkIf0: (Tree, Tree, Tree) => If): If =
       atSpan(start, in.skipToken()) {
+        val mkIf =
+          if isIdent(nme.inline) then { in.nextToken(); InlineIf }
+          else mkIf0
         val cond = condExpr(THEN)
         newLinesOpt()
         val thenp = subExpr()
@@ -1951,11 +1949,14 @@ object Parsers {
         mkIf(cond, thenp, elsep)
       }
 
-    /**    `match' `{' CaseClauses `}'
+    /**    MatchClause ::= `match' [‘inline’] `{' CaseClauses `}'
      */
-    def matchExpr(t: Tree, start: Offset, mkMatch: (Tree, List[CaseDef]) => Match) =
+    def matchClause(t: Tree, start: Offset, mkMatch0: (Tree, List[CaseDef]) => Match) =
       in.endMarkerScope(MATCH) {
         atSpan(start, in.skipToken()) {
+          val mkMatch =
+            if isIdent(nme.inline) then { in.nextToken(); InlineMatch }
+            else mkMatch0
           mkMatch(t, inBracesOrIndented(caseClauses(caseClause)))
         }
       }
@@ -2032,7 +2033,7 @@ object Parsers {
     /** PostfixExpr   ::= InfixExpr [id [nl]]
      *  InfixExpr     ::= PrefixExpr
      *                  | InfixExpr id [nl] InfixExpr
-     *                  | InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)
+     *                  | InfixExpr MatchClause
      */
     def postfixExpr(): Tree = postfixExprRest(prefixExpr())
 
@@ -2063,6 +2064,7 @@ object Parsers {
      *                 |  Path
      *                 |  `(' [ExprsInParens] `)'
      *                 |  SimpleExpr `.' id
+     *                 |  SimpleExpr `.' MatchClause
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
      *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
