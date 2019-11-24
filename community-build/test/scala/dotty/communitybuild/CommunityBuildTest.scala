@@ -140,7 +140,7 @@ object projects
 
   val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
-    sbtTestCommand   = "jvm/test:compile",
+    sbtTestCommand   = "jvm/test",
     sbtUpdateCommand = "jvm/test:update"
   )
 
