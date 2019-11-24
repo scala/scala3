@@ -983,7 +983,7 @@ object Parsers {
         }
         else
           val t = reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
-          if !isType && in.token == MATCH then recur(matchClause(t, t.span.start, Match))
+          if !isType && in.token == MATCH then recur(matchClause(t))
           else t
 
       recur(first)
@@ -1027,8 +1027,7 @@ object Parsers {
     /** Accept identifier or match clause acting as a selector on given tree `t` */
     def selector(t: Tree): Tree =
       atSpan(startOffset(t), in.offset) {
-        if in.token == MATCH then matchClause(t, t.span.start, Match)
-        else Select(t, ident())
+        if in.token == MATCH then matchClause(t) else Select(t, ident())
       }
 
     /** Selectors ::= id { `.' id }
@@ -1736,11 +1735,10 @@ object Parsers {
      *                      |  HkTypeParamClause ‘=>’ Expr
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
-     *                      |  Expr2
-     *                      |  [‘inline’] Expr2 `match' (`{' CaseClauses `}' | CaseClause)
+     *                      |  PostfixExpr [Ascription]
+     *                      |  ‘inline’ InfixExpr MatchClause
      *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
      *  Binding           ::=  (id | `_') [`:' Type]
-     *  Expr2             ::=  PostfixExpr [Ascription]
      *  Ascription        ::=  `:' InfixType
      *                      |  `:' Annotation {Annotation}
      *                      |  `:' `_' `*'
@@ -1779,7 +1777,7 @@ object Parsers {
       }
     }
 
-    def expr1(location: Location.Value = Location.ElseWhere): Tree = in.token match {
+    def expr1(location: Location.Value = Location.ElseWhere): Tree = in.token match
       case IF =>
         in.endMarkerScope(IF) { ifExpr(in.offset, If) }
       case WHILE =>
@@ -1876,7 +1874,7 @@ object Parsers {
           }
         }
       case _ =>
-        if isIdent(nme.inline)  // TODO: drop this clause
+        if isIdent(nme.inline)
            && !in.inModifierPosition()
            && in.lookaheadIn(in.canStartExprTokens)
         then
@@ -1885,13 +1883,14 @@ object Parsers {
             case IF =>
               ifExpr(start, InlineIf)
             case _ =>
-              val t = prefixExpr()
-              if (in.token == MATCH) matchClause(t, start, InlineMatch)
-              else
-                syntaxErrorOrIncomplete(i"`match` or `if` expected but ${in} found")
-                t
+              postfixExpr() match
+                case t @ Match(scrut, cases) =>
+                  InlineMatch(scrut, cases).withSpan(t.span)
+                case t =>
+                  syntaxError(em"`inline` must be followed by an `if` or a `match`", start)
+                  t
         else expr1Rest(postfixExpr(), location)
-    }
+    end expr1
 
     def expr1Rest(t: Tree, location: Location.Value): Tree = in.token match
       case EQUALS =>
@@ -1933,14 +1932,11 @@ object Parsers {
       }
     }
 
-    /**    `if' [‘inline’] `(' Expr `)' {nl} Expr [[semi] else Expr]
-     *     `if' [‘inline’] Expr `then' Expr [[semi] else Expr]
+    /**    `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
+     *     `if' Expr `then' Expr [[semi] else Expr]
      */
-    def ifExpr(start: Offset, mkIf0: (Tree, Tree, Tree) => If): If =
+    def ifExpr(start: Offset, mkIf: (Tree, Tree, Tree) => If): If =
       atSpan(start, in.skipToken()) {
-        val mkIf =
-          if isIdent(nme.inline) then { in.nextToken(); InlineIf }
-          else mkIf0
         val cond = condExpr(THEN)
         newLinesOpt()
         val thenp = subExpr()
@@ -1951,13 +1947,10 @@ object Parsers {
 
     /**    MatchClause ::= `match' [‘inline’] `{' CaseClauses `}'
      */
-    def matchClause(t: Tree, start: Offset, mkMatch0: (Tree, List[CaseDef]) => Match) =
+    def matchClause(t: Tree): Match =
       in.endMarkerScope(MATCH) {
-        atSpan(start, in.skipToken()) {
-          val mkMatch =
-            if isIdent(nme.inline) then { in.nextToken(); InlineMatch }
-            else mkMatch0
-          mkMatch(t, inBracesOrIndented(caseClauses(caseClause)))
+        atSpan(t.span.start, in.skipToken()) {
+          Match(t, inBracesOrIndented(caseClauses(caseClause)))
         }
       }
 

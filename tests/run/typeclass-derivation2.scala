@@ -293,7 +293,7 @@ object Pickler {
   }
 
   inline def pickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: Mirror, n: Int): Unit =
-    erasedValue[Elems] match inline {
+    inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         tryPickle[elem](buf, elems(n).asInstanceOf[elem])
         pickleElems[elems1](buf, elems, n + 1)
@@ -304,9 +304,9 @@ object Pickler {
     pickleElems[Elems](buf, r.reflect(x), 0)
 
   inline def pickleCases[T, Alts <: Tuple](r: Reflected[T], buf: mutable.ListBuffer[Int], x: T, n: Int): Unit =
-    erasedValue[Alts] match inline {
+    inline erasedValue[Alts] match {
       case _: (Shape.Case[alt, elems] *: alts1) =>
-        typeOf[alt] match inline {
+        inline typeOf[alt] match {
           case _: Subtype[T] =>
             x match {
               case x: `alt` =>
@@ -326,7 +326,7 @@ object Pickler {
   }
 
   inline def unpickleElems[Elems <: Tuple](buf: mutable.ListBuffer[Int], elems: Array[AnyRef], n: Int): Unit =
-    erasedValue[Elems] match inline {
+    inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         elems(n) = tryUnpickle[elem](buf).asInstanceOf[AnyRef]
         unpickleElems[elems1](buf, elems, n + 1)

@@ -184,8 +184,8 @@ BlockResult       ::=  [‘implicit’] FunParams ‘=>’ Block
 FunParams         ::=  Bindings
                     |  id
                     |  ‘_’
-Expr1             ::=  ‘if’ [‘inline’]‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr] If(Parens(cond), thenp, elsep?)
-                    |  ‘if’ [‘inline’] Expr ‘then’ Expr [[semi] ‘else’ Expr]    If(cond, thenp, elsep?)
+Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr] If(Parens(cond), thenp, elsep?)
+                    |  [‘inline’] ‘if’  Expr ‘then’ Expr [[semi] ‘else’ Expr]    If(cond, thenp, elsep?)
                     |  ‘while’ ‘(’ Expr ‘)’ {nl} Expr                           WhileDo(Parens(cond), body)
                     |  ‘while’ Expr ‘do’ Expr                                   WhileDo(cond, body)
                     |  ‘try’ Expr Catches [‘finally’ Expr]                      Try(expr, catches, expr?)
@@ -196,8 +196,8 @@ Expr1             ::=  ‘if’ [‘inline’]‘(’ Expr ‘)’ {nl} Expr [[s
                     |  HkTypeParamClause ‘=>’ Expr                              PolyFunction(ts, expr)
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
-                    |  Expr2
-Expr2             ::=  PostfixExpr [Ascription]
+                    |  PostfixExpr [Ascription]
+                    |  ‘inline’ InfixExpr MatchClause
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
 Catches           ::=  ‘catch’ (Expr | CaseClause)
@@ -205,7 +205,7 @@ PostfixExpr       ::=  InfixExpr [id]                                           
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr                              InfixOp(expr, op, expr)
                     |  InfixExpr MatchClause
-MatchClause       ::=  ‘match’ [‘inline’] ‘{’ CaseClauses ‘}’                   Match(expr, cases)
+MatchClause       ::=  ‘match’ ‘{’ CaseClauses ‘}’                   Match(expr, cases)
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
 SimpleExpr        ::=  Path
                     |  Literal
