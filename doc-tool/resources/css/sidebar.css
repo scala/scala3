@@ -80,7 +80,7 @@
   color: var(--sidebar-page);
   transition: color .2s ease-out;
 }
-.sidebar a:hover {
+.sidebar a:hover, .sidebar a.toggled {
   color: var(--sidebar-active) !important;
 }
 
