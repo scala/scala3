@@ -220,7 +220,7 @@ Here’s a compiler that maps an expression given in the interpreted
 language to quoted Scala code of type `Expr[Int]`.
 The compiler takes an environment that maps variable names to Scala `Expr`s.
 ```scala
-import given scala.quoted._
+import scala.quoted.{given, _}
 
 def compile(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
   case Num(n) =>
@@ -308,10 +308,10 @@ def showExpr[T](expr: Expr[T]): Expr[String] = {
 }
 ```
 That is, the `showExpr` method converts its `Expr` argument to a string (`code`), and lifts
-the result back to an `Expr[String]` using the `toExpr` method.
+the result back to an `Expr[String]` using `Expr.apply`.
 
-**Note**: the `toExpr` extension method can be ommited by importing an implicit
-conversion with `import given scala.quoted.autolift._`. The programmer is able to
+**Note**: Lifting `String` to `Expr[String]` using `Expr(code)` can be ommited by importing an implicit
+conversion with `import scala.quoted.autolift.given`. The programmer is able to
 declutter slightly the code at the cost of readable _phase distinction_ between
 stages.
 
