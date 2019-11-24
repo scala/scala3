@@ -12,11 +12,11 @@
   background: var(--sidebar);
   margin-left: -275px; /* invisible by default, shown by toggle */
   transition: margin .25s ease-out;
-  box-shadow: 0 0 10px var(--primary);
 }
 
 .sidebar.toggled {
   margin-left: 0;
+  box-shadow: -2px 0 8px var(--primary);
 }
 
 .sidebar ul.toc {
@@ -113,9 +113,11 @@
 }
 .entity-kinds a.class {
   background: #44ad7d;
+  padding-right: 1px;
 }
 .entity-kinds a.trait {
   background: #19aacf;
+  padding-right: 1px;
 }
 
 .with-companion .entity-kinds:not(:hover) a.object {
@@ -131,9 +133,11 @@
 @media (min-width: 768px) {
   .sidebar { /* visible by default, hidden by toggle */
     margin-left: 0;
+    box-shadow: -2px 0 8px var(--primary);
   }
   .sidebar.toggled {
     margin-left: -275px;
+    box-shadow: none;
   }
   #content-wrapper {
     margin-left: 275px !important;

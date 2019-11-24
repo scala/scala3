@@ -9,12 +9,11 @@
 // Custom colors
 $pro-grey: #414551;
 $soft-red: #ca445e;
-$primary: $pro-grey;
 $light: #fafafa;
 $code-color: $soft-red; // overrides bootstrap
 
 $theme-colors: (
-  "primary": $primary,
+  "primary": $pro-grey,
   "secondary": $soft-red
 );
 
@@ -51,7 +50,7 @@ $headings-font-family: $font-family-sans-serif;
 $font-weight-light: 300;
 $font-weight-normal: 400;
 $font-weight-bold: 700;
-$headings-font-weight: 700;
+$headings-font-weight: 400;
 
 // Nav Fonts
 $toolbar-main-font: $headings-font-family;
