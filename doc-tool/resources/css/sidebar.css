@@ -3,21 +3,20 @@
   top: 50px;
   left: 0;
   z-index: 1000;
-  width: 100%;
+  width: 275px;
   height: 100%;
   overflow-x: hidden; /* Safari and some others don't support overflow: x y */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch; /* nicer scrolling on touch screens */
   font-family: var(--font-family-sidebar);
   background: var(--sidebar);
-  visibility: hidden; /* hidden by default, shown by toggle (on small screens) */
-  opacity: 0;
-  transition: visibility .25s ease-out, opacity .25s ease-out;
+  margin-left: -275px; /* invisible by default, shown by toggle */
+  transition: margin .25s ease-out;
+  box-shadow: 0 0 10px var(--primary);
 }
 
 .sidebar.toggled {
-  visibility: visible;
-  opacity: 1;
+  margin-left: 0;
 }
 
 .sidebar ul.toc {
@@ -124,11 +123,7 @@
 
 @media (min-width: 768px) {
   .sidebar { /* visible by default, hidden by toggle */
-    width: 275px;
-    visibility: visible;
-    opacity: 1;
     margin-left: 0;
-    transition: margin .25s ease-out;
   }
   .sidebar.toggled {
     margin-left: -275px;
