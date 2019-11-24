@@ -301,18 +301,21 @@ object DynamicTuple {
   }
 
   def dynamicSplitAt[This <: Tuple, N <: Int](self: This, n: N): Split[This, N] = {
+    if (n < 0) throw new IndexOutOfBoundsException(n.toString)
+    val size = self.size
+    val actualN = Math.min(n, size)
+
     type Result = Split[This, N]
     val (arr1, arr2) = (self: Any) match {
       case () => (Array.empty[Object], Array.empty[Object])
       case xxl: TupleXXL =>
-        xxl.elems.asInstanceOf[Array[Object]].splitAt(n)
+        xxl.elems.asInstanceOf[Array[Object]].splitAt(actualN)
       case _ =>
-        val size = self.asInstanceOf[Product].productArity
-        val arr1 = new Array[Object](n)
-        val arr2 = new Array[Object](size - n)
+        val arr1 = new Array[Object](actualN)
+        val arr2 = new Array[Object](size - actualN)
         val it = self.asInstanceOf[Product].productIterator
-        itToArray(it, n, arr1, 0)
-        itToArray(it, size - n, arr2, 0)
+        itToArray(it, actualN, arr1, 0)
+        itToArray(it, size - actualN, arr2, 0)
         (arr1, arr2)
     }
     (
