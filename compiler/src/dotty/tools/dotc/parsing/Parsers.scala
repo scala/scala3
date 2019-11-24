@@ -1945,7 +1945,7 @@ object Parsers {
         mkIf(cond, thenp, elsep)
       }
 
-    /**    MatchClause ::= `match' [‘inline’] `{' CaseClauses `}'
+    /**    MatchClause ::= `match' `{' CaseClauses `}'
      */
     def matchClause(t: Tree): Match =
       in.endMarkerScope(MATCH) {
