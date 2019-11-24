@@ -47,9 +47,15 @@
   padding-left: 0;
 }
 
-.sidebar .toc > li {
+.sidebar .index-entity.entity-package {
+  margin-left: 5px;
+  margin-top: .25em;
+}
+
+.sidebar .toc > li:not(.index-entities) > ul {
   border-left: 2px solid var(--sidebar-active);
   padding-left: 1em;
+  margin-left: 5px;
 }
 
 .sidebar li a {
@@ -81,7 +87,8 @@
 /* API Documentation */
 .package-toggle i.fas {
   font-size: 15px;
-  margin-right: 5px;
+  margin-right: 1px;
+  color: var(--sidebar-active);
 }
 
 .entity-kinds {
