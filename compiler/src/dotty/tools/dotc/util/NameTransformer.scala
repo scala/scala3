@@ -48,6 +48,11 @@ object NameTransformer {
   /** Replace operator symbols by corresponding expansion strings, and replace
    *  characters that are not valid Java identifiers by "$u" followed by the
    *  character's unicode expansion.
+   *  Note that no attempt is made to escape the use of '$' in `name`: blindly
+   *  escaping them might make it impossible to call some platform APIs. This
+   *  unfortunately means that `decode(encode(name))` might not be equal to
+   *  `name`, this is considered acceptable since '$' is a reserved character in
+   *  the Scala spec as well as the Java spec.
    */
   def encode(name: SimpleName): SimpleName = {
     var buf: StringBuilder = null
