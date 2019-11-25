@@ -4,8 +4,7 @@ package tasty
 
 import java.util.UUID
 
-import dotty.tools.dotc.core.tasty.TastyFormat.{MajorVersion, MinorVersion, header}
-import dotty.tools.dotc.core.tasty.TastyUnpickler.UnpickleException
+import dotty.tools.tasty.TastyFormat.{MajorVersion, MinorVersion, header}
 
 class TastyHeaderUnpickler(reader: TastyReader) {
   import reader._

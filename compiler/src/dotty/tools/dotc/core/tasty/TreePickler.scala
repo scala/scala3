@@ -3,9 +3,10 @@ package dotc
 package core
 package tasty
 
+import dotty.tools.tasty.TastyFormat._
+
 import ast.Trees._
 import ast.{untpd, tpd}
-import TastyFormat._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, Flags._
 import typer.Inliner
 import NameKinds._

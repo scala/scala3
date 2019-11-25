@@ -2,14 +2,14 @@ package dotty.tools.dotc
 package core
 package tasty
 
+import dotty.tools.tasty.TastyFormat.NameTags._
+
 import scala.collection.mutable
-import TastyFormat.NameTags._
 import TastyBuffer.NameRef
 import Names.{TermName, termName, EmptyTermName}
 import NameKinds._
 
 object TastyUnpickler {
-  class UnpickleException(msg: String) extends RuntimeException(msg)
 
   abstract class SectionUnpickler[R](val name: String) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): R

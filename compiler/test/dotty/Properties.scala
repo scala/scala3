@@ -53,6 +53,9 @@ object Properties {
   /** dotty-staging jar */
   def dottyStaging: String = sys.props("dotty.tests.classes.dottyStaging")
 
+  /** tasty-core jar */
+  def tastyCore: String = sys.props("dotty.tests.classes.tastyCore")
+
   /** compiler-interface jar */
   def compilerInterface: String = sys.props("dotty.tests.classes.compilerInterface")
 

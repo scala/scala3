@@ -3,7 +3,8 @@ package dotc
 package core
 package tasty
 
-import TastyFormat._
+import dotty.tools.tasty.TastyFormat._
+
 import collection.mutable
 import TastyBuffer._
 import core.Symbols.{Symbol, ClassSymbol}
@@ -78,4 +79,3 @@ class TastyPickler(val rootCls: ClassSymbol) {
 
   val treePkl: TreePickler = new TreePickler(this)
 }
-

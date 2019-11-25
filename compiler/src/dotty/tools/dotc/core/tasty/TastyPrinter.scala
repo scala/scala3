@@ -49,7 +49,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
   }
 
   class TreeSectionUnpickler extends SectionUnpickler[String](TreePickler.sectionName) {
-    import TastyFormat._
+    import dotty.tools.tasty.TastyFormat._
 
     private val sb: StringBuilder = new StringBuilder
 

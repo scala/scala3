@@ -20,7 +20,7 @@ class TastyClassName(bytes: Array[Byte]) {
   def readName(): Option[(TermName, TermName)] = unpickle(new TreeSectionUnpickler)
 
   class TreeSectionUnpickler extends SectionUnpickler[(TermName, TermName)](TreePickler.sectionName) {
-    import TastyFormat._
+    import dotty.tools.tasty.TastyFormat._
     def unpickle(reader: TastyReader, tastyName: NameTable): (TermName, TermName) = {
       import reader._
       def readName() = {
