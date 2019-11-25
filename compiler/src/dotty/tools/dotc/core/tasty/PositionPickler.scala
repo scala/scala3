@@ -4,6 +4,8 @@ package core
 package tasty
 
 import dotty.tools.tasty.TastyFormat.SOURCE
+import dotty.tools.tasty.TastyBuffer
+import TastyBuffer._
 
 import ast._
 import ast.Trees._
@@ -12,7 +14,6 @@ import util.{SourceFile, NoSource}
 import core._
 import Contexts._, Symbols._, Annotations._, Decorators._
 import collection.mutable
-import TastyBuffer._
 import util.Spans._
 
 class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {

@@ -3,11 +3,13 @@ package dotc
 package core
 package tasty
 
+import dotty.tools.tasty.TastyBuffer
+import TastyBuffer._
+
 import collection.mutable
-import Names.{Name, chrs, SimpleName, DerivedName, TypeName}
+import Names.{ Name, chrs, SimpleName, DerivedName, TypeName }
 import NameKinds._
 import Decorators._
-import TastyBuffer._
 import scala.io.Codec
 
 class NameBuffer extends TastyBuffer(10000) {

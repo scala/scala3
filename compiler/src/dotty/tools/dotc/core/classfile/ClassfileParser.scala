@@ -3,10 +3,11 @@ package dotc
 package core
 package classfile
 
+import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
+
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Spans._
 import NameKinds.DefaultGetterName
-import dotty.tools.dotc.core.tasty.{TastyHeaderUnpickler, TastyReader}
 import ast.tpd._
 import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, IOException }
 
@@ -1183,4 +1184,3 @@ class ClassfileParser(
       throw new RuntimeException("bad constant pool tag " + in.buf(start) + " at byte " + start)
   }
 }
-

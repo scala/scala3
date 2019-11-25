@@ -1,4 +1,4 @@
-package dotty.tools.dotc.core.tasty
+package dotty.tools.tasty
 
 object TastyHash {
 
@@ -20,4 +20,3 @@ object TastyHash {
     h
   }
 }
-

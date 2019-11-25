@@ -1,10 +1,8 @@
-package dotty.tools.dotc
-package core
-package tasty
+package dotty.tools.tasty
 
 import java.util.UUID
 
-import dotty.tools.tasty.TastyFormat.{MajorVersion, MinorVersion, header}
+import TastyFormat.{ MajorVersion, MinorVersion, header }
 
 class TastyHeaderUnpickler(reader: TastyReader) {
   import reader._

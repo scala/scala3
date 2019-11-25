@@ -1,3 +1,3 @@
-package dotty.tools.dotc.core.tasty
+package dotty.tools.tasty
 
 class UnpickleException(msg: String) extends RuntimeException(msg)

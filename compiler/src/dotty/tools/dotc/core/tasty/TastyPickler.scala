@@ -3,11 +3,12 @@ package dotc
 package core
 package tasty
 
-import dotty.tools.tasty.TastyFormat._
+import dotty.tools.tasty.{ TastyBuffer, TastyFormat, TastyHash }
+import TastyFormat._
+import TastyBuffer._
 
 import collection.mutable
-import TastyBuffer._
-import core.Symbols.{Symbol, ClassSymbol}
+import core.Symbols.{ Symbol, ClassSymbol }
 import ast.tpd
 import Decorators._
 

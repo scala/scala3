@@ -2,11 +2,13 @@ package dotty.tools.dotc
 package core
 package tasty
 
+import dotty.tools.tasty.{ TastyBuffer, TastyReader }
+import TastyBuffer.NameRef
+
 import Contexts._, Decorators._
-import Names.{Name, TermName}
+import Names.{ Name, TermName }
 import StdNames.nme
 import TastyUnpickler._
-import TastyBuffer.NameRef
 import util.Spans.offsetToInt
 import printing.Highlighting._
 

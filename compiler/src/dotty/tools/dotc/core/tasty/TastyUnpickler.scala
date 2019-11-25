@@ -2,11 +2,12 @@ package dotty.tools.dotc
 package core
 package tasty
 
-import dotty.tools.tasty.TastyFormat.NameTags._
+import dotty.tools.tasty.{ TastyFormat, TastyBuffer, TastyReader, TastyHeaderUnpickler }
+import TastyFormat.NameTags._
+import TastyBuffer.NameRef
 
 import scala.collection.mutable
-import TastyBuffer.NameRef
-import Names.{TermName, termName, EmptyTermName}
+import Names.{ TermName, termName, EmptyTermName }
 import NameKinds._
 
 object TastyUnpickler {

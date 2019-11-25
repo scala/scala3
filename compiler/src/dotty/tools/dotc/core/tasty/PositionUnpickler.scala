@@ -3,11 +3,12 @@ package dotc
 package core
 package tasty
 
-import dotty.tools.tasty.TastyFormat.SOURCE
+import dotty.tools.tasty.{ TastyFormat, TastyBuffer, TastyReader }
+import TastyFormat.SOURCE
+import TastyBuffer.{ Addr, NameRef }
 
 import util.Spans._
-import collection.{mutable, Map}
-import TastyBuffer.{Addr, NameRef}
+import collection.{ mutable, Map }
 import Names.TermName
 
 /** Unpickler for tree positions */

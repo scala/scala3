@@ -6,7 +6,8 @@ import java.net.URI
 import java.nio.file._
 import java.util.concurrent.CompletableFuture
 
-import dotc.core.tasty.UnpickleException
+import dotty.tools.tasty.UnpickleException
+
 import dotc.fromtasty.TastyFileUtil
 
 import org.eclipse.lsp4j.jsonrpc.services._

@@ -1,7 +1,4 @@
-package dotty.tools
-package dotc
-package core
-package tasty
+package dotty.tools.tasty
 
 import util.Util.dble
 
