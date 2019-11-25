@@ -163,6 +163,7 @@ object Types {
       case tp: RefinedOrRecType => tp.parent.isStable
       case tp: ExprType => tp.resultType.isStable
       case tp: AnnotatedType => tp.parent.isStable
+      case tp: AndType => tp.tp1.isStable || tp.tp2.isStable
       case _ => false
     }
 
