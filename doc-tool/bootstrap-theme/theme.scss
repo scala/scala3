@@ -4,7 +4,7 @@
 @import "node_modules/bootstrap/scss/mixins";
 
 // Web fonts
-@import url('https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:300|Fira+Code:400,700&display=fallback');
+@import url('https://fonts.googleapis.com/css?family=Lato:400,700|Fira+Code:400,700&display=fallback');
 
 // Custom colors
 $pro-grey: #414551;
@@ -43,8 +43,8 @@ $container-max-widths: (
 // Body Fonts
 $font-family-monospace: "Fira Code", "Andale Mono", monospace;
 $font-family-sans-serif: "Lato", sans-serif;
-$font-family-serif: "Roboto Slab", "Georgia", serif;
-$font-family-base: $font-family-serif;
+//$font-family-serif: (use the default value)
+$font-family-base: $font-family-sans-serif;
 $headings-font-family: $font-family-sans-serif;
 
 $font-weight-light: 300;
