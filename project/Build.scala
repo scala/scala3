@@ -1064,6 +1064,7 @@ object Build {
         publishLocal in `dotty-interfaces`,
         publishLocal in `dotty-compiler-bootstrapped`,
         publishLocal in `dotty-library-bootstrapped`,
+        publishLocal in `tasty-core-bootstrapped`,
         publishLocal in `dotty-staging`,
         publishLocal in `scala-library`,
         publishLocal in `scala-reflect`,
@@ -1140,6 +1141,7 @@ object Build {
         (publishLocal in `dotty-interfaces`).value
         (publishLocal in `scala-library`).value
         (publishLocal in `scala-reflect`).value
+        (publishLocal in `tasty-core-bootstrapped`).value
         (publishLocal in `dotty-library-bootstrapped`).value
         (publishLocal in `dotty-doc-bootstrapped`).value
         (publishLocal in `dotty-compiler-bootstrapped`).value

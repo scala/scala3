@@ -210,7 +210,8 @@ class CompilationTests extends ParallelTesting {
       defaultOutputDir + dotty1Group + "/dotty/" + sep +
       // and the other compiler dependenies:
       Properties.compilerInterface + sep + Properties.scalaLibrary + sep + Properties.scalaAsm + sep +
-      Properties.dottyInterfaces + sep + Properties.jlineTerminal + sep + Properties.jlineReader,
+      Properties.dottyInterfaces + sep + Properties.tastyCore + sep + Properties.jlineTerminal + sep +
+      Properties.jlineReader,
       Array("-Ycheck-reentrant", "-Yemit-tasty-in-class")
     )
 
