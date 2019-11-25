@@ -172,9 +172,9 @@ object tags {
       suffixes.find(url.endsWith(_)).map(url.replace(_, ".html")).getOrElse(url)
     }
     private def renderTitle(t: Title, pageUrl: String): String = {
+      val htmlPath = replaceSuffix(pageUrl, Seq("-spec.md", "-details.md", "-new.md", ".md"))
+      val marker = if (isParent(t, htmlPath)) "class=\"toggled\"" else ""
       if (!t.url.isDefined && t.subsection.nonEmpty) {
-        val htmlPath = replaceSuffix(pageUrl, Seq("-spec.md", "-details.md", ".md"))
-        val marker = if (isParent(t, htmlPath)) "class=\"toggled\"" else ""
         s"""|<li class="section">
             |  <a onclick='toggleSection(this);'>${t.title}</a>
             |  <ul $marker>
@@ -185,7 +185,7 @@ object tags {
       }
       else if (t.url.isDefined) {
         val url = t.url.get
-        s"""<li class="leaf"><a href="$baseurl/$url">${t.title}</a></li>"""
+        s"""<li class="leaf"><a href="$baseurl/$url" $marker>${t.title}</a></li>"""
       }
       else {
         ctx.docbase.error(
