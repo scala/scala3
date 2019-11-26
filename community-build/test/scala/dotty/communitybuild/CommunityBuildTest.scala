@@ -311,7 +311,7 @@ class CommunityBuildTest {
   @Test def utest = projects.utest.run()
   @Test def sourcecode = projects.sourcecode.run()
   @Test def oslib = projects.oslib.run()
-  @Test def oslibWatch = projects.oslibWatch.run()
+  // @Test def oslibWatch = projects.oslibWatch.run()
   @Test def stdLib213 = projects.stdLib213.run()
   @Test def shapeless = projects.shapeless.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
