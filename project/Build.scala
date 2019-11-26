@@ -362,7 +362,6 @@ object Build {
   private lazy val dottydocClasspath = Def.task {
     val jars = (packageAll in `dotty-compiler`).value
     val dottyLib = jars("dotty-library")
-    val dottyInterfaces = jars("dotty-interfaces")
     val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(File.pathSeparator)
     val externalDeps = externalCompilerClasspathTask.value
     dottyLib + File.pathSeparator + findArtifactPath(externalDeps, "scala-library")
@@ -575,7 +574,8 @@ object Build {
           val dottyCompiler = jars("dotty-compiler")
           val dottyStaging = jars("dotty-staging")
           val dottyInterfaces = jars("dotty-interfaces")
-          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging).mkString(File.pathSeparator)))
+          val tastyCore = jars("tasty-core")
+          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, tastyCore).mkString(File.pathSeparator)))
         } else run(args)
       },
 
@@ -649,8 +649,9 @@ object Build {
       }
       val dottyInterfaces = jars("dotty-interfaces")
       val dottyStaging = jars("dotty-staging")
+      val tastyCore = jars("tasty-core")
       val asm = findArtifactPath(externalDeps, "scala-asm")
-      extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging)
+      extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, tastyCore)
     }
 
     val fullArgs = main :: insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
@@ -671,13 +672,13 @@ object Build {
         Map(
           "dotty-interfaces"    -> packageBin.in(`dotty-interfaces`, Compile).value,
           "dotty-compiler"      -> packageBin.in(Compile).value,
+          "tasty-core"          -> packageBin.in(`tasty-core`, Compile).value,
 
           // NOTE: Using dotty-library-bootstrapped here is intentional: when
           // running the compiler, we should always have the bootstrapped
           // library on the compiler classpath since the non-bootstrapped one
           // may not be binary-compatible.
-          "dotty-library"       -> packageBin.in(`dotty-library-bootstrapped`, Compile).value,
-          "tasty-core"          -> packageBin.in(`tasty-core-bootstrapped`, Compile).value,
+          "dotty-library"       -> packageBin.in(`dotty-library-bootstrapped`, Compile).value
         ).mapValues(_.getAbsolutePath)
       }
     }.value,
@@ -700,6 +701,7 @@ object Build {
       packageAll.in(`dotty-compiler`).value ++ Seq(
         "dotty-compiler" -> packageBin.in(Compile).value.getAbsolutePath,
         "dotty-staging"  -> packageBin.in(LocalProject("dotty-staging"), Compile).value.getAbsolutePath,
+        "tasty-core"     -> packageBin.in(LocalProject("tasty-core-bootstrapped"), Compile).value.getAbsolutePath,
       )
     }
   )
@@ -729,11 +731,6 @@ object Build {
     case Bootstrapped => `dotty-library-bootstrapped`
   }
 
-  def tastyCore(implicit mode: Mode): Project = mode match {
-    case NonBootstrapped => `tasty-core`
-    case Bootstrapped => `tasty-core-bootstrapped`
-  }
-
   /** The dotty standard library compiled with the Scala.js back-end, to produce
    *  the corresponding .sjsir files.
    *
@@ -751,8 +748,20 @@ object Build {
         (unmanagedSourceDirectories in (`dotty-library-bootstrapped`, Compile)).value,
     )
 
+  lazy val tastyCoreSettings = Seq(
+    scalacOptions := {
+      val (language, other) = scalacOptions.value.partition(_.startsWith("-language:"))
+      other :+ (language.headOption.map(_ + ",Scala2Compat").getOrElse("-language:Scala2Compat"))
+    }
+  )
+
   lazy val `tasty-core` = project.in(file("tasty")).asTastyCore(NonBootstrapped)
   lazy val `tasty-core-bootstrapped`: Project = project.in(file("tasty")).asTastyCore(Bootstrapped)
+
+  def tastyCore(implicit mode: Mode): Project = mode match {
+    case NonBootstrapped => `tasty-core`
+    case Bootstrapped => `tasty-core-bootstrapped`
+  }
 
   lazy val `dotty-staging` = project.in(file("staging")).
     withCommonSettings(Bootstrapped).
@@ -1298,7 +1307,8 @@ object Build {
       settings(dottyLibrarySettings)
 
     def asTastyCore(implicit mode: Mode): Project = project.withCommonSettings.
-      dependsOn(dottyLibrary)
+      dependsOn(dottyLibrary).
+      settings(tastyCoreSettings)
 
     def asDottyDoc(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler, dottyCompiler % "test->test").
