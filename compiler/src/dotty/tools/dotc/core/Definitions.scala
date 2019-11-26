@@ -321,8 +321,6 @@ class Definitions {
   /** Methods in Object and Any that do not have a side effect */
   @tu lazy val pureMethods: List[TermSymbol] = List(Any_==, Any_!=, Any_equals, Any_hashCode,
     Any_toString, Any_##, Any_getClass, Any_isInstanceOf, Any_typeTest, Object_eq, Object_ne,
-    // Even through Compiletime_notNull is not pure (contains asInstanceOf), as it is removed later,
-    // we can consider it as pure.
     Compiletime_notNull.asInstanceOf[TermSymbol])
 
   @tu lazy val AnyKindClass: ClassSymbol = {

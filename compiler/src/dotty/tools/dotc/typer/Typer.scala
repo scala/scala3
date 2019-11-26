@@ -349,11 +349,17 @@ class Typer extends Namer
   }
 
   def toNotNullTermRef(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree.tpe match
-    case tp @ OrNull(tpnn) : TermRef
+    case ref @ OrNull(tpnn) : TermRef
     if pt != AssignProto && // Ensure it is not the lhs of Assign
-    ctx.notNullInfos.impliesNotNull(tp) =>
+    ctx.notNullInfos.impliesNotNull(ref) =>
+      // def $notNull[A, B](x: A | Null): B = x.asInstanceOf
+      // For a TermRef x: T|Null,
+      // if x is inmutable: $notNull[T, x.type & T](x),
+      // if x is mutable: $notNull[T, T](x).
+      val tpeA = TypeTree(tpnn)
+      val tpeB = if (ref.symbol.is(Mutable)) tpeA else TypeTree(AndType(ref, tpnn))
       Apply(
-        TypeApply(Ident(defn.Compiletime_notNull.namedType), TypeTree(tpnn) :: Nil),
+        TypeApply(Ident(defn.Compiletime_notNull.namedType), tpeA :: tpeB :: Nil),
         tree :: Nil)
     case _ =>
       tree

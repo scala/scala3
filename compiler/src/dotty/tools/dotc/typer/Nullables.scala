@@ -96,7 +96,7 @@ object Nullables with
   /** An extractor for null-trackable references */
   object TrackedRef
     def unapply(tree: Tree)(given Context): Option[TermRef] = tree.typeOpt match
-      case ref: TermRef if isTracked(ref) => println("tr: " + ref); Some(ref)
+      case ref: TermRef if isTracked(ref) => Some(ref)
       case _ => None
   end TrackedRef
 
@@ -253,8 +253,11 @@ object Nullables with
 
   given assignOps: (tree: Assign)
     def computeAssignNullable()(given Context): tree.type = tree.lhs match
-      case TrackedRef(ref) =>
-        tree.withNotNullInfo(NotNullInfo(Set(), Set(ref))) // TODO: refine with nullability type info
+      case TrackedRef(ref) => tree.rhs.typeOpt match
+        // If the type of rhs is `T|Null`, then the nullability of the lhs variable is no longer
+        // trackable. We don't need to check whether the type `T` is correct here.
+        case OrNull(_) => tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
+        case _ => tree
       case _ => tree
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)

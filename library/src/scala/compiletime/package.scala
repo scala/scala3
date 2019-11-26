@@ -68,11 +68,14 @@ package object compiletime {
    *
    *  ```
    *  val x: String|Null = ???
-   *  val _:String = $notNull[String](x)
+   *  val _: String = $notNull[String, x.type & String](x)
+   *
+   *  var y: String|Null = ???
+   *  val _: String = $notNull[String, String](x)
    *  ```
    *
-   *  Since `$notNull` is erased later, if `x` is a stable path,
-   *  `$notNull(x)` is also a stable path.
+   *  Since `$notNull` is erased later, if `x.type` is a stable path,
+   *  the type of `$notNull(x)` is also a stable path.
    */
-  def $notNull[A](x: A | Null): x.type & A = x.asInstanceOf
+  inline def $notNull[A, B](x: => A | Null): B =  x.asInstanceOf
 }
