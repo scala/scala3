@@ -121,7 +121,7 @@ object Comments {
         val tree = new Parser(SourceFile.virtual("<usecase>", code)).localDef(codePos.start)
         tree match {
           case tree: untpd.DefDef =>
-            val newName = ctx.freshNames.newName(tree.name, NameKinds.DocArtifactName)
+            val newName = ctx.compilationUnit.freshNames.newName(tree.name, NameKinds.DocArtifactName)
             untpd.cpy.DefDef(tree)(name = newName)
           case _ =>
             ctx.error(ProperDefinitionNotFound(), ctx.source.atSpan(codePos))

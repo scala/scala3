@@ -52,13 +52,13 @@ trait DottyBytecodeTest {
     ctx0.setSetting(ctx0.settings.outputDir, outputDir)
   }
 
-  /** Checks source code from raw string */
-  def checkBCode(source: String)(checkOutput: AbstractFile => Unit): Unit = {
+  /** Checks source code from raw strings */
+  def checkBCode(sources: String*)(checkOutput: AbstractFile => Unit): Unit = {
     implicit val ctx: Context = initCtx
 
     val compiler = new Compiler
     val run = compiler.newRun
-    compiler.newRun.compileFromString(source)
+    compiler.newRun.compileFromStrings(sources: _*)
 
     checkOutput(ctx.settings.outputDir.value)
   }

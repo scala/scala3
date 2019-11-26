@@ -215,7 +215,7 @@ object NameKinds {
 
     /** Generate fresh unique term name of this kind with given prefix name */
     def fresh(prefix: TermName = EmptyTermName)(implicit ctx: Context): TermName =
-      ctx.freshNames.newName(prefix, this)
+      ctx.compilationUnit.freshNames.newName(prefix, this)
 
     /** Generate fresh unique type name of this kind with given prefix name */
     def fresh(prefix: TypeName)(implicit ctx: Context): TypeName =

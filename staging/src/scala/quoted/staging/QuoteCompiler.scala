@@ -55,18 +55,20 @@ private class QuoteCompiler extends Compiler {
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
       units.flatMap {
         case exprUnit: ExprCompilationUnit =>
+          implicit val unitCtx: Context = ctx.fresh.setPhase(this.start).setCompilationUnit(exprUnit)
+
           val pos = Span(0)
           val assocFile = new VirtualFile("<quote>")
 
           // Places the contents of expr in a compilable tree for a class with the following format.
           // `package __root__ { class ' { def apply: Any = <expr> } }`
-          val cls = ctx.newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
+          val cls = unitCtx.newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
             defn.ObjectType :: Nil, newScope, coord = pos, assocFile = assocFile).entered.asClass
-          cls.enter(ctx.newDefaultConstructor(cls), EmptyScope)
-          val meth = ctx.newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
+          cls.enter(unitCtx.newDefaultConstructor(cls), EmptyScope)
+          val meth = unitCtx.newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
 
           val qctx = dotty.tools.dotc.quoted.QuoteContext()
-          val quoted = PickledQuotes.quotedExprToTree(exprUnit.exprBuilder.apply(qctx))(ctx.withOwner(meth))
+          val quoted = PickledQuotes.quotedExprToTree(exprUnit.exprBuilder.apply(qctx))(unitCtx.withOwner(meth))
 
           getLiteral(quoted) match {
             case Some(value) =>
