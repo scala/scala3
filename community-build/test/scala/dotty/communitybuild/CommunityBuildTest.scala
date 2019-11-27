@@ -87,10 +87,9 @@ final case class MillCommunityProject(project: String, baseCommand: String,
 
 final case class SbtCommunityProject(project: String, sbtTestCommand: String,
   sbtUpdateCommand: String, extraSbtArgs: List[String] = Nil,
-  dependencies: List[CommunityProject] = Nil) extends CommunityProject
+  dependencies: List[CommunityProject] = Nil, publishCommand: String = null) extends CommunityProject
   override val binaryName: String = "sbt"
   private val baseCommand = s";clean ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! "
-  override val publishCommand = null
   override val testCommand = s"$baseCommand$sbtTestCommand"
   override val updateCommand = s"$baseCommand$sbtUpdateCommand"
 
@@ -126,6 +125,12 @@ object projects
     dependencies = List(utest, sourcecode)
   )
 
+  val ujson = MillCommunityProject(
+    project = "upickle",
+    baseCommand = s"ujson.jvm[$compilerVersion]",
+    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck)
+  )
+
   val intent = SbtCommunityProject(
     project       = "intent",
     sbtTestCommand   = "test",
@@ -141,13 +146,23 @@ object projects
   val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
     sbtTestCommand   = "jvm/test",
-    sbtUpdateCommand = "jvm/test:update"
+    sbtUpdateCommand = "jvm/test:update",
+    publishCommand = ";set jvm/publishArtifact in (Compile, packageDoc) := false ;jvm/publishLocal"
   )
 
   val scalatest = SbtCommunityProject(
     project       = "scalatest",
     sbtTestCommand   = ";scalacticDotty/clean;scalacticTestDotty/test;scalatestTestDotty/test",
-    sbtUpdateCommand = "scalatest/update"
+    sbtUpdateCommand = "scalatest/update",
+    publishCommand = ";scalacticDotty/publishLocal; scalatestDotty/publishLocal"
+  )
+
+  val scalatestplusScalacheck = SbtCommunityProject(
+    project = "scalatestplus-scalacheck",
+    sbtTestCommand = "scalatestPlusScalaCheckJVM/compile",  // TODO: compile only because tests are prone to java.lang.OutOfMemoryError: Metaspace
+    sbtUpdateCommand = "scalatestPlusScalaCheckJVM/update",
+    publishCommand = "scalatestPlusScalaCheckJVM/publishLocal",
+    dependencies = List(scalatest, scalacheck)
   )
 
   val scalaXml = SbtCommunityProject(
@@ -300,6 +315,7 @@ class CommunityBuildTest {
   @Test def algebra = projects.algebra.run()
   @Test def scalacheck = projects.scalacheck.run()
   @Test def scalatest = projects.scalatest.run()
+  @Test def scalatestplusScalacheck = projects.scalatestplusScalacheck.run()
   @Test def scalaXml = projects.scalaXml.run()
   @Test def scopt = projects.scopt.run()
   @Test def scalap = projects.scalap.run()
@@ -311,6 +327,7 @@ class CommunityBuildTest {
   @Test def utest = projects.utest.run()
   @Test def sourcecode = projects.sourcecode.run()
   @Test def oslib = projects.oslib.run()
+  @Test def ujson = projects.ujson.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
   @Test def stdLib213 = projects.stdLib213.run()
   @Test def shapeless = projects.shapeless.run()
