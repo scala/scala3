@@ -263,6 +263,7 @@ object DynamicTuple {
 
   def dynamicConcat[This <: Tuple, That <: Tuple](self: This, that: That): Concat[This, That] = {
     type Result = Concat[This, That]
+
     (self: Any) match {
       case self: Unit => return that.asInstanceOf[Result]
       case _ =>
@@ -275,20 +276,15 @@ object DynamicTuple {
 
     val arr = new Array[Object](self.size + that.size)
 
-    (self: Any) match {
+    inline def copyToArray[T <: Tuple](tuple: T, array: Array[Object], offset: Int): Unit = (tuple: Any) match {
       case xxl: TupleXXL =>
-        System.arraycopy(xxl.elems, 0, arr, 0, self.size)
+        System.arraycopy(xxl.elems, 0, array, offset, tuple.size)
       case _ =>
-        itToArray(self.asInstanceOf[Product].productIterator, self.size, arr, 0)
+        itToArray(tuple.asInstanceOf[Product].productIterator, tuple.size, array, offset)
     }
 
-    (that: Any) match {
-      case xxl: TupleXXL =>
-        System.arraycopy(xxl.elems, 0, arr, self.size, that.size)
-      case _ =>
-        itToArray(that.asInstanceOf[Product].productIterator, that.size, arr, self.size)
-    }
-
+    copyToArray(self, arr, 0)
+    copyToArray(that, arr, self.size)
     dynamicFromIArray[Result](arr.asInstanceOf[IArray[Object]])
   }
 
