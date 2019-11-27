@@ -6,14 +6,6 @@ object DynamicTuple {
   inline val MaxSpecialized = 22
   inline private val XXL = MaxSpecialized + 1
 
-  def itToArray(it: Iterator[Any], size: Int, dest: Array[Object], offset: Int): Unit = {
-    var i = 0
-    while (i < size) {
-      dest(offset + i) = it.next().asInstanceOf[Object]
-      i += 1
-    }
-  }
-
   def dynamicToArray(self: Tuple): Array[Object] = (self: Any) match {
     case self: Unit => Array.emptyObjectArray
     case self: TupleXXL => self.toArray
@@ -254,16 +246,15 @@ object DynamicTuple {
     TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[H *: This]
   }
 
-  def dynamicCons[H, This <: Tuple](x: H, self: This): H *: This = {
-    (self: Any) match {
-      case xxl: TupleXXL => xxlCons(x, xxl)
-      case _ => specialCaseCons(x, self)
-    }
+  def dynamicCons[H, This <: Tuple](x: H, self: This): H *: This = (self: Any) match {
+    case xxl: TupleXXL => xxlCons(x, xxl)
+    case _ => specialCaseCons(x, self)
   }
 
   def dynamicConcat[This <: Tuple, That <: Tuple](self: This, that: That): Concat[This, That] = {
     type Result = Concat[This, That]
 
+    // If either of the tuple is empty, we can leave early
     (self: Any) match {
       case self: Unit => return that.asInstanceOf[Result]
       case _ =>
@@ -280,7 +271,8 @@ object DynamicTuple {
       case xxl: TupleXXL =>
         System.arraycopy(xxl.elems, 0, array, offset, tuple.size)
       case _ =>
-        itToArray(tuple.asInstanceOf[Product].productIterator, tuple.size, array, offset)
+        tuple.asInstanceOf[Product].productIterator.asInstanceOf[Iterator[Object]]
+          .copyToArray(array, offset, tuple.size)
     }
 
     copyToArray(self, arr, 0)
@@ -359,11 +351,9 @@ object DynamicTuple {
     }
   }
 
-  def dynamicTail[This <: NonEmptyTuple](self: This): Tail[This] = {
-    (self: Any) match {
-      case xxl: TupleXXL => xxlTail(xxl)
-      case _ => specialCaseTail(self)
-    }
+  def dynamicTail[This <: NonEmptyTuple](self: This): Tail[This] = (self: Any) match {
+    case xxl: TupleXXL => xxlTail(xxl)
+    case _ => specialCaseTail(self)
   }
 
   def dynamicApply[This <: NonEmptyTuple, N <: Int] (self: This, n: Int): Elem[This, N] = {
@@ -375,7 +365,8 @@ object DynamicTuple {
     res.asInstanceOf[Result]
   }
 
-  def zipIt(it1: Iterator[Any], it2: Iterator[Any], size: Int): IArray[Object] = {
+  // Benchmarks showed that this is faster than doing (it1 zip it2).copyToArray(...)
+  def zipIterators(it1: Iterator[Any], it2: Iterator[Any], size: Int): IArray[Object] = {
     val arr = new Array[Object](size)
     var i = 0
     while (i < size) {
@@ -388,7 +379,13 @@ object DynamicTuple {
   def dynamicZip[This <: Tuple, T2 <: Tuple](t1: This, t2: T2): Zip[This, T2] = {
     if (t1.size == 0 || t2.size == 0) return ().asInstanceOf[Zip[This, T2]]
     val size = Math.min(t1.size, t2.size)
-    Tuple.fromIArray(zipIt(t1.asInstanceOf[Product].productIterator, t2.asInstanceOf[Product].productIterator, size)).asInstanceOf[Zip[This, T2]]
+    Tuple.fromIArray(
+      zipIterators(
+        t1.asInstanceOf[Product].productIterator,
+        t2.asInstanceOf[Product].productIterator,
+        size
+      )
+    ).asInstanceOf[Zip[This, T2]]
   }
 
   def specialCaseMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): Map[This, F] = {
@@ -448,7 +445,9 @@ object DynamicTuple {
     type Result = Map[This, F]
     (self: Any) match {
       case xxl: TupleXXL =>
-        TupleXXL.fromIArray(xxl.elems.asInstanceOf[Array[Object]].map(f[Object]).asInstanceOf[IArray[Object]]).asInstanceOf[Result]
+        TupleXXL.fromIArray(
+          xxl.elems.asInstanceOf[Array[Object]].map(f[Object]).asInstanceOf[IArray[Object]]
+        ).asInstanceOf[Result]
       case _ =>
         specialCaseMap(self, f)
     }
