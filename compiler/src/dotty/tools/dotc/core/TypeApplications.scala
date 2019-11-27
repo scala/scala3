@@ -376,7 +376,7 @@ class TypeApplications(val self: Type) extends AnyVal {
               }
             }
             if ((dealiased eq stripped) || followAlias)
-              try dealiased.instantiate(args)
+              try dealiased.instantiate(args).normalized
               catch { case ex: IndexOutOfBoundsException => AppliedType(self, args) }
             else AppliedType(self, args)
           }

@@ -3595,17 +3595,70 @@ object Types {
           case _ =>
             NoType
         }
-        if (defn.isCompiletime_S(tycon.symbol) && args.length == 1)
-          trace(i"normalize S $this", typr, show = true) {
-            args.head.normalized match {
-              case ConstantType(Constant(n: Int)) if n >= 0 && n < Int.MaxValue =>
-                ConstantType(Constant(n + 1))
-              case none => tryMatchAlias
-            }
-          }
-        else tryMatchAlias
+
+        tryCompiletimeConstantFold.getOrElse(tryMatchAlias)
+
       case _ =>
         NoType
+    }
+
+    def tryCompiletimeConstantFold(implicit ctx: Context): Option[Type] = tycon match {
+      case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
+        def constValue(tp: Type): Option[Any] = tp match {
+          case ConstantType(Constant(n)) => Some(n)
+          case _ => None
+        }
+
+        def boolValue(tp: Type): Option[Boolean] = tp match {
+          case ConstantType(Constant(n: Boolean)) => Some(n)
+          case _ => None
+        }
+
+        def intValue(tp: Type): Option[Int] = tp match {
+          case ConstantType(Constant(n: Int)) => Some(n)
+          case _ => None
+        }
+
+        def natValue(tp: Type): Option[Int] = intValue(tp).filter(n => n >= 0 && n < Int.MaxValue)
+
+        def constantFold1[T](extractor: Type => Option[T], op: T => Any): Option[Type] =
+          extractor(args.head.normalized).map(a => ConstantType(Constant(op(a))))
+
+        def constantFold2[T](extractor: Type => Option[T], op: (T, T) => Any): Option[Type] =
+          for {
+            a <- extractor(args.head.normalized)
+            b <- extractor(args.tail.head.normalized)
+          } yield ConstantType(Constant(op(a, b)))
+
+        trace(i"compiletime constant fold $this", typr, show = true) {
+          if (args.length == 1) tycon.symbol.name match {
+            case tpnme.S => constantFold1(natValue, _ + 1)
+            case tpnme.Abs => constantFold1(intValue, _.abs)
+            case tpnme.Negate => constantFold1(intValue, x => -x)
+            case tpnme.Not => constantFold1(boolValue, x => !x)
+            case _ => None
+          } else if (args.length == 2) tycon.symbol.name match {
+            case tpnme.Equals => constantFold2(constValue, _ == _)
+            case tpnme.NotEquals => constantFold2(constValue, _ != _)
+            case tpnme.Plus => constantFold2(intValue, _ + _)
+            case tpnme.Minus => constantFold2(intValue, _ - _)
+            case tpnme.Times => constantFold2(intValue, _ * _)
+            case tpnme.Div => constantFold2(intValue, _ / _)
+            case tpnme.Mod => constantFold2(intValue, _ % _)
+            case tpnme.Lt => constantFold2(intValue, _ < _)
+            case tpnme.Gt => constantFold2(intValue, _ > _)
+            case tpnme.Ge => constantFold2(intValue, _ >= _)
+            case tpnme.Le => constantFold2(intValue, _ <= _)
+            case tpnme.Min => constantFold2(intValue, _ min _)
+            case tpnme.Max => constantFold2(intValue, _ max _)
+            case tpnme.And => constantFold2(boolValue, _ && _)
+            case tpnme.Or => constantFold2(boolValue, _ || _)
+            case tpnme.Xor => constantFold2(boolValue, _ ^ _)
+            case _ => None
+          } else None
+        }
+
+      case _ => None
     }
 
     def lowerBound(implicit ctx: Context): Type = tycon.stripTypeVar match {
@@ -3974,7 +4027,7 @@ object Types {
         myReduced =
           trace(i"reduce match type $this $hashCode", typr, show = true) {
             try
-              typeComparer.matchCases(scrutinee, cases)(trackingCtx)
+              typeComparer.matchCases(scrutinee.normalized, cases)(trackingCtx)
             catch {
               case ex: Throwable =>
                 handleRecursive("reduce type ", i"$scrutinee match ...", ex)

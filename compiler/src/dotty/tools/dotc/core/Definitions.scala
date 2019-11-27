@@ -233,6 +233,8 @@ class Definitions {
     @tu lazy val CompiletimeTesting_ErrorKind: Symbol = ctx.requiredModule("scala.compiletime.testing.ErrorKind")
       @tu lazy val CompiletimeTesting_ErrorKind_Parser: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Parser")
       @tu lazy val CompiletimeTesting_ErrorKind_Typer: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Typer")
+  @tu lazy val CompiletimeIntPackageObject: Symbol = ctx.requiredModule("scala.compiletime.int.package")
+  @tu lazy val CompiletimeBooleanPackageObject: Symbol = ctx.requiredModule("scala.compiletime.boolean.package")
 
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will
@@ -897,6 +899,28 @@ class Definitions {
 
   final def isCompiletime_S(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.name == tpnme.S && sym.owner == CompiletimePackageObject.moduleClass
+
+  final def isCompiletimeAppliedType(sym: Symbol)(implicit ctx: Context): Boolean = {
+    def isPackageObjectAppliedType: Boolean =
+      sym.owner == CompiletimePackageObject.moduleClass && Set(
+        tpnme.S, tpnme.Equals, tpnme.NotEquals
+      ).contains(sym.name)
+
+    def isIntAppliedType: Boolean =
+      sym.owner == CompiletimeIntPackageObject.moduleClass && Set(
+        tpnme.Plus, tpnme.Minus, tpnme.Times, tpnme.Div, tpnme.Mod,
+        tpnme.Lt, tpnme.Gt, tpnme.Ge, tpnme.Le,
+        tpnme.Abs, tpnme.Negate, tpnme.Min, tpnme.Max
+      ).contains(sym.name)
+
+    def isBooleanAppliedType: Boolean =
+      sym.owner == CompiletimeBooleanPackageObject.moduleClass && Set(
+        tpnme.Not, tpnme.Xor, tpnme.And, tpnme.Or
+      ).contains(sym.name)
+
+    isPackageObjectAppliedType || isIntAppliedType || isBooleanAppliedType
+  }
+
 
   // ----- Symbol sets ---------------------------------------------------
 

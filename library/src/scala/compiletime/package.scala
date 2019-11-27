@@ -63,4 +63,7 @@ package object compiletime {
    *      }
    */
   type S[N <: Int] <: Int
+
+  type ==[X <: AnyVal, Y <: AnyVal] <: Boolean
+  type !=[X <: AnyVal, Y <: AnyVal] <: Boolean
 }
