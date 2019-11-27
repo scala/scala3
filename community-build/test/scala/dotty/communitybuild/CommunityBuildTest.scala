@@ -87,11 +87,12 @@ final case class MillCommunityProject(project: String, baseCommand: String,
 
 final case class SbtCommunityProject(project: String, sbtTestCommand: String,
   sbtUpdateCommand: String, extraSbtArgs: List[String] = Nil,
-  dependencies: List[CommunityProject] = Nil, publishCommand: String = null) extends CommunityProject
+  dependencies: List[CommunityProject] = Nil, sbtPublishCommand: String = null) extends CommunityProject
   override val binaryName: String = "sbt"
   private val baseCommand = s";clean ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! "
   override val testCommand = s"$baseCommand$sbtTestCommand"
   override val updateCommand = s"$baseCommand$sbtUpdateCommand"
+  override val publishCommand = s"$baseCommand$sbtPublishCommand"
 
   override val runCommandsArgs: List[String] =
     // Run the sbt command with the compiler version and sbt plugin set in the build
@@ -147,21 +148,21 @@ object projects
     project       = "scalacheck",
     sbtTestCommand   = "jvm/test",
     sbtUpdateCommand = "jvm/test:update",
-    publishCommand = ";set jvm/publishArtifact in (Compile, packageDoc) := false ;jvm/publishLocal"
+    sbtPublishCommand = ";set jvm/publishArtifact in (Compile, packageDoc) := false ;jvm/publishLocal"
   )
 
   lazy val scalatest = SbtCommunityProject(
     project       = "scalatest",
     sbtTestCommand   = ";scalacticDotty/clean;scalacticTestDotty/test;scalatestTestDotty/test",
     sbtUpdateCommand = "scalatest/update",
-    publishCommand = ";scalacticDotty/publishLocal; scalatestDotty/publishLocal"
+    sbtPublishCommand = ";scalacticDotty/publishLocal; scalatestDotty/publishLocal"
   )
 
   lazy val scalatestplusScalacheck = SbtCommunityProject(
     project = "scalatestplus-scalacheck",
     sbtTestCommand = "scalatestPlusScalaCheckJVM/compile",  // TODO: compile only because tests are prone to java.lang.OutOfMemoryError: Metaspace
     sbtUpdateCommand = "scalatestPlusScalaCheckJVM/update",
-    publishCommand = "scalatestPlusScalaCheckJVM/publishLocal",
+    sbtPublishCommand = "scalatestPlusScalaCheckJVM/publishLocal",
     dependencies = List(scalatest, scalacheck)
   )
 
