@@ -52,12 +52,12 @@ object JavaNullInterop {
    *
    *  But the selection can throw an NPE if the returned value is `null`.
    */
-  def nullifyMember(sym: Symbol, tp: Type)(implicit ctx: Context): Type = {
+  def nullifyMember(sym: Symbol, tp: Type, isEnum: Boolean)(implicit ctx: Context): Type = {
     assert(ctx.explicitNulls)
     assert(sym.is(JavaDefined), "can only nullify java-defined members")
 
     // Some special cases when nullifying the type
-    if (sym.name == nme.TYPE_ || sym.isAllOf(Flags.JavaEnumValue))
+    if (isEnum || sym.name == nme.TYPE_)
       // Don't nullify the `TYPE` field in every class and Java enum instances
       tp
     else if (sym.name == nme.toString_ || sym.isConstructor || hasNotNullAnnot(sym))

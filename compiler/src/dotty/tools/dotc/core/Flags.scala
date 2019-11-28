@@ -450,12 +450,7 @@ object Flags {
    *  is completed)
    */
   val AfterLoadFlags: FlagSet = commonFlags(
-    FromStartFlags, AccessFlags, Final, AccessorOrSealed, LazyOrTrait, SelfName, JavaDefined,
-    // We would like to add JavaEnumValue to this set so that we can correctly
-    // detect it in JavaNullInterop. However, JavaEnumValue is not initialized at this
-    // point, so we just make sure that all the "primitive" flags contained in JavaEnumValue
-    // are mentioned here as well.
-    Enum, StableRealizable)
+    FromStartFlags, AccessFlags, Final, AccessorOrSealed, LazyOrTrait, SelfName, JavaDefined)
 
   /** A value that's unstable unless complemented with a Stable flag */
   val UnstableValueFlags: FlagSet = Mutable | Method
