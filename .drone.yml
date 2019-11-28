@@ -48,6 +48,7 @@ steps:
   image: lampepfl/dotty:2019-10-17
   depends_on: [ clone ]
   commands:
+  - curl https://raw.githubusercontent.com/scala-native/scala-native/b7851c4dc2a22c9fd9202aea3d97e2a68910b918/scripts/travis_setup.sh | bash -x
   - cp -R . /tmp/3/ && cd /tmp/3/
   - git submodule sync
   - git submodule update --init --recursive --jobs 7

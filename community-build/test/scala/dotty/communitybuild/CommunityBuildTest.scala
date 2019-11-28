@@ -106,29 +106,29 @@ final case class SbtCommunityProject(project: String, sbtTestCommand: String,
 object projects
   lazy val utest = MillCommunityProject(
     project = "utest",
-    baseCommand = s"utest.jvm[$compilerVersion]",
+    baseCommand = "__.__",
   )
 
   lazy val sourcecode = MillCommunityProject(
     project = "sourcecode",
-    baseCommand = s"sourcecode.jvm[$compilerVersion]",
+    baseCommand = "__.__",
   )
 
   lazy val oslib = MillCommunityProject(
     project = "os-lib",
-    baseCommand = s"os[$compilerVersion]",
+    baseCommand = "os[__]",
     dependencies = List(utest, sourcecode)
   )
 
   lazy val oslibWatch = MillCommunityProject(
     project = "os-lib",
-    baseCommand = s"os.watch[$compilerVersion]",
+    baseCommand = "os.watch[__]",
     dependencies = List(utest, sourcecode)
   )
 
   lazy val ujson = MillCommunityProject(
     project = "upickle",
-    baseCommand = s"ujson.jvm[$compilerVersion]",
+    baseCommand = "ujson.__",
     dependencies = List(scalatest, scalacheck, scalatestplusScalacheck)
   )
 
