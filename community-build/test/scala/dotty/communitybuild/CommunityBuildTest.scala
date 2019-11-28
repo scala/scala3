@@ -87,12 +87,12 @@ final case class MillCommunityProject(project: String, baseCommand: String,
 
 final case class SbtCommunityProject(project: String, sbtTestCommand: String,
   sbtUpdateCommand: String, extraSbtArgs: List[String] = Nil,
-  dependencies: List[CommunityProject] = Nil) extends CommunityProject
+  dependencies: List[CommunityProject] = Nil, sbtPublishCommand: String = null) extends CommunityProject
   override val binaryName: String = "sbt"
   private val baseCommand = s";clean ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! "
-  override val publishCommand = null
   override val testCommand = s"$baseCommand$sbtTestCommand"
   override val updateCommand = s"$baseCommand$sbtUpdateCommand"
+  override val publishCommand = s"$baseCommand$sbtPublishCommand"
 
   override val runCommandsArgs: List[String] =
     // Run the sbt command with the compiler version and sbt plugin set in the build
@@ -104,126 +104,142 @@ final case class SbtCommunityProject(project: String, sbtTestCommand: String,
       s"--addPluginSbtFile=$sbtPluginFilePath")
 
 object projects
-  val utest = MillCommunityProject(
+  lazy val utest = MillCommunityProject(
     project = "utest",
     baseCommand = s"utest.jvm[$compilerVersion]",
   )
 
-  val sourcecode = MillCommunityProject(
+  lazy val sourcecode = MillCommunityProject(
     project = "sourcecode",
     baseCommand = s"sourcecode.jvm[$compilerVersion]",
   )
 
-  val oslib = MillCommunityProject(
+  lazy val oslib = MillCommunityProject(
     project = "os-lib",
     baseCommand = s"os[$compilerVersion]",
     dependencies = List(utest, sourcecode)
   )
 
-  val oslibWatch = MillCommunityProject(
+  lazy val oslibWatch = MillCommunityProject(
     project = "os-lib",
     baseCommand = s"os.watch[$compilerVersion]",
     dependencies = List(utest, sourcecode)
   )
 
-  val intent = SbtCommunityProject(
+  lazy val ujson = MillCommunityProject(
+    project = "upickle",
+    baseCommand = s"ujson.jvm[$compilerVersion]",
+    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck)
+  )
+
+  lazy val intent = SbtCommunityProject(
     project       = "intent",
     sbtTestCommand   = "test",
     sbtUpdateCommand = "update"
   )
 
-  val algebra = SbtCommunityProject(
+  lazy val algebra = SbtCommunityProject(
     project       = "algebra",
     sbtTestCommand   = "coreJVM/compile",
     sbtUpdateCommand = "coreJVM/update"
   )
 
-  val scalacheck = SbtCommunityProject(
+  lazy val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
     sbtTestCommand   = "jvm/test",
-    sbtUpdateCommand = "jvm/test:update"
+    sbtUpdateCommand = "jvm/test:update",
+    sbtPublishCommand = ";set jvm/publishArtifact in (Compile, packageDoc) := false ;jvm/publishLocal"
   )
 
-  val scalatest = SbtCommunityProject(
+  lazy val scalatest = SbtCommunityProject(
     project       = "scalatest",
     sbtTestCommand   = ";scalacticDotty/clean;scalacticTestDotty/test;scalatestTestDotty/test",
-    sbtUpdateCommand = "scalatest/update"
+    sbtUpdateCommand = "scalatest/update",
+    sbtPublishCommand = ";scalacticDotty/publishLocal; scalatestDotty/publishLocal"
   )
 
-  val scalaXml = SbtCommunityProject(
+  lazy val scalatestplusScalacheck = SbtCommunityProject(
+    project = "scalatestplus-scalacheck",
+    sbtTestCommand = "scalatestPlusScalaCheckJVM/compile",  // TODO: compile only because tests are prone to java.lang.OutOfMemoryError: Metaspace
+    sbtUpdateCommand = "scalatestPlusScalaCheckJVM/update",
+    sbtPublishCommand = "scalatestPlusScalaCheckJVM/publishLocal",
+    dependencies = List(scalatest, scalacheck)
+  )
+
+  lazy val scalaXml = SbtCommunityProject(
     project       = "scala-xml",
     sbtTestCommand   = "xml/test",
     sbtUpdateCommand = "xml/update"
   )
 
-  val scopt = SbtCommunityProject(
+  lazy val scopt = SbtCommunityProject(
     project       = "scopt",
     sbtTestCommand   = "scoptJVM/compile",
     sbtUpdateCommand = "scoptJVM/update"
   )
 
-  val scalap = SbtCommunityProject(
+  lazy val scalap = SbtCommunityProject(
     project       = "scalap",
     sbtTestCommand   = "scalap/compile",
     sbtUpdateCommand = "scalap/update"
   )
 
-  val squants = SbtCommunityProject(
+  lazy val squants = SbtCommunityProject(
     project       = "squants",
     sbtTestCommand   = "squantsJVM/compile",
     sbtUpdateCommand = "squantsJVM/update"
   )
 
-  val betterfiles = SbtCommunityProject(
+  lazy val betterfiles = SbtCommunityProject(
     project       = "betterfiles",
     sbtTestCommand   = "dotty-community-build/compile",
     sbtUpdateCommand = "dotty-community-build/update"
   )
 
-  val ScalaPB = SbtCommunityProject(
+  lazy val ScalaPB = SbtCommunityProject(
     project       = "ScalaPB",
     sbtTestCommand   = "dotty-community-build/compile",
     sbtUpdateCommand = "dotty-community-build/update"
   )
 
-  val minitest = SbtCommunityProject(
+  lazy val minitest = SbtCommunityProject(
     project       = "minitest",
     sbtTestCommand   = "dotty-community-build/compile",
     sbtUpdateCommand = "dotty-community-build/update"
   )
 
-  val fastparse = SbtCommunityProject(
+  lazy val fastparse = SbtCommunityProject(
     project       = "fastparse",
     sbtTestCommand   = "dotty-community-build/compile;dotty-community-build/test:compile",
     sbtUpdateCommand = "dotty-community-build/update"
   )
 
-  val stdLib213 = SbtCommunityProject(
+  lazy val stdLib213 = SbtCommunityProject(
     project       = "stdLib213",
     sbtTestCommand   = "library/compile",
     sbtUpdateCommand = "library/update",
     extraSbtArgs  = List("-Dscala.build.compileWithDotty=true")
   )
 
-  val shapeless = SbtCommunityProject(
+  lazy val shapeless = SbtCommunityProject(
     project       = "shapeless",
     sbtTestCommand   = "test",
     sbtUpdateCommand = "update"
   )
 
-  val xmlInterpolator = SbtCommunityProject(
+  lazy val xmlInterpolator = SbtCommunityProject(
     project       = "xml-interpolator",
     sbtTestCommand   = "test",
     sbtUpdateCommand = "update"
   )
 
-  val semanticdb = SbtCommunityProject(
+  lazy val semanticdb = SbtCommunityProject(
     project       = "semanticdb",
     sbtTestCommand   = "test:compile",
     sbtUpdateCommand = "update"
   )
 
-  val effpi = SbtCommunityProject(
+  lazy val effpi = SbtCommunityProject(
     project       = "effpi",
     // We set `useEffpiPlugin := false` because we don't want to run their
     // compiler plugin since it relies on external binaries (from the model
@@ -300,6 +316,7 @@ class CommunityBuildTest {
   @Test def algebra = projects.algebra.run()
   @Test def scalacheck = projects.scalacheck.run()
   @Test def scalatest = projects.scalatest.run()
+  @Test def scalatestplusScalacheck = projects.scalatestplusScalacheck.run()
   @Test def scalaXml = projects.scalaXml.run()
   @Test def scopt = projects.scopt.run()
   @Test def scalap = projects.scalap.run()
@@ -311,6 +328,7 @@ class CommunityBuildTest {
   @Test def utest = projects.utest.run()
   @Test def sourcecode = projects.sourcecode.run()
   @Test def oslib = projects.oslib.run()
+  @Test def ujson = projects.ujson.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
   @Test def stdLib213 = projects.stdLib213.run()
   @Test def shapeless = projects.shapeless.run()
