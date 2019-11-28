@@ -6,16 +6,17 @@ nav.navbar {
   height: 50px;
   line-height: 1;
   font-size: 24px;
-  font-family: var(--font-family-sans-serif);
-  background: var(--primary);
+  font-family: var(--font-family-toolbar-details);
+  background-color: var(--toolbar);
+  box-shadow: 0 0 6px;
 }
 nav.navbar-dark * {
-  color: white;
+  color: var(--toolbar-entry);
   transition: color .2s ease-out;
 }
 
 nav.navbar-dark a:hover *, nav.navbar-dark a:focus * {
-  color: var(--accent);
+  color: var(--toolbar-active);
 }
 nav.navbar a:hover {
   text-decoration: none;
@@ -43,13 +44,14 @@ nav.navbar a {
   line-height: inherit;
 }
 .navbar-brand .project-details h1 {
-  font-size: 1.1em;
-  font-family: "Lobster", cursive;
+  font-size: 1em;
+  font-family: var(--font-family-toolbar-main);
+  font-weight: var(--font-weight-toolbar-main);
 }
 .navbar-brand .project-details h2 {
   font-size: 0.5em;
-  color: grey;
   margin-top: 2px;
+  font-weight: var(--font-weight-toolbar-details);
 }
 
 #search-api-input {

@@ -287,7 +287,7 @@ class ClassfileParser(
         if (denot.is(Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
           denot.info = arrayToRepeated(denot.info)
 
-        if (ctx.explicitNulls) denot.info = JavaNullInterop.nullifyMember(denot.symbol, denot.info)
+        if (ctx.explicitNulls) denot.info = JavaNullInterop.nullifyMember(denot.symbol, denot.info, isEnum)
 
         // seal java enums
         if (isEnum) {
@@ -688,7 +688,7 @@ class ClassfileParser(
     for (entry <- innerClasses.values) {
       // create a new class member for immediate inner classes
       if (entry.outerName == currentClassName) {
-        val file = ctx.platform.classPath.findClassFile(entry.externalName.mangledString) getOrElse {
+        val file = ctx.platform.classPath.findClassFile(entry.externalName.toString) getOrElse {
           throw new AssertionError(entry.externalName)
         }
         enterClassAndModule(entry, file, entry.jflags)

@@ -17,12 +17,12 @@ object Macros {
         // Use custom Show[_] here
         val printer = dummyShow
         tree match {
-          case IsDefinition(tree @ DefDef(name, _, _, _, _)) =>
+          case tree @ DefDef(name, _, _, _, _) =>
             buff.append(name)
             buff.append("\n")
             buff.append(printer.showTree(tree))
             buff.append("\n\n")
-          case IsDefinition(tree @ ValDef(name, _, _)) =>
+          case tree @ ValDef(name, _, _) =>
             buff.append(name)
             buff.append("\n")
             buff.append(printer.showTree(tree))

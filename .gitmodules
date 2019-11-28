@@ -59,3 +59,12 @@
 [submodule "community-build/community-projects/utest"]
 	path = community-build/community-projects/utest
 	url = https://github.com/dotty-staging/utest.git
+[submodule "community-build/community-projects/os-lib"]
+	path = community-build/community-projects/os-lib
+	url = https://github.com/dotty-staging/os-lib.git
+[submodule "community-build/community-projects/scalatestplus-scalacheck"]
+	path = community-build/community-projects/scalatestplus-scalacheck
+	url = https://github.com/dotty-staging/scalatestplus-scalacheck.git
+[submodule "community-build/community-projects/upickle"]
+	path = community-build/community-projects/upickle
+	url = https://github.com/dotty-staging/upickle.git

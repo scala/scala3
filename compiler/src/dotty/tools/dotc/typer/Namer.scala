@@ -1421,7 +1421,7 @@ class Namer { typer: Typer =>
     }
     val memTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
-      JavaNullInterop.nullifyMember(sym, memTpe)
+      JavaNullInterop.nullifyMember(sym, memTpe, mdef.mods.isAllOf(JavaEnumValue))
     else memTpe
   }
 

@@ -913,7 +913,7 @@ object Build {
         ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion).withDottyCompat(scalaVersion.value),
 
       sourceGenerators in Compile += Def.task {
-        import org.scalajs.linker.CheckedBehavior
+        import org.scalajs.linker.interface.CheckedBehavior
 
         val stage = scalaJSStage.value
 
@@ -958,7 +958,7 @@ object Build {
         (
           (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala":FileFilter) -- "RegressionTest.scala" -- "ReflectiveCallTest.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** (("*.scala": FileFilter) -- "StringTest.scala")).get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/io" ** (("*.scala": FileFilter) -- "ByteArrayInputStreamTest.scala" -- "ByteArrayOutputStreamTest.scala" -- "DataInputStreamTest.scala" -- "DataOutputStreamTest.scala" -- "InputStreamTest.scala" -- "OutputStreamWriterTest.scala" -- "PrintStreamTest.scala" -- "CommonStreamsTests.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/io" ** (("*.scala": FileFilter) -- "ByteArrayInputStreamTest.scala" -- "ByteArrayOutputStreamTest.scala" -- "DataInputStreamTest.scala" -- "DataOutputStreamTest.scala" -- "InputStreamTest.scala" -- "OutputStreamWriterTest.scala" -- "PrintStreamTest.scala" -- "ReadersTest.scala" -- "CommonStreamsTests.scala")).get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/math" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/net" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/security" ** "*.scala").get
@@ -970,9 +970,9 @@ object Build {
             -- "CollectionTest.scala" -- "CollectionsOnCheckedCollectionTest.scala" -- "CollectionsOnCheckedListTest.scala" -- "CollectionsOnCheckedMapTest.scala" -- "CollectionsOnCheckedSetTest.scala"
             -- "CollectionsOnCollectionsTest.scala" -- "CollectionsOnListsTest.scala" -- "CollectionsOnMapsTest.scala" -- "CollectionsOnSetFromMapTest.scala" -- "CollectionsOnSetsTest.scala"
             -- "CollectionsOnSynchronizedCollectionTest.scala" -- "CollectionsOnSynchronizedListTest.scala" -- "CollectionsOnSynchronizedMapTest.scala" -- "CollectionsOnSynchronizedSetTest.scala" -- "CollectionsTest.scala"
-            -- "DequeTest.scala" -- "EventObjectTest.scala" -- "FormatterTest.scala" -- "HashMapTest.scala" -- "HashSetTest.scala"
+            -- "DequeTest.scala" -- "EventObjectTest.scala" -- "FormatterTest.scala" -- "HashMapTest.scala" -- "HashSetTest.scala" -- "IdentityHashMapTest.scala"
             -- "LinkedHashMapTest.scala" -- "LinkedHashSetTest.scala" -- "LinkedListTest.scala" -- "ListTest.scala" -- "MapTest.scala"
-            -- "NavigableSetTest.scala" -- "SetTest.scala" -- "SortedMapTest.scala" -- "SortedSetTest.scala" -- "TreeSetTest.scala")).get
+            -- "NavigableSetTest.scala" -- "PriorityQueueTest.scala" -- "SetTest.scala" -- "SortedMapTest.scala" -- "SortedSetTest.scala" -- "TreeSetTest.scala")).get
 
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/junit" ** (("*.scala": FileFilter) -- "JUnitAnnotationsParamTest.scala")).get
@@ -1041,8 +1041,12 @@ object Build {
         "-Dplugin.scalaVersion=" + dottyVersion,
         "-Dsbt.boot.directory=" + ((baseDirectory in ThisBuild).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
       ),
-      // Pass along ivy home setting to sbt instances run from the tests
-      scriptedLaunchOpts ++= ivyPaths.value.ivyHome.map("-Dsbt.ivy.home=" + _.getAbsolutePath).toList,
+      // Pass along ivy home and repositories settings to sbt instances run from the tests
+      scriptedLaunchOpts ++= {
+        val repositoryPath = (io.Path.userHome / ".sbt" / "repositories").absolutePath
+        s"-Dsbt.repository.config=$repositoryPath" ::
+        ivyPaths.value.ivyHome.map("-Dsbt.ivy.home=" + _.getAbsolutePath).toList
+      },
       scriptedBufferLog := true,
       scripted := scripted.dependsOn(
         publishLocal in `dotty-sbt-bridge`,

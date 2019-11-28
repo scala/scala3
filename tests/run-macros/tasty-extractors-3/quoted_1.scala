@@ -13,11 +13,11 @@ object Macros {
     val buff = new StringBuilder
     val traverser = new TreeTraverser {
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
-        case IsTypeBoundsTree(tree) =>
+        case tree: TypeBoundsTree =>
           buff.append(tree.tpe.showExtractors)
           buff.append("\n\n")
           traverseTreeChildren(tree)
-        case IsTypeTree(tree) =>
+        case tree: TypeTree =>
           buff.append(tree.tpe.showExtractors)
           buff.append("\n\n")
           traverseTreeChildren(tree)

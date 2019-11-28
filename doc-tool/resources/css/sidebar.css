@@ -3,25 +3,20 @@
   top: 50px;
   left: 0;
   z-index: 1000;
-  width: 100%;
+  width: 275px;
   height: 100%;
-  /* Safari and some others don't support overflow: x y */
-  overflow-x: hidden;
+  overflow-x: hidden; /* Safari and some others don't support overflow: x y */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch; /* nicer scrolling on touch screens */
-  font-family: var(--font-family-sans-serif);
-  font-weight: 400;
-  background: var(--primary);
-  border-top: 1px solid black;
-  /* hidden by default, shown by toggle (on small screens) */
-  visibility: hidden;
-  opacity: 0;
-  transition: visibility .25s ease-out, opacity .25s ease-out;
+  font-family: var(--font-family-sidebar);
+  background: var(--sidebar);
+  margin-left: -275px; /* invisible by default, shown by toggle */
+  transition: margin .25s ease-out;
 }
 
 .sidebar.toggled {
-  visibility: visible;
-  opacity: 1;
+  margin-left: 0;
+  box-shadow: -2px 0 8px var(--primary);
 }
 
 .sidebar ul.toc {
@@ -52,16 +47,28 @@
   padding-left: 0;
 }
 
-.sidebar .toc > li {
-  border-left: 2px solid var(--accent);
+.sidebar .index-entity.entity-package {
+  margin-left: 5px;
+  margin-top: .25em;
+}
+
+.sidebar .toc > li:not(.index-entities) > ul {
+  border-left: 2px solid var(--sidebar-active);
   padding-left: 1em;
+  margin-left: 5px;
+}
+
+.sidebar li a {
+  font-size: var(--font-size-sidebar-page);
+  font-weight: var(--font-weight-sidebar-page);
 }
 
 .sidebar > ul > li.leaf > a, .sidebar li.section > a {
-  color: white;
-  font-size: 18px;
-  text-transform: uppercase;
+  font-size: var(--font-size-sidebar-category);
+  font-weight: var(--font-weight-sidebar-category);
+  text-transform: capitalize;
   cursor: pointer;
+  color: var(--sidebar-category);
 }
 
 .sidebar .entity-package > .entity-name {
@@ -70,17 +77,18 @@
 
 .sidebar a {
   width: 100%;
-  color: var(--contrast);
+  color: var(--sidebar-page);
   transition: color .2s ease-out;
 }
-.sidebar a:hover {
-  color: var(--accent) !important;
+.sidebar a:hover, .sidebar a.toggled {
+  color: var(--sidebar-active) !important;
 }
 
 /* API Documentation */
 .package-toggle i.fas {
   font-size: 15px;
-  margin-right: 5px;
+  margin-right: 1px;
+  color: var(--sidebar-active);
 }
 
 .entity-kinds {
@@ -105,9 +113,11 @@
 }
 .entity-kinds a.class {
   background: #44ad7d;
+  padding-right: 1px;
 }
 .entity-kinds a.trait {
   background: #19aacf;
+  padding-right: 1px;
 }
 
 .with-companion .entity-kinds:not(:hover) a.object {
@@ -122,17 +132,15 @@
 
 @media (min-width: 768px) {
   .sidebar { /* visible by default, hidden by toggle */
-    width: 320px;
-    visibility: visible;
-    opacity: 1;
     margin-left: 0;
-    transition: margin .25s ease-out;
+    box-shadow: -2px 0 8px var(--primary);
   }
   .sidebar.toggled {
-    margin-left: -320px;
+    margin-left: -275px;
+    box-shadow: none;
   }
   #content-wrapper {
-    margin-left: 320px !important;
+    margin-left: 275px !important;
     transition: margin .25s ease-out;
   }
   .sidebar.toggled ~ #content-wrapper {

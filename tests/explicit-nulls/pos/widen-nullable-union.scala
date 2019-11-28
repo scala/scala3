@@ -33,4 +33,10 @@ class Test {
     val y = x
     val _: AnyRef | Null = y
   }
+
+  locally {
+    val x: (A | Null) & (Null | B) = ???
+    val y = x
+    val _: (A & B) | Null = y
+  }
 }
