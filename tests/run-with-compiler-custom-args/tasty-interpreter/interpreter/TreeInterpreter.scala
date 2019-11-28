@@ -26,11 +26,12 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
   def interpretCall(inst: AbstractAny, sym: Symbol, args: List[AbstractAny]): Result = {
     // TODO
     // withLocalValue(`this`, inst) {
-      val IsDefDef(ddef) = sym.tree
-      val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
-      withLocalValues(syms, args.map(LocalValue.valFrom(_))) {
-        eval(ddef.rhs.get)
-      }
+      sym.tree match
+        case ddef: DefDef =>
+          val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
+          withLocalValues(syms, args.map(LocalValue.valFrom(_))) {
+            eval(ddef.rhs.get)
+          }
     // }
   }
 
@@ -42,11 +43,12 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
       case _ =>
     }
     val evaluatedArgs = argss.flatten.map(arg => LocalValue.valFrom(eval(arg)))
-    val IsDefDef(ddef) = fn.symbol.tree
-    val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
-    withLocalValues(syms, evaluatedArgs) {
-      eval(ddef.rhs.get)
-    }
+    fn.symbol.tree match
+      case ddef: DefDef =>
+        val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
+        withLocalValues(syms, evaluatedArgs) {
+          eval(ddef.rhs.get)
+        }
   }
 
   def interpretValGet(fn: Term): Result =
@@ -207,8 +209,8 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
 
   private object Call {
     def unapply(arg: Tree): Option[(Term, List[TypeTree], List[List[Term]])] = arg match {
-      case IsSelect(fn) => Some((fn, Nil, Nil))
-      case IsIdent(fn) => Some((fn, Nil, Nil))
+      case fn: Select => Some((fn, Nil, Nil))
+      case fn: Ident => Some((fn, Nil, Nil))
       case Apply(Call(fn, targs, args1), args2) => Some((fn, targs, args1 :+ args2))
       case TypeApply(Call(fn, _, _), targs) => Some((fn, targs, Nil))
       case _ => None

@@ -147,8 +147,8 @@ object Names {
     /** Is this name empty? */
     def isEmpty: Boolean
 
-    /** Does (the first part of) this name start with `str`? */
-    def startsWith(str: String): Boolean = firstPart.startsWith(str)
+    /** Does (the first part of) this name starting at index `start` starts with `str`? */
+    def startsWith(str: String, start: Int = 0): Boolean = firstPart.startsWith(str, start)
 
     /** Does (the last part of) this name end with `str`? */
     def endsWith(str: String): Boolean = lastPart.endsWith(str)
@@ -362,9 +362,9 @@ object Names {
 
     override def isEmpty: Boolean = length == 0
 
-    override def startsWith(str: String): Boolean = {
+    override def startsWith(str: String, start: Int): Boolean = {
       var i = 0
-      while (i < str.length && i < length && apply(i) == str(i)) i += 1
+      while (i < str.length && start + i < length && apply(start + i) == str(i)) i += 1
       i == str.length
     }
 

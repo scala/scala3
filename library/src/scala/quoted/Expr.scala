@@ -19,6 +19,17 @@ package quoted {
      */
     final def getValue[U >: T](given qctx: QuoteContext, valueOf: ValueOfExpr[U]): Option[U] = valueOf(this)
 
+    /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
+     *  It does the equivalent of
+     *  ```
+     *  this match
+     *    case '{...} => true // where the contens of the pattern are the contents of `that`
+     *    case _ => false
+     *  ```
+     */
+    final def matches(that: Expr[Any])(given qctx: QuoteContext): Boolean =
+      !scala.internal.quoted.Expr.unapply[Unit, Unit](this)(given that, false, qctx).isEmpty
+
   }
 
   object Expr {

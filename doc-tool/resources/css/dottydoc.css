@@ -98,10 +98,16 @@ footer img#author-img {
   line-height: 50px;
   text-align: center;
   text-decoration: none;
-  font-size: 42px;
+  font-size: 43px;
   font-family: var(--font-family-sans-serif);
 }
-
+.api span.letter-anchor.object {
+  line-height: 48px;
+}
+.api span.letter-anchor.class {
+  line-height: 48px;
+  padding-right: 3px;
+}
 .letter-anchor.object {
   background: #2c6c8d;
 }
@@ -154,7 +160,7 @@ footer img#author-img {
   width: 100%;
 }
 .api .member:hover {
-  background: var(--secondary-lite);
+  background: var(--doc-bg);
   cursor: pointer;
 }
 .api .left-column {
@@ -175,10 +181,13 @@ footer img#author-img {
 }
 
 /* code */
+pre, code {
+  font-variant-ligatures: none;
+}
 pre {
   padding: 0;
   font-size: 13px;
-  background: rgba(244, 243, 244, 0.6);
+  background: var(--pre-bg);
   border-radius: 2px;
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
@@ -222,10 +231,10 @@ aside.success {
   background-color: grey;
 }
 .gitter-open-chat-button:focus, .gitter-open-chat-button:hover {
-  background-color: var(--secondary);
+  background-color: var(--primary);
 }
 .gitter-open-chat-button:focus {
-  box-shadow: 0 0 8px var(--secondary);
+  box-shadow: 0 0 8px var(--primary);
 }
 .gitter-chat-embed {
   top: 40px; /* 50px (navbar) - 10px (aside's margin) */
@@ -252,5 +261,8 @@ aside.success {
   .api .right-column {
     display: flex;
     flex-flow: wrap;
+  }
+  main.container {
+    padding: 15px 45px;
   }
 }

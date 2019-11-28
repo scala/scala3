@@ -41,9 +41,15 @@ class CheckReentrant extends MiniPhase {
   private val unsharedAnnot = new CtxLazy(
     summon[Context].requiredClass("scala.annotation.internal.unshared"))
 
+  private val scalaJSIRPackageClass = new CtxLazy(
+    summon[Context].getPackageClassIfDefined("org.scalajs.ir"))
+
   def isIgnored(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
     sym.hasAnnotation(unsharedAnnot()) ||
+    sym.topLevelClass.owner == scalaJSIRPackageClass() ||
+      // We would add @sharable annotations on ScalaJSVersions and
+      // VersionChecks but we do not have control over that code
     sym.owner == defn.EnumValuesClass
       // enum values are initialized eagerly before use
       // in the long run, we should make them vals
