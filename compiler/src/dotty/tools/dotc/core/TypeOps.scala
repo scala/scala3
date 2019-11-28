@@ -501,12 +501,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     !featureEnabled(nme.noAutoTupling)
 
   def scala2CompatMode: Boolean =
-    featureEnabled(nme.Scala2Compat) || {
-      val scala2 = featureEnabled(nme.Scala2)
-      if scala2 then ctx.warning("Use `-language:Scala2Compat` or `import scala.Scala2Compat` instead of `-language:Scala2` or `import scala.Scala2`")
-      scala2
-    }
-
+    featureEnabled(nme.Scala2Compat)
 
   def dynamicsEnabled: Boolean =
     featureEnabled(nme.dynamics)
@@ -523,11 +518,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *  This test is used when we are too early in the pipeline to consider imports.
    */
   def scala2CompatSetting: Boolean =
-    ctx.settings.language.value.contains(nme.Scala2Compat.toString) || {
-      val scala2 = ctx.settings.language.value.contains(nme.Scala2.toString)
-      if scala2 then ctx.warning("Use -language:Scala2Compat instead of -language:Scala2")
-      scala2
-    }
+    ctx.settings.language.value.contains(nme.Scala2Compat.toString)
 
   /** Refine child based on parent
    *
