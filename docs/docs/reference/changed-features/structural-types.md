@@ -74,4 +74,36 @@ differences.
   `ClassTag` indicating the method's formal parameter types. `Dynamic`
   comes with `updateDynamic`.
 
+## Type Members in Structural Types
+
+A second change to structural types concerns type definitions that appear in them.
+Scala-2 allowed new type members in refinement types where the type members do not
+override or refine anything in the parent type. Examples are:
+
+```scala
+Seq { type Helper = U}   // `Seq` does not contain a definition of `Helper`
+{ type T }
+```
+
+These constructs are now available only under language feature `newTypesInRefinements`. As usual the feature
+can be enabled by an import
+```scala
+import language.newTypesInRefinements
+```
+or by a command-line option `-language:newTypesInRefinements`. If the feature is not enabled the compiler will
+issue a feature warning.
+
+### Why Put The Construct Under a Flag?
+
+Idiomatic Scala allows to refine only existing member types. This leads to code that is better documented
+and easier to typecheck. The support in the Scala compiler for this feature is less mature than the rest of the type checker.
+
+### Why Not Drop it Entirely?
+
+New type members in refinements are allowed by DOT,
+the calculus that underpins Scala. However, it should be noted that DOT
+does not provide a decision algorithm that can be used for type checking. So
+having only second-class support for the construct is defensible.
+
+
 [More details](structural-types-spec.md)
