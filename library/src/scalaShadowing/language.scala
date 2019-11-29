@@ -221,6 +221,20 @@ object language {
   /** Where imported, loose equality using eqAny is disabled */
   object strictEquality
 
+  /** Where imported, refinements can define types that are not present
+   *  in the parent type.
+   *
+   *  '''Why control the feature?''' Idiomatic Scala allows to refine only
+   *  existing member types. This leads to code that is better documented
+   *  and easier to typecheck. The support in the Scala compiler for this
+   *  feature is less mature than the rest of the type checker.
+   *
+   *  '''Why allow it?''' New type members in refinements are allowed by DOT,
+   *  the calculus that underpins Scala. However, it should be noted that DOT
+   *  does not provide a decision algorithm that can be used for type checking.
+   */
+  object newTypesInRefinements
+
   /** Where imported, ad hoc extensions of non-open classes in other
    *  compilation units are allowed.
    *

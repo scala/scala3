@@ -1661,6 +1661,14 @@ class Typer extends Namer
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): Tree = {
     val TypeDef(name, rhs) = tdef
     completeAnnotations(tdef, sym)
+    if sym.owner.isRefinementClass then
+      val parents = sym.owner.info.parents
+      if !parents.exists(_.nonPrivateMember(tdef.name).exists) then
+        checkFeature(
+          nme.newTypesInRefinements,
+          i"new type definition in refinement that does not override a member\nof the parent type ${parents}% & %",
+          tdef.sourcePos)
+
     val rhs1 = tdef.rhs match {
       case rhs @ LambdaTypeTree(tparams, body) =>
         val tparams1 = tparams.map(typed(_)).asInstanceOf[List[TypeDef]]
