@@ -813,9 +813,20 @@ trait Implicits { self: Typer =>
         else if (cls2.isPrimitiveValueClass)
           cmpWithBoxed(cls2, cls1)
         else if (cls1 == defn.NullClass)
-          cls1 == cls2 || cls2.derivesFrom(defn.ObjectClass)
-        else if (cls2 == defn.NullClass)
-          cls1.derivesFrom(defn.ObjectClass)
+          cls1 == cls2
+        else if (!ctx.explicitNulls)
+          // If explicit nulls is enabled, we want to disallow comparison between Object and Null.
+          // If a nullable value has a non-nullable type, we can still cast it to nullable type
+          // then compare.
+          //
+          // Example:
+          // val x: String = null.asInstanceOf[String]
+          // if (x == null) {} // error: x is non-nullable
+          // if (x.asInstanceOf[String|Null] == null) {} // ok
+          if (cls1 == defn.NullClass)
+            cls2.derivesFrom(defn.ObjectClass)
+          else
+            cls2 == defn.NullClass && cls1.derivesFrom(defn.ObjectClass)
         else
           false
       }
@@ -1464,7 +1475,7 @@ trait Implicits { self: Typer =>
         case alt1: SearchSuccess =>
           var diff = compareCandidate(alt1, alt2.ref, alt2.level)
           assert(diff <= 0)   // diff > 0 candidates should already have been eliminated in `rank`
-          
+
           if diff == 0 then
             // Fall back: if both results are extension method applications,
             // compare the extension methods instead of their wrappers.

@@ -14,6 +14,8 @@ object Test {
     assert(x != "xx")
     assert(x != y)
     assert(y == y)
+    assert(z.asInstanceOf[String|Null] != null)
+    assert(z.asInstanceOf[Any] != null)
 
     assert(x != null)
     assert(null != x)
