@@ -252,6 +252,13 @@ object Build {
     autoScalaLibrary := false
   )
 
+  lazy val commonScala2Settings = commonSettings ++ Seq(
+    scalaVersion := stdlibVersion(Bootstrapped),
+    moduleName ~= { _.stripSuffix("-scala2") },
+    version := dottyVersion,
+    target := baseDirectory.value / ".." / "out" / "scala-2" / name.value,
+  )
+
   // Settings used when compiling dotty with the reference compiler
   lazy val commonNonBootstrappedSettings = commonDottySettings ++ Seq(
     unmanagedSourceDirectories in Compile += baseDirectory.value / "src-non-bootstrapped",
@@ -749,14 +756,15 @@ object Build {
     )
 
   lazy val tastyCoreSettings = Seq(
-    scalacOptions := {
-      val (language, other) = scalacOptions.value.partition(_.startsWith("-language:"))
+    scalacOptions ~= { old =>
+      val (language, other) = old.partition(_.startsWith("-language:"))
       other :+ (language.headOption.map(_ + ",Scala2Compat").getOrElse("-language:Scala2Compat"))
     }
   )
 
   lazy val `tasty-core` = project.in(file("tasty")).asTastyCore(NonBootstrapped)
   lazy val `tasty-core-bootstrapped`: Project = project.in(file("tasty")).asTastyCore(Bootstrapped)
+  lazy val `tasty-core-scala2`: Project = project.in(file("tasty")).asTastyCoreScala2
 
   def tastyCore(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `tasty-core`
@@ -1309,6 +1317,8 @@ object Build {
     def asTastyCore(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyLibrary).
       settings(tastyCoreSettings)
+
+    def asTastyCoreScala2: Project = project.settings(commonScala2Settings)
 
     def asDottyDoc(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler, dottyCompiler % "test->test").
