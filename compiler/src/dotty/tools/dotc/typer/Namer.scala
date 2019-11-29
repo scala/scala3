@@ -1170,7 +1170,6 @@ class Namer { typer: Typer =>
               else if ctx.settings.strict.value then
                 checkFeature(nme.adhocExtensions,
                   i"Unless $pclazz is declared 'open', its extension in a separate file",
-                  cls.topLevelClass,
                   parent.sourcePos)
             pt
           }

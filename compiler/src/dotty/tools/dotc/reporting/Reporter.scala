@@ -99,18 +99,16 @@ trait Reporting { this: Context =>
     reportWarning(new FeatureWarning(msg, pos))
 
   def featureWarning(feature: String, featureDescription: String,
-      featureUseSite: Symbol, required: Boolean, pos: SourcePosition): Unit = {
+      required: Boolean, pos: SourcePosition): Unit = {
     val req = if (required) "needs to" else "should"
     val fqname = s"scala.language.$feature"
 
     val explain =
-      if (reporter.isReportedFeatureUseSite(featureUseSite)) ""
-      else {
-        reporter.reportNewFeatureUseSite(featureUseSite)
+      if reporter.reportedFeatureWarnings.add(feature) then
         s"""
            |See the Scala docs for value $fqname for a discussion
            |why the feature $req be explicitly enabled.""".stripMargin
-      }
+      else ""
 
     val msg = s"""$featureDescription $req be enabled
                  |by adding the import clause 'import $fqname'
@@ -258,12 +256,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     errorCount > initial
   }
 
-  private var reportedFeaturesUseSites = Set[Symbol]()
-
-  def isReportedFeatureUseSite(featureTrait: Symbol): Boolean =
-    featureTrait.ne(NoSymbol) && reportedFeaturesUseSites.contains(featureTrait)
-
-  def reportNewFeatureUseSite(featureTrait: Symbol): Unit = reportedFeaturesUseSites += featureTrait
+  private[reporting] var reportedFeatureWarnings = mutable.Set[String]()
 
   var unreportedWarnings: Map[String, Int] = Map.empty
 

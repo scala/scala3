@@ -690,11 +690,8 @@ trait Checking {
    */
   def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = {
     def check(): Unit =
-      checkFeature(
-        nme.implicitConversions,
-        i"Definition of implicit conversion $sym",
-        ctx.owner.topLevelClass,
-        sym.sourcePos)
+      checkFeature(nme.implicitConversions,
+        i"Definition of implicit conversion $sym", sym.sourcePos)
 
     sym.info.stripPoly match {
       case mt @ MethodType(_ :: Nil)
@@ -728,7 +725,7 @@ trait Checking {
         conv.name == nme.reflectiveSelectable && conv.maybeOwner.maybeOwner.maybeOwner == defn.ScalaPackageClass
       if (!conversionOK)
         checkFeature(nme.implicitConversions,
-          i"Use of implicit conversion ${conv.showLocated}", NoSymbol, posd.sourcePos)
+          i"Use of implicit conversion ${conv.showLocated}", posd.sourcePos)
     }
 
   private def infixOKSinceFollowedBy(tree: untpd.Tree): Boolean = tree match {
@@ -771,6 +768,7 @@ trait Checking {
                  |Or rewrite to ${alternative(name)} manually.""",
               tree.op.sourcePos)
             if (ctx.settings.deprecation.value) {
+              // rewrite alphanumebric infix operations a op b to  a `op` b
               patch(Span(tree.op.span.start, tree.op.span.start), "`")
               patch(Span(tree.op.span.end, tree.op.span.end), "`")
             }
@@ -782,10 +780,9 @@ trait Checking {
   /** Issue a feature warning if feature is not enabled */
   def checkFeature(name: TermName,
                    description: => String,
-                   featureUseSite: Symbol,
                    pos: SourcePosition)(implicit ctx: Context): Unit =
     if (!ctx.featureEnabled(name))
-      ctx.featureWarning(name.toString, description, featureUseSite, required = false, pos)
+      ctx.featureWarning(name.toString, description, required = false, pos)
 
   /** Check that `tp` is a class type and that any top-level type arguments in this type
    *  are feasible, i.e. that their lower bound conforms to their upper bound. If a type
@@ -1195,5 +1192,5 @@ trait NoChecking extends ReChecking {
   override def checkMembersOK(tp: Type, pos: SourcePosition)(implicit ctx: Context): Type = tp
   override def checkInInlineContext(what: String, posd: Positioned)(implicit ctx: Context): Unit = ()
   override def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(implicit ctx: Context): Unit = ()
-  override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SourcePosition)(implicit ctx: Context): Unit = ()
+  override def checkFeature(name: TermName, description: => String, pos: SourcePosition)(implicit ctx: Context): Unit = ()
 }
