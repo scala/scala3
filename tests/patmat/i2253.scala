@@ -1,3 +1,4 @@
+import language.newTypesInRefinements
 sealed trait S
 
 object BodylessObject extends S
