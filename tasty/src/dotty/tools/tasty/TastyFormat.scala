@@ -503,7 +503,6 @@ object TastyFormat {
        | DEFAULTparameterized
        | STABLE
        | EXTENSION
-       | GIVEN
        | PARAMsetter
        | EXPORTED
        | OPEN
