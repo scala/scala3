@@ -352,15 +352,12 @@ class Typer extends Namer
     case ref @ OrNull(tpnn) : TermRef
     if pt != AssignProto && // Ensure it is not the lhs of Assign
     ctx.notNullInfos.impliesNotNull(ref) =>
-      val tpeA = TypeTree(tpnn)
-      val tpeB = TypeTree(AndType(ref, tpnn))
-      //val tpeB = if (ref.symbol.is(Mutable)) tpeA else TypeTree(AndType(ref, tpnn))
-      val newTree = TypeApply(Select(tree, defn.Any_typeCast.namedType), tpeB :: Nil)
-      //newTree.symbol.setFlag(Erased)
-      // val newTree = Apply(
+      // val tpeA = TypeTree(tpnn)
+      // val tpeB = TypeTree(AndType(ref, tpnn))
+      // Apply(
       //   TypeApply(Ident(defn.Compiletime_notNull.namedType), tpeA :: tpeB :: Nil),
       //   tree :: Nil)
-      newTree
+      tree.select(defn.Any_typeCast).appliedToType(AndType(ref, tpnn))
     case _ =>
       tree
 

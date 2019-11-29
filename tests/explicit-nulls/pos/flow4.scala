@@ -1,4 +1,4 @@
-
+// TODO: broken
 // This test is based on tests/pos/rbtree.scala
 // and it tests that we can use an inline method to "abstract" a more complicated
 // isInstanceOf check, while at the same time getting the flow inference to know

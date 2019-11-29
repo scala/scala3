@@ -823,9 +823,12 @@ trait Implicits { self: Typer =>
           // if (x.asInstanceOf[String|Null] == null) {} // ok
           cls1 == defn.NullClass && cls1 == cls2
         else if (cls1 == defn.NullClass)
-          cls1 == cls2 || cls2.derivesFrom(defn.ObjectClass)
-        else if (cls2 == defn.NullClass)
-          cls1.derivesFrom(defn.ObjectClass)
+          cls1 == cls2
+        else if (!ctx.explicitNulls)
+          if (cls1 == defn.NullClass)
+            cls2.derivesFrom(defn.ObjectClass)
+          else
+            cls2 == defn.NullClass && cls1.derivesFrom(defn.ObjectClass)
         else
           false
       }

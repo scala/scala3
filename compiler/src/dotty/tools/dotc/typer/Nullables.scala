@@ -110,6 +110,7 @@ object Nullables with
     || { val sym = ref.symbol
          sym.is(Mutable)
          && sym.owner.isTerm
+         && !curCtx.owner.is(Flags.Lazy) // not a rhs of lazy ValDef
          && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod
          && sym.span.exists
          && curCtx.compilationUnit != null // could be null under -Ytest-pickler

@@ -17,6 +17,7 @@ import SymDenotations._
 import Decorators._
 import Denotations._
 import Periods._
+import CheckRealizable._
 import util.Stats._
 import util.SimpleIdentitySet
 import reporting.diagnostic.Message
@@ -163,7 +164,9 @@ object Types {
       case tp: RefinedOrRecType => tp.parent.isStable
       case tp: ExprType => tp.resultType.isStable
       case tp: AnnotatedType => tp.parent.isStable
-      case tp: AndType => tp.tp1.isStable || tp.tp2.isStable
+      case tp: AndType =>
+        tp.tp1.isStable && (realizability(tp.tp2) eq Realizable) ||
+        tp.tp2.isStable && (realizability(tp.tp1) eq Realizable)
       case _ => false
     }
 

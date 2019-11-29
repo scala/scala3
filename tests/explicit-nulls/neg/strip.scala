@@ -20,8 +20,6 @@ class Foo {
 
   locally {
     val x: (Null | B1) & B2 = ???
-    if (x != null) {
-      val _: B1 & B2 = x // error: the type of x is not a nullable union, so we cannot remove the Null
-    }
+    if (x != null) {} // error: the type of x is not a nullable union, so we cannot remove the Null
   }
 }
