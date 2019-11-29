@@ -2043,7 +2043,7 @@ object Types {
       checkedPeriod = if (prefix.isProvisional) Nowhere else ctx.period
       designator match {
         case sym: Symbol if designator ne lastSymbol =>
-          designator = lastSymbol.asInstanceOf[Designator{ type ThisName = self.ThisName }]
+          designator = lastSymbol.asInstanceOf[Designator]
         case _ =>
       }
       checkDenot()

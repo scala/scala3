@@ -6,11 +6,20 @@ object deriving {
    */
   sealed trait Mirror {
 
+    /** The actual mirrored type, which can be of any kind */
+    type MirroredType <: AnyKind
+
     /** The mirrored *-type */
     type MirroredMonoType
 
     /** The name of the type */
     type MirroredLabel <: String
+
+    /** The type of the elements of the mirrored type
+     *  This is a subtype of Tuple for *-style and a subtype of a type lambda
+     *  yielding a tuple for higher-kinded types.
+     */
+    type MirroredElemTypes <: AnyKind
 
     /** The names of the product elements */
     type MirroredElemLabels <: Tuple
