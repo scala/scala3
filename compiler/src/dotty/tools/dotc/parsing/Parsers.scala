@@ -951,7 +951,7 @@ object Parsers {
       recur(top)
     }
 
-    /**   operand { infixop operand | ‘given’ (operand | ParArgumentExprs) } [postfixop],
+    /**   operand { infixop operand | MatchClause } [postfixop],
      *
      *  respecting rules of associativity and precedence.
      *  @param isOperator    the current token counts as an operator.
@@ -981,17 +981,13 @@ object Parsers {
           }
           else recur(operand())
         }
-        else reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
+        else
+          val t = reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
+          if !isType && in.token == MATCH then recur(matchClause(t))
+          else t
 
       recur(first)
     }
-
-    def applyGiven(t: Tree, operand: () => Tree): Tree =
-      atSpan(startOffset(t), in.offset) {
-        in.nextToken()
-        val args = if (in.token == LPAREN) parArgumentExprs()._1 else operand() :: Nil
-        Apply(t, args)
-      }.setGivenApply()
 
 /* -------- IDENTIFIERS AND LITERALS ------------------------------------------- */
 
@@ -1028,9 +1024,11 @@ object Parsers {
     def wildcardIdent(): Ident =
       atSpan(accept(USCORE)) { Ident(nme.WILDCARD) }
 
-    /** Accept identifier acting as a selector on given tree `t`. */
+    /** Accept identifier or match clause acting as a selector on given tree `t` */
     def selector(t: Tree): Tree =
-      atSpan(startOffset(t), in.offset) { Select(t, ident()) }
+      atSpan(startOffset(t), in.offset) {
+        if in.token == MATCH then matchClause(t) else Select(t, ident())
+      }
 
     /** Selectors ::= id { `.' id }
      *
@@ -1737,11 +1735,10 @@ object Parsers {
      *                      |  HkTypeParamClause ‘=>’ Expr
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
-     *                      |  Expr2
-     *                      |  [‘inline’] Expr2 `match' (`{' CaseClauses `}' | CaseClause)
+     *                      |  PostfixExpr [Ascription]
+     *                      |  ‘inline’ InfixExpr MatchClause
      *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
      *  Binding           ::=  (id | `_') [`:' Type]
-     *  Expr2             ::=  PostfixExpr [Ascription]
      *  Ascription        ::=  `:' InfixType
      *                      |  `:' Annotation {Annotation}
      *                      |  `:' `_' `*'
@@ -1780,7 +1777,7 @@ object Parsers {
       }
     }
 
-    def expr1(location: Location.Value = Location.ElseWhere): Tree = in.token match {
+    def expr1(location: Location.Value = Location.ElseWhere): Tree = in.token match
       case IF =>
         in.endMarkerScope(IF) { ifExpr(in.offset, If) }
       case WHILE =>
@@ -1886,31 +1883,28 @@ object Parsers {
             case IF =>
               ifExpr(start, InlineIf)
             case _ =>
-              val t = postfixExpr()
-              if (in.token == MATCH) matchExpr(t, start, InlineMatch)
-              else
-                syntaxErrorOrIncomplete(i"`match` or `if` expected but ${in.token} found")
-                t
+              postfixExpr() match
+                case t @ Match(scrut, cases) =>
+                  InlineMatch(scrut, cases).withSpan(t.span)
+                case t =>
+                  syntaxError(em"`inline` must be followed by an `if` or a `match`", start)
+                  t
         else expr1Rest(postfixExpr(), location)
-    }
+    end expr1
 
-    def expr1Rest(t: Tree, location: Location.Value): Tree = in.token match {
+    def expr1Rest(t: Tree, location: Location.Value): Tree = in.token match
       case EQUALS =>
-         t match {
-           case Ident(_) | Select(_, _) | Apply(_, _) =>
-             atSpan(startOffset(t), in.skipToken()) { Assign(t, subExpr()) }
-           case _ =>
-             t
-         }
+        t match
+          case Ident(_) | Select(_, _) | Apply(_, _) =>
+            atSpan(startOffset(t), in.skipToken()) { Assign(t, subExpr()) }
+          case _ =>
+            t
       case COLON =>
         in.nextToken()
-        val t1 = ascription(t, location)
-        if (in.token == MATCH) expr1Rest(t1, location) else t1
-      case MATCH =>
-        matchExpr(t, startOffset(t), Match)
+        ascription(t, location)
       case _ =>
         t
-    }
+    end expr1Rest
 
     def ascription(t: Tree, location: Location.Value): Tree = atSpan(startOffset(t)) {
       in.token match {
@@ -1951,20 +1945,20 @@ object Parsers {
         mkIf(cond, thenp, elsep)
       }
 
-    /**    `match' (`{' CaseClauses `}' | CaseClause)
+    /**    MatchClause ::= `match' `{' CaseClauses `}'
      */
-    def matchExpr(t: Tree, start: Offset, mkMatch: (Tree, List[CaseDef]) => Match) =
+    def matchClause(t: Tree): Match =
       in.endMarkerScope(MATCH) {
-        atSpan(start, in.skipToken()) {
-          mkMatch(t, casesExpr(caseClause))
+        atSpan(t.span.start, in.skipToken()) {
+          Match(t, inBracesOrIndented(caseClauses(caseClause)))
         }
       }
 
-    /**    `match' (`{' TypeCaseClauses `}' | TypeCaseClause)
+    /**    `match' `{' TypeCaseClauses `}'
      */
     def matchType(t: Tree): MatchTypeTree =
       atSpan(t.span.start, accept(MATCH)) {
-        MatchTypeTree(EmptyTree, t, casesExpr(typeCaseClause))
+        MatchTypeTree(EmptyTree, t, inBracesOrIndented(caseClauses(typeCaseClause)))
       }
 
     /** FunParams         ::=  Bindings
@@ -2032,7 +2026,7 @@ object Parsers {
     /** PostfixExpr   ::= InfixExpr [id [nl]]
      *  InfixExpr     ::= PrefixExpr
      *                  | InfixExpr id [nl] InfixExpr
-     *                  | InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)
+     *                  | InfixExpr MatchClause
      */
     def postfixExpr(): Tree = postfixExprRest(prefixExpr())
 
@@ -2063,6 +2057,7 @@ object Parsers {
      *                 |  Path
      *                 |  `(' [ExprsInParens] `)'
      *                 |  SimpleExpr `.' id
+     *                 |  SimpleExpr `.' MatchClause
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
      *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
@@ -2394,10 +2389,6 @@ object Parsers {
         }
       }
     }
-
-    def casesExpr(clause: () => CaseDef): List[CaseDef] =
-      if in.token == CASE then clause() :: Nil
-      else inBracesOrIndented(caseClauses(clause))
 
     /** CaseClauses         ::= CaseClause {CaseClause}
      *  TypeCaseClauses     ::= TypeCaseClause {TypeCaseClause}
