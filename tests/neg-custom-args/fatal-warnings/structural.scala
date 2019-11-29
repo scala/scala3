@@ -67,7 +67,7 @@ object Test {
 package p6 {
 
   class Refinements {
-    val y: { val x: T; type T }  // error: deprecated warning: illegal forward reference in refinement; now illegal
+    val y: { val x: T; type T }  // error: deprecated warning: illegal forward reference in refinement; now illegal // error: feature
   }
 
 }
