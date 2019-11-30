@@ -1,21 +1,19 @@
-package dotty.tools.dotc.core.tasty
-
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Comments.{Comment, CommentsContext, ContextDocstrings}
-import dotty.tools.dotc.core.Contexts.Context
+package dotty.tools.tasty.experimental
 
 import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.{Addr, NoAddr}
 
 import java.nio.charset.Charset
 
-class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr)(implicit ctx: Context) {
+class CommentPickler(val pickler: TastyPickler)(addrOfTree: pickler.tasty.Tree => Addr)(implicit ctx: pickler.tasty.Context) {
+  import pickler.tasty.{_, given}
   private val buf = new TastyBuffer(5000)
   pickler.newSection("Comments", buf)
 
-  def pickleComment(root: tpd.Tree): Unit = {
-    assert(ctx.docCtx.isDefined, "Trying to pickle comments, but there's no `docCtx`.")
-    new Traverser(ctx.docCtx.get).traverse(root)
+  def pickleComment(root: Tree): Unit = {
+    val docCtx = ctx.docCtx
+    assert(docCtx.isDefined, "Trying to pickle comments, but there's no `docCtx`.")
+    new Traverser(docCtx.get).traverse(root)
   }
 
   def pickleComment(addr: Addr, comment: Option[Comment]): Unit = comment match {
@@ -30,10 +28,10 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr)(implic
       ()
   }
 
-  private class Traverser(docCtx: ContextDocstrings) extends tpd.TreeTraverser {
-    override def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit =
+  private class Traverser(docCtx: ContextDocstrings) extends TreeTraverser {
+    override def traverse(tree: Tree)(implicit ctx: Context): Unit =
       tree match {
-        case md: tpd.MemberDef =>
+        case md: MemberDef =>
           val comment = docCtx.docstring(md.symbol)
           pickleComment(addrOfTree(md), comment)
           traverseChildren(md)

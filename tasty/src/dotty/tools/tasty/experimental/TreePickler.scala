@@ -9,9 +9,9 @@ object TreePickler {
   val sectionName = "ASTs"
 }
 
-class TreePickler(given val tasty: Tasty)(pickler: TastyPickler[tasty.type]) {
-  import tasty.{_, given}
-  val buf = TreeBuffer[tasty.type]()
+class TreePickler(val pickler: TastyPickler) {
+  import pickler.tasty.{_, given}
+  val buf = TreeBuffer[pickler.tasty.type](given pickler.tasty)
   pickler.newSection(TreePickler.sectionName, buf)
   import TreePickler._
   import buf._

@@ -16,3 +16,5 @@ trait Tasty extends Core
   with AnnotationOps
   with FlagOps
   with PositionOps
+  with SourceFileOps
+  with CommentOps

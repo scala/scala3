@@ -4,7 +4,6 @@ package transform
 import core._
 import Contexts.Context
 import Decorators._
-import tasty._
 import config.Printers.{noPrinter, pickling}
 import java.io.PrintStream
 import Periods._
@@ -13,6 +12,9 @@ import Symbols._
 import Flags.Module
 import reporting.ThrowingReporter
 import collection.mutable
+
+import dotty.tools.tasty._
+import experimental._
 
 object Pickler {
   val name: String = "pickler"

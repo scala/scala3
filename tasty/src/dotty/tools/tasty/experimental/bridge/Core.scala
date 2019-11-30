@@ -6,6 +6,8 @@ trait Core with
 
   type Context = internal.Context
 
+  type SourceFile = internal.SourceFile
+
   type Annotation = internal.Annotation
 
   type Designator = internal.Designator
@@ -18,8 +20,8 @@ trait Core with
 
   type Signature = internal.Signature
 
-  // type UntpdTree = internal.UntpdTree
-  // type TypedSplice = internal.TypedSplice
+  type Positioned = internal.Positioned
+
   type Tree = internal.Tree
   type MemberDef = internal.MemberDef
   type Hole = internal.Hole
@@ -45,6 +47,7 @@ trait Core with
   type Closure = internal.Closure
   type Match = internal.Match
   type CaseDef = internal.CaseDef
+  type Labeled = internal.Labeled
   type Return = internal.Return
   type WhileDo = internal.WhileDo
   type Try = internal.Try
@@ -64,7 +67,7 @@ trait Core with
   type Annotated = internal.Annotated
   type LambdaTypeTree = internal.LambdaTypeTree
   type TypeBoundsTree = internal.TypeBoundsTree
-  // type ImportSelector = internal.ImportSelector
+  type Thicket = internal.Thicket
 
   type Type = internal.Type
   type AppliedType = internal.AppliedType
@@ -105,5 +108,10 @@ trait Core with
   type Flag = internal.Flag
 
   type SourcePosition = internal.SourcePosition
+  type Span = internal.Span
 
   type Constant = internal.Constant
+
+  type ContextDocstrings = internal.ContextDocstrings
+
+  type Comment = internal.Comment

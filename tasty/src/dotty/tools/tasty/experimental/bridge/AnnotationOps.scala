@@ -4,6 +4,8 @@ import reflect.ClassTag
 
 trait AnnotationOps extends Core with
 
+  given ClassTag[Annotation] = internal.Annotation_CT
+
   object Annotation with
 
     object Child with

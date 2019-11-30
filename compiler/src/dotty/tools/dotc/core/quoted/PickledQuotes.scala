@@ -12,11 +12,12 @@ import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
-import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter }
+import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPrinter }
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 import dotty.tools.dotc.quoted.QuoteContext
 import dotty.tools.dotc.tastyreflect.{ReflectionImpl, TastyTreeExpr, TreeType}
 
+import dotty.tools.tasty.experimental.TastyPickler
 import dotty.tools.tasty.TastyString
 
 import scala.internal.quoted._

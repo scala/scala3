@@ -3,7 +3,7 @@ package dotty.tools.tasty.experimental.bridge
 import reflect.ClassTag
 
 trait TreeOps extends Core with
-  self =>
+  self: PositionOps with ContextOps with SourceFileOps with SymbolOps =>
 
   given ClassTag[Tree] = internal.Tree_CT
   given ClassTag[MemberDef] = internal.MemberDef_CT
@@ -29,6 +29,7 @@ trait TreeOps extends Core with
   given ClassTag[Closure] = internal.Closure_CT
   given ClassTag[Match] = internal.Match_CT
   given ClassTag[CaseDef] = internal.CaseDef_CT
+  given ClassTag[Labeled] = internal.Labeled_CT
   given ClassTag[Return] = internal.Return_CT
   given ClassTag[WhileDo] = internal.WhileDo_CT
   given ClassTag[Try] = internal.Try_CT
@@ -48,15 +49,18 @@ trait TreeOps extends Core with
   given ClassTag[Annotated] = internal.Annotated_CT
   given ClassTag[LambdaTypeTree] = internal.LambdaTypeTree_CT
   given ClassTag[TypeBoundsTree] = internal.TypeBoundsTree_CT
+  given ClassTag[Thicket] = internal.Thicket_CT
+
+  given untpdTree: ClassTag[untpd.Tree] = internal.untpd_Tree_CT
+  given untpdTypedSplice: ClassTag[untpd.TypedSplice] = internal.untpd_TypedSplice_CT
+  given untpdMemberDef: ClassTag[untpd.MemberDef] = internal.untpd_MemberDef_CT
 
   object untpd with
 
     type Tree = internal.untpd_Tree
     type TypedSplice = internal.untpd_TypedSplice
     type ImportSelector = internal.untpd_ImportSelector
-
-    given ClassTag[Tree] = internal.untpd_Tree_CT
-    given ClassTag[TypedSplice] = internal.untpd_TypedSplice_CT
+    type MemberDef = internal.untpd_MemberDef
 
     object TypedSplice with
       def unapply(tree: TypedSplice): Some[self.Tree] = internal.TypedSplice_unapply(tree)
@@ -100,6 +104,8 @@ trait TreeOps extends Core with
     def unapply(tree: Match): (Tree, List[CaseDef]) = internal.Match_unapply(tree)
   object CaseDef with
     def unapply(tree: CaseDef): (Tree, Tree, Tree) = internal.CaseDef_unapply(tree)
+  object Labeled with
+    def unapply(tree: Labeled): (Bind, Tree) = internal.Labeled_unapply(tree)
   object Return with
     def unapply(tree: Return): (Tree, Tree) = internal.Return_unapply(tree)
   object WhileDo with
@@ -138,9 +144,16 @@ trait TreeOps extends Core with
     def unapply(tree: TypeBoundsTree): (Tree, Tree) = internal.TypeBoundsTree_unapply(tree)
   object Hole with
     def unapply(tree: Hole): (Int, List[Tree]) = internal.Hole_unapply(tree)
+  object Thicket with
+    def unapply(tree: Thicket): Some[List[Tree]] = internal.Thicket_unapply(tree)
+
+  given untpdTreeOps: (tree: untpd.Tree) with
+    def symbol(given Context): Symbol = internal.untpd_Tree_symbol(tree)
+    def span: Span = internal.untpd_Tree_span(tree)
+    def source: SourceFile = internal.untpd_Tree_source(tree)
+    def envelope(src: SourceFile, startSpan: Span = Span.noSpan): Span = internal.untpd_Tree_envelope(tree, src, startSpan)
 
   given TreeOps: (tree: Tree) with
-    def symbol(given Context): Symbol = internal.Tree_symbol(tree)
     def isEmpty: Boolean = internal.Tree_isEmpty(tree)
     def isType: Boolean = internal.Tree_isType(tree)
     def withType(tpe: Type)(given Context): tree.ThisTree = internal.Tree_withType(tree, tpe)
@@ -164,5 +177,122 @@ trait TreeOps extends Core with
     def parents: List[Tree] = internal.Template_parents(tree)
     def self: ValDef = internal.Template_self(tree)
     def constr: DefDef = internal.Template_constr(tree)
+    def body: List[Tree] = internal.Template_body(tree)
+    def derived: List[untpd.Tree] = internal.Template_derived(tree)
 
   final val EmptyTree = internal.EmptyTree
+
+  def inlineContext(tree: Tree)(implicit ctx: Context): Context = internal.inlineContext(tree)
+
+  abstract class TreeAccumulator[X] { self =>
+    def apply(x: X, tree: Tree)(implicit ctx: Context): X
+
+    def apply(x: X, trees: Traversable[Tree])(implicit ctx: Context): X =
+      trees.foldLeft(x)(apply)
+
+    def foldOver(x: X, tree: Tree)(implicit ctx: Context): X =
+      if (tree.source != ctx.source && tree.source.exists)
+        foldOver(x, tree)(ctx.withSource(tree.source))
+      else {
+        def localCtx =
+          if (/*tree.hasType && -- Tree is biased to tpd.Tree */ tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
+        tree match {
+          case Ident(name) =>
+            x
+          case Select(qualifier, name) =>
+            this(x, qualifier)
+          case This(qual) =>
+            x
+          case Super(qual, mix) =>
+            this(x, qual)
+          case Apply(fun, args) =>
+            this(this(x, fun), args)
+          case TypeApply(fun, args) =>
+            this(this(x, fun), args)
+          case Literal(const) =>
+            x
+          case New(tpt) =>
+            this(x, tpt)
+          case Typed(expr, tpt) =>
+            this(this(x, expr), tpt)
+          case NamedArg(name, arg) =>
+            this(x, arg)
+          case Assign(lhs, rhs) =>
+            this(this(x, lhs), rhs)
+          case Block(stats, expr) =>
+            this(this(x, stats), expr)
+          case If(cond, thenp, elsep) =>
+            this(this(this(x, cond), thenp), elsep)
+          case Closure(env, meth, tpt) =>
+            this(this(this(x, env), meth), tpt)
+          case Match(selector, cases) =>
+            this(this(x, selector), cases)
+          case CaseDef(pat, guard, body) =>
+            this(this(this(x, pat), guard), body)
+          case Labeled(bind, expr) =>
+            this(this(x, bind), expr)
+          case Return(expr, from) =>
+            this(this(x, expr), from)
+          case WhileDo(cond, body) =>
+            this(this(x, cond), body)
+          case Try(block, handler, finalizer) =>
+            this(this(this(x, block), handler), finalizer)
+          case SeqLiteral(elems, elemtpt) =>
+            this(this(x, elems), elemtpt)
+          case Inlined(call, bindings, expansion) =>
+            this(this(x, bindings), expansion)(inlineContext(call))
+          case _: TypeTree =>
+            x
+          case SingletonTypeTree(ref) =>
+            this(x, ref)
+          case RefinedTypeTree(tpt, refinements) =>
+            this(this(x, tpt), refinements)
+          case AppliedTypeTree(tpt, args) =>
+            this(this(x, tpt), args)
+          case LambdaTypeTree(tparams, body) =>
+            implicit val ctx = localCtx
+            this(this(x, tparams), body)
+          case MatchTypeTree(bound, selector, cases) =>
+            this(this(this(x, bound), selector), cases)
+          case ByNameTypeTree(result) =>
+            this(x, result)
+          case TypeBoundsTree(lo, hi) =>
+            this(this(x, lo), hi)
+          case Bind(name, body) =>
+            this(x, body)
+          case Alternative(trees) =>
+            this(x, trees)
+          case UnApply(fun, implicits, patterns) =>
+            this(this(this(x, fun), implicits), patterns)
+          case tree: ValDef =>
+            implicit val ctx = localCtx
+            this(this(x, tree.tpt), tree.rhs)
+          case tree: DefDef =>
+            implicit val ctx = localCtx
+            this(this(tree.vparamss.foldLeft(this(x, tree.tparams))(apply), tree.tpt), tree.rhs)
+          case tree: TypeDef =>
+            implicit val ctx = localCtx
+            this(x, tree.rhs)
+          case tree: Template if tree.derived.isEmpty =>
+            this(this(this(this(x, tree.constr), tree.parents), tree.self), tree.body)
+          case Import(expr, _) =>
+            this(x, expr)
+          case PackageDef(pid, stats) =>
+            this(this(x, pid), stats)(localCtx)
+          case Annotated(arg, annot) =>
+            this(this(x, arg), annot)
+          case Thicket(ts) =>
+            this(x, ts)
+          case Hole(_, args) =>
+            this(x, args)
+          case _ =>
+            x
+        }
+      }
+  }
+
+  abstract class TreeTraverser extends TreeAccumulator[Unit] {
+    def traverse(tree: Tree)(implicit ctx: Context): Unit
+    def apply(x: Unit, tree: Tree)(implicit ctx: Context): Unit = traverse(tree)
+    protected def traverseChildren(tree: Tree)(implicit ctx: Context): Unit = foldOver((), tree)
+  }

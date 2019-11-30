@@ -1,25 +1,15 @@
-package dotty.tools
-package dotc
-package core
-package tasty
+package dotty.tools.tasty.experimental
 
 import dotty.tools.tasty.TastyFormat.SOURCE
 import dotty.tools.tasty.TastyBuffer
 import TastyBuffer._
 
-import ast._
-import ast.Trees._
-import ast.Trees.WithLazyField
-import util.{SourceFile, NoSource}
-import core._
-import Contexts._, Symbols._, Annotations._, Decorators._
 import collection.mutable
-import util.Spans._
 
-class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
+class PositionPickler(val pickler: TastyPickler)(addrOfTree: pickler.tasty.untpd.Tree => Addr) {
+  import pickler.tasty.{_,given}
   val buf: TastyBuffer = new TastyBuffer(5000)
   pickler.newSection("Positions", buf)
-  import ast.tpd._
 
   private val pickledIndices = new mutable.BitSet
 
@@ -30,7 +20,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
 
   def picklePositions(roots: List[Tree])(implicit ctx: Context): Unit = {
     var lastIndex = 0
-    var lastSpan = Span(0, 0)
+    var lastSpan = Span.empty
     def pickleDeltas(index: Int, span: Span) = {
       val addrDelta = index - lastIndex
       val startDelta = span.start - lastSpan.start
@@ -50,26 +40,24 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
       buf.writeInt(pickler.nameBuffer.nameIndex(source.path.toTermName).index)
     }
 
-    /** True if x's position shouldn't be reconstructed automatically from its initial span
-     */
-    def alwaysNeedsPos(x: Positioned) = x match {
-      case
-          // initialSpan is inaccurate for trees with lazy field
-          _: WithLazyField[?]
+    // def alwaysNeedsPos(x: Positioned) = x match {
+    //   case
+    //       // initialSpan is inaccurate for trees with lazy field
+    //       _: WithLazyField[?]
 
-          // A symbol is created before the corresponding tree is unpickled,
-          // and its position cannot be changed afterwards.
-          // so we cannot use the tree initialSpan to set the symbol position.
-          // Instead, we always pickle the position of definitions.
-          | _: Trees.DefTree[?]
+    //       // A symbol is created before the corresponding tree is unpickled,
+    //       // and its position cannot be changed afterwards.
+    //       // so we cannot use the tree initialSpan to set the symbol position.
+    //       // Instead, we always pickle the position of definitions.
+    //       | _: Trees.DefTree[?]
 
-          // package defs might be split into several Tasty files
-          | _: Trees.PackageDef[?]
-          // holes can change source files when filled, which means
-          // they might lose their position
-          | _: TreePickler.Hole => true
-      case _ => false
-    }
+    //       // package defs might be split into several Tasty files
+    //       | _: Trees.PackageDef[?]
+    //       // holes can change source files when filled, which means
+    //       // they might lose their position
+    //       | _: TreePickler.Hole => true
+    //   case _ => false
+    // }
 
     def traverse(x: Any, current: SourceFile): Unit = x match {
       case x: untpd.Tree =>
@@ -84,12 +72,12 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
               pickleSource(x.source)
             }
             else if (!pickledIndices.contains(addr.index) &&
-                     (x.span.toSynthetic != x.envelope(x.source) || alwaysNeedsPos(x)))
+                     (x.span.toSynthetic != x.envelope(x.source) || x.alwaysNeedsPos))
               pickleDeltas(addr.index, x.span)
           }
         }
         x match {
-          case x: untpd.MemberDef @unchecked => traverse(x.symbol.annotations, x.source)
+          case x: untpd.MemberDef => traverse(x.symbol.annotations, x.source)
           case _ =>
         }
         val limit = x.productArity
@@ -106,6 +94,6 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
       case _ =>
     }
     for (root <- roots)
-      traverse(root, NoSource)
+      traverse(root, SourceFile.noSource)
   }
 }

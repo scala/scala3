@@ -6,16 +6,12 @@ import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyHash}
 import TastyFormat._
 import TastyBuffer._
 
-class TastyPickler[T <: Tasty](given val tasty: T) { self =>
+class TastyPickler(val tasty: Tasty)(val rootCls: tasty.ClassSymbol) { self =>
   import tasty.{_, given}
-
-  var _rootCls: ClassSymbol = _
-  def rootCls: ClassSymbol = _rootCls
-  def rootCls_=(rootCls: ClassSymbol) = _rootCls = rootCls
 
   private val sections = mutable.ArrayBuffer.empty[(NameRef, TastyBuffer)]
 
-  val nameBuffer = NameBuffer[tasty.type]()
+  val nameBuffer = NameBuffer[tasty.type](given tasty)
 
   def newSection(name: String, buf: TastyBuffer): Unit =
     sections += ((nameBuffer.nameIndex(name.toTermName), buf))
@@ -77,5 +73,5 @@ class TastyPickler[T <: Tasty](given val tasty: T) { self =>
    */
   var addrOfSym: Symbol => Option[Addr] = (_ => None)
 
-  // val treePkl: TreePickler = new TreePickler(this)
+  val treePkl = new TreePickler(self)
 }

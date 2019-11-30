@@ -10,9 +10,12 @@ trait TastyKernel with
 
   type Context <: AnyRef
 
+  type SourceFile <: AnyRef
+
   type Designator <: AnyRef
 
   type Annotation <: AnyRef
+  val Annotation_CT: ClassTag[Annotation]
 
   type Name <: Designator
   type SimpleName <: TermName
@@ -32,9 +35,12 @@ trait TastyKernel with
 
   type Signature_ParamSig = Int | TypeName
 
-  type untpd_Tree <: AnyRef
+  type Positioned <: AnyRef
+
+  type untpd_Tree <: Product with Positioned
   type untpd_ImportSelector <: untpd_Tree
   type untpd_TypedSplice <: untpd_Tree
+  type untpd_MemberDef <: untpd_Tree
 
   type Tree <: untpd_Tree { type ThisTree <: Tree }
   type MemberDef <: Tree
@@ -61,12 +67,13 @@ trait TastyKernel with
   type Closure <: Tree // TermTree
   type Match <: Tree // TermTree
   type CaseDef <: Tree
+  type Labeled <: Tree // NameTree
   type Return <: Tree // TermTree
   type WhileDo <: Tree // TermTree
   type Try <: Tree // TermTree
   type SeqLiteral <: Tree // TermTree
   type Inlined <: Tree
-  type Bind <: Tree // NameTree[T] with DefTree[T] with PatternTree[T]
+  type Bind <: Tree // NameTree with DefTree with PatternTree
   type Alternative <: Tree // PatternTree
   type UnApply <: Tree // PatternTree
   type Import <: Tree // DenotingTree
@@ -80,9 +87,12 @@ trait TastyKernel with
   type Annotated <: Tree
   type LambdaTypeTree <: Tree // TypTree[T]
   type TypeBoundsTree <: Tree // TypTree[T]
+  type Thicket <: Tree
 
   val untpd_Tree_CT: ClassTag[untpd_Tree]
   val untpd_TypedSplice_CT: ClassTag[untpd_TypedSplice]
+  val untpd_MemberDef_CT: ClassTag[untpd_MemberDef]
+
   val Tree_CT: ClassTag[Tree]
   val MemberDef_CT: ClassTag[MemberDef]
   val Hole_CT: ClassTag[Hole]
@@ -107,6 +117,7 @@ trait TastyKernel with
   val Closure_CT: ClassTag[Closure]
   val Match_CT: ClassTag[Match]
   val CaseDef_CT: ClassTag[CaseDef]
+  val Labeled_CT: ClassTag[Labeled]
   val Return_CT: ClassTag[Return]
   val WhileDo_CT: ClassTag[WhileDo]
   val Try_CT: ClassTag[Try]
@@ -126,6 +137,7 @@ trait TastyKernel with
   val Annotated_CT: ClassTag[Annotated]
   val LambdaTypeTree_CT: ClassTag[LambdaTypeTree]
   val TypeBoundsTree_CT: ClassTag[TypeBoundsTree]
+  val Thicket_CT: ClassTag[Thicket]
 
   type Type <: AnyRef
   type AppliedType <: Type // <: CachedProxyType with ValueType
@@ -197,8 +209,13 @@ trait TastyKernel with
   type Symbols_MutableSymbolMap[T] <: AnyRef
 
   type SourcePosition <: AnyRef
+  type Span <: AnyVal
 
-  type Constant
+  type ContextDocstrings <: AnyRef
+
+  type Comment <: AnyRef
+
+  type Constant <: AnyVal
 
   val Flags_Protected: Flag
   val Flags_ParamAccessor: Flag
@@ -257,7 +274,12 @@ trait TastyKernel with
   final val Constants_EnumTag    = 13
 
   def Context_log(ctx: Context, msg: => String, sourcePos: SourcePosition): Unit
-  def Context_source(ctx: Context): Path
+  def Context_source(ctx: Context): SourceFile
+  def Context_docCtx(ctx: Context): Option[ContextDocstrings]
+  def Context_withOwner(ctx: Context, owner: Symbol): Context
+  def Context_withSource(ctx: Context, source: SourceFile): Context
+
+  def ContextDocstrings_docString(ctx: ContextDocstrings, sym: Symbol): Option[Comment]
 
   def Constant_tag(c: Constant): Int
   def Constant_intValue(c: Constant): Int
@@ -303,7 +325,21 @@ trait TastyKernel with
   def Symbol_annotations(sym: Symbol)(given Context): List[Annotation]
   def Symbol_isInaccessibleChildOf(sym: Symbol, cls: Symbol)(given Context): Boolean
 
+  def SourceFile_path(source: SourceFile): String
+  def SourceFile_exists(source: SourceFile): Boolean
+  val SourceFile_noSource: SourceFile
+
   def SourcePosition_line(pos: SourcePosition): Int
+
+  val Span_empty: Span
+  val Span_noSpan: Span
+  def Span_start(span: Span): Int
+  def Span_end(span: Span): Int
+  def Span_isSynthetic(span: Span): Boolean
+  def Span_toSynthetic(span: Span): Span
+  def Span_pointDelta(span: Span): Int
+  def Span_coords(span: Span): Long
+  def Span_exists(span: Span): Boolean
 
   def defn_throwMethod(given Context): TermSymbol
   def defn_BodyAnnot(given Context): ClassSymbol
@@ -313,13 +349,21 @@ trait TastyKernel with
   def Name_isTypeName(name: Name): Boolean
   def Name_length(name: Name): Int
 
-  def Tree_symbol(tree: Tree)(given Context): Symbol
+  def Positioned_alwaysNeedsPos(positioned: Positioned): Boolean
+
+  def untpd_Tree_span(tree: untpd_Tree): Span
+  def untpd_Tree_source(tree: untpd_Tree): SourceFile
+  def untpd_Tree_envelope(tree: untpd_Tree, src: SourceFile, startSpan: Span): Span
+  def untpd_Tree_symbol(tree: untpd_Tree)(given Context): Symbol
+
   def Tree_withType(tree: Tree, tpe: Type)(given Context): tree.ThisTree
   def Tree_isEmpty(tree: Tree): Boolean
   def Tree_isType(tree: Tree): Boolean
   def Tree_isInline(tree: Tree): Boolean
   def Tree_tpe(tree: Tree): Type
   val EmptyTree: Tree
+
+  def inlineContext(tree: Tree)(implicit ctx: Context): Context
 
   def TypedSplice_unapply(tree: untpd_TypedSplice): Some[Tree]
   def Ident_unapply(tree: Ident): Some[Name]
@@ -338,6 +382,7 @@ trait TastyKernel with
   def Closure_unapply(tree: Closure): (List[Tree], Tree, Tree)
   def Match_unapply(tree: Match): (Tree, List[CaseDef])
   def CaseDef_unapply(tree: CaseDef): (Tree, Tree, Tree)
+  def Labeled_unapply(tree: Labeled): (Bind, Tree)
   def Return_unapply(tree: Return): (Tree, Tree)
   def WhileDo_unapply(tree: WhileDo): (Tree, Tree)
   def Try_unapply(tree: Try): (Tree, List[CaseDef], Tree)
@@ -357,6 +402,7 @@ trait TastyKernel with
   def LambdaTypeTree_unapply(tree: LambdaTypeTree): (List[TypeDef], Tree)
   def TypeBoundsTree_unapply(tree: TypeBoundsTree): (Tree, Tree)
   def Hole_unapply(tree: Hole): (Int, List[Tree])
+  def Thicket_unapply(tree: Thicket): Some[List[Tree]]
 
   def ValOrDefDef_name(tree: ValOrDefDef): TermName
   def ValOrDefDef_tpt(tree: ValOrDefDef): Tree
@@ -372,6 +418,8 @@ trait TastyKernel with
   def Template_decomposeBody(tree: Template)(given Context): (List[Tree], List[Tree])
   def Template_parents(tree: Template): List[Tree]
   def Template_self(tree: Template): ValDef
+  def Template_body(tree: Template): List[Tree]
+  def Template_derived(tree: Template): List[untpd_Tree]
   def Template_constr(tree: Template): DefDef
 
   def Type_stripTypeVar(tpe: Type)(given Context): Type
@@ -465,3 +513,6 @@ trait TastyKernel with
   def pickling_println(msg: => String): Unit
 
   def StringContext_i(stringContext: StringContext, args: Any*): String
+
+  def Comment_raw(comment: Comment): String
+  def Comment_span(comment: Comment): Span
