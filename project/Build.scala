@@ -782,15 +782,15 @@ object Build {
     )
 
   lazy val tastyCoreSettings = Seq(
-    scalacOptions ~= { old =>
-      val (language, other) = old.partition(_.startsWith("-language:"))
-      other :+ (language.headOption.map(_ + ",Scala2Compat").getOrElse("-language:Scala2Compat"))
-    }
+    // scalacOptions ~= { old =>
+    //   val (language, other) = old.partition(_.startsWith("-language:"))
+    //   other :+ (language.headOption.map(_ + ",Scala2Compat").getOrElse("-language:Scala2Compat"))
+    // }
   )
 
   lazy val `tasty-core` = project.in(file("tasty")).asTastyCore(NonBootstrapped)
   lazy val `tasty-core-bootstrapped`: Project = project.in(file("tasty")).asTastyCore(Bootstrapped)
-  lazy val `tasty-core-scala2`: Project = project.in(file("tasty")).asTastyCoreScala2
+  // lazy val `tasty-core-scala2`: Project = project.in(file("tasty")).asTastyCoreScala2
 
   def tastyCore(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `tasty-core`
@@ -1348,7 +1348,7 @@ object Build {
       dependsOn(dottyLibrary).
       settings(tastyCoreSettings)
 
-    def asTastyCoreScala2: Project = project.settings(commonScala2Settings)
+    // def asTastyCoreScala2: Project = project.settings(commonScala2Settings)
 
     def asDottyDoc(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler, dottyCompiler % "test->test").
