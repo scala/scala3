@@ -599,7 +599,7 @@ class TreePickler(val pickler: TastyPickler) {
     for sel <- selectors do
       pickleSelector(IMPORTED, sel.imported)
       sel.renamed match
-        case to @ Ident(_) => pickleSelector(RENAMED, to)
+        case to: untpd.Ident => pickleSelector(RENAMED, to)
         case _ =>
       sel.bound match {
         case bound @ untpd.TypedSplice(tpt) =>
@@ -609,10 +609,10 @@ class TreePickler(val pickler: TastyPickler) {
         case _ =>
       }
 
-  def pickleSelector(tag: Int, id: Ident)(implicit ctx: Context): Unit = {
+  def pickleSelector(tag: Int, id: untpd.Ident)(implicit ctx: Context): Unit = {
     registerTreeAddr(id)
     writeByte(tag)
-    val Ident(name) = id
+    val untpd.Ident(name) = id
     pickleName(name)
   }
 

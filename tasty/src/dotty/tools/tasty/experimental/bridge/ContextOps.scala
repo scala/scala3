@@ -13,4 +13,4 @@ trait ContextOps extends Core with
     def withSource(source: SourceFile): Context = internal.Context_withSource(ctx, source)
 
   given ContextDocstringsOps: (ctx: ContextDocstrings) with
-    def docstring(sym: Symbol): Option[Comment] = internal.ContextDocstrings_docString(ctx, sym)
+    def docstring(sym: Symbol): Option[Comment] = internal.ContextDocstrings_docstring(ctx, sym)

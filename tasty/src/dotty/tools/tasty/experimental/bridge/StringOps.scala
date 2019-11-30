@@ -8,4 +8,4 @@ trait StringOps extends Core with
     def toTermName: TermName = internal.String_toTermName(string)
 
   given StringContextOps: (stringContext: StringContext) with
-    def i(args: => Any*): String = internal.StringContext_i(stringContext, args)
+    def i(args: => Any*)(given Context): String = internal.StringContext_i(stringContext, args)

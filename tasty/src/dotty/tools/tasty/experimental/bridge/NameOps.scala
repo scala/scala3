@@ -40,7 +40,6 @@ trait NameOps extends Core with
     def isEmpty: Boolean = internal.Name_isEmpty(name)
     def isTypeName: Boolean = internal.Name_isTypeName(name)
     def isTermName: Boolean = !name.isTypeName
-    def length: Int = internal.Name_length(name)
 
   given TermNameOps: (name: TermName) with
     def tag: Int = internal.TermName_tag(name)

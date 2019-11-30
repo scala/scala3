@@ -54,6 +54,7 @@ trait TreeOps extends Core with
   given untpdTree: ClassTag[untpd.Tree] = internal.untpd_Tree_CT
   given untpdTypedSplice: ClassTag[untpd.TypedSplice] = internal.untpd_TypedSplice_CT
   given untpdMemberDef: ClassTag[untpd.MemberDef] = internal.untpd_MemberDef_CT
+  given untpdIdent: ClassTag[untpd.Ident] = internal.untpd_Ident_CT
 
   object untpd with
 
@@ -61,13 +62,17 @@ trait TreeOps extends Core with
     type TypedSplice = internal.untpd_TypedSplice
     type ImportSelector = internal.untpd_ImportSelector
     type MemberDef = internal.untpd_MemberDef
+    type Ident = internal.untpd_Ident
 
     object TypedSplice with
-      def unapply(tree: TypedSplice): Some[self.Tree] = internal.TypedSplice_unapply(tree)
+      def unapply(tree: TypedSplice): Some[self.Tree] = internal.untpd_TypedSplice_unapply(tree)
+
+    object Ident with
+      def unapply(tree: Ident): Some[Name] = internal.untpd_Ident_unapply(tree)
 
     given ImportSelectorOps: (tree: ImportSelector) with
       def imported: Ident = internal.ImportSelector_imported(tree)
-      def renamed: self.Tree = internal.ImportSelector_renamed(tree)
+      def renamed: Tree = internal.ImportSelector_renamed(tree)
       def bound: Tree = internal.ImportSelector_bound(tree)
 
   end untpd
@@ -75,7 +80,7 @@ trait TreeOps extends Core with
   object Ident with
     def unapply(tree: Ident): Some[Name] = internal.Ident_unapply(tree)
   object This with
-    def unapply(tree: This): Some[Ident] = internal.This_unapply(tree)
+    def unapply(tree: This): Some[untpd.Ident] = internal.This_unapply(tree)
   object Select with
     def unapply(tree: Select): (Tree, Name) = internal.Select_unapply(tree)
   object Apply with
@@ -85,7 +90,7 @@ trait TreeOps extends Core with
   object Literal with
     def unapply(tree: Literal): Some[Constant] = internal.Literal_unapply(tree)
   object Super with
-    def unapply(tree: Super): (Tree, Ident) = internal.Super_unapply(tree)
+    def unapply(tree: Super): (Tree, untpd.Ident) = internal.Super_unapply(tree)
   object New with
     def unapply(tree: New): Some[Tree] = internal.New_unapply(tree)
   object Typed with
@@ -152,13 +157,18 @@ trait TreeOps extends Core with
     def span: Span = internal.untpd_Tree_span(tree)
     def source: SourceFile = internal.untpd_Tree_source(tree)
     def envelope(src: SourceFile, startSpan: Span = Span.noSpan): Span = internal.untpd_Tree_envelope(tree, src, startSpan)
+    def withType(tpe: Type)(given Context): Tree = internal.untpd_Tree_withType(tree, tpe)
+    def isEmpty: Boolean = internal.untpd_Tree_isEmpty(tree)
 
   given TreeOps: (tree: Tree) with
-    def isEmpty: Boolean = internal.Tree_isEmpty(tree)
     def isType: Boolean = internal.Tree_isType(tree)
-    def withType(tpe: Type)(given Context): tree.ThisTree = internal.Tree_withType(tree, tpe)
-    def isInline: Boolean = internal.Tree_isInline(tree)
     def tpe: Type = internal.Tree_tpe(tree)
+
+  given IfOps: (tree: If) with
+    def isInline: Boolean = internal.If_isInline(tree)
+
+  given MatchOps: (tree: Match) with
+    def isInline: Boolean = internal.Match_isInline(tree)
 
   given ValOrDefDefOps: (tree: ValOrDefDef) with
     def name: TermName = internal.ValOrDefDef_name(tree)
@@ -177,7 +187,7 @@ trait TreeOps extends Core with
     def parents: List[Tree] = internal.Template_parents(tree)
     def self: ValDef = internal.Template_self(tree)
     def constr: DefDef = internal.Template_constr(tree)
-    def body: List[Tree] = internal.Template_body(tree)
+    def body(given Context): List[Tree] = internal.Template_body(tree)
     def derived: List[untpd.Tree] = internal.Template_derived(tree)
 
   final val EmptyTree = internal.EmptyTree

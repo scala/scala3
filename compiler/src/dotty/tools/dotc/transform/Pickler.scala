@@ -48,74 +48,75 @@ class Pickler extends Phase {
   }
 
   override def run(implicit ctx: Context): Unit = {
-    val unit = ctx.compilationUnit
-    pickling.println(i"unpickling in run ${ctx.runId}")
+    // val unit = ctx.compilationUnit
+    // pickling.println(i"unpickling in run ${ctx.runId}")
 
-    for {
-      cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
-      tree <- sliceTopLevel(unit.tpdTree, cls)
-    }
-    {
-      val pickler = new TastyPickler(cls)
-      if (ctx.settings.YtestPickler.value) {
-        beforePickling(cls) = tree.show
-        picklers(cls) = pickler
-      }
-      val treePkl = pickler.treePkl
-      treePkl.pickle(tree :: Nil)
-      treePkl.compactify()
-      pickler.addrOfTree = treePkl.buf.addrOfTree
-      pickler.addrOfSym = treePkl.addrOfSym
-      if (tree.span.exists)
-        new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
+    // for {
+    //   cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
+    //   tree <- sliceTopLevel(unit.tpdTree, cls)
+    // }
+    // {
+    //   val pickler = new TastyPickler(cls)
+    //   if (ctx.settings.YtestPickler.value) {
+    //     beforePickling(cls) = tree.show
+    //     picklers(cls) = pickler
+    //   }
+    //   val treePkl = pickler.treePkl
+    //   treePkl.pickle(tree :: Nil)
+    //   treePkl.compactify()
+    //   pickler.addrOfTree = treePkl.buf.addrOfTree
+    //   pickler.addrOfSym = treePkl.addrOfSym
+    //   if (tree.span.exists)
+    //     new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
-      if (!ctx.settings.YdropComments.value)
-        new CommentPickler(pickler, treePkl.buf.addrOfTree).pickleComment(tree)
+    //   if (!ctx.settings.YdropComments.value)
+    //     new CommentPickler(pickler, treePkl.buf.addrOfTree).pickleComment(tree)
 
-      // other pickle sections go here.
-      val pickled = pickler.assembleParts()
-      unit.pickled += (cls -> pickled)
+    //   // other pickle sections go here.
+    //   val pickled = pickler.assembleParts()
+    //   unit.pickled += (cls -> pickled)
 
-      def rawBytes = // not needed right now, but useful to print raw format.
-        pickled.iterator.grouped(10).toList.zipWithIndex.map {
-          case (row, i) => s"${i}0: ${row.mkString(" ")}"
-        }
+    //   def rawBytes = // not needed right now, but useful to print raw format.
+    //     pickled.iterator.grouped(10).toList.zipWithIndex.map {
+    //       case (row, i) => s"${i}0: ${row.mkString(" ")}"
+    //     }
 
-      // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
-      if (pickling ne noPrinter) {
-        println(i"**** pickled info of $cls")
-        println(new TastyPrinter(pickled).printContents())
-      }
-    }
+    //   // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
+    //   if (pickling ne noPrinter) {
+    //     println(i"**** pickled info of $cls")
+    //     println(new TastyPrinter(pickled).printContents())
+    //   }
+    // }
   }
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
-    val result = super.runOn(units)
-    if (ctx.settings.YtestPickler.value)
-      testUnpickler(
-          ctx.fresh
-            .setPeriod(Period(ctx.runId + 1, FirstPhaseId))
-            .setReporter(new ThrowingReporter(ctx.reporter))
-            .addMode(Mode.ReadPositions)
-            .addMode(Mode.ReadComments)
-            .addMode(Mode.PrintShowExceptions))
-    result
+    // val result = super.runOn(units)
+    // if (ctx.settings.YtestPickler.value)
+    //   testUnpickler(
+    //       ctx.fresh
+    //         .setPeriod(Period(ctx.runId + 1, FirstPhaseId))
+    //         .setReporter(new ThrowingReporter(ctx.reporter))
+    //         .addMode(Mode.ReadPositions)
+    //         .addMode(Mode.ReadComments)
+    //         .addMode(Mode.PrintShowExceptions))
+    // result
+    Nil
   }
 
   private def testUnpickler(implicit ctx: Context): Unit = {
-    pickling.println(i"testing unpickler at run ${ctx.runId}")
-    ctx.initialize()
-    val unpicklers =
-      for ((cls, pickler) <- picklers) yield {
-        val unpickler = new DottyUnpickler(pickler.assembleParts())
-        unpickler.enter(roots = Set.empty)
-        cls -> unpickler
-      }
-    pickling.println("************* entered toplevel ***********")
-    for ((cls, unpickler) <- unpicklers) {
-      val unpickled = unpickler.rootTrees
-      testSame(i"$unpickled%\n%", beforePickling(cls), cls)
-    }
+    // pickling.println(i"testing unpickler at run ${ctx.runId}")
+    // ctx.initialize()
+    // val unpicklers =
+    //   for ((cls, pickler) <- picklers) yield {
+    //     val unpickler = new DottyUnpickler(pickler.assembleParts())
+    //     unpickler.enter(roots = Set.empty)
+    //     cls -> unpickler
+    //   }
+    // pickling.println("************* entered toplevel ***********")
+    // for ((cls, unpickler) <- unpicklers) {
+    //   val unpickled = unpickler.rootTrees
+    //   testSame(i"$unpickled%\n%", beforePickling(cls), cls)
+    // }
   }
 
   private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(implicit ctx: Context) =

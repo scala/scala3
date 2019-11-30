@@ -41,8 +41,9 @@ trait TastyKernel with
   type untpd_ImportSelector <: untpd_Tree
   type untpd_TypedSplice <: untpd_Tree
   type untpd_MemberDef <: untpd_Tree
+  type untpd_Ident <: untpd_Tree
 
-  type Tree <: untpd_Tree { type ThisTree <: Tree }
+  type Tree <: untpd_Tree
   type MemberDef <: Tree
   type Hole <: Tree
   type Template <: Tree // DefTree
@@ -92,6 +93,7 @@ trait TastyKernel with
   val untpd_Tree_CT: ClassTag[untpd_Tree]
   val untpd_TypedSplice_CT: ClassTag[untpd_TypedSplice]
   val untpd_MemberDef_CT: ClassTag[untpd_MemberDef]
+  val untpd_Ident_CT: ClassTag[untpd_Ident]
 
   val Tree_CT: ClassTag[Tree]
   val MemberDef_CT: ClassTag[MemberDef]
@@ -200,13 +202,13 @@ trait TastyKernel with
   type TypeSymbol <: Symbol { type ThisName = TypeName }
   type ClassSymbol <: TypeSymbol
 
-  type FlagSet <: AnyVal
+  type FlagSet
   type Flag <: FlagSet
 
   val Symbol_CT: ClassTag[Symbol]
   val ClassSymbol_CT: ClassTag[ClassSymbol]
 
-  type Symbols_MutableSymbolMap[T] <: AnyRef
+  type Symbols_MutableSymbolMap[T]
 
   type SourcePosition <: AnyRef
   type Span <: AnyVal
@@ -215,7 +217,7 @@ trait TastyKernel with
 
   type Comment <: AnyRef
 
-  type Constant <: AnyVal
+  type Constant <: AnyRef
 
   val Flags_Protected: Flag
   val Flags_ParamAccessor: Flag
@@ -279,7 +281,7 @@ trait TastyKernel with
   def Context_withOwner(ctx: Context, owner: Symbol): Context
   def Context_withSource(ctx: Context, source: SourceFile): Context
 
-  def ContextDocstrings_docString(ctx: ContextDocstrings, sym: Symbol): Option[Comment]
+  def ContextDocstrings_docstring(ctx: ContextDocstrings, sym: Symbol): Option[Comment]
 
   def Constant_tag(c: Constant): Int
   def Constant_intValue(c: Constant): Int
@@ -307,14 +309,14 @@ trait TastyKernel with
   def Symbol_isPackage(sym: Symbol)(given Context): Boolean
   def Symbol_isPrivate(sym: Symbol)(given Context): Boolean
   def Symbol_sourcePos(sym: Symbol)(given Context): SourcePosition
-  def Symbol_owner(sym: Symbol): Symbol
+  def Symbol_owner(sym: Symbol)(given Context): Symbol
   def Symbol_isDefinedWithin(sym: Symbol, outer: Symbol)(given Context): Boolean
   def Symbol_termRef(sym: Symbol)(given Context): TermRef
   def Symbol_typeRef(sym: Symbol)(given Context): TypeRef
   def Symbol_name(sym: Symbol)(given Context): sym.ThisName
-  def Symbol_fullName(sym: Symbol)(given Context): sym.ThisName
+  def Symbol_fullName(sym: Symbol)(given Context): Name
   def Symbol_isClass(sym: Symbol): Boolean
-  def Symbol_exists(sym: Symbol): Boolean
+  def Symbol_exists(sym: Symbol)(given Context): Boolean
   def Symbol_isEffectiveRoot(sym: Symbol)(given Context): Boolean
   def Symbol_flags(sym: Symbol)(given Context): FlagSet
   def Symbol_privateWithin(sym: Symbol)(given Context): Symbol
@@ -347,7 +349,6 @@ trait TastyKernel with
   def Name_toTermName(name: Name): TermName
   def Name_isEmpty(name: Name): Boolean
   def Name_isTypeName(name: Name): Boolean
-  def Name_length(name: Name): Int
 
   def Positioned_alwaysNeedsPos(positioned: Positioned): Boolean
 
@@ -355,24 +356,28 @@ trait TastyKernel with
   def untpd_Tree_source(tree: untpd_Tree): SourceFile
   def untpd_Tree_envelope(tree: untpd_Tree, src: SourceFile, startSpan: Span): Span
   def untpd_Tree_symbol(tree: untpd_Tree)(given Context): Symbol
+  def untpd_Tree_withType(tree: untpd_Tree, tpe: Type)(given Context): Tree
+  def untpd_Tree_isEmpty(tree: untpd_Tree): Boolean
 
-  def Tree_withType(tree: Tree, tpe: Type)(given Context): tree.ThisTree
-  def Tree_isEmpty(tree: Tree): Boolean
   def Tree_isType(tree: Tree): Boolean
-  def Tree_isInline(tree: Tree): Boolean
   def Tree_tpe(tree: Tree): Type
   val EmptyTree: Tree
 
+  def If_isInline(tree: If): Boolean
+  def Match_isInline(tree: Match): Boolean
+
   def inlineContext(tree: Tree)(implicit ctx: Context): Context
 
-  def TypedSplice_unapply(tree: untpd_TypedSplice): Some[Tree]
+  def untpd_TypedSplice_unapply(tree: untpd_TypedSplice): Some[Tree]
+  def untpd_Ident_unapply(tree: untpd_Ident): Some[Name]
+
   def Ident_unapply(tree: Ident): Some[Name]
-  def This_unapply(tree: This): Some[Ident]
+  def This_unapply(tree: This): Some[untpd_Ident]
   def Select_unapply(tree: Select): (Tree, Name)
   def Apply_unapply(tree: Apply): (Tree, List[Tree])
   def TypeApply_unapply(tree: TypeApply): (Tree, List[Tree])
   def Literal_unapply(tree: Literal): Some[Constant]
-  def Super_unapply(tree: Super): (Tree, Ident)
+  def Super_unapply(tree: Super): (Tree, untpd_Ident)
   def New_unapply(tree: New): Some[Tree]
   def Typed_unapply(tree: Typed): (Tree, Tree)
   def NamedArg_unapply(tree: NamedArg): (Name, Tree)
@@ -411,14 +416,14 @@ trait TastyKernel with
   def DefDef_vparamss(tree: DefDef): List[List[ValDef]]
   def TypeDef_rhs(tree: TypeDef): Tree
 
-  def ImportSelector_imported(tree: untpd_ImportSelector): Ident
-  def ImportSelector_renamed(tree: untpd_ImportSelector): Tree
+  def ImportSelector_imported(tree: untpd_ImportSelector): untpd_Ident
+  def ImportSelector_renamed(tree: untpd_ImportSelector): untpd_Tree
   def ImportSelector_bound(tree: untpd_ImportSelector): untpd_Tree
 
   def Template_decomposeBody(tree: Template)(given Context): (List[Tree], List[Tree])
   def Template_parents(tree: Template): List[Tree]
   def Template_self(tree: Template): ValDef
-  def Template_body(tree: Template): List[Tree]
+  def Template_body(tree: Template)(given Context): List[Tree]
   def Template_derived(tree: Template): List[untpd_Tree]
   def Template_constr(tree: Template): DefDef
 
@@ -455,7 +460,7 @@ trait TastyKernel with
   def NamedType_symbol(tpe: NamedType)(given Context): Symbol
   def NamedType_prefix(tpe: NamedType): Type
   def NamedType_designator(tpe: NamedType): Designator
-  def NamedType_hasNoPrefix(tpe: Type): Boolean
+  def NamedType_hasNoPrefix(tpe: NamedType): Boolean
   def NamedType_isType(tpe: NamedType): Boolean
 
   def TypeAlias_alias(tpe: TypeAlias): Type
@@ -512,7 +517,7 @@ trait TastyKernel with
 
   def pickling_println(msg: => String): Unit
 
-  def StringContext_i(stringContext: StringContext, args: Any*): String
+  def StringContext_i(stringContext: StringContext, args: Any*)(given Context): String
 
   def Comment_raw(comment: Comment): String
   def Comment_span(comment: Comment): Span
