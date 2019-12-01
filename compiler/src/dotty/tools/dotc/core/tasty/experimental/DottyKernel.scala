@@ -588,7 +588,7 @@ object DottyKernel extends TastyKernel {
 
   private inline def defn(given ctx: Context) = ctx.definitions
 
-  def defn_throwMethod(given ctx: Context): TermSymbol = defn.throwMethod
+  def defn_throwMethod(given Context): TermSymbol = defn.throwMethod
   def defn_BodyAnnot(given Context): ClassSymbol = defn.BodyAnnot
 
   def Name_toTermName(name: Name): TermName = name.toTermName
@@ -677,8 +677,8 @@ object DottyKernel extends TastyKernel {
   def DefDef_vparamss(tree: DefDef): List[List[ValDef]] = tree.vparamss
   def TypeDef_rhs(tree: TypeDef): Tree = tree.rhs
 
-  def ImportSelector_imported(tree: untpd_ImportSelector): untpd.Ident = tree.imported
-  def ImportSelector_renamed(tree: untpd_ImportSelector): untpd.Tree = tree.renamed
+  def ImportSelector_imported(tree: untpd_ImportSelector): untpd_Ident = tree.imported
+  def ImportSelector_renamed(tree: untpd_ImportSelector): untpd_Tree = tree.renamed
   def ImportSelector_bound(tree: untpd_ImportSelector): untpd_Tree = tree.bound
 
   def Template_decomposeBody(tree: Template)(given Context): (List[Tree], List[Tree]) =
@@ -722,7 +722,7 @@ object DottyKernel extends TastyKernel {
   def NamedType_symbol(tpe: NamedType)(given Context): Symbol = tpe.symbol
   def NamedType_prefix(tpe: NamedType): Type = tpe.prefix
   def NamedType_designator(tpe: NamedType): Designator = tpe.designator
-  def NamedType_hasNoPrefix(tpe: NamedType): Boolean = tpe.prefix `eq` Types.NoPrefix
+  def NamedType_hasNoPrefix(tpe: NamedType): Boolean = tpe.prefix == Types.NoPrefix
   def NamedType_isType(tpe: NamedType): Boolean = tpe.isType
 
   def TypeAlias_alias(tpe: TypeAlias): Type = tpe.alias

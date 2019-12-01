@@ -13,12 +13,11 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.TastyPrinter
-import dotty.tools.dotc.core.tasty.experimental.DottyTasty
+import dotty.tools.dotc.core.tasty.experimental.{DottyTasty, PositionPickler, TastyPickler}
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 import dotty.tools.dotc.quoted.QuoteContext
 import dotty.tools.dotc.tastyreflect.{ReflectionImpl, TastyTreeExpr, TreeType}
 
-import dotty.tools.tasty.experimental.{ TastyPickler, PositionPickler }
 import dotty.tools.tasty.TastyString
 
 import scala.internal.quoted._
@@ -100,16 +99,14 @@ object PickledQuotes {
 
   /** Pickle tree into it's TASTY bytes s*/
   private def pickle(tree: Tree)(implicit ctx: Context): Array[Byte] = {
-    val pickler = new TastyPickler(DottyTasty)(defn.RootClass)
+    val pickler = new TastyPickler(defn.RootClass)
     val treePkl = pickler.treePkl
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
     pickler.addrOfTree = treePkl.buf.addrOfTree
     pickler.addrOfSym = treePkl.addrOfSym
-    if (tree.span.exists) {
-      val pospkl = new PositionPickler(DottyTasty)(pickler, treePkl.buf.addrOfTree)
-      pospkl.picklePositions(tree :: Nil)
-    }
+    if (tree.span.exists)
+      new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
     if (quotePickling ne noPrinter)
       println(i"**** pickling quote of \n${tree.show}")

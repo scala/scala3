@@ -1,12 +1,12 @@
 package dotty.tools.tasty.experimental
 
-import dotty.tools.tasty.util.Util.{dble}
+import dotty.tools.tasty.util.Util.dble
 import dotty.tools.tasty.TastyBuffer
-import dotty.tools.tasty.TastyBuffer.{Addr, NoAddr, AddrWidth}
+import TastyBuffer.{Addr, NoAddr, AddrWidth}
 
 import util.Util.bestFit
 
-class TreeBuffer[T <: Tasty with Singleton](given val tasty: T) extends TastyBuffer(50000) {
+class TreeBuffer[T <: Tasty](given val tasty: T) extends TastyBuffer(50000) {
   import tasty.{_, given}
   import Printers.pickling
 

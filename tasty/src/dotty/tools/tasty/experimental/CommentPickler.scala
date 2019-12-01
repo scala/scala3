@@ -5,7 +5,7 @@ import TastyBuffer.{Addr, NoAddr}
 
 import java.nio.charset.Charset
 
-class CommentPickler[T <: Tasty with Singleton](val tasty: T)(pickler: TastyPickler[tasty.type], addrOfTree: tasty.untpd.Tree => Addr)(implicit ctx: pickler.tasty.Context) {
+class CommentPickler[T <: Tasty](val tasty: T)(pickler: TastyPickler[tasty.type], addrOfTree: tasty.Tree => Addr)(implicit ctx: tasty.Context) {
   import tasty.{_, given}
   private val buf = new TastyBuffer(5000)
   pickler.newSection("Comments", buf)

@@ -9,7 +9,7 @@ object TreePickler {
   val sectionName = "ASTs"
 }
 
-class TreePickler[T <: Tasty with Singleton](val tasty: T)(val pickler: TastyPickler[tasty.type]) {
+class TreePickler[T <: Tasty](val tasty: T)(val pickler: TastyPickler[tasty.type]) {
   import tasty.{_, given}
   val buf = TreeBuffer[tasty.type](given tasty)
   pickler.newSection(TreePickler.sectionName, buf)

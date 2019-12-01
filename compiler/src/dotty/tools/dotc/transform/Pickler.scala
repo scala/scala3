@@ -13,12 +13,9 @@ import Flags.Module
 import reporting.ThrowingReporter
 import collection.mutable
 
-import dotty.tools.dotc.core.tasty.experimental.DottyTasty
+import dotty.tools.dotc.core.tasty.experimental.{DottyTasty, PositionPickler, CommentPickler, TastyPickler}
 
 import dotty.tools.dotc.core.tasty.{TastyPrinter, DottyUnpickler}
-
-import dotty.tools.tasty._
-import dotty.tools.tasty.experimental._
 
 object Pickler {
   val name: String = "pickler"
@@ -42,7 +39,7 @@ class Pickler extends Phase {
 
   // Maps that keep a record if -Ytest-pickler is set.
   private val beforePickling = new mutable.HashMap[ClassSymbol, String]
-  private val picklers = new mutable.HashMap[ClassSymbol, TastyPickler[DottyTasty.type]]
+  private val picklers = new mutable.HashMap[ClassSymbol, TastyPickler]
 
   /** Drop any elements of this list that are linked module classes of other elements in the list */
   private def dropCompanionModuleClasses(clss: List[ClassSymbol])(implicit ctx: Context): List[ClassSymbol] = {
@@ -60,7 +57,7 @@ class Pickler extends Phase {
       tree <- sliceTopLevel(unit.tpdTree, cls)
     }
     {
-      val pickler = new TastyPickler(DottyTasty)(cls)
+      val pickler = new TastyPickler(cls)
       if (ctx.settings.YtestPickler.value) {
         beforePickling(cls) = tree.show
         picklers(cls) = pickler
@@ -70,15 +67,11 @@ class Pickler extends Phase {
       treePkl.compactify()
       pickler.addrOfTree = treePkl.buf.addrOfTree
       pickler.addrOfSym = treePkl.addrOfSym
-      if (tree.span.exists) {
-        val pospkl = new PositionPickler(DottyTasty)(pickler, treePkl.buf.addrOfTree)
-        pospkl.picklePositions(tree :: Nil)
-      }
+      if (tree.span.exists)
+        new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
-      if (!ctx.settings.YdropComments.value) {
-        val compkl = new CommentPickler(DottyTasty)(pickler, treePkl.buf.addrOfTree)
-        compkl.pickleComment(tree)
-      }
+      if (!ctx.settings.YdropComments.value)
+        new CommentPickler(pickler, treePkl.buf.addrOfTree).pickleComment(tree)
 
       // other pickle sections go here.
       val pickled = pickler.assembleParts()
