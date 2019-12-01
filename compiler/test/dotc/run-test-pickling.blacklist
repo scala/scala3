@@ -14,6 +14,7 @@ typeclass-derivation2d.scala
 typeclass-derivation3.scala
 derive-generic.scala
 mixin-forwarder-overload
+toplevel-defs
 t8905
 t10889
 macros-in-same-project1

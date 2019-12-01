@@ -2122,11 +2122,20 @@ object SymDenotations {
         case pcls :: pobjs1 =>
           if (pcls.isCompleting) recur(pobjs1, acc)
           else {
-            // A package object inherits members from `Any` and `Object` which
-            // should not be accessible from the package prefix.
             val pmembers = pcls.computeNPMembersNamed(name).filterWithPredicate { d =>
+              // Drop members of `Any` and `Object`, as well as top-level definitions
+              // in the empty package that are not defined in the current run.
               val owner = d.symbol.maybeOwner
-              (owner ne defn.AnyClass) && (owner ne defn.ObjectClass)
+              (owner ne defn.AnyClass)
+              && (owner ne defn.ObjectClass)
+              && (
+                (symbol ne defn.EmptyPackageClass)
+                || d.symbol.isDefinedInCurrentRun
+                || d.symbol.associatedFile == null
+                    // if a symbol does not have an associated file, assume it is defined
+                    // in the current run anyway. This typically happens for pickling and from
+                    // tasty tests that generate a fresh symbol and then re-use it in the next run.
+              )
             }
             recur(pobjs1, acc.union(pmembers))
           }
