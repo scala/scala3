@@ -47,16 +47,3 @@ trait FlagOps extends Core with
     def is(flag: Flag): Boolean = internal.FlagSet_is(flags, flag)
     def is(flag: Flag, butNot: FlagSet): Boolean = internal.FlagSet_is(flags, flag, butNot)
     def &~(flag: Flag): FlagSet = internal.FlagSet_&~(flags, flag)
-
-  // given ClassTag[Tree] = internal.Tree_CT
-  // given ClassTag[MemberDef] = internal.MemberDef_CT
-  // given ClassTag[UntpdTree] = internal.UntpdTree_CT
-  // given ClassTag[Hole] = internal.Hole_CT
-  // given ClassTag[Template] = internal.Template_CT
-
-  // given TreeOps: (tree: Tree) with
-  //   def symbol(given Context): Symbol = internal.Tree_symbol(tree)
-  //   def isEmpty: Boolean = internal.Tree_isEmpty(tree)
-  //   def isType: Boolean = internal.Tree_isType(tree)
-
-  // final val EmptyTree = internal.EmptyTree

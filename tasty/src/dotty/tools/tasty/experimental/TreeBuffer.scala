@@ -6,7 +6,7 @@ import dotty.tools.tasty.TastyBuffer.{Addr, NoAddr, AddrWidth}
 
 import util.Util.bestFit
 
-class TreeBuffer[T <: Tasty](given val tasty: T) extends TastyBuffer(50000) {
+class TreeBuffer[T <: Tasty with Singleton](given val tasty: T) extends TastyBuffer(50000) {
   import tasty.{_, given}
   import Printers.pickling
 
@@ -25,7 +25,7 @@ class TreeBuffer[T <: Tasty](given val tasty: T) extends TastyBuffer(50000) {
     case addr: Addr => addr
   }
 
-  def addrOfTree(tree: Tree): Addr = treeAddrs.get(tree) match {
+  def addrOfTree(tree: untpd.Tree): Addr = treeAddrs.get(tree) match {
     case null => NoAddr
     case addr: Addr => addr
   }

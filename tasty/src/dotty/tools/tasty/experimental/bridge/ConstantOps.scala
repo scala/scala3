@@ -19,6 +19,7 @@ trait ConstantOps extends Core with
     final val NullTag    = internal.Constants_NullTag
     final val ClazzTag   = internal.Constants_ClazzTag
     final val EnumTag    = internal.Constants_EnumTag
+  end Constants
 
   given ConstantOps: (c: Constant) with
     def tag: Int = internal.Constant_tag(c)
@@ -33,3 +34,4 @@ trait ConstantOps extends Core with
     def stringValue: String = internal.Constant_stringValue(c)
     def typeValue: Type = internal.Constant_typeValue(c)
     def symbolValue: Symbol = internal.Constant_symbolValue(c)
+  end ConstantOps

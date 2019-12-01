@@ -6,8 +6,8 @@ import TastyBuffer._
 
 import collection.mutable
 
-class PositionPickler(val pickler: TastyPickler)(addrOfTree: pickler.tasty.untpd.Tree => Addr) {
-  import pickler.tasty.{_,given}
+class PositionPickler[T <: Tasty with Singleton](val tasty: T)(val pickler: TastyPickler[tasty.type], addrOfTree: tasty.untpd.Tree => Addr) {
+  import tasty.{_,given}
   val buf: TastyBuffer = new TastyBuffer(5000)
   pickler.newSection("Positions", buf)
 

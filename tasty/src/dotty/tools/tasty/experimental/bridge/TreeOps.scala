@@ -190,7 +190,7 @@ trait TreeOps extends Core with
     def body(given Context): List[Tree] = internal.Template_body(tree)
     def derived: List[untpd.Tree] = internal.Template_derived(tree)
 
-  final val EmptyTree = internal.EmptyTree
+  def emptyTree = internal.EmptyTree
 
   def inlineContext(tree: Tree)(implicit ctx: Context): Context = internal.inlineContext(tree)
 

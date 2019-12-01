@@ -7,7 +7,7 @@ import dotty.tools.tasty._
 import TastyBuffer._
 import scala.io.Codec
 
-class NameBuffer[T <: Tasty](given val tasty: T) extends TastyBuffer(10000) {
+class NameBuffer[T <: Tasty with Singleton](given val tasty: T) extends TastyBuffer(10000) {
   import tasty.{_, given}
   import NameBuffer._
 

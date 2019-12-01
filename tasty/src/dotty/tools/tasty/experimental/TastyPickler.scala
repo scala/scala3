@@ -6,7 +6,7 @@ import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyHash}
 import TastyFormat._
 import TastyBuffer._
 
-class TastyPickler(val tasty: Tasty)(val rootCls: tasty.ClassSymbol) { self =>
+class TastyPickler[T <: Tasty with Singleton](val tasty: T)(val rootCls: tasty.ClassSymbol) { self =>
   import tasty.{_, given}
 
   private val sections = mutable.ArrayBuffer.empty[(NameRef, TastyBuffer)]
@@ -64,7 +64,7 @@ class TastyPickler(val tasty: Tasty)(val rootCls: tasty.ClassSymbol) { self =>
    *  Note that trees are looked up by reference equality,
    *  so one can reliably use this function only directly after `pickler`.
    */
-  var addrOfTree: Tree => Addr = (_ => NoAddr)
+  var addrOfTree: untpd.Tree => Addr = (_ => NoAddr)
 
   /**
    * Addresses in TASTY file of symbols, stored by pickling.
@@ -73,5 +73,5 @@ class TastyPickler(val tasty: Tasty)(val rootCls: tasty.ClassSymbol) { self =>
    */
   var addrOfSym: Symbol => Option[Addr] = (_ => None)
 
-  val treePkl = new TreePickler(self)
+  val treePkl = new TreePickler(tasty)(self.asInstanceOf[TastyPickler[tasty.type]])
 }

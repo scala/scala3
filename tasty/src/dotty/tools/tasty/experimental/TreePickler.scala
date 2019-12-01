@@ -9,9 +9,9 @@ object TreePickler {
   val sectionName = "ASTs"
 }
 
-class TreePickler(val pickler: TastyPickler) {
-  import pickler.tasty.{_, given}
-  val buf = TreeBuffer[pickler.tasty.type](given pickler.tasty)
+class TreePickler[T <: Tasty with Singleton](val tasty: T)(val pickler: TastyPickler[tasty.type]) {
+  import tasty.{_, given}
+  val buf = TreeBuffer[tasty.type](given tasty)
   pickler.newSection(TreePickler.sectionName, buf)
   import TreePickler._
   import buf._
@@ -278,7 +278,7 @@ class TreePickler(val pickler: TastyPickler) {
     if (!tree.isEmpty) pickleTree(tree)
   }
 
-  def pickleDef(tag: Int, sym: Symbol, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(implicit ctx: Context): Unit = {
+  def pickleDef(tag: Int, sym: Symbol, tpt: Tree, rhs: Tree = emptyTree, pickleParams: => Unit = ())(implicit ctx: Context): Unit = {
     assert(symRefs(sym) == NoAddr, sym)
     registerDef(sym)
     writeByte(tag)

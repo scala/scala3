@@ -15,7 +15,7 @@ trait TastyKernel with
   type Designator <: AnyRef
 
   type Annotation <: AnyRef
-  val Annotation_CT: ClassTag[Annotation]
+  def Annotation_CT: ClassTag[Annotation]
 
   type Name <: Designator
   type SimpleName <: TermName
@@ -23,15 +23,15 @@ trait TastyKernel with
   type TypeName <: Name
   type TermName <: Name
 
-  val Name_CT: ClassTag[Name]
-  val SimpleName_CT: ClassTag[SimpleName]
-  val DerivedName_CT: ClassTag[DerivedName]
-  val TypeName_CT: ClassTag[TypeName]
-  val TermName_CT: ClassTag[TermName]
+  def Name_CT: ClassTag[Name]
+  def SimpleName_CT: ClassTag[SimpleName]
+  def DerivedName_CT: ClassTag[DerivedName]
+  def TypeName_CT: ClassTag[TypeName]
+  def TermName_CT: ClassTag[TermName]
 
   type Signature <: AnyRef
 
-  val Signature_CT: ClassTag[Signature]
+  def Signature_CT: ClassTag[Signature]
 
   type Signature_ParamSig = Int | TypeName
 
@@ -90,56 +90,56 @@ trait TastyKernel with
   type TypeBoundsTree <: Tree // TypTree[T]
   type Thicket <: Tree
 
-  val untpd_Tree_CT: ClassTag[untpd_Tree]
-  val untpd_TypedSplice_CT: ClassTag[untpd_TypedSplice]
-  val untpd_MemberDef_CT: ClassTag[untpd_MemberDef]
-  val untpd_Ident_CT: ClassTag[untpd_Ident]
+  def untpd_Tree_CT: ClassTag[untpd_Tree]
+  def untpd_TypedSplice_CT: ClassTag[untpd_TypedSplice]
+  def untpd_MemberDef_CT: ClassTag[untpd_MemberDef]
+  def untpd_Ident_CT: ClassTag[untpd_Ident]
 
-  val Tree_CT: ClassTag[Tree]
-  val MemberDef_CT: ClassTag[MemberDef]
-  val Hole_CT: ClassTag[Hole]
-  val Template_CT: ClassTag[Template]
-  val ValOrDefDef_CT: ClassTag[ValOrDefDef]
-  val TypeDef_CT: ClassTag[TypeDef]
-  val ValDef_CT: ClassTag[ValDef]
-  val DefDef_CT: ClassTag[DefDef]
-  val Ident_CT: ClassTag[Ident]
-  val This_CT: ClassTag[This]
-  val Select_CT: ClassTag[Select]
-  val Apply_CT: ClassTag[Apply]
-  val TypeApply_CT: ClassTag[TypeApply]
-  val Literal_CT: ClassTag[Literal]
-  val Super_CT: ClassTag[Super]
-  val New_CT: ClassTag[New]
-  val Typed_CT: ClassTag[Typed]
-  val NamedArg_CT: ClassTag[NamedArg]
-  val Assign_CT: ClassTag[Assign]
-  val Block_CT: ClassTag[Block]
-  val If_CT: ClassTag[If]
-  val Closure_CT: ClassTag[Closure]
-  val Match_CT: ClassTag[Match]
-  val CaseDef_CT: ClassTag[CaseDef]
-  val Labeled_CT: ClassTag[Labeled]
-  val Return_CT: ClassTag[Return]
-  val WhileDo_CT: ClassTag[WhileDo]
-  val Try_CT: ClassTag[Try]
-  val SeqLiteral_CT: ClassTag[SeqLiteral]
-  val Inlined_CT: ClassTag[Inlined]
-  val Bind_CT: ClassTag[Bind]
-  val Alternative_CT: ClassTag[Alternative]
-  val UnApply_CT: ClassTag[UnApply]
-  val Import_CT: ClassTag[Import]
-  val PackageDef_CT: ClassTag[PackageDef]
-  val TypeTree_CT: ClassTag[TypeTree]
-  val SingletonTypeTree_CT: ClassTag[SingletonTypeTree]
-  val RefinedTypeTree_CT: ClassTag[RefinedTypeTree]
-  val AppliedTypeTree_CT: ClassTag[AppliedTypeTree]
-  val MatchTypeTree_CT: ClassTag[MatchTypeTree]
-  val ByNameTypeTree_CT: ClassTag[ByNameTypeTree]
-  val Annotated_CT: ClassTag[Annotated]
-  val LambdaTypeTree_CT: ClassTag[LambdaTypeTree]
-  val TypeBoundsTree_CT: ClassTag[TypeBoundsTree]
-  val Thicket_CT: ClassTag[Thicket]
+  def Tree_CT: ClassTag[Tree]
+  def MemberDef_CT: ClassTag[MemberDef]
+  def Hole_CT: ClassTag[Hole]
+  def Template_CT: ClassTag[Template]
+  def ValOrDefDef_CT: ClassTag[ValOrDefDef]
+  def TypeDef_CT: ClassTag[TypeDef]
+  def ValDef_CT: ClassTag[ValDef]
+  def DefDef_CT: ClassTag[DefDef]
+  def Ident_CT: ClassTag[Ident]
+  def This_CT: ClassTag[This]
+  def Select_CT: ClassTag[Select]
+  def Apply_CT: ClassTag[Apply]
+  def TypeApply_CT: ClassTag[TypeApply]
+  def Literal_CT: ClassTag[Literal]
+  def Super_CT: ClassTag[Super]
+  def New_CT: ClassTag[New]
+  def Typed_CT: ClassTag[Typed]
+  def NamedArg_CT: ClassTag[NamedArg]
+  def Assign_CT: ClassTag[Assign]
+  def Block_CT: ClassTag[Block]
+  def If_CT: ClassTag[If]
+  def Closure_CT: ClassTag[Closure]
+  def Match_CT: ClassTag[Match]
+  def CaseDef_CT: ClassTag[CaseDef]
+  def Labeled_CT: ClassTag[Labeled]
+  def Return_CT: ClassTag[Return]
+  def WhileDo_CT: ClassTag[WhileDo]
+  def Try_CT: ClassTag[Try]
+  def SeqLiteral_CT: ClassTag[SeqLiteral]
+  def Inlined_CT: ClassTag[Inlined]
+  def Bind_CT: ClassTag[Bind]
+  def Alternative_CT: ClassTag[Alternative]
+  def UnApply_CT: ClassTag[UnApply]
+  def Import_CT: ClassTag[Import]
+  def PackageDef_CT: ClassTag[PackageDef]
+  def TypeTree_CT: ClassTag[TypeTree]
+  def SingletonTypeTree_CT: ClassTag[SingletonTypeTree]
+  def RefinedTypeTree_CT: ClassTag[RefinedTypeTree]
+  def AppliedTypeTree_CT: ClassTag[AppliedTypeTree]
+  def MatchTypeTree_CT: ClassTag[MatchTypeTree]
+  def ByNameTypeTree_CT: ClassTag[ByNameTypeTree]
+  def Annotated_CT: ClassTag[Annotated]
+  def LambdaTypeTree_CT: ClassTag[LambdaTypeTree]
+  def TypeBoundsTree_CT: ClassTag[TypeBoundsTree]
+  def Thicket_CT: ClassTag[Thicket]
 
   type Type <: AnyRef
   type AppliedType <: Type // <: CachedProxyType with ValueType
@@ -171,31 +171,31 @@ trait TastyKernel with
   type MethodType <: LambdaType // MethodOrPoly with TermLambda
   type LazyRef <: Type
 
-  val Type_CT: ClassTag[Type]
-  val AppliedType_CT: ClassTag[AppliedType]
-  val ConstantType_CT: ClassTag[ConstantType]
-  val NamedType_CT: ClassTag[NamedType]
-  val ThisType_CT: ClassTag[ThisType]
-  val SuperType_CT: ClassTag[SuperType]
-  val RecThis_CT: ClassTag[RecThis]
-  val RecType_CT: ClassTag[RecType]
-  val TermRef_CT: ClassTag[TermRef]
-  val TypeRef_CT: ClassTag[TypeRef]
-  val ParamRef_CT: ClassTag[ParamRef]
-  val SkolemType_CT: ClassTag[SkolemType]
-  val RefinedType_CT: ClassTag[RefinedType]
-  val TypeAlias_CT: ClassTag[TypeAlias]
-  val TypeBounds_CT: ClassTag[TypeBounds]
-  val AnnotatedType_CT: ClassTag[AnnotatedType]
-  val AndType_CT: ClassTag[AndType]
-  val OrType_CT: ClassTag[OrType]
-  val MatchType_CT: ClassTag[MatchType]
-  val ExprType_CT: ClassTag[ExprType]
-  val HKTypeLambda_CT: ClassTag[HKTypeLambda]
-  val PolyType_CT: ClassTag[PolyType]
-  val MethodType_CT: ClassTag[MethodType]
-  val LazyRef_CT: ClassTag[LazyRef]
-  val ClassInfo_CT: ClassTag[ClassInfo]
+  def Type_CT: ClassTag[Type]
+  def AppliedType_CT: ClassTag[AppliedType]
+  def ConstantType_CT: ClassTag[ConstantType]
+  def NamedType_CT: ClassTag[NamedType]
+  def ThisType_CT: ClassTag[ThisType]
+  def SuperType_CT: ClassTag[SuperType]
+  def RecThis_CT: ClassTag[RecThis]
+  def RecType_CT: ClassTag[RecType]
+  def TermRef_CT: ClassTag[TermRef]
+  def TypeRef_CT: ClassTag[TypeRef]
+  def ParamRef_CT: ClassTag[ParamRef]
+  def SkolemType_CT: ClassTag[SkolemType]
+  def RefinedType_CT: ClassTag[RefinedType]
+  def TypeAlias_CT: ClassTag[TypeAlias]
+  def TypeBounds_CT: ClassTag[TypeBounds]
+  def AnnotatedType_CT: ClassTag[AnnotatedType]
+  def AndType_CT: ClassTag[AndType]
+  def OrType_CT: ClassTag[OrType]
+  def MatchType_CT: ClassTag[MatchType]
+  def ExprType_CT: ClassTag[ExprType]
+  def HKTypeLambda_CT: ClassTag[HKTypeLambda]
+  def PolyType_CT: ClassTag[PolyType]
+  def MethodType_CT: ClassTag[MethodType]
+  def LazyRef_CT: ClassTag[LazyRef]
+  def ClassInfo_CT: ClassTag[ClassInfo]
 
   type Symbol <: Designator { type ThisName <: Name }
   type TermSymbol <: Symbol { type ThisName = TermName }
@@ -205,8 +205,8 @@ trait TastyKernel with
   type FlagSet
   type Flag <: FlagSet
 
-  val Symbol_CT: ClassTag[Symbol]
-  val ClassSymbol_CT: ClassTag[ClassSymbol]
+  def Symbol_CT: ClassTag[Symbol]
+  def ClassSymbol_CT: ClassTag[ClassSymbol]
 
   type Symbols_MutableSymbolMap[T]
 
@@ -219,42 +219,42 @@ trait TastyKernel with
 
   type Constant <: AnyRef
 
-  val Flags_Protected: Flag
-  val Flags_ParamAccessor: Flag
-  val Flags_Private: Flag
-  val Flags_Final: Flag
-  val Flags_Case: Flag
-  val Flags_Override: Flag
-  val Flags_Inline: Flag
-  val Flags_InlineProxy: Flag
-  val Flags_Macro: Flag
-  val Flags_JavaStatic: Flag
-  val Flags_Module: Flag
-  val Flags_Enum: Flag
-  val Flags_Local: Flag
-  val Flags_Synthetic: Flag
-  val Flags_Artifact: Flag
-  val Flags_Scala2x: Flag
-  val Flags_Implicit: Flag
-  val Flags_Given: Flag
-  val Flags_Erased: Flag
-  val Flags_Lazy: Flag
-  val Flags_AbsOverride: Flag
-  val Flags_Mutable: Flag
-  val Flags_Accessor: Flag
-  val Flags_CaseAccessor: Flag
-  val Flags_DefaultParameterized: Flag
-  val Flags_StableRealizable: Flag
-  val Flags_Extension: Flag
-  val Flags_Exported: Flag
-  val Flags_Label: Flag
-  val Flags_Sealed: Flag
-  val Flags_Abstract: Flag
-  val Flags_Trait: Flag
-  val Flags_Covariant: Flag
-  val Flags_Contravariant: Flag
-  val Flags_Opaque: Flag
-  val Flags_Open: Flag
+  def Flags_Protected: Flag
+  def Flags_ParamAccessor: Flag
+  def Flags_Private: Flag
+  def Flags_Final: Flag
+  def Flags_Case: Flag
+  def Flags_Override: Flag
+  def Flags_Inline: Flag
+  def Flags_InlineProxy: Flag
+  def Flags_Macro: Flag
+  def Flags_JavaStatic: Flag
+  def Flags_Module: Flag
+  def Flags_Enum: Flag
+  def Flags_Local: Flag
+  def Flags_Synthetic: Flag
+  def Flags_Artifact: Flag
+  def Flags_Scala2x: Flag
+  def Flags_Implicit: Flag
+  def Flags_Given: Flag
+  def Flags_Erased: Flag
+  def Flags_Lazy: Flag
+  def Flags_AbsOverride: Flag
+  def Flags_Mutable: Flag
+  def Flags_Accessor: Flag
+  def Flags_CaseAccessor: Flag
+  def Flags_DefaultParameterized: Flag
+  def Flags_StableRealizable: Flag
+  def Flags_Extension: Flag
+  def Flags_Exported: Flag
+  def Flags_Label: Flag
+  def Flags_Sealed: Flag
+  def Flags_Abstract: Flag
+  def Flags_Trait: Flag
+  def Flags_Covariant: Flag
+  def Flags_Contravariant: Flag
+  def Flags_Opaque: Flag
+  def Flags_Open: Flag
 
   def FlagSet_is(flags: FlagSet, flag: Flag): Boolean
   def FlagSet_is(flags: FlagSet, flag: Flag, butNot: FlagSet): Boolean
@@ -329,12 +329,12 @@ trait TastyKernel with
 
   def SourceFile_path(source: SourceFile): String
   def SourceFile_exists(source: SourceFile): Boolean
-  val SourceFile_noSource: SourceFile
+  def SourceFile_noSource: SourceFile
 
   def SourcePosition_line(pos: SourcePosition): Int
 
-  val Span_empty: Span
-  val Span_noSpan: Span
+  def Span_empty: Span
+  def Span_noSpan: Span
   def Span_start(span: Span): Int
   def Span_end(span: Span): Int
   def Span_isSynthetic(span: Span): Boolean
@@ -361,7 +361,7 @@ trait TastyKernel with
 
   def Tree_isType(tree: Tree): Boolean
   def Tree_tpe(tree: Tree): Type
-  val EmptyTree: Tree
+  def EmptyTree: Tree
 
   def If_isInline(tree: If): Boolean
   def Match_isInline(tree: Match): Boolean
@@ -507,7 +507,7 @@ trait TastyKernel with
   def OuterSelectName_unapply(name: DerivedName): Option[(TermName, Int)]
   def DerivedName_unapply(name: DerivedName): Some[TermName]
 
-  val nme_WILDCARD: TermName
+  def nme_WILDCARD: TermName
 
   def Signature_ParamSig_fold[A](paramSig: Signature_ParamSig)(onInt: Int => A, onTypeName: TypeName => A): A
   def Signature_ParamSig_foldInt(paramSig: Signature_ParamSig)(onInt: IntToInt, onTypeName: ToInt[TypeName]): Int

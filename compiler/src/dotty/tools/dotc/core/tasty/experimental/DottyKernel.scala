@@ -13,6 +13,8 @@ import core.Contexts, core.Names, core.Annotations, core.Types, core.Symbols, co
   core.Comments, core.Constants, ast.Trees, core.Decorators, core.NameKinds, core.StdNames
 import ast.{tpd, untpd}
 
+import annotation.internal.sharable
+
 object DottyKernel extends TastyKernel {
 
   type Context = Contexts.Context
@@ -570,12 +572,12 @@ object DottyKernel extends TastyKernel {
 
   def SourceFile_path(source: SourceFile): String = source.path
   def SourceFile_exists(source: SourceFile): Boolean = source.exists
-  val SourceFile_noSource: SourceFile = util.NoSource
+  @sharable val SourceFile_noSource: SourceFile = util.NoSource
 
   def SourcePosition_line(pos: SourcePosition): Int = pos.line
 
-  val Span_empty: Span = Spans.Span(0,0)
-  val Span_noSpan: Span = Spans.NoSpan
+  @sharable val Span_empty: Span = Spans.Span(0,0)
+  @sharable val Span_noSpan: Span = Spans.NoSpan
   def Span_start(span: Span): Int = span.start
   def Span_end(span: Span): Int = span.end
   def Span_isSynthetic(span: Span): Boolean = span.isSynthetic
@@ -621,7 +623,7 @@ object DottyKernel extends TastyKernel {
 
   def Tree_isType(tree: Tree): Boolean = tree.isType
   def Tree_tpe(tree: Tree): Type = tree.tpe
-  val EmptyTree: Tree = tpd.EmptyTree
+  @sharable val EmptyTree: Tree = tpd.EmptyTree
 
   def If_isInline(tree: If): Boolean = tree.isInline
   def Match_isInline(tree: Match): Boolean = tree.isInline
@@ -758,7 +760,9 @@ object DottyKernel extends TastyKernel {
 
   def TermName_tag(name: TermName): Int = name.info.kind.tag
 
-  def SimpleName_toUTF8(name: SimpleName): Array[Byte] = io.Codec.toUTF8(Names.chrs, name.start, name.length)
+  def SimpleName_toUTF8(name: SimpleName): Array[Byte] =
+    if (name.length == 0) new Array[Byte](0)
+    else io.Codec.toUTF8(Names.chrs, name.start, name.length)
 
   def String_toTermName(name: String): TermName = {
     import Decorators._
@@ -774,7 +778,7 @@ object DottyKernel extends TastyKernel {
   def OuterSelectName_unapply(name: DerivedName): Option[(TermName, Int)] = NameKinds.OuterSelectName.unapply(name)
   def DerivedName_unapply(name: DerivedName): Some[TermName] = Some(name.underlying)
 
-  val nme_WILDCARD: TermName = StdNames.nme.WILDCARD
+  @sharable val nme_WILDCARD: TermName = StdNames.nme.WILDCARD
 
   def Signature_ParamSig_fold[A](paramSig: Signature_ParamSig)(onInt: Int => A, onTypeName: TypeName => A): A =
     paramSig match {
