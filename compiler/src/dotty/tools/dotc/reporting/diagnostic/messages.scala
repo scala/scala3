@@ -196,7 +196,7 @@ object messages {
                                                pt: Type)
                                               (implicit ctx: Context)
   extends Message(AnonymousFunctionMissingParamTypeID) {
-    val kind: String = "Syntax"
+    val kind: String = "Type"
 
     val msg: String = {
       val ofFun =
@@ -2298,7 +2298,7 @@ object messages {
   }
   case class StableIdentPattern(tree: untpd.Tree, pt: Type)(implicit val ctx: Context)
     extends Message(StableIdentPatternID) {
-    override def kind: String = "Syntax"
+    override def kind: String = "Type"
     override def msg: String =
       em"""Stable identifier required, but $tree found"""
     override def explanation: String = ""
