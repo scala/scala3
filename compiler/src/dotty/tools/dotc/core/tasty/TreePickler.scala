@@ -7,7 +7,7 @@ import dotty.tools.tasty.TastyFormat._
 import dotty.tools.tasty.TastyBuffer._
 
 import ast.Trees._
-import ast.{ untpd, tpd }
+import ast.{untpd, tpd}
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, Flags._
 import typer.Inliner
 import NameKinds._

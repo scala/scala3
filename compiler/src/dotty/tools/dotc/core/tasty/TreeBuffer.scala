@@ -5,7 +5,7 @@ package tasty
 
 import dotty.tools.tasty.util.Util.dble
 import dotty.tools.tasty.TastyBuffer
-import TastyBuffer.{ Addr, NoAddr, AddrWidth }
+import TastyBuffer.{Addr, NoAddr, AddrWidth}
 
 import util.Util.bestFit
 import config.Printers.pickling

@@ -7,7 +7,7 @@ import dotty.tools.tasty.TastyBuffer
 import TastyBuffer._
 
 import collection.mutable
-import Names.{ Name, chrs, SimpleName, DerivedName, TypeName }
+import Names.{Name, chrs, SimpleName, DerivedName, TypeName}
 import NameKinds._
 import Decorators._
 import scala.io.Codec

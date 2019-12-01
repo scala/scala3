@@ -2,7 +2,7 @@ package dotty.tools.tasty
 
 import java.util.UUID
 
-import TastyFormat.{ MajorVersion, MinorVersion, header }
+import TastyFormat.{MajorVersion, MinorVersion, header}
 
 class TastyHeaderUnpickler(reader: TastyReader) {
   import reader._

@@ -20,15 +20,15 @@ import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import util.Spans._
 import util.SourceFile
-import ast.{ TreeTypeMap, Trees, tpd, untpd }
+import ast.{TreeTypeMap, Trees, tpd, untpd}
 import Trees._
 import Decorators._
 import transform.SymUtils._
 
-import dotty.tools.tasty.{ TastyBuffer, TastyReader }
+import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer._
 
-import scala.annotation.{ switch, tailrec }
+import scala.annotation.{switch, tailrec}
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable
 import config.Printers.pickling
@@ -38,7 +38,7 @@ import dotty.tools.dotc.quoted.QuoteContext
 import dotty.tools.tasty.TastyFormat._
 
 import scala.quoted
-import scala.internal.quoted.{ TastyTreeExpr, TreeType }
+import scala.internal.quoted.{TastyTreeExpr, TreeType}
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
 
