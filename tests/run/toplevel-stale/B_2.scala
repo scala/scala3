@@ -1,0 +1,1 @@
+def foo(x: Long): String = "new"
