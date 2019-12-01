@@ -1,7 +1,7 @@
 
 class x(val s: String)
 
-object y {
+object yy {
   def foo = 3
 }
 
