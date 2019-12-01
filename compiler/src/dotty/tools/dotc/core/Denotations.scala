@@ -116,6 +116,9 @@ object Denotations {
      */
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): PreDenotation
 
+    /** Map `f` over all single denotations and aggregate the results with `g`. */
+    def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T
+
     private var cachedPrefix: Type = _
     private var cachedAsSeenFrom: AsSeenFromResult = _
     private var validAsSeenFrom: Period = Nowhere
@@ -1132,6 +1135,7 @@ object Denotations {
       if (denots.exists && denots.matches(this)) NoDenotation else this
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
       if (required.isEmpty && excluded.isEmpty || compatibleWith(required, excluded)) this else NoDenotation
+    def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T = f(this)
 
     type AsSeenFromResult = SingleDenotation
     protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = {
@@ -1286,6 +1290,8 @@ object Denotations {
       derivedUnion(denot1 filterDisjoint denot, denot2 filterDisjoint denot)
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(implicit ctx: Context): PreDenotation =
       derivedUnion(denot1.filterWithFlags(required, excluded), denot2.filterWithFlags(required, excluded))
+    def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T =
+      g(denot1.aggregate(f, g), denot2.aggregate(f, g))
     protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =
       if ((denot1 eq this.denot1) && (denot2 eq this.denot2)) this
       else denot1 union denot2
