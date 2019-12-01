@@ -1,6 +1,9 @@
 package scala.compiletime
 
-package object int {
+package object ops {
+  type ==[X <: AnyVal, Y <: AnyVal] <: Boolean
+  type !=[X <: AnyVal, Y <: AnyVal] <: Boolean
+
   type +[X <: Int, Y <: Int] <: Int
   type -[X <: Int, Y <: Int] <: Int
   type *[X <: Int, Y <: Int] <: Int
@@ -16,4 +19,9 @@ package object int {
   type Negate[X <: Int] <: Int
   type Min[X <: Int, Y <: Int] <: Int
   type Max[X <: Int, Y <: Int] <: Int
+
+  type ![X <: Boolean] <: Boolean
+  type ^[X <: Boolean, Y <: Boolean] <: Boolean
+  type &&[X <: Boolean, Y <: Boolean] <: Boolean
+  type ||[X <: Boolean, Y <: Boolean] <: Boolean
 }
