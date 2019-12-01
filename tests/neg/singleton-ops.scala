@@ -3,6 +3,11 @@ import scala.compiletime.int._
 import scala.compiletime.boolean._
 
 object Test {
+  summon[2 + 3 =:= 6 - 1]
+  summon[1763 =:= 41 * 43]
+  summon[2 + 2 =:= 3] // error
+  summon[29 * 31 =:= 900] // error
+
   val t0: 2 + 3 = 5
   val t1: 2 + 2 = 5 // error
   val t2: -1 + 1 = 0
@@ -87,31 +92,4 @@ object Test {
   val t65: ![false] = true
   val t66: ![true] = true // error
   val t67: ![false] = false // error
-
-  // Test singleton ops in type alias:
-  type Xor[A <: Boolean, B <: Boolean] = (A && ![B]) || (![A] && B)
-  val t68: Xor[true, true] = false
-  val t69: Xor[false, true] = true
-  val t70: Xor[true, false] = false // error
-  val t71: Xor[false, false] = true // error
-
-  // Test singleton ops in recursive match types:
-  type GCD[A <: Int, B <: Int] <: Int = B match {
-    case 0 => A
-    case _ => GCD[B, A % B]
-  }
-  val t72: GCD[10, 0] = 10
-  val t73: GCD[252, 105] = 21
-  val t74: GCD[105, 147] = 10 // error
-  val t75: GCD[1, 1] = -1 // error
-
-  // Test singleton ops in match type scrutinee:
-  type Max2[A <: Int, B <: Int] <: Int = (A < B) match {
-    case true => B
-    case false => A
-  }
-  val t76: Max[-1, 10] = 10
-  val t77: Max[4, 2] = 4
-  val t78: Max[2, 2] = 1 // error
-  val t79: Max[-1, -1] = 0 // error
 }
