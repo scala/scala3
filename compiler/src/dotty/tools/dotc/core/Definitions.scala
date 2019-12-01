@@ -918,7 +918,7 @@ class Definitions {
         tpnme.Not, tpnme.Xor, tpnme.And, tpnme.Or
       ).contains(sym.name)
 
-    isPackageObjectAppliedType || isIntAppliedType || isBooleanAppliedType
+    sym.isType && (isPackageObjectAppliedType || isIntAppliedType || isBooleanAppliedType)
   }
 
 
