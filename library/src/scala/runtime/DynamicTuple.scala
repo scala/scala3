@@ -1,8 +1,15 @@
 package scala.runtime
 
 import scala.Tuple.{ Concat, Size, Head, Tail, Elem, Zip, Map }
+import scala.reflect.ClassTag
 
 object DynamicTuple {
+
+  given iarrayOps: [T](arr: IArray[T]) {
+    def map[U: ClassTag](f: T => U): IArray[U] =
+      arr.asInstanceOf[Array[T]].map(f).asInstanceOf[IArray[U]]
+  }
+
   inline val MaxSpecialized = 22
   inline private val XXL = MaxSpecialized + 1
 
