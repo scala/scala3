@@ -64,7 +64,7 @@ class TastyPickler[T <: Tasty](val tasty: T)(val rootCls: tasty.ClassSymbol) { s
    *  Note that trees are looked up by reference equality,
    *  so one can reliably use this function only directly after `pickler`.
    */
-  var addrOfTree: Tree => Addr = (_ => NoAddr)
+  var addrOfTree: tpd.Tree => Addr = (_ => NoAddr)
 
   /**
    * Addresses in TASTY file of symbols, stored by pickling.
@@ -73,5 +73,5 @@ class TastyPickler[T <: Tasty](val tasty: T)(val rootCls: tasty.ClassSymbol) { s
    */
   var addrOfSym: Symbol => Option[Addr] = (_ => None)
 
-  val treePkl = new TreePickler(tasty)(self.asInstanceOf[TastyPickler[tasty.type]])
+  val treePkl = new TreePickler(self)
 }

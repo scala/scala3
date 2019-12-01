@@ -5,12 +5,12 @@ import TastyBuffer.{Addr, NoAddr}
 
 import java.nio.charset.Charset
 
-class CommentPickler[T <: Tasty](val tasty: T)(pickler: TastyPickler[tasty.type], addrOfTree: tasty.Tree => Addr)(implicit ctx: tasty.Context) {
-  import tasty.{_, given}
+class CommentPickler[T <: Tasty](val pickler: TastyPickler[T], addrOfTree: pickler.tasty.tpd.Tree => Addr)(implicit ctx: pickler.tasty.Context) {
+  import pickler.tasty.{_, given}
   private val buf = new TastyBuffer(5000)
   pickler.newSection("Comments", buf)
 
-  def pickleComment(root: Tree): Unit = {
+  def pickleComment(root: tpd.Tree): Unit = {
     val docCtx = ctx.docCtx
     assert(docCtx.isDefined, "Trying to pickle comments, but there's no `docCtx`.")
     new Traverser(docCtx.get).traverse(root)
@@ -29,9 +29,9 @@ class CommentPickler[T <: Tasty](val tasty: T)(pickler: TastyPickler[tasty.type]
   }
 
   private class Traverser(docCtx: ContextDocstrings) extends TreeTraverser {
-    override def traverse(tree: Tree)(implicit ctx: Context): Unit =
+    override def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit =
       tree match {
-        case md: MemberDef =>
+        case md: tpd.MemberDef =>
           val comment = docCtx.docstring(md.symbol)
           pickleComment(addrOfTree(md), comment)
           traverseChildren(md)

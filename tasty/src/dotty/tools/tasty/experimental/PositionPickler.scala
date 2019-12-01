@@ -6,8 +6,8 @@ import TastyBuffer._
 
 import collection.mutable
 
-class PositionPickler[T <: Tasty](val tasty: T)(val pickler: TastyPickler[tasty.type], addrOfTree: tasty.untpd.Tree => Addr) {
-  import tasty.{_,given}
+class PositionPickler[T <: Tasty](val pickler: TastyPickler[T], addrOfTree: pickler.tasty.untpd.Tree => Addr) {
+  import pickler.tasty.{_,given}
   val buf: TastyBuffer = new TastyBuffer(5000)
   pickler.newSection("Positions", buf)
 
@@ -18,7 +18,7 @@ class PositionPickler[T <: Tasty](val tasty: T)(val pickler: TastyPickler[tasty.
     (addrDelta << 3) | (toInt(hasStartDelta) << 2) | (toInt(hasEndDelta) << 1) | toInt(hasPoint)
   }
 
-  def picklePositions(roots: List[Tree])(implicit ctx: Context): Unit = {
+  def picklePositions(roots: List[tpd.Tree])(implicit ctx: Context): Unit = {
     var lastIndex = 0
     var lastSpan = Span.empty
     def pickleDeltas(index: Int, span: Span) = {

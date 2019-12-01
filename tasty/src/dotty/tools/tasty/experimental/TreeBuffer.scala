@@ -6,7 +6,7 @@ import TastyBuffer.{Addr, NoAddr, AddrWidth}
 
 import util.Util.bestFit
 
-class TreeBuffer[T <: Tasty](given val tasty: T) extends TastyBuffer(50000) {
+class TreeBuffer[T <: Tasty](val tasty: T) extends TastyBuffer(50000) {
   import tasty.{_, given}
   import Printers.pickling
 

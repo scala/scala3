@@ -5,56 +5,181 @@ import reflect.ClassTag
 trait TreeOps extends Core with
   self: PositionOps with ContextOps with SourceFileOps with SymbolOps =>
 
-  given ClassTag[Tree] = internal.Tree_CT
-  given ClassTag[MemberDef] = internal.MemberDef_CT
-  given ClassTag[Hole] = internal.Hole_CT
-  given ClassTag[Template] = internal.Template_CT
-  given ClassTag[ValOrDefDef] = internal.ValOrDefDef_CT
-  given ClassTag[TypeDef] = internal.TypeDef_CT
-  given ClassTag[ValDef] = internal.ValDef_CT
-  given ClassTag[DefDef] = internal.DefDef_CT
-  given ClassTag[Ident] = internal.Ident_CT
-  given ClassTag[This] = internal.This_CT
-  given ClassTag[Select] = internal.Select_CT
-  given ClassTag[Apply] = internal.Apply_CT
-  given ClassTag[TypeApply] = internal.TypeApply_CT
-  given ClassTag[Literal] = internal.Literal_CT
-  given ClassTag[Super] = internal.Super_CT
-  given ClassTag[New] = internal.New_CT
-  given ClassTag[Typed] = internal.Typed_CT
-  given ClassTag[NamedArg] = internal.NamedArg_CT
-  given ClassTag[Assign] = internal.Assign_CT
-  given ClassTag[Block] = internal.Block_CT
-  given ClassTag[If] = internal.If_CT
-  given ClassTag[Closure] = internal.Closure_CT
-  given ClassTag[Match] = internal.Match_CT
-  given ClassTag[CaseDef] = internal.CaseDef_CT
-  given ClassTag[Labeled] = internal.Labeled_CT
-  given ClassTag[Return] = internal.Return_CT
-  given ClassTag[WhileDo] = internal.WhileDo_CT
-  given ClassTag[Try] = internal.Try_CT
-  given ClassTag[SeqLiteral] = internal.SeqLiteral_CT
-  given ClassTag[Inlined] = internal.Inlined_CT
-  given ClassTag[Bind] = internal.Bind_CT
-  given ClassTag[Alternative] = internal.Alternative_CT
-  given ClassTag[UnApply] = internal.UnApply_CT
-  given ClassTag[Import] = internal.Import_CT
-  given ClassTag[PackageDef] = internal.PackageDef_CT
-  given ClassTag[TypeTree] = internal.TypeTree_CT
-  given ClassTag[SingletonTypeTree] = internal.SingletonTypeTree_CT
-  given ClassTag[RefinedTypeTree] = internal.RefinedTypeTree_CT
-  given ClassTag[AppliedTypeTree] = internal.AppliedTypeTree_CT
-  given ClassTag[MatchTypeTree] = internal.MatchTypeTree_CT
-  given ClassTag[ByNameTypeTree] = internal.ByNameTypeTree_CT
-  given ClassTag[Annotated] = internal.Annotated_CT
-  given ClassTag[LambdaTypeTree] = internal.LambdaTypeTree_CT
-  given ClassTag[TypeBoundsTree] = internal.TypeBoundsTree_CT
-  given ClassTag[Thicket] = internal.Thicket_CT
+  given ClassTag[tpd.Tree] = internal.Tree_CT
+  given ClassTag[tpd.MemberDef] = internal.MemberDef_CT
+  given ClassTag[tpd.Hole] = internal.Hole_CT
+  given ClassTag[tpd.Template] = internal.Template_CT
+  given ClassTag[tpd.ValOrDefDef] = internal.ValOrDefDef_CT
+  given ClassTag[tpd.TypeDef] = internal.TypeDef_CT
+  given ClassTag[tpd.ValDef] = internal.ValDef_CT
+  given ClassTag[tpd.DefDef] = internal.DefDef_CT
+  given ClassTag[tpd.Ident] = internal.Ident_CT
+  given ClassTag[tpd.This] = internal.This_CT
+  given ClassTag[tpd.Select] = internal.Select_CT
+  given ClassTag[tpd.Apply] = internal.Apply_CT
+  given ClassTag[tpd.TypeApply] = internal.TypeApply_CT
+  given ClassTag[tpd.Literal] = internal.Literal_CT
+  given ClassTag[tpd.Super] = internal.Super_CT
+  given ClassTag[tpd.New] = internal.New_CT
+  given ClassTag[tpd.Typed] = internal.Typed_CT
+  given ClassTag[tpd.NamedArg] = internal.NamedArg_CT
+  given ClassTag[tpd.Assign] = internal.Assign_CT
+  given ClassTag[tpd.Block] = internal.Block_CT
+  given ClassTag[tpd.If] = internal.If_CT
+  given ClassTag[tpd.Closure] = internal.Closure_CT
+  given ClassTag[tpd.Match] = internal.Match_CT
+  given ClassTag[tpd.CaseDef] = internal.CaseDef_CT
+  given ClassTag[tpd.Labeled] = internal.Labeled_CT
+  given ClassTag[tpd.Return] = internal.Return_CT
+  given ClassTag[tpd.WhileDo] = internal.WhileDo_CT
+  given ClassTag[tpd.Try] = internal.Try_CT
+  given ClassTag[tpd.SeqLiteral] = internal.SeqLiteral_CT
+  given ClassTag[tpd.Inlined] = internal.Inlined_CT
+  given ClassTag[tpd.Bind] = internal.Bind_CT
+  given ClassTag[tpd.Alternative] = internal.Alternative_CT
+  given ClassTag[tpd.UnApply] = internal.UnApply_CT
+  given ClassTag[tpd.Import] = internal.Import_CT
+  given ClassTag[tpd.PackageDef] = internal.PackageDef_CT
+  given ClassTag[tpd.TypeTree] = internal.TypeTree_CT
+  given ClassTag[tpd.SingletonTypeTree] = internal.SingletonTypeTree_CT
+  given ClassTag[tpd.RefinedTypeTree] = internal.RefinedTypeTree_CT
+  given ClassTag[tpd.AppliedTypeTree] = internal.AppliedTypeTree_CT
+  given ClassTag[tpd.MatchTypeTree] = internal.MatchTypeTree_CT
+  given ClassTag[tpd.ByNameTypeTree] = internal.ByNameTypeTree_CT
+  given ClassTag[tpd.Annotated] = internal.Annotated_CT
+  given ClassTag[tpd.LambdaTypeTree] = internal.LambdaTypeTree_CT
+  given ClassTag[tpd.TypeBoundsTree] = internal.TypeBoundsTree_CT
+  given ClassTag[tpd.Thicket] = internal.Thicket_CT
 
   given untpdTree: ClassTag[untpd.Tree] = internal.untpd_Tree_CT
   given untpdTypedSplice: ClassTag[untpd.TypedSplice] = internal.untpd_TypedSplice_CT
   given untpdMemberDef: ClassTag[untpd.MemberDef] = internal.untpd_MemberDef_CT
   given untpdIdent: ClassTag[untpd.Ident] = internal.untpd_Ident_CT
+
+  object tpd with
+
+    type Tree = internal.Tree
+    type MemberDef = internal.MemberDef
+    type Hole = internal.Hole
+    type Template = internal.Template
+    type ValOrDefDef = internal.ValOrDefDef
+    type TypeDef = internal.TypeDef
+    type ValDef = internal.ValDef
+    type DefDef = internal.DefDef
+    type RefTree = internal.RefTree
+    type Ident = internal.Ident
+    type Select = internal.Select
+    type This = internal.This
+    type Apply = internal.Apply
+    type TypeApply = internal.TypeApply
+    type Literal = internal.Literal
+    type Super = internal.Super
+    type New = internal.New
+    type Typed = internal.Typed
+    type NamedArg = internal.NamedArg
+    type Assign = internal.Assign
+    type Block = internal.Block
+    type If = internal.If
+    type Closure = internal.Closure
+    type Match = internal.Match
+    type CaseDef = internal.CaseDef
+    type Labeled = internal.Labeled
+    type Return = internal.Return
+    type WhileDo = internal.WhileDo
+    type Try = internal.Try
+    type SeqLiteral = internal.SeqLiteral
+    type Inlined = internal.Inlined
+    type Bind = internal.Bind
+    type Alternative = internal.Alternative
+    type UnApply = internal.UnApply
+    type Import = internal.Import
+    type PackageDef = internal.PackageDef
+    type TypeTree = internal.TypeTree
+    type SingletonTypeTree = internal.SingletonTypeTree
+    type RefinedTypeTree = internal.RefinedTypeTree
+    type AppliedTypeTree = internal.AppliedTypeTree
+    type MatchTypeTree = internal.MatchTypeTree
+    type ByNameTypeTree = internal.ByNameTypeTree
+    type Annotated = internal.Annotated
+    type LambdaTypeTree = internal.LambdaTypeTree
+    type TypeBoundsTree = internal.TypeBoundsTree
+    type Thicket = internal.Thicket
+
+    object Ident with
+      def unapply(tree: Ident): Some[Name] = internal.Ident_unapply(tree)
+    object This with
+      def unapply(tree: This): Some[untpd.Ident] = internal.This_unapply(tree)
+    object Select with
+      def unapply(tree: Select): (Tree, Name) = internal.Select_unapply(tree)
+    object Apply with
+      def unapply(tree: Apply): (Tree, List[Tree]) = internal.Apply_unapply(tree)
+    object TypeApply with
+      def unapply(tree: TypeApply): (Tree, List[Tree]) = internal.TypeApply_unapply(tree)
+    object Literal with
+      def unapply(tree: Literal): Some[Constant] = internal.Literal_unapply(tree)
+    object Super with
+      def unapply(tree: Super): (Tree, untpd.Ident) = internal.Super_unapply(tree)
+    object New with
+      def unapply(tree: New): Some[Tree] = internal.New_unapply(tree)
+    object Typed with
+      def unapply(tree: Typed): (Tree, Tree) = internal.Typed_unapply(tree)
+    object NamedArg with
+      def unapply(tree: NamedArg): (Name, Tree) = internal.NamedArg_unapply(tree)
+    object Assign with
+      def unapply(tree: Assign): (Tree, Tree) = internal.Assign_unapply(tree)
+    object Block with
+      def unapply(tree: Block): (List[Tree], Tree) = internal.Block_unapply(tree)
+    object If with
+      def unapply(tree: If): (Tree, Tree, Tree) = internal.If_unapply(tree)
+    object Closure with
+      def unapply(tree: Closure): (List[Tree], Tree, Tree) = internal.Closure_unapply(tree)
+    object Match with
+      def unapply(tree: Match): (Tree, List[CaseDef]) = internal.Match_unapply(tree)
+    object CaseDef with
+      def unapply(tree: CaseDef): (Tree, Tree, Tree) = internal.CaseDef_unapply(tree)
+    object Labeled with
+      def unapply(tree: Labeled): (Bind, Tree) = internal.Labeled_unapply(tree)
+    object Return with
+      def unapply(tree: Return): (Tree, Tree) = internal.Return_unapply(tree)
+    object WhileDo with
+      def unapply(tree: WhileDo): (Tree, Tree) = internal.WhileDo_unapply(tree)
+    object Try with
+      def unapply(tree: Try): (Tree, List[CaseDef], Tree) = internal.Try_unapply(tree)
+    object SeqLiteral with
+      def unapply(tree: SeqLiteral): (List[Tree], Tree) = internal.SeqLiteral_unapply(tree)
+    object Inlined with
+      def unapply(tree: Inlined): (Tree, List[MemberDef], Tree) = internal.Inlined_unapply(tree)
+    object Bind with
+      def unapply(tree: Bind): (Name, Tree) = internal.Bind_unapply(tree)
+    object Alternative with
+      def unapply(tree: Alternative): Some[List[Tree]] = internal.Alternative_unapply(tree)
+    object UnApply with
+      def unapply(tree: UnApply): (Tree, List[Tree], List[Tree]) = internal.UnApply_unapply(tree)
+    object Import with
+      def unapply(tree: Import): (Tree, List[untpd.ImportSelector]) = internal.Import_unapply(tree)
+    object PackageDef with
+      def unapply(tree: PackageDef): (RefTree, List[Tree]) = internal.PackageDef_unapply(tree)
+    object SingletonTypeTree with
+      def unapply(tree: SingletonTypeTree): Some[Tree] = internal.SingletonTypeTree_unapply(tree)
+    object RefinedTypeTree with
+      def unapply(tree: RefinedTypeTree): (Tree, List[Tree]) = internal.RefinedTypeTree_unapply(tree)
+    object AppliedTypeTree with
+      def unapply(tree: AppliedTypeTree): (Tree, List[Tree]) = internal.AppliedTypeTree_unapply(tree)
+    object MatchTypeTree with
+      def unapply(tree: MatchTypeTree): (Tree, Tree, List[CaseDef]) = internal.MatchTypeTree_unapply(tree)
+    object ByNameTypeTree with
+      def unapply(tree: ByNameTypeTree): Some[Tree] = internal.ByNameTypeTree_unapply(tree)
+    object Annotated with
+      def unapply(tree: Annotated): (Tree, Tree) = internal.Annotated_unapply(tree)
+    object LambdaTypeTree with
+      def unapply(tree: LambdaTypeTree): (List[TypeDef], Tree) = internal.LambdaTypeTree_unapply(tree)
+    object TypeBoundsTree with
+      def unapply(tree: TypeBoundsTree): (Tree, Tree) = internal.TypeBoundsTree_unapply(tree)
+    object Hole with
+      def unapply(tree: Hole): (Int, List[Tree]) = internal.Hole_unapply(tree)
+    object Thicket with
+      def unapply(tree: Thicket): Some[List[Tree]] = internal.Thicket_unapply(tree)
+  end tpd
 
   object untpd with
 
@@ -65,7 +190,7 @@ trait TreeOps extends Core with
     type Ident = internal.untpd_Ident
 
     object TypedSplice with
-      def unapply(tree: TypedSplice): Some[self.Tree] = internal.untpd_TypedSplice_unapply(tree)
+      def unapply(tree: TypedSplice): Some[tpd.Tree] = internal.untpd_TypedSplice_unapply(tree)
 
     object Ident with
       def unapply(tree: Ident): Some[Name] = internal.untpd_Ident_unapply(tree)
@@ -77,124 +202,51 @@ trait TreeOps extends Core with
 
   end untpd
 
-  object Ident with
-    def unapply(tree: Ident): Some[Name] = internal.Ident_unapply(tree)
-  object This with
-    def unapply(tree: This): Some[untpd.Ident] = internal.This_unapply(tree)
-  object Select with
-    def unapply(tree: Select): (Tree, Name) = internal.Select_unapply(tree)
-  object Apply with
-    def unapply(tree: Apply): (Tree, List[Tree]) = internal.Apply_unapply(tree)
-  object TypeApply with
-    def unapply(tree: TypeApply): (Tree, List[Tree]) = internal.TypeApply_unapply(tree)
-  object Literal with
-    def unapply(tree: Literal): Some[Constant] = internal.Literal_unapply(tree)
-  object Super with
-    def unapply(tree: Super): (Tree, untpd.Ident) = internal.Super_unapply(tree)
-  object New with
-    def unapply(tree: New): Some[Tree] = internal.New_unapply(tree)
-  object Typed with
-    def unapply(tree: Typed): (Tree, Tree) = internal.Typed_unapply(tree)
-  object NamedArg with
-    def unapply(tree: NamedArg): (Name, Tree) = internal.NamedArg_unapply(tree)
-  object Assign with
-    def unapply(tree: Assign): (Tree, Tree) = internal.Assign_unapply(tree)
-  object Block with
-    def unapply(tree: Block): (List[Tree], Tree) = internal.Block_unapply(tree)
-  object If with
-    def unapply(tree: If): (Tree, Tree, Tree) = internal.If_unapply(tree)
-  object Closure with
-    def unapply(tree: Closure): (List[Tree], Tree, Tree) = internal.Closure_unapply(tree)
-  object Match with
-    def unapply(tree: Match): (Tree, List[CaseDef]) = internal.Match_unapply(tree)
-  object CaseDef with
-    def unapply(tree: CaseDef): (Tree, Tree, Tree) = internal.CaseDef_unapply(tree)
-  object Labeled with
-    def unapply(tree: Labeled): (Bind, Tree) = internal.Labeled_unapply(tree)
-  object Return with
-    def unapply(tree: Return): (Tree, Tree) = internal.Return_unapply(tree)
-  object WhileDo with
-    def unapply(tree: WhileDo): (Tree, Tree) = internal.WhileDo_unapply(tree)
-  object Try with
-    def unapply(tree: Try): (Tree, List[CaseDef], Tree) = internal.Try_unapply(tree)
-  object SeqLiteral with
-    def unapply(tree: SeqLiteral): (List[Tree], Tree) = internal.SeqLiteral_unapply(tree)
-  object Inlined with
-    def unapply(tree: Inlined): (Tree, List[MemberDef], Tree) = internal.Inlined_unapply(tree)
-  object Bind with
-    def unapply(tree: Bind): (Name, Tree) = internal.Bind_unapply(tree)
-  object Alternative with
-    def unapply(tree: Alternative): Some[List[Tree]] = internal.Alternative_unapply(tree)
-  object UnApply with
-    def unapply(tree: UnApply): (Tree, List[Tree], List[Tree]) = internal.UnApply_unapply(tree)
-  object Import with
-    def unapply(tree: Import): (Tree, List[untpd.ImportSelector]) = internal.Import_unapply(tree)
-  object PackageDef with
-    def unapply(tree: PackageDef): (RefTree, List[Tree]) = internal.PackageDef_unapply(tree)
-  object SingletonTypeTree with
-    def unapply(tree: SingletonTypeTree): Some[Tree] = internal.SingletonTypeTree_unapply(tree)
-  object RefinedTypeTree with
-    def unapply(tree: RefinedTypeTree): (Tree, List[Tree]) = internal.RefinedTypeTree_unapply(tree)
-  object AppliedTypeTree with
-    def unapply(tree: AppliedTypeTree): (Tree, List[Tree]) = internal.AppliedTypeTree_unapply(tree)
-  object MatchTypeTree with
-    def unapply(tree: MatchTypeTree): (Tree, Tree, List[CaseDef]) = internal.MatchTypeTree_unapply(tree)
-  object ByNameTypeTree with
-    def unapply(tree: ByNameTypeTree): Some[Tree] = internal.ByNameTypeTree_unapply(tree)
-  object Annotated with
-    def unapply(tree: Annotated): (Tree, Tree) = internal.Annotated_unapply(tree)
-  object LambdaTypeTree with
-    def unapply(tree: LambdaTypeTree): (List[TypeDef], Tree) = internal.LambdaTypeTree_unapply(tree)
-  object TypeBoundsTree with
-    def unapply(tree: TypeBoundsTree): (Tree, Tree) = internal.TypeBoundsTree_unapply(tree)
-  object Hole with
-    def unapply(tree: Hole): (Int, List[Tree]) = internal.Hole_unapply(tree)
-  object Thicket with
-    def unapply(tree: Thicket): Some[List[Tree]] = internal.Thicket_unapply(tree)
-
   given untpdTreeOps: (tree: untpd.Tree) with
     def symbol(given Context): Symbol = internal.untpd_Tree_symbol(tree)
     def span: Span = internal.untpd_Tree_span(tree)
     def source: SourceFile = internal.untpd_Tree_source(tree)
     def envelope(src: SourceFile, startSpan: Span = Span.noSpan): Span = internal.untpd_Tree_envelope(tree, src, startSpan)
-    def withType(tpe: Type)(given Context): Tree = internal.untpd_Tree_withType(tree, tpe)
+    def withType(tpe: Type)(given Context): tpd.Tree = internal.untpd_Tree_withType(tree, tpe)
     def isEmpty: Boolean = internal.untpd_Tree_isEmpty(tree)
 
-  given TreeOps: (tree: Tree) with
+  given TreeOps: (tree: tpd.Tree) with
     def isType: Boolean = internal.Tree_isType(tree)
     def tpe: Type = internal.Tree_tpe(tree)
 
-  given IfOps: (tree: If) with
+  given IfOps: (tree: tpd.If) with
     def isInline: Boolean = internal.If_isInline(tree)
 
-  given MatchOps: (tree: Match) with
+  given MatchOps: (tree: tpd.Match) with
     def isInline: Boolean = internal.Match_isInline(tree)
 
-  given ValOrDefDefOps: (tree: ValOrDefDef) with
+  given ValOrDefDefOps: (tree: tpd.ValOrDefDef) with
     def name: TermName = internal.ValOrDefDef_name(tree)
-    def tpt: Tree = internal.ValOrDefDef_tpt(tree)
-    def rhs(given Context): Tree = internal.ValOrDefDef_rhs(tree)
+    def tpt: tpd.Tree = internal.ValOrDefDef_tpt(tree)
+    def rhs(given Context): tpd.Tree = internal.ValOrDefDef_rhs(tree)
 
-  given DefDefOps: (tree: DefDef) with
-    def tparams: List[TypeDef] = internal.DefDef_tparams(tree)
-    def vparamss: List[List[ValDef]] = internal.DefDef_vparamss(tree)
+  given DefDefOps: (tree: tpd.DefDef) with
+    def tparams: List[tpd.TypeDef] = internal.DefDef_tparams(tree)
+    def vparamss: List[List[tpd.ValDef]] = internal.DefDef_vparamss(tree)
 
-  given TypeDefOps: (tree: TypeDef) with
-    def rhs: Tree = internal.TypeDef_rhs(tree)
+  given TypeDefOps: (tree: tpd.TypeDef) with
+    def rhs: tpd.Tree = internal.TypeDef_rhs(tree)
 
-  given TemplateOps: (tree: Template) with
-    def decomposeBody(given Context): (List[Tree], List[Tree]) = internal.Template_decomposeBody(tree)
-    def parents: List[Tree] = internal.Template_parents(tree)
-    def self: ValDef = internal.Template_self(tree)
-    def constr: DefDef = internal.Template_constr(tree)
-    def body(given Context): List[Tree] = internal.Template_body(tree)
+  given TemplateOps: (tree: tpd.Template) with
+    def decomposeBody(given Context): (List[tpd.Tree], List[tpd.Tree]) = internal.Template_decomposeBody(tree)
+    def parents: List[tpd.Tree] = internal.Template_parents(tree)
+    def self: tpd.ValDef = internal.Template_self(tree)
+    def constr: tpd.DefDef = internal.Template_constr(tree)
+    def body(given Context): List[tpd.Tree] = internal.Template_body(tree)
     def derived: List[untpd.Tree] = internal.Template_derived(tree)
 
   def emptyTree = internal.EmptyTree
 
-  def inlineContext(tree: Tree)(implicit ctx: Context): Context = internal.inlineContext(tree)
+  def inlineContext(tree: tpd.Tree)(implicit ctx: Context): Context = internal.inlineContext(tree)
 
   abstract class TreeAccumulator[X] { self =>
+    import tpd._
+
     def apply(x: X, tree: Tree)(implicit ctx: Context): X
 
     def apply(x: X, trees: Traversable[Tree])(implicit ctx: Context): X =
@@ -302,7 +354,7 @@ trait TreeOps extends Core with
   }
 
   abstract class TreeTraverser extends TreeAccumulator[Unit] {
-    def traverse(tree: Tree)(implicit ctx: Context): Unit
-    def apply(x: Unit, tree: Tree)(implicit ctx: Context): Unit = traverse(tree)
-    protected def traverseChildren(tree: Tree)(implicit ctx: Context): Unit = foldOver((), tree)
+    def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit
+    def apply(x: Unit, tree: tpd.Tree)(implicit ctx: Context): Unit = traverse(tree)
+    protected def traverseChildren(tree: tpd.Tree)(implicit ctx: Context): Unit = foldOver((), tree)
   }

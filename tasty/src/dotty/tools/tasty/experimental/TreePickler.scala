@@ -9,15 +9,16 @@ object TreePickler {
   val sectionName = "ASTs"
 }
 
-class TreePickler[T <: Tasty](val tasty: T)(val pickler: TastyPickler[tasty.type]) {
-  import tasty.{_, given}
-  val buf = TreeBuffer[tasty.type](given tasty)
+class TreePickler[T <: Tasty](val pickler: TastyPickler[T]) {
+  import pickler.tasty.{_, given}
+  val buf = TreeBuffer[pickler.tasty.type](pickler.tasty)
   pickler.newSection(TreePickler.sectionName, buf)
   import TreePickler._
   import buf._
   import pickler.nameBuffer.nameIndex
   import Constants._
   import Symbols.{_,given}
+  import tpd._
 
   private val symRefs = Symbols.newMutableSymbolMap[Addr]
   private val forwardSymRefs = Symbols.newMutableSymbolMap[List[Addr]]
