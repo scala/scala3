@@ -2392,7 +2392,7 @@ object messages {
 
     case class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(implicit val ctx: Context)
       extends Message(IllegalCyclicTypeReferenceID) {
-      val kind: String = "Type"
+      val kind: String = "Cyclic"
       val msg: String = i"illegal cyclic type reference: ${where} ${hl(lastChecked.show)} of $sym refers back to the type itself"
       val explanation: String = ""
     }
