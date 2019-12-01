@@ -196,7 +196,7 @@ object messages {
                                                pt: Type)
                                               (implicit ctx: Context)
   extends Message(AnonymousFunctionMissingParamTypeID) {
-    val kind: String = "Syntax"
+    val kind: String = "Type"
 
     val msg: String = {
       val ofFun =
@@ -2298,7 +2298,7 @@ object messages {
   }
   case class StableIdentPattern(tree: untpd.Tree, pt: Type)(implicit val ctx: Context)
     extends Message(StableIdentPatternID) {
-    override def kind: String = "Syntax"
+    override def kind: String = "Type"
     override def msg: String =
       em"""Stable identifier required, but $tree found"""
     override def explanation: String = ""
@@ -2392,7 +2392,7 @@ object messages {
 
     case class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(implicit val ctx: Context)
       extends Message(IllegalCyclicTypeReferenceID) {
-      val kind: String = "Type"
+      val kind: String = "Cyclic"
       val msg: String = i"illegal cyclic type reference: ${where} ${hl(lastChecked.show)} of $sym refers back to the type itself"
       val explanation: String = ""
     }
