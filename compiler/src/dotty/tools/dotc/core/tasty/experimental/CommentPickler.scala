@@ -6,5 +6,5 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.tasty.experimental.{CommentPickler => CommentPicklerImpl}
 import dotty.tools.tasty.TastyBuffer.Addr
 
-class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr)(implicit ctx: Context)
+class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr)
   extends CommentPicklerImpl(pickler, addrOfTree)
