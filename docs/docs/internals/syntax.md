@@ -385,7 +385,7 @@ ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses [‘with’] EnumBody          EnumDef(mods, name, tparams, template)
 GivenDef          ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
-                    |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [[‘with’] TemplateBody]
+                    |  [GivenSig ‘:’] ConstrApps [[‘with’] TemplateBody]
                     |  [[id ‘:’] ‘extension’ ExtParamClause {GivenParamClause}
                        ExtMethods
 GivenSig          ::=  [id] [DefTypeParamClause] {GivenParamClause}

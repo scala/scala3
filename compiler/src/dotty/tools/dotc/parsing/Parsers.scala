@@ -3384,7 +3384,7 @@ object Parsers {
     }
 
     /** GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
-     *                   |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [[‘with’] TemplateBody]
+     *                   |  [GivenSig ‘:’] ConstrApps [[‘with’] TemplateBody]
      *                   |  [id ‘:’] ‘extension’ ExtParamClause {GivenParamClause} ExtMethods
      *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
      *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause {GivenParamClause}
@@ -3433,24 +3433,20 @@ object Parsers {
           val parents =
             if in.token == COLON then
               in.nextToken()
-              if in.token == LBRACE
-                || in.token == WITH
-                || in.token == LBRACKET
-                || in.token == LPAREN && followingIsParamOrGivenType()
+              if in.token == LBRACKET
+                 || in.token == LPAREN && followingIsParamOrGivenType()
               then
                 parseParams(isExtension = true)
                 Nil
               else
-                tokenSeparated(COMMA, constrApp)
+                constrApps(commaOK = true, templateCanFollow = true)
             else if in.token == SUBTYPE then
               if !mods.is(Inline) then
                 syntaxError("`<:' is only allowed for given with `inline' modifier")
               in.nextToken()
               TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
-            else if name.isEmpty
-                    && in.token != LBRACE && in.token != WITH
-                    && !hasExtensionParams
-            then tokenSeparated(COMMA, constrApp)
+            else if name.isEmpty && !hasExtensionParams then
+              constrApps(commaOK = true, templateCanFollow = true)
             else Nil
 
           if in.token == EQUALS && parents.length == 1 && parents.head.isType then
