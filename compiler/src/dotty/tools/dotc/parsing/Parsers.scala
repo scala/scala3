@@ -3372,11 +3372,14 @@ object Parsers {
       case _ =>
         syntaxError(em"extension clause must start with a single regular parameter", start)
 
-    def checkExtensionMethod(stat: Tree): Unit = stat match {
+    def checkExtensionMethod(tparams: List[Tree], stat: Tree): Unit = stat match {
       case stat: DefDef =>
         if stat.mods.is(Extension) then
           syntaxError(i"no extension method allowed here since leading parameter was already given", stat.span)
-      case _ =>
+        else if tparams.nonEmpty && stat.tparams.nonEmpty then
+          syntaxError(i"extension method cannot have type parameters since some were already given previously",
+            stat.tparams.head.span)
+      case stat =>
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
@@ -3406,7 +3409,7 @@ object Parsers {
           possibleTemplateStart()
           val templ = templateBodyOpt(
             makeConstructor(tparams, extParams :: givenParamss), Nil, Nil)
-          templ.body.foreach(checkExtensionMethod)
+          templ.body.foreach(checkExtensionMethod(tparams, _))
           ModuleDef(name, templ)
         else
           var tparams: List[TypeDef] = Nil
@@ -3467,7 +3470,7 @@ object Parsers {
                 vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
             val templ = templateBodyOpt(makeConstructor(tparams, vparamss), parents, Nil)
             if hasExtensionParams then
-              templ.body.foreach(checkExtensionMethod)
+              templ.body.foreach(checkExtensionMethod(tparams, _))
               ModuleDef(name, templ)
             else if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
             else TypeDef(name.toTypeName, templ)
