@@ -374,6 +374,28 @@ object Build {
     dottyLib + File.pathSeparator + findArtifactPath(externalDeps, "scala-library")
   }
 
+  lazy val tastydocSettings = Seq(
+    baseDirectory in (Compile, run) := baseDirectory.value / "..",
+    baseDirectory in Test := baseDirectory.value / "..",
+    libraryDependencies +=
+      "com.novocode" % "junit-interface" % "0.11",
+    libraryDependencies ++= {
+      val flexmarkVersion = "0.42.12"
+      Seq(
+        "com.vladsch.flexmark" % "flexmark-all" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-emoji" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
+        Dependencies.`jackson-dataformat-yaml`,
+        "nl.big-o" % "liqp" % "0.6.7"
+      )
+    }
+  )
+
   def dottyDocSettings(implicit mode: Mode) = Seq(
     baseDirectory in (Compile, run) := baseDirectory.value / "..",
     baseDirectory in Test := baseDirectory.value / "..",
@@ -414,9 +436,9 @@ object Build {
     }.evaluated,
 
     libraryDependencies ++= {
-      val flexmarkVersion = "0.28.32"
+      val flexmarkVersion = "0.42.12"
       Seq(
-        "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
+        "com.vladsch.flexmark" % "flexmark-all" % flexmarkVersion,
         "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
         "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % flexmarkVersion,
         "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
@@ -1021,6 +1043,9 @@ object Build {
   lazy val `dotty-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
   lazy val `dotty-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
 
+  lazy val `dotty-tastydoc` = project.in(file("tastydoc")).asDottyTastydoc(Bootstrapped)
+  lazy val `dotty-tastydoc-input` = project.in(file("tastydoc/input")).asDottyTastydocInput(Bootstrapped)
+
   // Depend on dotty-library so that sbt projects using dotty automatically
   // depend on the dotty-library
   lazy val `scala-library` = project.
@@ -1328,6 +1353,14 @@ object Build {
       dependsOn(dottyCompiler).
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
+
+    def asDottyTastydoc(implicit mode: Mode): Project = project.withCommonSettings.
+      aggregate(`dotty-tastydoc-input`).
+      dependsOn(dottyCompiler).
+      settings(tastydocSettings)
+
+    def asDottyTastydocInput(implicit mode: Mode): Project = project.withCommonSettings.
+      dependsOn(dottyCompiler)
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
