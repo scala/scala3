@@ -52,7 +52,6 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       .setTyper(new Typer)
       .addMode(Mode.ImplicitsEnabled)
       .setTyperState(new TyperState(ctx.typerState))
-      .setFreshNames(new FreshNameCreator.Default)
     ctx.initialize()(start) // re-initialize the base context with start
     def addImport(ctx: Context, rootRef: ImportInfo.RootRef) =
       ctx.fresh.setImportInfo(ImportInfo.rootImport(rootRef)(ctx))
@@ -241,12 +240,15 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     }
   }
 
-  def compileFromString(sourceCode: String): Unit = {
-    val virtualFile = new VirtualFile("compileFromString-${java.util.UUID.randomUUID().toString}")
-    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8")) // buffering is still advised by javadoc
-    writer.write(sourceCode)
-    writer.close()
-    compileSources(List(new SourceFile(virtualFile, Codec.UTF8)))
+  def compileFromStrings(sourceCodes: String*): Unit = {
+    val sourceFiles = sourceCodes.map {sourceCode =>
+      val virtualFile = new VirtualFile("compileFromString-${java.util.UUID.randomUUID().toString}")
+      val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8")) // buffering is still advised by javadoc
+      writer.write(sourceCode)
+      writer.close()
+      new SourceFile(virtualFile, Codec.UTF8)
+    }
+    compileSources(sourceFiles.toList)
   }
 
   /** Print summary; return # of errors encountered */

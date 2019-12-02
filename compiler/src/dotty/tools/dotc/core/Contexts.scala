@@ -14,7 +14,7 @@ import Uniques._
 import ast.Trees._
 import ast.untpd
 import Flags.GivenOrImplicit
-import util.{FreshNameCreator, NoSource, SimpleIdentityMap, SourceFile}
+import util.{NoSource, SimpleIdentityMap, SourceFile}
 import typer.{Implicits, ImportInfo, Inliner, NamerContextOps, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import Nullables.{NotNullInfo, given}
 import Implicits.ContextualImplicits
@@ -44,12 +44,11 @@ object Contexts {
   private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
   private val (printerFnLoc,        store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
   private val (settingsStateLoc,    store4) = store3.newLocation[SettingsState]()
-  private val (freshNamesLoc,       store5) = store4.newLocation[FreshNameCreator](new FreshNameCreator.Default)
-  private val (compilationUnitLoc,  store6) = store5.newLocation[CompilationUnit]()
-  private val (runLoc,              store7) = store6.newLocation[Run]()
-  private val (profilerLoc,         store8) = store7.newLocation[Profiler]()
-  private val (notNullInfosLoc,     store9) = store8.newLocation[List[NotNullInfo]]()
-  private val initialStore = store9
+  private val (compilationUnitLoc,  store5) = store4.newLocation[CompilationUnit]()
+  private val (runLoc,              store6) = store5.newLocation[Run]()
+  private val (profilerLoc,         store7) = store6.newLocation[Profiler]()
+  private val (notNullInfosLoc,     store8) = store7.newLocation[List[NotNullInfo]]()
+  private val initialStore = store8
 
   /** The current context */
   def curCtx(given ctx: Context): Context = ctx
@@ -199,9 +198,6 @@ object Contexts {
 
     /** The current settings values */
     def settingsState: SettingsState = store(settingsStateLoc)
-
-    /** The current fresh name creator */
-    def freshNames: FreshNameCreator = store(freshNamesLoc)
 
     /** The current compilation unit */
     def compilationUnit: CompilationUnit = store(compilationUnitLoc)
@@ -471,6 +467,8 @@ object Contexts {
         if (prev != null) prev
         else {
           val newCtx = fresh.setSource(source)
+          if (newCtx.compilationUnit == null)
+            newCtx.setCompilationUnit(CompilationUnit(source))
           sourceCtx = sourceCtx.updated(source, newCtx)
           newCtx
         }
@@ -563,7 +561,6 @@ object Contexts {
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
-    def setFreshNames(freshNames: FreshNameCreator): this.type = updateStore(freshNamesLoc, freshNames)
     def setNotNullInfos(notNullInfos: List[NotNullInfo]): this.type = updateStore(notNullInfosLoc, notNullInfos)
 
     def setProperty[T](key: Key[T], value: T): this.type =
