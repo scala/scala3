@@ -137,7 +137,7 @@ object Nullables with
     // TODO: Add constant pattern if the constant type is not nullable
     case _ => false
 
-  given notNullInfoOps: (infos: List[NotNullInfo])
+  given notNullInfoOps: extension (infos: List[NotNullInfo]) with
 
     /** Do the current not-null infos imply that `ref` is not null?
      *  Not-null infos are as a history where earlier assertions and retractions replace
@@ -161,7 +161,7 @@ object Nullables with
       then infos
       else info :: infos
 
-  given treeOps: (tree: Tree)
+  given treeOps: extension (tree: Tree) with
 
     /* The `tree` with added nullability attachment */
     def withNotNullInfo(info: NotNullInfo): tree.type =
@@ -251,7 +251,7 @@ object Nullables with
           tree.computeNullable()
       }.traverse(tree)
 
-  given assignOps: (tree: Assign)
+  given assignOps: extension (tree: Assign) with
     def computeAssignNullable()(given Context): tree.type = tree.lhs match
       case TrackedRef(ref) =>
         tree.withNotNullInfo(NotNullInfo(Set(), Set(ref))) // TODO: refine with nullability type info

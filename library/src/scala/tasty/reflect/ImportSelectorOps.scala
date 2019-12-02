@@ -3,7 +3,7 @@ package reflect
 
 trait ImportSelectorOps extends Core {
 
-  given SimpleSelectorOps: (self: SimpleSelector) {
+  given simpleSelectorOps: extension (self: SimpleSelector) {
     def selection(given ctx: Context): Id =
       internal.SimpleSelector_selection(self)
   }
@@ -13,7 +13,7 @@ trait ImportSelectorOps extends Core {
   object SimpleSelector
     def unapply(x: SimpleSelector)(given ctx: Context): Option[Id] = Some(x.selection)
 
-  given RenameSelectorOps: (self: RenameSelector) {
+  given renameSelectorOps: extension (self: RenameSelector) {
     def from(given ctx: Context): Id =
       internal.RenameSelector_from(self)
 
@@ -26,7 +26,7 @@ trait ImportSelectorOps extends Core {
   object RenameSelector
     def unapply(x: RenameSelector)(given ctx: Context): Option[(Id, Id)] = Some((x.from, x.to))
 
-  given OmitSelectorOps: (self: OmitSelector) {
+  given omitSelectorOps: extension (self: OmitSelector) {
     def omitted(given ctx: Context): Id =
       internal.SimpleSelector_omitted(self)
   }

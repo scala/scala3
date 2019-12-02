@@ -3362,27 +3362,6 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
-    /** Check that `vparamss` represents a legal collective parameter list for a given extension
-     */
-    def checkExtensionParams(start: Offset, vparamss: List[List[ValDef]]): Unit = vparamss match
-      case (vparam :: Nil) :: vparamss1 if !vparam.mods.is(Given) =>
-        vparamss1.foreach(_.foreach(vparam =>
-          if !vparam.mods.is(Given) then
-            syntaxError(em"follow-on parameter in extension clause must be `given`", vparam.span)))
-      case _ =>
-        syntaxError(em"extension clause must start with a single regular parameter", start)
-
-    def checkExtensionMethod(tparams: List[Tree], stat: Tree): Unit = stat match {
-      case stat: DefDef =>
-        if stat.mods.is(Extension) then
-          syntaxError(i"no extension method allowed here since leading parameter was already given", stat.span)
-        else if tparams.nonEmpty && stat.tparams.nonEmpty then
-          syntaxError(i"extension method cannot have type parameters since some were already given previously",
-            stat.tparams.head.span)
-      case stat =>
-        syntaxError(i"extension clause can only define methods", stat.span)
-    }
-
     /** GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
      *                   |  [GivenSig ‘:’] ConstrApps [[‘with’] TemplateBody]
      *                   |  [id ‘:’] ‘extension’ ExtParamClause {GivenParamClause} ExtMethods
@@ -3409,45 +3388,32 @@ object Parsers {
           possibleTemplateStart()
           val templ = templateBodyOpt(
             makeConstructor(tparams, extParams :: givenParamss), Nil, Nil)
-          templ.body.foreach(checkExtensionMethod(tparams, _))
+          templ.body.foreach {
+            case stat: DefDef =>
+              if stat.mods.is(Extension) then
+                syntaxError(i"no extension method allowed here since leading parameter was already given", stat.span)
+              else if tparams.nonEmpty && stat.tparams.nonEmpty then
+                syntaxError(i"extension method cannot have type parameters since some were already given previously",
+                  stat.tparams.head.span)
+            case stat =>
+              syntaxError(i"extension clause can only define methods", stat.span)
+          }
           ModuleDef(name, templ)
         else
-          var tparams: List[TypeDef] = Nil
-          var vparamss: List[List[ValDef]] = Nil
-          var hasExtensionParams = false
-
-          def parseParams(isExtension: Boolean): Unit =
-            if isExtension && (in.token == LBRACKET || in.token == LPAREN) then
-              hasExtensionParams = true
-              if tparams.nonEmpty || vparamss.nonEmpty then
-                syntaxError(i"cannot have parameters before and after `:` in extension")
-            if in.token == LBRACKET then
-              tparams = typeParamClause(ParamOwner.Def)
+          val tparams: List[TypeDef] = typeParamClauseOpt(ParamOwner.Def)
+          val vparamss: List[List[ValDef]] =
             if in.token == LPAREN && followingIsParamOrGivenType() then
-              val paramsStart = in.offset
-              vparamss = paramClauses(givenOnly = !isExtension)
-              if isExtension then
-                checkExtensionParams(paramsStart, vparamss)
-
-          parseParams(isExtension = false)
+              paramClauses(givenOnly = true)
+            else Nil
           val parents =
-            if in.token == COLON then
-              in.nextToken()
-              if in.token == LBRACKET
-                 || in.token == LPAREN && followingIsParamOrGivenType()
-              then
-                parseParams(isExtension = true)
-                Nil
-              else
-                constrApps(commaOK = true, templateCanFollow = true)
-            else if in.token == SUBTYPE then
+            if in.token == SUBTYPE then
               if !mods.is(Inline) then
                 syntaxError("`<:' is only allowed for given with `inline' modifier")
               in.nextToken()
               TypeBoundsTree(EmptyTree, toplevelTyp()) :: Nil
-            else if name.isEmpty && !hasExtensionParams then
+            else
+              if in.token == COLON then in.nextToken()
               constrApps(commaOK = true, templateCanFollow = true)
-            else Nil
 
           if in.token == EQUALS && parents.length == 1 && parents.head.isType then
             in.nextToken()
@@ -3458,17 +3424,11 @@ object Parsers {
               case TypeBoundsTree(_, _) :: _ => syntaxError("`=' expected")
               case _ =>
             possibleTemplateStart()
-            if hasExtensionParams then
-              in.observeIndented()
-            else
-              tparams = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
-              vparamss = vparamss.map(_.map(vparam =>
-                vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
-            val templ = templateBodyOpt(makeConstructor(tparams, vparamss), parents, Nil)
-            if hasExtensionParams then
-              templ.body.foreach(checkExtensionMethod(tparams, _))
-              ModuleDef(name, templ)
-            else if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
+            val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
+            val vparamss1 = vparamss.map(_.map(vparam =>
+              vparam.withMods(vparam.mods &~ Param | ParamAccessor | PrivateLocal)))
+            val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
+            if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
             else TypeDef(name.toTypeName, templ)
       }
       finalizeDef(gdef, mods1, start)

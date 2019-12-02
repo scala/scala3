@@ -5,7 +5,7 @@ trait TreeOps extends Core {
 
   // ----- Tree -----------------------------------------------------
 
-  given TreeOps: (self: Tree) {
+  given TreeOps: extension (self: Tree) {
     /** Position in the source code */
     def pos(given ctx: Context): Position = internal.Tree_pos(self)
 
@@ -27,7 +27,7 @@ trait TreeOps extends Core {
       Some((tree.pid, tree.stats))
   }
 
-  given PackageClauseOps: (self: PackageClause) {
+  given PackageClauseOps: extension (self: PackageClause) {
     def pid(given ctx: Context): Ref = internal.PackageClause_pid(self)
     def stats(given ctx: Context): List[Tree] = internal.PackageClause_stats(self)
   }
@@ -47,7 +47,7 @@ trait TreeOps extends Core {
       Some((tree.expr, tree.selectors))
   }
 
-  given ImportOps: (self: Import)  {
+  given ImportOps: extension (self: Import)  {
     def expr(given ctx: Context): Term = internal.Import_expr(self)
     def selectors(given ctx: Context): List[ImportSelector] =
       internal.Import_selectors(self)
@@ -67,7 +67,7 @@ trait TreeOps extends Core {
     @deprecated("Use _: Definition", "")
     def unapply(x: Definition): Option[Definition] = Some(x)
 
-  given DefinitionOps: (self: Definition) {
+  given DefinitionOps: extension (self: Definition) {
     def name(given ctx: Context): String = internal.Definition_name(self)
   }
 
@@ -87,7 +87,7 @@ trait TreeOps extends Core {
       Some((cdef.name, cdef.constructor, cdef.parents, cdef.derived, cdef.self, cdef.body))
   }
 
-  given ClassDefOps: (self: ClassDef) {
+  given ClassDefOps: extension (self: ClassDef) {
     def constructor(given ctx: Context): DefDef = internal.ClassDef_constructor(self)
     def parents(given ctx: Context): List[Tree /* Term | TypeTree */] = internal.ClassDef_parents(self)
     def derived(given ctx: Context): List[TypeTree] = internal.ClassDef_derived(self)
@@ -112,7 +112,7 @@ trait TreeOps extends Core {
       Some((ddef.name, ddef.typeParams, ddef.paramss, ddef.returnTpt, ddef.rhs))
   }
 
-  given DefDefOps: (self: DefDef) {
+  given DefDefOps: extension (self: DefDef) {
     def typeParams(given ctx: Context): List[TypeDef] = internal.DefDef_typeParams(self)
     def paramss(given ctx: Context): List[List[ValDef]] = internal.DefDef_paramss(self)
     def returnTpt(given ctx: Context): TypeTree = internal.DefDef_returnTpt(self) // TODO rename to tpt
@@ -136,7 +136,7 @@ trait TreeOps extends Core {
       Some((vdef.name, vdef.tpt, vdef.rhs))
   }
 
-  given ValDefOps: (self: ValDef) {
+  given ValDefOps: extension (self: ValDef) {
     def tpt(given ctx: Context): TypeTree = internal.ValDef_tpt(self)
     def rhs(given ctx: Context): Option[Term] = internal.ValDef_rhs(self)
   }
@@ -158,7 +158,7 @@ trait TreeOps extends Core {
       Some((tdef.name, tdef.rhs))
   }
 
-  given TypeDefOps: (self: TypeDef) {
+  given TypeDefOps: extension (self: TypeDef) {
     def rhs(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeDef_rhs(self)
   }
 
@@ -166,7 +166,7 @@ trait TreeOps extends Core {
 
   given (given Context): IsInstanceOf[PackageDef] = internal.isInstanceOfPackageDef
 
-  given PackageDefOps: (self: PackageDef) {
+  given PackageDefOps: extension (self: PackageDef) {
     def owner(given ctx: Context): PackageDef = internal.PackageDef_owner(self)
     def members(given ctx: Context): List[Statement] = internal.PackageDef_members(self)
   }
@@ -182,7 +182,7 @@ trait TreeOps extends Core {
 
   // ----- Terms ----------------------------------------------------
 
-  given TermOps: (self: Term) {
+  given TermOps: extension (self: Term) {
     def tpe(given ctx: Context): Type = internal.Term_tpe(self)
     def underlyingArgument(given ctx: Context): Term = internal.Term_underlyingArgument(self)
     def underlying(given ctx: Context): Term = internal.Term_underlying(self)
@@ -251,7 +251,7 @@ trait TreeOps extends Core {
 
   given (given Context): IsInstanceOf[Ident] = internal.isInstanceOfIdent
 
-  given IdentOps: (self: Ident) {
+  given IdentOps: extension (self: Ident) {
     def name(given ctx: Context): String = internal.Ident_name(self)
   }
 
@@ -306,7 +306,7 @@ trait TreeOps extends Core {
       Some((x.qualifier, x.name))
   }
 
-  given SelectOps: (self: Select) {
+  given SelectOps: extension (self: Select) {
     def qualifier(given ctx: Context): Term = internal.Select_qualifier(self)
     def name(given ctx: Context): String = internal.Select_name(self)
     def signature(given ctx: Context): Option[Signature] = internal.Select_signature(self)
@@ -334,7 +334,7 @@ trait TreeOps extends Core {
       Some(x.constant)
   }
 
-  given LiteralOps: (self: Literal) {
+  given LiteralOps: extension (self: Literal) {
     def constant(given ctx: Context): Constant = internal.Literal_constant(self)
   }
 
@@ -359,7 +359,7 @@ trait TreeOps extends Core {
 
   }
 
-  given ThisOps: (self: This) {
+  given ThisOps: extension (self: This) {
     def id(given ctx: Context): Option[Id] = internal.This_id(self)
   }
 
@@ -383,7 +383,7 @@ trait TreeOps extends Core {
     def unapply(x: New)(given ctx: Context): Option[TypeTree] = Some(x.tpt)
   }
 
-  given NewOps: (self: New) {
+  given NewOps: extension (self: New) {
     def tpt(given ctx: Context): TypeTree = internal.New_tpt(self)
   }
 
@@ -409,7 +409,7 @@ trait TreeOps extends Core {
 
   }
 
-  given NamedArgOps: (self: NamedArg) {
+  given NamedArgOps: extension (self: NamedArg) {
     def name(given ctx: Context): String = internal.NamedArg_name(self)
     def value(given ctx: Context): Term = internal.NamedArg_value(self)
   }
@@ -435,7 +435,7 @@ trait TreeOps extends Core {
       Some((x.fun, x.args))
   }
 
-  given ApplyOps: (self: Apply) {
+  given ApplyOps: extension (self: Apply) {
     def fun(given ctx: Context): Term = internal.Apply_fun(self)
     def args(given ctx: Context): List[Term] = internal.Apply_args(self)
   }
@@ -462,7 +462,7 @@ trait TreeOps extends Core {
 
   }
 
-  given TypeApplyOps: (self: TypeApply) {
+  given TypeApplyOps: extension (self: TypeApply) {
     def fun(given ctx: Context): Term = internal.TypeApply_fun(self)
     def args(given ctx: Context): List[TypeTree] = internal.TypeApply_args(self)
   }
@@ -488,7 +488,7 @@ trait TreeOps extends Core {
       Some((x.qualifier, x.id))
   }
 
-  given SuperOps: (self: Super) {
+  given SuperOps: extension (self: Super) {
     def qualifier(given ctx: Context): Term = internal.Super_qualifier(self)
     def id(given ctx: Context): Option[Id] = internal.Super_id(self)
   }
@@ -515,7 +515,7 @@ trait TreeOps extends Core {
 
   }
 
-  given TypedOps: (self: Typed) {
+  given TypedOps: extension (self: Typed) {
     def expr(given ctx: Context): Term = internal.Typed_expr(self)
     def tpt(given ctx: Context): TypeTree = internal.Typed_tpt(self)
   }
@@ -541,7 +541,7 @@ trait TreeOps extends Core {
       Some((x.lhs, x.rhs))
   }
 
-  given AssignOps: (self: Assign) {
+  given AssignOps: extension (self: Assign) {
     def lhs(given ctx: Context): Term = internal.Assign_lhs(self)
     def rhs(given ctx: Context): Term = internal.Assign_rhs(self)
   }
@@ -567,7 +567,7 @@ trait TreeOps extends Core {
       Some((x.statements, x.expr))
   }
 
-  given BlockOps: (self: Block) {
+  given BlockOps: extension (self: Block) {
     def statements(given ctx: Context): List[Statement] = internal.Block_statements(self)
     def expr(given ctx: Context): Term = internal.Block_expr(self)
   }
@@ -590,7 +590,7 @@ trait TreeOps extends Core {
       Some((x.meth, x.tpeOpt))
   }
 
-  given ClosureOps: (self: Closure) {
+  given ClosureOps: extension (self: Closure) {
     def meth(given ctx: Context): Term = internal.Closure_meth(self)
     def tpeOpt(given ctx: Context): Option[Type] = internal.Closure_tpeOpt(self)
   }
@@ -639,7 +639,7 @@ trait TreeOps extends Core {
 
   }
 
-  given IfOps: (self: If) {
+  given IfOps: extension (self: If) {
     def cond(given ctx: Context): Term = internal.If_cond(self)
     def thenp(given ctx: Context): Term = internal.If_thenp(self)
     def elsep(given ctx: Context): Term = internal.If_elsep(self)
@@ -667,7 +667,7 @@ trait TreeOps extends Core {
 
   }
 
-  given MatchOps: (self: Match) {
+  given MatchOps: extension (self: Match) {
     def scrutinee(given ctx: Context): Term = internal.Match_scrutinee(self)
     def cases(given ctx: Context): List[CaseDef] = internal.Match_cases(self)
   }
@@ -693,7 +693,7 @@ trait TreeOps extends Core {
 
   }
 
-  given GivenMatchOps: (self: GivenMatch) {
+  given GivenMatchOps: extension (self: GivenMatch) {
     def cases(given ctx: Context): List[CaseDef] = internal.GivenMatch_cases(self)
   }
 
@@ -719,7 +719,7 @@ trait TreeOps extends Core {
 
   }
 
-  given TryOps: (self: Try) {
+  given TryOps: extension (self: Try) {
     def body(given ctx: Context): Term = internal.Try_body(self)
     def cases(given ctx: Context): List[CaseDef] = internal.Try_cases(self)
     def finalizer(given ctx: Context): Option[Term] = internal.Try_finalizer(self)
@@ -746,7 +746,7 @@ trait TreeOps extends Core {
 
   }
 
-  given ReturnOps: (self: Return) {
+  given ReturnOps: extension (self: Return) {
     def expr(given ctx: Context): Term = internal.Return_expr(self)
   }
 
@@ -769,7 +769,7 @@ trait TreeOps extends Core {
 
   }
 
-  given RepeatedOps: (self: Repeated) {
+  given RepeatedOps: extension (self: Repeated) {
     def elems(given ctx: Context): List[Term] = internal.Repeated_elems(self)
     def elemtpt(given ctx: Context): TypeTree = internal.Repeated_elemtpt(self)
   }
@@ -793,7 +793,7 @@ trait TreeOps extends Core {
 
   }
 
-  given InlinedOps: (self: Inlined) {
+  given InlinedOps: extension (self: Inlined) {
     def call(given ctx: Context): Option[Tree /* Term | TypeTree */] = internal.Inlined_call(self)
     def bindings(given ctx: Context): List[Definition] = internal.Inlined_bindings(self)
     def body(given ctx: Context): Term = internal.Inlined_body(self)
@@ -818,7 +818,7 @@ trait TreeOps extends Core {
 
   }
 
-  given SelectOuterOps: (self: SelectOuter) {
+  given SelectOuterOps: extension (self: SelectOuter) {
     def qualifier(given ctx: Context): Term = internal.SelectOuter_qualifier(self)
     def level(given ctx: Context): Int = internal.SelectOuter_level(self)
   }
@@ -844,14 +844,14 @@ trait TreeOps extends Core {
 
   }
 
-  given WhileOps: (self: While) {
+  given WhileOps: extension (self: While) {
     def cond(given ctx: Context): Term = internal.While_cond(self)
     def body(given ctx: Context): Term = internal.While_body(self)
   }
 
   // ----- TypeTrees ------------------------------------------------
 
-  given TypeTreeOps: (self: TypeTree) {
+  given TypeTreeOps: extension (self: TypeTree) {
     /** Type of this type tree */
     def tpe(given ctx: Context): Type = internal.TypeTree_tpe(self)
   }
@@ -879,7 +879,7 @@ trait TreeOps extends Core {
 
   given (given Context): IsInstanceOf[TypeIdent] = internal.isInstanceOfTypeIdent
 
-  given TypeIdentOps: (self: TypeIdent) {
+  given TypeIdentOps: extension (self: TypeIdent) {
     def name(given ctx: Context): String = internal.TypeIdent_name(self)
   }
 
@@ -909,7 +909,7 @@ trait TreeOps extends Core {
       Some((x.qualifier, x.name))
   }
 
-  given TypeSelectOps: (self: TypeSelect) {
+  given TypeSelectOps: extension (self: TypeSelect) {
     def qualifier(given ctx: Context): Term = internal.TypeSelect_qualifier(self)
     def name(given ctx: Context): String = internal.TypeSelect_name(self)
   }
@@ -928,7 +928,7 @@ trait TreeOps extends Core {
       Some((x.qualifier, x.name))
   }
 
-  given ProjectionOps: (self: Projection) {
+  given ProjectionOps: extension (self: Projection) {
     def qualifier(given ctx: Context): TypeTree = internal.Projection_qualifier(self)
     def name(given ctx: Context): String = internal.Projection_name(self)
   }
@@ -949,7 +949,7 @@ trait TreeOps extends Core {
       Some(x.ref)
   }
 
-  given SingletonOps: (self: Singleton) {
+  given SingletonOps: extension (self: Singleton) {
     def ref(given ctx: Context): Term = internal.Singleton_ref(self)
   }
 
@@ -967,7 +967,7 @@ trait TreeOps extends Core {
       Some((x.tpt, x.refinements))
   }
 
-  given RefinedOps: (self: Refined) {
+  given RefinedOps: extension (self: Refined) {
     def tpt(given ctx: Context): TypeTree = internal.Refined_tpt(self)
     def refinements(given ctx: Context): List[Definition] = internal.Refined_refinements(self)
   }
@@ -987,7 +987,7 @@ trait TreeOps extends Core {
       Some((x.tpt, x.args))
   }
 
-  given AppliedOps: (self: Applied) {
+  given AppliedOps: extension (self: Applied) {
     def tpt(given ctx: Context): TypeTree = internal.Applied_tpt(self)
     def args(given ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = internal.Applied_args(self)
   }
@@ -1008,7 +1008,7 @@ trait TreeOps extends Core {
       Some((x.arg, x.annotation))
   }
 
-  given AnnotatedOps: (self: Annotated) {
+  given AnnotatedOps: extension (self: Annotated) {
     def arg(given ctx: Context): TypeTree = internal.Annotated_arg(self)
     def annotation(given ctx: Context): Term = internal.Annotated_annotation(self)
   }
@@ -1029,7 +1029,7 @@ trait TreeOps extends Core {
       Some((x.bound, x.selector, x.cases))
   }
 
-  given MatchTypeTreeOps: (self: MatchTypeTree) {
+  given MatchTypeTreeOps: extension (self: MatchTypeTree) {
     def bound(given ctx: Context): Option[TypeTree] = internal.MatchTypeTree_bound(self)
     def selector(given ctx: Context): TypeTree = internal.MatchTypeTree_selector(self)
     def cases(given ctx: Context): List[TypeCaseDef] = internal.MatchTypeTree_cases(self)
@@ -1051,7 +1051,7 @@ trait TreeOps extends Core {
       Some(x.result)
   }
 
-  given ByNameOps: (self: ByName) {
+  given ByNameOps: extension (self: ByName) {
     def result(given ctx: Context): TypeTree = internal.ByName_result(self)
   }
 
@@ -1070,7 +1070,7 @@ trait TreeOps extends Core {
       Some((tree.tparams, tree.body))
   }
 
-  given LambdaTypeTreeOps: (self: LambdaTypeTree) {
+  given LambdaTypeTreeOps: extension (self: LambdaTypeTree) {
     def tparams(given ctx: Context): List[TypeDef] = internal.Lambdatparams(self)
     def body(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.Lambdabody(self)
   }
@@ -1089,7 +1089,7 @@ trait TreeOps extends Core {
       Some((x.name, x.body))
   }
 
-  given TypeBindOps: (self: TypeBind) {
+  given TypeBindOps: extension (self: TypeBind) {
     def name(given ctx: Context): String = internal.TypeBind_name(self)
     def body(given ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = internal.TypeBind_body(self)
   }
@@ -1109,14 +1109,14 @@ trait TreeOps extends Core {
       Some((x.aliases, x.tpt))
   }
 
-  given TypeBlockOps: (self: TypeBlock) {
+  given TypeBlockOps: extension (self: TypeBlock) {
     def aliases(given ctx: Context): List[TypeDef] = internal.TypeBlock_aliases(self)
     def tpt(given ctx: Context): TypeTree = internal.TypeBlock_tpt(self)
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------
 
-  given TypeBoundsTreeOps: (self: TypeBoundsTree) {
+  given TypeBoundsTreeOps: extension (self: TypeBoundsTree) {
     def tpe(given ctx: Context): TypeBounds = internal.TypeBoundsTree_tpe(self)
     def low(given ctx: Context): TypeTree = internal.TypeBoundsTree_low(self)
     def hi(given ctx: Context): TypeTree = internal.TypeBoundsTree_hi(self)
@@ -1133,7 +1133,7 @@ trait TreeOps extends Core {
       Some((x.low, x.hi))
   }
 
-  given WildcardTypeTreeOps: (self: WildcardTypeTree) {
+  given WildcardTypeTreeOps: extension (self: WildcardTypeTree) {
     def tpe(given ctx: Context): TypeOrBounds = internal.WildcardTypeTree_tpe(self)
   }
 
@@ -1151,7 +1151,7 @@ trait TreeOps extends Core {
 
   // ----- CaseDefs ------------------------------------------------
 
-  given CaseDefOps: (caseDef: CaseDef) {
+  given CaseDefOps: extension (caseDef: CaseDef) {
     def pattern(given ctx: Context): Tree = internal.CaseDef_pattern(caseDef)
     def guard(given ctx: Context): Option[Term] = internal.CaseDef_guard(caseDef)
     def rhs(given ctx: Context): Term = internal.CaseDef_rhs(caseDef)
@@ -1174,7 +1174,7 @@ trait TreeOps extends Core {
       Some((x.pattern, x.guard, x.rhs))
   }
 
-  given TypeCaseDefOps: (caseDef: TypeCaseDef) {
+  given TypeCaseDefOps: extension (caseDef: TypeCaseDef) {
     def pattern(given ctx: Context): TypeTree = internal.TypeCaseDef_pattern(caseDef)
     def rhs(given ctx: Context): TypeTree = internal.TypeCaseDef_rhs(caseDef)
   }
@@ -1213,7 +1213,7 @@ trait TreeOps extends Core {
       Some((pattern.name, pattern.pattern))
   }
 
-  given BindOps: (bind: Bind) {
+  given BindOps: extension (bind: Bind) {
     def name(given ctx: Context): String = internal.Tree_Bind_name(bind)
     def pattern(given ctx: Context): Tree = internal.Tree_Bind_pattern(bind)
   }
@@ -1232,7 +1232,7 @@ trait TreeOps extends Core {
       Some((x.fun, x.implicits, x.patterns))
   }
 
-  given UnapplyOps: (unapply: Unapply) {
+  given UnapplyOps: extension (unapply: Unapply) {
     def fun(given ctx: Context): Term = internal.Tree_Unapply_fun(unapply)
     def implicits(given ctx: Context): List[Term] = internal.Tree_Unapply_implicits(unapply)
     def patterns(given ctx: Context): List[Tree] = internal.Tree_Unapply_patterns(unapply)
@@ -1253,7 +1253,7 @@ trait TreeOps extends Core {
       Some(x.patterns)
   }
 
-  given AlternativesOps: (alternatives: Alternatives) {
+  given AlternativesOps: extension (alternatives: Alternatives) {
     def patterns(given ctx: Context): List[Tree] = internal.Tree_Alternatives_patterns(alternatives)
   }
 
