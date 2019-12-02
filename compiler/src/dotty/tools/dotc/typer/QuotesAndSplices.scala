@@ -316,7 +316,7 @@ trait QuotesAndSplices {
       ctx.error(missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(tree.span))
 
     val quoted = tree.quoted
-    val exprPt = pt.baseType(defn.QuotedExprClass)
+    val exprPt = pt.baseType(if quoted.isType then defn.QuotedTypeClass else defn.QuotedExprClass)
     val quotedPt = exprPt.argInfos.headOption match {
       case Some(argPt: ValueType) => argPt // excludes TypeBounds
       case _ => defn.AnyType
