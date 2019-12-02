@@ -110,8 +110,10 @@ object Nullables with
     || { val sym = ref.symbol
          sym.is(Mutable)
          && sym.owner.isTerm
-         && !curCtx.owner.is(Flags.Lazy) // not a rhs of lazy ValDef
-         && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod
+         && (if sym.owner != curCtx.owner then
+              !curCtx.owner.is(Flags.Lazy) // not at the rhs of lazy ValDef
+              && sym.owner.enclosingMethod == curCtx.owner.enclosingMethod // not in different DefDef
+            else true)
          && sym.span.exists
          && curCtx.compilationUnit != null // could be null under -Ytest-pickler
          && curCtx.compilationUnit.assignmentSpans.contains(sym.span.start)
@@ -254,11 +256,16 @@ object Nullables with
 
   given assignOps: (tree: Assign)
     def computeAssignNullable()(given Context): tree.type = tree.lhs match
-      case TrackedRef(ref) => tree.rhs.typeOpt match
-        // If the type of rhs is `T|Null`, then the nullability of the lhs variable is no longer
-        // trackable. We don't need to check whether the type `T` is correct here.
-        case OrNull(_) => tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
-        case _ => tree
+      case TrackedRef(ref) =>
+        def withoutRef: tree.type = tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
+        tree.rhs.typeOpt match
+          // If the type of rhs is `T|Null`, then the nullability of the lhs variable is no longer
+          // trackable. We don't need to check whether the type `T` is correct here, as typer will
+          // check it.
+          case OrNull(_) => withoutRef
+          // If the type of rhs is Null, we discard its NotNullInfo.
+          case tp if tp.isNullType => withoutRef
+          case _ => tree
       case _ => tree
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)

@@ -18,33 +18,19 @@ def f = {
 
 def g = {
   var x: String|Null = ???
-  lazy val y = {
-    if (x != null) {
-      x = null
-    }
-
-  }
   if (x != null) {
-    val a: String = x // error: x exists in closure, no longer tackable
+    val a: String = x
+    x = null
+    val b: String = x // error: x is null
   }
 }
 
 def h = {
-  var x: String|Null = "???"
-  lazy val y = {
-    if (x != null) {
-      val a: String = x // error: x exists in closure, no longer tackable
-    }
-    x
-  }
-}
-
-def i = {
-  var x: String|Null = "???"
-  def y = {
-    if (x != null) {
-      val a: String = x // error: x exists in closure, no longer tackable
-    }
-    x
+  var x: String|Null = ???
+  if (x != null) {
+    val a: String = x
+    val b: String | String = a
+    x = b
+    val _: String = x // ok
   }
 }
