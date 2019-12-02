@@ -2005,7 +2005,7 @@ object Types {
 
       val idx = typeParams.indexOf(param)
 
-      if (idx < args.length) {
+      if (0 <= idx && idx < args.length) {
         val argInfo = args(idx) match {
           case arg: TypeBounds =>
             val v = param.paramVariance
