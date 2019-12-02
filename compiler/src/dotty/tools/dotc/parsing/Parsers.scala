@@ -2046,7 +2046,7 @@ object Parsers {
       }
       else simpleExpr()
 
-    /** SimpleExpr    ::= ‘new’ (ConstrApp [TemplateBody] | TemplateBody)
+    /** SimpleExpr    ::= ‘new’ (ConstrApp [[‘with’] TemplateBody] | TemplateBody)
      *                 |  BlockExpr
      *                 |  ‘$’ ‘{’ Block ‘}’
      *                 |  Quoted
@@ -2141,7 +2141,7 @@ object Parsers {
       }
     }
 
-    /** SimpleExpr    ::=  ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
+    /** SimpleExpr    ::=  ‘new’ ConstrApp {`with` ConstrApp} [[‘with’] TemplateBody]
      *                  |  ‘new’ TemplateBody
      */
     def newExpr(): Tree =
@@ -2150,7 +2150,7 @@ object Parsers {
         def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
         possibleBracesStart()
         val parents =
-          if in.token == LBRACE || in.token == WITH then Nil
+          if in.token == LBRACE then Nil
           else constrApps(commaOK = false, templateCanFollow = true)
         colonAtEOLOpt()
         possibleTemplateStart(isNew = true)
@@ -3312,7 +3312,7 @@ object Parsers {
       }
     }
 
-    /**  EnumDef ::=  id ClassConstr InheritClauses EnumBody
+    /**  EnumDef ::=  id ClassConstr InheritClauses [‘with’] EnumBody
      */
     def enumDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
       val modulName = ident()
@@ -3381,7 +3381,7 @@ object Parsers {
     }
 
     /** GivenDef       ::=  [GivenSig (‘:’ | <:)] Type ‘=’ Expr
-     *                   |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [TemplateBody]
+     *                   |  [GivenSig ‘:’] [ConstrApp {‘,’ ConstrApp }] [[‘with’] TemplateBody]
      *                   |  [id ‘:’] ‘extension’ ExtParamClause {GivenParamClause} ExtMethods
      *  GivenSig       ::=  [id] [DefTypeParamClause] {GivenParamClause}
      *  ExtParamClause ::=  [DefTypeParamClause] DefParamClause {GivenParamClause}
@@ -3505,7 +3505,7 @@ object Parsers {
         else Nil
       t :: ts
 
-    /** Template          ::=  InheritClauses [TemplateBody]
+    /** Template          ::=  InheritClauses [[‘with’] TemplateBody]
      *  InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
      */
     def template(constr: DefDef, isEnum: Boolean = false): Template = {
