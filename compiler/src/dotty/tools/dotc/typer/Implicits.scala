@@ -812,9 +812,7 @@ trait Implicits { self: Typer =>
             cmpWithBoxed(cls1, cls2)
         else if (cls2.isPrimitiveValueClass)
           cmpWithBoxed(cls2, cls1)
-        else if (cls1 == defn.NullClass && cls1 == cls2)
-          true
-        else if (!ctx.explicitNulls)
+        else if (ctx.explicitNulls)
           // If explicit nulls is enabled, we want to disallow comparison between Object and Null.
           // If a nullable value has a non-nullable type, we can still cast it to nullable type
           // then compare.
@@ -823,10 +821,11 @@ trait Implicits { self: Typer =>
           // val x: String = null.asInstanceOf[String]
           // if (x == null) {} // error: x is non-nullable
           // if (x.asInstanceOf[String|Null] == null) {} // ok
-          if (cls1 == defn.NullClass)
-            cls2.derivesFrom(defn.ObjectClass)
-          else
-            cls2 == defn.NullClass && cls1.derivesFrom(defn.ObjectClass)
+          cls1 == defn.NullClass && cls1 == cls2
+        else if (cls1 == defn.NullClass)
+          cls1 == cls2 || cls2.derivesFrom(defn.ObjectClass)
+        else if (cls2 == defn.NullClass)
+          cls1.derivesFrom(defn.ObjectClass)
         else
           false
       }
