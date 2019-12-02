@@ -1,5 +1,4 @@
 package dotty.tools.dotc.util
-import reflect.ClassTag
 
 object Util {
 
@@ -23,10 +22,4 @@ object Util {
     else recur(0, length, initMid)
   }
 
-  /** An array twice the size of given array, with existing elements copied over */
-  def dble[T: ClassTag](arr: Array[T]): Array[T] = {
-    val arr1 = new Array[T](arr.length * 2)
-    System.arraycopy(arr, 0, arr1, 0, arr.length)
-    arr1
-  }
 }

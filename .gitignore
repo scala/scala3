@@ -83,3 +83,37 @@ community-build/sbt-dotty-sbt
 
 # Vulpix output files
 *.check.out
+
+tastydoc/report/report\.aux
+
+tastydoc/report/report\.fdb_latexmk
+
+tastydoc/report/report\.fls
+
+tastydoc/report/report\.synctex\.gz
+
+tastydoc/report/report\.toc
+
+tastydoc/report/report\.out
+
+tastydoc/report/presentation/presentation\.aux
+
+tastydoc/report/presentation/presentation\.fdb_latexmk
+
+tastydoc/report/presentation/presentation\.fls
+
+tastydoc/report/presentation/presentation\.nav
+
+tastydoc/report/presentation/presentation\.out
+
+tastydoc/report/presentation/presentation\.snm
+
+tastydoc/report/presentation/presentation\.synctex\.gz
+
+tastydoc/report/presentation/presentation\.toc
+
+tastydoc/dotty-0\.15\.0-RC1/
+
+tastydoc/report/presentation/presentation\.vrb
+
+tastydoc/dotty-0\.16\.0-RC3/

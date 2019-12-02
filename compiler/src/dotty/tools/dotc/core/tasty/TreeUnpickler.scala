@@ -24,6 +24,8 @@ import ast.{TreeTypeMap, Trees, tpd, untpd}
 import Trees._
 import Decorators._
 import transform.SymUtils._
+
+import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer._
 
 import scala.annotation.{switch, tailrec}
@@ -32,6 +34,8 @@ import scala.collection.mutable
 import config.Printers.pickling
 import core.quoted.PickledQuotes
 import dotty.tools.dotc.quoted.QuoteContext
+
+import dotty.tools.tasty.TastyFormat._
 
 import scala.quoted
 import scala.internal.quoted.{TastyTreeExpr, TreeType}
@@ -49,7 +53,6 @@ class TreeUnpickler(reader: TastyReader,
                     posUnpicklerOpt: Option[PositionUnpickler],
                     commentUnpicklerOpt: Option[CommentUnpickler],
                     splices: Seq[Any]) {
-  import TastyFormat._
   import TreeUnpickler._
   import tpd._
 
@@ -1454,5 +1457,3 @@ object TreeUnpickler {
 
   class TreeWithoutOwner extends Exception
 }
-
-

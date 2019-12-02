@@ -3,6 +3,10 @@ package dotty.tools.backend.jvm
 import org.junit.Assert._
 import org.junit.Test
 
+import scala.tools.asm
+import asm._
+import asm.tree._
+
 import scala.tools.asm.Opcodes
 
 class TestBCode extends DottyBytecodeTest {
@@ -741,6 +745,42 @@ class TestBCode extends DottyBytecodeTest {
       List(a, b).foreach { node =>
         assert((node.access & Opcodes.ACC_STATIC) != 0)
       }
+    }
+  }
+
+  @Test def freshNames = {
+    val sourceA =
+      """|class A {
+         |  def a1[T: Ordering]: Unit = {}
+         |  def a2[T: Ordering]: Unit = {}
+         |}
+      """.stripMargin
+    val sourceB =
+      """|class B {
+         |  def b1[T: Ordering]: Unit = {}
+         |  def b2[T: Ordering]: Unit = {}
+         |}
+      """.stripMargin
+
+    checkBCode(sourceA, sourceB) { dir =>
+      val clsNodeA = loadClassNode(dir.lookupName("A.class", directory = false).input, skipDebugInfo = false)
+      val clsNodeB = loadClassNode(dir.lookupName("B.class", directory = false).input, skipDebugInfo = false)
+      val a1 = getMethod(clsNodeA, "a1")
+      val a2 = getMethod(clsNodeA, "a2")
+      val b1 = getMethod(clsNodeB, "b1")
+      val b2 = getMethod(clsNodeB, "b2")
+
+      def assertParamName(mn: MethodNode, expectedName: String) = {
+        val actualName = mn.localVariables.get(1).name
+        assert(actualName == expectedName,
+          s"Method ${mn.name} has parameter $actualName but expected $expectedName")
+      }
+
+      // The fresh name counter should be reset for every compilation unit
+      assertParamName(a1, "evidence$1")
+      assertParamName(a2, "evidence$2")
+      assertParamName(b1, "evidence$1")
+      assertParamName(b2, "evidence$2")
     }
   }
 }

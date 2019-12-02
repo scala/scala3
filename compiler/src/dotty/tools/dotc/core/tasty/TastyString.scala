@@ -1,4 +1,4 @@
-package dotty.tools.dotc.core.tasty
+package dotty.tools.tasty
 
 import java.io._
 import java.util.Base64
@@ -25,4 +25,3 @@ object TastyString {
     Base64.getDecoder().decode(string.result().getBytes(UTF_8))
   }
 }
-

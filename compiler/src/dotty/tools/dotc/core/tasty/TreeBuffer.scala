@@ -3,8 +3,11 @@ package dotc
 package core
 package tasty
 
-import util.Util.{bestFit, dble}
+import dotty.tools.tasty.util.Util.dble
+import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.{Addr, NoAddr, AddrWidth}
+
+import util.Util.bestFit
 import config.Printers.pickling
 import ast.untpd.Tree
 

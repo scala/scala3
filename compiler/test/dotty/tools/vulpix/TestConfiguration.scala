@@ -32,6 +32,7 @@ object TestConfiguration {
     Properties.compilerInterface,
     Properties.dottyInterfaces,
     Properties.dottyLibrary,
+    Properties.tastyCore,
     Properties.dottyCompiler
   ))
 

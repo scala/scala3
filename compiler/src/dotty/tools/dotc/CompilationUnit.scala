@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 
-import util.SourceFile
+import util.{FreshNameCreator, SourceFile}
 import ast.{tpd, untpd}
 import tpd.{Tree, TreeTraverser}
 import typer.PrepareInlineable.InlineAccessors
@@ -26,6 +26,12 @@ class CompilationUnit protected (val source: SourceFile) {
 
   /** Pickled TASTY binaries, indexed by class. */
   var pickled: Map[ClassSymbol, Array[Byte]] = Map()
+
+  /** The fresh name creator for the current unit.
+   *  FIXME(#7661): This is not fine-grained enough to enable reproducible builds,
+   *  see https://github.com/scala/scala/commit/f50ec3c866263448d803139e119b33afb04ec2bc
+   */
+  val freshNames: FreshNameCreator = new FreshNameCreator.Default
 
   /** Will be set to `true` if contains `Quote`.
    *  The information is used in phase `Staging` in order to avoid traversing trees that need no transformations.

@@ -17,33 +17,32 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
       // Best effort to try to create a proxy
       val sym = fn.symbol.owner
       if (sym.isClassDef) {
-        sym.tree match case tree: ClassDef =>
-        val parentSymbols = tree.parents.tail.map(_.asInstanceOf[TypeTree].symbol).head
-        import java.lang.reflect._
-        val handler: InvocationHandler = new InvocationHandler() {
+        sym.tree match
+          case tree: ClassDef =>
+            val parentSymbols = tree.parents.tail.map(_.asInstanceOf[TypeTree].symbol).head
+            import java.lang.reflect._
+            val handler: InvocationHandler = new InvocationHandler() {
+              def invoke(proxy: Object, method: Method, args: scala.Array[Object]): Object = {
+                if (LOG) {
+                  val proxyString = if (method.getName == "toString") method.invoke(this) else proxy.toString
+                  println(s"%> proxy call `$method` on `$proxyString` with args=${if (args == null) Nil else args.toList}")
+                }
 
-          def invoke(proxy: Object, method: Method, args: scala.Array[Object]): Object = {
-            if (LOG) {
-              val proxyString = if (method.getName == "toString") method.invoke(this) else proxy.toString
-              println(s"%> proxy call `$method` on `$proxyString` with args=${if (args == null) Nil else args.toList}")
+                // println(method)
+                val symbol = sym.methods.find(_.name == method.getName).get
+
+                if (symbol.isDefinedInCurrentRun) {
+                  val argsList = if (args == null) Nil else args.toList
+                  interpretCall(this, symbol, argsList).asInstanceOf[Object]
+                }
+                else {
+                  assert(method.getClass == classOf[Object])
+                  method.invoke(this, args: _*)
+                }
+              }
             }
-
-            // println(method)
-            val symbol = sym.methods.find(_.name == method.getName).get
-
-            if (symbol.isDefinedInCurrentRun) {
-              val argsList = if (args == null) Nil else args.toList
-              interpretCall(this, symbol, argsList).asInstanceOf[Object]
-            }
-            else {
-              assert(method.getClass == classOf[Object])
-              method.invoke(this, args: _*)
-            }
-          }
-
-        }
-        val proxyClass: Class[_] = Proxy.getProxyClass(getClass.getClassLoader, jvmReflection.loadClass(parentSymbols.fullName))
-        proxyClass.getConstructor(classOf[InvocationHandler]).newInstance(handler);
+            val proxyClass: Class[_] = Proxy.getProxyClass(getClass.getClassLoader, jvmReflection.loadClass(parentSymbols.fullName))
+            proxyClass.getConstructor(classOf[InvocationHandler]).newInstance(handler);
       }
     }
     else jvmReflection.interpretNew(fn.symbol, evaluatedArgss(argss))

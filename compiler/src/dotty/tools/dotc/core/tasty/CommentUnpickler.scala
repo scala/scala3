@@ -1,8 +1,10 @@
 package dotty.tools.dotc.core.tasty
 
 import dotty.tools.dotc.core.Comments.Comment
-import dotty.tools.dotc.core.tasty.TastyBuffer.Addr
 import dotty.tools.dotc.util.Spans.Span
+
+import dotty.tools.tasty.{TastyReader, TastyBuffer}
+import TastyBuffer.Addr
 
 import scala.collection.mutable.HashMap
 
@@ -29,4 +31,3 @@ class CommentUnpickler(reader: TastyReader) {
   def commentAt(addr: Addr): Option[Comment] =
     comments.get(addr)
 }
-
