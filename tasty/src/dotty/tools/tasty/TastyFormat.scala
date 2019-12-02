@@ -1,6 +1,4 @@
-package dotty.tools.dotc
-package core
-package tasty
+package dotty.tools.tasty
 
 /************************************************************
 Notation:
@@ -505,7 +503,6 @@ object TastyFormat {
        | DEFAULTparameterized
        | STABLE
        | EXTENSION
-       | GIVEN
        | PARAMsetter
        | EXPORTED
        | OPEN

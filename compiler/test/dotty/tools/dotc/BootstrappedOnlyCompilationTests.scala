@@ -50,6 +50,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
       compileDir("compiler/src/dotty/tools/dotc/typer", withCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/util", withCompilerOptions),
       compileDir("compiler/src/dotty/tools/io", withCompilerOptions),
+      compileDir("tasty/src/dotty/tools/tasty", withCompilerOptions),
       compileList(
         "testIssue6460",
         List(
@@ -163,7 +164,8 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
       compileFile("tests/pos/pickleinf.scala", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/core/classfile", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/core/tasty", picklingWithCompilerOptions),
-      compileDir("compiler/src/dotty/tools/dotc/core/unpickleScala2", picklingWithCompilerOptions)
+      compileDir("compiler/src/dotty/tools/dotc/core/unpickleScala2", picklingWithCompilerOptions),
+      compileDir("tasty/src/dotty/tools/tasty", picklingWithCompilerOptions)
     ).limitThreads(4).checkCompile()
   }
 

@@ -3,7 +3,7 @@ package dotty.tools.dotc
 import org.junit.Test
 import org.junit.Assert.assertEquals
 
-import dotty.tools.dotc.core.tasty.TastyHash.pjwHash64
+import dotty.tools.tasty.TastyHash.pjwHash64
 
 class TastyHashTest {
   @Test def pjwHash64Tests(): Unit = {

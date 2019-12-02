@@ -1,10 +1,8 @@
-package dotty.tools
-package dotc
-package core
-package tasty
+package dotty.tools.tasty
+
+import collection.mutable
 
 import TastyBuffer._
-import collection.mutable
 
 /** A byte array buffer that can be filled with bytes or natural numbers in TASTY format,
  *  and that supports reading and patching addresses represented as natural numbers.
