@@ -220,7 +220,7 @@ object Tokens extends TokensCommon {
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, QUOTEID, XMLSTART)
 
   final val canStartExprTokens3: TokenSet = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, INDENT, QUOTE, IF, WHILE, FOR, NEW, TRY, THROW)
+    LBRACE, LPAREN, LBRACKET, INDENT, QUOTE, IF, WHILE, FOR, NEW, TRY, THROW)
 
   final val canStartExprTokens2: TokenSet = canStartExprTokens3 | BitSet(DO)
 
