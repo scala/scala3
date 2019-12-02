@@ -791,8 +791,13 @@ trait CompilerInterface {
 
   def Type_apply(clazz: Class[_])(given ctx: Context): Type
 
-  def `Type_=:=`(self: Type)(that: Type)(given ctx: Context): Boolean
-  def `Type_<:<`(self: Type)(that: Type)(given ctx: Context): Boolean
+  /** Is `self` type the same as `that` type?
+   *  This is the case iff `Type_isSubType(self, that)` and `Type_isSubType(that, self)`.
+   */
+  def Type_isTypeEq(self: Type)(that: Type)(given ctx: Context): Boolean
+
+  /** Is this type a subtype of that type? */
+  def Type_isSubType(self: Type)(that: Type)(given ctx: Context): Boolean
 
   /** Widen from singleton type to its underlying non-singleton
     *  base type by applying one or more `underlying` dereferences,
