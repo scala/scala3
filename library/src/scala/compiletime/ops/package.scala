@@ -1,19 +1,21 @@
 package scala.compiletime
 
+import scala.annotation.infix
+
 package object ops {
-  type ==[X <: AnyVal, Y <: AnyVal] <: Boolean
-  type !=[X <: AnyVal, Y <: AnyVal] <: Boolean
+  @infix type ==[X <: AnyVal, Y <: AnyVal] <: Boolean
+  @infix type !=[X <: AnyVal, Y <: AnyVal] <: Boolean
 
-  type +[X <: Int, Y <: Int] <: Int
-  type -[X <: Int, Y <: Int] <: Int
-  type *[X <: Int, Y <: Int] <: Int
-  type /[X <: Int, Y <: Int] <: Int
-  type %[X <: Int, Y <: Int] <: Int
+  @infix type +[X <: Int, Y <: Int] <: Int
+  @infix type -[X <: Int, Y <: Int] <: Int
+  @infix type *[X <: Int, Y <: Int] <: Int
+  @infix type /[X <: Int, Y <: Int] <: Int
+  @infix type %[X <: Int, Y <: Int] <: Int
 
-  type <[X <: Int, Y <: Int] <: Boolean
-  type >[X <: Int, Y <: Int] <: Boolean
-  type >=[X <: Int, Y <: Int] <: Boolean
-  type <=[X <: Int, Y <: Int] <: Boolean
+  @infix type <[X <: Int, Y <: Int] <: Boolean
+  @infix type >[X <: Int, Y <: Int] <: Boolean
+  @infix type >=[X <: Int, Y <: Int] <: Boolean
+  @infix type <=[X <: Int, Y <: Int] <: Boolean
 
   type Abs[X <: Int] <: Int
   type Negate[X <: Int] <: Int
@@ -21,7 +23,7 @@ package object ops {
   type Max[X <: Int, Y <: Int] <: Int
 
   type ![X <: Boolean] <: Boolean
-  type ^[X <: Boolean, Y <: Boolean] <: Boolean
-  type &&[X <: Boolean, Y <: Boolean] <: Boolean
-  type ||[X <: Boolean, Y <: Boolean] <: Boolean
+  @infix type ^[X <: Boolean, Y <: Boolean] <: Boolean
+  @infix type &&[X <: Boolean, Y <: Boolean] <: Boolean
+  @infix type ||[X <: Boolean, Y <: Boolean] <: Boolean
 }
