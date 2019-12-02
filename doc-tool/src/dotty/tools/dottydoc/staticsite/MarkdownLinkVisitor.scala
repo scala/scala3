@@ -3,6 +3,7 @@ package dottydoc
 package staticsite
 
 import com.vladsch.flexmark.ast._
+import com.vladsch.flexmark.util.ast._
 import com.vladsch.flexmark.util.sequence.{BasedSequence, CharSubSequence}
 import model.{Def, Package, TypeAlias, Val}
 import dottydoc.util.MemberLookup

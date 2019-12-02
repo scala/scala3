@@ -257,9 +257,12 @@ object DynamicTuple {
     ).asInstanceOf[Zip[This, T2]]
   }
 
-  def dynamicMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): Map[This, F] =
-    Tuple.fromArray(self.asInstanceOf[Product].productIterator.map(f(_)).toArray) // TODO use toIArray of Object to avoid double/triple array copy
-      .asInstanceOf[Map[This, F]]
+  def dynamicMap[This <: Tuple, F[_]](self: This, f: [t] => t => F[t]): Map[This, F] = (self: Any) match {
+    case self: Unit => ().asInstanceOf[Map[This, F]]
+    case _ =>
+      Tuple.fromArray(self.asInstanceOf[Product].productIterator.map(f(_)).toArray) // TODO use toIArray of Object to avoid double/triple array copy
+        .asInstanceOf[Map[This, F]]
+  }
 
   def consIterator(head: Any, tail: Tuple): Iterator[Any] =
     Iterator.single(head) ++ tail.asInstanceOf[Product].productIterator

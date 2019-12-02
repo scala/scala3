@@ -524,7 +524,8 @@ object Scanners {
         else if (lastWidth != nextWidth)
           errorButContinue(spaceTabMismatchMsg(lastWidth, nextWidth))
       currentRegion match {
-        case Indented(curWidth, others, prefix, outer) if curWidth < nextWidth && !others.contains(nextWidth) =>
+        case Indented(curWidth, others, prefix, outer)
+        if curWidth < nextWidth && !others.contains(nextWidth) && nextWidth != lastWidth =>
           if (token == OUTDENT)
             errorButContinue(
               i"""The start of this line does not match any of the previous indentation widths.

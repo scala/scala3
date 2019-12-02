@@ -3,10 +3,12 @@ package dotc
 package core
 package tasty
 
+import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyReader}
+import TastyFormat.SOURCE
+import TastyBuffer.{Addr, NameRef}
+
 import util.Spans._
 import collection.{mutable, Map}
-import TastyBuffer.{Addr, NameRef}
-import TastyFormat.SOURCE
 import Names.TermName
 
 /** Unpickler for tree positions */
@@ -61,4 +63,3 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
   def spanAt(addr: Addr): Span = spans.getOrElse(addr, NoSpan)
   def sourcePathAt(addr: Addr): String = sourcePaths.getOrElse(addr, "")
 }
-

@@ -10,25 +10,22 @@ with canonical implementations defined by given instances. Here are some example
 ### Semigroups and monoids:
 
 ```scala
-trait SemiGroup[T] {
+trait SemiGroup[T] with
   def (x: T) combine (y: T): T
-}
-trait Monoid[T] extends SemiGroup[T] {
-  def unit: T
-}
-object Monoid {
-  def apply[T](given Monoid[T]) = summon[Monoid[T]]
-}
 
-given Monoid[String] {
+trait Monoid[T] extends SemiGroup[T] with
+  def unit: T
+
+object Monoid with
+  def apply[T](given Monoid[T]) = summon[Monoid[T]]
+
+given Monoid[String] with
   def (x: String) combine (y: String): String = x.concat(y)
   def unit: String = ""
-}
 
-given Monoid[Int] {
+given Monoid[Int] with
   def (x: Int) combine (y: Int): Int = x + y
   def unit: Int = 0
-}
 
 def sum[T: Monoid](xs: List[T]): T =
     xs.foldLeft(Monoid[T].unit)(_.combine(_))

@@ -624,6 +624,7 @@ object Types {
       }
       def goRec(tp: RecType) =
         if (tp.parent == null) NoDenotation
+        else if (tp eq pre) go(tp.parent)
         else {
           //println(s"find member $pre . $name in $tp")
 

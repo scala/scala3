@@ -1,8 +1,6 @@
-package dotty.tools
-package dotc
-package core
+package dotty.tools.dotc.core
 
-import tasty.TastyFormat
+import dotty.tools.tasty.TastyFormat
 
 /** The possible tags of a NameKind */
 object NameTags extends TastyFormat.NameTags {

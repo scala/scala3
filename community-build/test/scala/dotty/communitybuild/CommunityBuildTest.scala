@@ -160,7 +160,7 @@ object projects
 
   lazy val scalatestplusScalacheck = SbtCommunityProject(
     project = "scalatestplus-scalacheck",
-    sbtTestCommand = "scalatestPlusScalaCheckJVM/compile",  // TODO: compile only because tests are prone to java.lang.OutOfMemoryError: Metaspace
+    sbtTestCommand = "scalatestPlusScalaCheckJVM/test",
     sbtUpdateCommand = "scalatestPlusScalaCheckJVM/update",
     sbtPublishCommand = "scalatestPlusScalaCheckJVM/publishLocal",
     dependencies = List(scalatest, scalacheck)

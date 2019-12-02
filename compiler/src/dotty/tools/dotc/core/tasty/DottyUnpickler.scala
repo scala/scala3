@@ -10,6 +10,8 @@ import classfile.ClassfileParser
 import Names.SimpleName
 import TreeUnpickler.UnpickleMode
 
+import dotty.tools.tasty.TastyReader
+
 object DottyUnpickler {
 
   /** Exception thrown if classfile is corrupted */

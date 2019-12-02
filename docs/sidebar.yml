@@ -127,6 +127,8 @@ sidebar:
               url: docs/reference/changed-features/implicit-conversions.html
             - title: Overload Resolution
               url: docs/reference/changed-features/overload-resolution.html
+            - title: Match Expressions
+              url: docs/reference/changed-features/match-syntax.html
             - title: Vararg Patterns
               url: docs/reference/changed-features/vararg-patterns.html
             - title: Pattern Bindings

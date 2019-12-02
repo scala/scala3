@@ -147,8 +147,7 @@ FunArgTypes       ::=  InfixType
                     |  ‘(’ [ ‘[given]’ FunArgType {‘,’ FunArgType } ] ‘)’
                     |  ‘(’ ‘[given]’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
-MatchType         ::=  InfixType `match`
-                       (‘{’ TypeCaseClauses ‘}’ | TypeCaseClause)
+MatchType         ::=  InfixType `match` ‘{’ TypeCaseClauses ‘}’
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
 RefinedType       ::=  WithType {[nl | ‘with’] Refinement}                      RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
@@ -185,9 +184,8 @@ BlockResult       ::=  [‘implicit’] FunParams ‘=>’ Block
 FunParams         ::=  Bindings
                     |  id
                     |  ‘_’
-Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl}
-                       Expr [[semi] ‘else’ Expr]                                If(Parens(cond), thenp, elsep?)
-                    |  ‘if’ Expr ‘then’ Expr [[semi] ‘else’ Expr]               If(cond, thenp, elsep?)
+Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr] If(Parens(cond), thenp, elsep?)
+                    |  [‘inline’] ‘if’  Expr ‘then’ Expr [[semi] ‘else’ Expr]    If(cond, thenp, elsep?)
                     |  ‘while’ ‘(’ Expr ‘)’ {nl} Expr                           WhileDo(Parens(cond), body)
                     |  ‘while’ Expr ‘do’ Expr                                   WhileDo(cond, body)
                     |  ‘try’ Expr Catches [‘finally’ Expr]                      Try(expr, catches, expr?)
@@ -198,17 +196,16 @@ Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl}
                     |  HkTypeParamClause ‘=>’ Expr                              PolyFunction(ts, expr)
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
-                    |  Expr2
-                    |  [‘inline’] Expr2 ‘match’
-                       (‘{’ CaseClauses ‘}’ | CaseClause)                       Match(expr, cases) -- point on match
-Expr2             ::=  PostfixExpr [Ascription]
+                    |  PostfixExpr [Ascription]
+                    |  ‘inline’ InfixExpr MatchClause
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
 Catches           ::=  ‘catch’ (Expr | CaseClause)
 PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op)
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr                              InfixOp(expr, op, expr)
-                    |  InfixExpr ‘given’ (InfixExpr | ParArgumentExprs)
+                    |  InfixExpr MatchClause
+MatchClause       ::=  ‘match’ ‘{’ CaseClauses ‘}’                   Match(expr, cases)
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
 SimpleExpr        ::=  Path
                     |  Literal
@@ -221,6 +218,7 @@ SimpleExpr        ::=  Path
                     |  ‘new’ TemplateBody
                     |  ‘(’ ExprsInParens ‘)’                                    Parens(exprs)
                     |  SimpleExpr ‘.’ id                                        Select(expr, id)
+                    |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
                     |  SimpleExpr ArgumentExprs                                 Apply(expr, args)
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _)

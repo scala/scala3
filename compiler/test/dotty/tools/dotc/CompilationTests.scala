@@ -59,7 +59,6 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/pos-special/typeclass-scaling.scala", defaultOptions.and("-Xmax-inlines", "40")),
       compileFile("tests/pos-special/indent-colons.scala", defaultOptions.and("-Yindent-colons")),
       compileFile("tests/pos-special/i7296.scala", defaultOptions.and("-strict", "-deprecation", "-Xfatal-warnings")),
-      compileFile("tests/pos-special/nullable.scala", defaultOptions.and("-Yexplicit-nulls")),
       compileFile("tests/pos-special/notNull.scala", defaultOptions.and("-Yexplicit-nulls")),
       compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-strict", "-feature", "-Xfatal-warnings")),
       compileFile("tests/pos-special/i7575.scala", defaultOptions.and("-language:dynamics")),
@@ -211,7 +210,8 @@ class CompilationTests extends ParallelTesting {
       defaultOutputDir + dotty1Group + "/dotty/" + sep +
       // and the other compiler dependenies:
       Properties.compilerInterface + sep + Properties.scalaLibrary + sep + Properties.scalaAsm + sep +
-      Properties.dottyInterfaces + sep + Properties.jlineTerminal + sep + Properties.jlineReader,
+      Properties.dottyInterfaces + sep + Properties.tastyCore + sep + Properties.jlineTerminal + sep +
+      Properties.jlineReader,
       Array("-Ycheck-reentrant", "-Yemit-tasty-in-class")
     )
 
