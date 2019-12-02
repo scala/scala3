@@ -2123,8 +2123,6 @@ object SymDenotations {
           if (pcls.isCompleting) recur(pobjs1, acc)
           else {
             val pmembers = pcls.computeNPMembersNamed(name).filterWithPredicate { d =>
-              // Drop members of `Any` and `Object`, as well as top-level definitions
-              // in the empty package that are not defined in the current run.
               val owner = d.symbol.maybeOwner
               (owner ne defn.AnyClass) && (owner ne defn.ObjectClass)
             }
