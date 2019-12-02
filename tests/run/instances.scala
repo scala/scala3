@@ -32,7 +32,7 @@ object Test extends App {
     def flattened = xs.foldLeft[List[T]](Nil)(_ ++ _)
 
   // A right associative op. Note: can't use given extension for this!
-  given prepend: {
+  given prepend: AnyRef {
     def [T](x: T) :: (xs: Seq[T]) = x +: xs
   }
 

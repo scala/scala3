@@ -2,8 +2,8 @@ object Test {
 
   type Foo
 
-  given {
-    def (y: Any) g(given Foo): Any = ???
+  given extension (y: Any) {
+    def g(given Foo): Any = ???
   }
 
   def f(x: Any)(given Foo): Any = {

@@ -8,15 +8,15 @@ object Test extends App {
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  given {
-    def (c: Circle) circumference: Double = c.radius * math.Pi * 2
+  given extension (c: Circle) {
+    def circumference: Double = c.radius * math.Pi * 2
   }
 
   val circle = new Circle(1, 1, 2.0)
 
   println(circle.circumference)
 
-  given {
+  given AnyRef {
     def (xs: Seq[String]) longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
@@ -25,14 +25,14 @@ object Test extends App {
   val names = List("hi", "hello", "world")
   assert(names.longestStrings == List("hello", "world"))
 
-  given {
-    def [T](xs: Seq[T]) second = xs.tail.head
+  given extension [T](xs: Seq[T]) {
+    def second = xs.tail.head
   }
 
   assert(names.longestStrings.second == "world")
 
-  given {
-    def [T](xs: List[List[T]]) flattened = xs.foldLeft[List[T]](Nil)(_ ++ _)
+  given extension [T](xs: List[List[T]]) {
+    def flattened = xs.foldLeft[List[T]](Nil)(_ ++ _)
   }
 
   assert(List(names, List("!")).flattened == names :+ "!")
