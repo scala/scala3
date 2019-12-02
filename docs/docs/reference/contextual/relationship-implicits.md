@@ -61,12 +61,12 @@ The synthesized type names are formed from
 Tuples are treated as transparent, i.e. a type `F[(X, Y)]` would get the synthesized name
 `F_X_Y`. Directly implemented function types `A => B` are represented as `A_to_B`. Function types used as arguments to other type constructors are represented as `Function`.
 
-Anonymous given instances that define extension methods without also implementing a type
+Anonymous given instances that define extension methods
 get their name from the name of the first extension method and the toplevel type
 constructor of its first parameter. For example, the given instance
 ```scala
-given {
-  def (xs: List[T]) second[T] = ...
+given extension [T] (xs: List[T]) {
+  def second = ...
 }
 ```
 gets the synthesized name `given_second_of_List_T`.
